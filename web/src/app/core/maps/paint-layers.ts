@@ -20,6 +20,11 @@ export class PaintedLayers {
   private wall = new Uint8Array();
   private cover = new Uint8Array();
   private light = new Uint8Array();
+  private frame: number | null = null;
+
+  /** `perFrame`: the bytes change at once but the squares the screen draws are decoded at most once an animation frame, so a drag over a
+   * 200 × 400 map decodes the grid once a frame and not once a pointer event. */
+  constructor(private readonly perFrame = false) {}
 
   /** Replaces everything with what the server sent (an empty layer is "nothing painted"). */
   load(packed: PackedLayers): void {
@@ -73,7 +78,7 @@ export class PaintedLayers {
       changed.push(s);
     }
     if (changed.length > 0) {
-      this.publish();
+      this.schedule();
     }
     return changed;
   }
@@ -92,6 +97,26 @@ export class PaintedLayers {
       case MapLayer.LIGHT:
         this.light[n >> 2] = (this.light[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
         break;
+    }
+  }
+
+  /** Decodes now what a frame has not shown yet. */
+  flush(): void {
+    if (this.frame !== null) {
+      cancelAnimationFrame(this.frame);
+      this.frame = null;
+      this.publish();
+    }
+  }
+
+  private schedule(): void {
+    if (!this.perFrame || typeof requestAnimationFrame !== 'function') {
+      this.publish();
+    } else if (this.frame === null) {
+      this.frame = requestAnimationFrame(() => {
+        this.frame = null;
+        this.publish();
+      });
     }
   }
 

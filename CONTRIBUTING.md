@@ -217,6 +217,10 @@ Uma imagem cuja decodificação passaria de 192 MiB (um PNG de 16 bits de mais d
 
 Para medir de novo: `MEURPG_MEASURE=1 go test -run 'TestTileMemory|TestTileRequestTiming' -v ./internal/maps` (este com o banco de teste) e `go test -run '^$' -bench 'Tile' -benchmem ./internal/maps` (em `backend/`, sem `-race`: o detector multiplica o tempo e a memória).
 
+### O editor do mapa no navegador
+
+Pintar num mapa grande não pode travar a tela: o `PaintedLayers` decodifica a grade inteira uma vez por quadro de animação (`requestAnimationFrame`), não a cada quadrado que o ponteiro atravessa, e os lotes vão ao servidor fora do caminho do desenho (ver [Arquitetura](docs/arquitetura.md#o-editor-do-mapa-etapa-9-fatia-912)). Medido em 05/10/2026 no Chrome, num Apple M1 Pro, com um mapa de 200 × 400 quadrados (uma imagem de 1.200 × 2.400 px e a grade de 200 colunas, o maior que o servidor aceita) e o pincel de 3 × 3: um arrasto de 240 eventos do ponteiro de um lado ao outro do mapa, durante 5,5 s, deu **335 quadros com média de 16,7 ms (60 quadros por segundo), p95 de 16,7 ms e máximo de 16,8 ms**: nenhum quadro perdido. O arrasto foi guiado pelo Playwright, que manda um evento por ida e volta ao navegador; um mouse de verdade manda mais eventos por quadro, e eles se juntam no mesmo quadro. Para medir de novo: um teste Playwright que cria o mapa, entra em "Pintar", escolhe a Parede e o pincel 3 × 3, e registra a duração de cada `requestAnimationFrame` enquanto o `page.mouse` arrasta.
+
 ## Queries com sqlc
 
 O SQL de cada módulo fica em `backend/internal/<módulo>/queries.sql`, e o sqlc gera os métodos Go tipados num pacote ao lado (`identitydb`, `campaignsdb`, `charactersdb`, `playdb`, `mapsdb`). O schema que o sqlc usa são as próprias migrations do goose, então não existe uma segunda cópia do schema para manter igual. A configuração está em `backend/sqlc.yaml`.

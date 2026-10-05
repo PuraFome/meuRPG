@@ -34,13 +34,20 @@
   }
 }
 
+.reach__halo {
+  // A pale line under the ink one: the ring is read on the dark of the unseen as well as on the floor.
+  stroke: var(--mr-map-token-surface);
+  stroke-width: 6;
+  opacity: 0.85;
+}
+
 .reach__bright {
-  stroke: var(--mr-map-accent);
+  stroke: var(--mr-map-token-ink);
   stroke-width: 2.5;
 }
 
 .reach__dim {
-  stroke: var(--mr-map-accent);
+  stroke: var(--mr-map-token-ink);
   stroke-width: 2.5;
   stroke-dasharray: 8 6;
 }

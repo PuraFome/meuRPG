@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { pointAriaLabel } from '../../../shared/map-view/map-labels';
+import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
+import { MapPins } from '../../../shared/map-pins/map-pins';
 import { MapView as MapPicture } from '../../../shared/map-view/map-view';
 import { DocDialog } from '../doc-dialog/doc-dialog';
 import { DocumentLinks, type MapView, type OpenSessionMap } from '../document-clients';
@@ -21,7 +23,7 @@ import { type LookupState, lookupFailure } from '../document-copy';
  */
 @Component({
   selector: 'app-document-map-dialog',
-  imports: [DocDialog, MapLegend, MapPicture, MatButtonModule, MatIconModule, RouterLink],
+  imports: [DocDialog, MapLegend, MapPicture, MapPins, MapPinsLegend, MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './map-dialog.html',
   styleUrl: './map-dialog.scss',
 })

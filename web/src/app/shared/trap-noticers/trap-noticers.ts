@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { GetTrapNoticersResponse, TrapNoticer } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import type { GetTrapNoticersResponse, TrapNoticer } from '../../../gen/meurpg/maps/v1/maps_pb';
 
 interface Row {
   readonly n: TrapNoticer;
@@ -44,11 +44,14 @@ export function noticerRow(n: TrapNoticer): Row {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './trap-noticers.html',
   styleUrl: './trap-noticers.scss',
+  host: { '[class.tn--panel]': 'panel()' },
 })
 export class TrapNoticers {
   readonly noticers = input<GetTrapNoticersResponse | undefined>(undefined);
   /** The read failed. */
   readonly failed = input(false);
   readonly retry = output<void>();
+  /** In the editor's side panel: the panel's title style, and the rows stack in a narrow column (a container query). The session card keeps its own layout. */
+  readonly panel = input(false);
   protected readonly rows = computed(() => (this.noticers()?.noticers ?? []).map(noticerRow));
 }

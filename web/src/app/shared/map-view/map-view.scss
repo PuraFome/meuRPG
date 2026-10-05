@@ -90,8 +90,16 @@
   font-weight: 700;
   line-height: 22px;
   white-space: nowrap;
-  // Set by the view when the label would leave the image.
-  translate: var(--lbl-shift, 0px) 0;
+}
+
+// Once the view has measured the map it puts each label beside what it names, off the others (`placeLabel`): an offset from the
+// point, in screen pixels.
+.lbl[data-placed][data-side] .lbl__pill {
+  top: var(--lbl-y);
+  right: auto;
+  bottom: auto;
+  left: var(--lbl-x);
+  transform: none;
 }
 
 .lbl[data-side='below'] .lbl__pill {
@@ -168,18 +176,20 @@
 }
 
 .mv__controls {
-  position: absolute;
-  z-index: 9;
-  right: 10px;
-  bottom: 10px;
   display: flex;
   flex-direction: row;
+  justify-content: flex-end;
   gap: 8px;
+  margin-top: var(--mr-space-2);
 
+  // From a tablet up a column at the top-right, over the map. On a phone the buttons sit under it, so they never cover a label.
   @media (min-width: 768px) {
+    position: absolute;
+    z-index: 9;
     top: 12px;
-    bottom: auto;
+    right: 10px;
     flex-direction: column;
+    margin-top: 0;
   }
 }
 
@@ -202,9 +212,29 @@
   color: var(--mr-ink);
   cursor: pointer;
 
+  // Cannot act: the dashed border and the muted ink, never see-through (the map shows behind it on a tablet).
   &:disabled {
+    border-style: dashed;
+    background: var(--mr-surface);
     color: var(--mr-ink-muted);
     cursor: default;
-    opacity: 0.6;
   }
+}
+
+// Painting: the markers and the tokens stand back, so the layers and the brush show.
+.mv--faded app-map-marker,
+.mv--faded app-map-token {
+  opacity: 0.4;
+}
+
+// A small map (a phone): the names stay but shorter, in a smaller pill, and the state words go (the dashed edge, the legend and the list say it).
+.mv--compact .lbl__pill {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mv--compact .lbl__state {
+  display: none;
 }

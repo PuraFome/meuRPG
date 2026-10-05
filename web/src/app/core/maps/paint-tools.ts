@@ -1,6 +1,7 @@
 import { MapLayer } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { type Square, squareAt } from '../combat/combat-grid';
+import type { Square } from '../combat/combat-grid';
 import { tight } from '../format/text';
+import { squaresText } from '../units';
 import { type MapLayers, lightCount } from './layers';
 
 /** The four tools of "Pintar" (E9-01). */
@@ -97,20 +98,11 @@ export function lineSquares(from: Square, to: Square): Square[] {
   }
 }
 
-/** The square under a pointer, from its position inside the map's box (fractions 0 to 1). */
-export function squareUnder(x: number, y: number, columns: number, rows: number): Square {
-  return squareAt(x, y, columns, rows);
-}
-
 /** "Terreno difícil · arraste para pintar · Shift apaga": the line over the map's corner. */
 export function paintHint(s: PaintSettings): string {
   const what =
     s.tool === 'cover' ? `Cobertura · ${COVER_LABEL[s.cover]}` : s.tool === 'light' ? `Luz · ${LIGHT_LABEL[s.light]}` : TOOL_LABEL[s.tool];
   return s.erase ? `${TOOL_LABEL[s.tool]} · arraste para apagar` : `${what} · arraste para pintar · Shift apaga`;
-}
-
-function squares(n: number): string {
-  return tight(`${n.toLocaleString('pt-BR')} ${n === 1 ? 'quadrado' : 'quadrados'}`);
 }
 
 /** What the "Camadas" list says under each layer's name. */
@@ -126,26 +118,26 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
   const light = lightCount(l);
   let coverText = 'nada pintado';
   if (l.half.length > 0 && l.threeQuarters.length > 0) {
-    coverText = tight(`${squares(l.half.length)} de meia cobertura e ${l.threeQuarters.length} de três quartos`);
+    coverText = tight(`${squaresText(l.half.length)} de meia cobertura e ${l.threeQuarters.length} de três quartos`);
   } else if (l.half.length > 0) {
-    coverText = tight(`${squares(l.half.length)} de meia cobertura`);
+    coverText = tight(`${squaresText(l.half.length)} de meia cobertura`);
   } else if (l.threeQuarters.length > 0) {
-    coverText = tight(`${squares(l.threeQuarters.length)} de três quartos`);
+    coverText = tight(`${squaresText(l.threeQuarters.length)} de três quartos`);
   }
   return [
     {
       tool: 'terrain',
       name: 'Terreno difícil',
       count: l.terrain.length,
-      detail: l.terrain.length > 0 ? tight(`${squares(l.terrain.length)} · custa +1,5 m por quadrado`) : 'nada pintado',
+      detail: l.terrain.length > 0 ? tight(`${squaresText(l.terrain.length)} · custa +1,5 m por quadrado`) : 'nada pintado',
     },
     {
       tool: 'wall',
       name: 'Parede',
       count: l.walls.length,
-      detail: l.walls.length > 0 ? `${squares(l.walls.length)} · bloqueia movimento, visão e luz` : 'nada pintado',
+      detail: l.walls.length > 0 ? `${squaresText(l.walls.length)} · bloqueia movimento, visão e luz` : 'nada pintado',
     },
     { tool: 'cover', name: 'Cobertura', count: cover, detail: coverText },
-    { tool: 'light', name: 'Luz', count: light, detail: light > 0 ? `${squares(light)} ${light === 1 ? 'pintado' : 'pintados'}` : 'nada pintado' },
+    { tool: 'light', name: 'Luz', count: light, detail: light > 0 ? `${squaresText(light)} ${light === 1 ? 'pintado' : 'pintados'}` : 'nada pintado' },
   ];
 }

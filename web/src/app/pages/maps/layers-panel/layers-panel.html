@@ -1,25 +1,30 @@
 <section class="mr-panel lp" aria-labelledby="lp-title">
   <div class="lp__head">
     <h2 class="mr-panel__title" id="lp-title">Camadas</h2>
-    <span class="lp__status" role="status">
-      @switch (status()) {
-        @case ('saving') {
-          <span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">sync</mat-icon>Salvando</span>
+    @if (active()) {
+      <span class="lp__status">
+        @switch (status()) {
+          @case ('saving') {
+            <span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">sync</mat-icon>Salvando</span>
+          }
+          @case ('error') {
+            <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error</mat-icon>Não salvou</span>
+          }
+          @default {
+            <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Tudo salvo</span>
+          }
         }
-        @case ('error') {
-          <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error</mat-icon>Não salvou</span>
-        }
-        @default {
-          <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Tudo salvo</span>
-        }
-      }
-    </span>
+      </span>
+    }
   </div>
+  <p class="mr-visually-hidden" role="status">{{ announced() }}</p>
   @if (status() === 'error') {
-    <p class="lp__retry">
-      O servidor não respondeu. O que você pintou continua na tela.
-      <button matButton type="button" class="lp__again" (click)="retry.emit()">Tentar de novo</button>
-    </p>
+    <div class="lp__retry" role="alert">
+      <p>{{ problem() }}</p>
+      @if (retryable()) {
+        <button matButton type="button" class="lp__again" (click)="retry.emit()">Tentar de novo</button>
+      }
+    </div>
   }
   <p class="lp__lead">O que você pinta aparece só para você aqui; os jogadores veem terreno, paredes e cobertura onde o personagem enxerga.</p>
   <ul class="lp__list">

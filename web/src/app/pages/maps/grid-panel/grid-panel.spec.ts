@@ -133,9 +133,22 @@ describe('GridPanel', () => {
     api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: MapBlockedSchema, value: create(MapBlockedSchema, { reason: MapBlockedReason.COMBAT_RUNNING }) }]);
     button('Mudar a grade').click();
     await settle();
+    type('30');
     Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim() === 'Mudar a grade').at(-1)!.click();
     await settle();
     expect(text()).toContain('Há um combate neste mapa: a grade e a imagem só mudam depois dele.');
     expect(changed).toEqual([]);
+  });
+
+  it('the same size is no change: the button is off and says so, and nothing is erased', async () => {
+    await setup(withGrid, { erases: true });
+    button('Mudar a grade').click();
+    await settle();
+    expect(text()).toContain('A grade já tem 24 colunas. Escolha outro número para mudar.');
+    const go = button('Apagar e mudar a grade');
+    expect(go.classList).toContain('mr-button--off');
+    go.click();
+    await settle();
+    expect(api.calls).toEqual([]);
   });
 });

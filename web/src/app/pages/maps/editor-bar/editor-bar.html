@@ -1,16 +1,13 @@
 <div class="bar" role="toolbar" aria-label="Ferramentas do mapa">
-  <div class="seg" role="radiogroup" aria-label="O que editar" (keydown)="onSegKey($event)">
+  <div class="seg bar__mode" role="radiogroup" aria-label="O que editar" (keydown)="onSegKey($event)">
     <button type="button" role="radio" class="seg__item" [class.seg__item--on]="mode() === 'points'" [attr.aria-checked]="mode() === 'points'" [tabIndex]="mode() === 'points' ? 0 : -1" (click)="modeChange.emit('points')">
-      @if (mode() === 'points') {
-        <mat-icon aria-hidden="true">check</mat-icon>
-      }Pontos
+      <mat-icon class="chk" [class.chk--hide]="mode() !== 'points'" aria-hidden="true">check</mat-icon>Pontos
     </button>
     <button type="button" role="radio" class="seg__item" [class.seg__item--on]="mode() === 'paint'" [attr.aria-checked]="mode() === 'paint'" [tabIndex]="mode() === 'paint' ? 0 : -1" (click)="modeChange.emit('paint')">
-      @if (mode() === 'paint') {
-        <mat-icon aria-hidden="true">check</mat-icon>
-      }Pintar
+      <mat-icon class="chk" [class.chk--hide]="mode() !== 'paint'" aria-hidden="true">check</mat-icon>Pintar
     </button>
   </div>
+  <span class="bar__break" aria-hidden="true"></span>
   <span class="bar__sep" aria-hidden="true"></span>
 
   @if (mode() === 'points') {
@@ -24,7 +21,11 @@
       <span class="bar__sep" aria-hidden="true"></span>
       @for (k of newKinds; track k) {
         <button matButton="outlined" type="button" class="bar__tool" [attr.aria-pressed]="placing() === k" [class.bar__tool--on]="placing() === k" (click)="toggleKind.emit(k)">
-          <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>{{ kindLabel(k) }}
+          @if (k === Treasure) {
+            <app-chest-icon class="bar__chest" />
+          } @else {
+            <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>
+          }{{ kindLabel(k) }}
         </button>
       }
     </div>
@@ -51,42 +52,38 @@
           matButton="outlined"
           type="button"
           class="bar__tool"
-          [class.bar__tool--on]="settings().tool === t.tool && !settings().erase"
+          [class.bar__tool--on]="toolOn(t.tool)"
           [class.mr-button--off]="!canPaint()"
-          [attr.aria-pressed]="settings().tool === t.tool"
+          [attr.aria-pressed]="toolOn(t.tool)"
           [disabled]="!canPaint()"
           disabledInteractive
           [attr.aria-describedby]="canPaint() ? null : 'bar-why'"
           (click)="canPaint() && set({ tool: t.tool })"
         >
-          @if (settings().tool === t.tool) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }<mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ toolLabel[t.tool] }}
+          <mat-icon class="chk" [class.chk--hide]="!toolOn(t.tool)" aria-hidden="true">check</mat-icon><mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ toolLabel[t.tool] }}
         </button>
       }
       <button
         matButton="outlined"
         type="button"
         class="bar__tool"
-        [class.bar__tool--on]="settings().erase"
+        [class.bar__tool--on]="eraseOn()"
         [class.mr-button--off]="!canPaint()"
-        [attr.aria-pressed]="settings().erase"
+        [attr.aria-pressed]="eraseOn()"
         [disabled]="!canPaint()"
         disabledInteractive
         [attr.aria-describedby]="canPaint() ? null : 'bar-why'"
         (click)="canPaint() && set({ erase: !settings().erase })"
       >
-        <mat-icon aria-hidden="true">ink_eraser</mat-icon>Apagar
+        <mat-icon class="chk" [class.chk--hide]="!eraseOn()" aria-hidden="true">check</mat-icon><mat-icon aria-hidden="true">ink_eraser</mat-icon>Apagar
       </button>
     </div>
     <span class="bar__sep" aria-hidden="true"></span>
     <span class="bar__label" id="bar-brush">Pincel</span>
     <div class="seg seg--small" role="radiogroup" aria-labelledby="bar-brush" (keydown)="onSegKey($event)" [class.seg--off]="!canPaint()">
       @for (b of [1, 3]; track b) {
-        <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().brush === b" [attr.aria-checked]="settings().brush === b" [attr.aria-disabled]="!canPaint()" [tabIndex]="settings().brush === b ? 0 : -1" (click)="canPaint() && set({ brush: $any(b) })">
-          @if (settings().brush === b) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }{{ b }}×{{ b }}
+        <button type="button" role="radio" class="seg__item" [class.seg__item--on]="canPaint() && settings().brush === b" [attr.aria-checked]="canPaint() && settings().brush === b" [disabled]="!canPaint()" [attr.aria-describedby]="canPaint() ? null : 'bar-why'" [tabIndex]="settings().brush === b ? 0 : -1" (click)="set({ brush: $any(b) })">
+          <mat-icon class="chk" [class.chk--hide]="!canPaint() || settings().brush !== b" aria-hidden="true">check</mat-icon>{{ b }}×{{ b }}
         </button>
       }
     </div>
@@ -96,19 +93,22 @@
       <button type="button" class="bar__icon" aria-label="Ajustar à tela" (click)="fit.emit()"><mat-icon aria-hidden="true">fit_screen</mat-icon></button>
     </div>
 
+    @if (why()) {
+      <p class="bar__why" id="bar-why">
+        <mat-icon aria-hidden="true">{{ whyIcon() }}</mat-icon>{{ why() }}
+        <ng-content select="[why]" />
+      </p>
+    }
     @if (canPaint() && settings().tool === 'cover') {
       <div class="bar__row">
         <span class="bar__label" id="bar-cover">Cobertura pintada</span>
         <div class="seg" role="radiogroup" aria-labelledby="bar-cover" (keydown)="onSegKey($event)">
           @for (c of covers; track c) {
             <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().cover === c" [attr.aria-checked]="settings().cover === c" [tabIndex]="settings().cover === c ? 0 : -1" (click)="set({ cover: c })">
-              @if (settings().cover === c) {
-                <mat-icon aria-hidden="true">check</mat-icon>
-              }{{ coverLabel[c] }}
+              <mat-icon class="chk" [class.chk--hide]="settings().cover !== c" aria-hidden="true">check</mat-icon>{{ coverLabel[c] }}
             </button>
           }
         </div>
-        <span class="bar__hint">Meia cobertura: dá para passar por cima. Três quartos: não dá para entrar. Parede já é cobertura total.</span>
       </div>
     }
     @if (canPaint() && settings().tool === 'light') {

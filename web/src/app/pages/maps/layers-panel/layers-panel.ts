@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -27,9 +27,35 @@ export class LayersPanel {
   readonly layers = input.required<MapLayers>();
   readonly visible = input.required<LayerVisibility>();
   readonly status = input<PaintSaveStatus>('saved');
+  /** Painting is on (a grid, and the layers read): without it there is nothing to save, and no "Tudo salvo". */
+  readonly active = input(true);
+  /** What the server said when it refused a batch, by the typed reason. */
+  readonly problem = input('');
+  /** Whether "Tentar de novo" can help (the server did not answer); a refusal is only said. */
+  readonly retryable = input(false);
 
   readonly visibleChange = output<LayerVisibility>();
   readonly retry = output<void>();
+
+  /** What a screen reader hears: "Tudo salvo" once a run of strokes has been saved, never "Salvando" for each batch. */
+  protected readonly announced = signal('');
+  private wasSaving = false;
+
+  constructor() {
+    effect(() => {
+      const status = this.status();
+      untracked(() => {
+        if (status === 'saving') {
+          this.wasSaving = true;
+        } else if (status === 'saved' && this.wasSaving) {
+          this.wasSaving = false;
+          this.announced.set('Tudo salvo');
+        } else {
+          this.announced.set('');
+        }
+      });
+    });
+  }
 
   protected readonly lines = computed(() => layerLines(this.layers()));
   protected readonly lights = [3, 2, 1] as const;

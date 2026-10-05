@@ -4,6 +4,9 @@
  * API's unit); the view shows them as percentages and moves them in steps.
  */
 
+import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { pointHidden } from './map-labels';
+
 export const BP_MAX = 10000;
 export const MIN_SCALE = 1;
 export const MAX_SCALE = 4;
@@ -26,6 +29,10 @@ export interface ViewPoint {
   readonly revealed: boolean;
   /** A fog map: the point is on a square the viewer saw before and does not see now (drawn darkened). */
   readonly remembered?: boolean;
+  /** A treasure marked found, a trap shown to some characters or already fired: the players know it (`pointHidden`). */
+  readonly treasureFoundAt?: unknown;
+  readonly trapRevealedTo?: readonly unknown[];
+  readonly trap?: { readonly state: number } | undefined;
 }
 
 /** What the view reads of a token (the generated `MapToken` fits it). */
@@ -218,7 +225,7 @@ export function labelBounds(
  * what is revealed or visible, even if a hidden thing slipped in (the
  * server never sends one: this is the second lock). */
 export function visiblePoints<T extends ViewPoint>(points: readonly T[], isMaster: boolean): T[] {
-  return points.filter((p) => isMaster || p.revealed);
+  return points.filter((p) => isMaster || (p.kind !== MapPointKind.LIGHT && !pointHidden(p)));
 }
 
 export function visibleTokens<T extends ViewToken>(tokens: readonly T[], isMaster: boolean): T[] {
@@ -261,4 +268,96 @@ export function focusTransform(
 
 export function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** A box on screen, in pixels. */
+export interface Box {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/** The smallest box holding all of `boxes` (`null` for none). */
+export function unionBox(boxes: readonly Box[]): Box | null {
+  if (boxes.length === 0) {
+    return null;
+  }
+  return {
+    left: Math.min(...boxes.map((b) => b.left)),
+    top: Math.min(...boxes.map((b) => b.top)),
+    right: Math.max(...boxes.map((b) => b.right)),
+    bottom: Math.max(...boxes.map((b) => b.bottom)),
+  };
+}
+
+/** The area two boxes share, in square pixels. */
+export function overlapArea(a: Box, b: Box): number {
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+/** Points on the same grid square share one label: the key of the square a point stands on (`columns` 0: no grid, the key is a coarse spot). */
+export function squareKey(xBp: number, yBp: number, columns: number, aspect: number): string {
+  if (columns > 0) {
+    const rows = Math.max(1, Math.round(columns / aspect));
+    const col = Math.min(columns - 1, Math.floor((xBp / BP_MAX) * columns));
+    const row = Math.min(rows - 1, Math.floor((yBp / BP_MAX) * rows));
+    return `${col}/${row}`;
+  }
+  return `${Math.round(xBp / 150)}/${Math.round(yBp / 150)}`;
+}
+
+/**
+ * Where a label goes: beside what it names (its `anchor`: the marker and the area of its points), never over it, and off the other
+ * things on the map (`obstacles`: areas, markers, tokens and the labels already placed). It tries the sides in turn (right, left,
+ * below, above, each centred and then lined up with an edge) and takes the first that touches nothing; when every one does, the
+ * one that covers least. It always stays inside `bounds`. Returns the pill's top-left corner on screen.
+ */
+export function placeLabel(
+  anchor: Box,
+  size: { width: number; height: number },
+  obstacles: readonly Box[],
+  bounds: { minLeft: number; maxRight: number; minTop: number; maxBottom: number },
+  gap = 6,
+): { left: number; top: number } {
+  const { width: w, height: h } = size;
+  const cx = (anchor.left + anchor.right) / 2;
+  const cy = (anchor.top + anchor.bottom) / 2;
+  // Each side in turn, centred and then lined up with an edge; and when a crowded map leaves none free, the same sides again, farther out.
+  const around = (g: number): { left: number; top: number }[] => [
+    { left: anchor.right + g, top: cy - h / 2 },
+    { left: anchor.left - g - w, top: cy - h / 2 },
+    { left: cx - w / 2, top: anchor.bottom + g },
+    { left: cx - w / 2, top: anchor.top - g - h },
+    { left: anchor.right + g, top: anchor.top },
+    { left: anchor.right + g, top: anchor.bottom - h },
+    { left: anchor.left - g - w, top: anchor.top },
+    { left: anchor.left - g - w, top: anchor.bottom - h },
+    { left: anchor.left, top: anchor.bottom + g },
+    { left: anchor.right - w, top: anchor.bottom + g },
+    { left: anchor.left, top: anchor.top - g - h },
+    { left: anchor.right - w, top: anchor.top - g - h },
+  ];
+  const candidates = [...around(gap), ...around(gap + h), ...around(gap + 2 * h)];
+  let best = candidates[0];
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (const c of candidates) {
+    // Slide it back inside the image (a wider label than the image starts at its left edge).
+    const left = w > bounds.maxRight - bounds.minLeft ? bounds.minLeft : clamp(c.left, bounds.minLeft, bounds.maxRight - w);
+    const top = clamp(c.top, bounds.minTop, Math.max(bounds.minTop, bounds.maxBottom - h));
+    const box: Box = { left, top, right: left + w, bottom: top + h };
+    // What it covers of its own anchor weighs most; then the others; then how far sliding moved it.
+    const far = Math.max(0, Math.hypot(left + w / 2 - cx, top + h / 2 - cy) - Math.hypot(w / 2 + (anchor.right - anchor.left) / 2, h / 2 + (anchor.bottom - anchor.top) / 2)) / 100;
+    const cost = overlapArea(box, anchor) * 4 + obstacles.reduce((sum, o) => sum + overlapArea(box, o), 0) + Math.abs(left - c.left) + Math.abs(top - c.top) + far;
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = { left, top };
+      if (cost === 0) {
+        break;
+      }
+    }
+  }
+  return best;
 }

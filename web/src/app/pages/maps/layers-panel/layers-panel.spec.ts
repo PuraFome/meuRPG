@@ -20,7 +20,7 @@ describe('LayersPanel', () => {
   let changes: LayerVisibility[];
   let retries: number;
 
-  function setup(status: PaintSaveStatus = 'saved', visible = all) {
+  function setup(status: PaintSaveStatus = 'saved', visible = all, extra: Record<string, unknown> = {}) {
     changes = [];
     retries = 0;
     TestBed.resetTestingModule();
@@ -29,6 +29,9 @@ describe('LayersPanel', () => {
     fixture.componentRef.setInput('layers', layers);
     fixture.componentRef.setInput('visible', visible);
     fixture.componentRef.setInput('status', status);
+    for (const [key, value] of Object.entries(extra)) {
+      fixture.componentRef.setInput(key, value);
+    }
     fixture.componentInstance.visibleChange.subscribe((v) => changes.push(v));
     fixture.componentInstance.retry.subscribe(() => retries++);
     fixture.detectChanges();
@@ -59,14 +62,42 @@ describe('LayersPanel', () => {
     expect(changes).toEqual([{ ...all, terrain: false }]);
   });
 
-  it('says "Tudo salvo" with a check, "Salvando", or "Não salvou" with a way to try again', () => {
+  it('says "Tudo salvo" with a check, "Salvando", or "Não salvou" with a way to try again when the server did not answer', () => {
     setup('saved');
     expect(text()).toContain('Tudo salvo');
     setup('saving');
     expect(text()).toContain('Salvando');
-    setup('error');
+    setup('error', all, { problem: 'Não foi possível falar com o servidor agora.', retryable: true });
     expect(text()).toContain('Não salvou');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível falar com o servidor');
     Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar de novo'))!.click();
     expect(retries).toBe(1);
+  });
+
+  it('a refusal no retry fixes says what happened and offers no "Tentar de novo"', () => {
+    setup('error', all, { problem: 'Defina a grade para pintar e ligar a névoa.', retryable: false });
+    expect(text()).toContain('Defina a grade para pintar e ligar a névoa.');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Tentar de novo'))).toBe(false);
+  });
+
+  it('never says "Tudo salvo" while painting is off (no grid, or the layers not read yet)', () => {
+    setup('saved', all, { active: false });
+    expect(text()).not.toContain('Tudo salvo');
+    expect(text()).not.toContain('Salvando');
+  });
+
+  it('announces "Tudo salvo" once, politely, after a run of strokes, and nothing for each batch', async () => {
+    setup('saved');
+    const live = () => el.querySelector('[role="status"]')?.textContent?.trim();
+    expect(live()).toBe('');
+    fixture.componentRef.setInput('status', 'saving');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(live()).toBe('');
+    fixture.componentRef.setInput('status', 'saved');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(live()).toBe('Tudo salvo');
   });
 });

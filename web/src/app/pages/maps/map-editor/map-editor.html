@@ -1,3 +1,10 @@
+@if (paint.leaving()) {
+  <div class="mr-panel leave">
+    <app-map-ask title="Há traços que o servidor não recebeu" confirmLabel="Sair e perder os traços" (cancel)="paint.answerLeave(false)" (confirm)="paint.answerLeave(true)">
+      <p class="leave__text">{{ paint.saveProblem() || 'Não deu para salvar o que você pintou.' }} Se você sair agora, esses traços se perdem.</p>
+    </app-map-ask>
+  </div>
+}
 @if (viewAs(); as characterId) {
   <!-- "Ver como": the map as one player gets it (MR-036); nothing changes for anyone. -->
   <div class="layout">
@@ -41,19 +48,25 @@
   }
   <app-editor-bar
     [mode]="mode()"
-    [settings]="settings()"
-    [canPaint]="hasGrid()"
+    [settings]="paint.settings()"
+    [canPaint]="paint.canPaint()"
     [placing]="placing()"
     [available]="available()"
     [scale]="view()?.scale() ?? 1"
+    [why]="mode() === 'paint' ? paint.why() : ''"
+    [whyIcon]="paint.hasGrid() ? 'sync_problem' : 'grid_on'"
     (modeChange)="setMode($event)"
-    (settingsChange)="settings.set($event)"
+    (settingsChange)="paint.settings.set($event)"
     (toggleKind)="toggleKind($event)"
     (addToken)="addToken($event)"
     (zoomIn)="view()?.zoomIn()"
     (zoomOut)="view()?.zoomOut()"
     (fit)="view()?.fit()"
-  />
+  >
+    @if (paint.hasGrid() && paint.session.readiness() === 'failed') {
+      <button why matButton type="button" (click)="paint.retryRead()">Tentar de novo</button>
+    }
+  </app-editor-bar>
 
   <div class="layout" [class.layout--paint]="mode() === 'paint'">
     <div class="layout__map">
@@ -71,7 +84,10 @@
           [placing]="placing() !== null"
           [hint]="hint()"
           [kindShapes]="true"
-          [squares]="columns()"
+          [pinsDrawn]="true"
+          [labels]="mode() === 'points'"
+          [faded]="mode() === 'paint'"
+          [squares]="paint.columns()"
           [initialOf]="initialOf"
           (pointSelect)="requestSelect({ kind: 'point', id: $event })"
           (tokenSelect)="requestSelect({ kind: 'token', id: $event })"
@@ -80,52 +96,50 @@
         >
           <app-editor-overlay
             mapOverlay
-            [columns]="columns()"
-            [rows]="rows()"
-            [layers]="shownLayers()"
+            [columns]="paint.columns()"
+            [rows]="paint.rows()"
+            [layers]="paint.shown()"
             [points]="state().points()"
-            [cursor]="cursor()"
+            [cursor]="paint.cursor()"
             [lightReach]="lightReach()"
+            [faded]="mode() === 'paint'"
+            [selectedId]="selectedPoint()?.id ?? null"
           />
-          @if (painting()) {
+          @if (paint.painting()) {
             <app-paint-surface
               mapOverlay
-              [columns]="columns()"
-              [rows]="rows()"
-              [cursor]="hover()"
-              (stroke)="onStroke($event)"
-              (strokeEnd)="onStrokeEnd()"
-              (hover)="hover.set($event)"
+              [columns]="paint.columns()"
+              [rows]="paint.rows()"
+              [cursor]="paint.hover()"
+              (stroke)="paint.stroke($event, mapId())"
+              (strokeEnd)="paint.strokeEnd()"
+              (hover)="paint.hover.set($event)"
               (leave)="leaveSurface()"
             />
           }
         </app-map-view>
       }
-      @if (mode() === 'paint' && !hasGrid()) {
-        <p class="why" id="bar-why"><mat-icon aria-hidden="true">grid_on</mat-icon>Defina a grade para pintar e ligar a névoa.</p>
-      }
       <div class="legend">
-        <app-map-layers-legend [layers]="shownLayers()">
+        <app-map-layers-legend [layers]="paint.shown()" [light]="paint.lightLevels()">
           @if (lightReach()) {
             <li><span class="ring ring--bright" aria-hidden="true"></span>Alcance da luz clara</li>
             <li><span class="ring ring--dim" aria-hidden="true"></span>Alcance da penumbra</li>
           }
-          @if (lightLevels().bright) {
-            <li><span class="glyph" aria-hidden="true"><mat-icon>light_mode</mat-icon></span>Luz clara</li>
-          }
-          @if (lightLevels().dim) {
-            <li><span class="glyph" aria-hidden="true"><mat-icon>contrast</mat-icon></span>Luz em penumbra</li>
-          }
-          @if (lightLevels().dark) {
-            <li><span class="glyph" aria-hidden="true"><mat-icon>dark_mode</mat-icon></span>Luz escura</li>
-          }
         </app-map-layers-legend>
+        @if (lightReach()) {
+          <p class="legend__note">As paredes cortam a luz; o alcance de verdade aparece em “Ver como”.</p>
+        }
         <app-map-pins-legend [points]="state().points()" [isMaster]="true" />
-        <app-map-legend [shapes]="mode() === 'points'" [states]="mode() === 'points'" [tokens]="state().tokens()" />
+        <app-map-legend
+          [shapes]="mode() === 'points'"
+          [states]="mode() === 'points'"
+          [points]="state().points()"
+          [tokens]="state().tokens()"
+          [kindShapes]="true"
+          [initialOf]="initialOf"
+          [tokensTitle]="true"
+        />
       </div>
-      @if (painting() && settings().tool === 'cover') {
-        <app-cover-degrees />
-      }
       @if (mode() === 'paint' && map(); as m) {
         <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" (forgotten)="onForgotten()" />
       }
@@ -133,22 +147,25 @@
 
     <aside class="layout__side" [attr.aria-label]="mode() === 'paint' ? 'Camadas e grade' : 'Item selecionado'">
       @if (mode() === 'paint') {
-        <app-layers-panel [layers]="painted.layers()" [visible]="visible()" [status]="queue.status()" (visibleChange)="visible.set($event)" (retry)="retrySave()" />
+        @if (paint.painting() && paint.settings().tool === 'cover') {
+          <app-cover-degrees />
+        }
+        <app-layers-panel [layers]="paint.painted.layers()" [visible]="paint.visible()" [status]="paint.queue.status()" [active]="paint.canPaint()" [problem]="paint.saveProblem()" [retryable]="paint.queue.retryable()" (visibleChange)="paint.visible.set($event)" (retry)="paint.retrySave()" />
         @if (map(); as m) {
-          <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" />
+          <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="paint.erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" (blocked)="refreshFlags()" />
         }
       } @else {
         @if (pending() || pendingMode()) {
-          <div class="mr-notice mr-notice--warning" role="alert">
-            <mat-icon aria-hidden="true">edit</mat-icon>
-            <div class="ask">
-              <p><strong>Salvar as mudanças em {{ pendingName() }}?</strong></p>
-              <div class="ask__actions">
-                <button matButton="outlined" type="button" (click)="saveAndContinue()">Salvar e continuar</button>
-                <button matButton type="button" (click)="discardAndContinue()">Descartar mudanças</button>
-                <button matButton type="button" (click)="keepEditing()">Continuar editando</button>
-              </div>
-            </div>
+          <div class="mr-panel">
+            <app-map-ask
+              [title]="'Salvar as mudanças em ' + pendingName() + '?'"
+              cancelLabel="Continuar editando"
+              confirmLabel="Salvar e continuar"
+              (cancel)="keepEditing()"
+              (confirm)="saveAndContinue()"
+            >
+              <button extra matButton type="button" class="ask__discard" (click)="discardAndContinue()">Descartar mudanças</button>
+            </app-map-ask>
           </div>
         }
 
@@ -230,7 +247,6 @@
             </div>
           </section>
         } @else {
-          <app-point-list [points]="state().points()" [selectedId]="null" [lightNames]="lightNames()" (pick)="requestSelect({ kind: 'point', id: $event })" />
           @if (map()?.fogEnabled && viewAsPeople().length > 0) {
             <app-view-as-list
               [people]="viewAsPeople()"
@@ -241,6 +257,7 @@
               (choose)="setViewAs($event)"
             />
           }
+          <app-point-list [points]="state().points()" [selectedId]="null" [lightNames]="lightNames()" (pick)="requestSelect({ kind: 'point', id: $event })" />
           @if (viewGone()) {
             <p class="mr-notice mr-notice--warning" role="status">
               <mat-icon aria-hidden="true">info</mat-icon>

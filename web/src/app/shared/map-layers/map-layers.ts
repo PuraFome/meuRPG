@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 
 import type { MapLayers } from '../../core/maps/layers';
 
@@ -51,13 +50,13 @@ export interface BrushCursor {
     }
     @if (lightGlyphs() && layers().light; as light) {
       @for (s of light.bright; track s.row * 1000 + s.col) {
-        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><mat-icon class="lg">light_mode</mat-icon></span>
+        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><span class="lg lg--bright"></span></span>
       }
       @for (s of light.dim; track s.row * 1000 + s.col) {
-        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><mat-icon class="lg">contrast</mat-icon></span>
+        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><span class="lg lg--dim"></span></span>
       }
       @for (s of light.dark; track s.row * 1000 + s.col) {
-        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><mat-icon class="lg">dark_mode</mat-icon></span>
+        <span class="sq sq--light" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"><span class="lg lg--dark"></span></span>
       }
     }
     @if (cursor(); as c) {
@@ -71,7 +70,6 @@ export interface BrushCursor {
       ></span>
     }
   `,
-  imports: [MatIconModule],
   styleUrl: './map-layers.scss',
   host: { 'aria-hidden': 'true' },
 })

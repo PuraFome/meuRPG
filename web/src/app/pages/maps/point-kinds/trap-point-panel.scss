@@ -6,19 +6,36 @@
   gap: var(--mr-space-4);
   align-items: start;
 
+  // Two columns: the presets and "Quem notaria" stack in the left one, the long form fills the right (no empty column beside it).
   @container (min-width: 700px) {
     grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
 
-    .tp__presets {
+    .tp__form {
+      grid-column: 2;
       grid-row: 1 / span 2;
+    }
+
+    .tp__presets {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .tp__who {
+      grid-column: 1;
+      grid-row: 2;
     }
   }
 
   @container (min-width: 1100px) {
     grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) minmax(260px, 340px);
 
-    .tp__presets {
-      grid-row: auto;
+    .tp__form {
+      grid-row: 1;
+    }
+
+    .tp__who {
+      grid-column: 3;
+      grid-row: 1;
     }
   }
 }
@@ -99,17 +116,29 @@
 .part__row {
   align-items: start;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+
+  &.pk__pair--cond {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) 44px;
+  }
 }
 
 .part__adds {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mr-space-1) var(--mr-space-3);
+  gap: var(--mr-space-1) var(--mr-space-2);
+
+  + .pk__h,
+  & ~ .pk__h {
+    margin-top: var(--mr-space-2);
+  }
 }
 
 .part__add {
-  margin-inline-start: -12px;
   color: var(--mr-accent-text);
+}
+
+.chk--hide {
+  visibility: hidden;
 }
 
 .tp__who {

@@ -66,7 +66,8 @@ describe('MapLayersOverlay: the editor\'s marks', () => {
     expect(el.querySelectorAll('.sq--light')).toHaveLength(0);
     fixture.componentRef.setInput('lightGlyphs', true);
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.sq--light .lg'), (g) => g.textContent?.trim())).toEqual(['light_mode', 'contrast', 'dark_mode']);
+    // One plain element a square (the font's ligature is drawn by its stylesheet): a sun, a half moon, a moon.
+    expect(Array.from(el.querySelectorAll('.sq--light .lg'), (g) => g.className)).toEqual(['lg lg--bright', 'lg lg--dim', 'lg lg--dark']);
     // A glyph, never a texture: no hatch on the square.
     expect(el.querySelector('.sq--light')?.classList.contains('sq--wall')).toBe(false);
   });

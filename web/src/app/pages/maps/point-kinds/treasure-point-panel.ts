@@ -24,6 +24,7 @@ import type { PointChanges } from '../../../core/maps/maps-client';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { trapMapErrorMessage } from '../../../core/traps/trap-errors';
 import { foundLine, summaryLine } from '../../../core/traps/treasure-text';
+import { MapAsk } from '../map-ask/map-ask';
 import { PairFoot } from '../../../shared/pair-foot/pair-foot';
 import { type PickRow, PersonPick } from '../../../shared/person-pick/person-pick';
 import {
@@ -48,7 +49,7 @@ import { PointFoot } from './point-foot';
  */
 @Component({
   selector: 'app-treasure-point-panel',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, PairFoot, PersonPick, PointFoot],
+  imports: [MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, PairFoot, PersonPick, PointFoot],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './treasure-point-panel.html',
   styleUrl: './point-panel-kinds.scss',
@@ -176,13 +177,6 @@ export class TreasurePointPanel {
   protected startUnmark(): void {
     this.callError.set('');
     this.mode.set('unmarking');
-    afterNextRender(
-      () => {
-        this.ask()?.nativeElement.scrollIntoView?.({ block: 'nearest' });
-        focusWithRing(this.ask()?.nativeElement.querySelector<HTMLButtonElement>('[data-initial-focus]'));
-      },
-      { injector: this.injector },
-    );
   }
 
   protected cancelUnmark(): void {

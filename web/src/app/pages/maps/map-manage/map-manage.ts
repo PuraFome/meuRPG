@@ -1,4 +1,4 @@
-import { Component, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, afterNextRender, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { PaintedLayers } from '../../../core/maps/paint-layers';
@@ -8,7 +8,11 @@ import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { mapTokenInitial } from '../../../core/maps/token-initial';
 import { RosterClient } from '../../../core/maps/roster-client';
-import { MapPointsList } from '../../../shared/map-lists/map-points-list';
+import { LightPresets } from '../../../core/maps/light-presets';
+import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { trapMapErrorMessage } from '../../../core/traps/trap-errors';
+import type { PickRow } from '../../../shared/person-pick/person-pick';
+import { type TreasureMark, MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapTokensList } from '../../../shared/map-lists/map-tokens-list';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
@@ -48,6 +52,18 @@ export class MapManage {
   private readonly mapsApi = inject(MapsClient);
   protected readonly map = computed(() => this.state().map());
   protected readonly initialOf = mapTokenInitial;
+  private readonly lights = inject(LightPresets);
+  private readonly list = viewChild(MapPointsList);
+  protected readonly lightNames = signal<ReadonlyMap<string, string>>(new Map());
+  protected readonly markBusy = signal(false);
+  protected readonly markError = signal('');
+  /** Who found a treasure: the living player characters, with their class and player. */
+  protected readonly finders = signal<readonly PickRow[]>([]);
+  /** Which painted light levels the map has: the legend names only those. */
+  protected readonly lightLevels = computed(() => {
+    const l = this.painted.layers().light;
+    return { bright: (l?.bright.length ?? 0) > 0, dim: (l?.dim.length ?? 0) > 0, dark: (l?.dark.length ?? 0) > 0 };
+  });
 
   constructor() {
     const roster = inject(RosterClient);
@@ -71,10 +87,39 @@ export class MapManage {
     });
     afterNextRender(() => {
       roster.list(this.campaignId()).then(
-        (list) => this.info.set(new Map(list.map((c) => [c.id, c]))),
+        (list) => {
+          this.info.set(new Map(list.map((c) => [c.id, c])));
+          this.finders.set(
+            list
+              .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
+              .map((c) => ({ id: c.id, name: c.name, sub: [c.classSummary, c.playerName].filter(Boolean).join(' · ') })),
+          );
+        },
+        () => undefined,
+      );
+      this.lights.list(this.campaignId()).then(
+        (list) => this.lightNames.set(new Map(list.map((o) => [o.key, o.name]))),
         () => undefined,
       );
     });
+  }
+
+  /** "Marcar como encontrado": saved at once, as the editor's panel and the session's card do. */
+  protected async markFound(mark: TreasureMark): Promise<void> {
+    if (this.markBusy()) {
+      return;
+    }
+    this.markBusy.set(true);
+    this.markError.set('');
+    try {
+      const point = await this.mapsApi.markTreasureFound(this.campaignId(), mark.point.mapId, mark.point.id, [...mark.characterIds]);
+      this.state().upsertPoint(point);
+      this.list()?.closeMarking();
+    } catch (err) {
+      this.markError.set(trapMapErrorMessage(err, 'marcar o tesouro'));
+    } finally {
+      this.markBusy.set(false);
+    }
   }
 
   protected onMapChanged(map: MapMessage): void {

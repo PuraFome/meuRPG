@@ -306,10 +306,10 @@
 
 // "Trocar imagem" asks here, in place of the state line.
 .ask {
-  max-width: 440px;
+  max-width: 560px;
   margin-top: var(--mr-space-1);
-  padding: var(--mr-space-4);
-  border: 2px solid var(--mr-accent);
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
   background: var(--mr-surface);
 }

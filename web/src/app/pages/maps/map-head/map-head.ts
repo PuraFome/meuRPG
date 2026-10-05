@@ -161,9 +161,13 @@ export class MapHead {
     this.focusAfterRender(() => this.imageButton()?.nativeElement.focus());
   }
 
+  /** The question's button is gone once the header is back to its state: the picker opens from "Trocar imagem", where the focus returns after it. */
   protected confirmImage(): void {
     this.mode.set('view');
-    this.changeImage.emit();
+    this.focusAfterRender(() => {
+      this.imageButton()?.nativeElement.focus();
+      this.changeImage.emit();
+    });
   }
 
   protected async confirmDelete(): Promise<void> {

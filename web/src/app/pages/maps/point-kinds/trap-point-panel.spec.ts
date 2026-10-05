@@ -106,7 +106,7 @@ describe('TrapPointPanel', () => {
   it('lists the eight presets with a line each, and "Começar do zero"', async () => {
     await setup();
     expect(text()).toContain('Predefinições do SRD');
-    expect(radio('Fosso simples').textContent).toContain('Queda de 3 m, 1d6');
+    expect(radio('Fosso simples').textContent).toContain('Queda de 3\u00a0m, 1d6');
     expect(radio('Agulha envenenada').textContent).toContain('1 perfurante, 2d10 veneno · resistência de Constituição');
     expect(button('Começar do zero')).toBeTruthy();
     expect(radio('Fosso simples').getAttribute('aria-checked')).toBe('true');
@@ -139,11 +139,12 @@ describe('TrapPointPanel', () => {
   it('adds and removes the parts of the effect as text actions, each part on its own', async () => {
     await setup(trapPoint);
     expect(el.querySelectorAll('[role="group"][aria-labelledby^="part-damage-"]')).toHaveLength(1);
-    button('Dano que sempre acontece').click();
+    expect(text()).toContain('Acrescentar ao efeito');
+    el.querySelector<HTMLElement>('button[aria-label="Acrescentar dano que sempre acontece"]')!.click();
     await settle();
     expect(el.querySelectorAll('[role="group"][aria-labelledby^="part-damage-"]')).toHaveLength(2);
     button('Ataque').click();
-    button('Teste de resistência').click();
+    el.querySelector<HTMLElement>('button[aria-label="Acrescentar teste de resistência"]')!.click();
     await settle();
     expect(el.querySelector('#part-attack')).not.toBeNull();
     expect(el.querySelector('#part-save')).not.toBeNull();

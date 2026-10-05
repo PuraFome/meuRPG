@@ -64,9 +64,7 @@
       <div class="seg" role="radiogroup" aria-labelledby="tf-area" (keydown)="onKey($event)">
         @for (n of sizes; track n) {
           <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().areaSize === n" [attr.aria-checked]="draft().areaSize === n" [tabIndex]="draft().areaSize === n ? 0 : -1" (click)="patch({ areaSize: n })">
-            @if (draft().areaSize === n) {
-              <mat-icon aria-hidden="true">check</mat-icon>
-            }{{ n }}×{{ n }}
+            <mat-icon class="chk" [class.chk--hide]="!(draft().areaSize === n)" aria-hidden="true">check</mat-icon>{{ n }}×{{ n }}
           </button>
         }
       </div>
@@ -74,14 +72,10 @@
       <h3 class="pk__h" id="tf-trigger">Gatilho</h3>
       <div class="seg" role="radiogroup" aria-labelledby="tf-trigger" (keydown)="onKey($event)">
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().trigger === Enter" [attr.aria-checked]="draft().trigger === Enter" [tabIndex]="draft().trigger === Enter ? 0 : -1" (click)="patch({ trigger: Enter })">
-          @if (draft().trigger === Enter) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }Ao entrar na área
+          <mat-icon class="chk" [class.chk--hide]="!(draft().trigger === Enter)" aria-hidden="true">check</mat-icon>Ao entrar na área
         </button>
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().trigger === Manual" [attr.aria-checked]="draft().trigger === Manual" [tabIndex]="draft().trigger === Manual ? 0 : -1" (click)="patch({ trigger: Manual })">
-          @if (draft().trigger === Manual) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }Manual
+          <mat-icon class="chk" [class.chk--hide]="!(draft().trigger === Manual)" aria-hidden="true">check</mat-icon>Manual
         </button>
       </div>
       @if (draft().trigger === Manual) {
@@ -116,7 +110,7 @@
           @if (attackSeverity()) {
             <p class="pk__hint">Bônus de ataque do SRD: {{ attackSeverity() }}.</p>
           }
-          <div class="pk__pair">
+          <div class="pk__pair pk__pair--type">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().attackDice">
               <mat-label>Dano de cada acerto</mat-label>
               <input matInput autocomplete="off" [value]="a.damage.dice" [attr.aria-invalid]="!!shown().attackDice" (input)="patchAttackDamage({ dice: val($event) })" />
@@ -137,10 +131,10 @@
       @for (d of draft().damage; track $index) {
         <div class="part" role="group" [attr.aria-labelledby]="'part-damage-' + $index">
           <div class="part__head">
-            <h4 class="part__title" [id]="'part-damage-' + $index"><mat-icon aria-hidden="true">warning</mat-icon>Dano que sempre acontece</h4>
+            <h4 class="part__title" [id]="'part-damage-' + $index"><mat-icon aria-hidden="true">bolt</mat-icon>Dano que sempre acontece</h4>
             <button type="button" class="part__remove" [attr.aria-label]="'Remover a parte Dano que sempre acontece ' + ($index + 1)" (click)="removeDamage($index)"><mat-icon aria-hidden="true">delete</mat-icon></button>
           </div>
-          <div class="pk__pair">
+          <div class="pk__pair pk__pair--type">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().parts['damage:' + $index]">
               <mat-label>Dano</mat-label>
               <input matInput autocomplete="off" [value]="d.dice" [attr.aria-invalid]="!!shown().parts['damage:' + $index]" (input)="patchDamage($index, { dice: val($event) })" />
@@ -167,7 +161,7 @@
             <h4 class="part__title" [id]="'part-cond-' + $index"><mat-icon aria-hidden="true">personal_injury</mat-icon>Condição que sempre acontece</h4>
             <button type="button" class="part__remove" [attr.aria-label]="'Remover a parte Condição que sempre acontece ' + ($index + 1)" (click)="removeCondition($index)"><mat-icon aria-hidden="true">delete</mat-icon></button>
           </div>
-          <div class="pk__pair">
+          <div class="pk__pair pk__pair--cond">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Condição</mat-label>
               <select matNativeControl (change)="patchCondition($index, { key: val($event) })">
@@ -177,7 +171,7 @@
               </select>
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().parts['condition:' + $index]">
-              <mat-label>Por</mat-label>
+              <mat-label>Duração</mat-label>
               <input matInput autocomplete="off" maxlength="60" placeholder="1 hora" [value]="c.duration" [attr.aria-invalid]="!!shown().parts['condition:' + $index]" (input)="patchCondition($index, { duration: val($event) })" />
               @if (shown().parts['condition:' + $index]; as m) { <mat-hint class="pk__err">{{ m }}</mat-hint> }
             </mat-form-field>
@@ -219,7 +213,7 @@
 
           <h5 class="part__sub">Se falhar</h5>
           @for (d of s.failDamage; track $index) {
-            <div class="pk__pair part__row">
+            <div class="pk__pair pk__pair--type part__row">
               <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().parts['fail:' + $index]">
                 <mat-label>Dano</mat-label>
                 <input matInput autocomplete="off" [value]="d.dice" [attr.aria-invalid]="!!shown().parts['fail:' + $index]" (input)="patchFailDamage($index, { dice: val($event) })" />
@@ -237,7 +231,7 @@
             </div>
           }
           @if (s.failCondition; as fc) {
-            <div class="pk__pair part__row">
+            <div class="pk__pair pk__pair--cond part__row">
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Condição</mat-label>
                 <select matNativeControl (change)="patchFailCondition({ key: val($event) })">
@@ -247,7 +241,7 @@
                 </select>
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().parts['failCondition']">
-                <mat-label>Por</mat-label>
+                <mat-label>Duração</mat-label>
                 <input matInput autocomplete="off" maxlength="60" placeholder="1 hora" [value]="fc.duration" [attr.aria-invalid]="!!shown().parts['failCondition']" (input)="patchFailCondition({ duration: val($event) })" />
                 @if (shown().parts['failCondition']; as m) { <mat-hint class="pk__err">{{ m }}</mat-hint> }
               </mat-form-field>
@@ -266,14 +260,10 @@
           <h5 class="part__sub" id="part-pass">Se passar</h5>
           <div class="seg seg--small" role="radiogroup" aria-labelledby="part-pass" (keydown)="onKey($event)">
             <button type="button" role="radio" class="seg__item" [class.seg__item--on]="s.onPass === NoneOutcome" [attr.aria-checked]="s.onPass === NoneOutcome" [tabIndex]="s.onPass === NoneOutcome ? 0 : -1" (click)="patchSave({ onPass: NoneOutcome })">
-              @if (s.onPass === NoneOutcome) {
-                <mat-icon aria-hidden="true">check</mat-icon>
-              }Nada
+              <mat-icon class="chk" [class.chk--hide]="!(s.onPass === NoneOutcome)" aria-hidden="true">check</mat-icon>Nada
             </button>
             <button type="button" role="radio" class="seg__item" [class.seg__item--on]="s.onPass === Half" [attr.aria-checked]="s.onPass === Half" [tabIndex]="s.onPass === Half ? 0 : -1" (click)="patchSave({ onPass: Half })">
-              @if (s.onPass === Half) {
-                <mat-icon aria-hidden="true">check</mat-icon>
-              }Metade do dano
+              <mat-icon class="chk" [class.chk--hide]="!(s.onPass === Half)" aria-hidden="true">check</mat-icon>Metade do dano
             </button>
           </div>
           @if (shown().parts['save']; as m) {
@@ -282,32 +272,29 @@
         </div>
       }
 
-      <div class="part__adds">
+      <p class="pk__hint" id="tf-adds">Acrescentar ao efeito</p>
+      <div class="part__adds" role="group" aria-labelledby="tf-adds">
         @if (!draft().attack) {
           <button matButton type="button" class="part__add" (click)="addAttack()"><mat-icon aria-hidden="true">add</mat-icon>Ataque</button>
         }
         @if (draft().damage.length < maxDamage) {
-          <button matButton type="button" class="part__add" (click)="addDamage()"><mat-icon aria-hidden="true">add</mat-icon>Dano que sempre acontece</button>
+          <button matButton type="button" class="part__add" aria-label="Acrescentar dano que sempre acontece" (click)="addDamage()"><mat-icon aria-hidden="true">add</mat-icon>Dano</button>
         }
         @if (draft().conditions.length < maxConditions) {
-          <button matButton type="button" class="part__add" (click)="addCondition()"><mat-icon aria-hidden="true">add</mat-icon>Condição que sempre acontece</button>
+          <button matButton type="button" class="part__add" aria-label="Acrescentar condição que sempre acontece" (click)="addCondition()"><mat-icon aria-hidden="true">add</mat-icon>Condição</button>
         }
         @if (!draft().save) {
-          <button matButton type="button" class="part__add" (click)="addSave()"><mat-icon aria-hidden="true">add</mat-icon>Teste de resistência</button>
+          <button matButton type="button" class="part__add" aria-label="Acrescentar teste de resistência" (click)="addSave()"><mat-icon aria-hidden="true">add</mat-icon>Resistência</button>
         }
       </div>
 
       <h3 class="pk__h" id="tf-targets">Quem é pego</h3>
       <div class="seg" role="radiogroup" aria-labelledby="tf-targets" (keydown)="onKey($event)">
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().targets === Area" [attr.aria-checked]="draft().targets === Area" [tabIndex]="draft().targets === Area ? 0 : -1" (click)="patch({ targets: Area })">
-          @if (draft().targets === Area) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }Quem está na área
+          <mat-icon class="chk" [class.chk--hide]="!(draft().targets === Area)" aria-hidden="true">check</mat-icon>Quem está na área
         </button>
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().targets === ManualTargets" [attr.aria-checked]="draft().targets === ManualTargets" [tabIndex]="draft().targets === ManualTargets ? 0 : -1" (click)="patch({ targets: ManualTargets })">
-          @if (draft().targets === ManualTargets) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          }Você escolhe
+          <mat-icon class="chk" [class.chk--hide]="!(draft().targets === ManualTargets)" aria-hidden="true">check</mat-icon>Você escolhe
         </button>
       </div>
     </div>
@@ -317,9 +304,7 @@
       <div class="seg" role="radiogroup" aria-labelledby="tf-state" (keydown)="onKey($event)">
         @for (s of [Armed, Triggered, Disarmed]; track s) {
           <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().state === s" [attr.aria-checked]="draft().state === s" [tabIndex]="draft().state === s ? 0 : -1" (click)="patch({ state: s })">
-            @if (draft().state === s) {
-              <mat-icon aria-hidden="true">check</mat-icon>
-            }{{ s === Armed ? 'Armada' : s === Triggered ? 'Disparada' : 'Desarmada' }}
+            <mat-icon class="chk" [class.chk--hide]="!(draft().state === s)" aria-hidden="true">check</mat-icon>{{ s === Armed ? 'Armada' : s === Triggered ? 'Disparada' : 'Desarmada' }}
           </button>
         }
       </div>
@@ -336,7 +321,7 @@
 
   @if (saved()) {
     <section class="mr-panel tp__who" aria-label="Quem notaria">
-      <app-trap-noticers [noticers]="noticers()" [failed]="noticersFailed()" (retry)="readNoticers()" />
+      <app-trap-noticers [panel]="true" [noticers]="noticers()" [failed]="noticersFailed()" (retry)="readNoticers()" />
     </section>
   }
 </div>

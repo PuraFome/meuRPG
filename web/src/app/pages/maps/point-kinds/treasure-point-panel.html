@@ -41,26 +41,23 @@
       <p><span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span></p>
       <p class="pk__p">Encontrado por <b>{{ line().names }}</b>{{ line().at ? ' às ' + line().at : '' }}.</p>
       @if (mode() === 'unmarking') {
-        <div #ask class="pk__ask" role="alertdialog" aria-labelledby="tp-ask">
-          <h4 class="pk__askt" id="tp-ask">Desmarcar {{ point().name }}?</h4>
-          <p class="pk__hint">Ele volta a ficar escondido para os jogadores e sai do resumo da sessão. O registro guarda que foi desmarcado.</p>
-          <div class="pk__btns">
-            <button matButton="outlined" type="button" data-initial-focus (click)="cancelUnmark()">Voltar</button>
-            <button matButton="outlined" type="button" class="pk__danger" [disabled]="busy()" disabledInteractive (click)="confirmUnmark()">Desmarcar</button>
-          </div>
+        <div #ask>
+          <app-map-ask [title]="'Desmarcar ' + point().name + '?'" confirmLabel="Desmarcar" [busy]="busy()" (cancel)="cancelUnmark()" (confirm)="confirmUnmark()">
+            <p class="pk__hint">Ele volta a ficar escondido para os jogadores e sai do resumo da sessão. O registro guarda que foi desmarcado.</p>
+          </app-map-ask>
         </div>
       } @else {
         <p class="pk__hint">Todos veem o tesouro, o que há dentro e o valor. Você pode desmarcar até ele virar XP.</p>
         <button #undo matButton="outlined" type="button" class="pk__wide" (click)="startUnmark()"><mat-icon aria-hidden="true">history</mat-icon>Desmarcar</button>
       }
     } @else {
-      <p><span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Não encontrado</span></p>
+      <p><span class="mr-tag"><mat-icon aria-hidden="true">close</mat-icon>Não encontrado</span></p>
       @if (mode() === 'marking') {
         <div #form class="pk__ask" role="group" aria-labelledby="tp-who" (keydown.escape)="cancelMarking()">
           <app-person-pick headingId="tp-who" [heading]="'Quem encontrou ' + point().name + '?'" [rows]="people()" [(picked)]="picked" [allToggle]="false" />
           <p class="pk__hint">Marque uma ou mais pessoas. Com mais de uma, o valor se divide no resumo da sessão.</p>
           <p class="pk__hint" role="status" aria-live="polite">{{ summary() }}</p>
-          <app-pair-foot cancelLabel="Voltar" confirmLabel="Marcar como encontrado" confirmIcon="check" [ready]="picked().size > 0" [busy]="busy()" (cancel)="cancelMarking()" (confirm)="confirmMarking()" />
+          <app-pair-foot cancelLabel="Voltar" confirmLabel="Marcar como encontrado" confirmIcon="check" [cancelFirstWhenStacked]="true" [ready]="picked().size > 0" [busy]="busy()" (cancel)="cancelMarking()" (confirm)="confirmMarking()" />
         </div>
       } @else {
         <p class="pk__hint">Os jogadores não o veem, nem na lista. Marque quando eles abrirem o baú.</p>

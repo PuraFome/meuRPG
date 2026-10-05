@@ -1,5 +1,7 @@
 import {
+  ChangeDetectionStrategy,
   Component,
+  HostListener,
   DestroyRef,
   ElementRef,
   afterNextRender,
@@ -12,29 +14,30 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { MapPointKind, type TrapSpecSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { Map as MapMessage, MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { Square } from '../../../core/combat/combat-grid';
-import { type MapLayers, hasPainted } from '../../../core/maps/layers';
+import type { MessageInitShape } from '@bufbuild/protobuf';
+import { TrapPresets } from '../../../core/traps/trap-presets';
 import { LightPresets } from '../../../core/maps/light-presets';
-import { mapErrorMessage } from '../../../core/maps/map-errors';
+import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
-import { PaintQueue } from '../../../core/maps/paint-queue';
-import { PaintedLayers } from '../../../core/maps/paint-layers';
-import { DEFAULT_SETTINGS, type PaintSettings, brushSquares, paintHint, strokeOf } from '../../../core/maps/paint-tools';
+import { paintHint } from '../../../core/maps/paint-tools';
 import { mapTokenInitial } from '../../../core/maps/token-initial';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
 import type { CluePlayer } from '../../../core/maps/scene-clues';
 import { ViewAsCounts } from '../../../core/maps/view-as';
-import { editorErrorMessage } from '../../../core/maps/map-errors';
+
 import { ViewAsList, type ViewAsPerson } from '../../../shared/fog-map/view-as-list';
 import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
+import { MapAsk } from '../map-ask/map-ask';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import type { PickRow } from '../../../shared/person-pick/person-pick';
@@ -45,8 +48,9 @@ import { EditorBar, type EditorMode } from '../editor-bar/editor-bar';
 import { EditorOverlay, type LightReach } from '../editor-overlay/editor-overlay';
 import { FogPanel } from '../fog-panel/fog-panel';
 import { GridPanel } from '../grid-panel/grid-panel';
-import { type LayerVisibility, LayersPanel } from '../layers-panel/layers-panel';
-import { PaintSurface, type Stroke } from '../paint-surface/paint-surface';
+import { LayersPanel } from '../layers-panel/layers-panel';
+import { PaintSurface } from '../paint-surface/paint-surface';
+import { EditorPainting } from './editor-painting';
 import { LightPointPanel } from '../point-kinds/light-point-panel';
 import { TrapPointPanel } from '../point-kinds/trap-point-panel';
 import { TreasurePointPanel } from '../point-kinds/treasure-point-panel';
@@ -78,8 +82,6 @@ interface PointPanelApi {
   discard(): void;
 }
 
-const ALL_VISIBLE: LayerVisibility = { terrain: true, wall: true, cover: true, light: true };
-
 /**
  * The master's map editor on a computer (E5-23, E9-01, E9-02, MR-008, MR-034, MR-035, MR-036, MR-041): a bar, the map and a side
  * column, in two modes.
@@ -106,10 +108,12 @@ const ALL_VISIBLE: LayerVisibility = { terrain: true, wall: true, cover: true, l
     GridPanel,
     LayersPanel,
     LightPointPanel,
+    MapAsk,
     MapLayersLegend,
     MapLegend,
     MapPinsLegend,
     MapView,
+    MatButtonModule,
     MatIconModule,
     PaintSurface,
     PointList,
@@ -119,6 +123,7 @@ const ALL_VISIBLE: LayerVisibility = { terrain: true, wall: true, cover: true, l
     ViewAsList,
     ViewAsMapView,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './map-editor.html',
   styleUrl: './map-editor.scss',
 })
@@ -128,6 +133,7 @@ export class MapEditor {
   private readonly moves = new MoveSaves();
   private readonly roster = inject(RosterClient);
   private readonly lightPresets = inject(LightPresets);
+  private readonly trapPresets = inject(TrapPresets);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly campaignId = input.required<string>();
@@ -141,7 +147,10 @@ export class MapEditor {
 
   /** Whether a new grid or a new image would erase something (what is painted, or the fog's memory): the header asks first. */
   readonly erasesChange = output<boolean>();
+  /** The page's flags may be out of date (a refusal said a combat runs, or does not): read them again. */
+  readonly staleFlags = output<void>();
 
+  protected readonly map = computed(() => this.state().map());
   protected readonly view = viewChild(MapView);
   private readonly pointPanel = viewChild(PointPanel);
   private readonly lightPanel = viewChild(LightPointPanel);
@@ -165,13 +174,8 @@ export class MapEditor {
   protected readonly lightNames = signal<ReadonlyMap<string, string>>(new Map());
 
   // ---- painting ----
-  protected readonly settings = signal<PaintSettings>(DEFAULT_SETTINGS);
-  protected readonly visible = signal<LayerVisibility>(ALL_VISIBLE);
-  protected readonly painted = new PaintedLayers();
-  protected readonly queue = new PaintQueue((layer, value, squares) =>
-    this.api.paint(this.campaignId(), this.mapId(), layer, value, squares).then(() => undefined),
-  );
-  protected readonly hover = signal<Square | null>(null);
+  /** The tool, the layers, the queue that saves the strokes and the question on leaving (`EditorPainting`). */
+  protected readonly paint = new EditorPainting(this.campaignId, this.map, this.mode, () => this.refreshFlags());
 
   // ---- "Ver como" ----
   protected readonly viewAs = signal<string | null>(null);
@@ -180,12 +184,7 @@ export class MapEditor {
   protected readonly counts = new ViewAsCounts((mapId, characterId) => this.api.vision(this.campaignId(), mapId, characterId));
   private countsTimer: ReturnType<typeof setTimeout> | undefined;
 
-  protected readonly map = computed(() => this.state().map());
   protected readonly mapId = computed(() => this.map()?.id ?? '');
-  protected readonly columns = computed(() => this.map()?.gridColumns ?? 0);
-  protected readonly rows = computed(() => this.map()?.gridRows ?? 0);
-  protected readonly hasGrid = computed(() => this.columns() > 0);
-  protected readonly painting = computed(() => this.mode() === 'paint' && this.hasGrid());
   protected readonly image = computed(() => {
     const image = this.state().map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;
@@ -224,56 +223,15 @@ export class MapEditor {
   });
   protected readonly hint = computed(() => {
     if (this.mode() === 'paint') {
-      return this.hasGrid() ? paintHint(this.settings()) : null;
+      return this.paint.canPaint() ? paintHint(this.paint.settings()) : null;
     }
     return this.placing() === null ? 'Arraste para mover. As setas movem o item escolhido.' : 'Clique no mapa para pôr o ponto.';
-  });
-  /** The layers the map shows now: the painted ones the master left on. */
-  protected readonly shownLayers = computed<MapLayers>(() => {
-    const l = this.painted.layers();
-    const v = this.visible();
-    if (v.terrain && v.wall && v.cover && v.light) {
-      return l;
-    }
-    return {
-      ...l,
-      terrain: v.terrain ? l.terrain : [],
-      walls: v.wall ? l.walls : [],
-      half: v.cover ? l.half : [],
-      threeQuarters: v.cover ? l.threeQuarters : [],
-      light: v.light ? l.light : undefined,
-    };
-  });
-  protected readonly erases = computed(() => hasPainted(this.painted.layers()) || (this.map()?.fogEnabled ?? false));
-  /** Which painted light levels are on the map: the legend names only those. */
-  protected readonly lightLevels = computed(() => {
-    const l = this.shownLayers().light;
-    return { bright: (l?.bright.length ?? 0) > 0, dim: (l?.dim.length ?? 0) > 0, dark: (l?.dark.length ?? 0) > 0 };
-  });
-  protected readonly cursor = computed(() => {
-    const at = this.hover();
-    if (!at || !this.painting()) {
-      return null;
-    }
-    const s = this.settings();
-    const reach = s.brush === 3 ? 1 : 0;
-    const col = Math.max(0, at.col - reach);
-    const row = Math.max(0, at.row - reach);
-    return {
-      col,
-      row,
-      w: Math.min(this.columns() - 1, at.col + reach) - col + 1,
-      h: Math.min(this.rows() - 1, at.row + reach) - row + 1,
-      erase: s.erase,
-    };
   });
   protected readonly Trap = MapPointKind.TRAP;
   protected readonly Treasure = MapPointKind.TREASURE;
   protected readonly Light = MapPointKind.LIGHT;
 
   protected readonly initialOf = mapTokenInitial;
-
-  private layersKey = '';
 
   constructor() {
     afterNextRender(() => {
@@ -288,17 +246,13 @@ export class MapEditor {
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.countsTimer));
 
-    // The painted layers: read when a map opens and when its grid or its layers change under the editor (a new grid or
-    // image clears them), but never while strokes wait to be saved (what is on the screen is the newer copy).
+    // The light's rings go with the selection of a light.
     effect(() => {
-      const map = this.map();
-      if (!map) {
-        return;
+      if (this.selectedPoint()?.kind !== MapPointKind.LIGHT) {
+        untracked(() => this.lightReach.set(null));
       }
-      const key = `${map.id}|${map.gridColumns}|${map.layersRevision}`;
-      untracked(() => void this.loadLayers(map, key));
     });
-    effect(() => this.erasesChange.emit(this.erases()));
+    effect(() => this.erasesChange.emit(this.paint.erases()));
 
     // "Ver como" counts ("22 quadrados vistos"): read when the fog is on and the characters are known.
     effect(() => {
@@ -318,24 +272,6 @@ export class MapEditor {
         untracked(() => this.setViewAs(null));
       }
     });
-  }
-
-  private async loadLayers(map: MapMessage, key: string): Promise<void> {
-    if (map.gridColumns <= 0) {
-      this.painted.clear();
-      this.layersKey = key;
-      return;
-    }
-    if (key === this.layersKey || this.queue.busy) {
-      return;
-    }
-    this.layersKey = key;
-    try {
-      this.painted.load(await this.api.layers(this.campaignId(), map.id));
-    } catch {
-      this.layersKey = '';
-      this.message.set('Não deu para ler o que já está pintado. Recarregue a página.');
-    }
   }
 
   // ---- the mode ----
@@ -359,30 +295,9 @@ export class MapEditor {
       this.pending.set(null);
       this.setViewAs(null);
     } else {
-      void this.queue.flush();
-      this.hover.set(null);
+      this.paint.stop();
     }
     this.mode.set(mode);
-  }
-
-  /** The brush's stroke: the squares the brush covers on each centre; painted at once, saved in batches. */
-  protected onStroke(stroke: Stroke): void {
-    const cols = this.columns();
-    const rows = this.rows();
-    if (cols === 0) {
-      return;
-    }
-    const s = { ...this.settings(), erase: this.settings().erase || stroke.erase };
-    const { layer, value } = strokeOf(s);
-    const squares = stroke.centers.flatMap((c) => brushSquares(c, s.brush, cols, rows));
-    const changed = this.painted.paint(layer, value, squares);
-    if (changed.length > 0) {
-      this.queue.add(layer, value, changed);
-    }
-  }
-
-  protected onStrokeEnd(): void {
-    void this.queue.flush();
   }
 
   /** Esc leaves the paint surface: the focus goes back to the chosen tool. */
@@ -390,8 +305,21 @@ export class MapEditor {
     this.host.nativeElement.querySelector<HTMLElement>('app-editor-bar [aria-pressed="true"]')?.focus();
   }
 
-  protected retrySave(): void {
-    void this.queue.retry();
+  protected refreshFlags(): void {
+    this.staleFlags.emit();
+  }
+
+  /** For the route guard: true when it is fine to leave (see `EditorPainting.confirmLeave`). */
+  confirmLeave(): Promise<boolean> {
+    return this.paint.confirmLeave();
+  }
+
+  /** The tab closes with strokes unsaved: the browser's own question. */
+  @HostListener('window:beforeunload', ['$event'])
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.paint.queue.busy) {
+      event.preventDefault();
+    }
   }
 
   // ---- toolbar ----
@@ -444,17 +372,8 @@ export class MapEditor {
         description: '',
         xBp: at.xBp,
         yBp: at.yBp,
-        ...(kind === MapPointKind.LIGHT ? { light: { presetKey: 'light:torch' } } : {}),
-        ...(kind === MapPointKind.TRAP
-          ? {
-              trap: {
-                findDc: 15,
-                areaSize: 1,
-                trigger: TrapTrigger.ENTER,
-                effect: { targets: TrapTargets.AREA },
-              },
-            }
-          : {}),
+        ...(kind === MapPointKind.LIGHT ? { light: await this.newLight() } : {}),
+        ...(kind === MapPointKind.TRAP ? { trap: await this.newTrap() } : {}),
         ...(kind === MapPointKind.TREASURE ? { treasureValuePo: 0 } : {}),
       });
       this.state().upsertPoint(point);
@@ -463,8 +382,20 @@ export class MapEditor {
       this.selection.set({ kind: 'point', id: point.id });
       this.message.set('Ponto criado, escondido dos jogadores. Dê um nome a ele.');
     } catch (err) {
-      this.message.set(editorErrorMessage(err, 'criar o ponto'));
+      this.message.set(editorErrorMessage(err, 'pointNew', 'criar o ponto'));
     }
+  }
+
+  /** A new light starts as the first source the server lists (the server fills the radii of a preset sent with none). */
+  private async newLight(): Promise<{ presetKey: string }> {
+    const first = (await this.lightPresets.list(this.campaignId()))[0];
+    return { presetKey: first?.key ?? '' };
+  }
+
+  /** A new trap starts with the numbers of the first sample trap the server lists, with no effect yet: the form edits the rest. */
+  private async newTrap(): Promise<MessageInitShape<typeof TrapSpecSchema>> {
+    const first = (await this.trapPresets.list(this.campaignId())).presets[0];
+    return { findDc: first?.findDc ?? 10, areaSize: 1, trigger: TrapTrigger.ENTER, effect: { targets: TrapTargets.AREA } };
   }
 
   /** Unsaved changes: the page asks before moving on. */
@@ -601,7 +532,7 @@ export class MapEditor {
       this.message.set(`${saved.name} salvo.`);
       return true;
     } catch (err) {
-      this.panelError.set(editorErrorMessage(err, 'salvar o ponto'));
+      this.panelError.set(editorErrorMessage(err, 'point', 'salvar o ponto'));
       return false;
     } finally {
       this.saving.set(false);
@@ -644,7 +575,7 @@ export class MapEditor {
       this.moveSelection(null);
       this.message.set(`${point.name} foi apagado.`);
     } catch (err) {
-      this.panelError.set(editorErrorMessage(err, 'apagar o ponto'));
+      this.panelError.set(editorErrorMessage(err, 'point', 'apagar o ponto'));
     }
   }
 

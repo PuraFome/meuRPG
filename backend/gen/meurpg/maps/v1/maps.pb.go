@@ -1251,12 +1251,15 @@ func (x *TrapSpec) GetState() TrapState {
 type LightSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The key of the preset it was made from ("light:torch"), or empty for a
-	// custom light. Informational.
+	// custom light. A key sent with both radii at 0 takes the preset's radii (a
+	// new light is made by sending only the key); a key sent with radii keeps the
+	// master's own copy of them, and the key then only says where it started.
+	// An unknown key is invalid_argument.
 	PresetKey string `protobuf:"bytes,1,opt,name=preset_key,json=presetKey,proto3" json:"preset_key,omitempty"`
 	// The radius of its bright light, in feet: 0 to 120, a multiple of 5.
 	BrightFt int32 `protobuf:"varint,2,opt,name=bright_ft,json=brightFt,proto3" json:"bright_ft,omitempty"`
 	// How much further its dim light goes, in feet: 0 to 120, a multiple of 5.
-	// Both radii may not be 0.
+	// Both radii may not be 0, unless a preset key supplies them.
 	DimFt         int32 `protobuf:"varint,3,opt,name=dim_ft,json=dimFt,proto3" json:"dim_ft,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

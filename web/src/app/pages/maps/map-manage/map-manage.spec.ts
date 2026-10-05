@@ -45,9 +45,9 @@ describe('MapManage: the master\'s map on a phone (E9-01 7)', () => {
   }
   const text = () => (el.textContent ?? '').replace(/\s+/g, ' ');
 
-  it('says the painting is for the notebook, with a fixed notice, and has no paint tools', async () => {
+  it('says the painting is for the computer, with a fixed notice, and has no paint tools', async () => {
     await setup(24);
-    expect(text()).toContain('Pintar só no notebook');
+    expect(text()).toContain('Pintar só no computador');
     expect(text()).toContain('No celular você vê as camadas e muda a névoa.');
     expect(el.querySelector('app-editor-bar')).toBeNull();
     expect(el.querySelector('app-paint-surface')).toBeNull();

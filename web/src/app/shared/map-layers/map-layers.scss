@@ -74,15 +74,34 @@
 
 .lg {
   box-sizing: content-box;
+  display: block;
   width: 11px;
   height: 11px;
   padding: 1px;
   border: 1px solid var(--mr-map-token-ink);
-  border-radius: 3px;
+  // Round, so a light is never taken for the square pictogram of a cover.
+  border-radius: 50%;
   background: var(--mr-map-token-surface);
   color: var(--mr-map-token-ink);
+  font-family: 'Material Symbols Outlined';
   font-size: 11px;
+  font-weight: 400;
   line-height: 11px;
+  font-feature-settings: 'liga';
+  overflow: hidden;
+}
+
+// The glyph is the font's ligature in a pseudo-element: one plain element a square, no component.
+.lg--bright::before {
+  content: 'light_mode';
+}
+
+.lg--dim::before {
+  content: 'contrast';
+}
+
+.lg--dark::before {
+  content: 'dark_mode';
 }
 
 // The brush: the squares the next stroke would paint, outlined in garnet (a solid line, a dashed one when it erases).

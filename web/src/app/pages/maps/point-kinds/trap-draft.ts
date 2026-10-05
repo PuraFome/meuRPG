@@ -10,6 +10,8 @@ import {
   TrapTargets,
   TrapTrigger,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { DAMAGE_TYPE_OPTIONS } from '../../../core/characters/character-labels';
+import { metersText } from '../../../core/units';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { POINT_DESCRIPTION_MAX, POINT_NAME_MAX } from '../point-panel/point-draft';
 
@@ -67,22 +69,11 @@ export interface TrapDraft {
 export const MAX_DAMAGE_PARTS = 4;
 export const MAX_CONDITION_PARTS = 4;
 
-/** The damage types the SRD names, by key, with the Portuguese words of the rules content (`names_pt.json`). */
-export const DAMAGE_TYPES: readonly { readonly key: string; readonly name: string }[] = [
-  { key: 'damage-type:acid', name: 'Ácido' },
-  { key: 'damage-type:bludgeoning', name: 'Concussão' },
-  { key: 'damage-type:cold', name: 'Frio' },
-  { key: 'damage-type:fire', name: 'Fogo' },
-  { key: 'damage-type:force', name: 'Energia' },
-  { key: 'damage-type:lightning', name: 'Elétrico' },
-  { key: 'damage-type:necrotic', name: 'Necrótico' },
-  { key: 'damage-type:piercing', name: 'Perfurante' },
-  { key: 'damage-type:poison', name: 'Veneno' },
-  { key: 'damage-type:psychic', name: 'Psíquico' },
-  { key: 'damage-type:radiant', name: 'Radiante' },
-  { key: 'damage-type:slashing', name: 'Cortante' },
-  { key: 'damage-type:thunder', name: 'Trovejante' },
-];
+/** The damage types the SRD names, by the server's key (`damage-type:poison`), with the words the rest of the app uses (`character-labels`). */
+export const DAMAGE_TYPES: readonly { readonly key: string; readonly name: string }[] = DAMAGE_TYPE_OPTIONS.map((o) => ({
+  key: `damage-type:${o.key}`,
+  name: o.label,
+}));
 
 export const ABILITIES: readonly { readonly value: Ability; readonly name: string }[] = [
   { value: Ability.STRENGTH, name: 'Força' },
@@ -374,7 +365,7 @@ export function presetSummary(p: TrapPreset): string {
   const e = p.effect;
   const dmg = (d: { dice: string; damageTypePt: string }) => `${d.dice} ${d.damageTypePt}`.trim();
   if (p.fallFt > 0 && e && e.damage.length > 0) {
-    return `Queda de ${String(Math.round(p.fallFt * 3) / 10).replace('.', ',')} m, ${e.damage[0].dice}`;
+    return `Queda de ${metersText(p.fallFt)}, ${e.damage[0].dice}`;
   }
   const parts: string[] = [];
   if (e?.attack) {

@@ -62,6 +62,7 @@
               [combatRunning]="combatRunning()"
               [sessionNumber]="sessionNumber()"
               (erasesChange)="erases.set($event)"
+              (staleFlags)="reloadFlags()"
             />
           }
         </div>

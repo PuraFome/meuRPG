@@ -111,7 +111,7 @@
   </div>
 } @else if (mode() === 'image') {
   <div class="ask">
-    <app-map-ask title="Trocar a imagem?" confirmLabel="Apagar e trocar a imagem" (cancel)="keepImage()" (confirm)="confirmImage()">
+    <app-map-ask title="Trocar a imagem?" [row]="true" confirmLabel="Apagar e trocar a imagem" (cancel)="keepImage()" (confirm)="confirmImage()">
       <p class="ask__now">Imagem agora: {{ map().image?.name }}</p>
       <div class="mr-notice mr-notice--warning">
         <mat-icon aria-hidden="true">warning</mat-icon>

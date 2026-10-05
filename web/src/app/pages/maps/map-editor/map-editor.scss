@@ -57,66 +57,37 @@
 }
 
 .ring,
-.glyph {
+
+.ring {
   display: inline-flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
   box-sizing: border-box;
   width: 22px;
   height: 22px;
-}
-
-.ring {
-  border: 2.5px solid var(--mr-map-accent);
+  border: 2.5px solid var(--mr-map-token-ink);
   border-radius: 50%;
+  // The legend sits on the page, the rings on the map: a pale halo on both sides keeps the ink ring whole on either theme.
+  box-shadow:
+    0 0 0 1.5px var(--mr-map-token-surface),
+    inset 0 0 0 1.5px var(--mr-map-token-surface);
 
   &--dim {
     border-style: dashed;
   }
 }
 
-.glyph {
-  border: 1px solid var(--mr-map-token-ink);
-  border-radius: 4px;
-  background: var(--mr-map-token-surface);
-  color: var(--mr-map-token-ink);
-
-  .mat-icon {
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
-  }
+.legend__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
 }
 
-// "Defina a grade para pintar e ligar a névoa.": the strip under a map with no grid.
-.why {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-2);
-  margin: 0;
-  padding: var(--mr-space-3);
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-surface);
-  font-weight: 700;
-
-  .mat-icon {
-    flex: none;
-  }
+.ask__discard {
+  align-self: flex-start;
+  color: var(--mr-danger-ink);
 }
 
-.ask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-
-  p {
-    margin: 0;
-  }
-}
-
-.ask__actions,
 .tk__actions {
   display: flex;
   flex-wrap: wrap;
@@ -152,4 +123,13 @@
   margin: var(--mr-space-3) 0 0;
   font-size: 14px;
   color: var(--mr-ink-muted);
+}
+
+.leave {
+  max-width: 32rem;
+  margin-bottom: var(--mr-space-3);
+}
+
+.leave__text {
+  margin: 0;
 }

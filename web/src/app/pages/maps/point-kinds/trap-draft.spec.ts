@@ -77,7 +77,7 @@ describe('a preset fills the form', () => {
   });
 
   it('describes a pit by its fall and the others by their parts, for the radio', () => {
-    expect(presetSummary(pit)).toBe('Queda de 6 m, 2d6');
+    expect(presetSummary(pit)).toBe('Queda de 6\u00a0m, 2d6');
     expect(presetSummary(needle)).toBe('1 perfurante, 2d10 veneno · resistência de Constituição');
   });
 

@@ -31,7 +31,7 @@ import { CONDITIONS } from '../../../core/combat/conditions';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { TrapPresets } from '../../../core/traps/trap-presets';
-import { TrapNoticers } from '../../live-session/traps/trap-noticers/trap-noticers';
+import { TrapNoticers } from '../../../shared/trap-noticers/trap-noticers';
 import {
   ABILITIES,
   type AttackDraft,
@@ -170,8 +170,9 @@ export class TrapPointPanel {
     effect(() => {
       const p = this.point();
       const t = p.trap;
-      const key = `${p.id}|${p.xBp}|${p.yBp}|${t?.noticeDc}|${t?.areaSize}|${t?.state}`;
-      untracked(() => void this.readNoticers(p, key));
+      // Read again when the trap changes: its DC, its area, its state, its place.
+      void [p.id, p.xBp, p.yBp, t?.noticeDc, t?.areaSize, t?.state];
+      untracked(() => void this.readNoticers(p));
     });
   }
 
@@ -180,7 +181,7 @@ export class TrapPointPanel {
     this.show.set(false);
   }
 
-  protected async readNoticers(point: MapPoint = this.point(), _key = ''): Promise<void> {
+  protected async readNoticers(point: MapPoint = this.point()): Promise<void> {
     const mine = ++this.noticersAsked;
     this.noticersFailed.set(false);
     try {

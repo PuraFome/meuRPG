@@ -1,8 +1,8 @@
 <div class="mr-notice mr-notice--neutral" role="note">
   <mat-icon aria-hidden="true">info</mat-icon>
   <p>
-    <strong>Pintar só no notebook</strong>
-    Pintar o terreno, as paredes, a cobertura e a luz é no notebook. No celular você vê as camadas e muda a névoa.
+    <strong>Pintar só no computador</strong>
+    Pintar o terreno, as paredes, a cobertura e a luz é no computador. No celular você vê as camadas e muda a névoa.
   </p>
 </div>
 @if (image(); as img) {
@@ -15,6 +15,7 @@
     [selectablePoints]="false"
     [squares]="map()?.gridColumns ?? 0"
     [kindShapes]="true"
+    [pinsDrawn]="true"
     [initialOf]="initialOf"
   >
     <app-editor-overlay
@@ -32,9 +33,9 @@
   computador.
 </p>
 <div>
-  <app-map-layers-legend [layers]="painted.layers()" />
+  <app-map-layers-legend [layers]="painted.layers()" [light]="lightLevels()" />
   <app-map-pins-legend [points]="state().points()" [isMaster]="true" />
-  <app-map-legend [states]="true" [tokens]="state().tokens()" />
+  <app-map-legend [states]="true" [points]="state().points()" [tokens]="state().tokens()" [kindShapes]="true" [initialOf]="initialOf" />
 </div>
 
 @if (map(); as m) {
@@ -53,7 +54,12 @@
     [headingLevel]="2"
     [points]="state().points()"
     [pendingId]="reveals.pendingId()"
+    [lightNames]="lightNames()"
+    [people]="finders()"
+    [markBusy]="markBusy()"
+    [markError]="markError()"
     (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+    (markFound)="markFound($event)"
   />
 </section>
 

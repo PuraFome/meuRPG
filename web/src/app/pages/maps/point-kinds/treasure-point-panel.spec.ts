@@ -84,14 +84,15 @@ describe('TreasurePointPanel', () => {
     expect(changed).toHaveLength(1);
   });
 
-  it('found: by whom and when, and "Desmarcar" asks in place with the focus on "Voltar"', async () => {
+  it('found: by whom and when, and "Desmarcar" asks in place with the focus on the question', async () => {
     await setup(found);
     expect(text()).toContain('Encontrado por Brisa');
     expect(text()).toContain('Todos veem o tesouro, o que há dentro e o valor.');
     button('Desmarcar').click();
     await settle();
-    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('Desmarcar Baú de moedas?');
-    expect(document.activeElement?.textContent?.trim()).toBe('Voltar');
+    expect(el.querySelector('app-map-ask')?.textContent).toContain('Desmarcar Baú de moedas?');
+    expect(document.activeElement?.textContent?.trim()).toBe('Desmarcar Baú de moedas?');
+    expect(button('Voltar')).toBeTruthy();
     expect(api.calls).toEqual([]);
     Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim() === 'Desmarcar').at(-1)!.click();
     await settle();

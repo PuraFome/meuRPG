@@ -98,6 +98,25 @@
     border: 1.5px dashed var(--mr-ink);
   }
 
+  // An NPC is the white rounded square, as on the map.
+  &--npc {
+    min-width: 24px;
+    height: 24px;
+    border: 2px solid var(--mr-map-token-ink);
+    border-radius: 28%;
+    background: var(--mr-map-token-surface);
+    color: var(--mr-map-token-ink);
+  }
+
+  // A creature: the same token as on the maps (`app-map-token`, `app-combatant-token`): round and hollow with a dashed ink outline.
+  &--creature {
+    min-width: 24px;
+    height: 24px;
+    border: 2px dashed var(--mr-ink);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+  }
+
   &--mine {
     box-shadow: 0 0 0 2px var(--mr-surface), 0 0 0 3.5px var(--mr-accent);
     margin: 0 2px;

@@ -6,6 +6,8 @@
     [class.mv--zoomed]="scale() > 1"
     [class.mv--placing]="placing()"
     [class.mv--grid]="squares() > 0"
+    [class.mv--faded]="faded()"
+    [class.mv--compact]="size().width > 0 && size().width < 520"
     [style.aspect-ratio]="aspect()"
     [attr.role]="interactive() ? 'group' : 'img'"
     [attr.aria-label]="(interactive() ? 'Mapa ' : 'Prévia do mapa ') + mapName()"
@@ -48,11 +50,13 @@
 
       @for (p of shownPoints(); track p.id) {
         <app-map-marker
+          [attr.data-point]="p.id"
           [point]="p"
           [at]="pointAt(p)"
           [interactive]="pointsOpen()"
           [selected]="selectedKey() === 'point:' + p.id"
           [raised]="raisedKey() === 'point:' + p.id"
+          [pinsDrawn]="pinsDrawn()"
         />
       }
       @for (t of shownTokens(); track tokenKey(t)) {
@@ -66,20 +70,21 @@
           [raised]="raisedKey() === 'token:' + tokenKey(t)"
         />
       }
-      @for (p of shownPoints(); track p.id) {
+      @for (g of labelGroups(); track g.id) {
         <span
           class="lbl"
           aria-hidden="true"
-          [attr.data-side]="side(p)"
-          [class.lbl--hidden]="!p.revealed"
-          [class.lbl--selected]="selectedKey() === 'point:' + p.id"
-          [class.lbl--raised]="raisedKey() === 'point:' + p.id"
-          [style.left.%]="labelLeft(p)"
-          [style.top.%]="labelTop(p)"
+          [attr.data-ids]="g.ids.join(' ')"
+          [attr.data-side]="side(g.at)"
+          [class.lbl--hidden]="g.hidden"
+          [class.lbl--selected]="groupSelected(g)"
+          [class.lbl--raised]="groupRaised(g)"
+          [style.left.%]="labelLeft(g.at)"
+          [style.top.%]="labelTop(g.at)"
         >
           <span class="lbl__pill">
-            {{ p.name }}
-            @if (!p.revealed) {
+            {{ g.text }}
+            @if (g.hidden) {
               <span class="lbl__state"><mat-icon>visibility_off</mat-icon>Escondido</span>
             }
           </span>

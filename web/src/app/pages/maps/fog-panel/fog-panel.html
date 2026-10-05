@@ -1,5 +1,13 @@
 <section class="mr-panel fp" aria-labelledby="fp-title">
-  <h2 class="mr-panel__title" id="fp-title">Névoa de guerra</h2>
+  <div class="fp__head">
+    <h2 class="mr-panel__title" id="fp-title">Névoa de guerra</h2>
+    <!-- Each setting is saved at once: the tag says so while it goes, and when the server did not take it. -->
+    @if (busy()) {
+      <span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">sync</mat-icon>Salvando</span>
+    } @else if (error()) {
+      <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error</mat-icon>Não salvou</span>
+    }
+  </div>
   <div class="fp__cols">
     <div class="fp__col">
       <app-reveal-switch

@@ -15,7 +15,8 @@ import { callRPC, newSignedInContext } from './support';
 test.describe.configure({ timeout: 120_000 });
 
 const tools = (page: Page) => page.getByRole('group', { name: 'Ferramenta de pintura' });
-const saved = (page: Page) => page.locator('app-layers-panel').getByText('Tudo salvo');
+// The tag, and under it the polite line a screen reader hears once: the first is the one a person sees.
+const saved = (page: Page) => page.locator('app-layers-panel').getByText('Tudo salvo').first();
 
 /** Opens the editor of a map on "Pintar". */
 async function paintMode(page: Page, campaignId: string, mapId: string): Promise<void> {
@@ -284,7 +285,8 @@ test('o que o mestre pinta chega ao jogador só onde o personagem dele enxerga @
 
     await ap.goto(sessionRoute(table.campaignId));
     await expect(ap.locator('app-fog-base').first()).toBeVisible();
-    const terrain = () => ap.locator('app-fog-base .sq--terrain').count();
+    // What the player's map holds, as the server answers for him: the screen reads it again when the stream says the layers changed.
+    const terrain = async () => (await layersOf(ap, table.campaignId, table.mapId)).terrain;
     const before = await terrain();
     const masterBefore = (await layersOf(mp, table.campaignId, table.mapId)).terrain;
 
@@ -297,9 +299,9 @@ test('o que o mestre pinta chega ao jogador só onde o personagem dele enxerga @
     await expect(saved(mp)).toBeVisible();
     // The master has both.
     expect((await layersOf(mp, table.campaignId, table.mapId)).terrain).toBe(masterBefore + 2);
-    // The player's map draws the one in sight and not the other (the stream says the layers changed; the page reads them again).
+    // The player gets the one in sight and not the other, and his legend names the terrain.
     await expect.poll(terrain, { timeout: 15_000 }).toBe(before + 1);
-    expect((await layersOf(ap, table.campaignId, table.mapId)).terrain).toBe(before + 1);
+    await expect(ap.getByText('Terreno difícil').first()).toBeVisible();
   });
 });
 
@@ -394,6 +396,8 @@ test('uma armadilha nasce de uma predefinição do SRD, e "Quem notaria" mostra 
     // The needle: no DC to notice, so nobody notices it alone; the effect in parts, the trigger by hand.
     await mp.getByRole('group', { name: 'Adicionar ponto' }).getByRole('button', { name: 'Armadilha' }).click();
     await mp.mouse.click(box.x + box.width * (7.5 / 24), box.y + box.height * (13.5 / 16));
+    // The new point opens its own panel (the server's first sample trap fills it); the old one is gone before the next click.
+    await expect(mp.getByRole('heading', { name: 'Nova armadilha' })).toBeVisible();
     await mp.getByRole('radio', { name: /Agulha envenenada/ }).click();
     await expect(mp.getByLabel('CD para notar (Percepção)')).toHaveValue('');
     await expect(mp.getByLabel('CD para achar (Investigação)')).toHaveValue('20');
@@ -423,13 +427,17 @@ test('um ponto de Luz usa uma fonte do SRD ou os raios do mestre, e o jogador nu
     await mp.mouse.click(box.x + box.width * (13.5 / 24), box.y + box.height * (12.5 / 16));
     await expect(mp.getByLabel('Nome', { exact: true })).toBeFocused();
     await mp.getByLabel('Nome', { exact: true }).fill('Brasa do altar');
-    // The six presets of the SRD (and the others the server lists) are radios; the torch is the one a new light starts with.
+    // The sources of the SRD (and the others the server lists) are radios; a new light starts as the first one the server lists.
+    const presets = (await (await callRPC(mp, 'meurpg.rules.v1.ContentService/ListLightPresets', { campaignId: table.campaignId })).json()).presets as { namePt: string }[];
+    expect(presets.length).toBeGreaterThan(2);
+    await expect(mp.getByRole('radio', { name: new RegExp(presets[0].namePt) }).first()).toHaveAttribute('aria-checked', 'true');
+    await mp.getByRole('radio', { name: /Tocha/ }).click();
     await expect(mp.getByRole('radio', { name: /Tocha/ })).toHaveAttribute('aria-checked', 'true');
     await expect(mp.getByText('Raios: 4 quadrados de luz clara e mais 4 de penumbra, até 8 quadrados no total.')).toBeVisible();
-    // The reach is drawn as two rings: the radii, never the lit squares.
-    await expect(mp.locator('app-editor-overlay .reach__bright')).toBeVisible();
-    await expect(mp.locator('app-editor-overlay .reach__dim')).toBeVisible();
+    // The reach is drawn as two rings (the radii, never the lit squares) and the legend names them, with the honest note about the walls.
     await expect(mp.getByText('Alcance da luz clara')).toBeVisible();
+    await expect(mp.getByText('Alcance da penumbra')).toBeVisible();
+    await expect(mp.getByText('As paredes cortam a luz; o alcance de verdade aparece em “Ver como”.')).toBeVisible();
 
     await mp.getByRole('radio', { name: /Personalizada/ }).click();
     await mp.getByLabel('Luz clara até').fill('4');
@@ -489,18 +497,20 @@ test('um tesouro marcado como encontrado fora de uma sessão: quem encontrou, a 
     await expect(master.getByRole('button', { name: 'Apagar ponto' })).toHaveAttribute('aria-disabled', 'true');
     await expect(master.getByText('Este tesouro foi encontrado. Desmarque antes de apagar.')).toBeVisible();
 
-    // "Desmarcar" asks in place, with the focus on "Voltar".
+    // "Desmarcar" asks in place, with the focus on the question.
     await master.getByRole('button', { name: 'Desmarcar' }).click();
-    await expect(master.getByRole('alertdialog').getByRole('button', { name: 'Voltar' })).toBeFocused();
-    await master.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
+    await expect(master.getByRole('heading', { name: /^Desmarcar Baú de moedas/ })).toBeFocused();
+    await expect(master.getByRole('group', { name: /^Desmarcar / }).getByRole('button', { name: 'Voltar' })).toBeVisible();
+    await master.getByRole('group', { name: /^Desmarcar / }).getByRole('button', { name: 'Voltar' }).click();
     await expect(master.getByText(/Encontrado por Pensantus/)).toBeVisible();
     await master.getByRole('button', { name: 'Desmarcar' }).click();
-    await master.getByRole('alertdialog').getByRole('button', { name: 'Desmarcar' }).click();
+    await master.getByRole('group', { name: /^Desmarcar / }).getByRole('button', { name: 'Desmarcar' }).click();
     await expect(master.getByText('Não encontrado')).toBeVisible();
     expect((await getMapRPC(player, campaignId, mapId)).points.map((p) => p.name)).not.toContain('Baú de moedas');
     // Unmarked, it can go; deleting asks in place.
     await master.getByRole('button', { name: 'Apagar ponto' }).click();
-    await expect(master.getByText('Apagar Baú de moedas? Não dá para desfazer.')).toBeVisible();
+    await expect(master.getByRole('heading', { name: 'Apagar Baú de moedas?' })).toBeFocused();
+    await expect(master.getByText('Não dá para desfazer.')).toBeVisible();
     await master.getByRole('button', { name: 'Apagar ponto' }).first().click();
     await expect(master.getByText('Baú de moedas foi apagado.')).toBeAttached();
   });
@@ -548,5 +558,61 @@ test('o mapa com os pontos novos: a lista separa a armadilha e o baú do mesmo q
     await list.getByRole('button', { name: /Baú com agulha/ }).click();
     await expect(mp.getByRole('heading', { name: 'Baú com agulha' })).toBeVisible();
     await expect(mp.getByText('Tesouro · escondido')).toBeVisible();
+  });
+});
+
+test('os pontos do mesmo quadrado dividem um nome, a legenda diz só o que o mapa tem, e "Pintar" mostra o mapa limpo @MR-035 @MR-041', async ({ browser }) => {
+  await atCave(browser, 'Nomes e legenda', {}, async ({ table, mp }) => {
+    await cavePoints(mp, table);
+    await mp.goto(editorRoute(table.campaignId, table.mapId));
+    const map = mp.getByRole('group', { name: /^Mapa / });
+    // The needle and its chest share a square: one name for both, not two on top of each other.
+    await expect(map.getByText('Agulha envenenada · Baú com agulha')).toBeVisible();
+    await expect(map.getByText('Agulha envenenada', { exact: true })).toHaveCount(0);
+    // The legend names only what the map has: no Batalha, no Submapa, and the tokens as the map draws them.
+    const legend = mp.locator('app-map-legend');
+    await expect(legend).not.toContainText('Batalha');
+    await expect(legend).not.toContainText('Submapa');
+    await expect(legend).toContainText('Goblin 1');
+    await expect(mp.getByText('Luz clara', { exact: true })).toHaveCount(0);
+
+    // Painting: the names go away, so the brush and the painted light are never under a pill.
+    await mp.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(surfaceOf(mp)).toBeVisible();
+    await expect(map.getByText('Agulha envenenada · Baú com agulha')).toHaveCount(0);
+    await expect(map.getByText('Fosso escondido')).toHaveCount(0);
+    // The light's three levels carry the toolbar's names everywhere.
+    await tools(mp).getByRole('button', { name: 'Luz' }).click();
+    await mp.getByRole('radiogroup', { name: 'Luz pintada' }).getByRole('radio', { name: 'Penumbra' }).click();
+    await clickSquare(mp, { columns: 24, rows: 16 }, 3, 8);
+    await expect(saved(mp)).toBeVisible();
+    await expect(mp.locator('app-map-layers-legend')).toContainText('Penumbra');
+    await expect(mp.getByText('Luz em penumbra')).toHaveCount(0);
+  });
+});
+
+test('sair com traços que o servidor não recebeu pergunta no lugar; o mestre fica ou perde os traços @MR-034', async ({ browser }) => {
+  await atMaps(browser, 'Sair com traços', 20, async ({ master, campaignId, mapId, map }) => {
+    await paintMode(master, campaignId, mapId);
+    await tools(master).getByRole('button', { name: 'Parede' }).click();
+    // The server stops answering: the stroke stays on the screen, "Não salvou" says so, with a way to try again.
+    await master.route('**/*PaintMapCells', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }));
+    await clickSquare(master, map, 4, 4);
+    await expect(master.locator('app-layers-panel').getByText('Não salvou')).toBeVisible();
+    await expect(master.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+
+    // Leaving through the app's own link asks first, in place; "Voltar" stays.
+    await master.getByRole('link', { name: 'Minhas campanhas' }).first().click();
+    await expect(master.getByRole('heading', { name: 'Há traços que o servidor não recebeu' })).toBeFocused();
+    await master.getByRole('button', { name: 'Voltar' }).click();
+    await expect(master.getByRole('heading', { name: 'Há traços que o servidor não recebeu' })).toHaveCount(0);
+
+    // The server answers again: "Tentar de novo" sends the stroke, and now the page leaves without a question.
+    await master.unroute('**/*PaintMapCells');
+    await master.getByRole('button', { name: 'Tentar de novo' }).click();
+    await expect(saved(master)).toBeVisible();
+    expect((await layersOf(master, campaignId, mapId)).wall).toBe(1);
+    await master.getByRole('link', { name: 'Minhas campanhas' }).first().click();
+    await expect(master).toHaveURL(/\/campanhas$/);
   });
 });

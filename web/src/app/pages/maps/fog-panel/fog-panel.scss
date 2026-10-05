@@ -91,7 +91,8 @@
 
 .seg__item {
   display: flex;
-  flex: 1 1 0;
+  // By the words each one has, not a third each: at 320 px "Penumbra" and its half-moon need more than the others.
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -133,5 +134,17 @@
     background: none;
     color: var(--mr-ink-muted);
     cursor: default;
+  }
+}
+
+.fp__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
   }
 }

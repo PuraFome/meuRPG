@@ -59,7 +59,17 @@
 .pk__pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: var(--mr-space-3);
+}
+
+// A damage and its type: the type's words ("Envenenado", "Cortante") need more room than the dice.
+.pk__pair--cond {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.pk__pair--type {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
 
 // The two CDs have long labels: one under the other while the panel is narrow (the side column), side by side when it has room.

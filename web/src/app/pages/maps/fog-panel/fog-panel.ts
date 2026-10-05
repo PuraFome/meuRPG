@@ -74,7 +74,7 @@ export class FogPanel {
     try {
       this.changed.emit(await this.api.setFog(this.campaignId(), this.map().id, changes));
     } catch (err) {
-      this.error.set(editorErrorMessage(err, 'mudar a névoa'));
+      this.error.set(editorErrorMessage(err, 'fog', 'mudar a névoa'));
     } finally {
       this.busy.set(false);
     }
@@ -103,7 +103,7 @@ export class FogPanel {
       this.forgotten.emit();
       afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
     } catch (err) {
-      this.error.set(editorErrorMessage(err, 'esquecer o que foi visto'));
+      this.error.set(editorErrorMessage(err, 'forget', 'esquecer o que foi visto'));
     } finally {
       this.busy.set(false);
     }

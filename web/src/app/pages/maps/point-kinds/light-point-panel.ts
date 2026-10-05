@@ -87,6 +87,8 @@ export class LightPointPanel {
 
   private readonly nameField = viewChild('nameField', { read: ElementRef<HTMLInputElement> });
   private currentId = '';
+  /** The master has chosen a light source or typed a radius since the form was last filled from the point: the presets arriving must not wipe that. */
+  private editedLight = false;
 
   constructor() {
     // The SRD's light sources, once per campaign; the saved light may be one of them, so the radios follow once they are known.
@@ -96,7 +98,12 @@ export class LightPointPanel {
         this.presetsApi.list(campaignId).then(
           (list) => {
             this.presets.set(list);
-            this.reset();
+            // The saved light may be a preset: the radios follow, unless he has already chosen a source or typed a radius (that would wipe
+            // it). A name or a description typed meanwhile stay.
+            if (!this.editedLight) {
+              const fromPoint = lightDraftOf(this.point(), list);
+              this.draft.update((d) => ({ ...d, presetKey: fromPoint.presetKey, brightM: fromPoint.brightM, dimM: fromPoint.dimM }));
+            }
           },
           () => this.presetsFailed.set(true),
         ),
@@ -123,15 +130,20 @@ export class LightPointPanel {
   }
 
   private reset(): void {
+    this.editedLight = false;
     this.draft.set(lightDraftOf(this.point(), this.presets()));
     this.show.set(false);
   }
 
   protected choose(key: string): void {
+    this.editedLight = true;
     this.draft.update((d) => withPreset(d, key, this.presets()));
   }
 
   protected patch(change: Partial<LightDraft>): void {
+    if ('presetKey' in change || 'brightM' in change || 'dimM' in change) {
+      this.editedLight = true;
+    }
     this.draft.update((d) => ({ ...d, ...change }));
   }
 

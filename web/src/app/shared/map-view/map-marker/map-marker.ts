@@ -2,8 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { ChestIcon } from '../../chest-icon/chest-icon';
 import { ViewPoint, bpToPercent } from '../map-geometry';
-import { pointAriaLabel, pointKindIcon } from '../map-labels';
+import { pointAriaLabel, pointHidden, pointKindIcon } from '../map-labels';
 
 /**
  * A point of interest on the map (README-B, "Map markers"): a shape by kind
@@ -19,7 +20,7 @@ import { pointAriaLabel, pointKindIcon } from '../map-labels';
  */
 @Component({
   selector: 'app-map-marker',
-  imports: [MatIconModule, NgTemplateOutlet],
+  imports: [ChestIcon, MatIconModule, NgTemplateOutlet],
   template: `
     @if (interactive()) {
       <button
@@ -36,9 +37,13 @@ import { pointAriaLabel, pointKindIcon } from '../map-labels';
     }
     <ng-template #shape>
       <span class="pt__shape" [class]="'pt__shape pt__shape--' + kindClass()">
-        <mat-icon class="pt__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+        @if (point().kind === 5) {
+          <app-chest-icon class="pt__icon pt__chest" />
+        } @else {
+          <mat-icon class="pt__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+        }
       </span>
-      @if (!point().revealed && !pin()) {
+      @if (hidden() && !pin()) {
         <span class="pt__badge" aria-hidden="true"><mat-icon>visibility_off</mat-icon></span>
       }
     </ng-template>
@@ -47,7 +52,7 @@ import { pointAriaLabel, pointKindIcon } from '../map-labels';
   host: {
     '[style.left.%]': 'left()',
     '[style.top.%]': 'top()',
-    '[class.pt--hidden]': '!point().revealed',
+    '[class.pt--hidden]': 'hidden()',
     '[class.pt--remembered]': '!!point().remembered',
     '[class.pt--selected]': 'selected()',
     '[class.pt--raised]': 'raised()',
@@ -60,13 +65,16 @@ export class MapMarker {
   readonly interactive = input(true);
   readonly selected = input(false);
   readonly raised = input(false);
+  /** The screen draws traps, chests and lights itself (`app-map-pins`, the editor and the master's phone): this is then only their hit area. Without it the marker draws its own icon. */
+  readonly pinsDrawn = input(false);
 
   protected readonly left = computed(() => bpToPercent(this.at()?.xBp ?? this.point().xBp));
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.point().yBp));
+  protected readonly hidden = computed(() => pointHidden(this.point()));
   protected readonly icon = computed(() => pointKindIcon(this.point().kind));
   protected readonly label = computed(() => pointAriaLabel(this.point()));
   /** A trap, a treasure or a light (kinds 4 to 6): the map's own marks (`app-map-pins`) draw it, and this is only the hit area and the selection ring. */
-  protected readonly pin = computed(() => this.point().kind >= 4);
+  protected readonly pin = computed(() => this.pinsDrawn() && this.point().kind >= 4);
   protected readonly kindClass = computed(() => {
     switch (this.point().kind) {
       case 1:
@@ -76,7 +84,7 @@ export class MapMarker {
       case 4:
       case 5:
       case 6:
-        return 'pin';
+        return this.pinsDrawn() ? 'pin' : 'scene';
       default:
         return 'scene';
     }

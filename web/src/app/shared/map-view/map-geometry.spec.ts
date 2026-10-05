@@ -9,10 +9,14 @@ import {
   labelShift,
   labelSide,
   nudge,
+  overlapArea,
+  placeLabel,
   scaleLabel,
   screenToBp,
+  squareKey,
   stepScale,
   tokenInitial,
+  unionBox,
   visiblePoints,
   visibleTokens,
   zoomAround,
@@ -185,5 +189,62 @@ describe('labelBounds', () => {
     const { minLeft, maxRight } = labelBounds({ left: -120, right: 700 }, { left: 0, right: 350 });
     // "A carroça tombada" 110px wide, starting 300px from the left: it would be cut at 350.
     expect(labelShift(300, 410, minLeft, maxRight)).toBe(-64);
+  });
+});
+
+
+describe('where a label goes', () => {
+  const bounds = { minLeft: 0, maxRight: 400, minTop: 0, maxBottom: 300 };
+  const box = (left: number, top: number, right: number, bottom: number) => ({ left, top, right, bottom });
+  const size = { width: 100, height: 24 };
+
+  it('puts it beside what it names, centred on it, when nothing is in the way', () => {
+    const at = placeLabel(box(150, 140, 190, 180), size, [], bounds);
+    expect(at.left).toBeGreaterThanOrEqual(196);
+    expect(at.top).toBeCloseTo(148, 0);
+  });
+
+  it('never covers the area it names (a label over a 2 × 2 trap)', () => {
+    const area = box(120, 100, 240, 220);
+    const at = placeLabel(area, size, [], bounds);
+    const label = box(at.left, at.top, at.left + 100, at.top + 24);
+    expect(overlapArea(label, area)).toBe(0);
+  });
+
+  it('takes the next side when the first is taken by another label or token', () => {
+    const anchor = box(150, 140, 190, 180);
+    const right = box(196, 148, 296, 172);
+    const at = placeLabel(anchor, size, [right], bounds);
+    const label = box(at.left, at.top, at.left + 100, at.top + 24);
+    expect(overlapArea(label, right)).toBe(0);
+    expect(overlapArea(label, anchor)).toBe(0);
+  });
+
+  it('keeps inside the image: a point at the edge gets its label on the side with room', () => {
+    const at = placeLabel(box(360, 140, 396, 176), size, [], bounds);
+    expect(at.left + 100).toBeLessThanOrEqual(400);
+    expect(at.left).toBeGreaterThanOrEqual(0);
+  });
+
+  it('a label wider than the image starts at its left edge', () => {
+    const at = placeLabel(box(10, 10, 30, 30), { width: 500, height: 24 }, [], bounds);
+    expect(at.left).toBe(0);
+  });
+});
+
+describe('one label per square', () => {
+  it('gives two points of one square the same key, and another square another', () => {
+    expect(squareKey(5000, 5000, 20, 1.5)).toBe(squareKey(5100, 5040, 20, 1.5));
+    expect(squareKey(5000, 5000, 20, 1.5)).not.toBe(squareKey(5600, 5000, 20, 1.5));
+  });
+
+  it('on a map with no grid, near is the same spot', () => {
+    expect(squareKey(5000, 5000, 0, 1.5)).toBe(squareKey(4990, 5010, 0, 1.5));
+    expect(squareKey(5000, 5000, 0, 1.5)).not.toBe(squareKey(6500, 5000, 0, 1.5));
+  });
+
+  it('unionBox is the box that holds them all', () => {
+    expect(unionBox([{ left: 1, top: 2, right: 3, bottom: 4 }, { left: 0, top: 3, right: 5, bottom: 9 }])).toEqual({ left: 0, top: 2, right: 5, bottom: 9 });
+    expect(unionBox([])).toBeNull();
   });
 });

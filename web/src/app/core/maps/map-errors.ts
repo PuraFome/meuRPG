@@ -55,23 +55,63 @@ export function mapBlockedReason(err: unknown): MapBlockedReason | null {
   return connectErr.findDetails(MapBlockedSchema)[0]?.reason ?? null;
 }
 
-/** The Portuguese message for a failed call of the map editor's painting, grid and fog (maps.proto: `PaintMapCells`,
- * `SetMapGrid`, `SetMapFog`, `ForgetMapVision`, `UpdateMap` with a new image) and of the trap, light and treasure points. */
-export function editorErrorMessage(err: unknown, what: string): string {
-  switch (mapBlockedReason(err)) {
-    case MapBlockedReason.NO_GRID:
-      return 'Defina a grade para pintar e ligar a névoa.';
-    case MapBlockedReason.COMBAT_RUNNING:
-      return 'Há um combate neste mapa: a grade e a imagem só mudam depois dele.';
-    case MapBlockedReason.TREASURE_CONVERTED:
-      return 'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.';
-    case MapBlockedReason.TREASURE_FOUND:
-      return 'Esse tesouro foi encontrado. Desmarque antes de apagar.';
-    default:
+/** The editor's calls that can be refused, each with the reasons and the limit it can answer (maps.proto lists them per method). */
+export type EditorCall =
+  /** `PaintMapCells`. */
+  | 'paint'
+  /** `SetMapGrid`. */
+  | 'grid'
+  /** `UpdateMap` with another image. */
+  | 'image'
+  /** `SetMapFog`. */
+  | 'fog'
+  /** `ForgetMapVision`. */
+  | 'forget'
+  /** `CreateMapPoint`. */
+  | 'pointNew'
+  /** `UpdateMapPoint`, `DeleteMapPoint` and the treasure marks. */
+  | 'point';
+
+/** What a full gallery means for the fog: it needs a copy of the image. */
+export const GALLERY_FULL = 'A galeria da campanha está cheia: apague uma imagem para ligar a névoa.';
+
+/** What a full gallery means for a new image: it needs a copy of it. */
+export const IMAGE_GALLERY_FULL = 'A galeria da campanha está cheia: apague uma imagem para usar esta no mapa.';
+
+/** The map's point limit (`CreateMapPoint`). */
+export const POINTS_FULL = 'O mapa chegou ao limite de 200 pontos. Apague um para pôr outro.';
+
+const BLOCKED_TEXT: Readonly<Record<number, string>> = {
+  [MapBlockedReason.NO_GRID]: 'Defina a grade para pintar e ligar a névoa.',
+  [MapBlockedReason.COMBAT_RUNNING]: 'Há um combate neste mapa: a grade e a imagem só mudam depois dele.',
+  [MapBlockedReason.TREASURE_CONVERTED]: 'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.',
+  [MapBlockedReason.TREASURE_FOUND]: 'Esse tesouro foi encontrado. Desmarque antes de apagar.',
+};
+
+const PROFILES: Readonly<Record<EditorCall, { blocked: readonly MapBlockedReason[]; exhausted?: string }>> = {
+  paint: { blocked: [MapBlockedReason.NO_GRID] },
+  grid: { blocked: [MapBlockedReason.COMBAT_RUNNING] },
+  image: { blocked: [MapBlockedReason.COMBAT_RUNNING], exhausted: IMAGE_GALLERY_FULL },
+  fog: { blocked: [MapBlockedReason.NO_GRID], exhausted: GALLERY_FULL },
+  forget: { blocked: [] },
+  pointNew: { blocked: [], exhausted: POINTS_FULL },
+  point: { blocked: [MapBlockedReason.TREASURE_CONVERTED, MapBlockedReason.TREASURE_FOUND] },
+};
+
+/**
+ * The Portuguese message for a failed call of the map editor. **Each call maps its own reasons and its own limit** (`call`): a refusal
+ * the method cannot give (the gallery's limit on a new point, say) is never explained as one it can, and the generic words of the map
+ * calls (`mapErrorMessage`, by code) answer the rest.
+ */
+export function editorErrorMessage(err: unknown, call: EditorCall, what: string): string {
+  const profile = PROFILES[call];
+  const reason = mapBlockedReason(err);
+  if (reason !== null && profile.blocked.includes(reason)) {
+    return BLOCKED_TEXT[reason];
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
-  if (connectErr.code === Code.ResourceExhausted) {
-    return 'A galeria da campanha está cheia: apague uma imagem para ligar a névoa.';
+  if (connectErr.code === Code.ResourceExhausted && profile.exhausted !== undefined) {
+    return profile.exhausted;
   }
   return mapErrorMessage(err, what);
 }

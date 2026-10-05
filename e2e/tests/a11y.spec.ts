@@ -204,7 +204,8 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
     await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
     const dialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
     await expect(dialog.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
-    await expect(dialog.locator('.lbl__pill', { hasText: 'Covil dos goblins' })).toBeVisible();
+    // The names show on the picture from 520 px of map (a phone's smaller one leaves them to this list).
+    await expect(dialog.getByRole('list', { name: 'Pontos deste mapa' })).toContainText('Covil dos goblins');
     await expectScreenPasses(page, `Documento, janela do mapa ${where}`);
     await page.keyboard.press('Escape');
 
@@ -3014,14 +3015,14 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
 
     if (phone) {
       await m.goto(editorRoute(campaignId, table.mapId));
-      await expect(m.getByText('Pintar só no notebook')).toBeVisible();
+      await expect(m.getByText('Pintar só no computador')).toBeVisible();
       await m.waitForLoadState('networkidle');
       await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
       await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
       await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
       await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
       await m.goto(editorRoute(campaignId, noGrid));
-      await expect(m.getByText('Pintar só no notebook')).toBeVisible();
+      await expect(m.getByText('Pintar só no computador')).toBeVisible();
       await m.waitForLoadState('networkidle');
       await expectScreenPasses(m, `Mapa sem grade no celular ${where}`);
       return;
@@ -3043,6 +3044,11 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('radio', { name: /Agulha envenenada/ }).click();
     await expect(m.getByRole('heading', { name: 'Teste de resistência' })).toBeVisible();
     await expectScreenPasses(m, `Armadilha, a Agulha envenenada em partes ${where}`);
+    // The form has unsaved changes (the preset): going to "Pintar" asks in place.
+    await m.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(m.getByRole('heading', { name: /Salvar as mudanças em/ })).toBeFocused();
+    await expectScreenPasses(m, `Salvar as mudanças? ${where}`);
+    await m.getByRole('button', { name: 'Continuar editando' }).click();
     await reopen();
     await list.getByRole('button', { name: /Brasa do altar/ }).click();
     await expect(m.getByRole('radiogroup', { name: 'Tipo de luz' })).toBeVisible();
@@ -3065,9 +3071,9 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(m.getByText(/Encontrado por Pensantus/)).toBeVisible();
     await expectScreenPasses(m, `Tesouro encontrado ${where}`);
     await m.getByRole('button', { name: 'Desmarcar' }).click();
-    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expect(m.getByRole('group', { name: /^Desmarcar / })).toBeVisible();
     await expectScreenPasses(m, `Tesouro, desmarcar no lugar ${where}`);
-    await m.getByRole('alertdialog').getByRole('button', { name: 'Desmarcar' }).click();
+    await m.getByRole('group', { name: /^Desmarcar / }).getByRole('button', { name: 'Desmarcar' }).click();
     await reopen();
 
     // Ver como
@@ -3084,7 +3090,7 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(tools).toBeVisible();
     await tools.getByRole('button', { name: 'Terreno difícil' }).click();
     await dragSquares(m, map, [4, 9], [5, 10]);
-    await expect(m.locator('app-layers-panel').getByText('Tudo salvo')).toBeVisible();
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
     await expectScreenPasses(m, `Pintar, Terreno difícil ${where}`);
     await tools.getByRole('button', { name: 'Cobertura' }).click();
     await m.getByRole('radio', { name: 'Três quartos' }).click();
@@ -3094,7 +3100,7 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('radio', { name: 'Claro' }).first().click();
     await m.getByRole('radio', { name: '3×3' }).click();
     await clickSquare(m, map, 8, 13);
-    await expect(m.locator('app-layers-panel').getByText('Tudo salvo')).toBeVisible();
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
     await expectScreenPasses(m, `Pintar, Luz com os glifos ${where}`);
     await tools.getByRole('button', { name: 'Apagar' }).click();
     await expectScreenPasses(m, `Pintar, Apagar ${where}`);

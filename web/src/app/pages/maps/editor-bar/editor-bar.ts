@@ -14,6 +14,7 @@ import {
   TOOL_LABEL,
 } from '../../../core/maps/paint-tools';
 import type { RosterEntry } from '../../../core/maps/roster-client';
+import { ChestIcon } from '../../../shared/chest-icon/chest-icon';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { scaleLabel } from '../../../shared/map-view/map-geometry';
 
@@ -39,7 +40,7 @@ const LIGHT_ICON: Readonly<Record<LightDegree, string>> = { 3: 'light_mode', 2: 
  */
 @Component({
   selector: 'app-editor-bar',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [ChestIcon, MatButtonModule, MatIconModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './editor-bar.html',
   styleUrl: './editor-bar.scss',
@@ -53,6 +54,9 @@ export class EditorBar {
   /** The characters with no token on the map yet ("Adicionar token"). */
   readonly available = input<readonly RosterEntry[]>([]);
   readonly scale = input(1);
+  /** Why the paint tools cannot act (no grid, the layers not read yet), written next to them. */
+  readonly why = input('');
+  readonly whyIcon = input('grid_on');
 
   readonly modeChange = output<EditorMode>();
   readonly settingsChange = output<PaintSettings>();
@@ -62,6 +66,7 @@ export class EditorBar {
   readonly zoomOut = output<void>();
   readonly fit = output<void>();
 
+  protected readonly Treasure = MapPointKind.TREASURE;
   protected readonly pointKinds = POINT_KINDS;
   protected readonly newKinds = NEW_KINDS;
   protected readonly tools = TOOLS;
@@ -74,6 +79,15 @@ export class EditorBar {
   protected readonly scaleText = computed(() => scaleLabel(this.scale()));
   protected readonly covers: readonly CoverDegree[] = [1, 2];
   protected readonly lights: readonly LightDegree[] = [3, 2, 1];
+
+  /** A tool looks chosen only when it can act, and only one at a time: the eraser takes the place of the tool it erases. */
+  protected toolOn(tool: PaintTool): boolean {
+    return this.canPaint() && this.settings().tool === tool && !this.settings().erase;
+  }
+
+  protected eraseOn(): boolean {
+    return this.canPaint() && this.settings().erase;
+  }
 
   protected set(change: Partial<PaintSettings>): void {
     this.settingsChange.emit({ ...this.settings(), ...change });

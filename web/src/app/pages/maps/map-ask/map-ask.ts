@@ -21,8 +21,8 @@ let nextId = 0;
     <section class="ask" role="group" [attr.aria-labelledby]="id" (keydown.escape)="cancel.emit()">
       <h3 #titleEl class="ask__title" [id]="id" tabindex="-1">{{ title() }}</h3>
       <ng-content />
-      <div class="ask__pair">
-        <button matButton="outlined" type="button" (click)="cancel.emit()">Voltar</button>
+      <div class="ask__pair" [class.ask__pair--row]="row()">
+        <button matButton="outlined" type="button" (click)="cancel.emit()">{{ cancelLabel() }}</button>
         <button
           matButton="filled"
           type="button"
@@ -34,6 +34,7 @@ let nextId = 0;
           {{ confirmLabel() }}
         </button>
       </div>
+      <ng-content select="[extra]" />
     </section>
   `,
   styles: `
@@ -48,8 +49,10 @@ let nextId = 0;
       scroll-margin-top: calc(64px + var(--mr-space-3));
     }
 
+    // Room for the focus ring around the words, so it never touches them.
     .ask__title {
-      margin: 0;
+      margin: 0 -6px;
+      padding: 2px 6px;
       font-family: var(--mr-font-display);
       font-size: 22px;
       font-weight: 700;
@@ -58,6 +61,7 @@ let nextId = 0;
 
     .ask__title:focus-visible,
     .ask__title[data-ring] {
+      border-radius: 4px;
       outline: 2px solid var(--mr-focus);
       outline-offset: 2px;
     }
@@ -68,6 +72,12 @@ let nextId = 0;
       gap: var(--mr-space-2);
     }
 
+    // Beside the words (the header's question): two buttons in a row, so the page below does not move far.
+    .ask__pair--row {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
     .ask__pair button {
       width: 100%;
       min-height: 44px;
@@ -75,6 +85,12 @@ let nextId = 0;
       @media (max-width: 767.98px) {
         min-height: 48px;
       }
+    }
+
+    // After the rule above, which it overrides: side by side, each as wide as half the card.
+    .ask__pair--row button {
+      flex: 1 1 11rem;
+      width: auto;
     }
   `,
 })
@@ -88,6 +104,10 @@ export class MapAsk {
   /** The filled button can be pressed; false draws the dashed one (the reason is a sentence above). */
   readonly ready = input(true);
   readonly busy = input(false);
+  /** The two buttons side by side instead of one over the other (the header, where a tall question would push the map down). */
+  readonly row = input(false);
+  /** The words of the safe button ("Voltar" by default). */
+  readonly cancelLabel = input('Voltar');
   readonly cancel = output<void>();
   readonly confirm = output<void>();
 

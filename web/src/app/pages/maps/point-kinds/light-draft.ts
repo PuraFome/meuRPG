@@ -1,4 +1,5 @@
 import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { metersNumber } from '../../../core/units';
 import type { LightOption } from '../../../core/maps/light-presets';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { POINT_DESCRIPTION_MAX, POINT_NAME_MAX } from '../point-panel/point-draft';
@@ -20,11 +21,6 @@ export interface LightDraft {
   readonly presetKey: string;
   readonly brightM: string;
   readonly dimM: string;
-}
-
-/** A radius in metres as the form shows it: "4,5". */
-export function metresText(ft: number): string {
-  return String(Math.round(ft * 3) / 10).replace('.', ',');
 }
 
 /** The metres a person typed ("4,5", "4.5"), or `null` when it is not a number. */
@@ -49,8 +45,8 @@ export function lightDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'lig
     name: point.name,
     description: point.description,
     presetKey: known ? l.presetKey : CUSTOM_KEY,
-    brightM: l ? metresText(l.brightFt) : '',
-    dimM: l ? metresText(l.dimFt) : '',
+    brightM: l ? metersNumber(l.brightFt) : '',
+    dimM: l ? metersNumber(l.dimFt) : '',
   };
 }
 
@@ -60,7 +56,7 @@ export function withPreset(d: LightDraft, key: string, presets: readonly LightOp
   if (!p || p.brightFt === undefined || p.dimFt === undefined) {
     return { ...d, presetKey: CUSTOM_KEY };
   }
-  return { ...d, presetKey: key, brightM: metresText(p.brightFt), dimM: metresText(p.dimFt) };
+  return { ...d, presetKey: key, brightM: metersNumber(p.brightFt), dimM: metersNumber(p.dimFt) };
 }
 
 export interface LightErrors {

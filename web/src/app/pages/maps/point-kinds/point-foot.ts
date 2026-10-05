@@ -1,46 +1,39 @@
 import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 
 import { focusWithRing } from '../../../core/creatures/focus-ring';
-
-let nextId = 0;
+import { PairFoot } from '../../../shared/pair-foot/pair-foot';
+import { MapAsk } from '../map-ask/map-ask';
 
 /**
- * The foot of the new point panels (E9-02): "Salvar ponto", the screen's one filled button, and "Apagar ponto"
- * beside it, two buttons of the same size. Deleting asks in place ("Apagar Fosso escondido? Não dá para
- * desfazer."), with the focus on "Cancelar". A point that cannot be deleted (a treasure that was found or turned
- * into XP) shows the dashed "can't act" button and the reason in a line. Presentational: the page runs the calls.
+ * The foot of the new point panels (E9-02): "Salvar ponto", the screen's one filled button, and "Apagar ponto" beside it
+ * (`app-pair-foot`: two buttons of the same size, stacked when the column is narrow). Deleting asks in place with the editor's
+ * one question (`app-map-ask`: "Apagar Fosso escondido?", "Voltar" first, the filled "Apagar ponto"). A point that cannot be
+ * deleted (a treasure that was found or turned into XP) shows the dashed "can't act" button and the reason in a line.
+ * Presentational: the page runs the calls.
  */
 @Component({
   selector: 'app-point-foot',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MapAsk, PairFoot],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (confirming()) {
-      <div class="pf__confirm" role="group" [attr.aria-labelledby]="id">
-        <p [id]="id"><strong>Apagar {{ name() }}?</strong> Não dá para desfazer.</p>
-        <div class="pf__pair">
-          <button matButton="outlined" type="button" class="pf__danger" (click)="remove.emit()">Apagar ponto</button>
-          <button #cancelButton matButton="outlined" type="button" (click)="cancelAsk()">Cancelar</button>
-        </div>
-      </div>
+      <app-map-ask [title]="'Apagar ' + name() + '?'" confirmLabel="Apagar ponto" (cancel)="cancelAsk()" (confirm)="remove.emit()">
+        <p class="pf__text">Não dá para desfazer.</p>
+      </app-map-ask>
     } @else {
-      <div class="pf__pair">
-        <button matButton="filled" type="button" [class.mr-button--off]="saving() || !dirty()" [disabled]="saving() || !dirty()" disabledInteractive (click)="!saving() && dirty() && save.emit()">Salvar ponto</button>
-        <button
-          #askButton
-          matButton="outlined"
-          type="button"
-          class="pf__danger"
-          [class.mr-button--off]="!!blocked()"
-          [disabled]="!!blocked()"
-          disabledInteractive
-          [attr.aria-describedby]="blocked() ? id + '-why' : null"
-          (click)="!blocked() && ask()"
-        >
-          <mat-icon aria-hidden="true">delete</mat-icon>Apagar ponto
-        </button>
+      <div #pair>
+        <app-pair-foot
+          confirmLabel="Salvar ponto"
+          [ready]="!saving() && dirty()"
+          [confirmFirst]="true"
+          cancelLabel="Apagar ponto"
+          cancelIcon="delete"
+          [cancelDanger]="!blocked()"
+          [cancelOff]="!!blocked()"
+          [cancelDescribedBy]="blocked() ? id + '-why' : ''"
+          (confirm)="save.emit()"
+          (cancel)="!blocked() && ask()"
+        />
       </div>
       @if (blocked(); as why) {
         <p class="pf__why" [id]="id + '-why'">{{ why }}</p>
@@ -54,48 +47,22 @@ let nextId = 0;
       border-top: 1px solid var(--mr-rule);
     }
 
-    .pf__pair {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--mr-space-3);
-    }
-
-    .pf__pair button {
-      flex: 1 1 8rem;
-      min-height: 44px;
-      font-weight: 700;
-
-      @media (max-width: 767.98px) {
-        min-height: 48px;
-      }
-    }
-
-    .pf__danger:not(.mr-button--off) {
-      color: var(--mr-danger-ink);
-      --mat-button-outlined-label-text-color: var(--mr-danger-ink);
-    }
-
-    .pf__confirm p,
-    .pf__why {
-      margin: 0 0 var(--mr-space-2);
-      font-size: 14px;
-      line-height: 19px;
-    }
-
-    .pf__confirm p {
-      font-size: 16px;
-      line-height: 22px;
+    .pf__text {
+      margin: 0;
     }
 
     .pf__why {
       margin: var(--mr-space-2) 0 0;
+      font-size: 14px;
+      line-height: 19px;
       color: var(--mr-ink-muted);
     }
   `,
 })
 export class PointFoot {
   private readonly injector = inject(Injector);
-  protected readonly id = `pf-${nextId++}`;
+  private static next = 0;
+  protected readonly id = `pf-${PointFoot.next++}`;
 
   readonly name = input.required<string>();
   readonly saving = input(false);
@@ -107,16 +74,14 @@ export class PointFoot {
   readonly remove = output<void>();
 
   protected readonly confirming = signal(false);
-  private readonly cancelButton = viewChild('cancelButton', { read: ElementRef<HTMLButtonElement> });
-  private readonly askButton = viewChild('askButton', { read: ElementRef<HTMLButtonElement> });
+  private readonly pair = viewChild('pair', { read: ElementRef<HTMLElement> });
 
   protected ask(): void {
     this.confirming.set(true);
-    afterNextRender(() => focusWithRing(this.cancelButton()?.nativeElement), { injector: this.injector });
   }
 
   protected cancelAsk(): void {
     this.confirming.set(false);
-    afterNextRender(() => focusWithRing(this.askButton()?.nativeElement), { injector: this.injector });
+    afterNextRender(() => focusWithRing((this.pair()?.nativeElement.querySelector('.pf__cancel') as HTMLElement | null | undefined)), { injector: this.injector });
   }
 }

@@ -19,7 +19,8 @@ import { MatInputModule } from '@angular/material/input';
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { gridRows } from '../../../core/combat/combat-grid';
-import { editorErrorMessage } from '../../../core/maps/map-errors';
+import { MapBlockedReason } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { editorErrorMessage, mapBlockedReason } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MapAsk } from '../map-ask/map-ask';
 
@@ -55,6 +56,8 @@ export class GridPanel {
 
   /** The map as the server has it after the change. */
   readonly changed = output<MapMessage>();
+  /** The server refused because of what a combat does (or no longer does): the page's flag is stale. */
+  readonly blocked = output<void>();
 
   protected readonly asking = signal(false);
   protected readonly typed = signal(String(DEFAULT));
@@ -76,6 +79,8 @@ export class GridPanel {
     return image && columns !== null ? gridRows(columns, image.width, image.height) : null;
   });
   protected readonly invalid = computed(() => this.columns() === null);
+  /** The size really changes: asking for the same grid would only erase for nothing. */
+  protected readonly changes = computed(() => this.columns() !== this.map().gridColumns);
   protected readonly min = MIN;
   protected readonly max = MAX;
 
@@ -98,7 +103,7 @@ export class GridPanel {
 
   protected async confirm(): Promise<void> {
     const columns = this.columns();
-    if (columns === null || this.busy()) {
+    if (columns === null || this.busy() || (this.hasGrid() && !this.changes())) {
       this.field()?.nativeElement.focus();
       return;
     }
@@ -109,7 +114,10 @@ export class GridPanel {
       this.asking.set(false);
       afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
     } catch (err) {
-      this.error.set(editorErrorMessage(err, 'mudar a grade'));
+      this.error.set(editorErrorMessage(err, 'grid', 'mudar a grade'));
+      if (mapBlockedReason(err) === MapBlockedReason.COMBAT_RUNNING) {
+        this.blocked.emit();
+      }
     } finally {
       this.busy.set(false);
     }

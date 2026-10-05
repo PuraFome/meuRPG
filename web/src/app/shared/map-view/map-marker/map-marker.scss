@@ -77,6 +77,10 @@ span.pt__hit {
   }
 }
 
+.pt__chest {
+  font-size: 20px;
+}
+
 .pt__icon {
   width: 18px;
   height: 18px;
@@ -101,7 +105,8 @@ span.pt__hit {
 }
 
 :host(.pt--selected) .pt__shape--pin {
-  border-color: var(--mr-accent);
+  // The mark that is drawn (`app-map-pins`) carries the selection ring: an area, a chest or a bulb, never an extra square here.
+  border-color: transparent;
 }
 
 .pt__badge {

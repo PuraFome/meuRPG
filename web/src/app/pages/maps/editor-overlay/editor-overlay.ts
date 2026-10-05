@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { MapLayers } from '../../../core/maps/layers';
-import type { Square } from '../../../core/combat/combat-grid';
+import { type Square, squareAt } from '../../../core/combat/combat-grid';
+import { SQUARE_FT } from '../../../core/units';
 import { type BrushCursor, MapLayersOverlay } from '../../../shared/map-layers/map-layers';
 import { MapPins } from '../../../shared/map-pins/map-pins';
 
@@ -39,16 +40,18 @@ export interface LightReach {
     @if (reach(); as r) {
       @if (r.center) {
         <svg class="reach" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
-          @if (r.dim > r.bright) {
+ @if (r.dim > r.bright) {
+            <circle class="reach__halo" [attr.cx]="r.center.x" [attr.cy]="r.center.y" [attr.r]="r.dim" />
             <circle class="reach__dim" [attr.cx]="r.center.x" [attr.cy]="r.center.y" [attr.r]="r.dim" />
           }
           @if (r.bright > 0) {
+            <circle class="reach__halo" [attr.cx]="r.center.x" [attr.cy]="r.center.y" [attr.r]="r.bright" />
             <circle class="reach__bright" [attr.cx]="r.center.x" [attr.cy]="r.center.y" [attr.r]="r.bright" />
           }
         </svg>
       }
     }
-    <app-map-pins [points]="points()" [columns]="columns()" [rows]="rows()" [isMaster]="true" />
+    <app-map-pins [points]="points()" [columns]="columns()" [rows]="rows()" [isMaster]="true" [faded]="faded()" [selectedId]="selectedId()" />
   `,
   styleUrl: './editor-overlay.scss',
   host: {
@@ -64,6 +67,9 @@ export class EditorOverlay {
   readonly points = input<readonly MapPoint[]>([]);
   readonly cursor = input<BrushCursor | null>(null);
   readonly lightReach = input<LightReach | null>(null);
+  /** Painting: the marks stand back at 40 %. */
+  readonly faded = input(false);
+  readonly selectedId = input<string | null>(null);
 
   protected readonly gridPath = computed(() => {
     const parts: string[] = [];
@@ -84,14 +90,11 @@ export class EditorOverlay {
     if (!light || cols === 0 || rows === 0) {
       return null;
     }
-    const square: Square = {
-      col: Math.min(cols - 1, Math.floor((light.xBp / 10000) * cols)),
-      row: Math.min(rows - 1, Math.floor((light.yBp / 10000) * rows)),
-    };
+    const square: Square = squareAt(light.xBp / 10000, light.yBp / 10000, cols, rows);
     return {
       center: { x: square.col + 0.5, y: square.row + 0.5 },
-      bright: light.brightFt / 5,
-      dim: (light.brightFt + light.dimFt) / 5,
+      bright: light.brightFt / SQUARE_FT,
+      dim: (light.brightFt + light.dimFt) / SQUARE_FT,
     };
   });
 }

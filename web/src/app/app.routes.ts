@@ -132,6 +132,8 @@ export const routes: Routes = [
     // viewer; the page picks by role and screen size.
     path: 'campanhas/:id/mapas/:mapId',
     canActivate: [authGuard],
+    // The master's editor may hold strokes the server has not taken yet: it sends them, or asks, before the page goes.
+    canDeactivate: [(page: { confirmLeave(): boolean | Promise<boolean> }) => page.confirmLeave()],
     loadComponent: () => import('./pages/maps/map-page/map-page').then((m) => m.MapPage),
   },
   {

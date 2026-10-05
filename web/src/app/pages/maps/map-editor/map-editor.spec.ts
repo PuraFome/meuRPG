@@ -5,6 +5,7 @@ import { By } from '@angular/platform-browser';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { LightLevel, MapLayer, MapPointKind, MapPointSchema, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -66,6 +67,8 @@ describe('MapEditor', () => {
   const button = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim().endsWith(t))!;
   const radio = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(t))!;
   const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
+  /** The painted squares are drawn once a frame: let one go by. */
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
   const flush = async () => {
     await new Promise((r) => setTimeout(r, 400));
     await settle();
@@ -154,6 +157,7 @@ describe('MapEditor', () => {
       button('Parede').click();
       await settle();
       surface()!.stroke.emit({ centers: [{ col: 3, row: 4 }], erase: false });
+      await frame();
       await settle();
       // On the screen before the server answers.
       expect(text()).toContain('1 quadrado · bloqueia movimento, visão e luz');
@@ -232,6 +236,7 @@ describe('MapEditor', () => {
       await settle();
       button('Parede').click();
       surface()!.stroke.emit({ centers: [{ col: 0, row: 0 }], erase: false });
+      await frame();
       await settle();
       expect(el.querySelectorAll('app-editor-overlay .sq--wall')).toHaveLength(1);
       const wall = Array.from(el.querySelectorAll<HTMLElement>('app-layers-panel [role="switch"]'))[1];
@@ -281,7 +286,167 @@ describe('MapEditor', () => {
       fixture.detectChanges();
       await settle();
       // The fog is on: the players may have seen something.
-      expect(fixture.componentInstance['erases']()).toBe(true);
+      expect(fixture.componentInstance['paint'].erases()).toBe(true);
+    });
+  });
+
+  describe('leaving with strokes', () => {
+    async function strokeWaiting(): Promise<void> {
+      await setup();
+      radio('Pintar').click();
+      await settle();
+      button('Parede').click();
+      surface()!.stroke.emit({ centers: [{ col: 3, row: 4 }], erase: false });
+      await frame();
+    }
+
+    it('lets him go at once when nothing waits', async () => {
+      await setup();
+      expect(await fixture.componentInstance.confirmLeave()).toBe(true);
+    });
+
+    it('sends what waits first, and goes when the server took it', async () => {
+      await strokeWaiting();
+      expect(await fixture.componentInstance.confirmLeave()).toBe(true);
+      expect(api.paints).toHaveLength(1);
+    });
+
+    it('asks in place when the server does not take the strokes, and "Voltar" stays', async () => {
+      await strokeWaiting();
+      api.failWith = new ConnectError('down', Code.Unavailable);
+      const answer = fixture.componentInstance.confirmLeave();
+      await flush();
+      expect(text()).toContain('Há traços que o servidor não recebeu');
+      expect(text()).toContain('Sair e perder os traços');
+      button('Voltar').click();
+      expect(await answer).toBe(false);
+      await settle();
+      expect(text()).not.toContain('Há traços que o servidor não recebeu');
+    });
+
+    it('"Sair e perder os traços" leaves', async () => {
+      await strokeWaiting();
+      api.failWith = new ConnectError('down', Code.Unavailable);
+      const answer = fixture.componentInstance.confirmLeave();
+      await flush();
+      button('Sair e perder os traços').click();
+      expect(await answer).toBe(true);
+    });
+
+    it('the browser asks too while strokes wait, and not when none do', async () => {
+      await strokeWaiting();
+      const waiting = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(waiting);
+      expect(waiting.defaultPrevented).toBe(true);
+      await flush();
+      const quiet = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(quiet);
+      expect(quiet.defaultPrevented).toBe(false);
+    });
+  });
+
+  describe('a grid change under strokes that wait', () => {
+    it('drops them: they were made on squares the map no longer has', async () => {
+      await setup();
+      radio('Pintar').click();
+      await settle();
+      button('Parede').click();
+      api.failWith = new ConnectError('down', Code.Unavailable);
+      surface()!.stroke.emit({ centers: [{ col: 20, row: 14 }], erase: false });
+      await frame();
+      await flush();
+      expect(text()).toContain('Não salvou');
+      api.failWith = null;
+      state.setMap({ ...state.map()!, gridColumns: 12, gridRows: 8, layersRevision: 2 });
+      await flush();
+      expect(text()).toContain('Tudo salvo');
+      expect(api.paints).toEqual([]);
+    });
+  });
+
+  describe('the screen in each mode', () => {
+    it('"Pintar" shows a clean map: no labels, and the markers stand back', async () => {
+      await setup();
+      expect(el.querySelectorAll('.lbl').length).toBeGreaterThan(0);
+      radio('Pintar').click();
+      await settle();
+      expect(el.querySelectorAll('.lbl')).toHaveLength(0);
+      expect(el.querySelector('app-map-view .mv--faded')).not.toBeNull();
+    });
+
+    it('the points of one square share one label', async () => {
+      await setup();
+      // The fixtures stand on different squares: each point has its own label here.
+      const labels = Array.from(el.querySelectorAll('.lbl'), (l) => l.textContent?.replace(/\s+/g, ' ').trim());
+      expect(labels.length).toBe(4);
+      expect(labels.some((l) => l?.includes('Fosso escondido'))).toBe(true);
+    });
+
+    it('the legend names only what the map has, with the toolbar\'s light names', async () => {
+      await setup();
+      const legend = el.querySelector('app-map-legend')?.textContent ?? '';
+      expect(legend).toContain('Cena de RP');
+      expect(legend).not.toContain('Batalha');
+      expect(legend).not.toContain('Submapa');
+      radio('Pintar').click();
+      await settle();
+      button('Luz').click();
+      await settle();
+      radio('Penumbra').click();
+      surface()!.stroke.emit({ centers: [{ col: 3, row: 2 }], erase: false });
+      await frame();
+      await settle();
+      expect(el.querySelector('app-map-layers-legend')?.textContent).toContain('Penumbra');
+      expect(text()).not.toContain('Luz em penumbra');
+      expect(text()).toContain('Tokens');
+    });
+
+    it('"Graus de cobertura" is in the side column while Cobertura is chosen, and not under the map', async () => {
+      await setup();
+      radio('Pintar').click();
+      await settle();
+      button('Cobertura').click();
+      await settle();
+      expect(el.querySelector('aside app-cover-degrees')).not.toBeNull();
+      expect(el.querySelector('.layout__map app-cover-degrees')).toBeNull();
+    });
+
+    it('without a grid the tools stay off with the reason beside them: none chosen, no brush, no "Tudo salvo"', async () => {
+      await setup({ gridColumns: 0, gridRows: 0 });
+      radio('Pintar').click();
+      await settle();
+      expect(el.querySelector('app-editor-bar #bar-why')).not.toBeNull();
+      expect(el.querySelectorAll('app-editor-bar [aria-pressed="true"]')).toHaveLength(0);
+      expect(radio('1×1').hasAttribute('disabled')).toBe(true);
+      expect(text()).not.toContain('Tudo salvo');
+    });
+
+    it('"Ver como" comes first in the side column', async () => {
+      await setup({ gridColumns: 24, gridRows: 16, fogEnabled: true, baseLight: LightLevel.DARK });
+      api.visions.set('c-toren', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
+      api.visions.set('c-pensantus', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
+      await settle();
+      const viewAs = el.querySelector('aside app-view-as-list')!;
+      const list = el.querySelector('aside app-point-list')!;
+      expect(viewAs.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('one question pattern: the unsaved point asks with the title focused and the filled button last', async () => {
+      await setup();
+      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) => r.textContent?.includes('Fosso escondido'))!.click();
+      await settle();
+      const field = Array.from(el.querySelectorAll('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)')!.querySelector('input')!;
+      field.value = '12';
+      field.dispatchEvent(new Event('input'));
+      await settle();
+      radio('Pintar').click();
+      await settle();
+      const ask = el.querySelector('app-map-ask')!;
+      expect(ask.querySelector('h3')?.textContent).toContain('Salvar as mudanças em Fosso escondido?');
+      expect(document.activeElement).toBe(ask.querySelector('h3'));
+      const buttons = Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim());
+      expect(buttons[0]).toBe('Continuar editando');
+      expect(buttons[1]).toBe('Salvar e continuar');
     });
   });
 
