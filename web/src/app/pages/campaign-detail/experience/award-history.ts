@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -17,6 +18,7 @@ import { newKey } from '../../../core/connect/idempotency';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { xpAborted, xpErrorMessage } from '../../../core/progression/xp-errors';
+import { awardTitle, townUndoneText } from '../../../core/progression/treasure';
 import {
   awardEach,
   awardTotal,
@@ -56,6 +58,12 @@ export class AwardHistory {
   readonly campaignId = input.required<string>();
   /** XP numbers are not shown in a campaign that levels by milestones. */
   readonly milestones = input(false);
+  /** The master reads which awards can still be undone, and why not. */
+  readonly isMaster = input(false);
+  /** The host has its own news on screen (a conversion just made): the history keeps its notice to itself. */
+  readonly hideNotice = input(false);
+  /** An award was undone: the host drops what it was saying about the one before. */
+  readonly undone = output<void>();
 
   protected readonly awards = this.store.awards;
   protected readonly hasMore = computed(() => this.store.nextPageToken() !== '');
@@ -76,9 +84,10 @@ export class AwardHistory {
   protected readonly tag = modeTag;
   protected readonly when = awardWhen;
   protected readonly given = givenLine;
+  protected readonly heading = awardTitle;
   protected readonly each = awardEach;
   protected readonly total = awardTotal;
-  protected readonly undone = undoneLine;
+  protected readonly undoneText = undoneLine;
   protected readonly title = undoTitle;
   protected consequence(award: XPAward): string {
     return undoConsequence(award, this.store.rows());
@@ -104,7 +113,8 @@ export class AwardHistory {
     this.error.set('');
     // The question replaced the "Desfazer" that opened it: focus goes back to it.
     afterNextRender(
-      () => this.host.nativeElement.querySelector<HTMLElement>(`[data-undo="${awardId}"]`)?.focus(),
+      // Code puts the focus back here, so it asks for the ring the browser would not draw on its own.
+      () => this.host.nativeElement.querySelector<HTMLElement>(`[data-undo="${awardId}"]`)?.focus({ focusVisible: true } as FocusOptions),
       { injector: this.injector },
     );
   }
@@ -118,16 +128,20 @@ export class AwardHistory {
     try {
       await this.api.undoLast(this.campaignId(), award.id, this.key);
       this.asking.set(null);
+      this.undone.emit();
       this.notice.set(
         award.mode === XPAwardMode.XP_AWARD_MODE_MILESTONE
           ? 'Marco desfeito.'
-          : 'XP desfeito: o histórico guarda o prêmio como “Desfeito”.',
+          : award.treasureCount > 0
+            ? townUndoneText(award)
+            : 'XP desfeito: o histórico guarda o prêmio como “Desfeito”.',
       );
       await this.store.refresh();
     } catch (err) {
       if (xpAborted(err)) {
         // Someone gave or undid another award: read again and say so.
         this.asking.set(null);
+        this.undone.emit();
         this.notice.set('O histórico mudou enquanto você olhava: outro prêmio foi dado ou desfeito. A lista foi atualizada; confira e tente de novo.');
         await this.store.refresh();
       } else {

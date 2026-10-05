@@ -51,6 +51,13 @@ export function metersText(feet: number): string {
   return formatMeters(feetToMeters(feet));
 }
 
+/** Meters with one decimal always ("9,0 m", "0,0 m"): what the movement says on
+ * the turn and the "Mover" page (E9-05), where "9 m" and "9,0 m" would not read
+ * as the same number from one screen to the next. */
+export function metersFixed(feet: number): string {
+  return tight(`${feetToMeters(feet).toFixed(1).replace('.', ',')} m`);
+}
+
 /** A distance in feet in the table's two units: "7,5 m · 5 quadrados". */
 export function distanceText(feet: number): string {
   return joinDots([metersText(feet), squaresText(reachSquares(feet))]);

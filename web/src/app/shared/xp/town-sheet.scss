@@ -1,0 +1,200 @@
+:host {
+  display: block;
+}
+
+.mr-notice {
+  margin-bottom: var(--mr-space-3);
+}
+
+.h {
+  margin: var(--mr-space-3) 0 var(--mr-space-1);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+}
+
+.none,
+.note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.trows,
+.people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A rule above every treasure, as the XP lists have; the row is a 56px target.
+.trow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 52px;
+  padding: 6px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.trow__who,
+.person__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trow__name,
+.person__name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+.trow__sub,
+.person__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.trow__po {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+// The characters are cards, two to a line from a tablet up.
+.people {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-2);
+
+  // Three to a line from a tablet up: the usual party fits in one row, so the dialog fits at 1280×800.
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.person {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+// The live calculation, in the fixed footer above the buttons (the number is
+// always in sight, whatever the list's length): the sum, the big line, and who
+// receives with what is left.
+.calc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.calc--wait {
+  border-style: dashed;
+  border-color: var(--mr-control-line);
+  background: none;
+}
+
+.calc__small {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.calc--wait .calc__small {
+  font-size: 16px;
+  line-height: 21px;
+  color: var(--mr-ink);
+}
+
+.calc__big {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+}
+
+.calc__who {
+  overflow-wrap: anywhere;
+}
+
+.calc__left {
+  &::before {
+    content: ' · ';
+  }
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.again {
+  align-self: flex-start;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+}
+
+.note--top {
+  margin: 0 0 var(--mr-space-1);
+}
+
+// A phone: no box and no sum, the big line on one line, who receives under it
+// (and what is left only when something is).
+@media (max-width: 767.98px) {
+  .calc,
+  .calc--wait {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .calc__sum {
+    display: none;
+  }
+
+  .calc__big {
+    font-size: 20px;
+    line-height: 24px;
+    white-space: nowrap;
+  }
+
+  .calc__to {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calc__who {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calc__left::before {
+    content: none;
+  }
+
+  .calc__left--zero {
+    display: none;
+  }
+}

@@ -75,7 +75,7 @@ describe('the NPC short form', () => {
     challengeRating: '1/4',
     xpValue: 50,
     portraitImageId: '',
-    size: 0,
+    size: 4,
   };
 
   it('loads a sheet and gives the same value back (metres on screen, feet stored)', () => {
@@ -87,6 +87,13 @@ describe('the NPC short form', () => {
     expect(form.controls.attacks.length).toBe(2);
     expect(form.valid).toBe(true);
     expect(basicFormToValue(form)).toEqual(goblin);
+  });
+
+  it('reads a sheet saved without a size as Médio, as the server does', () => {
+    const form = createBasicForm(fb());
+    patchBasicForm(fb(), form, { ...goblin, size: 0 });
+    expect(form.controls.size.value).toBe(3);
+    expect(basicFormToValue(form).size).toBe(3);
   });
 
   it('keeps the reach of an attack although the form has no field for it', () => {

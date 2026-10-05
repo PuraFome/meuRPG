@@ -269,7 +269,8 @@ export class CombatXp {
       amount: this.total() > 0 ? this.total() : undefined,
       encounterId: enc.id,
     }).subscribe(async (result) => {
-      if (result) {
+      // Never a "Voltar à cidade" request here: this sheet opens for a combat's XP, with no treasure strip.
+      if (result && 'award' in result) {
         this.just.set({ award: result.award, before: this.snapshot() });
         await this.store.refresh();
         this.focusConfirmation();

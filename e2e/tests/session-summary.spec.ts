@@ -68,10 +68,10 @@ test(
       await expect(tableRegion.getByRole('row').nth(1)).toContainText('Pensantus');
       await expect(tableRegion.getByRole('row').nth(1)).toContainText('1 de 2');
       await expect(master.getByText('Só contam testes de cenas que mostraram a CD aos jogadores;')).toBeVisible();
-      // "Voltar à campanha" is the only button; the treasure line is not drawn yet.
+      // "Voltar à campanha" is the only button; with no treasure found the block says so (MR-041).
       await expect(master.locator('app-session-ended').getByRole('button')).toHaveCount(0);
       await expect(master.getByRole('link', { name: 'Voltar à campanha', exact: true })).toBeVisible();
-      await expect(master.getByText('tesouro')).toHaveCount(0);
+      await expect(master.getByText('Nenhum tesouro registrado nesta sessão.')).toBeVisible();
 
       // The player gets the card from the stream's `session_ended`, with their own result and no table.
       const card = player.getByRole('region', { name: 'Resumo da sessão' });

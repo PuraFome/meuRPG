@@ -17,8 +17,14 @@ export function joinDots(parts: readonly string[]): string {
 export function tight(text: string): string {
   return text
     .replace(/(\d) a (\d)/g, '$1 a $2')
-    .replace(/(\d) (m|XP|PO|quadrados?|pés|horas?|minutos?|criaturas?)\b/g, '$1 $2')
+    .replace(/(\d) (m|XP|PO|quadrados?|pés|horas?|minutos?|criaturas?|tesouros?)\b/g, '$1 $2')
     .replace(/\b(alcance|de|das|às|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
+}
+
+/** A name or a word with its number ("Goblin 1", "Sessão 1", "Rodada 2") as one block, so a line
+ * never breaks between them. Apart from `tight()`, which stays for numbers and their units. */
+export function tieNumbers(text: string): string {
+  return text.replace(/(\p{Lu}\p{L}*) (?=\d)/gu, '$1 ');
 }
 
 /** "2.716": pt-BR thousands separator, done by hand so the result never

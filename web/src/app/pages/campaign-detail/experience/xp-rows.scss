@@ -101,3 +101,11 @@
     align-self: flex-end;
   }
 }
+
+// Right after an award: what each one got, in words and in the success ink.
+.num__gain {
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+  color: var(--mr-success-ink);
+}

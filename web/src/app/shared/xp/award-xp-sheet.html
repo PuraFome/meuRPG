@@ -12,6 +12,20 @@
     </div>
   }
 
+  @if (gold && !data.encounterId) {
+    <app-treasure-strip
+      [treasures]="treasures()"
+      [total]="treasuresTotal()"
+      [mode]="data.xpMode"
+      [state]="treasuresState()"
+      [button]="true"
+      (town)="goTown()"
+      [compact]="inSheet"
+      (retry)="retryTreasures()"
+    />
+    <p class="or" aria-hidden="true"><span>ou digite o ouro</span></p>
+  }
+
   <app-xp-reason
     [control]="reason"
     [placeholder]="'Por exemplo: Pelo resgate do mercador'"
@@ -36,7 +50,7 @@
 
   <section class="who" aria-labelledby="who-title">
     <h3 class="who__title" id="who-title">Quem recebe</h3>
-    @if (data.rows.length === 0) {
+    @if (rows().length === 0) {
       <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
     } @else {
       <app-xp-recipients [rows]="recipients()" (toggle)="toggle($event)" />
@@ -46,7 +60,13 @@
   </section>
 
   <div foot class="foot">
-    <app-xp-split variant="foot" [split]="split()" [total]="total()" [gold]="gold ? total() : 0" />
+    <app-xp-split
+      variant="foot"
+      [split]="split()"
+      [total]="total()"
+      [gold]="gold ? total() : 0"
+      [emptyText]="gold ? 'Digite o ouro para ver a divisão' : 'Digite o XP para ver a divisão'"
+    />
     <app-xp-actions
       [primaryLabel]="primaryLabel()"
       secondaryLabel="Cancelar"

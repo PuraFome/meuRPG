@@ -5,13 +5,14 @@ import { MatButton, MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { map, startWith, switchMap } from 'rxjs';
 
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 import type { ChallengeRatingVm } from '../character-editor.types';
 import { DefeatXp } from '../defeat-xp/defeat-xp';
 import { PortraitField } from '../portrait-field/portrait-field';
-import { BasicSheetFormGroup, MAX_ATTACKS, createAttackGroup } from './basic-form';
+import { BasicSheetFormGroup, MAX_ATTACKS, SIZE_CHOICES, createAttackGroup } from './basic-form';
 import { NpcAttackCard } from './npc-attack-card';
 
 export type { BasicSheetFormGroup } from './basic-form';
@@ -31,6 +32,7 @@ export type { BasicSheetFormGroup } from './basic-form';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
     NpcAttackCard,
     PortraitField,
     ReactiveFormsModule,
@@ -53,6 +55,7 @@ export class NpcShortForm {
   });
 
   protected readonly maxAttacks = MAX_ATTACKS;
+  protected readonly sizes = SIZE_CHOICES;
   /** What the last removal did, for a screen reader ("Ataque 2 removido."). */
   protected readonly status = signal('');
 

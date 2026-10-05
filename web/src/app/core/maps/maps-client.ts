@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import {
+  type GetMapLayersResponse,
   type GetMapResponse,
   type Map as MapMessage,
   MapPointKind,
@@ -48,6 +49,12 @@ export class MapsClient {
 
   get(campaignId: string, mapId: string): Promise<GetMapResponse> {
     return this.client.getMap({ campaignId, mapId });
+  }
+
+  /** `GetMapLayers`: the walls, the difficult terrain and the cover the caller
+   * may read (packed; `decodeLayers` unpacks them). */
+  layers(campaignId: string, mapId: string): Promise<GetMapLayersResponse> {
+    return this.client.getMapLayers({ campaignId, mapId });
   }
 
   async create(campaignId: string, name: string, imageId: string): Promise<MapMessage> {

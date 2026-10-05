@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { XpChanges } from '../../../core/progression/xp-changes';
+import { townGivenText } from '../../../core/progression/treasure';
 import { givenText, milestoneText } from '../../../core/progression/xp-labels';
 import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button';
 
@@ -23,6 +24,9 @@ import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button
       [campaignName]="campaignName()"
       [xpMode]="store.xpMode()"
       [rows]="store.rows()"
+      [treasures]="store.treasures()"
+      [treasuresTotal]="store.treasuresTotal()"
+      [treasuresState]="store.treasuresState()"
       (given)="given($event)"
     />
     <div class="status" role="status">
@@ -65,7 +69,7 @@ export class SessionXp {
   constructor() {
     effect(() => {
       const id = this.campaignId();
-      untracked(() => void this.store.load(id, false));
+      untracked(() => void this.store.load(id, false, true));
     });
     // `xp_changed`: the characters' XP and who is alive may have moved.
     let seen = untracked(() => this.changes.version());
@@ -73,7 +77,8 @@ export class SessionXp {
       const v = this.changes.version();
       if (v !== seen) {
         seen = v;
-        untracked(() => void this.store.refresh());
+        // The sheets read the treasures again as they open: no need to here on every event.
+        untracked(() => void this.store.refresh({ treasures: false }));
       }
     });
   }
@@ -81,7 +86,9 @@ export class SessionXp {
   protected async given(result: GiveResult): Promise<void> {
     this.confirmation.set(
       result.kind === 'xp'
-        ? givenText(result.result.award.totalXp, result.result.xpEach, result.result.lostXp)
+        ? result.result.award.treasureCount > 0
+          ? townGivenText(result.result.award, result.result.xpEach, result.result.lostXp)
+          : givenText(result.result.award.totalXp, result.result.xpEach, result.result.lostXp)
         : milestoneText(result.award, result.award.shares.length === this.store.rows().length),
     );
     await this.store.refresh();

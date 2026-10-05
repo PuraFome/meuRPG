@@ -42,21 +42,53 @@
 }
 
 .legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--mr-space-2) var(--mr-space-5);
-  margin: 0;
+  display: block;
   padding: var(--mr-space-3) 0 0;
   border-top: 1px solid var(--mr-rule);
-  list-style: none;
-  font-size: 14px;
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: var(--mr-space-2);
+  .mr-legend {
+    margin: 0;
+    font-size: 14px;
+    gap: var(--mr-space-2) var(--mr-space-5);
+  }
+
+  // The rings are outlines, drawn outside the token: room for them keeps the
+  // ring on the legend's left edge instead of past it.
+  app-combatant-token.tk--current {
+    margin: 5px;
+  }
+
+  app-combatant-token.tk--mine:not(.tk--current) {
+    margin: 3px;
   }
 }
+
+.card__reach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.card__check {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 44px;
+  font-weight: 700;
+  cursor: pointer;
+
+  input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--mr-accent);
+  }
+}
+
+.card__hint--text {
+  align-items: flex-start;
+  color: var(--mr-ink-muted);
+}
+
 
 .card__note {
   margin: 0;

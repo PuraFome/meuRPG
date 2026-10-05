@@ -21,10 +21,11 @@ import {
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { article } from './combat-log';
+import { listing } from './cover';
 import { effectWords, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 
@@ -197,12 +198,19 @@ export interface CastTargetRow {
   readonly label: string;
   readonly sub: string;
   readonly blocked: string;
+  /** The cover the target has against this caster ("Meia cobertura (do mapa)") and its pictogram. */
+  readonly cover: string;
+  readonly coverMark: 'half' | 'three' | null;
 }
 
 /** The rows of the target step. `reach` is "Longe demais: alcance de 36 m"
  * for a target the spell cannot reach. */
 export function castTargetRows(targets: readonly TargetInReach[], casterId: string, reachFt: number | null): CastTargetRow[] {
-  return targets.map((t) => {
+  return targets.flatMap((t) => {
+    const cover = listing(t);
+    if (cover.kind === 'left-out') {
+      return [];
+    }
     const parts: string[] = [];
     if (t.combatantId === casterId) {
       parts.push('você');
@@ -212,15 +220,24 @@ export function castTargetRows(targets: readonly TargetInReach[], casterId: stri
         parts.push(word);
       }
       if (t.distanceFt !== undefined) {
-        parts.push(`a ${metersText(t.distanceFt)}`);
+        parts.push(`a ${metersFixed(t.distanceFt)}`);
       }
     }
-    return {
-      id: t.combatantId,
-      label: t.combatantId === casterId ? `${t.label} (você)` : t.label,
-      sub: tight(joinDots(parts)),
-      blocked: t.untargetable ? 'Atrás de cobertura total' : t.tooFar ? tight(reachFt ? `Longe demais: alcance de ${metersText(reachFt)}` : 'Longe demais') : '',
-    };
+    return [
+      {
+        id: t.combatantId,
+        label: t.combatantId === casterId ? `${t.label} (você)` : t.label,
+        sub: tight(joinDots(parts)),
+        blocked:
+          cover.kind === 'blocked'
+            ? cover.text
+            : t.tooFar
+              ? tight(reachFt ? `Longe demais: alcance de ${metersText(reachFt)}` : 'Longe demais')
+              : '',
+        cover: cover.kind === 'listed' ? cover.text : '',
+        coverMark: cover.kind === 'listed' ? cover.mark : null,
+      },
+    ];
   });
 }
 

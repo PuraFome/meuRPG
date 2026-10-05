@@ -4,7 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ExperienceStore } from '../../../core/progression/experience-store';
+import { townGivenText } from '../../../core/progression/treasure';
 import { experienceLead, givenText, milestoneText } from '../../../core/progression/xp-labels';
+import { TreasureStrip } from '../../../shared/xp/treasure-strip';
 import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button';
 import { MilestonesPanel } from '../milestones/milestones-panel';
 import { AwardHistory } from './award-history';
@@ -21,7 +23,7 @@ import { XpRows } from './xp-rows';
  */
 @Component({
   selector: 'app-experience-panel',
-  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, XpGiveButton, XpRows],
+  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, TreasureStrip, XpGiveButton, XpRows],
   templateUrl: './experience-panel.html',
   styleUrl: './experience-panel.scss',
 })
@@ -34,6 +36,8 @@ export class ExperiencePanel {
 
   /** What the master just gave, said once in a polite status. */
   protected readonly confirmation = signal('');
+  /** What each character got from the award just made ("+105 XP"), until the next change. */
+  protected readonly gained = signal<ReadonlyMap<string, number>>(new Map());
   private readonly status = viewChild<ElementRef<HTMLElement>>('status');
   private readonly injector = inject(Injector);
 
@@ -67,15 +71,23 @@ export class ExperiencePanel {
 
   protected async given(result: GiveResult): Promise<void> {
     if (result.kind === 'xp') {
+      const { award, xpEach, lostXp } = result.result;
       this.confirmation.set(
-        givenText(result.result.award.totalXp, result.result.xpEach, result.result.lostXp),
+        award.treasureCount > 0 ? townGivenText(award, xpEach, lostXp) : givenText(award.totalXp, xpEach, lostXp),
       );
+      this.gained.set(new Map(award.shares.map((s) => [s.characterId, s.xp])));
     } else {
       this.confirmation.set(
         milestoneText(result.award, result.award.shares.length === this.store.rows().length),
       );
     }
     await this.store.refresh();
+  }
+
+  /** An undo: what was said about the award before is no longer true. */
+  protected undone(): void {
+    this.confirmation.set('');
+    this.gained.set(new Map());
   }
 
   protected retry(): void {

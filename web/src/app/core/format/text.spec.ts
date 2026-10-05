@@ -40,3 +40,9 @@ describe('formatInt and formatXp', () => {
   });
 });
 
+describe('tight with treasures (E9-09)', () => {
+  it('ties a count to "tesouro" and "tesouros"', () => {
+    expect(tight('3 tesouros · 420 PO')).toBe('3\u00a0tesouros · 420\u00a0PO');
+    expect(tight('1 tesouro')).toBe('1\u00a0tesouro');
+  });
+});

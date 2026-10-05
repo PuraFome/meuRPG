@@ -12,8 +12,10 @@ import {
   formatDuration,
   sessionSpan,
   summaryOwn,
+  masterTiles,
   summaryRows,
   summaryTiles,
+  treasureRows,
 } from '../../../core/play/session-summary';
 import { HighlightTiles } from '../../../shared/highlights/highlight-tiles';
 import { HighlightsFrame } from '../../../shared/highlights/highlights-frame';
@@ -40,8 +42,9 @@ type Load = 'loading' | 'ready' | 'failed';
  *   longer the live one. "Fechar" or the ✕ leaves the plain "A sessão acabou"
  *   notice (and "Voltar para a campanha").
  *
- * "Mais tesouro encontrado" is not drawn yet: it comes with the treasure (MR-041).
- * If the summary cannot be read, the page says so with "Tentar de novo" under the
+ * "Mais tesouro encontrado" (MR-041, E9-09): the master has a block of its own, one
+ * row for everyone who found treasure (or the line that none was), and the player's
+ * card has it as one more tile and in "Seu resultado". If the summary cannot be read, the page says so with "Tentar de novo" under the
  * plain notice: the summary is a bonus, never a screen the person needs. The card fades in over
  * 200ms, never under `prefers-reduced-motion`.
  */
@@ -81,6 +84,15 @@ export class SessionEnded {
   protected readonly tiles = computed(() => {
     const s = this.summary();
     return s ? summaryTiles(s) : [];
+  });
+  /** The master's tiles: the player's card has the treasure tile, this page its own block. */
+  protected readonly masterTiles = computed(() => {
+    const s = this.summary();
+    return s ? masterTiles(s) : [];
+  });
+  protected readonly treasure = computed(() => {
+    const s = this.summary();
+    return s ? treasureRows(s) : [];
   });
   protected readonly rows = computed(() => {
     const s = this.summary();

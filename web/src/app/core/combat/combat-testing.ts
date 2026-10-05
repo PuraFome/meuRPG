@@ -1,7 +1,9 @@
 import {
   type Combatant,
   CombatantKind,
+  CombatantSide,
   CombatantState,
+  CoverDegree,
   type Encounter,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -37,6 +39,9 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     armorClassBonus: 0,
     deathSaveDue: false,
     turnPartEnded: false,
+    side: CombatantSide.ENEMY,
+    coverMark: CoverDegree.NONE,
+    disengaged: false,
     ...over,
   } as unknown as Combatant;
 }
@@ -57,6 +62,7 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     reactionPrompts: [],
     turnGroupIds: [],
     npcOnlyGroups: [],
+    opportunityOffers: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

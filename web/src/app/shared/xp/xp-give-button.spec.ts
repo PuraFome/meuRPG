@@ -6,21 +6,37 @@ import { create } from '@bufbuild/protobuf';
 import { of } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { XPAwardSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import { TreasureToConvertSchema, XPAwardSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { AwardXpSheet } from './award-xp-sheet';
 import { MilestoneSheet } from './milestone-sheet';
+import { TownSheet } from './town-sheet';
 import { type GiveResult, XpGiveButton } from './xp-give-button';
 
 const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 0, nextLevelXp: 300, canLevelUp: false, levelUpReason: 0 }];
 
 @Component({
   imports: [XpGiveButton],
-  template: `<app-xp-give-button campaignId="camp-1" campaignName="Mirathel" [xpMode]="mode" [rows]="rows" (given)="results.push($event)" />`,
+  template: `<app-xp-give-button
+    campaignId="camp-1"
+    campaignName="Mirathel"
+    [xpMode]="mode"
+    [rows]="rows"
+    [treasures]="treasures"
+    [treasuresTotal]="treasures.length"
+    [showTown]="showTown"
+    [treasuresState]="treasuresState"
+    [block]="block"
+    (given)="results.push($event)"
+  />`,
 })
 class Host {
   mode = XpMode.ENEMIES;
   rows = rows;
+  treasures = [create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 })];
+  showTown = false;
+  treasuresState: 'loading' | 'ready' | 'error' = 'ready';
+  block = false;
   results: GiveResult[] = [];
 }
 
@@ -71,5 +87,124 @@ describe('XpGiveButton', () => {
     const given = setup(XpMode.ENEMIES, { award, xpEach: 50, lostXp: 0 });
     given.button!.click();
     expect(given.host.results).toEqual([{ kind: 'xp', result: { award, xpEach: 50, lostXp: 0 } }]);
+  });
+
+  describe('"Voltar à cidade" (E9-09)', () => {
+    function gold(answer: unknown, showTown = true) {
+      open.mockReset().mockReturnValue({ afterClosed: () => of(answer) });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.mode = XpMode.GOLD;
+      fixture.componentInstance.showTown = showTown;
+      fixture.detectChanges();
+      const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
+      return { fixture, buttons, host: fixture.componentInstance };
+    }
+
+    it('adds an outlined "Voltar à cidade" beside "Dar XP" in a campaign by gold, and opens the conversion with the treasures', () => {
+      const { buttons } = gold(undefined);
+      expect(buttons.map((b) => b.textContent?.replace('currency_exchange', '').trim())).toEqual(['Dar XP', 'Voltar à cidade']);
+      expect(buttons.every((b) => b.classList.contains('mat-mdc-outlined-button'))).toBe(true);
+      buttons[1].click();
+      expect(open.mock.calls[0][0]).toBe(TownSheet);
+      expect(open.mock.calls[0][1]).toMatchObject({ data: { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows, total: 1 }, width: '600px' });
+      expect(open.mock.calls[0][1].data.treasures).toHaveLength(1);
+    });
+
+    it('has only "Dar XP" where the host does not ask for it (the session page), or in another mode', () => {
+      expect(gold(undefined, false).buttons).toHaveLength(1);
+      TestBed.resetTestingModule();
+      open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
+      TestBed.configureTestingModule({
+        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.showTown = true;
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(1);
+    });
+
+    it('hands "Dar XP" the treasures in a campaign by gold only', () => {
+      const { buttons } = gold(undefined);
+      buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toHaveLength(1);
+      TestBed.resetTestingModule();
+      open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
+      TestBed.configureTestingModule({
+        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+    });
+
+    it('opens the conversion when "Dar XP" asks for it (and gives nothing itself)', () => {
+      const { buttons, host } = gold({ town: true });
+      // The conversion is then cancelled.
+      open.mockReturnValueOnce({ afterClosed: () => of({ town: true }) }).mockReturnValueOnce({ afterClosed: () => of(undefined) });
+      buttons[0].click();
+      expect(open.mock.calls.map((c) => c[0])).toEqual([AwardXpSheet, TownSheet]);
+      expect(host.results).toEqual([]);
+    });
+
+    it('says what was converted, as any XP award', () => {
+      const award = create(XPAwardSchema, { id: 'a1', treasureCount: 3, gold: 420 });
+      const { buttons, host } = gold({ award, xpEach: 105, lostXp: 0 });
+      buttons[1].click();
+      expect(host.results).toEqual([{ kind: 'xp', result: { award, xpEach: 105, lostXp: 0 } }]);
+    });
+  });
+
+  describe('what the sheets are told of the treasures, and the focus after them', () => {
+    function goldHost(over: Partial<Host>) {
+      open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.mode = XpMode.GOLD;
+      Object.assign(fixture.componentInstance, over);
+      fixture.detectChanges();
+      return { fixture, buttons: Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')) };
+    }
+
+    it('hands over the list only once it was read: "lendo" must never turn into a false "nenhum"', () => {
+      goldHost({ treasuresState: 'loading', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+      goldHost({ treasuresState: 'error', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+      goldHost({ treasuresState: 'ready', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toEqual([]);
+      const town = goldHost({ treasuresState: 'loading', treasures: [], showTown: true });
+      town.buttons[1].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+    });
+
+    it('puts the focus back on the button that opened the sheet, asking for the focus ring', () => {
+      vi.useFakeTimers();
+      try {
+        const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => undefined);
+        const { buttons } = goldHost({ showTown: true });
+        buttons[1].click();
+        vi.runAllTimers();
+        expect(focus).toHaveBeenCalledWith({ focusVisible: true });
+        expect(focus.mock.contexts.at(-1)).toBe(buttons[1]);
+        focus.mockRestore();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('makes every button the full width on a phone when the host asks (the panel), in any mode', () => {
+      const { fixture, buttons } = goldHost({ block: true });
+      expect((fixture.nativeElement.querySelector('app-xp-give-button') as HTMLElement | null) ?? fixture.nativeElement).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-xp-give-button').classList.contains('block')).toBe(true);
+      expect(buttons[0].classList.contains('give--block')).toBe(true);
+    });
   });
 });
