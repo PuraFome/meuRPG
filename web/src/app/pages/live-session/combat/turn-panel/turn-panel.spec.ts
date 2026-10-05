@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
+import { textOf } from '../../../../core/format/text-testing';
+
 import { CombatantKind, CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { TurnPanel } from './turn-panel';
@@ -68,5 +70,13 @@ describe('TurnPanel', () => {
     expect(notices[0]).toContain('Esperando a reação do mestre. Seu movimento já valeu; a sua vez continua quando ele responder.');
     expect(notices[1]).toContain('Você parou antes: algo bloqueou o caminho.');
     expect(el.querySelectorAll('.turn__notice[role="status"]').length).toBe(2);
+  });
+
+  it('says the player is blind while looking through the familiar\'s eyes, and offers no attack (MR-036, E9-04)', () => {
+    const blindOrder = order.map((c) => (c.id === 'pen' ? { ...c, familiarSightCreatureId: 'nanquim' } : c));
+    const el = text({ combatants: blindOrder, currentCombatantId: 'pen' });
+    expect(textOf(el.querySelector('[data-testid="familiar-blind"]'))).toBe('visibility_off Cego: para atacar, fale com o mestre.');
+    // Without the sight there is no such line.
+    expect(text({ currentCombatantId: 'pen' }).querySelector('[data-testid="familiar-blind"]')).toBeNull();
   });
 });

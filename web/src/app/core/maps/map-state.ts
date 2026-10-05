@@ -101,11 +101,12 @@ export class MapState {
     if (mapId !== this.map()?.id) {
       return true;
     }
-    if (!this.tokens().some((t) => t.characterId === characterId)) {
+    // A creature's token carries its owner's `character_id`: only the character's own token moves here.
+    if (!this.tokens().some((t) => !t.creatureId && t.characterId === characterId)) {
       return false;
     }
     this.tokens.update((list) =>
-      list.map((t) => (t.characterId === characterId ? { ...t, xBp, yBp } : t)),
+      list.map((t) => (!t.creatureId && t.characterId === characterId ? { ...t, xBp, yBp } : t)),
     );
     return true;
   }
@@ -124,16 +125,17 @@ export class MapState {
     this.touchCount();
   }
 
+  /** Adds a token or replaces the one it names. A creature's token carries its owner's `character_id`, so a token
+   * is told apart by `tokenKey`: the creature's ID when it is one, the character's otherwise. */
   upsertToken(token: MapToken): void {
+    const key = tokenKey(token);
     this.tokens.update((list) =>
-      list.some((t) => t.characterId === token.characterId)
-        ? list.map((t) => (t.characterId === token.characterId ? token : t))
-        : [...list, token],
+      list.some((t) => tokenKey(t) === key) ? list.map((t) => (tokenKey(t) === key ? token : t)) : [...list, token],
     );
   }
 
   removeToken(characterId: string): void {
-    this.tokens.update((list) => list.filter((t) => t.characterId !== characterId));
+    this.tokens.update((list) => list.filter((t) => t.creatureId || t.characterId !== characterId));
   }
 
   setMap(map: MapMessage): void {
@@ -146,6 +148,11 @@ export class MapState {
       this.map.set({ ...map, pointCount: this.points().length });
     }
   }
+}
+
+/** What tells one token from another on a map: a creature's ID, or the character's (a creature's `character_id` is its owner's). */
+export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
+  return token.creatureId || token.characterId;
 }
 
 export function isGone(err: unknown): boolean {

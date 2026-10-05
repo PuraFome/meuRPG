@@ -1,0 +1,220 @@
+:host {
+  display: block;
+}
+
+.fm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.fm__notice {
+  scroll-margin-top: 72px;
+
+  strong {
+    display: block;
+  }
+}
+
+// The party's chips (phone): each a 44 px target.
+.fm__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fm__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.fm__you {
+  color: var(--mr-ink-muted);
+}
+
+// The frame is reserved from the image's size; before the vision arrives it is a still, striped place.
+.fm__stage {
+  position: relative;
+  width: 100%;
+  max-width: calc(78vh * var(--fm-ar, 1.5));
+  margin-inline: auto;
+}
+
+.fm__stage--waiting {
+  overflow: hidden;
+  border-radius: var(--mr-radius-md);
+}
+
+.fm__wait {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 2px dashed var(--mr-control-line);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--mr-map-token-down) 45%, var(--mr-map-fog)) 0 6px,
+    color-mix(in srgb, var(--mr-map-token-down) 22%, var(--mr-map-fog)) 6px 12px
+  );
+}
+
+.fm__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.fm__zoom {
+  display: flex;
+  gap: var(--mr-space-2);
+}
+
+.fm__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--mr-ink-muted);
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.fm__hint {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+}
+
+.fm__legend {
+  margin-block: calc(-1 * var(--mr-space-1));
+}
+
+// A character's creature in the legend: round, with a dashed ring (MAP-LANGUAGE.md).
+.fm__creature {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  outline: 1.5px dashed var(--mr-ink);
+  outline-offset: 2px;
+  font-family: var(--mr-font-display);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.fm__caption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// "Vendo como Toren (Caio)": over the map's top-left corner, above the tokens.
+.fm__badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 12px 4px 8px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// A character off the map who never saw anything: a small box, not a black map.
+.fm__none {
+  height: 72px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-map-fog);
+}
+
+// A mark of the legend: a fixed 22 px box, so every entry has the same 8 px between its mark and its words.
+.fm__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+// "Você vê": a card under the legend, a title line and one line for each thing the viewer can use.
+.fm__caption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.fm__cap-line {
+  display: block;
+}

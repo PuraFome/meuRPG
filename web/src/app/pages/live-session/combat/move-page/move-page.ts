@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { type Encounter, type GetMoveOptionsResponse, MoveRefusal } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { JumpLimits } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { Vision } from '../../../../core/maps/vision';
 import { type Square, stepSquare } from '../../../../core/combat/combat-grid';
 import {
   HEIGHT_STEP_DFT,
@@ -84,6 +85,8 @@ export class MovePage {
   readonly sessionNumber = input(0);
   /** "Ver mapa": the same page without the reach and the buttons. */
   readonly readOnly = input(false);
+  /** What the player sees of the map with the fog on: the page draws it instead of the image (MR-036). */
+  readonly fog = input<Vision | null>(null);
   /** The master's "Abrir mapa": hidden combatants are drawn too. */
   readonly isMaster = input(false);
   readonly busy = input(false);

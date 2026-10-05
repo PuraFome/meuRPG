@@ -15,13 +15,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import type { CharacterCreature } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { sourcePhrase } from '../../../core/creatures/creature-format';
 import { joinDots, tight } from '../../../core/format/text';
 import { metersText } from '../../../core/units';
+import { FamiliarEyesButton } from '../../../shared/familiar-eyes/familiar-eyes-button';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { CreatureEdit, type EditMode } from './creature-edit';
 
@@ -45,7 +46,7 @@ import { CreatureEdit, type EditMode } from './creature-edit';
  */
 @Component({
   selector: 'app-creature-card',
-  imports: [CreatureArt, CreatureEdit, MatButtonModule, MatIconModule, RouterLink],
+  imports: [CreatureArt, CreatureEdit, FamiliarEyesButton, MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './creature-card.html',
   styleUrl: './creature-card.scss',
 })
@@ -59,9 +60,12 @@ export class CreatureCard {
   readonly ownerName = input.required<string>();
   readonly creature = input.required<CharacterCreature>();
   readonly isMaster = input(false);
+  /** A session is open: a familiar can be looked through ("Ver pelos olhos", MR-036). The player's, not the master's. */
+  readonly live = input(false);
   /** The creature changed (renamed, dismissed, corrected): the panel reads the list again, and says how. */
   readonly changed = output<EditMode>();
 
+  protected readonly seeable = computed(() => this.live() && !this.isMaster() && this.creature().source === CreatureSource.FAMILIAR);
   protected readonly block = signal<Creature | null>(null);
   protected readonly mode = signal<EditMode | null>(null);
 

@@ -5,6 +5,7 @@
     [class.mv--interactive]="interactive()"
     [class.mv--zoomed]="scale() > 1"
     [class.mv--placing]="placing()"
+    [class.mv--grid]="squares() > 0"
     [style.aspect-ratio]="aspect()"
     [attr.role]="interactive() ? 'group' : 'img'"
     [attr.aria-label]="(interactive() ? 'Mapa ' : 'Prévia do mapa ') + mapName()"
@@ -21,16 +22,26 @@
     (focusin)="raise($event)"
     (focusout)="lower()"
   >
-    <div class="mv__stage" [style.transform]="transformCss()" [style.--s]="transform().scale">
-      <img
-        class="mv__img"
-        [src]="image().url"
-        alt=""
-        [width]="image().width"
-        [height]="image().height"
-        draggable="false"
-        decoding="async"
-      />
+    <div
+      class="mv__stage"
+      [class.mv__stage--grid]="squares() > 0"
+      [style.transform]="transformCss()"
+      [style.--s]="transform().scale"
+      [style.--cols]="squares() || null"
+    >
+      @if (image().url) {
+        <img
+          class="mv__img"
+          [src]="image().url"
+          alt=""
+          [width]="image().width"
+          [height]="image().height"
+          draggable="false"
+          decoding="async"
+        />
+      }
+      <!-- The picture of a fog map: the tiles, the layers and the shading of the viewer (app-fog-base). -->
+      <ng-content select="[mapBase]" />
 
       <!-- Marks a screen draws over the picture and under the markers (the trap areas and the chests, `app-map-pins`). -->
       <ng-content select="[mapOverlay]" />
@@ -44,14 +55,15 @@
           [raised]="raisedKey() === 'point:' + p.id"
         />
       }
-      @for (t of shownTokens(); track t.characterId) {
+      @for (t of shownTokens(); track tokenKey(t)) {
         <app-map-token
           [token]="t"
           [initial]="initial(t)"
           [at]="tokenAt(t)"
           [interactive]="tokensMovable()"
-          [selected]="selectedKey() === 'token:' + t.characterId"
-          [raised]="raisedKey() === 'token:' + t.characterId"
+          [selected]="selectedKey() === 'token:' + tokenKey(t)"
+          [kindShapes]="kindShapes()"
+          [raised]="raisedKey() === 'token:' + tokenKey(t)"
         />
       }
       @for (p of shownPoints(); track p.id) {

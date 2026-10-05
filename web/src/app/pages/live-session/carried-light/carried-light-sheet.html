@@ -1,0 +1,32 @@
+<app-sheet-frame title="Luz que você carrega" [subtitle]="data.characterName" titleId="sheet-t" [phone]="inSheet" (closed)="close()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <div class="opts" role="radiogroup" aria-label="Luz que você carrega">
+    <label class="opt" [class.opt--on]="chosen() === none">
+      <input type="radio" class="mr-visually-hidden" [name]="id" [attr.data-key]="none" [checked]="chosen() === none" [disabled]="busy()" (change)="pick(none)" />
+      <span class="opt__disc" aria-hidden="true"></span>
+      <span class="opt__text">
+        <b class="opt__name">Nenhuma</b>
+        <span class="opt__sub">Sem luz: só enxerga o que já está iluminado</span>
+      </span>
+    </label>
+    @for (o of data.options; track o.key) {
+      <label class="opt" [class.opt--on]="chosen() === o.key">
+        <input type="radio" class="mr-visually-hidden" [name]="id" [attr.data-key]="o.key" [checked]="chosen() === o.key" [disabled]="busy()" (change)="pick(o.key)" />
+        <span class="opt__disc" aria-hidden="true"></span>
+        <span class="opt__text">
+          <b class="opt__name">{{ o.name }}</b>
+          <span class="opt__sub">{{ o.radii }}</span>
+        </span>
+      </label>
+    }
+  </div>
+  <p class="note">A escolha vale na hora, para quem enxerga o seu personagem. Ela anda com você.</p>
+  <div foot>
+    <button mat-flat-button type="button" class="done" (click)="close()">Pronto</button>
+  </div>
+</app-sheet-frame>

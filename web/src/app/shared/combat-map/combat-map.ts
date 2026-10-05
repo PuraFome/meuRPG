@@ -7,6 +7,8 @@ import type { MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
 import { CombatantToken } from '../combatant-token/combatant-token';
+import type { Vision } from '../../core/maps/vision';
+import { FogBase } from '../fog-map/fog-base';
 import { MapLayersOverlay } from '../map-layers/map-layers';
 
 /** The map's picture: its URL and size (the frame is reserved from it). */
@@ -51,6 +53,8 @@ export interface TokenDrop extends Square {
  *
  * - **Who is drawn:** the combatants that have a square. A player never gets a
  *   hidden one from the server; the master's hidden ones are drawn dashed.
+ * - **Fog (Etapa 9):** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
+ *   shading of what they see) instead of the image; the combatants are what the server sends them.
  * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
  *   by `app-map-layers` over the image.
  * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
@@ -68,7 +72,7 @@ export interface TokenDrop extends Square {
  */
 @Component({
   selector: 'app-combat-map',
-  imports: [CombatantToken, MapLayersOverlay, MatIconModule],
+  imports: [CombatantToken, FogBase, MapLayersOverlay, MatIconModule],
   templateUrl: './combat-map.html',
   styleUrl: './combat-map.scss',
 })
@@ -82,6 +86,8 @@ export class CombatMap {
   readonly currentId = input('');
   readonly reach = input<Reach | null>(null);
   readonly layers = input<MapLayers | null>(null);
+  /** A player's map with the fog of war on (MR-036, E9-03): what they see, drawn with the tiles the server made for them in place of the image. */
+  readonly fog = input<Vision | null>(null);
   readonly offers = input<readonly OfferMark[]>([]);
   readonly chosen = input<Chosen | null>(null);
   /** One square marked without a token (E6-02: "O quadrado marcado tem
@@ -101,6 +107,10 @@ export class CombatMap {
   readonly confirm = output<void>();
   /** A token was dropped on a square (a drag, or Enter after the arrows). */
   readonly tokenDrop = output<TokenDrop>();
+  /** The places of the fog map whose tile has arrived. */
+  readonly fogSettled = output<ReadonlySet<string>>();
+  /** Whether the first load of the fog map is still going (a tile that arrives later is not a load). */
+  readonly fogLoadingChange = output<boolean>();
 
   private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
 

@@ -34,12 +34,17 @@
   @media (min-width: 1024px) {
     grid-template-columns: minmax(0, 1fr) 400px;
     grid-template-areas:
+      'main fog'
       'main image'
       'main scene'
       'main party'
       'main tokens'
       'traps traps';
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto;
+
+    .board__fog {
+      grid-area: fog;
+    }
 
     .board__left {
       grid-area: main;
@@ -72,11 +77,12 @@
 .board--scene-open {
   @media (min-width: 1024px) {
     grid-template-areas:
+      'main fog'
       'main image'
       'main party'
       'main tokens'
       'traps traps';
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
   }
 }
 
@@ -124,6 +130,7 @@
 }
 
 .board__party,
+.board__fog,
 .board__image,
 .board__tokens,
 .board__main,
@@ -137,7 +144,9 @@
 // The combat takes the board's place (MR-013); the launch strip sits above
 // the board, with the same step under the header.
 .combat,
-.launch {
+.launch,
+.familiar,
+.fog-panel {
   display: block;
   margin-top: var(--mr-space-6);
 }

@@ -24,7 +24,19 @@
       <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
     </button>
   } @else {
+  @if (fogLoading()) {
+    <div class="mr-notice mr-notice--neutral" role="status">
+      <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+      <p>
+        <strong>Carregando o mapa</strong>
+        Chegando a parte {{ fogProgress().done + 1 }} de {{ fogProgress().total }}. Os personagens já aparecem; o resto vem em instantes.
+      </p>
+    </div>
+  }
   <app-combat-map
+    [fog]="fog()"
+    (fogSettled)="onFogSettled($event)"
+    (fogLoadingChange)="onFogLoading($event)"
     [image]="image()"
     [mapName]="mapName()"
     [columns]="encounter().gridColumns"
@@ -72,7 +84,22 @@
   }
 
   @if (legend()) {
-  <app-map-layers-legend class="legend" [layers]="layers() ?? emptyLayers">
+  <app-map-layers-legend class="legend" [layers]="layers() ?? emptyLayers" [onMap]="!!fog()">
+      @if (fogLegend()?.seen) {
+        <li before><span class="mr-swatch mr-swatch--sample" aria-hidden="true"></span>Visto</li>
+      }
+      @if (fogLegend()?.dim) {
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--dim" aria-hidden="true"></span>Penumbra</li>
+      }
+      @if (fogLegend()?.grey) {
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--grey" aria-hidden="true"></span>No escuro, em cinza</li>
+      }
+      @if (fogLegend()?.remembered) {
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--remembered" aria-hidden="true"></span>Já visto</li>
+      }
+      @if (fogLegend()?.unseen) {
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
+      }
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" />Jogador</li>
       <li><app-combatant-token initial="C" [npc]="true" [size]="22" />NPC</li>

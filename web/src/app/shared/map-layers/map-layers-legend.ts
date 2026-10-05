@@ -14,7 +14,7 @@ import type { MapLayers } from '../../core/maps/layers';
   selector: 'app-map-layers-legend',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ul class="mr-legend" [attr.aria-label]="label()">
+    <ul class="mr-legend" [class.mr-legend--on-map]="onMap()" [attr.aria-label]="label()">
       <ng-content select="[before]" />
       @if (layers().walls.length) {
         <li><span class="mr-swatch mr-swatch--wall" aria-hidden="true"></span>Parede</li>
@@ -36,4 +36,6 @@ import type { MapLayers } from '../../core/maps/layers';
 export class MapLayersLegend {
   readonly layers = input.required<MapLayers>();
   readonly label = input('Legenda do mapa');
+  /** The swatches sit on a sample of the map's floor (a fog map's legend). */
+  readonly onMap = input(false);
 }

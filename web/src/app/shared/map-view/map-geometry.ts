@@ -24,6 +24,8 @@ export interface ViewPoint {
   readonly xBp: number;
   readonly yBp: number;
   readonly revealed: boolean;
+  /** A fog map: the point is on a square the viewer saw before and does not see now (drawn darkened). */
+  readonly remembered?: boolean;
 }
 
 /** What the view reads of a token (the generated `MapToken` fits it). */
@@ -34,6 +36,15 @@ export interface ViewToken {
   readonly xBp: number;
   readonly yBp: number;
   readonly hidden: boolean;
+  /** `CharacterKind`: a player's character, or an NPC kind (the fog map draws NPCs as squares). */
+  readonly kind?: number;
+  /** Set on a character's creature (a familiar, a summoned animal): drawn round with a dashed ring. */
+  readonly creatureId?: string;
+}
+
+/** What tells one token from another: a creature's ID, or the character's (a creature's `characterId` is its owner's). */
+export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
+  return token.creatureId || token.characterId;
 }
 
 /** The map's pan and zoom: `x` and `y` are the stage's offset in pixels of

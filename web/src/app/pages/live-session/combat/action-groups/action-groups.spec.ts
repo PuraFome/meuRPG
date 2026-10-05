@@ -155,3 +155,38 @@ describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', ()
     expect(text).toContain('Dá para andar até 9,0 m (6 quadrados) sem provocar.');
   });
 });
+
+describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
+  function setup(familiar: string | null, own: Partial<{ actionUsed: boolean }> = {}) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, {}));
+    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: 25, speedFt: 25, ...own }));
+    fixture.componentRef.setInput('familiar', familiar);
+    const asked: number[] = [];
+    fixture.componentInstance.familiarEyes.subscribe(() => asked.push(1));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = [...el.querySelectorAll('app-action-row')].find((r) => r.textContent?.includes('Ver pelos olhos'));
+    return { el, row: row as HTMLElement | undefined, asked };
+  }
+
+  it('is an Ação row with its tag and what it lasts, and asks the question when pressed', () => {
+    const { row, asked } = setup('Nanquim');
+    expect(row?.querySelector('.row__name')?.textContent?.trim()).toBe('Ver pelos olhos do Nanquim');
+    expect(row?.querySelector('.row__pill')?.textContent?.trim()).toBe('Ação');
+    expect(row?.querySelector('.row__detail')?.textContent?.trim()).toBe('Dura até o começo da sua próxima vez, ou até você voltar.');
+    row!.querySelector<HTMLButtonElement>('button')!.click();
+    expect(asked).toEqual([1]);
+  });
+
+  it('is off, with the reason, once the action is spent', () => {
+    const { row, asked } = setup('Nanquim', { actionUsed: true });
+    expect(row?.querySelector('.row__why')?.textContent).toContain('Você já usou a sua ação neste turno.');
+    row!.querySelector<HTMLButtonElement>('button')!.click();
+    expect(asked).toEqual([]);
+  });
+
+  it('is not there without a familiar, or while the player already looks through its eyes', () => {
+    expect(setup(null).row).toBeUndefined();
+  });
+});

@@ -156,6 +156,13 @@
       <p><strong>{{ w.title }}.</strong> {{ w.detail }}</p>
     </div>
   }
+  @if (blind()) {
+    <!-- Looking through the familiar's eyes (MR-036, E9-04): the character is blind, so the app does not offer an attack. -->
+    <div class="mr-notice mr-notice--neutral turn__notice" data-testid="familiar-blind">
+      <mat-icon aria-hidden="true">visibility_off</mat-icon>
+      <p>Cego: para atacar, fale com o mestre.</p>
+    </div>
+  }
   @if (moveNote()) {
     <div class="mr-notice mr-notice--neutral turn__notice" role="status">
       <mat-icon aria-hidden="true">info</mat-icon>

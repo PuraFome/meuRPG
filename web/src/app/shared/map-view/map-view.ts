@@ -31,6 +31,7 @@ import {
   nudge,
   screenToBp,
   stepScale,
+  tokenKey,
   tokenInitial,
   visiblePoints,
   visibleTokens,
@@ -116,6 +117,14 @@ export class MapView {
   readonly hint = input<string | null>(null);
   /** A kind of point is waiting for a click: the cursor says so. */
   readonly placing = input(false);
+  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, MAP-LANGUAGE.md). */
+  readonly kindShapes = input(false);
+  /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, MAP-LANGUAGE.md). */
+  readonly squares = input(0);
+  /** Opens zoomed in on this spot, once the view has its size (the phone's fog map: the party at 2x). Read again only when it changes to another spot. */
+  readonly startAt = input<{ xBp: number; yBp: number } | null>(null);
+  /** The initial of a token: `tokenInitial` by default; the fog map writes an NPC's number too ("G2"). */
+  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(null);
 
   readonly pointSelect = output<string>();
   readonly tokenSelect = output<string>();
@@ -169,6 +178,7 @@ export class MapView {
   private pinch: { dist: number; mid: { x: number; y: number }; origin: ViewTransform } | null =
     null;
   private nudging = false;
+  private startedAt = '';
 
   constructor() {
     // Read here: inject() only works while the component is being built, not
@@ -225,6 +235,22 @@ export class MapView {
       untracked(() => this.settled.set(null));
     });
 
+    // The map opens on a spot the screen chose, once, until the spot changes (it never pulls the map back while it is used).
+    effect(() => {
+      const spot = this.startAt();
+      const { width, height } = this.size();
+      if (!spot || width === 0) {
+        return;
+      }
+      untracked(() => {
+        const key = `${spot.xBp}:${spot.yBp}`;
+        if (this.startedAt !== key) {
+          this.startedAt = key;
+          this.transform.set(focusTransform(spot, PREVIEW_SCALE, width, height));
+        }
+      });
+    });
+
     // The phone's preview opens on the party, zoomed in.
     effect(() => {
       const { width, height } = this.size();
@@ -256,6 +282,14 @@ export class MapView {
     this.transform.set(IDENTITY);
   }
 
+  /** Zooms in on a spot (a basis-point position), as the chips of the party do on a phone. */
+  focusOn(at: { xBp: number; yBp: number }, scale = PREVIEW_SCALE): void {
+    const { width, height } = this.size();
+    if (width > 0) {
+      this.transform.set(focusTransform(at, scale, width, height));
+    }
+  }
+
   /** Puts focus back on an item (a point's marker after its sheet closes). */
   focusItem(kind: 'point' | 'token', id: string): void {
     this.viewport()
@@ -285,12 +319,14 @@ export class MapView {
 
   // ---- where things are drawn ----
 
+  protected readonly tokenKey = tokenKey;
+
   protected pointAt(point: ViewPoint): { xBp: number; yBp: number } | null {
     return this.movedTo('point', point.id);
   }
 
   protected tokenAt(token: ViewToken): { xBp: number; yBp: number } | null {
-    return this.movedTo('token', token.characterId);
+    return this.movedTo('token', tokenKey(token));
   }
 
   /** Where an item is while it moves, or right after, until the parent's
@@ -318,7 +354,7 @@ export class MapView {
   }
 
   protected initial(token: ViewToken): string {
-    return tokenInitial(token, this.shownTokens());
+    return (this.initialOf() ?? tokenInitial)(token, this.shownTokens());
   }
 
   protected transformCss(): string {
@@ -556,7 +592,7 @@ export class MapView {
       return p ? (this.movedTo(kind, id) ?? { kind, id, xBp: p.xBp, yBp: p.yBp }) : null;
     }
     if (kind === 'token' && this.tokensMovable()) {
-      const t = this.tokens().find((x) => x.characterId === id);
+      const t = this.tokens().find((x) => tokenKey(x) === id);
       return t ? (this.movedTo(kind, id) ?? { kind, id, xBp: t.xBp, yBp: t.yBp }) : null;
     }
     return null;

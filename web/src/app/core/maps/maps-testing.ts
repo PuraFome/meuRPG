@@ -9,7 +9,9 @@ import {
   MapPointSchema,
   type MapToken,
   MapTokenSchema,
+  type GetMapLayersResponse,
   type GetMapResponse,
+  type GetMapVisionResponse,
   type SceneAction,
   SceneActionSchema,
   type SceneClue,
@@ -107,9 +109,37 @@ export class FakeMapsClient {
     return this.maps;
   }
 
-  async get(_campaignId: string, mapId: string): Promise<GetMapResponse> {
-    this.record('get', mapId);
-    const res = this.responses.get(mapId);
+  /** What `GetMapVision` answers, by the character the master reads as (`''` for the caller's own). */
+  visions = new Map<string, GetMapVisionResponse>();
+  /** The layers `GetMapLayers` answers. */
+  layersResponse: GetMapLayersResponse | null = null;
+
+  async vision(_c: string, mapId: string, asCharacterId = ''): Promise<GetMapVisionResponse> {
+    this.record('vision', mapId, asCharacterId);
+    const res = this.visions.get(asCharacterId);
+    if (!res) {
+      const { ConnectError, Code } = await import('@connectrpc/connect');
+      throw new ConnectError('not found', Code.NotFound);
+    }
+    return res;
+  }
+
+  async layers(_c: string, mapId: string, asCharacterId = ''): Promise<GetMapLayersResponse> {
+    this.record('layers', mapId, asCharacterId);
+    return (
+      this.layersResponse ??
+      ({ $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: 0, gridRows: 0, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array() } as unknown as GetMapLayersResponse)
+    );
+  }
+
+  async setCarriedLight(_c: string, mapId: string, characterId: string, lightKey: string): Promise<MapToken> {
+    this.record('setCarriedLight', mapId, characterId, lightKey);
+    return mapToken(characterId, 'Token', { carriedLight: lightKey });
+  }
+
+  async get(_campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapResponse> {
+    this.record('get', mapId, ...(asCharacterId ? [asCharacterId] : []));
+    const res = this.responses.get(asCharacterId ? `${mapId}@${asCharacterId}` : mapId) ?? this.responses.get(mapId);
     if (!res) {
       const { ConnectError, Code } = await import('@connectrpc/connect');
       throw new ConnectError('not found', Code.NotFound);

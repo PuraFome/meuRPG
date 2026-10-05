@@ -73,6 +73,8 @@ export class ActionGroups {
   /** Why nothing can be done now ("Esperando a reação do mestre"): every row is off with this
    * reason instead of failing on click (an opportunity attack waits for its answer); `''` when free. */
   readonly locked = input('');
+  /** The player's familiar ('Nanquim'): "Ver pelos olhos do Nanquim" is an action (MR-036, E9-04). `null`: none, or already looking. */
+  readonly familiar = input<string | null>(null);
   /** The character's slots, for the rows above the spells ("1º círculo ○ ✕ ✕ ✕ 1 livre de 4"). */
   readonly slots = input<{ readonly usage: readonly SlotUsageVm[]; readonly pact: PactSlotsVm | null }>({
     usage: [],
@@ -93,6 +95,8 @@ export class ActionGroups {
   readonly move = output<void>();
   /** "Rolar o dano" of a hit that waits for its roll. */
   readonly rollDamage = output<void>();
+  /** "Ver pelos olhos do ...": the page asks the question. */
+  readonly familiarEyes = output<void>();
   /** The "?" of a spell: the key and the Portuguese name. */
   readonly describe = output<{ key: string; name: string }>();
 

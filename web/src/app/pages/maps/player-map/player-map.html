@@ -12,14 +12,29 @@
       </a>
     }
     <h1 class="mr-page-title">{{ m.name }}</h1>
-    @if (phone()) {
+    @if (phone() && !fogOn()) {
       <app-map-legend [shapes]="false" [tokens]="state().tokens()" />
     }
   </header>
 
   <div class="layout">
     <div class="layout__map">
-      @if (image(); as img) {
+      @if (fogOn()) {
+        <app-fog-map
+          [mapName]="m.name"
+          [imageWidth]="m.image?.width ?? 1"
+          [imageHeight]="m.image?.height ?? 1"
+          [status]="fog.status()"
+          [error]="fog.error()"
+          [vision]="fog.vision()"
+          [layers]="fog.layers()"
+          [tokens]="state().tokens()"
+          [points]="state().points()"
+          [viewer]="viewer()"
+          [selectablePoints]="true"
+          (pointSelect)="openPoint($event)"
+        />
+      } @else if (image(); as img) {
         <app-map-view
           [image]="img"
           [mapName]="m.name"
@@ -30,7 +45,7 @@
           (emptyClick)="closeSheet()"
         />
       }
-      @if (!phone()) {
+      @if (!phone() && !fogOn()) {
         <app-map-legend [tokens]="state().tokens()" />
       }
     </div>

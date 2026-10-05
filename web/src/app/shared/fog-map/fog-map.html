@@ -1,0 +1,190 @@
+<div class="fm">
+  @if (notices()) {
+    @if (error() === 'offline' && status() !== 'ready') {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status" data-testid="fog-offline">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p><strong>Reconectando…</strong> O servidor não respondeu; o app tenta de novo sozinho.</p>
+      </div>
+    } @else if (error() === 'no-grid') {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status">
+        <mat-icon aria-hidden="true">grid_off</mat-icon>
+        <p><strong>Este mapa não tem grade.</strong> Sem grade não há névoa: o mestre precisa definir a grade.</p>
+      </div>
+    } @else if (offMap()) {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status" data-testid="fog-off-map">
+        <mat-icon aria-hidden="true">location_off</mat-icon>
+        <p>
+          <strong>{{ offMapTitle() }}</strong>
+          {{ offMapText() }}
+        </p>
+      </div>
+    } @else if (status() === 'error') {
+      <div class="mr-notice mr-notice--danger fm__notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>Não deu para carregar a vista do mapa.</strong> Ela se atualiza sozinha quando a conexão voltar.</p>
+      </div>
+    } @else if (loading()) {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status" data-testid="fog-loading">
+        <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+        <p>
+          <strong>Carregando o mapa</strong>
+          @if (rects().length > 0) {
+            Chegando a parte {{ part() }} de {{ rects().length }}. Os personagens já aparecem; o resto vem em instantes.
+          } @else {
+            Chegando a vista do seu personagem. Os personagens aparecem em instantes.
+          }
+        </p>
+      </div>
+    }
+  }
+
+  @if (badge() && phone()) {
+    <p class="fm__badge"><mat-icon aria-hidden="true">visibility</mat-icon>{{ badge() }}</p>
+  }
+
+  @if (phone() && party().length > 0 && vision() && !empty()) {
+    <ul class="fm__chips" aria-label="Personagens do grupo: toque para ir até um">
+      @for (t of party(); track key(t)) {
+        <li>
+          <button type="button" class="fm__chip" (click)="goTo(t)">
+            <app-combatant-token [initial]="initial(t)" [mine]="t.mine" [onMap]="true" [size]="24" />
+            <span>{{ t.name }}</span>
+            @if (t.mine && ownView()) {
+              <span class="fm__you">(você)</span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (empty()) {
+    <div class="fm__none" aria-hidden="true"></div>
+  } @else {
+    <div
+      class="fm__stage"
+      [class.fm__stage--waiting]="!vision()"
+      [style.aspect-ratio]="imageWidth() + ' / ' + imageHeight()"
+      [style.--fm-ar]="imageWidth() / imageHeight()"
+    >
+      @if (vision(); as v) {
+        <app-map-view
+          [image]="frame()"
+          [mapName]="mapName()"
+          [points]="points()"
+          [tokens]="shownTokens()"
+          [isMaster]="isMaster()"
+          [mode]="mode()"
+          [controls]="'none'"
+          [selectablePoints]="selectablePoints()"
+          [kindShapes]="true"
+          [squares]="v.columns"
+          [startAt]="startAt()"
+          [initialOf]="initialOf"
+          (pointSelect)="pointSelect.emit($event)"
+          (moved)="moved.emit($event)"
+        >
+          <app-fog-base
+            mapBase
+            [vision]="v"
+            [layers]="layers()"
+            [image]="image()"
+            [forCharacter]="forCharacter()"
+            (settledChange)="onSettled($event)"
+            (loadingChange)="onLoading($event)"
+          />
+        </app-map-view>
+      } @else {
+        <span class="fm__wait" data-pending aria-hidden="true"></span>
+      }
+    </div>
+
+    <div class="fm__tools">
+      <div class="fm__zoom" role="group" aria-label="Zoom do mapa">
+        <button type="button" class="fm__btn" aria-label="Reduzir" [disabled]="!vision() || (view()?.scale() ?? 1) <= 1" (click)="zoomOut()">
+          <mat-icon aria-hidden="true">remove</mat-icon>
+        </button>
+        <button type="button" class="fm__btn" aria-label="Ampliar" [disabled]="!vision() || (view()?.scale() ?? 1) >= 4" (click)="zoomIn()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+        </button>
+        <button type="button" class="fm__btn" aria-label="Ajustar à tela" [disabled]="!vision() || (view()?.scale() ?? 1) === 1" (click)="fit()">
+          <mat-icon aria-hidden="true">fit_screen</mat-icon>
+        </button>
+      </div>
+      @if (phone()) {
+        <p class="fm__hint">Dois dedos para ampliar</p>
+      }
+    </div>
+  }
+
+  @if (vision(); as v) {
+    @if (!empty()) {
+      <app-map-layers-legend class="fm__legend" [layers]="layerSet()" [onMap]="true" label="Legenda do mapa">
+        @if (legend()?.seen) {
+          <li before><span class="mr-swatch mr-swatch--sample" aria-hidden="true"></span>Visto</li>
+        }
+        @if (legend()?.dim) {
+          <li before><span class="mr-swatch mr-swatch--sample mr-swatch--dim" aria-hidden="true"></span>Penumbra</li>
+        }
+        @if (legend()?.grey) {
+          <li before><span class="mr-swatch mr-swatch--sample mr-swatch--grey" aria-hidden="true"></span>No escuro, em cinza</li>
+        }
+        @if (legend()?.remembered) {
+          <li before><span class="mr-swatch mr-swatch--sample mr-swatch--remembered" aria-hidden="true"></span>Já visto</li>
+        }
+        @if (legend()?.unseen) {
+          <li before><span class="mr-swatch mr-swatch--sample mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
+        }
+        @if (isMaster()) {
+          <li><span class="fm__mark"><app-combatant-token initial="P" [onMap]="true" [size]="20" /></span>Personagem</li>
+          @if (enemies().length > 0 || hiddenTokens().length > 0) {
+            <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [onMap]="true" [size]="20" /></span>NPC</li>
+          }
+          @if (hiddenTokens().length > 0) {
+            <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [hidden]="true" [onMap]="true" [size]="20" /></span>Escondido (só você vê)</li>
+          }
+        } @else {
+          @if (mine(); as me) {
+            <li><span class="fm__mark"><app-combatant-token [initial]="initial(me)" [mine]="true" [onMap]="true" [size]="16" /></span>{{ youLabel() }}</li>
+          }
+          @if (companions()[0]; as friend) {
+            <li><span class="fm__mark"><app-combatant-token [initial]="initial(friend)" [onMap]="true" [size]="20" /></span>Companheiro</li>
+          }
+          @if (enemies()[0]; as foe) {
+            <li><span class="fm__mark"><app-combatant-token [initial]="initial(foe)" [npc]="true" [onMap]="true" [size]="20" /></span>Inimigo à vista</li>
+          }
+        }
+        @if (creatures()[0]; as pet) {
+          <li><span class="fm__mark"><span class="fm__creature" aria-hidden="true">{{ initial(pet) }}</span></span>Criatura</li>
+        }
+      </app-map-layers-legend>
+    }
+    @if (caption() && !isMaster()) {
+      @if (offMap()) {
+        <p class="fm__caption" data-testid="fog-nothing">
+          <mat-icon aria-hidden="true">visibility_off</mat-icon>
+          <span>
+            <strong class="fm__cap-line">Nada novo para ver</strong>
+            <span class="fm__cap-line">Quando o mestre puser o seu personagem no mapa, ele volta a enxergar o que o personagem enxerga.</span>
+          </span>
+        </p>
+      } @else if (lines().length > 0) {
+        <p class="fm__caption" data-testid="fog-caption">
+          <mat-icon aria-hidden="true">visibility</mat-icon>
+          <span>
+            <strong class="fm__cap-line">{{ cardTitle() }}</strong>
+            @for (line of lines(); track $index) {
+              <span class="fm__cap-line">{{ line }}</span>
+            }
+          </span>
+        </p>
+      }
+    }
+    <!-- What the map draws, for assistive tech: the tokens on a square the viewer sees. -->
+    <ul class="mr-visually-hidden" aria-label="No mapa">
+      @for (t of shownTokens(); track key(t)) {
+        <li>{{ t.name }}{{ t.mine && ownView() && !t.creatureId ? ' (você)' : '' }}</li>
+      }
+    </ul>
+  }
+</div>
