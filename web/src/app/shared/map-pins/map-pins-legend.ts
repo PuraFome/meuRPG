@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { pointHidden } from '../map-view/map-labels';
 import { ChestIcon } from '../chest-icon/chest-icon';
 import { type MapPoint, MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 
@@ -78,9 +79,9 @@ interface Entry {
       color: var(--mr-map-accent);
     }
 
-    .sw--hidden,
-    .sw--light {
+    .sw--hidden {
       border-style: dashed;
+      box-shadow: 0 0 0 2px var(--mr-map-token-surface);
     }
 
     .sw__eye {
@@ -115,7 +116,7 @@ export class MapPinsLegend {
     for (const p of this.points()) {
       if (p.kind === MapPointKind.TRAP) {
         const state = p.trap?.state ?? TrapState.ARMED;
-        if (state === TrapState.ARMED && master && !p.revealed && p.trapRevealedTo.length === 0) {
+        if (state === TrapState.ARMED && master && pointHidden(p)) {
           out.set('secret', { key: 'secret', label: 'Armadilha (só você vê)', kind: 'trap', state: 'armed', eye: true });
         } else {
           out.set('armed', { key: 'armed', label: 'Armadilha', kind: 'trap', state: 'armed', eye: false });

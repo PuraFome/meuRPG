@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import type { MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
 import {
@@ -6,6 +7,10 @@ import {
   type GetMapResponse,
   type GetTrapNoticersResponse,
   type GetMapVisionResponse,
+  type LightLevel,
+  type LightSpecSchema,
+  type MapLayer,
+  type MapSquare,
   type Map as MapMessage,
   MapPointKind,
   MapService,
@@ -14,6 +19,7 @@ import {
   type SceneAction,
   SceneActionDirection,
   type SceneClue,
+  type TrapSpecSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -31,6 +37,12 @@ export interface PointChanges {
   readonly hooks?: string;
   /** "Mostrar a CD aos jogadores" of a SCENE point (RN-20). */
   readonly showDc?: boolean;
+  /** A TRAP point's whole spec (E9-02): every field, an unspecified state keeps the current one. */
+  readonly trap?: MessageInitShape<typeof TrapSpecSchema>;
+  /** A LIGHT point's whole spec: a preset's key and radii, or the custom radii. */
+  readonly light?: MessageInitShape<typeof LightSpecSchema>;
+  /** A TREASURE's value in PO, 0 to 1.000.000. */
+  readonly treasureValuePo?: number;
 }
 
 /**
@@ -108,6 +120,39 @@ export class MapsClient {
     return need(res.map, 'SetMapGrid');
   }
 
+  /** `PaintMapCells` (MR-034): one value on up to 400 squares of one layer. Answers with how many changed. */
+  async paint(
+    campaignId: string,
+    mapId: string,
+    layer: MapLayer,
+    value: number,
+    squares: readonly MapSquare[] | readonly { col: number; row: number }[],
+  ): Promise<{ layersRevision: number; changed: number }> {
+    const res = await this.client.paintMapCells({
+      campaignId,
+      mapId,
+      layer,
+      value,
+      squares: squares.map((s) => ({ col: s.col, row: s.row })),
+    });
+    return { layersRevision: res.layersRevision, changed: res.changed };
+  }
+
+  /** `SetMapFog` (MR-036): each field set replaces the current value. */
+  async setFog(
+    campaignId: string,
+    mapId: string,
+    changes: { fogEnabled?: boolean; baseLight?: LightLevel; groupVision?: boolean },
+  ): Promise<MapMessage> {
+    const res = await this.client.setMapFog({ campaignId, mapId, ...changes });
+    return need(res.map, 'SetMapFog');
+  }
+
+  /** `ForgetMapVision`: "Esquecer o que foi visto". */
+  async forgetVision(campaignId: string, mapId: string): Promise<void> {
+    await this.client.forgetMapVision({ campaignId, mapId });
+  }
+
   async createPoint(
     campaignId: string,
     mapId: string,
@@ -118,6 +163,10 @@ export class MapsClient {
       xBp: number;
       yBp: number;
       targetMapId?: string;
+      /** A TRAP needs its spec, a LIGHT its light; a TREASURE may carry its value. */
+      trap?: PointChanges['trap'];
+      light?: PointChanges['light'];
+      treasureValuePo?: number;
     },
   ): Promise<MapPoint> {
     const res = await this.client.createMapPoint({ campaignId, mapId, ...point });

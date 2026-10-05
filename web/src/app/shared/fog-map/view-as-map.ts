@@ -23,9 +23,9 @@ import { FogMap } from './fog-map';
       <mat-icon aria-hidden="true">visibility</mat-icon>
       <p>
         Você está vendo o mapa como <strong>{{ name() }}</strong
-        >. Para voltar ao seu mapa, escolha “Todos”.
+        >. Para voltar {{ backTo() }}, escolha “Todos”.
       </p>
-      <button mat-stroked-button type="button" class="band__back" (click)="back.emit()">Voltar ao seu mapa</button>
+      <button mat-stroked-button type="button" class="band__back" (click)="back.emit()">Voltar {{ backTo() }}</button>
     </div>
     <app-fog-map
       [mapName]="mapName()"
@@ -79,6 +79,8 @@ export class ViewAsMapView {
   readonly mapName = input('');
   readonly imageWidth = input.required<number>();
   readonly imageHeight = input.required<number>();
+  /** Where "Voltar" goes, in words: "ao seu mapa" on the session, "à sua vista" in the map editor. */
+  readonly backTo = input('ao seu mapa');
   /** Goes up when the map may have changed for that player (a token moved, the map changed). */
   readonly tick = input(0);
 

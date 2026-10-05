@@ -241,6 +241,11 @@ a.mr-list__row:hover .mr-list__name {
   }
 }
 
+.mr-legend:empty {
+  // A legend with nothing to name (a map with no marks) takes no room.
+  display: none;
+}
+
 .mr-legend--on-map .mr-swatch {
   // The marks of a fog map's legend sit on a sample of the map's floor, as they do on the map.
   background-color: var(--mr-map-sample);

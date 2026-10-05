@@ -7,6 +7,10 @@
   pointer-events: none;
 }
 
+:host(.faded) {
+  opacity: 0.4;
+}
+
 // A trap's area, in every state: a dashed garnet border over a light stripe tint, no fill and no solid line; the glyph sits in its middle and
 // is never bigger than 60 % of the area, so it never covers the border (the area is a size container).
 .area {
@@ -18,6 +22,12 @@
   border: 2px dashed var(--mr-map-accent);
   container-type: size;
   background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-map-accent) 18%, transparent) 0 3px, transparent 3px 9px);
+}
+
+.area--selected,
+.pin--selected {
+  outline: 3px solid var(--mr-accent);
+  outline-offset: 2px;
 }
 
 .area--none {
@@ -34,8 +44,9 @@
 // The crossed eye of what only the master sees: a badge on the outer top-left corner, away from the glyph and from the chest beside it.
 .area__eye {
   position: absolute;
-  top: -9px;
-  left: -9px;
+  // Outside the area, above its top-left corner: the corner stays clear.
+  top: -22px;
+  left: -2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,10 +81,11 @@
   color: var(--mr-map-token-ink);
   transform: scale(calc(1 / var(--s, 1)));
 
-  // A hidden treasure and the master's light are dashed: only the master sees them.
-  &--hidden,
-  &--light {
+  // A hidden treasure is dashed: only the master sees it. A found one is solid, and so is a light (always the master's, never "escondida").
+  // The light ring behind the dashes keeps them whole on a dark ground.
+  &--hidden {
     border-style: dashed;
+    box-shadow: 0 0 0 2px var(--mr-map-token-surface);
   }
 }
 

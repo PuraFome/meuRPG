@@ -1,4 +1,4 @@
-import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 
 /** "Batalha", "Submapa", "Cena de RP": what a kind is called on screen. */
 export function pointKindLabel(kind: number): string {
@@ -39,9 +39,40 @@ export function pointKindIcon(kind: number): string {
   }
 }
 
-/** The marker's accessible name: "Taverna do Javali, Cena de RP, escondido". */
-export function pointAriaLabel(point: { name: string; kind: number; revealed: boolean }): string {
-  return `${point.name}, ${pointKindLabel(point.kind)}${point.revealed ? '' : ', escondido'}`;
+/** What decides whether the players know a point (the generated `MapPoint` fits it). */
+export interface PointVisibility {
+  readonly kind: number;
+  readonly revealed: boolean;
+  /** A treasure marked found (everyone sees it then, "Todos veem o tesouro"). */
+  readonly treasureFoundAt?: unknown;
+  /** A trap shown to some characters. */
+  readonly trapRevealedTo?: readonly unknown[];
+  /** A trap: a Disparada one is known to everyone who sees the map. */
+  readonly trap?: { readonly state: number } | undefined;
+}
+
+/**
+ * Whether the map draws a point as hidden (a dashed edge, the crossed eye, "Escondido"): the players do not know it yet. A Luz is the
+ * master's alone, so it is never "escondida", only his; a treasure found, a trap revealed to a character or already fired is known, whatever its `revealed` flag says.
+ */
+export function pointHidden(p: PointVisibility): boolean {
+  if (p.kind === MapPointKind.LIGHT || p.revealed) {
+    return false;
+  }
+  if (p.kind === MapPointKind.TREASURE) {
+    return p.treasureFoundAt === undefined;
+  }
+  if (p.kind === MapPointKind.TRAP) {
+    const state = p.trap?.state;
+    return (p.trapRevealedTo?.length ?? 0) === 0 && state !== TrapState.TRIGGERED;
+  }
+  return true;
+}
+
+/** The marker's accessible name: "Taverna do Javali, Cena de RP, escondido"; a Luz says "só você vê". */
+export function pointAriaLabel(point: PointVisibility & { name: string }): string {
+  const state = point.kind === MapPointKind.LIGHT ? ', só você vê' : pointHidden(point) ? ', escondido' : '';
+  return `${point.name}, ${pointKindLabel(point.kind)}${state}`;
 }
 
 /** What a token is, for the lists: "NPC, inimigo" (a player's character

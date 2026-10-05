@@ -105,6 +105,10 @@
   border-radius: var(--mr-radius-pill);
 }
 
+.list__glyph app-chest-icon {
+  font-size: 20px;
+}
+
 .list__text {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,4 @@
-import { joinDots, tight } from './format/text';
+import { formatInt, joinDots, tight } from './format/text';
 
 /**
  * Every distance the app writes comes from here (MR-013, E8-01): the table
@@ -42,7 +42,12 @@ export function formatMeters(meters: number): string {
 
 /** "5 quadrados", "1 quadrado". */
 export function squaresText(squares: number): string {
-  return tight(`${squares} ${squares === 1 ? 'quadrado' : 'quadrados'}`);
+  return tight(`${formatInt(squares)} ${squares === 1 ? 'quadrado' : 'quadrados'}`);
+}
+
+/** Meters as a bare number with the decimal comma ("4,5"), for a field whose unit is written beside it. */
+export function metersNumber(feet: number): string {
+  return String(feetToMeters(feet)).replace('.', ',');
 }
 
 /** A distance in feet as meters alone: "7,5 m". For a range, where the table

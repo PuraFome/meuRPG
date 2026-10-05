@@ -17,10 +17,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
+import { MapAsk } from '../map-ask/map-ask';
+
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { deleteMapConsequences } from './map-head-copy';
 
-type Mode = 'view' | 'rename' | 'delete';
+type Mode = 'view' | 'rename' | 'delete' | 'image';
 
 /**
  * The master's header of a map (E5-23, E5-24, E6-27): "← Voltar para a
@@ -44,6 +46,7 @@ type Mode = 'view' | 'rename' | 'delete';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MapAsk,
     ReactiveFormsModule,
     RouterLink,
   ],
@@ -66,6 +69,10 @@ export class MapHead {
   readonly saveName = input.required<(name: string) => Promise<void>>();
   /** Deletes the map (the page then leaves); rejects with the message. */
   readonly deleteMap = input.required<() => Promise<void>>();
+  /** A new image (like a new grid) erases what is painted and what the players saw: "Trocar imagem" asks first (E9-01 4). */
+  readonly imageErases = input(false);
+  /** A combat that has not ended runs on the map: the image cannot change (the editor's banner says why). */
+  readonly combatRunning = input(false);
   readonly toggleReveal = output<void>();
   readonly changeImage = output<void>();
 
@@ -89,6 +96,7 @@ export class MapHead {
   private readonly renameButton = viewChild('renameButton', { read: ElementRef<HTMLElement> });
   private readonly deleteButton = viewChild('deleteButton', { read: ElementRef<HTMLElement> });
   private readonly cancelDelete = viewChild('cancelDelete', { read: ElementRef<HTMLElement> });
+  private readonly imageButton = viewChild('imageButton', { read: ElementRef<HTMLElement> });
 
   protected startRename(): void {
     this.name.reset(this.map().name);
@@ -134,6 +142,32 @@ export class MapHead {
     this.mode.set('view');
     this.error.set(null);
     this.focusAfterRender(() => this.deleteButton()?.nativeElement.focus());
+  }
+
+  /** "Trocar imagem": with something painted or seen it asks in place; with nothing to lose it goes straight to the picker. */
+  protected startImage(): void {
+    if (this.combatRunning()) {
+      return;
+    }
+    if (!this.imageErases()) {
+      this.changeImage.emit();
+      return;
+    }
+    this.mode.set('image');
+  }
+
+  protected keepImage(): void {
+    this.mode.set('view');
+    this.focusAfterRender(() => this.imageButton()?.nativeElement.focus());
+  }
+
+  /** The question's button is gone once the header is back to its state: the picker opens from "Trocar imagem", where the focus returns after it. */
+  protected confirmImage(): void {
+    this.mode.set('view');
+    this.focusAfterRender(() => {
+      this.imageButton()?.nativeElement.focus();
+      this.changeImage.emit();
+    });
   }
 
   protected async confirmDelete(): Promise<void> {

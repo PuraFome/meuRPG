@@ -26,6 +26,7 @@
   }
 
   &--stacked {
+    width: 100%;
     grid-auto-flow: row;
     grid-auto-columns: auto;
     grid-template-columns: 1fr;
@@ -43,4 +44,9 @@
   color: var(--mr-ink);
   --mat-button-outlined-label-text-color: var(--mr-ink);
   cursor: default;
+}
+
+.pf__danger:not(.pf__off):not(.mr-button--off) {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
 }

@@ -1,0 +1,83 @@
+<section class="pk mr-panel" aria-labelledby="tp-title">
+  <p class="pk__eyebrow">Ponto selecionado</p>
+  <h2 class="pk__title" id="tp-title">{{ point().name }}</h2>
+  <p class="pk__sub">Tesouro · {{ state() }}</p>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().name">
+    <mat-label>Nome</mat-label>
+    <input #nameField matInput autocomplete="off" maxlength="80" [value]="draft().name" [attr.aria-invalid]="!!shown().name" (input)="input('name', $event)" />
+    @if (shown().name; as message) {
+      <mat-hint class="pk__err">{{ message }}</mat-hint>
+    }
+  </mat-form-field>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__locked]="converted()" [class.pk__invalid]="!!shown().description">
+    <mat-label>Descrição para os jogadores</mat-label>
+    <textarea matInput rows="3" [value]="draft().description" [readonly]="converted()" [attr.aria-describedby]="converted() ? 'tp-lock' : null" (input)="input('description', $event)"></textarea>
+    @if (shown().description; as message) {
+      <mat-hint class="pk__err">{{ message }}</mat-hint>
+    } @else if (!converted()) {
+      <mat-hint>O que tem dentro. Os jogadores leem quando o tesouro é encontrado.</mat-hint>
+    }
+  </mat-form-field>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__locked]="converted()" [class.pk__invalid]="!!shown().valuePo">
+    <mat-label>Valor em ouro</mat-label>
+    <input matInput inputmode="numeric" autocomplete="off" [value]="draft().valuePo" [readonly]="converted()" [attr.aria-invalid]="!!shown().valuePo" aria-describedby="tp-value" (input)="input('valuePo', $event)" />
+    <span matTextSuffix>PO</span>
+  </mat-form-field>
+  <p class="pk__hint" id="tp-value" [class.pk__error]="!!shown().valuePo">
+    {{ shown().valuePo || 'Peças de ouro inteiras, de 0 a 1.000.000. Vira XP em “Voltar à cidade”, nas campanhas por ouro.' }}
+  </p>
+
+  <div class="pk__group pk__rule">
+    <h3 class="pk__h">Encontrado</h3>
+    @if (converted()) {
+      <p><span class="mr-tag"><mat-icon aria-hidden="true">lock</mat-icon>Convertido em XP</span></p>
+      @if (found()) {
+        <p class="pk__p">Encontrado por <b>{{ line().names }}</b>{{ line().at ? ' às ' + line().at : '' }}.</p>
+      }
+      <p class="pk__hint" id="tp-lock">Convertido em XP em “Voltar à cidade”. Para desmarcar, desfaça esse XP na página da campanha.</p>
+      <button matButton="outlined" type="button" class="pk__wide mr-button--off" aria-disabled="true" aria-describedby="tp-lock"><mat-icon aria-hidden="true">history</mat-icon>Desmarcar</button>
+    } @else if (found()) {
+      <p><span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span></p>
+      <p class="pk__p">Encontrado por <b>{{ line().names }}</b>{{ line().at ? ' às ' + line().at : '' }}.</p>
+      @if (mode() === 'unmarking') {
+        <div #ask>
+          <app-map-ask [title]="'Desmarcar ' + point().name + '?'" confirmLabel="Desmarcar" [busy]="busy()" (cancel)="cancelUnmark()" (confirm)="confirmUnmark()">
+            <p class="pk__hint">Ele volta a ficar escondido para os jogadores e sai do resumo da sessão. O registro guarda que foi desmarcado.</p>
+          </app-map-ask>
+        </div>
+      } @else {
+        <p class="pk__hint">Todos veem o tesouro, o que há dentro e o valor. Você pode desmarcar até ele virar XP.</p>
+        <button #undo matButton="outlined" type="button" class="pk__wide" (click)="startUnmark()"><mat-icon aria-hidden="true">history</mat-icon>Desmarcar</button>
+      }
+    } @else {
+      <p><span class="mr-tag"><mat-icon aria-hidden="true">close</mat-icon>Não encontrado</span></p>
+      @if (mode() === 'marking') {
+        <div #form class="pk__ask" role="group" aria-labelledby="tp-who" (keydown.escape)="cancelMarking()">
+          <app-person-pick headingId="tp-who" [heading]="'Quem encontrou ' + point().name + '?'" [rows]="people()" [(picked)]="picked" [allToggle]="false" />
+          <p class="pk__hint">Marque uma ou mais pessoas. Com mais de uma, o valor se divide no resumo da sessão.</p>
+          <p class="pk__hint" role="status" aria-live="polite">{{ summary() }}</p>
+          <app-pair-foot cancelLabel="Voltar" confirmLabel="Marcar como encontrado" confirmIcon="check" [cancelFirstWhenStacked]="true" [ready]="picked().size > 0" [busy]="busy()" (cancel)="cancelMarking()" (confirm)="confirmMarking()" />
+        </div>
+      } @else {
+        <p class="pk__hint">Os jogadores não o veem, nem na lista. Marque quando eles abrirem o baú.</p>
+        <button #opener matButton="outlined" type="button" class="pk__wide" (click)="startMarking()"><mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado</button>
+        <p class="pk__hint">{{ sessionLine() }}</p>
+      }
+    }
+    @if (callError()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ callError() }}</p>
+      </div>
+    }
+  </div>
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+  <app-point-foot [name]="point().name" [saving]="saving()" [dirty]="dirty()" [blocked]="blocked()" (save)="saveRequested.emit()" (remove)="removeConfirmed.emit()" />
+</section>

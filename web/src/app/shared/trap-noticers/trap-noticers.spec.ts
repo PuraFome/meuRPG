@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import { GetTrapNoticersResponseSchema, TrapNoticerSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import { GetTrapNoticersResponseSchema, TrapNoticerSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapNoticers, noticerRow } from './trap-noticers';
 
 const noticer = (extra: object) => create(TrapNoticerSchema, { characterId: 'x', characterName: 'Brisa', passivePerception: 14, ...extra });
@@ -39,5 +39,27 @@ describe('TrapNoticers', () => {
     fixture.detectChanges();
     expect(el.querySelectorAll('.tn__row')).toHaveLength(1);
     expect(el.textContent).toContain('(−5 na penumbra)');
+  });
+
+  it('in the editor\'s panel it takes the panel title style and stacks the rows in a narrow column (the host says so); the session card keeps its layout', () => {
+    const panel = TestBed.createComponent(TrapNoticers);
+    panel.componentRef.setInput('panel', true);
+    panel.componentRef.setInput('noticers', create(GetTrapNoticersResponseSchema, { noticeDc: 15, noticers: [noticer({ onMap: true, inRange: true })] }));
+    panel.detectChanges();
+    expect((panel.nativeElement as HTMLElement).classList).toContain('tn--panel');
+    expect((panel.nativeElement as HTMLElement).querySelector('h4')?.classList).toContain('mr-panel__title');
+    const card = TestBed.createComponent(TrapNoticers);
+    card.componentRef.setInput('noticers', create(GetTrapNoticersResponseSchema, { noticeDc: 15, noticers: [] }));
+    card.detectChanges();
+    expect((card.nativeElement as HTMLElement).classList).not.toContain('tn--panel');
+  });
+
+  it('says what the dim light costs, and that each one\'s own number is beside the passive', () => {
+    const fixture = TestBed.createComponent(TrapNoticers);
+    fixture.componentRef.setInput('noticers', create(GetTrapNoticersResponseSchema, { noticeDc: 15, noticers: [noticer({ onMap: true, inRange: true, lightPenalty: -5 })] }));
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('A penumbra tira 5 da passiva de quem não enxerga no escuro');
+    expect(text).toContain('−5 na penumbra');
   });
 });

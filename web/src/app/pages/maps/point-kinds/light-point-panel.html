@@ -1,0 +1,67 @@
+<section class="pk mr-panel" aria-labelledby="lp-title">
+  <p class="pk__eyebrow">Ponto selecionado</p>
+  <h2 class="pk__title" id="lp-title">{{ point().name }}</h2>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().name">
+    <mat-label>Nome</mat-label>
+    <input #nameField matInput autocomplete="off" maxlength="80" [value]="draft().name" [attr.aria-invalid]="!!shown().name" (input)="input('name', $event)" />
+    @if (shown().name; as message) {
+      <mat-hint class="pk__err">{{ message }}</mat-hint>
+    }
+  </mat-form-field>
+
+  <div class="pk__group">
+    <span class="pk__h" id="lp-kind">Tipo de luz</span>
+    <div class="pk__radios" role="radiogroup" aria-labelledby="lp-kind" (keydown)="onKey($event)">
+      @for (p of presets(); track p.key) {
+        <button type="button" role="radio" class="pk__radio" [class.pk__radio--on]="draft().presetKey === p.key" [attr.aria-checked]="draft().presetKey === p.key" [tabIndex]="draft().presetKey === p.key ? 0 : -1" (click)="choose(p.key)">
+          <span class="pk__dot" aria-hidden="true"></span>
+          <span class="pk__rtext"><b>{{ p.name }}</b><span>{{ p.radii }}</span></span>
+        </button>
+      }
+      <button type="button" role="radio" class="pk__radio" [class.pk__radio--on]="custom()" [attr.aria-checked]="custom()" [tabIndex]="custom() ? 0 : -1" (click)="choose('')">
+        <span class="pk__dot" aria-hidden="true"></span>
+        <span class="pk__rtext"><b>Personalizada</b><span>você escolhe os dois raios</span></span>
+      </button>
+    </div>
+    @if (presetsFailed()) {
+      <p class="pk__hint">Não deu para ler as luzes do SRD. A luz personalizada continua valendo.</p>
+    }
+  </div>
+
+  @if (custom()) {
+    <div class="pk__pair">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().brightM">
+        <mat-label>Luz clara até</mat-label>
+        <input matInput inputmode="decimal" autocomplete="off" [value]="draft().brightM" [attr.aria-invalid]="!!shown().brightM" aria-describedby="lp-metres" (input)="input('brightM', $event)" />
+        <span matTextSuffix>m</span>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.pk__invalid]="!!shown().dimM">
+        <mat-label>Mais penumbra até</mat-label>
+        <input matInput inputmode="decimal" autocomplete="off" [value]="draft().dimM" [attr.aria-invalid]="!!shown().dimM" aria-describedby="lp-metres" (input)="input('dimM', $event)" />
+        <span matTextSuffix>m</span>
+      </mat-form-field>
+    </div>
+    @if (shown().brightM || shown().dimM || shown().both) {
+      <p class="pk__error" role="alert">{{ shown().brightM || shown().dimM || shown().both }}</p>
+    } @else if (metresLine()) {
+      <p class="pk__hint" id="lp-metres">{{ metresLine() }}</p>
+    }
+  } @else if (reachLine()) {
+    <p class="pk__hint">{{ reachLine() }}</p>
+  }
+  <p class="pk__hint">O mapa mostra o alcance como dois anéis (claro, inteiro; penumbra, tracejado). As paredes cortam a luz de verdade só com a névoa ligada: veja em “Ver como”.</p>
+
+  <div class="mr-notice mr-notice--neutral">
+    <mat-icon aria-hidden="true">visibility_off</mat-icon>
+    <p>Este ponto é só do mestre. Os jogadores veem a luz, nunca o ponto.</p>
+  </div>
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+  <app-point-foot [name]="point().name" [saving]="saving()" [dirty]="dirty()" (save)="saveRequested.emit()" (remove)="removeConfirmed.emit()" />
+</section>

@@ -77,33 +77,6 @@
   }
 }
 
-.lg__disc {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 3px;
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-ink);
-  color: var(--mr-surface);
-  font-family: var(--mr-font-display);
-  font-weight: 700;
-  font-size: 12px;
-
-  &--hidden {
-    background: var(--mr-surface);
-    color: var(--mr-ink);
-    border: 1.5px dashed var(--mr-ink);
-  }
-
-  &--mine {
-    box-shadow: 0 0 0 2px var(--mr-surface), 0 0 0 3.5px var(--mr-accent);
-    margin: 0 2px;
-  }
-}
-
 .lg__you {
   color: var(--mr-ink-muted);
 }

@@ -1,4 +1,4 @@
-<h4 class="tn__h" id="tn-h">Quem notaria</h4>
+<h4 class="tn__h" [class.mr-panel__title]="panel()" id="tn-h">Quem notaria</h4>
 @if (failed()) {
   <div class="mr-notice mr-notice--danger" role="alert">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -12,7 +12,7 @@
     <p class="tn__lead">Ninguém nota esta armadilha sozinho: ela não tem CD para notar. Só se acha com Investigação.</p>
   } @else {
     <p class="tn__lead">
-      Percepção passiva contra a CD {{ res.noticeDc }} para notar, de quem está a até 3&nbsp;m e vê o quadrado. A penumbra tira 5 da passiva.
+      Percepção passiva contra a CD {{ res.noticeDc }} para notar, de quem está a até 3&nbsp;m e vê o quadrado. A penumbra tira 5 da passiva de quem não enxerga no escuro; o desconto de cada um aparece ao lado do número.
     </p>
     @if (rows().length === 0) {
       <p class="tn__lead">Nenhum personagem de jogador vivo nesta campanha.</p>

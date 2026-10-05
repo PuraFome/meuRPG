@@ -14,7 +14,7 @@ import {
   trapVisibility,
   triggerWord,
 } from '../../../../core/traps/trap-text';
-import { TrapNoticers } from '../trap-noticers/trap-noticers';
+import { TrapNoticers } from '../../../../shared/trap-noticers/trap-noticers';
 
 /**
  * One trap on the master's "Armadilhas do mapa" (E9-08 1, 5, MR-035): its name and where it stands in play

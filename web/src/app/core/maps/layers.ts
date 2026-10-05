@@ -7,6 +7,8 @@ export interface PackedLayers {
   readonly difficultTerrain: Uint8Array;
   readonly wall: Uint8Array;
   readonly cover: Uint8Array;
+  /** The painted light (two bits a square): only the master gets it. */
+  readonly light?: Uint8Array;
 }
 
 /** Cover as the layer stores it: 1 half, 2 three-quarters (walls are the wall layer). */
@@ -20,6 +22,15 @@ export interface MapLayers {
   readonly terrain: readonly Square[];
   readonly half: readonly Square[];
   readonly threeQuarters: readonly Square[];
+  /** The painted light, by level: the master's editor only (a player never receives it). */
+  readonly light?: PaintedLight;
+}
+
+/** The squares of each painted light level (`LightLevel`: 1 Escuro, 2 Penumbra, 3 Claro). */
+export interface PaintedLight {
+  readonly dark: readonly Square[];
+  readonly dim: readonly Square[];
+  readonly bright: readonly Square[];
 }
 
 export const NO_LAYERS: MapLayers = { columns: 0, rows: 0, walls: [], terrain: [], half: [], threeQuarters: [] };
@@ -62,6 +73,7 @@ export function decodeLayers(packed: PackedLayers): MapLayers {
   if (columns <= 0 || rows <= 0) {
     return NO_LAYERS;
   }
+  const light = packed.light;
   return {
     columns,
     rows,
@@ -69,10 +81,30 @@ export function decodeLayers(packed: PackedLayers): MapLayers {
     terrain: bitSquares(packed.difficultTerrain, columns, rows),
     half: crumbSquares(packed.cover, columns, rows, 1),
     threeQuarters: crumbSquares(packed.cover, columns, rows, 2),
+    ...(light !== undefined && light.length > 0
+      ? {
+          light: {
+            dark: crumbSquares(light, columns, rows, 1),
+            dim: crumbSquares(light, columns, rows, 2),
+            bright: crumbSquares(light, columns, rows, 3),
+          },
+        }
+      : {}),
   };
 }
 
 /** Whether there is anything to draw or to name in a legend. */
 export function hasLayers(layers: MapLayers): boolean {
   return layers.walls.length + layers.terrain.length + layers.half.length + layers.threeQuarters.length > 0;
+}
+
+/** How many squares have painted light (the editor's "Luz" row). */
+export function lightCount(layers: MapLayers): number {
+  const l = layers.light;
+  return l ? l.dark.length + l.dim.length + l.bright.length : 0;
+}
+
+/** Whether the master painted anything at all, light included: what a new grid or a new image would erase. */
+export function hasPainted(layers: MapLayers): boolean {
+  return hasLayers(layers) || lightCount(layers) > 0;
 }
