@@ -57,6 +57,10 @@ type logEntry struct {
 	// stopped the pending damages Escudo stopped (a spell attack or an attack).
 	pend    map[string]*damageLog
 	stopped []string
+	// returned and returnBlocked: the opportunity attack's damage took the mover to
+	// 0 hit points, and it went back to the square it left the reach at (or could
+	// not, because the square was taken: the master's line says so).
+	returned, returnBlocked bool
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
 	// hosts are the events the entry shows: an attack's own and the ones of its
@@ -160,6 +164,11 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 	}
 	var out []*logEntry
 	byPending := map[string]*logEntry{}
+	// An opportunity offer's answer without an attack (a decline, a skip) is no
+	// line, but the master's undo can take it back: it belongs to the entry of
+	// the move that made the offer, so that entry is the one to undo.
+	byMove := map[string]*logEntry{}
+	moveOf := map[string]string{} // offer id -> move id
 	for _, e := range events {
 		if undone[e.ID] || e.Kind == eventActionUndone {
 			continue
@@ -182,6 +191,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				continue // placing a token is not a move of the fight
 			}
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED
+			if ev.MoveID != "" {
+				byMove[ev.MoveID] = entry
+			}
 		case eventCombatantHiddenSet:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
 		case eventActionTaken:
@@ -222,9 +234,15 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 					host.stopped = append(host.stopped, ev.Pending)
 				}
 			}
+		case eventOpportunityOffered:
+			moveOf[ev.OfferID] = ev.MoveID
+			continue
 		case eventReactionDeclined:
 			if host, ok := byPending[ev.Pending]; ok {
 				host.hosts = append(host.hosts, e.ID) // a decline is the entry's last action to undo
+			}
+			if host, ok := byMove[moveOf[ev.OfferID]]; ev.OfferID != "" && ok {
+				host.hosts = append(host.hosts, e.ID) // an opportunity offer's answer is the move's to undo
 			}
 			continue
 		case eventDamageRolled, eventDamageApplied, eventDamageDiscarded:
@@ -258,6 +276,7 @@ func (e *logEntry) setStatus(pending string, status playv1.PendingDamageStatus) 
 func (e *logEntry) land(kind string, ev actionEvent) {
 	switch kind {
 	case eventDamageRolled:
+		e.returned, e.returnBlocked = e.returned || ev.ReturnedFrom != nil, e.returnBlocked || ev.ReturnBlocked
 		hits := ev.Settled
 		if len(hits) == 0 {
 			hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Amount: ev.Amount, Applied: ev.Applied, After: ev.After, ConcentrationDC: ev.ConcentrationDC}}
@@ -275,6 +294,7 @@ func (e *logEntry) land(kind string, ev actionEvent) {
 			e.dmg.After = h.After // the target's hit points after, for an NPC that took it at once
 		}
 	case eventDamageApplied:
+		e.returned, e.returnBlocked = e.returned || ev.ReturnedFrom != nil, e.returnBlocked || ev.ReturnBlocked
 		if dl, ok := e.pend[ev.Pending]; ok {
 			dl.applied, dl.status = &ev, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
 			return
@@ -357,6 +377,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:
 		out.Outcome = outcomeToProto[e.ev.Outcome]
 		out.AsReaction = e.ev.AsReaction
+		out.ReturnedToReach, out.ReturnBlocked = e.returned, v.master && e.returnBlocked
 		out.Cover, out.CoverSource = coverDegreeProto(e.ev.Cover), coverSourceProto(e.ev.CoverSource)
 		if v.master && e.ev.TargetAC > 0 { // "CA 17: 15 + 2 de meia cobertura": a player never gets an armor class (RN-20)
 			out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus

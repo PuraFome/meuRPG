@@ -55,6 +55,11 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
 			continue
 		}
+		// The offers a move made are written before the move's own event, the same
+		// way: the undo acts on the move.
+		if e.Kind == eventOpportunityOffered {
+			continue
+		}
 		// A form that ended because the beast fell, and a sight that ended at a turn
 		// start or by the player's hand, are no action to undo: the first is part of the
 		// damage that did it (written before it), the others change nothing an undo
@@ -268,6 +273,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+		if ev.OfferID != "" { // an opportunity attack: its offer waits again
+			if err := offerWaits(ctx, c, ev.OfferID); err != nil {
+				return nil, err
+			}
+		}
 		if ev.Pending != "" {
 			if err := c.q.DeletePendingDamage(ctx, ev.Pending); err != nil {
 				return nil, fmt.Errorf("delete the pending damage: %w", err)
@@ -277,6 +287,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		// The damage waits to be rolled again; an NPC that took it is as it was, and
 		// a character a heal reached has its hit points and death saves back. A
 		// spell's roll settled every pending damage of the cast.
+		if err := putBackMove(ctx, c, ev.Target, ev.ReturnedFrom); err != nil {
+			return nil, err
+		}
 		hits := ev.Settled
 		if len(hits) == 0 {
 			hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Applied: ev.Applied, Before: ev.Before, DeathBefore: ev.DeathBefore}}
@@ -307,6 +320,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	case eventDamageApplied:
 		// The character's vitals as they were, its death saves too, and the damage
 		// waits for the master again.
+		if err := putBackMove(ctx, c, ev.Target, ev.ReturnedFrom); err != nil {
+			return nil, err
+		}
 		who, ok := find(ev.Target)
 		if !ok || ev.Before == nil {
 			break
@@ -352,6 +368,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			ID: who.ID, GridCol: col, GridRow: row, MovementUsedFt: ev.From.UsedDFt / 10, MovementUsedDft: ev.From.UsedDFt, LastMoveDft: ev.From.LastDFt, CoverMark: cover,
 		}); err != nil {
 			return nil, fmt.Errorf("put back the move: %w", err)
+		}
+		// The offers the move made go with it. Only the move that is the last action
+		// is undone, so they are all still pending: an answer comes after it, and has
+		// to be undone first (which makes the offer wait again).
+		if ev.MoveID != "" {
+			if err := c.q.DeleteOpportunityOffersOfMove(ctx, ev.MoveID); err != nil {
+				return nil, fmt.Errorf("take the opportunity offers away: %w", err)
+			}
 		}
 	case eventActionTaken:
 		who, ok := find(ev.Actor)
@@ -493,6 +517,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			return nil, fmt.Errorf("put back the pending damage: %w", err)
 		}
 	case eventReactionDeclined:
+		if ev.OfferID != "" { // an opportunity offer turned down or skipped: it waits again
+			return nil, offerWaits(ctx, c, ev.OfferID)
+		}
 		return nil, setStatus(ev.Pending, pendingAwaitingReaction)
 	case eventDeathSaveRolled:
 		who, ok := find(ev.Actor)

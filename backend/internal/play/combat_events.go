@@ -281,6 +281,22 @@ type actionEvent struct {
 	// StoppedEarly says a creature the mover did not see cut the move short.
 	StoppedEarly bool `json:"stopped_early,omitempty"`
 
+	// Opportunity attacks (MR-034, RN-21). MoveID is set on a move that made
+	// offers (they share it: the undo of the move deletes them). OfferID is the
+	// offer an event is about: opportunity_offered (Actor the mover, Target the
+	// reactor, Col and Row the square the mover left the reach at), the
+	// opportunity attack (attack_rolled) and its answer without an attack
+	// (reaction_declined, Skipped when it was the master's "Seguir sem esperar").
+	// ReturnedFrom is where the mover stood when an opportunity attack's damage
+	// dropped it to 0 hit points and it went back to the square it left the reach
+	// at: the undo puts it there again.
+	MoveID       string     `json:"move_id,omitempty"`
+	OfferID      string     `json:"offer_id,omitempty"`
+	Skipped      bool       `json:"skipped,omitempty"`
+	ReturnedFrom *moveState `json:"returned_from,omitempty"`
+	// ReturnBlocked says the square to go back to was taken, so the mover stayed.
+	ReturnBlocked bool `json:"return_blocked,omitempty"`
+
 	// The Disengage action, which an undo of the action takes back.
 	DisengagedBefore bool `json:"disengaged_before,omitempty"`
 	// RunBefore is the running start (tenths of a foot) an action, an attack or a

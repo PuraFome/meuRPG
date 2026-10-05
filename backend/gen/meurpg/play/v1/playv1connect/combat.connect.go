@@ -114,6 +114,12 @@ const (
 	// CombatServiceDeclineReactionProcedure is the fully-qualified name of the CombatService's
 	// DeclineReaction RPC.
 	CombatServiceDeclineReactionProcedure = "/meurpg.play.v1.CombatService/DeclineReaction"
+	// CombatServiceDeclineOpportunityProcedure is the fully-qualified name of the CombatService's
+	// DeclineOpportunity RPC.
+	CombatServiceDeclineOpportunityProcedure = "/meurpg.play.v1.CombatService/DeclineOpportunity"
+	// CombatServiceSkipOpportunityProcedure is the fully-qualified name of the CombatService's
+	// SkipOpportunity RPC.
+	CombatServiceSkipOpportunityProcedure = "/meurpg.play.v1.CombatService/SkipOpportunity"
 	// CombatServiceRollDeathSaveProcedure is the fully-qualified name of the CombatService's
 	// RollDeathSave RPC.
 	CombatServiceRollDeathSaveProcedure = "/meurpg.play.v1.CombatService/RollDeathSave"
@@ -316,7 +322,20 @@ type CombatServiceClient interface {
 	//     jump the limit is the jump's), a wall, a column or a squeeze between two
 	//     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
 	//     it (ENEMY_IN_THE_WAY), or another creature holds the destination
-	//     (SQUARE_OCCUPIED).
+	//     (SQUARE_OCCUPIED); a player's combatant waits for an opportunity
+	//     attack's answer (OPPORTUNITY_PENDING).
+	//
+	// Opportunity attacks (MR-034, RN-21): a move (on foot or a long jump) that
+	// leaves the reach (5 ft, or the reach of its melee weapon on its sheet) of a combatant hostile to the mover that sees it, has its reaction
+	// and is not incapacitated, unless the mover took the Disengage action this
+	// turn, lands at once and gives that combatant an opportunity offer
+	// (Encounter.opportunity_offers; the event `opportunity_offered`). The
+	// master's placement out of turn and the move back of the 0 hit points rule
+	// offer nothing. A long jump is a move that spends movement, so it provokes; a
+	// high jump moves no square and does not; `forced` (the master) never does.
+	// The mover's turn then waits (OPPORTUNITY_PENDING for its
+	// player) until each offer is answered: RollAttack with `opportunity_offer_id`,
+	// DeclineOpportunity, or the master's SkipOpportunity.
 	//
 	// The move is a straight line from the combatant's square to the chosen one
 	// (RN-21, the SRD's "breaking up your move": to go around something, move in
@@ -797,6 +816,29 @@ type CombatServiceClient interface {
 	//
 	// Errors: as UseReaction, without the slot errors.
 	DeclineReaction(context.Context, *connect.Request[v1.DeclineReactionRequest]) (*connect.Response[v1.DeclineReactionResponse], error)
+	// DeclineOpportunity turns an opportunity offer down ("Não atacar"): the offer
+	// is answered, and the mover's turn stops waiting for it. The reactor's
+	// controller may call it (the player of a character or of its creature, the
+	// master for an NPC), and the master for any offer.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the caller may not
+	//     see the reactor.
+	//   - `permission_denied`: the caller is a player and the reactor is not theirs.
+	//   - `aborted`: the offer is gone (the move was undone, or the combat's
+	//     turn passed) or was answered already. The screen reads the combat again.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	DeclineOpportunity(context.Context, *connect.Request[v1.DeclineOpportunityRequest]) (*connect.Response[v1.DeclineOpportunityResponse], error)
+	// SkipOpportunity is the master's "Seguir sem esperar": it passes over an
+	// opportunity offer whose player does not answer (offline), so the mover's
+	// turn goes on. Only the master.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors: as DeclineOpportunity, and `permission_denied` for a player.
+	SkipOpportunity(context.Context, *connect.Request[v1.SkipOpportunityRequest]) (*connect.Response[v1.SkipOpportunityResponse], error)
 	// RollDeathSave rolls a death save for a player's character at 0 hit points
 	// (RN-03): its turn starts with one due (Combatant.death_save_due). The
 	// character's player may roll for their own, and the master for any, with the
@@ -1099,6 +1141,18 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("DeclineReaction")),
 			connect.WithClientOptions(opts...),
 		),
+		declineOpportunity: connect.NewClient[v1.DeclineOpportunityRequest, v1.DeclineOpportunityResponse](
+			httpClient,
+			baseURL+CombatServiceDeclineOpportunityProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("DeclineOpportunity")),
+			connect.WithClientOptions(opts...),
+		),
+		skipOpportunity: connect.NewClient[v1.SkipOpportunityRequest, v1.SkipOpportunityResponse](
+			httpClient,
+			baseURL+CombatServiceSkipOpportunityProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SkipOpportunity")),
+			connect.WithClientOptions(opts...),
+		),
 		rollDeathSave: connect.NewClient[v1.RollDeathSaveRequest, v1.RollDeathSaveResponse](
 			httpClient,
 			baseURL+CombatServiceRollDeathSaveProcedure,
@@ -1167,6 +1221,8 @@ type combatServiceClient struct {
 	castSpell                *connect.Client[v1.CastSpellRequest, v1.CastSpellResponse]
 	useReaction              *connect.Client[v1.UseReactionRequest, v1.UseReactionResponse]
 	declineReaction          *connect.Client[v1.DeclineReactionRequest, v1.DeclineReactionResponse]
+	declineOpportunity       *connect.Client[v1.DeclineOpportunityRequest, v1.DeclineOpportunityResponse]
+	skipOpportunity          *connect.Client[v1.SkipOpportunityRequest, v1.SkipOpportunityResponse]
 	rollDeathSave            *connect.Client[v1.RollDeathSaveRequest, v1.RollDeathSaveResponse]
 	confirmDeath             *connect.Client[v1.ConfirmDeathRequest, v1.ConfirmDeathResponse]
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
@@ -1298,6 +1354,16 @@ func (c *combatServiceClient) UseReaction(ctx context.Context, req *connect.Requ
 // DeclineReaction calls meurpg.play.v1.CombatService.DeclineReaction.
 func (c *combatServiceClient) DeclineReaction(ctx context.Context, req *connect.Request[v1.DeclineReactionRequest]) (*connect.Response[v1.DeclineReactionResponse], error) {
 	return c.declineReaction.CallUnary(ctx, req)
+}
+
+// DeclineOpportunity calls meurpg.play.v1.CombatService.DeclineOpportunity.
+func (c *combatServiceClient) DeclineOpportunity(ctx context.Context, req *connect.Request[v1.DeclineOpportunityRequest]) (*connect.Response[v1.DeclineOpportunityResponse], error) {
+	return c.declineOpportunity.CallUnary(ctx, req)
+}
+
+// SkipOpportunity calls meurpg.play.v1.CombatService.SkipOpportunity.
+func (c *combatServiceClient) SkipOpportunity(ctx context.Context, req *connect.Request[v1.SkipOpportunityRequest]) (*connect.Response[v1.SkipOpportunityResponse], error) {
+	return c.skipOpportunity.CallUnary(ctx, req)
 }
 
 // RollDeathSave calls meurpg.play.v1.CombatService.RollDeathSave.
@@ -1512,7 +1578,20 @@ type CombatServiceHandler interface {
 	//     jump the limit is the jump's), a wall, a column or a squeeze between two
 	//     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
 	//     it (ENEMY_IN_THE_WAY), or another creature holds the destination
-	//     (SQUARE_OCCUPIED).
+	//     (SQUARE_OCCUPIED); a player's combatant waits for an opportunity
+	//     attack's answer (OPPORTUNITY_PENDING).
+	//
+	// Opportunity attacks (MR-034, RN-21): a move (on foot or a long jump) that
+	// leaves the reach (5 ft, or the reach of its melee weapon on its sheet) of a combatant hostile to the mover that sees it, has its reaction
+	// and is not incapacitated, unless the mover took the Disengage action this
+	// turn, lands at once and gives that combatant an opportunity offer
+	// (Encounter.opportunity_offers; the event `opportunity_offered`). The
+	// master's placement out of turn and the move back of the 0 hit points rule
+	// offer nothing. A long jump is a move that spends movement, so it provokes; a
+	// high jump moves no square and does not; `forced` (the master) never does.
+	// The mover's turn then waits (OPPORTUNITY_PENDING for its
+	// player) until each offer is answered: RollAttack with `opportunity_offer_id`,
+	// DeclineOpportunity, or the master's SkipOpportunity.
 	//
 	// The move is a straight line from the combatant's square to the chosen one
 	// (RN-21, the SRD's "breaking up your move": to go around something, move in
@@ -1993,6 +2072,29 @@ type CombatServiceHandler interface {
 	//
 	// Errors: as UseReaction, without the slot errors.
 	DeclineReaction(context.Context, *connect.Request[v1.DeclineReactionRequest]) (*connect.Response[v1.DeclineReactionResponse], error)
+	// DeclineOpportunity turns an opportunity offer down ("Não atacar"): the offer
+	// is answered, and the mover's turn stops waiting for it. The reactor's
+	// controller may call it (the player of a character or of its creature, the
+	// master for an NPC), and the master for any offer.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the caller may not
+	//     see the reactor.
+	//   - `permission_denied`: the caller is a player and the reactor is not theirs.
+	//   - `aborted`: the offer is gone (the move was undone, or the combat's
+	//     turn passed) or was answered already. The screen reads the combat again.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	DeclineOpportunity(context.Context, *connect.Request[v1.DeclineOpportunityRequest]) (*connect.Response[v1.DeclineOpportunityResponse], error)
+	// SkipOpportunity is the master's "Seguir sem esperar": it passes over an
+	// opportunity offer whose player does not answer (offline), so the mover's
+	// turn goes on. Only the master.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors: as DeclineOpportunity, and `permission_denied` for a player.
+	SkipOpportunity(context.Context, *connect.Request[v1.SkipOpportunityRequest]) (*connect.Response[v1.SkipOpportunityResponse], error)
 	// RollDeathSave rolls a death save for a player's character at 0 hit points
 	// (RN-03): its turn starts with one due (Combatant.death_save_due). The
 	// character's player may roll for their own, and the master for any, with the
@@ -2291,6 +2393,18 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("DeclineReaction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceDeclineOpportunityHandler := connect.NewUnaryHandler(
+		CombatServiceDeclineOpportunityProcedure,
+		svc.DeclineOpportunity,
+		connect.WithSchema(combatServiceMethods.ByName("DeclineOpportunity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceSkipOpportunityHandler := connect.NewUnaryHandler(
+		CombatServiceSkipOpportunityProcedure,
+		svc.SkipOpportunity,
+		connect.WithSchema(combatServiceMethods.ByName("SkipOpportunity")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceRollDeathSaveHandler := connect.NewUnaryHandler(
 		CombatServiceRollDeathSaveProcedure,
 		svc.RollDeathSave,
@@ -2381,6 +2495,10 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceUseReactionHandler.ServeHTTP(w, r)
 		case CombatServiceDeclineReactionProcedure:
 			combatServiceDeclineReactionHandler.ServeHTTP(w, r)
+		case CombatServiceDeclineOpportunityProcedure:
+			combatServiceDeclineOpportunityHandler.ServeHTTP(w, r)
+		case CombatServiceSkipOpportunityProcedure:
+			combatServiceSkipOpportunityHandler.ServeHTTP(w, r)
 		case CombatServiceRollDeathSaveProcedure:
 			combatServiceRollDeathSaveHandler.ServeHTTP(w, r)
 		case CombatServiceConfirmDeathProcedure:
@@ -2500,6 +2618,14 @@ func (UnimplementedCombatServiceHandler) UseReaction(context.Context, *connect.R
 
 func (UnimplementedCombatServiceHandler) DeclineReaction(context.Context, *connect.Request[v1.DeclineReactionRequest]) (*connect.Response[v1.DeclineReactionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.DeclineReaction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) DeclineOpportunity(context.Context, *connect.Request[v1.DeclineOpportunityRequest]) (*connect.Response[v1.DeclineOpportunityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.DeclineOpportunity is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SkipOpportunity(context.Context, *connect.Request[v1.SkipOpportunityRequest]) (*connect.Response[v1.SkipOpportunityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SkipOpportunity is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) RollDeathSave(context.Context, *connect.Request[v1.RollDeathSaveRequest]) (*connect.Response[v1.RollDeathSaveResponse], error) {

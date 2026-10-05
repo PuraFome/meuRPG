@@ -130,7 +130,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		return gateError(code)
 	}
-	return nil
+	return s.mustNotWait(ctx, c, who)
 }
 
 func turnOf(c playdb.Combatant) link.Turn {
@@ -456,7 +456,7 @@ func (s *Service) mustRollThisWay(ctx context.Context, m authz.Membership, in ro
 // mustReactNow checks, inside a write, that the combatant may spend its
 // reaction now: the combat is running, it is not out of the fight or down, and
 // it is not its own turn (then an attack spends the action).
-func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Combatant, onOffer bool) error {
 	if err := notEnded(c.enc); err != nil {
 		return err
 	}
@@ -465,7 +465,7 @@ func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Comb
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE)
 	case who.Defeated:
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED)
-	case actsNow(c.enc, who):
+	case actsNow(c.enc, who) && !onOffer: // an opportunity attack may come in a joint turn, on any turn (SRD)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("on its own turn an attack spends the action, not the reaction"))
 	}
 	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, who)
@@ -522,7 +522,14 @@ func (s *Service) RollAttack(
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
-	asReaction := req.Msg.GetAsReaction()
+	offerID := ""
+	if raw := req.Msg.GetOpportunityOfferId(); raw != "" {
+		if offerID, err = parseOfferID(raw); err != nil {
+			return nil, err
+		}
+	}
+	// An opportunity attack is a reaction attack (MR-034).
+	asReaction := req.Msg.GetAsReaction() || offerID != ""
 	v := viewerOf(m)
 
 	var made actionEvent
@@ -545,8 +552,23 @@ func (s *Service) RollAttack(
 		if target.ID == attacker.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an attacker cannot be its own target"))
 		}
+		// An opportunity attack answers an offer: the offer is the reactor's, on
+		// the mover, and still waits. Gone or answered is aborted (the screen reads
+		// the combat again); the wrong person was told apart above (mayAct).
+		var offer playdb.OpportunityOffer
+		if offerID != "" {
+			if offer, err = pendingOffer(ctx, c, offerID); err != nil {
+				return nil, err
+			}
+			if offer.ReactorID != attacker.ID || offer.MoverID != target.ID {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made by the offer's reactor on its mover"))
+			}
+			if attacker.ReactionUsed {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+			}
+		}
 		if asReaction {
-			err = s.mustReactNow(ctx, c, attacker)
+			err = s.mustReactNow(ctx, c, attacker, offerID != "")
 		} else {
 			err = s.mustActNow(ctx, c, attacker)
 		}
@@ -607,8 +629,10 @@ func (s *Service) RollAttack(
 			if !placed(attacker) || !placed(target) { // RN-21: the reach is a player's limit
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
 			}
+			// An opportunity attack comes right before the mover leaves the reach, so
+			// it asks no reach check (the mover has moved already).
 			dist, _ := distanceFt(attacker, target)
-			if reach := attackReach(attack, asReaction); dist > reach {
+			if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 					func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 			}
@@ -616,7 +640,14 @@ func (s *Service) RollAttack(
 		// D4: the cover the target has against this attacker. Total cover (a wall on
 		// the line, or the master's mark) makes it untargetable for a player; the
 		// master has the last word.
-		cover := coverAgainst(terrain, attacker, target, cs)
+		// An opportunity attack comes right before the mover leaves the reach: the
+		// cover is measured with it on the square it left the reach at, not where
+		// it stands now (a door it walked through is not between the two).
+		coverTarget := target
+		if offerID != "" {
+			coverTarget.GridCol, coverTarget.GridRow = &offer.LeftCol, &offer.LeftRow
+		}
+		cover := coverAgainst(terrain, attacker, coverTarget, cs)
 		if cover.total() && !v.master {
 			return nil, errCoverTotal()
 		}
@@ -678,6 +709,16 @@ func (s *Service) RollAttack(
 				return nil, err
 			}
 			made.Pending = p.ID
+		}
+		if offerID != "" {
+			var damage *string // the damage the attack opened: the 0 hit points rule finds the offer by it
+			if made.Pending != "" {
+				damage = &made.Pending
+			}
+			if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: offer.ID, State: offerAttacked, AttackPendingID: damage, AnsweredAt: &c.now}); err != nil {
+				return nil, fmt.Errorf("answer the opportunity offer: %w", err)
+			}
+			made.OfferID = offer.ID
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
@@ -892,6 +933,13 @@ func (s *Service) RollDamage(
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
 				made.DeathBefore = hit.DeathBefore
+				// The 0 hit points rule: an opportunity attack that drops its mover to 0
+				// takes it back to where it left the reach.
+				if hit.Applied && !g.Healing && hit.Before != nil && hit.After != nil && hit.Before.HP > 0 && hit.After.HP == 0 {
+					if made.ReturnedFrom, made.ReturnBlocked, err = s.returnToReach(ctx, c, g.ID, tgt); err != nil {
+						return nil, err
+					}
+				}
 			}
 			if p.CastID != nil || p.Healing {
 				made.Settled = append(made.Settled, hit)
@@ -912,6 +960,7 @@ func (s *Service) RollDamage(
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
+		s.publishReturned(m.CampaignID, d, ev)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
@@ -1168,6 +1217,13 @@ func (s *Service) ApplyPendingDamage(
 			made.After = ptr(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
 			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
+			// The 0 hit points rule: an opportunity attack that drops its mover to 0
+			// takes it back to where it left the reach.
+			if made.Before.HP > 0 && made.After.HP == 0 {
+				if made.ReturnedFrom, made.ReturnBlocked, err = s.returnToReach(ctx, c, p.ID, target); err != nil {
+					return nil, err
+				}
+			}
 		}
 		if _, err := c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: p.ID, ResolvedAt: &c.now, AppliedAmount: appliedAmount}); err != nil {
 			return nil, fmt.Errorf("apply the pending damage: %w", err)
@@ -1187,6 +1243,7 @@ func (s *Service) ApplyPendingDamage(
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
+		s.publishReturned(m.CampaignID, d, ev)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
