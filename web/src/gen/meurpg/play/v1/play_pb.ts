@@ -1642,7 +1642,9 @@ export const WatchGameSessionResponse_LeftImagesChangedSchema: GenMessage<WatchG
  * EncounterChanged is a hint: the combat changed, so the app reads it again
  * (CombatService.GetEncounter). It carries no content, so a hidden
  * combatant never travels on a player's stream (RN-10). Everyone gets it,
- * also when the change only touched hidden things.
+ * also when the change only touched hidden things. One exception: the
+ * opportunity offers a move makes (MoveCombatantResponse.provoked) are told
+ * only to the master, the mover's player and the reactors' players.
  *
  * @generated from message meurpg.play.v1.WatchGameSessionResponse.EncounterChanged
  */
