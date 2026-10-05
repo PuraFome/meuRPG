@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -62,7 +63,7 @@ func (c *caveTerrain) addWalls(sq ...grid.Square) {
 	c.extra = append(c.extra, sq...)
 }
 
-func (c *caveTerrain) Terrain(context.Context, string, string) (grid.Terrain, error) {
+func (c *caveTerrain) Terrain(context.Context, pgx.Tx, string, string) (grid.Terrain, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	g := grid.Grid{Columns: 24, Rows: 16}

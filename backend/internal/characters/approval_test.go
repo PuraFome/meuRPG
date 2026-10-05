@@ -9,6 +9,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Acceptance tests for MR-024 and RN-15 (invites with approval), one per
@@ -251,6 +252,7 @@ func TestRN15_PendingCharacterIsNotPartOfTheCampaignYet(t *testing.T) {
 // the pending membership. Never half of each.
 func TestRN15_ApproveAndRejectRace(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	h := newHarness(t)
 	mestre := h.newUser("Mestre")
 	campaign := h.newCampaign(mestre, "Mirathel")

@@ -3,6 +3,8 @@ package characters
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -12,8 +14,8 @@ import (
 // SceneOptions. It takes no caller: it runs after play's own authorization
 // check, and the DC never passes through it. `not_found` for a character that
 // is not one of the campaign's living ones.
-func (s *Service) SceneOptions(ctx context.Context, campaignID, characterID string, keys []string) ([]link.SceneOption, error) {
-	_, d, err := s.fighter(ctx, nil, campaignID, characterID)
+func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, keys []string) ([]link.SceneOption, error) {
+	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}

@@ -47,11 +47,11 @@ func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Member
 			"set roll_in_app or d20_face: it is the initiative roll of the creatures")
 	}
 	if !v.master {
-		if err := s.mustRollThisWay(ctx, m, in); err != nil {
+		if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 			return nil, err
 		}
 	}
-	chk, err := s.checkSummonChoice(ctx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (s *Service) CastSummon(
 	var owner string // the character's player, for the stream
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCreatureSummoned}, func(c *combatTx) (any, error) {
 		vitals, owner = nil, ""
-		chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, []string{characterID})
+		chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, []string{characterID})
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +261,7 @@ func (s *Service) CastSummon(
 			}
 			circle = int(slot.Level)
 		}
-		chk, err := s.checkSummonChoice(ctx, m.CampaignID, characterID, spellKey, circle, pick)
+		chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, characterID, spellKey, circle, pick)
 		if err != nil {
 			return nil, err
 		}

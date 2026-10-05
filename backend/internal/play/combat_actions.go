@@ -237,13 +237,13 @@ func (s *Service) GetTurnOptions(
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		disableAll(opts, code)
 	}
-	terrain, err := s.terrainOf(ctx, m.CampaignID, enc)
+	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
 	// The cover a player is shown, and the targets it makes untargetable, come from the
 	// terrain they know and the creatures they see.
-	known, err := sight.knownTerrain(ctx, v)
+	known, err := sight.knownTerrain(ctx, nil, v)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
@@ -451,12 +451,13 @@ type rollInput struct {
 // refused when everybody rolls in the app, the app's roll when everybody rolls
 // real dice); with "each player chooses" they pick on every roll, and their
 // preference is only the default the screen offers. The master rolls either
-// way, for anyone.
-func (s *Service) mustRollThisWay(ctx context.Context, m authz.Membership, in rollInput) error {
+// way, for anyone. Inside a change it reads the setting in the change's
+// transaction (tx).
+func (s *Service) mustRollThisWay(ctx context.Context, tx pgx.Tx, m authz.Membership, in rollInput) error {
 	if m.Role == authz.RoleMaster {
 		return nil
 	}
-	force, err := s.dice.ForcedDice(ctx, m.CampaignID, m.UserID)
+	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
 	if err != nil {
 		return err
 	}
@@ -603,7 +604,7 @@ func (s *Service) RollAttack(
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "the target is defeated")
 		}
 		if !v.master {
-			if err := s.mustRollThisWay(ctx, m, in); err != nil {
+			if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 				return nil, err
 			}
 		}
@@ -620,7 +621,7 @@ func (s *Service) RollAttack(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
 		}
 		attack := attackerSheet.Attacks[i]
-		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
+		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
 		}
@@ -671,7 +672,7 @@ func (s *Service) RollAttack(
 		if offerID != "" {
 			coverTarget.GridCol, coverTarget.GridRow = &offer.LeftCol, &offer.LeftRow
 		}
-		known, err := c.sight.knownTerrain(ctx, v)
+		known, err := c.sight.knownTerrain(ctx, c.tx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -934,7 +935,7 @@ func (s *Service) RollDamage(
 			roll = dice.Result{Expr: expr, Modifier: expr.Modifier, Total: expr.Modifier}
 		} else {
 			if !v.master {
-				if err := s.mustRollThisWay(ctx, m, in); err != nil {
+				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 					return nil, err
 				}
 			}
@@ -1683,7 +1684,7 @@ func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membershi
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_sum for Retomar o fôlego"))
 	}
 	if !v.master {
-		if err := s.mustRollThisWay(ctx, m, in); err != nil {
+		if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 			return nil, err
 		}
 	}

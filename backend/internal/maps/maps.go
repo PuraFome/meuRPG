@@ -82,13 +82,15 @@ const maxNameLength = 80
 
 // CharacterDirectory tells which characters may stand on a map as tokens.
 // The characters module implements it (characters.Service.MapCharacters),
-// so this package never reads the characters table.
+// so this package never reads the characters table. The reads take the
+// caller's transaction (nil: the pool): a caller that holds one must pass it,
+// or the read takes a second connection while the transaction keeps the first.
 type CharacterDirectory interface {
 	// MapCharacters returns those of ids that are living characters of the
 	// campaign (a player's that is neither dead nor waiting for approval, or
 	// an NPC), players' characters first, then NPCs, each group oldest
 	// first. Only id, kind, name and player_user_id are set.
-	MapCharacters(ctx context.Context, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error)
+	MapCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error)
 	// ClearPortraits takes the image off the portrait of every NPC of the
 	// campaign that has it, inside tx, and returns how many it cleared
 	// (MR-031): the master deleted the image from the gallery.
@@ -98,7 +100,7 @@ type CharacterDirectory interface {
 	// and truesight): the fog of war's viewers (MR-036). A beast's senses in Wild
 	// Shape replace the character's, and a familiar the player looks through comes
 	// as Eyes (MR-037).
-	PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error)
+	PartyVision(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error)
 	// MapCreatures returns those of ids that are live creatures of a living
 	// player's character of the campaign, oldest first: the ones that may have a
 	// token on a map (MR-037).
@@ -158,7 +160,7 @@ type LiveSession interface {
 type CombatMaps interface {
 	// CombatPositions says where the combatants of the combat running on the map
 	// stand, by character, in squares of its grid, and whether a combat runs.
-	CombatPositions(ctx context.Context, campaignID, mapID string) (link.CombatPositions, error)
+	CombatPositions(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.CombatPositions, error)
 	// CombatRunsOnMap reports, inside tx, whether a combat of the campaign that
 	// is not ended (in setup or active) runs on the map.
 	CombatRunsOnMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (bool, error)
@@ -248,6 +250,17 @@ type Service struct {
 
 	// tiles is the image of a fog map as tiles per player (tiles.go).
 	tiles *tileRenderer
+}
+
+// queriesIn is q on the transaction, or q itself (the pool) when tx is nil. A
+// read made while the caller holds a transaction must use the transaction: a
+// read through the pool takes a second connection (see docs/arquitetura.md,
+// "Dentro de uma transação, nenhuma leitura pelo pool").
+func queriesIn(q *mapsdb.Queries, tx pgx.Tx) *mapsdb.Queries {
+	if tx == nil {
+		return q
+	}
+	return q.WithTx(tx)
 }
 
 // The compiler checks that Service implements both handlers.

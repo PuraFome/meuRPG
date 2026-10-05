@@ -84,7 +84,7 @@ func (s *Service) StartEncounter(
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_CURRENT_MAP,
 				"the session has no current map to fight on")
 		}
-		grid, err := s.maps.MapGrid(ctx, m.CampaignID, mapID)
+		grid, err := s.maps.MapGrid(ctx, c.tx, m.CampaignID, mapID)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +171,7 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 		}
 		ids = append(ids, id)
 	}
-	found, err := s.roster.CombatCharacters(ctx, campaignID, ids)
+	found, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the characters of a combat", err)
 	}
@@ -202,7 +202,7 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 		out = append(out, planned{char: c, count: count, hidden: hidden})
 	}
 	if withParty && !slices.ContainsFunc(out, func(p planned) bool { return p.char.Player }) {
-		party, err := s.roster.CombatParty(ctx, campaignID)
+		party, err := s.roster.CombatParty(ctx, nil, campaignID)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the party", err)
 		}
@@ -249,7 +249,7 @@ func parseID(raw string) (string, bool) {
 func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Grid, existing []playdb.Combatant, parts []planned) (order, added []playdb.Combatant, err error) {
 	var tokens []link.TokenPosition
 	if c.enc.MapID != nil {
-		if tokens, err = s.maps.MapTokens(ctx, *c.enc.MapID); err != nil {
+		if tokens, err = s.maps.MapTokens(ctx, c.tx, *c.enc.MapID); err != nil {
 			return nil, nil, fmt.Errorf("read the tokens: %w", err)
 		}
 	}
@@ -405,7 +405,7 @@ func (s *Service) SubmitInitiative(
 	// chooses" they pick on every roll. The master rolls either way, for anyone.
 	var force DiceForce
 	if !v.master {
-		if force, err = s.dice.ForcedDice(ctx, m.CampaignID, m.UserID); err != nil {
+		if force, err = s.dice.ForcedDice(ctx, nil, m.CampaignID, m.UserID); err != nil {
 			return nil, s.dbError(ctx, "read the dice setting", err)
 		}
 	}

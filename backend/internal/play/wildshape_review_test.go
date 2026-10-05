@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The review round of slice 9.10: replayed keys, the SRD's end of the form at 0 hit
@@ -192,6 +193,7 @@ func TestMR036_ASightEndsWhenACombatStartsAndIsRefusedInSetup(t *testing.T) {
 // one takes the form, the other is told she is in one already, and one use is spent.
 func TestMR037_TwoAssumesAtOnceOneWins(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	s := newShapers(t)
 	var wg sync.WaitGroup
 	errs := make([]error, 2)

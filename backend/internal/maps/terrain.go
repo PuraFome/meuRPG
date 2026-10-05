@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -17,25 +18,26 @@ import (
 // play never sends a layer to a player (it only walks the squares). The map
 // must be the campaign's, or the answer is a `not_found` Connect error. A map
 // with no grid has an empty Terrain (the zero Grid), and one with no layers
-// row is open floor. The light layer is not part of it.
-func (s *Service) Terrain(ctx context.Context, campaignID, mapID string) (grid.Terrain, error) {
+// row is open floor. The light layer is not part of it. It reads inside tx when
+// the caller has one (a combat's change does; nil: the pool).
+func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error) {
 	id, ok := parseID(mapID)
 	if !ok {
 		return grid.Terrain{}, errMapNotFound()
 	}
-	cm, err := s.loadMaps(ctx, campaignID)
+	q := queriesIn(s.queries, tx)
+	row, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return grid.Terrain{}, errMapNotFound()
+	}
 	if err != nil {
 		return grid.Terrain{}, fmt.Errorf("read the map: %w", err)
-	}
-	row, ok := cm.byID[id]
-	if !ok {
-		return grid.Terrain{}, errMapNotFound()
 	}
 	g := gridOf(row.GridColumns, row.ImageWidth, row.ImageHeight)
 	if !g.Valid() {
 		return grid.Terrain{}, nil
 	}
-	stored, err := s.queries.GetMapLayers(ctx, id)
+	stored, err := q.GetMapLayers(ctx, id)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return grid.Terrain{}, fmt.Errorf("read the layers: %w", err)
 	}

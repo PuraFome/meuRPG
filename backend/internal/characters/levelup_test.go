@@ -10,6 +10,7 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -25,7 +26,7 @@ import (
 // (RN-12), without the module: the sheet's XP reaching the next level's.
 type xpLevelUps struct{}
 
-func (xpLevelUps) LevelUpReason(_ context.Context, _, _ string, level, xp, next int32) (charactersv1.LevelUpReason, error) {
+func (xpLevelUps) LevelUpReason(_ context.Context, _ pgx.Tx, _, _ string, level, xp, next int32) (charactersv1.LevelUpReason, error) {
 	if level < 20 && next > 0 && xp >= next {
 		return charactersv1.LevelUpReason_LEVEL_UP_REASON_XP, nil
 	}
@@ -35,7 +36,7 @@ func (xpLevelUps) LevelUpReason(_ context.Context, _, _ string, level, xp, next 
 // testDiceRules is the campaign's dice setting, which a test changes.
 type testDiceRules struct{ rule atomic.Int32 }
 
-func (d *testDiceRules) LevelUpDice(context.Context, string, string) (charactersv1.LevelUpDiceRule, error) {
+func (d *testDiceRules) LevelUpDice(context.Context, pgx.Tx, string, string) (charactersv1.LevelUpDiceRule, error) {
 	return charactersv1.LevelUpDiceRule(d.rule.Load()), nil
 }
 

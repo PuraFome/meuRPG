@@ -16,6 +16,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The actions of a turn (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
@@ -1899,7 +1900,9 @@ func TestVitalsAreReadInsideTheTransaction(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	ctx := t.Context()
-	tx, err := a.h.pool.Begin(ctx)
+	// The transaction has a connection of its own: the service's pool has one, and
+	// the vitals read below goes through the service.
+	tx, err := dbtest.SideConnection(t, a.h.pool).Begin(ctx)
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
 	}

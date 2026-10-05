@@ -76,13 +76,21 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | Variável | Segredo? | Em produção |
 | --- | --- | --- |
 | `OIDC_CLIENT_SECRET` | Sim | Secret Manager, entregue ao Cloud Run como variável de ambiente |
-| `DATABASE_URL` | Sim (tem a senha do banco) | Secret Manager |
+| `DATABASE_URL` | Sim (tem a senha do banco) | Secret Manager. Aceita `pool_max_conns=N` (e `connect_timeout`); sem `pool_max_conns`, o pool abre no máximo 10 conexões (ver [O pool de conexões](#o-pool-de-conexões)) |
 | `OIDC_ISSUER` | Não | `https://accounts.google.com` |
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
 | `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age`. A reautenticação a cada 30 dias (NIST SP 800-63B-4) vem da sessão de 30 dias no servidor. No ambiente local, com o devidp, é `1h` |
 
 O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`.
+
+### O pool de conexões
+
+O backend fala com o CockroachDB por um pool do pgx. Sem `pool_max_conns` na `DATABASE_URL`, o pool abre no máximo **10** conexões (o padrão do pgx, `max(4, vCPUs)`, daria 4 no Cloud Run de 1 vCPU). Para mudar o tamanho, ponha `?pool_max_conns=N` na connection string do Secret Manager: uma versão nova do segredo só vale numa revisão nova do Cloud Run ou quando uma instância sobe de novo, então é preciso fazer o deploy de uma revisão (ou deixar a instância reiniciar) depois de criar a versão.
+
+- **Por que 10.** A instância é uma só (`max-instances` 1), e a mesa é um mestre e até seis jogadores; cada requisição é uma transação curta. 10 cobre as leituras periódicas dos streams e uma rajada de ações, e fica muito abaixo do que o CockroachDB recomenda (cerca de quatro conexões por vCPU do cluster, somadas entre as instâncias). Se um dia `max-instances` subir, o total (instâncias × `pool_max_conns`) é o que conta.
+- **Esperar uma conexão é normal; esperar para sempre não é.** Com o pool cheio, uma requisição espera a vez. Uma requisição **nunca** pede uma segunda conexão enquanto a transação dela segura a primeira (ver [Arquitetura](arquitetura.md#transações-e-o-pool-de-conexões)): foi esse erro que travou 5 requisições por 176 s no CI. Se aparecerem `context canceled` ou `context deadline exceeded` em leituras simples ("look up session", "get membership") junto com uma requisição lenta, é esse o sintoma: procure uma leitura pelo pool dentro de um `db.InTx`.
+- **Memória e custo.** Cada conexão ocupa memória no nó do CockroachDB; por isso o pool é pequeno e não cresce sozinho.
 
 ### O devidp nunca é deployado
 

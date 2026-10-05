@@ -32,8 +32,9 @@ import (
 type LevelUps interface {
 	// LevelUpReason says why the character can go up a level (XP, or a
 	// MILESTONE), or returns LEVEL_UP_REASON_UNSPECIFIED when it cannot. level,
-	// xp and nextLevelXP are the sheet's numbers.
-	LevelUpReason(ctx context.Context, campaignID, characterID string, level, xp, nextLevelXP int32) (charactersv1.LevelUpReason, error)
+	// xp and nextLevelXP are the sheet's numbers. It reads inside tx when the
+	// caller has one (nil: the pool).
+	LevelUpReason(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, xp, nextLevelXP int32) (charactersv1.LevelUpReason, error)
 }
 
 // SetLevelUps connects the progression module, which needs this service to
@@ -52,7 +53,7 @@ func (s *Service) fillLevelUp(ctx context.Context, c *charactersv1.Character, ro
 	if full == nil || c.GetDerived() == nil {
 		return nil
 	}
-	reason, err := s.levelUps.LevelUpReason(ctx, m.CampaignID, row.ID, c.GetDerived().GetTotalLevel(), full.GetExperiencePoints(), c.GetDerived().GetNextLevelXp())
+	reason, err := s.levelUps.LevelUpReason(ctx, nil, m.CampaignID, row.ID, c.GetDerived().GetTotalLevel(), full.GetExperiencePoints(), c.GetDerived().GetNextLevelXp())
 	if err != nil {
 		return wrap("check the level up", err)
 	}

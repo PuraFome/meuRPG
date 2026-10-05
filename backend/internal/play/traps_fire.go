@@ -226,7 +226,7 @@ func (s *Service) characterLabels(ctx context.Context, campaignID string, fired 
 	if err != nil {
 		return nil, err
 	}
-	chars, err := s.roster.SessionCharacters(ctx, campaignID, ids)
+	chars, err := s.roster.SessionCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +242,11 @@ func (s *Service) characterLabels(ctx context.Context, campaignID string, fired 
 // tokensOn is where the map's tokens stand, in squares, with the characters that
 // live (a dead character's token stays on the map and is never caught).
 func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[string]grid.Square, []link.Character, map[string]grid.Square, error) {
-	g, err := s.maps.MapGrid(ctx, campaignID, mapID)
+	g, err := s.maps.MapGrid(ctx, nil, campaignID, mapID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	tokens, err := s.maps.MapTokens(ctx, mapID)
+	tokens, err := s.maps.MapTokens(ctx, nil, mapID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -266,7 +266,7 @@ func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[s
 		at[t.CharacterID] = sq
 		ids = append(ids, t.CharacterID)
 	}
-	living, err := s.roster.CombatCharacters(ctx, campaignID, ids)
+	living, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -285,7 +285,7 @@ func (s *Service) creaturesInArea(ctx context.Context, campaignID string, creatu
 	if len(inArea) == 0 {
 		return nil, nil
 	}
-	party, err := s.roster.CombatParty(ctx, campaignID)
+	party, err := s.roster.CombatParty(ctx, nil, campaignID)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +430,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			targets[i].armorClass = sheet.ArmorClass
 		}
 		if ability != "" {
-			save, err := s.roster.CombatSave(ctx, campaignID, ch.ID, ability)
+			save, err := s.roster.CombatSave(ctx, c.tx, campaignID, ch.ID, ability)
 			if err != nil {
 				return nil, err
 			}
