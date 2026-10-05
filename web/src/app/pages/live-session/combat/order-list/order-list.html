@@ -95,13 +95,29 @@
           <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
         }
         <app-combatant-tags [names]="tags(c)" [label]="c.label" />
+        @if (c.wildShapeBeastKey) {
+          <app-form-tag [beast]="c.wildShapeBeastNamePt" />
+        }
 
+        @if (c.hitPointsMax !== undefined && formPool(c); as beast) {
+          <span class="row__pv-inline">{{ beast }}</span>
+        }
         @if (c.hitPointsMax !== undefined) {
           <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (c.initiative !== undefined && !inGroup) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
         }
       </div>
       <span class="row__init">{{ c.initiative ?? '—' }}</span>
       <span class="row__hp">
+        @if (c.wildShapeHitPointsMax !== undefined) {
+          <!-- The beast's pool first: it is what "Dano/Cura" hits first (the master and the druid's player only). -->
+          <app-beast-pool
+            [beast]="c.wildShapeBeastNamePt"
+            [current]="c.wildShapeHitPointsCurrent ?? 0"
+            [max]="c.wildShapeHitPointsMax"
+            [attr.aria-label]="'PV d' + (article(c.wildShapeBeastNamePt) === 'a' ? 'a' : 'o') + ' ' + c.wildShapeBeastNamePt + ': ' + c.wildShapeHitPointsCurrent + ' de ' + c.wildShapeHitPointsMax"
+            role="group"
+          />
+        }
         @if (c.hitPointsMax !== undefined) {
           <span class="row__hp-n">{{ c.hitPointsCurrent }}<span class="row__hp-of"> de {{ c.hitPointsMax }}</span></span>
           <span

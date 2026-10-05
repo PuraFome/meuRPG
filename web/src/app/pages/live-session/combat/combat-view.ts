@@ -46,7 +46,7 @@ import {
 import type { FogView } from '../../../core/maps/fog-view';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
-import { fallNote } from '../../../core/traps/trap-log';
+import { type FallNote, fallNote } from '../../../core/traps/trap-log';
 import { type SearchSkills, searchRoute } from '../../../core/traps/trap-search';
 import type { TrapBoard } from '../../../core/traps/trap-board';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
@@ -989,6 +989,28 @@ export class CombatView {
       }
     }
     return null;
+  });
+
+  /** The same note for each of the player's creatures that a trap caught (a wolf or Nanquim that walked into one on its own part). */
+  protected readonly creatureTrapNotes = computed(() => {
+    const e = this.encounter();
+    const notes = new Map<string, FallNote>();
+    if (!e || this.isMaster()) {
+      return notes;
+    }
+    const round = this.log.rounds().find((r) => r.round === e.round);
+    for (const c of ownCreatures(e)) {
+      for (const entry of round?.entries ?? []) {
+        if (entry.kind === CombatLogKind.TRAP_TRIGGERED && entry.trap) {
+          const note = fallNote(entry.trap, c.id, c.label);
+          if (note) {
+            notes.set(c.id, note);
+            break;
+          }
+        }
+      }
+    }
+    return notes;
   });
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others

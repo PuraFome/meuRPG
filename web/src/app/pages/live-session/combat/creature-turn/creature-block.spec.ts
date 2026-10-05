@@ -114,6 +114,17 @@ describe('CreatureBlock (E9-12 states 3 and 6)', () => {
     expect(flat(el.querySelector('.atk .row__why'))).toContain('Reação já usada');
   });
 
+  it('says what a trap did to this creature on its own part, and that the master applies the damage', () => {
+    const { el } = setup({}, options(['monster:dire-wolf#bite']), { trapNote: { title: 'O Lobo atroz 1 caiu na armadilha Fosso escondido.', detail: '7 de concussão.', waiting: true } });
+    expect(flat(el.querySelector('.trapped'))).toContain('O Lobo atroz 1 caiu na armadilha Fosso escondido. 7 de concussão.');
+    expect(flat(el.querySelector('.trapped__wait'))).toContain('Esperando o mestre aplicar o dano');
+  });
+
+  it('has no trap line without a trap', () => {
+    const { el } = setup({}, options(['monster:dire-wolf#bite']));
+    expect(el.querySelector('.trapped')).toBeNull();
+  });
+
   it('another player never gets numbers: only the state word', () => {
     const { el } = setup({ hitPointsCurrent: undefined, hitPointsMax: undefined }, null);
     expect(flat(el.querySelector('.head__sub'))).not.toMatch(/PV|\d+ de \d+/);

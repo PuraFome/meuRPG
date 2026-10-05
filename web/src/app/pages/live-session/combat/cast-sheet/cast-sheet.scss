@@ -82,3 +82,20 @@
   flex-direction: column;
   gap: 10px;
 }
+
+// "Enredar encerra a concentração em Conjurar Animais. Os 2 Lobos atrozes somem.": above the cast button, like the summon sheet's line.
+.ends {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

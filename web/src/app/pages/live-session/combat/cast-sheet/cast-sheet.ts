@@ -50,6 +50,7 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
+import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
@@ -181,6 +182,29 @@ export class CastSheet {
   protected readonly npcs = computed(() => {
     const combatants = this.data.state.encounter()?.combatants ?? [];
     return new Set(combatants.filter((c) => !isPlayer(c)).map((c) => c.id));
+  });
+  protected readonly creatures = computed(() => {
+    const combatants = this.data.state.encounter()?.combatants ?? [];
+    return new Set(combatants.filter(isCreature).map((c) => c.id));
+  });
+  /**
+   * "Enredar encerra a concentração em Conjurar Animais.", and "Os 2 Lobos atrozes somem." when that concentration holds the
+   * caster's creatures: only when this spell needs concentration and the caster holds another one, from the combat's own data.
+   */
+  protected readonly endsConcentration = computed(() => {
+    const e = this.data.state.encounter();
+    const caster = e?.combatants.find((c) => c.id === this.data.casterId);
+    if (!e || !caster || !this.data.concentration || !caster.concentrationSpell || caster.concentrationSpell === this.data.spellKey) {
+      return null;
+    }
+    const held = e.combatants.filter((c) => isCreature(c) && c.ownerCharacterId === caster.characterId && !!c.summonGroupId && !c.defeated);
+    let goes = '';
+    if (held.length === 1) {
+      goes = `${article(held[0].label) === 'a' ? 'A' : 'O'} ${held[0].label} some.`;
+    } else if (held.length > 1) {
+      goes = `${groupFeminine(held) ? 'As' : 'Os'} ${held.length} ${groupName(held)} somem.`;
+    }
+    return { ends: `${this.data.name} encerra a concentração em ${caster.concentrationSpellNamePt || 'a magia'}.`, goes };
   });
   protected readonly warning = computed(() => lastSlotWarning(this.slot(), this.data.shieldFree, this.data.shieldName));
   /** Why "Conjurar" is not ready yet, in words; empty when it is. */

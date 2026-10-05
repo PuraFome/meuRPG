@@ -317,6 +317,7 @@
                     [busy]="busy()"
                     [locked]="creatureLocked()"
                     [pending]="creaturePending(m.id)"
+                    [trapNote]="creatureTrapNotes().get(m.id) ?? null"
                     (rollDamage)="rollCreatureDamage(m.id)"
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"

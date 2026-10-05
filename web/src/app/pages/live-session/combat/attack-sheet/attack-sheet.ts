@@ -27,6 +27,7 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackDetail, attackName, isCantrip } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { AttackResult } from './attack-result';
 import { AttackSteps } from './attack-steps';
@@ -233,7 +234,12 @@ export class AttackSheet {
 
   protected npcTarget(id: string): boolean {
     const c = this.data.state.encounter()?.combatants.find((x) => x.id === id);
-    return !!c && !isPlayer(c);
+    return !!c && !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creatureTarget(id: string): boolean {
+    const c = this.data.state.encounter()?.combatants.find((x) => x.id === id);
+    return !!c && isCreature(c);
   }
 
   protected pick(id: string): void {

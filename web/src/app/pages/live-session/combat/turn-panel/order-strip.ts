@@ -10,6 +10,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { OrderGroup } from '../joint-turn/order-group';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { FormTag } from '../combatant-tags/form-tag';
 
 /**
  * The order as a strip of chips (E6-05): a token, the name and one word. An
@@ -23,7 +24,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
  */
 @Component({
   selector: 'app-order-strip',
-  imports: [CombatantTags, CombatantToken, NgTemplateOutlet, OrderGroup],
+  imports: [CombatantTags, FormTag, CombatantToken, NgTemplateOutlet, OrderGroup],
   template: `
   <ol class="strip" aria-label="Ordem de iniciativa" tabindex="0">
     @for (item of items(); track key(item)) {
@@ -54,6 +55,9 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
         </span>
         <span class="chip__name" [class.chip__name--out]="c.defeated">{{ c.label }}</span>
         <span class="chip__sub">{{ word(c) }}</span>
+        @if (c.wildShapeBeastKey) {
+          <app-form-tag [beast]="c.wildShapeBeastNamePt" />
+        }
         <app-combatant-tags [names]="tags(c)" [label]="c.label" [compact]="true" />
       </li>
   </ng-template>

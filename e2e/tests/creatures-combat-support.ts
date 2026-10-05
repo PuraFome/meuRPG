@@ -153,6 +153,20 @@ export async function tableForCreatureCombat(master: Page, heroPlayer: Page, tor
   }
 }
 
+/** A trap on a square of the cave (24 x 16), born hidden, that fires when someone enters it; a flat damage so the number is known. */
+export async function trapAt(master: Page, campaignId: string, mapId: string, name: string, col: number, row: number, damage = '3'): Promise<void> {
+  const res = await callRPC(master, 'meurpg.maps.v1.MapService/CreateMapPoint', {
+    campaignId,
+    mapId,
+    kind: 'MAP_POINT_KIND_TRAP',
+    name,
+    description: 'No corredor',
+    ...squareBp(col, row),
+    trap: { noticeDc: 30, findDc: 5, areaSize: 1, trigger: 'TRAP_TRIGGER_ENTER', effect: { damage: [{ dice: damage, damageTypeKey: 'damage-type:bludgeoning' }] } },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
 /** The session page's route. */
 export function sessionRoute(campaignId: string): string {
   return `/campanhas/${campaignId}/sessao`;

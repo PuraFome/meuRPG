@@ -51,4 +51,23 @@ describe('OrderColumn', () => {
     expect(rows[1]).toMatch(/Lobo atroz 1 .*da Sálvia · Ferido/);
     expect(rows[1]).not.toMatch(/PV|CA|\d+ de \d+/);
   });
+
+  it('says another player\'s druid is a wolf with the state word, never the beast\'s pool (RN-20)', () => {
+    const fixture = TestBed.createComponent(OrderColumn);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        currentCombatantId: 'tor',
+        combatants: [
+          combatant({ id: 'sal', label: 'Sálvia', kind: CombatantKind.PLAYER, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo' }),
+          combatant({ id: 'tor', label: 'Toren', kind: CombatantKind.PLAYER, mine: true }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row'), (r) => r.textContent?.replace(/\s+/g, ' ').trim());
+    expect(rows[0]).toContain('Na forma de Lobo');
+    expect(rows[0]).toContain('Jogador');
+    expect(rows[0]).not.toMatch(/\d+ de \d+/);
+  });
 });

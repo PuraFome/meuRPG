@@ -191,3 +191,12 @@
     margin: 0;
   }
 }
+
+.trapped p {
+  margin: 0;
+}
+
+.trapped__wait {
+  display: flex;
+  width: fit-content;
+}

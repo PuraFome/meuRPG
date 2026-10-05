@@ -9,6 +9,7 @@ import { article } from '../../../../core/combat/combat-log';
 import { stateWord } from '../../../../core/combat/combat-view';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { tight } from '../../../../core/format/text';
+import type { FallNote } from '../../../../core/traps/trap-log';
 import { metersFixed } from '../../../../core/units';
 import { CreatureArt } from '../../../../shared/creatures/creature-art';
 import { ActionRow } from '../action-groups/action-row';
@@ -47,6 +48,8 @@ export class CreatureBlock {
   readonly locked = input('');
   /** A hit of this creature whose damage is not rolled yet (the sheet was closed): it blocks ending the turn. */
   readonly pending = input<PendingDamage | null>(null);
+  /** What a trap did to this creature this round (9.14's note, for the creature whose part is showing). */
+  readonly trapNote = input<FallNote | null>(null);
 
   /** "Atacar": the attack's key. */
   readonly attack = output<string>();

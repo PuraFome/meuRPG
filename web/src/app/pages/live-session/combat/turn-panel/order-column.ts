@@ -10,6 +10,7 @@ import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../co
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { FormTag } from '../combatant-tags/form-tag';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -23,7 +24,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-order-column',
-  imports: [CombatantTags, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [CombatantTags, FormTag, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
       <h2 class="panel__title" id="order-col-title">Ordem</h2>
@@ -57,6 +58,9 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
             <span class="row__word" [class.row__word--out]="c.defeated">
               @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
             </span>
+            @if (c.wildShapeBeastKey) {
+              <app-form-tag [beast]="c.wildShapeBeastNamePt" />
+            }
             <app-combatant-tags [names]="tags(c)" [label]="c.label" />
           </span>
         </li>

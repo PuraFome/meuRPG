@@ -250,26 +250,14 @@ export class CombatMap {
     return ((this.anchor(c).row + this.span(c) / 2) / this.rows()) * 100;
   }
 
-  /** Where the "Vez" word of the token on turn goes: above it, unless a token or the edge is there; then below, to the right, to the left. */
+  /**
+   * Where the "Vez" word of the token on turn goes, so it is read as its own token's: the pill is wider than a square, so a side
+   * counts as free only when the squares along it, one more at each end, hold no other token (a token diagonally by is "beside"
+   * it). Above first, then below, then right, then left; when every side is taken, the side with the fewest neighbours (above on a
+   * tie), and the garnet ring carries the turn.
+   */
   protected turnSide(c: Combatant): 'above' | 'below' | 'right' | 'left' {
-    const at = this.anchor(c);
-    const n = this.span(c);
-    const taken = this.occupied();
-    const free = (cells: [number, number][]) => cells.every(([col, row]) => col >= 0 && row >= 0 && col < this.columns() && row < this.rows() && !taken.has(`${col},${row}`));
-    const run = Array.from({ length: n }, (_, i) => i);
-    if (free(run.map((i) => [at.col + i, at.row - 1] as [number, number]))) {
-      return 'above';
-    }
-    if (free(run.map((i) => [at.col + i, at.row + n] as [number, number]))) {
-      return 'below';
-    }
-    if (free(run.map((i) => [at.col + n, at.row + i] as [number, number]))) {
-      return 'right';
-    }
-    if (free(run.map((i) => [at.col - 1, at.row + i] as [number, number]))) {
-      return 'left';
-    }
-    return 'above';
+    return pillSide(this.anchor(c), this.span(c), this.occupied(), this.columns(), this.rows());
   }
 
   protected place(c: Combatant): Square {
@@ -396,4 +384,25 @@ export class CombatMap {
   protected onBlur(): void {
     this.cursor.set(null);
   }
+}
+
+/** The side of a token (its top-left square and its side in squares) where the "Vez" word goes; see `CombatMap.turnSide`. */
+export function pillSide(at: Square, n: number, taken: ReadonlySet<string>, columns: number, rows: number): 'above' | 'below' | 'right' | 'left' {
+  const sides: { side: 'above' | 'below' | 'right' | 'left'; cells: [number, number][] }[] = [
+    { side: 'above', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row - 1] as [number, number]) },
+    { side: 'below', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row + n] as [number, number]) },
+    { side: 'right', cells: Array.from({ length: n + 2 }, (_, i) => [at.col + n, at.row - 1 + i] as [number, number]) },
+    { side: 'left', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1, at.row - 1 + i] as [number, number]) },
+  ];
+  const own = (col: number, row: number) => col >= at.col && col < at.col + n && row >= at.row && row < at.row + n;
+  const score = (cells: [number, number][]) => {
+    // The cell in the middle of the side (right against the token) is on the map or the pill has no room; the ends only count when a token is there.
+    const middle = cells.slice(1, -1);
+    if (middle.some(([col, row]) => col < 0 || row < 0 || col >= columns || row >= rows)) {
+      return 99;
+    }
+    return cells.filter(([col, row]) => !own(col, row) && taken.has(`${col},${row}`)).length;
+  };
+  const scored = sides.map((s) => ({ side: s.side, score: score(s.cells) }));
+  return scored.reduce((best, s) => (s.score < best.score ? s : best)).side;
 }

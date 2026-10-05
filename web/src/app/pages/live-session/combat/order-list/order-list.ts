@@ -24,6 +24,7 @@ import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../co
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { BeastPool, FormTag } from '../combatant-tags/form-tag';
 import { ConcPill, LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
@@ -49,7 +50,7 @@ function concentrationOf(c: Combatant): string {
  */
 @Component({
   selector: 'app-order-list',
-  imports: [ConcPill, LoseQuestion, CombatantTags, CombatantToken, OrderLegend, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [BeastPool, ConcPill, FormTag, LoseQuestion, CombatantTags, CombatantToken, OrderLegend, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -179,6 +180,16 @@ export class OrderList {
     }
     const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
     return [first, ac].filter(Boolean).join(' · ');
+  }
+
+  protected readonly article = article;
+
+  /** "PV do Lobo 11 de 11" on a phone, where the hit points are a line under the name; empty when the combat sends no pool (the master and the druid's player only). */
+  protected formPool(c: Combatant): string {
+    if (!c.wildShapeBeastKey || c.wildShapeHitPointsMax === undefined) {
+      return '';
+    }
+    return `PV d${article(c.wildShapeBeastNamePt) === 'a' ? 'a' : 'o'} ${c.wildShapeBeastNamePt} ${c.wildShapeHitPointsCurrent} de ${c.wildShapeHitPointsMax}`;
   }
 
   protected percent(c: Combatant): number {

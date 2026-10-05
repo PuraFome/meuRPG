@@ -180,4 +180,29 @@ describe('OrderList with a player\'s creatures (E9-12)', () => {
     expect(text(row('Capitão Goblin').querySelector('.row__conc'))).toContain('Concentração');
     expect(el.textContent).not.toContain('Concentrado');
   });
+
+  it('shows a druid in a beast form to the master: "Na forma de Lobo" and the beast\'s pool beside the druid\'s own', () => {
+    const wolfForm = { ...salvia, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo', wildShapeHitPointsCurrent: 11, wildShapeHitPointsMax: 11, concentrationSpell: '' } as typeof salvia;
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [wolfForm], currentCombatantId: 's' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(text(el.querySelector('app-form-tag'))).toContain('Na forma de Lobo');
+    const hp = text(el.querySelector('.row__hp'));
+    expect(hp).toContain('Lobo 11 de 11');
+    expect(hp).toContain('38 de 38');
+    expect(hp!.indexOf('11 de 11')).toBeLessThan(hp!.indexOf('38 de 38'));
+  });
+
+  it('shows no pool where the combat sends none, and no form tag for a druid in her own shape', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [{ ...salvia, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo' } as typeof salvia], currentCombatantId: 's' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-beast-pool')).toBeNull();
+    const plain = TestBed.createComponent(OrderList);
+    plain.componentRef.setInput('encounter', encounter({ combatants: [salvia], currentCombatantId: 's' }));
+    plain.detectChanges();
+    expect(plain.nativeElement.querySelector('app-form-tag')).toBeNull();
+  });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { combatRPC, endTurnOf, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
-import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare } from './creatures-combat-support';
+import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare, trapAt } from './creatures-combat-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
@@ -107,9 +107,12 @@ test(
       // Lobo atroz 1 moves, Lobo atroz 2 attacks the goblin next to it: each has an action and a movement of its own.
       await p.getByRole('button', { name: 'Mover o Lobo atroz 1' }).first().click();
       await expect(p.getByRole('heading', { name: 'Mover Lobo atroz 1' })).toBeVisible();
+      // A trap on the square it walks to: the wolf is caught on its own part, and its block says so (9.14's note, for a creature).
+      await trapAt(m, campaignId, table.mapId, 'Fosso escondido', 4, 8);
       await tapCaveSquare(p, 4, 8);
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Vez dos seus Lobos atrozes' })).toBeVisible();
+      await expect(blocks.first()).toContainText('O Lobo atroz 1 caiu na armadilha Fosso escondido.');
       await expect(blocks.first().locator('.tile').nth(1)).not.toContainText('15,0 m de 15,0 m');
       await expect(blocks.nth(1).locator('.tile').nth(1)).toContainText('15,0 m');
 
@@ -213,6 +216,19 @@ test(
       await expect(p.getByRole('button', { name: /Conjurar/ })).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).toBeVisible();
       await expect(p.getByText('Traços do Lobo')).toBeVisible();
+
+      // Toren and the master read that she is a wolf; only the master (and she) read the wolf's hit points (RN-20).
+      await t.goto(sessionRoute(campaignId));
+      await expect(t.getByText('Na forma de Lobo').first()).toBeVisible();
+      const asWolf = (await getEncounterRPC(t, campaignId)).combatants.find((c) => c.label === 'Sálvia') as unknown as Record<string, unknown>;
+      expect(asWolf['wildShapeBeastNamePt']).toBe('Lobo');
+      for (const field of ['wildShapeHitPointsCurrent', 'wildShapeHitPointsMax']) {
+        expect(asWolf[field], field).toBeUndefined();
+      }
+      await expect(t.getByText(/PV do Lobo|11 de 11/)).toHaveCount(0);
+      await m.goto(sessionRoute(campaignId));
+      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).getByText('Na forma de Lobo').first()).toBeVisible();
+      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__hp', { hasText: '11 de 11' })).toBeVisible();
 
       // Damage past the beast's hit points: the master applies it; the beast falls, 19 carry over, and she is told.
       await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);

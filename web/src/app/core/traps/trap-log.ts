@@ -1,3 +1,4 @@
+import { article } from '../combat/combat-log';
 import { AttackOutcome, PendingDamageStatus, SaveOutcome, type TrapCaught, type TrapFiring } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type TrapActivity, TrapSearchSkill } from '../../../gen/meurpg/play/v1/traps_pb';
 import { rollText } from '../combat/combat-dice';
@@ -150,14 +151,15 @@ export interface FallNote {
 }
 
 /** `combatantId` is the player's own combatant: a creature's `character_id` is its owner's, so the match is by combatant. */
-export function fallNote(firing: TrapFiring, combatantId: string): FallNote | null {
+export function fallNote(firing: TrapFiring, combatantId: string, who = ''): FallNote | null {
   const mine = firing.caught.find((c) => c.targetId === combatantId);
   if (!mine) {
     return null;
   }
   const brief = caughtBrief(mine, false).replace(/, esperando o mestre aplicar/g, '');
   return {
-    title: `Você caiu na armadilha ${firing.name || 'sem nome'}.`,
+    // The player's own character is "Você"; one of their creatures is named ("O Lobo atroz 1 caiu…").
+    title: `${who ? `${article(who) === 'a' ? 'A' : 'O'} ${who}` : 'Você'} caiu na armadilha ${firing.name || 'sem nome'}.`,
     detail: brief ? `${brief.charAt(0).toUpperCase()}${brief.slice(1)}.` : '',
     waiting: mine.damages.some((d) => d.status === PendingDamageStatus.ROLLED),
   };
