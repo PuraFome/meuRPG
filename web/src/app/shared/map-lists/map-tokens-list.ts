@@ -13,11 +13,16 @@ export interface TokenToggle {
 }
 
 /** What a row says under a token's name: a player's class line and player
- * ("Mago 3, de Vinicius"), or "NPC, inimigo". */
+ * ("Mago 3, de Vinicius"), "NPC, inimigo", or, for a character's creature, whose
+ * it is ("Criatura de Pensantus": its `character_id` is the owner's). */
 export function tokenSub(
   token: MapToken,
   info: ReadonlyMap<string, { classSummary: string; playerName: string | null }>,
+  ownerName = '',
 ): string {
+  if (token.creatureId) {
+    return ownerName ? `Criatura de ${ownerName}` : 'Criatura de um personagem';
+  }
   const known = info.get(token.characterId);
   if (token.kind !== 1) {
     return tokenKindLabel(token.kind);
@@ -46,7 +51,12 @@ export class MapTokensList {
   readonly headingLevel = input<2 | 3>(2);
   readonly toggle = output<TokenToggle>();
 
-  protected readonly sub = (t: MapToken) => tokenSub(t, this.info());
+  protected readonly sub = (t: MapToken) => tokenSub(t, this.info(), this.ownerName(t));
+
+  /** The owner's name for a creature's token, from the owner's own token on the map. */
+  private ownerName(t: MapToken): string {
+    return t.creatureId ? (this.tokens().find((o) => !o.creatureId && o.characterId === t.characterId)?.name ?? '') : '';
+  }
   protected initial(t: MapToken): string {
     return tokenInitial(t, this.tokens());
   }

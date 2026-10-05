@@ -71,6 +71,20 @@
         />
       }
 
+      @if (!isMaster() && ownVitals(); as own) {
+        @if (own.familiarSight; as sight) {
+          <app-familiar-band
+            class="familiar"
+            [campaignId]="campaignId()"
+            [characterId]="own.characterId"
+            [characterName]="own.name"
+            [creatureId]="sight.creatureId"
+            [inCombat]="sight.inCombat"
+            (stopped)="familiarStopped(own.characterId)"
+          />
+        }
+      }
+
       @if (combat.shown()) {
         <app-combat-view
           class="combat"
@@ -78,6 +92,7 @@
           [isMaster]="isMaster()"
           [state]="combat"
           [mapState]="mapState"
+          [fog]="fog"
           [vitals]="vitals()"
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
@@ -92,6 +107,38 @@
             <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" [compact]="true" />
           }
         </app-combat-view>
+        <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. -->
+        @if (fogMaster()) {
+          <app-fog-master-panel
+            class="fog-panel"
+            [campaignId]="campaignId()"
+            [state]="mapState"
+            [map]="mapState.map()"
+            [people]="viewAsPeople()"
+            [info]="partyInfo()"
+            [tick]="visionTick()"
+            [viewAs]="viewAs()"
+            [note]="viewNote()"
+            [goneNote]="viewGone()"
+            [inCombat]="true"
+            (viewAsChange)="setViewAs($event)"
+            (noteChange)="viewNote.set($event)"
+            (gone)="viewAsGone()"
+          />
+        } @else if (fogPlayer() && ownToken(); as me) {
+          <app-fog-player-tools
+            class="fog-panel"
+            [campaignId]="campaignId()"
+            [state]="mapState"
+            [fog]="fog"
+            [mapId]="mapState.map()!.id"
+            [own]="me"
+            [characterId]="ownCharacterId()"
+            [characterName]="ownCharacterName()"
+            [showFamiliar]="false"
+            [seeing]="seeingFamiliar()"
+          />
+        }
       } @else if (isMaster()) {
         <app-combat-launch
           class="launch"
@@ -145,9 +192,31 @@
               [state]="mapState"
               [mapId]="currentMapId()"
               [maps]="campaignMaps()"
+              [fog]="fog"
+              [people]="viewAsPeople()"
+              [viewAs]="viewAs()"
+              [tick]="visionTick()"
+              (viewNoteChange)="viewNote.set($event)"
+              (viewAsGone)="viewAsGone()"
+              (viewAsBack)="setViewAs(null)"
               (currentChanged)="showMap($event)"
             />
           </div>
+          @if (fogMaster()) {
+            <app-fog-master-panel
+              class="board__fog"
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [map]="mapState.map()"
+              [people]="viewAsPeople()"
+              [info]="partyInfo()"
+              [tick]="visionTick()"
+              [viewAs]="viewAs()"
+              [note]="viewNote()"
+              [goneNote]="viewGone()"
+              (viewAsChange)="setViewAs($event)"
+            />
+          }
           <app-session-tokens
             class="board__tokens"
             [campaignId]="campaignId()"
@@ -175,6 +244,13 @@
               [campaignId]="campaignId()"
               [state]="mapState"
               [mapId]="currentMapId()"
+              [fog]="fog"
+              [characterName]="ownCharacterName()"
+              [ownCharacterId]="ownCharacterId()"
+              [senses]="playerSheet()?.senses ?? []"
+              [seeing]="seeingFamiliar()"
+              [seeingFamiliar]="familiarNameNow()"
+              [creaturesTick]="creaturesTick()"
             />
           </div>
           <div class="board__side">

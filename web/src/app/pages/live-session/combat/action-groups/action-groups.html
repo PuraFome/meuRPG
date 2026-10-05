@@ -94,6 +94,20 @@
         />
       }
     }
+    @if (familiar(); as pet) {
+      <p class="group__sub">Olhos do familiar</p>
+      <app-action-row
+        [name]="'Ver pelos olhos do ' + pet"
+        [tags]="['Ação']"
+        detail="Dura até o começo da sua próxima vez, ou até você voltar."
+        button="Ver"
+        [buttonLabel]="'Ver pelos olhos do ' + pet"
+        [off]="own().actionUsed || !!locked()"
+        [reason]="locked() || 'Você já usou a sua ação neste turno.'"
+        [busy]="busy()"
+        (press)="familiarEyes.emit()"
+      />
+    }
     <p class="group__sub">Ações padrão</p>
     @if (locked() || standardWhy()) {
       <p class="group__why" id="std-why"><mat-icon aria-hidden="true">block</mat-icon>{{ locked() || standardWhy() }}</p>

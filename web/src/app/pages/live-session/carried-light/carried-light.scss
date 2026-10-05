@@ -1,0 +1,64 @@
+:host {
+  display: block;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.row__icon {
+  flex: none;
+  color: var(--mr-accent-text);
+}
+
+.row__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.row__label {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.row__value {
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+// "Mudar" is the row's action in words (the whole row is the tap target).
+.row__action {
+  flex: none;
+  color: var(--mr-accent-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.row__fail {
+  margin: var(--mr-space-2) 0 0;
+  color: var(--mr-danger-ink);
+  font-size: 15px;
+}

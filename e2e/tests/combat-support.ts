@@ -168,6 +168,7 @@ export interface Combatant {
   movementLeftFt?: number;
   hitPointsCurrent?: number;
   defeated?: boolean;
+  actionUsed?: boolean;
   state?: string;
   deathSuccesses?: number;
   deathFailures?: number;

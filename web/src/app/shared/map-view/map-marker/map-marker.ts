@@ -48,6 +48,7 @@ import { pointAriaLabel, pointKindIcon } from '../map-labels';
     '[style.left.%]': 'left()',
     '[style.top.%]': 'top()',
     '[class.pt--hidden]': '!point().revealed',
+    '[class.pt--remembered]': '!!point().remembered',
     '[class.pt--selected]': 'selected()',
     '[class.pt--raised]': 'raised()',
   },

@@ -108,6 +108,10 @@ html {
   --mr-map-token-down-line: #8a93a3;
   --mr-map-token-down-ink: #525b6b;
   --mr-map-accent: #9e2b3b;
+  // The fog of war: what a player has never seen is solid black, and what was seen before is darkened with it.
+  --mr-map-fog: #000000;
+  // A sample of a map's floor, for the swatches of the legend (the picture itself is the master's).
+  --mr-map-sample: #a8977a;
 
   --mr-font-display: 'Alegreya', Georgia, 'Times New Roman', serif;
   --mr-font-sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;

@@ -1,0 +1,29 @@
+<app-sheet-frame [title]="'Ver pelos olhos do ' + data.familiarName + '?'" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <p class="what">
+    Enquanto você vê pelos olhos do {{ data.familiarName }}, {{ data.characterName }} fica <b>cego e surdo</b>: você não vê nem ouve o que se passa perto do seu personagem.
+    O {{ data.familiarName }} enxerga com os sentidos dele.
+  </p>
+  <p class="mr-notice mr-notice--neutral rule">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <span>
+      O familiar precisa estar a até 30&nbsp;m de você.
+      @if (data.inCombat) {
+        No combate, gasta a sua ação e dura até o começo da sua próxima vez, ou até você voltar aos seus olhos.
+      } @else {
+        Dura até você voltar aos seus olhos.
+      }
+    </span>
+  </p>
+  <div foot class="pair">
+    <button mat-stroked-button type="button" class="pair__btn" data-initial-focus [disabled]="busy()" (click)="cancel()">Cancelar</button>
+    <button mat-flat-button type="button" class="pair__btn" [disabled]="busy()" disabledInteractive (click)="confirm()">
+      <mat-icon aria-hidden="true">visibility</mat-icon>Ver pelos olhos
+    </button>
+  </div>
+</app-sheet-frame>

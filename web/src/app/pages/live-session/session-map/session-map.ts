@@ -8,6 +8,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { Map as MapMessage, MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import { lightKeyName } from '../../../core/maps/carried-light';
+import type { FogView } from '../../../core/maps/fog-view';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapReveals } from '../../../core/maps/map-reveals';
 import { MapState } from '../../../core/maps/map-state';
@@ -16,10 +18,14 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { SceneClient } from '../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../core/play/scene-errors';
 import type { SceneState } from '../../../core/play/scene-state';
+import { FogMap } from '../../../shared/fog-map/fog-map';
+import type { ViewAsPerson } from '../../../shared/fog-map/view-as-list';
+import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { FogPlayerTools } from '../fog-tools/fog-player-tools';
 import { LiveSessionSource } from '../live-session.types';
 
 /**
@@ -32,6 +38,10 @@ import { LiveSessionSource } from '../live-session.types';
  *   map, "O mestre ainda não escolheu um mapa." The page reads the map
  *   again on `map_changed`; if the server answers `not_found`, the player
  *   lost sight of it and gets the empty state again.
+ * - **Fog of war (MR-036, E9-03):** on a map with the fog on, the player gets the
+ *   fog map in place (`app-fog-map`: the tiles, the shading, the legend, zoom) and
+ *   the row "Luz que você carrega"; the master keeps his whole map and gets "Ver
+ *   como" (the list, and the map as one player sees it) and "Luz dos personagens".
  * - **Master:** the "Mapa atual" select (`SetCurrentMap`, which also
  *   reveals a hidden map), the map with hidden things dashed, tokens you
  *   drag (`PlaceMapToken`) on a computer, "Abrir mapa" for the editor, and
@@ -40,6 +50,8 @@ import { LiveSessionSource } from '../live-session.types';
 @Component({
   selector: 'app-session-map',
   imports: [
+    FogMap,
+    FogPlayerTools,
     MapLegend,
     MapPointsList,
     MapView,
@@ -48,6 +60,7 @@ import { LiveSessionSource } from '../live-session.types';
     MatIconModule,
     MatInputModule,
     RouterLink,
+    ViewAsMapView,
   ],
   templateUrl: './session-map.html',
   styleUrl: './session-map.scss',
@@ -69,8 +82,28 @@ export class SessionMap {
   readonly maps = input<readonly MapMessage[]>([]);
   /** The session's RP scene, for "Abrir cena" on a scene point (master). */
   readonly scene = input<SceneState | null>(null);
+  /** The player's own character, for the off-map notice and the light they carry. */
+  readonly characterName = input('');
+  readonly ownCharacterId = input('');
+  /** The character's senses ("Visão no escuro: 18 m"), for the card "Você vê". */
+  readonly senses = input<readonly string[]>([]);
+  /** What the viewer sees of the map with the fog on (the page reads it again on `vision_changed`). */
+  readonly fog = input<FogView | null>(null);
+  /** The master's "Ver como" list: the living player characters, and the one he looks as (`null`: "Todos"). */
+  readonly people = input<readonly ViewAsPerson[]>([]);
+  readonly viewAs = input<string | null>(null);
+  /** Goes up when what a player sees may have changed (the master's stream hears nothing of it). */
+  readonly tick = input(0);
+  /** The player looks through their familiar's eyes ("Nanquim"): the card says whose view it is. */
+  readonly seeingFamiliar = input<string | null>(null);
+  readonly seeing = input(false);
+  readonly creaturesTick = input(0);
   /** The master chose another map (or none): the page shows it. */
   readonly currentChanged = output<string | null>();
+  /** "Ver como": the line about the view, and the ways back to "Todos". */
+  readonly viewNoteChange = output<string>();
+  readonly viewAsGone = output<void>();
+  readonly viewAsBack = output<void>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly error = signal<string | null>(null);
@@ -95,8 +128,17 @@ export class SessionMap {
 
   protected readonly pendingScene = signal<string | null>(null);
 
-  /** "Abrir cena" on a scene point of the map: the same call as the picker's, so the
-   * open scene appears (and takes focus) at once. A refusal is said under the list. */
+  // ---- the fog of war (MR-036) ----
+  protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
+  /** The player's own token: the carried light is read from it. */
+  protected readonly ownToken = computed(() => this.state().tokens().find((t) => t.mine && !t.creatureId) ?? null);
+  protected readonly viewAsPerson = computed(() => this.people().find((p) => p.id === this.viewAs()) ?? null);
+  protected readonly viewer = computed(() => ({ name: this.ownToken()?.name ?? (this.characterName() || 'Seu personagem'), own: true }));
+  /** The master reads the whole picture. */
+  protected readonly masterImage = computed(() => this.image());
+  protected readonly carriedName = computed(() => lightKeyName(this.ownToken()?.carriedLight ?? '').toLocaleLowerCase('pt-BR'));
+  protected readonly seeingName = computed(() => (this.seeing() ? (this.seeingFamiliar() ?? 'familiar') : null));
+
   protected async openScene(point: MapPoint): Promise<void> {
     const state = this.scene();
     if (!state || this.pendingScene() !== null) {

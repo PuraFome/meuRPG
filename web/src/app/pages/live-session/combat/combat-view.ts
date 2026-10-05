@@ -36,6 +36,7 @@ import {
   reactorIsMasters,
   waitingText,
 } from '../../../core/combat/opportunity';
+import type { FogView } from '../../../core/maps/fog-view';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
@@ -81,6 +82,9 @@ import { OpportunitySheet, type OpportunityAnswer, type OpportunitySheetData } f
 import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
+import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { openFamiliarEyes } from '../../../shared/familiar-eyes/familiar-eyes-sheet';
 import { openSheet } from './sheet-host';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { OrderColumn } from './turn-panel/order-column';
@@ -135,6 +139,7 @@ export class CombatView {
   private readonly maps = inject(MapsClient);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
+  private readonly creaturesApi = inject(CreaturesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
@@ -148,6 +153,8 @@ export class CombatView {
   readonly isMaster = input(false);
   readonly state = input.required<CombatState>();
   readonly mapState = input.required<MapState>();
+  /** What the player sees of the map with the fog on (MR-036): the combat map draws it, and its layers are the ones filtered to it. */
+  readonly fog = input<FogView | null>(null);
   readonly vitals = input<readonly VitalsVm[]>([]);
   readonly partyInfo = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
   readonly sessionNumber = input(0);
@@ -206,6 +213,25 @@ export class CombatView {
   });
   /** The characters whose "Dano/Cura" has a vitals row to adjust. */
   protected readonly adjustable = computed(() => new Set(this.vitals().map((v) => v.characterId)));
+  /** The player's familiar ("Nanquim"), for the action "Ver pelos olhos do Nanquim": read once for the character, and again when the combat changes who they are. */
+  protected readonly familiar = signal<string | null>(null);
+  /** "Ver pelos olhos do Nanquim": the question first; the stream brings the band, the action spent and the blind line. */
+  protected askFamiliarEyes(): void {
+    const mine = this.own();
+    const name = this.familiar();
+    if (!mine || !name) {
+      return;
+    }
+    openFamiliarEyes(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      characterId: mine.characterId,
+      characterName: mine.label,
+      familiarName: name,
+      inCombat: true,
+    }).subscribe();
+  }
+
+  protected readonly lookingThroughFamiliar = computed(() => !!this.own()?.familiarSightCreatureId);
   protected readonly own = computed(() => {
     const e = this.encounter();
     return e ? ownCombatant(e) : null;
@@ -236,7 +262,9 @@ export class CombatView {
   });
   /** The map's painted layers (walls, difficult terrain, cover), read again when the map's `layers_revision` changes. */
   private readonly layersState = new LayersState(async (mapId) => this.maps.layers(this.campaignId(), mapId));
-  protected readonly layers = this.layersState.layers;
+  /** On a fog map the player's layers come with the vision (filtered to what they see); otherwise they are the map's. */
+  protected readonly fogVision = computed(() => (this.isMaster() ? null : (this.fog()?.vision() ?? null)));
+  protected readonly layers = computed(() => (this.fogVision() ? (this.fog()?.layers() ?? this.layersState.layers()) : this.layersState.layers()));
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
   protected readonly moveOptions = new MoveOptionsState();
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
@@ -425,6 +453,23 @@ export class CombatView {
   protected readonly spellDetails = signal<ReadonlyMap<string, SpellDetails>>(new Map());
 
   constructor() {
+    // The familiar's name, for the action "Ver pelos olhos do Nanquim" (the owner's list: RN-20).
+    effect(() => {
+      const mine = this.own();
+      const campaignId = this.campaignId();
+      const looking = this.lookingThroughFamiliar();
+      if (this.isMaster() || !mine || looking) {
+        untracked(() => this.familiar.set(null));
+        return;
+      }
+      untracked(
+        () =>
+          void this.creaturesApi.list(campaignId, mine.characterId).then(
+            (list) => this.familiar.set(list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null),
+            () => this.familiar.set(null),
+          ),
+      );
+    });
     effect(() => {
       const spells = this.options()?.options?.spells ?? [];
       const campaignId = this.campaignId();

@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ViewToken, tokenInitial } from '../map-geometry';
+import { ViewToken, tokenInitial, tokenKey } from '../map-geometry';
 
 /**
  * The legend under a map (README-B): the three marker shapes and, for the
@@ -39,7 +39,7 @@ import { ViewToken, tokenInitial } from '../map-geometry';
         @if (states()) {
           <li class="lg__title">Tokens</li>
         }
-        @for (t of tokens(); track t.characterId) {
+        @for (t of tokens(); track key(t)) {
           <li>
             <span
               class="lg__disc"
@@ -66,6 +66,7 @@ export class MapLegend {
   /** "Revelado" and "Escondido": only the master sees both states. */
   readonly states = input(false);
 
+  protected readonly key = tokenKey;
   private readonly all = computed(() => this.tokens());
   protected initial(token: ViewToken): string {
     return tokenInitial(token, this.all());

@@ -1,7 +1,8 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ViewToken, bpToPercent } from '../map-geometry';
+import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { ViewToken, bpToPercent, tokenKey } from '../map-geometry';
 
 /**
  * A character's token on the map (README-B, "Map markers"): an `ink` disc
@@ -19,7 +20,7 @@ import { ViewToken, bpToPercent } from '../map-geometry';
       <button
         type="button"
         class="tk__hit"
-        [attr.data-item]="'token:' + token().characterId"
+        [attr.data-item]="'token:' + key()"
         [attr.aria-label]="label()"
         [attr.aria-pressed]="selected()"
       >
@@ -42,7 +43,9 @@ import { ViewToken, bpToPercent } from '../map-geometry';
     '[style.left.%]': 'left()',
     '[style.top.%]': 'top()',
     '[class.tk--hidden]': 'token().hidden',
-    '[class.tk--mine]': 'token().mine',
+    '[class.tk--mine]': 'token().mine && !token().creatureId',
+    '[class.tk--npc]': 'npc()',
+    '[class.tk--creature]': 'creature()',
     '[class.tk--selected]': 'selected()',
     '[class.tk--raised]': 'raised()',
   },
@@ -54,9 +57,23 @@ export class MapToken {
   readonly interactive = input(false);
   readonly selected = input(false);
   readonly raised = input(false);
+  /** Draw an NPC as the white rounded square and a character's creature with a dashed ring (MAP-LANGUAGE.md; the fog map). */
+  readonly kindShapes = input(false);
 
   protected readonly left = computed(() => bpToPercent(this.at()?.xBp ?? this.token().xBp));
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.token().yBp));
+  protected readonly key = computed(() => tokenKey(this.token()));
+  protected readonly creature = computed(() => this.kindShapes() && !!this.token().creatureId);
+  protected readonly npc = computed(() => {
+    const kind = this.token().kind;
+    return (
+      this.kindShapes() &&
+      !this.token().creatureId &&
+      kind !== undefined &&
+      kind !== CharacterKind.PLAYER &&
+      kind !== CharacterKind.UNSPECIFIED
+    );
+  });
   protected readonly label = computed(() => {
     const t = this.token();
     return `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;

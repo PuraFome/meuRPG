@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+.what {
+  margin: 0;
+  font-size: 17px;
+  line-height: 23px;
+}
+
+.rule {
+  margin: 0;
+}
+
+// The two answers have the same width and height; too narrow for both labels, one each.
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.pair__btn {
+  min-height: 48px;
+  width: 100%;
+}

@@ -26,6 +26,8 @@ export interface LiveStreamHandlers {
   onMapChanged?(mapId: string): void;
   /** `token_moved`: a token has a new position, with no reading. */
   onTokenMoved?(move: { mapId: string; characterId: string; xBp: number; yBp: number }): void;
+  /** `vision_changed`: what the player sees of a fog map changed, read it again. */
+  onVisionChanged?(mapId: string): void;
   /** `shown_image_changed`: an image on the players' screens, or none. */
   onShownImage?(image: ShownImageVm | null): void;
   /** `left_images_changed`: read the list of left images again. */
@@ -188,6 +190,9 @@ export class LiveStream {
             break;
           case 'tokenMoved':
             this.options.handlers.onTokenMoved?.(event);
+            break;
+          case 'visionChanged':
+            this.options.handlers.onVisionChanged?.(event.mapId);
             break;
           case 'leftImages':
             this.options.handlers.onLeftImages?.();

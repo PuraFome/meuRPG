@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.lead {
+  margin: 0 0 var(--mr-space-3);
+  color: var(--mr-ink-muted);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: 0 0 var(--mr-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.row__who {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.row__sub {
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// 48 px high, as the artboard draws it (the form field's 56 px, trimmed).
+.row__select {
+  flex: 0 0 11rem;
+  width: 11rem;
+  --mat-form-field-container-height: 48px;
+  --mat-form-field-container-vertical-padding: 12px;
+}
+
+.line {
+  margin: 0;
+
+  &[hidden] {
+    display: none;
+  }
+}

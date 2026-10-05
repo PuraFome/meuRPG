@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import {
   type GetMapLayersResponse,
   type GetMapResponse,
+  type GetMapVisionResponse,
   type Map as MapMessage,
   MapPointKind,
   MapService,
@@ -47,14 +48,32 @@ export class MapsClient {
     return (await this.client.listMaps({ campaignId })).maps;
   }
 
-  get(campaignId: string, mapId: string): Promise<GetMapResponse> {
-    return this.client.getMap({ campaignId, mapId });
+  /** `GetMap`. `asCharacterId` is the master's "Ver como" (MR-036): the map exactly as that character's player gets it. */
+  get(campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapResponse> {
+    return this.client.getMap({ campaignId, mapId, asCharacterId });
   }
 
   /** `GetMapLayers`: the walls, the difficult terrain and the cover the caller
    * may read (packed; `decodeLayers` unpacks them). */
-  layers(campaignId: string, mapId: string): Promise<GetMapLayersResponse> {
-    return this.client.getMapLayers({ campaignId, mapId });
+  layers(campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapLayersResponse> {
+    return this.client.getMapLayers({ campaignId, mapId, asCharacterId });
+  }
+
+  /** `GetMapVision` (MR-036): what the caller sees of a map's squares, packed
+   * (`decodeVision` unpacks them), and the tiles of the image. */
+  vision(campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapVisionResponse> {
+    return this.client.getMapVision({ campaignId, mapId, asCharacterId });
+  }
+
+  /** `SetCarriedLight`: the light a character carries (a preset's key, or '' for none). */
+  async setCarriedLight(
+    campaignId: string,
+    mapId: string,
+    characterId: string,
+    lightKey: string,
+  ): Promise<MapToken> {
+    const res = await this.client.setCarriedLight({ campaignId, mapId, characterId, lightKey });
+    return need(res.token, 'SetCarriedLight');
   }
 
   async create(campaignId: string, name: string, imageId: string): Promise<MapMessage> {

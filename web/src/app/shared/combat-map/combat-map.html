@@ -21,17 +21,21 @@
     (keydown)="onKeydown($event)"
     (blur)="onBlur()"
   >
-    <img
-      class="cm__img"
-      [src]="image().url"
-      alt=""
-      [width]="image().width"
-      [height]="image().height"
-      draggable="false"
-      decoding="async"
-    />
-    @if (layers(); as l) {
-      <app-map-layers [layers]="l" />
+    @if (fog(); as v) {
+      <app-fog-base [vision]="v" [layers]="layers()" (settledChange)="fogSettled.emit($event)" (loadingChange)="fogLoadingChange.emit($event)" />
+    } @else {
+      <img
+        class="cm__img"
+        [src]="image().url"
+        alt=""
+        [width]="image().width"
+        [height]="image().height"
+        draggable="false"
+        decoding="async"
+      />
+      @if (layers(); as l) {
+        <app-map-layers [layers]="l" />
+      }
     }
     <svg
       class="cm__grid"

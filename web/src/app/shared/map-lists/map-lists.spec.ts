@@ -94,6 +94,16 @@ describe('MapTokensList', () => {
     expect(tokenSub(mapToken('x', 'Sem info'), new Map())).toBe('Personagem de jogador');
   });
 
+  it('says whose creature a creature token is: its character_id is the owner\'s, never "Personagem de jogador"', () => {
+    const fixture = TestBed.createComponent(MapTokensList);
+    fixture.componentRef.setInput('tokens', [mapToken('p', 'Pensantus'), mapToken('p', 'Nanquim', { creatureId: 'raven' })]);
+    fixture.componentRef.setInput('info', info);
+    fixture.detectChanges();
+    const subs = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub')].map((e) => e.textContent?.trim());
+    expect(subs).toEqual(['Mago 3, de Vinicius', 'Criatura de Pensantus']);
+    expect(tokenSub(mapToken('p', 'Nanquim', { creatureId: 'raven' }), info)).toBe('Criatura de um personagem');
+  });
+
   it('shows Visível or Escondido and asks for the opposite', () => {
     const fixture = TestBed.createComponent(MapTokensList);
     fixture.componentRef.setInput('tokens', [mapToken('p', 'Pensantus'), mapToken('e', 'Capitão', { kind: 2, hidden: true })]);

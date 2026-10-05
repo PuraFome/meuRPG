@@ -27,6 +27,7 @@
       <div class="move__map">
         <div #scroller class="move__scroll">
           <app-combat-map
+            [fog]="fog()"
             [image]="image()"
             [mapName]="mapName()"
             [columns]="encounter().gridColumns"

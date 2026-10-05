@@ -1,0 +1,20 @@
+<div class="mr-notice mr-notice--warning band" role="status" data-testid="familiar-band">
+  <mat-icon aria-hidden="true">visibility</mat-icon>
+  <div class="band__text">
+    <p><strong>{{ title() }}</strong></p>
+    @if (inCombat()) {
+      <p>
+        Até o começo da sua próxima vez.
+        {{ characterName() }} está cego e surdo.
+      </p>
+    } @else {
+      <p>{{ characterName() }} está cego e surdo.</p>
+    }
+    @if (error()) {
+      <p class="band__error" role="alert">{{ error() }}</p>
+    }
+  </div>
+</div>
+<button mat-flat-button type="button" class="back" [disabled]="busy()" disabledInteractive (click)="back()">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar aos seus olhos
+</button>

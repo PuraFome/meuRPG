@@ -114,6 +114,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onXpChanged: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
+      onVisionChanged: vi.fn(),
       onStageChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
@@ -180,6 +181,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'notesChanged' });
     await flush();
     expect(handlers.onNotesChanged).toHaveBeenCalledTimes(1);
+    expect(stream.status()).toBe('live');
+  });
+
+  it('tells the page what a player sees of a fog map changed (MR-036), naming the map and nothing else', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'visionChanged', mapId: 'map-1' });
+    await flush();
+    expect(handlers.onVisionChanged).toHaveBeenCalledWith('map-1');
     expect(stream.status()).toBe('live');
   });
 

@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -16,6 +16,7 @@ import {
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
+import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../core/maps/vision';
 
 /**
  * The map panel of a running combat or of its setup (E6-04, E6-05, E6-11):
@@ -44,6 +45,8 @@ export class CombatMapCard {
   readonly reach = input<Reach | null>(null);
   /** The map's painted layers, once read. */
   readonly layers = input<MapLayers | null>(null);
+  /** What the player sees of the map with the fog on (MR-036): the same drawing as the session's, with the combatants over it. */
+  readonly fog = input<Vision | null>(null);
   /** The reactors of pending opportunity offers the caller answers or waits on (E9-13). */
   readonly offers = input<readonly OfferMark[]>([]);
   /** The master's switch for the reach of whoever is on turn: its name, and whether it is on. */
@@ -66,6 +69,23 @@ export class CombatMapCard {
   readonly openMap = output<void>();
 
   private readonly phone = mediaQuery(PHONE_QUERY);
+  private readonly settled = signal<ReadonlySet<string>>(new Set());
+  protected readonly fogProgress = computed(() => {
+    const v = this.fog();
+    return v ? tileProgress(tileRects(v), this.settled()) : { total: 0, done: 0 };
+  });
+  protected readonly fogLoading = signal(false);
+  protected readonly fogLegend = computed(() => {
+    const v = this.fog();
+    return v ? visionLegend(v) : null;
+  });
+  protected onFogLoading(loading: boolean): void {
+    this.fogLoading.set(loading);
+  }
+
+  protected onFogSettled(set: ReadonlySet<string>): void {
+    this.settled.set(set);
+  }
   protected readonly preview = computed(() => this.cropOnPhone() && this.isMaster() && this.phone());
 
   /** Where the 2x map sits inside the preview frame, so that the one on turn

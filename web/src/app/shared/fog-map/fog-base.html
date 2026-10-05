@@ -1,0 +1,59 @@
+@let v = vision();
+@if (image(); as img) {
+  <img class="fb__img" [src]="img.url" alt="" [width]="img.width" [height]="img.height" draggable="false" decoding="async" />
+}
+@for (r of rects(); track r.key) {
+  <img
+    class="fb__tile"
+    [class.fb__tile--waiting]="pending(r)"
+    [src]="src(r)"
+    alt=""
+    draggable="false"
+    decoding="async"
+    [style.left.%]="pct(r.col, v.columns)"
+    [style.top.%]="pct(r.row, v.rows)"
+    [style.width.%]="pct(r.cols, v.columns)"
+    [style.height.%]="pct(r.rows, v.rows)"
+    (load)="settle(r)"
+    (error)="settle(r)"
+  />
+  @if (pending(r)) {
+    <span
+      class="fb__wait"
+      data-pending
+      [style.left.%]="pct(r.col, v.columns)"
+      [style.top.%]="pct(r.row, v.rows)"
+      [style.width.%]="pct(r.cols, v.columns)"
+      [style.height.%]="pct(r.rows, v.rows)"
+    ></span>
+  }
+}
+@if (layers(); as l) {
+  <app-map-layers [layers]="l" />
+}
+@for (b of grey(); track $index) {
+  <span
+    class="fb__grey"
+    data-shade="grey"
+    [style.left]="'calc(' + pct(b.col, v.columns) + '% - 0.4px)'"
+    [style.top]="'calc(' + pct(b.row, v.rows) + '% - 0.4px)'"
+    [style.width]="'calc(' + pct(b.cols, v.columns) + '% + 0.8px)'"
+    [style.height]="'calc(' + pct(b.rows, v.rows) + '% + 0.8px)'"
+  ></span>
+}
+<svg class="fb__shade" [attr.viewBox]="'0 0 ' + v.columns + ' ' + v.rows" preserveAspectRatio="none" shape-rendering="crispEdges">
+  <defs>
+    <pattern id="fb-dots" width="0.25" height="0.25" patternUnits="userSpaceOnUse">
+      <circle cx="0.125" cy="0.125" r="0.03" class="fb__dot" />
+    </pattern>
+  </defs>
+  @for (b of dark(); track $index) {
+    <rect [attr.data-shade]="b.shade" [class]="'fb__' + b.shade" [attr.x]="b.col" [attr.y]="b.row" [attr.width]="b.cols" [attr.height]="b.rows" />
+    @if (b.shade === 'remembered') {
+      <rect class="fb__dots" [attr.x]="b.col" [attr.y]="b.row" [attr.width]="b.cols" [attr.height]="b.rows" fill="url(#fb-dots)" />
+    }
+  }
+</svg>
+@if (remembered(); as r) {
+  <app-map-layers class="fb__mem" [layers]="r" />
+}
