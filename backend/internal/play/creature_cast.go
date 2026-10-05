@@ -239,7 +239,7 @@ func (s *Service) CastSummon(
 		var slot *slotRef
 		circle := 0
 		if !ritual {
-			opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, characterID, link.Turn{})
+			opts, err := s.roster.CombatTurnOptions(ctx, c.tx, m.CampaignID, characterID, link.Turn{})
 			if err != nil {
 				return nil, err
 			}

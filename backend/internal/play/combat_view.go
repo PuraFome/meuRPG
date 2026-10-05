@@ -421,7 +421,7 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 		if _, done := out[sheetKey(c)]; done {
 			continue
 		}
-		sheet, err := s.sheetOf(ctx, m.CampaignID, c)
+		sheet, err := s.sheetOf(ctx, nil, m.CampaignID, c)
 		if err != nil {
 			continue
 		}

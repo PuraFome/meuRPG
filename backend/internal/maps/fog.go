@@ -39,7 +39,7 @@ import (
 //     Shape (a wolf has no darkvision). Of a character's creatures only the
 //     familiar sees for its player, and only while the player looks through its
 //     eyes ("Ver pelos olhos do familiar") and it is within 30 m of the character
-//     (familiarEyes): D6's "each player sees what their own character (and its
+//     (familiarEyes), and the character's own view is then switched off (it is blind and deaf, SRD): D6's "each player sees what their own character (and its
 //     creatures) sees" is the party's, and the SRD gives a familiar's senses to its
 //     master only as that action, so every other creature of the character lets
 //     the player see the creature, not through it. The creatures' tokens are party
@@ -512,7 +512,10 @@ func (sg *sight) viewOf(userID string) (view *vision.View, onMap bool) {
 		if !sg.group && m.UserID != userID {
 			continue
 		}
-		if sq, ok := sg.stands[m.CharacterID]; ok {
+		// Looking through the familiar's eyes the character is blind to its own
+		// surroundings (SRD): only the familiar's view is the player's, though the
+		// other characters' views still count for the party with "Visão do grupo".
+		if sq, ok := sg.stands[m.CharacterID]; ok && m.Eyes == nil {
 			views = append(views, sg.entry.see(vision.Viewer{At: sq, Senses: m.Senses}))
 		}
 		for _, extra := range sg.extra[m.CharacterID] {

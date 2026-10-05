@@ -18,9 +18,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Wild Shape and the familiar's eyes (MR-037, MR-036, Etapa 9). The form lives on
-// the character's vitals (character_vitals.wild_shape_beast and wild_shape_hp),
-// and this file is the one place that reads it back into the character's numbers:
+// Wild Shape and the familiar's eyes (MR-037, MR-036, Etapa 9). The form is part
+// of the character's vitals for the API (CharacterVitals.wild_shape) and lives in the
+// table character_wild_shapes, and this file is the one place that reads it back into the character's numbers:
 // a druid in a beast form fights, moves and sees as the beast (rules.Content.
 // WildShapeDerived does the arithmetic, never this package), and keeps its own
 // hit points waiting. The play module decides when the form starts and ends
@@ -50,6 +50,15 @@ func (s *Service) derive(full *charactersv1.FullSheet, beast *string) rules.Deri
 		return strings.HasPrefix(a.Key, wildShapeAction)
 	})
 	return shaped
+}
+
+// queriesIn is the queries on the transaction, or on the pool when tx is nil: a read made
+// inside a transaction that wrote the rows it joins must use it, or it waits for it.
+func (s *Service) queriesIn(tx pgx.Tx) *charactersdb.Queries {
+	if tx == nil {
+		return s.queries
+	}
+	return s.queries.WithTx(tx)
 }
 
 // beastSize is the size of a beast as a link.Character.Size.

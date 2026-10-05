@@ -548,7 +548,7 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	sheet, ok := n.byCharacter[sheetKey(c)]
 	if !ok {
 		var err error
-		if sheet, err = n.s.sheetOf(ctx, n.campaignID, c); err != nil {
+		if sheet, err = n.s.sheetOf(ctx, nil, n.campaignID, c); err != nil {
 			n.s.logger.WarnContext(ctx, "play: cannot read a sheet for the combat log") // no names or IDs in logs
 		}
 		n.byCharacter[sheetKey(c)] = sheet
@@ -569,7 +569,7 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 	}
 	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
-		if sp, err := n.s.roster.CombatSpell(ctx, n.campaignID, c.CharacterID, key, 0); err == nil {
+		if sp, err := n.s.roster.CombatSpell(ctx, nil, n.campaignID, c.CharacterID, key, 0); err == nil {
 			return sp.Name
 		}
 	}

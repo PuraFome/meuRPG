@@ -2,9 +2,11 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -17,9 +19,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// A druid's Wild Shape (MR-037, Etapa 9, D7). The form lives on the character's
-// vitals (character_vitals.wild_shape_*), kept by the characters module; this file
-// is what a table does with it:
+// A druid's Wild Shape (MR-037, Etapa 9, D7). The form is part of the character's
+// vitals for the API (CharacterVitals.wild_shape) and lives in the table
+// character_wild_shapes, kept by the characters module; this file is what a table
+// does with it:
 //
 //   - AssumeWildShape: spends one use of the Forma Selvagem resource and, in a
 //     combat, the action; the combatant takes the beast's speed, size and jumps
@@ -45,7 +48,87 @@ const (
 	endedByLeaving = "left"   // "Voltar à forma normal"
 	endedByDamage  = "damage" // the beast fell to 0
 	endedByMaster  = "master" // the master's correction took the beast to 0 hit points
+	// The SRD ends the form when the druid falls unconscious or to 0 hit points: its
+	// own, whatever did it (endedAtZero), or the Unconscious condition (endedAsleep).
+	endedAtZero = "zero_hp"
+	endedAsleep = "unconscious"
 )
+
+// endsBySelf says a wild_shape_ended reason is part of the change that caused it,
+// written before that change's event: it is no action for an undo to take back.
+func endsBySelf(reason string) bool {
+	return reason == endedByDamage || reason == endedAtZero || reason == endedAsleep
+}
+
+// formEnds ends a druid's form where only the vitals are at hand (it fell to 0 hit
+// points): the form goes, the combatant of the session's combat takes its own numbers
+// back, and a wild_shape_ended event says why. It returns the vitals after.
+func (s *Service) formEnds(ctx context.Context, q *playdb.Queries, tx pgx.Tx, sessionID, campaignID, characterID, beast, reason string) (*playv1.CharacterVitals, error) {
+	after, body, err := s.vitals.SetWildShape(ctx, tx, campaignID, characterID, "", 0)
+	if err != nil {
+		return nil, err
+	}
+	if err := q.SetCombatantBodyOfCharacter(ctx, playdb.SetCombatantBodyOfCharacterParams{
+		CharacterID: characterID, GameSessionID: sessionID, SpeedFt: clamp32(body.SpeedFt, 0, 600), SpeedFlyFt: clamp32(body.SpeedFlyFt, 0, 600),
+		Size: sizeKey(body.Size), JumpLongDft: clamp32(body.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(body.JumpHighDFt, 0, 6000),
+	}); err != nil {
+		return nil, fmt.Errorf("give the combatant its own numbers: %w", err)
+	}
+	seq, err := q.NextSessionEventSeq(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("next event number: %w", err)
+	}
+	payload, err := json.Marshal(actionEvent{OwnerCharacter: characterID, Beast: beast, Reason: reason})
+	if err != nil {
+		return nil, fmt.Errorf("encode the event payload: %w", err)
+	}
+	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+		GameSessionID: sessionID, Seq: seq, Kind: eventWildShapeEnded, CharacterID: &characterID, Payload: payload, CreatedAt: s.now(),
+	}); err != nil {
+		return nil, fmt.Errorf("insert session event: %w", err)
+	}
+	return after, nil
+}
+
+// endFormIfAsleep ends the form of a druid that was just given the Unconscious
+// condition (a sleep spell, the master's hand): the SRD returns it to its own shape.
+func (s *Service) endFormIfAsleep(ctx context.Context, c *combatTx, who playdb.Combatant, conditions []string) error {
+	if who.Kind != kindPlayer || !slices.Contains(conditions, unconscious) {
+		return nil
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil
+		}
+		return err
+	}
+	w := now.GetWildShape()
+	if w == nil {
+		return nil
+	}
+	after, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, who.CharacterID, "", 0)
+	if err != nil {
+		return err
+	}
+	if err := applyBody(ctx, c, who, body); err != nil {
+		return err
+	}
+	c.characterID = &who.CharacterID
+	c.told = append(c.told, after)
+	return insertEvent(ctx, c, eventWildShapeEnded, &c.actorUserID, nil, actionEvent{
+		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, OwnerCharacter: who.CharacterID, Beast: w.GetBeastKey(), Reason: endedAsleep, EncounterID: c.enc.ID,
+	})
+}
+
+// refuseIfDown refuses a Wild Shape for a druid at 0 hit points or unconscious: it
+// cannot take an action, and the form would end at once (SRD).
+func refuseIfDown(v *playv1.CharacterVitals, who *playdb.Combatant) error {
+	if (v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0) || (who != nil && slices.Contains(who.Conditions, unconscious)) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the character is down or unconscious")
+	}
+	return nil
+}
 
 // errShape turns the characters module's refusals into the typed ones.
 func errShape(err error) error {
@@ -123,6 +206,7 @@ func (s *Service) damageBeast(ctx context.Context, c *combatTx, target playdb.Co
 	if err := applyBody(ctx, c, target, body); err != nil {
 		return nil, nil, err
 	}
+	c.told = append(c.told, after)
 	ev.Carried = carried
 	c.characterID = &target.CharacterID
 	if err := insertEvent(ctx, c, eventWildShapeEnded, &c.actorUserID, nil, actionEvent{
@@ -273,6 +357,15 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 
 		var before *playv1.CharacterVitals
 		var body link.Character
+		if !leave {
+			now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID)
+			if err != nil {
+				return nil, err
+			}
+			if err := refuseIfDown(now, who); err != nil {
+				return nil, err
+			}
+		}
 		if leave {
 			if before, err = s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID); err != nil {
 				return nil, err
@@ -337,6 +430,10 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "read the Wild Shape change", err)
 	}
+	if res.repeated && ev.OwnerCharacter != characterID {
+		// The key is another character's change: never answer with that character's vitals.
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
 	if res.repeated { // a retry: nothing changed, answer with the vitals as they are now
 		if vitals, err = s.vitals.GetVitals(ctx, m.CampaignID, characterID); err != nil {
 			return nil, nil, s.dbError(ctx, "get vitals", err)
@@ -392,6 +489,7 @@ func (s *Service) shapeUndo(ctx context.Context, c *combatTx, kind string, ev ac
 			return err
 		}
 		keep(after)
+		c.told = append(c.told, after)
 		if ok {
 			return applyBody(ctx, c, who, body)
 		}
@@ -405,6 +503,7 @@ func (s *Service) shapeUndo(ctx context.Context, c *combatTx, kind string, ev ac
 		return err
 	}
 	keep(after)
+	c.told = append(c.told, after)
 	if ok {
 		return applyBody(ctx, c, who, body)
 	}

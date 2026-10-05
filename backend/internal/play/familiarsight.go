@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -36,8 +37,9 @@ const familiarSightRange = 20
 
 // The reasons a familiar_sight event gives for a "stop".
 const (
-	sightStopped   = "stopped" // the player stopped it
-	sightTurnStart = "turn"    // the character's next turn started
+	sightStopped      = "stopped" // the player stopped it
+	sightTurnStart    = "turn"    // the character's next turn started
+	sightCombatJoined = "combat"  // the character joined a combat, or its combat began
 )
 
 // sightConditions are the conditions a character looking through its familiar
@@ -205,6 +207,11 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 			if !ok {
 				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR, "the character has no familiar")
 			}
+			if inCombat && !turns {
+				// In SETUP nobody has a turn: the sight is an action of a turn, and one
+				// that was on is ended when the combat starts or the character joins it.
+				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_COMBAT_NOT_BEGUN, "the combat has not begun")
+			}
 			me, it, found, err := s.familiarSquares(ctx, c, who, cs, characterID, fam.ID)
 			if err != nil {
 				return nil, err
@@ -253,6 +260,10 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "read the familiar's sight change", err)
 	}
+	if res.repeated && ev.OwnerCharacter != characterID {
+		// The key is another character's change: never answer with that character's vitals.
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
 	if res.repeated {
 		if vitals, err = s.vitals.GetVitals(ctx, m.CampaignID, characterID); err != nil {
 			return nil, nil, s.dbError(ctx, "get vitals", err)
@@ -284,41 +295,51 @@ func (s *Service) endFamiliarSights(ctx context.Context, c *combatTx, ids []stri
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
+	for _, id := range ids {
+		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 {
+			if err := s.endSight(ctx, c, cs[i], sightTurnStart, true); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// endSight ends one player's character's familiar sight, if it has one (and, with
+// onlyInCombat, if it began in a combat): the conditions it gave leave the combatant,
+// the vitals forget it and a familiar_sight event says why.
+func (s *Service) endSight(ctx context.Context, c *combatTx, who playdb.Combatant, reason string, onlyInCombat bool) error {
+	if who.Kind != kindPlayer {
+		return nil
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil // the character died or left meanwhile
+		}
+		return err
+	}
+	sight := now.GetFamiliarSight()
+	if sight == nil || (onlyInCombat && !sight.GetInCombat()) {
+		return nil
+	}
+	if err := setConditions(ctx, c, who, withoutConditions(who.Conditions, sight.GetConditionsGiven())); err != nil {
+		return err
+	}
+	after, err := s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, who.CharacterID, "", false, nil)
+	if err != nil {
+		return err
+	}
 	keep := c.characterID
 	defer func() { c.characterID = keep }()
-	for _, id := range ids {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
-		if i < 0 || cs[i].Kind != kindPlayer {
-			continue
-		}
-		who := cs[i]
-		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
-		if err != nil {
-			if connect.CodeOf(err) == connect.CodeNotFound {
-				continue // the character died or left meanwhile
-			}
-			return err
-		}
-		sight := now.GetFamiliarSight()
-		if sight == nil || !sight.GetInCombat() {
-			continue
-		}
-		if err := setConditions(ctx, c, who, withoutConditions(who.Conditions, sight.GetConditionsGiven())); err != nil {
-			return err
-		}
-		after, err := s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, who.CharacterID, "", false, nil)
-		if err != nil {
-			return err
-		}
-		c.characterID = &who.CharacterID
-		if err := insertEvent(ctx, c, eventFamiliarSight, &c.actorUserID, nil, actionEvent{
-			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, OwnerCharacter: who.CharacterID, Sight: "stop",
-			Creature: sight.GetCreatureId(), Reason: sightTurnStart, EncounterID: c.enc.ID,
-		}); err != nil {
-			return err
-		}
-		c.sightEnded = append(c.sightEnded, after)
+	c.characterID = &who.CharacterID
+	if err := insertEvent(ctx, c, eventFamiliarSight, &c.actorUserID, nil, actionEvent{
+		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, OwnerCharacter: who.CharacterID, Sight: "stop",
+		Creature: sight.GetCreatureId(), Reason: reason, EncounterID: c.enc.ID,
+	}); err != nil {
+		return err
 	}
+	c.told = append(c.told, after)
 	return nil
 }
 
@@ -349,6 +370,7 @@ func (s *Service) sightUndo(ctx context.Context, c *combatTx, ev actionEvent, fi
 		return err
 	}
 	keep(after)
+	c.told = append(c.told, after)
 	return nil
 }
 
@@ -379,7 +401,7 @@ func (s *Service) endCombatSights(ctx context.Context, c *combatTx, cs []playdb.
 		if err != nil {
 			return err
 		}
-		c.sightEnded = append(c.sightEnded, after)
+		c.told = append(c.told, after)
 	}
 	return nil
 }

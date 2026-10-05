@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -140,6 +141,7 @@ type harness struct {
 	server *httptest.Server   // serves http's handler over HTTP/1.1
 	chars  *characters.Service
 	camps  *campaigns.Service
+	vision *visionCounter // how many times the fog was told that what the players see changed
 }
 
 // newHarness serves the play, campaigns and characters services through
@@ -167,8 +169,9 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
+	h.vision = &visionCounter{SessionMaps: maps.NewSessionMaps(pool)}
 	chars.SetGallery(maps.NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
-	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars, Dice: testDice{camps}, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -364,4 +367,15 @@ func (r *scriptedRoller) Roll(sides int) (int, error) {
 	face := r.faces[0]
 	r.faces = r.faces[1:]
 	return face, nil
+}
+
+// visionCounter is the maps seam with a count of the fog refreshes play asks for.
+type visionCounter struct {
+	*maps.SessionMaps
+	n atomic.Int32
+}
+
+func (v *visionCounter) VisionChanged(ctx context.Context, campaignID, mapID string) {
+	v.n.Add(1)
+	v.SessionMaps.VisionChanged(ctx, campaignID, mapID)
 }

@@ -134,9 +134,9 @@ type combatTx struct {
 	// svc is the service the change runs in, for what a turn starting does (ending a
 	// familiar's sight); nil in the few places that make a combatTx outside write.
 	svc *Service
-	// sightEnded are the vitals of the characters whose familiar sight a turn start
+	// told are the vitals of the characters whose Wild Shape form or familiar sight
 	// ended: write tells the streams and the fog after the commit (MR-036).
-	sightEnded []*playv1.CharacterVitals
+	told []*playv1.CharacterVitals
 	// master says the master makes the change: the turn that waits for an
 	// opportunity attack's answer never stops him.
 	master bool
@@ -184,6 +184,12 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
+			// A key is its author's: another member replaying it would be handed the
+			// answer to a change that was not theirs (the vitals of someone else's
+			// character, a roll).
+			if done.ActorUserID == nil || *done.ActorUserID != w.m.UserID {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
 			res.repeated = true // a retry of a change already made
 			res.payload = done.Payload
 			return nil
@@ -223,8 +229,8 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
-	if ended != nil && len(ended.sightEnded) > 0 {
-		for _, v := range ended.sightEnded {
+	if ended != nil && len(ended.told) > 0 {
+		for _, v := range ended.told {
 			s.publishVitals(w.m.CampaignID, v)
 		}
 		s.maps.VisionChanged(ctx, w.m.CampaignID, deref(ended.enc.MapID))

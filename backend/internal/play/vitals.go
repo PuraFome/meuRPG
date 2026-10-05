@@ -51,8 +51,9 @@ func (s *Service) AdjustCharacterVitals(
 	var after *playv1.CharacterVitals
 	var repeated bool
 	var touched *playdb.Encounter
+	visionMap, shapeChanged := "", false // the map whose fog the change touches
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated, touched = nil, false, nil // a retry starts over
+		after, repeated, touched, visionMap, shapeChanged = nil, false, nil, "", false // a retry starts over
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -106,7 +107,9 @@ func (s *Service) AdjustCharacterVitals(
 		// the character's own numbers are back on its combatant, and the history says
 		// so (MR-037). The event has no combat, so it is nothing for an undo to take back.
 		var ownBody *link.Character
-		if before.GetWildShape() != nil && adjusted.GetWildShape() == nil {
+		shapeChanged = (before.GetWildShape() == nil) != (adjusted.GetWildShape() == nil)
+		visionMap = deref(session.CurrentMapID)
+		if before.GetWildShape() != nil && adjusted.GetWildShape() == nil && adjusted.GetHitPointsCurrent() > 0 {
 			var body link.Character
 			if adjusted, body, err = s.vitals.SetWildShape(ctx, tx, m.CampaignID, charText, "", 0); err != nil {
 				return err
@@ -140,6 +143,7 @@ func (s *Service) AdjustCharacterVitals(
 						return err
 					}
 				}
+				visionMap = deref(enc.MapID)
 				t, err := q.TouchEncounter(ctx, enc.ID)
 				if err != nil {
 					return fmt.Errorf("touch the encounter: %w", err)
@@ -172,6 +176,9 @@ func (s *Service) AdjustCharacterVitals(
 	})
 	if touched != nil {
 		s.publishEncounterChanged(m.CampaignID, *touched)
+	}
+	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+		s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
 	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
 }

@@ -223,7 +223,7 @@ func (s *Service) GetTurnOptions(
 		return nil, err
 	}
 
-	opts, err := s.optionsOf(ctx, m.CampaignID, who)
+	opts, err := s.optionsOf(ctx, nil, m.CampaignID, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -286,7 +286,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 	}
 	var out []*playv1.SpellTargets
 	for _, e := range spells {
-		sp, err := s.roster.CombatSpell(ctx, campaignID, who.CharacterID, e.key, e.level)
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level)
 		if err != nil {
 			return nil, err
 		}
@@ -587,7 +587,7 @@ func (s *Service) RollAttack(
 		if err := mayAttack(attacker, asReaction); err != nil {
 			return nil, err
 		}
-		attackerSheet, err := s.sheetOf(ctx, m.CampaignID, attacker)
+		attackerSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
 		}
@@ -658,7 +658,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
-		targetSheet, err := s.sheetOf(ctx, m.CampaignID, target)
+		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
@@ -1202,6 +1202,13 @@ func (s *Service) ApplyPendingDamage(
 			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount)
 			made.DeathBefore = deathOf(target)
+			// The 0 hit points rule, as below: the damage that carried over dropped
+			// the druid to 0 on an opportunity attack.
+			if made.Before.HP > 0 && made.After.HP == 0 {
+				if made.ReturnedFrom, made.ReturnBlocked, err = s.returnToReach(ctx, c, p.ID, target); err != nil {
+					return nil, err
+				}
+			}
 		} else {
 			// RN-02: the damage goes through the character's vitals, temporary hit
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
@@ -1447,7 +1454,7 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		opts, err := s.optionsOf(ctx, m.CampaignID, who)
+		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
 		}
@@ -1531,7 +1538,7 @@ func (s *Service) TakeAction(
 		}
 
 		if feature {
-			sheet, err := s.sheetOf(ctx, m.CampaignID, who)
+			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
 				return nil, err
 			}

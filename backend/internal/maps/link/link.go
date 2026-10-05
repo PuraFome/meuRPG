@@ -28,7 +28,9 @@ type PartyMember struct {
 	// Eyes is the familiar the player looks through right now ("Ver pelos olhos
 	// do familiar", MR-036), nil when they do not. The maps module puts it on the
 	// map, at the square where the creature stands (its token, or its combatant
-	// while a combat runs), as a viewer of its own beside the character's.
+	// while a combat runs), as the player's viewer instead of the character's own:
+	// looking through the familiar the character is blind and deaf (SRD), so its own
+	// view is switched off while the other characters' still count for "Visão do grupo".
 	Eyes *Eyes
 }
 

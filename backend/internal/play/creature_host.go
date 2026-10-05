@@ -46,7 +46,7 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if len(leaving) == 0 {
 		return "", nil
 	}
-	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: at, actorUserID: actorUserID}
+	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: at, actorUserID: actorUserID, svc: s}
 	// A creature that leaves keeps the hit points it has (it may be dismissed
 	// right after, which the characters module settles).
 	if err := s.writeBackCreatures(ctx, c, leaving); err != nil {
@@ -88,6 +88,14 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 		return // the combat is gone: nothing to tell
 	}
 	s.publishEncounterChanged(campaignID, enc)
+	// A creature that left may have passed the turn, and the new turn ends a familiar's
+	// sight (MR-036): the vitals and the fog hear of it too.
+	if all, err := s.vitals.ListVitals(ctx, campaignID); err == nil {
+		for _, v := range all {
+			s.publishVitals(campaignID, v)
+		}
+	}
+	s.maps.VisionChanged(ctx, campaignID, deref(enc.MapID))
 }
 
 // LockSession takes the open session's row (characters.CreatureHost): the lock

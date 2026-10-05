@@ -7,6 +7,7 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -218,8 +219,10 @@ func TestMR036_TheFamiliarsEyesGiveItsView(t *testing.T) {
 	if guard(through) < 3 { // dim or bright: lit by the torch
 		t.Errorf("through the owl's eyes the torch's square is state %d, want lit\n%s", guard(through), strings.Join(picture(t, through, stand), "\n"))
 	}
-	if seenNow(t, through) <= seenNow(t, own) {
-		t.Errorf("through the owl %d squares, with his own eyes %d: want more", seenNow(t, through), seenNow(t, own))
+	// Blind and deaf with regard to his own senses (SRD): he no longer sees the dark corner
+	// he stands in, only what the owl sees.
+	if nowSeen(stateAt(t, through, stand.Col, stand.Row)) {
+		t.Errorf("through the owl Mago still sees his own square (state %d), want only the owl's view", stateAt(t, through, stand.Col, stand.Row))
 	}
 	// Nobody else sees through it.
 	if got := c.ana.mustVision(c.campaign, c.mapID); string(codes(t, got)) != string(codes(t, anaBefore)) {
@@ -246,6 +249,16 @@ func TestMR036_TheFamiliarsEyesGiveItsView(t *testing.T) {
 	}
 	if guard(gus.mustVision(c.campaign, c.mapID)) < 3 {
 		t.Errorf("the owl in range again gives no view")
+	}
+	// With "Visão do grupo" the other characters' views still count for the party, but not
+	// his own eyes. (Last: the group's view adds to everyone's memory.)
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: proto.Bool(true)})); err != nil {
+		t.Fatalf("SetMapFog(group) error = %v", err)
+	}
+	group := gus.mustVision(c.campaign, c.mapID)
+	if !nowSeen(stateAt(t, group, sqToren.Col, sqToren.Row)) || nowSeen(stateAt(t, group, stand.Col, stand.Row)) {
+		t.Errorf("with the group's vision Mago sees Toren's square: %d, his own: %d; want the party's view and not his own eyes",
+			stateAt(t, group, sqToren.Col, sqToren.Row), stateAt(t, group, stand.Col, stand.Row))
 	}
 	if _, err := gus.play.StopFamiliarSight(t.Context(), connect.NewRequest(&playv1.StopFamiliarSightRequest{CampaignId: c.campaign, CharacterId: mago.GetId(), IdempotencyKey: rand32()})); err != nil {
 		t.Fatalf("StopFamiliarSight() error = %v", err)
@@ -300,3 +313,43 @@ func TestMR037_ACreatureDoesNotSeeForItsOwnerUnlessItIsTheFamiliarsEyes(t *testi
 	_, err = c.dani.play.StartFamiliarSight(t.Context(), connect.NewRequest(&playv1.StartFamiliarSightRequest{CampaignId: c.campaign, CharacterId: c.salvia.GetId(), IdempotencyKey: rand32()}))
 	wantCode(t, "StartFamiliarSight with a gifted wolf", err, connect.CodeFailedPrecondition)
 }
+
+// TestMR036_TheWolfFallingTellsThePlayerTheirViewChanged: when the beast falls (here the
+// master takes it to 0) the druid's own senses are back, and the player gets
+// `vision_changed` for the map.
+func TestMR036_TheWolfFallingTellsThePlayerTheirViewChanged(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	eve := c.h.newUser("Eva")
+	c.h.join(c.master, c.campaign, false, eve)
+	folha := eve.levelFive(c.campaign, "Folha", "race:half-elf", "class:druid", nil)
+	c.master.placeAt(c.campaign, c.mapID, folha.GetId(), grid.Square{Col: 8, Row: 12})
+	if _, err := eve.play.AssumeWildShape(t.Context(), connect.NewRequest(&playv1.AssumeWildShapeRequest{CampaignId: c.campaign, CharacterId: folha.GetId(), BeastKey: "monster:wolf", IdempotencyKey: rand32()})); err != nil {
+		t.Fatalf("AssumeWildShape() error = %v", err)
+	}
+	w := eve.watch(c.campaign)
+	drain := func() []*playv1.WatchGameSessionResponse {
+		c.master.setMapRevealed(c.campaign, c.probeMap, !c.master.mustGetMap(c.campaign, c.probeMap).GetMap().GetRevealed())
+		return w.drain(c.probeMap)
+	}
+	drain()
+	zero := int32(0)
+	if _, err := c.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
+		CampaignId: c.campaign, CharacterId: folha.GetId(), IdempotencyKey: rand32(), WildShapeHitPointsCurrent: &zero,
+	})); err != nil {
+		t.Fatalf("AdjustCharacterVitals() error = %v", err)
+	}
+	var vision bool
+	for _, ev := range drain() {
+		vision = vision || ev.GetVisionChanged().GetMapId() == c.mapID
+	}
+	if !vision {
+		t.Errorf("the player was not told their view changed when the wolf fell")
+	}
+	if n := seenNow(t, eve.mustVision(c.campaign, c.mapID)); n < 30 {
+		t.Errorf("back in her own shape she sees %d squares, want her darkvision's", n)
+	}
+}
+
+// nowSeen says a square's state is "seen now": a wall, grey, dim or bright light.
+func nowSeen(code byte) bool { return code >= 1 && code <= 4 }

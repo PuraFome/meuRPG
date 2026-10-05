@@ -211,7 +211,7 @@ func (s *Service) setCondition(ctx context.Context, c *combatTx, t playdb.Combat
 		return fmt.Errorf("set the conditions: %w", err)
 	}
 	h.CondSet, h.CondBefore = true, t.Conditions
-	return nil
+	return s.endFormIfAsleep(ctx, c, t, conditions) // a druid put to sleep is itself again (SRD)
 }
 
 // dropToZero is Palavra de Poder: Matar on a target: an NPC is defeated at 0 hit

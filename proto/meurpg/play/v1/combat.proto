@@ -1273,6 +1273,10 @@ enum FamiliarSightBlockedReason {
   FAMILIAR_SIGHT_BLOCKED_REASON_ALREADY_SEEING = 4;
   // StopFamiliarSight: the player is not looking through the familiar's eyes.
   FAMILIAR_SIGHT_BLOCKED_REASON_NOT_SEEING = 5;
+  // StartFamiliarSight: the character is a combatant of a combat that has not begun
+  // (in SETUP). The sight is an action of a turn there, and one that was on is ended
+  // when the character joins the combat or the combat begins.
+  FAMILIAR_SIGHT_BLOCKED_REASON_COMBAT_NOT_BEGUN = 6;
 }
 
 // EncounterBlocked is the error detail of CombatService's

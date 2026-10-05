@@ -529,15 +529,15 @@ func (noRoster) SessionCharacters(context.Context, string, []string) ([]link.Cha
 	return nil, nil
 }
 
-func (noRoster) CombatSheet(context.Context, string, string) (link.Sheet, error) {
+func (noRoster) CombatSheet(context.Context, pgx.Tx, string, string) (link.Sheet, error) {
 	return link.Sheet{}, errors.New("not in this test")
 }
 
-func (noRoster) CombatTurnOptions(context.Context, string, string, link.Turn) (*rulesv1.TurnOptions, error) {
+func (noRoster) CombatTurnOptions(context.Context, pgx.Tx, string, string, link.Turn) (*rulesv1.TurnOptions, error) {
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CombatSpell(context.Context, string, string, string, int) (link.Spell, error) {
+func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int) (link.Spell, error) {
 	return link.Spell{}, errors.New("not in this test")
 }
 

@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -43,9 +44,9 @@ func sheetKey(c playdb.Combatant) string {
 
 // sheetOf reads the sheet a combat works a combatant from: its character's, or
 // a creature's stat block with what its spell lets it attack with.
-func (s *Service) sheetOf(ctx context.Context, campaignID string, c playdb.Combatant) (link.Sheet, error) {
+func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (link.Sheet, error) {
 	if !isCreature(c) {
-		return s.roster.CombatSheet(ctx, campaignID, c.CharacterID)
+		return s.roster.CombatSheet(ctx, tx, campaignID, c.CharacterID)
 	}
 	sheet, ok := s.roster.CreatureSheet(deref(c.MonsterKey), deref(c.SummonAttack))
 	if !ok {
@@ -56,9 +57,9 @@ func (s *Service) sheetOf(ctx context.Context, campaignID string, c playdb.Comba
 
 // optionsOf works out what a combatant can do now, from its sheet or its stat
 // block and what it used this turn.
-func (s *Service) optionsOf(ctx context.Context, campaignID string, c playdb.Combatant) (*rulesv1.TurnOptions, error) {
+func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (*rulesv1.TurnOptions, error) {
 	if !isCreature(c) {
-		return s.roster.CombatTurnOptions(ctx, campaignID, c.CharacterID, turnOf(c))
+		return s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turnOf(c))
 	}
 	opts, ok := s.roster.CreatureTurnOptions(deref(c.MonsterKey), deref(c.SummonAttack), turnOf(c))
 	if !ok {

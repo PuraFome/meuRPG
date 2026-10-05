@@ -66,7 +66,7 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// can put back.
 		if e.Kind == eventWildShapeEnded || e.Kind == eventFamiliarSight {
 			ev, err := readEvent(e.Payload)
-			if err == nil && e.Kind == eventWildShapeEnded && ev.Reason == endedByDamage {
+			if err == nil && e.Kind == eventWildShapeEnded && endsBySelf(ev.Reason) {
 				continue
 			}
 			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
@@ -248,6 +248,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err != nil {
 			return nil, err
 		}
+		c.told = append(c.told, restored)
 		return restored, applyBody(ctx, c, who, body)
 	}
 	var vitals []*playv1.CharacterVitals

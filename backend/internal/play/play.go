@@ -184,21 +184,25 @@ type CombatRoster interface {
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
 	SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+	// The three reads below (CombatSheet, CombatTurnOptions, CombatSpell) take the
+	// caller's transaction (nil: the pool): a change that wrote the character's vitals or
+	// Wild Shape form must read the sheet inside it, or the read waits for that write.
+
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
 	// attacks and the standard actions. Its armor class never goes to a
 	// player (RN-20). `not_found` for any other character.
-	CombatSheet(ctx context.Context, campaignID, characterID string) (link.Sheet, error)
+	CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error)
 	// CombatTurnOptions works out what the character can do now (MR-014),
 	// from its sheet, what it used this turn and the slots it spent: the rules
 	// engine's TurnOptions. `not_found` for any other character.
-	CombatTurnOptions(ctx context.Context, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
+	CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
 	// CombatSpell returns the spell as the character casts it with a slot of
 	// slotLevel (0 for a cantrip): its range, attack or save, damage or healing
 	// at that level, with the character's attack bonus, save DC and
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
-	CombatSpell(ctx context.Context, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
+	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error)
