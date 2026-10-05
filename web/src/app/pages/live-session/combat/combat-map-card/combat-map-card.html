@@ -15,6 +15,7 @@
           [combatants]="encounter().combatants"
           [isMaster]="true"
           [currentId]="encounter().currentCombatantId"
+          [layers]="layers()"
         />
       </div>
     </div>
@@ -31,6 +32,8 @@
     [isMaster]="isMaster()"
     [currentId]="encounter().currentCombatantId"
     [reach]="reach()"
+    [layers]="layers()"
+    [offers]="offers()"
     [masterMoves]="isMaster()"
     [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
     (tokenDrop)="tokenDrop.emit($event)"
@@ -50,12 +53,25 @@
     </button>
   }
 
+  @if (reachSwitch(); as sw) {
+    <div class="card__reach">
+      <label class="card__check">
+        <input type="checkbox" [checked]="sw.on" (change)="reachChange.emit($any($event.target).checked)" />
+        Mostrar o alcance {{ sw.name }} no mapa
+      </label>
+      <p class="card__hint card__hint--text">
+        O alcance é o círculo do movimento que resta, em linha reta, como o servidor o calcula. Terreno difícil e
+        criaturas somam ao custo. Uma parede deixa sombra: ninguém passa por ela.
+      </p>
+    </div>
+  }
+
   @if (note()) {
     <p class="card__note">{{ note() }}</p>
   }
 
   @if (legend()) {
-  <ul class="legend" aria-label="Legenda do mapa">
+  <app-map-layers-legend class="legend" [layers]="layers() ?? emptyLayers">
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" />Jogador</li>
       <li><app-combatant-token initial="C" [npc]="true" [size]="22" />NPC</li>
@@ -73,6 +89,13 @@
       <li><app-combatant-token initial="X" [defeated]="true" [npc]="true" [size]="22" />Derrotado</li>
     }
     <li><app-combatant-token initial="P" [current]="true" [size]="22" />Vez</li>
-  </ul>
+    @if (reach()) {
+      <li><span class="mr-swatch mr-swatch--reach" aria-hidden="true"></span>Alcance {{ reachSwitch()?.name }}</li>
+      <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ reachMeters() }}</li>
+    }
+    @if (offers().length) {
+      <li><span class="mr-swatch mr-swatch--reactor" aria-hidden="true"></span>Alcance de quem pode atacar</li>
+    }
+  </app-map-layers-legend>
   }
 </section>

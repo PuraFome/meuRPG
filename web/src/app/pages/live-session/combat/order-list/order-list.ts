@@ -4,14 +4,25 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
-import { type Combatant, CombatantState, type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantSide,
+  CombatantState,
+  CoverDegree,
+  CoverSource,
+  type Encounter,
+  EncounterStatus,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { coverMark, coverText, markTags } from '../../../../core/combat/cover';
+import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { RowCover } from './row-cover';
 import { DeathRow } from '../death-saves/death-marks';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
@@ -29,7 +40,7 @@ import { PartState } from '../joint-turn/part-state';
  */
 @Component({
   selector: 'app-order-list',
-  imports: [CombatantTags, CombatantToken, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [CombatantTags, CombatantToken, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -48,6 +59,14 @@ export class OrderList {
   readonly add = output<void>();
   /** "Condições…": the combatant's ID. */
   readonly conditions = output<string>();
+  /** The cover each combatant has against whoever has the turn (`GetTurnOptions`
+   * of the master's subject), and who that is: "Três quartos (do mapa) contra o Pensantus". */
+  readonly coverAgainst = input<ReadonlyMap<string, { cover: CoverDegree; source: CoverSource }>>(new Map());
+  readonly turnLabel = input('');
+  /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
+  readonly side = output<{ id: string; side: CombatantSide }>();
+  /** The master's manual cover mark. */
+  readonly cover = output<{ id: string; cover: CoverDegree }>();
   /** The characters whose "Confirmar a morte" question the master put away. */
   readonly deathDismissed = input<ReadonlySet<string>>(new Set());
   /** "Confirmar a morte": the question again. */
@@ -55,6 +74,10 @@ export class OrderList {
 
   protected readonly Stable = CombatantState.STABLE;
   protected readonly removing = signal<string | null>(null);
+  /** The combatant whose cover mark is open. */
+  protected readonly marking = signal<string | null>(null);
+  protected readonly Party = CombatantSide.PARTY;
+  protected readonly Enemy = CombatantSide.ENEMY;
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   protected readonly rows = computed(() => this.encounter().combatants);
   /** The order with the boxes of the joint turns (the master has every total). */
@@ -77,7 +100,7 @@ export class OrderList {
   }
 
   protected tags(c: Combatant): string[] {
-    return conditionTags(c);
+    return [...conditionTags(c), ...markTags(c)];
   }
 
   /** The spell it concentrates on, written out (the combat sends its name). */
@@ -132,6 +155,27 @@ export class OrderList {
   /** "Turno conjunto: Brisa e Toren, iniciativa 19", for a screen reader. */
   protected groupLabel(item: OrderItem): string {
     return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
+  }
+
+  /** "Três quartos (do mapa) contra o Pensantus", or `''` when there is none or nobody has the turn. */
+  protected coverLine(c: Combatant): string {
+    const against = this.coverAgainst().get(c.id);
+    const text = against ? coverText(against.cover, against.source) : '';
+    const who = this.turnLabel();
+    return text && who && c.label !== who ? `${text} contra ${article(who)} ${who}` : '';
+  }
+
+  protected coverPictogram(c: Combatant): 'half' | 'three' | null {
+    return coverMark(this.coverAgainst().get(c.id)?.cover ?? CoverDegree.NONE);
+  }
+
+  /** The text action shows where cover matters: a line, or a mark already there. */
+  protected hasCover(c: Combatant): boolean {
+    return !!this.coverLine(c) || (c.coverMark !== CoverDegree.NONE && c.coverMark !== CoverDegree.UNSPECIFIED);
+  }
+
+  protected pickCover(id: string, cover: CoverDegree): void {
+    this.cover.emit({ id, cover });
   }
 
   protected canAdjust(c: Combatant): boolean {

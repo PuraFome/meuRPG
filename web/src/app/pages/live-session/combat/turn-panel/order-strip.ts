@@ -3,6 +3,7 @@ import { Component, computed, input } from '@angular/core';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { markTags } from '../../../../core/combat/cover';
 import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
@@ -169,7 +170,7 @@ export class OrderStrip {
   }
 
   protected tags(c: Combatant): string[] {
-    return conditionTags(c);
+    return [...conditionTags(c), ...markTags(c)];
   }
 
   protected readonly items = computed(() => orderItems(this.encounter(), false));

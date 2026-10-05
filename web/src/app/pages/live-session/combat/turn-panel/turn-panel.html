@@ -23,6 +23,7 @@
       <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
     }
   </section>
+  <ng-container *ngTemplateOutlet="notes" />
   @if (banner().joint) {
     <app-joint-others class="banner__strip" mode="others" [encounter]="encounter()" />
   }
@@ -103,6 +104,7 @@
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
     }
+    <ng-container *ngTemplateOutlet="notes" />
     @if (banner().joint) {
       <app-joint-others mode="others" [encounter]="encounter()" />
     }
@@ -146,3 +148,18 @@
   }
 </section>
 }
+
+<ng-template #notes>
+  @if (waiting(); as w) {
+    <div class="mr-notice mr-notice--warning turn__notice" role="status">
+      <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+      <p><strong>{{ w.title }}.</strong> {{ w.detail }}</p>
+    </div>
+  }
+  @if (moveNote()) {
+    <div class="mr-notice mr-notice--neutral turn__notice" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p>{{ moveNote() }}</p>
+    </div>
+  }
+</ng-template>

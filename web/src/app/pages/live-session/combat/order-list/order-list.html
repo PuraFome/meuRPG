@@ -84,6 +84,18 @@
           <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
         }
         <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
+        <app-row-cover
+          [label]="c.label"
+          [line]="coverLine(c)"
+          [pictogram]="coverPictogram(c)"
+          [current]="c.coverMark"
+          [offer]="live() && hasCover(c)"
+          [marking]="marking() === c.id"
+          [busy]="busy()"
+          (open)="marking.set(c.id)"
+          (close)="marking.set(null)"
+          (pick)="pickCover(c.id, $event)"
+        />
         @if (c.hitPointsMax !== undefined) {
           <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (c.initiative !== undefined && !inGroup) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
         }
@@ -140,6 +152,12 @@
               </button>
             }
             <button mat-menu-item type="button" (click)="conditions.emit(c.id)">Condições…</button>
+            <button mat-menu-item type="button" (click)="marking.set(c.id)">Marcar cobertura…</button>
+            @if (npc(c)) {
+              <button mat-menu-item type="button" (click)="side.emit({ id: c.id, side: c.side === Party ? Enemy : Party })">
+                {{ c.side === Party ? 'Voltar a ser inimigo' : 'Marcar como aliado' }}
+              </button>
+            }
             @if (npc(c)) {
               <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
             }

@@ -78,6 +78,14 @@ let nextId = 0;
             <span class="target__text">
               <b class="target__name">{{ t.label }}</b>
               <span class="target__sub">{{ t.sub }}</span>
+              @if (t.cover) {
+                <span class="cover">
+                  @if (t.coverMark) {
+                    <span class="mr-swatch mr-swatch--sm" [class.mr-swatch--half]="t.coverMark === 'half'" [class.mr-swatch--three]="t.coverMark === 'three'" aria-hidden="true"></span>
+                  }
+                  {{ t.cover }}
+                </span>
+              }
               @if (t.blocked) {
                 <span class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ t.blocked }}</span>
               }

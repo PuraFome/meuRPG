@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { CombatantKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantKind, CombatantSide, CoverDegree, CoverSource } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { OrderList } from './order-list';
 
@@ -58,5 +58,66 @@ describe('OrderList', () => {
     expect(el.textContent).toContain('Só você vê este combatente.');
     Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Revelar aos jogadores'))!.click();
     expect(revealed).toEqual([{ id: 'g3', hidden: false }]);
+  });
+
+  describe('cover and sides (E9-07)', () => {
+    function withCover(over: { marked?: CoverDegree; ally?: boolean } = {}) {
+      const fixture = TestBed.createComponent(OrderList);
+      const g2 = combatant({
+        id: 'g2',
+        label: 'Goblin 2',
+        hitPointsCurrent: 7,
+        hitPointsMax: 7,
+        initiative: 12,
+        coverMark: over.marked ?? CoverDegree.NONE,
+        side: over.ally ? CombatantSide.PARTY : CombatantSide.ENEMY,
+      });
+      fixture.componentRef.setInput('encounter', encounter({ combatants: [rows[0], rows[1], g2], currentCombatantId: 'pen' }));
+      fixture.componentRef.setInput(
+        'coverAgainst',
+        new Map([
+          ['cap', { cover: CoverDegree.THREE_QUARTERS, source: CoverSource.MAP }],
+          ['g2', { cover: CoverDegree.HALF, source: CoverSource.MAP }],
+        ]),
+      );
+      fixture.componentRef.setInput('turnLabel', 'Pensantus');
+      const picked: { id: string; cover: CoverDegree }[] = [];
+      const sides: { id: string; side: CombatantSide }[] = [];
+      fixture.componentInstance.cover.subscribe((c) => picked.push(c));
+      fixture.componentInstance.side.subscribe((c) => sides.push(c));
+      fixture.detectChanges();
+      return { fixture, el: fixture.nativeElement as HTMLElement, picked, sides };
+    }
+
+    const plain = (t: string | null | undefined) => (t ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+
+    it('says each enemy\'s cover against whoever has the turn, with its source', () => {
+      const { el } = withCover();
+      const lines = Array.from(el.querySelectorAll('app-row-cover .cover'), (c) => plain(c.textContent));
+      expect(lines).toEqual(['Três quartos (do mapa) contra o Pensantus', 'Meia cobertura (do mapa) contra o Pensantus']);
+    });
+
+    it('opens the mark in place, a radio group named for the combatant, applying at once', () => {
+      const { fixture, el, picked } = withCover({ marked: CoverDegree.HALF });
+      const open = Array.from(el.querySelectorAll<HTMLButtonElement>('.action')).find((b) => b.getAttribute('aria-label') === 'Marcar cobertura de Goblin 2')!;
+      open.click();
+      fixture.detectChanges();
+      const group = el.querySelector('[role="radiogroup"]')!;
+      expect(group.getAttribute('aria-label')).toBe('Cobertura marcada de Goblin 2');
+      const radios = Array.from(group.querySelectorAll<HTMLInputElement>('input'));
+      expect(radios.map((r) => r.checked)).toEqual([false, true, false, false]);
+      radios[2].click();
+      expect(picked).toEqual([{ id: 'g2', cover: CoverDegree.THREE_QUARTERS }]);
+      Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent) === 'Fechar')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[role="radiogroup"]')).toBeNull();
+    });
+
+    it('tags the master\'s mark and the ally for everyone', () => {
+      const { el } = withCover({ marked: CoverDegree.THREE_QUARTERS, ally: true });
+      const tags = Array.from(el.querySelectorAll('.tag'), (t) => plain(t.textContent));
+      expect(tags).toContain('Aliado');
+      expect(tags).toContain('Três quartos · marcada pelo mestre');
+    });
   });
 });

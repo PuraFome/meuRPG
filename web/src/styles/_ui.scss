@@ -199,3 +199,116 @@ a.mr-list__row:hover .mr-list__name {
   white-space: nowrap;
   border: 0;
 }
+
+// The legend under a map (Etapa 9, MAP-LANGUAGE.md): every mark that is drawn
+// has its name here, in the same order on every map. A swatch is 22 px and
+// aria-hidden; the words carry the meaning.
+.mr-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2) var(--mr-space-4);
+  margin: var(--mr-space-3) 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+  }
+}
+
+.mr-swatch {
+  position: relative;
+  box-sizing: border-box;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 2px;
+  background-color: var(--mr-surface);
+
+  // Parede and Terreno difícil: the same hatches the map draws.
+  &--wall {
+    background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-ink) 75%, transparent) 0 2px, transparent 2px 6px);
+  }
+
+  &--terrain {
+    background-image:
+      repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-ink) 60%, transparent) 0 1.5px, transparent 1.5px 6px),
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--mr-ink) 60%, transparent) 0 1.5px, transparent 1.5px 6px);
+  }
+
+  // Cobertura: a dotted square filled from the bottom, half or three quarters.
+  &--half::before,
+  &--three::before,
+  &--half::after,
+  &--three::after {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    left: 4px;
+    content: '';
+  }
+
+  &--half::before,
+  &--three::before {
+    top: 4px;
+    border: 1.5px dotted var(--mr-ink);
+  }
+
+  &--half::after,
+  &--three::after {
+    background: var(--mr-ink);
+  }
+
+  &--half::after {
+    top: 50%;
+  }
+
+  &--three::after {
+    top: 30%;
+  }
+
+  // The small pictogram of a target row.
+  &--sm {
+    width: 18px;
+    height: 18px;
+  }
+
+  &--sm.mr-swatch--half::before,
+  &--sm.mr-swatch--three::before,
+  &--sm.mr-swatch--half::after,
+  &--sm.mr-swatch--three::after {
+    right: 3px;
+    bottom: 3px;
+    left: 3px;
+  }
+
+  &--sm.mr-swatch--half::before,
+  &--sm.mr-swatch--three::before {
+    top: 3px;
+  }
+
+  // The reach: the garnet tint inside a dashed line, as on the map.
+  &--reach {
+    border: 2px dashed var(--mr-accent);
+    background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+  }
+
+  // The circle of the movement left (a dashed line, no fill).
+  &--ring {
+    border: 2px dashed var(--mr-accent);
+    border-radius: 50%;
+  }
+
+  &--chosen {
+    border: 3px solid var(--mr-accent);
+  }
+
+  // The reach of whoever may make an opportunity attack: an outline, no fill.
+  &--reactor {
+    border: 2px dashed var(--mr-ink);
+  }
+}

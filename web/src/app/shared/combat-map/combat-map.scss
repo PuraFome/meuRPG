@@ -48,6 +48,19 @@
   position: relative;
 }
 
+// The grid sits over the layers (z 1, as `app-map-layers`, later in the order);
+// the reach, the frame and the offers over the grid.
+.cm__grid {
+  z-index: 1;
+}
+
+.cm__cell,
+.cm__reactor,
+.cm__left,
+.cm__mark {
+  z-index: 2;
+}
+
 // One path for every line: 1px, whatever the zoom (README-A, "Grid").
 .cm__grid path {
   fill: none;
@@ -57,7 +70,8 @@
 }
 
 .cm__cell,
-.cm__reach,
+.cm__reactor,
+.cm__left,
 .cm__frame,
 .cm__mark {
   position: absolute;
@@ -78,9 +92,58 @@
   background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
 }
 
-.cm__reach {
-  border: 2px dashed var(--mr-accent);
-  box-shadow: 0 0 0 1px var(--mr-surface);
+// The circle of the movement left (or of a jump): a dashed garnet line, drawn
+// in the grid's own units so one square stays one square. A dark edge under
+// it keeps it readable over any image.
+.cm__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+
+  ellipse {
+    fill: none;
+    stroke: var(--mr-accent);
+    stroke-width: 2.5;
+    stroke-dasharray: 8 6;
+    vector-effect: non-scaling-stroke;
+    paint-order: stroke;
+  }
+}
+
+// The reach of the reactor of a pending opportunity attack: an outline, with
+// its name in the legend (E9-13).
+.cm__reactor {
+  width: calc(300% / var(--cols));
+  height: calc(300% / var(--rows));
+  border: 2px dashed var(--mr-ink);
+  background: color-mix(in srgb, var(--mr-surface) 25%, transparent);
+}
+
+// Where the mover left that reach: the label sits above the square.
+.cm__left {
+  border: 2px solid var(--mr-ink);
+}
+
+.cm__tag {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1.5px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+  white-space: nowrap;
 }
 
 .cm__frame {
@@ -96,6 +159,33 @@
     height: calc(var(--cm-sq) * 0.5);
     font-size: calc(var(--cm-sq) * 0.5);
   }
+}
+
+.cm__frame {
+  z-index: 2;
+}
+
+// The cost beside the chosen square ("2,1 m"): a label, not a colour.
+.cm__cost {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  color: var(--mr-ground);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 22px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.cm__cost--above {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .cm__frame--refused {

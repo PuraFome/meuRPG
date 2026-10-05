@@ -44,6 +44,14 @@
             <span class="target__text">
               <b class="target__name">{{ t.label }}</b>
               <span class="target__sub">{{ t.sub }}</span>
+              @if (t.cover) {
+                <span class="cover">
+                  @if (t.coverMark) {
+                    <span class="mr-swatch mr-swatch--sm" [class.mr-swatch--half]="t.coverMark === 'half'" [class.mr-swatch--three]="t.coverMark === 'three'" aria-hidden="true"></span>
+                  }
+                  {{ t.cover }}
+                </span>
+              }
               @if (t.blocked) {
                 <span class="target__why"><mat-icon aria-hidden="true">block</mat-icon>{{ t.blocked }}</span>
               }
@@ -65,7 +73,9 @@
           <span class="chosen__cap">Alvo</span>
           <span><b>{{ target()?.label }}</b>{{ target()?.sub ? ' · ' + target()?.sub : '' }}</span>
         </span>
-        <button type="button" class="link" (click)="change()">Trocar</button>
+        @if (!data.opportunity) {
+          <button type="button" class="link" (click)="change()">Trocar</button>
+        }
       </div>
       <app-roll-picker
         [canApp]="canApp"
@@ -132,7 +142,7 @@
           {{ spent() }}{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
         </p>
         <div class="sheet__foot">
-          <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">Voltar à sua vez</button>
+          <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">{{ doneLabel }}</button>
         </div>
       }
     }

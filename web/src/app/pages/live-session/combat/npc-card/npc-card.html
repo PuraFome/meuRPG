@@ -66,7 +66,7 @@
           <mat-select [value]="targetId()" (valueChange)="pickTarget($event)" [disabled]="!targets().length">
             @for (t of targets(); track t.combatantId) {
               <mat-option [value]="t.combatantId">
-                {{ t.label }}{{ distance(t.distanceFt, t.tooFar) ? ' · ' + distance(t.distanceFt, t.tooFar) : '' }}
+                {{ t.label }}{{ distance(t.distanceFt, t.tooFar) ? ' · ' + distance(t.distanceFt, t.tooFar) : '' }}{{ coverNote(t) }}
               </mat-option>
             }
           </mat-select>

@@ -121,3 +121,37 @@ describe('ActionGroups: the spells (E8-02)', () => {
     expect(cast).toEqual(['spell:sleep']);
   });
 });
+
+describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', () => {
+  const plain = (t: string | null | undefined) => (t ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+
+  function setup(own: Parameters<typeof create<typeof CombatantSchema>>[1], locked = '') {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, {}));
+    fixture.componentRef.setInput('own', create(CombatantSchema, own));
+    fixture.componentRef.setInput('locked', locked);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('says the movement in tenths of a foot, metres with one decimal', () => {
+    const el = setup({ speedDft: 300, movementLeftDft: 229, movementLeftFt: 22, movementUsedDft: 71, movementUsedFt: 7 });
+    expect(plain(el.textContent)).toContain('Restam 6,9 m');
+    expect(plain(el.textContent)).toContain('Você já andou 2,1 m. Dá para andar mais 6,9 m (4 quadrados).');
+  });
+
+  it('turns "Mover" off with the reason instead of failing on click', () => {
+    const el = setup({ speedDft: 300, movementLeftDft: 150, movementLeftFt: 15 }, 'Esperando a reação do mestre');
+    const move = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => plain(b.textContent) === 'Mover')!;
+    expect(move.getAttribute('aria-disabled') === 'true' || move.disabled).toBe(true);
+    expect(plain(el.textContent)).toContain('Esperando a reação do mestre');
+  });
+
+  it('reads Desengajar as such: a notice, "Desengajado" and the move that does not provoke', () => {
+    const el = setup({ speedDft: 300, movementLeftDft: 300, movementLeftFt: 30, disengaged: true, actionUsed: true });
+    const text = plain(el.textContent);
+    expect(text).toContain('Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.');
+    expect(text).toContain('Desengajado');
+    expect(text).toContain('Dá para andar até 9,0 m (6 quadrados) sem provocar.');
+  });
+});

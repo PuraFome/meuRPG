@@ -8,7 +8,7 @@ describe('TurnPanel', () => {
   const order = [
     combatant({ id: 'brisa', label: 'Brisa', kind: CombatantKind.PLAYER }),
     combatant({ id: 'cap', label: 'Capitão Goblin', state: CombatantState.HURT }),
-    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, speedFt: 25, movementLeftFt: 25 }),
+    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, speedFt: 25, movementLeftFt: 25, speedDft: 250, movementLeftDft: 250 }),
     combatant({ id: 'g1', label: 'Goblin 1', defeated: true, state: CombatantState.DEFEATED }),
   ];
 
@@ -52,5 +52,21 @@ describe('TurnPanel', () => {
     expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
     expect(el.textContent).toContain('Depois de você: Goblin 1'.replace('Goblin 1', 'Brisa'));
     expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual(['Ação', 'Ação bônus', 'Reação', 'Movimento']);
+  });
+
+  it('says the turn waits for an opportunity attack, and what stopped a move short', () => {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: order, currentCombatantId: 'pen' }));
+    fixture.componentRef.setInput('waiting', {
+      title: 'Esperando a reação do mestre',
+      detail: 'Seu movimento já valeu; a sua vez continua quando ele responder.',
+    });
+    fixture.componentRef.setInput('moveNote', 'Você parou antes: algo bloqueou o caminho.');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const notices = Array.from(el.querySelectorAll('.turn__notice'), (n) => n.textContent?.replace(/\s+/g, ' ').trim());
+    expect(notices[0]).toContain('Esperando a reação do mestre. Seu movimento já valeu; a sua vez continua quando ele responder.');
+    expect(notices[1]).toContain('Você parou antes: algo bloqueou o caminho.');
+    expect(el.querySelectorAll('.turn__notice[role="status"]').length).toBe(2);
   });
 });

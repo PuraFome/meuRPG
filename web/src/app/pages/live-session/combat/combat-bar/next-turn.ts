@@ -23,7 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       </div>
     } @else {
-      <button mat-flat-button type="button" class="next" [disabled]="busy()" (click)="press()">
+      <button mat-flat-button type="button" class="next" [disabled]="busy() || waiting()" disabledInteractive (click)="press()">
         <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
       </button>
     }
@@ -98,6 +98,8 @@ export class NextTurn {
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
   readonly pendingNote = input<string | null>(null);
   readonly busy = input(false);
+  /** An opportunity attack waits for an answer: the turn cannot pass yet. */
+  readonly waiting = input(false);
   /** `true` when the master passes the turn although a damage waits. */
   readonly next = output<boolean>();
 
@@ -105,6 +107,9 @@ export class NextTurn {
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   protected press(): void {
+    if (this.waiting()) {
+      return;
+    }
     if (!this.pendingNote()) {
       this.next.emit(false);
       return;

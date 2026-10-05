@@ -338,9 +338,11 @@ export class LiveSession {
           }
         },
         onCombatantMoved: (move) => {
-          if (!this.combat.applyMove(move)) {
-            void this.loadCombat(generation);
-          }
+          // The token moves at once; then the combat is read again: a move that leaves an enemy's
+          // reach makes an opportunity offer (MR-034), which lives in the combat and has no hint of
+          // its own, and the master and the reactor's player have to see it to answer.
+          this.combat.applyMove(move);
+          void this.loadCombat(generation);
         },
         onCombatLogChanged: () => this.combat.touchLog(),
         onXpChanged: () => this.xpChanges.bump(),

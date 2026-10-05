@@ -50,6 +50,10 @@
   line-height: 22px;
 }
 
+.move__seg {
+  margin-bottom: var(--mr-space-3);
+}
+
 // The map is wider than the screen and scrolls under the thumb, edge to
 // edge on a phone.
 .move {
@@ -69,17 +73,67 @@
   min-width: 0;
 }
 
-.err__title {
-  display: block;
+.move__map {
+  position: relative;
+  margin: 0 calc(var(--mr-gutter) * -1);
+
+  @media (min-width: 768px) {
+    margin: 0;
+  }
 }
 
-.move__buttons {
+.move__map[hidden] {
+  display: none;
+}
+
+.move__scroll {
+  overflow-x: auto;
+}
+
+// The zoom stays at the corner of the visible map while the map scrolls under it.
+.move__zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-3);
+  gap: 6px;
 
-  @media (min-width: 1024px) {
-    flex-direction: row;
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    cursor: pointer;
+  }
+
+  button[aria-disabled='true'] {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.move__rule {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
   }
 }
 
@@ -96,86 +150,45 @@
   outline-offset: 1px;
 }
 
-.move__scroll {
-  margin: 0 calc(var(--mr-gutter) * -1);
-  overflow-x: auto;
-
-  @media (min-width: 768px) {
-    margin: 0;
-  }
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--mr-space-2) var(--mr-space-4);
-  margin: var(--mr-space-3) 0;
-  padding: 0;
-  list-style: none;
-  font-size: 15px;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: var(--mr-space-2);
-  }
-}
-
-.legend__tint,
-.legend__frame,
-.legend__none {
-  box-sizing: border-box;
-  width: 22px;
-  height: 22px;
-  border-radius: 2px;
-}
-
-.legend__tint {
-  border: 2px dashed var(--mr-accent);
-  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
-}
-
-.legend__frame {
-  border: 3px solid var(--mr-accent);
-}
-
-.legend__none {
-  border: 1px solid var(--mr-control-line);
-}
-
 .move__body {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
 }
 
-.status {
-  padding: 12px 16px;
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface);
+// Under the map, where the thumb is; on a phone it stays at the foot of the
+// screen while the rest scrolls (E9-05, 320 x 568).
+.move__foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: var(--mr-space-3) calc(var(--mr-gutter) * -1) 0;
+  padding: var(--mr-space-3) var(--mr-gutter);
+  border-top: 1px solid var(--mr-line);
+  background: var(--mr-ground);
 
-  p {
-    margin: 0;
+  @media (min-width: 1024px) {
+    position: static;
+    margin: var(--mr-space-3) 0 0;
+    padding: 0;
+    border-top: 0;
+    background: none;
   }
 }
 
-.status__title {
-  font-family: var(--mr-font-display);
-  font-weight: 800;
-  font-size: 24px;
-  line-height: 28px;
+.move__ask {
+  margin: 0 0 var(--mr-space-3);
+  font-weight: 700;
 }
 
-.status__text {
-  font-size: 15px;
-  line-height: 20px;
-  color: var(--mr-ink-muted);
-}
+.move__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
 
-.status__idle {
-  margin: 0;
-  color: var(--mr-ink-muted);
+  @media (min-width: 1024px) {
+    flex-direction: row;
+  }
 }
 
 .move__go {
@@ -183,6 +196,7 @@
   width: 100%;
 
   @media (min-width: 1024px) {
+    --mat-button-filled-container-height: 44px;
     width: auto;
   }
 }
@@ -202,6 +216,7 @@
   width: 100%;
 
   @media (min-width: 1024px) {
+    --mat-button-outlined-container-height: 44px;
     width: auto;
   }
 }

@@ -12,6 +12,7 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
+import { paintRPC, pickRadio } from './move-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -737,7 +738,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(p.getByText('Mover 3,4 m')).toBeVisible();
     await expectScreenPasses(p, `Mover, quadrado escolhido ${where}`);
     await map.click({ position: at(8, 1) });
-    await expect(p.getByText('Longe demais: faltam')).toBeVisible();
+    await expect(p.getByRole('alert').filter({ hasText: 'Longe demais' })).toBeVisible();
     await expectScreenPasses(p, `Mover, longe demais ${where}`);
     await p.getByRole('button', { name: 'Cancelar' }).click();
 
@@ -881,6 +882,135 @@ test('agir no combate passa no axe e nas conferências de layout no tema claro, 
 test('agir no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanActionScreens(browser, 'dark', 390);
+});
+
+/** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
+ * slice 9.15; E9-05, E9-06, E9-07, E9-13): the "Mover" page with nothing chosen,
+ * with a cost and a warning, with a wall refused, "Saltar" (distance, then
+ * height), the target list with its cover, the master's order with the mark open,
+ * the master's prompt, the waiting mover, and the player's `alertdialog`. The
+ * squares are chosen with the arrows under the map, which every width has. */
+async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const nudge = async (name: string, times = 1) => {
+    for (let i = 0; i < times; i++) {
+      await p.getByRole('button', { name }).click();
+    }
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade movimento ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await paintRPC(m, table, 'MAP_LAYER_DIFFICULT_TERRAIN', 1, [[4, 7]]);
+    await paintRPC(m, table, 'MAP_LAYER_WALL', 1, [[5, 5]]);
+    await paintRPC(m, table, 'MAP_LAYER_COVER', 1, [[7, 8]]);
+    await beginAttackCombatRPC(
+      m,
+      table,
+      { Pensantus: 20, 'Goblin 1': 15, 'Capitão Goblin': 10, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [9, 9], 'Goblin 1': [6, 7], 'Goblin 2': [15, 11] },
+    );
+
+    // The player's turn: "Mover" with nothing chosen, then a square with a cost and the warning.
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, nada escolhido ${where}`);
+    await nudge('Um quadrado para a esquerda');
+    await expect(p.getByText('Mover 3,0 m', { exact: true })).toBeVisible();
+    await expect(p.getByText('Sair do alcance do Goblin 1 pode provocar um ataque de oportunidade.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, custo e aviso de ataque de oportunidade ${where}`);
+    await nudge('Um quadrado para a direita');
+    await nudge('Um quadrado para cima', 2);
+    await expect(p.getByRole('alert').filter({ hasText: 'Sem caminho reto' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, parede recusada ${where}`);
+
+    // Saltar: the limits and the circle, then the height.
+    await pickRadio(p, 'Saltar');
+    await expect(p.getByRole('heading', { name: 'Saltar Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Saltar, distância ${where}`);
+    await pickRadio(p, 'Altura');
+    await expect(p.getByRole('button', { name: 'Aumentar a altura em 0,3 m' })).toBeVisible();
+    await expectScreenPasses(p, `Saltar, altura ${where}`);
+    await pickRadio(p, 'Andar');
+
+    // The move that provokes: the turn waits for the master, who has the prompt.
+    await nudge('Um quadrado para a esquerda');
+    await p.getByRole('button', { name: 'Mover para cá' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toBeVisible();
+    await expectScreenPasses(p, `Sua vez, esperando a reação do mestre ${where}`);
+    const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
+    await expect(card.getByRole('button', { name: 'Não atacar' })).toBeFocused();
+    await expectScreenPasses(m, `Ataque de oportunidade, a pergunta do mestre ${where}`);
+    await card.getByRole('button', { name: 'Não atacar' }).click();
+    await expect(card).toHaveCount(0);
+
+    // Cover: the target list, and the master's order with the mark in place.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await expect(p.locator('label', { hasText: 'Capitão Goblin' })).toContainText('Meia cobertura (do mapa)');
+    await expectScreenPasses(p, `Atacar, alvos com cobertura ${where}`);
+    await p.getByRole('button', { name: 'Fechar' }).click();
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus').first()).toBeVisible();
+    await expectScreenPasses(m, `Ordem do mestre, com a cobertura contra quem tem a vez ${where}`);
+    await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
+    await expect(order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' })).toBeVisible();
+    await expectScreenPasses(m, `Marcar cobertura, no lugar ${where}`);
+    await pickRadio(order, 'Três quartos');
+    await expect(order.getByText('Três quartos · marcada pelo mestre')).toBeVisible();
+    await order.getByRole('button', { name: 'Fechar' }).click();
+    await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
+    await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
+    await expect(order.getByText('Aliado')).toBeVisible();
+    await expectScreenPasses(m, `Ordem do mestre, com "Aliado" e a marca ${where}`);
+
+    // The player's `alertdialog`: Goblin 1 has the turn and leaves Pensantus's reach.
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
+    // It steps next to Pensantus (who moved away), then out of his reach again.
+    const now = await getEncounterRPC(m, campaignId);
+    const goblin = now.combatants.find((c) => c.label === 'Goblin 1')!.id;
+    for (const col of [5, 9]) {
+      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: now.id, combatantId: goblin, col, row: 7 });
+    }
+    const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
+    await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
+    await expectScreenPasses(p, `Ataque de oportunidade, o aviso do jogador ${where}`);
+    await expectScreenPasses(m, `Ataque de oportunidade, esperando um jogador ${where}`);
+    await prompt.getByRole('button', { name: 'Não atacar' }).click();
+    await expect(prompt).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanMoveScreens(browser, 'light', 1280);
+});
+
+test('mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanMoveScreens(browser, 'dark', 390);
+});
+
+test('mover e a pergunta do ataque de oportunidade passam no axe no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanMoveScreens(browser, 'light', 320);
 });
 
 /** Casting, the fallen, Escudo, conditions and the master's other amount (Etapa 6,

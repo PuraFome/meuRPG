@@ -35,6 +35,7 @@
                   [mapName]="mapName()"
                   [isMaster]="true"
                   title="Posições iniciais"
+                  [layers]="layers()"
                   [hint]="false"
                   [legend]="false"
                   note="Cada token está no quadrado marcado no mapa. Você pode mover qualquer um durante o combate."
@@ -67,6 +68,7 @@
             [sessionNumber]="sessionNumber()"
             [readOnly]="true"
             [isMaster]="true"
+            [layers]="layers()"
             (back)="closeFullPage()"
           />
         } @else {
@@ -76,6 +78,7 @@
               [encounter]="e"
               [busy]="busy()"
               [pendingNote]="owed()"
+              [waitNote]="waitNote()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
             />
@@ -89,6 +92,11 @@
                   [mapName]="mapName()"
                   [isMaster]="true"
                   [cropOnPhone]="true"
+                  [layers]="layers()"
+                  [reach]="masterReach()"
+                  [reachSwitch]="reachSwitch()"
+                  [offers]="offerMarks()"
+                  (reachChange)="reachOn.set($event)"
                   (tokenDrop)="drop($event)"
                   (openMap)="state().mapOpen.set(true)"
                 />
@@ -110,6 +118,14 @@
               }
             </div>
             <div class="active__side">
+              <app-opportunity-card
+                [encounter]="e"
+                [attacksByOffer]="masterAttacks()"
+                [info]="info()"
+                [busy]="busy()"
+                (answer)="answerOpportunity($event)"
+                (skip)="skipOpportunity($event)"
+              />
               <app-death-question
                 [dying]="dying()"
                 [dismissed]="deathLater()"
@@ -147,6 +163,10 @@
                 (reveal)="reveal($event)"
                 (remove)="remove($event)"
                 (add)="addCombatants()"
+                [coverAgainst]="coverAgainst()"
+                [turnLabel]="turnLabel()"
+                (side)="setSide($event)"
+                (cover)="setCover($event)"
               />
             </div>
             <app-combat-log-panel
@@ -201,7 +221,14 @@
             [busy]="busy()"
             [serverError]="moveError()"
             [readOnly]="state().mapOpen()"
+            [layers]="layers()"
+            [options]="moveOptions.data()"
+            [optionsFailed]="moveOptions.failed()"
+            [jumps]="options()?.options?.jumps"
+            [canDisengage]="canDisengage()"
             (confirm)="confirmMove($event)"
+            (jump)="confirmJump($event)"
+            (disengage)="disengage()"
             (back)="closeFullPage()"
           />
         } @else {
@@ -214,6 +241,8 @@
               [attacksPerAction]="attacksPerAction()"
               [hitPointsMax]="ownMaxHp()"
               [opportunities]="opportunities()"
+              [waiting]="waiting()"
+              [moveNote]="moveNote()"
               [concentration]="ownConcentration()"
               (endTurn)="nextTurn()"
               (opportunity)="openAttack($event, true)"
@@ -247,6 +276,7 @@
                     [details]="spellDetails()"
                     [note]="actionNote()"
                     [pendingRoll]="ownPendingRoll()"
+                    [locked]="waiting()?.title ?? ''"
                     [busy]="busy()"
                     (attack)="openAttack($event)"
                     (cast)="openCast($event)"
@@ -266,8 +296,9 @@
                 [image]="img"
                 [mapName]="mapName()"
                 [title]="mapName()"
-                [reach]="reach()"
-                [ownMovable]="reach() !== null && !phone()"
+                [layers]="layers()"
+                [offers]="offerMarks()"
+                [ownMovable]="myTurn() && !!own()?.placed && !phone()"
                 (tokenDrop)="drop($event)"
                 (openMap)="state().mapOpen.set(true)"
               />

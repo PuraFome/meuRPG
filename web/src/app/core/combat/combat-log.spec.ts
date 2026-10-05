@@ -6,6 +6,9 @@ import {
   CombatLogEntrySchema,
   CombatLogKind,
   CombatLogRoundSchema,
+  CoverDegree,
+  CoverSource,
+  JumpKind,
   PendingDamageStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { entryCount, latestLine, logGroups, logLine, undoLabel, undoableEntry } from './combat-log';
@@ -73,6 +76,25 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     );
     expect(logLine(attack({ actorLabel: 'Goblin 3', targetLabel: 'Brisa', damage: { status: PendingDamageStatus.AWAITING_ROLL, amount: 0 } }))?.text).toContain('falta rolar o dano');
     expect(logLine(attack({ actorLabel: 'Goblin 3', targetLabel: 'Brisa', damage: { status: PendingDamageStatus.DISCARDED, amount: 5 } }))?.text).toContain('5 de dano descartado');
+  });
+
+  it('gives the master the sum of an attack on a covered target, and nobody else', () => {
+    const base = { kind: CombatLogKind.ATTACK, actorLabel: 'Pensantus', targetLabel: 'Goblin 2', key: 'spell:fire-bolt', keyNamePt: 'Raio de Fogo', outcome: AttackOutcome.MISS };
+    expect(logLine(entry({ ...base, targetArmorClass: 17, coverBonus: 2, cover: CoverDegree.HALF, coverSource: CoverSource.MAP }))?.text).toBe(
+      ' atira no Goblin 2 com o Raio de Fogo: errou (CA 17: 15 + 2 de meia cobertura, do mapa)',
+    );
+    // A player's line has no armor class, so it has no sum.
+    expect(logLine(entry({ ...base, cover: CoverDegree.HALF, coverSource: CoverSource.MAP }))?.text).toBe(' atira no Goblin 2 com o Raio de Fogo: errou');
+  });
+
+  it('writes a jump with its length, a high one with its height, and the master\'s reminder for rubble (E9-06)', () => {
+    const plain = (t: string | undefined) => (t ?? '').replace(/\u00a0/g, ' ');
+    expect(plain(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceFt: 15, distanceDft: 150, jump: JumpKind.LONG }))?.text)).toBe(' saltou 4,5 m');
+    expect(plain(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceDft: 0, jump: JumpKind.HIGH, jumpHeightDft: 60 }))?.text)).toBe(' saltou 1,8 m para cima');
+    expect(
+      plain(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceDft: 140, jump: JumpKind.LONG, landingDifficult: true }))?.text),
+    ).toBe(' saltou 4,2 m e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado');
+    expect(plain(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceFt: 10, distanceDft: 100 }))?.text)).toBe(' anda 3,0 m');
   });
 
   it('writes moves, standard actions, hit point changes, reveals, start and end', () => {

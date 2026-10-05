@@ -9,10 +9,12 @@ import {
   type Encounter,
   type GetTurnOptionsResponse,
   type PendingDamage,
+  type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { coverText } from '../../../../core/combat/cover';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -188,6 +190,12 @@ export class NpcCard {
   protected pickTarget(id: string): void {
     this.targetId.set(id);
     this.key = newKey();
+  }
+
+  /** " · Meia cobertura (do mapa)": the cover the target has against this attacker. */
+  protected coverNote(t: TargetInReach): string {
+    const text = coverText(t.cover, t.coverSource);
+    return text ? ` · ${text}` : '';
   }
 
   protected distance(ft: number | undefined, tooFar: boolean): string {

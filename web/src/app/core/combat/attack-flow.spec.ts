@@ -8,6 +8,7 @@ import {
   TargetInReachSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { outcomeWord, stageAfterRoll, steps, targetAfter, targetRows } from './attack-flow';
+import { CoverDegree, CoverSource } from '../../../gen/meurpg/play/v1/combat_pb';
 
 const awaiting = create(PendingDamageSchema, { status: PendingDamageStatus.AWAITING_ROLL });
 
@@ -50,6 +51,26 @@ describe('the targets', () => {
       ['Ileso · a 12 m', 'Longe demais: alcance de 36 m'],
     ]);
     expect(rows[1].blocked).toContain('alcance de\u00a036\u00a0m');
+  });
+
+  it('names the cover of each target with its source, disables a mark of total cover and leaves out a wall (E9-07)', () => {
+    const rows = targetRows(
+      [
+        create(TargetInReachSchema, { combatantId: 'g2', label: 'Goblin 2', distanceFt: 25, cover: CoverDegree.HALF, coverSource: CoverSource.MAP }),
+        create(TargetInReachSchema, { combatantId: 'c', label: 'Capitão Goblin', distanceFt: 35, cover: CoverDegree.THREE_QUARTERS, coverSource: CoverSource.MAP }),
+        create(TargetInReachSchema, { combatantId: 'g1', label: 'Goblin 1', distanceFt: 30, cover: CoverDegree.TOTAL, coverSource: CoverSource.MAP, untargetable: true }),
+        create(TargetInReachSchema, { combatantId: 'g3', label: 'Goblin 3', distanceFt: 20, cover: CoverDegree.TOTAL, coverSource: CoverSource.MARK, untargetable: true }),
+        create(TargetInReachSchema, { combatantId: 'g4', label: 'Goblin 4', distanceFt: 20 }),
+      ],
+      120,
+    );
+    expect(rows.map((r) => r.id)).toEqual(['g2', 'c', 'g3', 'g4']);
+    expect(rows.map((r) => [r.cover, r.coverMark, r.blocked])).toEqual([
+      ['Meia cobertura (do mapa)', 'half', ''],
+      ['Três quartos (do mapa)', 'three', ''],
+      ['', null, 'Cobertura total (marcada pelo mestre): não pode ser alvo'],
+      ['', null, ''],
+    ]);
   });
 
   it('says what happened to the target', () => {

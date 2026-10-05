@@ -6,6 +6,9 @@ import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/com
 import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import { conditionTags } from '../../../../core/combat/conditions';
+import { markTags } from '../../../../core/combat/cover';
+import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -19,7 +22,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-order-column',
-  imports: [CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [CombatantTags, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
       <h2 class="panel__title" id="order-col-title">Ordem</h2>
@@ -53,6 +56,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
             <span class="row__word" [class.row__word--out]="c.defeated">
               @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
             </span>
+            <app-combatant-tags [names]="tags(c)" [label]="c.label" />
           </span>
         </li>
       </ng-template>
@@ -65,6 +69,11 @@ export class OrderColumn {
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
+  }
+
+  /** The conditions, "Aliado" and the master's cover mark under the name: what everyone who sees it may read. */
+  protected tags(c: Combatant): string[] {
+    return [...conditionTags(c), ...markTags(c)];
   }
 
   protected player(c: Combatant): boolean {

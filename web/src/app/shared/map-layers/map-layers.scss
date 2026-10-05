@@ -1,0 +1,62 @@
+// The marks are drawn in the map's own tokens (`--mr-map-*`, the same in both
+// themes: the image under them is a drawing, not a surface of the app).
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+.sq {
+  position: absolute;
+  box-sizing: border-box;
+  width: calc(100% / var(--cols));
+  height: calc(100% / var(--rows));
+}
+
+// Parede: one diagonal hatch over a dark veil.
+.sq--wall {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--mr-map-token-ink) 70%, transparent) 0 2px,
+      transparent 2px 6px
+    ),
+    color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent);
+}
+
+// Terreno difícil: the cross hatch (both diagonals), lighter than a wall.
+.sq--terrain {
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px, transparent 1.5px 6px);
+}
+
+// Cobertura: a dotted square, filled from the bottom (one half, three quarters).
+.sq--cover::before,
+.sq--cover::after {
+  position: absolute;
+  right: 22%;
+  bottom: 22%;
+  left: 22%;
+  content: '';
+}
+
+.sq--cover::before {
+  top: 22%;
+  border: 1.5px dotted var(--mr-map-token-ink);
+  background: color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent);
+}
+
+.sq--cover::after {
+  background: var(--mr-map-token-ink);
+}
+
+.sq--half::after {
+  top: 50%;
+}
+
+.sq--three::after {
+  top: 34%;
+}

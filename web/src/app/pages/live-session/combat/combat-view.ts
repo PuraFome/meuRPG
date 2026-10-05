@@ -11,16 +11,35 @@ import {
   CombatLogKind,
   CombatantState,
   DeathSaveOutcome,
+  CombatantSide,
+  CoverDegree,
+  CoverSource,
   type Encounter,
   EncounterStatus,
+  type OpportunityOffer,
   type PendingDamage,
   PendingDamageStatus,
   type ReactionPrompt,
+  type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { type AttackDie, CombatClient, newKey } from '../../../core/combat/combat-client';
+import { type AttackDie, CombatClient, type MoveResult, newKey } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import { type Square, canReach } from '../../../core/combat/combat-grid';
+import { MoveOptionsState } from '../../../core/combat/move-options-state';
+import { ofThe } from '../../../core/combat/move-plan';
+import {
+  type ReactorAttack,
+  barText,
+  offersOn,
+  offersToAnswer,
+  reactorAttacks,
+  reactorIsMasters,
+  waitingText,
+} from '../../../core/combat/opportunity';
+import { LayersState } from '../../../core/maps/layers-state';
+import { MapsClient } from '../../../core/maps/maps-client';
+import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
+import type { Square } from '../../../core/combat/combat-grid';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
 import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
@@ -31,6 +50,7 @@ import { currentCombatant, isDown, isPlayer, ownCombatant, npcKindLabel } from '
 import { acts, jointTurn } from '../../../core/combat/joint-turn';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
+import { metersFixed } from '../../../core/units';
 import { RosterClient } from '../../../core/maps/roster-client';
 import type { TokenDrop } from '../../../shared/combat-map/combat-map';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
@@ -55,7 +75,9 @@ import { CombatSummary } from './combat-summary/combat-summary';
 import { JointCard } from './joint-turn/joint-card';
 import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
-import { MovePage } from './move-page/move-page';
+import { type JumpRequest, MovePage } from './move-page/move-page';
+import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
+import { OpportunitySheet, type OpportunityAnswer, type OpportunitySheetData } from './opportunity/opportunity-sheet';
 import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
@@ -97,6 +119,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
     MatIconModule,
     MovePage,
     NpcCard,
+    OpportunityCard,
     OrderColumn,
     OrderList,
     PlayerInitiative,
@@ -109,6 +132,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
 export class CombatView {
   private readonly api = inject(CombatClient);
   private readonly roster = inject(RosterClient);
+  private readonly maps = inject(MapsClient);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
@@ -210,13 +234,94 @@ export class CombatView {
     const v = own ? this.vitals().find((x) => x.characterId === own.characterId) : undefined;
     return { usage: v?.spellSlots ?? [], pact: v?.pactSlots ?? null };
   });
-  /** The squares a player's own token may be dragged to, on their turn. */
-  protected readonly reach = computed(() => {
-    const own = this.own();
-    return this.myTurn() && own && own.placed
-      ? { origin: { col: own.col, row: own.row }, leftDft: own.movementLeftDft }
+  /** The map's painted layers (walls, difficult terrain, cover), read again when the map's `layers_revision` changes. */
+  private readonly layersState = new LayersState(async (mapId) => this.maps.layers(this.campaignId(), mapId));
+  protected readonly layers = this.layersState.layers;
+  /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
+  protected readonly moveOptions = new MoveOptionsState();
+  /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
+  protected readonly reachOn = signal(false);
+  /** "Você parou antes: algo bloqueou o caminho.": what the last move said when it stopped short. */
+  protected readonly moveNote = signal('');
+  /** The reach the master's map draws, as the server said it. */
+  protected readonly masterReach = computed<Reach | null>(() => {
+    const e = this.encounter();
+    const who = e ? currentCombatant(e) : null;
+    const options = this.moveOptions.data();
+    return this.isMaster() && this.reachOn() && who?.placed && options
+      ? {
+          origin: { col: who.col, row: who.row },
+          leftDft: options.movementLeftDft,
+          squares: options.reachable.map((q) => ({ col: q.col, row: q.row })),
+        }
       : null;
   });
+  protected readonly reachSwitch = computed(() => {
+    const e = this.encounter();
+    const who = e ? currentCombatant(e) : null;
+    return this.isMaster() && who?.placed ? { name: ofThe([who.label]), on: this.reachOn() } : null;
+  });
+
+  // ---- opportunity attacks (E9-13) ----
+
+  /** The offers the caller answers, and the ones on the player's own mover. */
+  protected readonly toAnswer = computed(() => {
+    const e = this.encounter();
+    return e ? offersToAnswer(e) : [];
+  });
+  /** What the waiting mover reads: their move landed, and each offer waits for its answer. */
+  protected readonly waiting = computed(() => {
+    const e = this.encounter();
+    const own = this.own();
+    return e && own && !this.isMaster() ? waitingText(e, offersOn(e, own.id)) : null;
+  });
+  /** The master's bar: "Esperando a sua reação: Goblin 2". */
+  protected readonly waitNote = computed(() => {
+    const e = this.encounter();
+    return e && this.isMaster()
+      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
+      : '';
+  });
+  /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
+  protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(new Map());
+  protected readonly masterAttacks = computed<ReadonlyMap<string, readonly ReactorAttack[]>>(
+    () =>
+      new Map(
+        this.toAnswer().map((o) => [
+          o.id,
+          reactorAttacks(o, (this.reactorOptions().get(o.id)?.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : []))),
+        ]),
+      ),
+  );
+  /** The reactors drawn on the map for whoever answers, with the square the mover left. */
+  protected readonly offerMarks = computed<readonly OfferMark[]>(() => {
+    const e = this.encounter();
+    if (!e) {
+      return [];
+    }
+    return e.opportunityOffers.flatMap((o) => {
+      const r = e.combatants.find((c) => c.id === o.reactorId && c.placed);
+      return r ? [{ reactor: { col: r.col, row: r.row }, left: o.forYou ? { col: o.leftCol, row: o.leftRow } : null }] : [];
+    });
+  });
+  /** "Desengajar" can still be taken here: the action is free and it was not. */
+  protected readonly canDisengage = computed(() => {
+    const own = this.own();
+    return !!own && !own.actionUsed && !own.disengaged;
+  });
+  private readonly offersHandled = new Set<string>();
+  /** Who has the cover each combatant has against whoever has the turn (the master's order list). */
+  protected readonly coverAgainst = computed(() => {
+    const out = new Map<string, { cover: CoverDegree; source: CoverSource }>();
+    const opts = this.options();
+    for (const t of [...(opts?.attackTargets ?? []).flatMap((a) => a.targets), ...(opts?.spellTargets ?? []).flatMap((s) => s.targets)]) {
+      if (!out.has(t.combatantId) && t.cover !== CoverDegree.NONE && t.cover !== CoverDegree.UNSPECIFIED) {
+        out.set(t.combatantId, { cover: t.cover, source: t.coverSource });
+      }
+    }
+    return out;
+  });
+  protected readonly turnLabel = computed(() => (this.isMaster() ? (this.subject()?.label ?? '') : ''));
   /** The one whose options the screen asks for: the player's own character
    * on their turn, and for the master whoever is on turn. */
   protected readonly subject = computed(() => {
@@ -369,6 +474,7 @@ export class CombatView {
         untracked(() => {
           this.actionNote.set('');
           this.deathResult.set('');
+          this.moveNote.set('');
         });
       }
     });
@@ -394,7 +500,70 @@ export class CombatView {
         this.state().mapOpen.set(false);
       }
     });
+    // The map's layers: read when the combat's map is known, and again when the map's `layers_revision` changes.
+    effect(() => {
+      const e = this.encounter();
+      const map = this.mapState().map();
+      const id = e && map && map.id === e.mapId ? map.id : null;
+      const revision = map?.layersRevision ?? 0;
+      untracked(() => void this.layersState.open(id, revision));
+    });
+    // Where the one on the "Mover" page (or the master's reach) can go: asked again whenever the combat changes.
+    effect(() => {
+      const e = this.encounter();
+      const who = this.moveSubject();
+      const campaignId = this.campaignId();
+      if (!e || !who) {
+        untracked(() => this.moveOptions.clear());
+        return;
+      }
+      void e.revision;
+      untracked(() => void this.moveOptions.load(this.api, campaignId, e.id, who));
+    });
+    // An offer the player answers opens its prompt by itself, once (E9-13).
+    effect(() => {
+      const e = this.encounter();
+      if (this.isMaster() || !e || e.status !== EncounterStatus.ACTIVE) {
+        return;
+      }
+      for (const offer of offersToAnswer(e)) {
+        if (!this.offersHandled.has(offer.id)) {
+          this.offersHandled.add(offer.id);
+          untracked(() => void this.openOpportunity(offer));
+        }
+      }
+    });
+    // The master's prompts need each NPC reactor's attacks with their numbers.
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      if (!this.isMaster() || !e) {
+        return;
+      }
+      for (const offer of this.toAnswer()) {
+        if (reactorIsMasters(e, offer) && !untracked(() => this.reactorOptions().has(offer.id))) {
+          void this.api
+            .turnOptions(campaignId, e.id, offer.reactorId)
+            .then((res) => this.reactorOptions.update((m) => new Map(m).set(offer.id, res)))
+            .catch(() => undefined);
+        }
+      }
+    });
   }
+
+  /** Whose reach the server is asked for: the player's own on the "Mover" page, the master's on turn with the reach on. */
+  private readonly moveSubject = computed(() => {
+    const e = this.encounter();
+    if (!e || e.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    if (this.isMaster()) {
+      const who = currentCombatant(e);
+      return this.reachOn() && who?.placed ? who.id : null;
+    }
+    const own = this.own();
+    return this.state().moving() && this.myTurn() && own?.placed ? own.id : null;
+  });
 
   private async loadRoster(campaignId: string): Promise<void> {
     try {
@@ -816,6 +985,85 @@ export class CombatView {
       .subscribe((added) => added && this.state().apply(added));
   }
 
+  // ---- opportunity attacks (E9-13) ----
+
+  /** The player's prompt: "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" */
+  private async openOpportunity(offer: OpportunityOffer): Promise<void> {
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    const res = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId).catch(() => null);
+    const attacks = reactorAttacks(offer, (res?.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : [])));
+    const data: OpportunitySheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      offer,
+      round: e.round,
+      attacks,
+      state: this.state(),
+    };
+    openSheet<OpportunitySheet, OpportunitySheetData, OpportunityAnswer>(this.dialog, this.bottomSheet, OpportunitySheet, {
+      data,
+      ariaLabel: 'Ataque de oportunidade',
+      alert: true,
+    }).subscribe((answer) => {
+      if (answer) {
+        this.opportunityAttack(offer, answer.attackKey, res, false);
+      }
+    });
+  }
+
+  /** "Atacar com <arma>": the attack sheet, with the mover as its target. */
+  private opportunityAttack(offer: OpportunityOffer, key: string, options: GetTurnOptionsResponse | null | undefined, byMaster: boolean): void {
+    const e = this.encounter();
+    const attack = options?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+    if (!e || !attack) {
+      return;
+    }
+    const data: AttackSheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      attackerId: offer.reactorId,
+      round: e.round,
+      attack,
+      targets: [],
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+      state: this.state(),
+      asReaction: true,
+      opportunity: { offerId: offer.id, targetId: offer.moverId, targetLabel: offer.moverLabel, byMaster },
+    };
+    openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
+      data,
+      ariaLabel: `Ataque de oportunidade com ${attack.namePt || attack.name}`,
+      labelledBy: 'sheet-t',
+    }).subscribe();
+  }
+
+  /** The master answers for an NPC: "Não atacar", or "Atacar com <arma>". */
+  protected answerOpportunity(a: MasterAnswer): Promise<boolean> | void {
+    if (!a.attack) {
+      return this.run((e) => this.api.declineOpportunity(this.campaignId(), e.id, a.offer.id));
+    }
+    this.opportunityAttack(a.offer, a.attack.key, this.reactorOptions().get(a.offer.id), true);
+  }
+
+  /** "Seguir sem esperar": the master passes over an offer the player does not answer. */
+  protected skipOpportunity(offer: OpportunityOffer): Promise<boolean> {
+    return this.run((e) => this.api.skipOpportunity(this.campaignId(), e.id, offer.id));
+  }
+
+  /** The master's "Marcar como aliado" / "Voltar a ser inimigo". */
+  protected setSide(change: { id: string; side: CombatantSide }): Promise<boolean> {
+    return this.run((e) => this.api.setSide(this.campaignId(), e.id, change.id, change.side));
+  }
+
+  /** The master's cover mark, applied at once. */
+  protected setCover(change: { id: string; cover: CoverDegree }): Promise<boolean> {
+    return this.run((e) => this.api.setCover(this.campaignId(), e.id, change.id, change.cover));
+  }
+
   // ---- moving ----
 
   /** A token dropped on a square (the master's drag, or a player's inside
@@ -831,11 +1079,6 @@ export class CombatView {
     if (c.placed && from.col === drop.col && from.row === drop.row) {
       return;
     }
-    // A player is checked here first: a drop beyond the reach goes nowhere.
-    if (!this.isMaster() && !this.reachable(c.id, drop)) {
-      this.error.set('Longe demais ou ocupado: solte o token num quadrado destacado.');
-      return;
-    }
     this.error.set('');
     this.state().applyMove({ encounterId: e.id, combatantId: c.id, col: drop.col, row: drop.row });
     // One save at a time per combatant: `MoveSaves` is about positions, and
@@ -845,8 +1088,9 @@ export class CombatView {
       { xBp: from.col, yBp: from.row },
       { xBp: drop.col, yBp: drop.row },
       {
+        // The server decides every move (reach, walls, creatures): a refusal puts the token back.
         save: async (to) =>
-          this.state().apply(await this.api.move(this.campaignId(), e.id, c.id, to.xBp, to.yBp)),
+          this.state().apply((await this.api.move(this.campaignId(), e.id, c.id, to.xBp, to.yBp)).encounter),
         failed: (saved, err) => {
           this.state().applyMove({ encounterId: e.id, combatantId: c.id, col: saved.xBp, row: saved.yBp });
           this.error.set(combatErrorMessage(err, 'mover o token'));
@@ -856,16 +1100,6 @@ export class CombatView {
     );
   }
 
-  private reachable(id: string, to: Square): boolean {
-    const e = this.encounter();
-    const c = e?.combatants.find((x) => x.id === id);
-    if (!e || !c) {
-      return false;
-    }
-    const others = e.combatants.filter((x) => x.placed && x.id !== id).map((x) => ({ col: x.col, row: x.row }));
-    return canReach({ col: c.col, row: c.row }, to, c.movementLeftDft, e.gridColumns, e.gridRows, others);
-  }
-
   /** "Mover para cá" on the "Mover" page. */
   protected async confirmMove(to: Square): Promise<void> {
     const own = this.own();
@@ -873,7 +1107,34 @@ export class CombatView {
       return;
     }
     this.moveError.set('');
-    const ok = await this.run((e) => this.api.move(this.campaignId(), e.id, own.id, to.col, to.row));
+    const ok = await this.runMove((e) => this.api.move(this.campaignId(), e.id, own.id, to.col, to.row));
+    this.afterMove(ok);
+  }
+
+  /** "Saltar para cá" or "Saltar 1,8 m para cima": the same call, as a jump. The new movement
+   * used, less what was used before, is what the jump cost: the server's own numbers. */
+  protected async confirmJump(req: JumpRequest): Promise<void> {
+    const own = this.own();
+    if (!own) {
+      return;
+    }
+    const before = own.movementUsedDft;
+    this.moveError.set('');
+    const ok = await this.runMove((e) =>
+      req.kind === 'long'
+        ? this.api.move(this.campaignId(), e.id, own.id, req.square.col, req.square.row, { kind: 'long' })
+        : this.api.move(this.campaignId(), e.id, own.id, own.col, own.row, { kind: 'high', heightDft: req.heightDft }),
+    );
+    if (ok) {
+      const spent = (this.own()?.movementUsedDft ?? before) - before;
+      this.moveNote.set(
+        req.kind === 'long' ? `Você saltou ${metersFixed(spent / 10)}.` : `Você saltou ${metersFixed(spent / 10)} para cima.`,
+      );
+    }
+    this.afterMove(ok);
+  }
+
+  private afterMove(ok: boolean): void {
     if (ok) {
       this.state().moving.set(false);
     } else {
@@ -881,6 +1142,37 @@ export class CombatView {
       this.moveError.set(this.error());
       this.error.set('');
     }
+  }
+
+  /** Runs a move: applies the combat it answers, and says when it stopped short. */
+  private async runMove(call: (e: Encounter) => Promise<MoveResult>): Promise<boolean> {
+    const e = this.encounter();
+    if (!e || this.busy()) {
+      return false;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    this.moveNote.set('');
+    try {
+      const res = await call(e);
+      this.state().apply(res.encounter);
+      if (res.stoppedEarly) {
+        // Never what stopped it: the player did not see it.
+        this.moveNote.set('Você parou antes: algo bloqueou o caminho.');
+      }
+      return true;
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'mover'));
+      await this.refreshAfter(err);
+      return false;
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Desengajar (gasta a ação)" on the "Mover" page: the warning goes once it is taken. */
+  protected disengage(): Promise<boolean> {
+    return this.takeAction('standard:disengage');
   }
 
   protected closeFullPage(): void {
@@ -914,7 +1206,7 @@ export class CombatView {
     }
     if (best) {
       const spot = best;
-      await this.run((current) => this.api.move(this.campaignId(), current.id, id, spot.col, spot.row));
+      await this.run(async (current) => (await this.api.move(this.campaignId(), current.id, id, spot.col, spot.row)).encounter);
     }
   }
 

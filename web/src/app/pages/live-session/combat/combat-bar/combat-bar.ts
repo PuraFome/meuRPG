@@ -28,6 +28,8 @@ export class CombatBar {
   readonly endOnly = input(false);
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
   readonly pendingNote = input<string | null>(null);
+  /** An opportunity attack waits for an answer ("Esperando a sua reação: Goblin 2"): the turn does not pass. */
+  readonly waitNote = input('');
   /** "Próximo turno": ends the turn of whoever is on turn; `true` when the
    * master passes it although a damage waits (it is discarded). */
   readonly next = output<boolean>();
