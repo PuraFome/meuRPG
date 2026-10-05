@@ -217,6 +217,9 @@ type Service struct {
 	rules      Rules
 	combats    CombatMaps
 	layerHints hintGate
+	// layerHintEvery is the gate's interval (defaultLayerHintEvery); a test sets
+	// it on its own service to see every hint at once.
+	layerHintEvery time.Duration
 
 	// The fog of war (fog.go): the compiled scenes, the revision each player was
 	// last told, and the lock that makes a refresh and "Esquecer o que foi visto"
@@ -262,22 +265,23 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("maps: Combats is required")
 	}
 	s := &Service{
-		pool:       cfg.Pool,
-		queries:    mapsdb.New(cfg.Pool),
-		blobs:      cfg.Blobs,
-		characters: cfg.Characters,
-		live:       cfg.Live,
-		checks:     cfg.Rules,
-		rules:      cfg.Rules,
-		combats:    cfg.Combats,
-		logger:     cfg.Logger,
-		now:        cfg.Now,
-		maxImages:  cfg.MaxImages,
-		maxBytes:   cfg.MaxBytes,
-		maxMaps:    cfg.MaxMaps,
-		maxPoints:  cfg.MaxPointsPerMap,
-		processing: make(chan struct{}, 1),
-		tiles:      newTileRenderer(),
+		layerHintEvery: defaultLayerHintEvery,
+		pool:           cfg.Pool,
+		queries:        mapsdb.New(cfg.Pool),
+		blobs:          cfg.Blobs,
+		characters:     cfg.Characters,
+		live:           cfg.Live,
+		checks:         cfg.Rules,
+		rules:          cfg.Rules,
+		combats:        cfg.Combats,
+		logger:         cfg.Logger,
+		now:            cfg.Now,
+		maxImages:      cfg.MaxImages,
+		maxBytes:       cfg.MaxBytes,
+		maxMaps:        cfg.MaxMaps,
+		maxPoints:      cfg.MaxPointsPerMap,
+		processing:     make(chan struct{}, 1),
+		tiles:          newTileRenderer(),
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
