@@ -1,6 +1,6 @@
 # Histórias e critérios de aceite
 
-O MVP tem 31 histórias, mais 2 pré-requisitos — 33 no total até o MVP. Em 03/10/2026, o Vinicius ampliou o MVP: entraram a MR-010 e a MR-025 e as novas MR-029 a MR-039 (Etapas 8 a 10, ver [Roadmap](../roadmap.md)); no mesmo dia, depois das respostas do Samuel, vieram a MR-040 (Etapa 8) e a MR-041 (Etapa 9), além de critérios novos na MR-013 e na MR-014. Das 18 de antes: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
+O MVP tem 34 histórias, mais 2 pré-requisitos — 36 no total até o MVP. Em 05/10/2026, no plano da Etapa 10, entraram as MR-042 a MR-044 (o bestiário, os encontros e o tesouro). Em 03/10/2026, o Vinicius ampliou o MVP: entraram a MR-010 e a MR-025 e as novas MR-029 a MR-039 (Etapas 8 a 10, ver [Roadmap](../roadmap.md)); no mesmo dia, depois das respostas do Samuel, vieram a MR-040 (Etapa 8) e a MR-041 (Etapa 9), além de critérios novos na MR-013 e na MR-014. Das 18 de antes: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
@@ -43,6 +43,9 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas) | Apoio | MVP (Etapa 10) |
 | [MR-040](#mr-040-subir-de-nível-pela-ficha) | Progressão | MVP (Etapa 8) |
 | [MR-041](#mr-041-tesouros-e-xp-por-ouro) | Mapa | MVP (Etapa 9) |
+| [MR-042](#mr-042-bestiário) | Combate | MVP (Etapa 10) |
+| [MR-043](#mr-043-gerar-encontros) | Combate | MVP (Etapa 10) |
+| [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP (Etapa 10) |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -454,38 +457,51 @@ Aceitos em 02/10/2026 (pergunta 32 do documento de acompanhamento); o último cr
 **Como** mestre, **quero** cadastrar raças, classes, subclasses, antecedentes, magias e regras que não vêm no SRD 5.1, e definir as regras da minha mesa, **para** a campanha usar o material que a mesa joga e eu ter total controle do produto.
 
 - Prioridade: MVP (Etapa 10, desde 03/10/2026; era "Depois")
-- Regras: —
-- Módulos: rules, campaigns
+- Regras: RN-23, RN-24, RN-25
+- Módulos: rules, characters, campaigns, play, maps
 
-Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre, antes da MR-026 e da MR-027. Em 03/10/2026, o Vinicius pôs a história no MVP, na Etapa 10, e a ampliou: magias próprias, a grade da campanha (o tamanho, ou nenhuma), regras de dados além da RN-18 e regras da casa. A MR-026 (proposta do jogador) e a MR-027 (ler um PDF) ficam depois do MVP.
+Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre, antes da MR-026 e da MR-027. Em 03/10/2026, o Vinicius pôs a história no MVP, na Etapa 10, e a ampliou: magias próprias, a grade da campanha (o tamanho, ou nenhuma), regras de dados além da RN-18 e regras da casa. A MR-026 (proposta do jogador) e a MR-027 (ler um PDF) ficam depois do MVP. Em 05/10/2026, no plano da Etapa 10, o Vinicius decidiu que a história entra inteira: classes **e** subclasses próprias, raças e sub-raças, antecedentes, magias, as regras da casa e de dados e a grade.
 
-#### Critérios de aceite (proposta)
-- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com os dados, as perícias e as características dela, **então** a classe aparece no editor de personagem só em "Mirathel" **e** a ficha calcula os números com ela.
+#### Critérios de aceite
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com o dado de vida, as perícias, a tabela dos 20 níveis e as características dela, **então** a classe aparece no editor de personagem e na subida de nível só em "Mirathel" **e** a ficha calcula os números com ela (RN-23).
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma subclasse de uma classe do SRD (um colégio do Bardo, uma tradição do Mago), **então** ela aparece na escolha de subclasse daquela classe só em "Mirathel", com as magias sempre preparadas dela, se tiver.
 - **Dado** um conteúdo cadastrado em "Mirathel", **quando** abro outra campanha minha, **então** ele não aparece lá: o conteúdo vale por campanha (decidido em 29/09/2026).
-- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma magia própria, **então** ela aparece para os personagens de "Mirathel" **e** não aparece em outra campanha.
-- **Dado** que sou mestre de "Mirathel", **quando** defino a grade da campanha com outro tamanho de quadrado, ou sem grade, **então** o combate e os mapas dela seguem essa escolha.
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma magia própria, **então** ela aparece para os personagens de "Mirathel" que podem aprendê-la **e** não aparece em outra campanha; se ela tem ataque ou teste de resistência e dano, o combate a resolve como uma magia do SRD.
+- **Dado** uma classe da mesa que uma ficha usa, **quando** o mestre muda um número dela, **então** a ficha mostra o número novo, também travada, **e** o que ficou fora das regras aparece nela como aviso ("A classe mudou"), sem impedir outra edição (RN-23, pergunta 80).
+- **Dado** um conteúdo da mesa que uma ficha usa, **quando** o mestre o arquiva, **então** a ficha continua com ele **e** ele não aparece mais como escolha nova; nada do conteúdo da mesa se apaga.
+- **Dado** uma característica que o mestre cadastra, **quando** ele escolhe o efeito, **então** escolhe de um menu fechado (modificador, proficiência, recurso, sentido, modo de rolagem, ação, ataque extra, escolha, nota), ou deixa só o texto: o conteúdo da mesa nunca roda código.
+- **Dado** que sou mestre de "Mirathel", **quando** escolho na página "Regras da mesa" como se ganham PV, como se fazem os atributos, o crítico e quem vê os testes contra a morte, **então** o servidor segue a escolha em cada ficha e em cada combate (RN-24); o conjunto padrão, a compra por pontos e os 4d6 aparecem com o rótulo "SRD 5.2.1 (regras de 2024)".
+- **Dado** uma campanha que permite 4d6 descartando o menor, **quando** o jogador rola os atributos de uma ficha nova, **então** o servidor rola e guarda, e rolar de novo devolve o mesmo.
+- **Dado** um mapa desenhado com quadrados de 3 m, **quando** o mestre diz "cada quadrado deste desenho vale 3 m", **então** o app conta quatro quadrados de 1,5 m em cada um, e o movimento, o alcance e a névoa seguem as regras de sempre (RN-25).
+- **Dado** um combate que o mestre começa sem mapa ("teatro da mente"), **quando** o jogador se move, **então** ele gasta o movimento por número ("Restam 6 m"), sem posição na grade, **e** o mestre julga o alcance (RN-25, ADR-0017).
+- **Dado** uma ficha que usa conteúdo da mesa, **quando** alguém tenta levá-la para outra campanha, **então** o app recusa e diz por quê.
 
 #### Dúvidas
-- Quais regras da casa e quais regras de dados entram primeiro, e o que "sem grade" muda no movimento (RN-21): a definir no planejamento da Etapa 10.
+- Perguntas 76 a 78 e 80 a 84 do documento de acompanhamento, com os nossos padrões: o app segue o padrão até o Samuel responder.
+- O personagem com antecedente ou subclasse de texto livre (o "Outro" do editor) continua valendo (pergunta 82).
+- Ficam fora do MVP: copiar o conteúdo para outra campanha (MR-026), monstros e itens mágicos próprios, talentos fora do SRD, o flanqueamento e a grade hexagonal.
 
 ### MR-010: Gerar masmorras
 
 **Como** mestre, **quero** gerar uma masmorra (salas, corredores, portas e escadas, com opções de tamanho e estilo) e ter um mapa que eu possa editar, **para** não desenhar tudo na mão.
 
 - Prioridade: MVP (Etapa 10, desde 03/10/2026; era "Depois", como "Desenhar masmorras")
-- Regras: —
-- Módulos: maps
+- Regras: RN-10, RN-26
+- Módulos: rules, maps
 
-#### Critérios de aceite (proposta)
-- **Dado** que sou mestre de "Mirathel", **quando** peço uma masmorra com um tamanho e um estilo, **então** o app gera um mapa com salas, corredores, portas e escadas, conectado (dá para chegar a todas as salas).
-- **Dado** uma masmorra gerada, **quando** eu a abro, **então** posso editar o mapa (mover, apagar e acrescentar paredes, portas e salas) **e** ele passa a ser um mapa da campanha, escondido dos jogadores (RN-10).
-- **Dado** o mesmo tamanho, estilo e semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
+#### Critérios de aceite
+- **Dado** que sou mestre de "Mirathel", **quando** peço uma masmorra com um tamanho (de 21 a 121 quadrados de lado, ou o que eu digitar), o formato (sem forma, anel, cruz, elipse, losango), o tamanho das salas, o jeito dos corredores (labirinto, sinuosos ou retos), a quantidade e o tipo das portas e as escadas, **então** o app gera um mapa com salas, corredores, portas e escadas, conectado: dá para chegar a todas as salas.
+- **Dado** o mesmo tamanho, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
+- **Dado** uma masmorra gerada, **quando** ela vira um mapa, **então** é um mapa da campanha como os outros, escondido dos jogadores (RN-10), com a grade, as paredes e as portas já pintadas nas camadas, as escadas como pontos de submapa e a lista das salas ao lado do mapa, só para o mestre, com "Pôr uma cena nesta sala".
+- **Dado** uma masmorra gerada, **quando** eu a edito no editor do mapa (paredes, portas, terreno, pontos), **então** "Redesenhar" faz a imagem de novo a partir das paredes e das portas de agora, sem apagar o que eu pintei.
+- **Dado** uma porta fechada, **quando** um personagem anda até ela, **então** ela se abre, se não estiver trancada; uma porta secreta é parede para os jogadores até eu revelá-la (RN-26).
+- **Dado** a imagem gerada, **quando** os jogadores a veem, **então** ela tem só o chão e as paredes: as portas são desenhadas por cima, pela camada, e nenhum número de sala aparece.
 
 #### Dúvidas
-- **Sala limpa.** O gerador `dungeon.pl` do donjon (https://donjon.bin.sh/code/dungeon/dungeon.pl) é CC BY-NC 3.0, incompatível com a Apache 2.0 do MeuRPG. O código e os dados dele nunca são copiados. Um agente lê o programa e escreve uma especificação do comportamento, com as nossas palavras; outro agente, diferente, implementa o nosso gerador só a partir dessa especificação.
-- A ideia de desenhar a masmorra à mão (paredes falsas, água, baús e mímicos) segue valendo para o editor do mapa; as armadilhas são a [MR-035](#mr-035-armadilhas).
-- Quais opções de tamanho e de estilo entram primeiro: a definir no planejamento da Etapa 10.
+- **Sala limpa (ADR-0015).** O gerador `dungeon.pl` do donjon (https://donjon.bin.sh/code/dungeon/dungeon.pl) é CC BY-NC 3.0, incompatível com a Apache 2.0 do MeuRPG. O código e os dados dele nunca são copiados. Um agente leu o programa e escreveu uma especificação do comportamento, com as nossas palavras (feita em 05/10/2026); outro agente, diferente, confere que a especificação não tem código, dado nem texto do donjon; e um terceiro, que nunca leu o programa, implementa o nosso gerador só a partir dela. A especificação e a nota de origem vão no PR do gerador.
+- A ideia de desenhar a masmorra à mão (paredes falsas, água, baús e mímicos) segue valendo para o editor do mapa; as armadilhas são a [MR-035](#mr-035-armadilhas). O gerador não põe monstros, armadilhas nem tesouros: para isso há o bestiário, os encontros e o tesouro ([MR-042](#mr-042-bestiário) a [MR-044](#mr-044-gerar-tesouro)).
 - A [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas) usa a masmorra gerada para fazer a imagem.
+- Ficam fora do MVP: masmorras de vários andares além das escadas ligadas, e a grade hexagonal.
 
 ### MR-029: Ganchos e pistas da cena
 
@@ -746,38 +762,42 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 **Como** mestre, **quero** criar quebra-cabeças que os jogadores resolvem no app, ao vivo numa cena, **para** variar o ritmo da sessão.
 
 - Prioridade: MVP (Etapa 10)
-- Regras: —
+- Regras: RN-10, RN-27
 - Módulos: play
 
 #### Critérios de aceite
-- **Dado** que sou mestre de "Mirathel", **quando** crio um quebra-cabeça de um tipo disponível, **então** ele fica guardado na campanha e só eu o vejo.
-- **Dado** um quebra-cabeça numa cena aberta, **quando** o mestre o mostra, **então** os jogadores o veem e o resolvem ao vivo.
-- **Dado** um quebra-cabeça mostrado, **quando** os jogadores o resolvem, **então** o servidor confere a solução (o jogador nunca recebe a resposta) **e** avisa o mestre.
+- **Dado** que sou mestre de "Mirathel", **quando** crio um quebra-cabeça de um dos três tipos ("Apagar as luzes", a fechadura de combinação ou os símbolos giratórios), **então** ele fica guardado na campanha e só eu o vejo.
+- **Dado** um quebra-cabeça "Apagar as luzes" de 5 por 5, **quando** o crio, **então** o servidor gera um começo que tem solução e nunca já resolvido, **e** eu vejo quantos toques bastam.
+- **Dado** uma sessão aberta, **quando** o mestre mostra um quebra-cabeça, **então** os jogadores o veem e o resolvem ao vivo, todos no mesmo estado, com a pista que o mestre escreveu.
+- **Dado** um quebra-cabeça mostrado, **quando** dois jogadores jogam ao mesmo tempo, **então** as duas jogadas valem, e todos veem o estado novo.
+- **Dado** um quebra-cabeça mostrado, **quando** os jogadores o resolvem, **então** o servidor confere a solução (o jogador nunca recebe a resposta), o quebra-cabeça para **e** o mestre é avisado e decide o que acontece (RN-27).
+- **Dado** um quebra-cabeça mostrado, **quando** o mestre o recomeça ou o fecha, **então** os jogadores veem o começo de novo, ou param de vê-lo.
 
 #### Dúvidas
-- Quais tipos entram primeiro (a ideia: "lights out", fechadura de combinação, símbolos giratórios como os de Skyrim): a definir na Etapa 10.
-- Se a solução vale como um teste de perícia ou se é só o que o mestre decide: a definir.
+- Os três tipos entraram, decidido pelo Vinicius em 05/10/2026 (os símbolos giratórios lembram os pilares de Skyrim, com símbolos nossos).
+- O que resolver dá (pergunta 79): o padrão é o mestre decidir, sem teste de perícia automático.
 
 ### MR-039: Imagens geradas para masmorras e cenas
 
 **Como** mestre, **quero** gerar uma imagem a partir da masmorra ou da descrição de uma cena, e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
 
 - Prioridade: MVP (Etapa 10)
-- Regras: —
-- Módulos: maps, gallery
+- Regras: RN-10, RN-28
+- Módulos: maps (galeria)
 
 #### Critérios de aceite
-- **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, **então** o app gera a imagem e a guarda na galeria da campanha.
-- **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero.
-- **Dado** que o teto de custo do mês foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê.
-- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o layout gerado e o texto do mestre, nunca dado pessoal.
+- **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, com o texto e o estilo dele, **então** o app gera a imagem e a guarda na galeria da campanha, escondida dos jogadores.
+- **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero, **e** guarda a nova ao lado da anterior.
+- **Dado** que o limite do mês da campanha foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando volta.
+- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas e o texto do mestre, nunca dado pessoal (RN-28).
+- **Dado** que o serviço recusa um pedido ou não devolve imagem, **quando** o mestre espera a imagem, **então** o app diz isso em português ("O serviço não gerou uma imagem"), sem gastar a vaga do mês.
 
 #### Relacionadas
-- Usa o Gemini (imagem, o "Nano Banana") no Vertex AI, no nosso projeto do Google Cloud, atrás de uma interface pequena. Precisa de um ADR, do operador novo em [Privacidade](../privacidade.md) (Google Vertex AI), de um segredo e de um teto de custo mensal.
+- Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, de 03/10/2026, que usava o Vertex AI). O modelo é configurável: `gemini-3.1-flash-image` por padrão (o `gemini-2.5-flash-image` foi desligado em 02/10/2026). O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md); a chave é um segredo, e o custo e o limite ficam em [Operação](../operacao.md).
+- A imagem é arte da cena, não o mapa da batalha: o modelo devolve imagens em proporções fixas, que não casam com a grade. Pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater (pergunta 85).
 
 #### Dúvidas
-- O valor do teto de custo mensal e o que cada mestre pode gerar: a definir (pergunta nova, com o custo por imagem medido no Vertex AI).
-- Candidatos a planejar na Etapa 10, a partir das outras ferramentas do donjon, sob a mesma regra de sala limpa: lista de monstros (das criaturas do SRD da MR-037), geração de encontros e de tesouro. As tabelas de dificuldade de encontro e de tesouro aleatório são do DMG, não do SRD: seriam tabelas nossas ou só conteúdo do SRD. Ainda sem história.
+- O número do limite por campanha por mês sai depois de medir o custo com a chave de verdade (US$ 0,067 por imagem de 1K no `gemini-3.1-flash-image`, em 05/10/2026).
 
 ### MR-040: Subir de nível pela ficha
 
@@ -828,6 +848,67 @@ Servidor, fatia 9.3 (o tesouro no mapa): o ponto do tipo `TREASURE` guarda o val
 
 #### Dúvidas
 - Decidida pelo Samuel em 03/10/2026 (pergunta 47), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: Etapa 9, junto das armadilhas e dos baús ([MR-035](#mr-035-armadilhas)). **Servidor feito na fatia 9.11 e telas feitas na 9.18** (as telas de marcar o tesouro como achado são da 9.14). O mestre também pode digitar as PO em "Dar XP por ouro" ([MR-016](#mr-016-dar-xp)), que fica como alternativa. O destaque "mais tesouro encontrado" da [MR-032](#mr-032-destaques-do-combate) depende desta história. Os detalhes foram decididos pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (pergunta 75): o mestre marca quem achou (um ou mais personagens); "Voltar à cidade" converte os tesouros escolhidos (todos marcados) para os personagens escolhidos (todos os vivos marcados), 1 XP por PO, dividido e arredondado para baixo, num prêmio só, que pode ser desfeito; só em campanha por ouro, e nas outras o tesouro conta no resumo da sessão.
+
+### MR-042: Bestiário
+
+**Como** mestre, **quero** procurar as criaturas do SRD e pôr uma no combate, **para** montar um encontro sem fazer a ficha de cada inimigo.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: RN-20, RN-29
+- Módulos: rules, play, characters
+
+Nova em 05/10/2026, no plano da Etapa 10: o Vinicius pediu as três ferramentas do donjon (o bestiário, os encontros e o tesouro). Elas não leem o código do donjon: os monstros vêm do SRD 5.1, e o resto é nosso ou do SRD.
+
+#### Critérios de aceite
+- **Dado** que sou mestre de "Mirathel", **quando** abro o "Bestiário", **então** vejo as 334 criaturas do SRD com o nome em português, e filtro pelo nome, pelo tipo, pelo tamanho e pelo ND.
+- **Dado** uma criatura do bestiário, **quando** a abro, **então** vejo a ficha dela (CA, PV, deslocamento, atributos, ataques e ações), com o texto do SRD em inglês.
+- **Dado** um combate em preparação, **quando** ponho três Goblins do bestiário, **então** eles entram como NPCs escondidos, cada um com a própria iniciativa (RN-19), os PV médios, ou rolados se eu pedir, **e** o jogador vê só a palavra do estado deles (RN-20, RN-29).
+- **Dado** um combate com monstros do bestiário, **quando** ele termina, **então** o XP por inimigos conta o ND de cada um, como o de um NPC.
+- **Dado** uma criatura do bestiário, **quando** o mestre escolhe "Criar NPC", **então** o app faz uma ficha básica de NPC com os números dela, que o mestre pode renomear e editar.
+
+#### Dúvidas
+- Os PV ao pôr no combate (pergunta 81): o padrão é a média; o mestre pode rolar.
+- Monstros próprios ficam fora do MVP.
+
+### MR-043: Gerar encontros
+
+**Como** mestre, **quero** montar um encontro sabendo se ele é fácil ou mortal para o meu grupo, e gerar um quando estiver sem ideia, **para** preparar a sessão mais rápido.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: RN-29
+- Módulos: rules, play, maps
+
+Nova em 05/10/2026, como a [MR-042](#mr-042-bestiário).
+
+#### Critérios de aceite
+- **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
+- **Dado** um encontro montado, **quando** o guardo num ponto de batalha do mapa, **então** "Começar este combate" põe os monstros dele no combate, como na [MR-042](#mr-042-bestiário).
+- **Dado** uma dificuldade e, se eu quiser, um tipo de criatura, **quando** peço "Gerar encontro", **então** o app monta um com criaturas do SRD, um líder e um grupo, que nunca passa do orçamento nem traz criatura de ND acima do nível do grupo mais 3; "Gerar outro" faz um novo, e posso trocar uma criatura.
+- **Dado** a mesma dificuldade, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
+
+#### Dúvidas
+- Quem é o grupo do encontro (pergunta 86): o padrão são os personagens de jogador vivos da campanha.
+- A tabela de orçamento é a "XP Budget per Character" do SRD 5.2.1 (CC BY 4.0), com crédito no `NOTICE` e na página "Créditos"; o SRD 5.1 não tem tabela de dificuldade. Se ela combina com os monstros de 2014, a mesa vê depois de jogar (Vinicius, 05/10/2026).
+
+### MR-044: Gerar tesouro
+
+**Como** mestre, **quero** gerar o tesouro de uma criatura ou de um covil, com moedas, gemas, obras de arte e itens mágicos, **para** pôr no mapa sem inventar tudo na hora.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: RN-09, RN-10
+- Módulos: rules, maps, progression
+
+Nova em 05/10/2026, junto com a [MR-042](#mr-042-bestiário) e a [MR-043](#mr-043-gerar-encontros).
+
+#### Critérios de aceite
+- **Dado** o nível do grupo, **quando** peço um tesouro "individual" ou "de covil", **então** o app gera as moedas, as gemas e as obras de arte (tabelas nossas, em português) e os itens mágicos do SRD 5.1, com o nome em português e o valor em PO.
+- **Dado** um item mágico gerado, **quando** o abro, **então** vejo a raridade, o valor com o rótulo "valores do SRD 5.2.1 (regras de 2024)" e a descrição do SRD em inglês.
+- **Dado** um tesouro gerado, **quando** o ponho num mapa, **então** ele vira um ponto de tesouro escondido (RN-10) com o total em PO e os itens na descrição, que numa campanha por ouro vira XP em "Voltar à cidade" ([MR-041](#mr-041-tesouros-e-xp-por-ouro)).
+- **Dado** o mesmo pedido e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
+
+#### Dúvidas
+- Os valores por raridade vêm da tabela "Magic Item Rarities and Values" do SRD 5.2.1 (CC BY 4.0, p. 205), com crédito: comum 100 PO, incomum 400, raro 4.000, muito raro 40.000, lendário 200.000; um item que se gasta (uma poção) vale a metade. O SRD 5.1 não tem valores nem tabelas de tesouro aleatório, então as tabelas de moedas, gemas e arte são nossas.
+- Itens mágicos próprios ficam fora do MVP.
 
 ## Prioridade: MVP (pré-requisito)
 

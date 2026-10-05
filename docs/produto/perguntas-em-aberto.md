@@ -114,7 +114,19 @@ O Vinicius respondeu pelo Samuel: a 66 como propusemos, e as de 67 a 75, da Etap
 
 ## Em aberto
 
-Nenhuma pergunta está em aberto agora. As novas ficam no documento de acompanhamento.
+As perguntas 76 a 86 são da Etapa 10 (05/10/2026) e estão no documento de acompanhamento, onde o Samuel responde. Cada uma tem um padrão nosso, que o app segue até a resposta; uma resposta diferente muda o app depois.
+
+- **Pergunta 76: as regras da casa.** Quais escolhas da página "Regras da mesa" a mesa quer (os PV ao subir de nível, os jeitos de fazer atributos, o crítico, quem vê os testes contra a morte, a poção como ação bônus). Padrão: todas existem, e cada campanha começa com as regras do SRD (a poção como ação, os testes contra a morte vistos por todos). Ver [RN-24](regras.md).
+- **Pergunta 77: os PV ao subir de nível.** Padrão: o jogador escolhe entre rolar e a média, como hoje. Ver [RN-24](regras.md) e [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha).
+- **Pergunta 78: os jeitos de fazer os atributos.** Padrão: os quatro valem (o conjunto padrão, a compra por 27 pontos, 4d6 descartando o menor, rolados pelo servidor, e digitar). Ver [RN-24](regras.md).
+- **Pergunta 79: o que resolver um quebra-cabeça dá.** Padrão: o mestre é avisado e decide; não há teste de perícia automático. Ver [MR-038](historias.md#mr-038-quebra-cabeças).
+- **Pergunta 80: a mudança no conteúdo da mesa vale nas fichas já travadas, até durante uma sessão?** Padrão: sim, na hora; a ficha mostra "A classe mudou" quando algo fica fora das regras. Ver [RN-23](regras.md).
+- **Pergunta 81: os PV de um monstro posto no combate.** Padrão: os médios; o mestre pode rolar. Ver [MR-042](historias.md#mr-042-bestiário).
+- **Pergunta 82: o antecedente e a subclasse de texto livre.** Agora que a mesa cadastra os de verdade, o "Outro" do editor de personagem continua? Padrão: continua, os dois. Ver [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa).
+- **Pergunta 83: o que os jogadores veem do conteúdo da mesa.** Padrão: tudo o que um jogador pode escolher; uma magia, só para quem pode aprendê-la. A outra opção é uma marca "os jogadores veem isto" em cada entrada. Ver [RN-23](regras.md).
+- **Pergunta 84: a grade de 3 m.** Padrão: um mapa desenhado com quadrados de 3 m é calibrado e conta como quatro quadrados de 1,5 m; não há quadrado de 1 m. Ver [RN-25](regras.md).
+- **Pergunta 85: a imagem gerada por IA é o mapa da batalha ou a arte da cena?** Padrão: a arte da cena; ela pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater. Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
+- **Pergunta 86: quem é o grupo de um encontro.** Padrão: os personagens de jogador vivos da campanha. Ver [MR-043](historias.md#mr-043-gerar-encontros).
 
 ## Ver também
 
