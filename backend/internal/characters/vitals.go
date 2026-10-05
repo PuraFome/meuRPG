@@ -58,11 +58,16 @@ type vitalsMax struct {
 	hitDiceTotal int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
+	// beast is the Wild Shape form the character is in (MR-037): its content key,
+	// Portuguese name and the stat block's hit points. Empty key: its own shape.
+	beast       string
+	beastNamePT string
+	beastMax    int
 }
 
 // maxima derives the maximums from a stored sheet. A player character
 // always has a full sheet; anything else has no hit points, slots or dice.
-func (s *Service) maxima(characterID string, doc []byte) (vitalsMax, error) {
+func (s *Service) maxima(characterID string, doc []byte, beast *string) (vitalsMax, error) {
 	sheet, err := loadSheet(characterID, doc)
 	if err != nil {
 		return vitalsMax{}, err
@@ -73,6 +78,9 @@ func (s *Service) maxima(characterID string, doc []byte) (vitalsMax, error) {
 	}
 	d := rules.Derive(buildOf(full), s.rules)
 	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources}
+	if b, ok := s.rules.MonsterDerived(deref(beast)); ok && beast != nil {
+		m.beast, m.beastNamePT, m.beastMax = *beast, s.rules.NamePT(*beast), max(b.HitPointsMax, 1)
+	}
 	for i, n := range d.SpellSlots {
 		if i < maxSpellLevel {
 			m.slots[i] = max(n, 0)
@@ -85,6 +93,23 @@ func (s *Service) maxima(characterID string, doc []byte) (vitalsMax, error) {
 		m.hitDiceTotal += hd.Count
 	}
 	return m, nil
+}
+
+// liveFamiliar forgets the sight of a familiar that is not with the character any
+// more (dismissed, or deleted): the player looks through its own eyes again. It runs
+// only for a sight that is on, so the usual read asks nothing more.
+func (s *Service) liveFamiliar(ctx context.Context, q *charactersdb.Queries, campaignID string, row *vitalsRow) error {
+	if row.FamiliarSightCreatureID == nil {
+		return nil
+	}
+	found, err := q.ListCreaturesByIDs(ctx, charactersdb.ListCreaturesByIDsParams{CampaignID: campaignID, Ids: []string{*row.FamiliarSightCreatureID}})
+	if err != nil {
+		return err
+	}
+	if len(found) == 0 || found[0].CharacterCreature.DismissedAt != nil {
+		row.FamiliarSightCreatureID = nil
+	}
+	return nil
 }
 
 // vitalsToProto merges the stored values with the maximums, clamping each
@@ -135,6 +160,17 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 			Key: r.Key, NamePt: r.NamePT, Total: i32(r.Max), Used: min(max(used[r.Key], 0), i32(r.Max)), Recharge: rechargeToProto[r.Recharge],
 		})
 	}
+	if row.WildShapeBeast != nil && m.beast == *row.WildShapeBeast && row.WildShapeHp != nil {
+		// The beast's pool is cut to the stat block's maximum, as the character's is.
+		v.WildShape = &playv1.WildShapeState{
+			BeastKey: m.beast, BeastNamePt: m.beastNamePT, HitPointsCurrent: min(max(*row.WildShapeHp, 1), i32(m.beastMax)), HitPointsMax: i32(m.beastMax),
+		}
+	}
+	if row.FamiliarSightCreatureID != nil {
+		v.FamiliarSight = &playv1.FamiliarSightState{
+			CreatureId: *row.FamiliarSightCreatureID, InCombat: derefBool(row.FamiliarSightInCombat), ConditionsGiven: row.FamiliarSightConditions,
+		}
+	}
 	return v
 }
 
@@ -149,8 +185,11 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 	}
 	out := make([]*playv1.CharacterVitals, 0, len(rows))
 	for _, row := range rows {
-		m, err := s.maxima(row.ID, row.Sheet)
+		m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
+			return nil, s.dbError(ctx, "list vitals", err)
+		}
+		if err := s.liveFamiliar(ctx, s.queries, campaignID, &row); err != nil {
 			return nil, s.dbError(ctx, "list vitals", err)
 		}
 		out = append(out, vitalsToProto(row, m))
@@ -180,11 +219,15 @@ func (s *Service) getVitals(ctx context.Context, q *charactersdb.Queries, campai
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err) // no row: not_found
 	}
-	m, err := s.maxima(row.ID, row.Sheet)
+	m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err)
 	}
-	return vitalsToProto(vitalsRow(row), m), nil
+	current := vitalsRow(row)
+	if err := s.liveFamiliar(ctx, q, campaignID, &current); err != nil {
+		return nil, s.dbError(ctx, "get vitals", err)
+	}
+	return vitalsToProto(current, m), nil
 }
 
 // AdjustVitals applies the master's correction (RN-02) inside tx, and
@@ -213,11 +256,15 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err != nil {
 		return nil, nil, wrap("get vitals", err)
 	}
-	m, err := s.maxima(row.ID, row.Sheet)
+	m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, nil, err
 	}
-	before = vitalsToProto(vitalsRow(row), m)
+	current := vitalsRow(row)
+	if err := s.liveFamiliar(ctx, q, campaignID, &current); err != nil {
+		return nil, nil, wrap("read the familiar", err)
+	}
+	before = vitalsToProto(current, m)
 	after = proto.CloneOf(before)
 	if err := applyVitalsChange(after, req); err != nil {
 		return nil, nil, invalidArgument(err)
@@ -250,6 +297,18 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err != nil {
 		return nil, nil, wrap("save vitals", err)
 	}
+	// The beast's pool is a row of its own (character_wild_shapes): 0 ended the form
+	// (MR-037). UpsertVitals bumped the revision already.
+	if req.WildShapeHitPointsCurrent != nil {
+		if w := after.GetWildShape(); w != nil {
+			err = q.SetWildShape(ctx, charactersdb.SetWildShapeParams{CharacterID: row.ID, Beast: w.GetBeastKey(), Hp: w.GetHitPointsCurrent(), Now: s.now()})
+		} else {
+			err = q.ClearWildShape(ctx, row.ID)
+		}
+		if err != nil {
+			return nil, nil, wrap("save the wild shape", err)
+		}
+	}
 	after.Revision = saved.Revision
 	after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
 	return before, after, nil
@@ -260,8 +319,22 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 // request's field names.
 func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {
 	if req.HitPointsCurrent == nil && req.HitPointsTemporary == nil && len(req.GetSpellSlotsUsed()) == 0 &&
-		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetResourcesUsed()) == 0 {
+		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetResourcesUsed()) == 0 && req.WildShapeHitPointsCurrent == nil {
 		return fieldErr("request", "must set at least one value to change")
+	}
+	if req.WildShapeHitPointsCurrent != nil {
+		w := v.GetWildShape()
+		if w == nil {
+			return fieldErr("wild_shape_hit_points_current", "must be unset: the character is not in a beast form")
+		}
+		if err := inRange("wild_shape_hit_points_current", req.GetWildShapeHitPointsCurrent(), w.GetHitPointsMax()); err != nil {
+			return err
+		}
+		if req.GetWildShapeHitPointsCurrent() == 0 {
+			v.WildShape = nil // at 0 the beast is gone: the form ends
+		} else {
+			w.HitPointsCurrent = req.GetWildShapeHitPointsCurrent()
+		}
 	}
 	if req.HitPointsCurrent != nil {
 		if err := inRange("hit_points_current", req.GetHitPointsCurrent(), v.GetHitPointsMax()); err != nil {
@@ -341,6 +414,8 @@ func inRange(field string, value, maximum int32) error {
 	}
 	return nil
 }
+
+func derefBool(b *bool) bool { return b != nil && *b }
 
 func derefInt(n *int32) int32 {
 	if n == nil {

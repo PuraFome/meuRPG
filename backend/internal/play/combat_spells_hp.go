@@ -211,7 +211,7 @@ func (s *Service) setCondition(ctx context.Context, c *combatTx, t playdb.Combat
 		return fmt.Errorf("set the conditions: %w", err)
 	}
 	h.CondSet, h.CondBefore = true, t.Conditions
-	return nil
+	return s.endFormIfAsleep(ctx, c, t, conditions) // a druid put to sleep is itself again (SRD)
 }
 
 // dropToZero is Palavra de Poder: Matar on a target: an NPC is defeated at 0 hit
@@ -232,7 +232,7 @@ func (s *Service) dropToZero(ctx context.Context, c *combatTx, t fxTarget, h *ca
 	if err != nil {
 		return nil, err
 	}
-	h.Restore = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
+	h.Restore = ptr(hpStateOf(before))
 	h.DeathBefore = deathOf(t.c)
 	if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
 		ID: t.c.ID, DeathSuccesses: 0, DeathFailures: 3, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: false,

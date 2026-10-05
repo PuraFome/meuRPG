@@ -214,7 +214,10 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
-	v := viewerOf(m)
+	v, sight, err := s.viewerWith(ctx, m, enc, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	who, err := findCombatant(d.cs, combID, v)
 	if err != nil {
 		return nil, err
@@ -223,7 +226,7 @@ func (s *Service) GetTurnOptions(
 		return nil, err
 	}
 
-	opts, err := s.optionsOf(ctx, m.CampaignID, who)
+	opts, err := s.optionsOf(ctx, nil, m.CampaignID, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -238,6 +241,13 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
+	// The cover a player is shown, and the targets it makes untargetable, come from the
+	// terrain they know and the creatures they see.
+	known, err := sight.knownTerrain(ctx, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the terrain the player knows", err)
+	}
+	terrain = planOn(terrain, known)
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who)}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {
@@ -286,7 +296,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 	}
 	var out []*playv1.SpellTargets
 	for _, e := range spells {
-		sp, err := s.roster.CombatSpell(ctx, campaignID, who.CharacterID, e.key, e.level)
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level)
 		if err != nil {
 			return nil, err
 		}
@@ -310,12 +320,13 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 // cannot reach it. A spell that stays on the caster lists only the caster.
 func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
 	reach, limited := reachOf(sp)
+	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
 			continue
 		}
-		cover := coverAgainst(terrain, caster, t, cs)
+		cover := coverAgainst(terrain, caster, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
 		if dist, ok := distanceFt(caster, t); ok {
@@ -352,12 +363,13 @@ func disableAll(o *rulesv1.TurnOptions, code rulesv1.DisabledReasonCode) {
 // for a player (RN-10), in turn order, each with the distance and whether it
 // is too far.
 func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32) []*playv1.TargetInReach {
+	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.ID == attacker.ID || t.Defeated || !v.sees(t) {
 			continue
 		}
-		cover := coverAgainst(terrain, attacker, t, cs)
+		cover := coverAgainst(terrain, attacker, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master
 		if dist, ok := distanceFt(attacker, t); ok {
@@ -539,6 +551,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		attacker, err := findCombatant(cs, attackerID, v)
 		if err != nil {
 			return nil, err
@@ -547,6 +560,16 @@ func (s *Service) RollAttack(
 			return nil, err
 		}
 		target, err := findCombatant(cs, targetID, v)
+		if err != nil && offerID != "" && connect.CodeOf(err) == connect.CodeNotFound {
+			// An opportunity attack is made at the mover on the square it left: a mover
+			// the player saw leave is theirs to hit even if it is out of their sight now
+			// (an NPC that retreated into the dark).
+			if o, oerr := pendingOffer(ctx, c, offerID); oerr == nil && o.ReactorID == attacker.ID && o.MoverID == targetID {
+				if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == targetID }); i >= 0 && v.seesAt(cs[i], grid.Square{Col: int(o.LeftCol), Row: int(o.LeftRow)}) {
+					target, err = cs[i], nil
+				}
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -588,7 +611,7 @@ func (s *Service) RollAttack(
 		if err := mayAttack(attacker, asReaction); err != nil {
 			return nil, err
 		}
-		attackerSheet, err := s.sheetOf(ctx, m.CampaignID, attacker)
+		attackerSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
 		}
@@ -648,8 +671,18 @@ func (s *Service) RollAttack(
 		if offerID != "" {
 			coverTarget.GridCol, coverTarget.GridRow = &offer.LeftCol, &offer.LeftRow
 		}
-		cover := coverAgainst(terrain, attacker, coverTarget, cs)
-		if cover.total() && !v.master {
+		known, err := c.sight.knownTerrain(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		// The real cover sets the armor class; the player is told, and refused, only by
+		// what they know of the map and see of the creatures (RN-10, MR-036).
+		cp, err := c.coverOf(ctx, v, terrain, known, attacker, coverTarget, cs)
+		if err != nil {
+			return nil, err
+		}
+		cover := cp.real
+		if cp.shown.total() && !v.master {
 			return nil, errCoverTotal()
 		}
 
@@ -659,7 +692,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
-		targetSheet, err := s.sheetOf(ctx, m.CampaignID, target)
+		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
@@ -682,6 +715,7 @@ func (s *Service) RollAttack(
 			// included): the master's answer shows it, a player's never does.
 			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
+			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
 		}
 		if asReaction {
 			after.ReactionUsed = true
@@ -720,6 +754,7 @@ func (s *Service) RollAttack(
 				return nil, fmt.Errorf("answer the opportunity offer: %w", err)
 			}
 			made.OfferID = offer.ID
+			made.Col, made.Row = offer.LeftCol, offer.LeftRow // where the mover was when it was attacked
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
@@ -730,13 +765,16 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, s.dbError(ctx, "roll an attack", err)
 	}
+	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the attack", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 	})
 	if err != nil {
 		return nil, err
@@ -748,8 +786,9 @@ func (s *Service) RollAttack(
 	roll := &playv1.AttackRoll{
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
-		Cover: coverDegreeProto(ev.Cover), CoverSource: coverSourceProto(ev.CoverSource),
 	}
+	coverKey, coverSource := ev.coverFor(v)
+	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {
 		roll.TargetArmorClass = ptr(ev.TargetAC) // "Acertou contra CA 18": never a player's
 	}
@@ -765,6 +804,9 @@ func faceList(ev actionEvent) []int32 { return []int32{ev.D20} }
 // retry the closure never ran for, the one stored the first time.
 func resultEvent(res combatResult, made actionEvent) (actionEvent, error) {
 	if !res.repeated {
+		if res.stamped != nil {
+			return *res.stamped, nil // with who could see it (combat_fog.go)
+		}
 		return made, nil
 	}
 	return readEvent(res.payload)
@@ -852,6 +894,7 @@ func (s *Service) RollDamage(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		attacker, err := findCombatant(cs, deref(p.AttackerID), v)
 		if err != nil {
 			return nil, err
@@ -961,14 +1004,17 @@ func (s *Service) RollDamage(
 	if err != nil {
 		return nil, s.dbError(ctx, "roll damage", err)
 	}
+	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the damage", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishReturned(m.CampaignID, d, ev)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishReturned(ctx, m.CampaignID, d, ev)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
@@ -1045,6 +1091,19 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 	if err != nil {
 		return hit, nil, err
 	}
+	if w := now.GetWildShape(); w != nil {
+		// In a beast form the healing is the beast's (MR-037).
+		r := combat.ApplyHeal(int(w.GetHitPointsCurrent()), int(w.GetHitPointsMax()), int(amount))
+		hp := clamp32(r.HP, 0, math.MaxInt32)
+		before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{WildShapeHitPointsCurrent: &hp})
+		if err != nil {
+			return hit, nil, err
+		}
+		hit.DeathBefore = deathOf(target)
+		hit.Before, hit.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+		hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
+		return hit, after, nil
+	}
 	r := combat.ApplyHeal(int(now.GetHitPointsCurrent()), int(now.GetHitPointsMax()), int(amount))
 	hp := clamp32(r.HP, 0, math.MaxInt32)
 	before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp})
@@ -1052,8 +1111,8 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 		return hit, nil, err
 	}
 	hit.DeathBefore = deathOf(target)
-	hit.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-	hit.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+	hit.Before = ptr(hpStateOf(before))
+	hit.After = ptr(hpStateOf(after))
 	hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
 	return hit, after, nil
 }
@@ -1183,8 +1242,26 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
-			made.Before = &hpState{HP: now.GetHitPointsCurrent(), Temp: now.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(now))
 			made.After = made.Before
+		} else if now.GetWildShape() != nil {
+			// A druid in a beast form: the beast takes it, and what is left over when
+			// the beast falls goes to the druid (MR-037, SRD).
+			before, after, err := s.damageBeast(ctx, c, target, now, amount, &made)
+			if err != nil {
+				return nil, err
+			}
+			vitals = after
+			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+			made.ConcentrationDC = concentrationDC(target, amount)
+			made.DeathBefore = deathOf(target)
+			// The 0 hit points rule, as below: the damage that carried over dropped
+			// the druid to 0 on an opportunity attack.
+			if made.Before.HP > 0 && made.After.HP == 0 {
+				if made.ReturnedFrom, made.ReturnBlocked, err = s.returnToReach(ctx, c, p.ID, target); err != nil {
+					return nil, err
+				}
+			}
 		} else {
 			// RN-02: the damage goes through the character's vitals, temporary hit
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
@@ -1196,8 +1273,8 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			vitals = after
-			made.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-			made.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(before))
+			made.After = ptr(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
 			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
 			// The 0 hit points rule: an opportunity attack that drops its mover to 0
@@ -1224,10 +1301,10 @@ func (s *Service) ApplyPendingDamage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the applied damage", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishReturned(m.CampaignID, d, ev)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishReturned(ctx, m.CampaignID, d, ev)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {
@@ -1334,9 +1411,9 @@ func (s *Service) DiscardPendingDamage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the discarded damage", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 	})
 	if err != nil {
 		return nil, err
@@ -1426,6 +1503,7 @@ func (s *Service) TakeAction(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		who, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -1433,9 +1511,13 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		opts, err := s.optionsOf(ctx, m.CampaignID, who)
+		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
+		}
+		if wildShapeFeature(actionKey) {
+			// It needs the beast: AssumeWildShape takes it (MR-037).
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()
@@ -1513,7 +1595,7 @@ func (s *Service) TakeAction(
 		}
 
 		if feature {
-			sheet, err := s.sheetOf(ctx, m.CampaignID, who)
+			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
 				return nil, err
 			}
@@ -1553,9 +1635,9 @@ func (s *Service) TakeAction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the action", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {
@@ -1715,9 +1797,9 @@ func (s *Service) AdjustCombatantHitPoints(
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a combatant's hit points", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, false) // the master's correction: his line only
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false) // the master's correction: his line only
 	})
 	if err != nil {
 		return nil, err

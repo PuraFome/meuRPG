@@ -39,6 +39,25 @@ type hpState struct {
 	HP       int32 `json:"hp"`
 	Temp     int32 `json:"temp,omitempty"`
 	Defeated bool  `json:"defeated,omitempty"`
+	// Shape is the Wild Shape form the druid was in at that moment (nil: its own
+	// shape): the beast's pool is a number an undo puts back, like the hit points
+	// (MR-037). HP and Temp are the character's own, which wait while the form lasts.
+	Shape *shapeState `json:"shape,omitempty"`
+}
+
+// shapeState is a druid's beast form and the beast's hit points.
+type shapeState struct {
+	Beast string `json:"beast"`
+	HP    int32  `json:"hp"`
+}
+
+// hpStateOf is a player's character's hit points, and its form, in its vitals.
+func hpStateOf(v *playv1.CharacterVitals) hpState {
+	out := hpState{HP: v.GetHitPointsCurrent(), Temp: v.GetHitPointsTemporary()}
+	if w := v.GetWildShape(); w != nil {
+		out.Shape = &shapeState{Beast: w.GetBeastKey(), HP: w.GetHitPointsCurrent()}
+	}
+	return out
 }
 
 // slotRef is the spell slot a spell spent: its level, and whether it was a
@@ -94,6 +113,10 @@ type castHit struct {
 	CoverSource string `json:"cover_source,omitempty"`
 	CoverBonus  int32  `json:"cover_bonus,omitempty"`
 	TargetAC    int32  `json:"target_ac,omitempty"`
+	// On a map with the fog of war, a cover the map gave is told to a player only if
+	// they knew its squares and saw its creatures: see actionEvent.CoverRestricted.
+	CoverRestricted bool     `json:"cover_restricted,omitempty"`
+	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -148,6 +171,13 @@ type actionEvent struct {
 	// never get its line of the log, even after the master reveals the
 	// combatant (RN-10, RN-20).
 	Secret bool `json:"secret,omitempty"`
+	// Fogged says the event happened on a map with the fog of war on, with an NPC
+	// in it, and SeenBy lists the players (user IDs) who saw every NPC in it when it
+	// happened: the log gives the line to them and to nobody else, and never works it
+	// out again from what is seen later (MR-036, combat_fog.go). An event without
+	// Fogged follows the older rule alone.
+	Fogged bool     `json:"fogged,omitempty"`
+	SeenBy []string `json:"seen_by,omitempty"`
 	// Actor is who did it (attacker, mover, the one that took the action or
 	// whose hit points changed), Target who it was done to.
 	Actor  string `json:"combatant_id,omitempty"`
@@ -298,6 +328,11 @@ type actionEvent struct {
 	Cover       string `json:"cover,omitempty"`
 	CoverSource string `json:"cover_source,omitempty"`
 	CoverBonus  int32  `json:"cover_bonus,omitempty"`
+	// On a map with the fog of war, a cover the map gave is the master's and, among
+	// the players, the one of CoverSeenBy (user IDs) alone: the others knew neither the
+	// squares nor the creatures that made it, and read no cover (combat_fog.go).
+	CoverRestricted bool     `json:"cover_restricted,omitempty"`
+	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 
 	// An undo: the event it took back.
 	Undone     string `json:"undone_id,omitempty"`
@@ -318,6 +353,23 @@ type actionEvent struct {
 	Ritual         bool       `json:"ritual,omitempty"`
 	Reason         string     `json:"reason,omitempty"`
 
+	// Wild Shape and the familiar's eyes (MR-037, MR-036): the beast's key, the damage
+	// the beast's fall carried over to the character, the form before a change an
+	// undo puts back (ShapeBefore, with ShapeSet true even when it was the
+	// character's own shape), the creature the player looks through and "start" or
+	// "stop", the conditions the sight gave, and the combat the change was made in
+	// (empty outside one). IDs, keys and numbers only.
+	Beast       string      `json:"beast,omitempty"`
+	Carried     int32       `json:"carried_damage,omitempty"`
+	ShapeSet    bool        `json:"shape_set,omitempty"`
+	ShapeBefore *shapeState `json:"shape_before,omitempty"`
+	Creature    string      `json:"creature_id,omitempty"`
+	Sight       string      `json:"sight,omitempty"`
+	SightConds  []string    `json:"sight_conditions,omitempty"`
+	EncounterID string      `json:"encounter_id,omitempty"`
+	// Spent says the change spent the combatant's action or bonus action (the
+	// economy fields above are then what an undo puts back).
+	Spent bool `json:"spent,omitempty"`
 	// A trap that fired (`trap_triggered`, MR-035): what it did and what an undo
 	// puts back. A search (`trap_searched`) keeps its roll in the same fields as an
 	// attack (D20, Modifier, Total, Physical), Key the skill ("perception" or
@@ -379,11 +431,23 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 // publishLogChanged tells the streams to read the combat log again: the
 // master's always, the players' only when the change touches a line they may
 // see.
-func (s *Service) publishLogChanged(campaignID, encounterID string, players bool) {
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Master: true, Players: players},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-			CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
-		}},
-	})
+//
+// On a map with the fog of war, a line that was stamped with who could see it goes
+// only to those players (actionEvent.SeenBy), so a player does not even hear that
+// something happened out of their sight.
+func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID string, players bool) {
+	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
+	}}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	if !players {
+		return
+	}
+	if memo := fogMemoOf(ctx); memo != nil && memo.stamped != nil && memo.stamped.Fogged {
+		for _, u := range memo.stamped.SeenBy {
+			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+		}
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
 }

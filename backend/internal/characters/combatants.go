@@ -8,7 +8,6 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
-	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -31,7 +30,7 @@ func (s *Service) CombatParty(ctx context.Context, campaignID string) ([]link.Ch
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet)
+		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party", err)
 		}
@@ -83,7 +82,7 @@ func (s *Service) CombatCharacters(ctx context.Context, campaignID string, ids [
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet)
+		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the characters of a combat", err)
 		}
@@ -94,8 +93,9 @@ func (s *Service) CombatCharacters(ctx context.Context, campaignID string, ids [
 
 // combatCharacter reads the numbers a combatant starts with from a stored
 // sheet: derived by the rules for a full sheet (a player, an enemy, a boss),
-// as written for a basic one (a minion, a story NPC).
-func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, doc []byte) (link.Character, error) {
+// as written for a basic one (a minion, a story NPC). A druid in Wild Shape
+// (beast) starts, and keeps, with the beast's speed, size and jumps (MR-037).
+func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, doc []byte, beast *string) (link.Character, error) {
 	sheet, err := loadSheet(id, doc)
 	if err != nil {
 		return link.Character{}, err
@@ -103,9 +103,12 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 	c := link.Character{ID: id, Name: name, Player: kind == "player", PlayerUserID: deref(playerUserID)}
 	switch {
 	case sheet.GetFull() != nil:
-		d := rules.Derive(buildOf(sheet.GetFull()), s.rules)
+		d := s.derive(sheet.GetFull(), beast)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
 		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, s.raceSize(sheet.GetFull().GetRaceKey())
+		if beast != nil && *beast != "" {
+			c.Size = s.beastSize(*beast)
+		}
 		jumps := combat.JumpLimits(d)
 		c.JumpLongDFt, c.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
 		if !c.Player {

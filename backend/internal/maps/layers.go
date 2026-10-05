@@ -381,7 +381,7 @@ func (s *Service) refuseWhileCombat(ctx context.Context, tx pgx.Tx, campaignID, 
 	}
 	if running {
 		return errMapBlocked(mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_COMBAT_RUNNING,
-			"a combat is running on this map: its grid and image cannot change")
+			"a combat is running on this map: it cannot be changed or deleted")
 	}
 	return nil
 }

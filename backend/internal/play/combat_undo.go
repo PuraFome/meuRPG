@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // The master's "Desfazer" (MR-012, MR-014): one step back, a compensating
@@ -26,7 +27,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
-	eventCombatantMoved, eventTrapTriggered,
+	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -67,6 +68,19 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if trapOutsideTheChain(e, encounterID) {
 			continue
 		}
+		// A form that ended because the beast fell, and a sight that ended at a turn
+		// start or by the player's hand, are no action to undo: the first is part of the
+		// damage that did it (written before it), the others change nothing an undo
+		// can put back.
+		if e.Kind == eventWildShapeEnded || e.Kind == eventFamiliarSight {
+			ev, err := readEvent(e.Payload)
+			if err == nil && e.Kind == eventWildShapeEnded && endsBySelf(ev.Reason) {
+				continue
+			}
+			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
 			// nowhere: there is nothing to put back.
@@ -106,9 +120,12 @@ func (s *Service) UndoLastAction(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters' vitals put back, if any
+	var undoneMove *actionEvent          // the move that was taken back, for the fog
+	var snapBack *grid.Square            // where a mover stood before the undo of the 0 hit points rule put it back
+	var snapped string                   // and who it is
 	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, rearmed = nil, nil
+		vitals, undoneMove, snapBack, snapped, rearmed = nil, nil, nil, "", nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -127,8 +144,21 @@ func (s *Service) UndoLastAction(
 		if err != nil {
 			return nil, err
 		}
+		if ev.ReturnedFrom != nil { // the undo of a damage that took the mover back to where it left the reach
+			cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+			if err != nil {
+				return nil, fmt.Errorf("list the combatants: %w", err)
+			}
+			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Target }); i >= 0 && placed(cs[i]) {
+				sq := squareOfCombatant(cs[i])
+				snapBack, snapped = &sq, ev.Target
+			}
+		}
 		if vitals, err = s.takeBack(ctx, c, last.Kind, ev); err != nil {
 			return nil, err
+		}
+		if last.Kind == eventCombatantMoved {
+			undoneMove = &ev
 		}
 		if last.Kind == eventTrapTriggered {
 			rearmed = ev.Trap
@@ -146,9 +176,19 @@ func (s *Service) UndoLastAction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the undone action", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+		if undoneMove != nil { // the combatant is back where it was: the fog follows it
+			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == undoneMove.Actor }); i >= 0 {
+				s.positionChanged(ctx, m.CampaignID, d.enc, d.cs[i], &grid.Square{Col: int(undoneMove.Col), Row: int(undoneMove.Row)})
+			}
+		}
+		if snapped != "" { // the mover is back where it was: the fog follows it
+			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == snapped }); i >= 0 {
+				s.positionChanged(ctx, m.CampaignID, d.enc, d.cs[i], snapBack)
+			}
+		}
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
@@ -232,7 +272,25 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		cur, temp := min(hp.HP, now.GetHitPointsMax()), min(hp.Temp, maxTempHitPoints)
 		_, after, err := s.vitalsOf(ctx, c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &cur, HitPointsTemporary: &temp})
-		return after, err
+		if err != nil {
+			return nil, err
+		}
+		// The Wild Shape form as it was (MR-037): the beast and its hit points, or the
+		// druid's own shape, with the combatant's numbers.
+		have, want := after.GetWildShape(), hp.Shape
+		if (have == nil) == (want == nil) && (want == nil || (have.GetBeastKey() == want.Beast && have.GetHitPointsCurrent() == want.HP)) {
+			return after, nil
+		}
+		beast, beastHP := "", int32(0)
+		if want != nil {
+			beast, beastHP = want.Beast, want.HP
+		}
+		restored, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, who.CharacterID, beast, beastHP)
+		if err != nil {
+			return nil, err
+		}
+		c.told = append(c.told, restored)
+		return restored, applyBody(ctx, c, who, body)
 	}
 	var vitals []*playv1.CharacterVitals
 	keep := func(v *playv1.CharacterVitals) {
@@ -545,6 +603,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
 				return nil, err
 			}
+		}
+	case eventWildShapeStarted, eventWildShapeEnded:
+		if err := s.shapeUndo(ctx, c, kind, ev, find, keep); err != nil {
+			return nil, err
+		}
+	case eventFamiliarSight:
+		if err := s.sightUndo(ctx, c, ev, find, keep); err != nil {
+			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)

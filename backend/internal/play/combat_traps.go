@@ -73,6 +73,11 @@ type trapCaughtEvent struct {
 	// Conditions are the keys the trap gave; in a combat CondBefore are the
 	// combatant's conditions before, which the undo puts back (CondSet).
 	Conditions []string `json:"conditions,omitempty"`
+	// On a map with the fog of war, Fogged says an NPC was caught and SeenBy lists the
+	// players (user IDs) who saw it then: the firing is public, the NPC's part of its
+	// line is theirs alone (combat_fog.go).
+	Fogged     bool     `json:"fogged,omitempty"`
+	SeenBy     []string `json:"seen_by,omitempty"`
 	CondSet    bool     `json:"cond_set,omitempty"`
 	CondBefore []string `json:"cond_before,omitempty"`
 }
@@ -116,13 +121,13 @@ func (s *Service) trapDice(e dice.Expr) (dice.Result, error) {
 
 // trapTargetsOf works out what the arithmetic needs of each combatant caught: its
 // armor class when the trap attacks, and its saving throw bonus when it asks one.
-func (s *Service) trapTargetsOf(ctx context.Context, campaignID string, effect *rulesv1.TrapEffect, caught []playdb.Combatant) ([]trapTarget, error) {
+func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID string, effect *rulesv1.TrapEffect, caught []playdb.Combatant) ([]trapTarget, error) {
 	ability := trapSaveAbility(effect)
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
 		if trapNeedsAC(effect) {
-			sheet, err := s.sheetOf(ctx, campaignID, c)
+			sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 			if err != nil {
 				return nil, err
 			}
@@ -159,7 +164,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 		ev.PrevState, ev.PrevTriggeredAt = prev.State, prev.TriggeredAt
 	}
 	effect := prev.Spec.GetEffect()
-	targets, err := s.trapTargetsOf(ctx, campaignID, effect, caught)
+	targets, err := s.trapTargetsOf(ctx, c.tx, campaignID, effect, caught)
 	if err != nil {
 		return nil, err
 	}
@@ -421,8 +426,8 @@ func (th *trapHook) after(ctx context.Context, campaignID string, enc playdb.Enc
 		return
 	}
 	th.s.traps.TrapChanged(ctx, campaignID, th.fired.MapID, th.fired.PointID)
-	th.s.publishEncounterChanged(campaignID, enc)
-	th.s.publishLogChanged(campaignID, enc.ID, true)
+	th.s.publishEncounterChanged(ctx, campaignID, enc)
+	th.s.publishLogChanged(ctx, campaignID, enc.ID, true)
 }
 
 // noticeAfterMove is the passive notice of a player's character or its creature

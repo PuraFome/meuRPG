@@ -212,6 +212,13 @@ func (s *Service) GetMap(
 		}
 		res.Tokens = append(res.Tokens, tokenToProto(t, c, v))
 	}
+	// The creatures' tokens come after the characters': party tokens, never kept
+	// from a player, fog or not (MR-037).
+	creatureTokens, err := s.creatureTokensOf(ctx, m.CampaignID, mapID, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "list a map's creature tokens", err)
+	}
+	res.Tokens = append(res.Tokens, creatureTokens...)
 	return connect.NewResponse(res), nil
 }
 
@@ -436,6 +443,11 @@ func (s *Service) DeleteMap(
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		if _, err := s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		// The map a combat that has not ended runs on cannot go: the fight stands on
+		// its layers, and the fog of war's filter on the combat's map link.
+		if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
 			return err
 		}
 		// A map holding a treasure that was found or turned into XP cannot go:
@@ -1163,6 +1175,16 @@ func (s *Service) PlaceMapToken(
 	if err := checkPosition(req.Msg.GetXBp(), req.Msg.GetYBp()); err != nil {
 		return nil, err
 	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		res, err := s.placeCreatureToken(ctx, m, req.Msg, mapID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(res), nil
+	}
 	character, err := s.livingCharacter(ctx, m.CampaignID, req.Msg.GetCharacterId())
 	if err != nil {
 		return nil, err
@@ -1286,6 +1308,15 @@ func (s *Service) RemoveMapToken(
 	mapID, ok := parseID(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
+	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		if err := s.removeCreatureToken(ctx, m, mapID, req.Msg.GetCreatureId()); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&mapsv1.RemoveMapTokenResponse{}), nil
 	}
 	characterID, ok := parseID(req.Msg.GetCharacterId())
 	if !ok {

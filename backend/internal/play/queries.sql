@@ -56,7 +56,7 @@ ORDER BY started_at DESC, id;
 
 -- name: GetSessionEventByIdempotencyKey :one
 -- The event a change with this key already wrote, if any.
-SELECT id, seq, kind, character_id, payload, created_at FROM session_events
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2;
 
 -- name: NextSessionEventSeq :one
@@ -247,6 +247,24 @@ WHERE id = $1;
 -- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1;
+
+-- name: SetCombatantBody :exec
+-- A character's numbers as a combatant change with its Wild Shape form (MR-037):
+-- the beast's speed, fly speed, size and jumps while it lasts, the character's own
+-- again when it ends.
+UPDATE combatants
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+WHERE id = $1;
+
+-- name: SetCombatantBodyOfCharacter :exec
+-- SetCombatantBody for a player's character, found by the character, in the session's
+-- combat that is not ended: the form ended where only the vitals were at hand (the
+-- druid fell to 0 hit points).
+UPDATE combatants
+SET speed_ft = sqlc.arg(speed_ft), speed_fly_ft = sqlc.arg(speed_fly_ft), size = sqlc.arg(size),
+    jump_long_dft = sqlc.arg(jump_long_dft), jump_high_dft = sqlc.arg(jump_high_dft)
+WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
+  AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = sqlc.arg(game_session_id) AND e.status <> 'ended');
 
 -- name: SetCombatantHitPoints :exec
 -- An NPC's hit points, temporary hit points and defeated flag (damage, healing,

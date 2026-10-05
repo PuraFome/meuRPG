@@ -310,3 +310,31 @@ func TestCompileRefusesBadScenesAndClampsLights(t *testing.T) {
 		t.Error("a clamped light still lights the map")
 	}
 }
+
+// TestCanSeeMatchesSee: the one-square question gives, for every square of the cave
+// and every viewer of the drawings, what the whole view says: seen (in grey or
+// better), and a wall never a creature's place.
+func TestCanSeeMatchesSee(t *testing.T) {
+	t.Parallel()
+	torch := compile(t, caveScene(vision.Source{At: toren, BrightFt: 20, DimFt: 20}))
+	for _, v := range []vision.Viewer{
+		{At: pensantus, Senses: darkvision},
+		{At: toren},
+		{At: brisa},
+		{At: salvia, Senses: vision.Senses{BlindsightFt: 30}},
+		{At: toren, Senses: vision.Senses{TruesightFt: 60}},
+	} {
+		view := torch.See(v)
+		for row := 0; row < caveGrid.Rows; row++ {
+			for col := 0; col < caveGrid.Columns; col++ {
+				sq := grid.Square{Col: col, Row: row}
+				if want := view.At(sq) >= vision.SeenGrey; torch.CanSee(v, sq) != want {
+					t.Fatalf("viewer %v, square %v: CanSee = %v, See = %v", v.At, sq, !want, view.At(sq))
+				}
+			}
+		}
+	}
+	if torch.CanSee(vision.Viewer{At: grid.Square{Col: -1, Row: 0}}, toren) || torch.CanSee(vision.Viewer{At: toren}, grid.Square{Col: 99, Row: 0}) {
+		t.Errorf("a square outside the grid sees or is seen")
+	}
+}
