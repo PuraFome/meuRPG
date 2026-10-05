@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -23,8 +25,8 @@ import (
 // CombatParty returns the campaign's living, active player characters,
 // oldest first: the party that fights by default. Not NPCs, not the dead,
 // not a character waiting for approval.
-func (s *Service) CombatParty(ctx context.Context, campaignID string) ([]link.Character, error) {
-	rows, err := s.queries.ListCombatParty(ctx, campaignID)
+func (s *Service) CombatParty(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Character, error) {
+	rows, err := s.queriesIn(tx).ListCombatParty(ctx, campaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party", err)
 	}
@@ -42,7 +44,7 @@ func (s *Service) CombatParty(ctx context.Context, campaignID string) ([]link.Ch
 // SessionCharacters returns those of ids that are characters of the campaign,
 // whatever their status (a dead one included), with their name and player
 // only. It implements play.CombatRoster.
-func (s *Service) SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error) {
+func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id, ok := parseUUID(id); ok {
@@ -52,7 +54,7 @@ func (s *Service) SessionCharacters(ctx context.Context, campaignID string, ids 
 	if len(valid) == 0 {
 		return nil, nil
 	}
-	rows, err := s.queries.ListSessionCharacters(ctx, charactersdb.ListSessionCharactersParams{CampaignID: campaignID, Ids: valid})
+	rows, err := s.queriesIn(tx).ListSessionCharacters(ctx, charactersdb.ListSessionCharactersParams{CampaignID: campaignID, Ids: valid})
 	if err != nil {
 		return nil, s.dbError(ctx, "list the characters of a session", err)
 	}
@@ -66,7 +68,7 @@ func (s *Service) SessionCharacters(ctx context.Context, campaignID string, ids 
 // CombatCharacters returns those of ids that may fight in a combat of the
 // campaign: its living characters, players' or NPCs, oldest first. IDs that
 // are not UUIDs, or name any other character, are left out.
-func (s *Service) CombatCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error) {
+func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id, ok := parseUUID(id); ok {
@@ -76,7 +78,7 @@ func (s *Service) CombatCharacters(ctx context.Context, campaignID string, ids [
 	if len(valid) == 0 {
 		return nil, nil
 	}
-	rows, err := s.queries.ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: valid})
+	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: valid})
 	if err != nil {
 		return nil, s.dbError(ctx, "list the characters of a combat", err)
 	}

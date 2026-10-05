@@ -48,7 +48,7 @@ func (s *Service) GetSummonOptions(
 		return nil, invalidArgument(fieldErr("character_id", "is an NPC: only a player's character has creatures"))
 	}
 	out := &charactersv1.GetSummonOptionsResponse{}
-	b, err := s.summonCharacter(ctx, m.CampaignID, id)
+	b, err := s.summonCharacter(ctx, nil, m.CampaignID, id)
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return connect.NewResponse(out), nil // no full sheet (or a dead character): nothing to cast

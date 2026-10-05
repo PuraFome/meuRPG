@@ -98,5 +98,6 @@ describe('NotesPanel (the character sheet)', () => {
     const { el, flat, button } = await setup(many);
     expect(flat(el.querySelector('.np__limit'))).toBe('Limite de 300 anotações. Apague uma para escrever outra.');
     expect(button('Nova anotação').getAttribute('aria-describedby')).toBe('np-limit');
-  });
+    // 300 rows render in about half a second alone, but past the 5 s default while the whole suite runs in parallel on a busy machine.
+  }, 20_000);
 });

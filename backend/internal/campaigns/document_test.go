@@ -25,6 +25,7 @@ import (
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Tests of the campaign document (MR-018, document.go). The ones that use
@@ -329,6 +330,7 @@ func TestSavingTheSameDocumentTwiceIsNotAConflict(t *testing.T) {
 // aborted, and the stored document is the winner's.
 func TestUpdateCampaignDocumentFirstSavesRace(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 12) // the racers must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	id := master.createCampaign(t, "Mirathel").GetId()

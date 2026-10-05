@@ -51,7 +51,7 @@ func (s *Service) readerOf(ctx context.Context, m authz.Membership, asCharacterI
 	if !ok {
 		return viewer{}, errCharacterNotFound()
 	}
-	party, err := s.characters.PartyVision(ctx, m.CampaignID)
+	party, err := s.characters.PartyVision(ctx, nil, m.CampaignID)
 	if err != nil {
 		return viewer{}, s.dbError(ctx, "read the party", err)
 	}

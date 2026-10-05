@@ -22,6 +22,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The live session (Etapa 5): the notice (RN-06), the vitals and the
@@ -429,6 +430,7 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 // counts from 1.
 func TestSessionEventsAreOrderedPerSession(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 12) // the racers must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	players := []*user{h.newUser("Ana"), h.newUser("Bruno"), h.newUser("Carla")}

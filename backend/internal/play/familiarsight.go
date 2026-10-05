@@ -97,14 +97,14 @@ func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.
 	if mapID == "" {
 		return me, it, false, nil
 	}
-	g, err := s.maps.MapGrid(ctx, c.session.CampaignID, mapID)
+	g, err := s.maps.MapGrid(ctx, c.tx, c.session.CampaignID, mapID)
 	if connect.CodeOf(err) == connect.CodeNotFound || (err == nil && !g.OK()) {
 		return me, it, false, nil // a map that is gone, or has no grid, has no distances
 	}
 	if err != nil {
 		return me, it, false, err
 	}
-	tokens, err := s.maps.MapTokens(ctx, mapID)
+	tokens, err := s.maps.MapTokens(ctx, c.tx, mapID)
 	if err != nil {
 		return me, it, false, err
 	}

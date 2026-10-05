@@ -31,7 +31,7 @@ import (
 type TerrainSource interface {
 	// Terrain returns the map's grid and layers, or a `not_found` Connect error
 	// when mapID is not a map of the campaign.
-	Terrain(ctx context.Context, campaignID, mapID string) (grid.Terrain, error)
+	Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error)
 }
 
 // SetTerrain connects the source of the maps' layers. play and maps need each
@@ -42,12 +42,12 @@ func (s *Service) SetTerrain(t TerrainSource) { s.terrain = t }
 // into the encounter when it started: layers sized for another grid (the map's
 // grid changed meanwhile, which clears them and is refused while a combat runs)
 // are not used, and a map the master deleted is open floor.
-func (s *Service) terrainOf(ctx context.Context, campaignID string, enc playdb.Encounter) (grid.Terrain, error) {
+func (s *Service) terrainOf(ctx context.Context, tx pgx.Tx, campaignID string, enc playdb.Encounter) (grid.Terrain, error) {
 	open := grid.Terrain{Grid: grid.Grid{Columns: int(enc.GridColumns), Rows: int(enc.GridRows)}}
 	if s.terrain == nil || enc.MapID == nil {
 		return open, nil
 	}
-	t, err := s.terrain.Terrain(ctx, campaignID, *enc.MapID)
+	t, err := s.terrain.Terrain(ctx, tx, campaignID, *enc.MapID)
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return open, nil //nolint:nilerr // a map the master deleted is open floor, not a failure
@@ -266,7 +266,7 @@ func (s *Service) MoveCombatant(
 		if jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED && !placed(target) {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "a jump starts from a square of the map")
 		}
-		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
+		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
 		}
@@ -283,7 +283,9 @@ func (s *Service) MoveCombatant(
 			}
 		}
 
-		th = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target)
+		if th, err = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target); err != nil {
+			return nil, err
+		}
 		from := moveStateOf(target)
 		made = actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: onTurn, From: from}
 		offered, markCleared = nil, false
@@ -305,7 +307,7 @@ func (s *Service) MoveCombatant(
 			// what it was (D1): the answer only says it was cut short.
 			occ := occupantsFor(cs, target, v)
 			all := occupantsFor(cs, target, combatViewer{master: true})
-			known, err := c.sight.knownTerrain(ctx, v) // read before the transaction (sightForWrite)
+			known, err := c.sight.knownTerrain(ctx, c.tx, v) // the mover's is cached by sightForWrite; any other is read in this transaction
 			if err != nil {
 				return nil, err
 			}
@@ -571,14 +573,14 @@ func (s *Service) GetMoveOptions(
 	if !placed(who) {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatant is not on the map yet")
 	}
-	terrain, err := s.terrainOf(ctx, m.CampaignID, enc)
+	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
 	// A player's reach is worked out on what they know: the squares they do not see
 	// are floor, so the reach may offer one that is really a wall, and the move is
 	// then cut short (D1). No refusal names a wall or a creature they do not see.
-	known, err := sight.knownTerrain(ctx, v)
+	known, err := sight.knownTerrain(ctx, nil, v)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}

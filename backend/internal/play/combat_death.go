@@ -125,7 +125,7 @@ func (s *Service) RollDeathSave(
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_NOT_DUE, "there is no death save to roll now")
 		}
 		if !v.master {
-			if err := s.mustRollThisWay(ctx, m, in); err != nil {
+			if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 				return nil, err
 			}
 		}

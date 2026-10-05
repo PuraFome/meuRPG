@@ -97,6 +97,7 @@ func TestPostgresStoreUpsertUser(t *testing.T) {
 // users row may be left behind.
 func TestPostgresStoreUpsertUserRace(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 12) // the racers must overlap: one connection would run them one by one
 	pool := testPool(t)
 	store := NewPostgresStore(pool)
 	id := ExternalIdentity{Issuer: "https://idp.example", Subject: "race"}

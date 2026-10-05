@@ -155,7 +155,7 @@ func (s *Service) SearchForTraps(
 	if s.traps == nil {
 		return nil, errNoTraps()
 	}
-	who, has, err := s.myCharacter(ctx, m)
+	who, has, err := s.myCharacter(ctx, nil, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "find the caller's character", err)
 	}
@@ -189,14 +189,14 @@ func (s *Service) SearchForTraps(
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
-		force, err := s.dice.ForcedDice(ctx, m.CampaignID, m.UserID)
+		force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
 		if err != nil {
 			return err
 		}
 		if force.refuses(in.inApp) {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
 		}
-		options, err := s.roster.SceneOptions(ctx, m.CampaignID, who.ID, []string{searchCheckKey[skill]})
+		options, err := s.roster.SceneOptions(ctx, tx, m.CampaignID, who.ID, []string{searchCheckKey[skill]})
 		if err != nil {
 			return err
 		}
@@ -335,11 +335,11 @@ func (s *Service) searcherPlace(ctx context.Context, c *combatTx, who link.Chara
 		return searchPlace{}, notOnMap()
 	}
 	mapID := *c.session.CurrentMapID
-	g, err := s.maps.MapGrid(ctx, c.session.CampaignID, mapID)
+	g, err := s.maps.MapGrid(ctx, c.tx, c.session.CampaignID, mapID)
 	if err != nil {
 		return searchPlace{}, err
 	}
-	tokens, err := s.maps.MapTokens(ctx, mapID)
+	tokens, err := s.maps.MapTokens(ctx, c.tx, mapID)
 	if err != nil {
 		return searchPlace{}, err
 	}

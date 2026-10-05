@@ -83,14 +83,14 @@ func (c *combatSight) CanSee(from grid.Square, senses vision.Senses, to grid.Squ
 // and the cover of the squares they see now or remember, and plain floor
 // everywhere else (D1: the move is planned on what the player knows, and cut short
 // by what they do not).
-func (c *combatSight) KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error) {
+func (c *combatSight) KnownTerrain(ctx context.Context, tx pgx.Tx, userID string) (grid.Terrain, error) {
 	c.mu.Lock()
 	t, ok := c.known[userID]
 	c.mu.Unlock()
 	if ok {
 		return t, nil
 	}
-	memory, err := c.s.memoryOf(ctx, c.in, userID)
+	memory, err := c.s.memoryOf(ctx, tx, c.in, userID)
 	if err != nil {
 		return grid.Terrain{}, err
 	}
@@ -120,7 +120,7 @@ func (s *Service) CombatSight(ctx context.Context, campaignID, mapID string) (li
 	if err != nil {
 		return nil, fmt.Errorf("list the tokens: %w", err)
 	}
-	sg, err := s.newSight(ctx, in, points, tokens)
+	sg, err := s.newSight(ctx, nil, in, points, tokens)
 	if err != nil {
 		return nil, err
 	}

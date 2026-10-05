@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
@@ -102,6 +103,7 @@ func TestAcceptInviteRaceForTheLastUse(t *testing.T) {
 	for _, maxUses := range []int32{1, 3} {
 		t.Run(strings.Repeat("I", int(maxUses)), func(t *testing.T) {
 			t.Parallel()
+			dbtest.PoolSize(t, 14) // the racers must overlap: one connection would run them one by one
 			h := newHarness(t)
 			master := h.newUser("Mestre")
 			campaign := master.createCampaign(t, "Mirathel")

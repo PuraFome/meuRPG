@@ -107,7 +107,7 @@ type Treasures interface {
 // Campaigns tells how the campaign levels (the campaigns module implements it).
 type Campaigns interface {
 	// CampaignXPMode returns the campaign's XP mode (RN-09).
-	CampaignXPMode(ctx context.Context, campaignID string) (campaignsv1.XpMode, error)
+	CampaignXPMode(ctx context.Context, tx pgx.Tx, campaignID string) (campaignsv1.XpMode, error)
 }
 
 // Profiles tells what to call users. The identity module implements it.
@@ -235,4 +235,15 @@ func (s *Service) dbError(ctx context.Context, action string, err error) error {
 		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
 	}
 	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+}
+
+// queriesIn is the queries on the transaction, or on the pool when tx is nil. A
+// read made while the caller holds a transaction must use the transaction: a
+// read through the pool takes a second connection (see docs/arquitetura.md,
+// "Dentro de uma transação, nenhuma leitura pelo pool").
+func (s *Service) queriesIn(tx pgx.Tx) *progressiondb.Queries {
+	if tx == nil {
+		return s.queries
+	}
+	return s.queries.WithTx(tx)
 }

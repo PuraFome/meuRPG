@@ -134,7 +134,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 			out[i].armorClass = sheet.ArmorClass + int(c.AcBonus)
 		}
 		if ability != "" {
-			save, err := s.saveOf(ctx, campaignID, c, ability)
+			save, err := s.saveOf(ctx, tx, campaignID, c, ability)
 			if err != nil {
 				return nil, err
 			}
@@ -329,24 +329,25 @@ type trapHook struct {
 // newTrapHook reads the armed traps of the combat's map that this mover may fire:
 // a player's character or a creature of one, in a combat that is running. An NPC,
 // a combat that has not begun and a map with no traps give a hook that does
-// nothing. A failure to read them is logged: a move never fails for it.
-func (s *Service) newTrapHook(ctx context.Context, tx pgx.Tx, campaignID string, enc playdb.Encounter, mover playdb.Combatant) *trapHook {
+// nothing. A failure to read them is the move's failure: the read runs in the
+// move's transaction, where a failed statement aborts it, so swallowing the error
+// would turn a retryable conflict (40001) into a 25P02.
+func (s *Service) newTrapHook(ctx context.Context, tx pgx.Tx, campaignID string, enc playdb.Encounter, mover playdb.Combatant) (*trapHook, error) {
 	th := &trapHook{s: s, mover: mover}
 	if s.traps == nil || enc.MapID == nil || enc.Status != statusActive || mover.Kind == kindNPC || !placed(mover) {
-		return th
+		return th, nil
 	}
 	th.mapID, th.origin = *enc.MapID, squareOfCombatant(mover)
 	traps, err := s.traps.Traps(ctx, tx, campaignID, th.mapID) // inside the move's transaction: a trap disarmed or deleted meanwhile makes it retry, and is simply not there
 	if err != nil {
-		s.logger.ErrorContext(ctx, "play: cannot read the map's traps", "error", err)
-		return th
+		return nil, fmt.Errorf("read the map's traps: %w", err)
 	}
 	for _, t := range traps {
 		if t.Armed() && t.OnEnter && len(t.Squares) > 0 && !t.Covers(th.origin) {
 			th.traps = append(th.traps, t)
 		}
 	}
-	return th
+	return th, nil
 }
 
 // stops is the set of squares the move must stop at: the areas of the armed traps.

@@ -298,3 +298,15 @@ func (s *Service) DeletePendingMember(ctx context.Context, tx pgx.Tx, campaignID
 	}
 	return nil
 }
+
+// queriesIn is the queries on the transaction, or on the pool when tx is nil. A
+// read made while the caller holds a transaction must use the transaction: a
+// read through the pool takes a second connection, and a few such requests
+// at once hold every connection of the pool, each waiting for another (see
+// docs/arquitetura.md, "Dentro de uma transação, nenhuma leitura pelo pool").
+func (s *Service) queriesIn(tx pgx.Tx) *campaignsdb.Queries {
+	if tx == nil {
+		return s.queries
+	}
+	return s.queries.WithTx(tx)
+}

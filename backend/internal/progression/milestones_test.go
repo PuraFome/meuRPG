@@ -15,6 +15,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The acceptance criteria of MR-016's planned milestones (question 45): the
@@ -594,6 +595,7 @@ func TestMR016_AMilestoneWithHistoryIsNotRemoved(t *testing.T) {
 // with different keys, race: exactly one reaches it, the other is refused.
 func TestMR016_TwoMarksAtOnceReachItOnce(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	tb := newTable(t, milestones, 2)
 	ms := tb.master.plan(t, tb.campaign, "Chegar ao Vale Seco")
 	errs := make([]error, 2)
@@ -632,6 +634,7 @@ func TestMR016_TwoMarksAtOnceReachItOnce(t *testing.T) {
 // exactly 100 and the other is refused.
 func TestMR016_TwoAddsAtTheLimit(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	tb := newTable(t, milestones, 1)
 	for range maxMilestones - 1 {
 		tb.master.plan(t, tb.campaign, "Marco")

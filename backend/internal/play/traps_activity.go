@@ -122,7 +122,7 @@ func (s *Service) ListTrapActivity(
 	master := m.Role == authz.RoleMaster
 	owned := map[string]bool{}
 	if !master {
-		party, err := s.roster.CombatParty(ctx, m.CampaignID)
+		party, err := s.roster.CombatParty(ctx, nil, m.CampaignID)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the party", err)
 		}
@@ -166,7 +166,7 @@ func (s *Service) ListTrapActivity(
 	}
 	names := map[string]string{}
 	if len(characterIDs) > 0 {
-		chars, err := s.roster.SessionCharacters(ctx, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
+		chars, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
 		if err != nil {
 			return nil, s.dbError(ctx, "read the characters' names", err)
 		}
