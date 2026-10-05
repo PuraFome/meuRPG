@@ -22,14 +22,14 @@ describe('treasure text', () => {
   });
 
   it('writes the toast', () => {
-    expect(foundToastTitle(found('a'))).toBe('Brisa encontrou o Baú de moedas.');
-    expect(foundToastTitle(found('a', ['Brisa', 'Toren']))).toBe('Brisa e Toren encontraram o Baú de moedas.');
+    expect(foundToastTitle(found('a'))).toBe('Brisa encontrou: Baú de moedas');
+    expect(foundToastTitle(found('a', ['Brisa', 'Toren']))).toBe('Brisa e Toren encontraram: Baú de moedas');
   });
 
   it('says what goes into the summary without dividing', () => {
-    expect(summaryLine([], 250)).toContain('Ninguém marcado');
+    expect(summaryLine([], 250)).toBe('Ninguém marcado. Escolha quem encontrou.');
     expect(plain(summaryLine(['Brisa'], 250))).toBe('No resumo da sessão: Brisa · 250 PO');
-    expect(plain(summaryLine(['Brisa', 'Toren'], 250))).toContain('250 PO no total, divididos entre quem encontrou');
+    expect(plain(summaryLine(['Brisa', 'Toren'], 250))).toBe('No resumo da sessão: Brisa e Toren · 250 PO');
   });
 
   it('never calls a treasure found before the page arrived news', () => {

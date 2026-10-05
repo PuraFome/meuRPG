@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -7,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { type MapPoint, TrapState } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { EncounterStatus, type TrapFiring } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatState } from '../../../../core/combat/combat-state';
+import { focusWithRing } from '../../../../core/creatures/focus-ring';
 import { MapsClient } from '../../../../core/maps/maps-client';
 import type { MapState } from '../../../../core/maps/map-state';
 import type { CluePlayer } from '../../../../core/maps/scene-clues';
@@ -43,6 +45,7 @@ export class TrapPanel {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<MapState>();
@@ -116,6 +119,7 @@ export class TrapPanel {
   }
 
   protected reveal(p: MapPoint): void {
+    const opener = this.document.activeElement as HTMLElement | null;
     openTrapReveal(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       mapId: this.mapId(),
@@ -124,6 +128,7 @@ export class TrapPanel {
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((point) => {
+        focusWithRing(opener);
         if (point) {
           this.state().upsertPoint(point);
           this.announcement.set(`${point.name}: revelada.`);
@@ -145,15 +150,22 @@ export class TrapPanel {
 
   protected fire(p: MapPoint, extend = false): void {
     const firing = extend ? this.board().firingOf(p.id) : null;
+    const opener = this.document.activeElement as HTMLElement | null;
     openTrapFire(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       mapId: this.mapId(),
       point: p,
       targets: this.targetsFor(p),
       extendFiringId: firing?.id ?? '',
+      targetsFailed: this.encounter() === null && this.board().noticersFailed().has(p.id),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((done) => done && this.fired(p, done, extend));
+      .subscribe((done) => {
+        focusWithRing(opener);
+        if (done) {
+          this.fired(p, done, extend);
+        }
+      });
   }
 
   private fired(p: MapPoint, firing: TrapFiring, extend: boolean): void {

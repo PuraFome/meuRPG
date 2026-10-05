@@ -35,6 +35,7 @@ import { type FoundChoice, TreasureCard } from '../treasure-card/treasure-card';
             [error]="errors().get(p.id) ?? ''"
             (mark)="mark($event)"
             (unmark)="unmark($event)"
+            (reveal)="showTo($event.point, $event.revealed)"
           />
         }
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
@@ -87,6 +88,14 @@ export class TreasurePanel {
       this.state().upsertPoint(point);
       const names = finders(point);
       this.announcement.set(`${point.name} marcado como encontrado${names.length > 0 ? ` por ${listNames(names)}` : ''}. ${treasureSub(point)}.`);
+    });
+  }
+
+  protected async showTo(point: MapPoint, revealed: boolean): Promise<void> {
+    await this.run(point, revealed ? 'mostrar o tesouro' : 'esconder o tesouro', async () => {
+      const back = await this.api.setPointRevealed(this.campaignId(), this.state().map()?.id ?? '', point.id, revealed);
+      this.state().upsertPoint(back);
+      this.announcement.set(revealed ? `${back.name} aparece no mapa dos jogadores.` : `${back.name} saiu do mapa dos jogadores.`);
     });
   }
 

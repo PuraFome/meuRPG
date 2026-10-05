@@ -16,42 +16,69 @@
   color: var(--mr-ink-muted);
 }
 
+.tn__retry {
+  margin-inline-start: var(--mr-space-2);
+}
+
+// One row each: who and where on the left, the passive score, then the verdict; on a phone the row wraps into two lines.
 .tn {
-  width: 100%;
-  border-collapse: collapse;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: 15px;
   line-height: 20px;
+}
 
-  th,
-  td {
-    padding: 8px 8px 8px 0;
-    text-align: left;
-    vertical-align: top;
-  }
+.tn__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: 2px var(--mr-space-3);
+  padding: 8px 0;
+  border-top: 1px solid var(--mr-rule);
 
-  thead th {
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 17px;
-    color: var(--mr-ink-muted);
-  }
+  @media (max-width: 559.98px) {
+    grid-template-columns: minmax(0, 1fr) auto;
 
-  tbody tr {
-    border-top: 1px solid var(--mr-rule);
+    .tn__verdict {
+      grid-column: 1 / -1;
+    }
   }
 }
 
-.tn__name {
-  font-weight: 700;
+.tn__who,
+.tn__pass {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tn__pass {
+  @media (max-width: 559.98px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    text-align: right;
+  }
+}
+
+.tn__cap {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+
+  @media (max-width: 559.98px) {
+    display: none;
+  }
 }
 
 .tn__num {
-  display: block;
   font-size: 17px;
 }
 
+.tn__pen,
 .tn__sub {
-  display: block;
   font-size: 13px;
   line-height: 17px;
   color: var(--mr-ink-muted);
@@ -64,6 +91,7 @@
   font-weight: 700;
 
   .mat-icon {
+    flex: none;
     width: 16px;
     height: 16px;
     font-size: 16px;
@@ -71,41 +99,5 @@
 
   &--yes {
     color: var(--mr-success-ink);
-  }
-}
-
-// On a phone each character is a block: the name, then each number under its label.
-@media (max-width: 559.98px) {
-  .tn thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .tn,
-  .tn tbody,
-  .tn tr,
-  .tn th,
-  .tn td {
-    display: block;
-  }
-
-  .tn tr {
-    padding: 8px 0;
-  }
-
-  .tn th,
-  .tn td {
-    padding: 2px 0;
-  }
-
-  .tn td::before {
-    display: block;
-    font-size: 13px;
-    line-height: 17px;
-    color: var(--mr-ink-muted);
-    content: attr(data-label);
   }
 }

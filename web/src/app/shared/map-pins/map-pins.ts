@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { type MapPoint, MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type PinArea, trapArea } from '../../core/traps/trap-area';
+import { ChestIcon } from '../chest-icon/chest-icon';
 import { bpToPercent } from '../map-view/map-geometry';
 
 interface Pin {
@@ -37,34 +38,43 @@ interface Pin {
  */
 @Component({
   selector: 'app-map-pins',
-  imports: [MatIconModule],
+  imports: [ChestIcon, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (p of pins(); track p.id) {
-      @if (p.area; as a) {
+      @if (p.kind === 'trap') {
+        <!-- One drawing in every state (MAP-LANGUAGE.md): a red dashed border around the area and the warning glyph, smaller than the
+             square; what only the master sees adds the crossed eye, at the corner and never on the glyph. -->
         <span
           class="area"
-          [class]="'area area--' + p.state"
           [class.pin--remembered]="p.remembered"
-          [style.left.%]="a.left"
-          [style.top.%]="a.top"
-          [style.width.%]="a.width"
-          [style.height.%]="a.height"
-        ></span>
+          [style.left.%]="p.area?.left ?? p.x"
+          [style.top.%]="p.area?.top ?? p.y"
+          [style.width.%]="p.area?.width ?? 0"
+          [style.height.%]="p.area?.height ?? 0"
+          [class.area--none]="!p.area"
+        >
+          <mat-icon class="area__glyph">warning</mat-icon>
+          @if (p.secret) {
+            <span class="area__eye"><mat-icon>visibility_off</mat-icon></span>
+          }
+        </span>
+      } @else {
+        <span
+          class="pin"
+          [class]="'pin pin--' + p.kind + ' pin--' + p.state"
+          [class.pin--remembered]="p.remembered"
+          [style.left.%]="p.x"
+          [style.top.%]="p.y"
+          [style.--n]="p.n"
+        >
+          @if (p.kind === 'treasure') {
+            <app-chest-icon class="pin__icon" />
+          } @else {
+            <mat-icon class="pin__icon">{{ p.icon }}</mat-icon>
+          }
+        </span>
       }
-      <span
-        class="pin"
-        [class]="'pin pin--' + p.kind + ' pin--' + p.state"
-        [class.pin--remembered]="p.remembered"
-        [style.left.%]="p.x"
-        [style.top.%]="p.y"
-        [style.--n]="p.n"
-      >
-        <mat-icon class="pin__icon">{{ p.icon }}</mat-icon>
-        @if (p.secret) {
-          <span class="pin__eye"><mat-icon>visibility_off</mat-icon></span>
-        }
-      </span>
     }
   `,
   styleUrl: './map-pins.scss',
@@ -91,7 +101,7 @@ export class MapPins {
           const state = p.trap?.state === TrapState.TRIGGERED ? 'fired' : p.trap?.state === TrapState.DISARMED ? 'disarmed' : 'armed';
           const area = trapArea(p.xBp, p.yBp, p.trap?.areaSize ?? 1, this.columns(), this.rows());
           const secret = this.isMaster() && state === 'armed' && !p.revealed && p.trapRevealedTo.length === 0;
-          out.push({ ...base, kind: 'trap', state, area, secret, icon: state === 'disarmed' ? 'check' : 'warning' });
+          out.push({ ...base, kind: 'trap', state, area, secret, icon: 'warning' });
           break;
         }
         case MapPointKind.TREASURE:

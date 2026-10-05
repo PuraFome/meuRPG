@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { MapPoint } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { foundLine, summaryLine, treasureSub } from '../../../../core/traps/treasure-text';
+import { focusWithRing } from '../../../../core/creatures/focus-ring';
+import { ChestIcon } from '../../../../shared/chest-icon/chest-icon';
 import { PairFoot } from '../../../../shared/pair-foot/pair-foot';
 import { type PickRow, PersonPick } from '../../../../shared/person-pick/person-pick';
 
@@ -27,7 +29,7 @@ export interface FoundChoice {
  */
 @Component({
   selector: 'app-treasure-card',
-  imports: [MatButtonModule, MatIconModule, PairFoot, PersonPick],
+  imports: [ChestIcon, MatButtonModule, MatIconModule, PairFoot, PersonPick],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './treasure-card.html',
   styleUrl: './treasure-card.scss',
@@ -43,6 +45,8 @@ export class TreasureCard {
 
   readonly mark = output<FoundChoice>();
   readonly unmark = output<MapPoint>();
+  /** "Mostrar aos jogadores" or "Esconder dos jogadores": the point's reveal toggle, which the session's list of points no longer holds for a treasure. */
+  readonly reveal = output<{ point: MapPoint; revealed: boolean }>();
 
   protected readonly mode = signal<'view' | 'marking' | 'unmarking'>('view');
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
@@ -66,7 +70,7 @@ export class TreasureCard {
       () => {
         const form = this.form()?.nativeElement;
         form?.scrollIntoView({ block: 'nearest' });
-        form?.querySelector<HTMLInputElement>('input[type=checkbox]:not(:disabled)')?.focus({ preventScroll: true });
+        focusWithRing(form?.querySelector<HTMLInputElement>('input[type=checkbox]:not(:disabled)'));
       },
       { injector: this.injector },
     );
@@ -74,7 +78,7 @@ export class TreasureCard {
 
   protected cancelMarking(): void {
     this.mode.set('view');
-    afterNextRender(() => this.opener()?.nativeElement.focus(), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
   }
 
   protected confirmMarking(): void {
@@ -88,7 +92,7 @@ export class TreasureCard {
     afterNextRender(
       () => {
         this.ask()?.nativeElement.scrollIntoView({ block: 'nearest' });
-        this.ask()?.nativeElement.querySelector<HTMLButtonElement>('[data-initial-focus]')?.focus({ preventScroll: true });
+        focusWithRing(this.ask()?.nativeElement.querySelector<HTMLButtonElement>('[data-initial-focus]'));
       },
       { injector: this.injector },
     );
@@ -96,7 +100,7 @@ export class TreasureCard {
 
   protected cancelUnmark(): void {
     this.mode.set('view');
-    afterNextRender(() => this.undo()?.nativeElement.focus(), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.undo()?.nativeElement), { injector: this.injector });
   }
 
   constructor() {

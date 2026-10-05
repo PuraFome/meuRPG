@@ -2748,14 +2748,15 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await chest.locator('label', { hasText: 'Pensantus' }).click();
     await chest.getByRole('button', { name: 'Marcar como encontrado' }).click();
     await expect(chest).toContainText('Encontrado por Pensantus');
+    // The toast goes away on its own: scan the player's screen before the master's.
+    await expect(p.getByRole('status').filter({ hasText: 'Pensantus encontrou: Baú de moedas' })).toBeVisible();
+    await expectScreenPasses(p, `Aviso do tesouro achado, jogador ${where}`);
     await expectScreenPasses(m, `Tesouro achado ${where}`);
     await chest.getByRole('button', { name: 'Desmarcar' }).click();
     await expectScreenPasses(m, `Desmarcar no lugar ${where}`);
     await chest.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
 
     // The player: the toast, the row and sheet of the treasure, and the search in each step.
-    await expect(p.getByRole('status').filter({ hasText: 'Pensantus encontrou o Baú de moedas.' })).toBeVisible();
-    await expectScreenPasses(p, `Aviso do tesouro achado, jogador ${where}`);
     await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
     await expect(p.getByRole('dialog', { name: 'Baú de moedas' })).toBeVisible();
     await expectScreenPasses(p, `Folha do tesouro, jogador ${where}`);

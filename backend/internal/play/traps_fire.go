@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"uuid"
 
 	"connectrpc.com/connect"
@@ -221,6 +222,10 @@ func (s *Service) characterLabels(ctx context.Context, campaignID string, fired 
 	if len(ids) == 0 {
 		return out, nil
 	}
+	named, err := s.creatureLabels(ctx, campaignID, fired.Caught)
+	if err != nil {
+		return nil, err
+	}
 	chars, err := s.roster.SessionCharacters(ctx, campaignID, ids)
 	if err != nil {
 		return nil, err
@@ -228,35 +233,85 @@ func (s *Service) characterLabels(ctx context.Context, campaignID string, fired 
 	for _, c := range chars {
 		out[c.ID] = c.Name
 	}
+	for id, n := range named {
+		out[id] = n
+	}
 	return out, nil
 }
 
 // tokensOn is where the map's tokens stand, in squares, with the characters that
 // live (a dead character's token stays on the map and is never caught).
-func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[string]grid.Square, []link.Character, error) {
+func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[string]grid.Square, []link.Character, map[string]grid.Square, error) {
 	g, err := s.maps.MapGrid(ctx, campaignID, mapID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	tokens, err := s.maps.MapTokens(ctx, mapID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if !g.OK() {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	gr := grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}
 	at := map[string]grid.Square{}
+	creatureAt := map[string]grid.Square{} // the creatures' tokens, by creature
 	ids := make([]string, 0, len(tokens))
 	for _, t := range tokens {
-		at[t.CharacterID] = gr.SquareOf(int(t.XBP), int(t.YBP))
+		sq := gr.SquareOf(int(t.XBP), int(t.YBP))
+		if t.CreatureID != "" {
+			creatureAt[t.CreatureID] = sq
+			continue
+		}
+		at[t.CharacterID] = sq
 		ids = append(ids, t.CharacterID)
 	}
 	living, err := s.roster.CombatCharacters(ctx, campaignID, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return at, living, nil
+	return at, living, creatureAt, nil
+}
+
+// creaturesInArea are the live creatures of the party whose tokens stand in the trap's
+// area (MR-035, MR-037): a creature put there earlier is caught like a character.
+func (s *Service) creaturesInArea(ctx context.Context, campaignID string, creatureAt map[string]grid.Square, trap maplink.Trap) ([]maplink.MapCreature, error) {
+	var inArea []string
+	for id, sq := range creatureAt {
+		if trap.Covers(sq) {
+			inArea = append(inArea, id)
+		}
+	}
+	if len(inArea) == 0 {
+		return nil, nil
+	}
+	party, err := s.roster.CombatParty(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	ownerIDs := make([]string, 0, len(party))
+	for _, o := range party {
+		if o.Player {
+			ownerIDs = append(ownerIDs, o.ID)
+		}
+	}
+	var found []link.Creature
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		found, err = s.roster.CharacterCreatures(ctx, tx, campaignID, ownerIDs)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	var out []maplink.MapCreature
+	for _, c := range found {
+		if slices.Contains(inArea, c.ID) {
+			out = append(out, maplink.MapCreature{ID: c.ID, OwnerCharacterID: c.CharacterID, OwnerUserID: c.OwnerUserID, Name: c.Name, MonsterKey: c.MonsterKey})
+		}
+	}
+	slices.SortFunc(out, func(a, b maplink.MapCreature) int { return strings.Compare(a.ID, b.ID) })
+	return out, nil
 }
 
 // fireOutsideCombat fires the trap while no combat runs on its map, in a
@@ -266,9 +321,21 @@ func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[s
 // list catches none: a creature's token dropped into a trap that picks its targets by
 // hand); creatures are the creature tokens that are caught as well.
 func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID, key string, trap maplink.Trap, targetIDs []string, creatures []maplink.MapCreature, manual bool, extend string) (*trapFireEvent, string, bool, error) {
-	at, living, err := s.tokensOn(ctx, campaignID, trap.MapID)
+	at, living, creatureAt, err := s.tokensOn(ctx, campaignID, trap.MapID)
 	if err != nil {
 		return nil, "", false, err
+	}
+	if targetIDs == nil {
+		// Everyone in the area: the creatures already standing there too, besides the one just dropped.
+		inArea, err := s.creaturesInArea(ctx, campaignID, creatureAt, trap)
+		if err != nil {
+			return nil, "", false, err
+		}
+		for _, c := range inArea {
+			if !slices.ContainsFunc(creatures, func(o maplink.MapCreature) bool { return o.ID == c.ID }) {
+				creatures = append(creatures, c)
+			}
+		}
 	}
 	var caught []link.Character
 	for _, ch := range living {

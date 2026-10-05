@@ -37,6 +37,7 @@ export function openTrapReveal(
     ariaLabel: 'Revelar armadilha',
     labelledBy: 'trap-reveal-t',
     width: '520px',
+    restoreFocus: false, // the opener takes it back with the focus ring
   });
 }
 
@@ -125,7 +126,7 @@ export class TrapRevealSheet {
   protected readonly inSheet = this.sheet.inSheet;
   private readonly frame = viewChild(SheetFrame);
 
-  protected readonly subtitle = joinDots([this.data.point.name, firstLine(this.data.point.description)].filter(Boolean));
+  protected readonly subtitle = firstLine(this.data.point.description);
   private readonly knows = new Map(this.data.point.trapRevealedTo.map((r) => [r.characterId, r.how]));
   protected readonly rows = computed<readonly PickRow[]>(() =>
     this.data.players.map((p) => {

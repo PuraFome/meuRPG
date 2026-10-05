@@ -102,7 +102,7 @@
           </div>
         </div>
 
-        @if (isMaster()) {
+        @if (isMaster() && markerPoints().length > 0) {
           <div class="map__points">
             <app-map-points-list
               [points]="markerPoints()"

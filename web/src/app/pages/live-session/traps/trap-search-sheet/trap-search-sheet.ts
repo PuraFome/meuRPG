@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -9,7 +9,8 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import { MapPointKind } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import type { SearchForTrapsResponse } from '../../../../../gen/meurpg/play/v1/traps_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import { rollText } from '../../../../core/combat/combat-dice';
+import type { DiceRoll } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { parseFace, typedTotal } from '../../../../core/combat/combat-dice';
 import { newKey } from '../../../../core/connect/idempotency';
 import type { MapState } from '../../../../core/maps/map-state';
 import { needsTwoDice, trapErrorMessage } from '../../../../core/traps/trap-errors';
@@ -22,8 +23,6 @@ import {
   skillOptions,
 } from '../../../../core/traps/trap-search';
 import { type SearchDie, type SearchSkill, TrapsClient } from '../../../../core/traps/traps-client';
-import { mediaQuery } from '../../../../shared/map-view/media-query';
-import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
 
@@ -46,7 +45,9 @@ export function openTrapSearch(dialog: MatDialog, bottomSheet: MatBottomSheet, d
     data,
     ariaLabel: 'Procurar armadilhas',
     labelledBy: 'trap-search-t',
+    width: '560px',
     focus: 'input[type=radio]',
+    restoreFocus: false, // the opener takes it back with the focus ring
   });
 }
 
@@ -64,12 +65,13 @@ export function openTrapSearch(dialog: MatDialog, bottomSheet: MatBottomSheet, d
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [MatButtonModule, MatIconModule, RollPicker, SheetFrame],
+  imports: [MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
 export class TrapSearchSheet {
   private readonly api = inject(TrapsClient);
+  private readonly injector = inject(Injector);
   private readonly sheet = injectSheet<TrapSearchData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -85,21 +87,20 @@ export class TrapSearchSheet {
   protected readonly error = signal('');
   protected readonly result = signal<{ res: SearchForTrapsResponse; names: readonly string[]; skill: SearchSkill } | null>(null);
   protected readonly step = computed(() => searchStep(this.result() !== null, this.typing()));
-  protected readonly short = mediaQuery('(max-height: 600px)');
 
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
   protected readonly preferApp = effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
   protected readonly message = computed(() => resultMessage(this.result()?.names ?? []));
+  /** What the server rolled, written as it counts: "1d20 (13) + 4 (Investigação) = 17". */
   protected readonly rolls = computed(() => {
     const r = this.result();
-    return r ? [r.res.roll, r.res.secondRoll].filter((x) => x !== undefined).map((x) => rollText(x)) : [];
+    return r ? [r.res.roll, r.res.secondRoll].filter((x) => x !== undefined).map((x) => this.formula(x, r.skill)) : [];
   });
   protected readonly total = computed(() => {
     const r = this.result()?.res;
-    // With disadvantage the lower of the two counts: the server's roll is the one that counted first.
-    return r?.roll?.total ?? 0;
+    return [r?.roll, r?.secondRoll].filter((x) => x !== undefined).map((x) => x.total).join(' · ');
   });
   protected readonly skillWord = computed(() => skillName(this.result()?.skill ?? this.skill()));
   protected readonly label = computed(() =>
@@ -112,10 +113,20 @@ export class TrapSearchSheet {
       ? 'Há penumbra por perto: a procura tem desvantagem. Role de novo e digite o segundo dado (1 a 20); vale o menor onde está escuro.'
       : 'Role o seu dado e digite o número que saiu (1 a 20).',
   );
+  /** What is typed in the field, and the face it makes (1 to 20) or `null`. */
+  protected readonly text = signal('');
+  protected readonly face = computed(() => parseFace(this.text()));
+  protected readonly invalid = computed(() => this.text().trim() !== '' && this.face() === null);
+  protected readonly typedLine = computed(() => {
+    const f = this.face();
+    return f === null ? '' : typedTotal(f, this.chosen().bonus);
+  });
+  protected readonly confirmLabel = computed(() => (this.face() === null ? 'Confirmar' : `Confirmar ${this.face()}`));
 
   private readonly key = newKey();
   private readonly frame = viewChild(SheetFrame);
   private readonly done = viewChild('done', { read: ElementRef<HTMLButtonElement> });
+  private readonly field = viewChild('field', { read: ElementRef<HTMLInputElement> });
   protected readonly title = 'Procurar armadilhas';
 
   constructor() {
@@ -125,6 +136,33 @@ export class TrapSearchSheet {
         this.frame()?.scrollToTop();
       }
     });
+  }
+
+  /** "1d20 (13) + 4 (Investigação) = 17" for the server's roll. */
+  private formula(roll: DiceRoll, skill: SearchSkill): string {
+    const mod = roll.modifier < 0 ? `− ${Math.abs(roll.modifier)}` : `+ ${roll.modifier}`;
+    return `1d20 (${roll.faces.join(', ')}) ${mod} (${skillName(skill)}) = ${roll.total}`;
+  }
+
+  protected startTyping(): void {
+    this.typing.set(true);
+    afterNextRender(() => this.field()?.nativeElement.focus({ preventScroll: false }), { injector: this.injector });
+  }
+
+  protected backToApp(): void {
+    this.typing.set(false);
+    this.text.set('');
+  }
+
+  protected onType(event: Event): void {
+    this.text.set((event.target as HTMLInputElement).value);
+  }
+
+  protected confirmTyped(): void {
+    const f = this.face();
+    if (f !== null) {
+      void this.rollWith({ face: f }).then(() => this.text.set(''));
+    }
   }
 
   protected pick(skill: SearchSkill): void {

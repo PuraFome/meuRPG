@@ -538,7 +538,8 @@ type PlayServiceClient interface {
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
 	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
 	// RN-10): the firings, with each creature's attack, saving throw and damage (the
-	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// conditions are a reminder), the searches and the traps a character noticed by passing
+	// near them (TrapActivity.notice). The master gets all of it; a player
 	// only the lines of their own characters, with their own d20 and "passou" or
 	// "falhou", never a DC and never a trap their characters do not know. In a combat the
 	// same is in the combat log. Any member may call it. A player's search, and a firing
@@ -1542,7 +1543,8 @@ type PlayServiceHandler interface {
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
 	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
 	// RN-10): the firings, with each creature's attack, saving throw and damage (the
-	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// conditions are a reminder), the searches and the traps a character noticed by passing
+	// near them (TrapActivity.notice). The master gets all of it; a player
 	// only the lines of their own characters, with their own d20 and "passou" or
 	// "falhou", never a DC and never a trap their characters do not know. In a combat the
 	// same is in the combat log. Any member may call it. A player's search, and a firing

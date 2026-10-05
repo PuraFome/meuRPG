@@ -9,26 +9,22 @@
   background: var(--mr-surface);
 }
 
+// The title row, like the trap card's: the chest, the name and the state chip; everything under it starts at the same left edge.
 .tr__head {
   display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
 }
 
 .tr__icon {
   flex: none;
-  margin-top: 0.5px;
-}
-
-.tr__titles {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  min-width: 0;
+  font-size: 24px;
 }
 
 .tr__name {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
   font-family: var(--mr-font-display, inherit);
   font-size: 20px;
@@ -37,10 +33,23 @@
 }
 
 .tr__sub {
-  margin: 0;
+  margin: 2px 0 0;
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
+}
+
+.tr__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.tr__show {
+  min-height: 44px;
+  color: var(--mr-accent-text);
+  --mat-button-text-label-text-color: var(--mr-accent-text);
 }
 
 .tr__label {

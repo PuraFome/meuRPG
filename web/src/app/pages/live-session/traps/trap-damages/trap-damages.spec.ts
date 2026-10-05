@@ -76,6 +76,26 @@ describe('TrapDamages', () => {
     expect(settled).toEqual(['d1']);
   });
 
+  it('in a combat applies and discards through the combat\'s own call, and the combat on screen reads the answer', async () => {
+    const calls: string[] = [];
+    const applied: unknown[] = [];
+    const combatApi = {
+      applyDamage: async (_c: string, enc: string, id: string, amount?: number) => (calls.push(`combat-apply ${enc} ${id} ${amount}`), { encounter: { id: 'enc' } }),
+      discardDamage: async (_c: string, enc: string, id: string) => (calls.push(`combat-discard ${enc} ${id}`), { encounter: { id: 'enc' } }),
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: TrapsClient, useValue: {} }, { provide: CombatClient, useValue: combatApi }] });
+    const fixture = TestBed.createComponent(TrapDamages);
+    fixture.componentRef.setInput('damages', [damage({ encounterId: 'enc' })]);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('combat', { apply: (e: unknown) => applied.push(e) });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Aplicar 7 de dano'))!.click();
+    await fixture.whenStable();
+    expect(calls).toEqual(['combat-apply enc d1 undefined']);
+    expect(applied).toHaveLength(1);
+  });
+
   it('asks in place before discarding, with the focus on "Voltar"', async () => {
     const { fixture, el, button, calls } = setup();
     button('Não aplicar').click();

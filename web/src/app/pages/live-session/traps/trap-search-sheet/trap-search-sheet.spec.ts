@@ -12,10 +12,11 @@ import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
 
 const roll = (face: number, total: number) => ({ diceCount: 1, diceSides: 20, faces: [face], modifier: total - face, total });
 
-function twoDiceError(): ConnectError {
+function blockedBy(reason: EncounterBlockedReason): ConnectError {
   const err = new ConnectError('x', Code.FailedPrecondition);
-  return Object.assign(err, { findDetails: () => [create(EncounterBlockedSchema, { reason: EncounterBlockedReason.SEARCH_NEEDS_TWO_DICE })] });
+  return Object.assign(err, { findDetails: () => [create(EncounterBlockedSchema, { reason })] });
 }
+const twoDiceError = () => blockedBy(EncounterBlockedReason.SEARCH_NEEDS_TWO_DICE);
 
 describe('TrapSearchSheet', () => {
   function setup(responses: (unknown | Error)[]) {
@@ -87,5 +88,20 @@ describe('TrapSearchSheet', () => {
     expect(el.textContent).toContain('Há penumbra por perto');
     await roller.rollWith({ face: 4 });
     expect(sent[1]).toEqual(['perception', { face: 9, face2: 4 }]);
+  });
+
+  it('says why the server refused, by reason', async () => {
+    for (const [reason, words] of [
+      [EncounterBlockedReason.ACTION_USED, 'já usou a sua ação'],
+      [EncounterBlockedReason.NOT_YOUR_TURN, 'só na sua vez'],
+      [EncounterBlockedReason.TRAP_NOT_ON_MAP, 'não está no mapa'],
+      [EncounterBlockedReason.TRAP_SEARCH_NOT_NOW, 'não está na vez de ninguém'],
+    ] as const) {
+      TestBed.resetTestingModule();
+      const { fixture, el, roller } = setup([blockedBy(reason)]);
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      expect(el.querySelector('[role=alert]')?.textContent).toContain(words);
+    }
   });
 });

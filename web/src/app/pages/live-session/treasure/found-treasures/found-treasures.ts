@@ -9,6 +9,7 @@ import { type MapPoint, MapPointKind } from '../../../../../gen/meurpg/maps/v1/m
 import { joinDots } from '../../../../core/format/text';
 import { finders } from '../../../../core/traps/treasure-text';
 import { listNames } from '../../../../core/maps/scene-clues';
+import { ChestIcon } from '../../../../shared/chest-icon/chest-icon';
 import { TreasureFacts } from '../../../../shared/treasure-facts/treasure-facts';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
@@ -74,7 +75,7 @@ export function openTreasureSheet(dialog: MatDialog, bottomSheet: MatBottomSheet
  */
 @Component({
   selector: 'app-found-treasures',
-  imports: [MatIconModule],
+  imports: [ChestIcon, MatIconModule],
   template: `
     @if (found().length > 0) {
       <section class="ft" aria-label="Tesouros encontrados">
@@ -82,7 +83,7 @@ export function openTreasureSheet(dialog: MatDialog, bottomSheet: MatBottomSheet
           @for (p of found(); track p.id) {
             <li>
               <button type="button" class="mr-list__row ft__row" [attr.aria-label]="p.name + ', ' + sub(p) + '. Abrir'" (click)="open(p)">
-                <mat-icon aria-hidden="true">inventory_2</mat-icon>
+                <app-chest-icon />
                 <span class="mr-list__text">
                   <b class="mr-list__name">{{ p.name }}</b>
                   <span class="mr-list__sub">{{ sub(p) }}</span>

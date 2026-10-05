@@ -1650,6 +1650,11 @@ message TrapNoticer {
   // It already knows the trap (noticed, found, revealed by the master, or the trap
   // is public).
   bool knows = 9;
+  // Its passive_perception plus light_penalty reaches the DC to notice (false for
+  // a trap with no such DC), whether or not the character is on the map, within 3 m
+  // or sees the squares. The screen says "Se chegar a 3 m: nota" for a character out
+  // of range from it; the browser never compares the numbers itself.
+  bool passes_dc = 10;
 }
 
 // DisarmTrapRequest names the trap.

@@ -47,10 +47,7 @@ import { ViewToken, tokenInitial } from '../map-geometry';
               [class.lg__disc--mine]="t.mine"
               >{{ initial(t) }}</span
             >
-            {{ t.name }}{{ t.hidden ? ', escondido' : '' }}
-            @if (t.mine) {
-              <span class="lg__you"> (você)</span>
-            }
+            <span>{{ t.name }}{{ t.hidden ? ', escondido' : '' }}@if (t.mine) {<span class="lg__you">&nbsp;(você)</span>}</span>
           </li>
         }
       </ul>

@@ -1,7 +1,7 @@
 <app-sheet-frame
   [title]="title"
   titleId="trap-search-t"
-  [subtitle]="'Você procura num raio de 3 m do seu personagem.' + (data.inCombat ? ' Gasta a sua ação.' : ' Gasta a sua ação, se for a sua vez.')"
+  [subtitle]="data.inCombat ? 'Você procura num raio de 3 m do seu personagem. Gasta a sua ação.' : 'Você procura num raio de 3 m do seu personagem.'"
   [phone]="inSheet"
   (closed)="cancel()"
 >
@@ -31,8 +31,9 @@
     <div class="res" role="status" aria-live="polite">
       <span class="res__sum">{{ total() }}</span>
       <span class="res__text">
-        <span class="res__formula">{{ rolls().join(' · ') }}</span>
-        <span class="res__cap">Seu total em {{ skillWord() }}</span>
+        @for (line of rolls(); track line) {
+          <span class="res__formula">{{ line }}</span>
+        }
         <span class="mr-tag res__tag" [class.mr-tag--success]="r.names.length > 0">
           <mat-icon aria-hidden="true">{{ r.names.length > 0 ? 'check' : 'close' }}</mat-icon>{{ r.names.length > 0 ? 'Achou' : 'Nada' }}
         </span>
@@ -67,30 +68,52 @@
       </fieldset>
       <p class="note"><mat-icon aria-hidden="true">info</mat-icon>Algumas armadilhas só se acham com Investigação.</p>
     }
-    <app-roll-picker
-      [canApp]="canApp && firstFace() === null"
-      [canType]="canType"
-      [preferApp]="preferApp"
-      [label]="label()"
-      [hint]="hint()"
-      totalNote="Total da procura"
-      [modifier]="chosen().bonus"
-      [busy]="busy()"
-      [sticky]="true"
-      [inlineError]="true"
-      [compact]="short()"
-      [typing]="typing() || firstFace() !== null"
-      (typingChange)="typing.set($event)"
-      (app)="rollWith({ inApp: true })"
-      (typed)="rollWith({ face: $event })"
-    />
+    @if (typing() || firstFace() !== null) {
+      <div class="type">
+        <label class="type__label" for="trap-face">{{ label() }}</label>
+        <p class="type__hint">{{ hint() }}</p>
+        <input
+          #field
+          id="trap-face"
+          class="type__field"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          autocomplete="off"
+          [value]="text()"
+          [attr.aria-invalid]="invalid()"
+          (input)="onType($event)"
+          (keydown.enter)="confirmTyped()"
+        />
+        @if (invalid()) {
+          <p class="type__err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20.</p>
+        }
+        <p class="type__sum" role="status">{{ typedLine() ? typedLine() + ' · dado físico' : 'O total aparece quando o número for de 1 a 20.' }}</p>
+      </div>
+    }
   }
 
   <div foot class="foot">
     @if (result()) {
-      <button #done matButton="filled" type="button" class="foot__btn" (click)="cancel()">Fechar</button>
+      <button #done matButton="outlined" type="button" (click)="cancel()">Fechar</button>
+    } @else if (typing() || firstFace() !== null) {
+      <button matButton="filled" type="button" [class.foot__off]="face() === null" [attr.aria-disabled]="face() === null || busy()" (click)="confirmTyped()">
+        {{ confirmLabel() }}
+      </button>
+      @if (canApp && firstFace() === null) {
+        <button matButton="outlined" type="button" [disabled]="busy()" (click)="backToApp()">Rolar no app</button>
+      }
+      <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
     } @else {
-      <button matButton="outlined" type="button" class="foot__btn" (click)="cancel()">Cancelar</button>
+      @if (canApp) {
+        <button [matButton]="preferApp || !canType ? 'filled' : 'outlined'" type="button" [disabled]="busy()" (click)="rollWith({ inApp: true })">
+          <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+        </button>
+      }
+      @if (canType) {
+        <button [matButton]="!preferApp && canApp ? 'filled' : 'outlined'" type="button" (click)="startTyping()">Digitar o resultado</button>
+      }
+      <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
     }
   </div>
 </app-sheet-frame>

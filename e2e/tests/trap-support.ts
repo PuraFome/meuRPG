@@ -2,7 +2,7 @@ import { expect, type Browser, type BrowserContext, type Page } from '@playwrigh
 
 import { type CombatTable, combatRPC, getEncounterRPC, tableForCombat, beginAttackCombatRPC, type Encounter } from './combat-support';
 import { endOpenSessionRPC } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, characterRpcBody, createCharacterRPC, idpOrigin, newSignedInContext, type CharacterBuild } from './support';
 
 // Setup for the trap and treasure specs (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02): a table
 // with the map on a 20 x 14 grid (squares of 100 px of the 2000 x 1400 image), Pensantus's token on
@@ -103,4 +103,36 @@ export async function movePensantus(p: Page, table: CombatTable, col: number, ro
   const enc = await getEncounterRPC(p, table.campaignId);
   const me = enc.combatants.find((c) => c.label === 'Pensantus')!;
   return combatRPC(p, 'MoveCombatant', { campaignId: table.campaignId, encounterId: enc.id, combatantId: me.id, col, row });
+}
+
+export interface ThirdPlayer {
+  page: Page;
+  characterId: string;
+  close: () => Promise<void>;
+}
+
+/**
+ * A second player with a character in the table (RN-03 allows one living character each, so the first account's Pensantus and this one's
+ * Toren): the third devidp account "E-mail Não Verificado", signed in for real in a fresh context (one login), as `creatures.spec.ts` does.
+ */
+export async function thirdPlayer(browser: Browser, t: TrapTable, build: CharacterBuild): Promise<ThirdPlayer> {
+  // E2E_THIRD_STATE: a saved session of that account, for a local API whose sign-in callback is not the stack's (CI signs in for real).
+  const saved = process.env['E2E_THIRD_STATE'];
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, ...(saved ? { storageState: saved } : {}) });
+  const page = await context.newPage();
+  if (saved) {
+    await page.goto('/');
+  } else {
+    await page.goto('/auth/login?return_to=/');
+    await expect(page).toHaveURL((url) => url.origin === idpOrigin && url.pathname === '/authorize');
+    await page.getByRole('button', { name: 'E-mail Não Verificado', exact: true }).click();
+    await expect(page).toHaveURL('/');
+  }
+  const invite = await callRPC(t.m, 'meurpg.campaigns.v1.CampaignService/CreateInvite', { campaignId: t.campaignId, maxUses: 1, expiresIn: '3600s' });
+  expect(invite.ok(), await invite.text()).toBeTruthy();
+  const joined = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token: (await invite.json()).token });
+  expect(joined.ok(), await joined.text()).toBeTruthy();
+  const made = await createCharacterRPC(page, t.campaignId, characterRpcBody('PLAYER', build));
+  expect(made.ok(), await made.text()).toBeTruthy();
+  return { page, characterId: (await made.json()).character.id as string, close: () => context.close() };
 }

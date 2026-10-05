@@ -49,3 +49,9 @@ export function resultMessage(found: readonly string[]): { readonly title: strin
     ? { title: `Você achou uma armadilha: ${found[0]}.`, detail: 'Ela já aparece no seu mapa.' }
     : { title: `Você achou ${found.length} armadilhas: ${found.join(', ')}.`, detail: 'Elas já aparecem no seu mapa.' };
 }
+
+/** Where the Search action of a combat goes: the trap search needs the combat's map to have a grid and the player's combatant to
+ * stand on it (the server answers TRAP_NOT_ON_MAP otherwise); without that it is the SRD's plain Search action. */
+export function searchRoute(gridColumns: number, placed: boolean): 'traps' | 'action' {
+  return gridColumns > 0 && placed ? 'traps' : 'action';
+}

@@ -23,6 +23,31 @@ import (
 // characters do not know (a trap that fired is public; a search line names only what
 // that search found for its own character).
 
+// creatureLabels names the creatures a firing caught outside a combat (their owner's free text, read now and never
+// kept in the event: docs/privacidade.md), by creature ID.
+func (s *Service) creatureLabels(ctx context.Context, campaignID string, caught []trapCaughtEvent) (map[string]string, error) {
+	var owners []string
+	for _, cc := range caught {
+		if creatureOf(cc) {
+			owners = append(owners, cc.Character)
+		}
+	}
+	out := map[string]string{}
+	if len(owners) == 0 {
+		return out, nil
+	}
+	var found []link.Creature
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		found, err = s.roster.CharacterCreatures(ctx, tx, campaignID, slices.Compact(slices.Sorted(slices.Values(owners))))
+		return err
+	})
+	for _, c := range found {
+		out[c.ID] = c.Name
+	}
+	return out, err
+}
+
 // creatureOf says a caught target is a creature of a character (a creature token
 // dropped into a trap outside a combat), not a character: it is caught under its
 // owner's character ID.

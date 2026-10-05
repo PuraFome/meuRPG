@@ -167,8 +167,10 @@ export type FireTrapRequest = Message<"meurpg.play.v1.FireTrapRequest"> & {
 
   /**
    * Who is caught: in a combat that runs on the map, combatant IDs; otherwise
-   * character IDs of tokens on the map. Empty: the creatures standing in the
-   * trap's area (up to 40).
+   * character IDs of tokens on the map. Empty: whoever stands in the
+   * trap's area (up to 40): the combatants of a combat, otherwise the characters and
+   * the creature tokens of their characters. Target IDs are characters (or combatants);
+   * a creature already standing in the area is caught by the empty list, not named here.
    *
    * @generated from field: repeated string target_ids = 4;
    */
@@ -510,7 +512,7 @@ export const ListTrapActivityRequestSchema: GenMessage<ListTrapActivityRequest> 
 /**
  * ListTrapActivityResponse is the trap activity of the open session outside a combat
  * (in a combat it is in the combat log), oldest first. The master gets every firing and
- * every search; a player gets only the lines of their own characters, with their own
+ * every search and every notice; a player gets only the lines of their own characters, with their own
  * dice and "passou" or "falhou", never a DC and never a trap their characters do not
  * know (a trap that fired is public).
  *

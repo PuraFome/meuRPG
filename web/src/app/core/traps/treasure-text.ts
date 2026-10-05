@@ -25,25 +25,20 @@ export function foundLine(point: MapPoint): { names: string; at: string } {
   return { names: listNames(finders(point)), at: at ? formatClock(at) : '' };
 }
 
-/** The line under the picks while marking: what goes into the session's summary. The value is split by the
- * server among whoever found it, rounded down; the app writes the total and says so, it does not divide. */
+/** The line under the picks while marking: who found it and the value; the server splits it among them, the browser never divides. */
 export function summaryLine(names: readonly string[], value: number): string {
   if (names.length === 0) {
-    return 'Ninguém marcado. Marque pelo menos uma pessoa.';
+    return 'Ninguém marcado. Escolha quem encontrou.';
   }
-  if (names.length === 1) {
-    return `No resumo da sessão: ${names[0]} · ${poText(value)}`;
-  }
-  return `No resumo da sessão: ${listNames(names)} · ${poText(value)} no total, divididos entre quem encontrou (o servidor arredonda para baixo).`;
+  return `No resumo da sessão: ${listNames(names)} · ${poText(value)}`;
 }
 
-/** "Brisa encontrou o Baú de moedas." / "Brisa e Toren encontraram a Bolsa do capitão.": the toast of a treasure found. */
+/** "Brisa encontrou: Baú de moedas": no article before the name, which is the master's free text (a guessed "o" or "a" is wrong half the time). */
 export function foundToastTitle(point: MapPoint): string {
   const names = finders(point);
-  const first = point.name.trim().split(/\s+/)[0].toLowerCase();
-  const the = /a$/.test(first) ? 'a' : 'o';
   const who = names.length > 0 ? listNames(names) : 'O mestre';
-  return `${who} ${names.length > 1 ? 'encontraram' : names.length === 1 ? 'encontrou' : 'marcou como encontrado'} ${the} ${point.name}.`;
+  const verb = names.length > 1 ? 'encontraram' : names.length === 1 ? 'encontrou' : 'marcou como encontrado';
+  return `${who} ${verb}: ${point.name}`;
 }
 
 /**

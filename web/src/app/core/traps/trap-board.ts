@@ -17,8 +17,11 @@ export class TrapBoard {
   readonly activity = signal<readonly TrapActivity[]>([]);
   readonly damages = signal<readonly TrapDamage[]>([]);
   readonly noticers = signal<ReadonlyMap<string, GetTrapNoticersResponse>>(new Map());
+  /** The traps whose "Quem notaria" could not be read: the card says so and offers "Tentar de novo". */
+  readonly noticersFailed = signal<ReadonlySet<string>>(new Set());
   readonly loaded = signal(false);
 
+  private readonly noticersAsked = new Map<string, number>();
   private activityAsked = 0;
   private damagesAsked = 0;
   private readonly open = new Set<string>();
@@ -78,18 +81,29 @@ export class TrapBoard {
     await Promise.all([...this.open].map((id) => this.loadNoticers(id)));
   }
 
+  /** "Quem notaria" again, after a failed read ("Tentar de novo"). */
+  async retryNoticers(pointId: string): Promise<void> {
+    await this.loadNoticers(pointId);
+  }
+
   private async loadNoticers(pointId: string): Promise<void> {
     const mapId = this.mapId();
     if (!mapId || !this.isMaster()) {
       return;
     }
+    // A stale answer never overwrites a newer one: each read of a trap counts.
+    const mine = (this.noticersAsked.get(pointId) ?? 0) + 1;
+    this.noticersAsked.set(pointId, mine);
     try {
       const res = await this.maps.getTrapNoticers(this.campaignId(), mapId, pointId);
-      if (this.open.has(pointId)) {
+      if (this.noticersAsked.get(pointId) === mine && this.open.has(pointId)) {
         this.noticers.update((m) => new Map(m).set(pointId, res));
+        this.noticersFailed.update((s) => new Set([...s].filter((id) => id !== pointId)));
       }
     } catch {
-      // Best effort: the card says "Não deu para ler" with its own retry.
+      if (this.noticersAsked.get(pointId) === mine) {
+        this.noticersFailed.update((s) => new Set(s).add(pointId));
+      }
     }
   }
 
@@ -111,6 +125,8 @@ export class TrapBoard {
     this.activity.set([]);
     this.damages.set([]);
     this.noticers.set(new Map());
+    this.noticersFailed.set(new Set());
+    this.noticersAsked.clear();
     this.open.clear();
     this.loaded.set(false);
   }

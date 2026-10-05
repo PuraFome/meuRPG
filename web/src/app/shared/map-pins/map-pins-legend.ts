@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { ChestIcon } from '../chest-icon/chest-icon';
 import { type MapPoint, MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 
 interface Entry {
@@ -18,7 +19,7 @@ interface Entry {
  */
 @Component({
   selector: 'app-map-pins-legend',
-  imports: [MatIconModule],
+  imports: [ChestIcon, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (entries().length > 0) {
@@ -26,7 +27,11 @@ interface Entry {
         @for (e of entries(); track e.key) {
           <li>
             <span class="sw" [class]="'sw sw--' + e.kind + ' sw--' + e.state" aria-hidden="true">
-              <mat-icon>{{ e.kind === 'trap' ? 'warning' : e.kind === 'treasure' ? 'inventory_2' : 'lightbulb' }}</mat-icon>
+              @if (e.kind === 'treasure') {
+                <app-chest-icon />
+              } @else {
+                <mat-icon>{{ e.kind === 'trap' ? 'warning' : 'lightbulb' }}</mat-icon>
+              }
               @if (e.eye) {
                 <span class="sw__eye"><mat-icon>visibility_off</mat-icon></span>
               }
@@ -57,6 +62,10 @@ interface Entry {
       color: var(--mr-map-token-ink);
     }
 
+    .sw app-chest-icon {
+      font-size: 15px;
+    }
+
     .sw .mat-icon {
       width: 14px;
       height: 14px;
@@ -67,17 +76,6 @@ interface Entry {
       border-color: var(--mr-map-accent);
       border-style: dashed;
       color: var(--mr-map-accent);
-    }
-
-    .sw--fired {
-      border-style: solid;
-      background: var(--mr-map-accent);
-      color: var(--mr-map-token-surface);
-    }
-
-    .sw--disarmed {
-      border-color: var(--mr-map-token-down-line);
-      color: var(--mr-map-token-down-ink);
     }
 
     .sw--hidden,
@@ -117,11 +115,7 @@ export class MapPinsLegend {
     for (const p of this.points()) {
       if (p.kind === MapPointKind.TRAP) {
         const state = p.trap?.state ?? TrapState.ARMED;
-        if (state === TrapState.TRIGGERED) {
-          out.set('fired', { key: 'fired', label: 'Armadilha disparada', kind: 'trap', state: 'fired', eye: false });
-        } else if (state === TrapState.DISARMED) {
-          out.set('disarmed', { key: 'disarmed', label: 'Armadilha desarmada', kind: 'trap', state: 'disarmed', eye: false });
-        } else if (master && !p.revealed && p.trapRevealedTo.length === 0) {
+        if (state === TrapState.ARMED && master && !p.revealed && p.trapRevealedTo.length === 0) {
           out.set('secret', { key: 'secret', label: 'Armadilha (só você vê)', kind: 'trap', state: 'armed', eye: true });
         } else {
           out.set('armed', { key: 'armed', label: 'Armadilha', kind: 'trap', state: 'armed', eye: false });

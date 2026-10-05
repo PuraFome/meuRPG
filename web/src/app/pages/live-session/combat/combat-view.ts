@@ -39,7 +39,7 @@ import {
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { fallNote } from '../../../core/traps/trap-log';
-import type { SearchSkills } from '../../../core/traps/trap-search';
+import { type SearchSkills, searchRoute } from '../../../core/traps/trap-search';
 import type { TrapBoard } from '../../../core/traps/trap-board';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
 import type { Square } from '../../../core/combat/combat-grid';
@@ -688,7 +688,7 @@ export class CombatView {
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {
-    if (key === 'standard:search') {
+    if (key === 'standard:search' && searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps') {
       this.searchTraps();
       return;
     }
@@ -716,7 +716,7 @@ export class CombatView {
     const round = this.log.rounds().find((r) => r.round === e.round);
     for (const entry of round?.entries ?? []) {
       if (entry.kind === CombatLogKind.TRAP_TRIGGERED && entry.trap) {
-        const note = fallNote(entry.trap, own.characterId);
+        const note = fallNote(entry.trap, own.id);
         if (note) {
           return note;
         }

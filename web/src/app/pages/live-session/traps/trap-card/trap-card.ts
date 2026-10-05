@@ -6,7 +6,7 @@ import { type GetTrapNoticersResponse, type MapPoint, TrapState } from '../../..
 import { joinDots } from '../../../../core/format/text';
 import {
   areaWords,
-  effectText,
+  effectLine,
   firstLine,
   trapDcLine,
   trapStateIcon,
@@ -41,6 +41,9 @@ export class TrapCard {
   /** The trap has a firing in the activity that creatures can still be added to. */
   readonly canExtend = input(false);
   readonly busy = input(false);
+  /** "Quem notaria" could not be read. */
+  readonly noticersFailed = input(false);
+  readonly retryNoticers = output<void>();
 
   readonly toggle = output<void>();
   readonly reveal = output<void>();
@@ -62,7 +65,7 @@ export class TrapCard {
   protected readonly notice = computed(() => this.point().trap?.noticeDc ?? 0);
   protected readonly find = computed(() => this.point().trap?.findDc ?? 0);
   protected readonly trigger = computed(() => triggerWord(this.point().trap?.trigger ?? 0));
-  protected readonly effect = computed(() => effectText(this.point().trap?.effect) || 'Só descrição: não tem efeito calculado.');
+  protected readonly effect = computed(() => effectLine(this.point()) || 'Só descrição, sem efeito calculado');
   protected readonly everyoneSees = computed(() => this.visibility().kind === 'all');
   protected readonly closedNote = computed(() =>
     this.notice() === 0 && this.armed() ? 'Ninguém nota sozinho: só se acha com Investigação.' : '',

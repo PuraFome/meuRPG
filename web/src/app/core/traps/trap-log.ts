@@ -32,13 +32,15 @@ function saveWords(c: TrapCaught, master: boolean): string[] {
   });
 }
 
-function damageWords(c: TrapCaught): string[] {
+function damageWords(c: TrapCaught, master: boolean): string[] {
   return c.damages.map((d) => {
     const type = d.damageTypePt ? ` de ${d.damageTypePt}` : ' de dano';
     const half = d.half ? ' (metade)' : '';
     const state =
       d.status === PendingDamageStatus.ROLLED
-        ? ', esperando o mestre aplicar'
+        ? master
+          ? ', esperando você aplicar'
+          : ', esperando o mestre aplicar'
         : d.status === PendingDamageStatus.DISCARDED
           ? ', descartado'
           : d.targetDefeated
@@ -51,7 +53,7 @@ function damageWords(c: TrapCaught): string[] {
 /** What the trap did to one creature, as the sentence after its name ("caiu na armadilha Fosso escondido: 7
  * de concussão, esperando o mestre aplicar"). A viewer who may not read the dice gets the words only. */
 export function caughtText(c: TrapCaught, trapName: string, master: boolean): string {
-  const parts = [...attackWords(c), ...saveWords(c, master), ...damageWords(c)];
+  const parts = [...attackWords(c), ...saveWords(c, master), ...damageWords(c, master)];
   const conditions = c.conditionKeys.map(conditionName).filter(Boolean);
   if (conditions.length > 0) {
     parts.push(`ficou ${listNames(conditions)}`);
@@ -113,7 +115,7 @@ export function activityLines(a: TrapActivity, master: boolean): TrapLine[] {
 
 /** What one creature's part of a firing was, short: "7 de concussão, esperando o mestre aplicar". */
 function caughtBrief(c: TrapCaught, master: boolean): string {
-  const parts = [...attackWords(c), ...saveWords(c, master), ...damageWords(c)];
+  const parts = [...attackWords(c), ...saveWords(c, master), ...damageWords(c, master)];
   const conditions = c.conditionKeys.map(conditionName).filter(Boolean);
   if (conditions.length > 0) {
     parts.push(`ficou ${listNames(conditions)}`);
@@ -147,8 +149,9 @@ export interface FallNote {
   readonly waiting: boolean;
 }
 
-export function fallNote(firing: TrapFiring, characterId: string): FallNote | null {
-  const mine = firing.caught.find((c) => c.characterId === characterId);
+/** `combatantId` is the player's own combatant: a creature's `character_id` is its owner's, so the match is by combatant. */
+export function fallNote(firing: TrapFiring, combatantId: string): FallNote | null {
+  const mine = firing.caught.find((c) => c.targetId === combatantId);
   if (!mine) {
     return null;
   }

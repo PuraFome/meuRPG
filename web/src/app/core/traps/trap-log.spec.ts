@@ -24,18 +24,32 @@ describe('trap log', () => {
     const text = trapLogText(firing, false);
     expect(text).toContain('A armadilha Fosso escondido foi disparada: Toren caiu');
     expect(text).toContain('7 de concussão, esperando o mestre aplicar');
+    expect(trapLogText(firing, true)).toContain('esperando você aplicar');
     expect(text).toContain('falhou no teste');
     expect(text).not.toMatch(/CD/);
     expect(trapLogText(create(TrapFiringSchema, { name: 'X' }), false)).toBe('A armadilha X foi disparada. Ninguém estava na área.');
   });
 
   it('tells the player what happened to their own character and whether the damage waits', () => {
-    const note = fallNote(firing, 'char-toren')!;
+    const note = fallNote(firing, 'c1')!;
     expect(note.title).toBe('Você caiu na armadilha Fosso escondido.');
     expect(note.detail).toContain('7 de concussão');
     expect(note.detail).not.toContain('esperando');
     expect(note.waiting).toBe(true);
     expect(fallNote(firing, 'other')).toBeNull();
+  });
+
+  it('matches the caught by combatant: a familiar and its owner each get their own line', () => {
+    const both = create(TrapFiringSchema, {
+      name: 'Fosso',
+      caught: [
+        { targetId: 'owner', targetLabel: 'Pensantus', characterId: 'p', damages: [{ amount: 4, damageTypePt: 'concussão', status: PendingDamageStatus.ROLLED }] },
+        { targetId: 'raven', targetLabel: 'Nanquim', characterId: 'p', damages: [{ amount: 1, damageTypePt: 'concussão', status: PendingDamageStatus.APPLIED }] },
+      ],
+    });
+    expect(fallNote(both, 'owner')!.detail).toContain('4 de concussão');
+    expect(fallNote(both, 'raven')!.detail).toContain('1 de concussão');
+    expect(fallNote(both, 'raven')!.waiting).toBe(false);
   });
 
   it('writes the search and notice lines of the activity', () => {

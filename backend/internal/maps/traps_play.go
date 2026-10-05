@@ -626,6 +626,9 @@ func (s *Service) GetTrapNoticers(
 				n.WouldNotice = spec.GetNoticeDc() > 0 && member.PassivePerception+sg.penalty >= int(spec.GetNoticeDc())
 			}
 		}
+		// What the score would do at the DC with the penalty reported here, wherever the character
+		// stands and whether or not it sees the squares: the screen shows it for the ones out of range.
+		n.PassesDc = spec.GetNoticeDc() > 0 && member.PassivePerception+int(n.LightPenalty) >= int(spec.GetNoticeDc())
 		out.Noticers = append(out.Noticers, n)
 	}
 	return connect.NewResponse(out), nil

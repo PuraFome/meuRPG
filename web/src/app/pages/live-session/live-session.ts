@@ -33,6 +33,7 @@ import { TrapBoard } from '../../core/traps/trap-board';
 import { foundToastTitle, TreasureWatch } from '../../core/traps/treasure-text';
 import { firstLine } from '../../core/traps/trap-text';
 import { TrapsClient } from '../../core/traps/traps-client';
+import { focusWithRing } from '../../core/creatures/focus-ring';
 import { LiveToast } from '../../shared/live-toast/live-toast';
 import type { PickRow } from '../../shared/person-pick/person-pick';
 import { MapsClient } from '../../core/maps/maps-client';
@@ -248,7 +249,10 @@ export class LiveSession {
   protected readonly finderRows = computed<readonly PickRow[]>(() =>
     this.vitals()
       .filter((v) => v.playerUserId !== '')
-      .map((v) => ({ id: v.characterId, name: v.name, sub: partyRowSub(this.partyInfo().get(v.characterId)) })),
+      .map((v) => {
+        const info = this.partyInfo().get(v.characterId);
+        return { id: v.characterId, name: v.name, sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : ''].filter(Boolean).join(', ') };
+      }),
   );
   /** The player's bonuses for "Procurar armadilhas" (the derived sheet). */
   protected readonly trapSkills = computed(() => this.playerSheet()?.skills ?? null);
@@ -586,6 +590,8 @@ export class LiveSession {
   }
 
   private mapChanged(mapId: string): void {
+    // The damage that waits covers the whole campaign (ListTrapDamages): a trap on another map may have fired.
+    void this.trapBoard.refreshDamages();
     if (mapId === this.currentMapId()) {
       void this.mapState.refresh();
       // Something about the traps may have changed: a firing, a notice, a damage that waits.
@@ -613,6 +619,7 @@ export class LiveSession {
     if (!campaign) {
       return;
     }
+    const opener = this.document.activeElement as HTMLElement | null;
     openTrapSearch(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       skills: this.trapSkills(),
@@ -622,7 +629,10 @@ export class LiveSession {
       inCombat: false,
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.trapBoard.refreshActivity());
+      .subscribe(() => {
+        focusWithRing(opener);
+        void this.trapBoard.refreshActivity();
+      });
   }
 
   /** `shown_image_changed`: the block appears, changes or goes away. */

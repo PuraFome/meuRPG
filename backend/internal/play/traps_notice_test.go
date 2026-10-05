@@ -10,6 +10,7 @@ import (
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // The passive notice reaches the player (E9-08 G) and a creature's token fires a trap
@@ -95,7 +96,7 @@ func TestRN10_ThePassiveNoticeReachesOnlyItsPlayer(t *testing.T) {
 	if n.GetPointId() != pit.GetId() || n.GetTrapName() != "Fosso Dourado" || len(n.GetCharacterNames()) != 1 || n.GetCharacterNames()[0] != "Toren" {
 		t.Errorf("the notice = %v, want Toren and the Fosso Dourado", n)
 	}
-	if js, _ := protojson.Marshal(lines[0]); strings.Contains(strings.ToLower(string(js)), "dc") {
+	if js, _ := protojson.Marshal(lines[0]); strings.Contains(string(js), `"dc"`) || strings.Contains(string(js), "oticeDc") {
 		t.Errorf("the player's notice line carries a DC: %s", js)
 	}
 	if lines := r.activity(t, r.master); len(lines) != 1 || lines[0].GetNotice() == nil || lines[0].GetNotice().GetCharacterNames()[0] != "Toren" {
@@ -205,5 +206,159 @@ func TestMR035_ACreatureTokenDroppedInTheArea(t *testing.T) {
 	placeWolf()
 	if n := r.eventCount(t, "trap_triggered"); n != 1 {
 		t.Errorf("trap_triggered events after dropping the wolf again = %d, want 1", n)
+	}
+}
+
+// wolfOf gives Pensantus a wolf and returns it, with a function that drops its token on a square, as the master.
+func (r *trapRig) wolfOf(t *testing.T, mapID string) (id string, drop func(col, row int)) {
+	t.Helper()
+	wolf := r.give(t, r.pens, "monster:wolf", "Nanquim")
+	return wolf.GetId(), func(col, row int) {
+		t.Helper()
+		x, y := sq(col, row)
+		if _, err := r.mc(r.master).PlaceMapToken(t.Context(), connect.NewRequest(&mapsv1.PlaceMapTokenRequest{
+			CampaignId: r.campaignID, MapId: mapID, CreatureId: wolf.GetId(), XBp: x, YBp: y,
+		})); err != nil {
+			t.Fatalf("PlaceMapToken(creature) error = %v", err)
+		}
+	}
+}
+
+func (r *trapRig) stateOf(t *testing.T, mapID, pointID string) mapsv1.TrapState {
+	t.Helper()
+	res, err := r.mc(r.master).GetMap(t.Context(), connect.NewRequest(&mapsv1.GetMapRequest{CampaignId: r.campaignID, MapId: mapID}))
+	if err != nil {
+		t.Fatalf("GetMap() error = %v", err)
+	}
+	for _, p := range res.Msg.GetPoints() {
+		if p.GetId() == pointID {
+			return p.GetTrap().GetState()
+		}
+	}
+	return 0
+}
+
+// TestMR035_ACreatureDroppedWhereNothingFires: a creature put on a map the players do not see, or
+// during a combat on its map, fires nothing (the combat's moves are the combat's).
+func TestMR035_ACreatureDroppedWhereNothingFires(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	m2 := r.secondMap(t)
+	hidden := r.trapOn(t, m2, "Fosso escondido", 5, 5, pit("1d4"))
+	cave := r.trap(t, "Fosso Dourado", 12, 7, pit("1d6"))
+	r.fight(t)
+	_, dropOn2 := r.wolfOf(t, m2) // given during the combat
+	dropOn2(5, 5)
+	if got := r.stateOf(t, m2, hidden.GetId()); got != mapsv1.TrapState_TRAP_STATE_ARMED {
+		t.Errorf("a trap after a creature on a hidden map = %v, want armed", got)
+	}
+	x, y := sq(12, 7)
+	creatures := r.creaturesOf(t)
+	if _, err := r.mc(r.master).PlaceMapToken(t.Context(), connect.NewRequest(&mapsv1.PlaceMapTokenRequest{
+		CampaignId: r.campaignID, MapId: r.mapID, CreatureId: creatures[0], XBp: x, YBp: y,
+	})); err != nil {
+		t.Fatalf("PlaceMapToken(creature) error = %v", err)
+	}
+	if got := r.stateOf(t, r.mapID, cave.GetId()); got != mapsv1.TrapState_TRAP_STATE_ARMED {
+		t.Errorf("a trap after a creature during a combat = %v, want armed", got)
+	}
+}
+
+// creaturesOf lists Pensantus's creatures' IDs.
+func (r *trapRig) creaturesOf(t *testing.T) []string {
+	t.Helper()
+	var out []string
+	for _, c := range r.mustCreatures(t, r.ana, r.pens) {
+		out = append(out, c.GetId())
+	}
+	return out
+}
+
+// TestMR035_ACreatureAloneCaughtByAManualTrap: a trap that picks its targets by hand catches only the
+// creature dropped, not the characters standing in the area; its own AC and its own save are used.
+func TestMR035_ACreatureAloneCaughtByAManualTrap(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.place(t, r.toren.GetId(), 12, 7) // before the trap exists: dropping it there would fire it
+	hole := r.trap(t, "Estátua", 12, 7, func(s *mapsv1.TrapSpec) {
+		s.Effect = &rulesv1.TrapEffect{
+			Targets: rulesv1.TrapTargets_TRAP_TARGETS_MANUAL,
+			Attack:  &rulesv1.TrapAttack{Bonus: 20, Count: 1, Damage: &rulesv1.TrapDamage{Dice: "1", DamageTypeKey: "damage-type:piercing"}},
+			Save: &rulesv1.TrapSaveEffect{
+				Ability: rulesv1.Ability_ABILITY_DEXTERITY, Dc: 30, AppliesTo: rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT,
+				OnFail: &rulesv1.TrapOnFail{Damage: []*rulesv1.TrapDamage{{Dice: "1", DamageTypeKey: "damage-type:fire"}}}, OnPass: rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE,
+			},
+		}
+	})
+	wolfID, drop := r.wolfOf(t, r.mapID)
+	r.h.roller.queue(10, 5)
+	drop(12, 7)
+	lines := r.activity(t, r.master)
+	if len(lines) != 1 || len(lines[0].GetFiring().GetCaught()) != 1 {
+		t.Fatalf("the master's activity = %v, want one firing that caught only the wolf", lines)
+	}
+	got := lines[0].GetFiring().GetCaught()[0]
+	if got.GetTargetId() != wolfID || got.GetAttacks()[0].GetTargetArmorClass() != 13 || got.GetSaves()[0].GetRoll().GetTotal() != 7 {
+		t.Errorf("what the trap did to the wolf = %v, want its own AC 13 and a save of 5 + 2 = 7", got)
+	}
+	if r.stateOf(t, r.mapID, hole.GetId()) != mapsv1.TrapState_TRAP_STATE_TRIGGERED {
+		t.Error("the trap did not fire")
+	}
+}
+
+// TestMR035_ACreatureAlreadyInTheAreaIsCaught: a creature token that stood in the area before is caught by
+// a firing by hand with no one named, and with the character whose token is dropped there.
+func TestMR035_ACreatureAlreadyInTheAreaIsCaught(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	_, drop := r.wolfOf(t, r.mapID)
+	drop(12, 7) // before the trap exists
+	hole := r.trap(t, "Fosso Dourado", 12, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL })
+	res, err := r.fireByHand(t, hole)
+	if err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+	if c := res.GetFiring().GetCaught(); len(c) != 1 || c[0].GetTargetLabel() != "Nanquim" {
+		t.Fatalf("FireTrap() with no one named caught %v, want the wolf standing there", c)
+	}
+}
+
+// TestMR035_ACharacterDroppedInAreaCatchesTheCreatureThere: dropping a character's token on an "Ao entrar" trap where a
+// creature already stands catches both.
+func TestMR035_ACharacterDroppedInAreaCatchesTheCreatureThere(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	_, drop := r.wolfOf(t, r.mapID)
+	drop(14, 7)
+	r.trap(t, "Fosso Fundo", 14, 7, pit("1d6"))
+	r.h.roller.queue(3, 2)
+	r.place(t, r.pens.GetId(), 14, 7)
+	lines := r.activity(t, r.master)
+	if len(lines) != 1 || len(lines[0].GetFiring().GetCaught()) != 2 {
+		t.Fatalf("the master's activity = %v, want one firing that caught Pensantus and the wolf", lines)
+	}
+}
+
+// TestMR035_TheNoticersSayWhoWouldPassTheDC: passes_dc is the passive score with the light penalty against the
+// DC, whatever the character's range or sight; the browser never compares.
+func TestMR035_TheNoticersSayWhoWouldPassTheDC(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	pit := r.trap(t, "Fosso Dourado", 15, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 12 })
+	r.fight(t)
+	res, err := r.mc(r.master).GetTrapNoticers(t.Context(), connect.NewRequest(&mapsv1.GetTrapNoticersRequest{CampaignId: r.campaignID, MapId: r.mapID, PointId: pit.GetId()}))
+	if err != nil {
+		t.Fatalf("GetTrapNoticers() error = %v", err)
+	}
+	got := map[string]*mapsv1.TrapNoticer{}
+	for _, n := range res.Msg.GetNoticers() {
+		got[n.GetCharacterName()] = n
+	}
+	if !got["Brisa"].GetPassesDc() || got["Toren"].GetPassesDc() || got["Pensantus"].GetPassesDc() {
+		t.Errorf("passes_dc = Brisa %v, Toren %v, Pensantus %v; want true (13 of 12), false (10) and false (10)",
+			got["Brisa"].GetPassesDc(), got["Toren"].GetPassesDc(), got["Pensantus"].GetPassesDc())
+	}
+	if got["Brisa"].GetWouldNotice() {
+		t.Error("Brisa would notice from where she stands, out of range")
 	}
 }

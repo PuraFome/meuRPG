@@ -1,47 +1,54 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { GetTrapNoticersResponse, TrapNoticer } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 
 interface Row {
   readonly n: TrapNoticer;
-  readonly near: string;
-  readonly nearNote: string;
+  /** "Perto, até 3 m", "Longe, a mais de 3 m", "Fora do mapa". */
+  readonly where: string;
+  readonly whereNote: string;
   readonly verdict: 'knows' | 'yes' | 'no';
   readonly verdictWord: string;
+  /** "−5 na penumbra" when the server says the light takes 5 off. */
   readonly penalty: string;
 }
 
-/** What the table says of one character: the server's numbers and flags, in words. */
+/** What the table says of one character, from the server's numbers and flags alone: whoever is in range reads `would_notice`; whoever is not
+ * reads `passes_dc` ("Se chegar a 3 m: nota"). The browser adds and compares nothing. */
 export function noticerRow(n: TrapNoticer): Row {
-  const verdict = n.knows ? 'knows' : n.wouldNotice ? 'yes' : 'no';
+  const near = n.onMap && n.inRange;
+  const verdict = n.knows ? 'knows' : (near ? n.wouldNotice : n.passesDc) ? 'yes' : 'no';
+  const word = verdict === 'knows' ? 'Já sabe' : verdict === 'yes' ? 'nota' : 'não nota';
   return {
     n,
-    near: !n.onMap ? 'Fora do mapa' : n.inRange ? 'Perto, até 3 m' : 'Longe, a mais de 3 m',
-    nearNote: n.onMap && n.inRange && !n.sees ? 'não vê a área' : '',
+    where: !n.onMap ? 'Fora do mapa' : n.inRange ? 'Perto, até 3 m' : 'Longe, a mais de 3 m',
+    whereNote: n.onMap && n.inRange && !n.sees ? 'não vê a área' : '',
     verdict,
-    verdictWord: verdict === 'knows' ? 'Já sabe' : verdict === 'yes' ? 'Nota' : 'Não nota',
+    verdictWord: verdict === 'knows' ? word : near ? word.charAt(0).toUpperCase() + word.slice(1) : `Se chegar a 3 m: ${word}`,
     penalty: n.lightPenalty < 0 ? `${n.lightPenalty.toString().replace('-', '−')} na penumbra` : '',
   };
 }
 
 /**
- * "Quem notaria" (E9-08 1, MR-035): the Perception of every living player character against the trap's DC
- * to notice it, **as the server works it out** (`GetTrapNoticers`): the passive score from the derived
- * sheet, the −5 of a lightly obscured square, whether the character is on the map, within 3 m of the area
- * and sees it, and whether it would notice standing there. The browser adds, compares and measures
- * nothing: the table writes the numbers and flags it is given. The distance in metres of the artboard is
- * not in the answer, so "Perto" and "Longe" say it in the server's own terms.
+ * "Quem notaria" (E9-08 1, MR-035): the Perception of every living player character against the trap's DC to notice it, **as the server works it
+ * out** (`GetTrapNoticers`): the passive score from the derived sheet with the light penalty beside it, where the character stands (on the map, within
+ * 3 m, seeing the area) and whether it notices. A character in range reads "Nota" or "Não nota"; one out of range, "Se chegar a 3 m: nota" or "não nota"
+ * (`passes_dc`). The distance in metres of the artboard is not in the answer. On a phone each character is one compact row. A failed read says so and
+ * offers "Tentar de novo".
  */
 @Component({
   selector: 'app-trap-noticers',
-  imports: [MatIconModule],
+  imports: [MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './trap-noticers.html',
   styleUrl: './trap-noticers.scss',
 })
 export class TrapNoticers {
   readonly noticers = input<GetTrapNoticersResponse | undefined>(undefined);
+  /** The read failed. */
+  readonly failed = input(false);
+  readonly retry = output<void>();
   protected readonly rows = computed(() => (this.noticers()?.noticers ?? []).map(noticerRow));
-  protected readonly dc = computed(() => this.noticers()?.noticeDc ?? 0);
 }

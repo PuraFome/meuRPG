@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { PendingDamageStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { TrapDamage } from '../../../../../gen/meurpg/play/v1/traps_pb';
+import { focusWithRing } from '../../../../core/creatures/focus-ring';
 import { hitPointsAfter } from '../../../../core/combat/attack-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -108,7 +109,7 @@ export class TrapDamages {
 
   protected askDiscard(id: string): void {
     this.discarding.set(id);
-    afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.safe()?.nativeElement), { injector: this.injector });
   }
 
   /** "Aplicar N de dano": the typed number when it is not the rolled one. */

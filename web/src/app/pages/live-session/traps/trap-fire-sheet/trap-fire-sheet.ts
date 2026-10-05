@@ -10,7 +10,6 @@ import { newKey } from '../../../../core/connect/idempotency';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { trapErrorMessage } from '../../../../core/traps/trap-errors';
 import { firstLine } from '../../../../core/traps/trap-text';
-import { joinDots } from '../../../../core/format/text';
 import { PairFoot } from '../../../../shared/pair-foot/pair-foot';
 import { type PickRow, PersonPick } from '../../../../shared/person-pick/person-pick';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
@@ -27,6 +26,8 @@ export interface TrapFireData {
   readonly targets: readonly PickRow[];
   /** The firing to add creatures to (a trap that fired already); empty for a new firing. */
   readonly extendFiringId: string;
+  /** "Quem está no mapa" could not be read: the list says so instead of "Ninguém com token no mapa". */
+  readonly targetsFailed?: boolean;
 }
 
 /** "Disparar…": a dialog from a tablet up and a bottom sheet on a phone; it answers the firing, or `undefined`. */
@@ -40,6 +41,7 @@ export function openTrapFire(
     ariaLabel: data.extendFiringId ? 'Pegar mais gente na armadilha' : 'Disparar a armadilha',
     labelledBy: 'trap-fire-t',
     width: '520px',
+    restoreFocus: false, // the opener takes it back with the focus ring
   });
 }
 
@@ -76,7 +78,7 @@ export function fireLabel(picked: readonly string[], extend: boolean): string {
       <p class="lead">
         {{ extend ? 'Quem mais foi pego? O app rola o efeito e o dano para quem você marcar.' : 'O app rola o efeito e o dano. O dano de um personagem espera você aplicar.' }}
       </p>
-      <app-person-pick headingId="trap-fire-who" [heading]="extend ? 'Quem mais foi pego' : 'Quem foi pego'" [rows]="data.targets" [(picked)]="picked" empty="Ninguém com token no mapa." />
+      <app-person-pick headingId="trap-fire-who" [heading]="extend ? 'Quem mais foi pego' : 'Quem foi pego'" [rows]="data.targets" [(picked)]="picked" [empty]="data.targetsFailed ? 'Não deu para ler quem está no mapa. Feche e tente de novo.' : 'Ninguém com token no mapa.'" />
       <p class="note" role="status" aria-live="polite">{{ note() }}</p>
       <app-pair-foot
         foot
@@ -113,8 +115,8 @@ export class TrapFireSheet {
   private readonly key = newKey();
 
   protected readonly extend = this.data.extendFiringId !== '';
-  protected readonly title = this.extend ? `Pegar mais gente no ${this.data.point.name}` : `Disparar o ${this.data.point.name}`;
-  protected readonly subtitle = joinDots([this.data.point.name, firstLine(this.data.point.description)].filter(Boolean));
+  protected readonly title = this.extend ? `Pegar mais gente no\u00a0${this.data.point.name}` : `Disparar o\u00a0${this.data.point.name}`;
+  protected readonly subtitle = firstLine(this.data.point.description);
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   private readonly chosen = computed(() => this.data.targets.filter((t) => this.picked().has(t.id)));
   protected readonly label = computed(() => fireLabel(this.chosen().map((t) => t.name), this.extend));
@@ -122,10 +124,10 @@ export class TrapFireSheet {
   protected readonly ready = computed(() => !this.extend || this.chosen().length > 0);
   protected readonly note = computed(() => {
     if (this.extend) {
-      return this.chosen().length === 0 ? 'Marque quem entra no disparo que já aconteceu.' : '';
+      return this.chosen().length === 0 ? 'Ninguém marcado. Escolha quem entra no disparo que já aconteceu.' : '';
     }
     return this.chosen().length === 0
-      ? 'Ninguém marcado: dispara para quem estiver na área da armadilha. Quem está lá, o servidor sabe.'
+      ? 'Ninguém marcado. Dispara para quem estiver na área da armadilha; quem está lá, o servidor sabe.'
       : 'Só quem você marcou é pego, esteja na área ou não.';
   });
   protected readonly busy = signal(false);

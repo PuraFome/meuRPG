@@ -60,6 +60,11 @@
       />
       }
 
+      @if (!isMaster()) {
+        <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
+        <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
+      }
+
       @if (highlightsFor(); as ended) {
         <app-highlights-card
           [campaignId]="campaignId()"
@@ -164,6 +169,9 @@
               [maps]="campaignMaps()"
               (currentChanged)="showMap($event)"
             />
+          </div>
+          <!-- The master's trap and treasure panels: under the map on a phone, across the whole width below the page from 1024px (E9-08, E9-09). -->
+          <div class="board__traps board__traps--row">
             <app-trap-panel
               [campaignId]="campaignId()"
               [state]="mapState"
@@ -181,7 +189,6 @@
           />
         </div>
       } @else {
-        <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
         <app-clue-notice
           [clues]="notes.notice() ? notes.fresh() : []"
           (opened)="openNotes()"

@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { openSessionPage } from './live-session-support';
 import { callRPC } from './support';
-import { movePensantus, pensantusFirst, pointNames, sq20, trapRPC, trapTable, treasureRPC } from './trap-support';
+import { toren } from './combat-support';
+import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
 
 // Traps and treasure in the session, on screen (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02,
 // question 71). The table, the traps and the combat come through the API; what is under test is what
@@ -12,15 +13,19 @@ const trapPanel = (m: Page) => m.getByRole('region', { name: 'Armadilhas do mapa
 const treasurePanel = (m: Page) => m.getByRole('region', { name: 'Tesouros do mapa' });
 
 test(
-  'o mestre revela a armadilha para o jogador: antes ele não a recebe, depois sim',
+  'o mestre revela a armadilha para um jogador: o outro jogador não a recebe, nem no mapa nem na tela',
   { tag: ['@MR-035', '@RN-10'] },
   async ({ browser }) => {
-    test.setTimeout(180_000);
-    const { m, p, table, campaignId, done } = await trapTable(browser, 'Revelar');
+    test.setTimeout(240_000);
+    const t = await trapTable(browser, 'Revelar');
+    const { m, p, table, campaignId } = t;
+    const third = await thirdPlayer(browser, t, toren);
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { noticeDc: 30 });
       await openSessionPage(m, campaignId);
+      await openSessionPage(third.page, campaignId);
       expect(await pointNames(p, table)).not.toContain('Fosso escondido');
+      expect(await pointNames(third.page, table)).not.toContain('Fosso escondido');
 
       const card = trapPanel(m).getByRole('article', { name: 'Fosso escondido' });
       await expect(card).toContainText('Só você vê');
@@ -31,10 +36,23 @@ test(
       await dialog.locator('label', { hasText: 'Pensantus' }).click();
       await dialog.getByRole('button', { name: 'Revelar para Pensantus' }).click();
       await expect(dialog).toBeHidden();
-      await expect(card).toContainText('Visível para todos');
+      await expect(card).toContainText('Só Pensantus sabe');
+
+      // Pensantus's player gets it; the other player never does: not in the map's points, not on their screen.
       expect(await pointNames(p, table)).toContain('Fosso escondido');
+      expect(await pointNames(third.page, table)).not.toContain('Fosso escondido');
+      await third.page.reload();
+      await expect(third.page.getByText('Ao vivo', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+      await expect(third.page.getByText('Fosso escondido')).toHaveCount(0);
+
+      // A second reveal now shows who already knows, checked and disabled with the reason.
+      await card.getByRole('button', { name: 'Revelar para…' }).click();
+      await expect(dialog).toContainText('você já revelou');
+      await expect(dialog.getByRole('checkbox', { name: /Pensantus/ })).toBeDisabled();
+      await dialog.getByRole('button', { name: 'Cancelar' }).click();
     } finally {
-      await done();
+      await third.close();
+      await t.done();
     }
   },
 );
@@ -105,32 +123,51 @@ test(
 );
 
 test(
-  'o mestre dispara na mão fora do combate e decide o dano: aplicar um, descartar o outro',
+  'o mestre dispara na mão fora do combate e decide o dano: aplica um e descarta o outro',
   { tag: ['@MR-035', '@RN-02'] },
   async ({ browser }) => {
     test.setTimeout(180_000);
     const { m, table, campaignId, done } = await trapTable(browser, 'Disparar');
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { manual: true, damage: '4' });
+      await trapRPC(m, table, 'Fosso raso', 14, 7, { manual: true, damage: '5' });
       await openSessionPage(m, campaignId);
-      const card = trapPanel(m).getByRole('article', { name: 'Fosso escondido' });
-      await card.getByRole('button', { name: 'Disparar…' }).click();
-      const dialog = m.getByRole('dialog', { name: /Disparar/ });
-      await expect(dialog).toContainText('Ninguém marcado: dispara para quem estiver na área');
-      await dialog.locator('label', { hasText: 'Pensantus' }).click();
-      await dialog.getByRole('button', { name: 'Disparar para Pensantus' }).click();
-      await expect(card).toContainText('Disparada');
-
+      const fire = async (name: string) => {
+        const card = trapPanel(m).getByRole('article', { name });
+        if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
+          await card.getByRole('button', { name: 'Ver detalhes' }).click();
+        }
+        await card.getByRole('button', { name: 'Disparar…' }).click();
+        const dialog = m.getByRole('dialog', { name: /Disparar/ });
+        await expect(dialog).toContainText('Ninguém marcado. Dispara para quem estiver na área');
+        await dialog.locator('label', { hasText: 'Pensantus' }).click();
+        await dialog.getByRole('button', { name: 'Disparar para Pensantus' }).click();
+        await expect(card).toContainText('Disparada');
+        return card;
+      };
+      const first = await fire('Fosso escondido');
+      await fire('Fosso raso');
       const damage = trapPanel(m).getByRole('region', { name: /Fosso escondido pegou Pensantus/ });
+      const other = trapPanel(m).getByRole('region', { name: /Fosso raso pegou Pensantus/ });
       await expect(damage).toContainText('Mude o número se houver resistência: o app não calcula.');
       await damage.getByRole('textbox').fill('2');
       await damage.getByRole('button', { name: 'Aplicar 2 de dano' }).click();
       await expect(damage).toBeHidden();
+
+      // The other one is discarded: asked in place, then gone, and nothing waits for the master any more.
+      await other.getByRole('button', { name: 'Não aplicar' }).click();
+      await expect(other.getByRole('alertdialog')).toContainText('Descartar o dano de 5?');
+      await other.getByRole('alertdialog').getByRole('button', { name: 'Descartar' }).click();
+      await expect(other).toBeHidden();
+      const left = await callRPC(m, 'meurpg.play.v1.PlayService/ListTrapDamages', { campaignId });
+      expect(((await left.json()).damages ?? []) as unknown[]).toHaveLength(0);
       await expect(m.getByRole('region', { name: 'Registro' })).toBeVisible();
 
-      // The same trap is disarmed after the table resolves the thieves' tools check.
-      await card.getByRole('button', { name: 'Marcar como desarmada' }).click();
-      await expect(card).toContainText('Desarmada');
+      // The first trap is disarmed after the table resolves the thieves' tools check.
+      const more = first.getByRole('button', { name: 'Ver detalhes' });
+      if (await more.count()) await more.click();
+      await first.getByRole('button', { name: 'Marcar como desarmada' }).click();
+      await expect(first).toContainText('Desarmada');
     } finally {
       await done();
     }
@@ -159,8 +196,8 @@ test(
       await expect(toast).toBeVisible();
       await expect(toast).toContainText('Fosso escondido');
       expect(await pointNames(p, table)).toContain('Fosso escondido');
-      await p.getByRole('button', { name: 'Dispensar o aviso' }).click();
-      await expect(p.getByText('Você notou uma armadilha.')).toBeHidden();
+      // It goes away by itself after 8 seconds.
+      await expect(p.getByText('Você notou uma armadilha.')).toBeHidden({ timeout: 20_000 });
     } finally {
       await done();
     }
@@ -168,11 +205,37 @@ test(
 );
 
 test(
-  'o mestre marca o tesouro como encontrado, o jogador o vê e o mestre o desmarca',
+  'durante o combate o aviso passivo também aparece, só para quem notou',
+  { tag: ['@MR-035', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const { m, p, table, campaignId, done } = await trapTable(browser, 'Aviso no combate');
+    try {
+      await trapRPC(m, table, 'Fosso escondido', 9, 7, { noticeDc: 5 });
+      await pensantusFirst(m, table);
+      await openSessionPage(p, campaignId);
+      expect(await pointNames(p, table)).not.toContain('Fosso escondido');
+      await movePensantus(p, table, 8, 7);
+      const toast = p.getByRole('status').filter({ hasText: 'Você notou uma armadilha.' });
+      await expect(toast).toBeVisible();
+      await expect(toast).toContainText('Fosso escondido');
+      expect(await pointNames(p, table)).toContain('Fosso escondido');
+      await p.getByRole('button', { name: 'Dispensar o aviso' }).click();
+      await expect(toast).toBeHidden();
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
+  'o mestre marca o tesouro como encontrado por duas pessoas, o jogador o vê e o mestre o desmarca',
   { tag: ['@MR-041', '@RN-10'] },
   async ({ browser }) => {
-    test.setTimeout(180_000);
-    const { m, p, table, campaignId, done } = await trapTable(browser, 'Tesouro');
+    test.setTimeout(240_000);
+    const t = await trapTable(browser, 'Tesouro');
+    const { m, p, table, campaignId } = t;
+    const third = await thirdPlayer(browser, t, toren);
     try {
       await treasureRPC(m, table, 'Baú de moedas', 12, 7);
       await openSessionPage(m, campaignId);
@@ -184,12 +247,13 @@ test(
       await card.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
       await expect(card.getByRole('button', { name: 'Marcar como encontrado' })).toHaveAttribute('aria-disabled', 'true');
       await card.locator('label', { hasText: 'Pensantus' }).click();
-      await expect(card).toContainText('No resumo da sessão: Pensantus');
+      await card.locator('label', { hasText: 'Toren' }).click();
+      await expect(card).toContainText('No resumo da sessão: Pensantus e Toren');
       await card.getByRole('button', { name: 'Marcar como encontrado' }).click();
-      await expect(card).toContainText('Encontrado por Pensantus');
+      await expect(card).toContainText('Encontrado por Pensantus e Toren');
 
       // The player: the toast, the row and the sheet with the value and what is inside.
-      await expect(p.getByRole('status').filter({ hasText: 'Pensantus encontrou o Baú de moedas.' })).toBeVisible();
+      await expect(p.getByRole('status').filter({ hasText: 'Pensantus e Toren encontraram: Baú de moedas' })).toBeVisible();
       await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
       const sheet = p.getByRole('dialog', { name: 'Baú de moedas' });
       await expect(sheet).toContainText('250');
@@ -202,7 +266,8 @@ test(
       await expect(card).toContainText('Escondido');
       await expect.poll(() => pointNames(p, table)).not.toContain('Baú de moedas');
     } finally {
-      await done();
+      await third.close();
+      await t.done();
     }
   },
 );

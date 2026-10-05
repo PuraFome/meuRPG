@@ -300,8 +300,10 @@ type FireTrapRequest struct {
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	PointId    string                 `protobuf:"bytes,3,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
 	// Who is caught: in a combat that runs on the map, combatant IDs; otherwise
-	// character IDs of tokens on the map. Empty: the creatures standing in the
-	// trap's area (up to 40).
+	// character IDs of tokens on the map. Empty: whoever stands in the
+	// trap's area (up to 40): the combatants of a combat, otherwise the characters and
+	// the creature tokens of their characters. Target IDs are characters (or combatants);
+	// a creature already standing in the area is caught by the empty list, not named here.
 	TargetIds []string `protobuf:"bytes,4,rep,name=target_ids,json=targetIds,proto3" json:"target_ids,omitempty"`
 	// A UUID the app makes for each firing.
 	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -987,7 +989,7 @@ func (x *ListTrapActivityRequest) GetCampaignId() string {
 
 // ListTrapActivityResponse is the trap activity of the open session outside a combat
 // (in a combat it is in the combat log), oldest first. The master gets every firing and
-// every search; a player gets only the lines of their own characters, with their own
+// every search and every notice; a player gets only the lines of their own characters, with their own
 // dice and "passou" or "falhou", never a DC and never a trap their characters do not
 // know (a trap that fired is public).
 type ListTrapActivityResponse struct {

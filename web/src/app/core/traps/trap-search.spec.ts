@@ -1,4 +1,4 @@
-import { resultMessage, searchStep, skillOptions } from './trap-search';
+import { resultMessage, searchRoute, searchStep, skillOptions } from './trap-search';
 
 describe('trap search', () => {
   it('lists the two skills with the character bonus', () => {
@@ -18,5 +18,11 @@ describe('trap search', () => {
     expect(resultMessage([])).toEqual({ title: 'Você não encontrou nada.', detail: '' });
     expect(resultMessage(['Fosso escondido']).title).toBe('Você achou uma armadilha: Fosso escondido.');
     expect(resultMessage(['A', 'B']).title).toBe('Você achou 2 armadilhas: A, B.');
+  });
+
+  it('sends the combat Search to the trap search only on a map with a grid, with the combatant placed on it', () => {
+    expect(searchRoute(20, true)).toBe('traps');
+    expect(searchRoute(0, true)).toBe('action');
+    expect(searchRoute(20, false)).toBe('action');
   });
 });

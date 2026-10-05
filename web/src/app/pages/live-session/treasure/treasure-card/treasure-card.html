@@ -1,30 +1,30 @@
 <article class="tr" [attr.aria-labelledby]="'tr-' + point().id">
   <header class="tr__head">
-    <mat-icon class="tr__icon" aria-hidden="true">inventory_2</mat-icon>
-    <div class="tr__titles">
-      <h3 class="tr__name" [id]="'tr-' + point().id">{{ point().name }}</h3>
-      <p class="tr__sub">{{ sub() }}</p>
-      @if (converted()) {
-        <span class="mr-tag"><mat-icon aria-hidden="true">lock</mat-icon>Convertido em XP</span>
-      } @else if (found()) {
-        <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span>
-      } @else {
-        <span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
-      }
-    </div>
+    <app-chest-icon class="tr__icon" />
+    <h3 class="tr__name" [id]="'tr-' + point().id">{{ point().name }}</h3>
+    @if (converted()) {
+      <span class="mr-tag"><mat-icon aria-hidden="true">lock</mat-icon>Convertido em XP</span>
+    } @else if (found()) {
+      <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span>
+    } @else if (point().revealed) {
+      <span class="mr-tag"><mat-icon aria-hidden="true">visibility</mat-icon>Visível para todos</span>
+    } @else {
+      <span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+    }
   </header>
+  <p class="tr__sub">{{ sub() }}</p>
 
   <p class="tr__label">{{ found() ? 'O que tem dentro' : 'O que tem dentro · só você vê até achar' }}</p>
   <p class="tr__inside">{{ point().description || 'O mestre não escreveu o que tem dentro.' }}</p>
 
   @if (found()) {
     <p class="tr__found">
-      Encontrado por <b>{{ line().names }}</b>@if (line().at) { às&nbsp;{{ line().at }} }
+      Encontrado por <b>{{ line().names }}</b>{{ line().at ? ' às\u00a0' + line().at : '' }}
     </p>
     @if (converted()) {
       <p class="tr__why">
         <mat-icon aria-hidden="true">lock</mat-icon>
-        Convertido em XP em "Voltar à cidade". Para desmarcar, desfaça esse XP na página da campanha.
+        Convertido em XP em “Voltar à cidade”. Para desmarcar, desfaça esse XP na página da campanha.
       </p>
     } @else if (mode() === 'unmarking') {
       <div #ask class="tr__ask" role="alertdialog" [attr.aria-labelledby]="'tr-ask-' + point().id">
@@ -68,9 +68,14 @@
       />
     </div>
   } @else {
+    <div class="tr__acts">
     <button #opener matButton="outlined" type="button" class="tr__mark" [attr.aria-label]="'Marcar o ' + point().name + ' como encontrado'" (click)="startMarking()">
       <mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado
     </button>
+    <button matButton type="button" class="tr__show" [disabled]="busy()" (click)="reveal.emit({ point: point(), revealed: !point().revealed })">
+      {{ point().revealed ? 'Esconder dos jogadores' : 'Mostrar aos jogadores' }}
+    </button>
+    </div>
   }
   @if (error()) {
     <div class="mr-notice mr-notice--danger" role="alert">

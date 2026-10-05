@@ -33,7 +33,7 @@
     </dl>
 
     @if (armed()) {
-      <app-trap-noticers class="tc__noticers" [noticers]="noticers()" />
+      <app-trap-noticers class="tc__noticers" [noticers]="noticers()" [failed]="noticersFailed()" (retry)="retryNoticers.emit()" />
       <div class="tc__actions" role="group" [attr.aria-label]="'Ações de ' + point().name">
         <button
           matButton="outlined"
@@ -56,7 +56,6 @@
         <p class="tc__why" [id]="'tc-all-' + point().id"><mat-icon aria-hidden="true">info</mat-icon>Todos já veem esta armadilha.</p>
       }
     } @else if (fired()) {
-      <p class="tc__why"><mat-icon aria-hidden="true">info</mat-icon>Todos veem a armadilha no mapa. "Marcar como desarmada" fica para quando a mesa resolver o teste de ladrão.</p>
       <div class="tc__actions tc__actions--one">
         <button matButton="outlined" type="button" [disabled]="busy()" disabledInteractive (click)="disarm.emit()">
           <mat-icon aria-hidden="true">block</mat-icon>Marcar como desarmada
@@ -64,18 +63,18 @@
       </div>
       @if (canExtend()) {
         <button matButton type="button" class="tc__more" [disabled]="busy()" disabledInteractive (click)="extend.emit()">
-          <mat-icon aria-hidden="true">person_add</mat-icon>Pegou mais alguém?
+          <mat-icon aria-hidden="true">person_add</mat-icon>Disparar em mais alguém
         </button>
       }
     } @else {
       <p class="tc__why"><mat-icon aria-hidden="true">info</mat-icon>Desarmada: não dispara mais.</p>
     }
-    <button matButton type="button" class="tc__fold" (click)="toggle.emit()">Fechar a armadilha</button>
+    <button matButton type="button" class="tc__fold" [attr.aria-label]="'Esconder detalhes de ' + point().name" (click)="toggle.emit()">Esconder detalhes</button>
   } @else {
     <div class="tc__closed">
       <p class="tc__line">{{ closedNote() || dcLine() }}</p>
-      <button matButton type="button" class="tc__openbtn" [attr.aria-label]="'Abrir a armadilha ' + point().name" (click)="toggle.emit()">
-        Abrir a armadilha
+      <button matButton type="button" class="tc__openbtn" [attr.aria-label]="'Ver detalhes de ' + point().name" (click)="toggle.emit()">
+        Ver detalhes
       </button>
     </div>
   }

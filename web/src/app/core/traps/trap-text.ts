@@ -156,6 +156,12 @@ export function effectText(effect: TrapEffect | undefined): string {
   return tight(`${parts.join('. ')}.${manual}`);
 }
 
+/** The effect for a value cell: no period at the end, and "Queda" for the pits (the preset says what it is). */
+export function effectLine(point: MapPoint): string {
+  const text = effectText(point.trap?.effect).replace(/\.$/, '');
+  return point.trap?.presetKey.includes('pit') ? text.replace(/^Dano:/, 'Queda:') : text;
+}
+
 /** "CD para notar 15 · achar CD 15 · gatilho manual": the line of a closed card. */
 export function trapDcLine(point: MapPoint): string {
   const t = point.trap;

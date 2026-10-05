@@ -29,6 +29,8 @@
         [point]="p"
         [open]="openId() === p.id"
         [noticers]="board().noticers().get(p.id)"
+        [noticersFailed]="board().noticersFailed().has(p.id)"
+        (retryNoticers)="board().retryNoticers(p.id)"
         [firedAt]="firedAt(p)"
         [canExtend]="canExtend(p)"
         [busy]="busy()"

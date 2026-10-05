@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatIconModule } from '@angular/material/icon';
 
 import type { MapPoint } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { ChestIcon } from '../chest-icon/chest-icon';
 import { foundLine, poText } from '../../core/traps/treasure-text';
 
 /**
@@ -12,17 +13,17 @@ import { foundLine, poText } from '../../core/traps/treasure-text';
  */
 @Component({
   selector: 'app-treasure-facts',
-  imports: [MatIconModule],
+  imports: [ChestIcon, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p class="tf__by">
       <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span>
       @if (line().names) {
-        por <b>{{ line().names }}</b>@if (line().at) { às&nbsp;{{ line().at }} }
+        <span>por <b>{{ line().names }}</b>{{ line().at ? ' às\u00a0' + line().at : '' }}</span>
       }
     </p>
     <div class="tf__value">
-      <mat-icon aria-hidden="true">paid</mat-icon>
+      <app-chest-icon />
       <span class="tf__vt">
         <span class="tf__cap">Valor</span>
         <b class="tf__num">{{ value() }}</b>

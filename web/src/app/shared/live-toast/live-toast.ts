@@ -31,23 +31,32 @@ import type { Toast } from '../../core/traps/toast-queue';
     </div>
   `,
   styles: `
+    // Over the page, under the app bar, at the column's width: a toast never pushes the map down, and a phone scrolled to the
+    // map still sees it. The host takes no clicks, only the toasts do.
     :host {
+      position: fixed;
+      top: 68px;
+      right: 0;
+      left: 0;
+      z-index: 30;
       display: block;
+      padding-inline: 16px;
+      pointer-events: none;
     }
 
     .lt {
       display: flex;
       flex-direction: column;
       gap: var(--mr-space-2);
+      max-width: 1184px;
+      margin-inline: auto;
     }
 
     .lt__toast {
       align-items: flex-start;
       max-width: 640px;
-    }
-
-    .lt__toast:last-child {
-      margin-bottom: var(--mr-space-4);
+      border-color: var(--mr-success-ink);
+      pointer-events: auto;
     }
 
     .lt__text {
