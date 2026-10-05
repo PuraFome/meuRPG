@@ -37,7 +37,7 @@ func (s *Service) shieldFor(ctx context.Context, tx pgx.Tx, campaignID string, t
 	if target.Kind != kindPlayer || target.ReactionUsed || target.Defeated {
 		return nil, nil
 	}
-	opts, err := s.roster.CombatTurnOptions(ctx, campaignID, target.CharacterID, turnOf(target))
+	opts, err := s.roster.CombatTurnOptions(ctx, tx, campaignID, target.CharacterID, turnOf(target))
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 // see them: the master all, a player only those on their own character. A
 // player never gets the attack's total or an armor class, nor who attacked
 // when the attacker is hidden from them.
-func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData) ([]*playv1.ReactionPrompt, error) {
+func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) ([]*playv1.ReactionPrompt, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
 	}
@@ -98,7 +98,6 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
 	}
-	v := viewerOf(m)
 	var out []*playv1.ReactionPrompt
 	for _, p := range open {
 		if p.Status != pendingAwaitingReaction {
@@ -120,7 +119,7 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
 		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) }); j >= 0 && v.sees(d.cs[j]) {
 			prompt.AttackerLabel = d.cs[j].Label
-			if sheet, err := s.sheetOf(ctx, m.CampaignID, d.cs[j]); err == nil {
+			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, d.cs[j]); err == nil {
 				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == p.AttackKey }); k >= 0 {
 					prompt.AttackNamePt = sheet.Attacks[k].Name
 				}
@@ -221,7 +220,7 @@ func (s *Service) UseReaction(
 
 		// The attack is compared again with the new armor class, and it never
 		// leaves the server: the player decided without the total (as at a table).
-		sheet, err := s.sheetOf(ctx, m.CampaignID, target)
+		sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
@@ -257,9 +256,9 @@ func (s *Service) UseReaction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the reaction", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {

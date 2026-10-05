@@ -171,7 +171,7 @@ func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, ke
 	if err != nil {
 		return nil, s.dbError(ctx, "read the firing", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.afterFiring(ctx, m.CampaignID, ev.Trap, d.enc)
 	})
 	if err != nil {
@@ -202,8 +202,8 @@ func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *tra
 	}
 	s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	if enc.ID != "" {
-		s.publishEncounterChanged(campaignID, enc)
-		s.publishLogChanged(campaignID, enc.ID, true)
+		s.publishEncounterChanged(ctx, campaignID, enc)
+		s.publishLogChanged(ctx, campaignID, enc.ID, true)
 	}
 	s.Publish(campaignID, false, mapChangedHint(fired.MapID)) // the master's trap card: damage waits there
 }
@@ -349,7 +349,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 	for i, ch := range caught {
 		targets[i].id = ch.ID
 		if trapNeedsAC(effect) {
-			sheet, err := s.roster.CombatSheet(ctx, campaignID, ch.ID)
+			sheet, err := s.roster.CombatSheet(ctx, c.tx, campaignID, ch.ID)
 			if err != nil {
 				return nil, err
 			}

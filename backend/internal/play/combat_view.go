@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // Who sees what in a combat (RN-10, RN-20). The master sees everything. A
@@ -38,6 +39,23 @@ import (
 type combatViewer struct {
 	master bool
 	userID string
+	// unseen are the NPC combatants the viewer does not see on a map with the fog of
+	// war on (combat_fog.go): for them they are like hidden combatants. Nil on a map
+	// without the fog, and for the master.
+	unseen map[string]bool
+	// sight is what the players see of the combat's map, for the viewer's own
+	// questions (seesAt); nil without the fog and for the master.
+	sight *fogSight
+}
+
+// seesAt says whether the viewer sees the combatant standing on the square, as it
+// stood there at some moment (an opportunity offer's square, a move's old one): a
+// combatant they see now, or an NPC whose square they see, whatever it is now.
+func (v combatViewer) seesAt(c playdb.Combatant, sq grid.Square) bool {
+	if v.sees(c) {
+		return true
+	}
+	return !c.Hidden && v.sight != nil && c.Kind == kindNPC && v.sight.sight.Sees(v.userID, sq)
 }
 
 func viewerOf(m authz.Membership) combatViewer {
@@ -45,7 +63,9 @@ func viewerOf(m authz.Membership) combatViewer {
 }
 
 // sees says whether the viewer sees the combatant.
-func (v combatViewer) sees(c playdb.Combatant) bool { return v.master || !c.Hidden }
+func (v combatViewer) sees(c playdb.Combatant) bool {
+	return v.master || (!c.Hidden && !v.unseen[c.ID])
+}
 
 // owns says whether the viewer's player plays the combatant: their own
 // character, or one of its creatures (which carry the owner's user_id). Only a
@@ -267,6 +287,17 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.ArmorClassBonus = c.AcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
+	if w := vitals.GetWildShape(); w != nil && c.Kind == kindPlayer {
+		// The party sees the wolf; the beast's hit points are numbers for the master
+		// and its own player, like the character's (RN-20).
+		out.WildShapeBeastKey, out.WildShapeBeastNamePt = w.GetBeastKey(), w.GetBeastNamePt()
+		if detail {
+			out.WildShapeHitPointsCurrent, out.WildShapeHitPointsMax = ptr(w.GetHitPointsCurrent()), ptr(w.GetHitPointsMax())
+		}
+	}
+	if fs := vitals.GetFamiliarSight(); fs != nil && c.Kind == kindPlayer && detail {
+		out.FamiliarSightCreatureId = fs.GetCreatureId()
+	}
 	if controls && isCreature(c) {
 		// A creature's hit points are numbers to its owner's player and the master
 		// (below); everyone else gets the state word.
@@ -373,7 +404,10 @@ func timestampOrNil(t *time.Time) *timestamppb.Timestamp {
 // vitals: the master's copy carries their hit points, and every copy says
 // which of them are down.
 func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterData) (*playv1.Encounter, error) {
-	v := viewerOf(m)
+	v, err := s.viewerFor(ctx, m, d.enc, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	var byCharacter map[string]*playv1.CharacterVitals
 	if slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
 		all, err := s.vitals.ListVitals(ctx, m.CampaignID)
@@ -386,12 +420,17 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		}
 	}
 	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), s.nameOf)
-	prompts, err := s.reactionPrompts(ctx, m, d)
+	if v.sight != nil { // a fog map: the revision is what this player could see happen
+		if out.Revision, err = s.visibleRevision(ctx, d.enc.ID, v.userID); err != nil {
+			return nil, s.dbError(ctx, "count what the player could see", err)
+		}
+	}
+	prompts, err := s.reactionPrompts(ctx, m, d, v)
 	if err != nil {
 		return nil, err
 	}
 	out.ReactionPrompts = prompts
-	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d); err != nil {
+	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -410,7 +449,7 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 		if _, done := out[sheetKey(c)]; done {
 			continue
 		}
-		sheet, err := s.sheetOf(ctx, m.CampaignID, c)
+		sheet, err := s.sheetOf(ctx, nil, m.CampaignID, c)
 		if err != nil {
 			continue
 		}
@@ -486,43 +525,39 @@ func (s *Service) GetEncounter(
 // and turns, so each audience gets only what it may see.
 
 // publishEncounterChanged tells everyone to read the combat again.
-func (s *Service) publishEncounterChanged(campaignID string, e playdb.Encounter) {
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Everyone: true},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_EncounterChanged_{
-			EncounterChanged: &playv1.WatchGameSessionResponse_EncounterChanged{EncounterId: e.ID, Revision: e.Revision},
-		}},
-	})
+//
+// On a map with the fog of war the revision is the master's alone: it goes up for
+// everything that happens, so a player who got it could count the moves in the dark.
+// The players' hint says 0, "read it again" (and so does the failure to tell).
+func (s *Service) publishEncounterChanged(ctx context.Context, campaignID string, e playdb.Encounter) {
+	msg := encounterChangedMessage(e)
+	f, err := s.fogSightOf(ctx, campaignID, e)
+	if err != nil || f != nil {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+		blind := playdb.Encounter{ID: e.ID}
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(blind)})
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Everyone: true}, Message: msg})
 }
 
 // publishTurnChanged tells who is on turn: the master the real combatant,
-// the players what they may see (a hidden one's turn is "the master's").
-func (s *Service) publishTurnChanged(campaignID string, d *encounterData) {
-	for _, v := range []combatViewer{{master: true}, {}} {
-		turn := d.turnFor(v)
-		s.hub.Publish(campaignID, live.Event{
-			Audience: live.Audience{Master: v.master, Players: !v.master},
-			Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
-				TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
-					EncounterId: d.enc.ID, Round: d.enc.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn,
-				},
-			}},
-		})
-	}
+// the players what they may see (a hidden one's turn is "the master's"; on a
+// map with the fog of war, so is the turn of an NPC the player does not see).
+func (s *Service) publishTurnChanged(ctx context.Context, campaignID string, d *encounterData) {
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}))})
+	s.publishTurnChangedToPlayers(ctx, campaignID, d)
 }
 
 // publishCombatantMoved tells the master always, and the players only when the
-// combatant is not hidden from them.
-func (s *Service) publishCombatantMoved(campaignID string, e playdb.Encounter, c playdb.Combatant) {
+// combatant is not hidden from them (on a map with the fog of war: when they see
+// its square, see publishMovedToPlayers).
+func (s *Service) publishCombatantMoved(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant, from *grid.Square) {
 	if !placed(c) {
 		return
 	}
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Master: true, Players: !c.Hidden},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatantMoved_{
-			CombatantMoved: &playv1.WatchGameSessionResponse_CombatantMoved{
-				EncounterId: e.ID, CombatantId: c.ID, Col: *c.GridCol, Row: *c.GridRow,
-			},
-		}},
-	})
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatantMovedMessage(e, c)})
+	if !c.Hidden {
+		s.publishMovedToPlayers(ctx, campaignID, e, c, from)
+	}
 }

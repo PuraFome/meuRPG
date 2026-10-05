@@ -10,6 +10,7 @@
 package link
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"time"
@@ -27,18 +28,38 @@ type PartyMember struct {
 	// UserID is the account that plays it. Never empty: a character whose
 	// player is gone (RN-16) is not listed.
 	UserID string
-	// Senses are its special senses, derived from the sheet. In Wild Shape they
-	// are the beast's (slice 9.10 has the characters module send them here).
+	// Senses are its special senses, derived from the sheet. For a druid in Wild
+	// Shape they are the beast's: a wolf has no darkvision (MR-037, D6).
 	Senses vision.Senses
 	// PassivePerception is the derived passive Wisdom (Perception) score: what
 	// notices a trap by passing near it (MR-035, D5). Light penalties are the maps
 	// module's to apply.
 	PassivePerception int
-	// Extra are the other pairs of eyes the player has right now, such as a
-	// familiar the player sees through (slice 9.10): each one a viewer of its
-	// own, added to the character's, standing where the creature stands. Empty
-	// until 9.10.
-	Extra []vision.Viewer
+	// Eyes is the familiar the player looks through right now ("Ver pelos olhos
+	// do familiar", MR-036), nil when they do not. The maps module puts it on the
+	// map, at the square where the creature stands (its token, or its combatant
+	// while a combat runs), as the player's viewer instead of the character's own:
+	// looking through the familiar the character is blind and deaf (SRD), so its own
+	// view is switched off while the other characters' still count for "Visão do grupo".
+	Eyes *FamiliarEyes
+}
+
+// FamiliarEyes is a creature the player sees through: which one, and with which
+// senses (an owl's darkvision, a bat's blindsight).
+type FamiliarEyes struct {
+	CreatureID string
+	Senses     vision.Senses
+}
+
+// MapCreature is a live creature of a character as a map token needs it: whose it
+// is and what it is called. The characters module fills it from character_creatures.
+type MapCreature struct {
+	// ID is the creature (a UUID) and OwnerCharacterID its owner's character.
+	ID, OwnerCharacterID string
+	// OwnerUserID is the owner's player; empty if the player deleted the account.
+	OwnerUserID string
+	// Name is the name its owner gave it, and MonsterKey the SRD creature it is.
+	Name, MonsterKey string
 }
 
 // CombatPositions says where the combatants of a running combat stand, by
@@ -48,6 +69,35 @@ type PartyMember struct {
 type CombatPositions struct {
 	Running   bool
 	Positions map[string]grid.Square
+	// Creatures are where the character's creatures stand, by creature ID (MR-037):
+	// the ones that are combatants and have a square, never a dismissed one.
+	Creatures map[string]grid.Square
+}
+
+// CombatSight is what the players of a map with the fog of war on see at one
+// moment, for the combat that runs on it (MR-036, slice 9.7): the play module asks
+// for it once, then asks it about each NPC combatant's square, and shows each
+// player only the NPCs their character sees. It holds squares and user IDs, never a
+// creature: where the combatants stand is the play module's.
+//
+// A user is a player who has a living character; the answer for anyone else is
+// "sees nothing". With "Visão do grupo" on, every player sees what the whole
+// party sees.
+type CombatSight interface {
+	// Users lists the players that have a living character, in a stable order.
+	Users() []string
+	// Sees says whether the player's character (or, with "Visão do grupo", the
+	// party) sees a creature standing on the square now: it is lit or inside a
+	// sense of theirs, with no wall in the line. A character that is not on the
+	// map sees nothing.
+	Sees(userID string, sq grid.Square) bool
+	// CanSee says whether a viewer standing on a square, with these senses (an
+	// NPC's darkvision, say), sees a creature standing on another square: the same
+	// light and walls the players' sight uses, worked out for that one pair.
+	CanSee(from grid.Square, senses vision.Senses, to grid.Square) bool
+	// KnownTerrain is the terrain the player knows: the walls, difficult terrain and
+	// cover of the squares they see now or remember, and plain floor elsewhere.
+	KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error)
 }
 
 // Eyes is what a creature notices with: its passive Perception and its senses

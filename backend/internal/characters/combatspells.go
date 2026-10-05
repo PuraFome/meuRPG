@@ -28,8 +28,8 @@ import (
 // caster may cast it: CombatTurnOptions does. `not_found` for a character that
 // is not one of the campaign's living ones, or a spell the content does not
 // have.
-func (s *Service) CombatSpell(ctx context.Context, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error) {
-	_, d, err := s.fighter(ctx, campaignID, characterID)
+func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error) {
+	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Spell{}, err
 	}
@@ -160,7 +160,7 @@ func isArea(det *rules.SpellDetails) bool {
 // the bonus is 0 and Known is false, and the log says so. `not_found` for a
 // character that is not one of the campaign's living ones.
 func (s *Service) CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error) {
-	_, d, err := s.fighter(ctx, campaignID, characterID)
+	_, d, err := s.fighter(ctx, nil, campaignID, characterID)
 	if err != nil {
 		return link.Save{}, err
 	}

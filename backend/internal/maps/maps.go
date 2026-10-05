@@ -95,9 +95,14 @@ type CharacterDirectory interface {
 	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
 	// PartyVision returns the campaign's living player characters that have a
 	// player, each with what it sees with (its derived darkvision, blindsight
-	// and truesight): the fog of war's viewers (MR-036). Slice 9.10 has it send
-	// a beast's senses in Wild Shape and a familiar's eyes.
+	// and truesight): the fog of war's viewers (MR-036). A beast's senses in Wild
+	// Shape replace the character's, and a familiar the player looks through comes
+	// as Eyes (MR-037).
 	PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error)
+	// MapCreatures returns those of ids that are live creatures of a living
+	// player's character of the campaign, oldest first: the ones that may have a
+	// token on a map (MR-037).
+	MapCreatures(ctx context.Context, campaignID string, ids []string) ([]link.MapCreature, error)
 	// PortraitInUse says whether any NPC of the campaign has the gallery image as
 	// its portrait.
 	PortraitInUse(ctx context.Context, campaignID, imageID string) (bool, error)

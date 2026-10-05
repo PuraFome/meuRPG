@@ -599,8 +599,9 @@ func TestMR013_EndTurnPartAuthorization(t *testing.T) {
 	wantCode(t, "signed out", call(a.h.anonymous(), brisa), connect.CodeUnauthenticated)
 	wantCode(t, "not a member", call(outsider, brisa), connect.CodeNotFound)
 	wantCode(t, "another member's part", call(a.caio, brisa), connect.CodePermissionDenied)
-	// A hidden member is not found by a player, as the combatant of another call.
-	wantCode(t, "a hidden member", call(a.caio, a.id(t, "Goblin 1")), connect.CodeAborted) // not acting: stale, and no leak
+	// A hidden member is not found by a player, as the combatant of every other call (an
+	// aborted "stale turn" would tell it is there).
+	wantCode(t, "a hidden member", call(a.caio, a.id(t, "Goblin 1")), connect.CodeNotFound)
 	if err := call(a.bia, brisa); err != nil {
 		t.Errorf("the member's own player: %v", err)
 	}

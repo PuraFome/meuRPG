@@ -613,6 +613,9 @@ func (s *Service) RollSceneCheck(
 			if doneRow.Kind != eventSceneCheckRolled {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
+			if doneRow.ActorUserID == nil || *doneRow.ActorUserID != m.UserID {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
 			repeated = true
 			rollID, at = doneRow.ID, doneRow.CreatedAt
 			if err := json.Unmarshal(doneRow.Payload, &ev); err != nil {

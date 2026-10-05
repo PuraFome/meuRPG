@@ -137,8 +137,10 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		r := &playv1.SpellTargetResult{
 			CombatantId: h.Target, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
-			Effect: effectView(h, v, target), Cover: coverDegreeProto(h.Cover), CoverSource: coverSourceProto(h.CoverSource),
+			Effect: effectView(h, v, target),
 		}
+		coverKey, coverSource := h.coverFor(v)
+		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if h.Pending != "" && (v.master || v.owns(caster)) {
 			r.PendingDamageId = h.Pending
 			p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: h.Pending})

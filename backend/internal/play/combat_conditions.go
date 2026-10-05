@@ -66,6 +66,7 @@ func (s *Service) SetCombatantConditions(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		target, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -85,6 +86,10 @@ func (s *Service) SetCombatantConditions(
 			}
 			ev.CondSet, ev.Conditions, ev.CondBefore = true, conditions, target.Conditions
 			changed = true
+			// A druid that falls unconscious is itself again (SRD).
+			if err := s.endFormIfAsleep(ctx, c, target, conditions); err != nil {
+				return nil, err
+			}
 		}
 		if endConcentration && target.ConcentrationSpell != nil {
 			// The creatures that lasted only while it did leave with it (MR-037, RN-22).
@@ -106,10 +111,10 @@ func (s *Service) SetCombatantConditions(
 	if err != nil {
 		return nil, s.dbError(ctx, "set conditions", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combID })
-		s.publishLogChanged(m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
 		if i >= 0 && endConcentration && d.cs[i].UserID != nil {
 			s.publishCreaturesChanged(m.CampaignID, *d.cs[i].UserID)
 		}

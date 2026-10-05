@@ -60,6 +60,16 @@ func (sm *SessionMaps) MapShown(ctx context.Context, campaignID, mapID string) {
 	}
 }
 
+// VisionChanged tells the fog that what the players of the map see changed without
+// a token moving: a druid took a beast's senses or left them, or a player started
+// or stopped looking through their familiar's eyes (MR-036, MR-037). The play
+// module calls it after the commit. Nothing happens for a map without fog.
+func (sm *SessionMaps) VisionChanged(ctx context.Context, campaignID, mapID string) {
+	if sm.svc != nil && mapID != "" {
+		sm.svc.refreshVision(ctx, campaignID, mapID)
+	}
+}
+
 // NewSessionMaps returns the SessionMaps for play.
 func NewSessionMaps(pool *pgxpool.Pool) *SessionMaps {
 	return &SessionMaps{queries: mapsdb.New(pool)}
@@ -228,6 +238,15 @@ func (sm *SessionMaps) MapTokens(ctx context.Context, mapID string) ([]link.Toke
 	for _, t := range rows {
 		out = append(out, link.TokenPosition{CharacterID: t.CharacterID, XBP: t.XBp, YBP: t.YBp})
 	}
+	// The creatures' tokens too (MR-037): the familiar's eyes need to know where it
+	// stands. They have no character of their own: CreatureID says whose they are.
+	creatures, err := sm.queries.ListMapCreatureTokens(ctx, mapID)
+	if err != nil {
+		return nil, fmt.Errorf("list the map's creature tokens: %w", err)
+	}
+	for _, t := range creatures {
+		out = append(out, link.TokenPosition{CreatureID: t.CreatureID, XBP: t.XBp, YBP: t.YBp})
+	}
 	return out, nil
 }
 
@@ -238,6 +257,13 @@ func (sm *SessionMaps) MapTokens(ctx context.Context, mapID string) ([]link.Toke
 func (sm *SessionMaps) SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID string, positions []link.TokenPosition, at time.Time) error {
 	q := sm.queries.WithTx(tx)
 	for _, p := range positions {
+		if p.CreatureID != "" {
+			// A creature's token only moves if it has one: the master places them.
+			if err := q.MoveMapCreatureToken(ctx, mapsdb.MoveMapCreatureTokenParams{MapID: mapID, CreatureID: p.CreatureID, XBp: p.XBP, YBp: p.YBP, UpdatedAt: at}); err != nil {
+				return fmt.Errorf("move a creature's token: %w", err)
+			}
+			continue
+		}
 		if err := q.UpsertMapTokenPosition(ctx, mapsdb.UpsertMapTokenPositionParams{
 			MapID: mapID, CharacterID: p.CharacterID, XBp: p.XBP, YBp: p.YBP, UpdatedAt: at,
 		}); err != nil {

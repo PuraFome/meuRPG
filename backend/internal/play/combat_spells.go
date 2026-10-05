@@ -243,6 +243,7 @@ func (s *Service) CastSpell(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		caster, err := findCombatant(cs, casterID, v)
 		if err != nil {
 			return nil, err
@@ -251,6 +252,9 @@ func (s *Service) CastSpell(
 			return nil, err
 		}
 		if err := s.mustActNow(ctx, c, caster); err != nil {
+			return nil, err
+		}
+		if err := s.refuseInShape(ctx, c, caster); err != nil { // no spells in a beast form (MR-037)
 			return nil, err
 		}
 		targs := make([]playdb.Combatant, len(targets))
@@ -265,7 +269,7 @@ func (s *Service) CastSpell(
 
 		// The spell must be one the caster may cast now; the master has the last
 		// word on the economy only.
-		opts, err := s.optionsOf(ctx, m.CampaignID, caster)
+		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, caster)
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +281,7 @@ func (s *Service) CastSpell(
 			// A summoning spell that takes too long is refused with a reason the screen
 			// can say ("Leva 1 hora: conjure fora do combate").
 			if cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
-				if long, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
+				if long, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG,
 						"this spell takes too long to cast in a fight: cast it outside the combat")
 				}
@@ -294,7 +298,7 @@ func (s *Service) CastSpell(
 		if slot != nil {
 			slotLevel = int(slot.Level)
 		}
-		sp, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, slotLevel)
+		sp, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -308,6 +312,10 @@ func (s *Service) CastSpell(
 		if sp.Summon != (req.Msg.GetSummon() != nil) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
 		}
+		known, err := c.sight.knownTerrain(ctx, v) // what the player knows of the map, for the cover they are told
+		if err != nil {
+			return nil, err
+		}
 		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
@@ -316,7 +324,7 @@ func (s *Service) CastSpell(
 			if len(targs) > 0 {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
-		} else if err := s.checkTargets(v, terrain, cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+		} else if err := s.checkTargets(v, planOn(terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
 			return nil, err
 		}
 		var summon *summoning
@@ -412,7 +420,11 @@ func (s *Service) CastSpell(
 		} else {
 			for i, t := range targs {
 				hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
-				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, coverAgainst(terrain, caster, t, cs), &hit); err != nil {
+				cp, err := c.coverOf(ctx, v, terrain, known, caster, t, cs)
+				if err != nil {
+					return nil, err
+				}
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit); err != nil {
 					return nil, err
 				}
 				made.Hits = append(made.Hits, hit)
@@ -429,13 +441,16 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, s.dbError(ctx, "cast a spell", err)
 	}
+	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
@@ -492,7 +507,7 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 		// A target behind total cover (a wall on the line, or the master's mark)
 		// cannot be targeted directly; an area spell may still include it and the
 		// master judges.
-		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, cs).total() {
+		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, coverPool(cs, v)).total() {
 			return errCoverTotal()
 		}
 		if t.ID == caster.ID || !limited {
@@ -512,10 +527,12 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 // resolveOnTarget does what the spell does to one target and fills the hit: a
 // spell attack's roll, a saving throw's roll, and the pending damage or heal
 // the cast opens. Anything else leaves the hit empty.
-func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cover coverView, hit *castHit) error {
+func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit) error {
+	cover := cp.real
 	// The cover counts for a spell attack and a Dexterity save (D4).
 	if sp.AttackType != "" || (sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover) {
 		hit.Cover, hit.CoverSource, hit.CoverBonus = cover.key(), cover.sourceKey(), clamp32(cover.bonus(), 0, 5)
+		hit.CoverRestricted, hit.CoverSeenBy = cp.restricted, cp.seenBy
 	}
 	switch {
 	case sp.AttackType != "":
@@ -553,7 +570,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	sheet, err := s.sheetOf(ctx, m.CampaignID, target)
+	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}

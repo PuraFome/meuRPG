@@ -120,6 +120,16 @@ func (q *Queries) ClearPortraits(ctx context.Context, arg ClearPortraitsParams) 
 	return result.RowsAffected(), nil
 }
 
+const clearWildShape = `-- name: ClearWildShape :exec
+DELETE FROM character_wild_shapes WHERE character_id = $1
+`
+
+// The druid is itself again.
+func (q *Queries) ClearWildShape(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, clearWildShape, characterID)
+	return err
+}
+
 const countLiveCreaturesOfCharacter = `-- name: CountLiveCreaturesOfCharacter :one
 SELECT count(*)::INT4 FROM character_creatures
 WHERE campaign_id = $1::UUID AND character_id = $2::UUID AND dismissed_at IS NULL
@@ -497,9 +507,12 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 const getVitals = `-- name: GetVitals :one
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID AND c.id = $2
   AND c.kind = 'player' AND c.status = 'active'
 `
@@ -510,18 +523,23 @@ type GetVitalsParams struct {
 }
 
 type GetVitalsRow struct {
-	ID                 string
-	Name               string
-	PlayerUserID       *string
-	Sheet              []byte
-	HitPointsCurrent   *int32
-	HitPointsTemporary *int32
-	SpellSlotsUsed     []int32
-	PactSlotsUsed      *int32
-	HitDiceUsed        *int32
-	ResourcesUsed      []byte
-	Revision           *int32
-	UpdatedAt          *time.Time
+	ID                      string
+	Name                    string
+	PlayerUserID            *string
+	Sheet                   []byte
+	HitPointsCurrent        *int32
+	HitPointsTemporary      *int32
+	SpellSlotsUsed          []int32
+	PactSlotsUsed           *int32
+	HitDiceUsed             *int32
+	ResourcesUsed           []byte
+	Revision                *int32
+	UpdatedAt               *time.Time
+	WildShapeBeast          *string
+	WildShapeHp             *int32
+	FamiliarSightCreatureID *string
+	FamiliarSightInCombat   *bool
+	FamiliarSightConditions []string
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -542,6 +560,11 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.ResourcesUsed,
 		&i.Revision,
 		&i.UpdatedAt,
+		&i.WildShapeBeast,
+		&i.WildShapeHp,
+		&i.FamiliarSightCreatureID,
+		&i.FamiliarSightInCombat,
+		&i.FamiliarSightConditions,
 	)
 	return i, err
 }
@@ -859,11 +882,13 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 }
 
 const listCombatCharacters = `-- name: ListCombatCharacters :many
-SELECT id, kind, name, player_user_id, sheet FROM characters
-WHERE campaign_id = $1::UUID
-  AND id = ANY($2::UUID[])
-  AND status = 'active'
-ORDER BY created_at, id
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID
+  AND c.id = ANY($2::UUID[])
+  AND c.status = 'active'
+ORDER BY c.created_at, c.id
 `
 
 type ListCombatCharactersParams struct {
@@ -872,15 +897,17 @@ type ListCombatCharactersParams struct {
 }
 
 type ListCombatCharactersRow struct {
-	ID           string
-	Kind         string
-	Name         string
-	PlayerUserID *string
-	Sheet        []byte
+	ID             string
+	Kind           string
+	Name           string
+	PlayerUserID   *string
+	Sheet          []byte
+	WildShapeBeast *string
 }
 
 // Those of the given characters that may fight in a combat of the campaign:
 // its living characters, players' and NPCs, oldest first (package play).
+// The beast of a druid in Wild Shape comes along, as in ListCombatParty.
 func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharactersParams) ([]ListCombatCharactersRow, error) {
 	rows, err := q.db.Query(ctx, listCombatCharacters, arg.CampaignID, arg.Ids)
 	if err != nil {
@@ -896,6 +923,7 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 			&i.Name,
 			&i.PlayerUserID,
 			&i.Sheet,
+			&i.WildShapeBeast,
 		); err != nil {
 			return nil, err
 		}
@@ -908,23 +936,28 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 }
 
 const listCombatParty = `-- name: ListCombatParty :many
-SELECT id, kind, name, player_user_id, sheet FROM characters
-WHERE campaign_id = $1::UUID
-  AND kind = 'player' AND status = 'active'
-ORDER BY created_at, id
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id
 `
 
 type ListCombatPartyRow struct {
-	ID           string
-	Kind         string
-	Name         string
-	PlayerUserID *string
-	Sheet        []byte
+	ID             string
+	Kind           string
+	Name           string
+	PlayerUserID   *string
+	Sheet          []byte
+	WildShapeBeast *string
 }
 
 // The campaign's living, active player characters, oldest first: the party
 // that fights (package play). The sheet comes along for the numbers a
 // combatant starts with (initiative, speed).
+// The beast of a druid in Wild Shape comes along (MR-037): the combatant starts
+// with the beast's speed and size.
 func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]ListCombatPartyRow, error) {
 	rows, err := q.db.Query(ctx, listCombatParty, campaignID)
 	if err != nil {
@@ -940,6 +973,7 @@ func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]Lis
 			&i.Name,
 			&i.PlayerUserID,
 			&i.Sheet,
+			&i.WildShapeBeast,
 		); err != nil {
 			return nil, err
 		}
@@ -1301,6 +1335,111 @@ func (q *Queries) ListMapCharacters(ctx context.Context, arg ListMapCharactersPa
 	return items, nil
 }
 
+const listMapCreatures = `-- name: ListMapCreatures :many
+SELECT cc.id, cc.character_id, cc.name, cc.monster_key, c.player_user_id
+FROM character_creatures AS cc
+JOIN characters AS c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.id = ANY($2::UUID[])
+  AND cc.dismissed_at IS NULL
+  AND c.status = 'active'
+ORDER BY cc.created_at, cc.id
+`
+
+type ListMapCreaturesParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListMapCreaturesRow struct {
+	ID           string
+	CharacterID  string
+	Name         string
+	MonsterKey   string
+	PlayerUserID *string
+}
+
+// The live creatures of the given IDs that belong to a living player's character
+// of the campaign: the ones that may have a token on a map (package maps). Oldest
+// first.
+func (q *Queries) ListMapCreatures(ctx context.Context, arg ListMapCreaturesParams) ([]ListMapCreaturesRow, error) {
+	rows, err := q.db.Query(ctx, listMapCreatures, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapCreaturesRow
+	for rows.Next() {
+		var i ListMapCreaturesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CharacterID,
+			&i.Name,
+			&i.MonsterKey,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPartyVision = `-- name: ListPartyVision :many
+SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
+WHERE c.campaign_id = $1::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id
+`
+
+type ListPartyVisionRow struct {
+	ID                 string
+	PlayerUserID       *string
+	Sheet              []byte
+	WildShapeBeast     *string
+	FamiliarID         *string
+	FamiliarMonsterKey *string
+}
+
+// The campaign's living, active player characters, oldest first, with what the
+// fog needs to know of how each one sees (package maps): the sheet, the beast of
+// a Wild Shape form, and the familiar the player looks through, if it is still with
+// the character (MR-036, MR-037).
+func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]ListPartyVisionRow, error) {
+	rows, err := q.db.Query(ctx, listPartyVision, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPartyVisionRow
+	for rows.Next() {
+		var i ListPartyVisionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayerUserID,
+			&i.Sheet,
+			&i.WildShapeBeast,
+			&i.FamiliarID,
+			&i.FamiliarMonsterKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionCharacters = `-- name: ListSessionCharacters :many
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = $1::UUID
@@ -1350,33 +1489,42 @@ func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionChar
 const listVitals = `-- name: ListVitals :many
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
   AND c.kind = 'player' AND c.status = 'active'
 ORDER BY c.created_at, c.id
 `
 
 type ListVitalsRow struct {
-	ID                 string
-	Name               string
-	PlayerUserID       *string
-	Sheet              []byte
-	HitPointsCurrent   *int32
-	HitPointsTemporary *int32
-	SpellSlotsUsed     []int32
-	PactSlotsUsed      *int32
-	HitDiceUsed        *int32
-	ResourcesUsed      []byte
-	Revision           *int32
-	UpdatedAt          *time.Time
+	ID                      string
+	Name                    string
+	PlayerUserID            *string
+	Sheet                   []byte
+	HitPointsCurrent        *int32
+	HitPointsTemporary      *int32
+	SpellSlotsUsed          []int32
+	PactSlotsUsed           *int32
+	HitDiceUsed             *int32
+	ResourcesUsed           []byte
+	Revision                *int32
+	UpdatedAt               *time.Time
+	WildShapeBeast          *string
+	WildShapeHp             *int32
+	FamiliarSightCreatureID *string
+	FamiliarSightInCombat   *bool
+	FamiliarSightConditions []string
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
 // oldest first: the party at the table. A character without a
 // character_vitals row has fresh vitals, so the columns from it may be NULL.
-// The sheet comes along because the maximums are derived from it.
+// The sheet comes along because the maximums are derived from it. The Wild Shape
+// form and the familiar's sight come along too (MR-037, MR-036).
 func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVitalsRow, error) {
 	rows, err := q.db.Query(ctx, listVitals, campaignID)
 	if err != nil {
@@ -1399,6 +1547,11 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.ResourcesUsed,
 			&i.Revision,
 			&i.UpdatedAt,
+			&i.WildShapeBeast,
+			&i.WildShapeHp,
+			&i.FamiliarSightCreatureID,
+			&i.FamiliarSightInCombat,
+			&i.FamiliarSightConditions,
 		); err != nil {
 			return nil, err
 		}
@@ -1566,6 +1719,49 @@ func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacter
 	return err
 }
 
+const setFamiliarSight = `-- name: SetFamiliarSight :one
+INSERT INTO character_vitals (character_id, hit_points_current, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
+VALUES ($1, $2, $3, $4, $5::TEXT[], 1, $6)
+ON CONFLICT (character_id) DO UPDATE SET
+    familiar_sight_creature_id = excluded.familiar_sight_creature_id,
+    familiar_sight_in_combat = excluded.familiar_sight_in_combat,
+    familiar_sight_conditions = excluded.familiar_sight_conditions,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type SetFamiliarSightParams struct {
+	CharacterID      string
+	HitPointsCurrent int32
+	CreatureID       *string
+	InCombat         bool
+	Conditions       []string
+	Now              time.Time
+}
+
+type SetFamiliarSightRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// "Ver pelos olhos do familiar" (MR-036): the familiar the player looks through
+// (NULL for none), whether it started in a combat and the conditions it gave the
+// combatant. The first write creates the vitals row, as TouchVitals does.
+func (q *Queries) SetFamiliarSight(ctx context.Context, arg SetFamiliarSightParams) (SetFamiliarSightRow, error) {
+	row := q.db.QueryRow(ctx, setFamiliarSight,
+		arg.CharacterID,
+		arg.HitPointsCurrent,
+		arg.CreatureID,
+		arg.InCombat,
+		arg.Conditions,
+		arg.Now,
+	)
+	var i SetFamiliarSightRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
+	return i, err
+}
+
 const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
@@ -1602,6 +1798,61 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const setWildShape = `-- name: SetWildShape :exec
+INSERT INTO character_wild_shapes (character_id, beast, hp, updated_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (character_id) DO UPDATE SET beast = excluded.beast, hp = excluded.hp, updated_at = excluded.updated_at
+`
+
+type SetWildShapeParams struct {
+	CharacterID string
+	Beast       string
+	Hp          int32
+	Now         time.Time
+}
+
+// A druid's Wild Shape form (MR-037): the beast and its current hit points
+// (1 or more). The caller also bumps the vitals' revision (TouchVitals).
+func (q *Queries) SetWildShape(ctx context.Context, arg SetWildShapeParams) error {
+	_, err := q.db.Exec(ctx, setWildShape,
+		arg.CharacterID,
+		arg.Beast,
+		arg.Hp,
+		arg.Now,
+	)
+	return err
+}
+
+const touchVitals = `-- name: TouchVitals :one
+INSERT INTO character_vitals (character_id, hit_points_current, revision, updated_at)
+VALUES ($1, $2, 1, $3)
+ON CONFLICT (character_id) DO UPDATE SET
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type TouchVitalsParams struct {
+	CharacterID      string
+	HitPointsCurrent int32
+	Now              time.Time
+}
+
+type TouchVitalsRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Bumps a character's vitals revision for a change made on a table of its own (the
+// Wild Shape form): the first write creates the vitals row, as UpsertVitals does
+// (hit_points_current is only for that insert).
+func (q *Queries) TouchVitals(ctx context.Context, arg TouchVitalsParams) (TouchVitalsRow, error) {
+	row := q.db.QueryRow(ctx, touchVitals, arg.CharacterID, arg.HitPointsCurrent, arg.Now)
+	var i TouchVitalsRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }
 

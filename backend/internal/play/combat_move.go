@@ -249,6 +249,7 @@ func (s *Service) MoveCombatant(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		target, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -300,11 +301,16 @@ func (s *Service) MoveCombatant(
 			// what it was (D1): the answer only says it was cut short.
 			occ := occupantsFor(cs, target, v)
 			all := occupantsFor(cs, target, combatViewer{master: true})
+			known, err := c.sight.knownTerrain(ctx, v) // read before the transaction (sightForWrite)
+			if err != nil {
+				return nil, err
+			}
+			plan := planOn(terrain, known) // the walls and rubble the player knows; the rest is floor to them
 			mover, origin := moverOf(target), squareOfCombatant(target)
 			left := movementLeftDFt(target)
 			switch jump {
 			case playv1.JumpKind_JUMP_KIND_UNSPECIFIED:
-				mv := terrain.Move(origin, to, occ, mover)
+				mv := plan.Move(origin, to, occ, mover)
 				if mv.Blocked {
 					return nil, moveStop(mv, occ, to)
 				}
@@ -334,7 +340,7 @@ func (s *Service) MoveCombatant(
 				if length > limit {
 					return nil, tooFar(length-limit, jumpLimit(limit, running))
 				}
-				mv := terrain.Jump(origin, to, occ, mover)
+				mv := plan.Jump(origin, to, occ, mover)
 				if mv.Blocked {
 					return nil, moveStop(mv, occ, to)
 				}
@@ -417,10 +423,11 @@ func (s *Service) MoveCombatant(
 	if err != nil {
 		return nil, s.dbError(ctx, "move a combatant", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishCombatantMoved(m.CampaignID, d.enc, moved)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From))
+		s.positionChanged(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From)) // the fog remembers what it showed
 		if logged {
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !moved.Hidden)
 		}
 		th.after(ctx, m.CampaignID, d.enc)
 		s.noticeAfterMove(ctx, m.CampaignID, d.enc, moved) // a trap near where the mover ended may be noticed (MR-035)
@@ -519,13 +526,21 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
-	v := viewerOf(m)
+	v, sight, err := s.viewerWith(ctx, m, enc, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	who, err := findCombatant(d.cs, combID, v)
 	if err != nil {
 		return nil, err
 	}
 	if err := v.mayAct(who); err != nil {
 		return nil, err
+	}
+	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
+		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
+			return nil, s.dbError(ctx, "work out what the players see", err)
+		}
 	}
 	if err := notEnded(enc); err != nil {
 		return nil, err
@@ -545,8 +560,15 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
-	out := moveOptions(terrain, who, occupantsFor(d.cs, who, v))
-	if err := s.markProvokes(ctx, m, enc, d.cs, who, out); err != nil {
+	// A player's reach is worked out on what they know: the squares they do not see
+	// are floor, so the reach may offer one that is really a wall, and the move is
+	// then cut short (D1). No refusal names a wall or a creature they do not see.
+	known, err := sight.knownTerrain(ctx, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the terrain the player knows", err)
+	}
+	out := moveOptions(planOn(terrain, known), who, occupantsFor(d.cs, who, v))
+	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
 		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
 	}
 	if !v.master {

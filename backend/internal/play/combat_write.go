@@ -131,9 +131,21 @@ type combatTx struct {
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string
+	// svc is the service the change runs in, for what a turn starting does (ending a
+	// familiar's sight); nil in the few places that make a combatTx outside write.
+	svc *Service
+	// told are the vitals of the characters whose Wild Shape form or familiar sight
+	// ended: write tells the streams and the fog after the commit (MR-036).
+	told []*playv1.CharacterVitals
 	// master says the master makes the change: the turn that waits for an
 	// opportunity attack's answer never stops him.
 	master bool
+	// sight is what the players see of the combat's map, read before the
+	// transaction opened (nil without the fog of war): it filters what the change
+	// tells its caller and stamps who could see the event (combat_fog.go).
+	sight *fogSight
+	// stamped is the last event insertEvent stamped with who could see it.
+	stamped *actionEvent
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -148,6 +160,11 @@ type combatResult struct {
 	// start, whose combat the retry does not know.
 	encounterID string
 	repeated    bool
+	// sight is what the players saw of the combat's map before the change (nil without
+	// the fog), and stamped the event the change wrote with who could see it: the
+	// publishers use both (withFogMemo).
+	sight   *fogSight
+	stamped *actionEvent
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -156,9 +173,39 @@ type combatResult struct {
 // do returns the event's payload, or nil when nothing changed, and then no
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
+	// What the players see is read first, never inside the transaction: the maps
+	// module asks this one where the combatants stand, and that read would wait for
+	// the rows the change has already written. The sight is read with the combat's
+	// revision; once the transaction holds the session lock the revision is checked
+	// again, and a change that got in between makes the sight stale: it is read again
+	// (at most maxSightTries times, then the change is aborted).
+	for try := 1; ; try++ {
+		sight, err := s.sightForWrite(ctx, w)
+		if err != nil {
+			return combatResult{}, s.dbError(ctx, "work out what the players see", err)
+		}
+		if s.afterSightRead != nil {
+			s.afterSightRead(w.encounterID) // a test changes the combat here
+		}
+		res, err := s.writeOnce(ctx, w, sight, do)
+		if errors.Is(err, errSightStale) {
+			if try >= maxSightTries {
+				return combatResult{}, connect.NewError(connect.CodeAborted, errors.New("the combat keeps changing: try again"))
+			}
+			continue
+		}
+		return res, err
+	}
+}
+
+// writeOnce is one try of write, with the sight it was given.
+func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
 	var res combatResult
+	var last *actionEvent
+	var ended *combatTx // the change's transaction, for what it leaves to tell
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res = combatResult{encounterID: w.encounterID}
+		res, ended = combatResult{encounterID: w.encounterID, sight: sight}, nil
+		last = nil
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -177,6 +224,12 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
+			// A key is its author's: another member replaying it would be handed the
+			// answer to a change that was not theirs (the vitals of someone else's
+			// character, a roll).
+			if done.ActorUserID == nil || *done.ActorUserID != w.m.UserID {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
 			res.repeated = true // a retry of a change already made
 			res.payload = done.Payload
 			return nil
@@ -184,7 +237,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, master: w.m.Role == authz.RoleMaster}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -192,6 +245,9 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			}
 			if err != nil {
 				return fmt.Errorf("find the encounter: %w", err)
+			}
+			if sight != nil && c.enc.Revision != sight.rev {
+				return errSightStale
 			}
 		}
 		payload, err := do(c)
@@ -208,16 +264,41 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return err
 		}
 		res.encounterID = c.enc.ID
-		return insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload)
+		ended = c
+		c.stamped = nil
+		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
+			return err
+		}
+		last = c.stamped
+		return nil
 	})
 	if err != nil {
 		return combatResult{}, err
+	}
+	res.stamped = last
+	// A turn that started ended some familiar's sight (MR-036): the player's vitals
+	// and the fog's view change.
+	if ended != nil && len(ended.told) > 0 {
+		for _, v := range ended.told {
+			s.publishVitals(w.m.CampaignID, v)
+		}
+		s.maps.VisionChanged(ctx, w.m.CampaignID, deref(ended.enc.MapID))
 	}
 	return res, nil
 }
 
 // insertEvent appends a session event inside the change's transaction.
 func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) error {
+	if ev, ok := payload.(actionEvent); ok {
+		var err error
+		if kind != eventActionUndone { // an undo is no line: its hint goes to every player
+			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
+				return err
+			}
+			c.stamped = &ev
+		}
+		payload = ev
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("encode the event payload: %w", err)
@@ -244,7 +325,7 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 // the change was about (the session's latest, for a retried start), lets
 // publish tell the streams (unless the call was a retry, which changed
 // nothing), and returns the combat as the caller sees it.
-func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(d *encounterData)) (*playv1.Encounter, error) {
+func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(ctx context.Context, d *encounterData)) (*playv1.Encounter, error) {
 	var enc playdb.Encounter
 	var err error
 	if res.encounterID != "" {
@@ -259,15 +340,18 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
+	// The sight read after the commit is read once for the publishers and the answer;
+	// the one read before it says who could see the old squares.
+	ctx = withFogMemo(ctx, res.sight, res.stamped)
 	if !res.repeated && publish != nil {
-		publish(d)
+		publish(ctx, d)
 	}
 	return s.viewFor(ctx, m, d)
 }
 
 // changed is the usual publish: a hint that the combat changed.
-func (s *Service) changed(campaignID string) func(d *encounterData) {
-	return func(d *encounterData) { s.publishEncounterChanged(campaignID, d.enc) }
+func (s *Service) changed(campaignID string) func(ctx context.Context, d *encounterData) {
+	return func(ctx context.Context, d *encounterData) { s.publishEncounterChanged(ctx, campaignID, d.enc) }
 }
 
 // parseKey reads an idempotency key.
