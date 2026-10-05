@@ -3860,7 +3860,9 @@ func (*WatchGameSessionResponse_LeftImagesChanged) Descriptor() ([]byte, []int) 
 // EncounterChanged is a hint: the combat changed, so the app reads it again
 // (CombatService.GetEncounter). It carries no content, so a hidden
 // combatant never travels on a player's stream (RN-10). Everyone gets it,
-// also when the change only touched hidden things.
+// also when the change only touched hidden things. One exception: the
+// opportunity offers a move makes (MoveCombatantResponse.provoked) are told
+// only to the master, the mover's player and the reactors' players.
 type WatchGameSessionResponse_EncounterChanged struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combat (a UUID).

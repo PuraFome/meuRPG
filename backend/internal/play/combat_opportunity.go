@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -150,37 +151,63 @@ func provokedBy(cands []candidate, from, to grid.Square) []provoker {
 
 // offerOpportunities makes the offers a move that landed provokes, inside the
 // move's transaction, and writes an opportunity_offered event for each (IDs and
-// the square only). It returns the id the offers share, empty when there is none.
+// the square only). It returns the id the offers share, empty when there is none,
+// and the reactors offered an attack (combatant IDs), whom the stream must tell.
 // The event is written before the move's own, which is what the undo acts on.
-func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square) (string, error) {
+func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square) (string, []string, error) {
 	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	provokers := provokedBy(reactors, from, to) // the reach first: the sight is asked of the reactors a move leaves
 	if c.sight != nil {
 		provokers = slices.DeleteFunc(provokers, func(p provoker) bool { return !c.sight.reactorSees(p.reactor, p.sheet, from) })
 	}
 	if len(provokers) == 0 {
-		return "", nil
+		return "", nil, nil
 	}
 	moveID := uuid.New().String()
+	offered := make([]string, 0, len(provokers))
 	for _, p := range provokers {
+		offered = append(offered, p.reactor.ID)
 		offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
 			EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: p.reactor.ID,
 			LeftCol: clamp32(p.left.Col, 0, math.MaxInt32), LeftRow: clamp32(p.left.Row, 0, math.MaxInt32), CreatedAt: c.now,
 		})
 		if err != nil {
-			return "", fmt.Errorf("offer the opportunity attack: %w", err)
+			return "", nil, fmt.Errorf("offer the opportunity attack: %w", err)
 		}
 		if err := insertEvent(ctx, c, eventOpportunityOffered, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: mover.Hidden || p.reactor.Hidden, Actor: mover.ID, Target: p.reactor.ID,
 			OfferID: offer.ID, MoveID: moveID, Col: offer.LeftCol, Row: offer.LeftRow,
 		}); err != nil {
-			return "", err
+			return "", nil, err
 		}
 	}
-	return moveID, nil
+	return moveID, offered, nil
+}
+
+// publishOffersMade tells who must read the combat again after a move that
+// provoked: the master, the mover's player (their turn now waits) and the players
+// of the reactors (each one's prompt). No other player gets a hint: an offer of a
+// reactor they may not see is not theirs to know about (RN-10, question 69). The
+// players' hint carries no revision ("read it again"), as on a map with the fog.
+func (s *Service) publishOffersMade(campaignID string, d *encounterData, mover playdb.Combatant, reactorIDs []string) {
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+	users := []string{}
+	if mover.UserID != nil {
+		users = append(users, *mover.UserID)
+	}
+	for _, id := range reactorIDs {
+		if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == id }); i >= 0 && d.cs[i].UserID != nil {
+			users = append(users, *d.cs[i].UserID)
+		}
+	}
+	slices.Sort(users)
+	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID})
+	for _, u := range slices.Compact(users) {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
+	}
 }
 
 // mustNotWait refuses, for a player, what the turn cannot do while the mover

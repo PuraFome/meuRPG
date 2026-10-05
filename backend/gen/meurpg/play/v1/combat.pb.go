@@ -2442,7 +2442,8 @@ type Combatant struct {
 	MovementLeftDft int32 `protobuf:"varint,42,opt,name=movement_left_dft,json=movementLeftDft,proto3" json:"movement_left_dft,omitempty"`
 	// The cover the master marked on it (SetCombatantCover): NONE or UNSPECIFIED
 	// when there is none. It is no armor class and everyone who sees the combatant
-	// gets it. The cover from the map depends on who attacks, so it is on
+	// gets it. A move that takes it off also sends `encounter_changed`, since
+	// `combatant_moved` carries only the square. The cover from the map depends on who attacks, so it is on
 	// TargetInReach, never here.
 	CoverMark CoverDegree `protobuf:"varint,43,opt,name=cover_mark,json=coverMark,proto3,enum=meurpg.play.v1.CoverDegree" json:"cover_mark,omitempty"`
 	// A fly speed in feet, 0 for none. Same audience as `speed_ft`.

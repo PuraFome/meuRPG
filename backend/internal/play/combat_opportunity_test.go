@@ -955,3 +955,93 @@ func TestMR034_TheWaitHoldsTheSamePlayersCreaturesInTheTurn(t *testing.T) {
 		t.Errorf("the wolf's move after the answer error = %v", err)
 	}
 }
+
+// TestRN21_AProvokingMoveTellsWhoMustAnswer: the offers live in the combat, not in
+// the move's hint, so a move that provokes sends encounter_changed to the master,
+// the mover's player (their turn waits) and the reactors' players (their prompt),
+// and to no other player: an offer of a reactor they may not see is not theirs to
+// know about. Toren leaving Goblin 1's reach asks the master; Goblin 1 leaving
+// Toren's asks Toren's player.
+func TestRN21_AProvokingMoveTellsWhoMustAnswer(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name        string
+		setup, move func(t *testing.T, c *cave)
+	}{
+		{"Toren leaves the goblin", func(*testing.T, *cave) {}, func(t *testing.T, c *cave) { c.leaveGoblin(t) }},
+		{
+			"the goblin leaves Toren",
+			func(t *testing.T, c *cave) { c.passTo(t, c.get(t, c.master), "Goblin 1") },
+			func(t *testing.T, c *cave) { c.moveOffering(t, "Goblin 1", 5, 9) }, // along a line through Toren's reach
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := newCave(t)
+			c.oppFight(t)
+			streams := map[string]*watcher{
+				"the master": c.master.watch(t, c.campaignID), "Toren's player": c.caio.watch(t, c.campaignID),
+				"Pensantus's player": c.ana.watch(t, c.campaignID), "Brisa's player": c.bia.watch(t, c.campaignID),
+			}
+			for _, w := range streams {
+				w.ready(t)
+			}
+			brisa := c.id(t, "Brisa")
+			// upTo reads every stream up to the master moving Brisa to (col, 7), which
+			// everyone hears, so all that the change before it published has come by
+			// then; it returns how many encounter_changed each one got.
+			upTo := func(col int32) map[string]int {
+				c.mustMove(t, c.master, "Brisa", col, 7)
+				got := map[string]int{}
+				for who, w := range streams {
+					for {
+						ev := w.nextChange(t)
+						if m := ev.GetCombatantMoved(); m != nil && m.GetCombatantId() == brisa && m.GetCol() == col {
+							break
+						}
+						if ev.GetEncounterChanged() != nil {
+							got[who]++
+						}
+					}
+				}
+				return got
+			}
+			tc.setup(t, c)
+			upTo(2)
+			tc.move(t, c)
+			if len(c.offersOf(t, c.master)) != 1 {
+				t.Fatalf("the master's offers = %v, want one", c.offersOf(t, c.master))
+			}
+			got := upTo(1)
+			for who, want := range map[string]bool{"the master": true, "Toren's player": true, "Pensantus's player": false, "Brisa's player": false} {
+				if (got[who] > 0) != want {
+					t.Errorf("after the provoking move %s got %d encounter_changed; want some: %v", who, got[who], want)
+				}
+			}
+		})
+	}
+}
+
+// TestMR034_AMoveThatClearsTheCoverMarkTellsEveryone: the master's cover mark is on
+// the combatant, and everyone who sees it reads it; a move takes it off, and the
+// move's own hint carries only the square, so the move also sends encounter_changed.
+func TestMR034_AMoveThatClearsTheCoverMarkTellsEveryone(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.mark(t, "Goblin 2", playv1.CoverDegree_COVER_DEGREE_HALF)
+	if got := c.who(t, c.ana, "Goblin 2").GetCoverMark(); got != playv1.CoverDegree_COVER_DEGREE_HALF {
+		t.Fatalf("a player reads Goblin 2's mark as %v, want half", got)
+	}
+	w := c.ana.watch(t, c.campaignID)
+	w.ready(t)
+	c.mustMove(t, c.master, "Goblin 2", 21, 7)
+	// The move's own combatant_moved comes first; with no encounter_changed after it
+	// the test fails on the time limit.
+	for got := false; !got; {
+		got = w.nextChange(t).GetEncounterChanged() != nil
+	}
+	if got := c.who(t, c.ana, "Goblin 2").GetCoverMark(); got != playv1.CoverDegree_COVER_DEGREE_NONE && got != playv1.CoverDegree_COVER_DEGREE_UNSPECIFIED {
+		t.Errorf("after the move a player reads the mark %v, want none", got)
+	}
+}
