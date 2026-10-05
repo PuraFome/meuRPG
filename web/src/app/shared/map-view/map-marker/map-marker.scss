@@ -64,6 +64,21 @@ span.pt__hit {
   &--scene {
     border-radius: var(--mr-radius-pill);
   }
+
+  // A trap, a treasure or a light: drawn by `app-map-pins`; here only the hit area, with a ring when it is the one selected.
+  &--pin {
+    border-color: transparent;
+    border-radius: 8px;
+    background: none;
+
+    .pt__icon {
+      visibility: hidden;
+    }
+  }
+}
+
+.pt__chest {
+  font-size: 20px;
 }
 
 .pt__icon {
@@ -83,6 +98,15 @@ span.pt__hit {
 
 :host(.pt--selected.pt--hidden) .pt__shape {
   border-style: dashed;
+}
+
+:host(.pt--hidden) .pt__shape--pin {
+  border-color: transparent;
+}
+
+:host(.pt--selected) .pt__shape--pin {
+  // The mark that is drawn (`app-map-pins`) carries the selection ring: an area, a chest or a bulb, never an extra square here.
+  border-color: transparent;
 }
 
 .pt__badge {

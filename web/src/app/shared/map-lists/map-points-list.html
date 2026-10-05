@@ -9,32 +9,66 @@
   </p>
 } @else {
   <ul class="lst" aria-labelledby="points-heading">
-    @for (p of points(); track p.id) {
+    @for (r of rows(); track r.point.id) {
+      @let p = r.point;
       <li class="row">
-        <span class="row__glyph" [class.row__glyph--hidden]="!p.revealed" aria-hidden="true">
-          <mat-icon>{{ icon(p.kind) }}</mat-icon>
-          @if (!p.revealed) {
+        <span class="row__glyph" [class.row__glyph--hidden]="r.hidden" aria-hidden="true">
+          @if (p.kind === Treasure) {
+            <app-chest-icon />
+          } @else {
+            <mat-icon>{{ icon(p.kind) }}</mat-icon>
+          }
+          @if (r.hidden) {
             <span class="row__badge"><mat-icon>visibility_off</mat-icon></span>
           }
         </span>
         <span class="row__text">
           <span class="row__name">{{ p.name }}</span>
-          <span class="row__sub">{{ sub(p) }}</span>
+          <span class="row__sub">{{ r.sub }}</span>
         </span>
-        <span class="row__state" [class.row__state--hidden]="!p.revealed">
-          <mat-icon aria-hidden="true">{{ p.revealed ? 'visibility' : 'visibility_off' }}</mat-icon>
-          {{ p.revealed ? 'Revelado' : 'Escondido' }}
+        <span class="row__states">
+          @for (t of r.tags; track t.text) {
+            <span class="row__state" [class.row__state--hidden]="t.text === 'Escondido'">
+              <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.text }}
+            </span>
+          }
         </span>
-        <button
-          matButton="outlined"
-          type="button"
-          class="row__action"
-          [disabled]="pendingId() === p.id"
-          [attr.aria-label]="(p.revealed ? 'Esconder ' : 'Revelar aos jogadores ') + p.name"
-          (click)="toggle.emit({ point: p, revealed: !p.revealed })"
-        >
-          {{ p.revealed ? 'Esconder' : 'Revelar aos jogadores' }}
-        </button>
+        @if (p.kind !== Light) {
+          @if (r.canMark) {
+            <button
+              matButton="outlined"
+              type="button"
+              class="row__action"
+              [attr.data-mark]="p.id"
+              [attr.aria-label]="'Marcar ' + p.name + ' como encontrado'"
+              (click)="startMarking(p.id)"
+            >
+              <mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado
+            </button>
+          } @else if (!(p.kind === Treasure && people() !== null)) {
+            <button
+              matButton="outlined"
+              type="button"
+              class="row__action"
+              [disabled]="pendingId() === p.id"
+              [attr.aria-label]="(p.revealed ? 'Esconder ' : 'Revelar aos jogadores ') + p.name"
+              (click)="toggle.emit({ point: p, revealed: !p.revealed })"
+            >
+              {{ p.revealed ? 'Esconder' : 'Revelar aos jogadores' }}
+            </button>
+          }
+        }
+        @if (marking() === p.id) {
+          <div class="row__mark" role="group" aria-labelledby="mk-who" (keydown.escape)="cancelMarking(p.id)">
+            <app-person-pick headingId="mk-who" [heading]="'Quem encontrou ' + p.name + '?'" [rows]="people() ?? []" [(picked)]="picked" [allToggle]="false" />
+            <p class="row__hint">Marque uma ou mais pessoas. Com mais de uma, o valor se divide no resumo da sessão.</p>
+            <p class="row__hint" role="status" aria-live="polite">{{ summary() }}</p>
+            @if (markError()) {
+              <p class="row__error" role="alert">{{ markError() }}</p>
+            }
+            <app-pair-foot cancelLabel="Voltar" confirmLabel="Marcar como encontrado" confirmIcon="check" [cancelFirstWhenStacked]="true" [ready]="picked().size > 0" [busy]="markBusy()" (cancel)="cancelMarking(p.id)" (confirm)="confirmMarking(p)" />
+          </div>
+        }
         @if (p.kind === Scene && openScenePointId() !== undefined) {
           <div class="row__scene">
             @if (openScenePointId() === p.id) {

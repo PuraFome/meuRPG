@@ -1,4 +1,4 @@
-import { Component, DestroyRef, Injector, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, Injector, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +9,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
-import { mapErrorMessage } from '../../../core/maps/map-errors';
+import { CombatOnMap } from '../../../core/maps/combat-on-map';
+import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { OpenSessionLookup } from '../../../core/play/open-session';
@@ -55,6 +56,7 @@ type Phase = 'loading' | 'ready' | 'gone' | 'error';
 export class MapPage {
   private readonly api = inject(MapsClient);
   private readonly campaigns = inject(CampaignsService);
+  private readonly combat = inject(CombatOnMap);
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
@@ -71,6 +73,12 @@ export class MapPage {
   protected readonly fromSession = signal(false);
   /** The open session's number when it is on this map (the master only). */
   protected readonly currentSession = signal<number | null>(null);
+  /** The open session's number, on any map (a treasure marked found counts in its summary). */
+  protected readonly sessionNumber = signal<number | null>(null);
+  /** A combat that has not ended runs on this map: the grid and the image cannot change. */
+  protected readonly combatRunning = signal(false);
+  /** A new grid or a new image would erase painting or what the players saw (the editor tells). */
+  protected readonly erases = signal(false);
 
   protected readonly state = new MapState((mapId) => this.api.get(this.campaignId(), mapId));
   protected readonly map = this.state.map;
@@ -81,6 +89,7 @@ export class MapPage {
   protected readonly playerMaps = computed(() => this.maps());
 
   private generation = 0;
+  private readonly editor = viewChild(MapEditor);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
@@ -140,6 +149,20 @@ export class MapPage {
     }
   }
 
+  /** The combat on this map and the open session change under the page: read them again when asked and when the window gets the focus. */
+  @HostListener('window:focus')
+  protected reloadFlags(): void {
+    const mapId = this.route.snapshot.paramMap.get('mapId');
+    if (this.isMaster() && mapId && this.phase() === 'ready') {
+      void this.loadSession(mapId, this.generation);
+    }
+  }
+
+  /** For the route guard: the editor sends or asks about the strokes that wait. */
+  confirmLeave(): boolean | Promise<boolean> {
+    return this.editor()?.confirmLeave() ?? true;
+  }
+
   protected retry(): void {
     const mapId = this.route.snapshot.paramMap.get('mapId');
     if (mapId) {
@@ -156,9 +179,14 @@ export class MapPage {
   }
 
   private async loadSession(mapId: string, generation: number): Promise<void> {
-    const session = await this.sessions.currentMap(this.campaignId());
+    const [session, running] = await Promise.all([
+      this.sessions.currentMap(this.campaignId()),
+      this.combat.running(this.campaignId(), mapId),
+    ]);
     if (generation === this.generation) {
       this.currentSession.set(session?.mapId === mapId ? session.sessionNumber : null);
+      this.sessionNumber.set(session?.sessionNumber ?? null);
+      this.combatRunning.set(running);
     }
   }
 
@@ -233,7 +261,11 @@ export class MapPage {
           });
           this.state.setMap(saved);
         },
-        errorMessage: (err) => mapErrorMessage(err, 'trocar a imagem'),
+        errorMessage: (err) => {
+          // A combat that started meanwhile: the page's flag was stale.
+          this.reloadFlags();
+          return editorErrorMessage(err, 'image', 'trocar a imagem');
+        },
       },
       this.injector,
       this.phone(),

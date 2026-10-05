@@ -1,0 +1,220 @@
+// The styles the Luz, Armadilha and Tesouro panels share (E9-02): the same panel as the shipped point panel, and 52 px radios.
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.pk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.pk__eyebrow {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.pk__title {
+  margin: -12px 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.pk__sub {
+  margin: -12px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.pk__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.pk__h {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.pk__hint,
+.pk__error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pk__error {
+  color: var(--mr-danger-ink);
+}
+
+.pk__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--mr-space-3);
+}
+
+// A damage and its type: the type's words ("Envenenado", "Cortante") need more room than the dice.
+.pk__pair--cond {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.pk__pair--type {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+// The two CDs have long labels: one under the other while the panel is narrow (the side column), side by side when it has room.
+@container (max-width: 520px) {
+  .pk__pair--dc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// Radios as rows of 52 px: the name, what it does and the mark of the chosen one (a filled ring and a thicker border).
+.pk__radios {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.pk__radio {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: 6px var(--mr-space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &--on {
+    padding: 5px calc(var(--mr-space-3) - 1px);
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+.pk__dot {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .pk__radio--on & {
+    border-color: var(--mr-accent);
+
+    &::after {
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--mr-accent);
+      content: '';
+    }
+  }
+}
+
+.pk__rtext {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 20px;
+
+  b {
+    font-size: 16px;
+  }
+
+  span {
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.pk__rule {
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+
+  p {
+    margin: 0;
+  }
+}
+
+.pk__h {
+  margin: 0;
+}
+
+.pk__p {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.pk__wide {
+  width: 100%;
+  min-height: 44px;
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    min-height: 48px;
+  }
+}
+
+// A locked field (a treasure turned into XP): the greyed look of a field that cannot change, with the reason beside it.
+.pk__locked {
+  --mdc-outlined-text-field-outline-color: var(--mr-line);
+  opacity: 0.75;
+}
+
+.pk__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.pk__askt {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.pk__btns {
+  display: flex;
+  gap: var(--mr-space-3);
+
+  button {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+}
+
+.pk__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}
+
+// A field in error: the message under it in the danger ink and the outline in the same colour (Material only does this for a form control).
+.pk__invalid {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+.pk__err {
+  color: var(--mr-danger-ink);
+}

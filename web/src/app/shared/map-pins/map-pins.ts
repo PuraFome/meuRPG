@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { type MapPoint, MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type PinArea, trapArea } from '../../core/traps/trap-area';
 import { ChestIcon } from '../chest-icon/chest-icon';
+import { pointHidden } from '../map-view/map-labels';
 import { bpToPercent } from '../map-view/map-geometry';
 
 interface Pin {
@@ -47,6 +48,8 @@ interface Pin {
              square; what only the master sees adds the crossed eye, at the corner and never on the glyph. -->
         <span
           class="area"
+          [class.area--selected]="p.id === selectedId()"
+          [attr.data-pin-of]="p.id"
           [class.pin--remembered]="p.remembered"
           [style.left.%]="p.area?.left ?? p.x"
           [style.top.%]="p.area?.top ?? p.y"
@@ -62,8 +65,10 @@ interface Pin {
       } @else {
         <span
           class="pin"
+          [attr.data-pin-of]="p.id"
           [class]="'pin pin--' + p.kind + ' pin--' + p.state"
           [class.pin--remembered]="p.remembered"
+          [class.pin--selected]="p.id === selectedId()"
           [style.left.%]="p.x"
           [style.top.%]="p.y"
           [style.--n]="p.n"
@@ -78,7 +83,7 @@ interface Pin {
     }
   `,
   styleUrl: './map-pins.scss',
-  host: { 'aria-hidden': 'true' },
+  host: { 'aria-hidden': 'true', '[class.faded]': 'faded()' },
 })
 export class MapPins {
   readonly points = input.required<readonly MapPoint[]>();
@@ -86,6 +91,10 @@ export class MapPins {
   readonly columns = input(0);
   readonly rows = input(0);
   readonly isMaster = input(false);
+  /** Drawn at 40 %: the master is painting, and the layers show through. */
+  readonly faded = input(false);
+  /** The point the master has open: its mark gets the selection ring. */
+  readonly selectedId = input<string | null>(null);
 
   protected readonly pins = computed<readonly Pin[]>(() => {
     const seen = new Map<string, number>();
@@ -100,7 +109,7 @@ export class MapPins {
         case MapPointKind.TRAP: {
           const state = p.trap?.state === TrapState.TRIGGERED ? 'fired' : p.trap?.state === TrapState.DISARMED ? 'disarmed' : 'armed';
           const area = trapArea(p.xBp, p.yBp, p.trap?.areaSize ?? 1, this.columns(), this.rows());
-          const secret = this.isMaster() && state === 'armed' && !p.revealed && p.trapRevealedTo.length === 0;
+          const secret = this.isMaster() && state === 'armed' && pointHidden(p);
           out.push({ ...base, kind: 'trap', state, area, secret, icon: 'warning' });
           break;
         }

@@ -20,7 +20,10 @@ import { callRPC, newSignedInContext } from './support';
 
 /** Clicks the map at a fraction of its box (an empty spot of the image). */
 async function clickMap(page: Page, x: number, y: number): Promise<void> {
-  const box = (await page.getByRole('group', { name: /^Mapa / }).boundingBox())!;
+  const map = page.getByRole('group', { name: /^Mapa / });
+  // The editor's bar and header are above the map: bring it on screen first, or the click lands below the window.
+  await map.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const box = (await map.boundingBox())!;
   await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
 }
 
@@ -187,7 +190,7 @@ test(
       // The master chooses the current map (which also reveals it).
       await master.getByLabel('Mapa atual').selectOption({ label: 'Mirathel e arredores (escondido)' });
       await expect(player.getByRole('heading', { name: 'Mirathel e arredores', level: 2 })).toBeVisible();
-      const token = player.locator('app-map-token', { has: player.locator('.tk__disc', { hasText: 'P' }) });
+      const token = player.locator('app-map-view app-map-token', { has: player.locator('.tk__disc', { hasText: 'P' }) });
       await expect(token).toHaveAttribute('style', /left: 52%/);
 
       // The master moves the visible token (arrow keys, Shift: 5 %).

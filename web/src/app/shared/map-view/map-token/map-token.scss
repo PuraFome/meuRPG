@@ -117,3 +117,31 @@ span.tk__hit {
     font-size: 10px;
   }
 }
+
+// In a legend: a token in the flow of the line, 24 px, the same drawing as on the map (so the legend cannot drift from it).
+:host(.tk--legend) {
+  --tk-d: 24px;
+  position: static;
+  z-index: auto;
+  display: inline-flex;
+  flex: none;
+  width: auto;
+  height: auto;
+  margin: 0 2px;
+  transform: none;
+}
+
+:host(.tk--legend) .tk__hit {
+  width: auto;
+  height: auto;
+  cursor: inherit;
+}
+
+:host(.tk--legend) .tk__disc {
+  font-size: 12px;
+}
+
+// The legend names a hidden token in words (", escondido") and draws it dashed: the eye badge would only sit over its letter.
+:host(.tk--legend) .tk__badge {
+  display: none;
+}
