@@ -145,21 +145,24 @@ type MapKeeper interface {
 	// TakeBackImage removes the image from the left list, or returns a
 	// `not_found` Connect error when it is not on it.
 	TakeBackImage(ctx context.Context, campaignID, imageID string) error
+	// MapGrid, ScenePoint and MapTokens read inside tx when the caller has one
+	// (nil: the pool): a change that holds a transaction must pass it.
+	//
 	// MapGrid returns the battle grid of the campaign's map, the zero Grid
 	// when it has none, or a `not_found` Connect error (MR-013).
-	MapGrid(ctx context.Context, campaignID, mapID string) (link.Grid, error)
+	MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
 	// Connect error for any other point.
 	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
 	// ScenePoint returns a SCENE point of the campaign, hidden or not, with its
 	// actions and their DCs (MR-015), and the master's hooks and clues (MR-029,
 	// never for a player), or a `not_found` Connect error for any other point.
-	ScenePoint(ctx context.Context, campaignID, pointID string) (link.Scene, error)
+	ScenePoint(ctx context.Context, tx pgx.Tx, campaignID, pointID string) (link.Scene, error)
 	// DiscoverScene records inside tx that the group discovered the scene (the
 	// master opened it, MR-030); one already discovered stays as it is.
 	DiscoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, at time.Time) error
 	// MapTokens returns where the map's tokens stand, hidden ones included.
-	MapTokens(ctx context.Context, mapID string) ([]link.TokenPosition, error)
+	MapTokens(ctx context.Context, tx pgx.Tx, mapID string) ([]link.TokenPosition, error)
 	// SetTokenPositions moves the characters' tokens on the map inside tx,
 	// creating the ones that are missing.
 	SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID string, positions []link.TokenPosition, at time.Time) error
@@ -177,17 +180,19 @@ type MapKeeper interface {
 type CombatRoster interface {
 	// CombatParty returns the campaign's living, active player characters,
 	// oldest first.
-	CombatParty(ctx context.Context, campaignID string) ([]link.Character, error)
+	CombatParty(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Character, error)
 	// CombatCharacters returns those of ids that are living characters of
 	// the campaign, players' or NPCs; the others are left out.
-	CombatCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+	CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
 	// SessionCharacters returns those of ids that are characters of the
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
-	SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
-	// The three reads below (CombatSheet, CombatTurnOptions, CombatSpell) take the
-	// caller's transaction (nil: the pool): a change that wrote the character's vitals or
-	// Wild Shape form must read the sheet inside it, or the read waits for that write.
+	SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
+	// Every read of this interface takes the caller's transaction (nil: the pool). A
+	// change that holds one must pass it: the read then sees what the change wrote
+	// (the character's vitals or Wild Shape form), and it takes no second connection,
+	// which would wait for the one the transaction keeps (docs/arquitetura.md,
+	// "Dentro de uma transação, nenhuma leitura pelo pool").
 
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
@@ -206,7 +211,7 @@ type CombatRoster interface {
 	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
-	CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error)
+	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)
 	// MarkDead marks a player's character dead inside tx, as the master's
 	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
 	// It is idempotent.
@@ -214,7 +219,7 @@ type CombatRoster interface {
 	// SceneOptions returns, for each key of a scene's checks, the character's
 	// bonus and passive value (the rules engine's SceneOptions), in the order of
 	// keys. `not_found` for any other character.
-	SceneOptions(ctx context.Context, campaignID, characterID string, keys []string) ([]link.SceneOption, error)
+	SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, keys []string) ([]link.SceneOption, error)
 	// SceneCheckName is the Portuguese name of a scene check by its key, "" for
 	// an unknown one.
 	SceneCheckName(key string) string
@@ -238,7 +243,7 @@ type CombatRoster interface {
 	// casting (circle 0 is the spell's own) and returns the creatures of the
 	// choice, or one of rules.ErrNotSummonSpell, ErrSummonCircle,
 	// ErrSummonOption, ErrSummonCount, ErrSummonCreature.
-	CheckSummon(ctx context.Context, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error)
+	CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error)
 	// SummonCreatures records a casting: it creates the creatures, and a new
 	// familiar dismisses the old one.
 	SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon) (link.SummonResult, error)
@@ -293,7 +298,7 @@ func (f DiceForce) refuses(inApp bool) bool {
 type DiceModes interface {
 	// ForcedDice returns what the campaign's setting forces on userID, an
 	// active member of the campaign.
-	ForcedDice(ctx context.Context, campaignID, userID string) (DiceForce, error)
+	ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (DiceForce, error)
 }
 
 // CampaignDirectory tells which campaigns a user belongs to. The campaigns
@@ -501,4 +506,15 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+}
+
+// queriesIn is the queries on the transaction, or on the pool when tx is nil. A
+// read made while the caller holds a transaction must use the transaction: a
+// read through the pool takes a second connection (see docs/arquitetura.md,
+// "Dentro de uma transação, nenhuma leitura pelo pool").
+func (s *Service) queriesIn(tx pgx.Tx) *playdb.Queries {
+	if tx == nil {
+		return s.queries
+	}
+	return s.queries.WithTx(tx)
 }

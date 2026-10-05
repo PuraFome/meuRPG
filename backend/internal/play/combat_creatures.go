@@ -69,9 +69,9 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 }
 
 // saveOf is a combatant's saving throw bonus against an ability.
-func (s *Service) saveOf(ctx context.Context, campaignID string, c playdb.Combatant, ability string) (link.Save, error) {
+func (s *Service) saveOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant, ability string) (link.Save, error) {
 	if !isCreature(c) {
-		return s.roster.CombatSave(ctx, campaignID, c.CharacterID, ability)
+		return s.roster.CombatSave(ctx, tx, campaignID, c.CharacterID, ability)
 	}
 	return s.roster.CreatureSave(deref(c.MonsterKey), ability), nil
 }
@@ -452,8 +452,8 @@ func summonSpecs(made []link.SummonedForm, given []string) []link.CreatureSpec {
 // checkSummonChoice asks the roster whether the character may cast the spell
 // with this slot and this choice, and returns what the spell says and the
 // creatures.
-func (s *Service) checkSummonChoice(ctx context.Context, campaignID, characterID, spellKey string, circle int, pick *playv1.SummonChoice) (link.SummonSpell, error) {
-	chk, err := s.roster.CheckSummon(ctx, campaignID, characterID, spellKey, circle, int(pick.GetOption()), pick.GetCreatureKeys())
+func (s *Service) checkSummonChoice(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle int, pick *playv1.SummonChoice) (link.SummonSpell, error) {
+	chk, err := s.roster.CheckSummon(ctx, tx, campaignID, characterID, spellKey, circle, int(pick.GetOption()), pick.GetCreatureKeys())
 	return chk, summonErr(err)
 }
 

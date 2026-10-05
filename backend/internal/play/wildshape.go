@@ -251,7 +251,7 @@ func (s *Service) LeaveWildShape(
 // acts for. It returns it, and the combat it is in, if it is a combatant of one that
 // is not ended (c.enc is then set).
 func (s *Service) playerCharacterOf(ctx context.Context, c *combatTx, m authz.Membership, characterID string) (link.Character, *playdb.Combatant, []playdb.Combatant, error) {
-	chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, []string{characterID})
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, []string{characterID})
 	if err != nil {
 		return link.Character{}, nil, nil, err
 	}

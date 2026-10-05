@@ -475,7 +475,7 @@ func (s *Service) portraits(ctx context.Context, m authz.Membership, d *encounte
 	if len(ids) == 0 {
 		return nil
 	}
-	chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, ids)
+	chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, ids)
 	if err != nil {
 		return nil
 	}

@@ -3,6 +3,8 @@ package characters
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -19,8 +21,8 @@ import (
 // The senses come from the derived sheet, so the race and the features count. A
 // druid in Wild Shape sends the beast's senses instead (a wolf has no darkvision),
 // and a player looking through their familiar's eyes sends them as Eyes (MR-037, D6).
-func (s *Service) PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error) {
-	rows, err := s.queries.ListPartyVision(ctx, campaignID)
+func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error) {
+	rows, err := s.queriesIn(tx).ListPartyVision(ctx, campaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party's senses", err)
 	}

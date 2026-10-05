@@ -104,7 +104,7 @@ func (s *Service) stageCharacters(ctx context.Context, campaignID string, rows [
 	if len(ids) == 0 {
 		return out, nil
 	}
-	chars, err := s.roster.CombatCharacters(ctx, campaignID, ids)
+	chars, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *Service) ImageOnStage(ctx context.Context, campaignID, imageID string) 
 	}
 	// A point the master turned into another kind is no open scene (GetOpenScene
 	// says so too), and its stage is not on show.
-	if _, err := s.maps.ScenePoint(ctx, campaignID, *session.OpenScenePointID); connect.CodeOf(err) == connect.CodeNotFound {
+	if _, err := s.maps.ScenePoint(ctx, nil, campaignID, *session.OpenScenePointID); connect.CodeOf(err) == connect.CodeNotFound {
 		return false, nil
 	} else if err != nil {
 		return false, fmt.Errorf("find the open scene: %w", err)
@@ -222,7 +222,7 @@ func (s *Service) PutOnStage(
 			return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open, so there is no stage")
 		}
 		// Any living NPC of the campaign: a player's character is not one.
-		chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, []string{characterID})
+		chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, []string{characterID})
 		if err != nil {
 			return "", "", err
 		}

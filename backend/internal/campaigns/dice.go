@@ -73,16 +73,19 @@ func EffectiveDiceMode(mode DiceMode, preference DicePreference) RollsIn {
 // only a mode the master forced (app or physical) binds the player; with
 // players_choose each roll is theirs to choose, and their preference is just
 // the default a screen offers (RN-18, decided 03/10/2026). authz.ErrNotMember
-// for anyone who is not an active member.
-func (s *Service) CampaignDiceMode(ctx context.Context, campaignID, userID string) (DiceMode, error) {
-	campaign, err := s.queries.GetCampaign(ctx, campaignID)
+// for anyone who is not an active member. It reads inside tx when the caller
+// has one (nil: the pool): a request that holds a transaction must not take a
+// second connection.
+func (s *Service) CampaignDiceMode(ctx context.Context, tx pgx.Tx, campaignID, userID string) (DiceMode, error) {
+	q := s.queriesIn(tx)
+	campaign, err := q.GetCampaign(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", authz.ErrNotMember
 	}
 	if err != nil {
 		return "", fmt.Errorf("get campaign: %w", err)
 	}
-	if _, err := s.queries.GetMemberDicePreference(ctx, campaignsdb.GetMemberDicePreferenceParams{CampaignID: campaignID, UserID: userID}); errors.Is(err, pgx.ErrNoRows) {
+	if _, err := q.GetMemberDicePreference(ctx, campaignsdb.GetMemberDicePreferenceParams{CampaignID: campaignID, UserID: userID}); errors.Is(err, pgx.ErrNoRows) {
 		return "", authz.ErrNotMember
 	} else if err != nil {
 		return "", fmt.Errorf("get dice preference: %w", err)

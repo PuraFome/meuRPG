@@ -69,7 +69,7 @@ func (s *Service) knownTraps(ctx context.Context, campaignID, userID string) (ma
 			ids = append(ids, r.CharacterID)
 		}
 	}
-	chars, err := s.characters.MapCharacters(ctx, campaignID, ids)
+	chars, err := s.characters.MapCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (s *Service) characterNames(ctx context.Context, campaignID string, ids []s
 	if len(ids) == 0 {
 		return names, nil, nil
 	}
-	found, err := s.characters.MapCharacters(ctx, campaignID, slices.Compact(slices.Sorted(slices.Values(ids))))
+	found, err := s.characters.MapCharacters(ctx, nil, campaignID, slices.Compact(slices.Sorted(slices.Values(ids))))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -183,7 +183,7 @@ func (s *Service) playerCharacters(ctx context.Context, campaignID string, raw [
 			ids = append(ids, id)
 		}
 	}
-	found, err := s.characters.MapCharacters(ctx, campaignID, ids)
+	found, err := s.characters.MapCharacters(ctx, nil, campaignID, ids)
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "find the characters", err)
 	}
@@ -480,7 +480,7 @@ func (s *Service) UnmarkTreasureFound(
 // trapKnowers returns the players whose characters know a trap that not everyone
 // sees: a change to it, or its deletion, must reach them and nobody else. It
 // reads inside the transaction, before a delete cascades the reveal rows away.
-func (s *Service) trapKnowers(ctx context.Context, q *mapsdb.Queries, campaignID string, p mapsdb.MapPoint) ([]string, error) {
+func (s *Service) trapKnowers(ctx context.Context, tx pgx.Tx, q *mapsdb.Queries, campaignID string, p mapsdb.MapPoint) ([]string, error) {
 	if p.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP] || everyoneSees(p) {
 		return nil, nil
 	}
@@ -492,7 +492,7 @@ func (s *Service) trapKnowers(ctx context.Context, q *mapsdb.Queries, campaignID
 	for _, r := range rows {
 		ids = append(ids, r.CharacterID)
 	}
-	chars, err := s.characters.MapCharacters(ctx, campaignID, ids)
+	chars, err := s.characters.MapCharacters(ctx, tx, campaignID, ids)
 	if err != nil {
 		return nil, fmt.Errorf("find who knows the trap: %w", err)
 	}

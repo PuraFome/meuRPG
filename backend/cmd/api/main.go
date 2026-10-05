@@ -62,6 +62,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -376,8 +377,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 // to know what the campaign's setting forces on a player, not campaigns' own types.
 type diceModes struct{ campaigns *campaigns.Service }
 
-func (d diceModes) ForcedDice(ctx context.Context, campaignID, userID string) (play.DiceForce, error) {
-	mode, err := d.campaigns.CampaignDiceMode(ctx, campaignID, userID)
+func (d diceModes) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (play.DiceForce, error) {
+	mode, err := d.campaigns.CampaignDiceMode(ctx, tx, campaignID, userID)
 	switch mode {
 	case campaigns.DiceModeApp:
 		return play.DiceForcedInApp, err
@@ -392,8 +393,8 @@ func (d diceModes) ForcedDice(ctx context.Context, campaignID, userID string) (p
 // setting forces on a player, not campaigns' own types.
 type levelUpDice struct{ campaigns *campaigns.Service }
 
-func (d levelUpDice) LevelUpDice(ctx context.Context, campaignID, userID string) (charactersv1.LevelUpDiceRule, error) {
-	mode, err := d.campaigns.CampaignDiceMode(ctx, campaignID, userID)
+func (d levelUpDice) LevelUpDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (charactersv1.LevelUpDiceRule, error) {
+	mode, err := d.campaigns.CampaignDiceMode(ctx, tx, campaignID, userID)
 	switch mode {
 	case campaigns.DiceModeApp:
 		return charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_IN_APP, err

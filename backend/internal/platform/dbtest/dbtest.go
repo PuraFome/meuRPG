@@ -35,6 +35,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -98,7 +99,52 @@ func Enabled() bool { return os.Getenv(EnvVar) != "" }
 // databases, to tell packages apart in CockroachDB's console.
 //
 // Without MEURPG_TEST_DATABASE_URL, NewPool skips the test.
+//
+// The pool has one connection (see guardPool). A test that races transactions
+// needs them to overlap: it asks for a bigger pool with NewPoolConns.
 func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
+	t.Helper()
+	wantedMu.Lock()
+	conns, ok := wanted[t]
+	wantedMu.Unlock()
+	if !ok {
+		conns = 1
+	}
+	return NewPoolConns(t, prefix, conns)
+}
+
+// The pool sizes tests asked for with PoolSize.
+var (
+	wantedMu sync.Mutex
+	wanted   = map[testing.TB]int32{}
+)
+
+// PoolSize makes the pool this test gets from NewPool (through any harness) have
+// conns connections instead of one. Call it first in a test that races
+// transactions, before the harness is built, with conns at least the number of
+// racers: on one connection they would run one after the other and prove
+// nothing. The guard against nested acquisitions stays on. It works with
+// t.Parallel, which the process-wide MEURPG_TEST_POOL_MAX_CONNS does not (t.Setenv
+// forbids it).
+func PoolSize(t testing.TB, conns int32) {
+	t.Helper()
+	wantedMu.Lock()
+	wanted[t] = conns
+	wantedMu.Unlock()
+	t.Cleanup(func() {
+		wantedMu.Lock()
+		delete(wanted, t)
+		wantedMu.Unlock()
+	})
+}
+
+// NewPoolConns is NewPool with a pool of conns connections, for a test that
+// races transactions (ten people accepting the last use of an invite): with
+// one connection they would run one after the other and prove nothing. Pick
+// conns at least as big as the number of racers. The guard against nested
+// acquisitions stays on at any size; MEURPG_TEST_POOL_MAX_CONNS, which is
+// process-wide, only changes the default of NewPool.
+func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	t.Helper()
 	rawURL := os.Getenv(EnvVar)
 	if rawURL == "" {
@@ -123,7 +169,7 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 		if _, err := conn.ExecContext(t.Context(), template.emptyAll()); err != nil {
 			t.Fatalf("empty the reused test database %s: %v", name, err)
 		}
-		return poolFor(t, prefix, name, dsn)
+		return poolFor(t, prefix, name, dsn, conns)
 	}
 	admin := open(t, rawURL)
 	mustExec(t, admin, "CREATE DATABASE "+name)
@@ -147,7 +193,7 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 		t.Fatalf("move the migration version sequence: %v", err)
 	}
 
-	return poolFor(t, prefix, name, dsn)
+	return poolFor(t, prefix, name, dsn, conns)
 }
 
 // Main runs a package's tests and then drops the databases this process
@@ -183,19 +229,183 @@ func dropAll(rawURL string) {
 // poolFor connects to a test database and gives it back when the test ends:
 // the pool closes first (cleanups run last-in, first-out), then the database
 // is free for the next test with this prefix.
-func poolFor(t testing.TB, prefix, name, dsn string) *pgxpool.Pool {
+func poolFor(t testing.TB, prefix, name, dsn string, conns int32) *pgxpool.Pool {
 	t.Helper()
 	t.Cleanup(func() {
 		freeMu.Lock()
 		free[prefix] = append(free[prefix], name)
 		freeMu.Unlock()
 	})
-	pool, err := db.NewPool(t.Context(), dsn)
+	pool, err := db.NewPoolWith(t.Context(), dsn, guardPool(t, conns))
 	if err != nil {
 		t.Fatalf("NewPool() error = %v", err)
 	}
 	t.Cleanup(pool.Close)
 	return pool
+}
+
+// Guard against nested pool acquisition: a request that takes a second pool
+// connection while its transaction holds the first.
+//
+// A db.InTx closure that reads through the pool instead of the transaction
+// (a cross-module call with no tx, a pool-bound s.queries) takes a second
+// connection while the transaction keeps the first. With the pool's small
+// size and a few concurrent requests, every connection ends up held by a
+// transaction waiting for another one: a deadlock that lasts until the
+// requests' contexts end (PR #120: CombatService.MoveCombatant waited 176 s).
+// Alone, in a test, the same code works, which is why it slipped through.
+// Two guards, on every test pool:
+//
+//   - The pool tracer looks at the stack of each Acquire. One made from inside
+//     a db.InTx closure is a bug whatever the pool's size: the test fails at
+//     once with the stack, which names the path, and the Acquire itself is
+//     canceled (errNestedAcquire), so nothing waits.
+//   - The pool has ONE connection (MaxConns = 1; NewPoolConns asks for more),
+//     so a nested acquisition that the stack check cannot see (another goroutine
+//     started by the closure) deadlocks, and after nestedAcquireTimeout a panic
+//     prints the waiting goroutine's stack. That panic ends the whole package's
+//     test binary, not just the test.
+//
+// MEURPG_TEST_POOL_MAX_CONNS overrides the size, for a test that really needs
+// several connections at once (or to list every violation in one run instead
+// of stopping at the first deadlock).
+const poolMaxConnsEnv = "MEURPG_TEST_POOL_MAX_CONNS"
+
+// nestedAcquireTimeout is how long an Acquire may wait before it is called a
+// deadlock. It is the second line of defense, for the nested acquisition that
+// the stack check cannot see, so it is long: on a one-connection pool the
+// requests of a test queue for the connection, and under the race detector and
+// a busy test server a queue of them waits whole seconds (a request builds its
+// answer from dozens of queries).
+const nestedAcquireTimeout = 90 * time.Second
+
+// inTxClosure is the frame of the function crdbpgxv5.ExecuteTx calls with the
+// transaction: db.InTx's fn runs under it, and nothing else does.
+//
+// The name is cockroach-go's: if a new version renames it, the guard goes
+// blind and TestGuardCatchesANestedAcquisition (it needs the database, so it
+// runs in CI's go-db job) fails.
+const inTxClosure = "crdbpgxv5.ExecuteTx.func1"
+
+// errNestedAcquire is the cause of the canceled Acquire of a nested read.
+var errNestedAcquire = errors.New("dbtest: nested pool acquisition inside a db.InTx closure")
+
+// guardPool is the tweak NewPoolWith applies to every test pool.
+func guardPool(t testing.TB, conns int32) func(*pgxpool.Config) {
+	return func(cfg *pgxpool.Config) {
+		cfg.MaxConns = conns
+		if v := os.Getenv(poolMaxConnsEnv); v != "" && conns == 1 {
+			var n int32
+			if _, err := fmt.Sscan(v, &n); err == nil && n > 0 {
+				cfg.MaxConns = n
+			}
+		}
+		w := &acquireWatch{t: t}
+		t.Cleanup(w.finish)
+		cfg.ConnConfig.Tracer = w
+	}
+}
+
+type acquireWatchKey struct{}
+
+// acquireWatch implements pgxpool.AcquireTracer (and pgx.QueryTracer, which pgx
+// requires of the tracer, without tracing any query).
+type acquireWatch struct {
+	t testing.TB
+	// mu guards done: a request that outlives the test must not touch t.
+	mu   sync.Mutex
+	done bool
+}
+
+func (w *acquireWatch) finish() {
+	w.mu.Lock()
+	w.done = true
+	w.mu.Unlock()
+}
+
+type acquireWait struct{ timer *time.Timer }
+
+func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, _ pgxpool.TraceAcquireStartData) context.Context {
+	// Only the program counters are taken, and the frames are scanned for the
+	// transaction's closure: the stack is formatted only when it is flagged, or
+	// when the backstop timer fires. The normal path pays for the scan alone.
+	pcs := make([]uintptr, 256)
+	pcs = pcs[:runtime.Callers(2, pcs)]
+	nested := false
+	frames := runtime.CallersFrames(pcs)
+	for {
+		f, more := frames.Next()
+		if strings.Contains(f.Function, inTxClosure) {
+			nested = true
+			break
+		}
+		if !more {
+			break
+		}
+	}
+	if nested {
+		w.mu.Lock()
+		if !w.done {
+			w.t.Errorf("nested pool acquisition: a query went through the pool inside a db.InTx closure, "+
+				"which takes a second connection while the transaction holds the first and deadlocks under load "+
+				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(pcs))
+		}
+		w.mu.Unlock()
+		// Fail the Acquire at once: nothing waits for a connection the
+		// transaction would never give back.
+		ctx, cancel := context.WithCancelCause(ctx)
+		cancel(errNestedAcquire)
+		return ctx
+	}
+	wait := &acquireWait{}
+	wait.timer = time.AfterFunc(nestedAcquireTimeout, func() {
+		panic(fmt.Sprintf("dbtest: no pool connection for %v (pool of %d): a read through the pool "+
+			"inside a db.InTx closure, probably. The goroutine that waits:\n%s",
+			nestedAcquireTimeout, pool.Config().MaxConns, formatStack(pcs)))
+	})
+	return context.WithValue(ctx, acquireWatchKey{}, wait)
+}
+
+// formatStack prints the frames of a captured stack, one function and one
+// file:line each.
+func formatStack(pcs []uintptr) string {
+	var b strings.Builder
+	frames := runtime.CallersFrames(pcs)
+	for {
+		f, more := frames.Next()
+		fmt.Fprintf(&b, "\t%s\n\t\t%s:%d\n", f.Function, f.File, f.Line)
+		if !more {
+			return b.String()
+		}
+	}
+}
+
+func (*acquireWatch) TraceAcquireEnd(ctx context.Context, _ *pgxpool.Pool, _ pgxpool.TraceAcquireEndData) {
+	if w, ok := ctx.Value(acquireWatchKey{}).(*acquireWait); ok {
+		w.timer.Stop()
+	}
+}
+
+func (*acquireWatch) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	return ctx
+}
+func (*acquireWatch) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+// SideConnection returns a pool of its own on the database of pool, for a test
+// that must hold a transaction open while the service under test works: the
+// service's pool has one connection (see guardPool), so a transaction begun on
+// it would leave the service with none. Begin on the side pool (side.Begin):
+// do not wrap service calls in db.InTx(ctx, side, ...), the guard would flag
+// them as nested. The side pool is closed when the test
+// ends and is not guarded: it is the test's, not the service's.
+func SideConnection(t testing.TB, pool *pgxpool.Pool) *pgxpool.Pool {
+	t.Helper()
+	side, err := pgxpool.New(t.Context(), pool.Config().ConnString())
+	if err != nil {
+		t.Fatalf("open a side connection: %v", err)
+	}
+	t.Cleanup(side.Close)
+	return side
 }
 
 // take returns a free database with this prefix, if there is one.

@@ -163,7 +163,7 @@ func (s *Service) sightForWrite(ctx context.Context, w combatWrite) (*fogSight, 
 	}
 	// The player's known terrain is read now, outside the transaction, for the plan
 	// and the cover of the change.
-	if _, err := f.knownTerrain(ctx, viewerOf(w.m)); err != nil {
+	if _, err := f.knownTerrain(ctx, nil, viewerOf(w.m)); err != nil {
 		return nil, err
 	}
 	return f, nil
@@ -234,11 +234,11 @@ func (c *combatTx) viewer(m authz.Membership, cs []playdb.Combatant) combatViewe
 // knownTerrain is the terrain the player knows of the map (the squares they see now
 // or remember), or nil for the master and for a map without the fog: they plan on
 // the real terrain.
-func (f *fogSight) knownTerrain(ctx context.Context, v combatViewer) (*grid.Terrain, error) {
+func (f *fogSight) knownTerrain(ctx context.Context, tx pgx.Tx, v combatViewer) (*grid.Terrain, error) {
 	if f == nil || v.master || v.userID == "" {
 		return nil, nil
 	}
-	known, err := f.sight.KnownTerrain(ctx, v.userID)
+	known, err := f.sight.KnownTerrain(ctx, tx, v.userID)
 	if err != nil {
 		return nil, fmt.Errorf("read the terrain the player knows: %w", err)
 	}
@@ -535,7 +535,7 @@ func (c *combatTx) coverOf(ctx context.Context, v combatViewer, terrain grid.Ter
 	}
 	cp.restricted = true
 	for _, u := range c.sight.sight.Users() {
-		kt, err := c.sight.knownTerrain(ctx, combatViewer{userID: u})
+		kt, err := c.sight.knownTerrain(ctx, c.tx, combatViewer{userID: u})
 		if err != nil {
 			return cp, err
 		}

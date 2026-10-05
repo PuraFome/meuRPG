@@ -26,6 +26,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -310,6 +311,7 @@ func TestRN01_StartingTheFirstSessionLocksPlayerSheetsOnly(t *testing.T) {
 // the next number.
 func TestOnlyOneOpenSessionPerCampaign(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 8) // the racers must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master, "Mirathel")
@@ -525,7 +527,7 @@ func (noMaps) TakeBackImage(context.Context, string, string) error {
 	return errors.New("not in this test")
 }
 
-func (noMaps) MapGrid(context.Context, string, string) (link.Grid, error) {
+func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error) {
 	return link.Grid{}, errors.New("not in this test")
 }
 
@@ -533,7 +535,7 @@ func (noMaps) BattlePoint(context.Context, string, string) (link.BattlePoint, er
 	return link.BattlePoint{}, errors.New("not in this test")
 }
 
-func (noMaps) ScenePoint(context.Context, string, string) (link.Scene, error) {
+func (noMaps) ScenePoint(context.Context, pgx.Tx, string, string) (link.Scene, error) {
 	return link.Scene{}, errors.New("not in this test")
 }
 
@@ -541,7 +543,7 @@ func (noMaps) DiscoverScene(context.Context, pgx.Tx, string, string, time.Time) 
 	return errors.New("not in this test")
 }
 
-func (noMaps) MapTokens(context.Context, string) ([]link.TokenPosition, error) {
+func (noMaps) MapTokens(context.Context, pgx.Tx, string) ([]link.TokenPosition, error) {
 	return nil, errors.New("not in this test")
 }
 
@@ -551,15 +553,15 @@ func (noMaps) SetTokenPositions(context.Context, pgx.Tx, string, []link.TokenPos
 
 type noRoster struct{}
 
-func (noRoster) CombatParty(context.Context, string) ([]link.Character, error) {
+func (noRoster) CombatParty(context.Context, pgx.Tx, string) ([]link.Character, error) {
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CombatCharacters(context.Context, string, []string) ([]link.Character, error) {
+func (noRoster) CombatCharacters(context.Context, pgx.Tx, string, []string) ([]link.Character, error) {
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) SessionCharacters(context.Context, string, []string) ([]link.Character, error) {
+func (noRoster) SessionCharacters(context.Context, pgx.Tx, string, []string) ([]link.Character, error) {
 	return nil, nil
 }
 
@@ -575,13 +577,13 @@ func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int
 	return link.Spell{}, errors.New("not in this test")
 }
 
-func (noRoster) SceneOptions(context.Context, string, string, []string) ([]link.SceneOption, error) {
+func (noRoster) SceneOptions(context.Context, pgx.Tx, string, string, []string) ([]link.SceneOption, error) {
 	return nil, errors.New("not in this test")
 }
 
 func (noRoster) SceneCheckName(string) string { return "" }
 
-func (noRoster) CombatSave(context.Context, string, string, string) (link.Save, error) {
+func (noRoster) CombatSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
 	return link.Save{}, errors.New("not in this test")
 }
 
@@ -601,7 +603,7 @@ func (noRoster) ConcentrationCreatures(context.Context, pgx.Tx, string, string) 
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CheckSummon(context.Context, string, string, string, int, int, []string) (link.SummonSpell, error) {
+func (noRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string) (link.SummonSpell, error) {
 	return link.SummonSpell{}, errors.New("not in this test")
 }
 
@@ -641,7 +643,7 @@ func (noRoster) CreatureEyes(string) (maplink.Eyes, bool) { return maplink.Eyes{
 
 type noDice struct{}
 
-func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {
+func (noDice) ForcedDice(context.Context, pgx.Tx, string, string) (DiceForce, error) {
 	return DiceChoice, errors.New("not in this test")
 }
 

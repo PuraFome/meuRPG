@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -455,6 +456,7 @@ func TestTileBudget_TheTileCacheIsBounded(t *testing.T) {
 // One render at a time, and a 503 with Retry-After for the one that waits too long.
 func TestTileBudget_OneRenderAtATime(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 8) // the racers must overlap: one connection would run them one by one
 	c := newCave(t)
 	res := c.ana.mustVision(c.campaign, c.mapID)
 	tr := c.h.svc.tiles

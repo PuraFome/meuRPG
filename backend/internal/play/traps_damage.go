@@ -74,7 +74,7 @@ func (s *Service) ListTrapDamages(
 		}
 	}
 	if len(characterIDs) > 0 {
-		chars, err := s.roster.SessionCharacters(ctx, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
+		chars, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
 		if err != nil {
 			return nil, s.dbError(ctx, "read the characters' names", err)
 		}
@@ -226,7 +226,7 @@ func (s *Service) trapDamageNames(ctx context.Context, campaignID string, d play
 			trapName = names[d.TrapPointID]
 		}
 	}
-	if chars, err := s.roster.SessionCharacters(ctx, campaignID, []string{d.CharacterID}); err == nil && len(chars) == 1 {
+	if chars, err := s.roster.SessionCharacters(ctx, nil, campaignID, []string{d.CharacterID}); err == nil && len(chars) == 1 {
 		characterName = chars[0].Name
 	}
 	return trapName, characterName

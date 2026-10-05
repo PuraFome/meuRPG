@@ -194,7 +194,7 @@ func (s *Service) GetMap(
 	// The characters come back in their own order (players' first), and
 	// only the living ones: a dead character's token stays on the map, but
 	// is not listed.
-	characters, err := s.characters.MapCharacters(ctx, m.CampaignID, ids)
+	characters, err := s.characters.MapCharacters(ctx, nil, m.CampaignID, ids)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the characters on a map", err)
 	}
@@ -831,7 +831,7 @@ func (s *Service) UpdateMapPoint(
 		if err != nil {
 			return fmt.Errorf("find point: %w", err)
 		}
-		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, before); err != nil {
+		if knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
 			return err
 		}
 		after, err = s.applyPointChange(ctx, q, m.CampaignID, before, change)
@@ -1078,7 +1078,7 @@ func (s *Service) DeleteMapPoint(
 			return errTreasureFound()
 		}
 		// Read before the delete cascades the reveal rows away.
-		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, point); err != nil {
+		if knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, point); err != nil {
 			return err
 		}
 		deleted, err = q.DeleteMapPoint(ctx, mapsdb.DeleteMapPointParams{MapID: mapID, ID: pointID})
@@ -1140,7 +1140,7 @@ func (s *Service) SetMapPointRevealed(
 		if err != nil {
 			return fmt.Errorf("find point: %w", err)
 		}
-		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, before); err != nil {
+		if knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
 			return err
 		}
 		after, err = s.applyPointChange(ctx, q, m.CampaignID, before, pointChange{revealed: &revealed})
@@ -1350,7 +1350,7 @@ func (s *Service) RemoveMapToken(
 	// Whose token it was: a dead character's is told as an NPC's, which reaches no
 	// player on a fog map but through what they see.
 	player := false
-	if found, err := s.characters.MapCharacters(ctx, m.CampaignID, []string{characterID}); err == nil && len(found) == 1 {
+	if found, err := s.characters.MapCharacters(ctx, nil, m.CampaignID, []string{characterID}); err == nil && len(found) == 1 {
 		player = isPlayerCharacter(found[0])
 	}
 	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, &deleted, nil, player, false)
@@ -1441,7 +1441,7 @@ func (s *Service) livingCharacter(ctx context.Context, campaignID, characterID s
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
-	found, err := s.characters.MapCharacters(ctx, campaignID, []string{id})
+	found, err := s.characters.MapCharacters(ctx, nil, campaignID, []string{id})
 	if err != nil {
 		return nil, s.dbError(ctx, "find a character", err)
 	}

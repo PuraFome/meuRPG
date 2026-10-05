@@ -3,10 +3,12 @@ package characters
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"uuid"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -27,6 +29,34 @@ func (g fakeGallery) PortraitImage(_ context.Context, campaignID, imageID string
 		}
 	}
 	return "", false, nil
+}
+
+func (g fakeGallery) PreparePortrait(ctx context.Context, campaignID, imageID string) (string, bool, PortraitCopy, error) {
+	use, found, err := g.PortraitImage(ctx, campaignID, imageID)
+	return use, found, nil, err
+}
+
+// spyGallery is a gallery with a fog map's background (fog): a portrait that
+// names it needs a copy, which the spy counts being prepared, inserted into the
+// transaction and discarded.
+type spyGallery struct {
+	fakeGallery
+	fog                           string
+	prepared, inserted, discarded atomic.Int32
+}
+
+type spyCopy struct{ g *spyGallery }
+
+func (c spyCopy) Insert(context.Context, pgx.Tx) error { c.g.inserted.Add(1); return nil }
+func (c spyCopy) Discard(context.Context)              { c.g.discarded.Add(1) }
+
+func (g *spyGallery) PreparePortrait(ctx context.Context, campaignID, imageID string) (string, bool, PortraitCopy, error) {
+	use, found, err := g.PortraitImage(ctx, campaignID, imageID)
+	if err != nil || !found || imageID != g.fog {
+		return use, found, nil, err
+	}
+	g.prepared.Add(1)
+	return uuid.New().String(), true, spyCopy{g}, nil
 }
 
 // withPortrait returns a copy of the sheet with the portrait set, full or basic.
@@ -147,5 +177,51 @@ func TestMR031_TheMastersListCarriesThePortraitURL(t *testing.T) {
 		if c.GetPortraitUrl() != "" {
 			t.Errorf("the player's list carries a portrait_url: %v", c)
 		}
+	}
+}
+
+// MR-031, RN-10: a portrait that needs a copy (a fog map's own background) is
+// copied only for a caller who may save the sheet, and its gallery row belongs to
+// the save's transaction: a stale revision leaves no copy behind.
+func TestMR031_ACopyIsMadeOnlyForASaveThatCanHappen(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	mestre, jogador := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(mestre, "Mirathel", jogador)
+	fog := uuid.New().String()
+	gal := &spyGallery{fakeGallery: fakeGallery{campaign: {fog}}, fog: fog}
+	h.svc.SetGallery(gal)
+	goblin := mestre.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_MINION, "Goblin", basicSheet())
+
+	// A player cannot save an NPC's sheet: no copy is made for them.
+	if _, err := jogador.update(t, goblin, "Goblin", withPortrait(goblin.GetSheet(), fog)); err == nil {
+		t.Fatal("a player updated an NPC")
+	}
+	if n := gal.prepared.Load(); n != 0 {
+		t.Errorf("a copy was prepared %d times for a caller who may not save the sheet, want 0", n)
+	}
+
+	// A stale revision: the copy's files were made, and are discarded; its row never went in.
+	fresh, err := mestre.update(t, goblin, "Goblin", withPortrait(goblin.GetSheet(), ""))
+	if err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	if _, err := mestre.update(t, goblin, "Goblin", withPortrait(goblin.GetSheet(), fog)); err == nil {
+		t.Fatal("a stale revision was saved")
+	}
+	if p, i, d := gal.prepared.Load(), gal.inserted.Load(), gal.discarded.Load(); p != 1 || i != 0 || d != 1 {
+		t.Errorf("after a stale save: prepared %d, inserted %d, discarded %d; want 1, 0, 1", p, i, d)
+	}
+
+	// A save that happens inserts the row in its transaction and keeps the files.
+	saved, err := mestre.update(t, fresh, "Goblin", withPortrait(fresh.GetSheet(), fog))
+	if err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	if p, i, d := gal.prepared.Load(), gal.inserted.Load(), gal.discarded.Load(); p != 2 || i != 1 || d != 1 {
+		t.Errorf("after a save: prepared %d, inserted %d, discarded %d; want 2, 1, 1", p, i, d)
+	}
+	if got := portraitOf(saved.GetSheet()); got == "" || got == fog {
+		t.Errorf("the portrait saved is %q, want the copy's ID, not the fog map's image", got)
 	}
 }

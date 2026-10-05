@@ -159,8 +159,8 @@ func isArea(det *rules.SpellDetails) bool {
 // against an ability. A full sheet has all six; a basic-sheet NPC has none, so
 // the bonus is 0 and Known is false, and the log says so. `not_found` for a
 // character that is not one of the campaign's living ones.
-func (s *Service) CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error) {
-	_, d, err := s.fighter(ctx, nil, campaignID, characterID)
+func (s *Service) CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error) {
+	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Save{}, err
 	}

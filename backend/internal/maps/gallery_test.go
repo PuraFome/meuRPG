@@ -440,7 +440,7 @@ func TestImageNamesComeFromTheFileName(t *testing.T) {
 // the tests that never reach them.
 type noCharacters struct{}
 
-func (noCharacters) MapCharacters(context.Context, string, []string) ([]*charactersv1.CharacterSummary, error) {
+func (noCharacters) MapCharacters(context.Context, pgx.Tx, string, []string) ([]*charactersv1.CharacterSummary, error) {
 	return nil, errors.New("not in this test")
 }
 
@@ -452,7 +452,7 @@ func (noCharacters) PortraitInUse(context.Context, string, string) (bool, error)
 	return false, errors.New("not in this test")
 }
 
-func (noCharacters) PartyVision(context.Context, string) ([]link.PartyMember, error) {
+func (noCharacters) PartyVision(context.Context, pgx.Tx, string) ([]link.PartyMember, error) {
 	return nil, errors.New("not in this test")
 }
 
@@ -495,7 +495,7 @@ func (noCombats) CombatRunsOnMap(context.Context, pgx.Tx, string, string) (bool,
 	return false, errors.New("not in this test")
 }
 
-func (noCombats) CombatPositions(context.Context, string, string) (link.CombatPositions, error) {
+func (noCombats) CombatPositions(context.Context, pgx.Tx, string, string) (link.CombatPositions, error) {
 	return link.CombatPositions{}, errors.New("not in this test")
 }
 

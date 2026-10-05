@@ -39,11 +39,7 @@ var appendableKinds = []string{
 // combat: its name, whether it ended and the XP its defeated NPCs give.
 // `not_found` for a combat that is not the campaign's.
 func (s *Service) CampaignEncounter(ctx context.Context, tx pgx.Tx, campaignID, encounterID string) (link.Encounter, error) {
-	q := s.queries
-	if tx != nil {
-		q = s.queries.WithTx(tx)
-	}
-	row, err := q.GetCampaignEncounterXP(ctx, playdb.GetCampaignEncounterXPParams{CampaignID: campaignID, ID: encounterID})
+	row, err := s.queriesIn(tx).GetCampaignEncounterXP(ctx, playdb.GetCampaignEncounterXPParams{CampaignID: campaignID, ID: encounterID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return link.Encounter{}, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
 	}

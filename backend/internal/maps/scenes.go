@@ -486,20 +486,21 @@ func (s *Service) attachActions(ctx context.Context, mapID string, points []*map
 // SCENE point of the campaign, hidden or not, with its actions and their DCs, its hooks and its clues (the master's: package play gives them to the master only),
 // or a `not_found` Connect error for any other point. Package play decides
 // what each member sees of it.
-func (sm *SessionMaps) ScenePoint(ctx context.Context, campaignID, pointID string) (link.Scene, error) {
-	p, err := sm.queries.GetScenePoint(ctx, mapsdb.GetScenePointParams{CampaignID: campaignID, ID: pointID})
+func (sm *SessionMaps) ScenePoint(ctx context.Context, tx pgx.Tx, campaignID, pointID string) (link.Scene, error) {
+	q := queriesIn(sm.queries, tx)
+	p, err := q.GetScenePoint(ctx, mapsdb.GetScenePointParams{CampaignID: campaignID, ID: pointID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return link.Scene{}, errPointNotFound()
 	}
 	if err != nil {
 		return link.Scene{}, fmt.Errorf("find the scene point: %w", err)
 	}
-	rows, err := sm.queries.ListSceneActions(ctx, p.ID)
+	rows, err := q.ListSceneActions(ctx, p.ID)
 	if err != nil {
 		return link.Scene{}, fmt.Errorf("list the scene's actions: %w", err)
 	}
 	out := link.Scene{PointID: p.ID, Name: p.Name, Description: p.Description, Hooks: p.Hooks, ShowDC: p.ShowDc}
-	if out.Clues, err = sm.sceneClues(ctx, p.ID); err != nil {
+	if out.Clues, err = sm.sceneClues(ctx, q, p.ID); err != nil {
 		return link.Scene{}, err
 	}
 	for _, a := range rows {
