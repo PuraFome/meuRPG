@@ -59,7 +59,8 @@ test(
       await dialog.getByRole('button', { name: /Dar 420 XP para cada/ }).click();
       await expect(dialog).toHaveCount(0);
 
-      // The master reads what happened; the strip empties; each one has 140 XP more.
+      // The master reads what happened; the strip empties; the one character has 420 XP more (RN-03: the suite has
+      // one player, so one character; the split among several is the Vitest's `town-sheet.spec.ts`).
       await expect(panel(m).getByRole('status')).toContainText(
         'Voltar à cidade: Pensantus recebeu 420 XP. Os 3 tesouros foram convertidos.',
       );
@@ -147,7 +148,8 @@ test(
       const town = m.getByRole('dialog', { name: 'Voltar à cidade' });
       await expect(town).toContainText('Anel de jade');
       await expect(town).toContainText('Encontrado por Pensantus');
-      await expect(town).toContainText('Encontrado fora de uma sessão: não conta em nenhum resumo de sessão.');
+      await expect(town).toContainText('Um tesouro achado fora de uma sessão não conta em nenhum resumo de sessão.');
+      await expect(town).toContainText('fora de uma sessão');
       await expect(town).toContainText('90 XP ÷ 1 = 90 XP para cada');
       // Without the characters nothing goes: the filled button waits and says why.
       await town.getByRole('checkbox', { name: 'Marcar Pensantus' }).uncheck({ force: true });
@@ -242,8 +244,10 @@ test(
         treasurePointIds: [chest],
         idempotencyKey: crypto.randomUUID(),
       });
-      expect(refused.ok()).toBe(false);
       expect(refused.status()).toBe(400);
+      const refusal = await refused.json();
+      expect(refusal.code).toBe('failed_precondition');
+      expect(refusal.details[0].debug.reason).toBe('XP_BLOCKED_REASON_MODE_NOT_ALLOWED');
 
       // A player never sees the strip.
       await p.goto(`/campanhas/${table.campaignId}`);
@@ -302,7 +306,50 @@ test(
       await expect(card.getByRole('table')).toHaveCount(0);
     } finally {
       if (campaignId) {
-        await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+        await endOpenSessionRPC(m, campaignId);
+      }
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'Voltar à cidade também sai do "Dar XP" da sessão ao vivo: a faixa já traz o que espera, a conversão abre e a confirmação fica na sessão',
+  { tag: ['@MR-041', '@RN-09'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const table = await tableForGold(m, p, `Ouro sessão ${Date.now()}`);
+      campaignId = table.campaignId;
+      await threeTreasuresRPC(m, table);
+      await startSessionRPC(m, campaignId);
+      await openSessionPage(m, campaignId);
+
+      await m.getByRole('button', { name: 'Dar XP', exact: true }).click();
+      const give = m.getByRole('dialog', { name: 'Dar XP' });
+      // The strip says what waits (never a false "nenhum" while it reads) and has the way in.
+      await expect(give).toContainText('3 tesouros · 420 PO');
+      await expect(give).not.toContainText('Nenhum tesouro esperando');
+      await give.getByRole('button', { name: 'Voltar à cidade' }).click();
+      const town = m.getByRole('dialog', { name: 'Voltar à cidade' });
+      await expect(town).toContainText('420 XP ÷ 1 = 420 XP para cada');
+      await town.getByRole('button', { name: /Dar 420 XP para cada/ }).click();
+
+      await expect(m.getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText(
+        'Voltar à cidade: Pensantus recebeu 420 XP. Os 3 tesouros foram convertidos.',
+      );
+      expect((await getExperienceRPC(m, campaignId)).characters.map((c) => c.experiencePoints)).toEqual([420]);
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(m, campaignId);
       }
       await master.close();
       await player.close();

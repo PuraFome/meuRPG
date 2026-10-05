@@ -65,9 +65,18 @@ export function xpBlockedMessage(blocked: XPBlocked): string {
   }
 }
 
+/** Whether the server did not find something the call named (`not_found`). */
+export function xpNotFound(err: unknown): boolean {
+  return ConnectError.from(err, Code.Unavailable).code === Code.NotFound;
+}
+
 /** The same for "Voltar à cidade": a mode that does not take it says so in
- * the treasures' words, the rest is as for any award. */
+ * the treasures' words, a treasure that is gone says the list is stale, the
+ * rest is as for any award. */
 export function townErrorMessage(err: unknown): string {
+  if (xpNotFound(err)) {
+    return 'Um dos tesouros marcados não está mais no mapa. A lista foi atualizada; confira e tente de novo.';
+  }
   const blocked = xpBlocked(err);
   if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED) {
     return blocked.xpMode === XpMode.MILESTONES

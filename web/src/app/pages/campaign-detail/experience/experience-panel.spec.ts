@@ -204,7 +204,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       expect(buttons(el)).toEqual(['Dar XP', 'Voltar à cidade']);
       const strip = el.querySelector('app-treasure-strip')!;
       expect(strip.textContent).toContain('Encontrado, ainda não convertido');
-      expect(strip.textContent).toContain(`3 tesouros · 420${nbsp}PO`);
+      expect(strip.textContent).toContain(`3\u00a0tesouros · 420${nbsp}PO`);
       expect(strip.textContent).toContain(`Baú de moedas, 250${nbsp}PO, de Brisa`);
     });
 
@@ -264,9 +264,52 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(el.querySelector('.exp__status')?.textContent).toContain(
-        `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3 tesouros foram convertidos.`,
+        `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3\u00a0tesouros foram convertidos.`,
       );
       expect(refresh).toHaveBeenCalled();
+    });
+  });
+
+  describe('right after an award (E9-09 state 7)', () => {
+    const shares = [
+      { characterId: 'p', characterName: 'Pensantus', xp: 105 },
+      { characterId: 't', characterName: 'Toren', xp: 105 },
+    ];
+    const town = () => create(XPAwardSchema, { id: 'a1', gold: 420, treasureCount: 3, totalXp: 420, shares });
+
+    it('writes "+105 XP" in place of "Faltam…" beside each one who got it, and drops it on an undo', async () => {
+      respond(XpMode.GOLD, undefined, [award('a1', { canUndo: true })]);
+      const { fixture, el, store } = await setup(true);
+      vi.spyOn(store, 'refresh').mockResolvedValue();
+      fixture.debugElement.query((d) => d.name === 'app-xp-give-button').triggerEventHandler('given', { kind: 'xp', result: { award: town(), xpEach: 105, lostXp: 0 } });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const gains = Array.from(el.querySelectorAll('.num__gain'), (g) => g.textContent);
+      // Pensantus can level up (the tag stays); Toren shows what he got; Brisa, who got nothing, keeps "Faltam…".
+      expect(gains).toEqual([`+105${nbsp}XP`]);
+      expect(rows(el)[2].textContent).toContain('Faltam');
+
+      fixture.debugElement.query((d) => d.name === 'app-award-history')?.triggerEventHandler('undone', undefined);
+      fixture.detectChanges();
+      expect(el.querySelectorAll('.num__gain')).toHaveLength(0);
+      expect(el.querySelector('.exp__status')?.textContent?.trim()).toBe('');
+    });
+
+    it('has one notice at a time: the history keeps its own while the confirmation is up', async () => {
+      respond(XpMode.GOLD, undefined, [award('a1', { canUndo: true })]);
+      const { fixture, el, store } = await setup(true);
+      vi.spyOn(store, 'refresh').mockResolvedValue();
+      fixture.debugElement.query((d) => d.name === 'app-xp-give-button').triggerEventHandler('given', { kind: 'xp', result: { award: town(), xpEach: 105, lostXp: 0 } });
+      fixture.detectChanges();
+      const history = fixture.debugElement.query((d) => d.name === 'app-award-history');
+      expect(history.componentInstance.hideNotice()).toBe(true);
+      expect(el.querySelector('.exp__status')?.textContent).toContain('Voltar à cidade');
+    });
+
+    it('asks for the full-width buttons on a phone, for every mode', async () => {
+      respond(XpMode.ENEMIES);
+      const { el } = await setup(true);
+      expect(el.querySelector('app-xp-give-button')?.classList.contains('block')).toBe(true);
     });
   });
 });

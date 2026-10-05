@@ -185,6 +185,36 @@ describe('ExperienceStore', () => {
       expect(listTreasures).toHaveBeenCalledTimes(2);
     });
 
+    it('forgets the last campaign\'s treasures when another one is loaded', async () => {
+      withTreasures(XpMode.GOLD);
+      const s = store();
+      await s.load('camp-1', false, true);
+      expect(s.treasures()).toHaveLength(1);
+      (api as unknown as { listTreasures: ReturnType<typeof vi.fn> }).listTreasures.mockRejectedValue(new Error('down'));
+      await s.load('camp-2', false, true);
+      expect(s.treasures()).toEqual([]);
+      expect(s.treasuresTotal()).toBe(0);
+      expect(s.treasuresState()).toBe('error');
+    });
+
+    it('leaves "loading" when a later read fails with an old list in hand (it shows the list)', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      const s = store();
+      await s.load('camp-1', false, true);
+      listTreasures.mockRejectedValue(new Error('down'));
+      await s.refresh();
+      expect(s.treasuresState()).toBe('ready');
+      expect(s.treasures()).toHaveLength(1);
+    });
+
+    it('can refresh the XP without the treasures', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      const s = store();
+      await s.load('camp-1', false, true);
+      await s.refresh({ treasures: false });
+      expect(listTreasures).toHaveBeenCalledTimes(1);
+    });
+
     it('says it could not read them, and keeps what it had when a later read fails', async () => {
       const listTreasures = withTreasures(XpMode.GOLD);
       listTreasures.mockRejectedValueOnce(new Error('down'));

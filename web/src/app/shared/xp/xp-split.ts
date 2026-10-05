@@ -19,6 +19,8 @@ import { type Split, divisionSentence, eachLine, lostShort, shortDivision, split
     <div class="split" [class.split--foot]="variant() === 'foot'" [class.split--none]="split().count === 0">
       @if (split().count === 0) {
         <span class="split__big">Ninguém marcado</span>
+      } @else if (total() === 0 && emptyText()) {
+        <span class="split__big split__big--quiet">{{ emptyText() }}</span>
       } @else {
         <span class="split__big">{{ each() }}</span>
         @if (split().lost > 0) {
@@ -38,6 +40,8 @@ export class XpSplit {
   /** The gold of a gold award, for "120 PO = 120 XP ÷ 3 = 40"; 0 for the rest. */
   readonly gold = input(0);
   readonly variant = input<'block' | 'foot'>('block');
+  /** Said, quietly, while there is nothing to divide yet (instead of "0 XP para cada"). */
+  readonly emptyText = input('');
 
   protected readonly each = computed(() => eachLine(this.split()));
   protected readonly sum = computed(() =>
@@ -46,5 +50,7 @@ export class XpSplit {
       : divisionSentence(this.total(), this.split()),
   );
   protected readonly lost = computed(() => lostShort(this.split().lost));
-  protected readonly announcement = computed(() => splitAnnouncement(this.split()));
+  protected readonly announcement = computed(() =>
+    this.total() === 0 && this.emptyText() && this.split().count > 0 ? '' : splitAnnouncement(this.split()),
+  );
 }

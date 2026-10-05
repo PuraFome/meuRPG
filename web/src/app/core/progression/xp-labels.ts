@@ -47,9 +47,10 @@ export function awardWhen(award: XPAward): string {
 
 /** "Desfeito por Samuel em 02/10 às 21:10." */
 export function undoneLine(award: XPAward): string {
-  const who = award.undoneByDisplayName.trim() || 'o mestre';
+  const name = award.undoneByDisplayName.trim();
+  const who = name ? `por ${name}` : 'pelo mestre';
   const when = award.undoneAt ? ` em ${formatDayAt(timestampDate(award.undoneAt))}` : '';
-  return `Desfeito por ${who}${when}.`;
+  return `Desfeito ${who}${when}.`;
 }
 
 /** What each one got: shares are equal, so the first one says it. A milestone

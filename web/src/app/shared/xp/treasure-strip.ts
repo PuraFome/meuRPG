@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { TreasureToConvert } from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { LoadState } from '../../core/progression/experience-store';
-import { stripHeadline, stripLine, treasureCount } from '../../core/progression/treasure';
+import { moreTreasures, stripHeadline, stripLine } from '../../core/progression/treasure';
 
 /** How many treasures the strip names one by one; the rest is "e mais N". */
 const LINES = 5;
@@ -26,7 +26,7 @@ const LINES = 5;
   imports: [MatButtonModule, MatIconModule],
   template: `
     @if (visible()) {
-      <section class="strip" [attr.aria-label]="label()">
+      <section class="strip" [class.strip--compact]="compact()" [attr.aria-label]="label()">
         <mat-icon class="strip__icon" aria-hidden="true">currency_exchange</mat-icon>
         <div class="strip__body">
           <p class="strip__label">{{ label() }}</p>
@@ -50,7 +50,7 @@ const LINES = 5;
               <p class="strip__more">e mais {{ hidden() }}</p>
             }
             @if (extra() > 0) {
-              <p class="strip__more">Há mais {{ treasureCount(extra()) }} encontrados, que ficam para depois.</p>
+              <p class="strip__more">{{ moreText() }}</p>
             }
             @if (!gold()) {
               <p class="strip__why">
@@ -77,11 +77,12 @@ export class TreasureStrip {
   readonly state = input<LoadState>('ready');
   /** The outlined "Voltar à cidade" beside the text ("Dar XP"'s strip). */
   readonly button = input(false);
+  /** A phone's sheet: the headline and the button only, so the form under it keeps its room. */
+  readonly compact = input(false);
 
   readonly town = output<void>();
   readonly retry = output<void>();
 
-  protected readonly treasureCount = treasureCount;
   protected readonly gold = computed(() => this.mode() === XpMode.GOLD);
   protected readonly visible = computed(
     () => this.gold() || (this.mode() === XpMode.ENEMIES && this.treasures().length > 0),
@@ -90,6 +91,7 @@ export class TreasureStrip {
   protected readonly headline = computed(() => stripHeadline(this.treasures()));
   protected readonly shown = computed(() => this.treasures().slice(0, LINES));
   protected readonly hidden = computed(() => Math.max(0, this.treasures().length - LINES));
+  protected readonly moreText = computed(() => moreTreasures(this.extra(), 'para depois'));
   protected readonly extra = computed(() => Math.max(0, this.total() - this.treasures().length));
   protected readonly line = stripLine;
 }

@@ -70,6 +70,11 @@ export class ExperienceStore {
   /** Reads the XP of the campaign, its history when `withAwards` and, for the
    * master, the treasures waiting for "Voltar à cidade" when `withTreasures`. */
   async load(campaignId: string, withAwards: boolean, withTreasures = false): Promise<void> {
+    if (campaignId !== this.campaignId) {
+      // Another campaign: nothing of the last one's treasures may show.
+      this.treasures.set([]);
+      this.treasuresTotal.set(0);
+    }
     this.campaignId = campaignId;
     this.withAwards = withAwards;
     this.withTreasures = withTreasures;
@@ -80,11 +85,14 @@ export class ExperienceStore {
     await this.loadTreasures();
   }
 
-  /** Reads again, keeping what is on screen until the answer comes. */
-  async refresh(): Promise<void> {
+  /** Reads again, keeping what is on screen until the answer comes. `treasures: false` leaves the
+   * treasures out (a screen whose sheets read them again as they open has no use for them here). */
+  async refresh(opts: { readonly treasures?: boolean } = {}): Promise<void> {
     if (this.campaignId) {
       await Promise.all([this.loadRows(), this.withAwards ? this.loadAwards() : Promise.resolve()]);
-      await this.loadTreasures();
+      if (opts.treasures !== false) {
+        await this.loadTreasures();
+      }
     }
   }
 
@@ -102,8 +110,9 @@ export class ExperienceStore {
         this.treasuresState.set('ready');
       }
     } catch {
-      if (seq === this.treasuresSeq && this.treasures().length === 0) {
-        this.treasuresState.set('error');
+      // A list that was read before stays (stale, and the sheets read again); with none, say it could not read.
+      if (seq === this.treasuresSeq) {
+        this.treasuresState.set(this.treasures().length > 0 ? 'ready' : 'error');
       }
     }
   }

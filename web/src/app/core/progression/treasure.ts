@@ -8,7 +8,12 @@ import { type Split, eachLine, splitXp } from './xp-math';
 
 /** "1 tesouro", "3 tesouros". */
 export function treasureCount(n: number): string {
-  return n === 1 ? '1 tesouro' : `${formatInt(n)} tesouros`;
+  return tight(n === 1 ? '1 tesouro' : `${formatInt(n)} tesouros`);
+}
+
+/** "Há mais 29 tesouros encontrados, que ficam para a próxima vez." (agreeing in number). */
+export function moreTreasures(n: number, when: string): string {
+  return `Há mais ${treasureCount(n)} ${n === 1 ? 'encontrado, que fica' : 'encontrados, que ficam'} ${when}.`;
 }
 
 /** "420 PO": the number tied to its unit. */
@@ -92,7 +97,7 @@ export function awardTitle(award: XPAward): string {
  * convertidos." */
 export function townGivenText(award: XPAward, xpEach: number, lostXp: number): string {
   const names = nameList(award.shares.map((s) => s.characterName));
-  const lost = lostXp === 0 ? '' : lostXp === 1 ? ' 1 XP se perdeu na divisão.' : ` ${formatInt(lostXp)} XP se perderam na divisão.`;
+  const lost = lostXp === 0 ? '' : ` Sobra ${formatInt(lostXp)} XP, que não vai para ninguém.`;
   const done = award.treasureCount === 1 ? 'O tesouro foi convertido.' : `Os ${formatInt(award.treasureCount)} tesouros foram convertidos.`;
   return tight(`Voltar à cidade: ${names} ${award.shares.length > 1 ? 'receberam' : 'recebeu'} ${formatInt(xpEach)} XP ${award.shares.length > 1 ? 'cada' : ''}`.trim() + `. ${done}${lost}`);
 }
@@ -101,5 +106,5 @@ export function townGivenText(award: XPAward, xpEach: number, lostXp: number): s
 export function townUndoneText(award: XPAward): string {
   return award.treasureCount === 1
     ? 'XP desfeito: o tesouro voltou a “encontrado, não convertido”.'
-    : `XP desfeito: os ${formatInt(award.treasureCount)} tesouros voltaram a “encontrado, não convertido”.`;
+    : `XP desfeito: os ${treasureCount(award.treasureCount)} voltaram a “encontrado, não convertido”.`;
 }

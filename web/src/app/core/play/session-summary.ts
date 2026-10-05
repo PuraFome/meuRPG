@@ -85,8 +85,10 @@ export function masterTiles(summary: SessionSummary): HighlightTile[] {
  * character that found treasure in the session, in the order they first
  * appeared, with the PO (a find by two splits its value, rounded down). */
 export function treasureRows(summary: SessionSummary): HighlightsTableRow[] {
+  // The most first; a tie by name, and the server's order otherwise (the sort is stable).
   return summary.players
     .filter((p) => p.treasureFoundPo > 0)
+    .sort((a, b) => b.treasureFoundPo - a.treasureFoundPo || (a.highlights?.name ?? '').localeCompare(b.highlights?.name ?? '', 'pt-BR'))
     .map((p) => ({
       id: p.highlights?.characterId ?? '',
       name: p.highlights?.name ?? '',

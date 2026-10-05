@@ -1,10 +1,6 @@
 <app-sheet-frame
   title="Voltar à cidade"
-  [subtitle]="
-    inSheet
-      ? 'Converte o ouro em XP, 1 XP por PO. Dá para desfazer.'
-      : 'Converte o ouro encontrado em XP, 1 XP por PO, num prêmio só. Dá para desfazer.'
-  "
+  subtitle="Converte o ouro encontrado em XP, 1 XP por PO, num prêmio só. Dá para desfazer."
   titleId="sheet-t"
   [phone]="inSheet"
   (closed)="cancel()"
@@ -16,13 +12,24 @@
     </div>
   }
 
-  @if (treasures().length === 0) {
+  @if (state() === 'loading') {
+    <p class="none" role="status">Lendo os tesouros encontrados...</p>
+  } @else if (state() === 'error') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Não foi possível ler os tesouros encontrados. Confira a conexão e tente de novo.</p>
+    </div>
+    <button mat-stroked-button type="button" class="again" (click)="retry()">Tentar de novo</button>
+  } @else if (treasures().length === 0) {
     <p class="none">
-      Nenhum tesouro encontrado para converter. Quando o grupo achar um, o mestre marca no mapa e ele aparece aqui.
+      Nenhum tesouro encontrado para converter. Quando o grupo achar um, marque no mapa e ele aparece aqui.
     </p>
   } @else {
     <section aria-labelledby="town-t">
       <h3 class="h" id="town-t">Tesouros para converter</h3>
+      @if (anyOutside()) {
+        <p class="note note--top">Um tesouro achado fora de uma sessão não conta em nenhum resumo de sessão.</p>
+      }
       <ul class="trows">
         @for (t of treasures(); track t.pointId) {
           <li class="trow">
@@ -33,27 +40,24 @@
             />
             <span class="trow__who">
               <span class="trow__name">{{ t.name }}</span>
-              <span class="trow__sub">{{ foundLine(t) }}</span>
-              @if (!t.foundInSession) {
-                <span class="trow__sub">Encontrado fora de uma sessão: não conta em nenhum resumo de sessão.</span>
-              }
+              <span class="trow__sub">{{ sub(t) }}</span>
             </span>
             <span class="trow__po">{{ po(t.valuePo) }}</span>
           </li>
         }
       </ul>
       @if (more() > 0) {
-        <p class="note">Há mais {{ count(more()) }} encontrados, que ficam para a próxima vez.</p>
+        <p class="note">{{ moreText() }}</p>
       }
     </section>
 
     <section aria-labelledby="town-p">
       <h3 class="h" id="town-p">Quem recebe</h3>
-      @if (data.rows.length === 0) {
+      @if (people().length === 0) {
         <p class="note">Nenhum personagem de jogador vivo nesta campanha.</p>
       } @else {
         <ul class="people">
-          @for (r of data.rows; track r.id) {
+          @for (r of people(); track r.id) {
             <li class="person">
               <app-check-box
                 [checked]="checkedPeople().has(r.id)"
@@ -69,18 +73,20 @@
         </ul>
       }
     </section>
-
   }
 
   <div foot class="foot">
-    @if (treasures().length > 0) {
+    @if (!noList()) {
       @if (waiting()) {
         <div class="calc calc--wait"><p class="calc__small">{{ waiting() }}</p></div>
       } @else {
         <div class="calc">
           <p class="calc__small calc__sum">{{ calc().sum }}</p>
           <p class="calc__big">{{ calc().big }}</p>
-          <p class="calc__small">{{ calc().left }}</p>
+          <p class="calc__small calc__to">
+            <span class="calc__who">{{ toLine() }}</span>
+            <span class="calc__left" [class.calc__left--zero]="calc().split.lost === 0">{{ calc().left }}</span>
+          </p>
         </div>
       }
       <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
@@ -88,11 +94,11 @@
     <app-xp-actions
       [primaryLabel]="primaryLabel()"
       primaryIcon="currency_exchange"
-      [secondaryLabel]="treasures().length === 0 ? 'Fechar' : 'Cancelar'"
-      [primaryHidden]="treasures().length === 0"
-      [secondaryStyle]="inSheet ? 'text' : 'outlined'"
+      [secondaryLabel]="noList() ? 'Fechar' : 'Cancelar'"
+      [primaryHidden]="noList()"
+      secondaryStyle="outlined"
       align="end"
-      [blocked]="treasures().length === 0 || !!waiting()"
+      [blocked]="noList() || !!waiting()"
       [busy]="busy()"
       (primary)="give()"
       (secondary)="cancel()"

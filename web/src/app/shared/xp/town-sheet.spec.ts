@@ -24,20 +24,13 @@ function row(id: string, name: string, sub: string): ExperienceRow {
 }
 const PARTY = [row('p', 'Pensantus', 'Mago 4'), row('t', 'Toren', 'Guerreiro 4'), row('b', 'Brisa', 'Ladina 4'), row('s', 'Sálvia', 'Druida 5')];
 
-// "Today" for the line's clock-only form: the test never depends on the date it runs.
-function todayAt(h: number, m: number): Date {
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
 function treasure(id: string, name: string, valuePo: number, finders: string[], inSession = true) {
   return create(TreasureToConvertSchema, {
     pointId: id,
     name,
     valuePo,
     mapName: 'A caverna do Vale Seco',
-    foundAt: timestampFromDate(todayAt(21, 40)),
+    foundAt: timestampFromDate(new Date(2026, 9, 4, 21, 40)),
     foundBy: finders.map((f) => ({ characterId: f, characterName: f })),
     foundInSession: inSession,
   });
@@ -52,6 +45,9 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
   const close = vi.fn();
 
   beforeEach(() => {
+    // The same day as the finds, whatever day the test runs: "às 21:40", never "em 04/10".
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 4, 23, 0));
     close.mockReset();
     listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST, PURSE, IDOL], total: 3 }));
     award.mockReset().mockResolvedValue(
@@ -61,6 +57,10 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
         lostXp: 0,
       }),
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   async function setup(over: Partial<TownData> = {}) {
@@ -93,6 +93,7 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
     const { el } = await setup();
     expect(text(el, 'h2')).toBe('Voltar à cidade');
     expect(el.textContent).toContain('Converte o ouro encontrado em XP, 1 XP por PO, num prêmio só. Dá para desfazer.');
+    // The one subtitle, at every size.
     const rows = Array.from(el.querySelectorAll('.trow'));
     expect(rows.map((r) => text(r as HTMLElement, '.trow__name'))).toEqual(['Baú de moedas', 'Bolsa do capitão', 'Ídolo de prata']);
     expect(text(rows[0] as HTMLElement, '.trow__sub')).toBe(`Encontrado por Brisa às${nbsp}21:40`);
@@ -106,8 +107,9 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
 
   it('writes the calculation: the sum, 420 XP ÷ 4 = 105 XP para cada, and nothing left', async () => {
     const { el } = await setup();
-    const calc = Array.from(el.querySelectorAll('.calc p'), (p) => p.textContent);
-    expect(calc).toEqual([`420${nbsp}PO em 3 tesouros = 420${nbsp}XP`, `420${nbsp}XP ÷ 4 = 105${nbsp}XP para cada`, `Sobra 0${nbsp}XP.`]);
+    expect(text(el, '.calc__sum')).toBe(`420${nbsp}PO em 3\u00a0tesouros = 420${nbsp}XP`);
+    expect(text(el, '.calc__big')).toBe(`420${nbsp}XP ÷ 4 = 105${nbsp}XP para cada`);
+    expect(text(el, '.calc__left')).toBe(`Sobra 0${nbsp}XP.`);
     expect(el.querySelector('[role="status"]')?.textContent).toBe(`105${nbsp}XP para cada.`);
     // The one filled button says the number.
     expect(primary(el).textContent).toContain(`Dar 105${nbsp}XP para cada`);
@@ -118,8 +120,9 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
     treasureBoxes(el)[2].click(); // the idol: 50 PO
     personBoxes(el)[1].click(); // Toren
     fixture.detectChanges();
-    const calc = Array.from(el.querySelectorAll('.calc p'), (p) => p.textContent);
-    expect(calc).toEqual([`370${nbsp}PO em 2 tesouros = 370${nbsp}XP`, `370${nbsp}XP ÷ 3 = 123${nbsp}XP para cada`, `Sobra 1${nbsp}XP, que não vai para ninguém.`]);
+    expect(text(el, '.calc__sum')).toBe(`370${nbsp}PO em 2\u00a0tesouros = 370${nbsp}XP`);
+    expect(text(el, '.calc__big')).toBe(`370${nbsp}XP ÷ 3 = 123${nbsp}XP para cada`);
+    expect(text(el, '.calc__left')).toBe(`Sobra 1${nbsp}XP, que não vai para ninguém.`);
     expect(primary(el).textContent).toContain(`Dar 123${nbsp}XP para cada`);
   });
 
@@ -229,14 +232,17 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
     listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST, treasure('o', 'Anel', 40, ['Toren'], false)], total: 2 }));
     const { el } = await setup({ treasures: [CHEST, treasure('o', 'Anel', 40, ['Toren'], false)], total: 2 });
     const rows = Array.from(el.querySelectorAll('.trow'));
+    // One line above the list says what it means; each find made outside carries a short tag.
+    expect(text(el, '.note--top')).toBe('Um tesouro achado fora de uma sessão não conta em nenhum resumo de sessão.');
     expect(rows[0].textContent).not.toContain('fora de uma sessão');
-    expect(rows[1].textContent).toContain('Encontrado fora de uma sessão: não conta em nenhum resumo de sessão.');
+    expect(rows[1].textContent).toContain('Encontrado por Toren');
+    expect(rows[1].textContent).toContain('fora de uma sessão');
   });
 
   it('says there are more when the server holds more than the 100 it sent', async () => {
     listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST], total: 130 }));
     const { el } = await setup({ treasures: [CHEST], total: 130 });
-    expect(text(el, '.note')).toBe('Há mais 129 tesouros encontrados, que ficam para a próxima vez.');
+    expect(text(el, '.note')).toBe('Há mais 129\u00a0tesouros encontrados, que ficam para a próxima vez.');
   });
 
   it('explains an empty list, with no filled button, and only "Fechar"', async () => {
@@ -263,5 +269,92 @@ describe('TownSheet: "Voltar à cidade" (E9-09, MR-041)', () => {
     await settle(fixture);
     expect(close).toHaveBeenCalledTimes(2);
     expect(award).not.toHaveBeenCalled();
+  });
+
+  describe('what is known of the list', () => {
+    it('says "lendo" while the host has not read the list, never "nenhum"; then lists what it read', async () => {
+      let answer!: (v: unknown) => void;
+      listTreasures.mockReset().mockReturnValue(new Promise((r) => (answer = r)));
+      const { fixture, el } = await setup({ treasures: undefined, total: undefined });
+      expect(text(el, '.none')).toBe('Lendo os tesouros encontrados...');
+      expect(el.textContent).not.toContain('Nenhum tesouro');
+      expect(el.querySelector('app-xp-actions .primary')).toBeNull();
+      answer(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST], total: 1 }));
+      await settle(fixture);
+      expect(Array.from(el.querySelectorAll('.trow__name'), (n) => n.textContent)).toEqual(['Baú de moedas']);
+    });
+
+    it('says it could not read, with "Tentar de novo", and never "nenhum"; the retry reads again', async () => {
+      listTreasures.mockReset().mockRejectedValueOnce(new Error('down'));
+      const { fixture, el } = await setup({ treasures: undefined, total: undefined });
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível ler os tesouros encontrados.');
+      expect(el.textContent).not.toContain('Nenhum tesouro');
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST, PURSE], total: 2 }));
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes('Tentar de novo'))!.click();
+      await settle(fixture);
+      expect(el.querySelectorAll('.trow')).toHaveLength(2);
+    });
+
+    it('says "nenhum" only after a read that worked and found none', async () => {
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [], total: 0 }));
+      const { el } = await setup({ treasures: undefined, total: undefined });
+      expect(text(el, '.none')).toContain('Nenhum tesouro encontrado para converter.');
+      expect(text(el, '.none')).toContain('marque no mapa');
+    });
+  });
+
+  it('keeps who receives in the footer, always in sight, and moves with the choice', async () => {
+    const { fixture, el } = await setup();
+    expect(text(el, '.calc__who')).toBe('Para 4: Pensantus, Toren, Brisa e Sálvia');
+    personBoxes(el)[0].click();
+    fixture.detectChanges();
+    expect(text(el, '.calc__who')).toBe('Para 3: Toren, Brisa e Sálvia');
+  });
+
+  it('agrees in number when one treasure is beyond the list', async () => {
+    listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [CHEST], total: 2 }));
+    const { el } = await setup({ treasures: [CHEST], total: 2 });
+    expect(text(el, '.note')).toBe(`Há mais 1${nbsp}tesouro encontrado, que fica para a próxima vez.`);
+  });
+
+  describe('refusals that leave the list stale', () => {
+    it('a treasure that is gone (not_found): says so, reads again, and does not talk about the campaign', async () => {
+      award.mockRejectedValueOnce(new ConnectError('x', Code.NotFound));
+      const { fixture, el } = await setup();
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [PURSE, IDOL], total: 2 }));
+      primary(el).click();
+      await settle(fixture);
+      await settle(fixture);
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('não está mais no mapa');
+      expect(el.querySelector('[role="alert"]')?.textContent).not.toContain('campanha');
+      expect(Array.from(el.querySelectorAll('.trow__name'), (n) => n.textContent)).toEqual(['Bolsa do capitão', 'Ídolo de prata']);
+    });
+
+    it('a character that cannot receive leaves "Quem recebe", so the retry can go', async () => {
+      award.mockRejectedValueOnce(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          { desc: XPBlockedSchema, value: { reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, characterId: 's' } },
+        ]),
+      );
+      const { fixture, el } = await setup();
+      primary(el).click();
+      await settle(fixture);
+      await settle(fixture);
+      expect(personBoxes(el)).toHaveLength(3);
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('morreu ou saiu');
+      expect(text(el, '.calc__who')).toBe('Para 3: Pensantus, Toren e Brisa');
+      primary(el).click();
+      await settle(fixture);
+      expect(award.mock.calls[1][3]).toEqual(['p', 't', 'b']);
+      expect(close).toHaveBeenCalled();
+    });
+  });
+
+  it('is one subtitle at every size, and "Fechar" is outlined when it is the only button', async () => {
+    listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [], total: 0 }));
+    const { el } = await setup({ treasures: [], total: 0 });
+    const only = el.querySelector<HTMLButtonElement>('app-xp-actions button')!;
+    expect(only.textContent?.trim()).toBe('Fechar');
+    expect(only.classList.contains('mat-mdc-outlined-button')).toBe(true);
   });
 });

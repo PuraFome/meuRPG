@@ -99,3 +99,21 @@
     align-self: center;
   }
 }
+
+// The phone's "Dar XP": the headline and the button; the label and the lines wait for the panel.
+.strip--compact {
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding: 10px 12px;
+
+  .strip__label,
+  .strip__list,
+  .strip__more,
+  .strip__why {
+    display: none;
+  }
+
+  .strip__big {
+    font-size: 20px;
+    line-height: 26px;
+  }
+}

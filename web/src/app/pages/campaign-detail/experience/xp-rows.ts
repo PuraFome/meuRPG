@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
+import { formatInt, tight } from '../../../core/format/text';
 import type { ExperienceRow } from '../../../core/progression/experience-store';
 import { progress } from '../../../core/progression/xp-labels';
 import { LevelUpTag } from '../../../shared/xp/level-up-tag';
@@ -20,8 +21,17 @@ import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 export class XpRows {
   readonly rows = input.required<readonly ExperienceRow[]>();
   readonly milestones = input(false);
+  /** What each character just got (by id): "+105 XP", in place of "Faltam…", only right after an award. */
+  readonly gained = input<ReadonlyMap<string, number>>(new Map());
 
   protected readonly lines = computed(() =>
-    this.rows().map((r) => ({ row: r, progress: progress(r.xp, r.nextLevelXp, r.canLevelUp) })),
+    this.rows().map((r) => {
+      const gain = this.gained().get(r.id) ?? 0;
+      return {
+        row: r,
+        progress: progress(r.xp, r.nextLevelXp, r.canLevelUp),
+        gain: gain > 0 ? tight(`+${formatInt(gain)} XP`) : '',
+      };
+    }),
   );
 }

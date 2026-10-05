@@ -293,8 +293,11 @@ describe('AwardXpSheet (E7-07)', () => {
     const chest = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250, foundBy: [{ characterId: 'b1', characterName: 'Brisa' }] });
     const listTreasures = vi.fn();
 
-    function setupGold(over: Partial<AwardXpData> = {}) {
+    function setupGold(over: Partial<AwardXpData> = {}, readFails = false) {
       listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }));
+      if (readFails) {
+        listTreasures.mockRejectedValue(new Error('down'));
+      }
       const data: AwardXpData = { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows: PARTY, treasures: [chest], treasuresTotal: 1, ...over };
       TestBed.configureTestingModule({
         imports: [AwardXpSheet],
@@ -312,7 +315,7 @@ describe('AwardXpSheet (E7-07)', () => {
     it('opens with what waits, the outlined "Voltar à cidade" and "ou digite o ouro" before the form', () => {
       const { el } = setupGold();
       const strip = el.querySelector('app-treasure-strip')!;
-      expect(strip.textContent).toContain(`1 tesouro · 250${nbsp}PO`);
+      expect(strip.textContent).toContain(`1\u00a0tesouro · 250${nbsp}PO`);
       expect(strip.querySelector('button')?.textContent).toContain('Voltar à cidade');
       expect(el.querySelector('.or')?.textContent?.trim()).toBe('ou digite o ouro');
       // The typed gold stays, as the alternative.
@@ -334,6 +337,28 @@ describe('AwardXpSheet (E7-07)', () => {
       fixture.detectChanges();
       expect(listTreasures).toHaveBeenCalledWith('camp-1');
       expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Baú de moedas');
+    });
+
+    it('does not read the treasures for a combat\'s XP, which has no strip', () => {
+      setupGold({ encounterId: 'enc-1' });
+      expect(listTreasures).not.toHaveBeenCalled();
+    });
+
+    it('keeps a host\'s empty list that was read, with no error when the re-read fails', async () => {
+      const { fixture, el } = setupGold({ treasures: [], treasuresTotal: 0 }, true);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Nenhum tesouro esperando.');
+    });
+
+    it('says it could not read the treasures when it had no list, with "Tentar de novo"', async () => {
+      const { fixture, el } = setupGold({ treasures: undefined, treasuresTotal: undefined }, true);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const strip = el.querySelector('app-treasure-strip')!;
+      expect(strip.textContent).not.toContain('Nenhum tesouro esperando.');
+      expect(strip.textContent).toContain('Não foi possível ler os tesouros.');
+      expect(strip.textContent).toContain('Tentar de novo');
     });
 
     it('has no strip in a campaign by enemies, nor when the sheet is a combat\'s XP', () => {

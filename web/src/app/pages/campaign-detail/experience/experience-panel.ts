@@ -36,6 +36,8 @@ export class ExperiencePanel {
 
   /** What the master just gave, said once in a polite status. */
   protected readonly confirmation = signal('');
+  /** What each character got from the award just made ("+105 XP"), until the next change. */
+  protected readonly gained = signal<ReadonlyMap<string, number>>(new Map());
   private readonly status = viewChild<ElementRef<HTMLElement>>('status');
   private readonly injector = inject(Injector);
 
@@ -73,12 +75,19 @@ export class ExperiencePanel {
       this.confirmation.set(
         award.treasureCount > 0 ? townGivenText(award, xpEach, lostXp) : givenText(award.totalXp, xpEach, lostXp),
       );
+      this.gained.set(new Map(award.shares.map((s) => [s.characterId, s.xp])));
     } else {
       this.confirmation.set(
         milestoneText(result.award, result.award.shares.length === this.store.rows().length),
       );
     }
     await this.store.refresh();
+  }
+
+  /** An undo: what was said about the award before is no longer true. */
+  protected undone(): void {
+    this.confirmation.set('');
+    this.gained.set(new Map());
   }
 
   protected retry(): void {

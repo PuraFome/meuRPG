@@ -59,7 +59,7 @@ describe('TreasureStrip (E9-09)', () => {
   it('in a campaign by gold: "Encontrado, ainda não convertido", the count, the PO and each find', () => {
     const { el } = setup();
     expect(text(el, '.strip__label')).toBe('Encontrado, ainda não convertido');
-    expect(text(el, '.strip__big')).toBe(`3 tesouros · 420${nbsp}PO`);
+    expect(text(el, '.strip__big')).toBe(`3\u00a0tesouros · 420${nbsp}PO`);
     expect(Array.from(el.querySelectorAll('.strip__list li'), (li) => li.textContent)).toEqual([
       `Baú de moedas, 250${nbsp}PO, de Brisa`,
       `Bolsa do capitão, 120${nbsp}PO, de Toren`,
@@ -90,14 +90,14 @@ describe('TreasureStrip (E9-09)', () => {
     const { el } = setup({ treasures: many, total: 130 });
     expect(el.querySelectorAll('.strip__list li')).toHaveLength(5);
     const more = Array.from(el.querySelectorAll('.strip__more'), (p) => p.textContent);
-    expect(more).toEqual(['e mais 2', 'Há mais 123 tesouros encontrados, que ficam para depois.']);
-    expect(text(el, '.strip__big')).toBe(`7 tesouros · 70${nbsp}PO`);
+    expect(more).toEqual(['e mais 2', 'Há mais 123\u00a0tesouros encontrados, que ficam para depois.']);
+    expect(text(el, '.strip__big')).toBe(`7\u00a0tesouros · 70${nbsp}PO`);
   });
 
   it('in a campaign by enemies: "Tesouro encontrado", the line why, and no button', () => {
     const { el } = setup({ mode: XpMode.ENEMIES, treasures: [THREE[0]], total: 1, button: true });
     expect(text(el, '.strip__label')).toBe('Tesouro encontrado');
-    expect(text(el, '.strip__big')).toBe(`1 tesouro · 250${nbsp}PO`);
+    expect(text(el, '.strip__big')).toBe(`1\u00a0tesouro · 250${nbsp}PO`);
     expect(text(el, '.strip__why')).toBe(
       'Esta campanha dá XP por inimigos, então o tesouro não vira XP. Ele aparece no resumo de cada sessão.',
     );

@@ -195,8 +195,8 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
         words(r.querySelector('b')),
         words(r.querySelector('.tbl__num')),
       ]);
-      // The server's order, the number with its unit tied and a thousands separator.
-      expect(rows).toEqual([['Pensantus', '25 PO'], ['Brisa', '1.250 PO']]);
+      // The most first, the number with its unit tied and a thousands separator.
+      expect(rows).toEqual([['Brisa', '1.250 PO'], ['Pensantus', '25 PO']]);
       expect(words(el.querySelectorAll('.sum__note')[0])).toContain('divide o valor, arredondado para baixo');
       // The treasure has its block: the tiles of "Destaques" do not repeat it.
       const tiles = Array.from(el.querySelectorAll('.tile'), (t) => words(t));

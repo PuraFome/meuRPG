@@ -25,6 +25,8 @@ const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', playerUserId: '', s
     [treasures]="treasures"
     [treasuresTotal]="treasures.length"
     [showTown]="showTown"
+    [treasuresState]="treasuresState"
+    [block]="block"
     (given)="results.push($event)"
   />`,
 })
@@ -33,6 +35,8 @@ class Host {
   rows = rows;
   treasures = [create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 })];
   showTown = false;
+  treasuresState: 'loading' | 'ready' | 'error' = 'ready';
+  block = false;
   results: GiveResult[] = [];
 }
 
@@ -152,6 +156,55 @@ describe('XpGiveButton', () => {
       const { buttons, host } = gold({ award, xpEach: 105, lostXp: 0 });
       buttons[1].click();
       expect(host.results).toEqual([{ kind: 'xp', result: { award, xpEach: 105, lostXp: 0 } }]);
+    });
+  });
+
+  describe('what the sheets are told of the treasures, and the focus after them', () => {
+    function goldHost(over: Partial<Host>) {
+      open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.mode = XpMode.GOLD;
+      Object.assign(fixture.componentInstance, over);
+      fixture.detectChanges();
+      return { fixture, buttons: Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')) };
+    }
+
+    it('hands over the list only once it was read: "lendo" must never turn into a false "nenhum"', () => {
+      goldHost({ treasuresState: 'loading', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+      goldHost({ treasuresState: 'error', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+      goldHost({ treasuresState: 'ready', treasures: [] }).buttons[0].click();
+      expect(open.mock.calls[0][1].data.treasures).toEqual([]);
+      const town = goldHost({ treasuresState: 'loading', treasures: [], showTown: true });
+      town.buttons[1].click();
+      expect(open.mock.calls[0][1].data.treasures).toBeUndefined();
+    });
+
+    it('puts the focus back on the button that opened the sheet, asking for the focus ring', () => {
+      vi.useFakeTimers();
+      try {
+        const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => undefined);
+        const { buttons } = goldHost({ showTown: true });
+        buttons[1].click();
+        vi.runAllTimers();
+        expect(focus).toHaveBeenCalledWith({ focusVisible: true });
+        expect(focus.mock.contexts.at(-1)).toBe(buttons[1]);
+        focus.mockRestore();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('makes every button the full width on a phone when the host asks (the panel), in any mode', () => {
+      const { fixture, buttons } = goldHost({ block: true });
+      expect((fixture.nativeElement.querySelector('app-xp-give-button') as HTMLElement | null) ?? fixture.nativeElement).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-xp-give-button').classList.contains('block')).toBe(true);
+      expect(buttons[0].classList.contains('give--block')).toBe(true);
     });
   });
 });

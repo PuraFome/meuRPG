@@ -5,6 +5,7 @@ import { TreasureToConvertSchema, XPAwardSchema } from '../../../gen/meurpg/prog
 import {
   awardTitle,
   foundLine,
+  moreTreasures,
   foundWhen,
   stripHeadline,
   stripLine,
@@ -36,14 +37,14 @@ const IDOL = treasure('Ídolo de prata', 50, ['Pensantus', 'Sálvia'], new Date(
 
 describe('treasure texts (E9-09)', () => {
   it('counts treasures in the singular and the plural', () => {
-    expect(treasureCount(1)).toBe('1 tesouro');
-    expect(treasureCount(3)).toBe('3 tesouros');
-    expect(treasureCount(1200)).toBe('1.200 tesouros');
+    expect(treasureCount(1)).toBe('1\u00a0tesouro');
+    expect(treasureCount(3)).toBe('3\u00a0tesouros');
+    expect(treasureCount(1200)).toBe('1.200\u00a0tesouros');
   });
 
   it('sums the PO and writes the strip\'s headline and lines', () => {
     expect(totalPo([CHEST, PURSE, IDOL])).toBe(420);
-    expect(stripHeadline([CHEST, PURSE, IDOL])).toBe(`3 tesouros · 420${nbsp}PO`);
+    expect(stripHeadline([CHEST, PURSE, IDOL])).toBe(`3\u00a0tesouros · 420${nbsp}PO`);
     expect(stripLine(CHEST)).toBe(`Baú de moedas, 250${nbsp}PO, de Brisa`);
     expect(stripLine(IDOL)).toBe(`Ídolo de prata, 50${nbsp}PO, de Pensantus e Sálvia`);
   });
@@ -59,7 +60,7 @@ describe('treasure texts (E9-09)', () => {
   describe('the calculation', () => {
     it('writes the sum, the division and what is left (420 PO between 4: nothing left)', () => {
       const calc = townCalc(3, 420, 4);
-      expect(calc.sum).toBe(`420${nbsp}PO em 3 tesouros = 420${nbsp}XP`);
+      expect(calc.sum).toBe(`420${nbsp}PO em 3\u00a0tesouros = 420${nbsp}XP`);
       expect(calc.big).toBe(`420${nbsp}XP ÷ 4 = 105${nbsp}XP para cada`);
       expect(calc.left).toBe(`Sobra 0${nbsp}XP.`);
       expect(calc.split).toEqual({ count: 4, each: 105, lost: 0 });
@@ -74,7 +75,7 @@ describe('treasure texts (E9-09)', () => {
     it('rounds down, as the server does: 250 PO between 3 is 83 each, 1 left', () => {
       const calc = townCalc(1, 250, 3);
       expect(calc.split).toEqual({ count: 3, each: 83, lost: 1 });
-      expect(calc.sum).toBe(`250${nbsp}PO em 1 tesouro = 250${nbsp}XP`);
+      expect(calc.sum).toBe(`250${nbsp}PO em 1\u00a0tesouro = 250${nbsp}XP`);
     });
 
     it('gives nothing for nobody', () => {
@@ -86,8 +87,8 @@ describe('treasure texts (E9-09)', () => {
     const town = create(XPAwardSchema, { id: 'a', reason: 'Voltar à cidade', gold: 420, treasureCount: 3 });
 
     it('titles a "Voltar à cidade" award by its treasures, and any other by its reason', () => {
-      expect(townTitle(3, 420)).toBe(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
-      expect(awardTitle(town)).toBe(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
+      expect(townTitle(3, 420)).toBe(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
+      expect(awardTitle(town)).toBe(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
       expect(awardTitle(create(XPAwardSchema, { reason: 'Venda do cálice de prata', gold: 60 }))).toBe('Venda do cálice de prata');
     });
 
@@ -98,13 +99,36 @@ describe('treasure texts (E9-09)', () => {
       ];
       const award = create(XPAwardSchema, { id: 'a', reason: 'Voltar à cidade', gold: 420, treasureCount: 3, shares });
       expect(townGivenText(award, 105, 0)).toBe(
-        `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3 tesouros foram convertidos.`,
+        `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3\u00a0tesouros foram convertidos.`,
       );
-      expect(townGivenText(award, 105, 1)).toContain(`1${nbsp}XP se perdeu na divisão.`);
-      expect(townUndoneText(award)).toBe('XP desfeito: os 3 tesouros voltaram a “encontrado, não convertido”.');
+      expect(townGivenText(award, 105, 1)).toContain(`Sobra 1${nbsp}XP, que não vai para ninguém.`);
+      expect(townUndoneText(award)).toBe('XP desfeito: os 3\u00a0tesouros voltaram a “encontrado, não convertido”.');
       expect(townUndoneText(create(XPAwardSchema, { treasureCount: 1 }))).toBe(
         'XP desfeito: o tesouro voltou a “encontrado, não convertido”.',
       );
     });
+  });
+
+  describe('the preview agrees with the server\'s split (backend/internal/rules TestSplitXP, and its remainders)', () => {
+    // Each row: PO total, receivers, what each gets and what is left: the numbers the Go tests give for
+    // SplitXP (100/4 = 25, 100/3 = 33 r1, 7/1 = 7, 1/2 = 0 r1) plus ones with a remainder of 2 and 3.
+    it.each([
+      [100, 4, 25, 0],
+      [100, 3, 33, 1],
+      [7, 1, 7, 0],
+      [1, 2, 0, 1],
+      [170, 3, 56, 2],
+      [419, 4, 104, 3],
+      [370, 3, 123, 1],
+    ])('%i PO between %i: %i each, %i left', (po, who, each, lost) => {
+      const { split } = townCalc(2, po, who);
+      expect(split).toEqual({ count: who, each, lost });
+      expect(split.each * who + split.lost).toBe(po);
+    });
+  });
+
+  it('agrees in number, with the count tied to its noun', () => {
+    expect(moreTreasures(1, 'para depois')).toBe(`Há mais 1${nbsp}tesouro encontrado, que fica para depois.`);
+    expect(moreTreasures(29, 'para a próxima vez')).toBe(`Há mais 29${nbsp}tesouros encontrados, que ficam para a próxima vez.`);
   });
 });

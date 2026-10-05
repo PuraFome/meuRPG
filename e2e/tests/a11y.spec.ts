@@ -2356,6 +2356,22 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(panel(m)).toContainText('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
     await expectScreenPasses(m, `Experiência por inimigos, com tesouro ${where}`);
 
+    // "Dar XP" of the live session (state 6c): the strip with the way in, then the conversion from it.
+    const live = await tableForGold(m, p, `Acessibilidade ouro sessão ${Date.now()}`);
+    campaigns.push(live.campaignId);
+    await threeTreasuresRPC(m, live);
+    await startSessionRPC(m, live.campaignId);
+    await openSessionPage(m, live.campaignId);
+    await m.getByRole('button', { name: 'Dar XP', exact: true }).click();
+    const liveGive = m.getByRole('dialog', { name: 'Dar XP' });
+    await expect(liveGive).toContainText('3 tesouros · 420 PO');
+    await expectScreenPasses(m, `Dar XP da sessão com a faixa de tesouros ${where}`);
+    await liveGive.getByRole('button', { name: 'Voltar à cidade' }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade aberto do Dar XP da sessão ${where}`);
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: 'Cancelar' }).click();
+    await endOpenSessionRPC(m, live.campaignId);
+
     // The session summary: the master's block and the player's card.
     const summary = await tableForGold(m, p, `Acessibilidade resumo ouro ${Date.now()}`, 'XP_MODE_ENEMIES');
     campaigns.push(summary.campaignId);

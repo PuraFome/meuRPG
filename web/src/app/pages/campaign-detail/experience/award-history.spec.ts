@@ -282,7 +282,7 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
   it('writes the line from the treasures (the count and the PO), with the XP each and the total', async () => {
     const { el } = await setup([TOWN, OLDER], true);
     const first = items(el)[0].textContent!;
-    expect(first).toContain(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
+    expect(first).toContain(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
     expect(first).toContain('Por ouro');
     expect(first).toContain(`105${nbsp}XP para cada`);
     expect(first).toContain(`Total de${nbsp}420${nbsp}XP`);
@@ -292,7 +292,7 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
 
   it('reads the same for a player, who gets only the count and the total (no list, no buttons)', async () => {
     const { el } = await setup([{ ...TOWN, canUndo: false } as typeof TOWN, OLDER], false);
-    expect(items(el)[0].textContent).toContain(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
+    expect(items(el)[0].textContent).toContain(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
     expect(el.querySelectorAll('button')).toHaveLength(0);
     expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
   });
@@ -304,7 +304,7 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
     const question = el.querySelector('[role="alertdialog"]')!;
     expect(question.textContent).toContain('Desfazer o XP de “Voltar à cidade”?');
     expect(question.textContent).toContain(`Pensantus e Toren perdem 105${nbsp}XP cada.`);
-    expect(question.textContent).toContain(`Os 3 tesouros (420${nbsp}PO) voltam a “encontrado, não convertido”.`);
+    expect(question.textContent).toContain(`Os 3\u00a0tesouros (420${nbsp}PO) voltam a “encontrado, não convertido”.`);
     expect(question.textContent).toContain('O histórico guarda o desfazer.');
   });
 
@@ -315,16 +315,40 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
     Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Desfazer XP')!.click();
     await settle(fixture);
     expect(undoLast).toHaveBeenCalledWith('camp-1', 'a9', expect.any(String));
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('os 3 tesouros voltaram a “encontrado, não convertido”');
+    expect(el.querySelector('[role="status"]')?.textContent).toContain('os 3\u00a0tesouros voltaram a “encontrado, não convertido”');
     expect(refresh).toHaveBeenCalled();
   });
 
   it('tells the master why a "Voltar à cidade" that is not the last cannot be undone', async () => {
     const newer = award({ id: 'a10', mode: XPAwardMode.XP_AWARD_MODE_MANUAL, reason: 'Avulso', canUndo: true });
     const { el } = await setup([newer, { ...TOWN, canUndo: false } as typeof TOWN], true);
-    expect(items(el)[1].textContent).toContain('Só o último prêmio pode ser desfeito: desfaça os mais novos antes, e estes tesouros ficam livres.');
+    expect(items(el)[1].textContent).toContain('Os tesouros ficam livres quando os prêmios mais novos forem desfeitos.');
     expect(items(el)[1].querySelector('button')).toBeNull();
     expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
+  });
+
+  it('puts "Desfazer" under the line\'s words (not in a column of its own), and the amounts in one column', async () => {
+    const { el } = await setup([TOWN, OLDER], true);
+    const row = items(el)[0];
+    expect(row.querySelector('.what .undo')).not.toBeNull();
+    expect(row.querySelectorAll(':scope > *')).toHaveLength(3);
+    expect(row.querySelector('.amount')).not.toBeNull();
+  });
+
+  it('says nothing of its own while the host has news on screen, and tells the host about an undo', async () => {
+    const { fixture, el } = await setup([TOWN, OLDER], true);
+    const told = vi.fn();
+    fixture.componentInstance.undone.subscribe(told);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    await settle(fixture);
+    fixture.componentRef.setInput('hideNotice', true);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Desfazer XP')!.click();
+    await settle(fixture);
+    expect(told).toHaveBeenCalled();
+    expect(el.querySelector('.notice')).toBeNull();
+    fixture.componentRef.setInput('hideNotice', false);
+    fixture.detectChanges();
+    expect(el.querySelector('.notice')?.textContent).toContain('XP desfeito');
   });
 
   it('keeps an undone one as it was, with its tag', async () => {

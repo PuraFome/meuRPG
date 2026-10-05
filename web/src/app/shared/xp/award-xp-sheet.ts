@@ -7,12 +7,12 @@ import { MatInputModule } from '@angular/material/input';
 import { startWith } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { TreasureToConvert, XPAward } from '../../../gen/meurpg/progression/v1/progression_pb';
+import { type TreasureToConvert, type XPAward, XPBlockedReason } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../core/connect/idempotency';
 import { formatInt, tight } from '../../core/format/text';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
-import { xpErrorMessage } from '../../core/progression/xp-errors';
+import { xpBlocked, xpErrorMessage } from '../../core/progression/xp-errors';
 import { parseAmount, shortDivision, splitXp } from '../../core/progression/xp-math';
 import { SheetFrame } from '../../pages/live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../pages/live-session/combat/sheet-host';
@@ -124,6 +124,8 @@ export class AwardXpSheet {
     initialValue: this.reason.value,
   });
 
+  /** Who is alive: a character the server says cannot receive leaves the list. */
+  protected readonly rows = signal<readonly ExperienceRow[]>(this.data.rows);
   protected readonly checked = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -156,7 +158,7 @@ export class AwardXpSheet {
 
   protected readonly recipients = computed<Recipient[]>(() => {
     const each = this.split().each;
-    return this.data.rows.map((r) => {
+    return this.rows().map((r) => {
       const on = this.checked().has(r.id);
       return {
         id: r.id,
@@ -197,7 +199,8 @@ export class AwardXpSheet {
   private keyFor = '';
 
   constructor() {
-    if (this.gold) {
+    // The strip is only there for a gold campaign's own "Dar XP" (a combat's has none): no read for it otherwise.
+    if (this.gold && !this.data.encounterId) {
       void this.readTreasures();
     }
   }
@@ -209,10 +212,16 @@ export class AwardXpSheet {
       this.treasuresTotal.set(res.total);
       this.treasuresState.set('ready');
     } catch {
-      if (this.treasures().length === 0) {
+      // The host's list stays when there is one (even an empty one that was read); with none, say it could not read.
+      if (!this.data.treasures) {
         this.treasuresState.set('error');
       }
     }
+  }
+
+  protected retryTreasures(): void {
+    this.treasuresState.set('loading');
+    void this.readTreasures();
   }
 
   protected goTown(): void {
@@ -249,7 +258,7 @@ export class AwardXpSheet {
     }
     const reason = this.reason.value.trim();
     const total = this.total();
-    const ids = this.data.rows.filter((r) => this.checked().has(r.id)).map((r) => r.id);
+    const ids = this.rows().filter((r) => this.checked().has(r.id)).map((r) => r.id);
     const fromCombat =
       !this.gold && !!this.data.encounterId && total === this.data.amount ? this.data.encounterId : '';
     const input = this.gold
@@ -275,6 +284,16 @@ export class AwardXpSheet {
       }
     } catch (err) {
       this.error.set(xpErrorMessage(err, 'dar o XP'));
+      // A character that cannot receive (died, left) leaves the list, so the retry can go.
+      const blocked = xpBlocked(err);
+      if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE && blocked.characterId) {
+        this.rows.update((rows) => rows.filter((r) => r.id !== blocked.characterId));
+        this.checked.update((set) => {
+          const next = new Set(set);
+          next.delete(blocked.characterId);
+          return next;
+        });
+      }
       this.frame().scrollToTop();
     } finally {
       this.busy.set(false);
