@@ -131,6 +131,12 @@ type combatTx struct {
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string
+	// svc is the service the change runs in, for what a turn starting does (ending a
+	// familiar's sight); nil in the few places that make a combatTx outside write.
+	svc *Service
+	// sightEnded are the vitals of the characters whose familiar sight a turn start
+	// ended: write tells the streams and the fog after the commit (MR-036).
+	sightEnded []*playv1.CharacterVitals
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -154,8 +160,9 @@ type combatResult struct {
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
 	var res combatResult
+	var ended *combatTx // the change's transaction, for what it leaves to tell
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res = combatResult{encounterID: w.encounterID}
+		res, ended = combatResult{encounterID: w.encounterID}, nil
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -181,7 +188,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -201,10 +208,19 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return err
 		}
 		res.encounterID = c.enc.ID
+		ended = c
 		return insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload)
 	})
 	if err != nil {
 		return combatResult{}, err
+	}
+	// A turn that started ended some familiar's sight (MR-036): the player's vitals
+	// and the fog's view change.
+	if ended != nil && len(ended.sightEnded) > 0 {
+		for _, v := range ended.sightEnded {
+			s.publishVitals(w.m.CampaignID, v)
+		}
+		s.maps.VisionChanged(ctx, w.m.CampaignID, deref(ended.enc.MapID))
 	}
 	return res, nil
 }

@@ -162,6 +162,27 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{connect.CodeInvalidArgument, connect.CodeInvalidArgument, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Wild Shape and the familiar's eyes (MR-037, MR-036). The character is a level 1
+		// wizard with no familiar and no Wild Shape, so the state refuses after the
+		// authorization has passed (failed_precondition, with the typed reason); the
+		// player may do it for their own character, and another player's is
+		// permission_denied (TestMR037_WildShapeIsTheOwnersAndTheMasters).
+		{"AssumeWildShape", func(ctx context.Context, c client) error {
+			_, err := c.AssumeWildShape(ctx, connect.NewRequest(&playv1.AssumeWildShapeRequest{CampaignId: campaign, CharacterId: pc.GetId(), BeastKey: "monster:wolf", IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"LeaveWildShape", func(ctx context.Context, c client) error {
+			_, err := c.LeaveWildShape(ctx, connect.NewRequest(&playv1.LeaveWildShapeRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"StartFamiliarSight", func(ctx context.Context, c client) error {
+			_, err := c.StartFamiliarSight(ctx, connect.NewRequest(&playv1.StartFamiliarSightRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"StopFamiliarSight", func(ctx context.Context, c client) error {
+			_, err := c.StopFamiliarSight(ctx, connect.NewRequest(&playv1.StopFamiliarSightRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"SetSpeaker", func(ctx context.Context, c client) error {
 			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
 			return err
@@ -424,6 +445,22 @@ func (noVitals) AdjustVitals(context.Context, pgx.Tx, string, string, *playv1.Ad
 	return nil, nil, errors.New("not in this test")
 }
 
+func (noVitals) AssumeWildShape(context.Context, pgx.Tx, string, string, string) (before, after *playv1.CharacterVitals, body link.Character, err error) {
+	return nil, nil, link.Character{}, errors.New("not in this test")
+}
+
+func (noVitals) SetWildShape(context.Context, pgx.Tx, string, string, string, int32) (*playv1.CharacterVitals, link.Character, error) {
+	return nil, link.Character{}, errors.New("not in this test")
+}
+
+func (noVitals) FamiliarOf(context.Context, pgx.Tx, string, string) (link.Creature, bool, error) {
+	return link.Creature{}, false, errors.New("not in this test")
+}
+
+func (noVitals) SetFamiliarSight(context.Context, pgx.Tx, string, string, string, bool, []string) (*playv1.CharacterVitals, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noMaps struct{}
 
 func (noMaps) RevealMap(context.Context, pgx.Tx, string, string, time.Time) error {
@@ -435,6 +472,8 @@ func (noMaps) ImageToShow(context.Context, string, string) (*playv1.ShownImage, 
 }
 
 func (noMaps) MapShown(context.Context, string, string) {}
+
+func (noMaps) VisionChanged(context.Context, string, string) {}
 
 func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, error) {
 	return nil, errors.New("not in this test")
@@ -650,6 +689,10 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
 	_, calls["CastSummon"] = c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["AssumeWildShape"] = c.AssumeWildShape(ctx, connect.NewRequest(&playv1.AssumeWildShapeRequest{CampaignId: id, CharacterId: id, BeastKey: "monster:wolf", IdempotencyKey: id}))
+	_, calls["LeaveWildShape"] = c.LeaveWildShape(ctx, connect.NewRequest(&playv1.LeaveWildShapeRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["StartFamiliarSight"] = c.StartFamiliarSight(ctx, connect.NewRequest(&playv1.StartFamiliarSightRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["StopFamiliarSight"] = c.StopFamiliarSight(ctx, connect.NewRequest(&playv1.StopFamiliarSightRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {

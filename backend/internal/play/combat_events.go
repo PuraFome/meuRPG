@@ -39,6 +39,25 @@ type hpState struct {
 	HP       int32 `json:"hp"`
 	Temp     int32 `json:"temp,omitempty"`
 	Defeated bool  `json:"defeated,omitempty"`
+	// Shape is the Wild Shape form the druid was in at that moment (nil: its own
+	// shape): the beast's pool is a number an undo puts back, like the hit points
+	// (MR-037). HP and Temp are the character's own, which wait while the form lasts.
+	Shape *shapeState `json:"shape,omitempty"`
+}
+
+// shapeState is a druid's beast form and the beast's hit points.
+type shapeState struct {
+	Beast string `json:"beast"`
+	HP    int32  `json:"hp"`
+}
+
+// hpStateOf is a player's character's hit points, and its form, in its vitals.
+func hpStateOf(v *playv1.CharacterVitals) hpState {
+	out := hpState{HP: v.GetHitPointsCurrent(), Temp: v.GetHitPointsTemporary()}
+	if w := v.GetWildShape(); w != nil {
+		out.Shape = &shapeState{Beast: w.GetBeastKey(), HP: w.GetHitPointsCurrent()}
+	}
+	return out
 }
 
 // slotRef is the spell slot a spell spent: its level, and whether it was a
@@ -301,6 +320,24 @@ type actionEvent struct {
 	Source         string     `json:"source,omitempty"`
 	Ritual         bool       `json:"ritual,omitempty"`
 	Reason         string     `json:"reason,omitempty"`
+
+	// Wild Shape and the familiar's eyes (MR-037, MR-036): the beast's key, the damage
+	// the beast's fall carried over to the character, the form before a change an
+	// undo puts back (ShapeBefore, with ShapeSet true even when it was the
+	// character's own shape), the creature the player looks through and "start" or
+	// "stop", the conditions the sight gave, and the combat the change was made in
+	// (empty outside one). IDs, keys and numbers only.
+	Beast       string      `json:"beast,omitempty"`
+	Carried     int32       `json:"carried_damage,omitempty"`
+	ShapeSet    bool        `json:"shape_set,omitempty"`
+	ShapeBefore *shapeState `json:"shape_before,omitempty"`
+	Creature    string      `json:"creature_id,omitempty"`
+	Sight       string      `json:"sight,omitempty"`
+	SightConds  []string    `json:"sight_conditions,omitempty"`
+	EncounterID string      `json:"encounter_id,omitempty"`
+	// Spent says the change spent the combatant's action or bonus action (the
+	// economy fields above are then what an undo puts back).
+	Spent bool `json:"spent,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

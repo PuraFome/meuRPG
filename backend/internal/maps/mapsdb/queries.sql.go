@@ -206,6 +206,30 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 	return i, err
 }
 
+const deleteMapCreatureToken = `-- name: DeleteMapCreatureToken :one
+DELETE FROM map_creature_tokens
+WHERE map_id = $1 AND creature_id = $2
+RETURNING map_id, creature_id, x_bp, y_bp, updated_at
+`
+
+type DeleteMapCreatureTokenParams struct {
+	MapID      string
+	CreatureID string
+}
+
+func (q *Queries) DeleteMapCreatureToken(ctx context.Context, arg DeleteMapCreatureTokenParams) (MapCreatureToken, error) {
+	row := q.db.QueryRow(ctx, deleteMapCreatureToken, arg.MapID, arg.CreatureID)
+	var i MapCreatureToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CreatureID,
+		&i.XBp,
+		&i.YBp,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteMapLayers = `-- name: DeleteMapLayers :execrows
 DELETE FROM map_layers
 WHERE map_id = $1
@@ -1529,6 +1553,39 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 	return items, nil
 }
 
+const listMapCreatureTokens = `-- name: ListMapCreatureTokens :many
+SELECT map_id, creature_id, x_bp, y_bp, updated_at FROM map_creature_tokens
+WHERE map_id = $1
+`
+
+// The creatures' tokens on the map (MR-037). The handler lists only the live
+// creatures of living characters.
+func (q *Queries) ListMapCreatureTokens(ctx context.Context, mapID string) ([]MapCreatureToken, error) {
+	rows, err := q.db.Query(ctx, listMapCreatureTokens, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapCreatureToken
+	for rows.Next() {
+		var i MapCreatureToken
+		if err := rows.Scan(
+			&i.MapID,
+			&i.CreatureID,
+			&i.XBp,
+			&i.YBp,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMapDetails = `-- name: ListMapDetails :many
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
@@ -2216,6 +2273,33 @@ func (q *Queries) ListTreasureFindsOfSession(ctx context.Context, sessionID stri
 	return items, nil
 }
 
+const moveMapCreatureToken = `-- name: MoveMapCreatureToken :exec
+UPDATE map_creature_tokens
+SET x_bp = $3, y_bp = $4, updated_at = $5
+WHERE map_id = $1 AND creature_id = $2
+`
+
+type MoveMapCreatureTokenParams struct {
+	MapID      string
+	CreatureID string
+	XBp        int32
+	YBp        int32
+	UpdatedAt  time.Time
+}
+
+// Where a creature ended its combat (package play): an existing token moves; a
+// creature that has none gets none (the master places creature tokens).
+func (q *Queries) MoveMapCreatureToken(ctx context.Context, arg MoveMapCreatureTokenParams) error {
+	_, err := q.db.Exec(ctx, moveMapCreatureToken,
+		arg.MapID,
+		arg.CreatureID,
+		arg.XBp,
+		arg.YBp,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const moveMapToken = `-- name: MoveMapToken :one
 UPDATE map_tokens
 SET x_bp = $3, y_bp = $4, updated_at = $5
@@ -2856,6 +2940,42 @@ func (q *Queries) UpdateSceneClue(ctx context.Context, arg UpdateSceneClueParams
 		&i.Position,
 		&i.Text,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertMapCreatureToken = `-- name: UpsertMapCreatureToken :one
+INSERT INTO map_creature_tokens (map_id, creature_id, x_bp, y_bp, updated_at)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (map_id, creature_id) DO UPDATE
+SET x_bp = excluded.x_bp, y_bp = excluded.y_bp, updated_at = excluded.updated_at
+RETURNING map_id, creature_id, x_bp, y_bp, updated_at
+`
+
+type UpsertMapCreatureTokenParams struct {
+	MapID      string
+	CreatureID string
+	XBp        int32
+	YBp        int32
+	UpdatedAt  time.Time
+}
+
+// Places a creature's token, or moves it if it is on the map already.
+func (q *Queries) UpsertMapCreatureToken(ctx context.Context, arg UpsertMapCreatureTokenParams) (MapCreatureToken, error) {
+	row := q.db.QueryRow(ctx, upsertMapCreatureToken,
+		arg.MapID,
+		arg.CreatureID,
+		arg.XBp,
+		arg.YBp,
+		arg.UpdatedAt,
+	)
+	var i MapCreatureToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CreatureID,
+		&i.XBp,
+		&i.YBp,
 		&i.UpdatedAt,
 	)
 	return i, err

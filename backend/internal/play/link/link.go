@@ -10,7 +10,20 @@
 // them; cmd/api connects the real services.
 package link
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// What a Wild Shape change refuses with (MR-037): the characters module returns
+// them, the play module turns them into the typed refusal the app reads.
+var (
+	// ErrBeastNotAllowed: the beast is not one the character's Wild Shape allows
+	// (its level, the fly and swim limits, not a beast), or it has no Wild Shape.
+	ErrBeastNotAllowed = errors.New("the beast is not one the character's Wild Shape allows")
+	// ErrAlreadyInWildShape: the character is in a beast form already.
+	ErrAlreadyInWildShape = errors.New("the character is in a beast form already")
+)
 
 // Character is what a combat needs to know about a character that fights:
 // who it is and the numbers that start a combatant (MR-013). Numbers come
@@ -71,8 +84,12 @@ type BattlePoint struct {
 // TokenPosition is where a character's token stands on a map, in basis
 // points of the image's width and height (0 to 10000).
 type TokenPosition struct {
+	// CharacterID is the character whose token it is; empty for a creature's.
 	CharacterID string
-	XBP, YBP    int32
+	// CreatureID is the creature whose token it is (MR-037); empty for a
+	// character's own token.
+	CreatureID string
+	XBP, YBP   int32
 }
 
 // Sheet is what the actions of a combat need from a character's sheet: the

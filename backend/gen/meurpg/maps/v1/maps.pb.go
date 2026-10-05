@@ -1700,7 +1700,16 @@ type MapToken struct {
 	// The light the character carries: a light preset's key ("light:torch"), or
 	// empty for none. Only the master and the character's own player get it
 	// (SetCarriedLight); the other players learn of it from what they see.
-	CarriedLight  string `protobuf:"bytes,10,opt,name=carried_light,json=carriedLight,proto3" json:"carried_light,omitempty"`
+	CarriedLight string `protobuf:"bytes,10,opt,name=carried_light,json=carriedLight,proto3" json:"carried_light,omitempty"`
+	// The creature this token is, for the token of a character's creature (a
+	// familiar, a summoned animal, a gift of the master; MR-037, Etapa 9): the ID
+	// CharacterService.ListCharacterCreatures lists (a UUID). Empty for a
+	// character's own token. Then `character_id` is the creature's owner (a
+	// player's character, so the party knows whose it is), `name` is the creature's
+	// name, `kind` is unspecified, `hidden` is always false and `carried_light`
+	// empty. A creature's token is a party token: on a map with the fog of war on,
+	// no player is kept from it, as from a player's character's.
+	CreatureId    string `protobuf:"bytes,15,opt,name=creature_id,json=creatureId,proto3" json:"creature_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1801,6 +1810,13 @@ func (x *MapToken) GetUpdatedAt() *timestamppb.Timestamp {
 func (x *MapToken) GetCarriedLight() string {
 	if x != nil {
 		return x.CarriedLight
+	}
+	return ""
+}
+
+func (x *MapToken) GetCreatureId() string {
+	if x != nil {
+		return x.CreatureId
 	}
 	return ""
 }
@@ -3216,11 +3232,17 @@ type PlaceMapTokenRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
-	// A living character of the campaign (a UUID).
+	// A living character of the campaign (a UUID). Leave it empty to place a
+	// creature's token with `creature_id`.
 	CharacterId string `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// The position, 0 to 10000 each.
-	XBp           int32 `protobuf:"varint,4,opt,name=x_bp,json=xBp,proto3" json:"x_bp,omitempty"`
-	YBp           int32 `protobuf:"varint,5,opt,name=y_bp,json=yBp,proto3" json:"y_bp,omitempty"`
+	XBp int32 `protobuf:"varint,4,opt,name=x_bp,json=xBp,proto3" json:"x_bp,omitempty"`
+	YBp int32 `protobuf:"varint,5,opt,name=y_bp,json=yBp,proto3" json:"y_bp,omitempty"`
+	// A creature of a character of the campaign that is still with its owner (a
+	// UUID; MR-037): its token is placed, or moved if it is already on the map.
+	// Exactly one of `character_id` and `creature_id` is set. A creature's token
+	// is a party token and is never hidden (SetMapTokenHidden does not take one).
+	CreatureId    string `protobuf:"bytes,6,opt,name=creature_id,json=creatureId,proto3" json:"creature_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3288,6 +3310,13 @@ func (x *PlaceMapTokenRequest) GetYBp() int32 {
 		return x.YBp
 	}
 	return 0
+}
+
+func (x *PlaceMapTokenRequest) GetCreatureId() string {
+	if x != nil {
+		return x.CreatureId
+	}
+	return ""
 }
 
 // PlaceMapTokenResponse returns the token as it is now.
@@ -3452,10 +3481,14 @@ func (x *SetMapTokenHiddenResponse) GetToken() *MapToken {
 
 // RemoveMapTokenRequest names the token to take off the map.
 type RemoveMapTokenRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	MapId         string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
-	CharacterId   string                 `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// The character whose token to take off, or empty for a creature's.
+	CharacterId string `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The creature whose token to take off (a UUID). Exactly one of
+	// `character_id` and `creature_id` is set.
+	CreatureId    string `protobuf:"bytes,4,opt,name=creature_id,json=creatureId,proto3" json:"creature_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3507,6 +3540,13 @@ func (x *RemoveMapTokenRequest) GetMapId() string {
 func (x *RemoveMapTokenRequest) GetCharacterId() string {
 	if x != nil {
 		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *RemoveMapTokenRequest) GetCreatureId() string {
+	if x != nil {
+		return x.CreatureId
 	}
 	return ""
 }
@@ -6065,7 +6105,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\n" +
 	"check_name\x18\x04 \x01(\tR\tcheckName\x12\x0e\n" +
 	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12!\n" +
-	"\fmax_attempts\x18\x06 \x01(\x05R\vmaxAttempts\"\xc3\x02\n" +
+	"\fmax_attempts\x18\x06 \x01(\x05R\vmaxAttempts\"\xe4\x02\n" +
 	"\bMapToken\x12\x15\n" +
 	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x12\n" +
@@ -6078,7 +6118,9 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12#\n" +
 	"\rcarried_light\x18\n" +
-	" \x01(\tR\fcarriedLight\"2\n" +
+	" \x01(\tR\fcarriedLight\x12\x1f\n" +
+	"\vcreature_id\x18\x0f \x01(\tR\n" +
+	"creatureId\"2\n" +
 	"\x0fListMapsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\";\n" +
@@ -6196,14 +6238,16 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x1a\n" +
 	"\brevealed\x18\x04 \x01(\bR\brevealed\"M\n" +
 	"\x1bSetMapPointRevealedResponse\x12.\n" +
-	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"\x97\x01\n" +
+	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"\xb8\x01\n" +
 	"\x14PlaceMapTokenRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12!\n" +
 	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x11\n" +
 	"\x04x_bp\x18\x04 \x01(\x05R\x03xBp\x12\x11\n" +
-	"\x04y_bp\x18\x05 \x01(\x05R\x03yBp\"G\n" +
+	"\x04y_bp\x18\x05 \x01(\x05R\x03yBp\x12\x1f\n" +
+	"\vcreature_id\x18\x06 \x01(\tR\n" +
+	"creatureId\"G\n" +
 	"\x15PlaceMapTokenResponse\x12.\n" +
 	"\x05token\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapTokenR\x05token\"\x8d\x01\n" +
 	"\x18SetMapTokenHiddenRequest\x12\x1f\n" +
@@ -6213,12 +6257,14 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x16\n" +
 	"\x06hidden\x18\x04 \x01(\bR\x06hidden\"K\n" +
 	"\x19SetMapTokenHiddenResponse\x12.\n" +
-	"\x05token\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapTokenR\x05token\"r\n" +
+	"\x05token\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapTokenR\x05token\"\x93\x01\n" +
 	"\x15RemoveMapTokenRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12!\n" +
-	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\"\x18\n" +
+	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x1f\n" +
+	"\vcreature_id\x18\x04 \x01(\tR\n" +
+	"creatureId\"\x18\n" +
 	"\x16RemoveMapTokenResponse\"\xd9\x01\n" +
 	"\x15AddSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +

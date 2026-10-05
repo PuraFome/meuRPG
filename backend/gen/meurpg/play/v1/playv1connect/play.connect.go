@@ -101,6 +101,18 @@ const (
 	PlayServiceSetSpeakerProcedure = "/meurpg.play.v1.PlayService/SetSpeaker"
 	// PlayServiceCastSummonProcedure is the fully-qualified name of the PlayService's CastSummon RPC.
 	PlayServiceCastSummonProcedure = "/meurpg.play.v1.PlayService/CastSummon"
+	// PlayServiceAssumeWildShapeProcedure is the fully-qualified name of the PlayService's
+	// AssumeWildShape RPC.
+	PlayServiceAssumeWildShapeProcedure = "/meurpg.play.v1.PlayService/AssumeWildShape"
+	// PlayServiceLeaveWildShapeProcedure is the fully-qualified name of the PlayService's
+	// LeaveWildShape RPC.
+	PlayServiceLeaveWildShapeProcedure = "/meurpg.play.v1.PlayService/LeaveWildShape"
+	// PlayServiceStartFamiliarSightProcedure is the fully-qualified name of the PlayService's
+	// StartFamiliarSight RPC.
+	PlayServiceStartFamiliarSightProcedure = "/meurpg.play.v1.PlayService/StartFamiliarSight"
+	// PlayServiceStopFamiliarSightProcedure is the fully-qualified name of the PlayService's
+	// StopFamiliarSight RPC.
+	PlayServiceStopFamiliarSightProcedure = "/meurpg.play.v1.PlayService/StopFamiliarSight"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -558,6 +570,73 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
+	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// open session, in a combat or out of it. It spends one use of the Forma
+	// Selvagem resource (2 per short rest) and, in a combat, the character's
+	// action, on its turn (the master may act again with the action used, as in
+	// TakeAction). The beast must be one ListWildShapeForms
+	// (meurpg.characters.v1.CharacterService) lists. The character takes the
+	// beast's armor class, hit points (a pool of its own: CharacterVitals.wild_shape),
+	// speeds, size, Strength, Dexterity and Constitution, attacks and senses, and
+	// keeps Intelligence, Wisdom, Charisma and its proficiencies; it cannot cast
+	// spells (CastSpell and CastSummon are refused with WILD_SHAPE_NO_SPELLS). The
+	// form lasts until the beast falls to 0 (the damage left over goes to the
+	// character), until LeaveWildShape, or until the master ends it; the app does not
+	// count its hours.
+	//
+	// The character's player may call it for their own character, and the master for
+	// any player's character. A `wild_shape_started` event (the beast's key, ids and
+	// numbers only) goes to the history. The master's undo of the action in a combat
+	// ends the form and gives the use and the action back. `vitals_changed` goes to
+	// the master and the player; in a combat `encounter_changed` goes to everyone.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may see.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: beast_key is not an SRD beast, or idempotency_key is
+	//     not a UUID.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: WILD_SHAPE_BEAST_NOT_ALLOWED (not one
+	//     of the beasts the level allows, or no Wild Shape), ALREADY_IN_WILD_SHAPE,
+	//     NO_USES, and in a combat the turn gates (NOT_ACTIVE, the turn is not
+	//     the character's, the action is used).
+	AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error)
+	// LeaveWildShape takes the druid back to its own shape ("Voltar à forma
+	// normal"): a bonus action in a combat, on its turn (the master's costs
+	// nothing). The beast's hit points are lost; the character keeps its own as they
+	// were. A `wild_shape_ended` event (reason "left") goes to the history; the
+	// master's undo of the action in a combat puts the form back. Same callers,
+	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
+	// that is in its own shape.
+	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// the character's player sees what the character's familiar sees, with the
+	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
+	// fog of war on, and the character counts as blind and deaf until it stops
+	// (a reminder: in a combat the app gives the combatant the blinded and
+	// deafened conditions, and takes them away at the end). The familiar (a
+	// creature with source familiar) must be on the same map as the character and
+	// within 30 m (20 squares) when it starts, and the vision keeps only while it
+	// stays within 30 m. Out of a combat it lasts until StopFamiliarSight. In a
+	// combat it costs the character's action, on its turn, and ends at the start of
+	// the character's next turn, or earlier if the player stops it (the action is
+	// not given back); the master's undo of the start takes it back and returns the
+	// action. A `familiar_sight` event (ids only) goes to the history, and
+	// `vision_changed` to the players the map's view changed for.
+	//
+	// The player may call it for their own character, and the master for any
+	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
+	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
+	// player looks through their own character's eyes again and the conditions go
+	// away. It costs nothing and refunds nothing. Same callers, streams and errors
+	// as StartFamiliarSight, with FAMILIAR_SIGHT_BLOCKED / NOT_SEEING when the
+	// character is not looking through its familiar.
+	StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -703,6 +782,30 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("CastSummon")),
 			connect.WithClientOptions(opts...),
 		),
+		assumeWildShape: connect.NewClient[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse](
+			httpClient,
+			baseURL+PlayServiceAssumeWildShapeProcedure,
+			connect.WithSchema(playServiceMethods.ByName("AssumeWildShape")),
+			connect.WithClientOptions(opts...),
+		),
+		leaveWildShape: connect.NewClient[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse](
+			httpClient,
+			baseURL+PlayServiceLeaveWildShapeProcedure,
+			connect.WithSchema(playServiceMethods.ByName("LeaveWildShape")),
+			connect.WithClientOptions(opts...),
+		),
+		startFamiliarSight: connect.NewClient[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse](
+			httpClient,
+			baseURL+PlayServiceStartFamiliarSightProcedure,
+			connect.WithSchema(playServiceMethods.ByName("StartFamiliarSight")),
+			connect.WithClientOptions(opts...),
+		),
+		stopFamiliarSight: connect.NewClient[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse](
+			httpClient,
+			baseURL+PlayServiceStopFamiliarSightProcedure,
+			connect.WithSchema(playServiceMethods.ByName("StopFamiliarSight")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -729,6 +832,10 @@ type playServiceClient struct {
 	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
 	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
 	castSummon            *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
+	assumeWildShape       *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
+	leaveWildShape        *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
+	startFamiliarSight    *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
+	stopFamiliarSight     *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -834,6 +941,26 @@ func (c *playServiceClient) SetSpeaker(ctx context.Context, req *connect.Request
 // CastSummon calls meurpg.play.v1.PlayService.CastSummon.
 func (c *playServiceClient) CastSummon(ctx context.Context, req *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
 	return c.castSummon.CallUnary(ctx, req)
+}
+
+// AssumeWildShape calls meurpg.play.v1.PlayService.AssumeWildShape.
+func (c *playServiceClient) AssumeWildShape(ctx context.Context, req *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error) {
+	return c.assumeWildShape.CallUnary(ctx, req)
+}
+
+// LeaveWildShape calls meurpg.play.v1.PlayService.LeaveWildShape.
+func (c *playServiceClient) LeaveWildShape(ctx context.Context, req *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error) {
+	return c.leaveWildShape.CallUnary(ctx, req)
+}
+
+// StartFamiliarSight calls meurpg.play.v1.PlayService.StartFamiliarSight.
+func (c *playServiceClient) StartFamiliarSight(ctx context.Context, req *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error) {
+	return c.startFamiliarSight.CallUnary(ctx, req)
+}
+
+// StopFamiliarSight calls meurpg.play.v1.PlayService.StopFamiliarSight.
+func (c *playServiceClient) StopFamiliarSight(ctx context.Context, req *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error) {
+	return c.stopFamiliarSight.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -1291,6 +1418,73 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
+	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// open session, in a combat or out of it. It spends one use of the Forma
+	// Selvagem resource (2 per short rest) and, in a combat, the character's
+	// action, on its turn (the master may act again with the action used, as in
+	// TakeAction). The beast must be one ListWildShapeForms
+	// (meurpg.characters.v1.CharacterService) lists. The character takes the
+	// beast's armor class, hit points (a pool of its own: CharacterVitals.wild_shape),
+	// speeds, size, Strength, Dexterity and Constitution, attacks and senses, and
+	// keeps Intelligence, Wisdom, Charisma and its proficiencies; it cannot cast
+	// spells (CastSpell and CastSummon are refused with WILD_SHAPE_NO_SPELLS). The
+	// form lasts until the beast falls to 0 (the damage left over goes to the
+	// character), until LeaveWildShape, or until the master ends it; the app does not
+	// count its hours.
+	//
+	// The character's player may call it for their own character, and the master for
+	// any player's character. A `wild_shape_started` event (the beast's key, ids and
+	// numbers only) goes to the history. The master's undo of the action in a combat
+	// ends the form and gives the use and the action back. `vitals_changed` goes to
+	// the master and the player; in a combat `encounter_changed` goes to everyone.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may see.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: beast_key is not an SRD beast, or idempotency_key is
+	//     not a UUID.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: WILD_SHAPE_BEAST_NOT_ALLOWED (not one
+	//     of the beasts the level allows, or no Wild Shape), ALREADY_IN_WILD_SHAPE,
+	//     NO_USES, and in a combat the turn gates (NOT_ACTIVE, the turn is not
+	//     the character's, the action is used).
+	AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error)
+	// LeaveWildShape takes the druid back to its own shape ("Voltar à forma
+	// normal"): a bonus action in a combat, on its turn (the master's costs
+	// nothing). The beast's hit points are lost; the character keeps its own as they
+	// were. A `wild_shape_ended` event (reason "left") goes to the history; the
+	// master's undo of the action in a combat puts the form back. Same callers,
+	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
+	// that is in its own shape.
+	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// the character's player sees what the character's familiar sees, with the
+	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
+	// fog of war on, and the character counts as blind and deaf until it stops
+	// (a reminder: in a combat the app gives the combatant the blinded and
+	// deafened conditions, and takes them away at the end). The familiar (a
+	// creature with source familiar) must be on the same map as the character and
+	// within 30 m (20 squares) when it starts, and the vision keeps only while it
+	// stays within 30 m. Out of a combat it lasts until StopFamiliarSight. In a
+	// combat it costs the character's action, on its turn, and ends at the start of
+	// the character's next turn, or earlier if the player stops it (the action is
+	// not given back); the master's undo of the start takes it back and returns the
+	// action. A `familiar_sight` event (ids only) goes to the history, and
+	// `vision_changed` to the players the map's view changed for.
+	//
+	// The player may call it for their own character, and the master for any
+	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
+	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
+	// player looks through their own character's eyes again and the conditions go
+	// away. It costs nothing and refunds nothing. Same callers, streams and errors
+	// as StartFamiliarSight, with FAMILIAR_SIGHT_BLOCKED / NOT_SEEING when the
+	// character is not looking through its familiar.
+	StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1432,6 +1626,30 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("CastSummon")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceAssumeWildShapeHandler := connect.NewUnaryHandler(
+		PlayServiceAssumeWildShapeProcedure,
+		svc.AssumeWildShape,
+		connect.WithSchema(playServiceMethods.ByName("AssumeWildShape")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceLeaveWildShapeHandler := connect.NewUnaryHandler(
+		PlayServiceLeaveWildShapeProcedure,
+		svc.LeaveWildShape,
+		connect.WithSchema(playServiceMethods.ByName("LeaveWildShape")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceStartFamiliarSightHandler := connect.NewUnaryHandler(
+		PlayServiceStartFamiliarSightProcedure,
+		svc.StartFamiliarSight,
+		connect.WithSchema(playServiceMethods.ByName("StartFamiliarSight")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceStopFamiliarSightHandler := connect.NewUnaryHandler(
+		PlayServiceStopFamiliarSightProcedure,
+		svc.StopFamiliarSight,
+		connect.WithSchema(playServiceMethods.ByName("StopFamiliarSight")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -1476,6 +1694,14 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSetSpeakerHandler.ServeHTTP(w, r)
 		case PlayServiceCastSummonProcedure:
 			playServiceCastSummonHandler.ServeHTTP(w, r)
+		case PlayServiceAssumeWildShapeProcedure:
+			playServiceAssumeWildShapeHandler.ServeHTTP(w, r)
+		case PlayServiceLeaveWildShapeProcedure:
+			playServiceLeaveWildShapeHandler.ServeHTTP(w, r)
+		case PlayServiceStartFamiliarSightProcedure:
+			playServiceStartFamiliarSightHandler.ServeHTTP(w, r)
+		case PlayServiceStopFamiliarSightProcedure:
+			playServiceStopFamiliarSightHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1567,4 +1793,20 @@ func (UnimplementedPlayServiceHandler) SetSpeaker(context.Context, *connect.Requ
 
 func (UnimplementedPlayServiceHandler) CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.CastSummon is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.AssumeWildShape is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.LeaveWildShape is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.StartFamiliarSight is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.StopFamiliarSight is not implemented"))
 }

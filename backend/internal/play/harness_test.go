@@ -21,6 +21,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -191,6 +192,7 @@ type user struct {
 	characters charactersv1connect.CharacterServiceClient
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
+	content    rulesv1connect.ContentServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -218,6 +220,7 @@ func (h *harness) clients(userID string) *user {
 		characters: charactersv1connect.NewCharacterServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
+		content:    rulesv1connect.NewContentServiceClient(c, url),
 	}
 }
 

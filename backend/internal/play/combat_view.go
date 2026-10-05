@@ -267,6 +267,17 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.ArmorClassBonus = c.AcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
+	if w := vitals.GetWildShape(); w != nil && c.Kind == kindPlayer {
+		// The party sees the wolf; the beast's hit points are numbers for the master
+		// and its own player, like the character's (RN-20).
+		out.WildShapeBeastKey, out.WildShapeBeastNamePt = w.GetBeastKey(), w.GetBeastNamePt()
+		if detail {
+			out.WildShapeHitPointsCurrent, out.WildShapeHitPointsMax = ptr(w.GetHitPointsCurrent()), ptr(w.GetHitPointsMax())
+		}
+	}
+	if fs := vitals.GetFamiliarSight(); fs != nil && c.Kind == kindPlayer && detail {
+		out.FamiliarSightCreatureId = fs.GetCreatureId()
+	}
 	if controls && isCreature(c) {
 		// A creature's hit points are numbers to its owner's player and the master
 		// (below); everyone else gets the state word.

@@ -1068,8 +1068,8 @@ func (s *Service) EndEncounter(
 }
 
 // endEncounter ends the combat c.enc inside the transaction: its status, and
-// the player characters' tokens, which move to the squares where they ended
-// (the map shows them where they stand). cs are its combatants.
+// the player characters' tokens, and the creatures' that have one, which move to the
+// squares where they ended (the map shows them where they stand). cs are its combatants.
 func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Combatant) error {
 	ended := c.now
 	enc, err := c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
@@ -1083,6 +1083,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.writeBackCreatures(ctx, c, cs); err != nil {
 		return err
 	}
+	// A familiar's sight begun in the fight ends with it (MR-036).
+	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
 	if enc.MapID == nil {
 		return nil // the map was deleted: nothing to write back to
 	}
@@ -1092,6 +1096,12 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 		if cb.Kind == kindPlayer && placed(cb) {
 			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
 			positions = append(positions, link.TokenPosition{CharacterID: cb.CharacterID, XBP: x, YBP: y})
+		}
+		// A creature's token moves too, if the master gave it one (MR-037): the fight
+		// never makes a token for it.
+		if isCreature(cb) && !cb.Dismissed && placed(cb) {
+			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
+			positions = append(positions, link.TokenPosition{CreatureID: deref(cb.CreatureID), XBP: x, YBP: y})
 		}
 	}
 	if err := s.maps.SetTokenPositions(ctx, c.tx, *enc.MapID, positions, c.now); err != nil {

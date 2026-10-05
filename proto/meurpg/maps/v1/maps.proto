@@ -411,8 +411,10 @@ service MapService {
   //
   // Errors:
   //   - `not_found`: the character is not a living character of the
-  //     campaign, the map is not in this campaign, the campaign does not
-  //     exist, or the caller is not a member of it.
+  //     campaign (or the creature is not one of its live creatures), the map
+  //     is not in this campaign, the campaign does not exist, or the caller is
+  //     not a member of it.
+  //   - `invalid_argument`: both or neither of character_id and creature_id.
   //   - `permission_denied`: the caller is a player.
   rpc PlaceMapToken(PlaceMapTokenRequest) returns (PlaceMapTokenResponse);
 
@@ -1016,6 +1018,15 @@ message MapToken {
   // empty for none. Only the master and the character's own player get it
   // (SetCarriedLight); the other players learn of it from what they see.
   string carried_light = 10;
+  // The creature this token is, for the token of a character's creature (a
+  // familiar, a summoned animal, a gift of the master; MR-037, Etapa 9): the ID
+  // CharacterService.ListCharacterCreatures lists (a UUID). Empty for a
+  // character's own token. Then `character_id` is the creature's owner (a
+  // player's character, so the party knows whose it is), `name` is the creature's
+  // name, `kind` is unspecified, `hidden` is always false and `carried_light`
+  // empty. A creature's token is a party token: on a map with the fog of war on,
+  // no player is kept from it, as from a player's character's.
+  string creature_id = 15;
 }
 
 // ListMapsRequest names a campaign.
@@ -1238,11 +1249,17 @@ message SetMapPointRevealedResponse {
 message PlaceMapTokenRequest {
   string campaign_id = 1;
   string map_id = 2;
-  // A living character of the campaign (a UUID).
+  // A living character of the campaign (a UUID). Leave it empty to place a
+  // creature's token with `creature_id`.
   string character_id = 3;
   // The position, 0 to 10000 each.
   int32 x_bp = 4;
   int32 y_bp = 5;
+  // A creature of a character of the campaign that is still with its owner (a
+  // UUID; MR-037): its token is placed, or moved if it is already on the map.
+  // Exactly one of `character_id` and `creature_id` is set. A creature's token
+  // is a party token and is never hidden (SetMapTokenHidden does not take one).
+  string creature_id = 6;
 }
 
 // PlaceMapTokenResponse returns the token as it is now.
@@ -1268,7 +1285,11 @@ message SetMapTokenHiddenResponse {
 message RemoveMapTokenRequest {
   string campaign_id = 1;
   string map_id = 2;
+  // The character whose token to take off, or empty for a creature's.
   string character_id = 3;
+  // The creature whose token to take off (a UUID). Exactly one of
+  // `character_id` and `creature_id` is set.
+  string creature_id = 4;
 }
 
 // RemoveMapTokenResponse is empty: the token is gone.

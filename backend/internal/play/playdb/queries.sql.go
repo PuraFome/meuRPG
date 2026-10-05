@@ -2099,6 +2099,36 @@ func (q *Queries) SetCombatantAttacksMade(ctx context.Context, arg SetCombatantA
 	return err
 }
 
+const setCombatantBody = `-- name: SetCombatantBody :exec
+UPDATE combatants
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+WHERE id = $1
+`
+
+type SetCombatantBodyParams struct {
+	ID          string
+	SpeedFt     int32
+	SpeedFlyFt  int32
+	Size        string
+	JumpLongDft int32
+	JumpHighDft int32
+}
+
+// A character's numbers as a combatant change with its Wild Shape form (MR-037):
+// the beast's speed, fly speed, size and jumps while it lasts, the character's own
+// again when it ends.
+func (q *Queries) SetCombatantBody(ctx context.Context, arg SetCombatantBodyParams) error {
+	_, err := q.db.Exec(ctx, setCombatantBody,
+		arg.ID,
+		arg.SpeedFt,
+		arg.SpeedFlyFt,
+		arg.Size,
+		arg.JumpLongDft,
+		arg.JumpHighDft,
+	)
+	return err
+}
+
 const setCombatantConcentration = `-- name: SetCombatantConcentration :exec
 UPDATE combatants
 SET concentration_spell = $2

@@ -26,7 +26,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
-	eventCombatantMoved,
+	eventCombatantMoved, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -54,6 +54,19 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// never close the undo chain.
 		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
 			continue
+		}
+		// A form that ended because the beast fell, and a sight that ended at a turn
+		// start or by the player's hand, are no action to undo: the first is part of the
+		// damage that did it (written before it), the others change nothing an undo
+		// can put back.
+		if e.Kind == eventWildShapeEnded || e.Kind == eventFamiliarSight {
+			ev, err := readEvent(e.Payload)
+			if err == nil && e.Kind == eventWildShapeEnded && ev.Reason == endedByDamage {
+				continue
+			}
+			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
 		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
@@ -213,7 +226,24 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		cur, temp := min(hp.HP, now.GetHitPointsMax()), min(hp.Temp, maxTempHitPoints)
 		_, after, err := s.vitalsOf(ctx, c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &cur, HitPointsTemporary: &temp})
-		return after, err
+		if err != nil {
+			return nil, err
+		}
+		// The Wild Shape form as it was (MR-037): the beast and its hit points, or the
+		// druid's own shape, with the combatant's numbers.
+		have, want := after.GetWildShape(), hp.Shape
+		if (have == nil) == (want == nil) && (want == nil || (have.GetBeastKey() == want.Beast && have.GetHitPointsCurrent() == want.HP)) {
+			return after, nil
+		}
+		beast, beastHP := "", int32(0)
+		if want != nil {
+			beast, beastHP = want.Beast, want.HP
+		}
+		restored, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, who.CharacterID, beast, beastHP)
+		if err != nil {
+			return nil, err
+		}
+		return restored, applyBody(ctx, c, who, body)
 	}
 	var vitals []*playv1.CharacterVitals
 	keep := func(v *playv1.CharacterVitals) {
@@ -496,6 +526,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
 				return nil, err
 			}
+		}
+	case eventWildShapeStarted, eventWildShapeEnded:
+		if err := s.shapeUndo(ctx, c, kind, ev, find, keep); err != nil {
+			return nil, err
+		}
+	case eventFamiliarSight:
+		if err := s.sightUndo(ctx, c, ev, find, keep); err != nil {
+			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)

@@ -989,6 +989,19 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 	if err != nil {
 		return hit, nil, err
 	}
+	if w := now.GetWildShape(); w != nil {
+		// In a beast form the healing is the beast's (MR-037).
+		r := combat.ApplyHeal(int(w.GetHitPointsCurrent()), int(w.GetHitPointsMax()), int(amount))
+		hp := clamp32(r.HP, 0, math.MaxInt32)
+		before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{WildShapeHitPointsCurrent: &hp})
+		if err != nil {
+			return hit, nil, err
+		}
+		hit.DeathBefore = deathOf(target)
+		hit.Before, hit.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+		hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
+		return hit, after, nil
+	}
 	r := combat.ApplyHeal(int(now.GetHitPointsCurrent()), int(now.GetHitPointsMax()), int(amount))
 	hp := clamp32(r.HP, 0, math.MaxInt32)
 	before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp})
@@ -996,8 +1009,8 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 		return hit, nil, err
 	}
 	hit.DeathBefore = deathOf(target)
-	hit.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-	hit.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+	hit.Before = ptr(hpStateOf(before))
+	hit.After = ptr(hpStateOf(after))
 	hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
 	return hit, after, nil
 }
@@ -1127,8 +1140,19 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
-			made.Before = &hpState{HP: now.GetHitPointsCurrent(), Temp: now.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(now))
 			made.After = made.Before
+		} else if now.GetWildShape() != nil {
+			// A druid in a beast form: the beast takes it, and what is left over when
+			// the beast falls goes to the druid (MR-037, SRD).
+			before, after, err := s.damageBeast(ctx, c, target, now, amount, &made)
+			if err != nil {
+				return nil, err
+			}
+			vitals = after
+			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+			made.ConcentrationDC = concentrationDC(target, amount)
+			made.DeathBefore = deathOf(target)
 		} else {
 			// RN-02: the damage goes through the character's vitals, temporary hit
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
@@ -1140,8 +1164,8 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			vitals = after
-			made.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-			made.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(before))
+			made.After = ptr(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
 			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
 		}
@@ -1369,6 +1393,10 @@ func (s *Service) TakeAction(
 		opts, err := s.optionsOf(ctx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
+		}
+		if wildShapeFeature(actionKey) {
+			// It needs the beast: AssumeWildShape takes it (MR-037).
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()

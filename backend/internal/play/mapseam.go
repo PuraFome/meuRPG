@@ -61,7 +61,7 @@ func (s *Service) OpenSessionID(ctx context.Context, tx pgx.Tx, campaignID strin
 // authorization check. It implements maps.CombatMaps.
 func (s *Service) CombatPositions(ctx context.Context, campaignID, mapID string) (link.CombatPositions, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT c.character_id, c.kind, c.grid_col, c.grid_row
+		SELECT c.character_id, c.kind, c.grid_col, c.grid_row, c.creature_id, c.dismissed
 		FROM combatants AS c
 		JOIN encounters AS e ON e.id = c.encounter_id
 		JOIN game_sessions AS g ON g.id = e.game_session_id
@@ -70,11 +70,13 @@ func (s *Service) CombatPositions(ctx context.Context, campaignID, mapID string)
 		return link.CombatPositions{}, fmt.Errorf("read the combatants' squares: %w", err)
 	}
 	defer rows.Close()
-	out := link.CombatPositions{Positions: map[string]grid.Square{}}
+	out := link.CombatPositions{Positions: map[string]grid.Square{}, Creatures: map[string]grid.Square{}}
 	for rows.Next() {
 		var id, kind string
 		var col, row *int32
-		if err := rows.Scan(&id, &kind, &col, &row); err != nil {
+		var creature *string
+		var dismissed bool
+		if err := rows.Scan(&id, &kind, &col, &row, &creature, &dismissed); err != nil {
 			return link.CombatPositions{}, fmt.Errorf("read a combatant's square: %w", err)
 		}
 		out.Running = true
@@ -83,6 +85,11 @@ func (s *Service) CombatPositions(ctx context.Context, campaignID, mapID string)
 		// their own ID). A light an NPC carries stays on its token during a combat.
 		if kind == "player" && col != nil && row != nil {
 			out.Positions[id] = grid.Square{Col: int(*col), Row: int(*row)}
+		}
+		// A creature has its own ID (a dismissed one is out of the fight and has no
+		// square): the familiar's eyes see from it (MR-037).
+		if kind == "creature" && creature != nil && !dismissed && col != nil && row != nil {
+			out.Creatures[*creature] = grid.Square{Col: int(*col), Row: int(*row)}
 		}
 	}
 	if err := rows.Err(); err != nil {

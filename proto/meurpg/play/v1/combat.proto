@@ -1194,6 +1194,38 @@ enum EncounterBlockedReason {
   // brings (a combat holds 40 combatants). Nothing is spent. ("Não cabem mais
   // combatentes neste combate".)
   ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS = 45;
+  // AssumeWildShape: the beast is not one the character's Wild Shape allows (its
+  // level, the fly and swim limits, a creature that is not a beast), or the
+  // character has no Wild Shape (MR-037).
+  ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_BEAST_NOT_ALLOWED = 55;
+  // AssumeWildShape: the character is in a beast form already.
+  ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE = 56;
+  // LeaveWildShape: the character is in its own shape.
+  ENCOUNTER_BLOCKED_REASON_NOT_IN_WILD_SHAPE = 57;
+  // CastSpell, CastSummon: a druid in a beast form cannot cast spells. Nothing is
+  // spent.
+  ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS = 58;
+  // StartFamiliarSight, StopFamiliarSight: see `familiar_sight_reason`.
+  ENCOUNTER_BLOCKED_REASON_FAMILIAR_SIGHT_BLOCKED = 59;
+}
+
+// FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
+// (EncounterBlocked.familiar_sight_reason).
+enum FamiliarSightBlockedReason {
+  FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The character has no familiar with it (none was summoned, or it was
+  // dismissed).
+  FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR = 1;
+  // The character or the familiar is not on a map with a grid: on the combat's
+  // map, or, out of a combat, on the session's current map with their tokens.
+  FAMILIAR_SIGHT_BLOCKED_REASON_NOT_ON_MAP = 2;
+  // The familiar is more than 30 m (20 squares) from the character.
+  FAMILIAR_SIGHT_BLOCKED_REASON_TOO_FAR = 3;
+  // StartFamiliarSight: the player is looking through the familiar's eyes
+  // already.
+  FAMILIAR_SIGHT_BLOCKED_REASON_ALREADY_SEEING = 4;
+  // StopFamiliarSight: the player is not looking through the familiar's eyes.
+  FAMILIAR_SIGHT_BLOCKED_REASON_NOT_SEEING = 5;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -1219,6 +1251,8 @@ message EncounterBlocked {
   int32 jump_limit_dft = 8;
   // TOO_FAR on a jump: whether the limit was the one with a running start.
   bool jump_running_start = 9;
+  // FAMILIAR_SIGHT_BLOCKED: the cause.
+  FamiliarSightBlockedReason familiar_sight_reason = 20;
 }
 
 // Encounter is a combat as the caller may see it.
@@ -1478,6 +1512,23 @@ message Combatant {
   // it and share one initiative roll. Only for a creature, and only for the
   // master and its owner's player.
   string summon_group_id = 53;
+  // The beast a druid is in, for a player's character in Wild Shape (MR-037):
+  // its content key ("monster:wolf") and Portuguese name. Everyone who sees the
+  // combatant gets them: the party sees the wolf. Empty in the character's own
+  // shape. The combatant's speed, fly speed, size and jumps are the beast's while
+  // the form lasts.
+  string wild_shape_beast_key = 60;
+  string wild_shape_beast_name_pt = 61;
+  // The beast's hit points, a pool of its own. Only the master and the
+  // character's own player get them (RN-20); unset for everyone else, and when
+  // there is no form.
+  optional int32 wild_shape_hit_points_current = 62;
+  optional int32 wild_shape_hit_points_max = 63;
+  // The familiar the player is looking through (a creature ID), for a character
+  // whose player looks through its familiar's eyes (MR-036): the combatant has
+  // the blinded and deafened conditions meanwhile. Only the master and the
+  // character's own player get it.
+  string familiar_sight_creature_id = 64;
 }
 
 // Participant is who joins a combat: a character of the campaign.

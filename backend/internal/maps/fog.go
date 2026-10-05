@@ -35,8 +35,15 @@ import (
 //     square (CombatMaps.CombatPositions). With "Visão do grupo" on, every player
 //     sees the union of every player character's view. A character with no token
 //     on the map sees nothing new. Its senses (darkvision...) come from the
-//     characters module (CharacterDirectory.PartyVision), where slice 9.10 will
-//     put a beast's senses in Wild Shape and the familiar's eyes.
+//     characters module (CharacterDirectory.PartyVision): the beast's in Wild
+//     Shape (a wolf has no darkvision). Of a character's creatures only the
+//     familiar sees for its player, and only while the player looks through its
+//     eyes ("Ver pelos olhos do familiar") and it is within 30 m of the character
+//     (familiarEyes): D6's "each player sees what their own character (and its
+//     creatures) sees" is the party's, and the SRD gives a familiar's senses to its
+//     master only as that action, so every other creature of the character lets
+//     the player see the creature, not through it. The creatures' tokens are party
+//     tokens, never hidden (creaturetokens.go).
 //   - What was seen stays. map_vision_memory has, per map and player, a bitmap of
 //     the squares they have seen. It grows only on the writes that change what
 //     someone sees (refreshVision, called after them), never on a read, and it
@@ -203,7 +210,10 @@ type sight struct {
 	// combatant's square while a combat runs, else its token's. A character absent
 	// from it is not on the map.
 	stands map[string]grid.Square
-	group  bool
+	// extra are the other pairs of eyes a player has right now, by character ID:
+	// the familiar they look through, at the square it stands on (MR-036).
+	extra map[string][]vision.Viewer
+	group bool
 	// combat says a combat runs on the map: the NPC tokens are then left out of
 	// a player's reads (the combatants are slice 9.7's).
 	combat bool
@@ -337,6 +347,8 @@ func (s *Service) newSight(ctx context.Context, in fogInput, points []mapsdb.Map
 		}
 	}
 
+	sg.extra = s.familiarEyes(ctx, in, members, sg.stands, combat)
+
 	sg.entry = s.lits.entry(litKeyOf(in, sources))
 	sg.entry.once.Do(func() {
 		stored, err := s.queries.GetMapLayers(ctx, in.mapID)
@@ -354,6 +366,57 @@ func (s *Service) newSight(ctx context.Context, in fogInput, points []mapsdb.Map
 		return nil, sg.entry.err
 	}
 	return sg, nil
+}
+
+// familiarSightSquares is how far from the character the familiar may be for the
+// player to see through it: 30 m, which is 20 squares of 1,5 m (SRD: 100 ft). The
+// distance is the circle of RN-21: the straight line between the squares' centers.
+const familiarSightSquares = 20
+
+// familiarEyes works out, for each member who looks through a familiar, the viewer
+// the familiar is: with its senses, at the square it stands on, while that is
+// within 30 m of the character. The familiar stands where its combatant does while
+// a combat runs on the map, else where its token is; a familiar with no square on
+// this map is no viewer here, and neither is one beyond the range (the sight
+// itself stays, and works again when it comes back). The character must stand on
+// the map too.
+func (s *Service) familiarEyes(ctx context.Context, in fogInput, members []link.PartyMember, stands map[string]grid.Square, combat link.CombatPositions) map[string][]vision.Viewer {
+	var out map[string][]vision.Viewer
+	var tokens map[string]grid.Square // the creatures' tokens, read once and only if needed
+	for _, m := range members {
+		if m.Eyes == nil {
+			continue
+		}
+		mine, ok := stands[m.CharacterID]
+		if !ok {
+			continue
+		}
+		at, ok := combat.Creatures[m.Eyes.CreatureID]
+		if !ok {
+			if tokens == nil {
+				tokens = map[string]grid.Square{}
+				rows, err := s.queries.ListMapCreatureTokens(ctx, in.mapID)
+				if err != nil {
+					s.logger.ErrorContext(ctx, "maps: cannot read the creatures' tokens", "error", err)
+				}
+				for _, t := range rows {
+					tokens[t.CreatureID] = in.g.SquareOf(int(t.XBp), int(t.YBp))
+				}
+			}
+			if at, ok = tokens[m.Eyes.CreatureID]; !ok {
+				continue
+			}
+		}
+		dc, dr := at.Col-mine.Col, at.Row-mine.Row
+		if dc*dc+dr*dr > familiarSightSquares*familiarSightSquares {
+			continue
+		}
+		if out == nil {
+			out = map[string][]vision.Viewer{}
+		}
+		out[m.CharacterID] = append(out[m.CharacterID], vision.Viewer{At: at, Senses: m.Eyes.Senses})
+	}
+	return out
 }
 
 // lightSources lists the lights of a scene: the map's Luz points, and the light
@@ -452,7 +515,7 @@ func (sg *sight) viewOf(userID string) (view *vision.View, onMap bool) {
 		if sq, ok := sg.stands[m.CharacterID]; ok {
 			views = append(views, sg.entry.see(vision.Viewer{At: sq, Senses: m.Senses}))
 		}
-		for _, extra := range m.Extra {
+		for _, extra := range sg.extra[m.CharacterID] {
 			views = append(views, sg.entry.see(extra))
 		}
 	}

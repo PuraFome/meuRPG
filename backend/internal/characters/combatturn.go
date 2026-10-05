@@ -45,7 +45,8 @@ func (s *Service) fighter(ctx context.Context, campaignID, characterID string) (
 	}
 	switch {
 	case sheet.GetFull() != nil:
-		return rows[0].Kind, rules.Derive(buildOf(sheet.GetFull()), s.rules), nil
+		// A druid in Wild Shape fights as the beast (MR-037).
+		return rows[0].Kind, s.derive(sheet.GetFull(), rows[0].WildShapeBeast), nil
 	case sheet.GetBasic() != nil:
 		return rows[0].Kind, s.basicDerived(sheet.GetBasic()), nil
 	}

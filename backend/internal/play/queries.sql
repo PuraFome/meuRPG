@@ -248,6 +248,14 @@ WHERE id = $1;
 DELETE FROM combatants
 WHERE id = $1;
 
+-- name: SetCombatantBody :exec
+-- A character's numbers as a combatant change with its Wild Shape form (MR-037):
+-- the beast's speed, fly speed, size and jumps while it lasts, the character's own
+-- again when it ends.
+UPDATE combatants
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+WHERE id = $1;
+
 -- name: SetCombatantHitPoints :exec
 -- An NPC's hit points, temporary hit points and defeated flag (damage, healing,
 -- the master's hand, an undo).

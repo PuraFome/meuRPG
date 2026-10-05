@@ -81,6 +81,29 @@ type VitalsKeeper interface {
 	// active player character of the campaign; `invalid_argument` for a
 	// value outside 0 to its maximum.
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
+
+	// The druid's Wild Shape form and the familiar's eyes live on the vitals too
+	// (MR-037, MR-036). This package decides when they start and end, and what they
+	// cost; the characters module keeps them and says what the character is in the
+	// form (its speed, size and jumps, which a combatant copies).
+
+	// AssumeWildShape turns the character into the beast inside tx, with the beast
+	// at full hit points, and returns the vitals before and after and the
+	// character's numbers as a combatant (the beast's). The errors are
+	// link.ErrBeastNotAllowed (the beast is not one its level allows, or it has no
+	// Wild Shape) and link.ErrAlreadyInWildShape; `not_found` for any other
+	// character. It spends nothing: the caller spends the use and the action.
+	AssumeWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string) (before, after *playv1.CharacterVitals, body link.Character, err error)
+	// SetWildShape puts the form as it says inside tx: the beast with its current
+	// hit points (1 or more), or its own shape for an empty beast. It is how the form
+	// ends and how an undo puts it back.
+	SetWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string, hp int32) (after *playv1.CharacterVitals, body link.Character, err error)
+	// FamiliarOf returns the character's live familiar and false when it has none.
+	FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Creature, bool, error)
+	// SetFamiliarSight records that the character's player looks through the
+	// creature's eyes (an empty creatureID: they stopped), whether it started in a
+	// combat and the conditions it gave the combatant, and returns the vitals after.
+	SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, characterID, creatureID string, inCombat bool, conditions []string) (*playv1.CharacterVitals, error)
 }
 
 // MapKeeper is what the session's screen needs from the maps module
@@ -97,6 +120,11 @@ type MapKeeper interface {
 	// session's current one: a map with the fog on records the players' first
 	// view of it (MR-036).
 	MapShown(ctx context.Context, campaignID, mapID string)
+	// VisionChanged tells the maps module, after the commit, that what the players
+	// of the map see changed with no token moving: a druid took a beast's senses or
+	// left them, a player started or stopped looking through their familiar's eyes
+	// (MR-036, MR-037). Nothing happens for a map without fog.
+	VisionChanged(ctx context.Context, campaignID, mapID string)
 	// ShownImage returns the campaign's gallery image imageID as the
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.

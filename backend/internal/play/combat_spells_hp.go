@@ -232,7 +232,7 @@ func (s *Service) dropToZero(ctx context.Context, c *combatTx, t fxTarget, h *ca
 	if err != nil {
 		return nil, err
 	}
-	h.Restore = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
+	h.Restore = ptr(hpStateOf(before))
 	h.DeathBefore = deathOf(t.c)
 	if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
 		ID: t.c.ID, DeathSuccesses: 0, DeathFailures: 3, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: false,

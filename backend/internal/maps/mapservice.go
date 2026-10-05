@@ -212,6 +212,13 @@ func (s *Service) GetMap(
 		}
 		res.Tokens = append(res.Tokens, tokenToProto(t, c, v))
 	}
+	// The creatures' tokens come after the characters': party tokens, never kept
+	// from a player, fog or not (MR-037).
+	creatureTokens, err := s.creatureTokensOf(ctx, m.CampaignID, mapID, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "list a map's creature tokens", err)
+	}
+	res.Tokens = append(res.Tokens, creatureTokens...)
 	return connect.NewResponse(res), nil
 }
 
@@ -1160,6 +1167,16 @@ func (s *Service) PlaceMapToken(
 	if err := checkPosition(req.Msg.GetXBp(), req.Msg.GetYBp()); err != nil {
 		return nil, err
 	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		res, err := s.placeCreatureToken(ctx, m, req.Msg, mapID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(res), nil
+	}
 	character, err := s.livingCharacter(ctx, m.CampaignID, req.Msg.GetCharacterId())
 	if err != nil {
 		return nil, err
@@ -1282,6 +1299,15 @@ func (s *Service) RemoveMapToken(
 	mapID, ok := parseID(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
+	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		if err := s.removeCreatureToken(ctx, m, mapID, req.Msg.GetCreatureId()); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&mapsv1.RemoveMapTokenResponse{}), nil
 	}
 	characterID, ok := parseID(req.Msg.GetCharacterId())
 	if !ok {

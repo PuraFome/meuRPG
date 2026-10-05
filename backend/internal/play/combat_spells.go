@@ -253,6 +253,9 @@ func (s *Service) CastSpell(
 		if err := s.mustActNow(ctx, c, caster); err != nil {
 			return nil, err
 		}
+		if err := s.refuseInShape(ctx, c, caster); err != nil { // no spells in a beast form (MR-037)
+			return nil, err
+		}
 		targs := make([]playdb.Combatant, len(targets))
 		for i, t := range targets {
 			if targs[i], err = findCombatant(cs, t.id, v); err != nil {

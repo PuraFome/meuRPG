@@ -531,6 +531,145 @@ service PlayService {
   //     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
   //     NO_SLOT, SUMMON_IN_COMBAT.
   rpc CastSummon(CastSummonRequest) returns (CastSummonResponse);
+
+  // AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+  // open session, in a combat or out of it. It spends one use of the Forma
+  // Selvagem resource (2 per short rest) and, in a combat, the character's
+  // action, on its turn (the master may act again with the action used, as in
+  // TakeAction). The beast must be one ListWildShapeForms
+  // (meurpg.characters.v1.CharacterService) lists. The character takes the
+  // beast's armor class, hit points (a pool of its own: CharacterVitals.wild_shape),
+  // speeds, size, Strength, Dexterity and Constitution, attacks and senses, and
+  // keeps Intelligence, Wisdom, Charisma and its proficiencies; it cannot cast
+  // spells (CastSpell and CastSummon are refused with WILD_SHAPE_NO_SPELLS). The
+  // form lasts until the beast falls to 0 (the damage left over goes to the
+  // character), until LeaveWildShape, or until the master ends it; the app does not
+  // count its hours.
+  //
+  // The character's player may call it for their own character, and the master for
+  // any player's character. A `wild_shape_started` event (the beast's key, ids and
+  // numbers only) goes to the history. The master's undo of the action in a combat
+  // ends the form and gives the use and the action back. `vitals_changed` goes to
+  // the master and the player; in a combat `encounter_changed` goes to everyone.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it, or the character is not a living player's character of the
+  //     campaign that the caller may see.
+  //   - `permission_denied`: the caller is a player and the character is not
+  //     theirs.
+  //   - `invalid_argument`: beast_key is not an SRD beast, or idempotency_key is
+  //     not a UUID.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); EncounterBlocked: WILD_SHAPE_BEAST_NOT_ALLOWED (not one
+  //     of the beasts the level allows, or no Wild Shape), ALREADY_IN_WILD_SHAPE,
+  //     NO_USES, and in a combat the turn gates (NOT_ACTIVE, the turn is not
+  //     the character's, the action is used).
+  rpc AssumeWildShape(AssumeWildShapeRequest) returns (AssumeWildShapeResponse);
+
+  // LeaveWildShape takes the druid back to its own shape ("Voltar à forma
+  // normal"): a bonus action in a combat, on its turn (the master's costs
+  // nothing). The beast's hit points are lost; the character keeps its own as they
+  // were. A `wild_shape_ended` event (reason "left") goes to the history; the
+  // master's undo of the action in a combat puts the form back. Same callers,
+  // streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
+  // that is in its own shape.
+  rpc LeaveWildShape(LeaveWildShapeRequest) returns (LeaveWildShapeResponse);
+
+  // StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+  // the character's player sees what the character's familiar sees, with the
+  // familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
+  // fog of war on, and the character counts as blind and deaf until it stops
+  // (a reminder: in a combat the app gives the combatant the blinded and
+  // deafened conditions, and takes them away at the end). The familiar (a
+  // creature with source familiar) must be on the same map as the character and
+  // within 30 m (20 squares) when it starts, and the vision keeps only while it
+  // stays within 30 m. Out of a combat it lasts until StopFamiliarSight. In a
+  // combat it costs the character's action, on its turn, and ends at the start of
+  // the character's next turn, or earlier if the player stops it (the action is
+  // not given back); the master's undo of the start takes it back and returns the
+  // action. A `familiar_sight` event (ids only) goes to the history, and
+  // `vision_changed` to the players the map's view changed for.
+  //
+  // The player may call it for their own character, and the master for any
+  // player's character. Errors: as AssumeWildShape, with EncounterBlocked
+  // FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+  rpc StartFamiliarSight(StartFamiliarSightRequest) returns (StartFamiliarSightResponse);
+
+  // StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
+  // player looks through their own character's eyes again and the conditions go
+  // away. It costs nothing and refunds nothing. Same callers, streams and errors
+  // as StartFamiliarSight, with FAMILIAR_SIGHT_BLOCKED / NOT_SEEING when the
+  // character is not looking through its familiar.
+  rpc StopFamiliarSight(StopFamiliarSightRequest) returns (StopFamiliarSightResponse);
+}
+
+// AssumeWildShapeRequest turns a druid into a beast.
+message AssumeWildShapeRequest {
+  string campaign_id = 1;
+  // The druid: a player's character (a UUID).
+  string character_id = 2;
+  // The beast, an SRD creature's key from ListWildShapeForms ("monster:wolf").
+  string beast_key = 3;
+  // A UUID the app generates once for this change and sends again on a retry.
+  string idempotency_key = 4;
+}
+
+// AssumeWildShapeResponse returns the character's vitals, with the form, and the
+// combat when the character is in one.
+message AssumeWildShapeResponse {
+  // The character's vitals after: the form (wild_shape) and the use spent.
+  CharacterVitals vitals = 1;
+  // The combat as the caller sees it, when the character is a combatant of one
+  // that is not ended; unset otherwise.
+  Encounter encounter = 2;
+}
+
+// LeaveWildShapeRequest takes a druid out of its beast form.
+message LeaveWildShapeRequest {
+  string campaign_id = 1;
+  // The druid: a player's character (a UUID).
+  string character_id = 2;
+  // A UUID the app generates once for this change and sends again on a retry.
+  string idempotency_key = 3;
+}
+
+// LeaveWildShapeResponse returns the character's vitals and the combat.
+message LeaveWildShapeResponse {
+  // The character's vitals after: no form.
+  CharacterVitals vitals = 1;
+  // The combat as the caller sees it, when the character is in one.
+  Encounter encounter = 2;
+}
+
+// StartFamiliarSightRequest starts looking through the familiar's eyes.
+message StartFamiliarSightRequest {
+  string campaign_id = 1;
+  // The character whose familiar it is: a player's character (a UUID).
+  string character_id = 2;
+  // A UUID the app generates once for this change and sends again on a retry.
+  string idempotency_key = 3;
+}
+
+// StartFamiliarSightResponse returns the character's vitals, with the sight, and
+// the combat when the character is in one.
+message StartFamiliarSightResponse {
+  CharacterVitals vitals = 1;
+  Encounter encounter = 2;
+}
+
+// StopFamiliarSightRequest stops looking through the familiar's eyes.
+message StopFamiliarSightRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // A UUID the app generates once for this change and sends again on a retry.
+  string idempotency_key = 3;
+}
+
+// StopFamiliarSightResponse returns the character's vitals and the combat.
+message StopFamiliarSightResponse {
+  CharacterVitals vitals = 1;
+  Encounter encounter = 2;
 }
 
 // CastSummonRequest casts a summoning spell outside a combat.
@@ -741,6 +880,46 @@ message CharacterVitals {
   // has at its level, in sheet order. The totals come from the sheet; the
   // used counts last until the master corrects them (rests come later).
   repeated ResourceUsage resources = 14;
+  // The beast the character is in now, for a druid in Wild Shape (MR-037,
+  // Etapa 9); unset in the character's own shape. While it is set, the numbers
+  // above are the character's own, waiting: the beast has a pool of its own
+  // (wild_shape), takes the damage and the healing, and the character takes
+  // what is left over when the beast falls to 0.
+  WildShapeState wild_shape = 15;
+  // What the character sees through, when the player is looking through the
+  // familiar's eyes (MR-036); unset otherwise. While it is set the character
+  // counts as blind and deaf.
+  FamiliarSightState familiar_sight = 16;
+}
+
+// WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
+// hit points, its numbers are the master's and the character's player's.
+message WildShapeState {
+  // The beast's content key ("monster:wolf"); the stat block is
+  // meurpg.rules.v1.ContentService.GetCreature.
+  string beast_key = 1;
+  // Its Portuguese name ("Lobo").
+  string beast_name_pt = 2;
+  // The beast's current hit points, 1 to hit_points_max (at 0 the form ends).
+  int32 hit_points_current = 3;
+  // The beast's maximum hit points, from its stat block.
+  int32 hit_points_max = 4;
+}
+
+// FamiliarSightState says a player is looking through their familiar's eyes
+// (MR-036, "Ver pelos olhos do familiar").
+message FamiliarSightState {
+  // The familiar (a creature ID, as CharacterService.ListCharacterCreatures
+  // lists it).
+  string creature_id = 1;
+  // True when it was started in a combat: it ends by itself at the start of the
+  // character's next turn. False outside a combat: it lasts until the player
+  // stops it (StopFamiliarSight).
+  bool in_combat = 2;
+  // The conditions the start gave the character's combatant ("condition:blinded",
+  // "condition:deafened"), which the end takes away again. Empty outside a
+  // combat, and for a condition the combatant already had.
+  repeated string conditions_given = 3;
 }
 
 // ResourceUsage is how many uses of one resource are spent (RN-02).
@@ -1042,6 +1221,11 @@ message AdjustCharacterVitalsRequest {
   // New used counts of some resources; the others stay as they are. Each
   // resource at most once, and only resources the sheet has.
   repeated ResourceUsed resources_used = 9;
+  // New current hit points of the beast, for a druid in Wild Shape: 1 to the
+  // beast's maximum, or 0 to end the form (the character's own hit points stay as
+  // they are: the master carries any leftover damage with hit_points_current).
+  // `invalid_argument` when the character is not in a beast form.
+  optional int32 wild_shape_hit_points_current = 10;
 }
 
 // ResourceUsed sets how many uses of one resource are spent.
