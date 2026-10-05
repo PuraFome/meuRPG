@@ -52,7 +52,7 @@ class FakeLiveSessionSource implements LiveSessionSource {
     shownImage: null,
     shownImageKeep: false,
   };
-  sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas' };
+  sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas', senses: ['Visão no escuro: 18 m'] };
   party = new Map<string, PartyMemberInfoVm>([
     ['pensantus', { classSummary: 'Mago 3', playerName: 'Vinicius' }],
     ['brisa', { classSummary: 'Ladina 3', playerName: 'Ana' }],
@@ -679,11 +679,15 @@ describe('LiveSession', () => {
       // The old preview and its "Ver mapa" are not on a fog map.
       expect(el.querySelector('app-map-view')?.getAttribute('ng-reflect-mode')).not.toBe('preview');
       expect(el.textContent).not.toContain('Ver mapa');
-      // Until the tile arrives the caption waits; then it says what is seen.
+      // Until the tile arrives the card waits; then it says what the character can use, not how many squares.
       expect(el.querySelector('.fm__caption')).toBeNull();
       el.querySelector('.fb__tile')!.dispatchEvent(new Event('load'));
       await tick();
-      expect(textOf(el.querySelector('.fm__caption'))).toContain('Você vê 3 de 16 quadrados à vista.');
+      const card = textOf(el.querySelector('.fm__caption'));
+      expect(card).toContain('Você vê');
+      expect(card).toContain('Visão no escuro: 18 m');
+      expect(card).toContain('Nenhum inimigo à vista.');
+      expect(card).not.toMatch(/\d+ de \d+ quadrados/);
     });
 
     it('offers the player the row "Luz que você carrega" for their own character', async () => {
@@ -695,15 +699,20 @@ describe('LiveSession', () => {
       await render();
       const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
       const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
-      const before = { reads: reads(), gets: gets() };
+      const before = { reads: reads(), gets: gets(), layers: maps.calls.filter((c) => c.startsWith('layers map-1 ')).length };
       source.push({ kind: 'visionChanged', mapId: 'other-map' });
       await tick();
       expect(reads()).toBe(before.reads);
       source.push({ kind: 'visionChanged', mapId: 'map-1' });
       await tick();
+      source.push({ kind: 'visionChanged', mapId: 'map-1' });
       await tick();
+      await new Promise((r) => setTimeout(r, 250));
+      await tick();
+      // Every hint costs one read of the vision (and the layers); a burst of them is one.
       expect(reads()).toBe(before.reads + 1);
-      expect(gets()).toBe(before.gets + 1);
+      expect(maps.calls.filter((c) => c.startsWith('layers map-1 ')).length).toBe(before.layers + 1);
+      expect(gets()).toBe(before.gets + 2);
     });
 
     it('says in words that the character is not on the map', async () => {
@@ -745,12 +754,14 @@ describe('LiveSession', () => {
         const el = await render();
         await new Promise((r) => setTimeout(r, 300));
         await tick();
-        expect(el.querySelector('app-fog-map')).toBeNull();
-        expect(el.querySelector('app-map-view')).not.toBeNull();
-        // He reads nothing "as himself": the fog's own vision is the players'.
-        expect(maps.calls).not.toContain('vision map-1 ');
+        // The same map component as the players', with the whole image, and his tokens to drag.
+        expect(el.querySelector('app-fog-map')).not.toBeNull();
+        expect(el.querySelector('app-fog-base img.fb__img')).not.toBeNull();
+        expect(el.querySelector('app-view-as-map')).toBeNull();
         const rows = Array.from(el.querySelectorAll('app-view-as-list [role="radio"]'), (r) => textOf(r));
         expect(rows).toEqual(['Todos Sem névoa: o seu mapa de mestre', 'Pensantus Vinicius 4 quadrados vistos', 'Brisa Ana 2 quadrados vistos']);
+        // Next to the map: the panel is the first block of the right column.
+        expect(el.querySelector('.board__fog app-view-as-list')).not.toBeNull();
       });
 
       it('shows the map as one character sees it, with the band and the badge, and comes back with "Todos"', async () => {
@@ -764,14 +775,15 @@ describe('LiveSession', () => {
         expect(maps.calls).toContain('get map-1 brisa');
         expect(maps.calls).toContain('vision map-1 brisa');
         expect(maps.calls).toContain('layers map-1 brisa');
-        expect(textOf(el.querySelector('app-view-as-map .band'))).toBe('visibility Você está vendo o mapa como Brisa . Para voltar ao seu mapa, escolha “Todos”.');
-        expect(textOf(el.querySelector('.fm__badge'))).toBe('visibility Vendo como Brisa (Ana)');
+        expect(textOf(el.querySelector('app-view-as-map .band'))).toBe('visibility Você está vendo o mapa como Brisa . Para voltar ao seu mapa, escolha “Todos”. Voltar ao seu mapa');
         expect(el.querySelector('app-fog-base')?.querySelector('img')?.getAttribute('src')).toBe('/images/maps/map-1/tiles/0/0?r=2&as=brisa');
         expect(el.querySelector('app-map-view [data-item]')).toBeNull();
 
-        (el.querySelector('app-view-as-list [data-character="null"], app-view-as-list [role="radio"]') as HTMLButtonElement).click();
+        // "Voltar ao seu mapa" is the way back; so is choosing "Todos".
+        (el.querySelector('app-view-as-map .band__back') as HTMLButtonElement).click();
         await tick();
         expect(el.querySelector('app-view-as-map')).toBeNull();
+        expect(el.querySelector('app-view-as-list [role="radio"][aria-checked="true"]')?.textContent).toContain('Todos');
       });
 
       it('has "Luz dos personagens" with a select for each player character on the map', async () => {

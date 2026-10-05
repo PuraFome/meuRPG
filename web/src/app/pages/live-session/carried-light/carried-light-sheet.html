@@ -8,24 +8,20 @@
   <div class="opts" role="radiogroup" aria-label="Luz que você carrega">
     <label class="opt" [class.opt--on]="chosen() === none">
       <input type="radio" class="mr-visually-hidden" [name]="id" [attr.data-key]="none" [checked]="chosen() === none" [disabled]="busy()" (change)="pick(none)" />
+      <span class="opt__disc" aria-hidden="true"></span>
       <span class="opt__text">
         <b class="opt__name">Nenhuma</b>
         <span class="opt__sub">Sem luz: só enxerga o que já está iluminado</span>
       </span>
-      @if (chosen() === none) {
-        <mat-icon class="opt__check" aria-hidden="true">check</mat-icon>
-      }
     </label>
     @for (o of data.options; track o.key) {
       <label class="opt" [class.opt--on]="chosen() === o.key">
         <input type="radio" class="mr-visually-hidden" [name]="id" [attr.data-key]="o.key" [checked]="chosen() === o.key" [disabled]="busy()" (change)="pick(o.key)" />
+        <span class="opt__disc" aria-hidden="true"></span>
         <span class="opt__text">
           <b class="opt__name">{{ o.name }}</b>
           <span class="opt__sub">{{ o.radii }}</span>
         </span>
-        @if (chosen() === o.key) {
-          <mat-icon class="opt__check" aria-hidden="true">check</mat-icon>
-        }
       </label>
     }
   </div>

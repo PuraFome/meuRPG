@@ -54,3 +54,6 @@
     }
   }
 </svg>
+@if (remembered(); as r) {
+  <app-map-layers class="fb__mem" [layers]="r" />
+}

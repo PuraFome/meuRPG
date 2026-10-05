@@ -12,9 +12,10 @@ export function packStates(states: readonly number[]): Uint8Array {
   return out;
 }
 
-/** Builds the states of a grid from rows of letters: `.` unseen, `w` wall seen, `g` grey, `d` dim, `B` bright, `r` remembered. */
+/** Builds the states of a grid from rows of letters. `.` (or a space) unseen, `w` (or `#`, as the Go oracle draws it) a wall seen,
+ * `g` grey, `d` dim, `B` bright, `r` remembered. */
 export function statesOf(rows: readonly string[]): number[] {
-  const value: Record<string, number> = { '.': Sight.Unseen, w: Sight.Wall, g: Sight.Grey, d: Sight.Dim, B: Sight.Bright, r: Sight.Remembered };
+  const value: Record<string, number> = { '.': Sight.Unseen, ' ': Sight.Unseen, w: Sight.Wall, '#': Sight.Wall, g: Sight.Grey, d: Sight.Dim, B: Sight.Bright, r: Sight.Remembered };
   return rows.flatMap((row) => [...row].map((ch) => value[ch] ?? Sight.Unseen));
 }
 

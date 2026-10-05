@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { GetMapVisionResponse } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type MapLayers, NO_LAYERS, type PackedLayers, decodeLayers } from './layers';
@@ -11,6 +12,36 @@ import { type Vision, decodeVision } from './vision';
  * - `error`: the first read failed.
  */
 export type FogStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+/** Why the last read failed, by the code and the typed detail, never by the message:
+ * `gone` (`not_found`: the character a master reads as died or left, or the map is hidden), `no-grid`
+ * (`failed_precondition`: the map has no grid), `offline` (`unavailable`: the app's "Reconectando…"), `failed`. */
+export type FogError = 'gone' | 'no-grid' | 'offline' | 'failed';
+
+export function fogError(err: unknown): FogError {
+  switch (ConnectError.from(err, Code.Unavailable).code) {
+    case Code.NotFound:
+      return 'gone';
+    case Code.FailedPrecondition:
+      return 'no-grid';
+    case Code.Unavailable:
+    case Code.Aborted:
+      return 'offline';
+    default:
+      return 'failed';
+  }
+}
+
+/** Whether two visions draw the same: the same states and the same tiles at the same revisions. A new image with the same states changes the tiles' revisions. */
+function sameVision(a: Vision | null, b: Vision): boolean {
+  return (
+    a !== null &&
+    a.revision === b.revision &&
+    a.tilesPath === b.tilesPath &&
+    a.tiles.length === b.tiles.length &&
+    a.tiles.every((t, i) => t.tx === b.tiles[i]?.tx && t.ty === b.tiles[i]?.ty && t.revision === b.tiles[i]?.revision)
+  );
+}
 
 /**
  * What one viewer sees of a map with the fog of war on (MR-036, RN-10): the
@@ -26,6 +57,8 @@ export class FogView {
   readonly vision = signal<Vision | null>(null);
   readonly layers = signal<MapLayers>(NO_LAYERS);
   readonly status = signal<FogStatus>('idle');
+  /** Why the last read failed; `null` after a read that worked. */
+  readonly error = signal<FogError | null>(null);
 
   private mapId: string | null = null;
   private as: string | null = null;
@@ -47,6 +80,7 @@ export class FogView {
     this.generation++;
     this.vision.set(null);
     this.layers.set(NO_LAYERS);
+    this.error.set(null);
     if (mapId === null) {
       this.status.set('idle');
       return;
@@ -77,14 +111,18 @@ export class FogView {
         return;
       }
       const next = decodeVision(vision);
-      if (this.vision()?.revision !== next.revision || this.vision()?.tiles.length !== next.tiles.length) {
+      if (!sameVision(this.vision(), next)) {
         this.vision.set(next);
       }
+      this.error.set(null);
       this.layers.set(decodeLayers(layers));
       this.status.set('ready');
-    } catch {
-      if (generation === this.generation && this.status() !== 'ready') {
-        this.status.set('error');
+    } catch (err) {
+      if (generation === this.generation) {
+        this.error.set(fogError(err));
+        if (this.status() !== 'ready') {
+          this.status.set('error');
+        }
       }
     }
   }

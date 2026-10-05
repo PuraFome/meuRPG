@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, input, output, untracked } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { CharacterKind } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -16,7 +17,7 @@ import { FogMap } from './fog-map';
  */
 @Component({
   selector: 'app-view-as-map',
-  imports: [FogMap, MatIconModule],
+  imports: [FogMap, MatButtonModule, MatIconModule],
   template: `
     <div class="mr-notice mr-notice--warning band" role="status">
       <mat-icon aria-hidden="true">visibility</mat-icon>
@@ -24,18 +25,20 @@ import { FogMap } from './fog-map';
         Você está vendo o mapa como <strong>{{ name() }}</strong
         >. Para voltar ao seu mapa, escolha “Todos”.
       </p>
+      <button mat-stroked-button type="button" class="band__back" (click)="back.emit()">Voltar ao seu mapa</button>
     </div>
     <app-fog-map
       [mapName]="mapName()"
       [imageWidth]="imageWidth()"
       [imageHeight]="imageHeight()"
       [status]="view.fog.status()"
+      [error]="view.fog.error()"
       [vision]="view.fog.vision()"
       [layers]="view.fog.layers()"
       [tokens]="view.map.tokens()"
       [points]="view.map.points()"
       [forCharacter]="characterId()"
-      [viewer]="{ name: name(), own: false }"
+      [viewer]="viewer()"
       [badge]="badge()"
       [selectablePoints]="false"
       [caption]="false"
@@ -48,8 +51,18 @@ import { FogMap } from './fog-map';
       gap: var(--mr-space-3);
     }
 
+    .band {
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
     .band p {
+      flex: 1 1 14rem;
       margin: 0;
+    }
+
+    .band__back {
+      min-height: 44px;
     }
   `,
 })
@@ -68,10 +81,15 @@ export class ViewAsMapView {
   /** Goes up when the map may have changed for that player (a token moved, the map changed). */
   readonly tick = input(0);
 
+  /** The character died or left the campaign (the read says `not_found`): the screen goes back to "Todos". */
+  readonly gone = output<void>();
+  /** "Voltar ao seu mapa". */
+  readonly back = output<void>();
   /** The line about this view for the list: "Toren vê 22 quadrados de 384 e nenhum inimigo à vista." */
   readonly noteChange = output<string>();
 
   protected readonly view = new ViewAsMap(this.api, () => this.campaignId());
+  protected readonly viewer = computed(() => ({ name: this.name(), own: false }));
   protected readonly badge = computed(() => {
     const player = this.playerName();
     return player ? `Vendo como ${this.name()} (${player})` : `Vendo como ${this.name()}`;
@@ -112,5 +130,10 @@ export class ViewAsMapView {
       });
     });
     effect(() => this.noteChange.emit(this.note()));
+    effect(() => {
+      if (this.view.fog.error() === 'gone' || this.view.map.status() === 'gone') {
+        untracked(() => this.gone.emit());
+      }
+    });
   }
 }

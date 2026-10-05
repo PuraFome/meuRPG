@@ -22,7 +22,7 @@
     (blur)="onBlur()"
   >
     @if (fog(); as v) {
-      <app-fog-base [vision]="v" [layers]="layers()" (settledChange)="fogSettled.emit($event)" />
+      <app-fog-base [vision]="v" [layers]="layers()" (settledChange)="fogSettled.emit($event)" (loadingChange)="fogLoadingChange.emit($event)" />
     } @else {
       <img
         class="cm__img"

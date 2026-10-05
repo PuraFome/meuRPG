@@ -109,6 +109,8 @@ export class CombatMap {
   readonly tokenDrop = output<TokenDrop>();
   /** The places of the fog map whose tile has arrived. */
   readonly fogSettled = output<ReadonlySet<string>>();
+  /** Whether the first load of the fog map is still going (a tile that arrives later is not a load). */
+  readonly fogLoadingChange = output<boolean>();
 
   private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
 

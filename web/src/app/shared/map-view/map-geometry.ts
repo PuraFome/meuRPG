@@ -42,6 +42,11 @@ export interface ViewToken {
   readonly creatureId?: string;
 }
 
+/** What tells one token from another: a creature's ID, or the character's (a creature's `characterId` is its owner's). */
+export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
+  return token.creatureId || token.characterId;
+}
+
 /** The map's pan and zoom: `x` and `y` are the stage's offset in pixels of
  * the viewport, `scale` goes from 1 (the whole image fits) to 4. */
 export interface ViewTransform {

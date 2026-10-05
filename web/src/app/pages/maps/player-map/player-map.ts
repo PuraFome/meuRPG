@@ -1,9 +1,12 @@
-import { Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { FogView } from '../../../core/maps/fog-view';
 import { MapState } from '../../../core/maps/map-state';
+import { MapsClient } from '../../../core/maps/maps-client';
+import { FogMap } from '../../../shared/fog-map/fog-map';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { MapSelection, MapView } from '../../../shared/map-view/map-view';
@@ -28,12 +31,18 @@ import { PointSheet } from '../../../shared/point-sheet/point-sheet';
  */
 @Component({
   selector: 'app-player-map',
-  imports: [MapLegend, MapView, MatIconModule, PointSheet, RouterLink],
+  imports: [FogMap, MapLegend, MapView, MatIconModule, PointSheet, RouterLink],
   templateUrl: './player-map.html',
   styleUrl: './player-map.scss',
 })
 export class PlayerMap {
   private readonly router = inject(Router);
+  private readonly api = inject(MapsClient);
+  /** What the player sees of this map when it has the fog on (MR-036): the same drawing as the session's. */
+  protected readonly fog = new FogView(
+    (mapId, as) => this.api.vision(this.campaignId(), mapId, as ?? ''),
+    (mapId, as) => this.api.layers(this.campaignId(), mapId, as ?? ''),
+  );
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<MapState>();
@@ -54,6 +63,8 @@ export class PlayerMap {
     const image = this.map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;
   });
+  protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
+  protected readonly viewer = computed(() => ({ name: this.state().tokens().find((t) => t.mine && !t.creatureId)?.name ?? 'Seu personagem', own: true }));
   protected readonly parent = computed(() => this.map()?.parentMaps[0] ?? null);
   protected readonly selected = computed(() => {
     const s = this.selection();
@@ -64,6 +75,13 @@ export class PlayerMap {
       ? { path: ['/campanhas', this.campaignId(), 'sessao'], label: 'Voltar para a sessão' }
       : { path: ['/campanhas', this.campaignId()], label: 'Voltar para a campanha' },
   );
+
+  constructor() {
+    effect(() => {
+      const id = this.fogOn() ? (this.map()?.id ?? null) : null;
+      untracked(() => void this.fog.open(id));
+    });
+  }
 
   protected mapSub(m: MapMessage): string {
     if (m.id === this.map()?.id) {

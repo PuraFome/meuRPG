@@ -149,10 +149,10 @@ describe('the band "Pensantus está cego e surdo" (E9-04)', () => {
   });
 
   it('in a combat, says until when', async () => {
-    const fixture = create({ inCombat: true, endsInRound: 3 });
+    const fixture = create({ inCombat: true });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text((fixture.nativeElement as HTMLElement).querySelector('[data-testid="familiar-band"]'))).toContain('Até o começo da sua próxima vez, a rodada 3. Pensantus está cego e surdo.');
+    expect(text((fixture.nativeElement as HTMLElement).querySelector('[data-testid="familiar-band"]'))).toContain('Até o começo da sua próxima vez. Pensantus está cego e surdo.');
   });
 
   it('goes back to the character\'s own eyes, and says it', async () => {

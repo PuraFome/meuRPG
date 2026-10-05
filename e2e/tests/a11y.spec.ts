@@ -13,7 +13,7 @@ import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, upload
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
-import { moveTo, sessionRoute, tableForFog } from './fog-support';
+import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -2765,14 +2765,23 @@ async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     const list = m.getByRole('radiogroup', { name: 'Ver como' });
     await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
     await expectScreenPasses(m, `Ver como, a lista e a luz dos personagens ${where}`);
+    // Nothing sticks out of the page, whatever its width (the "Ver como" and light cards at 320 px did).
+    expect(await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `rolagem lateral do mestre ${where}`).toBeLessThanOrEqual(0);
+    expect(await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `rolagem lateral do jogador ${where}`).toBeLessThanOrEqual(0);
     await list.getByRole('radio', { name: /Pensantus/ }).click();
     await expect(m.getByText('Você está vendo o mapa como Pensantus.', { exact: false })).toBeVisible();
     await loaded(m);
     await expectScreenPasses(m, `Ver como, o mapa de Pensantus ${where}`);
 
-    // The familiar's eyes, out of a combat: the band, the one filled button.
-    const start = await callRPC(p, 'meurpg.play.v1.PlayService/StartFamiliarSight', { campaignId, characterId: table.pensantusId, idempotencyKey: crypto.randomUUID() });
-    expect(start.ok(), await start.text()).toBeTruthy();
+    // The familiar's eyes, out of a combat: the row under the legend, the question, then the band with the one filled button.
+    const familiar = p.getByRole('region', { name: 'Seu familiar Nanquim' });
+    await expect(familiar).toBeVisible();
+    await expectScreenPasses(p, `Pelos olhos do Nanquim, a linha do familiar ${where}`);
+    await familiar.getByRole('button', { name: 'Ver pelos olhos' }).click();
+    const question = p.getByRole('dialog', { name: 'Ver pelos olhos do Nanquim?' });
+    await expect(question).toBeVisible();
+    await expectScreenPasses(p, `Pelos olhos do Nanquim, a pergunta ${where}`);
+    await question.getByRole('button', { name: 'Ver pelos olhos' }).click();
     await expect(p.getByTestId('familiar-band')).toBeVisible();
     await expectScreenPasses(p, `Pelos olhos do Nanquim, a faixa ${where}`);
     await p.getByRole('button', { name: 'Voltar aos seus olhos' }).click();
@@ -2803,4 +2812,65 @@ test('a névoa de guerra passa no axe e nas conferências de layout no tema escu
 test('a névoa de guerra passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanFogScreens(browser, 'light', 320);
+});
+
+
+// The fog in a combat (Etapa 9, MR-036): the combat's map with the same fog and legend, the action "Ver pelos olhos do Nanquim", the band
+// "Até o começo da sua próxima vez" with the "Cego" line, and the master's "Ver como" and "Luz dos personagens" under the combat.
+async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForFog(m, p, t, `Acessibilidade névoa no combate ${Date.now()}`, { familiar: { col: 15, row: 8 } });
+    campaignId = table.campaignId;
+    await beginFogCombat(m, table);
+
+    await p.goto(sessionRoute(campaignId));
+    await expect(p.getByRole('heading', { name: /Sua vez, Pensantus/ })).toBeVisible();
+    await expect(p.locator('app-fog-base')).toBeVisible();
+    await expect(p.getByTestId('fog-loading')).toHaveCount(0);
+    await expectScreenPasses(p, `Combate na névoa, o mapa e a luz ${where}`);
+
+    const action = p.locator('app-action-row', { hasText: 'Ver pelos olhos do Nanquim' });
+    await expect(action).toBeVisible();
+    await expectScreenPasses(p, `Combate na névoa, a ação "Ver pelos olhos do Nanquim" ${where}`);
+    await action.getByRole('button', { name: 'Ver pelos olhos do Nanquim' }).click();
+    const question = p.getByRole('dialog', { name: 'Ver pelos olhos do Nanquim?' });
+    await expect(question).toBeVisible();
+    await expectScreenPasses(p, `Combate na névoa, a pergunta com o custo da ação ${where}`);
+    await question.getByRole('button', { name: 'Ver pelos olhos' }).click();
+    await expect(p.getByTestId('familiar-band')).toBeVisible();
+    await expect(p.getByTestId('familiar-blind')).toBeVisible();
+    await expectScreenPasses(p, `Combate na névoa, a faixa e a linha "Cego" ${where}`);
+
+    await m.goto(sessionRoute(campaignId));
+    await expect(m.getByRole('radiogroup', { name: 'Ver como' })).toBeVisible();
+    await m.getByRole('radio', { name: /Toren/ }).click();
+    await expect(m.locator('app-view-as-map')).toBeVisible();
+    await expect(m.getByTestId('fog-loading')).toHaveCount(0);
+    await expectScreenPasses(m, `Combate na névoa, o mestre vendo como Toren ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a névoa no combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogCombatScreens(browser, 'light', 1280);
+});
+
+test('a névoa no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogCombatScreens(browser, 'dark', 390);
 });

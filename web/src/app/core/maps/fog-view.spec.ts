@@ -26,12 +26,38 @@ describe('FogView', () => {
     expect(loadVision.mock.calls.map((c) => c[1])).toEqual(['toren', 'pensantus']);
   });
 
-  it('keeps the same vision while its revision and tiles are the same, so nothing is drawn again', async () => {
-    const view = new FogView(async () => visionResponse(['BB'], { revision: 4 }), async () => layers(0));
+  const tile = (tx: number, ty: number, revision: number) => ({ $typeName: 'meurpg.maps.v1.MapTile' as const, tx, ty, revision });
+
+  it('keeps the same vision while its revision and every tile are the same, so nothing is drawn again', async () => {
+    const view = new FogView(async () => visionResponse(['BB'], { revision: 4, tilesPath: '/t/', tileSquares: 16, tiles: [tile(0, 0, 2)] }), async () => layers(0));
     await view.open('m1');
     const first = view.vision();
     await view.refresh();
     expect(view.vision()).toBe(first);
+  });
+
+  it('takes the new tiles when a map has a new image with the same states: same revision and count, another tile revision', async () => {
+    const loadVision = vi
+      .fn()
+      .mockResolvedValueOnce(visionResponse(['BB'], { revision: 4, tilesPath: '/t/', tileSquares: 16, tiles: [tile(0, 0, 2)] }))
+      .mockResolvedValueOnce(visionResponse(['BB'], { revision: 4, tilesPath: '/t/', tileSquares: 16, tiles: [tile(0, 0, 7)] }));
+    const view = new FogView(loadVision, async () => layers(0));
+    await view.open('m1');
+    await view.refresh();
+    expect(view.vision()?.tiles[0].revision).toBe(7);
+  });
+
+  it('says why a read failed, by the code: the character is gone, the map has no grid, the server is away', async () => {
+    const { ConnectError } = await import('@connectrpc/connect');
+    const read = async (code: number) => {
+      const view = new FogView(async () => Promise.reject(new ConnectError('x', code)), async () => layers(0));
+      await view.open('m1', 'toren');
+      return view.error();
+    };
+    expect(await read(5)).toBe('gone');
+    expect(await read(9)).toBe('no-grid');
+    expect(await read(14)).toBe('offline');
+    expect(await read(13)).toBe('failed');
   });
 
   it('takes a new vision when the revision changes', async () => {

@@ -42,15 +42,16 @@ span.tk__hit {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  // 26 px; a fog map sizes it to the square (18 to 26 px, `--tk-d`), so neighbours do not cover each other.
+  width: var(--tk-d, 26px);
+  height: var(--tk-d, 26px);
   border-radius: var(--mr-radius-pill);
   background: var(--mr-ink);
   color: var(--mr-surface);
   box-shadow: 0 0 0 2px var(--mr-surface);
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: max(10px, calc(var(--tk-d, 26px) / 2));
   line-height: 1;
   user-select: none;
 }
@@ -62,8 +63,8 @@ span.tk__hit {
 }
 
 :host(.tk--npc) .tk__disc {
-  width: 28px;
-  height: 28px;
+  width: calc(var(--tk-d, 26px) + 2px);
+  height: calc(var(--tk-d, 26px) + 2px);
   border: 2px solid var(--mr-map-token-ink);
   border-radius: 28%;
   background: var(--mr-map-token-surface);
@@ -72,6 +73,10 @@ span.tk__hit {
 }
 
 // A character's creature: round like a character, with a dashed ring (MAP-LANGUAGE.md).
+:host(.tk--npc.tk--hidden) .tk__disc {
+  border-style: dashed;
+}
+
 :host(.tk--creature) .tk__disc {
   outline: 2px dashed var(--mr-ink);
   outline-offset: 3px;

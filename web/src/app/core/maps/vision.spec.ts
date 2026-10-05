@@ -15,6 +15,31 @@ describe('unpackStates', () => {
   });
 });
 
+describe('the packing, against the Go oracle', () => {
+  // The vector is two rows of Pensantus's view of the cave in the dark, as `picture` draws it in
+  // backend/internal/maps/fog_test.go (TestMR036_FogViewsMatchTheCaveOracle; `codes` there unpacks the same way: four bits a
+  // square, the low half of the byte first): B bright, d dim, g seen in grey, # a wall seen, a space unseen.
+  const oracle = ['#gggggg#########   BBBB#', 'gggggggggggggggBBBBBBBd#'];
+  const bytes = packStates(statesOf(oracle));
+
+  it('packs 48 squares in 24 bytes, and unpacks them to the picture', () => {
+    expect(bytes.length).toBe(24);
+    const states = Array.from(unpackStates(bytes, 24, 2));
+    expect(states).toEqual(statesOf(oracle));
+    expect(states.filter((s) => s === 2).length).toBe(6 + 15);
+    expect(states.filter((s) => s === 4).length).toBe(4 + 7);
+    expect(states.filter((s) => s === 1).length).toBe(1 + 9 + 1 + 1);
+    expect(states.filter((s) => s === 3).length).toBe(1);
+    expect(states.filter((s) => s === 0).length).toBe(3);
+  });
+
+  it('shades the wall seen as "Visto" and leaves the squares not seen black', () => {
+    const vision = decodeVision(visionResponse(oracle));
+    expect(seenCount(vision)).toBe(45);
+    expect(shadeRuns(vision).filter((r) => r.shade === 'unseen')).toEqual([{ shade: 'unseen', col: 16, row: 0, len: 3 }]);
+  });
+});
+
 describe('the shading of each state', () => {
   const rows = ['.dg', 'rBw', '...'];
   const vision = decodeVision(visionResponse(rows));

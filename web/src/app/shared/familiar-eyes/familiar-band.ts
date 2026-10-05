@@ -30,8 +30,6 @@ export class FamiliarBand {
   readonly creatureId = input.required<string>();
   /** Started in a combat: it ends by itself at the start of the next turn. */
   readonly inCombat = input(false);
-  /** The round the sight ends in (the combat's round + 1), when in a combat. */
-  readonly endsInRound = input<number | null>(null);
 
   /** "Voltar aos seus olhos" worked. */
   readonly stopped = output<void>();

@@ -17,7 +17,9 @@
         <span class="va__radio" aria-hidden="true"></span>
         <span class="va__text">
           <span class="va__name">{{ row.name }}</span>
-          <span class="va__sub">{{ row.sub }}</span>
+          @if (row.sub) {
+            <span class="va__sub">{{ row.sub }}</span>
+          }
           @if (row.count) {
             <span class="va__count">{{ row.count }}</span>
           }
@@ -33,5 +35,5 @@
     </p>
   }
 
-  <p class="va__group"><strong>Visão do grupo</strong> {{ groupText() }}</p>
+  <p class="va__group"><strong>Visão do grupo</strong> {{ groupText() }} <span class="va__where">Muda no editor do mapa.</span></p>
 </section>

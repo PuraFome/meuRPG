@@ -236,6 +236,15 @@ a.mr-list__row:hover .mr-list__name {
   }
 }
 
+.mr-legend--on-map .mr-swatch {
+  // The marks of a fog map's legend sit on a sample of the map's floor, as they do on the map.
+  background-color: var(--mr-map-sample);
+}
+
+.mr-legend--on-map .mr-swatch--unseen {
+  background-color: var(--mr-map-fog);
+}
+
 .mr-swatch {
   position: relative;
   box-sizing: border-box;
@@ -316,24 +325,26 @@ a.mr-list__row:hover .mr-list__name {
     left: 4.5px;
   }
 
-  // The fog of war's states (E9-03): the image as it is, under 25 % black, without colour, under 60 % black with fine dots,
-  // solid black. The contrast comes from the brightness and the texture, not the hue.
-  &--seen {
-    background-color: color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down));
+  // The fog of war's states (E9-03): a small sample of the map's floor (`--mr-map-sample`) with the shading the map draws over it:
+  // as it is (Visto), under 25 % black, without colour, under 60 % black with fine dots, solid black. The contrast comes from the
+  // brightness and the texture, not the hue.
+  &--sample {
+    background-color: var(--mr-map-sample);
   }
 
   &--dim {
-    background-color: color-mix(in srgb, var(--mr-map-fog) 25%, color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down)));
+    background-image: linear-gradient(color-mix(in srgb, var(--mr-map-fog) 25%, transparent), color-mix(in srgb, var(--mr-map-fog) 25%, transparent));
   }
 
   &--grey {
-    background-color: var(--mr-map-token-down-line);
+    filter: grayscale(1);
   }
 
   &--remembered {
-    background-color: color-mix(in srgb, var(--mr-map-fog) 60%, color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down)));
-    background-image: radial-gradient(color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent) 0.9px, transparent 1.2px);
-    background-size: 4px 4px;
+    background-image:
+      radial-gradient(color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent) 0.9px, transparent 1.2px),
+      linear-gradient(color-mix(in srgb, var(--mr-map-fog) 60%, transparent), color-mix(in srgb, var(--mr-map-fog) 60%, transparent));
+    background-size: 4px 4px, auto;
   }
 
   &--unseen {

@@ -24,7 +24,10 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
+import { FogMasterPanel } from './fog-tools/fog-master-panel';
+import { FogPlayerTools } from './fog-tools/fog-player-tools';
 import { FamiliarBand } from '../../shared/familiar-eyes/familiar-band';
+import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
 import { FogView } from '../../core/maps/fog-view';
 import { MapState } from '../../core/maps/map-state';
 import { NotesClient } from '../../core/notes/notes-client';
@@ -97,6 +100,8 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     MatButtonModule,
     MatIconModule,
     ClueNotice,
+    FogMasterPanel,
+    FogPlayerTools,
     FamiliarBand,
     CombatLaunch,
     CombatView,
@@ -165,8 +170,26 @@ export class LiveSession {
     (mapId, as) => this.mapsApi.vision(this.campaignId(), mapId, as ?? ''),
     (mapId, as) => this.mapsApi.layers(this.campaignId(), mapId, as ?? ''),
   );
+  /** The current map's ID when it has the fog on and the session is live; the master reads it too (his own map is drawn by the same component). */
+  private readonly fogMapId = computed(() => {
+    const map = this.mapState.map();
+    return map?.fogEnabled && this.phase() === 'live' ? map.id : null;
+  });
   /** Goes up when what a player sees may have changed: the master's "Ver como" reads again (his stream never hears `vision_changed`). */
   protected readonly visionTick = signal(0);
+  /** The character the master looks as ("Ver como"), the line about that view, and why it went back to "Todos". */
+  protected readonly viewAs = signal<string | null>(null);
+  protected readonly viewNote = signal('');
+  protected readonly viewGone = signal('');
+  /** Bumped when the stream says a character's creatures changed. */
+  protected readonly creaturesTick = signal(0);
+  protected readonly familiarNameNow = signal<string | null>(null);
+  protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
+  private readonly familiarEyes = inject(FamiliarEyesClient);
+  private visionTimer: ReturnType<typeof setTimeout> | undefined;
+  protected readonly fogMaster = computed(() => this.isMaster() && !!this.mapState.map()?.fogEnabled);
+  protected readonly fogPlayer = computed(() => !this.isMaster() && !!this.mapState.map()?.fogEnabled);
+  protected readonly ownToken = computed(() => this.mapState.tokens().find((t) => t.mine && !t.creatureId) ?? null);
 
   /** The session's combat (MR-013): read on every `ready` and after each
    * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
@@ -221,7 +244,7 @@ export class LiveSession {
     this.vitals().map((v) => ({
       id: v.characterId,
       name: v.name,
-      sub: this.partyInfo().get(v.characterId)?.playerName ?? 'Jogador sem nome',
+      sub: this.partyInfo().get(v.characterId)?.playerName ?? '',
     })),
   );
   /** The master's player characters, for who gets a clue (a deleted account has no player). */
@@ -252,6 +275,7 @@ export class LiveSession {
         }
       });
     this.destroyRef.onDestroy(() => {
+      clearTimeout(this.visionTimer);
       this.closeStream();
       this.sessionNotes.bar.set(null);
     });
@@ -265,11 +289,28 @@ export class LiveSession {
     });
 
     // A map with the fog of war on: the vision is read when it is the current one, and closed when it is not.
+    // It depends on the map's ID and its fog flag, not on each reading of the map: a hint costs one read.
     effect(() => {
-      const map = this.mapState.map();
-      // The master reads every square seen (his own map has no fog); only a player needs the vision.
-      const id = map?.fogEnabled && this.phase() === 'live' && !this.isMaster() ? map.id : null;
-      untracked(() => void this.fog.open(id));
+      const id = this.fogMapId();
+      untracked(() => {
+        // Another map: "Ver como" starts over at "Todos".
+        this.viewAs.set(null);
+        this.viewGone.set('');
+        void this.fog.open(id);
+      });
+    });
+    // The familiar a player looks through, for the name on the card "O que o Nanquim vê".
+    effect(() => {
+      const sight = this.ownVitals()?.familiarSight;
+      const characterId = this.ownVitals()?.characterId ?? '';
+      const campaignId = this.campaignId();
+      untracked(() => {
+        if (!sight || this.isMaster()) {
+          this.familiarNameNow.set(null);
+          return;
+        }
+        void this.familiarEyes.name(campaignId, characterId, sight.creatureId).then((n) => this.familiarNameNow.set(n));
+      });
     });
 
     // Waiting on the link before the master starts: the app's light poll
@@ -345,24 +386,34 @@ export class LiveSession {
           this.xpChanges.bump();
           void this.readSnapshot(campaignId, generation);
         },
-        onVitals: (v) => this.vitals.update((list) => applyVitals(list, v)),
+        onVitals: (v) => {
+          // Looking through a familiar's eyes, or coming back, changes what the player sees.
+          const before = this.vitals().find((x) => x.characterId === v.characterId)?.familiarSight?.creatureId ?? '';
+          this.vitals.update((list) => applyVitals(list, v));
+          if ((v.familiarSight?.creatureId ?? '') !== before) {
+            this.scheduleVision();
+          }
+        },
         onCurrentMap: (mapId) => this.showMap(mapId),
         onMapChanged: (mapId) => this.mapChanged(mapId),
         onVisionChanged: (mapId) => {
           // The fog map's tokens, points and squares come from reads: read them again.
           if (mapId === this.currentMapId()) {
             void this.mapState.refresh();
-            void this.fog.refresh();
+            this.scheduleVision();
           }
         },
+        onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
         onTokenMoved: (move) => {
-          this.visionTick.update((n) => n + 1);
+          this.scheduleVision();
           // A token the page doesn't know (a missed `map_changed`): read again.
           if (!this.mapState.moveToken(move.mapId, move.characterId, move.xBp, move.yBp)) {
             void this.mapState.refresh();
           }
         },
         onEncounterChanged: (change) => {
+          // Any change of the combat may change who sees whom (revision 0 is a hint with no number): read the vision too.
+          this.scheduleVision();
           // Read again only when the news is newer than the copy on screen. A hint with no revision
           // (0) is the server telling a player "read again" without counting: an opportunity offer
           // made to them, or any change on a fog map, where each player has a revision of their own
@@ -378,6 +429,7 @@ export class LiveSession {
           }
         },
         onCombatantMoved: (move) => {
+          this.scheduleVision();
           if (!this.combat.applyMove(move)) {
             void this.loadCombat(generation);
           }
@@ -551,7 +603,33 @@ export class LiveSession {
   protected familiarStopped(characterId: string): void {
     this.vitals.update((list) => list.map((v) => (v.characterId === characterId ? { ...v, familiarSight: null } : v)));
     void this.mapState.refresh();
-    void this.fog.refresh();
+    this.scheduleVision();
+  }
+
+  /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" reads again too. */
+  private scheduleVision(): void {
+    if (this.visionTimer !== undefined) {
+      return;
+    }
+    this.visionTimer = setTimeout(() => {
+      this.visionTimer = undefined;
+      void this.fog.refresh();
+      this.visionTick.update((n) => n + 1);
+    }, 120);
+  }
+
+  /** "Ver como": the character the master looks as; the line about that view clears until the next read. */
+  protected setViewAs(id: string | null): void {
+    this.viewAs.set(id);
+    this.viewNote.set('');
+    this.viewGone.set('');
+  }
+
+  /** The character he looked as died or left the campaign: back to "Todos", and say so. */
+  protected viewAsGone(): void {
+    this.viewAs.set(null);
+    this.viewNote.set('');
+    this.viewGone.set('Esse personagem morreu ou saiu da campanha. Voltamos para “Todos”.');
   }
 
   /** `current_map_changed`, or the master's own choice. */
@@ -566,8 +644,7 @@ export class LiveSession {
   private mapChanged(mapId: string): void {
     if (mapId === this.currentMapId()) {
       void this.mapState.refresh();
-      void this.fog.refresh();
-      this.visionTick.update((n) => n + 1);
+      this.scheduleVision();
     }
     if (this.isMaster()) {
       void this.reloadMaps();

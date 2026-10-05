@@ -27,6 +27,15 @@
   touch-action: pan-x pan-y;
 }
 
+.mv--grid {
+  // The tokens measure the map's width (`cqw`) to size themselves to a square.
+  container-type: inline-size;
+}
+
+.mv__stage--grid {
+  --tk-d: clamp(18px, calc(100cqw * var(--s, 1) / var(--cols) * 0.95), 26px);
+}
+
 .mv--zoomed.mv--interactive {
   cursor: grab;
 }

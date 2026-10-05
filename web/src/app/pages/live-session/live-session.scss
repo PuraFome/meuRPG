@@ -34,11 +34,16 @@
   @media (min-width: 1024px) {
     grid-template-columns: minmax(0, 1fr) 400px;
     grid-template-areas:
+      'main fog'
       'main image'
       'main scene'
       'main party'
       'main tokens';
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto 1fr;
+
+    .board__fog {
+      grid-area: fog;
+    }
 
     .board__left {
       grid-area: main;
@@ -67,10 +72,11 @@
 .board--scene-open {
   @media (min-width: 1024px) {
     grid-template-areas:
+      'main fog'
       'main image'
       'main party'
       'main tokens';
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
   }
 }
 
@@ -106,6 +112,7 @@
 }
 
 .board__party,
+.board__fog,
 .board__image,
 .board__tokens,
 .board__main,
@@ -120,7 +127,8 @@
 // the board, with the same step under the header.
 .combat,
 .launch,
-.familiar {
+.familiar,
+.fog-panel {
   display: block;
   margin-top: var(--mr-space-6);
 }

@@ -74,11 +74,15 @@ export class CombatMapCard {
     const v = this.fog();
     return v ? tileProgress(tileRects(v), this.settled()) : { total: 0, done: 0 };
   });
-  protected readonly fogLoading = computed(() => this.fogProgress().done < this.fogProgress().total);
+  protected readonly fogLoading = signal(false);
   protected readonly fogLegend = computed(() => {
     const v = this.fog();
     return v ? visionLegend(v) : null;
   });
+  protected onFogLoading(loading: boolean): void {
+    this.fogLoading.set(loading);
+  }
+
   protected onFogSettled(set: ReadonlySet<string>): void {
     this.settled.set(set);
   }

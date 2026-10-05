@@ -13,6 +13,7 @@ import {
   ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { metersText } from '../../core/units';
 import {
   CampaignInfoVm,
   LiveErrorKind,
@@ -276,6 +277,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     return {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
+      senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };
   }
 

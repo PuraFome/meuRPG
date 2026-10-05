@@ -38,30 +38,9 @@
       <p class="mr-muted" role="status">Carregando o mapa...</p>
     }
     @case ('ready') {
-      @if (fogOn() && !isMaster()) {
-        <!-- The player's map with the fog of war on (MR-036, E9-03): the viewer's tiles and shading, in place. -->
-        @if (lightToast()) {
-          <p class="mr-notice mr-notice--success map__toast" role="status">
-            <mat-icon aria-hidden="true">lightbulb</mat-icon>
-            <span>{{ lightToast() }}</span>
-          </p>
-        }
-        <app-fog-map
-          [mapName]="map()?.name ?? ''"
-          [imageWidth]="map()?.image?.width ?? 1"
-          [imageHeight]="map()?.image?.height ?? 1"
-          [status]="fog()?.status() ?? 'loading'"
-          [vision]="fog()?.vision() ?? null"
-          [layers]="fog()?.layers() ?? null"
-          [tokens]="state().tokens()"
-          [points]="state().points()"
-          [viewer]="viewer()"
-        />
-        @if (ownToken(); as me) {
-          <app-carried-light [campaignId]="campaignId()" [mapId]="map()!.id" [token]="me" (changed)="lightChanged($event)" />
-        }
-      } @else if (image(); as img) {
-        @if (isMaster() && fogOn() && viewAs(); as characterId) {
+      @if (fogOn()) {
+        <!-- A map with the fog of war on (MR-036, E9-03): one map component, whoever looks. -->
+        @if (isMaster() && viewAs(); as characterId) {
           <app-view-as-map
             [campaignId]="campaignId()"
             [mapId]="map()!.id"
@@ -69,12 +48,64 @@
             [characterId]="characterId"
             [name]="viewAsPerson()?.name ?? 'o personagem'"
             [playerName]="viewAsPerson()?.sub || null"
-            [imageWidth]="img.width"
-            [imageHeight]="img.height"
+            [imageWidth]="map()?.image?.width ?? 1"
+            [imageHeight]="map()?.image?.height ?? 1"
             [tick]="tick()"
-            (noteChange)="viewNote.set($event)"
+            (noteChange)="viewNoteChange.emit($event)"
+            (gone)="viewAsGone.emit()"
+            (back)="viewAsBack.emit()"
           />
         } @else {
+          <app-fog-map
+            [mapName]="map()?.name ?? ''"
+            [imageWidth]="map()?.image?.width ?? 1"
+            [imageHeight]="map()?.image?.height ?? 1"
+            [status]="fog()?.status() ?? 'loading'"
+            [error]="fog()?.error() ?? null"
+            [vision]="fog()?.vision() ?? null"
+            [layers]="fog()?.layers() ?? null"
+            [image]="isMaster() ? masterImage() : null"
+            [tokens]="state().tokens()"
+            [points]="state().points()"
+            [viewer]="viewer()"
+            [isMaster]="isMaster()"
+            [mode]="isMaster() && !phone() ? 'tokens' : 'view'"
+            [senses]="senses()"
+            [carried]="carriedName()"
+            [familiar]="seeingName()"
+            (moved)="onMoved($event)"
+          />
+          @if (isMaster()) {
+            <div class="map__foot">
+              <div class="map__legend">
+                @if (!phone()) {
+                  <p class="map__hint">
+                    <mat-icon aria-hidden="true">drag_pan</mat-icon>
+                    Arraste um token para movê-lo no mapa.
+                  </p>
+                }
+                <app-map-legend [shapes]="true" [states]="true" [tokens]="[]" />
+              </div>
+              <a matButton="outlined" class="map__open" [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]" [queryParams]="{ de: 'sessao' }">
+                <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
+              </a>
+            </div>
+          }
+        }
+        @if (!isMaster()) {
+          <app-fog-player-tools
+            [campaignId]="campaignId()"
+            [state]="state()"
+            [fog]="fog()"
+            [mapId]="map()!.id"
+            [own]="ownToken()"
+            [characterId]="ownCharacterId()"
+            [characterName]="characterName()"
+            [seeing]="seeing()"
+            [creaturesTick]="creaturesTick()"
+          />
+        }
+      } @else if (image(); as img) {
         <div class="map__frame">
           <app-map-view
             [image]="img"
@@ -120,48 +151,33 @@
             <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
           </a>
         </div>
-        }
-
-        @if (isMaster()) {
-          <div class="map__points">
-            <app-map-points-list
-              [points]="state().points()"
-              [pendingId]="reveals.pendingId()"
-              [openScenePointId]="scene() ? (scene()!.scene()?.pointId ?? null) : undefined"
-              [pendingSceneId]="pendingScene()"
-              (toggle)="reveals.togglePoint($event.point, $event.revealed)"
-              (openScene)="openScene($event)"
-            />
-            @if (sceneError(); as message) {
-              <div class="mr-notice mr-notice--danger" role="alert">
-                <mat-icon aria-hidden="true">error</mat-icon>
-                <p>{{ message }}</p>
-              </div>
-            }
-            @if (reveals.error(); as message) {
-              <div class="mr-notice mr-notice--danger" role="alert">
-                <mat-icon aria-hidden="true">error</mat-icon>
-                <p>{{ message }}</p>
-              </div>
-            }
-            <p class="mr-visually-hidden" role="status" aria-live="polite">
-              {{ reveals.announcement() }}
-            </p>
-          </div>
-        }
       }
-      @if (isMaster() && fogOn()) {
-        <div class="map__fog">
-          <app-view-as-list
-            [people]="people()"
-            [counts]="counts.counts()"
-            [total]="counts.total()"
-            [selected]="viewAs()"
-            [groupVision]="map()?.groupVision ?? false"
-            [note]="viewNote()"
-            (choose)="setViewAs($event)"
+
+      @if (isMaster() && (fogOn() || image())) {
+        <div class="map__points">
+          <app-map-points-list
+            [points]="state().points()"
+            [pendingId]="reveals.pendingId()"
+            [openScenePointId]="scene() ? (scene()!.scene()?.pointId ?? null) : undefined"
+            [pendingSceneId]="pendingScene()"
+            (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+            (openScene)="openScene($event)"
           />
-          <app-light-panel [campaignId]="campaignId()" [state]="state()" [info]="info()" />
+          @if (sceneError(); as message) {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ message }}</p>
+            </div>
+          }
+          @if (reveals.error(); as message) {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ message }}</p>
+            </div>
+          }
+          <p class="mr-visually-hidden" role="status" aria-live="polite">
+            {{ reveals.announcement() }}
+          </p>
         </div>
       }
     }

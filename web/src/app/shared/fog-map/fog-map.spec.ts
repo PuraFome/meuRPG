@@ -14,6 +14,7 @@ const plain = textOf;
 const pensantus = mapToken('p', 'Pensantus', { mine: true, xBp: 2000, yBp: 2000 });
 const toren = mapToken('t', 'Toren', { xBp: 3000, yBp: 2000 });
 const goblin = mapToken('g', 'Goblin 2', { kind: CharacterKind.MINION, xBp: 8000, yBp: 2000 });
+const lurker = mapToken('l', 'Goblin 3', { kind: CharacterKind.MINION, xBp: 3000, yBp: 3000 });
 const nanquim = mapToken('p', 'Nanquim', { creatureId: 'c1', kind: CharacterKind.UNSPECIFIED, xBp: 2500, yBp: 2500 });
 
 const layers: MapLayers = { columns: 4, rows: 4, walls: [{ col: 0, row: 0 }], terrain: [], half: [{ col: 1, row: 1 }], threeQuarters: [] };
@@ -70,13 +71,33 @@ describe('FogMap', () => {
     expect(el.querySelector('[data-testid="fog-loading"]')).toBeNull();
   });
 
-  it('draws a token only over a place whose tile has arrived, and a token on a square with no tile at once', () => {
-    const { fixture, el } = create();
+  it('draws the party over a place whose tile is still on its way, and an NPC only once its tile has arrived', () => {
+    const { fixture, el } = create({ tokens: [pensantus, toren, goblin, lurker] });
     const names = () => Array.from(el.querySelectorAll('ul[aria-label="No mapa"] li'), (li) => plain(li));
-    // Nothing has arrived: Pensantus (tile 0:0) and Toren wait; the goblin is on a square whose tile does not exist (it is black).
-    expect(names()).toEqual(['Goblin 2']);
+    // Nothing has arrived: the party is on the map (it never vanishes); Goblin 3 waits for its tile; Goblin 2 is on a square with no tile.
+    expect(names()).toEqual(['Goblin 2', 'Toren', 'Pensantus (você)']);
     settle(fixture);
-    expect(names()).toEqual(['Pensantus (você)', 'Toren', 'Goblin 2']);
+    expect(names()).toEqual(['Goblin 2', 'Goblin 3', 'Toren', 'Pensantus (você)']);
+  });
+
+  it('draws the viewer\'s own token last, on top of its neighbours', () => {
+    const { el } = create({ tokens: [pensantus, toren, goblin] });
+    const names = Array.from(el.querySelectorAll('ul[aria-label="No mapa"] li'), (li) => plain(li));
+    expect(names.at(-1)).toBe('Pensantus (você)');
+  });
+
+  it('says "Carregando o mapa" for the first load only: a tile that comes later brings back neither the notice nor the stripes', () => {
+    const { fixture, el } = create();
+    settle(fixture);
+    expect(el.querySelector('[data-testid="fog-loading"]')).toBeNull();
+    // The player sees more: a new tile appears.
+    fixture.componentRef.setInput(
+      'vision',
+      tiled({ revision: 2, tiles: [{ $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 0, revision: 3 }, { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 1, revision: 1 }, { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 0, revision: 1 }] }),
+    );
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="fog-loading"]')).toBeNull();
+    expect(el.querySelectorAll('[data-pending]').length).toBe(0);
   });
 
   it('while the vision is read, the place is a still striped frame, with no map and no token yet', () => {
@@ -116,10 +137,40 @@ describe('FogMap', () => {
       'Parede',
       'Meia cobertura',
       'P Você',
-      'B Companheiro',
-      'G Inimigo à vista',
+      'T Companheiro',
+      'G2 Inimigo à vista',
       'N Criatura',
     ]);
+  });
+
+  it('names the master\'s view by the character, never "Você": his chips and legend say "Toren"', () => {
+    const asToren = mapToken('t', 'Toren', { mine: true, xBp: 3000, yBp: 2000 });
+    const { fixture, el } = create({ tokens: [asToren, pensantus === asToren ? toren : mapToken('p', 'Pensantus')], viewer: { name: 'Toren', own: false } });
+    settle(fixture);
+    expect(Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li))).toContain('T Toren');
+    expect(Array.from(el.querySelectorAll('ul[aria-label="No mapa"] li'), (li) => plain(li))).not.toContain('Toren (você)');
+    expect(plain(el)).not.toContain('(você)');
+  });
+
+  it('has no "No escuro, em cinza" for a viewer who sees none (no darkvision): the legend follows the squares', () => {
+    const { el } = create({ vision: decodeVision(visionResponse(['BB', 'dd', '..'])) });
+    expect(Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li))).not.toContain('No escuro, em cinza');
+  });
+
+  it('says the server is away with the app\'s "Reconectando…", and that a map has no grid', () => {
+    const offline = create({ vision: null, status: 'error', error: 'offline' });
+    expect(plain(offline.el.querySelector('[data-testid="fog-offline"]'))).toContain('Reconectando…');
+    const grid = create({ vision: null, status: 'error', error: 'no-grid' });
+    expect(plain(grid.el)).toContain('Este mapa não tem grade.');
+  });
+
+  it('shows a small box, not a black map, for a character off the map who never saw anything', () => {
+    const { el } = create({ vision: tiled({ characterOnMap: false, ...{} }), tokens: [] });
+    expect(el.querySelector('.fm__none')).toBeNull();
+    const none = create({ vision: decodeVision(visionResponse(['....', '....'], { characterOnMap: false })), tokens: [] });
+    expect(none.el.querySelector('.fm__none')).not.toBeNull();
+    expect(none.el.querySelector('app-map-view')).toBeNull();
+    expect(plain(none.el.querySelector('[data-testid="fog-nothing"]'))).toContain('Nada novo para ver');
   });
 
   it('names only what is on the map: a map with nothing remembered has no "Já visto"', () => {
@@ -127,10 +178,22 @@ describe('FogMap', () => {
     expect(Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li))).toEqual(['Visto', 'Penumbra', 'P Você']);
   });
 
-  it('writes what the viewer sees: the squares and the enemies in sight', () => {
-    const { fixture, el } = create();
+  it('writes what the viewer can use, not a count: senses, light, enemies in sight, what grey and remembered mean', () => {
+    const { fixture, el } = create({ senses: ['Visão no escuro: 18 m'], carried: 'tocha' });
     settle(fixture);
-    expect(plain(el.querySelector('[data-testid="fog-caption"]'))).toContain('Você vê 3 de 16 quadrados à vista. Inimigos à vista: Goblin 2.');
+    const card = plain(el.querySelector('[data-testid="fog-caption"]'));
+    expect(card).toContain('Você vê Visão no escuro: 18 m Luz que você carrega: tocha. Inimigos à vista: Goblin 2.');
+    expect(card).toContain('Em cinza: visto no escuro, pela visão no escuro.');
+    expect(card).toContain('O que você já viu fica escurecido e sem inimigos');
+    expect(card).not.toMatch(/\d+ de \d+ quadrados/);
+  });
+
+  it('is "O que o Nanquim vê" while the player looks through the familiar, with no senses of the character', () => {
+    const { fixture, el } = create({ senses: ['Visão no escuro: 18 m'], familiar: 'Nanquim' });
+    settle(fixture);
+    const card = plain(el.querySelector('[data-testid="fog-caption"]'));
+    expect(card).toContain('O que o Nanquim vê');
+    expect(card).not.toContain('Visão no escuro: 18 m');
   });
 
   it('draws the party with its own marks: the viewer with the garnet ring, an NPC as a square, a creature with a dashed ring', () => {
@@ -161,8 +224,17 @@ describe('FogMap', () => {
     expect(focus).toHaveBeenCalledWith({ xBp: 3000, yBp: 2000 });
   });
 
-  it('shows the badge of the master\'s "Ver como" over the map', () => {
-    const { el } = create({ badge: 'Vendo como Toren (Caio)' });
-    expect(plain(el.querySelector('.fm__badge'))).toBe('visibility Vendo como Toren (Caio)');
+  it('on a phone, puts the master\'s "Ver como" label above the map, in the flow; on a computer the band says it', () => {
+    const computer = create({ badge: 'Vendo como Toren (Caio)' });
+    expect(computer.el.querySelector('.fm__badge')).toBeNull();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const phone = create({ badge: 'Vendo como Toren (Caio)' });
+    expect(plain(phone.el.querySelector('.fm__badge'))).toBe('visibility Vendo como Toren (Caio)');
+  });
+
+  it('opens a phone zoomed in on the party (2x), once', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const { fixture } = create();
+    expect(fixture.componentInstance['startAt']()).toEqual({ xBp: 2500, yBp: 2000 });
   });
 });

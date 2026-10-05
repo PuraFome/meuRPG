@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-import { setGridRPC, toren } from './combat-support';
+import { combatRPC, setGridRPC, startEncounterRPC, toren, type CombatTable } from './combat-support';
 import { startSessionRPC } from './live-session-support';
 import { createMapRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, uploadImageRPC } from './maps-support';
 import { callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
@@ -257,3 +257,24 @@ export async function moveTo(master: Page, table: FogTable, characterId: string,
 export function sessionRoute(campaignId: string): string {
   return `/campanhas/${campaignId}/sessao`;
 }
+
+/** A combat of the party and the three goblins in the guard room, on Pensantus's turn. */
+export async function beginFogCombat(mp: Page, table: FogTable): Promise<void> {
+  const combatTable = { campaignId: table.campaignId, captainId: table.captainId, goblinId: table.goblin1Id } as unknown as CombatTable;
+  let enc = await startEncounterRPC(mp, combatTable, [
+    { characterId: table.captainId, count: 1, hidden: false },
+    { characterId: table.goblin1Id, count: 1, hidden: false },
+    { characterId: table.goblin2Id, count: 1, hidden: false },
+  ]);
+  const faces: Record<string, number> = { Pensantus: 20, Toren: 15 };
+  for (const c of enc.combatants) {
+    enc = await combatRPC(mp, 'SubmitInitiative', { campaignId: table.campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces[c.label] ?? 2 });
+  }
+  const at: Record<string, [number, number]> = { 'Capitão Goblin': [21, 3], 'Goblin 1': [18, 5], 'Goblin 2': [20, 7] };
+  for (const [label, [col, row]] of Object.entries(at)) {
+    const id = enc.combatants.find((c) => c.label === label)!.id;
+    enc = await combatRPC(mp, 'MoveCombatant', { campaignId: table.campaignId, encounterId: enc.id, combatantId: id, col, row });
+  }
+  await combatRPC(mp, 'BeginCombat', { campaignId: table.campaignId, encounterId: enc.id });
+}
+

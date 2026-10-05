@@ -2,6 +2,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { GetMapResponse } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { MapState } from './map-state';
+import { mapMessage, mapResponse, mapToken } from './maps-testing';
 
 function response(id: string, tokenX = 1000): GetMapResponse {
   return {
@@ -101,5 +102,23 @@ describe('MapState', () => {
     expect(state.map()?.pointCount).toBe(2);
     state.removePoint('new');
     expect(state.map()?.pointCount).toBe(1);
+  });
+
+  it('tells a creature\'s token from its owner\'s: they share a character_id, not a key (a light never replaces the creature)', () => {
+    const state = new MapState(async () => mapResponse(mapMessage('m', 'M'), [], []));
+    state.apply(mapResponse(mapMessage('m', 'M'), [], [mapToken('pensantus', 'Pensantus'), mapToken('pensantus', 'Nanquim', { creatureId: 'raven' })]));
+    state.upsertToken(mapToken('pensantus', 'Pensantus', { carriedLight: 'light:torch' }));
+    expect(state.tokens().map((t) => [t.name, t.carriedLight])).toEqual([
+      ['Pensantus', 'light:torch'],
+      ['Nanquim', ''],
+    ]);
+    // `token_moved` names the character: it moves the character's own token only.
+    expect(state.moveToken('m', 'pensantus', 100, 200)).toBe(true);
+    expect(state.tokens().map((t) => [t.name, t.xBp])).toEqual([
+      ['Pensantus', 100],
+      ['Nanquim', 4000],
+    ]);
+    state.removeToken('pensantus');
+    expect(state.tokens().map((t) => t.name)).toEqual(['Nanquim']);
   });
 });

@@ -35,3 +35,18 @@ export function carriedErrorMessage(err: unknown): string {
     [Code.PermissionDenied]: 'Você só muda a luz do seu próprio personagem.',
   });
 }
+
+const NAMES: Record<string, string> = {
+  'light:candle': 'Vela',
+  'light:torch': 'Tocha',
+  'light:lamp': 'Lâmpada',
+  'light:hooded-lantern': 'Lanterna coberta',
+  'light:light-spell': 'Luz',
+  'light:continual-flame': 'Chama Contínua',
+  'light:daylight': 'Luz do Dia',
+};
+
+/** The name of a light preset by its key, without reading the presets ("light:torch" is "Tocha"); empty for none. */
+export function lightKeyName(key: string): string {
+  return key === '' ? '' : (NAMES[key] ?? 'Uma luz');
+}

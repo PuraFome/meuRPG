@@ -39,6 +39,15 @@
     <a matButton="outlined" class="see" [routerLink]="link()" [attr.aria-label]="'Ver a ficha de ' + c.name">
       <mat-icon aria-hidden="true">menu_book</mat-icon>Ver a ficha
     </a>
+    @if (seeable()) {
+      <app-familiar-eyes-button
+        [block]="true"
+        [campaignId]="campaignId()"
+        [characterId]="c.characterId"
+        [characterName]="ownerName()"
+        [familiarName]="c.name"
+      />
+    }
     <div class="acts">
       <button type="button" class="act js-rename" (click)="open('rename')">
         <mat-icon aria-hidden="true">edit</mat-icon>Renomear

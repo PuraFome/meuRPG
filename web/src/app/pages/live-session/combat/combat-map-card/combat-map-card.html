@@ -36,6 +36,7 @@
   <app-combat-map
     [fog]="fog()"
     (fogSettled)="onFogSettled($event)"
+    (fogLoadingChange)="onFogLoading($event)"
     [image]="image()"
     [mapName]="mapName()"
     [columns]="encounter().gridColumns"
@@ -83,21 +84,21 @@
   }
 
   @if (legend()) {
-  <app-map-layers-legend class="legend" [layers]="layers() ?? emptyLayers">
+  <app-map-layers-legend class="legend" [layers]="layers() ?? emptyLayers" [onMap]="!!fog()">
       @if (fogLegend()?.seen) {
-        <li before><span class="mr-swatch mr-swatch--seen" aria-hidden="true"></span>Visto</li>
+        <li before><span class="mr-swatch mr-swatch--sample" aria-hidden="true"></span>Visto</li>
       }
       @if (fogLegend()?.dim) {
-        <li before><span class="mr-swatch mr-swatch--dim" aria-hidden="true"></span>Penumbra</li>
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--dim" aria-hidden="true"></span>Penumbra</li>
       }
       @if (fogLegend()?.grey) {
-        <li before><span class="mr-swatch mr-swatch--grey" aria-hidden="true"></span>No escuro, em cinza</li>
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--grey" aria-hidden="true"></span>No escuro, em cinza</li>
       }
       @if (fogLegend()?.remembered) {
-        <li before><span class="mr-swatch mr-swatch--remembered" aria-hidden="true"></span>Já visto</li>
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--remembered" aria-hidden="true"></span>Já visto</li>
       }
       @if (fogLegend()?.unseen) {
-        <li before><span class="mr-swatch mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
+        <li before><span class="mr-swatch mr-swatch--sample mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
       }
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" />Jogador</li>

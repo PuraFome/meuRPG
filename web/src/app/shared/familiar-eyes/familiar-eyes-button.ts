@@ -18,6 +18,7 @@ import { openFamiliarEyes } from './familiar-eyes-sheet';
  */
 @Component({
   selector: 'app-familiar-eyes-button',
+  host: { '[class.eyes--block]': 'block()' },
   imports: [MatButtonModule, MatIconModule],
   template: `
     <button mat-stroked-button type="button" class="eyes" [disabled]="disabled()" (click)="ask()">
@@ -27,6 +28,14 @@ import { openFamiliarEyes } from './familiar-eyes-sheet';
   styles: `
     :host {
       display: inline-block;
+    }
+
+    :host(.eyes--block) {
+      display: block;
+    }
+
+    :host(.eyes--block) .eyes {
+      width: 100%;
     }
 
     .eyes {
@@ -52,6 +61,8 @@ export class FamiliarEyesButton {
   /** A combat is on: the question says the action is spent. */
   readonly inCombat = input(false);
   readonly disabled = input(false);
+  /** As wide as its container (a card on a phone). */
+  readonly block = input(false);
 
   /** The sight started. */
   readonly started = output<void>();

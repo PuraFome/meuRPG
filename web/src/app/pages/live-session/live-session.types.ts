@@ -161,6 +161,8 @@ export interface PlayerSheetVm {
   readonly armorClass: number | null;
   /** "Mago 3, Gnomo das Rochas". */
   readonly summary: string;
+  /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */
+  readonly senses: readonly string[];
 }
 
 /** From `ListCharacters`, what the master's "Grupo" row shows under a

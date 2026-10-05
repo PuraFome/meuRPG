@@ -52,9 +52,18 @@
   line-height: 20px;
 }
 
-.opt__check {
+.opt__disc {
+  box-sizing: border-box;
   flex: none;
-  color: var(--mr-accent-text);
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+}
+
+.opt--on .opt__disc {
+  border-color: var(--mr-accent);
+  background: radial-gradient(var(--mr-accent) 0 45%, transparent 50%);
 }
 
 .note {

@@ -82,6 +82,9 @@ import { OpportunitySheet, type OpportunityAnswer, type OpportunitySheetData } f
 import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
+import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { openFamiliarEyes } from '../../../shared/familiar-eyes/familiar-eyes-sheet';
 import { openSheet } from './sheet-host';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { OrderColumn } from './turn-panel/order-column';
@@ -136,6 +139,7 @@ export class CombatView {
   private readonly maps = inject(MapsClient);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
+  private readonly creaturesApi = inject(CreaturesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
@@ -209,6 +213,25 @@ export class CombatView {
   });
   /** The characters whose "Dano/Cura" has a vitals row to adjust. */
   protected readonly adjustable = computed(() => new Set(this.vitals().map((v) => v.characterId)));
+  /** The player's familiar ("Nanquim"), for the action "Ver pelos olhos do Nanquim": read once for the character, and again when the combat changes who they are. */
+  protected readonly familiar = signal<string | null>(null);
+  /** "Ver pelos olhos do Nanquim": the question first; the stream brings the band, the action spent and the blind line. */
+  protected askFamiliarEyes(): void {
+    const mine = this.own();
+    const name = this.familiar();
+    if (!mine || !name) {
+      return;
+    }
+    openFamiliarEyes(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      characterId: mine.characterId,
+      characterName: mine.label,
+      familiarName: name,
+      inCombat: true,
+    }).subscribe();
+  }
+
+  protected readonly lookingThroughFamiliar = computed(() => !!this.own()?.familiarSightCreatureId);
   protected readonly own = computed(() => {
     const e = this.encounter();
     return e ? ownCombatant(e) : null;
@@ -430,6 +453,23 @@ export class CombatView {
   protected readonly spellDetails = signal<ReadonlyMap<string, SpellDetails>>(new Map());
 
   constructor() {
+    // The familiar's name, for the action "Ver pelos olhos do Nanquim" (the owner's list: RN-20).
+    effect(() => {
+      const mine = this.own();
+      const campaignId = this.campaignId();
+      const looking = this.lookingThroughFamiliar();
+      if (this.isMaster() || !mine || looking) {
+        untracked(() => this.familiar.set(null));
+        return;
+      }
+      untracked(
+        () =>
+          void this.creaturesApi.list(campaignId, mine.characterId).then(
+            (list) => this.familiar.set(list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null),
+            () => this.familiar.set(null),
+          ),
+      );
+    });
     effect(() => {
       const spells = this.options()?.options?.spells ?? [];
       const campaignId = this.campaignId();

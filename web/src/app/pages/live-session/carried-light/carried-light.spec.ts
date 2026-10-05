@@ -50,7 +50,7 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
     const { el } = setup('light:torch');
     expect(Array.from(el.querySelectorAll('.opt'), (o) => text(o))).toEqual([
       'Nenhuma Sem luz: só enxerga o que já está iluminado',
-      'Tocha 6 m claro + 6 m de penumbra check',
+      'Tocha 6 m claro + 6 m de penumbra',
       'Lanterna coberta 9 m claro + 9 m de penumbra',
       'Luz 6 m claro + 6 m de penumbra',
     ]);

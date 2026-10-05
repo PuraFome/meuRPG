@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 
 import type { MapLayers } from '../../core/maps/layers';
+import { Sight } from '../../core/maps/vision';
 import {
   type TileProgress,
+  seenCount,
   type TileRect,
   type Vision,
   shadeRects,
@@ -39,8 +41,12 @@ export interface FogImage {
  *   too), "já visto" under 60 % black with fine dots, "não visto" solid black.
  *   Squares of a kind are joined into blocks. The pieces carry `data-shade`, and
  *   the host carries the counts, so a test reads the shading without pixels.
- * - **Loading.** `settledChange` tells which tiles are in; the screen says "parte N
- *   de M" and keeps the tokens off the places still waiting.
+ * - **Loading is for the first load only.** Until every tile of a map and viewer has arrived once, a place
+ *   waiting is striped (`loadingChange` says so, for the notice "parte N de M"). A tile that arrives later,
+ *   because the viewer saw more, never brings the stripes or the notice back; `settledChange` tells which
+ *   tiles are in, so the screen can keep an NPC's token off a place still on its way.
+ * - **What was seen keeps its marks.** The layers are drawn under the shading, and the ones on remembered squares again over
+ *   it, faded, so a remembered wall keeps its hatch, darkened with the picture.
  *
  * Presentational: it never calls the API. Decorative for assistive tech: the
  * legend, the caption and the lists say what the map holds.
@@ -58,6 +64,7 @@ export interface FogImage {
     '[attr.data-tiles]': 'rects().length',
     '[attr.data-tiles-ready]': 'progress().done',
     '[attr.data-shaded]': 'shaded()',
+    '[attr.data-seen]': 'seen()',
   },
 })
 export class FogBase {
@@ -68,19 +75,35 @@ export class FogBase {
   /** The master reading as a player's character ("Ver como"): the tile URLs say so. */
   readonly forCharacter = input<string | null>(null);
 
+  /** Whether the first load is still going: some tile of this map and viewer has not arrived yet. */
+  readonly loadingChange = output<boolean>();
   /** The places whose tile has arrived (or failed: a place that will never come is not waited for). */
   readonly settledChange = output<ReadonlySet<string>>();
 
   /** The tiles that have settled at least once, by place. */
   private readonly settled = signal<ReadonlySet<string>>(new Set());
+  /** True until every tile has arrived once; a map and a viewer start again at true. */
+  private readonly initial = signal(true);
 
   /** The route of the tiles: another map is another set of tiles (a changed revision is not). */
   private readonly route = computed(() => this.vision().tilesPath);
   protected readonly rects = computed(() => tileRects(this.vision()));
   protected readonly progress = computed(() => tileProgress(this.rects(), this.settled()));
   protected readonly blocks = computed(() => shadeRects(this.vision()));
+  /** The layers on the squares seen before and not now, to draw again over their shading. */
+  protected readonly remembered = computed<MapLayers | null>(() => {
+    const l = this.layers();
+    const v = this.vision();
+    if (!l || l.columns !== v.columns) {
+      return null;
+    }
+    const on = (s: { col: number; row: number }) => v.states[s.row * v.columns + s.col] === Sight.Remembered;
+    const out = { ...l, walls: l.walls.filter(on), terrain: l.terrain.filter(on), half: l.half.filter(on), threeQuarters: l.threeQuarters.filter(on) };
+    return out.walls.length + out.terrain.length + out.half.length + out.threeQuarters.length > 0 ? out : null;
+  });
   protected readonly grey = computed(() => this.blocks().filter((b) => b.shade === 'grey'));
   protected readonly dark = computed(() => this.blocks().filter((b) => b.shade !== 'grey'));
+  protected readonly seen = computed(() => seenCount(this.vision()));
   protected readonly shaded = computed(() => {
     const counts: Record<string, number> = { dim: 0, grey: 0, remembered: 0, unseen: 0 };
     for (const b of this.blocks()) {
@@ -94,8 +117,19 @@ export class FogBase {
     effect(() => {
       this.route();
       this.forCharacter();
-      untracked(() => this.settled.set(new Set()));
+      untracked(() => {
+        this.settled.set(new Set());
+        this.initial.set(true);
+      });
     });
+    // Every tile in once: the first load is over for good.
+    effect(() => {
+      const { done, total } = this.progress();
+      if (done >= total) {
+        untracked(() => this.initial.set(false));
+      }
+    });
+    effect(() => this.loadingChange.emit(this.initial() && this.progress().done < this.progress().total));
     effect(() => this.settledChange.emit(this.settled()));
   }
 
@@ -104,7 +138,7 @@ export class FogBase {
   }
 
   protected pending(rect: TileRect): boolean {
-    return !this.settled().has(rect.key);
+    return this.initial() && !this.settled().has(rect.key);
   }
 
   protected settle(rect: TileRect): void {

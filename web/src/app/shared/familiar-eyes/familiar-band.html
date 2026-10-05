@@ -4,11 +4,7 @@
     <p><strong>{{ title() }}</strong></p>
     @if (inCombat()) {
       <p>
-        @if (endsInRound() !== null) {
-          Até o começo da sua próxima vez, a rodada {{ endsInRound() }}.
-        } @else {
-          Até o começo da sua próxima vez.
-        }
+        Até o começo da sua próxima vez.
         {{ characterName() }} está cego e surdo.
       </p>
     } @else {
