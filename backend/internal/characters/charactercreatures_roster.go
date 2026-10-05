@@ -367,25 +367,8 @@ func (s *Service) CheckSummon(ctx context.Context, campaignID, characterID, spel
 	out := link.SummonSpell{
 		Ritual: choices.Ritual, Concentration: choices.Concentration, CastingUnit: choices.CastingTime.Unit, Level: det.Spell.Level,
 	}
-	d := rules.Derive(b, s.rules)
-	for _, cs := range d.Spells {
-		if cs.Spell.Key != spellKey {
-			continue
-		}
-		out.Known, out.Prepared = true, cs.Prepared
-		// A ritual is cast from the spellbook (a wizard) or from the prepared
-		// list (the other classes that cast rituals).
-		for _, sc := range d.Spellcasting {
-			if sc.Ritual && choices.Ritual && (cs.Prepared || sc.Class == "class:wizard") {
-				out.CanRitual = true
-			}
-		}
-	}
-	// The Pact of the Chain lets a warlock cast Encontrar Familiar as a ritual
-	// without having the spell (SRD 5.1): it is never prepared for a slot.
-	if spellKey == "spell:find-familiar" && choices.Ritual && slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return f.Key == "feature:pact-of-the-chain" }) {
-		out.Known, out.CanRitual = true, true
-	}
+	st := s.summonStanding(rules.Derive(b, s.rules), spellKey, choices.Ritual)
+	out.Known, out.Prepared, out.CanRitual = st.known, st.prepared, st.canRitual
 	made, err := s.rules.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys})
 	if err != nil {
 		return out, err
@@ -394,6 +377,36 @@ func (s *Service) CheckSummon(ctx context.Context, campaignID, characterID, spel
 		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack})
 	}
 	return out, nil
+}
+
+// summonStanding is what a character's sheet says about a summoning spell: the
+// spell is on it (known), ready (prepared) and castable as a ritual. CheckSummon
+// and GetSummonOptions share it, so the read and the cast agree.
+type summonStanding struct{ known, prepared, canRitual bool }
+
+// summonStanding works it out from the derived sheet; ritualSpell is whether the
+// spell is a ritual at all.
+func (s *Service) summonStanding(d rules.Derived, spellKey string, ritualSpell bool) summonStanding {
+	var out summonStanding
+	for _, cs := range d.Spells {
+		if cs.Spell.Key != spellKey {
+			continue
+		}
+		out.known, out.prepared = true, cs.Prepared
+		// A ritual is cast from the spellbook (a wizard) or from the prepared
+		// list (the other classes that cast rituals).
+		for _, sc := range d.Spellcasting {
+			if sc.Ritual && ritualSpell && (cs.Prepared || sc.Class == "class:wizard") {
+				out.canRitual = true
+			}
+		}
+	}
+	// The Pact of the Chain lets a warlock cast Encontrar Familiar as a ritual
+	// without having the spell (SRD 5.1): it is never prepared for a slot.
+	if spellKey == "spell:find-familiar" && ritualSpell && slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return f.Key == "feature:pact-of-the-chain" }) {
+		out.known, out.canRitual = true, true
+	}
+	return out
 }
 
 // creatureDerived is the stat block of a creature as the combat reads it: the

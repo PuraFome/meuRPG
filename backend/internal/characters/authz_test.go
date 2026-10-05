@@ -289,6 +289,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.ListCharacterCreatures(ctx, connect.NewRequest(&charactersv1.ListCharacterCreaturesRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
 			return err
 		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// What the character can summon (MR-037): the same access as the list.
+		{"GetSummonOptions", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.GetSummonOptions(ctx, connect.NewRequest(&charactersv1.GetSummonOptionsRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		// The beasts a druid may become (MR-037): the master and the character's own
 		// player read them; another player and the pending member get not_found.
 		{"ListWildShapeForms", "", nil, func(ctx context.Context, u *user) error {

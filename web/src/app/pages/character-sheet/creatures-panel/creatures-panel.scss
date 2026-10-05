@@ -1,0 +1,97 @@
+:host {
+  display: block;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.panel__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// An empty live region takes no room.
+.live:empty {
+  display: none;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cast {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cast__btn {
+  --mat-button-outlined-container-height: 48px;
+  width: 100%;
+}
+
+.cast__cost {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.cast__why {
+  display: block;
+  color: var(--mr-warning-ink);
+}
+
+.retry {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+// The title takes the focus after a dismissal (nothing else is left to land on); no ring on a heading.
+.js-title:focus {
+  outline: none;
+}

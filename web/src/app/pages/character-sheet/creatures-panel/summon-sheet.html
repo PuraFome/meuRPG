@@ -1,0 +1,105 @@
+<!-- A dialog (tablet and up) has a definite height, like "Dar uma criatura": the list takes what is left. The phone's bottom sheet keeps its own. -->
+<app-sheet-frame
+  [title]="spell()?.namePt ?? data.spellKey"
+  [subtitle]="subtitle()"
+  [phone]="inSheet"
+  [height]="inSheet ? '' : 'min(700px, calc(92dvh - 48px))'"
+  titleId="summon-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (options() === null) {
+      <p class="wait" role="status">Lendo o que a sua ficha conjura…</p>
+    } @else if (spell(); as s) {
+      @if (replacesNote()) {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ replacesNote() }}</p>
+        </div>
+      }
+
+      @if (familiar()) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fixed">
+          <mat-label>Nome do familiar</mat-label>
+          <input matInput name="name" autocomplete="off" [maxlength]="max" [ngModel]="name()" (ngModelChange)="setName($event)" />
+          <mat-hint align="end">{{ nameCounter(name().length, max) }}</mat-hint>
+        </mat-form-field>
+      }
+
+      @if (!ritual()) {
+        @if (slotRows().length === 0) {
+          <div class="mr-notice mr-notice--warning fixed" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>Não há espaço de {{ s.level }}º círculo ou maior nesta ficha.</p>
+          </div>
+        } @else {
+          <app-slot-picker class="fixed" [rows]="slotRows()" [chosen]="slot()" (pick)="pickSlot($event)" />
+        }
+      }
+
+      @if (circleOptions().length > 1) {
+        <fieldset class="options fixed">
+          <legend class="cap">Quantas criaturas</legend>
+          @for (o of circleOptions(); track $index) {
+            <label class="opt" [class.opt--on]="option() === $index">
+              <input type="radio" class="mr-visually-hidden" name="option" [checked]="option() === $index" (change)="pickOption($index)" />
+              <mat-icon aria-hidden="true">{{ option() === $index ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+              <span>{{ optionLabel(o) }}</span>
+            </label>
+          }
+        </fieldset>
+      }
+
+      @if (opt()) {
+        <div class="forms">
+          <span class="cap" id="forms-cap">{{ listLabel() }}</span>
+          @if (loadingRows()) {
+            <p class="wait" role="status">Abrindo o livro de regras…</p>
+          } @else {
+            <app-creature-choice-list
+              [rows]="rows()"
+              [chosen]="single()"
+              [multi]="several()"
+              [counts]="counts()"
+              [full]="total() >= count()"
+              [label]="familiar() ? 'Forma' : 'Criatura'"
+              [searchable]="rows().length > 6"
+              searchLabel="Buscar criatura"
+              (pick)="pick($event)"
+              (step)="step($event)"
+            />
+          }
+        </div>
+      }
+    }
+  </div>
+
+  <div foot>
+    @if (spell()) {
+      @if (missing()) {
+        <p class="line line--missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+      } @else {
+        <p class="line" role="status"><mat-icon aria-hidden="true">info</mat-icon><span><b>{{ costLine() }}</b></span></p>
+      }
+    }
+    <button
+      type="button"
+      mat-flat-button
+      class="go"
+      [class.mr-button--off]="!ready()"
+      [disabled]="!ready()"
+      disabledInteractive
+      (click)="cast()"
+    >
+      <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ buttonLabel() }}
+    </button>
+    <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+  </div>
+</app-sheet-frame>

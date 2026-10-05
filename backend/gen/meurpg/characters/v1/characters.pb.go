@@ -6331,6 +6331,606 @@ func (x *ListWildShapeFormsResponse) GetNoSwim() bool {
 	return false
 }
 
+// GetSummonOptionsRequest names a character.
+type GetSummonOptionsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The campaign (a UUID).
+	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// A player's character of the campaign (a UUID).
+	CharacterId   string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSummonOptionsRequest) Reset() {
+	*x = GetSummonOptionsRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSummonOptionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSummonOptionsRequest) ProtoMessage() {}
+
+func (x *GetSummonOptionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSummonOptionsRequest.ProtoReflect.Descriptor instead.
+func (*GetSummonOptionsRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *GetSummonOptionsRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *GetSummonOptionsRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// GetSummonOptionsResponse is what the character can summon.
+type GetSummonOptionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The summoning spells the character can cast, lowest circle first.
+	Spells []*SummonSpellOptions `protobuf:"bytes,1,rep,name=spells,proto3" json:"spells,omitempty"`
+	// The character's spell slots, lowest circle first, pact magic slots
+	// (`pact`) included: the casting sheet's "Espaço de magia a gastar".
+	Slots         []*SummonSlot `protobuf:"bytes,2,rep,name=slots,proto3" json:"slots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSummonOptionsResponse) Reset() {
+	*x = GetSummonOptionsResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSummonOptionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSummonOptionsResponse) ProtoMessage() {}
+
+func (x *GetSummonOptionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSummonOptionsResponse.ProtoReflect.Descriptor instead.
+func (*GetSummonOptionsResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *GetSummonOptionsResponse) GetSpells() []*SummonSpellOptions {
+	if x != nil {
+		return x.Spells
+	}
+	return nil
+}
+
+func (x *GetSummonOptionsResponse) GetSlots() []*SummonSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+// SummonSpellOptions is one summoning spell the character can cast.
+type SummonSpellOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The spell, "spell:find-familiar", "spell:animate-dead" or
+	// "spell:conjure-animals".
+	SpellKey string `protobuf:"bytes,1,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
+	// Its Portuguese name ("Encontrar Familiar").
+	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// The spell's own circle, 1 to 9.
+	Level int32 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
+	// How long it takes, in Portuguese ("1 hora", "1 minuto", "1 ação").
+	CastingTimePt string `protobuf:"bytes,4,opt,name=casting_time_pt,json=castingTimePt,proto3" json:"casting_time_pt,omitempty"`
+	// Whether the spell is a ritual and whether it needs concentration.
+	Ritual        bool `protobuf:"varint,5,opt,name=ritual,proto3" json:"ritual,omitempty"`
+	Concentration bool `protobuf:"varint,6,opt,name=concentration,proto3" json:"concentration,omitempty"`
+	// Whether this character can cast it as a ritual (no slot): a wizard from the
+	// spellbook, another caster from its prepared list, a warlock with the Pact
+	// of the Chain for Encontrar Familiar. Always false for a spell that is not a
+	// ritual.
+	CanRitual bool `protobuf:"varint,7,opt,name=can_ritual,json=canRitual,proto3" json:"can_ritual,omitempty"`
+	// Whether this character can cast it with a slot: the spell is on the sheet and
+	// ready (prepared, or a spell its class knows).
+	CanCastWithSlot bool `protobuf:"varint,8,opt,name=can_cast_with_slot,json=canCastWithSlot,proto3" json:"can_cast_with_slot,omitempty"`
+	// What it may bring at each circle the character can cast it at: the spell's own
+	// circle when `can_ritual`, and each circle of a slot the character has
+	// from the spell's up. Lowest first.
+	Circles []*SummonCircle `protobuf:"bytes,9,rep,name=circles,proto3" json:"circles,omitempty"`
+	// What a casting would send away: the character's familiar for Encontrar
+	// Familiar, and the creatures a previous concentration holds for a spell that
+	// needs concentration (a new casting ends it, RN-22). Empty when nothing goes.
+	Replaces      []*ReplacedCreature `protobuf:"bytes,10,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SummonSpellOptions) Reset() {
+	*x = SummonSpellOptions{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SummonSpellOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SummonSpellOptions) ProtoMessage() {}
+
+func (x *SummonSpellOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SummonSpellOptions.ProtoReflect.Descriptor instead.
+func (*SummonSpellOptions) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *SummonSpellOptions) GetSpellKey() string {
+	if x != nil {
+		return x.SpellKey
+	}
+	return ""
+}
+
+func (x *SummonSpellOptions) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *SummonSpellOptions) GetLevel() int32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *SummonSpellOptions) GetCastingTimePt() string {
+	if x != nil {
+		return x.CastingTimePt
+	}
+	return ""
+}
+
+func (x *SummonSpellOptions) GetRitual() bool {
+	if x != nil {
+		return x.Ritual
+	}
+	return false
+}
+
+func (x *SummonSpellOptions) GetConcentration() bool {
+	if x != nil {
+		return x.Concentration
+	}
+	return false
+}
+
+func (x *SummonSpellOptions) GetCanRitual() bool {
+	if x != nil {
+		return x.CanRitual
+	}
+	return false
+}
+
+func (x *SummonSpellOptions) GetCanCastWithSlot() bool {
+	if x != nil {
+		return x.CanCastWithSlot
+	}
+	return false
+}
+
+func (x *SummonSpellOptions) GetCircles() []*SummonCircle {
+	if x != nil {
+		return x.Circles
+	}
+	return nil
+}
+
+func (x *SummonSpellOptions) GetReplaces() []*ReplacedCreature {
+	if x != nil {
+		return x.Replaces
+	}
+	return nil
+}
+
+// SummonCircle is what a spell may bring at one circle.
+type SummonCircle struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The circle of the slot (the spell's own for a ritual), 1 to 9.
+	Circle int32 `protobuf:"varint,1,opt,name=circle,proto3" json:"circle,omitempty"`
+	// The options, in the order `SummonChoice.option` counts them from 0.
+	Options       []*SummonOption `protobuf:"bytes,2,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SummonCircle) Reset() {
+	*x = SummonCircle{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SummonCircle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SummonCircle) ProtoMessage() {}
+
+func (x *SummonCircle) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SummonCircle.ProtoReflect.Descriptor instead.
+func (*SummonCircle) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *SummonCircle) GetCircle() int32 {
+	if x != nil {
+		return x.Circle
+	}
+	return 0
+}
+
+func (x *SummonCircle) GetOptions() []*SummonOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+// SummonOption is one thing a casting may summon: `count` creatures, each one
+// of `forms`, or, when there are no forms, any creature of `type` whose
+// challenge rating is `max_cr` or lower. A casting picks the kind of each
+// creature on its own (`SummonChoice.creature_keys`), so a mixed set (two
+// skeletons and a zombie) is allowed.
+type SummonOption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many creatures, already counting the circle (Conjurar Animais doubles at
+	// the 5th, Animar os Mortos adds two for each circle above the 3rd).
+	Count int32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	// The creatures a casting may choose from. Empty when `type` and `max_cr`
+	// say it.
+	Forms []*SummonForm `protobuf:"bytes,2,rep,name=forms,proto3" json:"forms,omitempty"`
+	// The SRD's creature type ("beast") and the highest challenge rating ("1/2")
+	// of an option with no forms: the creatures come from
+	// ContentService.ListCreatures with these filters.
+	Type  string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	MaxCr string `protobuf:"bytes,4,opt,name=max_cr,json=maxCr,proto3" json:"max_cr,omitempty"`
+	// What a creature of this option may do on its own in a combat
+	// (meurpg.play.v1.CreatureAttack, as its number: 1 none, 2 reaction, 3 full).
+	// For an option with forms, each form says its own.
+	Attack        int32 `protobuf:"varint,5,opt,name=attack,proto3" json:"attack,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SummonOption) Reset() {
+	*x = SummonOption{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SummonOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SummonOption) ProtoMessage() {}
+
+func (x *SummonOption) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SummonOption.ProtoReflect.Descriptor instead.
+func (*SummonOption) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *SummonOption) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SummonOption) GetForms() []*SummonForm {
+	if x != nil {
+		return x.Forms
+	}
+	return nil
+}
+
+func (x *SummonOption) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *SummonOption) GetMaxCr() string {
+	if x != nil {
+		return x.MaxCr
+	}
+	return ""
+}
+
+func (x *SummonOption) GetAttack() int32 {
+	if x != nil {
+		return x.Attack
+	}
+	return 0
+}
+
+// SummonForm is a creature a casting may choose.
+type SummonForm struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SRD creature, "monster:raven" (ContentService.GetCreature).
+	MonsterKey string `protobuf:"bytes,1,opt,name=monster_key,json=monsterKey,proto3" json:"monster_key,omitempty"`
+	// Its Portuguese name ("Corvo").
+	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// What it may do on its own in a combat, as SummonOption.attack.
+	Attack        int32 `protobuf:"varint,3,opt,name=attack,proto3" json:"attack,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SummonForm) Reset() {
+	*x = SummonForm{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SummonForm) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SummonForm) ProtoMessage() {}
+
+func (x *SummonForm) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SummonForm.ProtoReflect.Descriptor instead.
+func (*SummonForm) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *SummonForm) GetMonsterKey() string {
+	if x != nil {
+		return x.MonsterKey
+	}
+	return ""
+}
+
+func (x *SummonForm) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *SummonForm) GetAttack() int32 {
+	if x != nil {
+		return x.Attack
+	}
+	return 0
+}
+
+// SummonSlot is one circle of the character's spell slots.
+type SummonSlot struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The circle, 1 to 9 (the pact slots' level for pact magic).
+	Level int32 `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
+	// True for a warlock's pact magic slots: they are all one circle and are cast
+	// with `SpellSlot.pact`.
+	Pact bool `protobuf:"varint,2,opt,name=pact,proto3" json:"pact,omitempty"`
+	// How many of this circle the character has, and how many are free.
+	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	Free          int32 `protobuf:"varint,4,opt,name=free,proto3" json:"free,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SummonSlot) Reset() {
+	*x = SummonSlot{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SummonSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SummonSlot) ProtoMessage() {}
+
+func (x *SummonSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SummonSlot.ProtoReflect.Descriptor instead.
+func (*SummonSlot) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *SummonSlot) GetLevel() int32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *SummonSlot) GetPact() bool {
+	if x != nil {
+		return x.Pact
+	}
+	return false
+}
+
+func (x *SummonSlot) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *SummonSlot) GetFree() int32 {
+	if x != nil {
+		return x.Free
+	}
+	return 0
+}
+
+// ReplacedCreature is a creature a casting would send away.
+type ReplacedCreature struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The creature (a UUID) and the name the table gave it.
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The SRD creature kind, "monster:dire-wolf", and its Portuguese name.
+	MonsterKey    string `protobuf:"bytes,3,opt,name=monster_key,json=monsterKey,proto3" json:"monster_key,omitempty"`
+	MonsterNamePt string `protobuf:"bytes,4,opt,name=monster_name_pt,json=monsterNamePt,proto3" json:"monster_name_pt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReplacedCreature) Reset() {
+	*x = ReplacedCreature{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReplacedCreature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReplacedCreature) ProtoMessage() {}
+
+func (x *ReplacedCreature) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReplacedCreature.ProtoReflect.Descriptor instead.
+func (*ReplacedCreature) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{75}
+}
+
+func (x *ReplacedCreature) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ReplacedCreature) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ReplacedCreature) GetMonsterKey() string {
+	if x != nil {
+		return x.MonsterKey
+	}
+	return ""
+}
+
+func (x *ReplacedCreature) GetMonsterNamePt() string {
+	if x != nil {
+		return x.MonsterNamePt
+	}
+	return ""
+}
+
 var File_meurpg_characters_v1_characters_proto protoreflect.FileDescriptor
 
 const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
@@ -6777,7 +7377,54 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x05forms\x18\x01 \x03(\v2 .meurpg.rules.v1.CreatureSummaryR\x05forms\x12\x15\n" +
 	"\x06max_cr\x18\x02 \x01(\tR\x05maxCr\x12\x15\n" +
 	"\x06no_fly\x18\x03 \x01(\bR\x05noFly\x12\x17\n" +
-	"\ano_swim\x18\x04 \x01(\bR\x06noSwim*\xb2\x01\n" +
+	"\ano_swim\x18\x04 \x01(\bR\x06noSwim\"]\n" +
+	"\x17GetSummonOptionsRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x94\x01\n" +
+	"\x18GetSummonOptionsResponse\x12@\n" +
+	"\x06spells\x18\x01 \x03(\v2(.meurpg.characters.v1.SummonSpellOptionsR\x06spells\x126\n" +
+	"\x05slots\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonSlotR\x05slots\"\x94\x03\n" +
+	"\x12SummonSpellOptions\x12\x1b\n" +
+	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x12\x17\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
+	"\x05level\x18\x03 \x01(\x05R\x05level\x12&\n" +
+	"\x0fcasting_time_pt\x18\x04 \x01(\tR\rcastingTimePt\x12\x16\n" +
+	"\x06ritual\x18\x05 \x01(\bR\x06ritual\x12$\n" +
+	"\rconcentration\x18\x06 \x01(\bR\rconcentration\x12\x1d\n" +
+	"\n" +
+	"can_ritual\x18\a \x01(\bR\tcanRitual\x12+\n" +
+	"\x12can_cast_with_slot\x18\b \x01(\bR\x0fcanCastWithSlot\x12<\n" +
+	"\acircles\x18\t \x03(\v2\".meurpg.characters.v1.SummonCircleR\acircles\x12B\n" +
+	"\breplaces\x18\n" +
+	" \x03(\v2&.meurpg.characters.v1.ReplacedCreatureR\breplaces\"d\n" +
+	"\fSummonCircle\x12\x16\n" +
+	"\x06circle\x18\x01 \x01(\x05R\x06circle\x12<\n" +
+	"\aoptions\x18\x02 \x03(\v2\".meurpg.characters.v1.SummonOptionR\aoptions\"\x9f\x01\n" +
+	"\fSummonOption\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count\x126\n" +
+	"\x05forms\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonFormR\x05forms\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\tR\x04type\x12\x15\n" +
+	"\x06max_cr\x18\x04 \x01(\tR\x05maxCr\x12\x16\n" +
+	"\x06attack\x18\x05 \x01(\x05R\x06attack\"^\n" +
+	"\n" +
+	"SummonForm\x12\x1f\n" +
+	"\vmonster_key\x18\x01 \x01(\tR\n" +
+	"monsterKey\x12\x17\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x16\n" +
+	"\x06attack\x18\x03 \x01(\x05R\x06attack\"`\n" +
+	"\n" +
+	"SummonSlot\x12\x14\n" +
+	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
+	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04free\x18\x04 \x01(\x05R\x04free\"\x7f\n" +
+	"\x10ReplacedCreature\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
+	"\vmonster_key\x18\x03 \x01(\tR\n" +
+	"monsterKey\x12&\n" +
+	"\x0fmonster_name_pt\x18\x04 \x01(\tR\rmonsterNamePt*\xb2\x01\n" +
 	"\rCharacterKind\x12\x1e\n" +
 	"\x1aCHARACTER_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CHARACTER_KIND_PLAYER\x10\x01\x12\x18\n" +
@@ -6881,7 +7528,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x18CREATURE_SOURCE_FAMILIAR\x10\x01\x12 \n" +
 	"\x1cCREATURE_SOURCE_ANIMATE_DEAD\x10\x02\x12#\n" +
 	"\x1fCREATURE_SOURCE_CONJURE_ANIMALS\x10\x03\x12\x1a\n" +
-	"\x16CREATURE_SOURCE_MASTER\x10\x042\xa1\x14\n" +
+	"\x16CREATURE_SOURCE_MASTER\x10\x042\x99\x15\n" +
 	"\x10CharacterService\x12n\n" +
 	"\x0fCreateCharacter\x12,.meurpg.characters.v1.CreateCharacterRequest\x1a-.meurpg.characters.v1.CreateCharacterResponse\x12j\n" +
 	"\fGetCharacter\x12).meurpg.characters.v1.GetCharacterRequest\x1a*.meurpg.characters.v1.GetCharacterResponse\"\x03\x90\x02\x02\x12p\n" +
@@ -6904,7 +7551,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\fGiveCreature\x12).meurpg.characters.v1.GiveCreatureRequest\x1a*.meurpg.characters.v1.GiveCreatureResponse\x12k\n" +
 	"\x0eRenameCreature\x12+.meurpg.characters.v1.RenameCreatureRequest\x1a,.meurpg.characters.v1.RenameCreatureResponse\x12n\n" +
 	"\x0fDismissCreature\x12,.meurpg.characters.v1.DismissCreatureRequest\x1a-.meurpg.characters.v1.DismissCreatureResponse\x12\x86\x01\n" +
-	"\x17AdjustCreatureHitPoints\x124.meurpg.characters.v1.AdjustCreatureHitPointsRequest\x1a5.meurpg.characters.v1.AdjustCreatureHitPointsResponseB\xe7\x01\n" +
+	"\x17AdjustCreatureHitPoints\x124.meurpg.characters.v1.AdjustCreatureHitPointsRequest\x1a5.meurpg.characters.v1.AdjustCreatureHitPointsResponse\x12v\n" +
+	"\x10GetSummonOptions\x12-.meurpg.characters.v1.GetSummonOptionsRequest\x1a..meurpg.characters.v1.GetSummonOptionsResponse\"\x03\x90\x02\x02B\xe7\x01\n" +
 	"\x18com.meurpg.characters.v1B\x0fCharactersProtoP\x01ZHgithub.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1;charactersv1\xa2\x02\x03MCX\xaa\x02\x14Meurpg.Characters.V1\xca\x02\x14Meurpg\\Characters\\V1\xe2\x02 Meurpg\\Characters\\V1\\GPBMetadata\xea\x02\x16Meurpg::Characters::V1b\x06proto3"
 
 var (
@@ -6920,7 +7568,7 @@ func file_meurpg_characters_v1_characters_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_characters_v1_characters_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 77)
 var file_meurpg_characters_v1_characters_proto_goTypes = []any{
 	(CharacterKind)(0),                      // 0: meurpg.characters.v1.CharacterKind
 	(CharacterState)(0),                     // 1: meurpg.characters.v1.CharacterState
@@ -7002,141 +7650,157 @@ var file_meurpg_characters_v1_characters_proto_goTypes = []any{
 	(*AdjustCreatureHitPointsResponse)(nil), // 77: meurpg.characters.v1.AdjustCreatureHitPointsResponse
 	(*ListWildShapeFormsRequest)(nil),       // 78: meurpg.characters.v1.ListWildShapeFormsRequest
 	(*ListWildShapeFormsResponse)(nil),      // 79: meurpg.characters.v1.ListWildShapeFormsResponse
-	nil,                                     // 80: meurpg.characters.v1.LevelUp.NamesPtEntry
-	(*v1.DerivedSheet)(nil),                 // 81: meurpg.rules.v1.DerivedSheet
-	(*timestamppb.Timestamp)(nil),           // 82: google.protobuf.Timestamp
-	(*v1.AbilityScores)(nil),                // 83: meurpg.rules.v1.AbilityScores
-	(v1.CreatureSize)(0),                    // 84: meurpg.rules.v1.CreatureSize
-	(*v1.PactMagic)(nil),                    // 85: meurpg.rules.v1.PactMagic
-	(*v1.CreatureSummary)(nil),              // 86: meurpg.rules.v1.CreatureSummary
+	(*GetSummonOptionsRequest)(nil),         // 80: meurpg.characters.v1.GetSummonOptionsRequest
+	(*GetSummonOptionsResponse)(nil),        // 81: meurpg.characters.v1.GetSummonOptionsResponse
+	(*SummonSpellOptions)(nil),              // 82: meurpg.characters.v1.SummonSpellOptions
+	(*SummonCircle)(nil),                    // 83: meurpg.characters.v1.SummonCircle
+	(*SummonOption)(nil),                    // 84: meurpg.characters.v1.SummonOption
+	(*SummonForm)(nil),                      // 85: meurpg.characters.v1.SummonForm
+	(*SummonSlot)(nil),                      // 86: meurpg.characters.v1.SummonSlot
+	(*ReplacedCreature)(nil),                // 87: meurpg.characters.v1.ReplacedCreature
+	nil,                                     // 88: meurpg.characters.v1.LevelUp.NamesPtEntry
+	(*v1.DerivedSheet)(nil),                 // 89: meurpg.rules.v1.DerivedSheet
+	(*timestamppb.Timestamp)(nil),           // 90: google.protobuf.Timestamp
+	(*v1.AbilityScores)(nil),                // 91: meurpg.rules.v1.AbilityScores
+	(v1.CreatureSize)(0),                    // 92: meurpg.rules.v1.CreatureSize
+	(*v1.PactMagic)(nil),                    // 93: meurpg.rules.v1.PactMagic
+	(*v1.CreatureSummary)(nil),              // 94: meurpg.rules.v1.CreatureSummary
 }
 var file_meurpg_characters_v1_characters_proto_depIdxs = []int32{
-	0,  // 0: meurpg.characters.v1.Character.kind:type_name -> meurpg.characters.v1.CharacterKind
-	1,  // 1: meurpg.characters.v1.Character.state:type_name -> meurpg.characters.v1.CharacterState
-	15, // 2: meurpg.characters.v1.Character.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	24, // 3: meurpg.characters.v1.Character.story:type_name -> meurpg.characters.v1.CharacterStory
-	81, // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
-	82, // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
-	82, // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
-	82, // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
-	82, // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
-	2,  // 9: meurpg.characters.v1.Character.level_up_reason:type_name -> meurpg.characters.v1.LevelUpReason
-	0,  // 10: meurpg.characters.v1.CharacterSummary.kind:type_name -> meurpg.characters.v1.CharacterKind
-	1,  // 11: meurpg.characters.v1.CharacterSummary.state:type_name -> meurpg.characters.v1.CharacterState
-	82, // 12: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
-	3,  // 13: meurpg.characters.v1.CharacterBlocked.reason:type_name -> meurpg.characters.v1.CharacterBlockedReason
-	16, // 14: meurpg.characters.v1.CharacterSheet.full:type_name -> meurpg.characters.v1.FullSheet
-	22, // 15: meurpg.characters.v1.CharacterSheet.basic:type_name -> meurpg.characters.v1.BasicSheet
-	83, // 16: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
-	17, // 17: meurpg.characters.v1.FullSheet.classes:type_name -> meurpg.characters.v1.ClassLevel
-	18, // 18: meurpg.characters.v1.FullSheet.custom_background:type_name -> meurpg.characters.v1.CustomBackground
-	83, // 19: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	19, // 20: meurpg.characters.v1.FullSheet.hit_points:type_name -> meurpg.characters.v1.HitPoints
-	20, // 21: meurpg.characters.v1.FullSheet.equipment:type_name -> meurpg.characters.v1.Item
-	21, // 22: meurpg.characters.v1.FullSheet.coins:type_name -> meurpg.characters.v1.Coins
-	5,  // 23: meurpg.characters.v1.FullSheet.alignment:type_name -> meurpg.characters.v1.Alignment
-	4,  // 24: meurpg.characters.v1.HitPoints.method:type_name -> meurpg.characters.v1.HitPointsMethod
-	23, // 25: meurpg.characters.v1.BasicSheet.attacks:type_name -> meurpg.characters.v1.BasicAttack
-	84, // 26: meurpg.characters.v1.BasicSheet.size:type_name -> meurpg.rules.v1.CreatureSize
-	6,  // 27: meurpg.characters.v1.BasicAttack.damage_type:type_name -> meurpg.characters.v1.DamageType
-	25, // 28: meurpg.characters.v1.CharacterStory.personality:type_name -> meurpg.characters.v1.Personality
-	26, // 29: meurpg.characters.v1.CharacterStory.appearance:type_name -> meurpg.characters.v1.Appearance
-	0,  // 30: meurpg.characters.v1.CreateCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
-	15, // 31: meurpg.characters.v1.CreateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	24, // 32: meurpg.characters.v1.CreateCharacterRequest.story:type_name -> meurpg.characters.v1.CharacterStory
-	12, // 33: meurpg.characters.v1.CreateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	12, // 34: meurpg.characters.v1.GetCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	13, // 35: meurpg.characters.v1.ListCharactersResponse.characters:type_name -> meurpg.characters.v1.CharacterSummary
-	15, // 36: meurpg.characters.v1.UpdateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	12, // 37: meurpg.characters.v1.UpdateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	24, // 38: meurpg.characters.v1.UpdateCharacterStoryRequest.story:type_name -> meurpg.characters.v1.CharacterStory
-	12, // 39: meurpg.characters.v1.UpdateCharacterStoryResponse.character:type_name -> meurpg.characters.v1.Character
-	12, // 40: meurpg.characters.v1.SetStoryEditingResponse.character:type_name -> meurpg.characters.v1.Character
-	12, // 41: meurpg.characters.v1.MarkCharacterDeadResponse.character:type_name -> meurpg.characters.v1.Character
-	82, // 42: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	82, // 43: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	12, // 44: meurpg.characters.v1.ApproveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	52, // 45: meurpg.characters.v1.GetLevelUpOptionsResponse.options:type_name -> meurpg.characters.v1.LevelUpOptions
-	8,  // 46: meurpg.characters.v1.LevelUpOptions.dice_rule:type_name -> meurpg.characters.v1.LevelUpDiceRule
-	53, // 47: meurpg.characters.v1.LevelUpOptions.subclasses:type_name -> meurpg.characters.v1.LevelUpSubclass
-	7,  // 48: meurpg.characters.v1.LevelUpOptions.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
-	54, // 49: meurpg.characters.v1.LevelUpOptions.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
-	85, // 50: meurpg.characters.v1.LevelUpOptions.pact_magic_before:type_name -> meurpg.rules.v1.PactMagic
-	85, // 51: meurpg.characters.v1.LevelUpOptions.pact_magic_after:type_name -> meurpg.rules.v1.PactMagic
-	51, // 52: meurpg.characters.v1.LevelUpOptions.new_features:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	51, // 53: meurpg.characters.v1.LevelUpOptions.master_adds:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	54, // 54: meurpg.characters.v1.LevelUpSubclass.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
-	51, // 55: meurpg.characters.v1.LevelUpFeatureChoice.feature:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	51, // 56: meurpg.characters.v1.LevelUpFeatureChoice.options:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	9,  // 57: meurpg.characters.v1.LevelUpHitPoints.method:type_name -> meurpg.characters.v1.LevelUpHitPointsMethod
-	83, // 58: meurpg.characters.v1.LevelUpChoices.ability_increase:type_name -> meurpg.rules.v1.AbilityScores
-	55, // 59: meurpg.characters.v1.LevelUpChoices.hit_points:type_name -> meurpg.characters.v1.LevelUpHitPoints
-	10, // 60: meurpg.characters.v1.LevelUpRefusal.reason:type_name -> meurpg.characters.v1.LevelUpRefusalReason
-	56, // 61: meurpg.characters.v1.PreviewLevelUpRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	81, // 62: meurpg.characters.v1.PreviewLevelUpResponse.after:type_name -> meurpg.rules.v1.DerivedSheet
-	57, // 63: meurpg.characters.v1.PreviewLevelUpResponse.refusal:type_name -> meurpg.characters.v1.LevelUpRefusal
-	56, // 64: meurpg.characters.v1.LevelUpCharacterRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	12, // 65: meurpg.characters.v1.LevelUpCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	66, // 66: meurpg.characters.v1.ListLevelUpsResponse.level_ups:type_name -> meurpg.characters.v1.LevelUp
-	56, // 67: meurpg.characters.v1.LevelUp.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	80, // 68: meurpg.characters.v1.LevelUp.names_pt:type_name -> meurpg.characters.v1.LevelUp.NamesPtEntry
-	82, // 69: meurpg.characters.v1.LevelUp.created_at:type_name -> google.protobuf.Timestamp
-	11, // 70: meurpg.characters.v1.CharacterCreature.source:type_name -> meurpg.characters.v1.CreatureSource
-	82, // 71: meurpg.characters.v1.CharacterCreature.created_at:type_name -> google.protobuf.Timestamp
-	67, // 72: meurpg.characters.v1.ListCharacterCreaturesResponse.creatures:type_name -> meurpg.characters.v1.CharacterCreature
-	67, // 73: meurpg.characters.v1.GiveCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	67, // 74: meurpg.characters.v1.RenameCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	67, // 75: meurpg.characters.v1.AdjustCreatureHitPointsResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	86, // 76: meurpg.characters.v1.ListWildShapeFormsResponse.forms:type_name -> meurpg.rules.v1.CreatureSummary
-	27, // 77: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
-	29, // 78: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
-	31, // 79: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
-	33, // 80: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
-	35, // 81: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
-	37, // 82: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
-	39, // 83: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
-	41, // 84: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
-	43, // 85: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
-	45, // 86: meurpg.characters.v1.CharacterService.ApproveCharacter:input_type -> meurpg.characters.v1.ApproveCharacterRequest
-	47, // 87: meurpg.characters.v1.CharacterService.RejectCharacter:input_type -> meurpg.characters.v1.RejectCharacterRequest
-	49, // 88: meurpg.characters.v1.CharacterService.GetLevelUpOptions:input_type -> meurpg.characters.v1.GetLevelUpOptionsRequest
-	58, // 89: meurpg.characters.v1.CharacterService.PreviewLevelUp:input_type -> meurpg.characters.v1.PreviewLevelUpRequest
-	60, // 90: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:input_type -> meurpg.characters.v1.RollLevelUpHitPointsRequest
-	62, // 91: meurpg.characters.v1.CharacterService.LevelUpCharacter:input_type -> meurpg.characters.v1.LevelUpCharacterRequest
-	64, // 92: meurpg.characters.v1.CharacterService.ListLevelUps:input_type -> meurpg.characters.v1.ListLevelUpsRequest
-	68, // 93: meurpg.characters.v1.CharacterService.ListCharacterCreatures:input_type -> meurpg.characters.v1.ListCharacterCreaturesRequest
-	78, // 94: meurpg.characters.v1.CharacterService.ListWildShapeForms:input_type -> meurpg.characters.v1.ListWildShapeFormsRequest
-	70, // 95: meurpg.characters.v1.CharacterService.GiveCreature:input_type -> meurpg.characters.v1.GiveCreatureRequest
-	72, // 96: meurpg.characters.v1.CharacterService.RenameCreature:input_type -> meurpg.characters.v1.RenameCreatureRequest
-	74, // 97: meurpg.characters.v1.CharacterService.DismissCreature:input_type -> meurpg.characters.v1.DismissCreatureRequest
-	76, // 98: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:input_type -> meurpg.characters.v1.AdjustCreatureHitPointsRequest
-	28, // 99: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
-	30, // 100: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
-	32, // 101: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
-	34, // 102: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
-	36, // 103: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
-	38, // 104: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
-	40, // 105: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
-	42, // 106: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
-	44, // 107: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
-	46, // 108: meurpg.characters.v1.CharacterService.ApproveCharacter:output_type -> meurpg.characters.v1.ApproveCharacterResponse
-	48, // 109: meurpg.characters.v1.CharacterService.RejectCharacter:output_type -> meurpg.characters.v1.RejectCharacterResponse
-	50, // 110: meurpg.characters.v1.CharacterService.GetLevelUpOptions:output_type -> meurpg.characters.v1.GetLevelUpOptionsResponse
-	59, // 111: meurpg.characters.v1.CharacterService.PreviewLevelUp:output_type -> meurpg.characters.v1.PreviewLevelUpResponse
-	61, // 112: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:output_type -> meurpg.characters.v1.RollLevelUpHitPointsResponse
-	63, // 113: meurpg.characters.v1.CharacterService.LevelUpCharacter:output_type -> meurpg.characters.v1.LevelUpCharacterResponse
-	65, // 114: meurpg.characters.v1.CharacterService.ListLevelUps:output_type -> meurpg.characters.v1.ListLevelUpsResponse
-	69, // 115: meurpg.characters.v1.CharacterService.ListCharacterCreatures:output_type -> meurpg.characters.v1.ListCharacterCreaturesResponse
-	79, // 116: meurpg.characters.v1.CharacterService.ListWildShapeForms:output_type -> meurpg.characters.v1.ListWildShapeFormsResponse
-	71, // 117: meurpg.characters.v1.CharacterService.GiveCreature:output_type -> meurpg.characters.v1.GiveCreatureResponse
-	73, // 118: meurpg.characters.v1.CharacterService.RenameCreature:output_type -> meurpg.characters.v1.RenameCreatureResponse
-	75, // 119: meurpg.characters.v1.CharacterService.DismissCreature:output_type -> meurpg.characters.v1.DismissCreatureResponse
-	77, // 120: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:output_type -> meurpg.characters.v1.AdjustCreatureHitPointsResponse
-	99, // [99:121] is the sub-list for method output_type
-	77, // [77:99] is the sub-list for method input_type
-	77, // [77:77] is the sub-list for extension type_name
-	77, // [77:77] is the sub-list for extension extendee
-	0,  // [0:77] is the sub-list for field type_name
+	0,   // 0: meurpg.characters.v1.Character.kind:type_name -> meurpg.characters.v1.CharacterKind
+	1,   // 1: meurpg.characters.v1.Character.state:type_name -> meurpg.characters.v1.CharacterState
+	15,  // 2: meurpg.characters.v1.Character.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	24,  // 3: meurpg.characters.v1.Character.story:type_name -> meurpg.characters.v1.CharacterStory
+	89,  // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
+	90,  // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
+	90,  // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
+	90,  // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
+	90,  // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
+	2,   // 9: meurpg.characters.v1.Character.level_up_reason:type_name -> meurpg.characters.v1.LevelUpReason
+	0,   // 10: meurpg.characters.v1.CharacterSummary.kind:type_name -> meurpg.characters.v1.CharacterKind
+	1,   // 11: meurpg.characters.v1.CharacterSummary.state:type_name -> meurpg.characters.v1.CharacterState
+	90,  // 12: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
+	3,   // 13: meurpg.characters.v1.CharacterBlocked.reason:type_name -> meurpg.characters.v1.CharacterBlockedReason
+	16,  // 14: meurpg.characters.v1.CharacterSheet.full:type_name -> meurpg.characters.v1.FullSheet
+	22,  // 15: meurpg.characters.v1.CharacterSheet.basic:type_name -> meurpg.characters.v1.BasicSheet
+	91,  // 16: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
+	17,  // 17: meurpg.characters.v1.FullSheet.classes:type_name -> meurpg.characters.v1.ClassLevel
+	18,  // 18: meurpg.characters.v1.FullSheet.custom_background:type_name -> meurpg.characters.v1.CustomBackground
+	91,  // 19: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	19,  // 20: meurpg.characters.v1.FullSheet.hit_points:type_name -> meurpg.characters.v1.HitPoints
+	20,  // 21: meurpg.characters.v1.FullSheet.equipment:type_name -> meurpg.characters.v1.Item
+	21,  // 22: meurpg.characters.v1.FullSheet.coins:type_name -> meurpg.characters.v1.Coins
+	5,   // 23: meurpg.characters.v1.FullSheet.alignment:type_name -> meurpg.characters.v1.Alignment
+	4,   // 24: meurpg.characters.v1.HitPoints.method:type_name -> meurpg.characters.v1.HitPointsMethod
+	23,  // 25: meurpg.characters.v1.BasicSheet.attacks:type_name -> meurpg.characters.v1.BasicAttack
+	92,  // 26: meurpg.characters.v1.BasicSheet.size:type_name -> meurpg.rules.v1.CreatureSize
+	6,   // 27: meurpg.characters.v1.BasicAttack.damage_type:type_name -> meurpg.characters.v1.DamageType
+	25,  // 28: meurpg.characters.v1.CharacterStory.personality:type_name -> meurpg.characters.v1.Personality
+	26,  // 29: meurpg.characters.v1.CharacterStory.appearance:type_name -> meurpg.characters.v1.Appearance
+	0,   // 30: meurpg.characters.v1.CreateCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
+	15,  // 31: meurpg.characters.v1.CreateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	24,  // 32: meurpg.characters.v1.CreateCharacterRequest.story:type_name -> meurpg.characters.v1.CharacterStory
+	12,  // 33: meurpg.characters.v1.CreateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	12,  // 34: meurpg.characters.v1.GetCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	13,  // 35: meurpg.characters.v1.ListCharactersResponse.characters:type_name -> meurpg.characters.v1.CharacterSummary
+	15,  // 36: meurpg.characters.v1.UpdateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	12,  // 37: meurpg.characters.v1.UpdateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	24,  // 38: meurpg.characters.v1.UpdateCharacterStoryRequest.story:type_name -> meurpg.characters.v1.CharacterStory
+	12,  // 39: meurpg.characters.v1.UpdateCharacterStoryResponse.character:type_name -> meurpg.characters.v1.Character
+	12,  // 40: meurpg.characters.v1.SetStoryEditingResponse.character:type_name -> meurpg.characters.v1.Character
+	12,  // 41: meurpg.characters.v1.MarkCharacterDeadResponse.character:type_name -> meurpg.characters.v1.Character
+	90,  // 42: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	90,  // 43: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	12,  // 44: meurpg.characters.v1.ApproveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	52,  // 45: meurpg.characters.v1.GetLevelUpOptionsResponse.options:type_name -> meurpg.characters.v1.LevelUpOptions
+	8,   // 46: meurpg.characters.v1.LevelUpOptions.dice_rule:type_name -> meurpg.characters.v1.LevelUpDiceRule
+	53,  // 47: meurpg.characters.v1.LevelUpOptions.subclasses:type_name -> meurpg.characters.v1.LevelUpSubclass
+	7,   // 48: meurpg.characters.v1.LevelUpOptions.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
+	54,  // 49: meurpg.characters.v1.LevelUpOptions.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
+	93,  // 50: meurpg.characters.v1.LevelUpOptions.pact_magic_before:type_name -> meurpg.rules.v1.PactMagic
+	93,  // 51: meurpg.characters.v1.LevelUpOptions.pact_magic_after:type_name -> meurpg.rules.v1.PactMagic
+	51,  // 52: meurpg.characters.v1.LevelUpOptions.new_features:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	51,  // 53: meurpg.characters.v1.LevelUpOptions.master_adds:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	54,  // 54: meurpg.characters.v1.LevelUpSubclass.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
+	51,  // 55: meurpg.characters.v1.LevelUpFeatureChoice.feature:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	51,  // 56: meurpg.characters.v1.LevelUpFeatureChoice.options:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	9,   // 57: meurpg.characters.v1.LevelUpHitPoints.method:type_name -> meurpg.characters.v1.LevelUpHitPointsMethod
+	91,  // 58: meurpg.characters.v1.LevelUpChoices.ability_increase:type_name -> meurpg.rules.v1.AbilityScores
+	55,  // 59: meurpg.characters.v1.LevelUpChoices.hit_points:type_name -> meurpg.characters.v1.LevelUpHitPoints
+	10,  // 60: meurpg.characters.v1.LevelUpRefusal.reason:type_name -> meurpg.characters.v1.LevelUpRefusalReason
+	56,  // 61: meurpg.characters.v1.PreviewLevelUpRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	89,  // 62: meurpg.characters.v1.PreviewLevelUpResponse.after:type_name -> meurpg.rules.v1.DerivedSheet
+	57,  // 63: meurpg.characters.v1.PreviewLevelUpResponse.refusal:type_name -> meurpg.characters.v1.LevelUpRefusal
+	56,  // 64: meurpg.characters.v1.LevelUpCharacterRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	12,  // 65: meurpg.characters.v1.LevelUpCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	66,  // 66: meurpg.characters.v1.ListLevelUpsResponse.level_ups:type_name -> meurpg.characters.v1.LevelUp
+	56,  // 67: meurpg.characters.v1.LevelUp.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	88,  // 68: meurpg.characters.v1.LevelUp.names_pt:type_name -> meurpg.characters.v1.LevelUp.NamesPtEntry
+	90,  // 69: meurpg.characters.v1.LevelUp.created_at:type_name -> google.protobuf.Timestamp
+	11,  // 70: meurpg.characters.v1.CharacterCreature.source:type_name -> meurpg.characters.v1.CreatureSource
+	90,  // 71: meurpg.characters.v1.CharacterCreature.created_at:type_name -> google.protobuf.Timestamp
+	67,  // 72: meurpg.characters.v1.ListCharacterCreaturesResponse.creatures:type_name -> meurpg.characters.v1.CharacterCreature
+	67,  // 73: meurpg.characters.v1.GiveCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	67,  // 74: meurpg.characters.v1.RenameCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	67,  // 75: meurpg.characters.v1.AdjustCreatureHitPointsResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	94,  // 76: meurpg.characters.v1.ListWildShapeFormsResponse.forms:type_name -> meurpg.rules.v1.CreatureSummary
+	82,  // 77: meurpg.characters.v1.GetSummonOptionsResponse.spells:type_name -> meurpg.characters.v1.SummonSpellOptions
+	86,  // 78: meurpg.characters.v1.GetSummonOptionsResponse.slots:type_name -> meurpg.characters.v1.SummonSlot
+	83,  // 79: meurpg.characters.v1.SummonSpellOptions.circles:type_name -> meurpg.characters.v1.SummonCircle
+	87,  // 80: meurpg.characters.v1.SummonSpellOptions.replaces:type_name -> meurpg.characters.v1.ReplacedCreature
+	84,  // 81: meurpg.characters.v1.SummonCircle.options:type_name -> meurpg.characters.v1.SummonOption
+	85,  // 82: meurpg.characters.v1.SummonOption.forms:type_name -> meurpg.characters.v1.SummonForm
+	27,  // 83: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
+	29,  // 84: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
+	31,  // 85: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
+	33,  // 86: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
+	35,  // 87: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
+	37,  // 88: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
+	39,  // 89: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
+	41,  // 90: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
+	43,  // 91: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
+	45,  // 92: meurpg.characters.v1.CharacterService.ApproveCharacter:input_type -> meurpg.characters.v1.ApproveCharacterRequest
+	47,  // 93: meurpg.characters.v1.CharacterService.RejectCharacter:input_type -> meurpg.characters.v1.RejectCharacterRequest
+	49,  // 94: meurpg.characters.v1.CharacterService.GetLevelUpOptions:input_type -> meurpg.characters.v1.GetLevelUpOptionsRequest
+	58,  // 95: meurpg.characters.v1.CharacterService.PreviewLevelUp:input_type -> meurpg.characters.v1.PreviewLevelUpRequest
+	60,  // 96: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:input_type -> meurpg.characters.v1.RollLevelUpHitPointsRequest
+	62,  // 97: meurpg.characters.v1.CharacterService.LevelUpCharacter:input_type -> meurpg.characters.v1.LevelUpCharacterRequest
+	64,  // 98: meurpg.characters.v1.CharacterService.ListLevelUps:input_type -> meurpg.characters.v1.ListLevelUpsRequest
+	68,  // 99: meurpg.characters.v1.CharacterService.ListCharacterCreatures:input_type -> meurpg.characters.v1.ListCharacterCreaturesRequest
+	78,  // 100: meurpg.characters.v1.CharacterService.ListWildShapeForms:input_type -> meurpg.characters.v1.ListWildShapeFormsRequest
+	70,  // 101: meurpg.characters.v1.CharacterService.GiveCreature:input_type -> meurpg.characters.v1.GiveCreatureRequest
+	72,  // 102: meurpg.characters.v1.CharacterService.RenameCreature:input_type -> meurpg.characters.v1.RenameCreatureRequest
+	74,  // 103: meurpg.characters.v1.CharacterService.DismissCreature:input_type -> meurpg.characters.v1.DismissCreatureRequest
+	76,  // 104: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:input_type -> meurpg.characters.v1.AdjustCreatureHitPointsRequest
+	80,  // 105: meurpg.characters.v1.CharacterService.GetSummonOptions:input_type -> meurpg.characters.v1.GetSummonOptionsRequest
+	28,  // 106: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
+	30,  // 107: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
+	32,  // 108: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
+	34,  // 109: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
+	36,  // 110: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
+	38,  // 111: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
+	40,  // 112: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
+	42,  // 113: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
+	44,  // 114: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
+	46,  // 115: meurpg.characters.v1.CharacterService.ApproveCharacter:output_type -> meurpg.characters.v1.ApproveCharacterResponse
+	48,  // 116: meurpg.characters.v1.CharacterService.RejectCharacter:output_type -> meurpg.characters.v1.RejectCharacterResponse
+	50,  // 117: meurpg.characters.v1.CharacterService.GetLevelUpOptions:output_type -> meurpg.characters.v1.GetLevelUpOptionsResponse
+	59,  // 118: meurpg.characters.v1.CharacterService.PreviewLevelUp:output_type -> meurpg.characters.v1.PreviewLevelUpResponse
+	61,  // 119: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:output_type -> meurpg.characters.v1.RollLevelUpHitPointsResponse
+	63,  // 120: meurpg.characters.v1.CharacterService.LevelUpCharacter:output_type -> meurpg.characters.v1.LevelUpCharacterResponse
+	65,  // 121: meurpg.characters.v1.CharacterService.ListLevelUps:output_type -> meurpg.characters.v1.ListLevelUpsResponse
+	69,  // 122: meurpg.characters.v1.CharacterService.ListCharacterCreatures:output_type -> meurpg.characters.v1.ListCharacterCreaturesResponse
+	79,  // 123: meurpg.characters.v1.CharacterService.ListWildShapeForms:output_type -> meurpg.characters.v1.ListWildShapeFormsResponse
+	71,  // 124: meurpg.characters.v1.CharacterService.GiveCreature:output_type -> meurpg.characters.v1.GiveCreatureResponse
+	73,  // 125: meurpg.characters.v1.CharacterService.RenameCreature:output_type -> meurpg.characters.v1.RenameCreatureResponse
+	75,  // 126: meurpg.characters.v1.CharacterService.DismissCreature:output_type -> meurpg.characters.v1.DismissCreatureResponse
+	77,  // 127: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:output_type -> meurpg.characters.v1.AdjustCreatureHitPointsResponse
+	81,  // 128: meurpg.characters.v1.CharacterService.GetSummonOptions:output_type -> meurpg.characters.v1.GetSummonOptionsResponse
+	106, // [106:129] is the sub-list for method output_type
+	83,  // [83:106] is the sub-list for method input_type
+	83,  // [83:83] is the sub-list for extension type_name
+	83,  // [83:83] is the sub-list for extension extendee
+	0,   // [0:83] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_characters_v1_characters_proto_init() }
@@ -7167,7 +7831,7 @@ func file_meurpg_characters_v1_characters_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_characters_v1_characters_proto_rawDesc), len(file_meurpg_characters_v1_characters_proto_rawDesc)),
 			NumEnums:      12,
-			NumMessages:   69,
+			NumMessages:   77,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

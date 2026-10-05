@@ -1,6 +1,10 @@
 import { formatInt, formatXp, joinDots, tight } from './text';
 
 describe('tight', () => {
+  it('ties "1 hora", "10 minutos" and "3 criaturas" so a line never ends on the number', () => {
+    expect(tight('ritual de 1 hora · dispensa 3 criaturas em 10 minutos')).toBe('ritual de\u00a01\u00a0hora · dispensa 3\u00a0criaturas em 10\u00a0minutos');
+  });
+
   it('keeps a number, its unit and the word before it together', () => {
     expect(tight('+5 para acertar · alcance 6 m')).toBe('+5 para acertar · alcance\u00a06\u00a0m');
     expect(tight('Dá para andar mais 4,5 m (3 quadrados)')).toBe('Dá para andar mais\u00a04,5\u00a0m (3\u00a0quadrados)');

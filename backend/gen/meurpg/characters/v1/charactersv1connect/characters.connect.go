@@ -116,6 +116,9 @@ const (
 	// CharacterServiceAdjustCreatureHitPointsProcedure is the fully-qualified name of the
 	// CharacterService's AdjustCreatureHitPoints RPC.
 	CharacterServiceAdjustCreatureHitPointsProcedure = "/meurpg.characters.v1.CharacterService/AdjustCreatureHitPoints"
+	// CharacterServiceGetSummonOptionsProcedure is the fully-qualified name of the CharacterService's
+	// GetSummonOptions RPC.
+	CharacterServiceGetSummonOptionsProcedure = "/meurpg.characters.v1.CharacterService/GetSummonOptions"
 )
 
 // CharacterServiceClient is a client for the meurpg.characters.v1.CharacterService service.
@@ -536,6 +539,26 @@ type CharacterServiceClient interface {
 	//     maximum (damage and heal: 0 to 9999).
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
+	// GetSummonOptions says what a character can summon from its sheet (MR-037,
+	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// (as a ritual, with a slot, or both), what each one may bring at each circle
+	// it can use, the slots it has, and what a casting would send away. The
+	// server works all of it out (the spell on the sheet, prepared or in the
+	// spellbook, the Pact of the Chain, the slot's circle and counts), so the app
+	// keeps no copy of these rules; `PlayService.CastSummon` still checks every
+	// choice. Spells the character cannot cast are not listed. A character with
+	// no full sheet lists nothing.
+	//
+	// The owner's player and the master read it; another player gets `not_found`,
+	// as for ListCharacterCreatures (RN-20). It carries no hit points.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC (only a player's character
+	//     has creatures).
+	GetSummonOptions(context.Context, *connect.Request[v1.GetSummonOptionsRequest]) (*connect.Response[v1.GetSummonOptionsResponse], error)
 }
 
 // NewCharacterServiceClient constructs a client for the meurpg.characters.v1.CharacterService
@@ -689,6 +712,13 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("AdjustCreatureHitPoints")),
 			connect.WithClientOptions(opts...),
 		),
+		getSummonOptions: connect.NewClient[v1.GetSummonOptionsRequest, v1.GetSummonOptionsResponse](
+			httpClient,
+			baseURL+CharacterServiceGetSummonOptionsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GetSummonOptions")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -716,6 +746,7 @@ type characterServiceClient struct {
 	renameCreature          *connect.Client[v1.RenameCreatureRequest, v1.RenameCreatureResponse]
 	dismissCreature         *connect.Client[v1.DismissCreatureRequest, v1.DismissCreatureResponse]
 	adjustCreatureHitPoints *connect.Client[v1.AdjustCreatureHitPointsRequest, v1.AdjustCreatureHitPointsResponse]
+	getSummonOptions        *connect.Client[v1.GetSummonOptionsRequest, v1.GetSummonOptionsResponse]
 }
 
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
@@ -826,6 +857,11 @@ func (c *characterServiceClient) DismissCreature(ctx context.Context, req *conne
 // AdjustCreatureHitPoints calls meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints.
 func (c *characterServiceClient) AdjustCreatureHitPoints(ctx context.Context, req *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error) {
 	return c.adjustCreatureHitPoints.CallUnary(ctx, req)
+}
+
+// GetSummonOptions calls meurpg.characters.v1.CharacterService.GetSummonOptions.
+func (c *characterServiceClient) GetSummonOptions(ctx context.Context, req *connect.Request[v1.GetSummonOptionsRequest]) (*connect.Response[v1.GetSummonOptionsResponse], error) {
+	return c.getSummonOptions.CallUnary(ctx, req)
 }
 
 // CharacterServiceHandler is an implementation of the meurpg.characters.v1.CharacterService
@@ -1247,6 +1283,26 @@ type CharacterServiceHandler interface {
 	//     maximum (damage and heal: 0 to 9999).
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
+	// GetSummonOptions says what a character can summon from its sheet (MR-037,
+	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// (as a ritual, with a slot, or both), what each one may bring at each circle
+	// it can use, the slots it has, and what a casting would send away. The
+	// server works all of it out (the spell on the sheet, prepared or in the
+	// spellbook, the Pact of the Chain, the slot's circle and counts), so the app
+	// keeps no copy of these rules; `PlayService.CastSummon` still checks every
+	// choice. Spells the character cannot cast are not listed. A character with
+	// no full sheet lists nothing.
+	//
+	// The owner's player and the master read it; another player gets `not_found`,
+	// as for ListCharacterCreatures (RN-20). It carries no hit points.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC (only a player's character
+	//     has creatures).
+	GetSummonOptions(context.Context, *connect.Request[v1.GetSummonOptionsRequest]) (*connect.Response[v1.GetSummonOptionsResponse], error)
 }
 
 // NewCharacterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1396,6 +1452,13 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("AdjustCreatureHitPoints")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceGetSummonOptionsHandler := connect.NewUnaryHandler(
+		CharacterServiceGetSummonOptionsProcedure,
+		svc.GetSummonOptions,
+		connect.WithSchema(characterServiceMethods.ByName("GetSummonOptions")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.characters.v1.CharacterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
@@ -1442,6 +1505,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceDismissCreatureHandler.ServeHTTP(w, r)
 		case CharacterServiceAdjustCreatureHitPointsProcedure:
 			characterServiceAdjustCreatureHitPointsHandler.ServeHTTP(w, r)
+		case CharacterServiceGetSummonOptionsProcedure:
+			characterServiceGetSummonOptionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1537,4 +1602,8 @@ func (UnimplementedCharacterServiceHandler) DismissCreature(context.Context, *co
 
 func (UnimplementedCharacterServiceHandler) AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GetSummonOptions(context.Context, *connect.Request[v1.GetSummonOptionsRequest]) (*connect.Response[v1.GetSummonOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GetSummonOptions is not implemented"))
 }

@@ -522,6 +522,29 @@ service CharacterService {
   //     maximum (damage and heal: 0 to 9999).
   //   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
   rpc AdjustCreatureHitPoints(AdjustCreatureHitPointsRequest) returns (AdjustCreatureHitPointsResponse);
+
+  // GetSummonOptions says what a character can summon from its sheet (MR-037,
+  // Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+  // it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+  // (as a ritual, with a slot, or both), what each one may bring at each circle
+  // it can use, the slots it has, and what a casting would send away. The
+  // server works all of it out (the spell on the sheet, prepared or in the
+  // spellbook, the Pact of the Chain, the slot's circle and counts), so the app
+  // keeps no copy of these rules; `PlayService.CastSummon` still checks every
+  // choice. Spells the character cannot cast are not listed. A character with
+  // no full sheet lists nothing.
+  //
+  // The owner's player and the master read it; another player gets `not_found`,
+  // as for ListCharacterCreatures (RN-20). It carries no hit points.
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the character does not exist, or the
+  //     caller may not see the character (or character_id is not a UUID).
+  //   - `invalid_argument`: the character is an NPC (only a player's character
+  //     has creatures).
+  rpc GetSummonOptions(GetSummonOptionsRequest) returns (GetSummonOptionsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // CharacterKind is what a character is for. The kind never changes after
@@ -1771,4 +1794,116 @@ message ListWildShapeFormsResponse {
   string max_cr = 2;
   bool no_fly = 3;
   bool no_swim = 4;
+}
+
+// GetSummonOptionsRequest names a character.
+message GetSummonOptionsRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // A player's character of the campaign (a UUID).
+  string character_id = 2;
+}
+
+// GetSummonOptionsResponse is what the character can summon.
+message GetSummonOptionsResponse {
+  // The summoning spells the character can cast, lowest circle first.
+  repeated SummonSpellOptions spells = 1;
+  // The character's spell slots, lowest circle first, pact magic slots
+  // (`pact`) included: the casting sheet's "Espaço de magia a gastar".
+  repeated SummonSlot slots = 2;
+}
+
+// SummonSpellOptions is one summoning spell the character can cast.
+message SummonSpellOptions {
+  // The spell, "spell:find-familiar", "spell:animate-dead" or
+  // "spell:conjure-animals".
+  string spell_key = 1;
+  // Its Portuguese name ("Encontrar Familiar").
+  string name_pt = 2;
+  // The spell's own circle, 1 to 9.
+  int32 level = 3;
+  // How long it takes, in Portuguese ("1 hora", "1 minuto", "1 ação").
+  string casting_time_pt = 4;
+  // Whether the spell is a ritual and whether it needs concentration.
+  bool ritual = 5;
+  bool concentration = 6;
+  // Whether this character can cast it as a ritual (no slot): a wizard from the
+  // spellbook, another caster from its prepared list, a warlock with the Pact
+  // of the Chain for Encontrar Familiar. Always false for a spell that is not a
+  // ritual.
+  bool can_ritual = 7;
+  // Whether this character can cast it with a slot: the spell is on the sheet and
+  // ready (prepared, or a spell its class knows).
+  bool can_cast_with_slot = 8;
+  // What it may bring at each circle the character can cast it at: the spell's own
+  // circle when `can_ritual`, and each circle of a slot the character has
+  // from the spell's up. Lowest first.
+  repeated SummonCircle circles = 9;
+  // What a casting would send away: the character's familiar for Encontrar
+  // Familiar, and the creatures a previous concentration holds for a spell that
+  // needs concentration (a new casting ends it, RN-22). Empty when nothing goes.
+  repeated ReplacedCreature replaces = 10;
+}
+
+// SummonCircle is what a spell may bring at one circle.
+message SummonCircle {
+  // The circle of the slot (the spell's own for a ritual), 1 to 9.
+  int32 circle = 1;
+  // The options, in the order `SummonChoice.option` counts them from 0.
+  repeated SummonOption options = 2;
+}
+
+// SummonOption is one thing a casting may summon: `count` creatures, each one
+// of `forms`, or, when there are no forms, any creature of `type` whose
+// challenge rating is `max_cr` or lower. A casting picks the kind of each
+// creature on its own (`SummonChoice.creature_keys`), so a mixed set (two
+// skeletons and a zombie) is allowed.
+message SummonOption {
+  // How many creatures, already counting the circle (Conjurar Animais doubles at
+  // the 5th, Animar os Mortos adds two for each circle above the 3rd).
+  int32 count = 1;
+  // The creatures a casting may choose from. Empty when `type` and `max_cr`
+  // say it.
+  repeated SummonForm forms = 2;
+  // The SRD's creature type ("beast") and the highest challenge rating ("1/2")
+  // of an option with no forms: the creatures come from
+  // ContentService.ListCreatures with these filters.
+  string type = 3;
+  string max_cr = 4;
+  // What a creature of this option may do on its own in a combat
+  // (meurpg.play.v1.CreatureAttack, as its number: 1 none, 2 reaction, 3 full).
+  // For an option with forms, each form says its own.
+  int32 attack = 5;
+}
+
+// SummonForm is a creature a casting may choose.
+message SummonForm {
+  // The SRD creature, "monster:raven" (ContentService.GetCreature).
+  string monster_key = 1;
+  // Its Portuguese name ("Corvo").
+  string name_pt = 2;
+  // What it may do on its own in a combat, as SummonOption.attack.
+  int32 attack = 3;
+}
+
+// SummonSlot is one circle of the character's spell slots.
+message SummonSlot {
+  // The circle, 1 to 9 (the pact slots' level for pact magic).
+  int32 level = 1;
+  // True for a warlock's pact magic slots: they are all one circle and are cast
+  // with `SpellSlot.pact`.
+  bool pact = 2;
+  // How many of this circle the character has, and how many are free.
+  int32 total = 3;
+  int32 free = 4;
+}
+
+// ReplacedCreature is a creature a casting would send away.
+message ReplacedCreature {
+  // The creature (a UUID) and the name the table gave it.
+  string id = 1;
+  string name = 2;
+  // The SRD creature kind, "monster:dire-wolf", and its Portuguese name.
+  string monster_key = 3;
+  string monster_name_pt = 4;
 }

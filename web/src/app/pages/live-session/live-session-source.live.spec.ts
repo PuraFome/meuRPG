@@ -117,6 +117,15 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'xpChanged']);
   });
 
+  it('maps `creatures_changed` to its own event (MR-037)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+        create(WatchGameSessionResponseSchema, { event: { case: 'creaturesChanged', value: {} } }),
+      ]),
+    ).toEqual(['ready', 'creaturesChanged']);
+  });
+
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
