@@ -33,6 +33,11 @@
   margin-top: 1px;
   font-size: 28px;
   color: var(--mr-accent-text);
+
+  // The title's line is 27 px high under 360 px: the icon's middle follows it.
+  @media (max-width: 359.98px) {
+    margin-top: -0.5px;
+  }
 }
 
 .frame__titles {

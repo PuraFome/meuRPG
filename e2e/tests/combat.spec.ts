@@ -141,10 +141,10 @@ test(
       const at = (dc: number, dr: number) => ({ x: ((own.col ?? 0) + dc + 0.5) * w, y: ((own.row ?? 0) + dr + 0.5) * h });
       expect(start).toBeTruthy();
       await map.click({ position: at(8, 1) });
-      await expect(p.getByText('Longe demais: faltam')).toBeVisible();
+      await expect(p.getByRole('alert').filter({ hasText: 'Longe demais' })).toBeVisible();
       await expect(p.getByRole('button', { name: 'Mover para cá' })).toHaveAttribute('aria-disabled', 'true');
       await map.click({ position: at(2, 1) });
-      await expect(p.getByRole('status').filter({ hasText: 'Mover 3,4 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m.');
+      await expect(p.getByRole('status').filter({ hasText: 'Mover 3,4 m' })).toContainText('Depois restam 4,1 m.');
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((own.col ?? 0) + 2);
@@ -361,7 +361,10 @@ test('o jogador encerra o turno: pergunta com a ação livre, e a Disparada dobr
     // The Disparada spends the action and doubles the movement left.
     await p.getByRole('button', { name: 'Disparada' }).click();
     await expect(p.getByText('Ação já usada').first()).toBeVisible();
-    await expect(p.getByText('Restam 15 m')).toBeVisible();
+    await expect(p.getByText('Restam 15,0 m')).toBeVisible();
+    // The speed already includes the Dash: the total is the doubled one, never doubled again.
+    await expect(p.getByText('de 15,0 m').first()).toBeVisible();
+    await expect(p.getByText('de 30,0 m')).toHaveCount(0);
     const after = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
     expect(after?.movementLeftFt).toBe(50);
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toHaveCount(0);

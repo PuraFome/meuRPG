@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { metersText, squaresFree } from '../../../../core/units';
+import { metersFixed, squaresFree } from '../../../../core/units';
 import { tight } from '../../../../core/format/text';
 
 /**
@@ -56,11 +56,12 @@ export class EconomyTiles {
   });
   protected readonly move = computed(() => {
     const c = this.own();
-    const total = Math.max(1, c.speedFt * (c.dashed ? 2 : 1));
+    // In tenths of a foot, as the server keeps it, and metres with one decimal ("6,9 m de 9,0 m").
+    const total = Math.max(1, c.speedDft);
     return {
-      text: tight(`${metersText(c.movementLeftFt)} de ${metersText(total)}`),
+      text: tight(`${metersFixed(c.movementLeftDft / 10)} de ${metersFixed(total / 10)}`),
       free: squaresFree(c.movementLeftFt),
-      percent: Math.max(0, Math.min(100, (c.movementLeftFt / total) * 100)),
+      percent: Math.max(0, Math.min(100, (c.movementLeftDft / total) * 100)),
     };
   });
 }

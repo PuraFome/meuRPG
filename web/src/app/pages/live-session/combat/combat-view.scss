@@ -43,7 +43,8 @@
   flex-direction: column;
   gap: var(--mr-space-5);
 
-  @media (min-width: 1024px) {
+  // One column until 1280px: the master's order needs the width for the cover lines (E9-07).
+  @media (min-width: 1280px) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 500px;
     grid-template-areas:

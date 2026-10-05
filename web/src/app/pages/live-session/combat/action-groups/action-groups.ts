@@ -10,7 +10,7 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { distanceInSentence, metersText } from '../../../../core/units';
+import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
 import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
@@ -70,6 +70,9 @@ export class ActionGroups {
   /** A hit of this turn whose damage is still to roll. */
   readonly pendingRoll = input<PendingDamage | null>(null);
   readonly busy = input(false);
+  /** Why nothing can be done now ("Esperando a reação do mestre"): every row is off with this
+   * reason instead of failing on click (an opportunity attack waits for its answer); `''` when free. */
+  readonly locked = input('');
   /** The character's slots, for the rows above the spells ("1º círculo ○ ✕ ✕ ✕ 1 livre de 4"). */
   readonly slots = input<{ readonly usage: readonly SlotUsageVm[]; readonly pact: PactSlotsVm | null }>({
     usage: [],
@@ -129,18 +132,22 @@ export class ActionGroups {
   protected readonly movement = computed(() => {
     const own = this.own();
     const left = own.movementLeftFt;
-    const used = own.movementUsedFt;
+    // Tenths of a foot, metres with one decimal ("Restam 6,9 m").
+    const leftM = metersFixed(own.movementLeftDft / 10);
+    const sentence = `${leftM} (${squaresText(reachSquares(left))})`;
     return {
       left,
-      pill: left > 0 ? tight(`Restam ${metersText(left)}`) : 'Sem movimento',
+      pill: left > 0 ? tight(`Restam ${leftM}`) : 'Sem movimento',
       text:
-        left > 0
-          ? tight(
-              used > 0
-                ? `Você já andou ${metersText(used)}. Dá para andar mais ${distanceInSentence(left)}.`
-                : `Você ainda não andou. Dá para andar até ${distanceInSentence(left)}.`,
-            )
-          : 'Você já usou todo o movimento deste turno.',
+        left > 0 && own.disengaged
+          ? tight(`Dá para andar até ${sentence} sem provocar.`)
+          : left > 0
+            ? tight(
+                own.movementUsedDft > 0
+                  ? `Você já andou ${metersFixed(own.movementUsedDft / 10)}. Dá para andar mais ${sentence}.`
+                  : `Você ainda não andou. Dá para andar até ${sentence}.`,
+              )
+            : 'Você já usou todo o movimento deste turno.',
     };
   });
 

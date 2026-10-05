@@ -9,7 +9,7 @@ import {
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { circleLabel } from './combat-grid';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 
 /** The typed detail of a `failed_precondition` from `CombatService`, or
  * `null` (another code, or another detail). Never read from the message. */
@@ -70,8 +70,14 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Não é a sua vez.';
     case EncounterBlockedReason.NOT_PLACED:
       return 'Esse combatente ainda não está no mapa.';
-    case EncounterBlockedReason.TOO_FAR:
-      return `Esse caminho custa mais do que o movimento que sobra: faltam ${metersText(blocked.missingFt)}.`;
+    case EncounterBlockedReason.TOO_FAR: {
+      // In tenths of a foot when the server sent them; the whole feet are for the old app.
+      const missing = metersFixed((blocked.missingDft || blocked.missingFt * 10) / 10);
+      // A jump longer than its limit says the limit, and whether it had a running start.
+      return blocked.jumpLimitDft > 0
+        ? `Longe demais para o seu salto: ele vai até ${metersFixed(blocked.jumpLimitDft / 10)}${blocked.jumpRunningStart ? ' com corrida' : ' parado'}. Faltam ${missing}.`
+        : `Esse caminho custa mais do que o movimento que sobra: faltam ${missing}.`;
+    }
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
     case EncounterBlockedReason.ENEMY_IN_THE_WAY:

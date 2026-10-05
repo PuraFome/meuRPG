@@ -1,0 +1,96 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+// A prompt that needs the master's answer: the warning surface, with the turn
+// waiting under it.
+.op {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+
+  p {
+    margin: 0;
+  }
+}
+
+.op__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.op__news,
+.op__ask {
+  font-size: 17px;
+  line-height: 23px;
+}
+
+.op__sub,
+.op__note {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.op__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.op__note--plain {
+  color: var(--mr-warning-ink);
+}
+
+// Equal width and height; too narrow for the pair, one each.
+.op__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: var(--mr-space-1);
+}
+
+.op__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: nowrap;
+  background-clip: padding-box;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}
+
+.op__pair .mat-mdc-outlined-button {
+  background: var(--mr-surface);
+}

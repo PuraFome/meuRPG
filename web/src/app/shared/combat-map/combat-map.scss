@@ -21,6 +21,7 @@
   --cm-sq: calc(100cqw / var(--cols));
   --cm-tk: clamp(20px, calc(var(--cm-sq) * 0.82), 34px);
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border-radius: var(--mr-radius-sm);
   outline: 1px solid var(--mr-line);
@@ -48,16 +49,31 @@
   position: relative;
 }
 
+// The grid sits over the layers (z 1, as `app-map-layers`, later in the order);
+// the reach, the frame and the offers over the grid.
+.cm__grid {
+  z-index: 1;
+}
+
+.cm__cell,
+.cm__reactor,
+.cm__left,
+.cm__mark {
+  z-index: 2;
+}
+
 // One path for every line: 1px, whatever the zoom (README-A, "Grid").
 .cm__grid path {
   fill: none;
-  stroke: light-dark(rgb(27 34 48 / 25%), rgb(230 233 239 / 30%));
+  // The image is a drawing, light in both themes: the grid does not follow the theme.
+  stroke: color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
 .cm__cell,
-.cm__reach,
+.cm__reactor,
+.cm__left,
 .cm__frame,
 .cm__mark {
   position: absolute;
@@ -67,29 +83,95 @@
   pointer-events: none;
 }
 
+// The marks drawn over the map use the map's own colours (`--mr-map-*`, the same
+// in both themes): the image under them does not change with the theme, so
+// neither do they (MAP-LANGUAGE.md). The legend swatches (`.mr-swatch`) use the same.
 // The squares the token can walk to: a tint, not a colour alone (the legend
 // names it, and the sentence under the map says how far).
 .cm__cell {
-  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--mr-map-accent) 32%, transparent);
 }
 
 .cm__mark {
-  border: 2px solid var(--mr-accent);
-  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+  border: 2px solid var(--mr-map-accent);
+  background: color-mix(in srgb, var(--mr-map-accent) 30%, transparent);
 }
 
-.cm__reach {
-  border: 2px dashed var(--mr-accent);
-  box-shadow: 0 0 0 1px var(--mr-surface);
+// The circle of the movement left (or of a jump): a dashed garnet line over a pale
+// edge, drawn in the grid's own units so one square stays one square.
+.cm__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+
+  ellipse {
+    fill: none;
+    stroke: var(--mr-map-accent);
+    stroke-width: 2.5;
+    stroke-dasharray: 8 6;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .under {
+    stroke: color-mix(in srgb, var(--mr-map-token-surface) 75%, transparent);
+    stroke-width: 5;
+    stroke-dasharray: none;
+  }
+}
+
+// The reach of the reactor of a pending opportunity attack: an outline, with
+// its name in the legend (E9-13).
+.cm__reactor {
+  border: 2px dashed var(--mr-map-token-ink);
+  background: color-mix(in srgb, var(--mr-map-token-surface) 25%, transparent);
+}
+
+// Where the mover left that reach: the label sits under the square.
+.cm__left {
+  border: 2px solid var(--mr-map-token-ink);
+}
+
+.cm__tag {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1.5px solid var(--mr-map-token-ink);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+  white-space: nowrap;
+}
+
+// It opens toward the middle of the map, so the edge never cuts it.
+.cm__tag--right {
+  right: 0;
+  left: auto;
+}
+
+.cm__tag--above {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .cm__frame {
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid var(--mr-accent);
-  background: color-mix(in srgb, var(--mr-surface) 60%, transparent);
-  color: var(--mr-ink);
+  border: 3px solid var(--mr-map-accent);
+  background: color-mix(in srgb, var(--mr-map-token-surface) 45%, transparent);
+  color: var(--mr-map-token-ink);
 
   .mat-icon {
     width: calc(var(--cm-sq) * 0.5);
@@ -98,14 +180,40 @@
   }
 }
 
+// The cost beside the chosen square ("2,1 m"): a label, not a colour. White with garnet
+// words in the light theme, as the artboard draws it; dark with white words in the dark one.
+.cm__cost {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 3;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 9px;
+  border: 1.5px solid light-dark(var(--mr-map-accent), var(--mr-map-token-ink));
+  border-radius: var(--mr-radius-pill);
+  background: light-dark(var(--mr-map-token-surface), var(--mr-map-token-ink));
+  color: light-dark(var(--mr-map-accent), var(--mr-map-token-surface));
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 19px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.cm__cost--above {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+// A refused square: dashed, and clear, so the wall hatch under it stays in sight.
 .cm__frame--refused {
   border-style: dashed;
-  border-color: var(--mr-danger-ink);
-  color: var(--mr-danger-ink);
+  background: transparent;
 }
 
 .cm__path line {
-  stroke: var(--mr-accent);
+  stroke: var(--mr-map-accent);
   stroke-width: 2.5;
   stroke-dasharray: 3 4;
   vector-effect: non-scaling-stroke;

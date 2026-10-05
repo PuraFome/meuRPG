@@ -1,0 +1,91 @@
+:host {
+  display: block;
+}
+
+.mark {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.mark__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.mark__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.mark__group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-2);
+
+  // 2 x 2 only when each card gets room for "+2 na CA e em Destreza" on two
+  // lines; the card sits indented under its row, so a phone stacks them.
+  @container (min-width: 440px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mark__item {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.mark__item--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.mark__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+}
+
+.mark__item--on .mark__dot {
+  border: 6px solid var(--mr-accent);
+}
+
+.mark__words {
+  display: flex;
+  flex-direction: column;
+}
+
+.mark__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.mark__close {
+  --mat-button-outlined-container-height: 44px;
+  align-self: flex-start;
+  min-width: 96px;
+}

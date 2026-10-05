@@ -9,6 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 
+import { CreatureSize } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { DamageTypeKey, formatModifier } from '../../../core/characters/character-labels';
 import { feetToMeters, metersToFeet } from '../../../core/units';
 import { BasicAttackFormValue, BasicCharacterFormValue } from '../character-editor.types';
@@ -53,7 +54,8 @@ export type BasicSheetFormGroup = FormGroup<{
   /** The portrait's image ID (MR-031), carried as read: saving the short
    * form must never clear it. */
   portraitImageId: FormControl<string>;
-  /** The size (`CreatureSize`), carried as read, like the portrait. */
+  /** The size (`CreatureSize`, "Tamanho"): it decides who may pass whom on the map
+   * (MR-034). A sheet saved without one reads as Médio, as the server does. */
   size: FormControl<number>;
 }>;
 
@@ -125,7 +127,7 @@ export function createBasicForm(fb: FormBuilder): BasicSheetFormGroup {
     challengeRating: ['0'],
     xpValue: [10, [Validators.required, Validators.min(0), Validators.max(1_000_000)]],
     portraitImageId: [''],
-    size: [0],
+    size: [CreatureSize.MEDIUM],
   });
 }
 
@@ -151,7 +153,7 @@ export function patchBasicForm(
     challengeRating: value.challengeRating,
     xpValue: value.xpValue,
     portraitImageId: value.portraitImageId,
-    size: value.size,
+    size: value.size === CreatureSize.UNSPECIFIED ? CreatureSize.MEDIUM : value.size,
   });
 }
 
@@ -191,6 +193,7 @@ const BASIC_FIELD_LABELS: readonly [string, string][] = [
   ['hitPointsMax', 'Pontos de vida (máximo)'],
   ['armorClass', 'Classe de Armadura'],
   ['speedWalkM', 'Deslocamento'],
+  ['size', 'Tamanho'],
   ['initiativeBonus', 'Iniciativa'],
   ['xpValue', 'XP ao derrotar'],
   ['description', 'Descrição'],
@@ -224,3 +227,13 @@ export function invalidBasicFields(form: BasicSheetFormGroup): EditorField[] {
   });
   return fields;
 }
+
+/** The sizes "Tamanho" offers, in the SRD's order. */
+export const SIZE_CHOICES: readonly { readonly value: CreatureSize; readonly label: string }[] = [
+  { value: CreatureSize.TINY, label: 'Miúdo' },
+  { value: CreatureSize.SMALL, label: 'Pequeno' },
+  { value: CreatureSize.MEDIUM, label: 'Médio' },
+  { value: CreatureSize.LARGE, label: 'Grande' },
+  { value: CreatureSize.HUGE, label: 'Enorme' },
+  { value: CreatureSize.GARGANTUAN, label: 'Imenso' },
+];

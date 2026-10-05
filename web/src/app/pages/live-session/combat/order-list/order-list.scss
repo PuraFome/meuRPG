@@ -60,6 +60,7 @@
   grid-template-columns: 30px minmax(0, 1fr) auto;
   grid-template-areas:
     'token text actions'
+    '. cover cover'
     '. extra extra';
   column-gap: 10px;
   align-items: center;
@@ -74,6 +75,7 @@
     grid-template-columns: var(--cols);
     grid-template-areas:
       'token text init hp actions'
+      '. cover cover cover cover'
       '. extra extra extra extra';
   }
 }
@@ -260,6 +262,7 @@
 .row__confirm {
   grid-area: extra;
 }
+
 
 .row__extra {
   display: flex;

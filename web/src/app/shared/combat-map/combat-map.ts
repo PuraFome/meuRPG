@@ -2,19 +2,12 @@ import { Component, computed, input, output, signal, viewChild, ElementRef } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
-import {
-  DFT_PER_SQUARE,
-  type Square,
-  canReach,
-  distance,
-  squareAt,
-  squareCenter,
-  stepSquare,
-} from '../../core/combat/combat-grid';
-import { formatMeters, squaresToMeters } from '../../core/units';
+import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from '../../core/combat/combat-grid';
+import type { MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
 import { CombatantToken } from '../combatant-token/combatant-token';
+import { MapLayersOverlay } from '../map-layers/map-layers';
 
 /** The map's picture: its URL and size (the frame is reserved from it). */
 export interface CombatMapImage {
@@ -23,17 +16,28 @@ export interface CombatMapImage {
   readonly height: number;
 }
 
-/** Where a combatant can reach: its square and the movement it has left, in
- * tenths of a foot (the circle around it). */
+/** What the server said a combatant reaches (`GetMoveOptions`): the square it
+ * starts from, the radius of the circle in tenths of a foot (the movement it has
+ * left, or a jump's limit) and the squares it can go to. The map only draws it. */
 export interface Reach {
   readonly origin: Square;
   readonly leftDft: number;
+  readonly squares: readonly Square[];
 }
 
-/** A square the person chose; `refused` when it is out of reach or taken. */
+/** A square the person chose; `refused` when the server said it cannot be
+ * moved to, and `label` the cost ("2,1 m") written beside it. */
 export interface Chosen {
   readonly square: Square;
   readonly refused: boolean;
+  readonly label?: string;
+}
+
+/** A reactor whose reach a pending opportunity offer is about, and the square
+ * where the mover left it: drawn for whoever answers (E9-13). */
+export interface OfferMark {
+  readonly reactor: Square;
+  readonly left: Square | null;
 }
 
 export interface TokenDrop extends Square {
@@ -47,8 +51,13 @@ export interface TokenDrop extends Square {
  *
  * - **Who is drawn:** the combatants that have a square. A player never gets a
  *   hidden one from the server; the master's hidden ones are drawn dashed.
- * - **Reach (E6-10):** the squares a combatant can walk to (the circle its movement left draws,
- *   occupied squares left out), tinted, with a dashed outline around them.
+ * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
+ *   by `app-map-layers` over the image.
+ * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
+ *   can go to, tinted, inside a dashed circle of the movement left. A square the
+ *   circle holds that is not tinted gets no mark of its own.
+ * - **Offers (E9-13):** a dashed outline on the square of the reactor of a pending
+ *   opportunity attack and a label on the square the mover left.
  * - **Moving:** the master drags any token (`masterMoves`); a player drags
  *   their own inside the reach (`ownMoveId`). With `pickSquares`, a click on
  *   a square (or an arrow key) chooses it (`choose`) and Enter confirms
@@ -59,7 +68,7 @@ export interface TokenDrop extends Square {
  */
 @Component({
   selector: 'app-combat-map',
-  imports: [CombatantToken, MatIconModule],
+  imports: [CombatantToken, MapLayersOverlay, MatIconModule],
   templateUrl: './combat-map.html',
   styleUrl: './combat-map.scss',
 })
@@ -72,6 +81,8 @@ export class CombatMap {
   readonly isMaster = input(false);
   readonly currentId = input('');
   readonly reach = input<Reach | null>(null);
+  readonly layers = input<MapLayers | null>(null);
+  readonly offers = input<readonly OfferMark[]>([]);
   readonly chosen = input<Chosen | null>(null);
   /** One square marked without a token (E6-02: "O quadrado marcado tem
    * 1,5 m"), to judge the grid's size by. */
@@ -81,6 +92,8 @@ export class CombatMap {
   readonly pickSquares = input(false);
   /** Side of one square in pixels; `null` fits the map to its container. */
   readonly cellPx = input<number | null>(null);
+  /** The "Vez" word above the one on turn: left out where the page is about one mover (the "Mover" page). */
+  readonly showTurn = input(true);
 
   /** A square was chosen (a click, or an arrow key) in `pickSquares` mode. */
   readonly choose = output<Square>();
@@ -117,40 +130,17 @@ export class CombatMap {
     }
     return parts.join('');
   });
-  protected readonly occupied = computed<Square[]>(() => this.shown().map((c) => ({ col: c.col, row: c.row })));
-
-  /** The squares the reach tints: in range, in the grid, not occupied. */
-  protected readonly reachCells = computed<Square[]>(() => {
+  /** The squares the reach tints (the server's list). */
+  protected readonly reachCells = computed<readonly Square[]>(() => this.reach()?.squares ?? []);
+  /** The circle of the movement left, in squares (a square straight is 50 tenths of a foot). */
+  protected readonly ringRadius = computed(() => {
     const reach = this.reach();
-    if (!reach) {
-      return [];
-    }
-    const cells: Square[] = [];
-    const { origin, leftDft } = reach;
-    const squares = Math.ceil(leftDft / DFT_PER_SQUARE);
-    for (let row = origin.row - squares; row <= origin.row + squares; row++) {
-      for (let col = origin.col - squares; col <= origin.col + squares; col++) {
-        if (canReach(origin, { col, row }, leftDft, this.columns(), this.rows(), this.occupied())) {
-          cells.push({ col, row });
-        }
-      }
-    }
-    return cells;
+    return reach ? reach.leftDft / DFT_PER_SQUARE : 0;
   });
-  /** The box around the whole reach, clipped to the grid. */
-  protected readonly reachBox = computed(() => {
-    const reach = this.reach();
-    if (!reach) {
-      return null;
-    }
-    const { origin, leftDft } = reach;
-    const squares = Math.ceil(leftDft / DFT_PER_SQUARE);
-    const col = Math.max(0, origin.col - squares);
-    const row = Math.max(0, origin.row - squares);
-    const lastCol = Math.min(this.columns() - 1, origin.col + squares);
-    const lastRow = Math.min(this.rows() - 1, origin.row + squares);
-    return { col, row, width: lastCol - col + 1, height: lastRow - row + 1 };
-  });
+  /** The square of each reactor, outlined: the server does not say how far its reach goes, so none is drawn. */
+  protected readonly reactorBoxes = computed(() =>
+    this.offers().map((o) => ({ col: o.reactor.col, row: o.reactor.row, left: o.left })),
+  );
 
   /** The frame on the chosen square (a tap, or the arrow keys' cursor). */
   protected readonly frame = computed<Chosen | null>(() => {
@@ -209,11 +199,6 @@ export class CombatMap {
 
   protected movable(c: Combatant): boolean {
     return this.masterMoves() || c.id === this.ownMoveId();
-  }
-
-  /** "Vez", "6 m"… the accessible name of the frame. */
-  protected meters(from: Square, to: Square): string {
-    return formatMeters(squaresToMeters(distance(from, to)));
   }
 
   private tokenOf(id: string): Square | null {

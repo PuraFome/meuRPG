@@ -43,6 +43,16 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Tamanho</mat-label>
+    <mat-select formControlName="size">
+      @for (s of sizes; track s.value) {
+        <mat-option [value]="s.value">{{ s.label }}</mat-option>
+      }
+    </mat-select>
+    <mat-hint>Decide quem passa por quem no mapa</mat-hint>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>Iniciativa</mat-label>
     <input matInput formControlName="initiativeBonus" inputmode="numeric" autocomplete="off" />
     <mat-error>Um número de −10 a +20.</mat-error>

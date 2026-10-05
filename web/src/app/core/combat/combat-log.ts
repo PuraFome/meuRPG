@@ -6,6 +6,7 @@ import {
   type CombatLogRound,
   type CombatLogSpellTarget,
   DeathSaveOutcome,
+  JumpKind,
   PendingDamageStatus,
   SaveOutcome,
   SpellEffectKind,
@@ -13,9 +14,10 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { rollText } from './combat-dice';
 import { conditionName, listNames } from './conditions';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
 import { countsSentence } from './death-saves';
+import { degreeWord, sourceWord } from './cover';
 import { effectWords, poolRollText, reasonWords } from './hp-effects';
 
 /**
@@ -147,12 +149,24 @@ function concentrationText(d: CombatLogDamage | undefined): string {
     : '';
 }
 
+/** The master's own sum for an attack on covered target, "(CA 17: 15 + 2 de meia cobertura, do mapa)":
+ * only he gets the armor class and the bonus, so nobody else reads it (RN-20). */
+function coverNote(e: CombatLogEntry): string {
+  if (e.targetArmorClass === undefined || e.coverBonus <= 0) {
+    return '';
+  }
+  const degree = degreeWord(e.cover).toLowerCase();
+  const from = sourceWord(e.coverSource);
+  return ` (CA ${e.targetArmorClass}: ${e.targetArmorClass - e.coverBonus} + ${e.coverBonus} de ${degree}${from ? `, ${from.replace('marcada pelo mestre', 'marcada por você')}` : ''})`;
+}
+
 function attackText(e: CombatLogEntry): string {
   const target = e.targetLabel || 'alguém';
   const weapon = e.keyNamePt ? ` com ${the(e.keyNamePt)}` : '';
   const verb = isShot(e.key) ? `atira ${inThe(target)}` : `ataca ${the(target)}`;
   const opportunity = e.asReaction ? ' (ataque de oportunidade)' : '';
   let out = ` ${verb}${weapon}${opportunity}: ${e.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : e.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}`;
+  out += coverNote(e);
   if (e.stoppedByReaction) {
     return `${out}, o Escudo Arcano segurou`; // the outcome is already "errou"
   }
@@ -394,6 +408,19 @@ function hitPointsText(e: CombatLogEntry): string {
   return ` teve os PV ajustados pelo mestre${after}`;
 }
 
+/** A move: "anda 3,0 m", "saltou 4,5 m" or "saltou 1,8 m para cima". A long jump that landed in
+ * difficult terrain reminds the master (only he gets the flag) of the SRD's Acrobacia check: the app rolls nothing. */
+function movedText(e: CombatLogEntry): string {
+  if (e.jump === JumpKind.HIGH) {
+    return ` saltou ${metersFixed((e.jumpHeightDft || e.distanceDft) / 10)} para cima`;
+  }
+  const length = e.distanceDft > 0 ? metersFixed(e.distanceDft / 10) : metersText(e.distanceFt);
+  if (e.jump === JumpKind.LONG) {
+    return ` saltou ${length}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
+  }
+  return ` anda ${length}`;
+}
+
 /** The line of one entry, or `null` for a kind this app doesn't know. */
 export function logLine(
   e: CombatLogEntry,
@@ -410,7 +437,7 @@ export function logLine(
     case CombatLogKind.ACTION:
       return { ...base, icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt', text: actionText(e) };
     case CombatLogKind.MOVED:
-      return { ...base, icon: 'arrow_forward', text: ` anda ${metersText(e.distanceFt)}` };
+      return { ...base, icon: 'arrow_forward', text: movedText(e) };
     case CombatLogKind.HIT_POINTS_ADJUSTED:
       // The server puts the NPC whose hit points changed in the target.
       return { ...base, actor: e.actorLabel || e.targetLabel, icon: 'healing', text: hitPointsText(e) };

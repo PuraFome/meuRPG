@@ -31,7 +31,8 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
         class="end"
         [class.end--filled]="primary()"
         [class.end--block]="block()"
-        [disabled]="busy()"
+        [class.end--off]="!!waiting()"
+        [disabled]="busy() || !!waiting()"
         disabledInteractive
         (click)="press()"
       >
@@ -47,6 +48,13 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
     .end {
       --mat-button-outlined-container-height: 48px;
       --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    }
+
+    // Waiting for an answer: the dashed, off button of the app, never a click that fails.
+    .end--off {
+      --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+      --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+      border-style: dashed;
     }
 
     .end--block {
@@ -100,6 +108,8 @@ export class EndTurn {
   readonly busy = input(false);
   /** Full width (the phone's bar). */
   readonly block = input(false);
+  /** An opportunity attack waits for an answer ("Esperando a reação do mestre"): the turn cannot end. */
+  readonly waiting = input('');
 
   readonly endTurn = output<void>();
 
@@ -114,6 +124,9 @@ export class EndTurn {
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   protected press(): void {
+    if (this.waiting()) {
+      return;
+    }
     if (this.own().actionUsed && this.attacksLeft() === 0) {
       this.endTurn.emit();
       return;
