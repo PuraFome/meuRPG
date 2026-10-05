@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // The master's "Desfazer" (MR-012, MR-014): one step back, a compensating
@@ -99,8 +100,9 @@ func (s *Service) UndoLastAction(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters' vitals put back, if any
+	var undoneMove *actionEvent          // the move that was taken back, for the fog
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals = nil
+		vitals, undoneMove = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -122,6 +124,9 @@ func (s *Service) UndoLastAction(
 		if vitals, err = s.takeBack(ctx, c, last.Kind, ev); err != nil {
 			return nil, err
 		}
+		if last.Kind == eventCombatantMoved {
+			undoneMove = &ev
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
@@ -138,6 +143,11 @@ func (s *Service) UndoLastAction(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+		if undoneMove != nil { // the combatant is back where it was: the fog follows it
+			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == undoneMove.Actor }); i >= 0 {
+				s.positionChanged(ctx, m.CampaignID, d.enc, d.cs[i], &grid.Square{Col: int(undoneMove.Col), Row: int(undoneMove.Row)})
+			}
+		}
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}

@@ -252,6 +252,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		}
 		// the combat walks over the layers the master painted (MR-034, RN-21)
 		playService.SetTerrain(mapsService)
+		playService.SetFog(mapsService) // combat per player on a fog map: who sees which NPC (MR-036)
 		// The fog of war and the copy of an image a fog map owns need the maps
 		// service, which is made after SessionMaps (it needs play).
 		sessionMaps.SetService(mapsService)

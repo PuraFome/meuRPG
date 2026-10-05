@@ -6360,6 +6360,13 @@ export const CombatService: GenService<{
    * has none yet. Any member may call it. The app reads it after every
    * `encounter_changed` and after every reconnection.
    *
+   * On a map with the fog of war on (MR-036), a player gets only the NPC
+   * combatants their character sees now (with "Visão do grupo", the party): an
+   * NPC they do not see is, for them, like a hidden one (not in the order, no
+   * name, no state, no square; its turn reads "Vez do mestre"), and naming it in
+   * any call is `not_found`. Players' characters and their creatures are never
+   * hidden. The master sees everyone.
+   *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not a
    *     member of it.
@@ -6585,9 +6592,11 @@ export const CombatService: GenService<{
    * rules math). The caller's own combatant, on its turn, for a player; any
    * combatant for the master (who moves for free, but sees the circle).
    *
-   * The reasons never name what the caller does not see: when the fog of war
-   * comes (Etapa 9, 9.4) the server plans on what the mover sees and the real
-   * move is cut short at the last square it can reach.
+   * The reasons never name what the caller does not see: on a map with the fog
+   * of war a player's reach is planned on what the mover knows (the squares it
+   * sees now or remembers; the rest is plain floor), so it may offer a square that
+   * is really a wall, and the real move is then cut short at the last square it
+   * can reach (MoveCombatantResponse.stopped_early).
    *
    * Errors:
    *   - `not_found`: the combat or the combatant is not in the open session.

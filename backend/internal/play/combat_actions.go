@@ -214,7 +214,10 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
-	v := viewerOf(m)
+	v, err := s.viewerFor(ctx, m, enc, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	who, err := findCombatant(d.cs, combID, v)
 	if err != nil {
 		return nil, err
@@ -310,12 +313,13 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 // cannot reach it. A spell that stays on the caster lists only the caster.
 func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
 	reach, limited := reachOf(sp)
+	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
 			continue
 		}
-		cover := coverAgainst(terrain, caster, t, cs)
+		cover := coverAgainst(terrain, caster, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
 		if dist, ok := distanceFt(caster, t); ok {
@@ -352,12 +356,13 @@ func disableAll(o *rulesv1.TurnOptions, code rulesv1.DisabledReasonCode) {
 // for a player (RN-10), in turn order, each with the distance and whether it
 // is too far.
 func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32) []*playv1.TargetInReach {
+	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.ID == attacker.ID || t.Defeated || !v.sees(t) {
 			continue
 		}
-		cover := coverAgainst(terrain, attacker, t, cs)
+		cover := coverAgainst(terrain, attacker, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master
 		if dist, ok := distanceFt(attacker, t); ok {
@@ -538,6 +543,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		attacker, err := findCombatant(cs, attackerID, v)
 		if err != nil {
 			return nil, err
@@ -647,7 +653,7 @@ func (s *Service) RollAttack(
 		if offerID != "" {
 			coverTarget.GridCol, coverTarget.GridRow = &offer.LeftCol, &offer.LeftRow
 		}
-		cover := coverAgainst(terrain, attacker, coverTarget, cs)
+		cover := coverAgainst(terrain, attacker, coverTarget, coverPool(cs, v))
 		if cover.total() && !v.master {
 			return nil, errCoverTotal()
 		}
@@ -845,6 +851,7 @@ func (s *Service) RollDamage(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		attacker, err := findCombatant(cs, p.AttackerID, v)
 		if err != nil {
 			return nil, err
@@ -960,7 +967,7 @@ func (s *Service) RollDamage(
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishReturned(m.CampaignID, d, ev)
+		s.publishReturned(ctx, m.CampaignID, d, ev)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
@@ -1219,7 +1226,7 @@ func (s *Service) ApplyPendingDamage(
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishReturned(m.CampaignID, d, ev)
+		s.publishReturned(ctx, m.CampaignID, d, ev)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
@@ -1416,6 +1423,7 @@ func (s *Service) TakeAction(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		who, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err

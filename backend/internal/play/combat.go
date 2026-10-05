@@ -408,6 +408,7 @@ func (s *Service) SubmitInitiative(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		target, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -613,7 +614,7 @@ func (s *Service) BeginCombat(
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishTurnChanged(m.CampaignID, d)
+		s.publishTurnChanged(ctx, m.CampaignID, d)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
 	})
 	if err != nil {
@@ -695,6 +696,7 @@ func (s *Service) EndTurn(
 		if at < 0 || cs[at].TurnState != turnActing {
 			return nil, stale
 		}
+		v = c.viewer(m, cs)
 		current, err := findCombatant(cs, expected, v)
 		if err != nil {
 			return nil, err
@@ -788,7 +790,7 @@ func (s *Service) EndTurn(
 		return nil, s.dbError(ctx, "end a turn", err)
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishTurnChanged(m.CampaignID, d)
+		s.publishTurnChanged(ctx, m.CampaignID, d)
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		if len(dropped) > 0 { // the attacks they belong to show them dropped
 			s.publishLogChanged(m.CampaignID, d.enc.ID, !touchesHidden(d.cs, dropped))
@@ -858,7 +860,7 @@ func (s *Service) SetCombatantHidden(
 		s.publishLogChanged(m.CampaignID, d.enc.ID, false) // the master's line only
 		// If it is in the turn, the players' copy of the turn changes.
 		if i := slices.IndexFunc(d.cs, func(o playdb.Combatant) bool { return o.ID == combID }); i >= 0 && inTurn(d.enc, d.cs[i]) {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {
@@ -1009,7 +1011,7 @@ func (s *Service) RemoveCombatant(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		if turnPassed {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {

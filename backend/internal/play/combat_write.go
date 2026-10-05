@@ -134,6 +134,10 @@ type combatTx struct {
 	// master says the master makes the change: the turn that waits for an
 	// opportunity attack's answer never stops him.
 	master bool
+	// sight is what the players see of the combat's map, read before the
+	// transaction opened (nil without the fog of war): it filters what the change
+	// tells its caller and stamps who could see the event (combat_fog.go).
+	sight *fogSight
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -157,7 +161,14 @@ type combatResult struct {
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
 	var res combatResult
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	// What the players see is read first, never inside the transaction: the maps
+	// module asks this one where the combatants stand, and that read would wait for
+	// the rows the change has already written.
+	sight, err := s.sightForWrite(ctx, w)
+	if err != nil {
+		return combatResult{}, s.dbError(ctx, "work out what the players see", err)
+	}
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		res = combatResult{encounterID: w.encounterID}
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
@@ -184,7 +195,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, master: w.m.Role == authz.RoleMaster}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, master: w.m.Role == authz.RoleMaster, sight: sight}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -218,6 +229,12 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 
 // insertEvent appends a session event inside the change's transaction.
 func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) error {
+	if ev, ok := payload.(actionEvent); ok {
+		var err error
+		if payload, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
+			return err
+		}
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("encode the event payload: %w", err)

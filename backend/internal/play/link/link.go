@@ -96,6 +96,15 @@ type Sheet struct {
 	// FighterLevel is what Retomar o fôlego adds to its d10: the character's
 	// fighter level, 0 for anyone who is not a fighter.
 	FighterLevel int
+	// Senses are the special senses the sheet or stat block gives (darkvision...),
+	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
+	// is plain sight.
+	Senses Senses
+}
+
+// Senses are a creature's special senses, as a range in feet (0 for none).
+type Senses struct {
+	DarkvisionFt, BlindsightFt, TruesightFt int
 }
 
 // Attack is one attack of a sheet, with real dice.

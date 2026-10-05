@@ -79,13 +79,15 @@ func meleeReachOf(sheet link.Sheet) int {
 // defeated, awake (no incapacitating condition, not down), with the reaction
 // unused, able to attack with it (a creature that may not, may not) and holding
 // a melee attack, whose longest reach is the reach. They all see the mover unless
-// it is hidden (until slice 9.7, "sees" is that), and a Blinded one does not. A
-// reactor in the mover's own turn group may react too (the SRD allows reactions
-// on any turn). Not exact is a player's warning in GetMoveOptions: only what the
-// viewer sees (RN-20), so hostile, not defeated, visible, its visible conditions,
-// and a 5 ft reach, never the reaction, the stat block or the vitals of an NPC.
-// tx is the open transaction, or nil for a read.
-func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer) ([]candidate, error) {
+// it is hidden, and a Blinded one does not; on a map with the fog of war, sees
+// decides (MR-036, slice 9.7: an NPC sees from its own square with its own senses,
+// a player's character what its player sees; nil means everyone sees). A reactor
+// in the mover's own turn group may react too (the SRD allows reactions on any
+// turn). Not exact is a player's warning in GetMoveOptions: only what the viewer
+// sees (RN-20), so hostile, not defeated, visible, its visible conditions, and a
+// 5 ft reach, never the reaction, the stat block or the vitals of an NPC. tx is the
+// open transaction, or nil for a read.
+func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer, sees func(playdb.Combatant, link.Sheet) bool) ([]candidate, error) {
 	if mover.Hidden || mover.Disengaged || !placed(mover) {
 		return nil, nil
 	}
@@ -102,6 +104,15 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 			continue
 		}
 		if !exact {
+			if sees != nil { // the fog: a reactor that cannot see the mover does not provoke
+				sheet, err := s.sheetOf(ctx, campaignID, r)
+				if err != nil || !sees(r, sheet) {
+					if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+						return nil, err
+					}
+					continue
+				}
+			}
 			out = append(out, candidate{who: r, reachFt: meleeReachFt})
 			continue
 		}
@@ -121,6 +132,9 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 		}
 		if err != nil {
 			return nil, err
+		}
+		if sees != nil && !sees(r, sheet) {
+			continue
 		}
 		if reach := meleeReachOf(sheet); reach > 0 {
 			out = append(out, candidate{who: r, reachFt: reach})
@@ -150,7 +164,11 @@ func provokedBy(cands []candidate, from, to grid.Square) []provoker {
 // the square only). It returns the id the offers share, empty when there is none.
 // The event is written before the move's own, which is what the undo acts on.
 func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square) (string, error) {
-	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil)
+	var sees func(playdb.Combatant, link.Sheet) bool
+	if c.sight != nil {
+		sees = func(r playdb.Combatant, sheet link.Sheet) bool { return c.sight.reactorSees(r, sheet, from) }
+	}
+	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil, sees)
 	if err != nil {
 		return "", err
 	}
@@ -353,6 +371,7 @@ func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncoun
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs)                               // the fog: an NPC the player does not see is not found
 		reactor, err := findCombatant(cs, o.ReactorID, v) // not_found for a reactor the player does not see
 		if err != nil {
 			return nil, err
@@ -387,7 +406,7 @@ func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncoun
 // RN-20): the master all, with names; a player the offers of the reactors they
 // control (to answer) and the ones on a combatant of theirs, the reactor named
 // only when they see it. Nobody else gets any.
-func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *encounterData) ([]*playv1.OpportunityOffer, error) {
+func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) ([]*playv1.OpportunityOffer, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
 	}
@@ -395,7 +414,6 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 	if err != nil {
 		return nil, s.dbError(ctx, "list the opportunity offers", err)
 	}
-	v := viewerOf(m)
 	find := func(id string) (playdb.Combatant, bool) {
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == id })
 		if i < 0 {
@@ -437,12 +455,16 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 // attack, for the squares the caller's screen warns about. Only reactors the
 // viewer sees (RN-10): a hidden one is never named. Nothing off the mover's turn
 // (a placement offers nothing) and nothing after Disengage.
-func (s *Service) markProvokes(ctx context.Context, m authz.Membership, enc playdb.Encounter, cs []playdb.Combatant, who playdb.Combatant, out *playv1.GetMoveOptionsResponse) error {
+func (s *Service) markProvokes(ctx context.Context, m authz.Membership, enc playdb.Encounter, cs []playdb.Combatant, who playdb.Combatant, v combatViewer, f *fogSight, out *playv1.GetMoveOptionsResponse) error {
 	if !actsNow(enc, who) || len(out.Reachable) == 0 {
 		return nil
 	}
-	v := viewerOf(m)
-	reactors, err := s.opportunityReactors(ctx, nil, m.CampaignID, cs, who, &v)
+	var sees func(playdb.Combatant, link.Sheet) bool
+	if f != nil && !v.master {
+		from := squareOfCombatant(who)
+		sees = func(r playdb.Combatant, sheet link.Sheet) bool { return f.reactorSees(r, sheet, from) }
+	}
+	reactors, err := s.opportunityReactors(ctx, nil, m.CampaignID, cs, who, &v, sees)
 	if err != nil || len(reactors) == 0 {
 		return err
 	}
@@ -494,12 +516,13 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 }
 
 // publishReturned tells the streams the mover went back, as a move.
-func (s *Service) publishReturned(campaignID string, d *encounterData, ev actionEvent) {
+func (s *Service) publishReturned(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
 	if ev.ReturnedFrom == nil {
 		return
 	}
 	if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == ev.Target }); i >= 0 {
-		s.publishCombatantMoved(campaignID, d.enc, d.cs[i])
+		s.publishCombatantMoved(ctx, campaignID, d.enc, d.cs[i])
+		s.positionChanged(ctx, campaignID, d.enc, d.cs[i], squareOfState(ev.ReturnedFrom))
 	}
 }
 

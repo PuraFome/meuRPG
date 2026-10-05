@@ -38,6 +38,10 @@ import (
 type combatViewer struct {
 	master bool
 	userID string
+	// unseen are the NPC combatants the viewer does not see on a map with the fog of
+	// war on (combat_fog.go): for them they are like hidden combatants. Nil on a map
+	// without the fog, and for the master.
+	unseen map[string]bool
 }
 
 func viewerOf(m authz.Membership) combatViewer {
@@ -45,7 +49,9 @@ func viewerOf(m authz.Membership) combatViewer {
 }
 
 // sees says whether the viewer sees the combatant.
-func (v combatViewer) sees(c playdb.Combatant) bool { return v.master || !c.Hidden }
+func (v combatViewer) sees(c playdb.Combatant) bool {
+	return v.master || (!c.Hidden && !v.unseen[c.ID])
+}
 
 // owns says whether the viewer's player plays the combatant: their own
 // character, or one of its creatures (which carry the owner's user_id). Only a
@@ -373,7 +379,10 @@ func timestampOrNil(t *time.Time) *timestamppb.Timestamp {
 // vitals: the master's copy carries their hit points, and every copy says
 // which of them are down.
 func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterData) (*playv1.Encounter, error) {
-	v := viewerOf(m)
+	v, err := s.viewerFor(ctx, m, d.enc, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out what the player sees", err)
+	}
 	var byCharacter map[string]*playv1.CharacterVitals
 	if slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
 		all, err := s.vitals.ListVitals(ctx, m.CampaignID)
@@ -386,12 +395,12 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		}
 	}
 	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), s.nameOf)
-	prompts, err := s.reactionPrompts(ctx, m, d)
+	prompts, err := s.reactionPrompts(ctx, m, d, v)
 	if err != nil {
 		return nil, err
 	}
 	out.ReactionPrompts = prompts
-	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d); err != nil {
+	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -487,42 +496,26 @@ func (s *Service) GetEncounter(
 
 // publishEncounterChanged tells everyone to read the combat again.
 func (s *Service) publishEncounterChanged(campaignID string, e playdb.Encounter) {
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Everyone: true},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_EncounterChanged_{
-			EncounterChanged: &playv1.WatchGameSessionResponse_EncounterChanged{EncounterId: e.ID, Revision: e.Revision},
-		}},
-	})
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Everyone: true}, Message: encounterChangedMessage(e)})
 }
 
 // publishTurnChanged tells who is on turn: the master the real combatant,
-// the players what they may see (a hidden one's turn is "the master's").
-func (s *Service) publishTurnChanged(campaignID string, d *encounterData) {
-	for _, v := range []combatViewer{{master: true}, {}} {
-		turn := d.turnFor(v)
-		s.hub.Publish(campaignID, live.Event{
-			Audience: live.Audience{Master: v.master, Players: !v.master},
-			Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
-				TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
-					EncounterId: d.enc.ID, Round: d.enc.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn,
-				},
-			}},
-		})
-	}
+// the players what they may see (a hidden one's turn is "the master's"; on a
+// map with the fog of war, so is the turn of an NPC the player does not see).
+func (s *Service) publishTurnChanged(ctx context.Context, campaignID string, d *encounterData) {
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}))})
+	s.publishTurnChangedToPlayers(ctx, campaignID, d)
 }
 
 // publishCombatantMoved tells the master always, and the players only when the
-// combatant is not hidden from them.
-func (s *Service) publishCombatantMoved(campaignID string, e playdb.Encounter, c playdb.Combatant) {
+// combatant is not hidden from them (on a map with the fog of war: when they see
+// its square, see publishMovedToPlayers).
+func (s *Service) publishCombatantMoved(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant) {
 	if !placed(c) {
 		return
 	}
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Master: true, Players: !c.Hidden},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatantMoved_{
-			CombatantMoved: &playv1.WatchGameSessionResponse_CombatantMoved{
-				EncounterId: e.ID, CombatantId: c.ID, Col: *c.GridCol, Row: *c.GridRow,
-			},
-		}},
-	})
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatantMovedMessage(e, c)})
+	if !c.Hidden {
+		s.publishMovedToPlayers(ctx, campaignID, e, c)
+	}
 }

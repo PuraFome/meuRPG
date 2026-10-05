@@ -422,7 +422,7 @@ func (s *Service) CreatureSheet(monsterKey, attack string) (link.Sheet, bool) {
 	if !ok {
 		return link.Sheet{}, false
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1), Senses: senseRanges(d.Senses)}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {

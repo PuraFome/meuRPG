@@ -112,6 +112,9 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
+	// The log's lines are filtered by who could see them when they happened
+	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
+	// rules about hidden combatants are worked out from the combatants as they are.
 	v := viewerOf(m)
 	entries := buildLog(events)
 
@@ -327,11 +330,15 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	_, targetKnown := byID[e.ev.Target]
 	known := (e.ev.Actor == "" || actorKnown) && (e.ev.Target == "" || targetKnown || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION)
 	visible := !e.masterOnly && !e.ev.Secret && !actor.Hidden && !target.Hidden && known
+	// On a map with the fog of war, a line is the players' who saw its NPCs when it
+	// happened, even if they have walked into the dark since; one they did not see
+	// never appears later (MR-036). The master's copy says it is hidden from them.
+	seen := e.ev.seenByViewer(v)
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
 		visible = visible && ok && !hit.Hidden
 	}
-	if !v.master && !visible {
+	if !v.master && (!visible || !seen) {
 		return nil, false
 	}
 
@@ -344,7 +351,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		Key: e.ev.Key,
 	}
 	if v.master {
-		out.Hidden = !visible
+		out.Hidden = !visible || (e.ev.Fogged && len(e.ev.SeenBy) == 0)
 		out.Undoable = slices.Contains(e.hosts, lastID)
 	}
 	switch e.kind {

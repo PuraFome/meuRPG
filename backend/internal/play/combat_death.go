@@ -97,6 +97,7 @@ func (s *Service) RollDeathSave(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		who, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -266,7 +267,7 @@ func (s *Service) ConfirmDeath(
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
 		if turnPassed {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {

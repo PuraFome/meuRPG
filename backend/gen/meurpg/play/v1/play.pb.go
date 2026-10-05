@@ -3257,7 +3257,8 @@ func (x *WatchGameSessionResponse_EncounterChanged) GetRevision() int32 {
 }
 
 // TurnChanged says whose turn it is now. Each member gets their own copy:
-// a player never learns which hidden combatant is on turn.
+// a player never learns which hidden combatant is on turn, nor, on a map with
+// the fog of war, which NPC they do not see.
 type WatchGameSessionResponse_TurnChanged struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combat (a UUID).
@@ -3333,8 +3334,10 @@ func (x *WatchGameSessionResponse_TurnChanged) GetMasterTurn() bool {
 }
 
 // CombatantMoved is a combatant's new square. A player's stream only gets
-// it for a combatant they may see. A combatant the app does not know yet
-// means: read the combat again.
+// it for a combatant they may see: on a map with the fog of war, an NPC only
+// when the player's character sees its new square (the other players get
+// `encounter_changed`, so one who saw it leave reads the combat again). A
+// combatant the app does not know yet means: read the combat again.
 type WatchGameSessionResponse_CombatantMoved struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combat (a UUID).

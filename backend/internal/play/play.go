@@ -338,6 +338,7 @@ type Service struct {
 	roster    CombatRoster
 	dice      DiceModes
 	terrain   TerrainSource
+	fog       FogSource
 	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time

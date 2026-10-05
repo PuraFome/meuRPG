@@ -243,6 +243,7 @@ func (s *Service) CastSpell(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		caster, err := findCombatant(cs, casterID, v)
 		if err != nil {
 			return nil, err
@@ -412,7 +413,7 @@ func (s *Service) CastSpell(
 		} else {
 			for i, t := range targs {
 				hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
-				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, coverAgainst(terrain, caster, t, cs), &hit); err != nil {
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, coverAgainst(terrain, caster, t, coverPool(cs, v)), &hit); err != nil {
 					return nil, err
 				}
 				made.Hits = append(made.Hits, hit)
@@ -492,7 +493,7 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 		// A target behind total cover (a wall on the line, or the master's mark)
 		// cannot be targeted directly; an area spell may still include it and the
 		// master judges.
-		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, cs).total() {
+		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, coverPool(cs, v)).total() {
 			return errCoverTotal()
 		}
 		if t.ID == caster.ID || !limited {
