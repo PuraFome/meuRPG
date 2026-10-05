@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -27,12 +29,12 @@ import (
 // speed) and the standard actions everyone has, and the rules' own
 // combat.Options works for a minion as for a hero. `not_found` for a
 // character that is not one of the campaign's living ones.
-func (s *Service) fighter(ctx context.Context, campaignID, characterID string) (kind string, d rules.Derived, err error) {
+func (s *Service) fighter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (kind string, d rules.Derived, err error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return "", rules.Derived{}, errCharacterNotFound()
 	}
-	rows, err := s.queries.ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
+	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
 	if err != nil {
 		return "", rules.Derived{}, s.dbError(ctx, "read a character for a combat", err)
 	}
@@ -45,7 +47,8 @@ func (s *Service) fighter(ctx context.Context, campaignID, characterID string) (
 	}
 	switch {
 	case sheet.GetFull() != nil:
-		return rows[0].Kind, rules.Derive(buildOf(sheet.GetFull()), s.rules), nil
+		// A druid in Wild Shape fights as the beast (MR-037).
+		return rows[0].Kind, s.derive(sheet.GetFull(), rows[0].WildShapeBeast), nil
 	case sheet.GetBasic() != nil:
 		return rows[0].Kind, s.basicDerived(sheet.GetBasic()), nil
 	}
@@ -91,8 +94,8 @@ func diceText(f rules.DiceFormula) string {
 // CombatSheet implements play.CombatRoster: what an attack needs from a
 // character's sheet. It takes no caller: it runs after play's authorization
 // check, and its armor class never goes to a player.
-func (s *Service) CombatSheet(ctx context.Context, campaignID, characterID string) (link.Sheet, error) {
-	_, d, err := s.fighter(ctx, campaignID, characterID)
+func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error) {
+	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Sheet{}, err
 	}
@@ -133,14 +136,14 @@ var poolResources = map[string]bool{"lay_on_hands": true}
 // CombatTurnOptions implements play.CombatRoster: what the character can do
 // now, from the sheet, what it used this turn and, for a player's character,
 // the spell slots already spent (its vitals).
-func (s *Service) CombatTurnOptions(ctx context.Context, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
-	kind, d, err := s.fighter(ctx, campaignID, characterID)
+func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
+	kind, d, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}
 	var usage combat.Usage
 	if kind == "player" {
-		v, err := s.GetVitals(ctx, campaignID, characterID)
+		v, err := s.getVitals(ctx, s.queriesIn(tx), campaignID, characterID)
 		if err != nil {
 			return nil, err
 		}

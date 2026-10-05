@@ -324,6 +324,32 @@ SET carried_light = sqlc.narg(carried_light), updated_at = sqlc.arg(now)
 WHERE map_id = sqlc.arg(map_id) AND character_id = sqlc.arg(character_id)
 RETURNING *;
 
+-- name: ListMapCreatureTokens :many
+-- The creatures' tokens on the map (MR-037). The handler lists only the live
+-- creatures of living characters.
+SELECT * FROM map_creature_tokens
+WHERE map_id = $1;
+
+-- name: UpsertMapCreatureToken :one
+-- Places a creature's token, or moves it if it is on the map already.
+INSERT INTO map_creature_tokens (map_id, creature_id, x_bp, y_bp, updated_at)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (map_id, creature_id) DO UPDATE
+SET x_bp = excluded.x_bp, y_bp = excluded.y_bp, updated_at = excluded.updated_at
+RETURNING *;
+
+-- name: MoveMapCreatureToken :exec
+-- Where a creature ended its combat (package play): an existing token moves; a
+-- creature that has none gets none (the master places creature tokens).
+UPDATE map_creature_tokens
+SET x_bp = $3, y_bp = $4, updated_at = $5
+WHERE map_id = $1 AND creature_id = $2;
+
+-- name: DeleteMapCreatureToken :one
+DELETE FROM map_creature_tokens
+WHERE map_id = $1 AND creature_id = $2
+RETURNING *;
+
 -- name: ListPointRevealsOfMap :many
 -- Who knows each trap of a map, for the master's read.
 SELECT r.* FROM map_point_reveals AS r

@@ -349,7 +349,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 	for i, ch := range caught {
 		targets[i].id = ch.ID
 		if trapNeedsAC(effect) {
-			sheet, err := s.roster.CombatSheet(ctx, campaignID, ch.ID)
+			sheet, err := s.roster.CombatSheet(ctx, c.tx, campaignID, ch.ID)
 			if err != nil {
 				return nil, err
 			}

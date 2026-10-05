@@ -431,8 +431,10 @@ type MapServiceClient interface {
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living character of the
-	//     campaign, the map is not in this campaign, the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     campaign (or the creature is not one of its live creatures), the map
+	//     is not in this campaign, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `invalid_argument`: both or neither of character_id and creature_id.
 	//   - `permission_denied`: the caller is a player.
 	PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error)
 	// SetMapTokenHidden hides a token from the players, or shows it again
@@ -1385,8 +1387,10 @@ type MapServiceHandler interface {
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living character of the
-	//     campaign, the map is not in this campaign, the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     campaign (or the creature is not one of its live creatures), the map
+	//     is not in this campaign, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `invalid_argument`: both or neither of character_id and creature_id.
 	//   - `permission_denied`: the caller is a player.
 	PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error)
 	// SetMapTokenHidden hides a token from the players, or shows it again

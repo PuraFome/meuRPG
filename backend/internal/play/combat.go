@@ -307,6 +307,13 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 			if err != nil {
 				return nil, nil, fmt.Errorf("insert combatant: %w", err)
 			}
+			// A character that joins a combat leaves any familiar's sight it had: the
+			// sight is an action of a turn there (MR-036).
+			if p.char.Player {
+				if err := s.endSight(ctx, c, inserted, sightCombatJoined, false); err != nil {
+					return nil, nil, err
+				}
+			}
 			all = append(all, inserted)
 			added = append(added, inserted)
 		}
@@ -603,6 +610,12 @@ func (s *Service) BeginCombat(
 		}
 		started := c.now
 		c.enc.StartedAt = &started
+		// No sight carries into the fight: it is an action of a turn there (MR-036).
+		for _, member := range cs {
+			if err := s.endSight(ctx, c, member, sightCombatJoined, false); err != nil {
+				return nil, err
+			}
+		}
 		if err := startTurn(ctx, c, first, 1); err != nil {
 			return nil, err
 		}
@@ -1076,8 +1089,8 @@ func (s *Service) EndEncounter(
 }
 
 // endEncounter ends the combat c.enc inside the transaction: its status, and
-// the player characters' tokens, which move to the squares where they ended
-// (the map shows them where they stand). cs are its combatants.
+// the player characters' tokens, and the creatures' that have one, which move to the
+// squares where they ended (the map shows them where they stand). cs are its combatants.
 func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Combatant) error {
 	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
 		return err
@@ -1094,6 +1107,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.writeBackCreatures(ctx, c, cs); err != nil {
 		return err
 	}
+	// A familiar's sight begun in the fight ends with it (MR-036).
+	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
 	if enc.MapID == nil {
 		return nil // the map was deleted: nothing to write back to
 	}
@@ -1103,6 +1120,12 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 		if cb.Kind == kindPlayer && placed(cb) {
 			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
 			positions = append(positions, link.TokenPosition{CharacterID: cb.CharacterID, XBP: x, YBP: y})
+		}
+		// A creature's token moves too, if the master gave it one (MR-037): the fight
+		// never makes a token for it.
+		if isCreature(cb) && !cb.Dismissed && placed(cb) {
+			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
+			positions = append(positions, link.TokenPosition{CreatureID: deref(cb.CreatureID), XBP: x, YBP: y})
 		}
 	}
 	if err := s.maps.SetTokenPositions(ctx, c.tx, *enc.MapID, positions, c.now); err != nil {
@@ -1114,21 +1137,21 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 // endOpenEncounter ends the session's combat, if it has one, when the master
 // ends the session (EndGameSession), inside its transaction, with a session
 // event.
-func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) ([]playdb.Combatant, error) {
+func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) ([]playdb.Combatant, []*playv1.CharacterVitals, error) {
 	enc, err := q.GetOpenEncounter(ctx, session.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("find the open encounter: %w", err)
+		return nil, nil, fmt.Errorf("find the open encounter: %w", err)
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now()}
+	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s}
 	if err := s.endEncounter(ctx, c, cs); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return cs, insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
+	return cs, c.told, insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
 }

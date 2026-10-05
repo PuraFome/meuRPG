@@ -15,11 +15,11 @@ import (
 // player sees on a map with the fog of war on, after its own authorization
 // check, so it takes no caller. It implements maps.CharacterDirectory.
 //
-// The senses come from the derived sheet, so the race and the features count.
-// Slice 9.10 will have a druid in Wild Shape send the beast's senses here
-// instead, and a familiar the player sees through add its eyes (link.PartyMember.Extra).
+// The senses come from the derived sheet, so the race and the features count. A
+// druid in Wild Shape sends the beast's senses instead (a wolf has no darkvision),
+// and a player looking through their familiar's eyes sends them as Eyes (MR-037, D6).
 func (s *Service) PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error) {
-	rows, err := s.queries.ListCombatParty(ctx, campaignID)
+	rows, err := s.queries.ListPartyVision(ctx, campaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party's senses", err)
 	}
@@ -36,9 +36,15 @@ func (s *Service) PartyVision(ctx context.Context, campaignID string) ([]link.Pa
 			return nil, s.dbError(ctx, "list the party's senses", err)
 		}
 		if full := sheet.GetFull(); full != nil {
-			derived := rules.Derive(buildOf(full), s.rules)
+			// The form's senses and passive Perception, when the druid is a beast (MR-037).
+			derived := s.derive(full, row.WildShapeBeast)
 			member.Senses = sensesOf(derived.Senses)
 			member.PassivePerception = derived.PassivePerception
+		}
+		if row.FamiliarID != nil && row.FamiliarMonsterKey != nil {
+			if d, ok := s.rules.MonsterDerived(*row.FamiliarMonsterKey); ok {
+				member.Eyes = &link.FamiliarEyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
+			}
 		}
 		out = append(out, member)
 	}

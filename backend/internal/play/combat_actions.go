@@ -223,7 +223,7 @@ func (s *Service) GetTurnOptions(
 		return nil, err
 	}
 
-	opts, err := s.optionsOf(ctx, m.CampaignID, who)
+	opts, err := s.optionsOf(ctx, nil, m.CampaignID, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -286,7 +286,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 	}
 	var out []*playv1.SpellTargets
 	for _, e := range spells {
-		sp, err := s.roster.CombatSpell(ctx, campaignID, who.CharacterID, e.key, e.level)
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level)
 		if err != nil {
 			return nil, err
 		}
@@ -588,7 +588,7 @@ func (s *Service) RollAttack(
 		if err := mayAttack(attacker, asReaction); err != nil {
 			return nil, err
 		}
-		attackerSheet, err := s.sheetOf(ctx, m.CampaignID, attacker)
+		attackerSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
 		}
@@ -659,7 +659,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
-		targetSheet, err := s.sheetOf(ctx, m.CampaignID, target)
+		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
@@ -1045,6 +1045,19 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 	if err != nil {
 		return hit, nil, err
 	}
+	if w := now.GetWildShape(); w != nil {
+		// In a beast form the healing is the beast's (MR-037).
+		r := combat.ApplyHeal(int(w.GetHitPointsCurrent()), int(w.GetHitPointsMax()), int(amount))
+		hp := clamp32(r.HP, 0, math.MaxInt32)
+		before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{WildShapeHitPointsCurrent: &hp})
+		if err != nil {
+			return hit, nil, err
+		}
+		hit.DeathBefore = deathOf(target)
+		hit.Before, hit.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+		hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
+		return hit, after, nil
+	}
 	r := combat.ApplyHeal(int(now.GetHitPointsCurrent()), int(now.GetHitPointsMax()), int(amount))
 	hp := clamp32(r.HP, 0, math.MaxInt32)
 	before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp})
@@ -1052,8 +1065,8 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 		return hit, nil, err
 	}
 	hit.DeathBefore = deathOf(target)
-	hit.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-	hit.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+	hit.Before = ptr(hpStateOf(before))
+	hit.After = ptr(hpStateOf(after))
 	hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
 	return hit, after, nil
 }
@@ -1183,8 +1196,26 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
-			made.Before = &hpState{HP: now.GetHitPointsCurrent(), Temp: now.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(now))
 			made.After = made.Before
+		} else if now.GetWildShape() != nil {
+			// A druid in a beast form: the beast takes it, and what is left over when
+			// the beast falls goes to the druid (MR-037, SRD).
+			before, after, err := s.damageBeast(ctx, c, target, now, amount, &made)
+			if err != nil {
+				return nil, err
+			}
+			vitals = after
+			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+			made.ConcentrationDC = concentrationDC(target, amount)
+			made.DeathBefore = deathOf(target)
+			// The 0 hit points rule, as below: the damage that carried over dropped
+			// the druid to 0 on an opportunity attack.
+			if made.Before.HP > 0 && made.After.HP == 0 {
+				if made.ReturnedFrom, made.ReturnBlocked, err = s.returnToReach(ctx, c, p.ID, target); err != nil {
+					return nil, err
+				}
+			}
 		} else {
 			// RN-02: the damage goes through the character's vitals, temporary hit
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
@@ -1196,8 +1227,8 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			vitals = after
-			made.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-			made.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+			made.Before = ptr(hpStateOf(before))
+			made.After = ptr(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
 			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
 			// The 0 hit points rule: an opportunity attack that drops its mover to 0
@@ -1433,9 +1464,13 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		opts, err := s.optionsOf(ctx, m.CampaignID, who)
+		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
+		}
+		if wildShapeFeature(actionKey) {
+			// It needs the beast: AssumeWildShape takes it (MR-037).
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()
@@ -1513,7 +1548,7 @@ func (s *Service) TakeAction(
 		}
 
 		if feature {
-			sheet, err := s.sheetOf(ctx, m.CampaignID, who)
+			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
 				return nil, err
 			}

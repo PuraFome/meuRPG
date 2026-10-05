@@ -116,13 +116,13 @@ func (s *Service) trapDice(e dice.Expr) (dice.Result, error) {
 
 // trapTargetsOf works out what the arithmetic needs of each combatant caught: its
 // armor class when the trap attacks, and its saving throw bonus when it asks one.
-func (s *Service) trapTargetsOf(ctx context.Context, campaignID string, effect *rulesv1.TrapEffect, caught []playdb.Combatant) ([]trapTarget, error) {
+func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID string, effect *rulesv1.TrapEffect, caught []playdb.Combatant) ([]trapTarget, error) {
 	ability := trapSaveAbility(effect)
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
 		if trapNeedsAC(effect) {
-			sheet, err := s.sheetOf(ctx, campaignID, c)
+			sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 			if err != nil {
 				return nil, err
 			}
@@ -159,7 +159,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 		ev.PrevState, ev.PrevTriggeredAt = prev.State, prev.TriggeredAt
 	}
 	effect := prev.Spec.GetEffect()
-	targets, err := s.trapTargetsOf(ctx, campaignID, effect, caught)
+	targets, err := s.trapTargetsOf(ctx, c.tx, campaignID, effect, caught)
 	if err != nil {
 		return nil, err
 	}

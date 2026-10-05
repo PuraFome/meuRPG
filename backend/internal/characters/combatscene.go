@@ -13,7 +13,7 @@ import (
 // check, and the DC never passes through it. `not_found` for a character that
 // is not one of the campaign's living ones.
 func (s *Service) SceneOptions(ctx context.Context, campaignID, characterID string, keys []string) ([]link.SceneOption, error) {
-	_, d, err := s.fighter(ctx, campaignID, characterID)
+	_, d, err := s.fighter(ctx, nil, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}

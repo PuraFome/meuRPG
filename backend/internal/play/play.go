@@ -82,6 +82,29 @@ type VitalsKeeper interface {
 	// active player character of the campaign; `invalid_argument` for a
 	// value outside 0 to its maximum.
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
+
+	// The druid's Wild Shape form and the familiar's eyes live on the vitals too
+	// (MR-037, MR-036). This package decides when they start and end, and what they
+	// cost; the characters module keeps them and says what the character is in the
+	// form (its speed, size and jumps, which a combatant copies).
+
+	// AssumeWildShape turns the character into the beast inside tx, with the beast
+	// at full hit points, and returns the vitals before and after and the
+	// character's numbers as a combatant (the beast's). The errors are
+	// link.ErrBeastNotAllowed (the beast is not one its level allows, or it has no
+	// Wild Shape) and link.ErrAlreadyInWildShape; `not_found` for any other
+	// character. It spends nothing: the caller spends the use and the action.
+	AssumeWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string) (before, after *playv1.CharacterVitals, body link.Character, err error)
+	// SetWildShape puts the form as it says inside tx: the beast with its current
+	// hit points (1 or more), or its own shape for an empty beast. It is how the form
+	// ends and how an undo puts it back.
+	SetWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string, hp int32) (after *playv1.CharacterVitals, body link.Character, err error)
+	// FamiliarOf returns the character's live familiar and false when it has none.
+	FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Creature, bool, error)
+	// SetFamiliarSight records that the character's player looks through the
+	// creature's eyes (an empty creatureID: they stopped), whether it started in a
+	// combat and the conditions it gave the combatant, and returns the vitals after.
+	SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, characterID, creatureID string, inCombat bool, conditions []string) (*playv1.CharacterVitals, error)
 }
 
 // MapKeeper is what the session's screen needs from the maps module
@@ -98,6 +121,11 @@ type MapKeeper interface {
 	// session's current one: a map with the fog on records the players' first
 	// view of it (MR-036).
 	MapShown(ctx context.Context, campaignID, mapID string)
+	// VisionChanged tells the maps module, after the commit, that what the players
+	// of the map see changed with no token moving: a druid took a beast's senses or
+	// left them, a player started or stopped looking through their familiar's eyes
+	// (MR-036, MR-037). Nothing happens for a map without fog.
+	VisionChanged(ctx context.Context, campaignID, mapID string)
 	// ShownImage returns the campaign's gallery image imageID as the
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.
@@ -157,21 +185,25 @@ type CombatRoster interface {
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
 	SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+	// The three reads below (CombatSheet, CombatTurnOptions, CombatSpell) take the
+	// caller's transaction (nil: the pool): a change that wrote the character's vitals or
+	// Wild Shape form must read the sheet inside it, or the read waits for that write.
+
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
 	// attacks and the standard actions. Its armor class never goes to a
 	// player (RN-20). `not_found` for any other character.
-	CombatSheet(ctx context.Context, campaignID, characterID string) (link.Sheet, error)
+	CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error)
 	// CombatTurnOptions works out what the character can do now (MR-014),
 	// from its sheet, what it used this turn and the slots it spent: the rules
 	// engine's TurnOptions. `not_found` for any other character.
-	CombatTurnOptions(ctx context.Context, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
+	CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
 	// CombatSpell returns the spell as the character casts it with a slot of
 	// slotLevel (0 for a cantrip): its range, attack or save, damage or healing
 	// at that level, with the character's attack bonus, save DC and
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
-	CombatSpell(ctx context.Context, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
+	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error)
