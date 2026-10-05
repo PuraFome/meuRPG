@@ -153,21 +153,6 @@ export async function tableForCreatureCombat(master: Page, heroPlayer: Page, tor
   }
 }
 
-/**
- * The player taps "Encerrar turno" and waits until the server has really passed the turn on: the tap returns before the call
- * is answered, and a spec that read the turn at once would see the old one still there and go on to the wrong screen.
- */
-export async function endTurnOf(player: Page, master: Page, campaignId: string, label: string): Promise<void> {
-  await player.getByRole('button', { name: 'Encerrar turno' }).click();
-  await expect
-    .poll(async () => {
-      const e = await getEncounterRPC(master, campaignId);
-      const group = e.turnGroupIds?.length ? e.turnGroupIds : [e.currentCombatantId ?? ''];
-      return group.some((id) => e.combatants.find((c) => c.id === id)?.label === label);
-    })
-    .toBe(false);
-}
-
 /** The session page's route. */
 export function sessionRoute(campaignId: string): string {
   return `/campanhas/${campaignId}/sessao`;

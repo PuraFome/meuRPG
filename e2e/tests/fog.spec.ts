@@ -137,7 +137,8 @@ test('depois de andar, o que já foi visto continua, escurecido, com as marcas e
     await moveTo(mp, table, table.pensantusId, 10, 13);
     await expect.poll(async () => (await shading(ap)).remembered).toBeGreaterThan(0);
     await loaded(ap);
-    expect(await tokens(ap)).not.toContain('Goblin 2');
+    // The tokens come from their own read, after the shading's: wait for it. A goblin that stayed would fail here too.
+    await expect.poll(() => tokens(ap)).not.toContain('Goblin 2');
     expect(await tokens(ap)).toContain('Pensantus (você)');
     await expect(ap.locator('.mr-legend').getByText('Já visto', { exact: true })).toBeVisible();
     // The walls he remembers keep their marks, darkened: they are drawn again over the shading.

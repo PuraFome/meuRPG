@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -14,7 +14,7 @@ import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
-import { beginCreatureCombat, endTurnOf, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
+import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -1127,6 +1127,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(m, `Concentrado, a ordem do mestre ${where}`);
     // Teia used the action, so "Encerrar turno" ends the turn without asking.
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await waitTurnLeaves(m, campaignId, 'Pensantus');
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
@@ -1169,7 +1170,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       if (i === 0) {
         await expectScreenPasses(p, `Caído, depois de rolar ${where}`);
       }
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Pensantus');
     }
     await expect(p.getByText('Pensantus está estável.')).toBeVisible();
     await expectScreenPasses(p, `Estável, fora da vez ${where}`);
@@ -1186,7 +1187,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       await p.getByRole('button', { name: 'Digitar o resultado' }).click();
       await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill(i === 0 ? '1' : '2');
       await p.getByRole('button', { name: i === 0 ? 'Confirmar 1' : 'Confirmar 2' }).click();
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Pensantus');
     }
     await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeVisible();
     await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeInViewport({ ratio: 1 });

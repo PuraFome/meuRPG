@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-import { combatRPC, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
-import { beginCreatureCombat, endTurnOf, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare } from './creatures-combat-support';
+import { combatRPC, endTurnOf, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
+import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare } from './creatures-combat-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
