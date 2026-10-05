@@ -116,6 +116,10 @@ export class MapView {
   readonly hint = input<string | null>(null);
   /** A kind of point is waiting for a click: the cursor says so. */
   readonly placing = input(false);
+  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, MAP-LANGUAGE.md). */
+  readonly kindShapes = input(false);
+  /** The initial of a token: `tokenInitial` by default; the fog map writes an NPC's number too ("G2"). */
+  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(null);
 
   readonly pointSelect = output<string>();
   readonly tokenSelect = output<string>();
@@ -256,6 +260,14 @@ export class MapView {
     this.transform.set(IDENTITY);
   }
 
+  /** Zooms in on a spot (a basis-point position), as the chips of the party do on a phone. */
+  focusOn(at: { xBp: number; yBp: number }, scale = PREVIEW_SCALE): void {
+    const { width, height } = this.size();
+    if (width > 0) {
+      this.transform.set(focusTransform(at, scale, width, height));
+    }
+  }
+
   /** Puts focus back on an item (a point's marker after its sheet closes). */
   focusItem(kind: 'point' | 'token', id: string): void {
     this.viewport()
@@ -318,7 +330,7 @@ export class MapView {
   }
 
   protected initial(token: ViewToken): string {
-    return tokenInitial(token, this.shownTokens());
+    return (this.initialOf() ?? tokenInitial)(token, this.shownTokens());
   }
 
   protected transformCss(): string {

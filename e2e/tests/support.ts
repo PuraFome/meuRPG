@@ -10,7 +10,7 @@ export const sessionCookie = '__Host-meurpg_session';
 export const loginCookie = '__Host-meurpg_login';
 
 /** The test users devidp lists on its login page (oidctest.TestUsers). */
-export type TestUser = 'Mestre Teste' | 'Jogador Teste';
+export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificado';
 
 /**
  * Signs in through devidp, the way a person would: open the sign-in URL,
@@ -44,7 +44,14 @@ export async function signIn(page: Page, user: TestUser = 'Mestre Teste', return
  * these files exist by the time any other test runs.
  */
 export function authStatePath(user: TestUser): string {
-  const slug = user === 'Mestre Teste' ? 'mestre-teste' : 'jogador-teste';
+  const slugs: Record<TestUser, string> = {
+    'Mestre Teste': 'mestre-teste',
+    'Jogador Teste': 'jogador-teste',
+    // The third account is a second player where a table needs two (the fog of war, E9-03): its e-mail
+    // is unverified, which changes nothing for a player.
+    'E-mail Não Verificado': 'e-mail-nao-verificado',
+  };
+  const slug = slugs[user];
   return path.join(__dirname, '..', '.auth', `${slug}.json`);
 }
 

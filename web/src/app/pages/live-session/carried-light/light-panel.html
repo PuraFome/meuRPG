@@ -1,0 +1,45 @@
+<section class="mr-panel" aria-labelledby="light-panel-title">
+  <h2 class="mr-panel__title" id="light-panel-title">Luz dos personagens</h2>
+  <p class="lead">O que cada personagem carrega. O jogador também muda a própria luz; vale a última mudança.</p>
+
+  @if (rows().length === 0) {
+    <p class="mr-muted">Nenhum personagem de jogador está neste mapa.</p>
+  } @else {
+    <ul class="rows">
+      @for (r of rows(); track r.token.characterId) {
+        <li class="row">
+          <span class="row__who">
+            <span class="row__name">{{ r.token.name }}</span>
+            <span class="row__sub">{{ r.sub }}</span>
+          </span>
+          <mat-form-field appearance="outline" class="row__select" subscriptSizing="dynamic">
+            <mat-label>Luz</mat-label>
+            <select
+              #select
+              matNativeControl
+              [disabled]="busyId() !== null"
+              [attr.aria-label]="'Luz de ' + r.token.name"
+              (change)="choose(r.token, select.value, select)"
+            >
+              <option value="" [selected]="r.token.carriedLight === ''">Nenhuma</option>
+              @for (o of r.options; track o.key) {
+                <option [value]="o.key" [selected]="r.token.carriedLight === o.key">{{ o.name }}</option>
+              }
+            </select>
+          </mat-form-field>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <p class="mr-notice mr-notice--neutral line" role="status" aria-live="polite" [hidden]="!line()">
+    <mat-icon aria-hidden="true">lightbulb</mat-icon>
+    <span>{{ line() }}</span>
+  </p>
+</section>

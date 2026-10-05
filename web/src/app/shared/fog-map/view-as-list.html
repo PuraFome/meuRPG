@@ -1,0 +1,37 @@
+<section class="mr-panel va" aria-labelledby="view-as-title">
+  <h2 class="mr-panel__title" id="view-as-title">Ver como</h2>
+  <p class="va__lead">Veja o mapa como um jogador vê. Só você, e só aqui: nada muda para ninguém.</p>
+
+  <div class="va__rows" role="radiogroup" aria-labelledby="view-as-title" (keydown)="onKey($event)">
+    @for (row of rows(); track row.id; let i = $index) {
+      <button
+        type="button"
+        role="radio"
+        class="va__row"
+        [class.va__row--on]="row.id === selected()"
+        [attr.aria-checked]="row.id === selected()"
+        [attr.tabindex]="stop(i)"
+        [attr.data-character]="row.id"
+        (click)="pick(row.id, i)"
+      >
+        <span class="va__radio" aria-hidden="true"></span>
+        <span class="va__text">
+          <span class="va__name">{{ row.name }}</span>
+          <span class="va__sub">{{ row.sub }}</span>
+          @if (row.count) {
+            <span class="va__count">{{ row.count }}</span>
+          }
+        </span>
+      </button>
+    }
+  </div>
+
+  @if (note()) {
+    <p class="va__note" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ note() }}</span>
+    </p>
+  }
+
+  <p class="va__group"><strong>Visão do grupo</strong> {{ groupText() }}</p>
+</section>

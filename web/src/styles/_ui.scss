@@ -299,6 +299,30 @@ a.mr-list__row:hover .mr-list__name {
     left: 4.5px;
   }
 
+  // The fog of war's states (E9-03): the image as it is, under 25 % black, without colour, under 60 % black with fine dots,
+  // solid black. The contrast comes from the brightness and the texture, not the hue.
+  &--seen {
+    background-color: color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down));
+  }
+
+  &--dim {
+    background-color: color-mix(in srgb, var(--mr-map-fog) 25%, color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down)));
+  }
+
+  &--grey {
+    background-color: var(--mr-map-token-down-line);
+  }
+
+  &--remembered {
+    background-color: color-mix(in srgb, var(--mr-map-fog) 60%, color-mix(in srgb, var(--mr-map-token-surface) 78%, var(--mr-map-token-down)));
+    background-image: radial-gradient(color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent) 0.9px, transparent 1.2px);
+    background-size: 4px 4px;
+  }
+
+  &--unseen {
+    background-color: var(--mr-map-fog);
+  }
+
   // The reach: the garnet tint inside a dashed line, as on the map.
   &--reach {
     border: 2px dashed var(--mr-map-accent);

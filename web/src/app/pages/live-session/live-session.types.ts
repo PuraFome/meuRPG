@@ -1,11 +1,13 @@
 /**
  * The view-models and the port of the session page (`/campanhas/:id/sessao`,
- * MR-011, MR-012, RN-02). Nothing here imports generated code: the
+ * MR-011, MR-012, RN-02). Nothing here
+ * imports generated code: the
  * `LiveSessionSourceLive` maps `PlayService`, `CharacterService` and
  * `CampaignService` onto these shapes, and the page, its children and their
  * tests only see these.
  */
 
+import type { FamiliarSightVm } from '../../core/play/familiar-eyes';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
 
@@ -41,6 +43,8 @@ export interface VitalsVm {
   readonly hitDiceUsed: number;
   /** Of two copies of the same character's vitals, the larger is newer. */
   readonly revision: number;
+  /** The player looks through their familiar's eyes (MR-036); absent otherwise. */
+  readonly familiarSight?: FamiliarSightVm | null;
 }
 
 /** The open game session being watched. */
@@ -93,6 +97,8 @@ export type LiveEventVm =
       readonly xBp: number;
       readonly yBp: number;
     }
+  /** `vision_changed` (MR-036): what this player sees of a fog map changed; read the vision and the map again. */
+  | { readonly kind: 'visionChanged'; readonly mapId: string }
   /** `shown_image_changed`; `image` is `null` when it stopped. */
   | { readonly kind: 'shownImage'; readonly image: ShownImageVm | null }
   /** `left_images_changed`: read the left images again. */

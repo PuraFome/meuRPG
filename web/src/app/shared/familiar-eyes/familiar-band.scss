@@ -1,0 +1,42 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+}
+
+// The band is one block: the notice inside it has no frame of its own.
+.band {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.band__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.band__error {
+  margin-top: var(--mr-space-2);
+  font-weight: 700;
+}
+
+.back {
+  min-height: 48px;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    align-self: flex-start;
+    width: auto;
+    min-height: 44px;
+  }
+}

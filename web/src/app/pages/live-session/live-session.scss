@@ -119,7 +119,8 @@
 // The combat takes the board's place (MR-013); the launch strip sits above
 // the board, with the same step under the header.
 .combat,
-.launch {
+.launch,
+.familiar {
   display: block;
   margin-top: var(--mr-space-6);
 }

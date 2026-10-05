@@ -10,9 +10,10 @@ import { authStatePath, signIn } from './support';
 // `playwright.config.ts`'s "chrome" project has `dependencies: ['setup']`,
 // so these two run first, in the "setup" project, before anything else.
 //
-// Only "Mestre Teste" and "Jogador Teste" are needed: no spec signs in as
-// "E-mail Não Verificado" today. Add a third `setup(...)` here, with its
-// own `authStatePath` case, if one ever does.
+// "Mestre Teste" and "Jogador Teste" are the master and the player of nearly
+// every spec; "E-mail Não Verificado" is the second player of the specs that
+// need two people at one table (the fog of war: Pensantus and Toren see
+// different maps at the same moment).
 
 setup('autenticar como Mestre Teste', async ({ page }) => {
   await signIn(page, 'Mestre Teste', '/');
@@ -22,4 +23,9 @@ setup('autenticar como Mestre Teste', async ({ page }) => {
 setup('autenticar como Jogador Teste', async ({ page }) => {
   await signIn(page, 'Jogador Teste', '/');
   await page.context().storageState({ path: authStatePath('Jogador Teste') });
+});
+
+setup('autenticar como E-mail Não Verificado', async ({ page }) => {
+  await signIn(page, 'E-mail Não Verificado', '/');
+  await page.context().storageState({ path: authStatePath('E-mail Não Verificado') });
 });

@@ -43,6 +43,9 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitDiceTotal: v.hitDiceTotal,
     hitDiceUsed: v.hitDiceUsed,
     revision: v.revision,
+    familiarSight: v.familiarSight
+      ? { creatureId: v.familiarSight.creatureId, inCombat: v.familiarSight.inCombat }
+      : null,
   };
 }
 
@@ -142,6 +145,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
             xBp: res.event.value.xBp,
             yBp: res.event.value.yBp,
           };
+          break;
+        case 'visionChanged':
+          yield { kind: 'visionChanged', mapId: res.event.value.mapId };
           break;
         case 'shownImageChanged':
           yield { kind: 'shownImage', image: toShownImageVm(res.event.value.image) };

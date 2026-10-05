@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { ViewToken, bpToPercent } from '../map-geometry';
 
 /**
@@ -43,6 +44,8 @@ import { ViewToken, bpToPercent } from '../map-geometry';
     '[style.top.%]': 'top()',
     '[class.tk--hidden]': 'token().hidden',
     '[class.tk--mine]': 'token().mine',
+    '[class.tk--npc]': 'npc()',
+    '[class.tk--creature]': 'creature()',
     '[class.tk--selected]': 'selected()',
     '[class.tk--raised]': 'raised()',
   },
@@ -54,9 +57,22 @@ export class MapToken {
   readonly interactive = input(false);
   readonly selected = input(false);
   readonly raised = input(false);
+  /** Draw an NPC as the white rounded square and a character's creature with a dashed ring (MAP-LANGUAGE.md; the fog map). */
+  readonly kindShapes = input(false);
 
   protected readonly left = computed(() => bpToPercent(this.at()?.xBp ?? this.token().xBp));
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.token().yBp));
+  protected readonly creature = computed(() => this.kindShapes() && !!this.token().creatureId);
+  protected readonly npc = computed(() => {
+    const kind = this.token().kind;
+    return (
+      this.kindShapes() &&
+      !this.token().creatureId &&
+      kind !== undefined &&
+      kind !== CharacterKind.PLAYER &&
+      kind !== CharacterKind.UNSPECIFIED
+    );
+  });
   protected readonly label = computed(() => {
     const t = this.token();
     return `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;

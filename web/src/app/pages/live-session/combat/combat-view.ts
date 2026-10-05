@@ -36,6 +36,7 @@ import {
   reactorIsMasters,
   waitingText,
 } from '../../../core/combat/opportunity';
+import type { FogView } from '../../../core/maps/fog-view';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
@@ -148,6 +149,8 @@ export class CombatView {
   readonly isMaster = input(false);
   readonly state = input.required<CombatState>();
   readonly mapState = input.required<MapState>();
+  /** What the player sees of the map with the fog on (MR-036): the combat map draws it, and its layers are the ones filtered to it. */
+  readonly fog = input<FogView | null>(null);
   readonly vitals = input<readonly VitalsVm[]>([]);
   readonly partyInfo = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
   readonly sessionNumber = input(0);
@@ -236,7 +239,9 @@ export class CombatView {
   });
   /** The map's painted layers (walls, difficult terrain, cover), read again when the map's `layers_revision` changes. */
   private readonly layersState = new LayersState(async (mapId) => this.maps.layers(this.campaignId(), mapId));
-  protected readonly layers = this.layersState.layers;
+  /** On a fog map the player's layers come with the vision (filtered to what they see); otherwise they are the map's. */
+  protected readonly fogVision = computed(() => (this.isMaster() ? null : (this.fog()?.vision() ?? null)));
+  protected readonly layers = computed(() => (this.fogVision() ? (this.fog()?.layers() ?? this.layersState.layers()) : this.layersState.layers()));
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
   protected readonly moveOptions = new MoveOptionsState();
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */

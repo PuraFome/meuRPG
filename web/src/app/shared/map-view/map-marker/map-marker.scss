@@ -104,3 +104,8 @@ span.pt__hit {
     font-size: 11px;
   }
 }
+
+// A point on a remembered square (the fog): darkened with the picture under it.
+:host(.pt--remembered) .pt__hit {
+  filter: brightness(0.65);
+}

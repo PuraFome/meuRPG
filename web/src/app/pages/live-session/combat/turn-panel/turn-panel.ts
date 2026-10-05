@@ -78,6 +78,8 @@ export class TurnPanel {
   protected readonly banner = computed(() => turnBanner(this.encounter()));
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
+  protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
   /** The player's character is at 0 hit points (any turn). */
   protected readonly isDown = computed(() => {
     const own = this.own();

@@ -103,3 +103,21 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+// The confirmation after a carried light is set (E9-04): above the map, read once, 6 s.
+.map__toast {
+  margin: 0;
+}
+
+// "Ver como" and "Luz dos personagens": the master's fog tools under the map.
+.map__fog {
+  display: grid;
+  gap: var(--mr-space-4);
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}

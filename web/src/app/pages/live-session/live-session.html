@@ -71,6 +71,21 @@
         />
       }
 
+      @if (!isMaster() && ownVitals(); as own) {
+        @if (own.familiarSight; as sight) {
+          <app-familiar-band
+            class="familiar"
+            [campaignId]="campaignId()"
+            [characterId]="own.characterId"
+            [characterName]="own.name"
+            [creatureId]="sight.creatureId"
+            [inCombat]="sight.inCombat"
+            [endsInRound]="sight.inCombat && combat.encounter() ? combat.encounter()!.round + 1 : null"
+            (stopped)="familiarStopped(own.characterId)"
+          />
+        }
+      }
+
       @if (combat.shown()) {
         <app-combat-view
           class="combat"
@@ -78,6 +93,7 @@
           [isMaster]="isMaster()"
           [state]="combat"
           [mapState]="mapState"
+          [fog]="fog"
           [vitals]="vitals()"
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
@@ -145,6 +161,9 @@
               [state]="mapState"
               [mapId]="currentMapId()"
               [maps]="campaignMaps()"
+              [people]="viewAsPeople()"
+              [info]="partyInfo()"
+              [tick]="visionTick()"
               (currentChanged)="showMap($event)"
             />
           </div>
@@ -175,6 +194,8 @@
               [campaignId]="campaignId()"
               [state]="mapState"
               [mapId]="currentMapId()"
+              [fog]="fog"
+              [characterName]="ownCharacterName()"
             />
           </div>
           <div class="board__side">

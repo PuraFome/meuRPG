@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+
+import { decodeVision, seenCount, shadeRects, shadeRuns, tileProgress, tileRects, tileUrl, unpackStates, visionLegend } from './vision';
+import { packStates, statesOf, visionResponse } from './vision-testing';
+
+describe('unpackStates', () => {
+  it('reads four bits a square, the even square in the low bits, and ignores the unused half byte', () => {
+    // squares 0..4 = 4, 5, 2, 0, 3 -> bytes 0x54, 0x02, 0x03
+    expect(Array.from(unpackStates(Uint8Array.of(0x54, 0x02, 0x03), 5, 1))).toEqual([4, 5, 2, 0, 3]);
+    expect(Array.from(unpackStates(packStates([1, 2, 3, 4, 5, 0]), 3, 2))).toEqual([1, 2, 3, 4, 5, 0]);
+  });
+
+  it('gives a grid of unseen squares for bytes that are missing', () => {
+    expect(Array.from(unpackStates(new Uint8Array(), 2, 2))).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe('the shading of each state', () => {
+  const rows = ['.dg', 'rBw', '...'];
+  const vision = decodeVision(visionResponse(rows));
+
+  it('joins the squares drawn alike in a row and leaves "Visto" (bright light, a wall seen now) alone', () => {
+    expect(shadeRuns(vision)).toEqual([
+      { shade: 'unseen', col: 0, row: 0, len: 1 },
+      { shade: 'dim', col: 1, row: 0, len: 1 },
+      { shade: 'grey', col: 2, row: 0, len: 1 },
+      { shade: 'remembered', col: 0, row: 1, len: 1 },
+      { shade: 'unseen', col: 0, row: 2, len: 3 },
+    ]);
+  });
+
+  it('counts the squares seen now: bright, dim, grey and the walls next to them, not the remembered or the unseen', () => {
+    expect(seenCount(vision)).toBe(4);
+  });
+
+  it('names only the states on the map, for the legend', () => {
+    expect(visionLegend(vision)).toEqual({ seen: true, dim: true, grey: true, remembered: true, unseen: true });
+    expect(visionLegend(decodeVision(visionResponse(['BB', 'dd'])))).toEqual({ seen: true, dim: true, grey: false, remembered: false, unseen: false });
+  });
+
+  it('joins runs that sit one on top of the other, equal in column and length, into one block', () => {
+    const cave = decodeVision(visionResponse(['....', '.gg.', '.gg.', '.g..', '....']));
+    expect(shadeRects(cave).filter((r) => r.shade === 'grey')).toEqual([
+      { shade: 'grey', col: 1, row: 1, cols: 2, rows: 2 },
+      { shade: 'grey', col: 1, row: 3, cols: 1, rows: 1 },
+    ]);
+    const total = (shade: string) => shadeRects(cave).filter((r) => r.shade === shade).reduce((n, r) => n + r.cols * r.rows, 0);
+    expect(total('grey')).toBe(5);
+    expect(total('unseen')).toBe(20 - 5);
+  });
+
+  it('shades every square exactly once, whatever the blocks', () => {
+    const squares = rows.join('').length;
+    const shaded = shadeRects(vision).reduce((n, r) => n + r.cols * r.rows, 0);
+    expect(shaded).toBe(statesOf(rows).filter((s) => s === 0 || s === 2 || s === 3 || s === 5).length);
+    expect(shaded).toBeLessThanOrEqual(squares);
+  });
+});
+
+describe('the tiles', () => {
+  const response = visionResponse(Array.from({ length: 20 }, () => 'B'.repeat(24)), {
+    tilesPath: '/images/maps/m1/tiles/',
+    tileSquares: 16,
+    tiles: [
+      { $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 0, revision: 12 },
+      { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 0, revision: 3 },
+      { $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 1, revision: 5 },
+    ],
+  });
+  const vision = decodeVision(response);
+
+  it('places each tile on the grid; the last column and row of tiles are smaller', () => {
+    expect(tileRects(vision).map((r) => [r.key, r.col, r.row, r.cols, r.rows])).toEqual([
+      ['0:0', 0, 0, 16, 16],
+      ['1:0', 16, 0, 8, 16],
+      ['0:1', 0, 16, 16, 4],
+    ]);
+  });
+
+  it('asks for a tile by its revision, so an unchanged tile keeps its URL and a changed one gets a new one', () => {
+    expect(tileUrl(vision, { tx: 1, ty: 0, revision: 3 }, null)).toBe('/images/maps/m1/tiles/1/0?r=3');
+    expect(tileUrl(vision, { tx: 1, ty: 0, revision: 4 }, null)).toBe('/images/maps/m1/tiles/1/0?r=4');
+  });
+
+  it('adds the character the master reads as, and nothing for a player', () => {
+    expect(tileUrl(vision, { tx: 0, ty: 0, revision: 12 }, 'char-1')).toBe('/images/maps/m1/tiles/0/0?r=12&as=char-1');
+  });
+
+  it('has no tiles for a viewer that reads the whole image (the master, a map without the fog)', () => {
+    expect(tileRects(decodeVision(visionResponse(['BB'])))).toEqual([]);
+  });
+
+  it('counts the tiles in: "parte N de M"', () => {
+    const rects = tileRects(vision);
+    expect(tileProgress(rects, new Set())).toEqual({ total: 3, done: 0 });
+    expect(tileProgress(rects, new Set(['1:0', '0:1']))).toEqual({ total: 3, done: 2 });
+  });
+});

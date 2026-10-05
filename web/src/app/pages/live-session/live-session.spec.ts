@@ -4,7 +4,11 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { LightPresets } from '../../core/maps/light-presets';
 import { MapsClient } from '../../core/maps/maps-client';
+import { visionResponse } from '../../core/maps/vision-testing';
+import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
+import { textOf } from '../../core/format/text-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
@@ -150,6 +154,8 @@ describe('LiveSession', () => {
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
         { provide: MapsClient, useClass: FakeMapsClient },
+        { provide: LightPresets, useValue: { list: () => Promise.resolve([{ key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra' }]) } },
+        { provide: FamiliarEyesClient, useValue: { name: () => Promise.resolve('Nanquim'), start: vi.fn(), stop: vi.fn() } },
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
@@ -632,6 +638,145 @@ describe('LiveSession', () => {
         await tick();
         expect(el.querySelector('app-scene-open')).toBeNull();
         expect(el.querySelector('app-scene-panel')).not.toBeNull();
+      });
+    });
+  });
+
+  describe('the fog of war (MR-036, RN-10, E9-03)', () => {
+    let maps: FakeMapsClient;
+    const tick = async () => {
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+    };
+    const tile = (tx: number, ty: number, revision: number) => ({ $typeName: 'meurpg.maps.v1.MapTile' as const, tx, ty, revision });
+
+    beforeEach(() => {
+      maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
+      const map = mapMessage('map-1', 'A caverna do Vale Seco', {
+        revealed: true,
+        current: true,
+        fogEnabled: true,
+        gridColumns: 4,
+        gridRows: 4,
+        // A player gets no picture of a fog map: only its size.
+        image: { $typeName: 'meurpg.maps.v1.MapImage', id: '', url: '', thumbnailUrl: '', width: 960, height: 640, name: '' },
+        imageWithheld: true,
+      });
+      maps.maps = [map];
+      maps.responses.set('map-1', mapResponse(map, [], [mapToken('pensantus', 'Pensantus', { mine: true, xBp: 1250, yBp: 6250 }), mapToken('brisa', 'Brisa', { xBp: 3750, yBp: 6250 })]));
+      maps.visions.set('', visionResponse(['....', 'gBd.', '..r.', '....'], { tilesPath: '/images/maps/map-1/tiles/', tileSquares: 16, tiles: [tile(0, 0, 4)] }));
+      source.snapshot = { ...(source.snapshot as LiveSnapshotVm), currentMapId: 'map-1' };
+    });
+
+    it('gives a player the fog map in place: the vision, the layers and the tiles are read, and the image never is', async () => {
+      const el = await render();
+      expect(maps.calls).toContain('vision map-1 ');
+      expect(maps.calls).toContain('layers map-1 ');
+      expect(el.querySelector('app-fog-map')).not.toBeNull();
+      expect(el.querySelector('app-fog-base')?.getAttribute('data-tiles')).toBe('1');
+      const sources = Array.from(el.querySelectorAll('img'), (i) => i.getAttribute('src') ?? '');
+      expect(sources).toEqual(['/images/maps/map-1/tiles/0/0?r=4']);
+      // The old preview and its "Ver mapa" are not on a fog map.
+      expect(el.querySelector('app-map-view')?.getAttribute('ng-reflect-mode')).not.toBe('preview');
+      expect(el.textContent).not.toContain('Ver mapa');
+      // Until the tile arrives the caption waits; then it says what is seen.
+      expect(el.querySelector('.fm__caption')).toBeNull();
+      el.querySelector('.fb__tile')!.dispatchEvent(new Event('load'));
+      await tick();
+      expect(textOf(el.querySelector('.fm__caption'))).toContain('Você vê 3 de 16 quadrados à vista.');
+    });
+
+    it('offers the player the row "Luz que você carrega" for their own character', async () => {
+      const el = await render();
+      expect(textOf(el.querySelector('app-carried-light'))).toBe('lightbulb Luz que você carrega Nenhuma Mudar');
+    });
+
+    it('reads the vision and the map again on vision_changed, and only for the current map', async () => {
+      await render();
+      const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
+      const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
+      const before = { reads: reads(), gets: gets() };
+      source.push({ kind: 'visionChanged', mapId: 'other-map' });
+      await tick();
+      expect(reads()).toBe(before.reads);
+      source.push({ kind: 'visionChanged', mapId: 'map-1' });
+      await tick();
+      await tick();
+      expect(reads()).toBe(before.reads + 1);
+      expect(gets()).toBe(before.gets + 1);
+    });
+
+    it('says in words that the character is not on the map', async () => {
+      maps.visions.set('', visionResponse(['....', '..r.', '....', '....'], { characterOnMap: false }));
+      const el = await render();
+      expect(textOf(el.querySelector('[data-testid="fog-off-map"]'))).toContain('Seu personagem não está neste mapa.');
+    });
+
+    it('keeps a map without fog as it was: the preview, with the image', async () => {
+      const plain = mapMessage('map-1', 'Mirathel e arredores', { revealed: true, current: true });
+      maps.responses.set('map-1', mapResponse(plain, [], [mapToken('pensantus', 'Pensantus', { mine: true })]));
+      const el = await render();
+      expect(el.querySelector('app-fog-map')).toBeNull();
+      expect(maps.calls.some((c) => c.startsWith('vision'))).toBe(false);
+      expect(el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]')).not.toBeNull();
+    });
+
+    it('shows the band while the player looks through the familiar\'s eyes, with its name and the way back', async () => {
+      source.snapshot = {
+        ...(source.snapshot as LiveSnapshotVm),
+        vitals: [pensantusVitals({ familiarSight: { creatureId: 'nanquim', inCombat: false } })],
+      };
+      const el = await render();
+      expect(textOf(el.querySelector('[data-testid="familiar-band"]'))).toBe('visibility Você está vendo pelos olhos do Nanquim. Pensantus está cego e surdo.');
+      expect(button(el, 'Voltar aos seus olhos')).toBeTruthy();
+    });
+
+    describe('the master', () => {
+      beforeEach(() => {
+        source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+        source.snapshot = { ...(source.snapshot as LiveSnapshotVm), vitals: [pensantusVitals(), brisaVitals()] };
+        maps.responses.set('map-1', mapResponse(maps.maps[0], [], [mapToken('pensantus', 'Pensantus'), mapToken('brisa', 'Brisa'), mapToken('goblin', 'Goblin 1', { kind: 3 })]));
+        maps.responses.set('map-1@brisa', mapResponse(maps.maps[0], [], [mapToken('pensantus', 'Pensantus'), mapToken('brisa', 'Brisa', { mine: true })]));
+        maps.visions.set('pensantus', visionResponse(['BBBB', '....', '....', '....']));
+        maps.visions.set('brisa', visionResponse(['dd..', '....', '....', '....'], { tilesPath: '/images/maps/map-1/tiles/', tileSquares: 16, tiles: [tile(0, 0, 2)] }));
+      });
+
+      it('keeps his own map whole, and lists "Ver como" with the squares each character sees', async () => {
+        const el = await render();
+        await new Promise((r) => setTimeout(r, 300));
+        await tick();
+        expect(el.querySelector('app-fog-map')).toBeNull();
+        expect(el.querySelector('app-map-view')).not.toBeNull();
+        // He reads nothing "as himself": the fog's own vision is the players'.
+        expect(maps.calls).not.toContain('vision map-1 ');
+        const rows = Array.from(el.querySelectorAll('app-view-as-list [role="radio"]'), (r) => textOf(r));
+        expect(rows).toEqual(['Todos Sem névoa: o seu mapa de mestre', 'Pensantus Vinicius 4 quadrados vistos', 'Brisa Ana 2 quadrados vistos']);
+      });
+
+      it('shows the map as one character sees it, with the band and the badge, and comes back with "Todos"', async () => {
+        const el = await render();
+        await new Promise((r) => setTimeout(r, 300));
+        await tick();
+        (el.querySelector('app-view-as-list [data-character="brisa"]') as HTMLButtonElement).click();
+        await tick();
+        await tick();
+        await tick();
+        expect(maps.calls).toContain('get map-1 brisa');
+        expect(maps.calls).toContain('vision map-1 brisa');
+        expect(maps.calls).toContain('layers map-1 brisa');
+        expect(textOf(el.querySelector('app-view-as-map .band'))).toBe('visibility Você está vendo o mapa como Brisa . Para voltar ao seu mapa, escolha “Todos”.');
+        expect(textOf(el.querySelector('.fm__badge'))).toBe('visibility Vendo como Brisa (Ana)');
+        expect(el.querySelector('app-fog-base')?.querySelector('img')?.getAttribute('src')).toBe('/images/maps/map-1/tiles/0/0?r=2&as=brisa');
+        expect(el.querySelector('app-map-view [data-item]')).toBeNull();
+
+        (el.querySelector('app-view-as-list [data-character="null"], app-view-as-list [role="radio"]') as HTMLButtonElement).click();
+        await tick();
+        expect(el.querySelector('app-view-as-map')).toBeNull();
+      });
+
+      it('has "Luz dos personagens" with a select for each player character on the map', async () => {
+        const el = await render();
+        expect(Array.from(el.querySelectorAll('app-light-panel .row__name'), (n) => textOf(n))).toEqual(['Pensantus', 'Brisa']);
       });
     });
   });

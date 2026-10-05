@@ -1,0 +1,143 @@
+<div class="fm">
+  @if (notices()) {
+    @if (offMap()) {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status" data-testid="fog-off-map">
+        <mat-icon aria-hidden="true">location_off</mat-icon>
+        <p>
+          <strong>{{ offMapTitle() }}</strong>
+          {{ offMapText() }}
+        </p>
+      </div>
+    } @else if (status() === 'error') {
+      <div class="mr-notice mr-notice--danger fm__notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>Não deu para carregar a vista do mapa.</strong> Ela se atualiza sozinha quando a conexão voltar.</p>
+      </div>
+    } @else if (loading()) {
+      <div class="mr-notice mr-notice--neutral fm__notice" role="status" data-testid="fog-loading">
+        <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+        <p>
+          <strong>Carregando o mapa</strong>
+          @if (progress().total > 0) {
+            Chegando a parte {{ part() }} de {{ progress().total }}. Os personagens já aparecem; o resto vem em instantes.
+          } @else {
+            Chegando a vista do seu personagem. Os personagens aparecem em instantes.
+          }
+        </p>
+      </div>
+    }
+  }
+
+  @if (phone() && party().length > 0 && vision()) {
+    <ul class="fm__chips" aria-label="Personagens do grupo: toque para ir até um">
+      @for (t of party(); track t.characterId) {
+        <li>
+          <button type="button" class="fm__chip" (click)="goTo(t)">
+            <app-combatant-token [initial]="initial(t)" [mine]="t.mine" [onMap]="true" [size]="24" />
+            <span>{{ t.name }}</span>
+            @if (t.mine) {
+              <span class="fm__you">(você)</span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  <div
+    class="fm__stage"
+    [class.fm__stage--waiting]="!vision()"
+    [style.aspect-ratio]="imageWidth() + ' / ' + imageHeight()"
+    [style.--fm-ar]="imageWidth() / imageHeight()"
+  >
+    @if (badge(); as text) {
+      <span class="fm__badge"><mat-icon aria-hidden="true">visibility</mat-icon>{{ text }}</span>
+    }
+    @if (vision(); as v) {
+      <app-map-view
+        [image]="frame()"
+        [mapName]="mapName()"
+        [points]="points()"
+        [tokens]="shownTokens()"
+        [mode]="'view'"
+        [controls]="'none'"
+        [selectablePoints]="selectablePoints()"
+        [kindShapes]="true"
+        [initialOf]="initialOf"
+        (pointSelect)="pointSelect.emit($event)"
+      >
+        <app-fog-base
+          mapBase
+          [vision]="v"
+          [layers]="layers()"
+          [image]="image()"
+          [forCharacter]="forCharacter()"
+          (settledChange)="onSettled($event)"
+        />
+      </app-map-view>
+    } @else {
+      <span class="fm__wait" data-pending aria-hidden="true"></span>
+    }
+  </div>
+
+  <div class="fm__tools">
+    <div class="fm__zoom" role="group" aria-label="Zoom do mapa">
+      <button type="button" class="fm__btn" aria-label="Reduzir" [disabled]="!vision() || (view()?.scale() ?? 1) <= 1" (click)="zoomOut()">
+        <mat-icon aria-hidden="true">remove</mat-icon>
+      </button>
+      <button type="button" class="fm__btn" aria-label="Ampliar" [disabled]="!vision() || (view()?.scale() ?? 1) >= 4" (click)="zoomIn()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+      </button>
+      <button type="button" class="fm__btn" aria-label="Ajustar à tela" [disabled]="!vision() || (view()?.scale() ?? 1) === 1" (click)="fit()">
+        <mat-icon aria-hidden="true">fit_screen</mat-icon>
+      </button>
+    </div>
+    @if (phone()) {
+      <p class="fm__hint">Dois dedos para ampliar</p>
+    }
+  </div>
+
+  @if (vision(); as v) {
+    <app-map-layers-legend class="fm__legend" [layers]="layerSet()" label="Legenda do mapa">
+        @if (legend()?.seen) {
+          <li before><span class="mr-swatch mr-swatch--seen" aria-hidden="true"></span>Visto</li>
+        }
+        @if (legend()?.dim) {
+          <li before><span class="mr-swatch mr-swatch--dim" aria-hidden="true"></span>Penumbra</li>
+        }
+        @if (legend()?.grey) {
+          <li before><span class="mr-swatch mr-swatch--grey" aria-hidden="true"></span>No escuro, em cinza</li>
+        }
+        @if (legend()?.remembered) {
+          <li before><span class="mr-swatch mr-swatch--remembered" aria-hidden="true"></span>Já visto</li>
+        }
+        @if (legend()?.unseen) {
+          <li before><span class="mr-swatch mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
+        }
+      @if (mine(); as me) {
+        <li><app-combatant-token [initial]="initial(me)" [mine]="true" [onMap]="true" [size]="22" />Você</li>
+      }
+      @if (companions().length > 0) {
+        <li><app-combatant-token initial="B" [onMap]="true" [size]="22" />Companheiro</li>
+      }
+      @if (enemies().length > 0) {
+        <li><app-combatant-token initial="G" [npc]="true" [onMap]="true" [size]="22" />Inimigo à vista</li>
+      }
+      @if (creatures().length > 0) {
+        <li><span class="fm__creature" aria-hidden="true">N</span>Criatura</li>
+      }
+    </app-map-layers-legend>
+    @if (caption() && summary().length > 0) {
+      <p class="fm__caption" data-testid="fog-caption">
+        <mat-icon aria-hidden="true">visibility</mat-icon>
+        <span><strong class="fm__cap-line">Você vê</strong><span class="fm__cap-line">{{ summary()[0] }}</span><span class="fm__cap-line">{{ summary()[1] }}</span></span>
+      </p>
+    }
+    <!-- What the map draws, for assistive tech: the tokens on a square the viewer sees. -->
+    <ul class="mr-visually-hidden" aria-label="No mapa">
+      @for (t of shownTokens(); track t.characterId) {
+        <li>{{ t.name }}{{ t.mine ? ' (você)' : '' }}</li>
+      }
+    </ul>
+  }
+</div>

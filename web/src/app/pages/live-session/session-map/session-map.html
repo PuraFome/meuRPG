@@ -38,7 +38,43 @@
       <p class="mr-muted" role="status">Carregando o mapa...</p>
     }
     @case ('ready') {
-      @if (image(); as img) {
+      @if (fogOn() && !isMaster()) {
+        <!-- The player's map with the fog of war on (MR-036, E9-03): the viewer's tiles and shading, in place. -->
+        @if (lightToast()) {
+          <p class="mr-notice mr-notice--success map__toast" role="status">
+            <mat-icon aria-hidden="true">lightbulb</mat-icon>
+            <span>{{ lightToast() }}</span>
+          </p>
+        }
+        <app-fog-map
+          [mapName]="map()?.name ?? ''"
+          [imageWidth]="map()?.image?.width ?? 1"
+          [imageHeight]="map()?.image?.height ?? 1"
+          [status]="fog()?.status() ?? 'loading'"
+          [vision]="fog()?.vision() ?? null"
+          [layers]="fog()?.layers() ?? null"
+          [tokens]="state().tokens()"
+          [points]="state().points()"
+          [viewer]="viewer()"
+        />
+        @if (ownToken(); as me) {
+          <app-carried-light [campaignId]="campaignId()" [mapId]="map()!.id" [token]="me" (changed)="lightChanged($event)" />
+        }
+      } @else if (image(); as img) {
+        @if (isMaster() && fogOn() && viewAs(); as characterId) {
+          <app-view-as-map
+            [campaignId]="campaignId()"
+            [mapId]="map()!.id"
+            [mapName]="map()?.name ?? ''"
+            [characterId]="characterId"
+            [name]="viewAsPerson()?.name ?? 'o personagem'"
+            [playerName]="viewAsPerson()?.sub || null"
+            [imageWidth]="img.width"
+            [imageHeight]="img.height"
+            [tick]="tick()"
+            (noteChange)="viewNote.set($event)"
+          />
+        } @else {
         <div class="map__frame">
           <app-map-view
             [image]="img"
@@ -84,6 +120,7 @@
             <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
           </a>
         </div>
+        }
 
         @if (isMaster()) {
           <div class="map__points">
@@ -112,6 +149,20 @@
             </p>
           </div>
         }
+      }
+      @if (isMaster() && fogOn()) {
+        <div class="map__fog">
+          <app-view-as-list
+            [people]="people()"
+            [counts]="counts.counts()"
+            [total]="counts.total()"
+            [selected]="viewAs()"
+            [groupVision]="map()?.groupVision ?? false"
+            [note]="viewNote()"
+            (choose)="setViewAs($event)"
+          />
+          <app-light-panel [campaignId]="campaignId()" [state]="state()" [info]="info()" />
+        </div>
       }
     }
     @case ('error') {

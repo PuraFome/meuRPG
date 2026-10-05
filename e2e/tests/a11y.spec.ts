@@ -13,6 +13,7 @@ import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, upload
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
+import { moveTo, sessionRoute, tableForFog } from './fog-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -2386,4 +2387,109 @@ test('o subir de nível passa no axe e nas conferências de layout no tema escur
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanLevelUpScreens(browser, 'light', 320);
+});
+
+
+// The fog of war (Etapa 9, MR-036, E9-03 and E9-04): the player's map with its legend and caption, the tiles on their way,
+// what was seen before, the character who is not on the map, the carried light (the row, the sheet, the toast), the
+// master's "Ver como" and "Luz dos personagens", and the familiar's eyes (the band, in and out of a combat).
+async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const loaded = async (page: Page) => {
+    await expect(page.locator('app-fog-base')).toBeVisible();
+    await expect(page.getByTestId('fog-loading')).toHaveCount(0);
+  };
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForFog(m, p, t, `Acessibilidade névoa ${Date.now()}`, { familiar: { col: 15, row: 8 }, torenOffMap: true });
+    campaignId = table.campaignId;
+
+    // The player: the map, the legend, the caption, the row of the light; the party's chips on a phone.
+    await p.goto(sessionRoute(campaignId));
+    await loaded(p);
+    await expectScreenPasses(p, `A névoa, a vista do jogador ${where}`);
+
+    // The tiles on their way: still stripes with the dashed border, and the notice.
+    await p.route('**/tiles/**', async (route) => {
+      await new Promise((r) => setTimeout(r, 4000));
+      await route.continue().catch(() => undefined);
+    });
+    await p.reload();
+    await expect(p.getByTestId('fog-loading')).toBeVisible();
+    await expectScreenPasses(p, `A névoa, carregando o mapa ${where}`);
+    await p.unrouteAll({ behavior: 'ignoreErrors' });
+    await loaded(p);
+
+    // What was seen stays, darkened.
+    await moveTo(m, table, table.pensantusId, 10, 13);
+    await expect(p.locator('.mr-legend').getByText('Já visto', { exact: true })).toBeVisible();
+    await expectScreenPasses(p, `A névoa, o que já foi visto ${where}`);
+
+    // A character who is not on the map (Toren): the fixed notice with its icon.
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByTestId('fog-off-map')).toBeVisible();
+    await expectScreenPasses(t, `A névoa, o personagem fora do mapa ${where}`);
+
+    // The carried light: the sheet, then the toast.
+    await p.getByRole('button', { name: /Luz que você carrega/ }).click();
+    const sheet = p.getByRole('dialog', { name: 'Luz que você carrega' });
+    await expect(sheet).toBeVisible();
+    await expectScreenPasses(p, `Luz que você carrega, a folha ${where}`);
+    await sheet.getByText('Tocha', { exact: true }).click();
+    await expect(sheet.getByRole('radio', { name: /Tocha/ })).toBeChecked();
+    await sheet.getByRole('button', { name: 'Pronto' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Você acendeu a tocha' })).toBeVisible();
+    await expectScreenPasses(p, `Luz que você carrega, a tocha acesa ${where}`);
+
+    // The master: "Ver como" and "Luz dos personagens", then the map as Pensantus sees it.
+    await m.goto(sessionRoute(campaignId));
+    const list = m.getByRole('radiogroup', { name: 'Ver como' });
+    await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
+    await expectScreenPasses(m, `Ver como, a lista e a luz dos personagens ${where}`);
+    await list.getByRole('radio', { name: /Pensantus/ }).click();
+    await expect(m.getByText('Você está vendo o mapa como Pensantus.', { exact: false })).toBeVisible();
+    await loaded(m);
+    await expectScreenPasses(m, `Ver como, o mapa de Pensantus ${where}`);
+
+    // The familiar's eyes, out of a combat: the band, the one filled button.
+    const start = await callRPC(p, 'meurpg.play.v1.PlayService/StartFamiliarSight', { campaignId, characterId: table.pensantusId, idempotencyKey: crypto.randomUUID() });
+    expect(start.ok(), await start.text()).toBeTruthy();
+    await expect(p.getByTestId('familiar-band')).toBeVisible();
+    await expectScreenPasses(p, `Pelos olhos do Nanquim, a faixa ${where}`);
+    await p.getByRole('button', { name: 'Voltar aos seus olhos' }).click();
+    await expect(p.getByTestId('familiar-band')).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a névoa de guerra passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogScreens(browser, 'light', 1280);
+});
+
+test('a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogScreens(browser, 'dark', 390);
+});
+
+test('a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogScreens(browser, 'dark', 1024);
+});
+
+test('a névoa de guerra passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFogScreens(browser, 'light', 320);
 });

@@ -22,15 +22,19 @@
     (focusout)="lower()"
   >
     <div class="mv__stage" [style.transform]="transformCss()" [style.--s]="transform().scale">
-      <img
-        class="mv__img"
-        [src]="image().url"
-        alt=""
-        [width]="image().width"
-        [height]="image().height"
-        draggable="false"
-        decoding="async"
-      />
+      @if (image().url) {
+        <img
+          class="mv__img"
+          [src]="image().url"
+          alt=""
+          [width]="image().width"
+          [height]="image().height"
+          draggable="false"
+          decoding="async"
+        />
+      }
+      <!-- The picture of a fog map: the tiles, the layers and the shading of the viewer (app-fog-base). -->
+      <ng-content select="[mapBase]" />
 
       @for (p of shownPoints(); track p.id) {
         <app-map-marker
@@ -48,6 +52,7 @@
           [at]="tokenAt(t)"
           [interactive]="tokensMovable()"
           [selected]="selectedKey() === 'token:' + t.characterId"
+          [kindShapes]="kindShapes()"
           [raised]="raisedKey() === 'token:' + t.characterId"
         />
       }

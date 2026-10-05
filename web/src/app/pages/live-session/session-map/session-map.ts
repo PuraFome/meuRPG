@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,18 +9,28 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { Map as MapMessage, MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
+import type { MapToken } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { litToast } from '../../../core/maps/carried-light';
+import type { FogView } from '../../../core/maps/fog-view';
+import type { LightOption } from '../../../core/maps/light-presets';
 import { MapReveals } from '../../../core/maps/map-reveals';
+import { ViewAsCounts } from '../../../core/maps/view-as';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { SceneClient } from '../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../core/play/scene-errors';
 import type { SceneState } from '../../../core/play/scene-state';
+import { FogMap } from '../../../shared/fog-map/fog-map';
+import { ViewAsList, type ViewAsPerson } from '../../../shared/fog-map/view-as-list';
+import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
-import { LiveSessionSource } from '../live-session.types';
+import { CarriedLight } from '../carried-light/carried-light';
+import { LightPanel } from '../carried-light/light-panel';
+import { type PartyMemberInfoVm, LiveSessionSource } from '../live-session.types';
 
 /**
  * The map half of the session page (MR-012, E5-02 to E5-06): the session's
@@ -32,6 +42,10 @@ import { LiveSessionSource } from '../live-session.types';
  *   map, "O mestre ainda não escolheu um mapa." The page reads the map
  *   again on `map_changed`; if the server answers `not_found`, the player
  *   lost sight of it and gets the empty state again.
+ * - **Fog of war (MR-036, E9-03):** on a map with the fog on, the player gets the
+ *   fog map in place (`app-fog-map`: the tiles, the shading, the legend, zoom) and
+ *   the row "Luz que você carrega"; the master keeps his whole map and gets "Ver
+ *   como" (the list, and the map as one player sees it) and "Luz dos personagens".
  * - **Master:** the "Mapa atual" select (`SetCurrentMap`, which also
  *   reveals a hidden map), the map with hidden things dashed, tokens you
  *   drag (`PlaceMapToken`) on a computer, "Abrir mapa" for the editor, and
@@ -40,6 +54,9 @@ import { LiveSessionSource } from '../live-session.types';
 @Component({
   selector: 'app-session-map',
   imports: [
+    CarriedLight,
+    FogMap,
+    LightPanel,
     MapLegend,
     MapPointsList,
     MapView,
@@ -48,6 +65,8 @@ import { LiveSessionSource } from '../live-session.types';
     MatIconModule,
     MatInputModule,
     RouterLink,
+    ViewAsList,
+    ViewAsMapView,
   ],
   templateUrl: './session-map.html',
   styleUrl: './session-map.scss',
@@ -69,6 +88,16 @@ export class SessionMap {
   readonly maps = input<readonly MapMessage[]>([]);
   /** The session's RP scene, for "Abrir cena" on a scene point (master). */
   readonly scene = input<SceneState | null>(null);
+  /** The player's own character, for the off-map notice (their token is not on the map then). */
+  readonly characterName = input('');
+  /** What the viewer sees of the map with the fog on (the page reads it again on `vision_changed`). */
+  readonly fog = input<FogView | null>(null);
+  /** The master's "Ver como" list: the living player characters. */
+  readonly people = input<readonly ViewAsPerson[]>([]);
+  /** The party's player names, for the master's light panel. */
+  readonly info = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
+  /** Goes up when what a player sees may have changed (the master's stream hears nothing of it). */
+  readonly tick = input(0);
   /** The master chose another map (or none): the page shows it. */
   readonly currentChanged = output<string | null>();
 
@@ -95,8 +124,62 @@ export class SessionMap {
 
   protected readonly pendingScene = signal<string | null>(null);
 
+  // ---- the fog of war (MR-036) ----
+  protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
+  /** The player's own token: the carried light is read from it. */
+  protected readonly ownToken = computed(() => this.state().tokens().find((t) => t.mine && !t.creatureId) ?? null);
+  /** The character the master is looking as ("Ver como"); `null` for "Todos". */
+  protected readonly viewAs = signal<string | null>(null);
+  protected readonly viewAsPerson = computed(() => this.people().find((p) => p.id === this.viewAs()) ?? null);
+  protected readonly viewNote = signal('');
+  protected readonly counts = new ViewAsCounts((mapId, characterId) => this.api.vision(this.campaignId(), mapId, characterId));
+  protected readonly lightToast = signal('');
+  private lightTimer: ReturnType<typeof setTimeout> | undefined;
+  private countsTimer: ReturnType<typeof setTimeout> | undefined;
+  protected readonly viewer = computed(() => ({ name: this.ownToken()?.name ?? (this.characterName() || 'Seu personagem'), own: true }));
+
   /** "Abrir cena" on a scene point of the map: the same call as the picker's, so the
    * open scene appears (and takes focus) at once. A refusal is said under the list. */
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.lightTimer);
+      clearTimeout(this.countsTimer);
+    });
+    // Another map, or the fog turned off: "Ver como" starts over at "Todos".
+    effect(() => {
+      this.mapId();
+      this.fogOn();
+      untracked(() => this.viewAs.set(null));
+    });
+    // The master's list counts the squares each character sees, and again when it may have changed.
+    effect(() => {
+      const map = this.map();
+      const ids = this.people().map((p) => p.id);
+      this.tick();
+      if (!this.isMaster() || !map?.fogEnabled || this.state().status() !== 'ready') {
+        return;
+      }
+      untracked(() => {
+        clearTimeout(this.countsTimer);
+        this.countsTimer = setTimeout(() => void this.counts.read(map.id, ids), 250);
+      });
+    });
+  }
+
+  protected setViewAs(id: string | null): void {
+    this.viewAs.set(id);
+    this.viewNote.set('');
+  }
+
+  /** "Você acendeu a tocha: ...": the new token is on the map at once, the toast stays 6 s. */
+  protected lightChanged(change: { token: MapToken; option: LightOption | null }): void {
+    this.state().upsertToken(change.token);
+    this.lightToast.set(litToast(change.option));
+    clearTimeout(this.lightTimer);
+    this.lightTimer = setTimeout(() => this.lightToast.set(''), 6000);
+    void this.fog()?.refresh();
+  }
+
   protected async openScene(point: MapPoint): Promise<void> {
     const state = this.scene();
     if (!state || this.pendingScene() !== null) {

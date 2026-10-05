@@ -61,6 +61,22 @@ span.tk__hit {
   border: 2px dashed var(--mr-ink);
 }
 
+:host(.tk--npc) .tk__disc {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--mr-map-token-ink);
+  border-radius: 28%;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  box-shadow: none;
+}
+
+// A character's creature: round like a character, with a dashed ring (MAP-LANGUAGE.md).
+:host(.tk--creature) .tk__disc {
+  outline: 2px dashed var(--mr-ink);
+  outline-offset: 3px;
+}
+
 :host(.tk--mine) .tk__disc {
   box-shadow:
     0 0 0 2px var(--mr-surface),
