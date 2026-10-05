@@ -213,7 +213,8 @@ describe('NotesSheet', () => {
     expect(flat(el.querySelector('.ns__limit'))).toBe('Limite de 300 anotações. Apague uma para escrever outra.');
     expect(button('Nova anotação').getAttribute('aria-describedby')).toBe('ns-limit');
     expect(button('Nova anotação').disabled || button('Nova anotação').getAttribute('aria-disabled') === 'true').toBe(true);
-  });
+    // 300 rows render in about half a second alone, but past the 5 s default while the whole suite runs in parallel on a busy machine.
+  }, 20_000);
 
   it('says the 300-note limit from the server by its code', async () => {
     const { el, button, settle, type } = await setup();
