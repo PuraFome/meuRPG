@@ -10,6 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -195,7 +196,14 @@ export class CharacterSheetPage {
     this.state.set({ status: 'loading' });
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => this.state.set({ status: 'ready', vm }),
-      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
+      (err: unknown) => {
+        if (ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {
+          // The same page for "does not exist" and "not yours to see" (RN-20, ADR-0011).
+          this.state.set({ status: 'not-found' });
+          return;
+        }
+        this.state.set({ status: 'error', message: describeCharacterError(err) });
+      },
     );
     // Only a detail of the header: without it the sheet shows as for an XP campaign.
     this.source.getXpMode(campaignId).then(

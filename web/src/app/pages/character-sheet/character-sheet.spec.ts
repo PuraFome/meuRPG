@@ -1094,6 +1094,16 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
 
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('Personagem não encontrado');
   });
+
+  it('a sheet the server does not show (not_found) reads "Personagem não encontrado", not an error (RN-20)', async () => {
+    fake.getCharacterSheetFn = () => Promise.reject(new ConnectError('character not found', Code.NotFound));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('h1')?.textContent).toContain('Personagem não encontrado');
+    expect(el.textContent).toContain('Esse personagem não existe, ou você não pode vê-lo.');
+    expect(el.textContent).not.toContain('Não foi possível abrir a ficha');
+  });
 });
 
 describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
