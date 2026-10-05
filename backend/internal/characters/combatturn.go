@@ -99,7 +99,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return link.Sheet{}, err
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass}
+	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses)}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {

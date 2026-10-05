@@ -90,7 +90,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 // see them: the master all, a player only those on their own character. A
 // player never gets the attack's total or an armor class, nor who attacked
 // when the attacker is hidden from them.
-func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData) ([]*playv1.ReactionPrompt, error) {
+func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) ([]*playv1.ReactionPrompt, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
 	}
@@ -98,7 +98,6 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
 	}
-	v := viewerOf(m)
 	var out []*playv1.ReactionPrompt
 	for _, p := range open {
 		if p.Status != pendingAwaitingReaction {
@@ -257,9 +256,9 @@ func (s *Service) UseReaction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the reaction", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {

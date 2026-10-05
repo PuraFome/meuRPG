@@ -87,7 +87,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 	if err != nil {
 		return // the combat is gone: nothing to tell
 	}
-	s.publishEncounterChanged(campaignID, enc)
+	s.publishEncounterChanged(ctx, campaignID, enc)
 	// A creature that left may have passed the turn, and the new turn ends a familiar's
 	// sight (MR-036): the vitals and the fog hear of it too.
 	if all, err := s.vitals.ListVitals(ctx, campaignID); err == nil {

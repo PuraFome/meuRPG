@@ -73,6 +73,11 @@ type trapCaughtEvent struct {
 	// Conditions are the keys the trap gave; in a combat CondBefore are the
 	// combatant's conditions before, which the undo puts back (CondSet).
 	Conditions []string `json:"conditions,omitempty"`
+	// On a map with the fog of war, Fogged says an NPC was caught and SeenBy lists the
+	// players (user IDs) who saw it then: the firing is public, the NPC's part of its
+	// line is theirs alone (combat_fog.go).
+	Fogged     bool     `json:"fogged,omitempty"`
+	SeenBy     []string `json:"seen_by,omitempty"`
 	CondSet    bool     `json:"cond_set,omitempty"`
 	CondBefore []string `json:"cond_before,omitempty"`
 }
@@ -421,8 +426,8 @@ func (th *trapHook) after(ctx context.Context, campaignID string, enc playdb.Enc
 		return
 	}
 	th.s.traps.TrapChanged(ctx, campaignID, th.fired.MapID, th.fired.PointID)
-	th.s.publishEncounterChanged(campaignID, enc)
-	th.s.publishLogChanged(campaignID, enc.ID, true)
+	th.s.publishEncounterChanged(ctx, campaignID, enc)
+	th.s.publishLogChanged(ctx, campaignID, enc.ID, true)
 }
 
 // noticeAfterMove is the passive notice of a player's character or its creature

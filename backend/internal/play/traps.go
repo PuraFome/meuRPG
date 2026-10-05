@@ -258,8 +258,8 @@ func (s *Service) SearchForTraps(
 			s.traps.Told(ctx, m.CampaignID, place.mapID, told)
 		}
 		if place.spent {
-			s.publishEncounterChanged(m.CampaignID, place.enc)
-			s.publishLogChanged(m.CampaignID, place.enc.ID, false) // the master's log has the search
+			s.publishEncounterChanged(ctx, m.CampaignID, place.enc)
+			s.publishLogChanged(ctx, m.CampaignID, place.enc.ID, false) // the master's log has the search
 		}
 		s.Publish(m.CampaignID, false, mapChangedHint(place.mapID)) // the master's activity read has a new line: a hint with no content
 	}

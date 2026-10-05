@@ -175,7 +175,7 @@ func (s *Service) AdjustCharacterVitals(
 		}},
 	})
 	if touched != nil {
-		s.publishEncounterChanged(m.CampaignID, *touched)
+		s.publishEncounterChanged(ctx, m.CampaignID, *touched)
 	}
 	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
 		s.maps.VisionChanged(ctx, m.CampaignID, visionMap)

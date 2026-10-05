@@ -5,6 +5,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -66,6 +67,13 @@ func sensesOf(derived []rules.Sense) vision.Senses {
 		}
 	}
 	return out
+}
+
+// senseRanges is sensesOf for a combat's sheet (play/link): what an NPC or a
+// creature sees with on a map with the fog of war.
+func senseRanges(derived []rules.Sense) playlink.Senses {
+	v := sensesOf(derived)
+	return playlink.Senses{DarkvisionFt: v.DarkvisionFt, BlindsightFt: v.BlindsightFt, TruesightFt: v.TruesightFt}
 }
 
 // PortraitInUse says whether any NPC of the campaign has the gallery image as its

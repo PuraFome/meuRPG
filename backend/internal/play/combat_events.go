@@ -113,6 +113,10 @@ type castHit struct {
 	CoverSource string `json:"cover_source,omitempty"`
 	CoverBonus  int32  `json:"cover_bonus,omitempty"`
 	TargetAC    int32  `json:"target_ac,omitempty"`
+	// On a map with the fog of war, a cover the map gave is told to a player only if
+	// they knew its squares and saw its creatures: see actionEvent.CoverRestricted.
+	CoverRestricted bool     `json:"cover_restricted,omitempty"`
+	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -167,6 +171,13 @@ type actionEvent struct {
 	// never get its line of the log, even after the master reveals the
 	// combatant (RN-10, RN-20).
 	Secret bool `json:"secret,omitempty"`
+	// Fogged says the event happened on a map with the fog of war on, with an NPC
+	// in it, and SeenBy lists the players (user IDs) who saw every NPC in it when it
+	// happened: the log gives the line to them and to nobody else, and never works it
+	// out again from what is seen later (MR-036, combat_fog.go). An event without
+	// Fogged follows the older rule alone.
+	Fogged bool     `json:"fogged,omitempty"`
+	SeenBy []string `json:"seen_by,omitempty"`
 	// Actor is who did it (attacker, mover, the one that took the action or
 	// whose hit points changed), Target who it was done to.
 	Actor  string `json:"combatant_id,omitempty"`
@@ -317,6 +328,11 @@ type actionEvent struct {
 	Cover       string `json:"cover,omitempty"`
 	CoverSource string `json:"cover_source,omitempty"`
 	CoverBonus  int32  `json:"cover_bonus,omitempty"`
+	// On a map with the fog of war, a cover the map gave is the master's and, among
+	// the players, the one of CoverSeenBy (user IDs) alone: the others knew neither the
+	// squares nor the creatures that made it, and read no cover (combat_fog.go).
+	CoverRestricted bool     `json:"cover_restricted,omitempty"`
+	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 
 	// An undo: the event it took back.
 	Undone     string `json:"undone_id,omitempty"`
@@ -415,11 +431,23 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 // publishLogChanged tells the streams to read the combat log again: the
 // master's always, the players' only when the change touches a line they may
 // see.
-func (s *Service) publishLogChanged(campaignID, encounterID string, players bool) {
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Master: true, Players: players},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-			CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
-		}},
-	})
+//
+// On a map with the fog of war, a line that was stamped with who could see it goes
+// only to those players (actionEvent.SeenBy), so a player does not even hear that
+// something happened out of their sight.
+func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID string, players bool) {
+	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
+	}}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	if !players {
+		return
+	}
+	if memo := fogMemoOf(ctx); memo != nil && memo.stamped != nil && memo.stamped.Fogged {
+		for _, u := range memo.stamped.SeenBy {
+			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+		}
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
 }

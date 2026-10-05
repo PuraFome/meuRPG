@@ -97,6 +97,7 @@ func (s *Service) RollDeathSave(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		who, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -168,9 +169,9 @@ func (s *Service) RollDeathSave(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the death save", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, true) // a player is never hidden
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true) // a player is never hidden
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {
@@ -262,11 +263,11 @@ func (s *Service) ConfirmDeath(
 	if err != nil {
 		return nil, s.dbError(ctx, "confirm a death", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
 		if turnPassed {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {

@@ -128,13 +128,13 @@ func (s *Service) StartEncounter(
 	if newMap != "" {
 		s.maps.MapShown(ctx, m.CampaignID, newMap)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		if newMap != "" {
 			s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
 				CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: newMap},
 			}})
 		}
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 	})
 	if err != nil {
 		return nil, err
@@ -415,6 +415,7 @@ func (s *Service) SubmitInitiative(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		target, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -624,10 +625,10 @@ func (s *Service) BeginCombat(
 	if err != nil {
 		return nil, s.dbError(ctx, "begin a combat", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishTurnChanged(m.CampaignID, d)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishTurnChanged(ctx, m.CampaignID, d)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
 	})
 	if err != nil {
 		return nil, err
@@ -678,6 +679,14 @@ func (s *Service) EndTurn(
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
+		}
+		// A combatant the player does not see is not found, before anything else can
+		// answer differently (a stale turn, a part that ended): so it is on every call.
+		v = c.viewer(m, cs)
+		if !v.master && expected != "" && slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == expected }) {
+			if _, err := findCombatant(cs, expected, v); err != nil {
+				return nil, err
+			}
 		}
 		// An orphaned turn: nobody acts, because the combatants of the turn left
 		// the fight (the last one who could act was removed, or its character was
@@ -800,14 +809,14 @@ func (s *Service) EndTurn(
 	if err != nil {
 		return nil, s.dbError(ctx, "end a turn", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishTurnChanged(m.CampaignID, d)
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishTurnChanged(ctx, m.CampaignID, d)
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		if len(dropped) > 0 { // the attacks they belong to show them dropped
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !touchesHidden(d.cs, dropped))
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !touchesHidden(d.cs, dropped))
 		}
 		if !passed { // a part ended: its line, which a hidden member keeps from the players
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !secret)
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !secret)
 		}
 	})
 	if err != nil {
@@ -866,12 +875,12 @@ func (s *Service) SetCombatantHidden(
 	if err != nil {
 		return nil, s.dbError(ctx, "hide or show a combatant", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, false) // the master's line only
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false) // the master's line only
 		// If it is in the turn, the players' copy of the turn changes.
 		if i := slices.IndexFunc(d.cs, func(o playdb.Combatant) bool { return o.ID == combID }); i >= 0 && inTurn(d.enc, d.cs[i]) {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {
@@ -1019,10 +1028,10 @@ func (s *Service) RemoveCombatant(
 	if err != nil {
 		return nil, s.dbError(ctx, "remove a combatant", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		if turnPassed {
-			s.publishTurnChanged(m.CampaignID, d)
+			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	})
 	if err != nil {
@@ -1068,13 +1077,13 @@ func (s *Service) EndEncounter(
 	if err != nil {
 		return nil, s.dbError(ctx, "end an encounter", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		if !ended {
 			return
 		}
 		s.publishCreaturesOfCombat(m.CampaignID, d.cs)
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
 		if d.enc.MapID != nil {
 			// The player characters' tokens moved with the combat's end.
 			s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_MapChanged_{

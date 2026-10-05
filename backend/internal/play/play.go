@@ -375,10 +375,14 @@ type Service struct {
 	roster    CombatRoster
 	dice      DiceModes
 	terrain   TerrainSource
+	fog       FogSource
 	traps     TrapBook
-	roller    dice.Roller
-	logger    *slog.Logger
-	now       func() time.Time
+	// afterSightRead is a test hook: it runs between the moment a change reads the
+	// sight and the moment it opens its transaction.
+	afterSightRead func(encounterID string)
+	roller         dice.Roller
+	logger         *slog.Logger
+	now            func() time.Time
 	// conditionNames are the SRD conditions' Portuguese names, by key, for the
 	// labels the master marks (RN-22).
 	conditionNames map[string]string

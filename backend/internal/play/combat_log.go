@@ -112,6 +112,9 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
+	// The log's lines are filtered by who could see them when they happened
+	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
+	// rules about hidden combatants are worked out from the combatants as they are.
 	v := viewerOf(m)
 	entries := buildLog(events)
 
@@ -376,11 +379,15 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	_, targetKnown := byID[e.ev.Target]
 	known := (e.ev.Actor == "" || actorKnown) && (e.ev.Target == "" || targetKnown || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION)
 	visible := !e.masterOnly && !e.ev.Secret && !actor.Hidden && !target.Hidden && known
+	// On a map with the fog of war, a line is the players' who saw its NPCs when it
+	// happened, even if they have walked into the dark since; one they did not see
+	// never appears later (MR-036). The master's copy says it is hidden from them.
+	seen := e.ev.seenByViewer(v)
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
 		visible = visible && ok && !hit.Hidden
 	}
-	if !v.master && !visible {
+	if !v.master && (!visible || !seen) {
 		return nil, false
 	}
 
@@ -393,7 +400,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		Key: e.ev.Key,
 	}
 	if v.master {
-		out.Hidden = !visible
+		out.Hidden = !visible || (e.ev.Fogged && len(e.ev.SeenBy) == 0)
 		out.Undoable = slices.Contains(e.hosts, lastID)
 	}
 	switch e.kind {
@@ -427,7 +434,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.Outcome = outcomeToProto[e.ev.Outcome]
 		out.AsReaction = e.ev.AsReaction
 		out.ReturnedToReach, out.ReturnBlocked = e.returned, v.master && e.returnBlocked
-		out.Cover, out.CoverSource = coverDegreeProto(e.ev.Cover), coverSourceProto(e.ev.CoverSource)
+		coverKey, coverSource := e.ev.coverFor(v)
+		out.Cover, out.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if v.master && e.ev.TargetAC > 0 { // "CA 17: 15 + 2 de meia cobertura": a player never gets an armor class (RN-20)
 			out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
 		}
@@ -486,8 +494,9 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
 			Effect: effectView(h, v, target),
-			Cover:  coverDegreeProto(h.Cover), CoverSource: coverSourceProto(h.CoverSource),
 		}
+		coverKey, coverSource := h.coverFor(v)
+		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if v.master && h.TargetAC > 0 {
 			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 		}
@@ -592,8 +601,15 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 	tv := trapView{
 		master: v.master,
 		owns:   func(id string) bool { return v.owns(byID[id]) },
-		hidden: func(id string) bool { return byID[id].Hidden },
-		label:  func(id string) string { return byID[id].Label },
+		hidden: func(id string) bool {
+			if byID[id].Hidden {
+				return true
+			}
+			// On a fog map: an NPC the firing caught is the line of the players who saw it then.
+			i := slices.IndexFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id })
+			return i >= 0 && e.ev.Trap.Caught[i].Fogged && !slices.Contains(e.ev.Trap.Caught[i].SeenBy, v.userID)
+		},
+		label: func(id string) string { return byID[id].Label },
 		status: func(pendingID string) (playv1.PendingDamageStatus, bool) {
 			if dl, ok := e.pend[pendingID]; ok {
 				return dl.status, true

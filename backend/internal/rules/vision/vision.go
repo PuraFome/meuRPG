@@ -222,42 +222,64 @@ func (l *Lit) See(v Viewer) *View {
 	if !l.g.Contains(v.At) {
 		return out
 	}
-	s := v.Senses
 	row0, col0 := v.At.Row, v.At.Col
 	for row := 0; row < l.g.Rows; row++ {
 		for col := 0; col < l.g.Columns; col++ {
 			n := row*l.g.Columns + col
-			sq := grid.Square{Col: col, Row: row}
 			if row == row0 && col == col0 {
 				out.states[n] = ownState(l.level[n])
 				continue
 			}
-			if l.sight.Wall(sq) {
-				continue // decided below, from what touches it
-			}
-			state := Unseen
-			d2 := dist2Ft(v.At, sq)
-			darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt
-			switch light := l.level[n]; {
-			case s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt:
-				state = SeenBright
-			case light == grid.Bright:
-				state = SeenBright
-			case light == grid.Dim && darkvision:
-				// SRD: within its range darkvision sees dim light as if it were bright.
-				state = SeenBright
-			case light == grid.Dim:
-				state = SeenDim
-			case darkvision, s.BlindsightFt > 0 && d2 <= s.BlindsightFt*s.BlindsightFt:
-				state = SeenGrey
-			}
-			if state != Unseen && l.sight.Clear(v.At, sq) {
-				out.states[n] = state
-			}
+			out.states[n] = l.squareState(v, grid.Square{Col: col, Row: row})
 		}
 	}
 	l.seeWalls(out)
 	return out
+}
+
+// squareState is how the viewer sees a square other than its own: the light that is
+// there or its senses, with the line to it clear. A wall is decided from what touches
+// it (seeWalls), so it is Unseen here.
+func (l *Lit) squareState(v Viewer, sq grid.Square) State {
+	if l.sight.Wall(sq) {
+		return Unseen
+	}
+	s := v.Senses
+	n := sq.Row*l.g.Columns + sq.Col
+	state := Unseen
+	d2 := dist2Ft(v.At, sq)
+	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt
+	switch light := l.level[n]; {
+	case s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt:
+		state = SeenBright
+	case light == grid.Bright:
+		state = SeenBright
+	case light == grid.Dim && darkvision:
+		// SRD: within its range darkvision sees dim light as if it were bright.
+		state = SeenBright
+	case light == grid.Dim:
+		state = SeenDim
+	case darkvision, s.BlindsightFt > 0 && d2 <= s.BlindsightFt*s.BlindsightFt:
+		state = SeenGrey
+	}
+	if state != Unseen && l.sight.Clear(v.At, sq) {
+		return state
+	}
+	return Unseen
+}
+
+// CanSee says whether the viewer sees a creature standing on the square: the same
+// answer as See(v).At(sq) >= SeenGrey, worked out for that one square (a light
+// lookup and one line), so asking it of a few pairs never costs a view of the whole
+// map. A wall is no place for a creature, and a square outside the grid is not seen.
+func (l *Lit) CanSee(v Viewer, sq grid.Square) bool {
+	if !l.g.Contains(v.At) || !l.g.Contains(sq) {
+		return false
+	}
+	if sq == v.At {
+		return true
+	}
+	return l.squareState(v, sq) != Unseen
 }
 
 // ownState is how a viewer sees the square it stands on: it always knows it,

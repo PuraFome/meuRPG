@@ -10,6 +10,7 @@
 package link
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"time"
@@ -71,6 +72,32 @@ type CombatPositions struct {
 	// Creatures are where the character's creatures stand, by creature ID (MR-037):
 	// the ones that are combatants and have a square, never a dismissed one.
 	Creatures map[string]grid.Square
+}
+
+// CombatSight is what the players of a map with the fog of war on see at one
+// moment, for the combat that runs on it (MR-036, slice 9.7): the play module asks
+// for it once, then asks it about each NPC combatant's square, and shows each
+// player only the NPCs their character sees. It holds squares and user IDs, never a
+// creature: where the combatants stand is the play module's.
+//
+// A user is a player who has a living character; the answer for anyone else is
+// "sees nothing". With "Visão do grupo" on, every player sees what the whole
+// party sees.
+type CombatSight interface {
+	// Users lists the players that have a living character, in a stable order.
+	Users() []string
+	// Sees says whether the player's character (or, with "Visão do grupo", the
+	// party) sees a creature standing on the square now: it is lit or inside a
+	// sense of theirs, with no wall in the line. A character that is not on the
+	// map sees nothing.
+	Sees(userID string, sq grid.Square) bool
+	// CanSee says whether a viewer standing on a square, with these senses (an
+	// NPC's darkvision, say), sees a creature standing on another square: the same
+	// light and walls the players' sight uses, worked out for that one pair.
+	CanSee(from grid.Square, senses vision.Senses, to grid.Square) bool
+	// KnownTerrain is the terrain the player knows: the walls, difficult terrain and
+	// cover of the squares they see now or remember, and plain floor elsewhere.
+	KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error)
 }
 
 // Eyes is what a creature notices with: its passive Perception and its senses

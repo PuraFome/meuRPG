@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // The master's "Desfazer" (MR-012, MR-014): one step back, a compensating
@@ -119,9 +120,12 @@ func (s *Service) UndoLastAction(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters' vitals put back, if any
+	var undoneMove *actionEvent          // the move that was taken back, for the fog
+	var snapBack *grid.Square            // where a mover stood before the undo of the 0 hit points rule put it back
+	var snapped string                   // and who it is
 	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, rearmed = nil, nil
+		vitals, undoneMove, snapBack, snapped, rearmed = nil, nil, nil, "", nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -140,8 +144,21 @@ func (s *Service) UndoLastAction(
 		if err != nil {
 			return nil, err
 		}
+		if ev.ReturnedFrom != nil { // the undo of a damage that took the mover back to where it left the reach
+			cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+			if err != nil {
+				return nil, fmt.Errorf("list the combatants: %w", err)
+			}
+			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Target }); i >= 0 && placed(cs[i]) {
+				sq := squareOfCombatant(cs[i])
+				snapBack, snapped = &sq, ev.Target
+			}
+		}
 		if vitals, err = s.takeBack(ctx, c, last.Kind, ev); err != nil {
 			return nil, err
+		}
+		if last.Kind == eventCombatantMoved {
+			undoneMove = &ev
 		}
 		if last.Kind == eventTrapTriggered {
 			rearmed = ev.Trap
@@ -159,9 +176,19 @@ func (s *Service) UndoLastAction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the undone action", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+		if undoneMove != nil { // the combatant is back where it was: the fog follows it
+			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == undoneMove.Actor }); i >= 0 {
+				s.positionChanged(ctx, m.CampaignID, d.enc, d.cs[i], &grid.Square{Col: int(undoneMove.Col), Row: int(undoneMove.Row)})
+			}
+		}
+		if snapped != "" { // the mover is back where it was: the fog follows it
+			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == snapped }); i >= 0 {
+				s.positionChanged(ctx, m.CampaignID, d.enc, d.cs[i], snapBack)
+			}
+		}
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
