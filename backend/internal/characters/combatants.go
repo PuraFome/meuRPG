@@ -46,6 +46,45 @@ func (s *Service) CombatParty(ctx context.Context, tx pgx.Tx, campaignID string)
 	return out, nil
 }
 
+// PartyLevels returns the campaign's living, active player characters, oldest
+// first, with the total level of each (the sum of its class levels): the party an
+// encounter is measured against (MR-043, question 86). Not NPCs, not the dead, not a
+// character waiting for approval. It implements play.CombatRoster.
+func (s *Service) PartyLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error) {
+	rows, err := s.queriesIn(tx).ListCombatParty(ctx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the party", err)
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	out := make([]link.PartyMember, 0, len(rows))
+	for _, row := range rows {
+		sheet, err := loadSheet(row.ID, row.Sheet)
+		if err != nil {
+			return nil, s.dbError(ctx, "list the party", err)
+		}
+		if sheet.GetFull() == nil {
+			continue // never: a player character has a full sheet
+		}
+		// The sheet's own level, not the beast's of a druid in Wild Shape: no beast here.
+		out = append(out, link.PartyMember{ID: row.ID, Name: row.Name, Level: rules.Derive(buildOf(sheet.GetFull()), content).TotalLevel})
+	}
+	return out, nil
+}
+
+// RulesContent is the rules content of the campaign (the SRD, plus what the table
+// added), read in tx (nil outside one). Package play reads the SRD's creatures and
+// the encounter budget through it. It implements play.CombatRoster.
+func (s *Service) RulesContent(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, wrap("read rules content", err)
+	}
+	return content, nil
+}
+
 // SessionCharacters returns those of ids that are characters of the campaign,
 // whatever their status (a dead one included), with their name and player
 // only. It implements play.CombatRoster.

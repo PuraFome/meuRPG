@@ -6,6 +6,7 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import {
   AttackOutcome,
   type AttackRoll,
+  CombatantSide,
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -22,10 +23,14 @@ import {
 } from '../../../../core/combat/attack-flow';
 import { type AttackDie, type DamageDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { damageFormula, diceName, rollFormula, sumRange } from '../../../../core/combat/combat-dice';
+import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
+import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackDetail, attackName, isCantrip } from '../../../../core/combat/combat-options';
+import { article } from '../../../../core/combat/combat-log';
+import { joinDots, tight } from '../../../../core/format/text';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -118,7 +123,17 @@ export class AttackSheet {
   protected readonly cantrip = isCantrip(this.attack);
   protected readonly rangeText = metersText(this.data.asReaction ? 5 : this.attack.rangeFt);
   /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
-  protected readonly rows = computed(() =>
+  protected readonly rows = computed(() => this.withAllies(this.baseRows()));
+  /** An ally is tagged ("Aliada"), so a table of friends does not misread the list. */
+  private withAllies(rows: ReturnType<typeof targetRows>): ReturnType<typeof targetRows> {
+    const e = this.data.state.encounter();
+    return rows.map((r) => {
+      const c = e?.combatants.find((x) => x.id === r.id);
+      const ally = c && (isPlayer(c) || c.side === CombatantSide.PARTY) ? (article(c.label) === 'a' ? 'Aliada' : 'Aliado') : '';
+      return ally ? { ...r, sub: tight(joinDots([r.sub, ally].filter(Boolean))) } : r;
+    });
+  }
+  private readonly baseRows = computed(() =>
     this.data.opportunity
       ? [{ id: this.data.opportunity.targetId, label: this.data.opportunity.targetLabel, sub: '', blocked: '', cover: '', coverMark: null }]
       : this.data.asReaction
@@ -209,8 +224,28 @@ export class AttackSheet {
   });
   protected readonly damageHint = computed(() => {
     const r = this.range();
-    return `Digite a soma dos dados, de ${r.min} a ${r.max}. O app soma o modificador.`;
+    const p = this.pending();
+    return criticalTypedHint(p?.criticalRule ?? 0, p ? diceName(p.diceCount, p.diceSides) : '', r.min, r.max, p?.criticalMax ?? 0);
   });
+  /** What the typed sum is added to: the modifier and the critical's fixed maximum (the server's numbers, shown in the total before it is sent). */
+  protected readonly damageModifier = computed(() => (this.pending()?.bonus ?? 0) + (this.pending()?.criticalMax ?? 0));
+  protected readonly fixedText = computed(() => fixedParts(this.pending()?.criticalMax ?? 0, this.pending()?.bonus ?? 0));
+  /** The critical's line only for whoever rolls physical dice (the app's dice are the server's). */
+  protected readonly showCritical = computed(() => !this.canApp || this.typing());
+  /** The line above the damage's dice: what a critical hit rolls under the table's rule ("role os dados duas vezes", "o máximo mais uma rolagem"), or "Acertou: role o dano.". */
+  protected readonly damageIntro = computed(() => {
+    const p = this.pending();
+    if (!p) {
+      return '';
+    }
+    const hint = criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax);
+    if (hint) {
+      return hint.line;
+    }
+    return p.critical || this.outcome()?.crit ? `Acerto crítico: os dados do dano dobram (${diceName(p.diceCount, p.diceSides)}).` : 'Acertou: role o dano.';
+  });
+  /** A combat without a map: the master judges the reach, and the list says so instead of "Longe demais". */
+  protected readonly theatre = computed(() => isTheatre(this.data.state.encounter()));
 
   constructor() {
     // After a result the focus goes to the one next action, as soon as it is drawn.

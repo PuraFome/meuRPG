@@ -7,6 +7,7 @@ import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/
 import { combatantInitial, isPlayer, roundLabel, turnBanner } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { NextTurn } from './next-turn';
+import { TheatrePill } from '../theatre/theatre-pill';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
@@ -18,7 +19,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-combat-bar',
-  imports: [CombatantToken, MatButtonModule, MatIconModule, NextTurn, NgTemplateOutlet],
+  imports: [CombatantToken, MatButtonModule, MatIconModule, NextTurn, NgTemplateOutlet, TheatrePill],
   templateUrl: './combat-bar.html',
   styleUrl: './combat-bar.scss',
 })
@@ -31,6 +32,8 @@ export class CombatBar {
   readonly pendingNote = input<string | null>(null);
   /** An opportunity attack waits for an answer ("Esperando a sua reação: Goblin 2"): the turn does not pass. */
   readonly waitNote = input('');
+  /** The combat is played without a map (RN-25): the pill says it, and the end of the combat leaves no tokens behind. */
+  readonly theatre = input(false);
   /** "Próximo turno": ends the turn of whoever is on turn; `true` when the
    * master passes it although a damage waits (it is discarded). */
   readonly next = output<boolean>();

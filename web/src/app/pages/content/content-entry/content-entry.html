@@ -1,0 +1,188 @@
+@let s = state();
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Conteúdo da mesa</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando" />
+        Carregando...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <a class="back" [routerLink]="backLink()"><mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para Conteúdo da mesa</a>
+      <h1 class="mr-page-title">Não foi possível abrir esta entrada</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ready') {
+    <a class="back" [routerLink]="backLink()" [queryParams]="backQuery()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      {{ backLabel() }}
+    </a>
+    @if (missing()) {
+      <div>
+        <h1 class="mr-page-title" tabindex="-1" #title>Entrada não encontrada</h1>
+        <div class="mr-notice mr-notice--neutral" role="alert">
+          <mat-icon aria-hidden="true">search_off</mat-icon>
+          <p><strong>Esta entrada não está mais na lista.</strong> Ela pode ter sido arquivada pelo mestre; volte à lista para ver o que está ligado.</p>
+        </div>
+      </div>
+    } @else {
+      <header class="head">
+        <div class="head__text">
+          <h1 class="mr-page-title" tabindex="-1" #title>{{ heading() }}</h1>
+          <div class="tags">
+            @if (kind() !== null) {
+              <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>{{ kindTag() }}</span>
+            }
+            @if (isNew()) {
+              <span class="mr-tag">Rascunho</span>
+            }
+            @if (state_(); as st) {
+              <span class="mr-tag">
+                @if (st.archived) {
+                  <mat-icon aria-hidden="true">archive</mat-icon>
+                }{{ st.text }}
+              </span>
+            }
+            @if (updated() && isMaster()) {
+              <span class="mr-muted tags__updated">{{ updated() }}</span>
+            }
+          </div>
+        </div>
+        @if (isMaster() && entry() && !entry()!.archived && !asking()) {
+          <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+        }
+      </header>
+
+      <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+      @if (actionError()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ actionError() }}</p>
+        </div>
+      }
+
+      @if (isMaster() && phone() && kind() !== null && !noEditorYet()) {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.</p>
+        </div>
+      }
+
+      @if (savedLine() && isMaster()) {
+        <div class="mr-notice mr-notice--success" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p>{{ savedLine() }}</p>
+        </div>
+      }
+      @if (affected().length > 0) {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <div>
+            <p><strong>{{ affected().length === 1 ? '1 ficha ficou com aviso' : affected().length + ' fichas ficaram com aviso' }}.</strong> Elas usam esta entrada e não fecham mais com a regra nova:</p>
+            <ul class="affected">
+              @for (a of affected(); track a.characterId) {
+                <li>
+                  <a [routerLink]="characterLink(a)">{{ a.name }}</a>
+                  @if (a.playerDisplayName) {
+                    <span class="mr-muted"> · {{ a.playerDisplayName }}</span>
+                  }
+                  · {{ a.issues === 1 ? '1 aviso' : a.issues + ' avisos' }}
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+
+      @if (entry()?.archived && isMaster()) {
+        <div class="archived">
+          <div class="mr-notice mr-notice--neutral">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>
+              <strong>{{ nounPhrase() }} está {{ archivedWord() }}.</strong>
+              @if (archivedOn()) {
+                Em {{ archivedOn() }}.
+              }
+              @if (entry()!.charactersUsing > 0) {
+                {{ entry()!.charactersUsing === 1 ? 'A ficha que usa' : 'As ' + entry()!.charactersUsing + ' fichas que usam' }} {{ entry()!.namePt }} {{ entry()!.charactersUsing === 1 ? 'continua' : 'continuam' }} funcionando.
+              }
+              A entrada só deixa de aparecer para fichas novas.
+            </p>
+          </div>
+          <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+        </div>
+      }
+
+      @if (asking() && entry()) {
+        <app-archive-question [name]="entry()!.namePt" [using]="using()" [busy]="archiving()" (cancel)="cancelAsk()" (confirm)="archive()" />
+      }
+
+      @if (noEditorYet()) {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p><strong>Esta entrada não pode ser criada por aqui.</strong> Volte à lista e escolha o que criar.</p>
+        </div>
+      } @else if (editing()) {
+        @if (extrasError()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ extrasError() }}</p>
+          </div>
+          <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
+        } @else if (catalog() && (menu() || kind() === Kind.SPELL)) {
+          @switch (kind()) {
+            @case (Kind.SPELL) {
+              <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.RACE) {
+              <app-race-editor mode="race" [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.SUBRACE) {
+              <app-race-editor mode="subrace" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="subraceParent()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.BACKGROUND) {
+              <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+          }
+        } @else {
+          <p class="page-status" role="status">
+            <mat-spinner diameter="24" aria-label="Carregando o editor" />
+            Carregando o editor...
+          </p>
+        }
+      } @else if (read(); as r) {
+        @if (extrasError()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ extrasError() }}</p>
+          </div>
+          <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
+        } @else if (catalog()) {
+          <app-entry-read [read]="r" />
+        } @else {
+          <p class="page-status" role="status">
+            <mat-spinner diameter="24" aria-label="Carregando" />
+            Carregando...
+          </p>
+        }
+      }
+    }
+  }
+}

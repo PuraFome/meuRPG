@@ -190,3 +190,11 @@
     max-width: 280px;
   }
 }
+
+// A critical hit's line: what to roll under the table's rule, right above the dice.
+.dmg__crit {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+}

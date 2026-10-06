@@ -49,6 +49,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // SheetLocker locks a campaign's player sheets when a game session starts
@@ -185,6 +186,13 @@ type CombatRoster interface {
 	// CombatCharacters returns those of ids that are living characters of
 	// the campaign, players' or NPCs; the others are left out.
 	CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
+	// PartyLevels returns the campaign's living, active player characters, oldest
+	// first, with their total level: the party an encounter's difficulty is measured
+	// against (MR-043).
+	PartyLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error)
+	// RulesContent is the campaign's rules content, for the SRD creatures and the
+	// encounter budget (MR-043).
+	RulesContent(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error)
 	// SessionCharacters returns those of ids that are characters of the
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
@@ -546,7 +554,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService, CombatService and PuzzleService on a mux. handle is usually
+// Mount registers PlayService, CombatService, PuzzleService and EncounterService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -564,6 +572,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
+	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A

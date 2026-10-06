@@ -244,6 +244,7 @@ func spellToProto(s rules.SpellEntry) *rulesv1.Spell {
 		Ritual:        s.Ritual,
 		Concentration: s.Concentration,
 		Archived:      s.Archived,
+		Off:           s.Off,
 	}
 }
 
@@ -295,13 +296,13 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	for _, r := range c.Races {
 		out.Races = append(out.Races, &rulesv1.Race{
 			Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
-			Archived: r.Archived, ChoiceBonuses: int32s(r.ChoiceBonuses),
+			Archived: r.Archived, Off: r.Off, ChoiceBonuses: int32s(r.ChoiceBonuses),
 		})
 	}
 	for _, s := range c.Subraces {
 		out.Subraces = append(out.Subraces, &rulesv1.Subrace{
 			Key: s.Key, Name: s.Name, NamePt: s.NamePT, RaceKey: s.Race, AbilityBonuses: abilityScores(s.AbilityBonuses),
-			Archived: s.Archived,
+			Archived: s.Archived, Off: s.Off,
 		})
 	}
 	for _, cl := range c.Classes {
@@ -313,6 +314,7 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 			SkillChoice:   &rulesv1.SkillChoice{Count: i32(cl.SkillChoices), SkillKeys: cl.SkillOptions},
 			SubclassLevel: i32(cl.SubclassLevel),
 			Archived:      cl.Archived,
+			Off:           cl.Off,
 		}
 		for _, a := range cl.SavingThrows {
 			p.SavingThrows = append(p.SavingThrows, abilityToProto[a])
@@ -331,7 +333,7 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 		out.Classes = append(out.Classes, p)
 	}
 	for _, s := range c.Subclasses {
-		p := &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class, Archived: s.Archived}
+		p := &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class, Archived: s.Archived, Off: s.Off}
 		if c := s.Casting; c != nil {
 			p.Spellcasting = &rulesv1.SubclassSpellcasting{
 				Ability: abilityToProto[c.Ability], Preparation: preparationToProto[c.Preparation],
@@ -342,7 +344,7 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	}
 	for _, b := range c.Backgrounds {
 		out.Backgrounds = append(out.Backgrounds, &rulesv1.Background{
-			Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies, Archived: b.Archived, EquipmentPt: b.EquipmentPT,
+			Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies, Archived: b.Archived, Off: b.Off, EquipmentPt: b.EquipmentPT,
 		})
 	}
 	for _, s := range c.Skills {
@@ -362,6 +364,14 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	for _, r := range c.ChallengeRatings {
 		out.ChallengeRatings = append(out.ChallengeRatings, &rulesv1.ChallengeRating{Rating: r.Rating, Xp: i32(r.XP)})
 	}
+	named := func(in []rules.NamedEntry) []*rulesv1.NamedKey {
+		var list []*rulesv1.NamedKey
+		for _, n := range in {
+			list = append(list, &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT})
+		}
+		return list
+	}
+	out.Languages, out.Proficiencies, out.DamageTypes = named(c.Languages), named(c.Proficiencies), named(c.DamageTypes)
 	return out
 }
 

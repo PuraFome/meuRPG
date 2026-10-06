@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, type Signal, computed, inject, signal, viewChild } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,12 +22,13 @@ export interface TrapFireData {
   readonly point: MapPoint;
   /** Who can be caught: outside a combat the characters with a token on the map (ID of the character), in a
    * combat the combatants (ID of the combatant). The server decides who stands in the area; this list only
-   * lets the master pick someone else. */
-  readonly targets: readonly PickRow[];
+   * lets the master pick someone else. A signal, `null` while it is still being read: the dialog may open before the
+   * trap's "Quem notaria" answer arrives, and the list fills in when it does (a snapshot taken at the click stayed empty). */
+  readonly targets: Signal<readonly PickRow[] | null>;
   /** The firing to add creatures to (a trap that fired already); empty for a new firing. */
   readonly extendFiringId: string;
   /** "Quem está no mapa" could not be read: the list says so instead of "Ninguém com token no mapa". */
-  readonly targetsFailed?: boolean;
+  readonly targetsFailed?: Signal<boolean>;
 }
 
 /** "Disparar…": a dialog from a tablet up and a bottom sheet on a phone; it answers the firing, or `undefined`. */
@@ -78,7 +79,7 @@ export function fireLabel(picked: readonly string[], extend: boolean): string {
       <p class="lead">
         {{ extend ? 'Quem mais foi pego? O app rola o efeito e o dano para quem você marcar.' : 'O app rola o efeito e o dano. O dano de um personagem espera você aplicar.' }}
       </p>
-      <app-person-pick headingId="trap-fire-who" [heading]="extend ? 'Quem mais foi pego' : 'Quem foi pego'" [rows]="data.targets" [(picked)]="picked" [empty]="data.targetsFailed ? 'Não deu para ler quem está no mapa. Feche e tente de novo.' : 'Ninguém com token no mapa.'" />
+      <app-person-pick headingId="trap-fire-who" [heading]="extend ? 'Quem mais foi pego' : 'Quem foi pego'" [rows]="rows()" [(picked)]="picked" [empty]="emptyText()" />
       <p class="note" role="status" aria-live="polite">{{ note() }}</p>
       <app-pair-foot
         foot
@@ -118,7 +119,15 @@ export class TrapFireSheet {
   protected readonly title = this.extend ? `Pegar mais gente no\u00a0${this.data.point.name}` : `Disparar o\u00a0${this.data.point.name}`;
   protected readonly subtitle = firstLine(this.data.point.description);
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
-  private readonly chosen = computed(() => this.data.targets.filter((t) => this.picked().has(t.id)));
+  protected readonly rows = computed(() => this.data.targets() ?? []);
+  protected readonly emptyText = computed(() =>
+    this.data.targetsFailed?.()
+      ? 'Não deu para ler quem está no mapa. Feche e tente de novo.'
+      : this.data.targets() === null
+        ? 'Lendo quem está no mapa…'
+        : 'Ninguém com token no mapa.',
+  );
+  private readonly chosen = computed(() => this.rows().filter((t) => this.picked().has(t.id)));
   protected readonly label = computed(() => fireLabel(this.chosen().map((t) => t.name), this.extend));
   /** A new firing needs nobody (the area); adding to one needs someone. */
   protected readonly ready = computed(() => !this.extend || this.chosen().length > 0);

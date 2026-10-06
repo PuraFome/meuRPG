@@ -238,3 +238,42 @@ describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
     expect(events).toEqual(['leave']);
   });
 });
+
+describe('ActionGroups: the movement without a map (RN-25, E10-04 state 7)', () => {
+  function setup(left: number, theatre: boolean) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, {}));
+    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: left, movementLeftDft: left * 10, speedFt: 30, speedDft: 300 }));
+    fixture.componentRef.setInput('theatre', theatre);
+    const moves: number[] = [];
+    fixture.componentInstance.move.subscribe(() => moves.push(1));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, moves };
+  }
+  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+
+  it('has one phrase and "Gastar movimento" instead of "Mover"', () => {
+    const { el, moves } = setup(30, true);
+    expect(text(el)).toContain('Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.');
+    const buttons = [...el.querySelectorAll('button')].map((b) => (b.textContent ?? '').trim());
+    expect(buttons.some((b) => b.includes('Gastar movimento'))).toBe(true);
+    expect(buttons).not.toContain('Mover');
+    (el.querySelector('.spend') as HTMLButtonElement).click();
+    expect(moves.length).toBe(1);
+  });
+
+  it('is dashed with its reason once the movement is spent, and presses nothing', () => {
+    const { el, moves } = setup(0, true);
+    const spend = el.querySelector('.spend') as HTMLButtonElement;
+    expect(spend.getAttribute('aria-disabled')).toBe('true');
+    expect(text(el)).toContain('Você já gastou todo o movimento deste turno.');
+    spend.click();
+    expect(moves.length).toBe(0);
+  });
+
+  it('keeps "Mover" on a map', () => {
+    const { el } = setup(30, false);
+    expect(el.querySelector('.spend')).toBeNull();
+    expect(text(el)).not.toContain('Gastar movimento');
+  });
+});

@@ -92,6 +92,8 @@ export class ActionGroups {
   readonly wild = input<{ readonly key: string; readonly detail: string; readonly reason: string } | null>(null);
   /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
   readonly beast = input('');
+  /** The combat is played without a map (RN-25): Movimento says so and its button is "Gastar movimento". */
+  readonly theatre = input(false);
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
