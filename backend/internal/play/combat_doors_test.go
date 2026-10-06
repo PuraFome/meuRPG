@@ -415,3 +415,53 @@ func TestMR010_AReplayKeepsTheLockedDoor(t *testing.T) {
 		}
 	}
 }
+
+// MR-025: on a map calibrated to 2 (the cave's 24 x 16 drawn squares are 48 x 32 squares
+// of 1,5 m) the combat copies the rules' grid, and a door is the whole drawn square:
+// a move across two of its squares opens the 2 x 2 block, with one line in the log.
+func TestMR025_ACombatOnACalibratedMapWalksThroughADoorBlock(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	if _, err := f.h.pool.Exec(t.Context(), `UPDATE maps SET fog_enabled = false WHERE id = $1`, f.mapID); err != nil {
+		t.Fatalf("turn the fog off: %v", err)
+	}
+	if _, err := f.mapsAs(f.master).SetMapGrid(t.Context(), connect.NewRequest(&mapsv1.SetMapGridRequest{
+		CampaignId: f.campaignID, MapId: f.mapID, Columns: 24, SquareFactor: 2,
+	})); err != nil {
+		t.Fatalf("SetMapGrid(24, factor 2) error = %v", err)
+	}
+	f.fight(t)
+	if e := f.get(t, f.master); e.GetGridColumns() != 48 || e.GetGridRows() != 32 {
+		t.Fatalf("the combat copied a grid of %d x %d, want 48 x 32", e.GetGridColumns(), e.GetGridRows())
+	}
+	// The fixture stands the combatants on the squares of the 24 x 16 cave: put Toren on
+	// open floor of the 48 x 32 grid first (the master moves anyone).
+	f.mustMove(t, f.master, "Toren", 14, 14)
+	toren := f.who(t, f.caio, "Toren")
+	col, row := toren.GetCol(), toren.GetRow()
+	// A door of the drawing 2 squares of the drawing east of Toren's: its block, 2 x 2 squares of the rules.
+	bc := (col/2 + 2) * 2
+	br := row / 2 * 2
+	f.paint(t, doorLayer, int32(mapsv1.DoorState_DOOR_STATE_CLOSED), &mapsv1.MapSquare{Col: bc + 1, Row: row})
+	for _, sq := range [][2]int32{{bc, br}, {bc + 1, br}, {bc, br + 1}, {bc + 1, br + 1}} {
+		if got := f.doorAt(t, int(sq[0]), int(sq[1])); got != grid.DoorClosed {
+			t.Fatalf("door square (%d, %d) is %d, want closed: painting one square paints the block", sq[0], sq[1], got)
+		}
+	}
+	rev := f.layersRevision(t)
+	res, err := f.moveResponse(t, f.caio, "Toren", bc+2, row)
+	if err != nil || res.GetStoppedEarly() || res.GetLockedDoor() {
+		t.Fatalf("the move through the door block: %v, %+v", err, res)
+	}
+	for _, sq := range [][2]int32{{bc, br}, {bc + 1, br}, {bc, br + 1}, {bc + 1, br + 1}} {
+		if got := f.doorAt(t, int(sq[0]), int(sq[1])); got != grid.DoorOpen {
+			t.Errorf("door square (%d, %d) is %d after the move, want open", sq[0], sq[1], got)
+		}
+	}
+	if got := f.layersRevision(t); got != rev+1 {
+		t.Errorf("layers_revision = %d, want %d: one bump", got, rev+1)
+	}
+	if lines := doorLines(f.log(t, f.master, f.get(t, f.master))); len(lines) != 1 {
+		t.Errorf("the log has %d door lines, want one for the door", len(lines))
+	}
+}

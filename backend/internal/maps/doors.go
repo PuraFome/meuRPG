@@ -19,8 +19,9 @@ import (
 // authorization.
 
 // OpenDoors opens, inside tx, the doors at the squares of the map that are still
-// closed, and returns the squares it opened (a square whose door is no longer
-// closed, because the master changed it since the move was planned, is left out).
+// closed, and returns the squares it opened, one for each door (a square whose
+// door is no longer closed, because the master changed it since the move was
+// planned, is left out; on a calibrated map the whole drawn square opens, see below).
 // It holds the map's row lock, as painting does, so the two take turns, and it
 // raises the layers' revision once when it opened any. It implements
 // play.DoorKeeper. The map must be the campaign's, or the answer is a
@@ -40,7 +41,7 @@ func (s *Service) OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID st
 	if err != nil {
 		return nil, fmt.Errorf("read the map's grid: %w", err)
 	}
-	g := gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight)
+	g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
 	if !g.Valid() {
 		return nil, nil
 	}
@@ -52,12 +53,24 @@ func (s *Service) OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID st
 		return nil, fmt.Errorf("read the layers: %w", err)
 	}
 	set := loadLayers(stored, g)
+	// A door is a whole square of the drawing (MR-025): on a calibrated map it is a
+	// block of factor x factor squares, and crossing one opens every closed square of
+	// its block, once: one square comes back for the block, so play writes one event.
+	f := max(int(size.GridFactor), 1)
 	var opened []grid.Square
 	for _, sq := range squares {
-		if set.doors.At(sq) == grid.DoorClosed {
-			set.doors.Set(sq.Col, sq.Row, grid.DoorOpen)
-			opened = append(opened, sq)
+		if set.doors.At(sq) != grid.DoorClosed {
+			continue
 		}
+		bc, br := sq.Col/f*f, sq.Row/f*f
+		for r := br; r < br+f; r++ {
+			for c := bc; c < bc+f; c++ {
+				if set.doors.Get(c, r) == grid.DoorClosed {
+					set.doors.Set(c, r, grid.DoorOpen)
+				}
+			}
+		}
+		opened = append(opened, sq)
 	}
 	if len(opened) == 0 {
 		return nil, nil
