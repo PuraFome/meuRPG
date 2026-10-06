@@ -27,6 +27,7 @@ import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labe
 import { ClueList } from '../clue-list/clue-list';
 import { HooksField } from '../hooks-field/hooks-field';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
+import { SceneImage } from '../scene-image/scene-image';
 import { SceneActions } from '../scene-actions/scene-actions';
 import {
   POINT_DESCRIPTION_MAX,
@@ -64,6 +65,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     HooksField,
     RevealSwitch,
     SceneActions,
+    SceneImage,
   ],
   templateUrl: './point-panel.html',
   styleUrl: './point-panel.scss',

@@ -35,8 +35,34 @@
 }
 
 .head {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--mr-space-5);
+  align-items: start;
+
+  > * {
+    grid-column: 1;
+  }
+
+  // "Gerar imagem com IA" (MR-039, E10-07 7): at the right of the title block on a computer; on a phone, the full width under the lead, 48 px, like
+  // "Enviar imagem". Its reason (generation off) goes under the button.
+  .head__generate {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  @media (max-width: 767.98px) {
+    grid-template-columns: minmax(0, 1fr);
+
+    .head__generate {
+      display: flex;
+      grid-column: 1;
+      grid-row: auto;
+      justify-self: stretch;
+      margin-top: var(--mr-space-3);
+    }
+  }
 
   .mr-page-lead {
     margin-bottom: 0;
@@ -126,3 +152,4 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+

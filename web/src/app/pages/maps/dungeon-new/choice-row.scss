@@ -113,3 +113,10 @@
     }
   }
 }
+
+// `symmetric`: the room of the check is kept on the right too, so the words sit in the middle of every chip.
+.row--sym:not(.row--strip) .row__item::after {
+  content: '';
+  flex: none;
+  width: 18px;
+}

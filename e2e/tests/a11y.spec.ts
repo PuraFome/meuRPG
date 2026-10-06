@@ -51,6 +51,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -4759,3 +4760,117 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
 });
+
+// Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
+// textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
+// (with the chain of an adjustment), and on a phone the same as a sheet with a fixed footer. The fake generator makes the pictures.
+async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const players = [await newSignedInContext(browser, 'Jogador Teste'), await newSignedInContext(browser, 'E-mail Não Verificado')];
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const d = m.getByRole('dialog');
+  const body = () => m.locator('.frame__body');
+  try {
+    await m.goto('/');
+    const [ap, bp] = await Promise.all(players.map((c) => c.newPage()));
+    await Promise.all([ap.goto('/'), bp.goto('/')]);
+    const table = await tableForImages(m, ap, bp, `Acessibilidade imagens ${Date.now()}`, false);
+    await generateSceneRPC(m, table.campaignId, 'Uma taverna à noite');
+
+    // From the map: the top, the end, the textured map.
+    await open(m, mapRoute(table));
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await expect(d.getByText('Quem aparece na imagem')).toBeVisible();
+    await d.getByRole('checkbox', { name: /Capitão Goblin/ }).click();
+    await body().evaluate((el) => (el.scrollTop = 0));
+    await expectScreenPasses(m, `Gerar imagem, o topo ${where}`);
+    await body().evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expectScreenPasses(m, `Gerar imagem, o fim ${where}`);
+    await body().evaluate((el) => (el.scrollTop = 0));
+    await d.getByRole('radio', { name: /Textura|O mapa com textura/ }).click();
+    await expectScreenPasses(m, `Gerar imagem, o mapa com textura ${where}`);
+    await d.getByRole('radio', { name: /Cena|Arte da cena/ }).click();
+
+    // Waiting, and the question on closing.
+    // The long poll is held by the test, not by the fake's own delay: the screens are scanned for as long as it takes.
+    let openGate!: () => void;
+    const gate = new Promise<void>((resolve) => (openGate = resolve));
+    await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGeneration', async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma sala de guarda com tochas');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByText('Gerando a imagem…')).toBeVisible({ timeout: 20_000 });
+    await expectScreenPasses(m, `Gerar imagem, gerando ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+    await expect(d.getByText('Parar de esperar a imagem?')).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, parar de esperar perguntado ${where}`);
+    // Let the picture through: the wait ends in the picture whether or not the master answered the question.
+    openGate();
+
+    // The result, with an adjustment typed.
+    await expect(d.getByText('Guardada na galeria')).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o resultado ${where}`);
+    await d.getByRole('textbox', { name: 'Pedir um ajuste' }).fill('mais escura');
+    await body().evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expectScreenPasses(m, `Gerar imagem, o ajuste escrito ${where}`);
+    await d.getByRole('button', { name: 'Pedir o ajuste' }).click();
+    await expect(d.getByText('A cadeia de ajustes')).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o resultado com a cadeia ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // The textured map: "Usar como imagem do mapa" asked in place.
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await d.getByRole('radio', { name: /Textura|O mapa com textura/ }).click();
+    await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma caverna de pedra clara');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByRole('button', { name: 'Usar como imagem do mapa' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o mapa com textura pronto ${where}`);
+    await d.getByRole('button', { name: 'Usar como imagem do mapa' }).click();
+    await expect(d.getByText('Usar como imagem do mapa?')).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, "Usar como imagem do mapa" perguntado ${where}`);
+    await d.getByRole('button', { name: 'Voltar' }).click();
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // The gallery: the tags, the chain, a refusal in words.
+    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await expectScreenPasses(m, `Galeria com imagens geradas ${where}`);
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await expect(d.getByRole('heading', { level: 2, name: 'Gerar imagem' })).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, da galeria ${where}`);
+    await d.getByRole('textbox', { name: 'Descreva a cena' }).fill('[recusa] Uma taverna');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByRole('alert')).toContainText('O serviço recusou', { timeout: 30_000 });
+    await expectScreenPasses(m, `Gerar imagem, o serviço recusou ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // Generation off: the button stays, dashed, with the reason.
+    await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGenerationStatus', (r) =>
+      r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' } }) }),
+    );
+    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await expect(m.getByText('A geração de imagens não está ligada neste servidor.')).toBeVisible();
+    await expectScreenPasses(m, `Galeria, geração desligada ${where}`);
+    await endOpenSessionRPC(m, table.campaignId).catch(() => undefined);
+  } finally {
+    await context.close();
+    await Promise.all(players.map((c) => c.close()));
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['light', 390, 'tema claro, no celular'],
+  ['dark', 320, 'tema escuro, no celular de 320'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`as imagens geradas passam no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-039'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanImageScreens(browser, scheme, width);
+  });
+}

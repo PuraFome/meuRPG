@@ -205,3 +205,16 @@ h2 {
     display: inline;
   }
 }
+
+// "Gerada por IA" and "Pedir um ajuste", under the name, for an image the app generated (MR-039).
+.lightbox__made {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-2);
+  margin: 4px 0 0;
+}
+
+.lightbox__adjust {
+  margin-inline-start: -4px;
+}

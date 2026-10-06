@@ -190,17 +190,17 @@ func (s *Service) process(ctx context.Context, data []byte) (*images.Result, err
 // checks the quota. If anything fails after a file was written, the files
 // are deleted again.
 func (s *Service) store(ctx context.Context, m authz.Membership, name string, res *images.Result) (mapsdb.GalleryImage, error) {
-	return s.storeImage(ctx, m.CampaignID, &m.UserID, name, res, false, nil, nil)
+	return s.storeImage(ctx, m.CampaignID, &m.UserID, name, res, false, "", nil, nil)
 }
 
 // storeImage is store for any image of the campaign: uploadedBy is who made it
 // (nil when nobody is left to name), and a generated image (MR-039) says so and,
-// when it is an edit, names its parent (kept only if that image still exists
+// with the way it was made (generatedKind) and, when it is an edit, names its parent (kept only if that image still exists
 // inside the transaction: the master may have deleted it meanwhile). finish, when
 // set, runs inside the same transaction after the insert, and an error from it
 // rolls the image back and is returned as it is: the generated image and the
 // request that made it are recorded together, or not at all.
-func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy *string, name string, res *images.Result, generated bool, parent *string, finish func(ctx context.Context, q *mapsdb.Queries, imageID string) error) (mapsdb.GalleryImage, error) {
+func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy *string, name string, res *images.Result, generated bool, generatedKind string, parent *string, finish func(ctx context.Context, q *mapsdb.Queries, imageID string) error) (mapsdb.GalleryImage, error) {
 	m := authz.Membership{CampaignID: campaignID}
 	id := uuid.New().String()
 	imageKey, thumbnailKey := blobKeys(m.CampaignID, id)
@@ -252,6 +252,7 @@ func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy 
 			CreatedAt:     s.now(),
 			Generated:     generated,
 			ParentImageID: parentID,
+			GeneratedKind: generatedKind,
 		})
 		if err != nil {
 			return fmt.Errorf("insert gallery image: %w", err)

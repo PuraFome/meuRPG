@@ -82,6 +82,14 @@
     } @else {
       <p class="card__name" [id]="ids.name">{{ img.name }}</p>
       <p class="card__meta">{{ meta() }}</p>
+      @if (img.generated) {
+        <p class="card__made">
+          <span class="mr-tag"><mat-icon aria-hidden="true">auto_awesome</mat-icon>Gerada por IA</span>
+          @if (parentName()) {
+            <span class="card__from">Editada de {{ parentName() }}</span>
+          }
+        </p>
+      }
       <p class="card__use">
         @if (img.usedInMaps.length > 0) {
           <mat-icon aria-hidden="true">map</mat-icon>

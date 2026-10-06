@@ -66,6 +66,13 @@ type GalleryImage struct {
 	// generated image, or one whose parent was deleted. The edit chain is the
 	// images linked this way (ListImageEdits).
 	ParentImageId string `protobuf:"bytes,13,opt,name=parent_image_id,json=parentImageId,proto3" json:"parent_image_id,omitempty"`
+	// True for a generated image that shows the whole map (the textured map, or an
+	// edit of one): the rooms the players have not found are in it. The master
+	// reads it: the app never offers such an image for showing to the players with
+	// one tap, and offers "Usar como imagem do mapa" instead (fog does the hiding
+	// there). Always false for an upload and for the scene art and the isometric
+	// view, which start from what the players see now (RN-28).
+	ShowsWholeMap bool `protobuf:"varint,14,opt,name=shows_whole_map,json=showsWholeMap,proto3" json:"shows_whole_map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,6 +196,13 @@ func (x *GalleryImage) GetParentImageId() string {
 		return x.ParentImageId
 	}
 	return ""
+}
+
+func (x *GalleryImage) GetShowsWholeMap() bool {
+	if x != nil {
+		return x.ShowsWholeMap
+	}
+	return false
 }
 
 // ImageInUse is the error detail of DeleteGalleryImage's
@@ -623,7 +637,7 @@ var File_meurpg_maps_v1_gallery_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"\xb3\x03\n" +
+	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"\xdb\x03\n" +
 	"\fGalleryImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -641,7 +655,8 @@ const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"\fused_in_maps\x18\v \x03(\v2\x16.meurpg.maps.v1.MapRefR\n" +
 	"usedInMaps\x12\x1c\n" +
 	"\tgenerated\x18\f \x01(\bR\tgenerated\x12&\n" +
-	"\x0fparent_image_id\x18\r \x01(\tR\rparentImageId\"8\n" +
+	"\x0fparent_image_id\x18\r \x01(\tR\rparentImageId\x12&\n" +
+	"\x0fshows_whole_map\x18\x0e \x01(\bR\rshowsWholeMap\"8\n" +
 	"\n" +
 	"ImageInUse\x12*\n" +
 	"\x04maps\x18\x01 \x03(\v2\x16.meurpg.maps.v1.MapRefR\x04maps\"\xb2\x01\n" +

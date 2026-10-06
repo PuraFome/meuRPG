@@ -20,6 +20,7 @@ type GalleryImage struct {
 	CreatedAt     time.Time
 	Generated     bool
 	ParentImageID *string
+	GeneratedKind string
 }
 
 type GeneratedDungeon struct {
@@ -69,6 +70,7 @@ type ImageRequest struct {
 	PadX1          *float64
 	PadY1          *float64
 	UsedMapImageID *string
+	ImageName      string
 }
 
 type Map struct {
