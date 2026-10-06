@@ -248,6 +248,26 @@ html {
   max-height: calc(100dvh - 24px);
 }
 
+// The generate-image sheet (E10-07 9 and 10): 40 px from the top of the screen, 24 only at 320 wide. Its frame is
+// shortened by the same amount, so the title, the body and the fixed footer all fit without the container scrolling.
+.mr-sheet-image .mat-bottom-sheet-container {
+  max-height: calc(100dvh - 40px);
+}
+
+.mr-sheet-image .frame.frame--phone {
+  max-height: calc(100dvh - 56px);
+}
+
+@media (max-width: 359.98px) {
+  .mr-sheet-image .mat-bottom-sheet-container {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .mr-sheet-image .frame.frame--phone {
+    max-height: calc(100dvh - 40px);
+  }
+}
+
 // A dialog laid out like a phone's bottom sheet: the "?" inside the cast sheet
 // opens the spell's details over it (a second bottom sheet would close the
 // first and lose its choices). `panelClass` lands on the overlay pane.

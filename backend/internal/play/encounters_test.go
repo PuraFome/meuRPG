@@ -689,7 +689,13 @@ func TestMR043_StartingWithMonstersRefusals(t *testing.T) {
 	} {
 		req := &playv1.StartEncounterRequest{CampaignId: m.campaignID, IdempotencyKey: newKey(), Name: "x"}
 		edit(req)
-		if _, err := m.master.combat.StartEncounter(t.Context(), connect.NewRequest(req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		_, err := m.master.combat.StartEncounter(t.Context(), connect.NewRequest(req))
+		if strings.Contains(name, "(41)") {
+			// The cap is typed, so the app can say it.
+			wantBlockedBy(t, "StartEncounter("+name+")", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS)
+			continue
+		}
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Errorf("StartEncounter(%s) = %v, want invalid_argument", name, err)
 		}
 	}
@@ -903,9 +909,8 @@ func TestMR043_TheFortyCountsThePartysCreatures(t *testing.T) {
 		_, err := m.master.combat.StartEncounter(t.Context(), connect.NewRequest(&playv1.StartEncounterRequest{CampaignId: m.campaignID, IdempotencyKey: newKey(), Name: "x", Monsters: groups(goblin, n)}))
 		return err
 	}
-	if err := start(36); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("StartEncounter(36 goblins, a party of 5) = %v, want invalid_argument", err)
-	}
+	// Typed, with the party's familiar counted, so the app can say it in words.
+	wantBlockedBy(t, "StartEncounter(36 goblins, a party of 5)", start(36), playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS)
 	if err := start(35); err != nil {
 		t.Errorf("StartEncounter(35 goblins, a party of 5) error = %v", err)
 	}

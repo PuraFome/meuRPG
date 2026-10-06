@@ -311,6 +311,33 @@ func CropBy(f Fractions, rw, rh int) image.Rectangle {
 	return image.Rect(x0, y0, max(x1, x0+1), max(y1, y0+1)).Intersect(whole)
 }
 
+// CenterCrop is the rectangle of an rw x rh picture that has the proportions of a w x h map and sits in
+// the middle of it: the most of the picture that fits the map's ratio. It never stretches: scaling the
+// rectangle to the map's size keeps every proportion (a square stays a square). A picture already of
+// the map's ratio (to a pixel) is returned whole.
+func CenterCrop(w, h, rw, rh int) image.Rectangle {
+	whole := image.Rect(0, 0, max(rw, 0), max(rh, 0))
+	if w < 1 || h < 1 || rw < 1 || rh < 1 {
+		return whole
+	}
+	// Compare w/h with rw/rh without dividing: w*rh against h*rw.
+	switch a, b := int64(w)*int64(rh), int64(h)*int64(rw); {
+	case a == b:
+		return whole
+	case a > b:
+		// The map is wider than the picture: keep the full width and the middle of the height.
+		ch := int(math.Round(float64(rw) * float64(h) / float64(w)))
+		ch = min(max(ch, 1), rh)
+		y0 := (rh - ch) / 2
+		return image.Rect(0, y0, rw, y0+ch)
+	default:
+		cw := int(math.Round(float64(rh) * float64(w) / float64(h)))
+		cw = min(max(cw, 1), rw)
+		x0 := (rw - cw) / 2
+		return image.Rect(x0, 0, x0+cw, rh)
+	}
+}
+
 // RenderPadded draws a whole map (the plan has no Seen and no markers: this is the
 // reference of the textured map) on its padded canvas: the map at the size
 // SizeFor gives for the padded canvas, and rock around it. It returns the drawing

@@ -133,6 +133,7 @@ export class ShownImagePanel {
         note: shownImageNote,
         hiddenMapImages: hiddenMapImages(this.maps()),
         emptyError: 'Escolha uma imagem para mostrar.',
+        wholeMapConfirmLabel: 'Mostrar mesmo assim',
         submit: async (image) => {
           const leaving = this.keep() ? shown : null;
           const result = await this.source.setShownImage(this.campaignId(), image.id);

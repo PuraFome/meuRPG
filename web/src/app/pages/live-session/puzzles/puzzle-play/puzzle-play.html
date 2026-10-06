@@ -26,14 +26,17 @@
     @if (r.solved) {
       <div class="mr-notice mr-notice--success" role="status">
         <mat-icon aria-hidden="true">check</mat-icon>
-        <p><strong>Resolvido</strong></p>
+        <p><strong>Resolvido</strong>@if (solvedBy()) {. {{ solvedBy() }}}</p>
       </div>
     } @else if (r.stopped) {
       <div class="mr-notice mr-notice--neutral" role="status">
         <mat-icon aria-hidden="true">pause_circle</mat-icon>
-        <p>{{ r.stoppedMessage }}</p>
+        <p>{{ r.stoppedMessage }}@if (stoppedWhy()) { <br />{{ stoppedWhy() }} }</p>
       </div>
     }
+
+
+    <app-my-part [part]="r.myPart" [holders]="r.partHolders" />
 
     @if (r.clue) {
       <section class="mr-panel clue" aria-labelledby="clue-label">
@@ -51,25 +54,51 @@
       </section>
     }
 
-    <section class="board-card" [class.board-card--panel]="kind() !== Kind.LIGHTS" aria-label="O quebra-cabeça">
-      <app-puzzle-host [run]="r" mode="play" [changed]="changed()" [disabled]="frozen() || play.gone()" (move)="onMove($event)" />
+    <section class="board-card" [class.board-card--panel]="kind() !== Kind.LIGHTS" [class.board-card--bleed]="kind() === Kind.LOCK || kind() === Kind.PILLARS" aria-label="O quebra-cabeça">
+      <app-puzzle-host
+        [run]="r"
+        [mode]="hostMode()"
+        [changed]="changed()"
+        [disabled]="frozen() || play.gone()"
+        [verdict]="verdict()"
+        [blocked]="blocked()"
+        [busy]="play.pending() > 0"
+        [busyCount]="play.pending()"
+        [counters]="counters()"
+        [note]="sequenceNote()"
+        (move)="onMove($event)"
+      />
     </section>
 
     @if (play.message()) {
-      <div class="mr-notice mr-notice--danger" role="alert">
+      <div class="mr-notice mr-notice--danger play__msg" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>{{ play.message() }}</p>
       </div>
     }
 
+    <!-- Under the board, never over it: a notice that goes away at the next move would move the board under a finger. -->
+    @if (trap()) {
+      <div class="mr-notice mr-notice--warning play__msg" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>A armadilha disparou:</strong> {{ trap() }}. O mestre diz o que acontece com quem estava na sala.</p>
+      </div>
+    }
+
+    @if (showInfo()) {
     <section class="mr-panel info" aria-label="Como está">
       @if (r.solved) {
         <p class="info__main">{{ doneText() }}</p>
         @if (r.solvedMessage) {
           <p class="info__solved"><span class="info__time">{{ solvedAt() }}</span>{{ r.solvedMessage }}</p>
         }
+        @if (judged() && !r.solvedMessage) {
+          <p class="info__muted">O mestre decide o que acontece agora.</p>
+        }
       } @else {
-        <p class="info__main">{{ instruction() }}</p>
+        @if (instruction()) {
+          <p class="info__main">{{ instruction() }}</p>
+        }
         @if (kind() === Kind.LOCK && wheelWords()) {
           <p class="info__main">As rodas agora: <strong>{{ wheelWords() }}</strong>.</p>
         }
@@ -85,10 +114,26 @@
           <p class="info__muted">Quando todas as rodas estiverem certas, o mestre é avisado.</p>
         }
       }
+      @if (countersBelow()) {
+        <app-limit-counters [rows]="counters()" />
+      }
     </section>
+    }
+
+    @if (kind() === Kind.CIPHER && r.hasKeyClue) {
+      <section class="mr-panel key" aria-labelledby="key-title">
+        <h2 class="key__title" id="key-title">{{ r.keyClueId ? 'Pista achada na aventura' : 'A chave da cifra' }}</h2>
+        @if (r.keyClueId) {
+          <p class="key__text">Você achou a chave na aventura. Ela está nas suas anotações.</p>
+          <button matButton="outlined" type="button" class="key__go" (click)="openNotes.emit()"><mat-icon aria-hidden="true">sticky_note_2</mat-icon>Abrir as anotações</button>
+        } @else {
+          <p class="key__text key__text--muted">Ainda não acharam a chave.</p>
+        }
+      </section>
+    }
 
     <section class="mr-panel hints" aria-labelledby="hints-title">
-      <h2 class="hints__title" id="hints-title">Dicas soltas pelo mestre</h2>
+      <h2 class="hints__title" id="hints-title">{{ r.hintByCheck ? 'Dicas' : 'Dicas soltas pelo mestre' }}</h2>
       @if (r.hints.length === 0) {
         <p class="info__muted">O mestre ainda não soltou nenhuma dica.</p>
       } @else {
@@ -97,6 +142,18 @@
             <li><span class="hints__n" aria-hidden="true">{{ $index + 1 }}</span><span>{{ h }}@if ($index >= sharedHints()) { <em class="hints__own"> Esta dica é só sua.</em> }</span></li>
           }
         </ol>
+      }
+      @if (r.hintByCheck) {
+        <app-hint-try
+          [skill]="hintSkill()"
+          [canTry]="r.canTryHint"
+          [busy]="play.hintBusy()"
+          [diceMode]="diceMode()"
+          [dicePreference]="dicePreference()"
+          [result]="play.hintTry()"
+          (rolled)="play.tryHint($event)"
+          (typed)="play.tryHint($event)"
+        />
       }
     </section>
 

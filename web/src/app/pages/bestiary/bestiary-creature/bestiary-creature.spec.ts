@@ -11,6 +11,9 @@ import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { FakeCreaturesClient, flat, ogre } from '../../../core/creatures/creatures-testing';
 import { BestiaryCreature } from './bestiary-creature';
 
+/** The "Criar NPC" button of the panel (the outlined one). */
+const createNpc = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find((b) => flat(b) === 'Criar NPC')!;
+
 describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', () => {
   let api: FakeCreaturesClient;
   let access: BestiaryAccess;
@@ -96,18 +99,41 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     expect(flat(entries[0].querySelector('p'))).toContain('Melee Weapon Attack: +6 to hit');
   });
 
-  it('credits the SRD, and has "Criar NPC" as its one button and no "Pôr no combate" yet', async () => {
+  it('credits the SRD, and has "Pôr no combate" (the filled one) and "Criar NPC" in the same panel', async () => {
     const { el } = await open();
     expect(flat(el.querySelector('.act__srd'))).toBe('Dados do SRD 5.1 (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.');
     expect(el.querySelector('.act__srd a')?.getAttribute('href')).toBe('/creditos');
-    expect(Array.from(el.querySelectorAll('button')).map((b) => flat(b))).toEqual(['Criar NPC']);
-    expect(flat(el)).not.toContain('Pôr no combate');
+    expect(Array.from(el.querySelectorAll('.act button')).map((b) => flat(b))).toEqual(['Pôr no combate', 'Criar NPC']);
+    expect(flat(el.querySelector('#act-h'))).toBe('Usar esta criatura');
+  });
+
+  it('"Pôr no combate" opens the sheet with the creature; with monsters put in, the page confirms and links to the session', async () => {
+    dialogResult = { count: 3, names: 'Ogro 1, Ogro 2 e Ogro 3', combatName: 'Emboscada na ponte', started: false, hidden: true, encounterId: 'enc-1' };
+    const { el, settle } = await open();
+    el.querySelector<HTMLButtonElement>('.act__go')!.click();
+    await settle();
+    expect(opened).toHaveLength(1);
+    expect((opened[0] as { data: { campaignId: string; creature: { key: string } } }).data.campaignId).toBe('camp-1');
+    expect((opened[0] as { data: { creature: { key: string } } }).data.creature.key).toBe('monster:ogre');
+    const made = el.querySelector('.made')!;
+    expect(flat(made.querySelector('p'))).toBe('Entraram no combate: Ogro 1, Ogro 2 e Ogro 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
+    const links = Array.from(made.querySelectorAll('a'));
+    expect(links.map((a) => flat(a))).toEqual(['Ir para a sessão', 'Voltar ao Bestiário']);
+    expect(links[0].getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+  });
+
+  it('a combat made by the sheet says so, and one monster says "Entrou"', async () => {
+    dialogResult = { count: 1, names: 'Ogro', combatName: 'Combate: Ogro', started: true, hidden: false, encounterId: 'enc-2' };
+    const { el, settle } = await open();
+    el.querySelector<HTMLButtonElement>('.act__go')!.click();
+    await settle();
+    expect(flat(el.querySelector('.made p'))).toBe('Entrou no combate: Ogro. O combate “Combate: Ogro” foi criado agora. Os jogadores já os veem pelo estado.');
   });
 
   it('"Criar NPC" opens the dialog with the creature; with an NPC made, the page confirms and links to its sheet', async () => {
     dialogResult = { id: 'npc-9', name: 'Capitão bandido', attacks: ['Clava grande', 'Azagaia'], existed: false };
     const { el, settle } = await open();
-    el.querySelector<HTMLButtonElement>('.act__go')!.click();
+    createNpc(el).click();
     await settle();
     expect(opened).toHaveLength(1);
     expect((opened[0] as { data: { campaignId: string; creature: { summary: { key: string } } } }).data.campaignId).toBe('camp-1');
@@ -128,7 +154,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   it('when the server says the NPC exists already, the page says "Já foi criado." and points to the NPC list', async () => {
     dialogResult = { id: '', name: 'Capitão bandido', attacks: [], existed: true };
     const { el, settle } = await open();
-    el.querySelector<HTMLButtonElement>('.act__go')!.click();
+    createNpc(el).click();
     await settle();
     const made = el.querySelector('.made')!;
     expect(flat(made.querySelector('p'))).toBe('Já foi criado. O NPC desta tentativa já está na lista de NPCs.');
@@ -139,7 +165,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   it('a dialog closed with nothing made confirms nothing', async () => {
     dialogResult = undefined;
     const { el, settle } = await open();
-    el.querySelector<HTMLButtonElement>('.act__go')!.click();
+    createNpc(el).click();
     await settle();
     expect(el.querySelector('.made')?.textContent?.trim()).toBe('');
   });

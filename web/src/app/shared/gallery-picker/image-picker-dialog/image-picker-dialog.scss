@@ -137,3 +137,35 @@
     }
   }
 }
+
+// "Mostrar o mapa inteiro?": in place of the footer's buttons, with "Voltar" first (RN-10).
+.dlg__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.dlg__ask-title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.dlg__ask-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-warning-ink);
+  font-size: 15px;
+  line-height: 21px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

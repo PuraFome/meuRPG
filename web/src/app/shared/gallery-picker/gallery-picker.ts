@@ -91,6 +91,8 @@ export class GalleryPicker implements OnChanges {
   /** A tag under a tile's name, by image ID ("Fundo de mapa escondido",
    * "À mostra agora"): an icon and words. */
   readonly tags = input<ReadonlyMap<string, PickerTag>>(new Map());
+  /** Images left out of the grid (the portraits of NPCs the players do not see, for a reference to a picture made from a map). */
+  readonly excluded = input<ReadonlySet<string>>(new Set());
   readonly picked = output<GalleryImage>();
   /** The gallery's images arrived (a dialog moves focus to the tiles then). */
   readonly loaded = output<readonly GalleryImage[]>();
@@ -135,7 +137,8 @@ export class GalleryPicker implements OnChanges {
   protected load(campaignId = this.campaignId()): void {
     this.state.set({ status: 'loading' });
     this.gallery.list(campaignId).then(
-      ({ images, usage }) => {
+      ({ images: all, usage }) => {
+        const images = all.filter((i) => !this.excluded().has(i.id));
         this.images.set(images);
         this.usage.set(usage);
         this.state.set({ status: 'ready' });

@@ -99,3 +99,20 @@
   --mat-button-outlined-label-text-color: var(--mr-danger-ink);
   --mat-button-text-label-text-color: var(--mr-danger-ink);
 }
+
+// "Montar o encontro deste ponto" (a battle point): an accent link to the encounter builder, 44 px tall.
+.pp__enc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

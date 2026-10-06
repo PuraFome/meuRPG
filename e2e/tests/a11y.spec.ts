@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -23,12 +23,37 @@ import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-suppor
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
-import { closePuzzleRPC, createLightsRPC, createLockRPC, createPillarsRPC, endTable, moveRPC, puzzleRoute, showPuzzleRPC, solveByThePathRPC, tableForPuzzles } from './puzzles-support';
+import {
+  CIPHER,
+  SEQUENCE,
+  closePuzzleRPC,
+  createCipherRPC,
+  createLightsRPC,
+  createLockRPC,
+  createPillarsRPC,
+  createRiddleRPC,
+  createSequenceRPC,
+  endTable,
+  moveRPC,
+  playSequenceRPC,
+  puzzleRoute,
+  releaseHintRPC,
+  revealClueRPC,
+  sceneClueRPC,
+  secondPlayer as puzzlesSecondPlayer,
+  setDiceModeRPC,
+  showPuzzleRPC,
+  solveByThePathRPC,
+  tableForPuzzles,
+  trapPointRPC,
+} from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
-import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
+import { treasureRoute } from './treasure-support';
+import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -4034,6 +4059,278 @@ test('os quebra-cabeças passam no axe e nas conferências de layout no tema esc
 });
 
 /**
+ * More puzzles (Etapa 10, slice 10.15b: MR-038, RN-27, RN-10, RN-18; E10-12 states 1 to 10): the master's forms for the riddle, the
+ * sequence and the cipher (with the skill check, the split information and "Ao errar"), his live view of each, and the player's phone in
+ * every state: the riddle (a wrong answer, no attempts left, solved, stopped), the sequence (not played, playing, repeating, a wrong
+ * step with the trap), the cipher (the key not found, found, a wrong message) and a hint by a skill check (the button, a typed d20, a
+ * fail, a pass) with the split information. `masterToo` is false on the narrowest phone, where only the player's phone is a screen.
+ */
+async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, masterToo = true): Promise<void> {
+  const openPage = async (page: Page, route: string) => {
+    await page.goto(route);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  };
+  const stepPasses = async (page: Page, screen: string) => {
+    await expectScreenPasses(page, screen);
+  };
+  // The phone states are scanned at the phones' real heights: 568 px at 320, 667 at 375.
+  const height = width === 320 ? 568 : width < 400 ? (width === 375 ? 667 : 640) : 900;
+  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const master = await masterContext.newPage();
+  const player = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let toren: Awaited<ReturnType<typeof puzzlesSecondPlayer>> | undefined;
+  try {
+    await Promise.all([master.goto('/'), player.goto('/')]);
+    const table = await tableForPuzzles(master, player, `Acessibilidade mais quebra-cabeças ${Date.now()}`);
+    campaignId = table.campaignId;
+    toren = await puzzlesSecondPlayer(browser, master, campaignId);
+    await setCurrentMapRPC(master, campaignId, table.map.mapId);
+    const trap = await trapPointRPC(master, campaignId, table.map.mapId, 'Dardos envenenados');
+    const clueId = await sceneClueRPC(master, campaignId, table.map.mapId, 'A biblioteca', 'Cada letra anda três para trás.');
+
+    const riddle = await createRiddleRPC(master, campaignId, 'A porta da Cripta pergunta', {
+      clue: 'Procure no chão da Cripta.',
+      hints: ['Pense no que acompanha você ao meio-dia.', 'Ela some quando a tocha apaga.'],
+      hintCheck: { skillKey: 'skill:investigation', dc: 13 },
+      parts: [
+        { characterId: table.characterId, text: '…os tambores ecoam três vezes antes de a porta ceder.' },
+        { characterId: toren.characterId, text: 'A porta ouve o que o chão esconde…' },
+      ],
+      onWrong: { attemptsPerPlayer: 4 },
+    });
+    const sequence = await createSequenceRPC(master, campaignId, 'Os sinos do Salão do trono', { clue: 'Quem toca os sinos escuta o trono.', onWrong: { trap: { mapId: table.map.mapId, pointId: trap } } });
+    const cipher = await createCipherRPC(master, campaignId, 'A carta do Capitão', { onWrong: { maxMoves: 10, timeLimitSeconds: 3600 } }, clueId);
+    const stopped = await createRiddleRPC(master, campaignId, 'A porta selada', { onWrong: { maxMoves: 1 } });
+    const done = await createRiddleRPC(master, campaignId, 'O enigma resolvido');
+
+    // Shown from the start: the master's live cards and the players' screens read the same three, with one wrong answer already made.
+    for (const id of [riddle, sequence, cipher]) {
+      await showPuzzleRPC(master, campaignId, id);
+    }
+    await moveRPC(player, campaignId, riddle, { riddle: { answer: 'escuridão' } });
+
+    if (masterToo) {
+      // The three forms (states 1 to 3), with "Ao errar", the skill check and the split information.
+      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', 'novo'));
+      await master.getByRole('radio', { name: /^Enigma/ }).check();
+      await stepPasses(master, `Novo quebra-cabeça: o enigma, vazio ${where}`);
+      await master.getByLabel('Nome').fill('A porta da Cripta pergunta');
+      await master.getByLabel('O enigma').fill('Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?');
+      for (const answer of ['sombra', 'a sombra']) {
+        await master.getByLabel(/^(Uma|Outra) resposta$/).fill(answer);
+        await master.getByRole('button', { name: 'Adicionar', exact: true }).click();
+      }
+      await master.getByRole('radio', { name: 'Gastar uma tentativa do jogador' }).check();
+      await master.getByRole('button', { name: 'Adicionar uma dica' }).click();
+      await master.getByRole('textbox', { name: 'Dica 1' }).fill('Pense no que acompanha você ao meio-dia.');
+      await master.getByLabel('Perícia', { exact: true }).selectOption('skill:investigation');
+      await master.getByLabel('CD', { exact: true }).fill('13');
+      await master.getByRole('button', { name: 'Adicionar parte' }).click();
+      await master.getByLabel('Para quem (parte 1)').selectOption(table.characterId);
+      await master.getByLabel('O que o jogador lê (parte 1)').fill('…os tambores ecoam três vezes antes de a porta ceder.');
+      await stepPasses(master, `Novo quebra-cabeça: o enigma, com perícia, parte e tentativas ${where}`);
+      await master.getByRole('radio', { name: 'Disparar uma armadilha do mapa' }).check();
+      await expect(master.getByLabel('Armadilha do mapa', { exact: true })).toBeVisible();
+      await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
+      await expect(master.getByText('Escolha a armadilha do mapa que dispara.')).toBeVisible();
+      await stepPasses(master, `O enigma com a armadilha por escolher ${where}`);
+      await master.getByRole('radio', { name: 'Limite de jogadas ou de tempo' }).check();
+      await stepPasses(master, `O enigma, com limite de jogadas ou de tempo ${where}`);
+
+      await master.getByRole('radio', { name: /^Sequência/ }).check();
+      for (const bell of ['Sino redondo', 'Sino alto', 'Sino pequeno', 'Sino redondo']) {
+        await master.locator('app-bells-board').getByRole('button', { name: bell }).click();
+      }
+      await master.getByRole('radio', { name: 'Disparar uma armadilha do mapa' }).check();
+      await master.getByLabel('Armadilha do mapa', { exact: true }).selectOption({ label: 'Dardos envenenados · A capela' });
+      await stepPasses(master, `Novo quebra-cabeça: a sequência, com a armadilha ${where}`);
+      await master.getByRole('button', { name: 'Tocar para testar' }).click();
+      await stepPasses(master, `A sequência tocando para o teste ${where}`);
+
+      await master.getByRole('radio', { name: /^Cifra/ }).check();
+      await master.getByLabel('Mensagem', { exact: true }).fill(CIPHER.message);
+      await expect(master.locator('app-cipher-form .cipher')).toHaveText(CIPHER.ciphertext, { timeout: 30_000 });
+      await master.getByLabel('Qual pista guarda a chave').selectOption(clueId);
+      await stepPasses(master, `Novo quebra-cabeça: a cifra, com a chave ${where}`);
+      await master.getByRole('radio', { name: 'Palavra-chave' }).check();
+      await master.getByRole('textbox', { name: 'Palavra-chave' }).fill('abc');
+      await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
+      await expect(master.getByText('Essa palavra-chave não troca nenhuma letra.')).toBeVisible();
+      await stepPasses(master, `A cifra com a palavra-chave recusada ${where}`);
+
+      // The live view of each (state 5): one card at a time, in the main column.
+      await openSessionPage(master, campaignId);
+      const panel = master.getByRole('region', { name: 'Quebra-cabeças' });
+      await panel.getByRole('button', { name: 'Ver ao vivo A porta da Cripta pergunta' }).click();
+      const riddleCard = master.getByRole('article', { name: 'A porta da Cripta pergunta' });
+      await expect(riddleCard.getByText(/Última jogada: Pensantus tentou “escuridão”: errou/)).toBeVisible();
+      await riddleCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `O enigma ao vivo ${where}`);
+      await playSequenceRPC(master, campaignId, sequence);
+      await moveRPC(player, campaignId, sequence, { sequence: { bell: 2 } }).catch(() => undefined);
+      await panel.getByRole('button', { name: 'Ver ao vivo Os sinos do Salão do trono' }).click();
+      const sequenceCard = master.getByRole('article', { name: 'Os sinos do Salão do trono' });
+      await expect(sequenceCard.getByText('Tocar a sequência').first()).toBeVisible();
+      await sequenceCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `A sequência ao vivo ${where}`);
+      await panel.getByRole('button', { name: 'Ver ao vivo A carta do Capitão' }).click();
+      const cipherCard = master.getByRole('article', { name: 'A carta do Capitão' });
+      await expect(cipherCard.getByText(`A mensagem: ${CIPHER.message}`)).toBeVisible();
+      await cipherCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `A cifra ao vivo ${where}`);
+    }
+    await showPuzzleRPC(master, campaignId, stopped);
+    await showPuzzleRPC(master, campaignId, done);
+
+    const playTo = async (id: string, name: string) => {
+      await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${id}`);
+      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
+    };
+
+    // The riddle (state 6): the field, the hint button and the player's own part (states 9).
+    await playTo(riddle, 'A porta da Cripta pergunta');
+    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible();
+    await stepPasses(player, `O enigma, com a dica por perícia e a parte ${where}`);
+    await player.getByLabel('Sua resposta').fill('escuridão');
+    await player.getByRole('button', { name: 'Responder' }).click();
+    await expect(player.getByRole('alert').filter({ hasText: 'Não é isso.' })).toBeVisible();
+    await stepPasses(player, `O enigma, resposta errada ${where}`);
+    // A hint, with the table's dice: the app first, then the physical d20 typed (9b).
+    await player.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(player.getByLabel('O d20 que você rolou')).toBeVisible();
+    await player.getByLabel('O d20 que você rolou').fill('1');
+    await stepPasses(player, `A dica por perícia, o d20 de um dado físico digitado ${where}`);
+    await player.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(player.getByText('Não deu desta vez.')).toBeVisible();
+    await stepPasses(player, `A dica por perícia que falhou ${where}`);
+    await releaseHintRPC(master, campaignId, riddle);
+    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible({ timeout: 30_000 });
+    await setDiceModeRPC(master, campaignId, 'DICE_MODE_APP');
+    await player.reload();
+    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible({ timeout: 30_000 });
+    await player.getByRole('button', { name: 'Tentar uma dica · Investigação' }).click();
+    await expect(player.getByText('Você conseguiu.').or(player.getByText('Não deu desta vez.'))).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A dica por perícia, rolada no app ${where}`);
+    // Out of attempts: a dashed box with the reason.
+    await moveRPC(player, campaignId, riddle, { riddle: { answer: 'luz' } });
+    await moveRPC(player, campaignId, riddle, { riddle: { answer: 'sol' } });
+    await expect(player.getByText('Você não tem mais tentativas.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `O enigma, sem tentativas ${where}`);
+
+    // The sequence (state 7): not played, playing, repeating, a wrong step with the trap (state 10).
+    await playTo(sequence, 'Os sinos do Salão do trono');
+    await stepPasses(player, `A sequência ${where}`);
+    await playSequenceRPC(master, campaignId, sequence);
+    await expect(player.getByText('O mestre está tocando os sinos.')).toBeVisible({ timeout: 15_000 });
+    await stepPasses(player, `A sequência tocando ${where}`);
+    await expect(player.getByText('Agora é com vocês.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A sequência, para repetir ${where}`);
+    await moveRPC(player, campaignId, sequence, { sequence: { bell: 2 } });
+    await expect(player.locator('.board-card').getByRole('alert').filter({ hasText: 'Errou o passo 1.' })).toBeVisible();
+    await expect(player.getByText('A armadilha disparou:')).toBeVisible();
+    await stepPasses(player, `A sequência, passo errado e a armadilha ${where}`);
+    void SEQUENCE;
+
+    // The cipher (state 8): the key not found, found, and a wrong message.
+    await playTo(cipher, 'A carta do Capitão');
+    await expect(player.getByText('Ainda não acharam a chave.')).toBeVisible();
+    await stepPasses(player, `A cifra, sem a chave ${where}`);
+    await revealClueRPC(master, campaignId, clueId, [table.characterId]);
+    await expect(player.getByText('Pista achada na aventura')).toBeVisible({ timeout: 30_000 });
+    await player.getByLabel('A mensagem decifrada').fill('o tesouro esta sobre o altar');
+    await player.getByRole('button', { name: 'Conferir' }).click();
+    await expect(player.getByRole('alert').filter({ hasText: 'Não é isso.' })).toBeVisible();
+    await stepPasses(player, `A cifra, com a chave achada e uma mensagem errada ${where}`);
+
+    // A limit stopped it, and a solved riddle.
+    await playTo(stopped, 'A porta selada');
+    await moveRPC(player, campaignId, stopped, { riddle: { answer: 'luz' } });
+    await expect(player.getByText('O quebra-cabeça parou.')).toBeVisible();
+    await stepPasses(player, `O enigma parou por um limite ${where}`);
+    await playTo(done, 'O enigma resolvido');
+    await moveRPC(player, campaignId, done, { riddle: { answer: 'sombra' } });
+    await expect(player.getByText('O enigma foi respondido.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `O enigma resolvido ${where}`);
+
+    // The master's view of the consequences: the trap that fired, and the puzzle a limit stopped.
+    if (masterToo) {
+      await openSessionPage(master, campaignId);
+      const live = master.getByRole('region', { name: 'Quebra-cabeças' });
+      await live.getByRole('button', { name: 'Ver ao vivo Os sinos do Salão do trono' }).click();
+      const trapped = master.getByRole('article', { name: 'Os sinos do Salão do trono' });
+      await expect(trapped.getByText('A armadilha disparou:')).toBeVisible();
+      await trapped.scrollIntoViewIfNeeded();
+      await stepPasses(master, `A sequência ao vivo, com a armadilha disparada ${where}`);
+      await live.getByRole('button', { name: 'Ver ao vivo A porta selada' }).click();
+      const halted = master.getByRole('article', { name: 'A porta selada' });
+      await expect(halted.getByText('Parou').first()).toBeVisible();
+      await halted.scrollIntoViewIfNeeded();
+      await stepPasses(master, `O enigma parado por um limite, ao vivo ${where}`);
+    }
+
+    // The sequence and the cipher solved: the player's phone and the master's card.
+    for (const bell of SEQUENCE) {
+      await moveRPC(player, campaignId, sequence, { sequence: { bell } });
+    }
+    await moveRPC(player, campaignId, cipher, { cipher: { text: 'o tesouro esta sob o altar' } });
+    await playTo(sequence, 'Os sinos do Salão do trono');
+    await expect(player.getByText('Os sinos tocaram na ordem certa.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A sequência resolvida ${where}`);
+    await playTo(cipher, 'A carta do Capitão');
+    await expect(player.getByText('A mensagem foi decifrada.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A cifra resolvida ${where}`);
+    if (masterToo) {
+      const solvedPanel = master.getByRole('region', { name: 'Quebra-cabeças' });
+      for (const [name, screen] of [
+        ['Os sinos do Salão do trono', 'A sequência resolvida, ao vivo'],
+        ['A carta do Capitão', 'A cifra resolvida, ao vivo'],
+      ] as const) {
+        await solvedPanel.getByRole('button', { name: `Ver ao vivo ${name}` }).click();
+        const done = master.getByRole('article', { name });
+        await expect(done.getByText(/resolveu “/)).toBeVisible({ timeout: 30_000 });
+        await done.scrollIntoViewIfNeeded();
+        await stepPasses(master, `${screen} ${where}`);
+      }
+    }
+
+    // Toren's phone: the split information from the other side.
+    await openPage(toren.page, `/campanhas/${campaignId}/sessao?quebra-cabeca=${riddle}`);
+  } finally {
+    if (toren) {
+      await toren.close();
+    }
+    if (campaignId) {
+      await endTable(master, campaignId);
+    }
+    await masterContext.close();
+    await playerContext.close();
+  }
+}
+
+test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMorePuzzleScreens(browser, 'light', 1280);
+});
+
+test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMorePuzzleScreens(browser, 'dark', 390);
+});
+
+test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(500_000);
+  await scanMorePuzzleScreens(browser, 'light', 320, false);
+});
+
+test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMorePuzzleScreens(browser, 'dark', 1024);
+});
+
+/**
  * "Magias" (MR-045, E10-11): the list with the filters on, a spell open (a table spell and an SRD one), a search with no
  * result, the phone's "Filtros" sheet, the failed list and a basic sheet with "Só as que posso aprender".
  */
@@ -4465,6 +4762,438 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
 });
+
+// Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
+// textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
+// (with the chain of an adjustment), and on a phone the same as a sheet with a fixed footer. The fake generator makes the pictures.
+async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const players = [await newSignedInContext(browser, 'Jogador Teste'), await newSignedInContext(browser, 'E-mail Não Verificado')];
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const d = m.getByRole('dialog');
+  const body = () => m.locator('.frame__body');
+  try {
+    await m.goto('/');
+    const [ap, bp] = await Promise.all(players.map((c) => c.newPage()));
+    await Promise.all([ap.goto('/'), bp.goto('/')]);
+    const table = await tableForImages(m, ap, bp, `Acessibilidade imagens ${Date.now()}`, false);
+    await generateSceneRPC(m, table.campaignId, 'Uma taverna à noite');
+
+    // From the map: the top, the end, the textured map.
+    await open(m, mapRoute(table));
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await expect(d.getByText('Quem aparece na imagem')).toBeVisible();
+    await d.getByRole('checkbox', { name: /Capitão Goblin/ }).click();
+    await body().evaluate((el) => (el.scrollTop = 0));
+    await expectScreenPasses(m, `Gerar imagem, o topo ${where}`);
+    await body().evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expectScreenPasses(m, `Gerar imagem, o fim ${where}`);
+    await body().evaluate((el) => (el.scrollTop = 0));
+    await d.getByRole('radio', { name: /Textura|O mapa com textura/ }).click();
+    await expectScreenPasses(m, `Gerar imagem, o mapa com textura ${where}`);
+    await d.getByRole('radio', { name: /Cena|Arte da cena/ }).click();
+
+    // Waiting, and the question on closing.
+    // The long poll is held by the test, not by the fake's own delay: the screens are scanned for as long as it takes.
+    let openGate!: () => void;
+    const gate = new Promise<void>((resolve) => (openGate = resolve));
+    await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGeneration', async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma sala de guarda com tochas');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByText('Gerando a imagem…')).toBeVisible({ timeout: 20_000 });
+    await expectScreenPasses(m, `Gerar imagem, gerando ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+    await expect(d.getByText('Parar de esperar a imagem?')).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, parar de esperar perguntado ${where}`);
+    // Let the picture through: the wait ends in the picture whether or not the master answered the question.
+    openGate();
+
+    // The result, with an adjustment typed.
+    await expect(d.getByText('Guardada na galeria')).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o resultado ${where}`);
+    await d.getByRole('textbox', { name: 'Pedir um ajuste' }).fill('mais escura');
+    await body().evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expectScreenPasses(m, `Gerar imagem, o ajuste escrito ${where}`);
+    await d.getByRole('button', { name: 'Pedir o ajuste' }).click();
+    await expect(d.getByText('A cadeia de ajustes')).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o resultado com a cadeia ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // The textured map: "Usar como imagem do mapa" asked in place.
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await d.getByRole('radio', { name: /Textura|O mapa com textura/ }).click();
+    await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma caverna de pedra clara');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByRole('button', { name: 'Usar como imagem do mapa' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(m, `Gerar imagem, o mapa com textura pronto ${where}`);
+    await d.getByRole('button', { name: 'Usar como imagem do mapa' }).click();
+    await expect(d.getByText('Usar como imagem do mapa?')).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, "Usar como imagem do mapa" perguntado ${where}`);
+    await d.getByRole('button', { name: 'Voltar' }).click();
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // The gallery: the tags, the chain, a refusal in words.
+    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await expectScreenPasses(m, `Galeria com imagens geradas ${where}`);
+    await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
+    await expect(d.getByRole('heading', { level: 2, name: 'Gerar imagem' })).toBeVisible();
+    await expectScreenPasses(m, `Gerar imagem, da galeria ${where}`);
+    await d.getByRole('textbox', { name: 'Descreva a cena' }).fill('[recusa] Uma taverna');
+    await d.getByRole('button', { name: 'Gerar imagem' }).click();
+    await expect(d.getByRole('alert')).toContainText('O serviço recusou', { timeout: 30_000 });
+    await expectScreenPasses(m, `Gerar imagem, o serviço recusou ${where}`);
+    await d.getByRole('button', { name: 'Fechar' }).click();
+
+    // Generation off: the button stays, dashed, with the reason.
+    await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGenerationStatus', (r) =>
+      r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' } }) }),
+    );
+    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await expect(m.getByText('A geração de imagens não está ligada neste servidor.')).toBeVisible();
+    await expectScreenPasses(m, `Galeria, geração desligada ${where}`);
+    await endOpenSessionRPC(m, table.campaignId).catch(() => undefined);
+  } finally {
+    await context.close();
+    await Promise.all(players.map((c) => c.close()));
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['light', 390, 'tema claro, no celular'],
+  ['dark', 320, 'tema escuro, no celular de 320'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`as imagens geradas passam no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-039'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanImageScreens(browser, scheme, width);
+  });
+}
+
+/**
+ * Monsters in the combat and the encounter builder (MR-042, MR-043, RN-29; E10-08 states 4 to 9, E10-09): the bestiary rows with
+ * "Pôr no combate" and its sheet (with a combat in preparation, one to start, and the error), the master's order with the
+ * monsters, what a player sees, the end-of-combat XP by each ND; the builder (empty, filled, above high, an NPC in the party, a
+ * failed measure), "Pôr um NPC no grupo", "Gerar encontro" with "Trocar", "Guardar no ponto de batalha" (and the question in place),
+ * and "Começar este combate" on the session with "Iniciar combate" filled. The sheets are drawn at 320 x 568 on the narrowest phone.
+ */
+async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const height = width === 320 ? 568 : 900;
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await context.newPage();
+  const p = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade monstros ${Date.now()}`);
+    const campaignId = table.campaignId;
+    const battle = await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Emboscada na ponte', xBp: 3000, yBp: 3000, revealed: true });
+    await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Ruínas do forte', xBp: 7000, yBp: 3000, revealed: true });
+    const orin = await createCharacterRPC(m, campaignId, {
+      kind: 'CHARACTER_KIND_STORY',
+      name: 'Orin, o guia',
+      sheet: { basic: { hitPointsMax: 9, armorClass: 10, speedFt: 25, attackBonus: 0, damage: '1d4', description: '' } },
+    });
+    expect(orin.ok(), await orin.text()).toBeTruthy();
+
+    // "Pôr no combate" from the list, with no combat open: the sheet starts one.
+    await m.goto(`/campanhas/${campaignId}/bestiario`);
+    await m.getByRole('searchbox', { name: 'Nome' }).fill('bandit');
+    await expect(m.locator('.list__n')).toContainText('de 334 criaturas');
+    await expectScreenPasses(m, `Bestiário com "Pôr no combate" ${where}`);
+    await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Pôr no combate' });
+    await expect(sheet.locator('.readonly')).toHaveText('Nenhum combate aberto');
+    await expectScreenPasses(m, `Pôr no combate, sem combate aberto ${where}`);
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await sheet.locator('.seg__item', { hasText: 'Rolar' }).click();
+    await expectScreenPasses(m, `Pôr no combate, três e rolar ${where}`);
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A combat in preparation: the sheet reads it.
+    let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
+    await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
+    await expect(sheet.locator('.readonly')).toHaveText('Emboscada na estrada · em preparação');
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await expectScreenPasses(m, `Pôr no combate, em preparação ${where}`);
+    // A refusal says it in words.
+    await m.route('**/meurpg.play.v1.CombatService/AddMonsters', (route) =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_argument', message: 'a combat has at most 40 combatants' }) }),
+    );
+    await sheet.getByRole('button', { name: 'Pôr 3 no combate' }).click();
+    await expect(sheet.getByRole('alert')).toContainText('40 combatentes');
+    await expectScreenPasses(m, `Pôr no combate, recusado ${where}`);
+    await m.unroute('**/meurpg.play.v1.CombatService/AddMonsters');
+    await sheet.getByRole('button', { name: 'Pôr 3 no combate' }).click();
+    await expect(m.locator('.put-done')).toContainText('Entraram no combate');
+    await expectScreenPasses(m, `Bestiário, o aviso dos monstros ${where}`);
+
+    // The combat under way: the master's order with the monsters, the player's with the word of the state.
+    for (const c of (await getEncounterRPC(m, campaignId)).combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: 10 });
+    }
+    enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    const second = enc.combatants.find((c) => c.label === 'Bandido 2')!;
+    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: second.id, hidden: false });
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
+    await expectScreenPasses(m, `Combate com monstros, a ordem do mestre ${where}`);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByText('Bandido 2').first()).toBeVisible();
+    await expectScreenPasses(p, `Combate com monstros, o jogador ${where}`);
+
+    // They fall and the combat ends: the XP by each ND.
+    const now = await getEncounterRPC(m, campaignId);
+    for (const c of now.combatants.filter((x) => x.kind !== 'COMBATANT_KIND_PLAYER')) {
+      await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: c.id, damage: 999 });
+    }
+    await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
+    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await expect(m.getByRole('region', { name: 'Experiência do combate' }).locator('.kind').first()).toContainText('ND 1/8');
+    await expectScreenPasses(m, `Fim do combate, o XP por ND ${where}`);
+
+    // The builder: empty, then filled, above high, with an NPC, and a failed measure.
+    await m.goto(`/campanhas/${campaignId}/encontros`);
+    await expect(m.locator('.head-xp')).toContainText('Baixa · 0 de');
+    await expectScreenPasses(m, `Encontros, vazio ${where}`);
+    const add = async (search: string, namePt: string) => {
+      await m.getByRole('combobox', { name: 'Adicionar criatura' }).fill(search);
+      await expect(m.getByRole('option').first()).toBeVisible();
+      await expectScreenPasses(m, `Encontros, a busca de "${search}" ${where}`);
+      await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: new RegExp(`^${namePt}$`) }) }).first().click();
+    };
+    await add('goblin', 'Goblin');
+    await add('ogre', 'Ogro');
+    await m.getByRole('button', { name: 'Mais um Ogro' }).click();
+    await expect(m.locator('.total__n')).toContainText('950 XP');
+    await expectScreenPasses(m, `Encontros, montado ${where}`);
+    for (let i = 0; i < 4; i++) {
+      await m.getByRole('button', { name: 'Mais um Ogro' }).click();
+    }
+    await expect(m.locator('.head-xp')).toContainText('Acima de alta');
+    await expectScreenPasses(m, `Encontros, ${await m.locator('.head-xp').innerText()} ${where}`);
+
+    await m.getByRole('button', { name: 'Pôr um NPC no grupo' }).click();
+    const npc = m.getByRole('dialog', { name: 'Pôr um NPC no grupo' });
+    await expect(npc.locator('.budget__n')).toContainText('Baixa');
+    await expectScreenPasses(m, `Pôr um NPC no grupo ${where}`);
+    await npc.getByRole('radio', { name: 'Só um nome' }).check({ force: true });
+    await npc.getByRole('button', { name: 'Pôr no grupo' }).click();
+    await expect(npc.getByText('Dê um nome ao NPC do grupo.')).toBeVisible();
+    await expectScreenPasses(m, `Pôr um NPC no grupo, sem nome ${where}`);
+    await npc.getByRole('radio', { name: /Orin, o guia/ }).check({ force: true });
+    await npc.getByRole('button', { name: 'Pôr no grupo' }).click();
+    await expect(m.locator('.chip', { hasText: 'Orin, o guia' })).toBeVisible();
+    await expectScreenPasses(m, `Encontros, com um NPC no grupo ${where}`);
+
+    await m.getByRole('button', { name: 'Gerar encontro' }).click();
+    const gen = m.getByRole('dialog', { name: 'Gerar encontro' });
+    await expect(gen.locator('.res__seed')).toContainText('Semente');
+    await expectScreenPasses(m, `Gerar encontro ${where}`);
+    await gen.locator('.line').first().getByRole('button', { name: /^Trocar criatura/ }).click();
+    await expect(gen.locator('.swap__opt').first()).toBeVisible();
+    await gen.locator('.swap__opt').first().click();
+    await expectScreenPasses(m, `Trocar criatura ${where}`);
+    await m.getByRole('button', { name: /^Trocar por/ }).click();
+    await gen.getByRole('button', { name: 'Usar este encontro' }).click();
+
+    // "Guardar no ponto de batalha": free, the question in place, and the empty point list of another map.
+    await m.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    const save = m.getByRole('dialog', { name: 'Guardar no ponto de batalha' });
+    await expect(save.locator('.pt').first()).toBeVisible();
+    await expectScreenPasses(m, `Guardar no ponto de batalha ${where}`);
+    await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
+    await save.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await expect(m.locator('.mr-notice--success')).toContainText('Encontro guardado em “Emboscada na ponte”.');
+    await expectScreenPasses(m, `Encontros, guardado ${where}`);
+    await m.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
+    await save.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await expect(save.getByText('Trocar o encontro guardado?')).toBeVisible();
+    await expectScreenPasses(m, `Guardar, a pergunta no lugar ${where}`);
+    await save.getByRole('button', { name: 'Voltar' }).click();
+    await save.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A failed measure.
+    await m.route('**/meurpg.play.v1.EncounterService/EvaluateEncounter', (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+    );
+    await m.locator('app-count-stepper button[aria-label^="Mais um"]').first().click();
+    await expect(m.getByRole('alert').first()).toContainText('o servidor não respondeu');
+    await expectScreenPasses(m, `Encontros, medição que falhou ${where}`);
+    await m.unroute('**/meurpg.play.v1.EncounterService/EvaluateEncounter');
+
+    // The session: the card of the point and "Iniciar combate" filled from it.
+    await openSessionPage(m, campaignId);
+    // The ended combat is still on the page: back to the session, where the launch and the saved encounter are.
+    await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+    const card = m.locator('.enc', { hasText: 'Emboscada na ponte' });
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `Sessão, o encontro guardado ${where}`);
+    await card.getByRole('button', { name: 'Começar este combate' }).click();
+    const start = m.getByRole('dialog', { name: 'Iniciar combate' });
+    await expect(start.locator('.mon__row').first()).toBeVisible();
+    await expectScreenPasses(m, `Começar este combate, o Iniciar combate preenchido ${where}`);
+    await start.getByRole('button', { name: 'Cancelar' }).click();
+    expect(battle).not.toBe('');
+
+    // A player: the builder is the master's.
+    await p.goto(`/campanhas/${campaignId}/encontros`);
+    await expect(p.getByText('Só o mestre monta encontros.')).toBeVisible();
+    await expectScreenPasses(p, `Encontros, o aviso do jogador ${where}`);
+  } finally {
+    await context.close();
+    await playerContext.close();
+  }
+}
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'light', 1280);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 390);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 1024);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'light', 320);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 320);
+});
+
+
+/**
+ * The treasure generator (Etapa 10, slice 10.17c: MR-044, MR-041, RN-09, RN-10; E10-10 states 1 to 6): nothing generated, a hoard, an
+ * individual treasure, a failing and a busy generator, an item's description, "Pôr no mapa" (on a map with rooms, and on a map without a
+ * grid), the confirmation, a gold campaign's line and the player's notice. On a phone the item and "Pôr no mapa" are sheets.
+ */
+async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const p = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForMaps(m, p, `Acessibilidade tesouro ${Date.now()}`);
+    const campaignId = table.campaignId;
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    expect(made.ok(), await made.text()).toBeTruthy();
+    const route = treasureRoute(campaignId);
+    const generate = m.getByRole('button', { name: 'Gerar tesouro' });
+    const dialogOrSheet = m.locator('mat-dialog-container, mat-bottom-sheet-container').last();
+
+    await open(m, `/campanhas/${campaignId}`);
+    await expect(m.getByRole('link', { name: 'Gerar tesouro' })).toBeVisible();
+    await expectScreenPasses(m, `Campanha, "Gerar tesouro" no painel Mapas ${where}`);
+
+    await open(m, route);
+    await expect(m.getByText('Nada gerado ainda.')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, nada gerado ${where}`);
+
+    // Busy: the server does not answer.
+    await m.route('**/*TreasureService/GenerateTreasure', () => new Promise(() => undefined));
+    await generate.click();
+    await expect(m.getByRole('button', { name: 'Gerando...' })).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, gerando ${where}`);
+    await m.unroute('**/*TreasureService/GenerateTreasure');
+
+    // Failing.
+    await m.route('**/*TreasureService/GenerateTreasure', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+    await open(m, route);
+    await m.getByRole('button', { name: 'Gerar tesouro' }).click();
+    await expect(m.getByRole('alert')).toContainText('o servidor não respondeu');
+    await expectScreenPasses(m, `Tesouro, com falha ${where}`);
+    await m.unroute('**/*TreasureService/GenerateTreasure');
+
+    await m.getByRole('button', { name: 'Tentar de novo' }).first().click();
+    await expect(m.getByTestId('treasure-seed')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, o covil ${where}`);
+
+    // An item's description.
+    await m.locator('.item__desc').first().click();
+    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.keyboard.press('Escape');
+
+    // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.
+    const png = await canvasPng(m, 640, 400, 'Sem grade');
+    const imageId = await uploadImageRPC(m, campaignId, 'Sem grade', png);
+    await createMapRPC(m, campaignId, 'Mapa sem grade', imageId);
+    await m.getByRole('button', { name: 'Pôr no mapa' }).click();
+    await expect(dialogOrSheet.getByRole('heading', { name: 'Pôr no mapa' })).toBeVisible();
+    await expect(dialogOrSheet.getByText(width < 768 ? 'Em que sala?' : /Onde\s+Na Sala/)).toBeVisible();
+    if (width >= 768) {
+      await expect(dialogOrSheet.locator('.mv__img')).toBeVisible();
+      await expect.poll(() => dialogOrSheet.locator('.mv__img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    }
+    await expectScreenPasses(m, `Tesouro, "Pôr no mapa" ${where}`);
+    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'Mapa sem grade · sem grade' });
+    await expect(dialogOrSheet.getByTestId('no-grid')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, "Pôr no mapa" num mapa sem grade ${where}`);
+    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'A masmorra do teste' });
+    await expect(dialogOrSheet.getByTestId('no-grid')).toHaveCount(0);
+    await dialogOrSheet.getByRole('button', { name: 'Pôr no mapa' }).click();
+    await expect(m.getByTestId('treasure-placed')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, posto no mapa ${where}`);
+
+    await m.locator('.seg__item', { hasText: 'Individual' }).first().click();
+    await generate.click();
+    await expect(m.getByRole('heading', { name: /Tesouro individual/ })).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, o individual ${where}`);
+
+    // A gold campaign: the line says the gold is converted in "Voltar à cidade".
+    const gold = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Estrada de Ouro ${Date.now()}`, xpMode: 'XP_MODE_GOLD' });
+    expect(gold.ok()).toBeTruthy();
+    await open(m, treasureRoute((await gold.json()).campaign.id as string));
+    await m.getByRole('button', { name: 'Gerar tesouro' }).click();
+    await expect(m.getByTestId('treasure-gold-line')).toContainText('converte isto em XP');
+    await expectScreenPasses(m, `Tesouro, numa campanha por ouro ${where}`);
+
+    // A player: a calm notice.
+    await open(p, route);
+    await expect(p.getByText('Só o mestre gera o tesouro da campanha.')).toBeVisible();
+    await expectScreenPasses(p, `Tesouro, o aviso do jogador ${where}`);
+  } finally {
+    await context.close();
+    await playerContext.close();
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`o gerador de tesouro passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-044'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanTreasureScreens(browser, scheme, width);
+  });
+}
 
 /**
  * The class and subclass editors (MR-025, RN-23; E10-02 states 1 to 4): the class page with its sections, the 20-level grid, a

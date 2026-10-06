@@ -58,6 +58,12 @@
       <p class="mr-page-lead">
         Imagens para os mapas e o documento da campanha. Só o mestre vê a galeria.
       </p>
+      <app-generate-image-button
+        class="head__generate"
+        [campaignId]="campaignId()"
+        [origin]="{ kind: 'gallery' }"
+        (done)="refresh()"
+      />
       @if (!isEmpty() && usageText()) {
         @if (nearlyFull()) {
           <div class="mr-notice mr-notice--warning quota-notice">
@@ -106,6 +112,7 @@
               [image]="image"
               [campaignId]="campaignId()"
               [eager]="i < 8"
+              [parentName]="parentNameOf(image)"
               (view)="open(image)"
               (renamed)="onRenamed($event)"
               (deleted)="onDeleted($event)"
@@ -122,6 +129,7 @@
       (closed)="onLightboxClosed()"
       (rename)="onLightboxRename($event)"
       (remove)="onLightboxDelete($event)"
+      (adjust)="onLightboxAdjust($event)"
     />
   }
 }

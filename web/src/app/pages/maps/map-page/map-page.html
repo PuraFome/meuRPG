@@ -44,6 +44,7 @@
           [deleteMap]="deleteMap"
           (toggleReveal)="toggleReveal()"
           (changeImage)="changeImage()"
+          (imageGenerated)="imageGenerated($event)"
         />
         @if (notice(); as message) {
           <div class="mr-notice mr-notice--danger page-notice" role="alert">

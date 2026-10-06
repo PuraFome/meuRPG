@@ -11,9 +11,10 @@ import {
   moveWord,
   outcomeText,
   pillarsChangedText,
+  limitRows,
   puzzleSummary,
 } from './puzzle-format';
-import { NOW, at, lightsPuzzle, lockPuzzle, pillarsPuzzle } from './puzzles-testing';
+import { NOW, at, lightsPuzzle, lockPuzzle, pillarsPuzzle, playerRun, riddlePuzzle } from './puzzles-testing';
 
 const plain = (text: string) => text.replace(/\u00a0/g, ' ');
 
@@ -67,5 +68,28 @@ describe('puzzle words', () => {
     expect(outcomeText(PuzzleSolveOutcome.DOOR_OPENED)).toBe('Uma porta se abriu.');
     expect(outcomeText(PuzzleSolveOutcome.TARGET_GONE)).toContain('foi apagado');
     expect(outcomeText(PuzzleSolveOutcome.UNSPECIFIED)).toBe('');
+  });
+});
+
+describe('the counters of "Ao errar" (slice 10.15b)', () => {
+  const limits = { attemptsPerPlayer: 0, attemptsLeft: 0, maxMoves: 10, movesMade: 4, timeLimitSeconds: 300, secondsLeft: 120 };
+  const run = (partial: object) => playerRun(riddlePuzzle('p', 'x'), { limits: { ...limits, deadline: at(-120) }, ...partial });
+
+  it('runs the clock down from the deadline while the puzzle is open', () => {
+    const rows = limitRows(run({}), new Date(NOW.getTime() + 20_000));
+    expect(rows.find((r) => r.key === 'time')).toMatchObject({ value: '1:40 de 5:00', spent: false });
+  });
+
+  it('stops the clock where the server read it once the puzzle is solved: never a red "acabou"', () => {
+    const later = new Date(NOW.getTime() + 600_000);
+    expect(limitRows(run({ solved: true }), later).find((r) => r.key === 'time')).toMatchObject({ value: '2:00 de 5:00', spent: false });
+    expect(limitRows(run({ solved: true, limits: { ...limits, movesMade: 10, secondsLeft: 120, deadline: at(-120) } }), later).find((r) => r.key === 'moves')?.spent).toBe(false);
+  });
+
+  it('stops it too when a limit stopped the puzzle, and says "acabou" only for what was spent', () => {
+    const later = new Date(NOW.getTime() + 600_000);
+    const rows = limitRows(run({ stopped: true, limits: { ...limits, movesMade: 10, secondsLeft: 120, deadline: at(-120) } }), later);
+    expect(rows.find((r) => r.key === 'time')).toMatchObject({ value: '2:00 de 5:00', spent: false });
+    expect(rows.find((r) => r.key === 'moves')).toMatchObject({ value: '10 de 10', spent: true });
   });
 });

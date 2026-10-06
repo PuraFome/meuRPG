@@ -158,6 +158,13 @@ message GalleryImage {
   // generated image, or one whose parent was deleted. The edit chain is the
   // images linked this way (ListImageEdits).
   string parent_image_id = 13;
+  // True for a generated image that shows the whole map (the textured map, or an
+  // edit of one): the rooms the players have not found are in it. The master
+  // reads it: the app never offers such an image for showing to the players with
+  // one tap, and offers "Usar como imagem do mapa" instead (fog does the hiding
+  // there). Always false for an upload and for the scene art and the isometric
+  // view, which start from what the players see now (RN-28).
+  bool shows_whole_map = 14;
 }
 
 // ImageInUse is the error detail of DeleteGalleryImage's
