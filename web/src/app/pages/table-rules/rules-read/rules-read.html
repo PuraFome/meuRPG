@@ -1,0 +1,25 @@
+<section class="mr-panel block" aria-labelledby="read-style">
+  <h2 class="mr-panel__title" id="read-style">Estilo da mesa</h2>
+  <p class="read__style"><strong>{{ style() }}</strong></p>
+  <dl class="read">
+    @for (row of rows(); track row.label) {
+      <div class="read__row">
+        <dt>{{ row.label }}</dt>
+        <dd>{{ row.value }}</dd>
+      </div>
+    }
+  </dl>
+</section>
+<section class="mr-panel block" aria-labelledby="read-reminders">
+  <h2 class="mr-panel__title" id="read-reminders">Lembretes da mesa</h2>
+  @if (reminders().length > 0) {
+    <ul class="read__list">
+      @for (r of reminders(); track $index) {
+        <li>{{ r }}</li>
+      }
+    </ul>
+    <p class="hint">Lembretes para a mesa toda: o app não confere nenhum. Só o mestre os muda.</p>
+  } @else {
+    <p class="hint">O mestre ainda não escreveu nenhum lembrete.</p>
+  }
+</section>

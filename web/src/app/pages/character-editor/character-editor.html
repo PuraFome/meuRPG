@@ -231,14 +231,30 @@
               </cdk-step>
 
               <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
-                <p class="step-lead">
-                  Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
-                  ficha, calculados quando você salvar.
-                </p>
-                <app-ability-scores
-                  [group]="fullForm.controls.abilities"
-                  [(incomplete)]="abilitiesIncomplete"
-                />
+                @if (abilityTable(); as table) {
+                  <p class="step-lead">
+                    Escolha como fazer os seis valores, antes dos bônus de raça. Os modificadores aparecem
+                    na ficha, calculados quando você criar.
+                  </p>
+                  <app-table-ability-scores
+                    [campaignId]="s.campaignId"
+                    [group]="fullForm.controls.abilities"
+                    [table]="table"
+                    [locked]="lockedOrigin()"
+                    [(method)]="abilityMethod"
+                    [(incomplete)]="abilitiesIncomplete"
+                    [(problem)]="abilitiesProblem"
+                  />
+                } @else {
+                  <p class="step-lead">
+                    Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
+                    ficha, calculados quando você salvar.
+                  </p>
+                  <app-ability-scores
+                    [group]="fullForm.controls.abilities"
+                    [(incomplete)]="abilitiesIncomplete"
+                  />
+                }
 
                 <details
                   class="bonuses"
@@ -277,19 +293,27 @@
                   <p class="step-lead" id="hit-points-hint">
                     O 1º nível sempre usa o máximo do dado de vida. Nos outros níveis:
                   </p>
-                  <mat-radio-group
-                    class="hp-methods"
-                    formControlName="hitPointsMethod"
-                    aria-labelledby="hit-points-title"
-                    aria-describedby="hit-points-hint"
-                  >
-                    <mat-radio-button value="average">
-                      Média <span class="option-note">(um valor fixo)</span>
-                    </mat-radio-button>
-                    <mat-radio-button value="rolled">
-                      Rolado <span class="option-note">(o que saiu no dado)</span>
-                    </mat-radio-button>
-                  </mat-radio-group>
+                  @if (hpRule() === 'player_chooses') {
+                    <mat-radio-group
+                      class="hp-methods"
+                      formControlName="hitPointsMethod"
+                      aria-labelledby="hit-points-title"
+                      aria-describedby="hit-points-hint"
+                    >
+                      <mat-radio-button value="average">
+                        Média <span class="option-note">(um valor fixo)</span>
+                      </mat-radio-button>
+                      <mat-radio-button value="rolled">
+                        Rolado <span class="option-note">(o que saiu no dado)</span>
+                      </mat-radio-button>
+                    </mat-radio-group>
+                  } @else {
+                    <p class="step-lead" role="status">
+                      {{ hpRule() === 'roll'
+                        ? 'A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.'
+                        : 'A mesa usa a média nos pontos de vida: o dado não é oferecido.' }}
+                    </p>
+                  }
 
                   @if (selectedHitPointsMethod() === 'rolled') {
                     @if (rollsNeeded() === 0) {

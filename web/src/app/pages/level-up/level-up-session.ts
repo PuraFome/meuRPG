@@ -3,6 +3,7 @@ import { computed, signal } from '@angular/core';
 import { DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   LevelUpDiceRule,
+  LevelUpHitPointsRule,
   LevelUpSpellsKind,
   type Character,
   type LevelUpOptions,
@@ -44,6 +45,9 @@ export class LevelUpSession {
   readonly canType: boolean;
   readonly preferApp: boolean;
 
+  /** What the table's rule leaves of the hit points choice (RN-24): `null` while the player chooses, else the one way. */
+  readonly hpFixed: 'roll' | 'average' | null;
+
   readonly rolling = signal(false);
   readonly rollError = signal('');
 
@@ -66,6 +70,12 @@ export class LevelUpSession {
     this.canApp = rule !== LevelUpDiceRule.FORCED_PHYSICAL;
     this.canType = rule !== LevelUpDiceRule.FORCED_IN_APP;
     this.preferApp = this.canApp && (!this.canType || preference !== DicePreference.PHYSICAL);
+    const hp = options.hitPointsRule;
+    this.hpFixed = hp === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : hp === LevelUpHitPointsRule.AVERAGE_ONLY ? 'average' : null;
+    if (this.hpFixed === 'roll') {
+      // Only the die is offered: a roll the server kept is taken back at once, as the die card does.
+      this.chooseRoll();
+    }
   }
 
   readonly after = computed<DerivedSheet>(() => this.preview.state().after ?? this.before);

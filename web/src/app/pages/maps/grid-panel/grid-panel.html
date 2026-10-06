@@ -1,5 +1,7 @@
 <section class="mr-panel gp" aria-labelledby="gp-title">
-  @if (asking() && hasGrid()) {
+  @if (calibrating() && hasGrid()) {
+    <app-calibrate-ask [campaignId]="campaignId()" [map]="map()" [erases]="erases()" (changed)="onCalibrated($event)" (blocked)="blocked.emit()" (closed)="closeCalibration()" />
+  } @else if (asking() && hasGrid()) {
     <app-map-ask
       title="Mudar a grade?"
       [confirmLabel]="erases() ? 'Apagar e mudar a grade' : 'Mudar a grade'"
@@ -14,7 +16,7 @@
       </mat-form-field>
       <p class="gp__hint" id="gp-rows" role="status">
         @if (invalid()) {
-          Use um número inteiro de {{ min }} a {{ max }}.
+          Use um número inteiro de {{ min }} a {{ max() }}.
         } @else if (!changes()) {
           A grade já tem {{ columns() }} colunas. Escolha outro número para mudar.
         } @else {
@@ -40,10 +42,29 @@
       <p class="gp__now">
         <mat-icon aria-hidden="true">grid_on</mat-icon>
         <span class="gp__text">
-          <span><b>{{ map().gridColumns }}&nbsp;×&nbsp;{{ map().gridRows }}</b>&nbsp;quadrados</span>
-          <span class="gp__unit">1&nbsp;quadrado = 1,5&nbsp;m (5&nbsp;pés)</span>
+          @if (calibrated()) {
+            <span><b>{{ drawnColumns() }}&nbsp;×&nbsp;{{ drawnRows() }}</b>&nbsp;quadrados do desenho</span>
+            <span class="gp__unit">cada um vale {{ factorText() }}</span>
+            <span class="gp__unit">nas regras: {{ map().gridColumns }}&nbsp;×&nbsp;{{ map().gridRows }} quadrados de 1,5&nbsp;m</span>
+          } @else {
+            <span><b>{{ map().gridColumns }}&nbsp;×&nbsp;{{ map().gridRows }}</b>&nbsp;quadrados</span>
+            <span class="gp__unit">1&nbsp;quadrado = 1,5&nbsp;m (5&nbsp;pés)</span>
+          }
         </span>
       </p>
+      <button
+        #calibrator
+        matButton="outlined"
+        type="button"
+        class="gp__change"
+        [class.mr-button--off]="combatRunning()"
+        [disabled]="combatRunning()"
+        disabledInteractive
+        [attr.aria-describedby]="combatRunning() ? 'gp-why' : null"
+        (click)="!combatRunning() && calibrate()"
+      >
+        <mat-icon aria-hidden="true">straighten</mat-icon>Calibrar o quadrado
+      </button>
       <button
         #opener
         matButton="outlined"
@@ -58,7 +79,7 @@
         <mat-icon aria-hidden="true">grid_on</mat-icon>Mudar a grade
       </button>
       @if (combatRunning()) {
-        <p class="gp__why" id="gp-why">Desligado enquanto o combate dura.</p>
+        <p class="gp__why" id="gp-why">Há um combate neste mapa. Termine-o para mudar a grade.</p>
       }
     } @else {
       <div class="mr-notice mr-notice--neutral">
@@ -68,11 +89,11 @@
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Colunas da grade</mat-label>
         <input #field matInput type="text" inputmode="numeric" maxlength="3" autocomplete="off" [value]="typed()" [attr.aria-invalid]="invalid()" aria-describedby="gp-rows" (input)="onType($event)" (keydown.enter)="confirm()" />
-        <span matTextSuffix>de {{ min }} a {{ max }}</span>
+        <span matTextSuffix>de {{ min }} a {{ max() }}</span>
       </mat-form-field>
       <p class="gp__hint" id="gp-rows" role="status">
         @if (invalid()) {
-          Use um número inteiro de {{ min }} a {{ max }}.
+          Use um número inteiro de {{ min }} a {{ max() }}.
         } @else {
           As linhas saem da proporção da imagem: {{ columns() }}&nbsp;×&nbsp;{{ rows() }}&nbsp;quadrados.
         }

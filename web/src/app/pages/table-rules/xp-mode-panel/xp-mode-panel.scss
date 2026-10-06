@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+.xp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+// The question opens in place, outlined in the accent (E10-03 state 3).
+.xp__ask {
+  padding: var(--mr-space-4);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+}
+
+.xp__lead {
+  margin: 0;
+  font-weight: 700;
+}
+
+.xp__text {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.xp__done {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.xp__apply {
+  align-self: flex-start;
+  min-height: 44px;
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    align-self: stretch;
+    min-height: 48px;
+  }
+}
