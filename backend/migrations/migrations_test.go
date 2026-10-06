@@ -176,8 +176,8 @@ func schema(t *testing.T, db *sql.DB) string {
 	return b.String()
 }
 
-// TestMigrationsDownWorksOnTheatreRows: the Down of the combat modes (00150 to
-// 00152) runs on a database that holds what they allow: a combat without a grid,
+// TestMigrationsDownWorksOnTheatreRows: the Down of the combat modes (00143 to
+// 00145) runs on a database that holds what they allow: a combat without a grid,
 // and an opportunity offer the master made by hand, one withdrawn and one with a
 // square. The combat without a grid and the offers without a square are deleted,
 // a withdrawn offer becomes a skipped one, and the combat on a grid stays.
@@ -223,8 +223,8 @@ func TestMigrationsDownWorksOnTheatreRows(t *testing.T) {
 		('%[4]s', gen_random_uuid(), '%[5]s', '%[6]s', NULL, NULL, 'pending', now()),
 		('%[4]s', gen_random_uuid(), '%[6]s', '%[5]s', NULL, NULL, 'withdrawn', now())`, grid, a, b, theatre, ta, tb))
 
-	if _, err := provider.DownTo(ctx, 149); err != nil {
-		t.Fatalf("DownTo(149) error = %v", err)
+	if _, err := provider.DownTo(ctx, 142); err != nil {
+		t.Fatalf("DownTo(142) error = %v", err)
 	}
 	var encounters, offers int
 	scan(`SELECT count(*) FROM encounters`, &encounters)

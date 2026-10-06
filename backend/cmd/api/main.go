@@ -16,7 +16,8 @@
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CampaignDocumentService, CharacterService, ContentService, PlayService,
+// CampaignDocumentService, CharacterService, ContentService,
+// TableContentService, PlayService,
 // ProgressionService,
 // GalleryService and MapService need sign-in too; without it, they are not
 // mounted. Images also need BLOB_DIR: without it, the image routes and
@@ -88,6 +89,7 @@ import (
 var (
 	_ play.TerrainSource = (*maps.Service)(nil)
 	_ play.DoorKeeper    = (*maps.Service)(nil)
+	_ play.PuzzleMaps    = (*maps.Service)(nil) // a solved puzzle opens a door, reveals a point or a clue (MR-038)
 )
 
 // Build information, replaced at build time with:
@@ -206,10 +208,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Pool:     pool,
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			// Every campaign plays with the SRD and the table rules its master saved
-			// (MR-025, RN-24); the table's own content (RN-23) joins in slice 10.1c.
-			// SRD is the base content for what no table changes (the conditions).
-			Content: characters.NewTableSource(rulesContent, campaignsService),
+			// Every campaign plays with the SRD plus the table's own content (MR-025,
+			// RN-23, ADR-0018) and the table rules its master saved (RN-24). SRD is
+			// the base content for what no table changes (the conditions).
+			Content: characters.NewTableSource(pool, rulesContent, campaignsService),
 			SRD:     rulesContent,
 			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 			Logger:  logger,
@@ -269,7 +271,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		}
 		// the combat walks over the layers the master painted (MR-034, RN-21)
 		playService.SetTerrain(mapsService)
-		playService.SetFog(mapsService) // combat per player on a fog map: who sees which NPC (MR-036)
+		playService.SetPuzzleMaps(mapsService) // "Ao resolver" of a puzzle (MR-038, RN-27)
+		playService.SetFog(mapsService)        // combat per player on a fog map: who sees which NPC (MR-036)
 		// traps in play (MR-035): play asks maps for the traps (where, what a character
 		// sees, who knows them) and maps asks play to fire one when a token lands in it
 		playService.SetTraps(mapsService)

@@ -203,6 +203,9 @@ service PlayService {
   //     or went away; a hint, and the app reads the log again
   //     (CombatService.ListCombatLog). The master gets every one; a player
   //     only those that touch a line they may see;
+  //   - `puzzle_changed` when a puzzle of the session was shown, hidden, reset, got a
+  //     hint or was played; a hint with no content, sent to everyone, and the app
+  //     reads the puzzle again (PuzzleService.GetPuzzleRun);
   //   - `session_ended` when the master ends the session; the stream then
   //     ends without an error.
   //
@@ -1122,6 +1125,19 @@ message WatchGameSessionResponse {
     // character noticed it gets it; no other player, and the master never, hears of
     // it (RN-10).
     TrapNoticed trap_noticed = 21;
+    // A puzzle of the session changed: the master showed it, hid it, put it back at
+    // its start, released a hint, or a player moved or solved it (MR-038, RN-27).
+    // Read it again (PuzzleService.GetPuzzleRun for a player, GetMasterPuzzleRun for
+    // the master; ListShownPuzzles when the puzzle is not on screen yet). A hint with
+    // no content: the solution, the minimum and the hints never travel on the stream.
+    // Everyone gets it, and one that waits in a stream's queue is not queued twice.
+    PuzzleChanged puzzle_changed = 22;
+  }
+
+  // PuzzleChanged is the content-free hint that a puzzle of the session changed.
+  message PuzzleChanged {
+    // The puzzle (a UUID).
+    string puzzle_id = 1;
   }
 
   // TrapNoticed is the hint that a player's character passively noticed a trap. It

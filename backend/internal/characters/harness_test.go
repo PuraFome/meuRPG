@@ -32,48 +32,6 @@ import (
 // they check live in SQL transactions and constraints: set
 // MEURPG_TEST_DATABASE_URL (see package dbtest). Without it they skip.
 
-// probeSource is the test ContentSource: like the real one (10.1c reads the
-// campaign's content revision), it runs a query in the caller's transaction, or
-// through the pool when there is none. The test pools have one connection and an
-// Acquire tracer, so a read with a nil tx inside a transaction fails the test.
-// (package contenttest is the same for the other packages' suites; this one
-// cannot import it, because it imports this package.)
-type probeSource struct {
-	pool    *pgxpool.Pool
-	content *rules.Content
-	// tables reads the rules the table saved, as production does (the campaigns
-	// service): through the caller's transaction when there is one.
-	tables TableRulesReader
-}
-
-// ContentFor is For without the rules: the probe still touches the database, in the
-// caller's transaction when there is one.
-func (p probeSource) ContentFor(ctx context.Context, tx pgx.Tx, _ string) (*rules.Content, error) {
-	var err error
-	if tx != nil {
-		_, err = tx.Exec(ctx, "SELECT 1")
-	} else {
-		_, err = p.pool.Exec(ctx, "SELECT 1")
-	}
-	return p.content, err
-}
-
-func (p probeSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
-	if p.tables != nil {
-		return NewTableSource(p.content, p.tables).For(ctx, tx, campaignID)
-	}
-	var err error
-	if tx != nil {
-		_, err = tx.Exec(ctx, "SELECT 1")
-	} else {
-		_, err = p.pool.Exec(ctx, "SELECT 1")
-	}
-	if err != nil {
-		return nil, TableRules{}, err
-	}
-	return NewSRDSource(p.content).For(ctx, tx, campaignID)
-}
-
 // testRules is the SRD content, loaded once for every test in the package.
 var testRules = sync.OnceValues(rules.LoadSRD)
 
@@ -176,7 +134,7 @@ func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
 	srd := loadRules(t)
-	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: probeSource{pool: pool, content: srd, tables: camps}, SRD: srd, Logger: logger, Now: h.clock.Now}
+	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: NewTableSource(pool, srd, camps), SRD: srd, Logger: logger, Now: h.clock.Now}
 	if tweak != nil {
 		tweak(&cfg)
 	}
@@ -200,6 +158,7 @@ type user struct {
 	campaigns campaignsv1connect.CampaignServiceClient
 	api       charactersv1connect.CharacterServiceClient
 	content   rulesv1connect.ContentServiceClient
+	table     rulesv1connect.TableContentServiceClient
 }
 
 // newUser creates an account, as a first sign-in would, with a display
@@ -238,6 +197,7 @@ func (h *harness) clients(userID string) *user {
 		campaigns: campaignsv1connect.NewCampaignServiceClient(c, url, opts...),
 		api:       charactersv1connect.NewCharacterServiceClient(c, url, opts...),
 		content:   rulesv1connect.NewContentServiceClient(c, url, opts...),
+		table:     rulesv1connect.NewTableContentServiceClient(c, url, opts...),
 	}
 }
 

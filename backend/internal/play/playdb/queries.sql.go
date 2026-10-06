@@ -158,6 +158,18 @@ func (q *Queries) DeletePendingDamage(ctx context.Context, id string) error {
 	return err
 }
 
+const deletePreparedPuzzleRuns = `-- name: DeletePreparedPuzzleRuns :exec
+DELETE FROM puzzle_runs
+WHERE puzzle_id = $1 AND shown_at IS NULL
+`
+
+// The runs of a puzzle that were prepared ("Gerar outro começo") and never shown: an
+// edit of the puzzle makes their start wrong, so they go (the master draws another).
+func (q *Queries) DeletePreparedPuzzleRuns(ctx context.Context, puzzleID string) error {
+	_, err := q.db.Exec(ctx, deletePreparedPuzzleRuns, puzzleID)
+	return err
+}
+
 const deleteStageNPC = `-- name: DeleteStageNPC :execrows
 DELETE FROM stage_npcs
 WHERE game_session_id = $1 AND character_id = $2
@@ -719,6 +731,185 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 	return i, err
 }
 
+const getPuzzle = `-- name: GetPuzzle :one
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+WHERE campaign_id = $1 AND id = $2
+`
+
+type GetPuzzleParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetPuzzle(ctx context.Context, arg GetPuzzleParams) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, getPuzzle, arg.CampaignID, arg.ID)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPuzzleForUpdate = `-- name: GetPuzzleForUpdate :one
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+WHERE campaign_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetPuzzleForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+// One puzzle of the campaign, locked until the transaction ends: an edit and a
+// show of the same puzzle take turns.
+func (q *Queries) GetPuzzleForUpdate(ctx context.Context, arg GetPuzzleForUpdateParams) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, getPuzzleForUpdate, arg.CampaignID, arg.ID)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPuzzleMoveByKey = `-- name: GetPuzzleMoveByKey :one
+SELECT id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at FROM puzzle_moves
+WHERE run_id = $1 AND idempotency_key = $2
+`
+
+type GetPuzzleMoveByKeyParams struct {
+	RunID          string
+	IdempotencyKey string
+}
+
+// The move a call with this key already made, if any.
+func (q *Queries) GetPuzzleMoveByKey(ctx context.Context, arg GetPuzzleMoveByKeyParams) (PuzzleMove, error) {
+	row := q.db.QueryRow(ctx, getPuzzleMoveByKey, arg.RunID, arg.IdempotencyKey)
+	var i PuzzleMove
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.Seq,
+		&i.UserID,
+		&i.CharacterID,
+		&i.IdempotencyKey,
+		&i.Move,
+		&i.Revision,
+		&i.Solved,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPuzzleRun = `-- name: GetPuzzleRun :one
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+WHERE game_session_id = $1 AND puzzle_id = $2
+`
+
+type GetPuzzleRunParams struct {
+	GameSessionID string
+	PuzzleID      string
+}
+
+func (q *Queries) GetPuzzleRun(ctx context.Context, arg GetPuzzleRunParams) (PuzzleRun, error) {
+	row := q.db.QueryRow(ctx, getPuzzleRun, arg.GameSessionID, arg.PuzzleID)
+	var i PuzzleRun
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.PuzzleID,
+		&i.Seed,
+		&i.Start,
+		&i.State,
+		&i.ReleasedHints,
+		&i.ShownAt,
+		&i.ClosedAt,
+		&i.SolvedAt,
+		&i.SolvedByCharacterID,
+		&i.SolveOutcome,
+		&i.LastMoverCharacterID,
+		&i.LastMove,
+		&i.LastMovedAt,
+		&i.MovesMade,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SolveMessage,
+	)
+	return i, err
+}
+
+const getPuzzleRunForUpdate = `-- name: GetPuzzleRunForUpdate :one
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+WHERE game_session_id = $1 AND puzzle_id = $2
+FOR UPDATE
+`
+
+type GetPuzzleRunForUpdateParams struct {
+	GameSessionID string
+	PuzzleID      string
+}
+
+// The run, locked until the transaction ends. Every change locks the session first
+// (GetOpenGameSessionForUpdate) and then the run, so two changes take turns.
+func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunForUpdateParams) (PuzzleRun, error) {
+	row := q.db.QueryRow(ctx, getPuzzleRunForUpdate, arg.GameSessionID, arg.PuzzleID)
+	var i PuzzleRun
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.PuzzleID,
+		&i.Seed,
+		&i.Start,
+		&i.State,
+		&i.ReleasedHints,
+		&i.ShownAt,
+		&i.ClosedAt,
+		&i.SolvedAt,
+		&i.SolvedByCharacterID,
+		&i.SolveOutcome,
+		&i.LastMoverCharacterID,
+		&i.LastMove,
+		&i.LastMovedAt,
+		&i.MovesMade,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SolveMessage,
+	)
+	return i, err
+}
+
 const getSessionEventByID = `-- name: GetSessionEventByID :one
 SELECT id, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1 AND id = $2
@@ -1234,6 +1425,169 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+	)
+	return i, err
+}
+
+const insertPuzzle = `-- name: InsertPuzzle :one
+
+INSERT INTO puzzles (
+    campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
+    solve_action, solve_target, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+`
+
+type InsertPuzzleParams struct {
+	CampaignID   string
+	Kind         string
+	Name         string
+	Config       []byte
+	Solution     []byte
+	Seed         int64
+	Start        []byte
+	MinimumMoves *int32
+	Clue         string
+	Hints        []byte
+	SolveAction  string
+	SolveTarget  []byte
+	CreatedAt    time.Time
+}
+
+// Puzzles (MR-038, RN-27, Etapa 10): what the master makes (puzzles), what a
+// session plays (puzzle_runs) and every move (puzzle_moves). The service is in
+// puzzles*.go.
+func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, insertPuzzle,
+		arg.CampaignID,
+		arg.Kind,
+		arg.Name,
+		arg.Config,
+		arg.Solution,
+		arg.Seed,
+		arg.Start,
+		arg.MinimumMoves,
+		arg.Clue,
+		arg.Hints,
+		arg.SolveAction,
+		arg.SolveTarget,
+		arg.CreatedAt,
+	)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertPuzzleMove = `-- name: InsertPuzzleMove :one
+INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at
+`
+
+type InsertPuzzleMoveParams struct {
+	RunID          string
+	Seq            int32
+	UserID         *string
+	CharacterID    *string
+	IdempotencyKey string
+	Move           []byte
+	Revision       int32
+	Solved         bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertPuzzleMove(ctx context.Context, arg InsertPuzzleMoveParams) (PuzzleMove, error) {
+	row := q.db.QueryRow(ctx, insertPuzzleMove,
+		arg.RunID,
+		arg.Seq,
+		arg.UserID,
+		arg.CharacterID,
+		arg.IdempotencyKey,
+		arg.Move,
+		arg.Revision,
+		arg.Solved,
+		arg.CreatedAt,
+	)
+	var i PuzzleMove
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.Seq,
+		&i.UserID,
+		&i.CharacterID,
+		&i.IdempotencyKey,
+		&i.Move,
+		&i.Revision,
+		&i.Solved,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertPuzzleRun = `-- name: InsertPuzzleRun :one
+INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $6)
+RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message
+`
+
+type InsertPuzzleRunParams struct {
+	GameSessionID string
+	PuzzleID      string
+	Seed          int64
+	Start         []byte
+	ShownAt       *time.Time
+	CreatedAt     time.Time
+}
+
+// A run starts with its state at its start.
+func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams) (PuzzleRun, error) {
+	row := q.db.QueryRow(ctx, insertPuzzleRun,
+		arg.GameSessionID,
+		arg.PuzzleID,
+		arg.Seed,
+		arg.Start,
+		arg.ShownAt,
+		arg.CreatedAt,
+	)
+	var i PuzzleRun
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.PuzzleID,
+		&i.Seed,
+		&i.Start,
+		&i.State,
+		&i.ReleasedHints,
+		&i.ShownAt,
+		&i.ClosedAt,
+		&i.SolvedAt,
+		&i.SolvedByCharacterID,
+		&i.SolveOutcome,
+		&i.LastMoverCharacterID,
+		&i.LastMove,
+		&i.LastMovedAt,
+		&i.MovesMade,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SolveMessage,
 	)
 	return i, err
 }
@@ -2308,6 +2662,101 @@ func (q *Queries) ListPendingOpportunityOffers(ctx context.Context, encounterID 
 	return items, nil
 }
 
+const listPuzzleRuns = `-- name: ListPuzzleRuns :many
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+WHERE game_session_id = $1
+`
+
+func (q *Queries) ListPuzzleRuns(ctx context.Context, gameSessionID string) ([]PuzzleRun, error) {
+	rows, err := q.db.Query(ctx, listPuzzleRuns, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PuzzleRun
+	for rows.Next() {
+		var i PuzzleRun
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.PuzzleID,
+			&i.Seed,
+			&i.Start,
+			&i.State,
+			&i.ReleasedHints,
+			&i.ShownAt,
+			&i.ClosedAt,
+			&i.SolvedAt,
+			&i.SolvedByCharacterID,
+			&i.SolveOutcome,
+			&i.LastMoverCharacterID,
+			&i.LastMove,
+			&i.LastMovedAt,
+			&i.MovesMade,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SolveMessage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPuzzles = `-- name: ListPuzzles :many
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+WHERE campaign_id = $1 AND (archived_at IS NULL OR $2::bool)
+ORDER BY created_at DESC, id
+`
+
+type ListPuzzlesParams struct {
+	CampaignID      string
+	IncludeArchived bool
+}
+
+// The campaign's puzzles, newest first; the archived ones only when asked.
+func (q *Queries) ListPuzzles(ctx context.Context, arg ListPuzzlesParams) ([]Puzzle, error) {
+	rows, err := q.db.Query(ctx, listPuzzles, arg.CampaignID, arg.IncludeArchived)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Puzzle
+	for rows.Next() {
+		var i Puzzle
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Kind,
+			&i.Name,
+			&i.Config,
+			&i.Solution,
+			&i.Seed,
+			&i.Start,
+			&i.MinimumMoves,
+			&i.Clue,
+			&i.Hints,
+			&i.SolveAction,
+			&i.SolveTarget,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentSessionEvents = `-- name: ListRecentSessionEvents :many
 SELECT id, seq, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1
@@ -2508,6 +2957,109 @@ func (q *Queries) ListSessionSceneEvents(ctx context.Context, gameSessionID stri
 	for rows.Next() {
 		var i ListSessionSceneEventsRow
 		if err := rows.Scan(&i.Kind, &i.CharacterID, &i.Payload); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listShownPuzzleIDs = `-- name: ListShownPuzzleIDs :many
+SELECT DISTINCT r.puzzle_id FROM puzzle_runs AS r
+JOIN puzzles AS p ON p.id = r.puzzle_id
+WHERE p.campaign_id = $1 AND r.shown_at IS NOT NULL
+`
+
+// The campaign's puzzles that were shown in any session: they can no longer be edited.
+func (q *Queries) ListShownPuzzleIDs(ctx context.Context, campaignID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listShownPuzzleIDs, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var puzzle_id string
+		if err := rows.Scan(&puzzle_id); err != nil {
+			return nil, err
+		}
+		items = append(items, puzzle_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listShownPuzzleRuns = `-- name: ListShownPuzzleRuns :many
+SELECT r.id, r.game_session_id, r.puzzle_id, r.seed, r.start, r.state, r.released_hints, r.shown_at, r.closed_at, r.solved_at, r.solved_by_character_id, r.solve_outcome, r.last_mover_character_id, r.last_move, r.last_moved_at, r.moves_made, r.revision, r.created_at, r.updated_at, r.solve_message, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+JOIN puzzles AS p ON p.id = r.puzzle_id
+WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
+ORDER BY r.shown_at, r.id
+`
+
+type ListShownPuzzleRunsRow struct {
+	ID                   string
+	GameSessionID        string
+	PuzzleID             string
+	Seed                 int64
+	Start                []byte
+	State                []byte
+	ReleasedHints        int32
+	ShownAt              *time.Time
+	ClosedAt             *time.Time
+	SolvedAt             *time.Time
+	SolvedByCharacterID  *string
+	SolveOutcome         *string
+	LastMoverCharacterID *string
+	LastMove             []byte
+	LastMovedAt          *time.Time
+	MovesMade            int32
+	Revision             int32
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	SolveMessage         *string
+	PuzzleName           string
+	PuzzleKind           string
+}
+
+// What a session shows now: shown and not closed, in the order they were shown.
+func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string) ([]ListShownPuzzleRunsRow, error) {
+	rows, err := q.db.Query(ctx, listShownPuzzleRuns, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListShownPuzzleRunsRow
+	for rows.Next() {
+		var i ListShownPuzzleRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.PuzzleID,
+			&i.Seed,
+			&i.Start,
+			&i.State,
+			&i.ReleasedHints,
+			&i.ShownAt,
+			&i.ClosedAt,
+			&i.SolvedAt,
+			&i.SolvedByCharacterID,
+			&i.SolveOutcome,
+			&i.LastMoverCharacterID,
+			&i.LastMove,
+			&i.LastMovedAt,
+			&i.MovesMade,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SolveMessage,
+			&i.PuzzleName,
+			&i.PuzzleKind,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2776,6 +3328,84 @@ type ResetDeathSavesOfCharacterParams struct {
 func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeathSavesOfCharacterParams) error {
 	_, err := q.db.Exec(ctx, resetDeathSavesOfCharacter, arg.CharacterID, arg.GameSessionID)
 	return err
+}
+
+const savePuzzleRun = `-- name: SavePuzzleRun :one
+UPDATE puzzle_runs
+SET seed = $2, start = $3, state = $4, released_hints = $5, shown_at = $6, closed_at = $7,
+    solved_at = $8, solved_by_character_id = $9, solve_outcome = $10,
+    last_mover_character_id = $11, last_move = $12, last_moved_at = $13,
+    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17
+WHERE id = $1
+RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message
+`
+
+type SavePuzzleRunParams struct {
+	ID                   string
+	Seed                 int64
+	Start                []byte
+	State                []byte
+	ReleasedHints        int32
+	ShownAt              *time.Time
+	ClosedAt             *time.Time
+	SolvedAt             *time.Time
+	SolvedByCharacterID  *string
+	SolveOutcome         *string
+	LastMoverCharacterID *string
+	LastMove             []byte
+	LastMovedAt          *time.Time
+	MovesMade            int32
+	Revision             int32
+	UpdatedAt            time.Time
+	SolveMessage         *string
+}
+
+// Writes every field of the run that changes after it is made: the caller holds the
+// run's row lock and worked the new values out from the row it read.
+func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (PuzzleRun, error) {
+	row := q.db.QueryRow(ctx, savePuzzleRun,
+		arg.ID,
+		arg.Seed,
+		arg.Start,
+		arg.State,
+		arg.ReleasedHints,
+		arg.ShownAt,
+		arg.ClosedAt,
+		arg.SolvedAt,
+		arg.SolvedByCharacterID,
+		arg.SolveOutcome,
+		arg.LastMoverCharacterID,
+		arg.LastMove,
+		arg.LastMovedAt,
+		arg.MovesMade,
+		arg.Revision,
+		arg.UpdatedAt,
+		arg.SolveMessage,
+	)
+	var i PuzzleRun
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.PuzzleID,
+		&i.Seed,
+		&i.Start,
+		&i.State,
+		&i.ReleasedHints,
+		&i.ShownAt,
+		&i.ClosedAt,
+		&i.SolvedAt,
+		&i.SolvedByCharacterID,
+		&i.SolveOutcome,
+		&i.LastMoverCharacterID,
+		&i.LastMove,
+		&i.LastMovedAt,
+		&i.MovesMade,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SolveMessage,
+	)
+	return i, err
 }
 
 const setCombatantAcBonus = `-- name: SetCombatantAcBonus :exec
@@ -3549,6 +4179,49 @@ func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDama
 	return i, err
 }
 
+const setPuzzleArchived = `-- name: SetPuzzleArchived :one
+UPDATE puzzles
+SET archived_at = $3, updated_at = $4
+WHERE campaign_id = $1 AND id = $2
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+`
+
+type SetPuzzleArchivedParams struct {
+	CampaignID string
+	ID         string
+	ArchivedAt *time.Time
+	UpdatedAt  time.Time
+}
+
+func (q *Queries) SetPuzzleArchived(ctx context.Context, arg SetPuzzleArchivedParams) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, setPuzzleArchived,
+		arg.CampaignID,
+		arg.ID,
+		arg.ArchivedAt,
+		arg.UpdatedAt,
+	)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const setShownImage = `-- name: SetShownImage :one
 UPDATE game_sessions
 SET shown_image_id = $1, shown_image_keep = $2
@@ -3691,6 +4364,69 @@ func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, err
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+	)
+	return i, err
+}
+
+const updatePuzzle = `-- name: UpdatePuzzle :one
+UPDATE puzzles
+SET name = $3, config = $4, solution = $5, seed = $6, start = $7, minimum_moves = $8,
+    clue = $9, hints = $10, solve_action = $11, solve_target = $12, updated_at = $13
+WHERE campaign_id = $1 AND id = $2
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+`
+
+type UpdatePuzzleParams struct {
+	CampaignID   string
+	ID           string
+	Name         string
+	Config       []byte
+	Solution     []byte
+	Seed         int64
+	Start        []byte
+	MinimumMoves *int32
+	Clue         string
+	Hints        []byte
+	SolveAction  string
+	SolveTarget  []byte
+	UpdatedAt    time.Time
+}
+
+// Everything the master writes about a puzzle.
+func (q *Queries) UpdatePuzzle(ctx context.Context, arg UpdatePuzzleParams) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, updatePuzzle,
+		arg.CampaignID,
+		arg.ID,
+		arg.Name,
+		arg.Config,
+		arg.Solution,
+		arg.Seed,
+		arg.Start,
+		arg.MinimumMoves,
+		arg.Clue,
+		arg.Hints,
+		arg.SolveAction,
+		arg.SolveTarget,
+		arg.UpdatedAt,
+	)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

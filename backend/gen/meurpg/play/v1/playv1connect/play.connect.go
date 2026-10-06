@@ -276,6 +276,9 @@ type PlayServiceClient interface {
 	//     or went away; a hint, and the app reads the log again
 	//     (CombatService.ListCombatLog). The master gets every one; a player
 	//     only those that touch a line they may see;
+	//   - `puzzle_changed` when a puzzle of the session was shown, hidden, reset, got a
+	//     hint or was played; a hint with no content, sent to everyone, and the app
+	//     reads the puzzle again (PuzzleService.GetPuzzleRun);
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -1286,6 +1289,9 @@ type PlayServiceHandler interface {
 	//     or went away; a hint, and the app reads the log again
 	//     (CombatService.ListCombatLog). The master gets every one; a player
 	//     only those that touch a line they may see;
+	//   - `puzzle_changed` when a puzzle of the session was shown, hidden, reset, got a
+	//     hint or was played; a hint with no content, sent to everyone, and the app
+	//     reads the puzzle again (PuzzleService.GetPuzzleRun);
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//

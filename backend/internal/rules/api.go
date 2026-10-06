@@ -368,6 +368,9 @@ type ClassEntry struct {
 	// included.
 	Subclasses []string
 	Archived   bool
+	// SpellListFrom is the class whose spell list a table class reuses, or empty
+	// (its own list: the spells that name it).
+	SpellListFrom string
 }
 
 // SubclassEntry is a subclass in the Catalog.
@@ -780,10 +783,16 @@ type Hint struct {
 // Field points at the sheet field when it applies, as a path with the
 // CharacterSheet proto's field names ("full.classes[0].subclass_key"), and
 // Message is Portuguese text for the sheet.
+//
+// Keys are the table's content keys (RN-23, "...@mesa") the issue depends on:
+// the entry at Field, and the entries whose numbers the problem is about (the
+// classes for a skill count, the race for a bonus to place). The server blames a
+// change of a table entry only for the issues that list its key.
 type Issue struct {
 	Code    string
 	Field   string
 	Message string
+	Keys    []string `json:",omitempty"`
 }
 
 // Issue codes.

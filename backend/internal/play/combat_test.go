@@ -1104,6 +1104,7 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventTreasureFound, eventTreasureUnfound, eventCoverSet, eventSideSet, eventOpportunityOffered,
 		eventCreatureSummoned, eventCreatureDismissed, eventWildShapeStarted, eventWildShapeEnded,
 		eventFamiliarSight, eventDoorOpened,
+		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
 	}
 	var clause string
 	if err := h.pool.QueryRow(t.Context(),

@@ -2,10 +2,11 @@ package characters
 
 import (
 	"context"
-	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
@@ -78,35 +79,6 @@ type TableRulesReader interface {
 	StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID string) (TableRules, error)
 }
 
-// TableSource is the ContentSource that gives every campaign the SRD content and
-// the table rules its master saved (MR-025, RN-24). The table's own content
-// (RN-23) joins in slice 10.1c. It reads the rules through the tx it receives
-// (PR #121): one primary-key read of campaign_table_rules.
-type TableSource struct {
-	content *rules.Content
-	tables  TableRulesReader
-}
-
-// NewTableSource returns the source over content (rules.LoadSRD) and the
-// reader of the saved rules.
-func NewTableSource(content *rules.Content, tables TableRulesReader) TableSource {
-	return TableSource{content: content, tables: tables}
-}
-
-// ContentFor implements ContentSource: no read of the rules.
-func (s TableSource) ContentFor(context.Context, pgx.Tx, string) (*rules.Content, error) {
-	return s.content, nil
-}
-
-// For implements ContentSource.
-func (s TableSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
-	r, err := s.tables.StoredTableRules(ctx, tx, campaignID)
-	if err != nil {
-		return nil, TableRules{}, fmt.Errorf("read the table rules: %w", err)
-	}
-	return s.content, r, nil
-}
-
 // contentFor is the content of a campaign, read in tx (nil outside one), without
 // the table rules (a caller that needs them asks s.content.For).
 func (s *Service) contentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
@@ -129,29 +101,95 @@ const maxCatalogs = 8
 // catalogCache is ListContent's answer per content, built on first use and
 // bounded to maxCatalogs, so a content that is no longer in use is not kept alive.
 type catalogCache struct {
-	mu      sync.Mutex
-	order   []*rules.Content // oldest first
+	mu    sync.Mutex
+	order []*rules.Content // oldest first
+	// catalog is the master's catalog (every entry); players is the same without
+	// the archived entries, made when a player first asks.
 	catalog map[*rules.Content]*rulesv1.Content
+	players map[*rules.Content]*rulesv1.Content
 }
 
 // catalogFor is ListContent's answer for a content: the same content gives the
 // same catalog, built once (while it is among the last maxCatalogs).
-func (s *Service) catalogFor(c *rules.Content) *rulesv1.Content {
+func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	cc := &s.catalogs
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	if v, ok := cc.catalog[c]; ok {
+	v, ok := cc.catalog[c]
+	if !ok {
+		v = catalogToProto(c.Catalog())
+		if cc.catalog == nil {
+			cc.catalog, cc.players = map[*rules.Content]*rulesv1.Content{}, map[*rules.Content]*rulesv1.Content{}
+		}
+		if len(cc.order) >= maxCatalogs {
+			delete(cc.catalog, cc.order[0])
+			delete(cc.players, cc.order[0])
+			cc.order = cc.order[1:]
+		}
+		cc.order = append(cc.order, c)
+		cc.catalog[c] = v
+	}
+	if master {
 		return v
 	}
-	v := catalogToProto(c.Catalog())
-	if cc.catalog == nil {
-		cc.catalog = map[*rules.Content]*rulesv1.Content{}
+	p, ok := cc.players[c]
+	if !ok {
+		p = withoutArchived(v)
+		cc.players[c] = p
 	}
-	if len(cc.order) >= maxCatalogs {
-		delete(cc.catalog, cc.order[0])
-		cc.order = cc.order[1:]
+	return p
+}
+
+// withoutArchived is a copy of a catalog without the entries the table retired,
+// for the players (RN-23). It clones the whole message and filters the six lists,
+// so a field a later slice adds to Content is in the players' catalog too and can
+// never silently vanish. (A class's list of subclasses lives in the SRD content,
+// so it needs no change here.)
+func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
+	out := proto.CloneOf(c)
+	// The archived keys: nothing a player receives may name one (RN-23), not even
+	// through a reference.
+	archived := map[string]bool{}
+	for _, r := range out.Races {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
 	}
-	cc.order = append(cc.order, c)
-	cc.catalog[c] = v
-	return v
+	for _, r := range out.Classes {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Subclasses {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Subraces {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Backgrounds {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Spells {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() })
+	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() })
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() })
+	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() })
+	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() })
+	// An entry whose required parent is archived goes too, and so does a reference
+	// to an archived class or race.
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return archived[r.GetClassKey()] })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return archived[r.GetRaceKey()] })
+	for _, sp := range out.Spells {
+		sp.ClassKeys = slices.DeleteFunc(sp.ClassKeys, func(k string) bool { return archived[k] })
+	}
+	for _, cl := range out.Classes {
+		if cs := cl.GetSpellcasting(); cs != nil && archived[cs.GetListClassKey()] {
+			cs.ListClassKey = ""
+		}
+	}
+	for _, sub := range out.Subclasses {
+		if cs := sub.GetSpellcasting(); cs != nil && archived[cs.GetListClassKey()] {
+			cs.ListClassKey = ""
+		}
+	}
+	return out
 }
