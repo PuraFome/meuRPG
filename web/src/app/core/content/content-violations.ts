@@ -65,6 +65,8 @@ export interface ViolationContext {
   readonly maxFeatures?: number;
   /** How many features the entry being saved has: "Esta classe tem 61." */
   readonly featureCount?: number;
+  /** Where a violation lands when it is not the input of its own path: "too many features" is the panel head's, not a row's. */
+  readonly redirect?: (field: string, reason: string) => string;
 }
 
 const DICE_TEXT = 'Escreva o dado assim: 2d8 (de 1 a 20 dados).';
@@ -82,11 +84,12 @@ const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] =
   { shape: /^table_class\.skill_from\[\]$/, text: 'Esta perícia não existe. Escolha da lista.' },
   { shape: /^table_class\.(multiclass_)?proficiencies\[\]$/, text: 'Escolha uma armadura, arma ou ferramenta da lista.' },
   { shape: /^table_class\.multiclass_skill_choose$/, text: 'As perícias de quem vem de outra classe saem da lista da classe: de 0 até o número dela.' },
-  { shape: /^table_class\.(minimums|any_of)\.[a-z]+$/, text: 'O valor mínimo vai de 1 a 30. Deixe 0 para não exigir.' },
-  { shape: /^table_class\.(minimums|any_of)$/, text: 'O pré-requisito de multiclasse é uma das seis habilidades.' },
-  { shape: /^table_class\.subclass_level$/, text: 'A subclasse se escolhe num nível de 1 a 20.' },
+  { shape: /^table_class\.(minimums|any_of)\.[a-z]+$/, text: 'O valor mínimo vai de 1 a 30.' },
+  { shape: /^table_class\.(minimums|any_of)$/, text: 'O pré-requisito de multiclasse precisa de uma habilidade.' },
+  { shape: /^table_class\.subclass_level$/, text: 'Esta classe não tem nível de subclasse entre 1 e 20.' },
   { shape: /^table_class\.asi_levels\[\]$/, text: 'Os níveis de aumento de atributo são diferentes, de 1 a 20.' },
-  { shape: /^table_(class|subclass)\.levels$/, text: 'A tabela precisa ter os 20 níveis; uma subclasse que conjura precisa de uma linha em cada nível, do começo da conjuração ao 20.' },
+  { shape: /^table_class\.levels$/, text: 'A tabela dos níveis precisa ter os 20 níveis.' },
+  { shape: /^table_subclass\.levels$/, text: 'Uma subclasse que conjura precisa de uma linha em cada nível, do começo da conjuração ao 20.' },
   { shape: /^table_(class|subclass)\.levels\[\]\.level$/, text: 'Os níveis da subclasse vão de 1 a 20, em ordem.' },
   { shape: /^table_class\.levels\[\]\.prof_bonus$/, text: 'O bônus de proficiência vai de +1 a +12 (vazio é o do SRD).' },
   { shape: /^table_(class|subclass)\.levels\[\]\.cantrips_known$/, text: 'Truques: de 0 a 30, e 0 antes de a conjuração começar.' },
@@ -250,7 +253,7 @@ export function placeViolations(
       top.push({ field: '', reason: v.reason, text: who ? `Sobre ${who}: ${text}` : text });
       continue;
     }
-    const at = field === '' ? '' : inputFor(field, isKnown);
+    const at = field === '' ? '' : inputFor(ctx.redirect?.(field, v.reason) ?? field, isKnown);
     const placed: PlacedViolation = { field: at, reason: v.reason, text };
     if (at === '') {
       top.push(placed);

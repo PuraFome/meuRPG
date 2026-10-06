@@ -7,6 +7,8 @@
 .scroll {
   max-height: 460px;
   overflow: auto;
+  // Focus never lands under the sticky header or the sticky level column.
+  scroll-padding: 52px 0 0 72px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
@@ -113,7 +115,7 @@ thead .g__level {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
@@ -140,6 +142,7 @@ thead .g__level {
 }
 
 .chip--locked {
+  min-height: 32px;
   border-style: dashed;
   color: var(--mr-ink-muted);
   cursor: default;

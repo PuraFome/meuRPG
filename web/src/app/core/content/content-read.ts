@@ -1,7 +1,7 @@
 import type { TableClass, TableClassLevel, TableEffect, TableEntry, TableFeature, TableRace } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
 import { feetToMeters, formatMeters } from '../units';
-import { CASTING_WORDS, SIZE_WORDS } from './content-kinds';
+import { SIZE_WORDS } from './content-kinds';
 import { ABILITY_FIELDS, type Bonuses, bonusText, noBonuses } from './feature-draft';
 import type { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { CatalogAbility } from './catalog';
@@ -53,11 +53,8 @@ const SENSE_WORDS: Readonly<Record<string, string>> = {
 
 export type NameOf = (key: string) => string;
 
-/** "de metade" becomes "De metade". */
-function listWords(words: readonly string[]): string {
-  const text = words.join(', ');
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
+/** The way of casting as a row says it: "Metade · Sabedoria · preparadas". */
+const READ_CASTING: Readonly<Record<string, string>> = { full: 'Completa', half: 'Metade', pact: 'Pacto', third: 'Um terço' };
 
 /** A sentence ends with a stop: "Enxergam longe" becomes "Enxergam longe." (a text that already ends with one is left). */
 export function ensureStop(text: string): string {
@@ -114,12 +111,19 @@ function names(keys: readonly string[], nameOf: NameOf): string {
   return keys.map(nameOf).join(', ');
 }
 
+/** "Metade · Sabedoria · preparadas" (and "· rituais"): how a class or a third caster's subclass casts. */
+function castingLine(c: NonNullable<TableClass['casting']>, abilityName: (a: number) => string): string {
+  return joinDots(
+    [READ_CASTING[c.kind] ?? c.kind, abilityName(c.ability), c.preparation === 'prepared' ? 'preparadas' : 'conhecidas', c.ritual ? 'rituais' : ''].filter((x) => x !== ''),
+  );
+}
+
 /** One row of a class's table in a line: "+3 · Ataque extra, Vigília · 2 truques · 4 de 1º, 2 de 2º". What the server stored, in words. */
-function levelLine(lv: TableClassLevel, pact: boolean): string {
+function levelLine(lv: TableClassLevel, pact: boolean, marks: readonly string[] = []): string {
   const slots = slotsText({ profBonus: lv.profBonus, cantrips: lv.cantripsKnown, spells: lv.spellsKnown, slots: [...lv.slots] }, pact);
   return [
     lv.profBonus > 0 ? `+${lv.profBonus}` : '',
-    lv.features.map((f) => f.namePt).join(', '),
+    [...lv.features.map((f) => f.namePt), ...marks].join(', '),
     lv.cantripsKnown > 0 ? `${lv.cantripsKnown} ${lv.cantripsKnown === 1 ? 'truque' : 'truques'}` : '',
     lv.spellsKnown > 0 ? `${lv.spellsKnown} ${lv.spellsKnown === 1 ? 'magia conhecida' : 'magias conhecidas'}` : '',
     slots,
@@ -128,7 +132,7 @@ function levelLine(lv: TableClassLevel, pact: boolean): string {
     .join(' · ');
 }
 
-export function readEntry(entry: TableEntry, nameOf: NameOf): EntryRead {
+export function readEntry(entry: TableEntry, nameOf: NameOf, subclassLevelOf: (classKey: string) => number = () => 0): EntryRead {
   const abilityName = (a: number): string => nameOf(`ability:${a}`);
   const rows: ReadRow[] = [];
   const sections: ReadSection[] = [];
@@ -185,14 +189,8 @@ export function readEntry(entry: TableEntry, nameOf: NameOf): EntryRead {
       if (weapons.length > 0) rows.push({ label: 'Armas', value: weapons.join(', ') });
       if (other.length > 0) rows.push({ label: 'Outras proficiências', value: other.join(', ') });
       if (c.casting) {
-        rows.push({
-          label: 'Conjuração',
-          value: joinDots([
-            listWords([CASTING_WORDS[c.casting.kind] ?? c.casting.kind]),
-            abilityName(c.casting.ability),
-            c.casting.preparation === 'prepared' ? 'preparadas' : 'conhecidas',
-          ].filter((x) => x)),
-        });
+        rows.push({ label: 'Conjuração', value: castingLine(c.casting, abilityName) });
+        rows.push({ label: 'Lista de magias', value: c.casting.listFrom ? `A lista do ${nameOf(c.casting.listFrom)}` : 'A própria lista da classe' });
       }
       rows.push({ label: 'Escolhe a subclasse', value: `no nível ${c.subclassLevel || 3}` });
       const need = (m: TableClass['minimums']): string =>
@@ -206,19 +204,35 @@ export function readEntry(entry: TableEntry, nameOf: NameOf): EntryRead {
       if (items.length > 0) sections.push({ title: 'Características', items });
       // The table in words, level by level (the numbers the server stored; a 0 proficiency bonus is the SRD's and is not written).
       if (c.levels.length > 0) {
-        sections.push({ title: 'Tabela dos níveis', items: c.levels.map((lv, i) => ({ title: `Nível ${i + 1}`, text: levelLine(lv, c.casting?.kind === 'pact') })) });
+        const choose = c.subclassLevel || 3;
+        sections.push({
+          title: 'Tabela dos níveis',
+          items: c.levels.map((lv, i) => {
+            const marks = [c.asiLevels.includes(i + 1) ? 'Aumento de atributo' : '', choose === i + 1 ? 'Escolha de subclasse' : ''].filter((x) => x !== '');
+            return { title: `Nível ${i + 1}`, text: levelLine(lv, c.casting?.kind === 'pact', marks) };
+          }),
+        });
       }
       break;
     }
     case 'tableSubclass': {
       const s = entry.body.value;
       rows.push({ label: 'Subclasse de', value: nameOf(s.classKey) });
-      if (s.level > 0) rows.push({ label: 'Escolhida no nível', value: String(s.level) });
-      if (s.casting) rows.push({ label: 'Conjuração', value: listWords([CASTING_WORDS[s.casting.kind] ?? s.casting.kind]) });
+      const chosen = s.level || subclassLevelOf(s.classKey);
+      if (chosen > 0) rows.push({ label: 'Escolhida no nível', value: String(chosen) });
+      if (s.casting) {
+        rows.push({ label: 'Conjuração', value: castingLine(s.casting, abilityName) });
+        if (s.casting.listFrom) rows.push({ label: 'Lista de magias', value: `A lista do ${nameOf(s.casting.listFrom)}` });
+      }
       text = s.descPt;
       const items: ReadItem[] = [];
       s.levels.forEach((lv) => lv.features.forEach((f) => items.push(featureItem(f, nameOf, `Nível ${lv.level} · `))));
       if (items.length > 0) sections.push({ title: 'Características', items });
+      if (s.casting) {
+        const from = s.casting.startLevel > 0 ? s.casting.startLevel : 3;
+        const table = s.levels.filter((lv) => lv.level >= from).map((lv) => ({ title: `Nível ${lv.level}`, text: levelLine({ profBonus: 0, cantripsKnown: lv.cantripsKnown, spellsKnown: lv.spellsKnown, slots: lv.slots, features: [] } as unknown as TableClassLevel, false) }));
+        if (table.length > 0) sections.push({ title: 'Conjuração por nível', items: table });
+      }
       if (s.alwaysPrepared.length > 0) {
         sections.push({
           title: 'Sempre preparadas',

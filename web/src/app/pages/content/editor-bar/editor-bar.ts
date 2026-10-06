@@ -83,6 +83,7 @@ export class EditorAlerts {
 @Component({
   selector: 'app-editor-bar',
   imports: [MatButtonModule, MatIconModule],
+  host: { '[class.bar--sticky]': 'sticky()' },
   template: `
     <div class="bar">
       @if (blocked()) {
@@ -101,6 +102,17 @@ export class EditorAlerts {
   styles: `
     :host {
       display: block;
+    }
+
+    // A long editor (the class's) keeps the save bar at the foot while the page scrolls.
+    :host(.bar--sticky) {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      margin: 0 calc(var(--mr-gutter) * -1);
+      padding: var(--mr-space-3) var(--mr-gutter);
+      border-top: 1px solid var(--mr-line);
+      background: var(--mr-surface);
     }
 
     .bar {
@@ -123,6 +135,8 @@ export class EditorAlerts {
 })
 export class EditorBar {
   readonly saveLabel = input.required<string>();
+  /** Stuck to the foot of the screen while the page scrolls. */
+  readonly sticky = input(false);
   readonly saving = input(false);
   /** Why saving is off right now, or "". */
   readonly blocked = input('');

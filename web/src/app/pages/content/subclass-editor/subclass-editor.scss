@@ -72,6 +72,10 @@
     font-weight: 800;
   }
 
+  &__note {
+    flex: 1 0 100%;
+  }
+
   &__spells {
     flex: 1 1 320px;
     min-width: 0;
@@ -94,44 +98,3 @@
   cursor: pointer;
 }
 
-.ask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-  padding: var(--mr-space-4);
-  border: 2px solid var(--mr-warning-line);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-warning-surface);
-
-  p {
-    margin: 0;
-  }
-
-  &__title {
-    font-weight: 800;
-  }
-
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mr-space-3);
-
-    button {
-      min-height: 44px;
-    }
-  }
-}
-
-.note {
-  margin: 0;
-}
-
-app-editor-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin: 0 calc(var(--mr-gutter) * -1);
-  padding: var(--mr-space-3) var(--mr-gutter);
-  border-top: 1px solid var(--mr-line);
-  background: var(--mr-surface);
-}

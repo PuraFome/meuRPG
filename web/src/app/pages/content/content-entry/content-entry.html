@@ -95,7 +95,13 @@
         <div class="mr-notice mr-notice--warning" role="status">
           <mat-icon aria-hidden="true">warning</mat-icon>
           <div>
-            <p><strong>{{ affected().length === 1 ? '1 ficha ficou com aviso' : affected().length + ' fichas ficaram com aviso' }}.</strong> Elas usam esta entrada e não fecham mais com a regra nova:</p>
+            <p>
+              @if (affected().length === 1) {
+                <strong>1 ficha ficou com aviso.</strong> Ela usa esta entrada e não fecha mais com a regra nova:
+              } @else {
+                <strong>{{ affected().length }} fichas ficaram com aviso.</strong> Elas usam esta entrada e não fecham mais com a regra nova:
+              }
+            </p>
             <ul class="affected">
               @for (a of affected(); track a.characterId) {
                 <li>

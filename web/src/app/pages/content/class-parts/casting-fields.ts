@@ -1,4 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 
 import { Ability } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { CatalogVm } from '../../../core/content/catalog';
@@ -26,13 +28,16 @@ const KINDS: readonly Segment<KindChoice>[] = [
  */
 @Component({
   selector: 'app-casting-fields',
-  imports: [FieldNote, Segmented, SelectField, SwitchField, TextField],
+  imports: [FieldNote, MatIconModule, NgTemplateOutlet, Segmented, SelectField, SwitchField, TextField],
   template: `
+    <!-- The question about the table (the parent's) comes under the control that asked it: the kind for a class, the way of preparing for a third caster. -->
+    <ng-template #question><ng-content /></ng-template>
     @if (!third()) {
       <div [attr.data-field]="basePath() + '.kind'">
         <app-segmented label="Conjuração" [segments]="kinds" [value]="kindChoice()" (choose)="kindChange.emit($event === 'none' ? '' : $event)" />
       </div>
       <app-field-note [issues]="issuesOf()(basePath() + '.kind')" />
+      <ng-container [ngTemplateOutlet]="question" />
     }
     @if (casting().kind !== '') {
       <div class="row">
@@ -76,8 +81,11 @@ const KINDS: readonly Segment<KindChoice>[] = [
         </label>
       </fieldset>
       <app-field-note [issues]="issuesOf()(basePath() + '.preparation')" />
+      @if (third()) {
+        <ng-container [ngTemplateOutlet]="question" />
+      }
       <details class="more" [open]="moreOpen()">
-        <summary>Mais opções</summary>
+        <summary><mat-icon aria-hidden="true">expand_more</mat-icon>Mais opções</summary>
         <div class="row">
           <app-text-field
             label="A conjuração começa no nível"
@@ -197,13 +205,23 @@ const KINDS: readonly Segment<KindChoice>[] = [
         min-height: 44px;
         display: flex;
         align-items: center;
+        gap: 4px;
         cursor: pointer;
         font-weight: 700;
         color: var(--mr-accent-text);
+        list-style: none;
+
+        &::-webkit-details-marker {
+          display: none;
+        }
       }
 
       &[open] summary {
         margin-bottom: var(--mr-space-2);
+
+        .mat-icon {
+          transform: rotate(180deg);
+        }
       }
     }
   `,
@@ -231,7 +249,7 @@ export class CastingFields {
   protected readonly abilityOptions = computed<SelectOption<number>[]>(() => this.catalog().abilities.map((a) => ({ value: a.ability as number, label: a.name })));
   protected readonly listOptions = computed<SelectOption[]>(() => {
     const own: SelectOption[] = this.third() ? [] : [{ value: '', label: 'A própria lista da classe' }];
-    const classes = this.catalog().castingClasses.filter((c) => c.key !== this.selfKey()).map((c) => ({ value: c.key, label: c.table ? `A lista de ${c.name} (da mesa)` : `A lista de ${c.name}` }));
+    const classes = this.catalog().castingClasses.filter((c) => c.key !== this.selfKey()).map((c) => ({ value: c.key, label: c.table ? `A lista do ${c.name} (da mesa)` : `A lista do ${c.name}` }));
     return [...own, ...classes];
   });
   /** "Mais opções" starts open when something in it was refused or is not the default. */

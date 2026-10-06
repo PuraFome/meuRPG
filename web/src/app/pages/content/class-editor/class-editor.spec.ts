@@ -202,7 +202,7 @@ describe('ClassEditor', () => {
     const { fixture, el } = setup();
     click(el, 'Vigília');
     await settle(fixture);
-    const level = el.querySelector<HTMLSelectElement>('.open__level select')!;
+    const level = el.querySelector<HTMLSelectElement>('app-select-field[lead] select')!;
     level.selectedIndex = 4;
     level.dispatchEvent(new Event('change'));
     await settle(fixture);
@@ -225,7 +225,7 @@ describe('ClassEditor', () => {
     expect(document.activeElement).toBe(input);
     expect(text(el.querySelector('app-level-grid')!)).toContain('Nível 5, espaços de 3º círculo. Espaços de magia: de 0 a 9 por círculo');
     expect(text(el.querySelector('[role="alert"]')!)).toContain('1 campo precisa de ajuste');
-    expect(text(el.querySelector('.sections')!)).toContain('Com erro: Tabela dos 20 níveis');
+    expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Tabela dos 20 níveis');
     // What was typed stays.
     expect((field(el, 'table_class.name_pt') as HTMLInputElement).value).toBe('Guardião do Vale');
   });
@@ -246,7 +246,10 @@ describe('ClassEditor', () => {
     save.mockRejectedValue(refusal(['table_class.levels[0].features[0]', 'limit']));
     click(el, 'Salvar classe');
     await settle(fixture);
-    expect(text(el)).toContain('Esta classe tem 1. Uma classe da mesa não pode ter mais de 60 características.');
+    // At the panel head, with the counter, and not on a feature row.
+    const head = el.querySelector('[data-field="table_class.features"]')!;
+    expect(text(head.parentElement!)).toContain('Esta classe tem 1. Uma classe da mesa não pode ter mais de 60 características.');
+    expect(el.querySelector('app-feature-editor')).toBeNull();
   });
 
   it('lands the refusal of the casting ability on its select', async () => {
@@ -266,8 +269,7 @@ describe('ClassEditor', () => {
     expect(checks.find((c) => c.label === 'Armadura média')!.on).toBe(false);
     expect(checks.find((c) => c.label === 'Escudos')!.on).toBe(true);
     (Array.from(el.querySelectorAll('app-check-row input')).find((i) => text(i.closest('app-check-row')!).replace('check', '').trim() === 'Armadura média') as HTMLInputElement).dispatchEvent(new Event('change'));
-    const mc = el.querySelector<HTMLSelectElement>('[data-field="table_class.minimums"] select')!;
-    mc.innerHTML = '<option value="wisdom">Sabedoria</option>';
+    const mc = el.querySelector<HTMLSelectElement>('[data-field="table_class.minimums"] .req__add select')!;
     mc.value = 'wisdom';
     mc.dispatchEvent(new Event('change'));
     await settle(fixture);
@@ -291,5 +293,88 @@ describe('ClassEditor', () => {
       asiLevels: [4, 8, 12, 16, 19],
       casting: { kind: 'half', ability: Ability.WISDOM, listFrom: 'class:wizard', preparation: 'prepared', startLevel: 2 },
     });
+  });
+
+  it('shows three mistakes at once, each on its own field, from the real paths', async () => {
+    const { fixture, el } = setup();
+    save.mockRejectedValue(refusal(['table_class.hit_die', 'bad_value'], ['table_class.saving_throws[1]', 'bad_value'], ['table_class.levels[4].slots[2]', 'bad_table']));
+    click(el, 'Salvar classe');
+    await settle(fixture);
+    expect(field(el, 'table_class.hit_die').getAttribute('aria-invalid')).toBe('true');
+    expect(field(el, 'table_class.saving_throws[1]').getAttribute('aria-invalid')).toBe('true');
+    expect(cell(el, 'Nível 5, espaços de 3º círculo').getAttribute('aria-invalid')).toBe('true');
+    expect(text(el.querySelector('[role="alert"]')!)).toContain('3 campos precisam de ajuste');
+    expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Básico');
+    expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Tabela dos 20 níveis');
+  });
+
+  it('keeps the level with a refusal of a whole row: "Nível 7, espaços de magia. Quem conjura precisa de espaços de magia neste nível."', async () => {
+    const { fixture, el } = setup();
+    save.mockRejectedValue(refusal(['table_class.levels[6].slots', 'bad_table']));
+    click(el, 'Salvar classe');
+    await settle(fixture);
+    expect(text(el.querySelector('app-level-grid')!)).toContain('Nível 7, espaços de magia. Quem conjura precisa de espaços de magia neste nível.');
+    expect(cell(el, 'Nível 7, espaços de 1º círculo').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('asks the casting question right under the kind, with the focus on its title', async () => {
+    const { fixture, el } = setup();
+    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    await settle(fixture);
+    (Array.from(el.querySelectorAll('app-segmented input')).find((i) => (i as HTMLInputElement).value === 'full') as HTMLInputElement).dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const casting = el.querySelector('app-casting-fields')!;
+    const kids = Array.from(casting.children).map((c) => c.tagName.toLowerCase());
+    // The kind's control, its note, then the question.
+    expect(kids.slice(0, 3)).toEqual(['div', 'app-field-note', 'app-table-question']);
+    expect(document.activeElement?.textContent).toContain('Refazer a tabela dos 20 níveis?');
+  });
+
+  it('asks before "Restaurar o padrão" replaces an edited table, and says nothing is needed when it is already the default', async () => {
+    const { fixture, el } = setup();
+    click(el, 'Restaurar o padrão');
+    await settle(fixture);
+    expect(el.querySelector('app-table-question')).toBeNull();
+    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    await settle(fixture);
+    click(el, 'Restaurar o padrão');
+    await settle(fixture);
+    expect(text(el.querySelector('app-table-question')!)).toContain('Voltar a tabela ao padrão do Paladino?');
+    click(el.querySelector('app-table-question') as HTMLElement, 'Restaurar o padrão');
+    await settle(fixture);
+    expect(cell(el, 'Nível 5, espaços de 1º círculo').value).toBe('4');
+  });
+
+  it('the list of sections claims nothing it does not know: no check marks, one section "location"', () => {
+    const { el } = setup();
+    const nav = el.querySelector('app-section-nav')!;
+    expect(nav.querySelectorAll('mat-icon')).toHaveLength(0);
+    expect(nav.querySelectorAll('[aria-current="location"]')).toHaveLength(1);
+    expect(Array.from(nav.querySelectorAll('button')).map((b) => text(b).trim())).toEqual([
+      'Básico',
+      'Proficiências',
+      'Conjuração',
+      'Tabela dos 20 níveis',
+      'Características',
+      'Subclasse',
+    ]);
+  });
+
+  it('writes the multiclass prerequisite as one row per requirement: ability, minimum, remove', async () => {
+    const { fixture, el } = setup();
+    const add = el.querySelector<HTMLSelectElement>('[data-field="table_class.minimums"] .req__add select')!;
+    add.value = 'wisdom';
+    add.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(el.querySelectorAll('[data-field="table_class.minimums"] .req__row')).toHaveLength(1);
+    type(field(el, 'table_class.minimums.wisdom') as HTMLInputElement, '14');
+    await settle(fixture);
+    click(el.querySelector('[data-field="table_class.minimums"] .req__row') as HTMLElement, 'Tirar Sabedoria');
+    await settle(fixture);
+    expect(el.querySelectorAll('[data-field="table_class.minimums"] .req__row')).toHaveLength(0);
+    save.mockResolvedValue({ entry: guardiao(), affected: [] });
+    click(el, 'Salvar classe');
+    await settle(fixture);
+    expect(save.mock.calls[0][2].value.minimums).toBeUndefined();
   });
 });

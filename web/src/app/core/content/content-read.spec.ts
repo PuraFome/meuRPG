@@ -7,6 +7,7 @@ import {
   TableClassSchema,
   TableContentKind,
   TableRaceSchema,
+  TableSubclassSchema,
   TableSpellSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { ensureStop, readEntry } from './content-read';
@@ -82,7 +83,7 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
       skillFrom: ['skill:perception', 'skill:arcana'],
       proficiencies: ['proficiency:light-armor', 'proficiency:medium-armor', 'proficiency:shields', 'proficiency:simple-weapons', 'proficiency:martial-weapons'],
       subclassLevel: 3,
-      casting: { kind: 'half', ability: Ability.WISDOM, preparation: 'prepared', listFrom: 'class:druid' },
+      casting: { kind: 'half', ability: Ability.WISDOM, preparation: 'prepared', listFrom: 'class:wizard' },
       levels,
     });
     const read = readEntry(entry(TableContentKind.CLASS, 'Guardião do Vale', { body: { case: 'tableClass', value: body } }), nameOf);
@@ -92,7 +93,8 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     expect(rows['Perícias']).toBe('2 de 2: Percepção, Arcanismo');
     expect(rows['Armaduras']).toBe('Armadura leve, Armadura média, Escudos');
     expect(rows['Armas']).toBe('Armas simples, Armas marciais');
-    expect(rows['Conjuração']).toBe('De metade · Sabedoria · preparadas');
+    expect(rows['Conjuração']).toBe('Metade · Sabedoria · preparadas');
+    expect(rows['Lista de magias']).toBe('A lista do Mago');
     expect(read.rows.some((r) => r.label === 'Resistência' || r.label === 'Resistências')).toBe(false);
     expect(read.sections[0].items).toEqual([{ title: 'Nível 1 · Vigília', text: 'Texto. 3 usos, voltam num descanso longo.' }]);
     noRawKeys(read.rows.map((r) => r.value));
@@ -113,6 +115,7 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
       savingThrows: [Ability.STRENGTH, Ability.WISDOM],
       minimums: { wisdom: 13 },
       anyOf: { strength: 13, dexterity: 13 },
+      asiLevels: [4, 8],
       casting: { kind: 'half', ability: Ability.WISDOM, preparation: 'prepared' },
       levels,
     });
@@ -122,9 +125,32 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     expect(table.items[0]).toEqual({ title: 'Nível 1', text: '+2' });
     expect(table.items[1]).toEqual({ title: 'Nível 2', text: '+2 · 2 truques · 2 de 1º' });
     expect(table.items[4]).toEqual({ title: 'Nível 5', text: '+3 · Ataque extra · 4 de 1º, 2 de 2º' });
+    expect(table.items[3].text).toBe('+2 · Aumento de atributo');
+    expect(table.items[2].text).toBe('+2 · Escolha de subclasse');
     const rows = Object.fromEntries(read.rows.map((r) => [r.label, flat(r.value)]));
     expect(rows['Para multiclasse']).toBe('Sabedoria 13');
     expect(rows['Para multiclasse (uma delas)']).toBe('Força 13, Destreza 13');
+  });
+
+  it('reads a third caster\'s subclass in full: where it is chosen, the casting, the list, the table from its start, the spells it always has', () => {
+    const body = create(TableSubclassSchema, {
+      namePt: 'Tradição da Tinta',
+      classKey: 'class:wizard',
+      casting: { kind: 'third', ability: Ability.INTELLIGENCE, preparation: 'known', listFrom: 'class:wizard', startLevel: 3, ritual: true },
+      levels: [{ level: 3, cantripsKnown: 2, spellsKnown: 3, slots: [2] }, { level: 4, cantripsKnown: 2, spellsKnown: 3, slots: [3] }],
+      alwaysPrepared: [{ classLevel: 3, spellKey: 'spell:light' }],
+    });
+    const read = readEntry(entry(TableContentKind.SUBCLASS, 'Tradição da Tinta', { body: { case: 'tableSubclass', value: body } }), nameOf, () => 2);
+    const rows = Object.fromEntries(read.rows.map((r) => [r.label, flat(r.value)]));
+    expect(rows['Escolhida no nível']).toBe('2');
+    expect(rows['Conjuração']).toBe('Um terço · Inteligência · conhecidas · rituais');
+    expect(rows['Lista de magias']).toBe('A lista do Mago');
+    const table = read.sections.find((s) => s.title === 'Conjuração por nível')!;
+    expect(table.items).toEqual([
+      { title: 'Nível 3', text: '2 truques · 3 magias conhecidas · 2 de 1º' },
+      { title: 'Nível 4', text: '2 truques · 3 magias conhecidas · 3 de 1º' },
+    ]);
+    expect(read.sections.find((s) => s.title === 'Sempre preparadas')!.items).toEqual([{ title: 'Nível 3', text: 'Luz' }]);
   });
 
   it('reads a background with its tools, skills and languages by name, never by key', () => {

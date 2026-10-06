@@ -95,7 +95,7 @@ describe('SubclassEditor', () => {
     // The subclass's own grid has no bonus column and no features column.
     expect(Array.from(el.querySelectorAll('th')).map((th) => text(th))).not.toContain('Bônus');
     pick(field(el, 'table_subclass.casting.ability') as HTMLSelectElement, 'Inteligência');
-    pick(field(el, 'table_subclass.casting.list_from') as HTMLSelectElement, 'A lista de Mago');
+    pick(field(el, 'table_subclass.casting.list_from') as HTMLSelectElement, 'A lista do Mago');
     await settle(fixture);
     save.mockResolvedValue({ entry: tinta(), affected: [] });
     click(el, 'Salvar subclasse');
@@ -165,5 +165,62 @@ describe('SubclassEditor', () => {
     expect(text(el.querySelector('[data-field="table_subclass.always_prepared"]')!.parentElement!)).toContain('Uma magia sempre preparada é de 1º círculo ou mais, nunca um truque.');
     // Levels 2 (a feature) and 3, 4...: level 4 is the third row, `levels[2]`.
     expect(cell(el, 'Nível 4, espaços de 1º círculo').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('a stored third caster switches Preparadas and Conhecidas with no question: its rows are the server\'s, which carry no bonus', async () => {
+    const stored = entry(TableContentKind.SUBCLASS, 'Tradição da Tinta', {
+      body: {
+        case: 'tableSubclass',
+        value: create(TableSubclassSchema, {
+          namePt: 'Tradição da Tinta',
+          classKey: 'class:fighter',
+          casting: { kind: 'third', ability: Ability.INTELLIGENCE, preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
+          levels: defaults.tables[7].rows.filter((r, i) => i >= 2).map((r, i) => ({ level: i + 3, cantripsKnown: r.cantripsKnown, spellsKnown: r.spellsKnown, slots: r.slots })),
+        }),
+      },
+    });
+    const { fixture, el } = setup(stored);
+    (el.querySelector('input[type="radio"][value="prepared"]') as HTMLInputElement).dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(el.querySelector('app-table-question')).toBeNull();
+    // Prepared: no "Magias" column; the table is the prepared default (no spells known).
+    expect(Array.from(el.querySelectorAll('th')).map((th) => text(th))).not.toContain('Magias');
+    (el.querySelector('input[type="radio"][value="known"]') as HTMLInputElement).dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(el.querySelector('app-table-question')).toBeNull();
+    expect(cell(el, 'Nível 3, magias conhecidas').value).toBe('3');
+  });
+
+  it('puts a refused always-prepared spell of the flat list on its own group, with its message under it', async () => {
+    const stored = tinta();
+    const { fixture, el } = setup(stored);
+    pick(el.querySelector('.addlevel select') as HTMLSelectElement, 'Nível 1');
+    await settle(fixture);
+    pick(el.querySelector('.group[aria-label="Nível 1"] select') as HTMLSelectElement, 'Luz');
+    await settle(fixture);
+    // The request lists level 1's spell first (index 0), then level 3's (index 1).
+    save.mockRejectedValue(
+      new ConnectError('refused', Code.InvalidArgument, undefined, [
+        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_subclass.always_prepared[1].spell_key', reason: 'dangling_reference' })] }) },
+      ]),
+    );
+    click(el, 'Salvar subclasse');
+    await settle(fixture);
+    const group3 = el.querySelector('[data-field="table_subclass.always_prepared#3"]')!;
+    expect(text(group3)).toContain('Esta magia não existe mais. Escolha outra.');
+    expect(text(el.querySelector('[data-field="table_subclass.always_prepared#1"]')!)).not.toContain('Esta magia não existe');
+    expect(group3.contains(document.activeElement)).toBe(true);
+  });
+
+  it('the 61st feature refusal goes to the panel head', async () => {
+    const { fixture, el } = setup();
+    save.mockRejectedValue(
+      new ConnectError('refused', Code.InvalidArgument, undefined, [
+        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_subclass.levels[0].features[0]', reason: 'limit' })] }) },
+      ]),
+    );
+    click(el, 'Salvar subclasse');
+    await settle(fixture);
+    expect(text(el.querySelector('[data-field="table_subclass.features"]')!.parentElement!)).toContain('Esta subclasse tem 1. Uma subclasse da mesa não pode ter mais de 60 características.');
   });
 });

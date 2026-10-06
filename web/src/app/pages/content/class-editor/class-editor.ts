@@ -20,7 +20,9 @@ import {
   defaultTableOf,
   draftToClass,
   emptyClass,
+  featureIdOfPath,
   gridColumns,
+  isGridPath,
   newLevelFeatureId,
   rowsEdited,
   rowsOfTable,
@@ -39,14 +41,10 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { type GridChip, type GridEdit, type GridRowVm, LevelGrid } from '../../../shared/level-grid/level-grid';
 import { CastingFields } from '../class-parts/casting-fields';
 import { ClassFeatures } from '../class-parts/class-features';
+import { type NavSection, SectionNav } from '../class-parts/section-nav';
+import { TableQuestion } from '../class-parts/table-question';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import type { EditorSaved } from '../spell-editor/spell-editor';
-
-/** The sections of the class page, in order: the id of the panel and the word of its link. */
-export interface EditorSection {
-  readonly id: string;
-  readonly label: string;
-}
 
 /** The armor, shield and weapon groups every class lists (the keys; the names are the server's). */
 const ARMOR_KEYS = ['proficiency:light-armor', 'proficiency:medium-armor', 'proficiency:heavy-armor', 'proficiency:shields'] as const;
@@ -54,7 +52,7 @@ const WEAPON_KEYS = ['proficiency:simple-weapons', 'proficiency:martial-weapons'
 const GROUP_KEYS: readonly string[] = [...ARMOR_KEYS, ...WEAPON_KEYS];
 
 /** The question that comes up when a change would replace a table the master edited. */
-type TableQuestion = { readonly kind: 'casting'; readonly next: CastingDraft } | { readonly kind: 'restore' };
+type TableAsk = { readonly kind: 'casting'; readonly next: CastingDraft } | { readonly kind: 'restore' };
 
 /**
  * The class editor (MR-025, RN-23, ADR-0018; E10-02 states 1 to 3): one page with sections and a list of them at the side. The
@@ -79,7 +77,9 @@ type TableQuestion = { readonly kind: 'casting'; readonly next: CastingDraft } |
     NumberStepper,
     PickList,
     RouterLink,
+    SectionNav,
     SelectField,
+    TableQuestion,
     TextField,
   ],
   templateUrl: './class-editor.html',
@@ -104,9 +104,8 @@ export class ClassEditor {
 
   protected readonly draft = signal<ClassDraft>(emptyClass(this.emptyDefaults()));
   protected readonly openFeature = signal('');
-  protected readonly question = signal<TableQuestion | null>(null);
+  protected readonly question = signal<TableAsk | null>(null);
   protected readonly allCircles = signal(false);
-  protected readonly active = signal('basics');
   protected readonly status = signal('');
 
   protected readonly saver = new EntrySaver(
@@ -119,18 +118,23 @@ export class ClassEditor {
       get featureCount() {
         return editor.draft().features.length;
       },
+      // "Too many features" is the panel head's, with the counter, and not one feature row's.
+      redirect: (field: string, reason: string) => (reason === 'limit' && /^table_class\.levels\[\d+\]\.features\[\d+\]$/.test(field) ? 'table_class.features' : field),
     }))(this),
     'a classe',
   );
 
-  protected readonly sections: readonly EditorSection[] = [
+  private static readonly SECTIONS = [
     { id: 'basics', label: 'Básico' },
     { id: 'profs', label: 'Proficiências' },
     { id: 'casting', label: 'Conjuração' },
     { id: 'table', label: 'Tabela dos 20 níveis' },
     { id: 'features', label: 'Características' },
     { id: 'subclasses', label: 'Subclasse' },
-  ];
+  ] as const;
+
+  /** The list of sections, each with whether a refusal is inside it. */
+  protected readonly sections = computed<NavSection[]>(() => ClassEditor.SECTIONS.map((s) => ({ ...s, issue: this.sectionIssues(s.id) })));
 
   protected readonly abilities = computed(() => this.catalog().abilities);
   protected readonly abilityOptions = computed<SelectOption<number>[]>(() => this.abilities().map((a) => ({ value: a.ability as number, label: a.name })));
@@ -183,7 +187,7 @@ export class ClassEditor {
     if (kind === '') {
       return 'Uma classe sem conjuração só tem o bônus de proficiência e as características em cada nível. “Restaurar o padrão” volta ao bônus do SRD.';
     }
-    const from = ref ? `Preenchida com a tabela de ${ref} do SRD.` : 'Preenchida com o padrão de um terço.';
+    const from = ref ? `Preenchida com a tabela do ${ref} do SRD.` : 'Preenchida com o padrão de um terço.';
     const prep = this.casting().preparation === 'prepared' ? ' As magias são preparadas: o número vem da habilidade e do nível, não da tabela.' : ' As magias são conhecidas: a coluna “Magias” diz quantas.';
     return `${from} Edite o que quiser; “Restaurar o padrão” volta a ela.${prep}`;
   });
@@ -192,7 +196,7 @@ export class ClassEditor {
     const q = this.question();
     if (!q) return '';
     const t = q.kind === 'restore' ? defaultTableOf(this.casting(), this.defaults()) : defaultTableOf(q.next, this.defaults());
-    const ref = t?.referenceClassKey ? ` de ${this.catalog().nameOf(t.referenceClassKey)}` : '';
+    const ref = t?.referenceClassKey ? ` do ${this.catalog().nameOf(t.referenceClassKey)}` : '';
     return q.kind === 'restore'
       ? `Voltar a tabela ao padrão${ref}? O que você editou nela se perde.`
       : `Você editou a tabela dos níveis. Refazê-la com o padrão${ref} para esta conjuração? O que você editou nela se perde.`;
@@ -235,15 +239,8 @@ export class ClassEditor {
 
   protected readonly issuesOf = (path: string): readonly string[] => this.saver.issues(path);
 
-  protected goTo(id: string): void {
-    this.active.set(id);
-    const el = this.host.nativeElement.querySelector<HTMLElement>(`#sec-${id}`);
-    el?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
-    el?.focus({ preventScroll: true });
-  }
-
-  /** Whether a section has a refusal in it (its link says so, in words and an icon). */
-  protected sectionIssues(id: string): boolean {
+  /** Whether a section has a refusal in it. */
+  private sectionIssues(id: string): boolean {
     const fields = this.saver.placement().fields;
     const match = (f: string): boolean => {
       const p = f.replace('table_class.', '');
@@ -257,12 +254,17 @@ export class ClassEditor {
         case 'table':
           return /^levels(\[\d+\](\.(prof_bonus|cantrips_known|spells_known|slots.*))?)?$/.test(p) || p.startsWith('asi_levels');
         case 'features':
-          return /^levels\[\d+\]\.features/.test(p);
+          return /^levels\[\d+\]\.features/.test(p) || p === 'features';
         default:
           return p.startsWith('subclass_level');
       }
     };
     return fields.some(match);
+  }
+
+  private scrollTo(id: string): void {
+    const el = this.host.nativeElement.querySelector<HTMLElement>(`#sec-${id}`);
+    el?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
   }
 
   // ---- The basics.
@@ -344,6 +346,18 @@ export class ClassEditor {
   protected removeRequirement(field: 'minimums' | 'anyOf', ability: string): void {
     const d = this.draft();
     this.patch({ [field]: { ...d[field], [ability]: 0 } });
+  }
+
+  /** Another ability for a row: the minimum moves with it (a row never takes an ability another row has). */
+  protected moveRequirement(field: 'minimums' | 'anyOf', from: AbilityField, to: string): void {
+    const d = this.draft();
+    if (to === from || d[field][to as AbilityField] > 0) return;
+    this.patch({ [field]: { ...d[field], [from]: 0, [to]: d[field][from] } });
+  }
+
+  protected freeRequirementOptions(field: 'minimums' | 'anyOf'): SelectOption[] {
+    const m = this.draft()[field];
+    return this.requirementOptions(field).filter((o) => !(m[o.value as AbilityField] > 0));
   }
 
   protected setRequirement(field: 'minimums' | 'anyOf', ability: AbilityField, text: string): void {
@@ -436,14 +450,14 @@ export class ClassEditor {
 
   protected openFromGrid(id: string): void {
     this.openFeature.set(id);
-    this.goTo('features');
+    this.scrollTo('features');
   }
 
   protected addFromGrid(level: number): void {
     const id = newLevelFeatureId();
     this.patch({ features: sortedFeatures([...this.draft().features, { id, level, feature: emptyFeature() }]) });
     this.openFeature.set(id);
-    this.goTo('features');
+    this.scrollTo('features');
   }
 
   // ---- Saving.
@@ -463,27 +477,13 @@ export class ClassEditor {
       `${p}.name_pt`, `${p}.hit_die`, `${p}.saving_throws`, `${p}.saving_throws[0]`, `${p}.saving_throws[1]`, `${p}.skill_choose`, `${p}.skill_from`,
       `${p}.proficiencies`, `${p}.multiclass_proficiencies`, `${p}.multiclass_skill_choose`, `${p}.minimums`, `${p}.any_of`, `${p}.subclass_level`,
       `${p}.asi_levels`, `${p}.casting.kind`, `${p}.casting.ability`, `${p}.casting.list_from`, `${p}.casting.preparation`, `${p}.casting.start_level`,
-      `${p}.casting.prepared_max`, `${p}.casting`, `${p}.levels`,
+      `${p}.casting.prepared_max`, `${p}.casting`, `${p}.features`,
     ];
     if (fixed.includes(path)) return true;
-    if (ABILITY_FIELDS.some((a) => path === `${p}.minimums.${a}` ? d.minimums[a] > 0 : path === `${p}.any_of.${a}` ? d.anyOf[a] > 0 : false)) return true;
-    const cell = /^table_class\.levels\[(\d+)\](?:\.(prof_bonus|cantrips_known|spells_known)|\.slots\[(\d)\])$/.exec(path);
-    if (cell) {
-      const cols = this.columns();
-      if (cell[2] === 'prof_bonus') return true;
-      if (cell[2] === 'cantrips_known') return cols.cantrips;
-      if (cell[2] === 'spells_known') return cols.spells;
-      return Number(cell[3]) < cols.circles;
-    }
+    if (ABILITY_FIELDS.some((a) => (path === `${p}.minimums.${a}` ? d.minimums[a] > 0 : path === `${p}.any_of.${a}` ? d.anyOf[a] > 0 : false))) return true;
+    if (isGridPath(path, `${p}.levels`, this.columns(), true)) return true;
     return classFeaturePaths(d.features, this.menu()).includes(path);
   };
-
-  /** The feature a refused path is in: its row is opened, so the input exists when the focus goes there. */
-  private featureIdOf(path: string): string {
-    const d = this.draft();
-    const i = d.features.findIndex((_, k) => path === classFeatureBase(d.features, k) || path.startsWith(classFeatureBase(d.features, k) + '.') || path.startsWith(classFeatureBase(d.features, k) + '['));
-    return i < 0 ? '' : d.features[i].id;
-  }
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
@@ -496,7 +496,8 @@ export class ClassEditor {
       return;
     }
     const first = this.saver.placement().fields[0];
-    const feature = first ? this.featureIdOf(first) : '';
+    // The refused feature is opened, so its input exists when the focus goes there.
+    const feature = first ? featureIdOfPath(this.draft().features, (k) => classFeatureBase(this.draft().features, k), first) : '';
     if (feature) {
       this.openFeature.set(feature);
     }
@@ -510,4 +511,3 @@ export class ClassEditor {
     );
   }
 }
-

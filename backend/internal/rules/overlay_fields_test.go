@@ -10,7 +10,8 @@ import (
 // can break comes back with the exact field the editor draws (the proto's field
 // names, with their own indexes) and a stable reason (slice 10.3, field-level
 // refusals). The paths here are the Overlay's; the server writes them under the
-// body's name ("table_class.levels[4].slots[2]").
+// body's name ("table_class.levels[4].slots[2]"). The web copies these paths and
+// reasons into content-violations.spec.ts (CLASS_ROWS): change a row there and here together.
 func TestClassRefusalsNameTheirField(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)

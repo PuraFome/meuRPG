@@ -156,19 +156,22 @@ export function defaultTableOf(c: CastingDraft, defaults: GetClassTableDefaultsR
   return tableFor(defaults, c.kind, c.preparation);
 }
 
-export function sameRows(a: readonly RowDraft[], b: readonly RowDraft[]): boolean {
+/** Whether two tables are the same. A third caster's table (a subclass's) has no proficiency bonus of its own: the server stores
+ * none, so it is left out of the comparison (`bonus` false). */
+export function sameRows(a: readonly RowDraft[], b: readonly RowDraft[], bonus = true): boolean {
   return (
     a.length === b.length &&
     a.every((r, i) => {
       const o = b[i];
-      return r.profBonus === o.profBonus && r.cantrips === o.cantrips && r.spells === o.spells && r.slots.every((n, k) => n === o.slots[k]);
+      return (!bonus || r.profBonus === o.profBonus) && r.cantrips === o.cantrips && r.spells === o.spells && r.slots.every((n, k) => n === o.slots[k]);
     })
   );
 }
 
-/** Whether the master changed the table from the default of the casting it has now (asked about before it is replaced). */
+/** Whether the master changed the table from the default of the casting it has now (asked about before it is replaced). A third
+ * caster compares the casting columns only: the rows of a stored subclass carry no bonus. */
 export function rowsEdited(rows: readonly RowDraft[], c: CastingDraft, defaults: GetClassTableDefaultsResponse): boolean {
-  return !sameRows(rows, rowsOfTable(defaultTableOf(c, defaults), defaults));
+  return !sameRows(rows, rowsOfTable(defaultTableOf(c, defaults), defaults), c.kind !== 'third');
 }
 
 /** The casting a kind starts with: its own default preparation, the table's start level, nothing else chosen yet. */
@@ -450,4 +453,50 @@ export function circleLabel(i: number): string {
 export function slotsText(r: RowDraft, pact: boolean): string {
   const parts = r.slots.map((n, i) => (n > 0 ? (pact ? `${n} de ${circleLabel(i)} (pacto)` : `${n} de ${circleLabel(i)}`) : '')).filter((p) => p !== '');
   return parts.join(', ');
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Placing a refusal: the same two questions for the class and the subclass.
+
+/** Whether `path` is the input of a cell of the grid at `prefix` ("table_class.levels"), a row of it or the grid itself: the cells
+ * of the columns drawn (`cols`), and the row and its slots as a whole (their message is shown with the level). */
+export function isGridPath(path: string, prefix: string, cols: GridColumns, bonus: boolean): boolean {
+  if (path === prefix) return true;
+  const m = new RegExp('^' + prefix.replace(/\./g, '\\.') + '\\[(\\d+)\\](?:\\.(prof_bonus|cantrips_known|spells_known|slots)|\\.slots\\[(\\d)\\])?$').exec(path);
+  if (!m) return false;
+  if (m[2] === undefined && m[3] === undefined) return true;
+  switch (m[2]) {
+    case 'prof_bonus':
+      return bonus;
+    case 'cantrips_known':
+      return cols.cantrips;
+    case 'spells_known':
+      return cols.spells;
+    case 'slots':
+      return true;
+    default:
+      return Number(m[3]) < cols.circles;
+  }
+}
+
+/** The feature a refused path is in (the id of the row to open), or '' when the path is not in one. */
+export function featureIdOfPath(features: readonly LevelFeature[], baseOf: (index: number) => string, path: string): string {
+  const i = features.findIndex((_, k) => {
+    const base = baseOf(k);
+    return path === base || path.startsWith(base + '.') || path.startsWith(base + '[');
+  });
+  return i < 0 ? '' : features[i].id;
+}
+
+/** The refusals of one always-prepared group: the request lists the spells flat (`always_prepared[3].spell_key`), the screen by
+ * class level; a path in the flat list belongs to the group the index falls in. Returns the group's level, or -1. */
+export function groupOfAlwaysPrepared(groups: readonly AlwaysPreparedGroup[], path: string): number {
+  const m = /^table_subclass\.always_prepared\[(\d+)\]/.exec(path);
+  if (!m) return -1;
+  let n = Number(m[1]);
+  for (const g of groups) {
+    if (n < g.spells.length) return g.level;
+    n -= g.spells.length;
+  }
+  return -1;
 }

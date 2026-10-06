@@ -80,6 +80,19 @@ describe('the 20-level table starts from the server (E10-02 state 2)', () => {
     expect(sameRows(rows, rowsOfTable(tableFor(defaults, 'half', 'prepared'), defaults))).toBe(true);
   });
 
+  it('a stored third caster is not "edited": its rows carry no proficiency bonus and its levels before the start are empty', () => {
+    const stored = create(TableSubclassSchema, {
+      namePt: 'Tradição da Tinta',
+      classKey: 'class:fighter',
+      casting: { kind: 'third', ability: Ability.INTELLIGENCE, preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
+      levels: tableFor(defaults, 'third', 'known')!.rows.slice(2).map((r, i) => ({ level: i + 3, cantripsKnown: r.cantripsKnown, spellsKnown: r.spellsKnown, slots: [...r.slots] })),
+    });
+    const d = subclassToDraft(stored, defaults);
+    expect(rowsEdited(d.rows, d.casting, defaults)).toBe(false);
+    const edited = d.rows.map((r, i) => (i === 3 ? { ...r, cantrips: 4 } : r));
+    expect(rowsEdited(edited, d.casting, defaults)).toBe(true);
+  });
+
   it('shows the circles the kind uses: 5 for the half caster, 9 for the full one, and none without casting', () => {
     const half = castingOfKind('half', emptyCasting(''), defaults);
     const rows = rowsOfTable(tableFor(defaults, 'half', 'prepared'), defaults);

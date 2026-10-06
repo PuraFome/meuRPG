@@ -3,23 +3,7 @@
 <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
 <div class="page">
   <aside class="side">
-    <nav class="sections" aria-label="Seções da classe">
-      <ul>
-        @for (s of sections; track s.id) {
-          <li>
-            <button type="button" class="sections__link" [class.sections__link--on]="active() === s.id" [attr.aria-current]="active() === s.id ? 'location' : null" (click)="goTo(s.id)">
-              @if (sectionIssues(s.id)) {
-                <mat-icon class="sections__icon sections__icon--bad" aria-hidden="true">warning</mat-icon>
-                <span class="mr-visually-hidden">Com erro: </span>
-              } @else {
-                <mat-icon class="sections__icon" aria-hidden="true">check</mat-icon>
-              }
-              {{ s.label }}
-            </button>
-          </li>
-        }
-      </ul>
-    </nav>
+    <app-section-nav [sections]="sections()" label="Seções da classe" />
     <!-- Seam for slice 10.11c: the "Para os jogadores" panel with the switch "Disponível para os jogadores" (TableEntry.off) goes here,
          under the section list, as in E10-02 state 1. The class body never carries it: the switch is the entry's, not the class's. -->
   </aside>
@@ -84,23 +68,19 @@
       </div>
       <h3 class="sub">Para quem entra na classe depois (multiclasse)</h3>
       @for (g of requirementGroups; track g.field) {
-        <div class="req" role="group" [attr.aria-label]="g.label">
+        <div class="req" role="group" [attr.aria-label]="g.label" [attr.data-field]="requirementPath(g.field)">
           <p class="group__label">{{ g.label }}</p>
-          <app-pick-list
-            [label]="g.label"
-            [addLabel]="g.add"
-            [options]="requirementOptions(g.field)"
-            [values]="requirementValues(g.field)"
-            [path]="requirementPath(g.field)"
-            [issues]="issuesOf(requirementPath(g.field))"
-            (added)="addRequirement(g.field, $event)"
-            (removed)="removeRequirement(g.field, $event)"
-          />
-          @if (requirementValues(g.field).length > 0) {
-            <div class="grid grid--4">
-              @for (a of requirementValues(g.field); track a) {
-                <app-text-field [label]="'Valor mínimo de ' + abilityName(a)" inputmode="numeric" [value]="'' + d[g.field][a]" [path]="requirementPath(g.field, a)" [issues]="issuesOf(requirementPath(g.field, a))" (valueChange)="setRequirement(g.field, a, $event)" />
-              }
+          @for (a of requirementValues(g.field); track a) {
+            <div class="req__row">
+              <app-select-field label="Habilidade" [options]="requirementOptions(g.field)" [value]="a" (valueChange)="moveRequirement(g.field, a, $event)" />
+              <app-text-field label="Valor mínimo" inputmode="numeric" [value]="'' + d[g.field][a]" [path]="requirementPath(g.field, a)" [issues]="issuesOf(requirementPath(g.field, a))" (valueChange)="setRequirement(g.field, a, $event)" />
+              <button matButton="outlined" type="button" class="req__remove" (click)="removeRequirement(g.field, a)">Tirar {{ abilityName(a) }}</button>
+            </div>
+          }
+          <app-field-note [issues]="issuesOf(requirementPath(g.field))" />
+          @if (freeRequirementOptions(g.field).length > 0) {
+            <div class="req__add">
+              <app-select-field [label]="g.add" [options]="freeRequirementOptions(g.field)" value="" placeholder="Escolha…" (valueChange)="addRequirement(g.field, $event)" />
             </div>
           }
         </div>
@@ -134,19 +114,17 @@
         (kindChange)="setKind($event)"
         (preparationChange)="setPreparation($event)"
         (patch)="patchCasting($event)"
-      />
-      @if (question(); as q) {
-        @if (q.kind === 'casting') {
-          <div class="ask" role="alertdialog" aria-labelledby="ask-t" aria-describedby="ask-d">
-            <p id="ask-t" class="ask__title">Refazer a tabela dos 20 níveis?</p>
-            <p id="ask-d">{{ questionText() }}</p>
-            <div class="ask__actions">
-              <button matButton="filled" type="button" (click)="answerQuestion(true)">Refazer a tabela</button>
-              <button matButton="outlined" type="button" (click)="answerQuestion(false)">Manter a minha tabela</button>
-            </div>
-          </div>
+      >
+        @if (question(); as q) {
+          @if (q.kind === 'casting') {
+            <app-table-question
+              heading="Refazer a tabela dos 20 níveis?"
+              [text]="questionText()"
+              (answer)="answerQuestion($event)"
+            />
+          }
         }
-      }
+      </app-casting-fields>
       <p class="hint">A conjuração de um terço é de uma subclasse: ligue “Esta subclasse conjura” nela. “Metade”, “Completa” e “Pacto” preenchem a tabela dos 20 níveis, logo abaixo, com a progressão do SRD.</p>
     </section>
 
@@ -157,14 +135,7 @@
       </div>
       @if (question(); as q) {
         @if (q.kind === 'restore') {
-          <div class="ask" role="alertdialog" aria-labelledby="ask-t2" aria-describedby="ask-d2">
-            <p id="ask-t2" class="ask__title">Restaurar o padrão?</p>
-            <p id="ask-d2">{{ questionText() }}</p>
-            <div class="ask__actions">
-              <button matButton="filled" type="button" (click)="answerQuestion(true)">Restaurar o padrão</button>
-              <button matButton="outlined" type="button" (click)="answerQuestion(false)">Manter a minha tabela</button>
-            </div>
-          </div>
+          <app-table-question heading="Restaurar o padrão?" [text]="questionText()" confirm="Restaurar o padrão" (answer)="answerQuestion($event)" />
         }
       }
       <p class="mr-notice mr-notice--neutral">
@@ -184,6 +155,7 @@
         <button type="button" class="link" (click)="allCircles.set(true)">Mostrar os 9 círculos</button>
       }
       <p class="legend"><span class="chip chip--locked"><mat-icon aria-hidden="true">lock</mat-icon>Aumento de atributo</span> Os chips tracejados com cadeado são postos pelo app: você muda só os níveis, na linha de baixo.</p>
+      <p class="group__label">Aumento de atributo nos níveis</p>
       <app-pick-list
         label="Aumento de atributo nos níveis"
         addLabel="Adicionar nível"
@@ -198,6 +170,8 @@
 
     <section class="mr-panel block" id="sec-features" tabindex="-1" aria-labelledby="features-t">
       <app-class-features
+        path="table_class.features"
+        [issues]="issuesOf('table_class.features')"
         [features]="d.features"
         [menu]="menu()"
         [levels]="levelNumbers"
@@ -242,4 +216,4 @@
 
   </div>
 </div>
-<app-editor-bar saveLabel="Salvar classe" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+<app-editor-bar [sticky]="true" saveLabel="Salvar classe" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />

@@ -34,13 +34,14 @@ test(
         await m.getByRole('button', { name: skill, exact: true }).click();
       }
       await expect(m.getByText('Perícias que ele pode escolher (5 de 18)')).toBeVisible();
-      await m.getByRole('checkbox', { name: 'Armaduras leves' }).check({ force: true });
-      await m.getByRole('checkbox', { name: 'Armas simples' }).check({ force: true });
+      await m.locator('app-check-row', { hasText: 'Armaduras leves' }).click();
+      await m.locator('app-check-row', { hasText: 'Armas simples' }).click();
+      await expect(m.getByRole('checkbox', { name: 'Armas simples' })).toBeChecked();
 
       // "Metade" pastes the server's table: nothing at level 1, two 1st-circle slots at level 2.
       await pickRadio(m, 'Metade');
       await m.getByLabel('Habilidade de conjuração').selectOption({ label: 'Sabedoria' });
-      await m.getByLabel('Lista de magias').selectOption({ label: 'A lista de Druida' });
+      await m.getByLabel('Lista de magias').selectOption({ label: 'A lista do Druida' });
       await expect(m.getByLabel('Nível 2, espaços de 1º círculo')).toHaveValue('2');
       await expect(m.getByLabel('Nível 1, espaços de 1º círculo')).toHaveValue('');
       await expect(m.getByLabel('Nível 5, bônus de proficiência')).toHaveValue('+3');
@@ -121,7 +122,7 @@ test(
 
       await m.getByRole('switch', { name: 'Esta subclasse conjura' }).click();
       await m.getByLabel('Habilidade de conjuração').selectOption({ label: 'Inteligência' });
-      await m.getByLabel('Lista de magias').selectOption({ label: 'A lista de Mago' });
+      await m.getByLabel('Lista de magias').selectOption({ label: 'A lista do Mago' });
       // The rows of the third caster start at level 3, from the server's table.
       await expect(m.getByLabel('Nível 3, espaços de 1º círculo')).toHaveValue('2');
       await expect(m.getByLabel('Nível 2, espaços de 1º círculo')).toHaveCount(0);
@@ -205,6 +206,40 @@ test('o jogador lê a classe por inteiro, sem contagem e sem uma arquivada @MR-0
     await expect(p.getByRole('button', { name: /Salvar classe|Arquivar/ })).toHaveCount(0);
     await expect(p.getByText(/Em uso por/)).toHaveCount(0);
     expect(key).toContain('class:');
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+});
+
+test('mudar a conjuração de uma tabela editada pergunta no lugar, e "Restaurar o padrão" também @MR-025', { tag: ['@MR-025', '@RN-23'] }, async ({ browser }) => {
+  const master = await newSignedInContext(browser, 'Mestre Teste');
+  const player = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await master.newPage();
+    const p = await player.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Classes pergunta ${Date.now()}`);
+    const key = await createClassRPC(m, campaignId, halfCasterBody());
+
+    await m.goto(entryRoute(campaignId, key));
+    await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Guardião do Vale');
+    // An edited table: another way of casting asks first, right under the control, with the focus on its title.
+    await m.getByLabel('Nível 5, espaços de 1º círculo').fill('9');
+    await pickRadio(m, 'Completa');
+    const ask = m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' });
+    await expect(ask).toBeVisible();
+    await expect(ask.getByText('Refazer a tabela dos 20 níveis?')).toBeFocused();
+    await ask.getByRole('button', { name: 'Manter a minha tabela' }).click();
+    await expect(m.getByLabel('Nível 5, espaços de 1º círculo')).toHaveValue('9');
+    await expect(m.getByRole('alertdialog')).toHaveCount(0);
+
+    await m.getByRole('button', { name: 'Restaurar o padrão' }).click();
+    const restore = m.getByRole('alertdialog', { name: 'Restaurar o padrão?' });
+    await expect(restore).toBeVisible();
+    await restore.getByRole('button', { name: 'Restaurar o padrão' }).click();
+    await expect(m.getByRole('alertdialog')).toHaveCount(0);
+    // The full caster's table of the server: 4 first-circle slots at level 5.
+    await expect(m.getByLabel('Nível 5, espaços de 1º círculo')).toHaveValue('4');
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

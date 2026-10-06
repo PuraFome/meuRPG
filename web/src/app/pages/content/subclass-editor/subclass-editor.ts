@@ -16,7 +16,10 @@ import {
   emptyCasting,
   emptyRow,
   emptySubclass,
+  featureIdOfPath,
   gridColumns,
+  groupOfAlwaysPrepared,
+  isGridPath,
   rowsEdited,
   rowsOfTable,
   subclassFeatureBase,
@@ -34,6 +37,7 @@ import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { type GridEdit, type GridRowVm, LevelGrid } from '../../../shared/level-grid/level-grid';
 import { CastingFields } from '../class-parts/casting-fields';
+import { TableQuestion } from '../class-parts/table-question';
 import { ClassFeatures } from '../class-parts/class-features';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import type { EditorSaved } from '../spell-editor/spell-editor';
@@ -47,7 +51,7 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
  */
 @Component({
   selector: 'app-subclass-editor',
-  imports: [CastingFields, ClassFeatures, EditorAlerts, EditorBar, FieldNote, LevelGrid, MatButtonModule, MatIconModule, PickList, SelectField, SwitchField, TextField],
+  imports: [CastingFields, ClassFeatures, TableQuestion, EditorAlerts, EditorBar, FieldNote, LevelGrid, MatButtonModule, MatIconModule, PickList, SelectField, SwitchField, TextField],
   templateUrl: './subclass-editor.html',
   styleUrl: './subclass-editor.scss',
 })
@@ -84,6 +88,12 @@ export class SubclassEditor {
       },
       get featureCount() {
         return editor.draft().features.length;
+      },
+      // "Too many features" is the panel head's; a refused spell of the flat list belongs to its group.
+      redirect: (field: string, reason: string) => {
+        if (reason === 'limit' && /^table_subclass\.levels\[\d+\]\.features\[\d+\]$/.test(field)) return 'table_subclass.features';
+        const group = groupOfAlwaysPrepared(editor.draft().alwaysPrepared, field);
+        return group >= 0 ? `table_subclass.always_prepared#${group}` : field;
       },
     }))(this),
     'a subclasse',
@@ -236,27 +246,13 @@ export class SubclassEditor {
     const d = this.draft();
     const fixed = [
       `${p}.name_pt`, `${p}.class_key`, `${p}.level`, `${p}.desc_pt`, `${p}.always_prepared`, `${p}.casting`, `${p}.casting.ability`, `${p}.casting.list_from`,
-      `${p}.casting.preparation`, `${p}.casting.start_level`, `${p}.casting.prepared_max`, `${p}.casting.kind`, `${p}.levels`,
+      `${p}.casting.preparation`, `${p}.casting.start_level`, `${p}.casting.prepared_max`, `${p}.casting.kind`, `${p}.features`,
+      ...d.alwaysPrepared.map((g) => `${p}.always_prepared#${g.level}`),
     ];
     if (fixed.includes(path)) return true;
-    const cell = /^table_subclass\.levels\[(\d+)\](?:\.(cantrips_known|spells_known)|\.slots\[(\d)\])$/.exec(path);
-    if (cell) {
-      const cols = this.columns();
-      if (cell[2] === 'cantrips_known') return cols.cantrips;
-      if (cell[2] === 'spells_known') return cols.spells;
-      return Number(cell[3]) < cols.circles;
-    }
+    if (isGridPath(path, `${p}.levels`, this.columns(), false)) return true;
     return subclassFeaturePaths(d, this.menu()).includes(path);
   };
-
-  private featureIdOf(path: string): string {
-    const d = this.draft();
-    const i = d.features.findIndex((_, k) => {
-      const base = subclassFeatureBase(d, k);
-      return path === base || path.startsWith(base + '.') || path.startsWith(base + '[');
-    });
-    return i < 0 ? '' : d.features[i].id;
-  }
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
@@ -269,7 +265,7 @@ export class SubclassEditor {
       return;
     }
     const first = this.saver.placement().fields[0];
-    const feature = first ? this.featureIdOf(first) : '';
+    const feature = first ? featureIdOfPath(this.draft().features, (k) => subclassFeatureBase(this.draft(), k), first) : '';
     if (feature) {
       this.openFeature.set(feature);
     }

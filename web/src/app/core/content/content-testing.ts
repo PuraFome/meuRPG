@@ -117,7 +117,10 @@ export function catalog(extra: Parameters<typeof catalogVm>[1] = []): CatalogVm 
     create(ContentSchema, {
       abilities: abilities.map((a) => ({ ability: a.ability, namePt: a.name })),
       races: [{ key: 'race:human', namePt: 'Humano' }],
-      classes: [{ key: 'class:wizard', namePt: 'Mago', subclassLevel: 2, spellcasting: { ability: 4 } }],
+      classes: [
+        { key: 'class:wizard', namePt: 'Mago', subclassLevel: 2, spellcasting: { ability: 4 } },
+        { key: 'class:paladin', namePt: 'Paladino', subclassLevel: 3 },
+      ],
       skills: [{ key: 'skill:arcana', namePt: 'Arcanismo' }, { key: 'skill:perception', namePt: 'Percepção' }, { key: 'skill:investigation', namePt: 'Investigação' }],
       spells: [{ key: 'spell:light', namePt: 'Luz', schoolKey: 'school:evocation', schoolNamePt: 'Evocação' }],
       languages: [{ key: 'language:common', namePt: 'Comum' }, { key: 'language:primordial', namePt: 'Primordial' }],

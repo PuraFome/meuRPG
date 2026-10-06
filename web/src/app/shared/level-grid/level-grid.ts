@@ -29,6 +29,8 @@ export interface GridEdit {
   readonly value: number;
 }
 
+let nextGridId = 0;
+
 /** What a cell says when it is read aloud: "Nível 5, espaços de 2º círculo". */
 function fieldLabel(field: GridField, slot: number): string {
   switch (field) {
@@ -78,6 +80,7 @@ export class LevelGrid {
   readonly chipOpened = output<string>();
   readonly featureAdded = output<number>();
 
+  protected readonly problemsId = `grid-problems-${nextGridId++}`;
   protected readonly circles = computed(() => Array.from({ length: this.columns().circles }, (_, i) => i));
 
   /** Every refusal at a cell or a row, with its place in words (shown under the grid, so a cell stays small). */

@@ -19,7 +19,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
   selector: 'app-class-features',
   imports: [FeatureEditor, FieldNote, MatButtonModule, MatIconModule, SelectField],
   template: `
-    <div class="head">
+    <div class="head" [attr.data-field]="path() || null" tabindex="-1">
       <h2 class="mr-panel__title" [id]="headingId()">Características</h2>
       <p class="count" [class.count--over]="over()">
         @if (over()) {
@@ -49,10 +49,9 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
           </button>
           @if (openId() === f.id) {
             <div class="open" [id]="'feat-' + f.id">
-              <div class="open__level">
-                <app-select-field label="Nível" [options]="levelOptions()" [value]="f.level" (valueChange)="setLevel(f.id, $event)" />
-              </div>
               <app-feature-editor
+                [flat]="true"
+                [withLead]="true"
                 [feature]="f.feature"
                 [menu]="menu()"
                 [basePath]="baseOf()(i)"
@@ -62,7 +61,9 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
                 removeLabel="Remover característica"
                 (featureChange)="setFeature(f.id, $event)"
                 (removed)="remove(f.id)"
-              />
+              >
+                <app-select-field lead label="Nível" [options]="levelOptions()" [value]="f.level" (valueChange)="setLevel(f.id, $event)" />
+              </app-feature-editor>
             </div>
           }
         </li>
@@ -124,19 +125,16 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
       list-style: none;
     }
 
-    .item {
+    .item + .item {
       border-top: 1px solid var(--mr-rule);
+    }
 
-      &:first-child {
-        border-top: 0;
-      }
-
-      &--open {
-        margin: var(--mr-space-2) 0;
-        padding: var(--mr-space-3);
-        border: 2px solid var(--mr-accent);
-        border-radius: var(--mr-radius-md);
-      }
+    // The open feature is one frame (the accent contour); its editor inside has no card of its own.
+    .item--open {
+      margin: var(--mr-space-2) 0;
+      padding: var(--mr-space-3);
+      border: 2px solid var(--mr-accent);
+      border-radius: var(--mr-radius-md);
     }
 
     .row {
@@ -182,10 +180,6 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
       padding-top: var(--mr-space-2);
     }
 
-    .open__level {
-      max-width: 160px;
-    }
-
     .add {
       align-self: flex-start;
       min-height: 44px;
@@ -208,6 +202,8 @@ export class ClassFeatures {
   readonly spellOptions = input<readonly SelectOption[]>([]);
   readonly openId = input('');
   readonly headingId = input('features-t');
+  /** The path of the panel head: where "the class has too many features" lands. */
+  readonly path = input('');
 
   readonly featuresChange = output<LevelFeature[]>();
   readonly openIdChange = output<string>();
