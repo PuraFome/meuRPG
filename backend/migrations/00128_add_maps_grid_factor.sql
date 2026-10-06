@@ -7,7 +7,7 @@
 -- layers, the fog, the combat) is unchanged, and the drawing's own columns are
 -- grid_columns / grid_factor. The rows are the drawn rows (the image's
 -- proportions) times the factor, so they are never stored either. The range is
--- checked in the next migration (00161), one change each.
+-- checked in the next migration (00129), one change each.
 ALTER TABLE maps
     ADD COLUMN IF NOT EXISTS grid_factor INT4 NOT NULL DEFAULT 1;
 

@@ -76,8 +76,13 @@ type content struct {
 	levelXP []int
 	ratings []ChallengeRating
 	// casting is each casting class's spellcasting effect, and the class
-	// level it starts at.
-	casting map[string]classCasting
+	// level it starts at. subCasting is the same for a subclass that casts on
+	// its own (a third caster, table content only), by subclass key.
+	casting    map[string]classCasting
+	subCasting map[string]classCasting
+	// multiclassTable is the SRD full caster whose class table is the
+	// multiclass spellcaster table (see multiclassSlots).
+	multiclassTable string
 
 	namesPT map[string]string
 	namesEN map[string]string
@@ -91,11 +96,37 @@ type content struct {
 	// optionParents maps an option that 5e-database lists only in its
 	// parent's options (no "parent" field) to that parent.
 	optionParents map[string]string
+
+	// The table's layer (overlay.go); every one of these is empty in the
+	// SRD content.
+	//
+	// table says this content has a table layer, and tableRevision is its
+	// revision. listFrom maps a table class that reuses another class's spell
+	// list to that class. offeredBy maps an SRD option a table feature offers
+	// to the table features that do. archived are the table keys that no
+	// longer show as a new choice. spellTargets are the targets of the table's
+	// spells, raceChoice the ability bonuses a table race lets the player
+	// place, and bgEquipment a table background's equipment text.
+	// programs memoizes compiled formulas by text while a table layer is added.
+	programs      map[programKey]*formula.Program
+	table         bool
+	tableRevision int
+	listFrom      map[string]string
+	offeredBy     map[string][]string
+	archived      map[string]bool
+	spellTargets  map[string]SpellTarget
+	raceChoice    map[string][]int
+	bgEquipment   map[string]string
 }
 
+// classCasting is how a class (or a third-caster subclass) casts: its
+// spellcasting effect, the class level it starts at, and the class whose
+// spell list it reads (list). sub is set for a third caster's subclass.
 type classCasting struct {
 	effect *Effect
 	level  int
+	list   string
+	sub    string
 }
 
 // abilityIndex maps each ability to its position on the sheet.
@@ -140,6 +171,7 @@ func load(fsys fs.FS) (*content, error) {
 		subclassLevels: map[string]map[int]*srd51.Level{},
 		effects:        map[string][]*Effect{},
 		casting:        map[string]classCasting{},
+		subCasting:     map[string]classCasting{},
 		namesPT:        map[string]string{},
 		namesEN:        map[string]string{},
 		optionParents:  map[string]string{},
@@ -218,7 +250,8 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.indexCasting(); err != nil {
 		return nil, err
 	}
-	c.buildCatalog()
+	c.multiclassTable = c.findMulticlassTable()
+	c.buildCatalog(nil)
 	c.buildCreatures()
 	c.buildMagicItems()
 	return c, nil
@@ -408,22 +441,76 @@ func (c *content) effectOwnerExists(key string) bool {
 // indexCasting finds, for each class, the feature with the spellcasting
 // effect and the class level it comes at.
 func (c *content) indexCasting() error {
-	for classKey, rows := range c.classLevels {
-		for _, row := range rows {
-			for _, fk := range row.Features {
-				for _, e := range c.effects[fk] {
-					if e.Type != "spellcasting" {
-						continue
-					}
-					if _, dup := c.casting[classKey]; dup {
-						return fmt.Errorf("class %s has two spellcasting effects", classKey)
-					}
-					c.casting[classKey] = classCasting{effect: e, level: row.Level}
+	for classKey := range c.classLevels {
+		if err := c.indexClassCasting(classKey); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// indexClassCasting is indexCasting for one class.
+func (c *content) indexClassCasting(classKey string) error {
+	for _, row := range c.classLevels[classKey] {
+		for _, fk := range row.Features {
+			for _, e := range c.effects[fk] {
+				if e.Type != "spellcasting" {
+					continue
 				}
+				if _, dup := c.casting[classKey]; dup {
+					return fmt.Errorf("class %s has two spellcasting effects", classKey)
+				}
+				c.casting[classKey] = classCasting{effect: e, level: row.Level, list: classKey}
 			}
 		}
 	}
 	return nil
+}
+
+// findMulticlassTable picks the class whose table the multiclass spellcaster
+// rule reads: the first full caster of the SRD, never a table class (its
+// table is its own).
+func (c *content) findMulticlassTable() string {
+	for _, key := range sortedKeys(c.casting) {
+		if c.casting[key].effect.Progression == "full" && !isTableKey(key) {
+			return key
+		}
+	}
+	return ""
+}
+
+// castingFor says how a class casts, with the subclass the character chose
+// (a third caster casts through its subclass).
+func (c *content) castingFor(classKey string, sub *srd51.Subclass) (classCasting, bool) {
+	if cast, ok := c.casting[classKey]; ok {
+		return cast, true
+	}
+	if sub != nil {
+		cast, ok := c.subCasting[sub.Key]
+		return cast, ok
+	}
+	return classCasting{}, false
+}
+
+// castingRow is the table row a caster reads at a class level: the class's,
+// or the subclass's for a third caster. It is nil when the subclass table has
+// no row there.
+func (c *content) castingRow(classKey string, level int, cast classCasting) *srd51.Level {
+	if cast.sub != "" {
+		return c.subclassLevels[cast.sub][level]
+	}
+	return c.classLevels[classKey][level-1]
+}
+
+// onList says whether spell s is on the spell list of class: the spell names
+// the class, or the class reuses (listFrom) a list that names it. It is the one
+// membership test Derive, the level-up and the catalog share.
+func (c *content) onList(s *srd51.Spell, class string) bool {
+	if slices.Contains(s.Classes, class) {
+		return true
+	}
+	from, ok := c.listFrom[class]
+	return ok && slices.Contains(s.Classes, from)
 }
 
 // exists says whether key is any known content key.
@@ -461,19 +548,23 @@ func abilityMap(m map[string]int) map[Ability]int {
 	return out
 }
 
-func (c *content) buildCatalog() {
+// buildCatalog fills catalog, spellEntries and spellDetails. reuse, when not nil,
+// are the details of another content with the same SRD spells (the base of a
+// With): the ones that did not change are shared instead of parsed again.
+func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	cat := Catalog{ContentVersion: c.version, Attribution: srd51.Attribution}
 	for _, k := range sortedKeys(c.races) {
 		r := c.races[k]
 		cat.Races = append(cat.Races, RaceEntry{
 			Key: k, Name: r.Name, NamePT: c.namePT(k), SpeedFt: r.SpeedFt, Size: r.Size,
 			AbilityBonuses: abilityMap(r.AbilityBonuses), Subraces: r.Subraces,
+			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k],
 		})
 	}
 	for _, k := range sortedKeys(c.subraces) {
 		s := c.subraces[k]
 		cat.Subraces = append(cat.Subraces, SubraceEntry{
-			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses),
+			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k],
 		})
 	}
 	for _, k := range sortedKeys(c.classes) {
@@ -481,7 +572,7 @@ func (c *content) buildCatalog() {
 		e := ClassEntry{
 			Key: k, Name: cl.Name, NamePT: c.namePT(k), HitDie: cl.HitDie,
 			SkillChoices: cl.SkillChoices.Choose, SkillOptions: cl.SkillChoices.From,
-			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses,
+			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k],
 		}
 		for _, s := range cl.SavingThrows {
 			if a, ok := ability(s); ok {
@@ -505,11 +596,26 @@ func (c *content) buildCatalog() {
 	}
 	for _, k := range sortedKeys(c.subclasses) {
 		s := c.subclasses[k]
-		cat.Subclasses = append(cat.Subclasses, SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class})
+		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k]}
+		if cast, ok := c.subCasting[k]; ok {
+			sc := &SubclassCasting{
+				Kind: cast.effect.Progression, Ability: Ability(cast.effect.Ability), Preparation: preparation(cast.effect),
+				SpellList: cast.list, StartLevel: cast.level,
+			}
+			for lvl := 1; lvl <= MaxLevel; lvl++ {
+				highest := 0
+				if row := c.subclassLevels[k][lvl]; row != nil && row.Spellcasting != nil {
+					highest = MaxSpellLevelFromSlots(row.Spellcasting.Slots)
+				}
+				sc.MaxSpellLevelByLevel = append(sc.MaxSpellLevelByLevel, highest)
+			}
+			e.Casting = sc
+		}
+		cat.Subclasses = append(cat.Subclasses, e)
 	}
 	for _, k := range sortedKeys(c.backgrounds) {
 		b := c.backgrounds[k]
-		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills})
+		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills, EquipmentPT: c.bgEquipment[k], Archived: c.archived[k]})
 	}
 	for _, k := range c.skillOrder {
 		s := c.skills[k]
@@ -541,19 +647,25 @@ func (c *content) buildCatalog() {
 			})
 		}
 	}
-	c.spellEntries = map[string]SpellEntry{}
-	c.spellDetails = map[string]*SpellDetails{}
+	c.spellEntries = make(map[string]SpellEntry, len(c.spells))
+	c.spellDetails = make(map[string]*SpellDetails, len(c.spells))
 	for _, k := range sortedKeys(c.spells) {
 		s := c.spells[k]
 		e := SpellEntry{
 			Key: k, Name: s.Name, NamePT: c.namePT(k), Level: s.Level,
 			School: s.School, SchoolNamePT: c.namePT(s.School),
-			Classes: s.Classes, Ritual: s.Ritual, Concentration: s.Concentration,
-			CastingTime: parseCastingTime(s.CastingTime),
+			Classes: c.spellClasses(s), Ritual: s.Ritual, Concentration: s.Concentration,
+			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k],
 		}
 		cat.Spells = append(cat.Spells, e)
 		c.spellEntries[k] = e
-		c.spellDetails[k] = c.buildSpellDetails(s, e)
+		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && slices.Equal(d.Spell.Classes, e.Classes) {
+			c.spellDetails[k] = d
+			continue
+		}
+		d := c.buildSpellDetails(s, e)
+		d.Target = c.spellTargets[k]
+		c.spellDetails[k] = d
 	}
 	for _, a := range AllAbilities() {
 		cat.Abilities = append(cat.Abilities, AbilityEntry{
@@ -575,6 +687,30 @@ func (c *content) buildCatalog() {
 	cat.ChallengeRatings = slices.Clone(c.ratings)
 	c.catalog = cat
 }
+
+// spellClasses are the classes whose list a spell is on: the spell's own, and
+// the table classes that reuse a list it is on. Without a table layer it is the
+// SRD's slice, shared.
+func (c *content) spellClasses(s *srd51.Spell) []string {
+	if len(c.listFrom) == 0 {
+		return s.Classes
+	}
+	out := s.Classes
+	cloned := false
+	for _, class := range sortedKeys(c.listFrom) {
+		if slices.Contains(s.Classes, c.listFrom[class]) && !slices.Contains(out, class) {
+			if !cloned {
+				out, cloned = slices.Clone(out), true
+			}
+			out = append(out, class)
+		}
+	}
+	return out
+}
+
+// isTableKey says whether a content key belongs to the table's layer: it ends
+// in "@mesa" (ADR-0018).
+func isTableKey(key string) bool { return strings.HasSuffix(key, tableSuffix) }
 
 func sortPT[T any](s []T, name func(T) string) {
 	slices.SortStableFunc(s, func(a, b T) int { return comparePT(name(a), name(b)) })

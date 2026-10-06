@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultCreaturesPage = 50
-	maxCreaturesPage     = 100
+	maxCreaturesPage     = 400 // the bestiary shows the whole list: 334 creatures
 	maxCreatureQuery     = 100
 )
 
@@ -48,6 +48,10 @@ func (s *Service) ListCreatures(
 	case size < 0 || size > maxCreaturesPage:
 		return nil, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxCreaturesPage))
 	}
+	sizeWord, ok := creatureSizeWord(req.Msg.GetSize())
+	if !ok {
+		return nil, invalidArgument(fieldErr("size", "must be a creature size"))
+	}
 	offset := 0
 	if token := req.Msg.GetPageToken(); token != "" {
 		var ok bool
@@ -60,11 +64,19 @@ func (s *Service) ListCreatures(
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
 	list, err := content.ListCreatures(rules.CreatureFilter{
-		Query: req.Msg.GetQuery(), Type: req.Msg.GetType(), MaxCR: req.Msg.GetMaxCr(),
+		Query: req.Msg.GetQuery(), Type: req.Msg.GetType(), Size: sizeWord, MinCR: req.Msg.GetMinCr(), MaxCR: req.Msg.GetMaxCr(),
 		NoFly: req.Msg.GetNoFly(), NoSwim: req.Msg.GetNoSwim(),
 	})
-	if err != nil {
-		return nil, invalidArgument(fieldErr("max_cr", "is not one of the SRD's challenge ratings"))
+	if fe, ok := errors.AsType[*rules.CreatureFilterError](err); ok {
+		switch {
+		case errors.Is(fe, rules.ErrChallengeRange):
+			return nil, invalidArgument(fieldErr(fe.Field, "must not be above max_cr"))
+		case errors.Is(fe, rules.ErrChallengeRating):
+			return nil, invalidArgument(fieldErr(fe.Field, "is not one of the SRD's challenge ratings"))
+		}
+		return nil, invalidArgument(fieldErr(fe.Field, "is not valid"))
+	} else if err != nil {
+		return nil, s.dbError(ctx, "list creatures", err)
 	}
 	res := &rulesv1.ListCreaturesResponse{Total: i32(len(list))}
 	if offset > len(list) {
@@ -103,7 +115,7 @@ func (s *Service) GetCreature(
 // works for the list it came from.
 func creaturesFilterID(r *rulesv1.ListCreaturesRequest) string {
 	sum := sha256.Sum256([]byte(strings.Join([]string{
-		r.GetQuery(), r.GetType(), r.GetMaxCr(), strconv.FormatBool(r.GetNoFly()), strconv.FormatBool(r.GetNoSwim()),
+		r.GetQuery(), r.GetType(), r.GetMaxCr(), r.GetMinCr(), r.GetSize().String(), strconv.FormatBool(r.GetNoFly()), strconv.FormatBool(r.GetNoSwim()),
 	}, "\x00")))
 	return hex.EncodeToString(sum[:6])
 }
@@ -125,11 +137,26 @@ func parseCreaturesToken(token, filters string) (int, bool) {
 	return offset, found && hasFilters && got == filters && err == nil && offset >= 0
 }
 
+// creatureSizeWord is the SRD's size word ("Large") of a size filter, "" for
+// UNSPECIFIED (any size); ok is false for a number that is no size.
+func creatureSizeWord(s rulesv1.CreatureSize) (string, bool) {
+	if s == rulesv1.CreatureSize_CREATURE_SIZE_UNSPECIFIED {
+		return "", true
+	}
+	name, ok := rulesv1.CreatureSize_name[int32(s)]
+	if !ok {
+		return "", false
+	}
+	word := strings.TrimPrefix(name, "CREATURE_SIZE_")
+	return word[:1] + strings.ToLower(word[1:]), true
+}
+
 func creatureSummaryToProto(e rules.CreatureEntry) *rulesv1.CreatureSummary {
 	return &rulesv1.CreatureSummary{
 		Key: e.Key, Name: e.Name, NamePt: e.NamePT, Size: e.Size, SizePt: e.SizeNamePT,
 		Type: e.Type, TypePt: e.TypeNamePT, Subtype: e.Subtype,
 		ChallengeRating: e.ChallengeRating, Xp: i32(e.XP), CanFly: e.CanFly, CanSwim: e.CanSwim,
+		ArmorClass: i32(e.ArmorClass), HitPoints: i32(e.HitPoints),
 	}
 }
 

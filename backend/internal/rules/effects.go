@@ -130,7 +130,7 @@ var (
 	proficiencyLevels = []string{"half", "full", "expertise"}
 	rollModes         = []string{"advantage", "disadvantage"}
 	senses            = []string{"darkvision", "blindsight", "tremorsense", "truesight"}
-	progressions      = []string{"full", "half", "pact"}
+	progressions      = []string{"full", "half", "third", "pact"}
 	recharges         = []string{"short_rest", "long_rest", "dawn", "none"}
 	choiceKinds       = []string{
 		"skill", "expertise", "cantrip", "spell", "subclass", "feature",
@@ -159,7 +159,7 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		if src == "" {
 			return nil, nil
 		}
-		p, err := c.compiler.Compile(src, kind)
+		p, err := c.compileFormula(src, kind)
 		if err != nil {
 			return nil, fail("formula %q: %v", src, err)
 		}
@@ -280,6 +280,31 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		}
 	}
 	return nil
+}
+
+// programKey identifies a compiled formula: its text and its kind.
+type programKey struct {
+	src  string
+	kind formula.Kind
+}
+
+// compileFormula compiles one formula. While a table layer is being added
+// (With), programs memoizes by text: a program is immutable, and a table repeats
+// the same few formulas ("prof()", "1") in many features, so each is compiled
+// once. The memo is dropped when With is done; the SRD load does not use it.
+func (c *content) compileFormula(src string, kind formula.Kind) (*formula.Program, error) {
+	if c.programs == nil {
+		return c.compiler.Compile(src, kind)
+	}
+	key := programKey{src, kind}
+	if p, ok := c.programs[key]; ok {
+		return p, nil
+	}
+	p, err := c.compiler.Compile(src, kind)
+	if err == nil {
+		c.programs[key] = p
+	}
+	return p, err
 }
 
 func (c *content) validModifierTarget(t string) bool {

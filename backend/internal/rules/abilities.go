@@ -70,6 +70,7 @@ func (x *deriver) abilities() {
 			Score: score, Modifier: x.mods[a],
 		})
 	}
+	x.checkRaceBonus()
 	// Increases the race lets the player choose (the half-elf's +1 to two
 	// abilities) go in the manual bonuses; remind the player while no
 	// manual bonus is positive.
@@ -334,4 +335,37 @@ var accentFolder = strings.NewReplacer(
 
 func foldPT(s string) string {
 	return accentFolder.Replace(strings.ToLower(s))
+}
+
+// checkRaceBonus checks the bonuses a table race lets the player place ("+2 and
+// +1 to your choice"): the player puts them in the manual bonuses, and an
+// Issue says when the manual bonuses do not cover them. A level's Ability Score
+// Improvement only adds to them, so it never takes the check back.
+func (x *deriver) checkRaceBonus() {
+	if x.race == nil {
+		return
+	}
+	want := x.c.raceChoice[x.race.Key]
+	if len(want) == 0 {
+		return
+	}
+	var placed []int
+	for _, v := range x.b.ExtraAbilityBonuses {
+		if v > 0 {
+			placed = append(placed, v)
+		}
+	}
+	slices.SortFunc(placed, func(a, b int) int { return b - a })
+	covered := len(placed) >= len(want)
+	for i := 0; covered && i < len(want); i++ {
+		covered = placed[i] >= want[i]
+	}
+	if covered {
+		return
+	}
+	parts := make([]string, len(want))
+	for i, v := range want {
+		parts[i] = signed(v)
+	}
+	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: distribua %s em atributos diferentes, à sua escolha, nos bônus manuais.", x.c.namePT(x.race.Key), strings.Join(parts, " e "))
 }
