@@ -1,0 +1,112 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.spell__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+}
+
+// The four fields: two by two, like the sheet's small boxes.
+.spell__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-ground);
+}
+
+.spell__fact {
+  padding: var(--mr-space-3);
+
+  &:nth-child(2n) {
+    border-left: 1px solid var(--mr-line);
+  }
+
+  &:nth-child(n + 3) {
+    border-top: 1px solid var(--mr-line);
+  }
+
+  dt {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+}
+
+.spell__english,
+.spell__note {
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.spell__label {
+  margin: 0 0 var(--mr-space-2);
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.spell__prose {
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-top: var(--mr-space-2);
+  }
+}
+
+// The dialog's grid is two by two: an odd last fact (the "Alvo" row makes five) takes the whole row, never a half.
+.spell__facts:not(.spell__facts--rows) .spell__fact:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+// The page's card (E10-11): one fact per row, the name left and the value right, no box around them.
+.spell__facts--rows {
+  grid-template-columns: minmax(0, 1fr);
+  border: 0;
+  border-radius: 0;
+  background: none;
+
+  .spell__fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+    padding-inline: 0;
+    border-left: 0 !important;
+
+    &:nth-child(n + 2) {
+      border-top: 1px solid var(--mr-line);
+    }
+
+    dd {
+      margin: 0;
+      text-align: end;
+    }
+  }
+}
+
+// A table spell's text is the master's own, in Portuguese: no box, no "SRD" label.
+.spell__prose--ours {
+  padding: 0;
+  border: 0;
+}

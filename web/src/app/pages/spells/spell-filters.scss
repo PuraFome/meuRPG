@@ -1,0 +1,62 @@
+@use '../../shared/creatures/filter-fields';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  --field-h: 48px;
+}
+
+.levels {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// 44 px targets: "Todos" is a pill, the circles are round.
+.chip {
+  box-sizing: border-box;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  cursor: pointer;
+
+  &--round {
+    width: 44px;
+    padding: 0;
+  }
+
+  &--on {
+    border-color: var(--mr-ink);
+    background: var(--mr-ink);
+    color: var(--mr-surface);
+    font-weight: 700;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
+}
