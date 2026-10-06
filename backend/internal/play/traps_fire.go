@@ -441,14 +441,20 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 		i := len(caught) + j
 		targets[i].id = cr.ID
 		if trapNeedsAC(effect) {
-			sheet, ok := s.roster.CreatureSheet(cr.MonsterKey, "")
+			sheet, ok, err := s.roster.CreatureSheet(ctx, c.tx, campaignID, cr.MonsterKey, "")
+			if err != nil {
+				return nil, err
+			}
 			if !ok {
 				return nil, errCombatantNotFound()
 			}
 			targets[i].armorClass = sheet.ArmorClass
 		}
 		if ability != "" {
-			save := s.roster.CreatureSave(cr.MonsterKey, ability)
+			save, err := s.roster.CreatureSave(ctx, c.tx, campaignID, cr.MonsterKey, ability)
+			if err != nil {
+				return nil, err
+			}
 			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
 		}
 	}

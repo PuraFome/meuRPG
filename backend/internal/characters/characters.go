@@ -56,7 +56,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
-	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
@@ -102,9 +101,14 @@ type Config struct {
 	// Members settles a pending member's membership when the master
 	// approves or rejects their character (RN-15). Required.
 	Members PendingMembers
-	// Rules is the rules content (rules.LoadSRD), loaded once at startup.
-	// Required.
-	Rules *rules.Content
+	// Content gives the rules content of a campaign (ContentSource). Required;
+	// NewSRDSource(rules.LoadSRD()) is the one that serves the SRD to every
+	// campaign.
+	Content ContentSource
+	// SRD is the base SRD content (rules.LoadSRD), for what no table can
+	// change and so needs no campaign: the conditions' names (RN-22) and the
+	// scene checks' names (the skills). Required.
+	SRD *rules.Content
 	// Dice tells what the campaign's dice setting makes a player do with the
 	// hit die of a level-up (RN-18). Nil means every player chooses.
 	Dice DiceRules
@@ -125,12 +129,13 @@ type Service struct {
 	queries  *charactersdb.Queries
 	profiles Profiles
 	members  PendingMembers
-	rules    *rules.Content
+	content  ContentSource
+	srd      *rules.Content
 	logger   *slog.Logger
 	now      func() time.Time
-	// catalog is ListContent's answer, built once: the content never
-	// changes while the server runs.
-	catalog *rulesv1.Content
+	// catalogs holds ListContent's answer for the last few contents, built on
+	// first use (catalogFor).
+	catalogs catalogCache
 	// levelUps says whether a character can go up a level (RN-12): package
 	// progression, connected by SetLevelUps. Nil until then.
 	levelUps LevelUps
@@ -164,18 +169,20 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("characters: Profiles is required")
 	case cfg.Members == nil:
 		return nil, errors.New("characters: Members is required")
-	case cfg.Rules == nil:
-		return nil, errors.New("characters: Rules is required")
+	case cfg.SRD == nil:
+		return nil, errors.New("characters: SRD is required")
+	case cfg.Content == nil:
+		return nil, errors.New("characters: Content is required")
 	}
 	s := &Service{
 		pool:     cfg.Pool,
 		queries:  charactersdb.New(cfg.Pool),
 		profiles: cfg.Profiles,
 		members:  cfg.Members,
-		rules:    cfg.Rules,
+		content:  cfg.Content,
+		srd:      cfg.SRD,
 		logger:   cfg.Logger,
 		now:      cfg.Now,
-		catalog:  catalogToProto(cfg.Rules.Catalog()),
 		dice:     cfg.Dice,
 		roller:   cfg.Roller,
 	}

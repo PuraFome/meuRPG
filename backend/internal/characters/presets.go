@@ -26,18 +26,19 @@ func (s *Service) ListTrapPresets(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
+	content := s.srd // the SRD's presets: no table changes them (plan D1), and maps checks their keys against the SRD
 	res := &rulesv1.ListTrapPresetsResponse{}
-	for _, p := range s.rules.TrapPresets() {
-		res.Presets = append(res.Presets, s.trapPresetToProto(p))
+	for _, p := range content.TrapPresets() {
+		res.Presets = append(res.Presets, trapPresetToProto(content, p))
 	}
-	for _, v := range s.rules.TrapSeverities() {
+	for _, v := range content.TrapSeverities() {
 		res.Severities = append(res.Severities, &rulesv1.TrapSeverity{
 			Key: v.Key, NamePt: v.NamePT,
 			SaveDcMin: i32(v.SaveDC.Min), SaveDcMax: i32(v.SaveDC.Max),
 			AttackBonusMin: i32(v.AttackBonus.Min), AttackBonusMax: i32(v.AttackBonus.Max),
 		})
 	}
-	for _, r := range s.rules.TrapDamageByLevel() {
+	for _, r := range content.TrapDamageByLevel() {
 		res.DamageByLevel = append(res.DamageByLevel, &rulesv1.TrapDamageRow{
 			FromLevel: i32(r.FromLevel), ToLevel: i32(r.ToLevel),
 			Setback: trapDiceText(r.Setback), Dangerous: trapDiceText(r.Dangerous), Deadly: trapDiceText(r.Deadly),
@@ -54,8 +55,9 @@ func (s *Service) ListLightPresets(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
+	content := s.srd // the SRD's presets: no table changes them (plan D1), and maps checks their keys against the SRD
 	res := &rulesv1.ListLightPresetsResponse{}
-	for _, l := range s.rules.LightPresets() {
+	for _, l := range content.LightPresets() {
 		res.Presets = append(res.Presets, &rulesv1.LightPreset{
 			Key: l.Key, NamePt: l.NamePT, BrightFt: i32(l.BrightFt), DimFt: i32(l.DimFt), DurationPt: l.DurationPT,
 		})
@@ -91,39 +93,39 @@ func trapDiceText(d rules.DiceFormula) string {
 	return strconv.Itoa(d.Count) + "d" + strconv.Itoa(d.Sides)
 }
 
-func (s *Service) trapDamageToProto(d rules.TrapDamage) *rulesv1.TrapDamage {
-	return &rulesv1.TrapDamage{Dice: trapDiceText(d.Dice), DamageTypeKey: d.Type, DamageTypePt: s.rules.NamePT(d.Type)}
+func trapDamageToProto(content *rules.Content, d rules.TrapDamage) *rulesv1.TrapDamage {
+	return &rulesv1.TrapDamage{Dice: trapDiceText(d.Dice), DamageTypeKey: d.Type, DamageTypePt: content.NamePT(d.Type)}
 }
 
-func (s *Service) trapDamagesToProto(list []rules.TrapDamage) []*rulesv1.TrapDamage {
+func trapDamagesToProto(content *rules.Content, list []rules.TrapDamage) []*rulesv1.TrapDamage {
 	var out []*rulesv1.TrapDamage
 	for _, d := range list {
-		out = append(out, s.trapDamageToProto(d))
+		out = append(out, trapDamageToProto(content, d))
 	}
 	return out
 }
 
-func (s *Service) trapConditionToProto(key, duration string) *rulesv1.TrapCondition {
-	return &rulesv1.TrapCondition{ConditionKey: key, ConditionPt: s.rules.NamePT(key), DurationPt: duration}
+func trapConditionToProto(content *rules.Content, key, duration string) *rulesv1.TrapCondition {
+	return &rulesv1.TrapCondition{ConditionKey: key, ConditionPt: content.NamePT(key), DurationPt: duration}
 }
 
 // trapPresetToProto copies a preset, with the effect in parts as the map's trap
 // keeps it.
-func (s *Service) trapPresetToProto(p rules.TrapPreset) *rulesv1.TrapPreset {
+func trapPresetToProto(content *rules.Content, p rules.TrapPreset) *rulesv1.TrapPreset {
 	effect := &rulesv1.TrapEffect{
-		Damage:  s.trapDamagesToProto(p.Damage),
+		Damage:  trapDamagesToProto(content, p.Damage),
 		Targets: trapTargetsToProto[p.Targets],
 	}
 	for _, c := range p.Conditions {
-		effect.Conditions = append(effect.Conditions, s.trapConditionToProto(c.Condition, c.DurationPT))
+		effect.Conditions = append(effect.Conditions, trapConditionToProto(content, c.Condition, c.DurationPT))
 	}
 	if a := p.Attack; a != nil {
-		effect.Attack = &rulesv1.TrapAttack{Bonus: i32(a.Bonus), Count: i32(a.Count), Damage: s.trapDamageToProto(a.Damage)}
+		effect.Attack = &rulesv1.TrapAttack{Bonus: i32(a.Bonus), Count: i32(a.Count), Damage: trapDamageToProto(content, a.Damage)}
 	}
 	if sv := p.Save; sv != nil {
-		onFail := &rulesv1.TrapOnFail{Damage: s.trapDamagesToProto(sv.OnFail.Damage)}
+		onFail := &rulesv1.TrapOnFail{Damage: trapDamagesToProto(content, sv.OnFail.Damage)}
 		if sv.OnFail.Condition != "" {
-			onFail.Condition = s.trapConditionToProto(sv.OnFail.Condition, sv.OnFail.DurationPT)
+			onFail.Condition = trapConditionToProto(content, sv.OnFail.Condition, sv.OnFail.DurationPT)
 		}
 		effect.Save = &rulesv1.TrapSaveEffect{
 			Ability: abilityToProto[sv.Ability], Dc: i32(sv.DC), AppliesTo: trapAppliesToProto[sv.AppliesTo],

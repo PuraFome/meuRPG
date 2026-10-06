@@ -593,7 +593,9 @@ func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) err
 
 func (noRoster) Conditions() []link.Named { return nil }
 
-func (noRoster) NamePT(string) string { return "" }
+func (noRoster) ContentNames(context.Context, pgx.Tx, string) (func(string) string, error) {
+	return func(string) string { return "" }, nil
+}
 
 func (noRoster) CharacterCreatures(context.Context, pgx.Tx, string, []string) ([]link.Creature, error) {
 	return nil, errors.New("not in this test")
@@ -631,15 +633,21 @@ func (noRoster) WriteBackCreatures(context.Context, pgx.Tx, string, []link.Creat
 	return errors.New("not in this test")
 }
 
-func (noRoster) CreatureSheet(string, string) (link.Sheet, bool) { return link.Sheet{}, false }
-
-func (noRoster) CreatureTurnOptions(string, string, link.Turn) (*rulesv1.TurnOptions, bool) {
-	return nil, false
+func (noRoster) CreatureSheet(context.Context, pgx.Tx, string, string, string) (link.Sheet, bool, error) {
+	return link.Sheet{}, false, nil
 }
 
-func (noRoster) CreatureSave(string, string) link.Save { return link.Save{} }
+func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, string, link.Turn) (*rulesv1.TurnOptions, bool, error) {
+	return nil, false, nil
+}
 
-func (noRoster) CreatureEyes(string) (maplink.Eyes, bool) { return maplink.Eyes{}, false }
+func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
+	return link.Save{}, nil
+}
+
+func (noRoster) CreatureEyes(context.Context, pgx.Tx, string, string) (maplink.Eyes, bool, error) {
+	return maplink.Eyes{}, false, nil
+}
 
 type noDice struct{}
 

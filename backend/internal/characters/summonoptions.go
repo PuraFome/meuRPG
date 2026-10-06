@@ -55,7 +55,7 @@ func (s *Service) GetSummonOptions(
 		}
 		return nil, err
 	}
-	vitals, err := s.getVitals(ctx, s.queries, m.CampaignID, id)
+	vitals, err := s.getVitals(ctx, nil, m.CampaignID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +67,13 @@ func (s *Service) GetSummonOptions(
 		out.Slots = append(out.Slots, &charactersv1.SummonSlot{Level: p.GetSlotLevel(), Pact: true, Total: p.GetTotal(), Free: p.GetTotal() - p.GetUsed()})
 		slices.SortStableFunc(out.Slots, func(a, c *charactersv1.SummonSlot) int { return int(a.GetLevel() - c.GetLevel()) })
 	}
-	d := rules.Derive(b, s.rules)
-	for _, key := range s.rules.SummonSpells() {
-		spell, err := s.summonSpellOptions(ctx, m.CampaignID, id, b, d, key, out.Slots)
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	d := rules.Derive(b, content)
+	for _, key := range content.SummonSpells() {
+		spell, err := s.summonSpellOptions(ctx, content, m.CampaignID, id, b, d, key, out.Slots)
 		if err != nil {
 			return nil, err
 		}
@@ -82,12 +86,12 @@ func (s *Service) GetSummonOptions(
 
 // summonSpellOptions is one spell's entry, or nil when the character cannot cast
 // it (no ritual and no ready slot cast).
-func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterID string, b rules.Build, d rules.Derived, key string, slots []*charactersv1.SummonSlot) (*charactersv1.SummonSpellOptions, error) {
-	det, ok := s.rules.SpellDetails(key)
+func (s *Service) summonSpellOptions(ctx context.Context, content *rules.Content, campaignID, characterID string, b rules.Build, d rules.Derived, key string, slots []*charactersv1.SummonSlot) (*charactersv1.SummonSpellOptions, error) {
+	det, ok := content.SpellDetails(key)
 	if !ok {
 		return nil, nil
 	}
-	own, err := s.rules.SummonOptions(key, det.Spell.Level, b)
+	own, err := content.SummonOptions(key, det.Spell.Level, b)
 	if err != nil {
 		return nil, fmt.Errorf("summon options of %s: %w", key, err)
 	}
@@ -97,7 +101,7 @@ func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterI
 		return nil, nil
 	}
 	out := &charactersv1.SummonSpellOptions{
-		SpellKey: key, NamePt: s.rules.NamePT(key), Level: int32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime), //nolint:gosec // a spell's circle is 1 to 9
+		SpellKey: key, NamePt: content.NamePT(key), Level: int32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime), //nolint:gosec // a spell's circle is 1 to 9
 		Ritual: own.Ritual, Concentration: own.Concentration, CanRitual: st.canRitual, CanCastWithSlot: canSlot,
 	}
 	circles := map[int]bool{}
@@ -117,7 +121,7 @@ func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterI
 	}
 	slices.Sort(levels)
 	for _, c := range levels {
-		choices, err := s.rules.SummonOptions(key, c, b)
+		choices, err := content.SummonOptions(key, c, b)
 		if err != nil {
 			continue // a pact slot above the spell's reach, or a circle the spell does not take
 		}
@@ -125,7 +129,7 @@ func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterI
 		for _, o := range choices.Options {
 			opt := &charactersv1.SummonOption{Count: int32(o.Count), Type: o.Type, MaxCr: o.MaxCR, Attack: creatureAttackNumber[o.Attack]} //nolint:gosec // a few dozen at most
 			for _, f := range o.Forms {
-				opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: s.rules.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
+				opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: content.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
 			}
 			sc.Options = append(sc.Options, opt)
 		}
@@ -139,7 +143,7 @@ func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterI
 			return nil, s.dbError(ctx, "list the familiars", err)
 		}
 		for _, r := range rows {
-			out.Replaces = append(out.Replaces, s.replaced(r.CharacterCreature))
+			out.Replaces = append(out.Replaces, replaced(content, r.CharacterCreature))
 		}
 	}
 	if own.Concentration {
@@ -148,14 +152,14 @@ func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterI
 			return nil, s.dbError(ctx, "list the creatures that depend on a concentration", err)
 		}
 		for _, r := range rows {
-			out.Replaces = append(out.Replaces, s.replaced(r.CharacterCreature))
+			out.Replaces = append(out.Replaces, replaced(content, r.CharacterCreature))
 		}
 	}
 	return out, nil
 }
 
-func (s *Service) replaced(c charactersdb.CharacterCreature) *charactersv1.ReplacedCreature {
-	return &charactersv1.ReplacedCreature{Id: c.ID, Name: c.Name, MonsterKey: c.MonsterKey, MonsterNamePt: s.rules.NamePT(c.MonsterKey)}
+func replaced(content *rules.Content, c charactersdb.CharacterCreature) *charactersv1.ReplacedCreature {
+	return &charactersv1.ReplacedCreature{Id: c.ID, Name: c.Name, MonsterKey: c.MonsterKey, MonsterNamePt: content.NamePT(c.MonsterKey)}
 }
 
 // castingTimePT says a summoning spell's casting time in Portuguese: "1 hora",

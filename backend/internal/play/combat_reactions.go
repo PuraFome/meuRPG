@@ -90,7 +90,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 // see them: the master all, a player only those on their own character. A
 // player never gets the attack's total or an armor class, nor who attacked
 // when the attacker is hidden from them.
-func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) ([]*playv1.ReactionPrompt, error) {
+func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string) ([]*playv1.ReactionPrompt, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
 	}
@@ -111,7 +111,7 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 		if err != nil {
 			return nil, s.dbError(ctx, "work out the reaction", err)
 		}
-		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots, SpellNamePt: s.nameOf(shield)}
+		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots, SpellNamePt: names(shield)}
 		if v.master {
 			prompt.AttackerId = deref(p.AttackerID)
 		}

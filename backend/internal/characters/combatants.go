@@ -10,6 +10,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -30,9 +31,13 @@ func (s *Service) CombatParty(ctx context.Context, tx pgx.Tx, campaignID string)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party", err)
 	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party", err)
 		}
@@ -82,9 +87,13 @@ func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID st
 	if err != nil {
 		return nil, s.dbError(ctx, "list the characters of a combat", err)
 	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := s.combatCharacter(row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the characters of a combat", err)
 		}
@@ -97,7 +106,7 @@ func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID st
 // sheet: derived by the rules for a full sheet (a player, an enemy, a boss),
 // as written for a basic one (a minion, a story NPC). A druid in Wild Shape
 // (beast) starts, and keeps, with the beast's speed, size and jumps (MR-037).
-func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, doc []byte, beast *string) (link.Character, error) {
+func combatCharacter(content *rules.Content, id, kind, name string, playerUserID *string, doc []byte, beast *string) (link.Character, error) {
 	sheet, err := loadSheet(id, doc)
 	if err != nil {
 		return link.Character{}, err
@@ -105,11 +114,11 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 	c := link.Character{ID: id, Name: name, Player: kind == "player", PlayerUserID: deref(playerUserID)}
 	switch {
 	case sheet.GetFull() != nil:
-		d := s.derive(sheet.GetFull(), beast)
+		d := derive(content, sheet.GetFull(), beast)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
-		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, s.raceSize(sheet.GetFull().GetRaceKey())
+		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, raceSize(content, sheet.GetFull().GetRaceKey())
 		if beast != nil && *beast != "" {
-			c.Size = s.beastSize(*beast)
+			c.Size = beastSize(content, *beast)
 		}
 		jumps := combat.JumpLimits(d)
 		c.JumpLongDFt, c.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
@@ -131,8 +140,8 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 
 // raceSize is the size of a race, as a link.Character.Size: "medium" for a race
 // the content does not know.
-func (s *Service) raceSize(raceKey string) string {
-	for _, r := range s.rules.Catalog().Races {
+func raceSize(content *rules.Content, raceKey string) string {
+	for _, r := range content.Catalog().Races {
 		if r.Key == raceKey {
 			return strings.ToLower(r.Size)
 		}
