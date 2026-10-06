@@ -1,0 +1,84 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.req {
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.req__meta {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.req__text {
+  margin: 4px 0 0;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.line__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.line__words {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.sub {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// An indeterminate bar: a dark stretch sliding across. It stands still, in the middle, when motion is not wanted.
+.bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.bar__run {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  animation: slide 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes slide {
+  to {
+    left: 70%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar__run {
+    left: 35%;
+    animation: none;
+  }
+}

@@ -1,0 +1,114 @@
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A phone: the picture, the name and the subtotal on the first line; "Quantas" with the stepper, and the XP each, on the second.
+.row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'art name sub'
+    'nd step each';
+  align-items: center;
+  gap: 6px var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.row__art {
+  grid-area: art;
+}
+
+.row__name {
+  grid-area: name;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__pt {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.row__en {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.row__nd {
+  grid-area: nd;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.row__cap {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--mr-warning-ink);
+}
+
+.row__step {
+  grid-area: step;
+}
+
+.row__each {
+  grid-area: each;
+  justify-self: end;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.row__sub {
+  grid-area: sub;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+// Narrow phones: the stepper has a row of its own, so it keeps 44 px buttons and nothing touches "200 XP cada".
+@media (max-width: 389.98px) {
+  .row {
+    grid-template-areas:
+      'art name sub'
+      'nd nd each'
+      'step step step';
+  }
+}
+
+@media (min-width: 768px) {
+  .row {
+    grid-template-columns: 44px minmax(0, 1fr) 90px auto 100px 90px;
+    grid-template-areas: 'art name nd step each sub';
+    gap: 0 var(--mr-space-3);
+  }
+
+  .row__sub {
+    justify-self: end;
+    font-size: 22px;
+  }
+
+  .row__each {
+    justify-self: end;
+  }
+}
+

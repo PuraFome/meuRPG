@@ -15,6 +15,9 @@
       }
       <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
     </div>
+    @if (creatureSlug(); as slug) {
+      <a class="card__sheet" [routerLink]="['/campanhas', campaignId(), 'bestiario', slug]">Ficha da criatura</a>
+    }
   } @else {
     <div class="card__who card__who--desk">
       @if (isNpc()) {
@@ -23,6 +26,9 @@
       <h2 class="card__title" id="npc-title">
         {{ full() ? 'Ações ' + ofLabel() : 'Dano de ' + subject().label }}
       </h2>
+      @if (creatureSlug(); as slug) {
+        <a class="card__sheet card__sheet--desk" [routerLink]="['/campanhas', campaignId(), 'bestiario', slug]">Ficha da criatura</a>
+      }
     </div>
   }
 

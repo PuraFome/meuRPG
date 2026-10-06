@@ -59,8 +59,8 @@ async function setup(opts: { withMap: boolean | 'fails'; map?: CombatMapInfo | n
       {
         provide: CombatClient,
         useValue: {
-          start: async (_c: string, _n: string, _s: unknown, _k: string, mode?: EncounterMode) => {
-            started.push({ mode });
+          start: async (_c: string, _n: string, _s: unknown, _k: string, extras?: { mode?: EncounterMode }) => {
+            started.push({ mode: extras?.mode });
             return encounter();
           },
         },

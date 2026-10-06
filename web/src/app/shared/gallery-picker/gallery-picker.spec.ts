@@ -164,4 +164,15 @@ describe('GalleryPicker', () => {
     expect(el.textContent).toContain('A galeria ainda não tem imagens. Envie a primeira.');
     expect(el.textContent).toContain('Enviar imagem');
   });
+  it('leaves out the images it is told to (the portraits of NPCs the players do not see)', async () => {
+    fixture = TestBed.createComponent(GalleryPicker);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('excluded', new Set(['img-capitao']));
+    fixture.detectChanges();
+    await settle();
+    el = fixture.nativeElement as HTMLElement;
+    const names = radios().map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
+    expect(names.some((n) => n?.includes('Capitão Goblin'))).toBe(false);
+    expect(names.some((n) => n?.includes('Covil dos goblins'))).toBe(true);
+  });
 });

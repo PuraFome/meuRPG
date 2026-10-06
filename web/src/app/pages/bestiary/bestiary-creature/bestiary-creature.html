@@ -91,6 +91,22 @@
         </header>
 
         <div class="made" #madeBox tabindex="-1" role="group" aria-label="Confirmação">
+          @if (put(); as p) {
+            <div class="mr-notice mr-notice--success">
+              <mat-icon aria-hidden="true">check</mat-icon>
+              <div class="made__text">
+                <p>
+                  <strong>{{ p.count === 1 ? 'Entrou no combate' : 'Entraram no combate' }}: {{ p.names }}.</strong>
+                  {{ p.started ? 'O combate “' + p.combatName + '” foi criado agora.' : 'Combate “' + p.combatName + '”.' }}
+                  {{ p.hidden ? 'Estão escondidos: só você os vê até revelar.' : 'Os jogadores já os veem pelo estado.' }}
+                </p>
+                <div class="made__links">
+                  <a [routerLink]="['/campanhas', campaignId, 'sessao']">Ir para a sessão</a>
+                  <a [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
+                </div>
+              </div>
+            </div>
+          }
           @if (made(); as m) {
             <div class="mr-notice mr-notice--success">
               <mat-icon aria-hidden="true">check</mat-icon>
@@ -120,11 +136,14 @@
           <app-stat-block class="layout__sheet" [creature]="c" [full]="true" />
 
           <aside class="mr-panel act" aria-labelledby="act-h">
-            <h2 class="mr-panel__title" id="act-h">NPC da campanha</h2>
+            <h2 class="mr-panel__title" id="act-h">Usar esta criatura</h2>
             <p class="act__text">
-              Faça um NPC com nome a partir desta criatura. A criatura do bestiário não muda.
+              Ponha-a no combate de uma sessão ao vivo, ou faça um NPC com nome a partir dela. A criatura do bestiário não muda.
             </p>
-            <button #createButton type="button" mat-flat-button class="act__go" (click)="openCreate(c)">
+            <button #putButton type="button" mat-flat-button class="act__go" (click)="openPut(c)">
+              <mat-icon aria-hidden="true">add</mat-icon>Pôr no combate
+            </button>
+            <button #createButton type="button" matButton="outlined" class="act__go" (click)="openCreate(c)">
               <mat-icon aria-hidden="true">person_add</mat-icon>Criar NPC
             </button>
             <p class="act__srd">

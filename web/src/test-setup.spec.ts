@@ -1,5 +1,6 @@
-// The global test setup (src/test-setup.ts) restores every stubbed global after each test: the spec files are not isolated
-// from each other, so a stub left behind would change how a later file behaves. The tests below run in order.
+// The global test setup (src/test-setup.ts) restores every stubbed global after each test and gives every test a fresh
+// scrollIntoView: the spec files are not isolated from each other, so a stub left behind would change how a later file
+// behaves. The tests below run in order.
 describe('the global test setup', () => {
   const original = window.matchMedia;
 
@@ -10,5 +11,31 @@ describe('the global test setup', () => {
 
   it('gives the next test the original back', () => {
     expect(window.matchMedia).toBe(original);
+  });
+
+  it('gives every test a scrollIntoView, which jsdom lacks and components call', () => {
+    expect(() => document.createElement('div').scrollIntoView()).not.toThrow();
+  });
+
+  it('lets a test change scrollIntoView', () => {
+    Element.prototype.scrollIntoView = () => {
+      throw new Error('changed');
+    };
+    expect(() => document.createElement('div').scrollIntoView()).toThrow('changed');
+  });
+
+  it('lets a test fake the clock', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2000, 0, 1));
+    expect(new Date().getFullYear()).toBe(2000);
+  });
+
+  it('gives the next test the real clock back', () => {
+    expect(new Date().getFullYear()).toBeGreaterThan(2000);
+  });
+
+  it('gives the next test a fresh one', () => {
+    expect(vi.mocked(Element.prototype.scrollIntoView).mock.calls).toHaveLength(0);
+    expect(() => document.createElement('div').scrollIntoView()).not.toThrow();
   });
 });

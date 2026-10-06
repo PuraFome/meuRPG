@@ -194,3 +194,16 @@ input[type='search']::-webkit-search-cancel-button {
     font-size: 20px;
   }
 }
+
+// What just went into the combat: between the filters and the list.
+.put-done {
+  margin-bottom: var(--mr-space-4);
+
+  p {
+    margin: 0 0 4px;
+  }
+
+  a {
+    font-weight: 700;
+  }
+}

@@ -48,6 +48,8 @@ export class GalleryLightbox implements OnChanges {
   readonly closed = output<void>();
   readonly rename = output<GalleryImage>();
   readonly remove = output<GalleryImage>();
+  /** "Pedir um ajuste" on a generated image: the page opens the generate dialog on it. */
+  readonly adjust = output<GalleryImage>();
 
   protected readonly image = computed(() => {
     const i = this.index();

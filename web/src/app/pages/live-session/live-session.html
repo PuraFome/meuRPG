@@ -68,7 +68,11 @@
           [session]="s"
           [state]="puzzles"
           [ownName]="ownCharacterName()"
+          [diceMode]="campaign()?.diceMode ?? 1"
+          [dicePreference]="campaign()?.dicePreference ?? 1"
           [reconnecting]="connection() === 'reconnecting' || connection() === 'paused'"
+          (openNotes)="openNotes()"
+          (diceModeStale)="refreshCampaign()"
         />
       } @else {
       @if (!combat.fullPage()) {
@@ -202,6 +206,8 @@
           [state]="mapState"
           (started)="combatStarted($event)"
         />
+        <!-- The encounters kept on the battle points of the current map, with "Começar este combate" (MR-043, E10-09 state 7). -->
+        <app-battle-encounters [campaignId]="campaignId()" [state]="mapState" (started)="combatStarted($event)" />
         <div class="board board--master" [class.board--scene-open]="scene.scene()">
           @if (!scene.scene()) {
             <app-scene-panel

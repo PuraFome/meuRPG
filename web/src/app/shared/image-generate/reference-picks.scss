@@ -1,0 +1,102 @@
+:host {
+  display: block;
+}
+
+.title {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 80px;
+}
+
+.tile__thumb {
+  position: relative;
+  display: block;
+  height: 60px;
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: calc(var(--mr-radius-sm) - 2px);
+    object-fit: cover;
+  }
+}
+
+// A 44 px target over the corner, with the small round ✕ drawn in it.
+.tile__remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+    font-size: 16px;
+    line-height: 22px;
+    text-align: center;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: -4px;
+  }
+}
+
+.tile__name {
+  overflow: hidden;
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count,
+.note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.note {
+  color: var(--mr-ink-muted);
+}

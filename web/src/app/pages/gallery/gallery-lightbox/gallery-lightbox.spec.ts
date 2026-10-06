@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import type { GalleryImage } from '../../../../gen/meurpg/maps/v1/gallery_pb';
-import { mirathelImages } from '../../../core/images/gallery-testing';
+import { galleryImage, mirathelImages } from '../../../core/images/gallery-testing';
 import { GalleryLightbox } from './gallery-lightbox';
 
 describe('GalleryLightbox', () => {
@@ -86,5 +86,18 @@ describe('GalleryLightbox', () => {
 
     (dialog.querySelector('[aria-label="Fechar"]') as HTMLButtonElement).click();
     expect(closed).toBe(1);
+  });
+  it('offers "Pedir um ajuste" only on an image the app generated, and hands it to the page', () => {
+    const adjusts: GalleryImage[] = [];
+    fixture.componentInstance.adjust.subscribe((i) => adjusts.push(i));
+    const plain = open(1);
+    expect(plain.textContent).not.toContain('Pedir um ajuste');
+    expect(plain.textContent).not.toContain('Gerada por IA');
+    fixture.componentRef.setInput('images', [...mirathelImages(), galleryImage('img-gen', 'Imagem 1', { generated: true })]);
+    const dialog = open(5);
+    expect(dialog.textContent).toContain('Gerada por IA');
+    const button = Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Pedir um ajuste')!;
+    button.click();
+    expect(adjusts.map((i) => i.id)).toEqual(['img-gen']);
   });
 });

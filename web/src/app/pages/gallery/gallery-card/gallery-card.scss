@@ -221,3 +221,18 @@ p {
   --mat-button-outlined-outline-color: var(--mr-danger-ink);
   --mat-button-outlined-label-text-color: var(--mr-danger-ink);
 }
+
+// "Gerada por IA" (MR-039) and, for an adjustment, the image it came from.
+.card__made {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--mr-space-2);
+  margin: 4px 0 0;
+}
+
+.card__from {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}

@@ -1,0 +1,188 @@
+<a class="back" [routerLink]="['/campanhas', campaignId]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a campanha
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Encontros</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando os encontros" />
+        Carregando o grupo e o orçamento...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Encontros</h1>
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre monta encontros.</strong> O encontro e o que ele guarda são segredo até o mestre revelar.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir os encontros</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    </div>
+  }
+  @case ('master') {
+    <header class="head">
+      <h1 class="mr-page-title">Encontros</h1>
+      <p class="mr-page-lead">{{ a.campaignName }}</p>
+    </header>
+
+    @if (saved(); as s) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <p>
+          <strong>Encontro guardado em “{{ s.pointName }}”.</strong>
+          {{ savedLine() }}.
+          <a [routerLink]="['/campanhas', campaignId, 'mapas', s.mapId]">Abrir o mapa</a>
+        </p>
+      </div>
+    }
+    @if (lost() > 0) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>{{ lost() === 1 ? 'Uma criatura deste ponto não está mais no SRD.' : lost() + ' criaturas deste ponto não estão mais no SRD.' }}</strong> Ficou fora do encontro; guardar de novo tira do ponto.</p>
+      </div>
+    }
+    @if (cleared()) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <p><strong>O ponto não guarda mais um encontro.</strong> O que está na tela continua aqui.</p>
+      </div>
+    }
+    @if (npcError()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ npcError() }}</p>
+      </div>
+    }
+
+    <div class="layout">
+      <div class="main">
+        <section class="mr-panel party" aria-labelledby="party-h" [attr.aria-busy]="draft.state() === 'measuring'">
+          <div class="party__head">
+            <h2 class="mr-panel__title" id="party-h">O grupo e o orçamento</h2>
+            <button type="button" class="link" [disabled]="!canAddNpc()" (click)="openNpc()">
+              <mat-icon aria-hidden="true">add</mat-icon>Pôr um NPC no grupo
+            </button>
+          </div>
+
+          @if (ev(); as e) {
+            <app-party-chips [members]="party()" (remove)="removeNpc($event)" />
+
+            <app-budget-bar [evaluation]="e" [stale]="draft.state() === 'measuring'" />
+
+            <p class="head-xp" aria-live="polite">{{ head() }}</p>
+            <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+            <p class="guide guide--c">{{ caveat }}</p>
+            @if (cap()) {
+              <p class="cap">{{ cap() }}</p>
+            }
+            @for (w of warnings(); track w.kind) {
+              <div class="mr-notice mr-notice--warning" role="status">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <p><strong>{{ w.title }}</strong> {{ w.text }}</p>
+              </div>
+            }
+          } @else if (draft.state() === 'error') {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ draft.error() }}</p>
+            </div>
+            <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+          } @else {
+            <p class="page-status" role="status">
+              <mat-spinner diameter="24" aria-label="Medindo o encontro" />
+              Medindo o encontro...
+            </p>
+          }
+          @if (ev() && draft.state() === 'error') {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ draft.error() }}</p>
+            </div>
+            <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+          }
+        </section>
+
+        <section class="mr-panel lines" aria-labelledby="lines-h">
+          <div class="lines__head">
+            <h2 class="mr-panel__title" id="lines-h">Criaturas do encontro</h2>
+            <span class="lines__n">{{ creatures() }}</span>
+          </div>
+
+          @if (rows().length === 0) {
+            <p class="mr-muted">Nenhuma criatura ainda. Procure uma no Bestiário abaixo, ou use “Gerar encontro”.</p>
+          } @else {
+            <app-encounter-rows [rows]="rows()" [campaignId]="campaignId" [max]="entryMax" (count)="setCount($event.key, $event.value)" />
+          }
+
+          <app-creature-pick [campaignId]="campaignId" [disabled]="!canAddKind()" (picked)="add($event)" />
+
+          <div class="total">
+            <span class="total__l">Total</span>
+            <span class="total__n">{{ total() }}</span>
+          </div>
+        </section>
+      </div>
+
+      <aside class="side">
+        <section class="mr-panel act" aria-labelledby="gen-h">
+          <h2 class="mr-panel__title" id="gen-h">Gerar encontro</h2>
+          <p class="act__text">Diga a dificuldade e, se quiser, o tipo de criatura. O app monta um líder e um grupo dentro do orçamento.</p>
+          <button type="button" matButton="outlined" class="act__go" (click)="openGenerate()">
+            <mat-icon aria-hidden="true">shuffle</mat-icon>Gerar encontro
+          </button>
+        </section>
+        <section class="mr-panel act" aria-labelledby="save-h">
+          <h2 class="mr-panel__title" id="save-h">Guardar</h2>
+          <p class="act__text">O encontro fica num ponto de batalha de um mapa, e só você o vê.</p>
+          <button type="button" mat-flat-button class="act__go" [disabled]="draft.entries().length === 0" disabledInteractive [class.mr-button--off]="draft.entries().length === 0" (click)="openSave()">
+            <mat-icon aria-hidden="true">flag</mat-icon>Guardar no ponto de batalha
+          </button>
+          @if (draft.entries().length === 0) {
+            <p class="act__why">Ponha pelo menos uma criatura.</p>
+          }
+          @if (keptAt()) {
+            @if (clearing()) {
+              <div class="act__ask" role="group" aria-labelledby="clear-q">
+                <p id="clear-q"><strong>Tirar o encontro do ponto?</strong> O ponto fica sem encontro guardado. O que está na tela não muda.</p>
+                <div class="act__row">
+                  <button type="button" matButton="outlined" class="act__go" data-initial-focus (click)="clearing.set(false)">Voltar</button>
+                  <button type="button" mat-flat-button class="act__go" [disabled]="clearBusy()" (click)="clearPoint()">Tirar o encontro</button>
+                </div>
+              </div>
+            } @else {
+              <button type="button" matButton="outlined" class="act__go" (click)="askClear()">
+                <mat-icon aria-hidden="true">delete</mat-icon>Tirar o encontro do ponto
+              </button>
+            }
+          }
+        </section>
+      </aside>
+    </div>
+  }
+}
