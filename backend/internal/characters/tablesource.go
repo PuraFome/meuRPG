@@ -131,6 +131,11 @@ func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id
 	if err != nil {
 		return nil, wrap("read the table's content", err)
 	}
+	// The options the master switched off, read in the same transaction as the
+	// revision: every write of one starts by bumping it.
+	if overlay.Off, err = q.ListContentOff(ctx, id); err != nil {
+		return nil, wrap("read the options switched off", err)
+	}
 	c, err := s.srd.With(overlay)
 	if err != nil {
 		// Every write checks the whole overlay before it commits, so a stored one

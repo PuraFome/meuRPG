@@ -145,7 +145,11 @@ func (s *Service) ListTableEntries(
 			return err
 		}
 		res = &rulesv1.ListTableEntriesResponse{TableRevision: rev, ContentVersion: content.Version()}
-		archived := archivedKeys(entries)
+		// What a player never receives (RN-23): retired or switched off, SRD or table.
+		var hidden func(string) bool
+		if content.AnyHidden() {
+			hidden = content.Hidden
+		}
 		var mine map[string]bool // the keys the player's own sheets use (read in this transaction)
 		if !master {
 			if mine, err = callerKeys(ctx, q, m); err != nil {
@@ -155,14 +159,16 @@ func (s *Service) ListTableEntries(
 		for _, e := range entries {
 			if !master {
 				switch {
-				case e.row.ArchivedAt != nil:
-					continue // a player never receives a retired entry or a draft
-				case parentArchived(e, archived) && !mine[e.row.ContentKey]:
-					continue // nor an entry whose class or race is retired, unless their sheet uses it
+				case e.row.ArchivedAt != nil || content.Off(e.row.ContentKey):
+					continue // a player never receives a retired or switched off entry, or a draft
+				case hidden != nil && (parentHidden(e, hidden) || hidden(e.row.ContentKey)) && !mine[e.row.ContentKey]:
+					continue // nor an entry whose class or race is retired or off, unless their sheet uses it
 				}
-				e = forPlayer(e, archived)
+				e = forPlayer(e, hidden)
 			}
-			res.Entries = append(res.Entries, entryToProto(e, uses[e.row.ContentKey]))
+			pe := entryToProto(e, uses[e.row.ContentKey])
+			pe.Off = content.Off(e.row.ContentKey)
+			res.Entries = append(res.Entries, pe)
 		}
 		slices.SortStableFunc(res.Entries, func(a, b *rulesv1.TableEntry) int {
 			if d := tableKindOrder(a.GetKind()) - tableKindOrder(b.GetKind()); d != 0 {
@@ -314,6 +320,7 @@ func (s *Service) CreateTableEntry(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a table entry", err)
 	}
+	s.publishContentChanged(m.CampaignID)
 	return connect.NewResponse(res), nil
 }
 
@@ -408,11 +415,17 @@ func (s *Service) UpdateTableEntry(
 		res = &rulesv1.UpdateTableEntryResponse{
 			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, uses[key]), TableRevision: rev,
 		}
+		offKeys, err := q.ListContentOff(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("read the options switched off", err)
+		}
+		res.Entry.Off = slices.Contains(offKeys, key)
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a table entry", err)
 	}
+	s.publishContentChanged(m.CampaignID)
 	if res.AffectedCharacters, err = s.affectedToProto(ctx, affected); err != nil {
 		return nil, s.dbError(ctx, "read display names", err)
 	}
@@ -595,7 +608,15 @@ func (s *Service) setArchived(ctx context.Context, m authz.Membership, key strin
 			return err
 		}
 		out, revision = entryToProto(e, uses[key]), rev
+		offKeys, err := q.ListContentOff(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("read the options switched off", err)
+		}
+		out.Off = slices.Contains(offKeys, key)
 		return nil
 	})
+	if err == nil {
+		s.publishContentChanged(m.CampaignID)
+	}
 	return out, revision, err
 }

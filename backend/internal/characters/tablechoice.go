@@ -37,6 +37,30 @@ func newArchivedChoice(content *rules.Content, before, after *charactersv1.FullS
 	return "", "", false
 }
 
+// newOffChoice is newArchivedChoice for the master's switches ("Opções para os
+// jogadores", RN-23): the first option the master switched off (or whose class or
+// race is off) that after picks and before did not. The caller asks it of a player
+// only: the master's own characters may use what the players may not.
+func newOffChoice(content *rules.Content, before, after *charactersv1.FullSheet) (key, field string, found bool) {
+	off := content.OffKeys(buildOf(after))
+	if len(off) == 0 {
+		return "", "", false
+	}
+	already := content.OffKeys(buildOf(before))
+	for _, kf := range rules.BuildKeys(buildOf(after)) {
+		if slices.Contains(off, kf.Key) && !slices.Contains(already, kf.Key) {
+			return kf.Key, kf.Field, true
+		}
+	}
+	return "", "", false
+}
+
+// errOffChoice is the refusal of CreateCharacter and UpdateCharacter for a newly
+// chosen option the master switched off.
+func errOffChoice(characterID, key string) error {
+	return errBlockedByContent(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT, characterID, key)
+}
+
 // errArchivedChoice is the refusal of CreateCharacter and UpdateCharacter for a
 // newly chosen archived key. characterID is empty for a character that does not
 // exist yet.
@@ -221,9 +245,10 @@ func timestampOf(t time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t)
 }
 
-// callerKeys are the table keys the caller's own characters in the campaign use,
-// read with q (a transaction's, or the pool's outside one): what lets a player keep
-// reading about an entry the master archived after their sheet took it.
+// callerKeys are the content keys (the SRD's and the table's) the caller's own
+// characters in the campaign use, read with q (a transaction's, or the pool's
+// outside one): what lets a player keep reading about an option the master archived
+// or switched off after their sheet took it.
 func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership) (map[string]bool, error) {
 	sheets, err := q.ListCampaignSheets(ctx, m.CampaignID)
 	if err != nil {
@@ -239,8 +264,8 @@ func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership
 			return nil, err
 		}
 		if full := sheet.GetFull(); full != nil {
-			for _, k := range rules.TableKeys(buildOf(full)) {
-				out[k] = true
+			for _, kf := range rules.BuildKeys(buildOf(full)) {
+				out[kf.Key] = true
 			}
 		}
 	}

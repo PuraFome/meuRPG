@@ -602,6 +602,25 @@ SET archived_at = CASE WHEN sqlc.arg(archived)::BOOL THEN sqlc.arg(now)::TIMESTA
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND content_key = sqlc.arg(content_key)
 RETURNING *;
 
+-- name: ListContentOff :many
+-- The keys the master switched off for the players ("Opções para os jogadores"),
+-- sorted. Read in the caller's transaction, with the revision.
+SELECT content_key FROM campaign_content_off
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY content_key;
+
+-- name: InsertContentOff :exec
+-- Switches the options off (the ones already off stay as they are).
+INSERT INTO campaign_content_off (campaign_id, content_key, created_at)
+SELECT sqlc.arg(campaign_id)::UUID, k, sqlc.arg(now)::TIMESTAMPTZ
+FROM unnest(sqlc.arg(content_keys)::TEXT[]) AS k
+ON CONFLICT (campaign_id, content_key) DO NOTHING;
+
+-- name: DeleteContentOff :exec
+-- Switches the options back on.
+DELETE FROM campaign_content_off
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND content_key = ANY(sqlc.arg(content_keys)::TEXT[]);
+
 -- name: ListCampaignSheets :many
 -- Every character of the campaign with the sheet: who uses which table entry,
 -- and who has issues after a change. Players' characters first, then NPCs.
