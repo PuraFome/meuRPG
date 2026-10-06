@@ -9,9 +9,11 @@
 // square in the plan, so it is drawn as wall like any wall.
 //
 // The look follows the map language of the app (the E9 "ficha de papel"): paper
-// for the floor, an ink outline along every floor edge that meets a wall, and a
-// dark diagonal hatch on the walls and on the rock beyond them. The grid is not
-// drawn: the app draws it over the image.
+// for the floor, an ink outline along every floor edge that meets a wall, and a flat
+// dark fill on the walls and on the rock beyond them. The hatch is not in the image:
+// the app draws the wall mark (MAP-LANGUAGE-E10: the hatch over a veil) over every
+// square of the walls layer, which covers the walls and all the rock, so the map has
+// one wall treatment, the editor's. The grid is not drawn either: the app draws it.
 package dungeonimg
 
 import (
@@ -24,16 +26,14 @@ import (
 // 8,192 is the gallery's limit per side (images.MaxSide); a square larger than
 // 24 pixels adds weight, not readability.
 const (
-	MaxSide             = 8192
-	MaxPixelsPerSquare  = 24
-	minPixelsPerSquare  = 1
-	maxHatchPeriod      = 8
-	minHatchPeriod      = 4
-	outlineDivisor      = 12
-	hatchThicknessRatio = 4
+	MaxSide            = 8192
+	MaxPixelsPerSquare = 24
+	minPixelsPerSquare = 1
+	outlineDivisor     = 12
 )
 
-// The palette: index 0 is the floor.
+// The palette: index 0 is the floor. The hatch entry is kept (the palette's other
+// users index it) but this image draws walls flat.
 const (
 	idxFloor = iota
 	idxWall
@@ -96,8 +96,6 @@ func Render(f Floorplan, w, h int) (*image.Paletted, error) {
 	cols, rows := f.Cols, f.Rows
 	side := max(w/cols, h/rows, 1)
 	edge := max(1, side/outlineDivisor)
-	period := min(maxHatchPeriod, max(minHatchPeriod, side/3))
-	thick := max(1, period/hatchThicknessRatio)
 
 	colSq, nearW, nearE := axis(w, cols, edge)
 	rowSq, nearN, nearS := axis(h, rows, edge)
@@ -115,11 +113,7 @@ func Render(f Floorplan, w, h int) (*image.Paletted, error) {
 		for x := range w {
 			sc := colSq[x]
 			if f.Solid[sr*cols+sc] {
-				if (x+y)%period < thick {
-					row[x] = idxHatch
-				} else {
-					row[x] = idxWall
-				}
+				row[x] = idxWall
 				continue
 			}
 			// A floor pixel is ink where it is along an edge that meets a solid

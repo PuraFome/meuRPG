@@ -16,6 +16,7 @@ import { LevelUpNotice } from './level-up-notice/level-up-notice';
 import { campaignLead } from '../campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
 import { BestiaryPanel } from './bestiary-panel/bestiary-panel';
+import { PuzzlesPanel } from '../puzzles/puzzles-panel/puzzles-panel';
 import { CampaignCharacters } from './characters/campaign-characters';
 import { DicePanel } from './dice-panel/dice-panel';
 import { DicePreferencePanel } from './dice-preference-panel/dice-preference-panel';
@@ -63,6 +64,7 @@ type PageState =
   selector: 'app-campaign-detail',
   imports: [
     BestiaryPanel,
+    PuzzlesPanel,
     CampaignCharacters,
     CampaignInvites,
     DicePanel,

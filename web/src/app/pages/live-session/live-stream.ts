@@ -54,6 +54,8 @@ export interface LiveStreamHandlers {
   onTrapNoticed?(notice: { mapId: string; pointId: string }): void;
   /** `creatures_changed` (MR-037): a character's creatures changed outside a combat, read them again. */
   onCreaturesChanged?(): void;
+  /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
+  onPuzzleChanged?(puzzleId: string): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -232,6 +234,9 @@ export class LiveStream {
             break;
           case 'creaturesChanged':
             this.options.handlers.onCreaturesChanged?.();
+            break;
+          case 'puzzleChanged':
+            this.options.handlers.onPuzzleChanged?.(event.puzzleId);
             break;
           case 'ended':
             this.stop();

@@ -1,0 +1,106 @@
+<div class="opt">
+  <section class="opt__group" aria-labelledby="opt-size">
+    <h3 class="opt__label" id="opt-size">Tamanho</h3>
+    <app-choice-row label="Tamanho" [choices]="sizeChoices" [value]="sizeValue()" [disabled]="locked()" [describedBy]="problems().size && !isOther() ? 'opt-size-why' : null" (valueChange)="setSize($event)" />
+    @if (isOther()) {
+      <mat-form-field appearance="outline" class="opt__field" subscriptSizing="dynamic">
+        <mat-label>Quadrados no lado maior</mat-label>
+        <input matInput type="text" inputmode="numeric" maxlength="4" autocomplete="off" [formControl]="sizeControl" [attr.aria-invalid]="!!problems().size" aria-describedby="opt-size-why" (input)="typeSize()" />
+        <span matTextSuffix>quadrados</span>
+      </mat-form-field>
+    }
+    @if (problems().size; as why) {
+      <p class="opt__why" id="opt-size-why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    } @else if (sizeHint()) {
+      <p class="opt__hint" id="opt-size-why">{{ sizeHint() }}</p>
+    }
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-mask">
+    <h3 class="opt__label" id="opt-mask">Formato</h3>
+    <app-choice-row label="Formato" [choices]="masks" [value]="form().mask" [disabled]="locked()" [describedBy]="problems().mask ? 'opt-mask-why' : null" (valueChange)="set('mask', $event)" />
+    @if (problems().mask; as why) {
+      <p class="opt__why" id="opt-mask-why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    }
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-rooms">
+    <h3 class="opt__label" id="opt-rooms">Salas</h3>
+    <div class="opt__pair">
+      <mat-form-field appearance="outline" class="opt__field" subscriptSizing="dynamic">
+        <mat-label>Menor lado</mat-label>
+        <input matInput type="text" inputmode="numeric" maxlength="2" autocomplete="off" [formControl]="roomMinControl" [attr.aria-invalid]="!!problems().room_side_min" aria-describedby="opt-rooms-why" (input)="typeRooms()" />
+        <span matTextSuffix>quadrados</span>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="opt__field" subscriptSizing="dynamic">
+        <mat-label>Maior lado</mat-label>
+        <input matInput type="text" inputmode="numeric" maxlength="2" autocomplete="off" [formControl]="roomMaxControl" [attr.aria-invalid]="!!problems().room_side_max" aria-describedby="opt-rooms-why" (input)="typeRooms()" />
+        <span matTextSuffix>quadrados</span>
+      </mat-form-field>
+    </div>
+    <div id="opt-rooms-why">
+      @if (problems().room_side_min; as why) {
+        <p class="opt__why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+      }
+      @if (problems().room_side_max; as why) {
+        <p class="opt__why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+      }
+      @if (roomsHint(); as hint) {
+        <p class="opt__hint">{{ hint }}</p>
+      }
+    </div>
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-corridors">
+    <h3 class="opt__label" id="opt-corridors">Corredores</h3>
+    <app-choice-row label="Corredores" variant="strip" [choices]="corridors" [value]="form().corridor" [disabled]="locked()" [describedBy]="problems().corridor_style ? 'opt-corridors-why' : null" (valueChange)="set('corridor', $event)" />
+    @if (problems().corridor_style; as why) {
+      <p class="opt__why" id="opt-corridors-why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    }
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-doors">
+    <h3 class="opt__label" id="opt-doors">Portas</h3>
+    <app-choice-row label="Portas" variant="strip" [choices]="doorMixes" [value]="form().doors" [disabled]="locked()" [describedBy]="'opt-doors-about'" (valueChange)="set('doors', $event)" />
+    <p class="opt__hint" id="opt-doors-about">{{ problems().door_mix || doorAbout() }}</p>
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-dead">
+    <div class="opt__head">
+      <h3 class="opt__label" id="opt-dead">Becos sem saída</h3>
+      <output class="opt__value" for="opt-dead-range">{{ form().deadends }} %</output>
+    </div>
+    <input id="opt-dead-range" class="opt__range" type="range" min="0" max="100" step="5" [value]="form().deadends" [disabled]="locked()" aria-labelledby="opt-dead" [attr.aria-valuetext]="form().deadends + ' por cento'" (input)="setDeadends($event)" />
+    <div class="opt__ends" aria-hidden="true"><span>0 %</span><span>100 %</span></div>
+    @if (problems().deadend_removal; as why) {
+      <p class="opt__why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    }
+  </section>
+
+  <section class="opt__group" aria-labelledby="opt-stairs">
+    <h3 class="opt__label" id="opt-stairs">Escadas</h3>
+    <div class="opt__stepper" role="group" aria-labelledby="opt-stairs">
+      <button type="button" class="opt__step" aria-label="Menos uma escada" [disabled]="locked() || form().stairs <= 0" (click)="moreStairs(-1)"><mat-icon aria-hidden="true">remove</mat-icon></button>
+      <output class="opt__count" aria-live="polite">{{ form().stairs }}</output>
+      <button type="button" class="opt__step" aria-label="Mais uma escada" [disabled]="locked() || form().stairs >= stairsMax" (click)="moreStairs(1)"><mat-icon aria-hidden="true">add</mat-icon></button>
+    </div>
+    @if (problems().stairs; as why) {
+      <p class="opt__why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    } @else {
+      <p class="opt__hint">De 0 a {{ stairsMax }}. A primeira sobe e a segunda desce; as outras sobem ou descem por sorteio. Ficam no fim de corredores sem saída ou nos cantos das salas.</p>
+    }
+  </section>
+
+  <section class="opt__group" aria-label="Semente">
+    <mat-form-field appearance="outline" class="opt__field opt__field--wide" subscriptSizing="dynamic">
+      <mat-label>Semente</mat-label>
+      <input matInput type="text" inputmode="numeric" maxlength="20" autocomplete="off" [formControl]="seedControl" [attr.aria-invalid]="seedProblem() !== null" aria-describedby="opt-seed-why" (input)="seedChange.emit(seedControl.value)" />
+    </mat-form-field>
+    <button matButton="outlined" type="button" class="opt__other" [disabled]="locked()" (click)="anotherSeed.emit()"><mat-icon aria-hidden="true">casino</mat-icon>Outra semente</button>
+    @if (seedProblem(); as why) {
+      <p class="opt__why" id="opt-seed-why"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    } @else {
+      <p class="opt__hint" id="opt-seed-why">Digite uma semente ou peça outra. As mesmas opções com a mesma semente dão sempre a mesma masmorra.</p>
+    }
+  </section>
+</div>

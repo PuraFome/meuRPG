@@ -1,0 +1,91 @@
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import type { MessageInitShape } from '@bufbuild/protobuf';
+
+import type { PuzzleMoveSchema, PuzzleRun } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import type { SymbolFace } from '../../core/puzzles/puzzle-symbols';
+import { LightsBoard, type LightPress } from './lights-board';
+import { LockBoard } from './lock-board';
+import { PillarsBoard } from './pillars-board';
+import type { Turn } from './symbol-columns';
+
+/**
+ * The one place that knows which board a puzzle uses (MR-038, E10-06): the player's page and the master's live panel both put
+ * a puzzle's run in here and get the right board, `play` for a player (every piece is a control and a move comes out) or `view`
+ * for the master (the same board, static). A kind the app does not draw yet (the riddle, the sequence and the cipher are slice
+ * 10.15b) says so instead of drawing nothing; a new kind adds one case here and its own board, and touches no other screen.
+ *
+ * It draws what the server sent and decides nothing: a press or a turn is turned into the move the server takes and emitted.
+ */
+@Component({
+  selector: 'app-puzzle-host',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [LightsBoard, LockBoard, PillarsBoard],
+  template: `
+    @switch (state()?.kind?.case) {
+      @case ('lights') {
+        @let lights = lightsOf();
+        <app-lights-board [size]="lights.size" [lit]="lights.lit" [mode]="mode()" [changed]="changed()" [hints]="hints()" [disabled]="disabled()" (press)="onPress($event)" />
+      }
+      @case ('lock') {
+        <app-lock-board [wheels]="positions()" [faces]="faces()" [mode]="mode()" [changed]="changed()" [disabled]="disabled()" (turn)="onTurn('lock', $event)" />
+      }
+      @case ('pillars') {
+        <app-pillars-board [pillars]="positions()" [faces]="faces()" [mode]="mode()" [changed]="changed()" [disabled]="disabled()" (turn)="onTurn('pillars', $event)" />
+      }
+      @default {
+        <p class="unknown">Este tipo de quebra-cabeça ainda não abre aqui.</p>
+      }
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+
+    .unknown {
+      margin: 0;
+      color: var(--mr-ink-muted);
+    }
+  `,
+})
+export class PuzzleHost {
+  /** The run as a player reads it (the master's own read carries the same message in `MasterPuzzleRun.run`). */
+  readonly run = input.required<PuzzleRun>();
+  readonly mode = input<'play' | 'view'>('view');
+  /** The lights, wheels or pillars the last move changed (the server's `changed`). */
+  readonly changed = input<readonly number[]>([]);
+  /** The lights the master's hint rings (a shortest way). Only the master's page ever passes it. */
+  readonly hints = input<readonly number[]>([]);
+  readonly disabled = input(false);
+
+  /** A move, as `MakePuzzleMove` takes it. */
+  readonly move = output<MessageInitShape<typeof PuzzleMoveSchema>>();
+
+  protected readonly state = computed(() => this.run().state);
+
+  protected readonly lightsOf = computed(() => {
+    const config = this.run().config?.kind;
+    const state = this.state()?.kind;
+    return { size: config?.case === 'lights' ? config.value.size : 0, lit: state?.case === 'lights' ? state.value.lit : [] };
+  });
+
+  /** The wheels or the pillars, from the state. */
+  protected readonly positions = computed<readonly number[]>(() => {
+    const state = this.state()?.kind;
+    return state?.case === 'lock' ? state.value.wheels : state?.case === 'pillars' ? state.value.pillars : [];
+  });
+
+  protected readonly faces = computed<readonly SymbolFace[]>(() => this.run().symbols.map((s) => ({ key: s.key, namePt: s.namePt })));
+
+  protected onPress(press: LightPress): void {
+    this.move.emit({ kind: { case: 'lights', value: { row: press.row, col: press.col } } });
+  }
+
+  protected onTurn(kind: 'lock' | 'pillars', turn: Turn): void {
+    this.move.emit(
+      kind === 'lock'
+        ? { kind: { case: 'lock', value: { wheel: turn.index, delta: turn.delta } } }
+        : { kind: { case: 'pillars', value: { pillar: turn.index, delta: turn.delta } } },
+    );
+  }
+}

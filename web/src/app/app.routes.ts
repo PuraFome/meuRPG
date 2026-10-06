@@ -95,6 +95,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
   },
   {
+    // The master's puzzles (MR-038, E10-06): make one, edit one. The list is a panel on the campaign page; showing a puzzle
+    // and playing it live belong to the session page.
+    path: 'campanhas/:id/quebra-cabecas/novo',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+  },
+  {
+    path: 'campanhas/:id/quebra-cabecas/:puzzleId/editar',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+  },
+  {
     // The bestiary (MR-042, E10-08), master only: the SRD's 334 creatures, then one creature's
     // stat block with "Criar NPC". The pages tell a player so (the SRD is public, the app shows
     // it to the master). The creature's route is after the list's, a plain `loadComponent` for
@@ -138,6 +150,13 @@ export const routes: Routes = [
     path: 'campanhas/:id/mapas/novo',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/maps/map-new/map-new').then((m) => m.MapNew),
+  },
+  {
+    // "Gerar masmorra" (MR-010, E10-05), master only: the options, the server's preview and "Criar o mapa". Before `mapas/:mapId`, so
+    // "masmorra" is not read as a map's ID. Plain `loadComponent`, like "Novo mapa": its client is a root service that only lazy code imports.
+    path: 'campanhas/:id/mapas/masmorra',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/dungeon-new/dungeon-new').then((m) => m.DungeonNew),
   },
   {
     // The map's battle grid (MR-013, E6-02), master only: the squares of

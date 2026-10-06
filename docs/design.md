@@ -196,6 +196,16 @@ Regras dos mapas:
 - **Estado é linha, ícone e palavra, nunca só cor:** tracejado + selo + "Escondido".
 - **Imagem do jogador só enquanto é mostrada, está deixada com os jogadores ou é de um mapa que ele vê** (RN-10): a tela nunca guarda a imagem para depois.
 
+### O gerador de masmorras (MR-010, E10-05)
+
+| Peça | Como é |
+| --- | --- |
+| Página "Gerar masmorra" | Duas colunas a partir de 1024 px: "Opções" e "Prévia" (a prévia encolhe, a página não rola de lado); no celular, só o aviso "Gerar masmorra é no notebook.". Um grupo por opção, com uma linha entre eles; as escolhas são chips que quebram de linha (a marcada em garnet suave, negrito e com o visto) ou uma faixa só (corredores); alvos de 44 px (48 no celular). |
+| Prévia (`app-dungeon-preview`) | A paleta da imagem gerada: o piso é o papel (`#ECE3CC`) com a grade a 28 %, a parede é o preenchimento escuro liso (`#3A3740`) com, por cima, a marca de parede do mapa (o véu a 28 % e a hachura a 70 % da tinta, na direção do editor, `\`), as portas e as escadas pelas marcas de MAP-LANGUAGE-E10; a moldura tem a proporção da masmorra pedida em todo estado; embaixo, a contagem e a legenda do que está desenhado. Enquanto uma nova prévia carrega, a antiga fica a 60 % com "Atualizando a prévia...". |
+| Recusa | No campo, com ícone e texto (`--mr-danger-ink`), `aria-invalid` e `aria-describedby`; a prévia vira o quadro tracejado com a frase, e "Criar o mapa" fica no estilo desligado com a razão embaixo. |
+| Lista "Salas" | Um painel ao lado do mapa: a pílula "Só você vê", e por sala o círculo com o número, o tamanho, as escadas (selo com seta), a saída por tipo de porta, o aviso de armadilha (`--mr-warning-*`) e "Pôr uma cena nesta sala" (texto, com o recuo de -12 px). A sala escolhida tem a moldura sólida de 3 px no mapa e uma sombra interna de 3 px na linha (a linha não muda de tamanho), e o mapa vai até ela. O painel "Imagem" fica na mesma coluna, e o mapa fica no lugar. |
+| Painel "Imagem" | O nome do mapa com "Gerada pelo app" (ou "Imagem trocada"), "Redesenhar" de largura inteira e a pergunta no lugar (`app-map-ask`, "Voltar" primeiro). |
+
 ### Combate
 
 As telas do combate (MR-013, desenhos E6-01 a E6-16; Etapa 6, fatia 6.5a). Os dois tipos de token se distinguem pela forma, nunca pela cor: o personagem de jogador é um disco `ink`, o NPC é um quadrado arredondado com borda `ink`.
@@ -417,7 +427,7 @@ As telas da fatia 9.17 (desenhos E9-11 e E9-12). A regra de cada peça: o servid
 
 ### O bestiário e o "Criar NPC" (MR-042)
 
-As telas da fatia 10.17a (desenho E10-08, estados 1, 2, 3, 7 e 8; Etapa 10). Só o mestre as vê: o SRD é público e o servidor deixa qualquer membro ler as criaturas, então o app mostra o painel "Bestiário" (na página da campanha, depois da galeria) e as duas páginas só ao mestre, e a página diz "Só o mestre usa o bestiário da campanha." a quem abrir o endereço. "Pôr no combate" é a fatia 10.9b: não há botão nenhum dele ainda.
+As telas da fatia 10.17a (desenho E10-08, estados 1, 2, 3, 7 e 8; Etapa 10). Só o mestre as vê: o SRD é público e o servidor deixa qualquer membro ler as criaturas, então o app mostra o painel "Bestiário" (na página da campanha, depois da galeria) e as duas páginas só ao mestre, e a página diz "Só o mestre usa o bestiário da campanha." a quem abrir o endereço. "Pôr no combate" (a ordem do mestre, o que o jogador lê e o XP) é a fatia 10.17b; o servidor dele, o `AddMonsters`, está pronto desde a fatia 10.9b.
 
 | Peça | Como é |
 | --- | --- |
@@ -448,6 +458,21 @@ Desenho E10-03. A página fica em `web/src/app/pages/table-rules`, o passo dos a
 | Mapa calibrado | A grade das regras é pontilhada e as linhas do desenho, a cada `square_factor` quadrados, são cheias e mais escuras; a legenda diz "Quadrado do desenho (3 m)" e "Quadrado das regras (1,5 m)". O painel "Grade" diz "12 × 8 quadrados do desenho · cada um vale 3 m · nas regras: 24 × 16 quadrados de 1,5 m" |
 
 O painel "Grade" é do editor do mapa, que só existe do tablet (768 px) para cima (no celular o mestre só anda e dá zoom no mapa): a calibração herda isso e abre no lugar, como "Mudar a grade". A folha de baixo a 320 × 568 do desenho E10-03 não foi feita, porque o celular não tem onde abri-la; quando o editor ganhar o celular, a mesma pergunta (`calibrate-ask`) vai para uma folha.
+
+### Quebra-cabeças (MR-038, E10-06, fatia 10.15a)
+
+As telas do mestre (a lista, o formulário, a visão ao vivo) e do jogador, para "Apagar as luzes", a fechadura e os símbolos giratórios. O navegador só desenha o que o servidor manda (RN-10): nenhuma conta de solução, de mínimo ou de vitória.
+
+| Peça | Como é |
+| --- | --- |
+| Painel de luzes (`shared/puzzle-boards/lights-board`) | Uma grade de 3 a 7 de lado, luzes de 48 px com 3 px entre elas. Acesa: sol sobre fundo quente (os tokens `warning`); apagada: anel vazio, nunca só a cor. Cada luz do jogador é um botão com nome ("Luz na linha 2, coluna 3, acesa"), uma parada de Tab só e as setas andam pela grade; o painel do mestre é estático (`role="img"` em cada luz). Moldura tracejada grená: o que acabou de mudar por outra pessoa (6 s); moldura cheia grená: o toque que resolve (só o mestre). Abaixo de 375 px as luzes se encostam (cada uma com a própria borda de 1,5 px) e o painel do jogador vai até 6 px da borda, o que mantém 44 px num 7 × 7 a 320 px |
+| Rodas e pilares (`symbol-columns`, `lock-board`, `pillars-board`) | Uma coluna por roda ou pilar: o desenho nosso (traço simples, `symbol-glyph`) e o nome sempre escrito. Roda: seta para cima e para baixo de 48 px (próximo e anterior símbolo). Pilar: "Pilar N" e "Girar" de 48 px, só para a frente. No formulário (`edit`) as duas têm setas; no painel do mestre (`view`) não há controle |
+| `PuzzleHost` | O único lugar que sabe qual tela é de qual tipo: recebe o que o jogador lê (`PuzzleRun`) e devolve a jogada que o servidor aceita. Um tipo que o app ainda não desenha diz isso em palavras. A fatia 10.15b acrescenta um caso e uma tela |
+| Cartões e linhas de escolha (`pick-group`) | Rádios nativos em três jeitos: cartões (o tipo), linhas com disco (o "Ao resolver") e segmentos com um visto no marcado (o tamanho, o alfabeto). Alvo de 44 px (48 px no celular). Aperto de "− 4 +" em `stepper`; "Dicas" em `hints-field` (linhas numeradas, "Remover a dica N" de 44 px) |
+| Cartão ao vivo do mestre (`master-live` e `master-run`) | Fica na coluna principal da sessão, em cima do mapa, um por vez: o "Ver ao vivo" de cada linha da lista (que fica na coluna ao lado) o escolhe. Título, as etiquetas (o tipo e "Os jogadores veem", "Resolvido" ou "Parou"), o painel estático, "Última jogada: Lia tocou numa luz, há 12 s.", "12 acesas · 1 toque até agora", "Faltam, no mínimo, 3 toques (4 desde o começo)" e os botões. O que só o mestre sabe leva sempre a pílula "Só você vê". "Recomeçar" e "Fechar" perguntam no lugar dos botões (`app-map-ask`: o foco no título, "Voltar" devolve os botões e o foco a quem perguntou). Resolvido: quem, quando, o que o servidor fez e a porta aberta num recorte de 7 × 5 quadrados do mapa (`door-crop`) |
+| Aviso e página do jogador | O cartão com a moldura grená da sessão ("O mestre mostrou um quebra-cabeça", "Abrir o quebra-cabeça" de 48 px, cheio só no primeiro) e a página `?quebra-cabeca=ID`, aberta dentro da página da sessão no lugar do painel (a sessão continua com o stream só, e os avisos dela ficam por cima: o toast da armadilha e do tesouro, a pista que chegou e, num combate, "É a sua vez no combate." com o caminho de volta). Abaixo de 375 px (320 × 568) o painel de 7 × 7 e a contagem cabem numa tela: o lide e a linha de estado somem, o título encolhe e a pista vem depois do painel: a pista como citação, o painel, a explicação com quem jogou por último e as dicas soltas. Resolvido, o painel fica `aria-disabled` e a página diz "Resolvido" e o texto do mestre; parado, a linha neutra do servidor |
+
+O que difere do desenho: a lista diz "Arquivar" (o servidor não apaga); a porta de "Ao resolver" é escolhida pelo mapa e pelo lugar ("Porta fechada · coluna 11, linha 7"), porque uma porta não tem nome; o desenho de erro do campo é uma frase em `danger` sob o campo (os campos são `input` simples, e o Material só pinta erro de um controle de formulário).
 
 ### Imprimir o mapa
 

@@ -888,6 +888,10 @@ message Map {
   // How many squares of 1.5 m each square of the drawing is worth: 1 (1.5 m,
   // the default), 2 (3 m), 3 (4.5 m)... up to 20. 1 when the map has no grid.
   int32 square_factor = 32;
+  // Whether the map was made by DungeonService.CreateDungeonMap, so the master's
+  // app may read its rooms (GetDungeonRooms) and offer "Redesenhar". Only the master
+  // gets it; always false for a player.
+  bool generated_dungeon = 33;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -995,6 +999,19 @@ message MapPoint {
   // the point's squares is seen now: it is in the remembered part, which the app
   // draws darkened. Always false for the master and on a map without fog.
   bool remembered = 23;
+  // Set on a generated dungeon's stair (DungeonService.CreateDungeonMap): which way it
+  // goes. A stair is a submap point with no target, and the app draws it as a stair, with
+  // its arrow and the label "Escada para cima" or "Escada para baixo", never as a submap.
+  // It goes to whoever receives the point, so a player gets it only for a revealed point
+  // on a square they see. UNSPECIFIED for every other point.
+  StairDirection stairs = 24;
+}
+
+// StairDirection is which way a generated dungeon's stair goes.
+enum StairDirection {
+  STAIR_DIRECTION_UNSPECIFIED = 0;
+  STAIR_DIRECTION_UP = 1;
+  STAIR_DIRECTION_DOWN = 2;
 }
 
 // TrapSpec is what a TRAP point is: how to notice and find it, where and how it

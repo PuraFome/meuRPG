@@ -394,6 +394,9 @@ type actionEvent struct {
 	// attack (D20, Modifier, Total, Physical), Key the skill ("perception" or
 	// "investigation") and Found the traps it revealed (point IDs).
 	Trap *trapFireEvent `json:"trap,omitempty"`
+	// Monsters is what AddMonsters did: the parameters (for a retry to be checked
+	// against) and the new combatants (the master's log line).
+	Monsters *monstersEvent `json:"monsters,omitempty"`
 	// D20B is the second d20 of a Perception search with disadvantage.
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`

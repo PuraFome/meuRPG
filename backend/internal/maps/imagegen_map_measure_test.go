@@ -43,7 +43,7 @@ func TestMeasureTheBiggestMapReference(t *testing.T) {
 	start := time.Now()
 
 	set := loadLayers(mapsdb.MapLayer{Walls: walls.Encode()}, g)
-	solid := floorPlan(set, g, mapsdb.GeneratedDungeon{}, 1)
+	solid := floorPlan(set, g)
 	lit, err := vision.Compile(vision.Scene{Grid: g, Walls: set.walls, Doors: set.doors, Base: grid.Bright, Painted: set.light})
 	if err != nil {
 		t.Fatal(err)

@@ -934,6 +934,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: campaign, EncounterId: enc, IdempotencyKey: newKey(), Participants: []*playv1.Participant{{CharacterId: f.goblin.GetId()}}}))
 			return err
 		},
+		"AddMonsters": func(u *user, ctx context.Context) error {
+			_, err := u.combat.AddMonsters(ctx, connect.NewRequest(&playv1.AddMonstersRequest{CampaignId: campaign, EncounterId: enc, IdempotencyKey: newKey(), CreatureKey: bandit, Count: 1}))
+			return err
+		},
 		"RemoveCombatant": func(u *user, ctx context.Context) error {
 			_, err := u.combat.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: campaign, EncounterId: enc, CombatantId: id, IdempotencyKey: newKey()}))
 			return err
@@ -969,7 +973,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
-		"AddCombatants": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
+		"AddCombatants": true, "AddMonsters": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
 		"OfferOpportunity": true, "WithdrawOpportunity": true,
 	}
 	for name, call := range calls {

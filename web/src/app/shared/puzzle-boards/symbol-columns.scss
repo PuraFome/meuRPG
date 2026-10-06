@@ -1,0 +1,131 @@
+:host {
+  display: block;
+  --col-max: 80px;
+  --gap: 6px;
+  // The room the columns have decides how many go in a row (not the screen's width): a column never gets under 64 px.
+  container-type: inline-size;
+}
+
+:host(.sc--pillar) {
+  --col-max: 84px;
+}
+
+.cols {
+  --cols: var(--n);
+  max-width: calc(var(--cols) * var(--col-max) + (var(--cols) - 1) * var(--gap));
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: var(--gap) var(--gap);
+}
+
+.col {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px;
+  border-radius: var(--mr-radius-md);
+}
+
+// Turned in the last move: a dashed frame around the whole column, inside its own box.
+.col--changed {
+  outline: 2px dashed var(--mr-accent);
+  outline-offset: 0;
+}
+
+.head {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+  text-align: center;
+}
+
+// The face: our drawing and its name, written.
+.face {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 6px 2px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.name {
+  max-width: 100%;
+  // A name never breaks inside a word ("Serpente"): the columns are wide enough for it, or they go to two rows.
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.sc--pillar .name,
+:host(.sc--pillar) .name {
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.step,
+.turn {
+  box-sizing: border-box;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.turn {
+  margin: 0 6px 4px; // the pillar's own 12 px beside the word, so the button never touches the column's edge
+  font-size: 16px;
+}
+
+// Not enough room for 5 or 6 columns of 64 px (6 × 64 + 5 gaps = 414 px): two rows, and the columns fill the whole width, each
+// button at least 44 px and "Girar" as wide as its column.
+@container (max-width: 420px) {
+  .cols {
+    --cols: var(--per);
+    max-width: none;
+    --gap: 4px;
+  }
+
+  .turn {
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 374.98px) {
+  :host {
+    --gap: 4px;
+  }
+}

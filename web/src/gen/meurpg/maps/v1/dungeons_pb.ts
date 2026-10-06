@@ -1216,14 +1216,14 @@ export const DungeonService: GenService<{
    *
    * The map has the grid set to the dungeon's width in squares, the fog of war on
    * and the base light BRIGHT (the master may change both on the map). Its layers:
-   * the walls layer is every wall of the dungeon; the doors layer has a CLOSED
+   * the walls layer is every square that is not open, the walls and all the rock behind them; the doors layer has a CLOSED
    * door for a closed door, LOCKED for a locked one, BARRED for a barred one and
    * SECRET for a secret one. A passage ("archway") is floor, with no door. A door
    * with a trap is the same door in the layer (a closed door stays CLOSED, a locked
    * one LOCKED, a secret one SECRET), and the rooms list says it has a trap
    * (DungeonExit.trapped): the map has no trap point. Each stair is a SUBMAP point
-   * named "Escada para cima" or "Escada para baixo", with no target map and hidden
-   * like any new point.
+   * named "Escada para cima" or "Escada para baixo", with no target map, revealed
+   * like a door (with the fog on, a player sees one only where they see its square).
    *
    * Once the options are validated, the map is created even if the caller goes away
    * (the page may be closed meanwhile: it is there when they come back).
