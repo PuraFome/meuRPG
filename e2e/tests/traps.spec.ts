@@ -176,6 +176,37 @@ test(
 );
 
 test(
+  'o "Disparar…" abre antes de o "Quem notaria" chegar: diz que está lendo e se completa sozinho',
+  { tag: ['@MR-035'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { m, table, campaignId, done } = await trapTable(browser, 'Leitura lenta');
+    try {
+      await trapRPC(m, table, 'Fosso escondido', 12, 7, { manual: true, damage: '4' });
+      // The read is held back, so the dialog always opens first: the race the master can win at a real table.
+      await m.route('**/meurpg.maps.v1.MapService/GetTrapNoticers', async (route) => {
+        await new Promise((r) => setTimeout(r, 3_000));
+        await route.continue();
+      });
+      await openSessionPage(m, campaignId);
+      const card = trapPanel(m).getByRole('article', { name: 'Fosso escondido' });
+      if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
+        await card.getByRole('button', { name: 'Ver detalhes' }).click();
+      }
+      await card.getByRole('button', { name: 'Disparar…' }).click();
+      const dialog = m.getByRole('dialog', { name: /Disparar/ });
+      await expect(dialog).toContainText('Lendo quem está no mapa');
+      await expect(dialog).not.toContainText('Ninguém com token no mapa');
+      await dialog.locator('label', { hasText: 'Pensantus' }).click();
+      await dialog.getByRole('button', { name: 'Disparar para Pensantus' }).click();
+      await expect(card).toContainText('Disparada');
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
   'o aviso passivo chega só ao jogador que notou: a mensagem, a armadilha no mapa dele e o fechar',
   { tag: ['@MR-035', '@RN-10'] },
   async ({ browser }) => {
