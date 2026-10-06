@@ -182,7 +182,7 @@ func TestNamesPT(t *testing.T) {
 	for _, m := range []map[string]bool{
 		keySet(c.skills), keySet(c.races), keySet(c.subraces), keySet(c.classes), keySet(c.subclasses),
 		keySet(c.backgrounds), keySet(c.equipment), keySet(c.spells), keySet(c.languages), keySet(c.traits),
-		keySet(c.named), keySet(c.monsters),
+		keySet(c.named), keySet(c.monsters), keySet(c.magicItems),
 	} {
 		keys = append(keys, sortedKeys(m)...)
 	}

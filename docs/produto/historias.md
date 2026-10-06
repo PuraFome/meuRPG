@@ -918,6 +918,8 @@ Nova em 05/10/2026, como a [MR-042](#mr-042-bestiário).
 
 Nova em 05/10/2026, junto com a [MR-042](#mr-042-bestiário) e a [MR-043](#mr-043-gerar-encontros).
 
+- **Fatia 10.10a (05/10/2026):** os 362 itens mágicos do SRD 5.1 estão no conteúdo de regras (`srd51/data/magic-items.json`, nomes em português `item:<índice>`, revisão fx.12), com `Content.MagicItems()`, `MagicItem(chave)` e `MagicItemUnits(raridade)` (o que um tesouro sorteia: cada item avulso e uma unidade por família e raridade); o gerador e as telas vêm na 10.10b ([Arquitetura](../arquitetura.md#itens-mágicos)).
+
 #### Critérios de aceite
 - **Dado** o nível do grupo, **quando** peço um tesouro "individual" ou "de covil", **então** o app gera as moedas, as gemas e as obras de arte (tabelas nossas, em português) e os itens mágicos do SRD 5.1, com o nome em português e o valor em PO.
 - **Dado** um item mágico gerado, **quando** o abro, **então** vejo a raridade, o valor com o rótulo "valores do SRD 5.2.1 (regras de 2024)" e a descrição do SRD em inglês.

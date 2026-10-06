@@ -159,6 +159,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Imagem gerada | Uma imagem que o mestre pede ao serviço de IA (MR-039), de três jeitos: a arte da cena, a vista isométrica de um mapa e o mapa com textura, que casa com a grade e pode virar a imagem do próprio mapa. A vista isométrica e a arte da cena feitas de um mapa mostram só o que os jogadores veem agora. Fica na galeria, escondida, até o mestre mostrar. Planejado para a Etapa 10. | `ImageGenService` |
 | Magia de área | Uma magia que pega quem está numa forma (cone, cubo, cilindro, linha ou esfera, com o tamanho em metros). No combate, quem conjura escolhe as criaturas que ela pega; o app não desenha a área no mapa. Uma magia da mesa pode ter uma área (06/10/2026). | `max_targets = 0` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
+| Sintonização | A ligação de um personagem com um item mágico que a pede ("requires attunement" no SRD): o item só funciona para quem se sintonizou com ele. Alguns itens limitam quem pode ("por um paladino", "por um conjurador"). Uma sintonização que vale só para uma propriedade fica no texto do item. | `Attunement`, `AttunementBy` |
+| Raridade | O quanto um item mágico é difícil de achar: comum, incomum, rara, muito rara, lendária ou artefato. "Varia" marca a família cujas variantes têm raridades diferentes (a Poção de cura). | `Rarity`, `varies` |
+| Família de itens, variante | Um item mágico que o SRD lista com várias versões: a família (Armadura +1, +2 ou +3; Anel de Resistência) e as variantes (Armadura +1; Anel de resistência a fogo), cada uma com a própria chave e raridade. No sorteio de tesouro, uma família conta como uma unidade por raridade, não uma por variante. | `Variants`, `VariantOf`, `MagicItemUnit` |
 
 ## Ver também
 
