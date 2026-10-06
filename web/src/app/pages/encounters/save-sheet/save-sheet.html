@@ -1,0 +1,110 @@
+<app-sheet-frame
+  title="Guardar no ponto de batalha"
+  [subtitle]="line()"
+  [phone]="inSheet"
+  height="min(720px, calc(92dvh - 48px))"
+  titleId="save-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (state() === 'loading') {
+      <p class="mr-muted" role="status">Lendo os mapas...</p>
+    } @else if (state() === 'ready' && mapList().length === 0) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">map</mat-icon>
+        <p><strong>A campanha ainda não tem mapa.</strong> Faça um mapa e ponha nele um ponto de batalha; o encontro fica guardado ali.</p>
+      </div>
+    } @else if (state() === 'ready') {
+      <label class="field">
+        <span class="mr-label">Mapa</span>
+        <span class="box box--select">
+          <select name="map" [value]="mapId()" (change)="chooseMap($any($event.target).value)">
+            @for (m of mapList(); track m.id) {
+              <option [value]="m.id" [selected]="m.id === mapId()">{{ m.name }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+
+      @if (points() === null) {
+        <p class="mr-muted" role="status">Lendo os pontos de batalha...</p>
+      } @else if (points()!.length === 0) {
+        <div class="mr-notice mr-notice--neutral" role="status">
+          <mat-icon aria-hidden="true">flag</mat-icon>
+          <p>
+            <strong>Este mapa não tem ponto de batalha.</strong>
+            Ponha um no editor do mapa e volte.
+            <a [routerLink]="['/campanhas', data.campaignId, 'mapas', mapId()]" (click)="close()">Abrir o mapa</a>
+          </p>
+        </div>
+      } @else {
+        <fieldset class="pts">
+          <legend class="mr-label">Ponto de batalha</legend>
+          @for (p of points(); track p.id) {
+            <label class="pt" [class.pt--on]="pointId() === p.id">
+              <input type="radio" name="save-point" [value]="p.id" [checked]="pointId() === p.id" (change)="pick(p.id)" />
+              <span class="pt__t">
+                <span class="pt__n">{{ p.name }}</span>
+                <span class="pt__s">
+                  @if (p.kept !== null) {
+                    Já guarda um encontro ({{ p.kept }} criaturas): guardar de novo troca o anterior
+                  } @else {
+                    Sem encontro ainda
+                  }
+                </span>
+              </span>
+            </label>
+          }
+        </fieldset>
+      }
+
+      <div class="priv">
+        <span class="priv__pill"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
+        <p>O encontro, as criaturas e o XP ficam escondidos dos jogadores até você revelá-los no combate.</p>
+      </div>
+      <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+    }
+
+    @if (asking()) {
+      <div class="mr-notice mr-notice--warning ask" role="group" aria-labelledby="save-ask-t">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <div>
+          <p id="save-ask-t"><strong>Trocar o encontro guardado?</strong> “{{ chosen()?.name }}” já guarda um encontro de {{ chosen()?.kept }} criaturas. Guardar este põe o novo no lugar dele.</p>
+          <div class="ask__actions">
+            <button type="button" mat-stroked-button data-initial-focus (click)="back()">Voltar</button>
+            <button type="button" mat-flat-button [disabled]="busy()" (click)="save()">Trocar o encontro</button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div foot>
+    @if (blocked(); as why) {
+      <p class="why" id="save-why">{{ why }}</p>
+    }
+    <div class="actions">
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button
+        type="button"
+        mat-flat-button
+        class="go"
+        [class.mr-button--off]="busy() || blocked() !== '' || asking()"
+        [disabled]="busy() || blocked() !== '' || asking()"
+        disabledInteractive
+        [attr.aria-describedby]="blocked() ? 'save-why' : null"
+        (click)="save()"
+      >
+        <mat-icon aria-hidden="true">flag</mat-icon>{{ busy() ? 'Guardando...' : 'Guardar no ponto de batalha' }}
+      </button>
+    </div>
+  </div>
+</app-sheet-frame>

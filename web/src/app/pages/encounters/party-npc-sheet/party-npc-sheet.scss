@@ -1,0 +1,210 @@
+@use '../../../shared/creatures/filter-fields';
+
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+}
+
+// A radio card: the native radio shows, the chosen card has a frame AND the filled radio (never colour alone).
+.opt {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    padding: 5px 11px;
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  input {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--mr-accent);
+  }
+}
+
+.opt__tk {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 2px solid var(--mr-ink);
+  border-radius: 7px;
+  background: var(--mr-surface);
+  font-family: var(--mr-font-display);
+  font-size: 17px;
+  font-weight: 800;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.opt__t {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__n {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 23px;
+  overflow-wrap: anywhere;
+}
+
+.opt__s {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.name__err {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-danger-ink);
+}
+
+.box--bad {
+  border-color: var(--mr-danger-ink);
+}
+
+.lvl__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin-top: 4px;
+}
+
+.lvl__hint {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.budget {
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+
+  p {
+    margin: 0;
+  }
+}
+
+.budget__t {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.budget__n {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--mr-space-4);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.budget__b {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.guide {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  a {
+    font-weight: 700;
+    color: var(--mr-accent-text);
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    justify-content: flex-end;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+}
+
+.no {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+@media (max-width: 559.98px) {
+  .go,
+  .no {
+    flex: 1 1 0;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+
+  .box {
+    --field-h: 48px;
+  }
+}

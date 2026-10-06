@@ -1,0 +1,92 @@
+<app-sheet-frame
+  title="Pôr um NPC no grupo"
+  subtitle="Para o orçamento de dificuldade"
+  [phone]="inSheet"
+  height="min(700px, calc(92dvh - 48px))"
+  titleId="pn-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <fieldset class="who">
+      <legend class="mr-label">Qual NPC</legend>
+      @for (n of data.npcs; track n.id) {
+        <label class="opt" [class.opt--on]="pick() === n.id">
+          <input type="radio" name="pn-who" [value]="n.id" [checked]="pick() === n.id" (change)="pick.set(n.id)" />
+          <span class="opt__tk" aria-hidden="true">{{ initial(n.name) }}</span>
+          <span class="opt__t">
+            <span class="opt__n">{{ n.name }}</span>
+            <span class="opt__s">{{ kind(n.kind) }}</span>
+          </span>
+        </label>
+      }
+      <label class="opt" [class.opt--on]="pick() === nameOnly">
+        <input type="radio" name="pn-who" value="" [checked]="pick() === nameOnly" (change)="pick.set(nameOnly)" />
+        <span class="opt__tk opt__tk--plain" aria-hidden="true"><mat-icon>edit</mat-icon></span>
+        <span class="opt__t">
+          <span class="opt__n">Só um nome</span>
+          <span class="opt__s">Alguém do grupo que não tem ficha na campanha.</span>
+        </span>
+      </label>
+      @if (pick() === nameOnly) {
+        <label class="name">
+          <span class="mr-label">Nome no grupo</span>
+          <span class="box" [class.box--bad]="nameError()">
+            <input
+              type="text"
+              name="label"
+              autocomplete="off"
+              [attr.maxlength]="labelMax"
+              [value]="typed()"
+              [attr.aria-invalid]="nameError() ? 'true' : null"
+              (input)="typed.set($any($event.target).value); nameError.set('')"
+              (keydown.enter)="add()"
+            />
+          </span>
+          @if (nameError()) {
+            <span class="name__err" role="alert">{{ nameError() }}</span>
+          }
+        </label>
+      }
+    </fieldset>
+
+    <div class="lvl">
+      <span class="mr-label" id="pn-lvl">Nível no grupo</span>
+      <div class="lvl__row">
+        <app-count-stepper [value]="level()" [min]="1" [max]="20" noun="nível" (valueChange)="level.set($event)" />
+        <p class="lvl__hint">Você define o nível; a ficha do NPC não precisa ter um. O NPC conta no orçamento e no nível mais baixo do grupo.</p>
+      </div>
+    </div>
+
+    <div class="budget" aria-live="polite">
+      <p class="budget__t">O orçamento passa a</p>
+      @if (after(); as a) {
+        <p class="budget__n">
+          <span>Baixa <b>{{ a.low }}</b></span>
+          <span>Moderada <b>{{ a.moderate }}</b></span>
+          <span>Alta <b>{{ a.high }}</b> XP</span>
+        </p>
+        <p class="budget__b">{{ beforeText() }}</p>
+      } @else {
+        <p class="budget__b">Escolha o NPC e o nível para ver o orçamento.</p>
+      }
+    </div>
+
+    <p class="guide">
+      <strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a>
+    </p>
+  </div>
+
+  <div foot>
+    <div class="actions">
+      <button type="button" mat-stroked-button class="no" (click)="close()">Cancelar</button>
+      <button type="button" mat-flat-button class="go" (click)="add()">Pôr no grupo</button>
+    </div>
+  </div>
+</app-sheet-frame>

@@ -1,0 +1,174 @@
+@use '../../creatures/filter-fields';
+
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.who__art {
+  --art-size: 48px;
+  flex: none;
+}
+
+.who__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.who__n {
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.who__s {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The combat the monsters go into: read only, so it is text in a frame, not an input.
+.readonly {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 16px;
+}
+
+.field__hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.count__names {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.box--bad {
+  border-color: var(--mr-danger-ink);
+}
+
+.field__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.field__err {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
+.field__count {
+  margin-left: auto;
+  color: var(--mr-ink-muted);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.why {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    justify-content: flex-end;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+}
+
+.no {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+@media (max-width: 559.98px) {
+  .go,
+  .no {
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+
+  // Footers side by side and equal when both labels fit; the label of the main one may be long ("Criar o combate e pôr").
+  .go {
+    flex: 2 1 0;
+  }
+
+  .no {
+    flex: 1 1 0;
+  }
+
+  .box {
+    --field-h: 48px;
+  }
+}

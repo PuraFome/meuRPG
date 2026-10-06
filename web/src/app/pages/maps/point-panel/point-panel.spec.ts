@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -151,5 +152,28 @@ describe('PointPanel', () => {
       cena.detectChanges();
       expect(cenaEl.querySelector('.hf mat-error')?.textContent).toContain('Use até 4.000 caracteres.');
     });
+  });
+});
+
+describe('PointPanel: a battle point and its encounter (MR-043)', () => {
+  function panel(kind: MapPointKind, over: { campaignId?: string; mapId?: string } = {}) {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PointPanel);
+    fixture.componentRef.setInput('point', mapPoint('pt-1', 'Emboscada na ponte', { kind }));
+    fixture.componentRef.setInput('campaignId', over.campaignId ?? 'camp-1');
+    fixture.componentRef.setInput('mapId', over.mapId ?? 'map-1');
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('a battle point offers "Montar o encontro deste ponto", which opens the builder on that map and point', () => {
+    const el = panel(MapPointKind.BATTLE);
+    const link = el.querySelector<HTMLAnchorElement>('.pp__enc')!;
+    expect(link.textContent?.replace('swords', '').trim()).toBe('Montar o encontro deste ponto');
+    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+  });
+
+  it('another kind of point has no such link', () => {
+    expect(panel(MapPointKind.SCENE).querySelector('.pp__enc')).toBeNull();
   });
 });

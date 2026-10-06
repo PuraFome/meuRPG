@@ -206,3 +206,24 @@ describe('OrderList with a player\'s creatures (E9-12)', () => {
     expect(plain.nativeElement.querySelector('app-form-tag')).toBeNull();
   });
 });
+
+describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5)', () => {
+  it('tells the master the ND of a monster beside its armor class; a combatant with none says nothing of it', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'b1', label: 'Bandido 1', hitPointsCurrent: 11, hitPointsMax: 11, initiative: 11, armorClass: 12, challengeRating: '1/8', bestiaryCreatureKey: 'monster:bandit' }),
+          combatant({ id: 'b3', label: 'Bandido 3', hidden: true, hitPointsCurrent: 11, hitPointsMax: 11, initiative: 5, armorClass: 12, challengeRating: '1/8', bestiaryCreatureKey: 'monster:bandit' }),
+          combatant({ id: 'g1', label: 'Goblin 1', hitPointsCurrent: 7, hitPointsMax: 7, initiative: 9, armorClass: 15 }),
+        ],
+        currentCombatantId: 'b1',
+      }),
+    );
+    fixture.detectChanges();
+    const subs = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub')).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+    expect(subs).toEqual(['NPC · ND 1/8 · CA 12', 'NPC · ND 1/8 · CA 12', 'NPC · CA 15']);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escondido');
+  });
+});

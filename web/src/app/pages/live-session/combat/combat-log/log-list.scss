@@ -77,6 +77,8 @@
 }
 
 .line__text {
+  // A long sentence (the monsters the master put in) takes the room beside the icon instead of wrapping under it.
+  flex: 1 1 200px;
   min-width: 0;
   overflow-wrap: anywhere;
 }

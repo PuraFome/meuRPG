@@ -53,3 +53,10 @@ test('a página de créditos mostra a atribuição do SRD 5.2.1 e o rótulo das 
   await expect(page.locator('body')).toContainText(paragraph.replace(/\s+/g, ' ').trim());
   await expect(page.locator('body')).toContainText('SRD 5.2.1 (regras de 2024)');
 });
+
+// The 2024 table of the encounter builder (MR-043) is named on the page, with its page of the SRD 5.2.1 (10.17b).
+test('a página de créditos nomeia a tabela de orçamento de XP dos encontros (p. 201 do SRD 5.2.1)', { tag: ['@licenca', '@MR-043'] }, async ({ page }) => {
+  await page.goto('/creditos');
+  await expect(page.locator('body')).toContainText('“XP Budget per Character” (p. 201)');
+  await expect(page.locator('body')).toContainText('o orçamento de XP de cada dificuldade nos encontros');
+});

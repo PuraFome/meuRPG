@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import type { Observable } from 'rxjs';
 
 import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { MapState } from '../../../core/maps/map-state';
@@ -11,6 +12,35 @@ import {
   StartCombatDialog,
   type StartCombatData,
 } from './start-combat/start-combat-dialog';
+
+/** The session's current map as the start dialog wants it, or `null` while there is none or it has no image. */
+export function combatMapInfo(state: MapState): CombatMapInfo | null {
+  const map = state.map();
+  return map?.image
+    ? {
+        id: map.id,
+        name: map.name,
+        image: { url: map.image.url, width: map.image.width, height: map.image.height },
+        columns: map.gridColumns,
+        rows: map.gridRows,
+      }
+    : null;
+}
+
+/** Opens "Iniciar combate" (a full-screen dialog on a phone) and answers with the combat it started, or `undefined`. */
+export function openStartCombat(dialog: MatDialog, phone: boolean, data: StartCombatData): Observable<Encounter | undefined> {
+  return dialog
+    .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
+      data,
+      width: phone ? '100vw' : '760px',
+      maxWidth: phone ? '100vw' : 'calc(100vw - 32px)',
+      height: phone ? '100dvh' : undefined,
+      maxHeight: phone ? '100dvh' : '92dvh',
+      ariaLabelledBy: 'start-title',
+      autoFocus: 'first-tabbable',
+    })
+    .afterClosed();
+}
 
 /**
  * "Combate" on the master's session page while there is none (MR-013): one
@@ -95,40 +125,17 @@ export class CombatLaunch {
   /** The combat that was started: the page shows it. */
   readonly started = output<Encounter>();
 
-  protected readonly map = computed<CombatMapInfo | null>(() => {
-    const map = this.state().map();
-    return map?.image
-      ? {
-          id: map.id,
-          name: map.name,
-          image: { url: map.image.url, width: map.image.width, height: map.image.height },
-          columns: map.gridColumns,
-          rows: map.gridRows,
-        }
-      : null;
-  });
+  protected readonly map = computed<CombatMapInfo | null>(() => combatMapInfo(this.state()));
 
   protected open(): void {
     const map = this.map();
     if (!map) {
       return;
     }
-    const phone = this.phone();
-    this.dialog
-      .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
-        data: { campaignId: this.campaignId(), mode: 'start', map },
-        width: phone ? '100vw' : '760px',
-        maxWidth: phone ? '100vw' : 'calc(100vw - 32px)',
-        height: phone ? '100dvh' : undefined,
-        maxHeight: phone ? '100dvh' : '92dvh',
-        ariaLabelledBy: 'start-title',
-        autoFocus: 'first-tabbable',
-      })
-      .afterClosed()
-      .subscribe((encounter) => {
-        if (encounter) {
-          this.started.emit(encounter);
-        }
-      });
+    openStartCombat(this.dialog, this.phone(), { campaignId: this.campaignId(), mode: 'start', map }).subscribe((encounter) => {
+      if (encounter) {
+        this.started.emit(encounter);
+      }
+    });
   }
 }

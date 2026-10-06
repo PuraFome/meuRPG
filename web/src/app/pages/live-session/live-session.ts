@@ -63,6 +63,7 @@ import {
   VitalsVm,
 } from './live-session.types';
 import { ClueNotice } from './clue-notice/clue-notice';
+import { BattleEncounters } from './battle-encounters/battle-encounters';
 import { CombatLaunch } from './combat/combat-launch';
 import { DiceDialog, DiceDialogData } from './combat/dice-dialog';
 import { CombatView } from './combat/combat-view';
@@ -123,6 +124,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FogMasterPanel,
     FogPlayerTools,
     FamiliarBand,
+    BattleEncounters,
     CombatLaunch,
     CombatView,
     FoundTreasures,

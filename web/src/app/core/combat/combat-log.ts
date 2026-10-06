@@ -479,9 +479,25 @@ export function logLine(
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
+    case CombatLogKind.MONSTERS_ADDED:
+      // The master put monsters in the combat (RN-29): the line is his alone, with the hit points and the dice they were rolled with.
+      return { ...base, hidden: true, icon: 'pets', actor: '', text: monstersAddedText(e) };
     default:
       return null;
   }
+}
+
+/** "Bandido 1: 9 PV (2d8 + 2: 3, 4)", or "Bandido 1: 11 PV (média)": what the master reads of the monsters that came in. */
+export function monstersAddedText(e: CombatLogEntry): string {
+  const n = e.monsters.length;
+  const each = e.monsters.map((m) => {
+    if (!m.rolled) {
+      return `${m.label}: ${m.hitPoints} PV (média)`;
+    }
+    const dice = m.dice.replace(/([+-])/, ' $1 ');
+    return `${m.label}: ${m.hitPoints} PV (${dice}: ${m.faces.join(', ')})`;
+  });
+  return `Você pôs ${n === 1 ? 'um monstro' : `${n} monstros`} no combate. ${each.join('; ')}`;
 }
 
 /** "virou o Lobo", "voltou à forma normal": a druid's change of form. The damage that passed on to the druid is only in the
@@ -532,8 +548,9 @@ export function logGroups(
     }
     return {
       round: r.round,
-      title: `Rodada ${r.round}`,
-      status: r.round >= currentRound ? 'em andamento' : 'encerrada',
+      // Round 0 is before the combat begins: the monsters the master put in while it was being set up.
+      title: r.round === 0 ? 'Antes do combate' : `Rodada ${r.round}`,
+      status: r.round === 0 ? (currentRound === 0 ? 'em preparação' : 'encerrada') : r.round >= currentRound ? 'em andamento' : 'encerrada',
       lines,
     };
   });

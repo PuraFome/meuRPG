@@ -12,6 +12,16 @@
         Por inimigos derrotados. Marque quem recebe: por padrão, quem lutou e está vivo.
       </p>
 
+      @if (kinds().length > 0) {
+        <ul class="kinds" aria-label="O que cada criatura vale">
+          @for (k of kinds(); track k.key) {
+            <li class="kind">
+              <span class="kind__t">{{ k.label }}<span class="kind__s">{{ k.nd ? ' · ND ' + k.nd : '' }} · {{ k.each }}</span></span>
+              <span class="kind__n">{{ k.total }}</span>
+            </li>
+          }
+        </ul>
+      }
       <div class="total">
         <span class="total__label">{{ totalLabel() }}</span>
         <span class="total__sum">{{ sum() }}</span>

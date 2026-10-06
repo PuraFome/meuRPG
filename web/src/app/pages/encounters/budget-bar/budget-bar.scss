@@ -1,0 +1,154 @@
+:host {
+  display: block;
+}
+
+// A newer measure is on its way: the filled part dims; the words keep their contrast.
+.bar--stale .bar__fill {
+  opacity: 0.55;
+}
+
+.bar__top {
+  position: relative;
+  height: 40px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.bar__budget {
+  position: absolute;
+  bottom: 12px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.bar__marker {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--mr-ink);
+
+  svg {
+    width: 10px;
+    height: 6px;
+    margin-top: 2px;
+    fill: currentcolor;
+  }
+}
+
+.bar__track {
+  position: relative;
+  height: 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.bar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--mr-ink);
+}
+
+.bar__tick {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--mr-ink);
+  // A thin surface edge keeps the tick apart from the filled part under it.
+  box-shadow: 0 0 0 1px var(--mr-surface);
+}
+
+.bar__words {
+  position: relative;
+  height: 28px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.bar__word {
+  position: absolute;
+  top: 0;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--mr-radius-pill);
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  &--on {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent-soft);
+    color: var(--mr-accent-strong);
+    font-weight: 800;
+  }
+}
+
+// The phone's list of bands: the dot and the bold word say which one the encounter is in.
+.bands {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  &--on {
+    color: var(--mr-ink);
+    font-weight: 800;
+  }
+}
+
+.band__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--mr-radius-pill);
+  background: transparent;
+
+  .band--on & {
+    background: var(--mr-ink);
+  }
+}
+
+.band__l {
+  margin-left: auto;
+}
+
+@media (max-width: 599.98px) {
+  .bar__budget {
+    display: none;
+  }
+
+  .bar__top {
+    height: 28px;
+  }
+
+  .bar__words {
+    display: none;
+  }
+
+  .bands {
+    display: block;
+    margin-top: 10px;
+  }
+}

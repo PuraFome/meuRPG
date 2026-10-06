@@ -233,3 +233,27 @@
     font-size: 18px;
   }
 }
+
+// "Começar este combate": the monsters of the saved encounter, read only, with how they start.
+.mon__hint {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.bestiary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: var(--mr-space-2);
+  font-weight: 700;
+  color: var(--mr-accent-text);
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

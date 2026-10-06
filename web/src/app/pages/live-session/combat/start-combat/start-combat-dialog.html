@@ -7,6 +7,8 @@
       <p class="dlg__lead">
         @if (adding) {
           Eles rolam a própria iniciativa e entram na ordem. A vez de agora não muda.
+        } @else if (saved) {
+          Os monstros do encontro entram como NPCs, como os do Bestiário.
         } @else {
           Escolha quem entra. Depois, o app pede a iniciativa de todos.
         }
@@ -87,6 +89,14 @@
           </div>
         }
 
+        @if (saved) {
+          <div class="mon">
+            <span class="mr-label" aria-hidden="true">Pontos de vida dos monstros</span>
+            <app-segmented label="Pontos de vida dos monstros" [segments]="hpSegments" [value]="monsterHp()" (choose)="monsterHp.set($event)" />
+            <p class="mon__hint">“Média” usa os PV médios de cada criatura; “Rolar” rola os dados de cada uma ao entrar.</p>
+          </div>
+        }
+
         <section aria-labelledby="group-title">
           <div class="sec__head">
             <h3 class="sec__title" id="group-title">Grupo</h3>
@@ -114,6 +124,21 @@
         </section>
       }
 
+      @if (saved) {
+        <section aria-labelledby="mon-title">
+          <div class="sec__head">
+            <h3 class="sec__title" id="mon-title">Monstros do encontro</h3>
+            <span class="sec__count">{{ monsterTotal }} NPCs</span>
+          </div>
+          <app-saved-monsters [rows]="monsterRows" />
+          <app-hidden-switch
+            label="Escondidos no início"
+            hint="Cada um rola a própria iniciativa. Você revela quando quiser."
+            [checked]="monstersHidden()"
+            (toggle)="monstersHidden.set($event)"
+          />
+        </section>
+      } @else {
       <section aria-labelledby="npcs-title">
         <div class="sec__head">
           <h3 class="sec__title" id="npcs-title">NPCs da campanha</h3>
@@ -143,7 +168,12 @@
           Quem está escondido só você vê, até você revelar durante o combate. Cada NPC rola a própria
           iniciativa.
         </p>
+        <!-- A monster of the bestiary goes in through "Pôr no combate" there (MR-042). -->
+        <a class="bestiary-link" [routerLink]="['/campanhas', data.campaignId, 'bestiario']" (click)="close()">
+          <mat-icon aria-hidden="true">pets</mat-icon>Pôr um monstro do bestiário
+        </a>
       </section>
+      }
     }
   </div>
 

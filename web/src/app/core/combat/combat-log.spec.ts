@@ -248,3 +248,37 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(undoLabel(entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa' } as never))).toBe('o teste contra a morte da Brisa');
   });
 });
+
+describe('the monsters the master put in (MR-042, RN-29): a line for the master alone, with the hit points and the dice', () => {
+  it('writes the rolled hit points with their dice, and flags the line as the master\'s alone', () => {
+    const line = logLine(
+      entry({
+        kind: CombatLogKind.MONSTERS_ADDED,
+        monsters: [
+          { combatantId: 'm1', label: 'Bandido 1', hitPoints: 9, rolled: true, dice: '2d8+2', faces: [3, 4], modifier: 2 },
+          { combatantId: 'm2', label: 'Bandido 2', hitPoints: 13, rolled: true, dice: '2d8+2', faces: [6, 5], modifier: 2 },
+        ],
+      } as never),
+    );
+    expect(line?.hidden).toBe(true);
+    expect(line?.actor).toBe('');
+    expect(line?.text).toBe('Você pôs 2 monstros no combate. Bandido 1: 9 PV (2d8 + 2: 3, 4); Bandido 2: 13 PV (2d8 + 2: 6, 5)');
+  });
+
+  it('writes the average as the average', () => {
+    const line = logLine(entry({ kind: CombatLogKind.MONSTERS_ADDED, monsters: [{ combatantId: 'm1', label: 'Ogro', hitPoints: 59, rolled: false, dice: '', faces: [], modifier: 0 }] } as never));
+    expect(line?.text).toBe('Você pôs um monstro no combate. Ogro: 59 PV (média)');
+  });
+
+  it('puts the round-0 group before the combat begins, titled in words', () => {
+    const rounds = [
+      create(CombatLogRoundSchema, { round: 1, entries: [create(CombatLogEntrySchema, { id: 'a', kind: CombatLogKind.COMBAT_BEGUN })] }),
+      create(CombatLogRoundSchema, { round: 0, entries: [create(CombatLogEntrySchema, { id: 'b', kind: CombatLogKind.MONSTERS_ADDED, monsters: [{ combatantId: 'm1', label: 'Bandido', hitPoints: 11, rolled: false, dice: '', faces: [], modifier: 0 }] })] }),
+    ];
+    const groups = logGroups(rounds, 1, 'Emboscada');
+    expect(groups.map((g) => [g.title, g.status])).toEqual([['Rodada 1', 'em andamento'], ['Antes do combate', 'encerrada']]);
+    expect(groups[1].lines[0].text).toContain('Você pôs um monstro no combate');
+    // Still being set up: the round-0 group is the one under way.
+    expect(logGroups([rounds[1]], 0)[0].status).toBe('em preparação');
+  });
+});

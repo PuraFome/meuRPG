@@ -179,7 +179,9 @@ export class OrderList {
       return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)].filter(Boolean).join(' · ');
     }
     const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
-    return [first, ac].filter(Boolean).join(' · ');
+    // A monster of the bestiary (RN-29): the master alone is told its challenge rating ("ND 1/8").
+    const nd = c.challengeRating ? `ND\u00a0${c.challengeRating}` : '';
+    return [first, nd, ac].filter(Boolean).join(' · ');
   }
 
   protected readonly article = article;

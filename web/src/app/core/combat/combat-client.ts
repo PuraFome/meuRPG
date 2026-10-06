@@ -10,11 +10,13 @@ import {
   type CombatantSide,
   type DiceRoll,
   type Encounter,
+  EncounterMode,
   type GetCombatHighlightsResponse,
   type GetMoveOptionsResponse,
   type GetTurnOptionsResponse,
   type ListCombatLogResponse,
   JumpKind,
+  MonsterHitPoints,
   type ParticipantSchema,
   type PendingDamage,
   type ReactionOutcome,
@@ -32,6 +34,34 @@ export interface JoinSpec {
   readonly characterId: string;
   readonly count?: number;
   readonly hidden?: boolean;
+}
+
+/** One creature of the bestiary, with how many come and the base name (empty: the creature's Portuguese name). */
+export interface MonsterGroupSpec {
+  readonly creatureKey: string;
+  readonly count: number;
+  readonly name?: string;
+}
+
+/** The hit points of monsters: the creature's average, or each one rolls its dice (RN-29). */
+export type MonsterHp = 'average' | 'rolled';
+
+/** What a start brings besides the party: the monsters of a saved encounter ("Começar este combate", MR-043) and the
+ * battle point it was started from. Hit points and hidden apply to every group. */
+export interface StartExtras {
+  readonly monsters?: readonly MonsterGroupSpec[];
+  readonly monsterHp?: MonsterHp;
+  readonly monstersHidden?: boolean;
+  /** A BATTLE point of the campaign the combat starts from (never with the combat without a map). */
+  readonly mapPointId?: string;
+  /** The combat without a map ("teatro da mente", RN-25): no map point goes with it, and the monsters have no squares. */
+  readonly theatre?: boolean;
+}
+
+/** What `AddMonsters` answers: the combat and the ids of the new combatants, in the order of their names. */
+export interface AddMonstersResult {
+  readonly encounter: Encounter;
+  readonly combatantIds: readonly string[];
 }
 
 /** How a combatant's d20 comes (`SubmitInitiative`): the app rolls it, or a
@@ -155,14 +185,45 @@ export class CombatClient {
     name: string,
     participants: readonly JoinSpec[],
     idempotencyKey: string,
+    extras: StartExtras = {},
   ): Promise<Encounter> {
     const res = await this.client.startEncounter({
       campaignId,
       idempotencyKey,
       name,
       participants: participants.map(toParticipant),
+      mapPointId: extras.theatre ? '' : (extras.mapPointId ?? ''),
+      mode: extras.theatre ? EncounterMode.THEATRE : EncounterMode.UNSPECIFIED,
+      ...(extras.monsters && extras.monsters.length > 0
+        ? {
+            monsters: extras.monsters.map((m) => ({ creatureKey: m.creatureKey, count: m.count, name: m.name ?? '' })),
+            monsterHitPoints: toHitPoints(extras.monsterHp),
+            monstersHidden: extras.monstersHidden ?? true,
+          }
+        : {}),
     });
     return need(res.encounter, 'StartEncounter');
+  }
+
+  /** "Pôr no combate" (`AddMonsters`): 1 to 10 monsters of one SRD creature. The caller makes the key once per add and sends it
+   * again on a retry with the same parameters. */
+  async addMonsters(
+    campaignId: string,
+    encounterId: string,
+    add: { readonly creatureKey: string; readonly count: number; readonly name: string; readonly hp: MonsterHp; readonly hidden: boolean },
+    idempotencyKey: string,
+  ): Promise<AddMonstersResult> {
+    const res = await this.client.addMonsters({
+      campaignId,
+      encounterId,
+      idempotencyKey,
+      creatureKey: add.creatureKey,
+      count: add.count,
+      name: add.name,
+      hitPoints: toHitPoints(add.hp),
+      hidden: add.hidden,
+    });
+    return { encounter: need(res.encounter, 'AddMonsters'), combatantIds: res.combatantIds };
   }
 
   async submitInitiative(
@@ -601,6 +662,10 @@ export class CombatClient {
     });
     return need(res.encounter, 'EndEncounter');
   }
+}
+
+function toHitPoints(hp: MonsterHp | undefined): MonsterHitPoints {
+  return hp === 'rolled' ? MonsterHitPoints.ROLLED : MonsterHitPoints.AVERAGE;
 }
 
 function toParticipant(spec: JoinSpec): MessageInitShape<typeof ParticipantSchema> {

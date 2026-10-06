@@ -1,0 +1,56 @@
+@if (error() || kept().length > 0) {
+<div class="wrap">
+@if (error()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ error() }}</p>
+  </div>
+}
+@for (k of kept(); track k.pointId) {
+  <section class="mr-panel enc" [attr.aria-labelledby]="'enc-' + k.pointId">
+    <div class="enc__head">
+      <mat-icon class="enc__flag" aria-hidden="true">flag</mat-icon>
+      <h2 class="enc__t" [id]="'enc-' + k.pointId">{{ k.name }}</h2>
+      <span class="enc__pill"><mat-icon aria-hidden="true">visibility_off</mat-icon>Encontro guardado</span>
+    </div>
+
+    @if (k.evaluation) {
+      <p class="enc__band">{{ head(k) }}</p>
+      <p class="enc__guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+      <ul class="enc__rows">
+        @for (l of lines(k); track l.key) {
+          <li class="enc__row">
+            <app-creature-art class="enc__art" [monsterKey]="l.key" [type]="l.type" />
+            <span class="enc__n">{{ l.text }}</span>
+            <span class="enc__nd">{{ l.nd }}</span>
+            <span class="enc__xp">{{ l.xp }}</span>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (k.unknown.length > 0) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>
+          <strong>Uma criatura deste encontro não está mais no SRD.</strong>
+          Abra os <a [routerLink]="['/campanhas', campaignId(), 'encontros']">Encontros</a> e tire-a antes de começar.
+        </p>
+      </div>
+    }
+
+    <button
+      type="button"
+      mat-flat-button
+      class="enc__go"
+      [disabled]="k.unknown.length > 0"
+      disabledInteractive
+      [class.mr-button--off]="k.unknown.length > 0"
+      (click)="begin(k)"
+    >
+      <mat-icon aria-hidden="true">flag</mat-icon>Começar este combate
+    </button>
+  </section>
+}
+</div>
+}
