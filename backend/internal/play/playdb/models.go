@@ -74,6 +74,7 @@ type Encounter struct {
 	CreatedAt          time.Time
 	StartedAt          *time.Time
 	EndedAt            *time.Time
+	Mode               string
 }
 
 type GameSession struct {
@@ -94,8 +95,8 @@ type OpportunityOffer struct {
 	MoveID          string
 	MoverID         string
 	ReactorID       string
-	LeftCol         int32
-	LeftRow         int32
+	LeftCol         *int32
+	LeftRow         *int32
 	State           string
 	AttackPendingID *string
 	CreatedAt       time.Time

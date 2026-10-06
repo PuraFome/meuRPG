@@ -295,7 +295,13 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			}
 		case eventOpportunityOffered:
 			moveOf[ev.OfferID] = ev.MoveID
-			continue
+			if !ev.ByHand {
+				continue // a move's offer is no line of its own: the move's is
+			}
+			// The master's offer in a combat without a map is a line, and its answer
+			// (decline, skip, withdraw) belongs to it, so the answer can be undone.
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED
+			byMove[ev.MoveID] = entry
 		case eventReactionDeclined:
 			if host, ok := byPending[ev.Pending]; ok {
 				host.hosts = append(host.hosts, e.ID) // a decline is the entry's last action to undo
@@ -395,6 +401,11 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		visible = visible && ok && !hit.Hidden
 	}
 	if !v.master && (!visible || !seen) {
+		return nil, false
+	}
+	// The offer's line is for whoever gets the offer (RN-10): the reactor's player
+	// and the mover's.
+	if !v.master && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED && !v.owns(actor) && !v.owns(target) {
 		return nil, false
 	}
 

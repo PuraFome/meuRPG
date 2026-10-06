@@ -56,7 +56,16 @@ type GalleryImage struct {
 	// The maps whose image this is, oldest first ("Usada em Mirathel e
 	// arredores"). Empty when no map uses it, and always empty in the upload's
 	// answer. An image a map uses cannot be deleted.
-	UsedInMaps    []*MapRef `protobuf:"bytes,11,rep,name=used_in_maps,json=usedInMaps,proto3" json:"used_in_maps,omitempty"`
+	UsedInMaps []*MapRef `protobuf:"bytes,11,rep,name=used_in_maps,json=usedInMaps,proto3" json:"used_in_maps,omitempty"`
+	// True for an image that ImageGenerationService made (MR-039): the gallery
+	// labels it "Gerada por IA". It is hidden from the players like any image
+	// (RN-10) until the master shows it.
+	Generated bool `protobuf:"varint,12,opt,name=generated,proto3" json:"generated,omitempty"`
+	// The image this one was made from by an edit (ImageGenerationService.
+	// EditGeneratedImage), a UUID, or "" for an uploaded image, a first
+	// generated image, or one whose parent was deleted. The edit chain is the
+	// images linked this way (ListImageEdits).
+	ParentImageId string `protobuf:"bytes,13,opt,name=parent_image_id,json=parentImageId,proto3" json:"parent_image_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,6 +175,20 @@ func (x *GalleryImage) GetUsedInMaps() []*MapRef {
 		return x.UsedInMaps
 	}
 	return nil
+}
+
+func (x *GalleryImage) GetGenerated() bool {
+	if x != nil {
+		return x.Generated
+	}
+	return false
+}
+
+func (x *GalleryImage) GetParentImageId() string {
+	if x != nil {
+		return x.ParentImageId
+	}
+	return ""
 }
 
 // ImageInUse is the error detail of DeleteGalleryImage's
@@ -600,7 +623,7 @@ var File_meurpg_maps_v1_gallery_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"\xed\x02\n" +
+	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"\xb3\x03\n" +
 	"\fGalleryImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -616,7 +639,9 @@ const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"\rthumbnail_url\x18\n" +
 	" \x01(\tR\fthumbnailUrl\x128\n" +
 	"\fused_in_maps\x18\v \x03(\v2\x16.meurpg.maps.v1.MapRefR\n" +
-	"usedInMaps\"8\n" +
+	"usedInMaps\x12\x1c\n" +
+	"\tgenerated\x18\f \x01(\bR\tgenerated\x12&\n" +
+	"\x0fparent_image_id\x18\r \x01(\tR\rparentImageId\"8\n" +
 	"\n" +
 	"ImageInUse\x12*\n" +
 	"\x04maps\x18\x01 \x03(\v2\x16.meurpg.maps.v1.MapRefR\x04maps\"\xb2\x01\n" +

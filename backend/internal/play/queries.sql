@@ -118,9 +118,10 @@ SELECT * FROM encounters
 WHERE game_session_id = $1 AND id = $2;
 
 -- name: InsertEncounter :one
--- A new combat starts in setup, in round 0.
-INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at)
-VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7)
+-- A new combat starts in setup, in round 0. The mode ('grid' or 'theatre') never
+-- changes afterwards; a combat without a grid has no map and a grid of 0 by 0.
+INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at, mode)
+VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7, $8)
 RETURNING *;
 
 -- name: SetEncounterState :one
@@ -723,7 +724,7 @@ SELECT * FROM opportunity_offers
 WHERE encounter_id = $1 AND attack_pending_id = $2;
 
 -- name: SetOpportunityOfferState :one
--- Answered (attacked, declined or skipped), or back to pending (an undo).
+-- Answered (attacked, declined, skipped or withdrawn), or back to pending (an undo).
 UPDATE opportunity_offers
 SET state = $2, attack_pending_id = $3, answered_at = $4
 WHERE id = $1

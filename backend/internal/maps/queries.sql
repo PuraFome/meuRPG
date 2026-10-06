@@ -10,8 +10,8 @@ FROM gallery_images
 WHERE campaign_id = $1;
 
 -- name: InsertGalleryImage :one
-INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: ListGalleryImages :many
@@ -748,6 +748,129 @@ WHERE map_id = $1 AND id = $2;
 SELECT p.id, p.name FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.kind = 'trap' AND p.id = ANY($2::uuid[]);
+
+-- Generated images (MR-039, RN-28, ADR-0019). image_requests holds each
+-- request and, by its rows of a month that were not refunded, the campaign's
+-- monthly count.
+
+-- name: GetImageRequestByKey :one
+-- A retry with the same idempotency key finds the first request.
+SELECT * FROM image_requests
+WHERE campaign_id = $1 AND idempotency_key = $2;
+
+-- name: GetImageRequest :one
+SELECT * FROM image_requests
+WHERE campaign_id = $1 AND id = $2;
+
+-- name: GetImageRequestForImage :one
+-- The request that made an image.
+SELECT * FROM image_requests
+WHERE campaign_id = $1 AND image_id = $2;
+
+-- name: ExpireUnsentImageRequests :exec
+-- A request that never left the server and is still pending long after it was
+-- made lost its server (a restart): it fails and refunds its slot, so it never
+-- blocks the month's count for good.
+UPDATE image_requests
+SET status = 'failed', reason = 'timeout', refunded = true, finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND status = 'pending' AND sent_at IS NULL AND created_at < sqlc.arg(before);
+
+-- name: ExpireSentImageRequests :exec
+-- A request that left and is still pending long after it was sent: it timed
+-- out. The slot stays spent (the call may have been billed), and a picture that
+-- still arrives is stored (FinishImageRequestDone allows it, once).
+UPDATE image_requests
+SET status = 'failed', reason = 'timeout', finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND status = 'pending' AND sent_at IS NOT NULL AND sent_at < sqlc.arg(before);
+
+-- name: CountOpenImageRequests :one
+-- The requests that may still put an image in the gallery: pending, or canceled
+-- after the send without an image yet (only recent ones). The reserve step
+-- counts them against the gallery's room, so a full gallery cannot fail after
+-- the model was paid.
+SELECT count(*)::INT4 FROM image_requests
+WHERE campaign_id = $1 AND created_at > $2
+  AND (status = 'pending' OR (status = 'canceled' AND sent_at IS NOT NULL AND image_id IS NULL));
+
+-- name: CountImageSlots :one
+-- The slots the campaign spent in a month: its requests that were not
+-- refunded. Read inside the reserving transaction (SERIALIZABLE makes two
+-- racing requests for the last slot retry, and the second one sees it taken).
+SELECT count(*)::INT4 FROM image_requests
+WHERE campaign_id = $1 AND quota_month = $2 AND NOT refunded;
+
+-- name: NextImageRequestNumber :one
+SELECT (COALESCE(max(number), 0) + 1)::INT4 FROM image_requests
+WHERE campaign_id = $1;
+
+-- name: InsertImageRequest :one
+INSERT INTO image_requests (
+    id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
+    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15)
+RETURNING *;
+
+-- name: MarkImageRequestSent :execrows
+-- The moment the request leaves the server. No row means it was canceled
+-- first, and nothing is sent.
+UPDATE image_requests
+SET sent_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NULL;
+
+-- name: CancelUnsentImageRequest :execrows
+-- Cancel before the request left: the slot is refunded.
+UPDATE image_requests
+SET status = 'canceled', refunded = true, finished_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NULL;
+
+-- name: CancelSentImageRequest :execrows
+-- Cancel after the request left: only the wait stops. The slot stays spent,
+-- and an image that comes is stored all the same.
+UPDATE image_requests
+SET status = 'canceled', finished_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NOT NULL;
+
+-- name: FinishImageRequestFailed :exec
+-- Nothing was generated: refused or failed, and the slot is back. A request
+-- the master canceled in the meantime stays canceled (with the slot back).
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE sqlc.arg(status) END,
+    reason = sqlc.arg(reason), refunded = true, finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND status IN ('pending', 'canceled') AND NOT refunded;
+
+-- name: FinishImageRequestDone :execrows
+-- The image is in the gallery. Allowed once, from pending, from canceled (it
+-- keeps its status, with the image) and from a timeout after the send; zero
+-- rows means it ended another way or already has an image, and the caller
+-- rolls its gallery insert back.
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE 'done' END,
+    reason = '', image_id = sqlc.arg(image_id), finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND image_id IS NULL
+  AND (status IN ('pending', 'canceled') OR (status = 'failed' AND reason = 'timeout' AND sent_at IS NOT NULL AND NOT refunded));
+
+-- name: ListImageChain :many
+-- Every image of the edit tree an image belongs to (its root, and every edit
+-- below it), oldest first, with the master's text that made each one.
+WITH RECURSIVE up AS (
+    SELECT g.id, g.parent_image_id FROM gallery_images g
+    WHERE g.campaign_id = $1 AND g.id = $2
+    UNION ALL
+    SELECT p.id, p.parent_image_id FROM gallery_images p JOIN up ON p.id = up.parent_image_id
+), tree AS (
+    SELECT g.id, g.parent_image_id FROM gallery_images g
+    WHERE g.id = (SELECT u.id FROM up u WHERE u.parent_image_id IS NULL)
+    UNION ALL
+    SELECT c.id, c.parent_image_id FROM gallery_images c JOIN tree t ON c.parent_image_id = t.id
+)
+SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size,
+       g.created_at, g.generated, g.parent_image_id,
+       COALESCE(r.prompt, '')::TEXT AS prompt, COALESCE(r.number, 0)::INT4 AS number
+FROM tree t
+JOIN gallery_images g ON g.id = t.id
+LEFT JOIN image_requests r ON r.image_id = g.id
+ORDER BY g.created_at, g.id;
 
 -- Generated dungeons (MR-010, slice 10.6d): the record DungeonService keeps of a map
 -- it made. The master's alone: nothing here is ever sent to a player (RN-10).

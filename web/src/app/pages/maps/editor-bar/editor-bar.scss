@@ -196,3 +196,21 @@
   font-size: 18px;
   vertical-align: middle;
 }
+
+// A door kind's mark on its button: the same drawing the map and the legend use, on a small swatch of paper.
+.bar__door {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  // It must not make the label's line taller than the words (the check beside it is centred on the button, and the words on their line):
+  // the negative margin gives back what the swatch has over the line.
+  margin-block: -4px;
+  margin-inline-end: 6px;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 2px;
+  background: var(--mr-map-token-surface);
+  vertical-align: middle;
+}

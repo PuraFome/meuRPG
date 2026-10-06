@@ -51,6 +51,10 @@ func (s *Service) StartEncounter(
 	if err != nil {
 		return nil, err
 	}
+	asked := req.Msg.GetMode()
+	if _, known := playv1.EncounterMode_name[int32(asked)]; !known {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("mode must be a mode of combat"))
+	}
 	parts, err := s.participants(ctx, m.CampaignID, req.Msg.GetParticipants(), true)
 	if err != nil {
 		return nil, err
@@ -72,6 +76,36 @@ func (s *Service) StartEncounter(
 				"the session already has a combat; end it first")
 		case !errors.Is(err, pgx.ErrNoRows):
 			return nil, fmt.Errorf("find the open encounter: %w", err)
+		}
+
+		// The mode is chosen here, for good (RN-25): the request's, or the table's rule
+		// "combate com mapa" read in this transaction.
+		if asked == playv1.EncounterMode_ENCOUNTER_MODE_UNSPECIFIED && pointID != nil {
+			asked = playv1.EncounterMode_ENCOUNTER_MODE_GRID // a battle point leads to a map: it implies a combat on one, whatever the table's rule
+		}
+		mode, err := s.modeOfStart(ctx, c.tx, m.CampaignID, asked)
+		if err != nil {
+			return nil, err
+		}
+		if mode == modeTheatre {
+			// No map, no point, no grid: nobody has a square, and the session's current
+			// map stays as it is.
+			if pointID != nil {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP,
+					"a combat without a map takes no battle point")
+			}
+			enc, err := c.q.InsertEncounter(ctx, playdb.InsertEncounterParams{
+				GameSessionID: c.session.ID, Name: name, CreatedAt: c.now, Mode: modeTheatre,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("insert encounter: %w", err)
+			}
+			c.enc = enc
+			_, added, err := s.addParticipants(ctx, c, link.Grid{}, nil, parts)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "mode": modeTheatre}, nil
 		}
 
 		// The fight is on the session's current map, or on the map the battle
@@ -105,7 +139,7 @@ func (s *Service) StartEncounter(
 
 		enc, err := c.q.InsertEncounter(ctx, playdb.InsertEncounterParams{
 			GameSessionID: c.session.ID, MapID: &mapID, MapPointID: pointID, Name: name,
-			GridColumns: grid.Columns, GridRows: grid.Rows, CreatedAt: c.now,
+			GridColumns: grid.Columns, GridRows: grid.Rows, CreatedAt: c.now, Mode: modeGrid,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("insert encounter: %w", err)

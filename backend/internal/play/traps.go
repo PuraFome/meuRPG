@@ -189,6 +189,11 @@ func (s *Service) SearchForTraps(
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
+		if theatre, err := theatreRunning(ctx, q, session.ID); err != nil {
+			return err
+		} else if theatre {
+			return errNeedsAMap() // a combat without a map has no traps to search for (RN-25)
+		}
 		force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
 		if err != nil {
 			return err

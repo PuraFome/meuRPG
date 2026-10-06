@@ -42,6 +42,7 @@ import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import type { PickRow } from '../../../shared/person-pick/person-pick';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
+import { BP_MAX } from '../../../shared/map-view/map-geometry';
 import { MapMove, MapSelection, MapView } from '../../../shared/map-view/map-view';
 import { CoverDegrees } from '../cover-degrees/cover-degrees';
 import { EditorBar, type EditorMode } from '../editor-bar/editor-bar';
@@ -50,7 +51,8 @@ import { FogPanel } from '../fog-panel/fog-panel';
 import { GridPanel } from '../grid-panel/grid-panel';
 import { LayersPanel } from '../layers-panel/layers-panel';
 import { PaintSurface } from '../paint-surface/paint-surface';
-import { EditorPainting } from './editor-painting';
+import { DoorPanel } from '../door-panel/door-panel';
+import { EditorPainting, type Occupant } from './editor-painting';
 import { LightPointPanel } from '../point-kinds/light-point-panel';
 import { TrapPointPanel } from '../point-kinds/trap-point-panel';
 import { TreasurePointPanel } from '../point-kinds/treasure-point-panel';
@@ -102,6 +104,7 @@ interface PointPanelApi {
   selector: 'app-map-editor',
   imports: [
     CoverDegrees,
+    DoorPanel,
     EditorBar,
     EditorOverlay,
     FogPanel,
@@ -175,7 +178,23 @@ export class MapEditor {
 
   // ---- painting ----
   /** The tool, the layers, the queue that saves the strokes and the question on leaving (`EditorPainting`). */
-  protected readonly paint = new EditorPainting(this.campaignId, this.map, this.mode, () => this.refreshFlags());
+  protected readonly paint = new EditorPainting(this.campaignId, this.map, this.mode, () => this.refreshFlags(), computed(() => this.occupants()));
+
+  /** Who stands on which square (the tokens), for the question before a door goes over them. */
+  private readonly occupants = computed<readonly Occupant[]>(() => {
+    const cols = this.map()?.gridColumns ?? 0;
+    const rows = this.map()?.gridRows ?? 0;
+    if (cols === 0 || rows === 0) {
+      return [];
+    }
+    return this.state()
+      .tokens()
+      .map((t) => ({
+        col: Math.min(cols - 1, Math.floor((t.xBp / BP_MAX) * cols)),
+        row: Math.min(rows - 1, Math.floor((t.yBp / BP_MAX) * rows)),
+        name: t.name,
+      }));
+  });
 
   // ---- "Ver como" ----
   protected readonly viewAs = signal<string | null>(null);

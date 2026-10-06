@@ -7,12 +7,15 @@ import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   COVER_LABEL,
   type CoverDegree,
+  DOOR_CHOICES,
+  DOOR_LABEL,
   LIGHT_LABEL,
   type LightDegree,
   type PaintSettings,
   type PaintTool,
   TOOL_LABEL,
 } from '../../../core/maps/paint-tools';
+import { DoorMark } from '../../../shared/map-layers/door-mark';
 import type { RosterEntry } from '../../../core/maps/roster-client';
 import { ChestIcon } from '../../../shared/chest-icon/chest-icon';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
@@ -27,6 +30,7 @@ const TOOLS: readonly { tool: PaintTool; icon: string }[] = [
   { tool: 'wall', icon: 'brick' },
   { tool: 'cover', icon: 'fence' },
   { tool: 'light', icon: 'lightbulb' },
+  { tool: 'door', icon: 'door_front' },
 ];
 const LIGHT_ICON: Readonly<Record<LightDegree, string>> = { 3: 'light_mode', 2: 'contrast', 1: 'dark_mode' };
 
@@ -40,7 +44,7 @@ const LIGHT_ICON: Readonly<Record<LightDegree, string>> = { 3: 'light_mode', 2: 
  */
 @Component({
   selector: 'app-editor-bar',
-  imports: [ChestIcon, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [ChestIcon, DoorMark, MatButtonModule, MatIconModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './editor-bar.html',
   styleUrl: './editor-bar.scss',
@@ -79,6 +83,8 @@ export class EditorBar {
   protected readonly scaleText = computed(() => scaleLabel(this.scale()));
   protected readonly covers: readonly CoverDegree[] = [1, 2];
   protected readonly lights: readonly LightDegree[] = [3, 2, 1];
+  protected readonly doorChoices = DOOR_CHOICES;
+  protected readonly doorLabel = DOOR_LABEL;
 
   /** A tool looks chosen only when it can act, and only one at a time: the eraser takes the place of the tool it erases. */
   protected toolOn(tool: PaintTool): boolean {

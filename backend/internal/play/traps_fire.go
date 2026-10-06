@@ -89,6 +89,17 @@ func (s *Service) FireTrap(
 	if err != nil {
 		return nil, err
 	}
+	// A combat without a map has no traps (RN-25). A retry of a firing made before
+	// it began (the key is already in the history) still gets its stored answer.
+	if theatre, err := theatreRunning(ctx, s.queries, session.ID); err != nil {
+		return nil, s.dbError(ctx, "find the combat", err)
+	} else if theatre {
+		if seen, err := keySeen(ctx, s.queries, session.ID, key); err != nil {
+			return nil, s.dbError(ctx, "find the event of this idempotency key", err)
+		} else if !seen {
+			return nil, errNeedsAMap()
+		}
+	}
 	enc, inCombat, err := s.runningEncounterOn(ctx, session.ID, trap.MapID)
 	if err != nil {
 		return nil, s.dbError(ctx, "find the combat", err)
@@ -531,6 +542,9 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 	if err != nil {
 		return fmt.Errorf("find the open session: %w", err)
 	}
+	if theatre, err := theatreRunning(ctx, s.queries, session.ID); err != nil || theatre {
+		return err // a combat without a map has no traps: nothing fires (RN-25)
+	}
 	if _, inCombat, err := s.runningEncounterOn(ctx, session.ID, mapID); err != nil || inCombat {
 		return err
 	}
@@ -574,6 +588,9 @@ func (s *Service) CreatureDropped(ctx context.Context, campaignID, mapID string,
 	}
 	if err != nil {
 		return fmt.Errorf("find the open session: %w", err)
+	}
+	if theatre, err := theatreRunning(ctx, s.queries, session.ID); err != nil || theatre {
+		return err // a combat without a map has no traps: nothing fires (RN-25)
 	}
 	if _, inCombat, err := s.runningEncounterOn(ctx, session.ID, mapID); err != nil || inCombat {
 		return err // in a combat the creature's moves are the combat's

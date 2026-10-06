@@ -5,7 +5,7 @@ import { PaintedLayers } from './paint-layers';
 
 // The byte layouts are rules/grid's (TestLayerEncoding, TestLightAndCoverLayerEncoding): a one-bit layer is bit n % 8 of
 // byte n / 8, a two-bit layer is bits 2 * (n % 4) and one more of byte n / 4, both row-major.
-function packed(columns: number, rows: number, extra: Partial<{ wall: Uint8Array; difficultTerrain: Uint8Array; cover: Uint8Array; light: Uint8Array }> = {}) {
+function packed(columns: number, rows: number, extra: Partial<{ wall: Uint8Array; difficultTerrain: Uint8Array; cover: Uint8Array; light: Uint8Array; doors: Uint8Array }> = {}) {
   return { gridColumns: columns, gridRows: rows, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), ...extra };
 }
 
@@ -102,5 +102,33 @@ describe('PaintedLayers', () => {
     layers.clear();
     expect(layers.layers().walls).toEqual([]);
     expect(layers.layers().columns).toBe(0);
+  });
+});
+
+describe('PaintedLayers: the doors', () => {
+  it('reads and writes four bits a square, and decodes them into doors', () => {
+    const layers = new PaintedLayers();
+    layers.load(packed(3, 2));
+    expect(layers.paint(MapLayer.DOORS, 3, [{ col: 1, row: 1 }])).toEqual([{ col: 1, row: 1 }]);
+    expect(layers.paint(MapLayer.DOORS, 5, [{ col: 0, row: 0 }])).toEqual([{ col: 0, row: 0 }]);
+    expect(layers.value(MapLayer.DOORS, 1, 1)).toBe(3);
+    expect(layers.value(MapLayer.DOORS, 0, 0)).toBe(5);
+    expect(layers.layers().doors?.map((d) => [d.col, d.row, d.state])).toEqual([
+      [0, 0, 5],
+      [1, 1, 3],
+    ]);
+    // Painting the same value again changes nothing, and 0 clears the square.
+    expect(layers.paint(MapLayer.DOORS, 3, [{ col: 1, row: 1 }])).toEqual([]);
+    layers.paint(MapLayer.DOORS, 0, [{ col: 1, row: 1 }]);
+    expect(layers.layers().doors?.map((d) => d.state)).toEqual([5]);
+  });
+
+  it('starts from the doors the server sent', () => {
+    const layers = new PaintedLayers();
+    // 3 x 2 grid: square 1 is the high nibble of byte 0 (closed), square 4 the low nibble of byte 2 (barred).
+    layers.load(packed(3, 2, { doors: Uint8Array.of(0x20, 0x00, 0x04) }));
+    expect(layers.value(MapLayer.DOORS, 1, 0)).toBe(2);
+    expect(layers.value(MapLayer.DOORS, 1, 1)).toBe(4);
+    expect(layers.value(MapLayer.DOORS, 0, 0)).toBe(0);
   });
 });

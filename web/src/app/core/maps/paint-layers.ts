@@ -8,7 +8,7 @@ import { type MapLayers, NO_LAYERS, type PackedLayers, decodeLayers } from './la
  * The master's copy of the painted layers while he paints (MR-034, E9-01): the packed bytes `GetMapLayers`
  * sent, kept as full-size arrays so a stroke changes them at once (the drawing never waits for the server) and
  * decoded again into the squares the overlay draws. Pure TypeScript, so the byte layout (`rules/grid`'s: one
- * bit a square for terrain and wall, two for cover and light, row-major) is tested without a DOM. It decides
+ * bit a square for terrain and wall, two for cover and light, four for the doors, row-major) is tested without a DOM. It decides
  * nothing: what a wall does is the server's.
  */
 export class PaintedLayers {
@@ -20,6 +20,7 @@ export class PaintedLayers {
   private wall = new Uint8Array();
   private cover = new Uint8Array();
   private light = new Uint8Array();
+  private doors = new Uint8Array();
   private frame: number | null = null;
 
   /** `perFrame`: the bytes change at once but the squares the screen draws are decoded at most once an animation frame, so a drag over a
@@ -35,6 +36,7 @@ export class PaintedLayers {
     this.wall = fit(packed.wall, Math.ceil(squares / 8));
     this.cover = fit(packed.cover, Math.ceil(squares / 4));
     this.light = fit(packed.light ?? new Uint8Array(), Math.ceil(squares / 4));
+    this.doors = fit(packed.doors ?? new Uint8Array(), Math.ceil(squares / 2));
     this.publish();
   }
 
@@ -59,6 +61,8 @@ export class PaintedLayers {
         return (this.cover[n >> 2] >> (2 * (n & 3))) & 3;
       case MapLayer.LIGHT:
         return (this.light[n >> 2] >> (2 * (n & 3))) & 3;
+      case MapLayer.DOORS:
+        return (this.doors[n >> 1] >> (4 * (n & 1))) & 15;
       default:
         return 0;
     }
@@ -97,6 +101,9 @@ export class PaintedLayers {
       case MapLayer.LIGHT:
         this.light[n >> 2] = (this.light[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
         break;
+      case MapLayer.DOORS:
+        this.doors[n >> 1] = (this.doors[n >> 1] & ~(15 << (4 * (n & 1)))) | ((value & 15) << (4 * (n & 1)));
+        break;
     }
   }
 
@@ -129,6 +136,7 @@ export class PaintedLayers {
         wall: this.wall,
         cover: this.cover,
         light: this.light,
+        doors: this.doors,
       }),
     );
   }

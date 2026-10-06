@@ -20,6 +20,10 @@ linters:
   settings:
     misspell:
       locale: US
+      # "teatro da mente" is the combat mode's name in the API (ADR-0017): a
+      # combat on a map is `grid`, a combat without one is `theatre`.
+      ignore-rules:
+        - theatre
     revive:
       rules:
         # The defaults, listed explicitly so they are easy to discover.
