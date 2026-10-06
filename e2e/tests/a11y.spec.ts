@@ -31,6 +31,7 @@ import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updat
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
+  createInkBladeSubclassRPC,
   createOwlRaceRPC,
   createPlainSubclassRPC,
   createSheetRPC,
@@ -4571,14 +4572,52 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const prepare = page.locator('#pick-prepared');
     await expect(prepare).toBeVisible();
     const reason = (await page.locator('#foot-reason').textContent()) ?? '';
-    for (let i = 0; i < Number(/(\d+)/.exec(reason)?.[1] ?? '1'); i++) {
-      await prepare.getByRole('checkbox').nth(i).check();
+    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
+      await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
     }
     await expectScreenPasses(page, `Subir de nível, as magias ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
     const slots = page.getByRole('region', { name: 'O que muda', exact: true }).locator('li').filter({ hasText: 'Espaços de 1º círculo' });
     await expect(slots).toContainText('Da mesa');
     await expectScreenPasses(page, `Subir de nível, o resumo com "Da mesa" ${where}`);
+
+    // The third caster's Magias step at level 3 (the master's subclass casts from the wizard's list).
+    const campaignD = (await emptyTable(m, page, `Acessibilidade do conjurador ${Date.now()}`)).campaignId;
+    await createInkBladeSubclassRPC(m, campaignD);
+    const fighter = icaroSheetBody('class:fighter');
+    fighter.name = 'Rúnico';
+    (fighter.sheet as any).full.classes = [{ classKey: 'class:fighter', level: 2 }];
+    (fighter.sheet as any).full.experiencePoints = 900;
+    (fighter.sheet as any).full.skillProficiencyKeys = ['skill:athletics', 'skill:perception'];
+    const runico = await createSheetRPC(page, campaignD, fighter);
+    await lockAndMilestone(m, campaignD, runico);
+    await openLive(`/campanhas/${campaignD}/personagens/${runico}/subir-de-nivel`);
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    await expect(page.getByText(/truques de Mago/)).toBeVisible();
+    await expectScreenPasses(page, `Subir de nível, as magias do conjurador de um terço ${where}`);
+
+    // The edit of a sheet whose domain always prepares a spell: "Sempre preparadas", in the class's section.
+    const campaignB = (await emptyTable(m, page, `Acessibilidade das sempre preparadas ${Date.now()}`)).campaignId;
+    const domain = await createPlainSubclassRPC(m, campaignB, 'class:cleric', 'Domínio do Caminho', 1, [{ classLevel: 1, spellKey: 'spell:detect-magic' }]);
+    const cleric = await createSheetRPC(page, campaignB, {
+      kind: 'CHARACTER_KIND_PLAYER',
+      name: 'Clara',
+      sheet: { full: {
+        baseScores: { strength: 10, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 15, charisma: 8 },
+        raceKey: 'race:gnome',
+        classes: [{ classKey: 'class:cleric', level: 3, subclassKey: domain }],
+        backgroundKey: 'background:acolyte',
+        hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
+        preparedSpellKeys: ['spell:bless'],
+      } },
+    });
+    await openLive(`/campanhas/${campaignB}/personagens/${cleric}/editar`);
+    await page.getByRole('tab', { name: 'Magias' }).click();
+    await expect(page.locator('.granted')).toContainText('Sempre preparada');
+    await expect(page.getByText(/Preparadas \d+ de \d+/)).toBeVisible();
+    await expectScreenPasses(page, `Editar, as magias sempre preparadas ${where}`);
 
     // "A classe mudou" on the sheet, and its sheet.
     await changeGuardianSkillsRPC(m, campaignId, guardian, 1);
@@ -4596,21 +4635,26 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
 }
 
 test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   await scanTableSheetScreens(browser, 'light', 1280);
 });
 
 test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   await scanTableSheetScreens(browser, 'dark', 390);
 });
 
 test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   await scanTableSheetScreens(browser, 'light', 320, 568);
 });
 
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanTableSheetScreens(browser, 'dark', 320, 568);
+});
+
 test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   await scanTableSheetScreens(browser, 'dark', 1024, 768);
 });

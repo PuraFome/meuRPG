@@ -113,6 +113,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCombatLogChanged: vi.fn(),
       onXpChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
+      onContentChanged: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
       onVisionChanged: vi.fn(),
@@ -163,6 +164,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'puzzleChanged', puzzleId: 'p-1' });
     await flush();
     expect(handlers.onPuzzleChanged).toHaveBeenCalledWith('p-1');
+  });
+
+  it('tells the page the table\'s content changed (10.1d), so it reads the catalog again', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'contentChanged' });
+    await flush();
+    expect(handlers.onContentChanged).toHaveBeenCalledTimes(1);
+    expect(stream.status()).toBe('live');
   });
 
   it('tells the page the XP changed (MR-016), and keeps the stream alive', async () => {

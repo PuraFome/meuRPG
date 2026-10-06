@@ -10,8 +10,10 @@ import { changeSheetTitle } from './changed-content-format';
 
 export interface ChangedContentData {
   readonly change: ChangedContentVm;
-  /** The master fixes it from the sheet; the player asks them. */
-  readonly isMaster: boolean;
+  /** The viewer can edit the sheet (the master, or the owner while it is not locked): they fix it. Otherwise the master does. */
+  readonly canEdit: boolean;
+  /** The skills the sheet is proficient in, by name: said under a sentence about the skills, as drawn. */
+  readonly skills?: readonly string[];
 }
 
 /**
@@ -40,10 +42,13 @@ export interface ChangedContentData {
             @for (m of data.change.messages; track $index) {
               <li>{{ m }}</li>
             }
+            @if (skillsLine) {
+              <li class="sheet__skills">{{ skillsLine }}</li>
+            }
           </ul>
         </div>
         <p class="sheet__who">
-          Quem ajusta: {{ data.isMaster ? 'você, na ficha' : 'o mestre, na ficha' }}. O aviso some sozinho quando os números voltam a combinar.
+          Quem ajusta: {{ data.canEdit ? 'você, na ficha' : 'o mestre, na ficha' }}. O aviso some sozinho quando os números voltam a combinar.
         </p>
       </div>
       <div class="sheet__foot">
@@ -158,6 +163,11 @@ export class ChangedContentSheet {
 
   protected readonly inSheet = this.sheetRef !== null;
   protected readonly title = changeSheetTitle(this.data.change);
+  /** "Perícias da ficha: Atletismo, Natureza.", under a sentence that talks about the skills. */
+  protected readonly skillsLine =
+    (this.data.skills?.length ?? 0) > 0 && this.data.change.messages.some((m) => /perícia/i.test(m))
+      ? `Perícias da ficha: ${new Intl.ListFormat('pt-BR', { type: 'conjunction' }).format(this.data.skills!)}.`
+      : '';
 
   protected close(): void {
     this.dialogRef?.close();

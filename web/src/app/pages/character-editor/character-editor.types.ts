@@ -216,8 +216,10 @@ export interface ChallengeRatingVm {
 export interface TableMark {
   /** The key ends in "@mesa": the master wrote it for this campaign. */
   readonly fromTable: boolean;
-  /** Retired by the master (only the master receives it, to see it marked). */
+  /** Retired by the master: the master receives it marked, a player only when their own sheet uses it. */
   readonly archived: boolean;
+  /** Switched off for the players (10.1d): the master may still pick it, a player never gets it unless their sheet uses it. */
+  readonly off: boolean;
 }
 
 export interface SubraceOptionVm extends TableMark {
@@ -254,6 +256,8 @@ export interface SubclassOptionVm extends TableMark {
   readonly namePt: string;
   /** Set only for a subclass that casts. */
   readonly casting: SubclassCastingVm | null;
+  /** The spells it always prepares, from a class level: they never count against the limit. */
+  readonly alwaysPrepared: readonly { readonly spellKey: string; readonly classLevel: number }[];
 }
 
 /** How a caster class handles its spell list (integrator amendment,
@@ -325,6 +329,8 @@ export interface SpellOptionVm {
   readonly classKeys: readonly string[];
   /** The master's own spell ("Da mesa"). */
   readonly fromTable: boolean;
+  readonly archived: boolean;
+  readonly off: boolean;
 }
 
 export interface ToolOrLanguageVm {
@@ -346,8 +352,10 @@ export interface RulesCatalogVm {
   readonly armor: readonly ArmorOptionVm[];
   readonly weapons: readonly WeaponOptionVm[];
   readonly spells: readonly SpellOptionVm[];
-  /** The SRD's tools and languages an "Outro" background may grant, with their Portuguese names. */
+  /** The tools and languages an "Outro" background may grant, named by the catalog (`Content.proficiencies` and `languages`). */
   readonly toolsAndLanguages: readonly ToolOrLanguageVm[];
+  /** The caller is the campaign's master: only they are offered what is switched off for the players. */
+  readonly viewerIsMaster: boolean;
   /** The ND to XP table, in order (0, 1/8, 1/4, 1/2, 1 to 30), for the NPC's
    * "Nível de desafio (ND)" picker. */
   readonly challengeRatings: readonly ChallengeRatingVm[];
@@ -432,6 +440,8 @@ export interface CharacterForEdit {
    * subclass always prepares (a domain's, an oath's), which never count against the limit. Read from the saved sheet,
    * so only an edit has them (a new sheet has no derived sheet yet). */
   readonly grantedSpellKeys?: readonly string[];
+  /** How many spells each casting class prepares (the saved sheet's `spellcasting[].prepared_max`), by class key. */
+  readonly preparedMax?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -440,7 +450,8 @@ export interface CharacterForEdit {
  * `characters.v1.CharacterService` (see this file's top comment).
  */
 export abstract class CharacterEditorSource {
-  abstract loadCatalog(campaignId: string): Promise<RulesCatalogVm>;
+  /** With `characterId` (an edit of the caller's own sheet), the entries the sheet has come back even when retired. */
+  abstract loadCatalog(campaignId: string, characterId?: string): Promise<RulesCatalogVm>;
   /** One spell in full, for the "?" next to its name. */
   abstract loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm>;
   abstract loadCharacterForEdit(campaignId: string, characterId: string): Promise<CharacterForEdit>;

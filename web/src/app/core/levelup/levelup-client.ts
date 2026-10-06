@@ -22,6 +22,8 @@ export type LevelUpChoicesInit = MessageInitShape<typeof LevelUpChoicesSchema>;
 
 /** The spells and skills of the campaign's rules, for the pickers. */
 export interface LevelUpCatalog {
+  /** The campaign's content revision the catalog was read at (0 while the table has none of its own). */
+  readonly revision?: number;
   readonly spells: readonly Spell[];
   readonly skills: readonly Skill[];
   /** The classes' names, for "da lista de Mago" when a table class or a third caster reads another class's list. */
@@ -95,16 +97,24 @@ export class LevelUpClient {
     return { levelUps: res.levelUps, nextPageToken: res.nextPageToken };
   }
 
-  catalog(campaignId: string): Promise<LevelUpCatalog> {
-    let pending = this.catalogs.get(campaignId);
+  /**
+   * The campaign's content for the pickers, read with the character, so the entries the sheet already has come
+   * back even when the master retired them since. The cache lives as long as this client: the level-up page makes its
+   * own (it is provided there, not in the root), so a new page always reads the table's content as it is now, and
+   * `fresh` reads it again inside the same page (after a `content_changed` hint or a stale sheet).
+   */
+  catalog(campaignId: string, characterId = '', fresh = false): Promise<LevelUpCatalog> {
+    const id = `${campaignId}/${characterId}`;
+    let pending = fresh ? undefined : this.catalogs.get(id);
     if (!pending) {
-      pending = this.content.listContent({ campaignId }).then((res) => ({
+      pending = this.content.listContent({ campaignId, characterId }).then((res) => ({
+        revision: res.tableRevision,
         spells: res.content?.spells ?? [],
         skills: res.content?.skills ?? [],
         classes: (res.content?.classes ?? []).map((c) => ({ key: c.key, namePt: c.namePt })),
       }));
-      this.catalogs.set(campaignId, pending);
-      pending.catch(() => this.catalogs.delete(campaignId));
+      this.catalogs.set(id, pending);
+      pending.catch(() => this.catalogs.delete(id));
     }
     return pending;
   }

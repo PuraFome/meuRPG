@@ -36,6 +36,22 @@ export function totalLevel(blocks: readonly ClassBlock[]): number {
 /** The most levels a sheet has (the SRD's 20); more is refused by the server. */
 export const MAX_TOTAL_LEVEL = 20;
 
+/** An entry the master retired or switched off is offered as a new choice to nobody who cannot use it: only when it is
+ * what the form already has (so the current value shows), or, for a switched-off one, to the master (who is never
+ * refused). An archived one is never offered new, not even to the master (the server refuses it). */
+export function offered<T extends { readonly key: string; readonly archived: boolean; readonly off: boolean }>(
+  items: readonly T[],
+  current: readonly string[],
+  master: boolean,
+): T[] {
+  return items.filter((i) => current.includes(i.key) || (!i.archived && (master || !i.off)));
+}
+
+/** The value a select holds that the catalog does not list at all (a sheet's old key): the select says so in words. */
+export function unlisted(items: readonly { readonly key: string }[], value: string): boolean {
+  return value !== '' && !items.some((i) => i.key === value);
+}
+
 export function classOf(catalog: RulesCatalogVm, key: string): ClassOptionVm | undefined {
   return catalog.classes.find((c) => c.key === key);
 }
@@ -78,6 +94,9 @@ export interface CasterSection {
   /** The highest circle at this class level, `null` when the table is missing (nothing is hidden). */
   readonly maxCircle: number | null;
   readonly firstLevel: number;
+  /** The spells the block's subclass always prepares at this level (from the catalog), and which subclass. */
+  readonly alwaysPrepared: readonly string[];
+  readonly alwaysSourcePt: string;
 }
 
 function circleAt(table: readonly number[], level: number): number | null {
@@ -96,6 +115,9 @@ export function casterSections(catalog: RulesCatalogVm, blocks: readonly ClassBl
     if (!cls) {
       return;
     }
+    const chosen = cls.subclasses.find((c) => c.key === b.subclassKey);
+    const always = (chosen?.alwaysPrepared ?? []).filter((a) => a.classLevel <= b.level).map((a) => a.spellKey);
+    const alwaysSourcePt = chosen && always.length > 0 ? chosen.namePt : '';
     if (cls.isCaster) {
       out.push({
         index,
@@ -107,6 +129,8 @@ export function casterSections(catalog: RulesCatalogVm, blocks: readonly ClassBl
         preparation: cls.preparation,
         maxCircle: circleAt(cls.maxSpellLevelByLevel, b.level),
         firstLevel: cls.spellcastingFirstLevel,
+        alwaysPrepared: always,
+        alwaysSourcePt,
       });
       return;
     }
@@ -122,6 +146,8 @@ export function casterSections(catalog: RulesCatalogVm, blocks: readonly ClassBl
         preparation: sub.casting.preparation,
         maxCircle: circleAt(sub.casting.maxSpellLevelByLevel, b.level),
         firstLevel: sub.casting.firstLevel,
+        alwaysPrepared: always,
+        alwaysSourcePt,
       });
     }
   });
@@ -133,19 +159,25 @@ export function sectionName(s: CasterSection): string {
   return s.subclassNamePt ? `${s.namePt} (${s.subclassNamePt})` : s.namePt;
 }
 
+/** A retired spell is listed only when it is picked already (so it can be unchecked), or, switched off, for the master. */
+function listed(sp: SpellOptionVm, selected: ReadonlySet<string>, master: boolean): boolean {
+  return selected.has(sp.key) || (!sp.archived && (master || !sp.off));
+}
+
 /** The cantrips of a section's list, sorted by Portuguese name. */
-export function cantripsOf(spells: readonly SpellOptionVm[], s: CasterSection): SpellOptionVm[] {
-  return sorted(spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(s.listClassKey)));
+export function cantripsOf(spells: readonly SpellOptionVm[], s: CasterSection, selected: ReadonlySet<string> = new Set(), master = false): SpellOptionVm[] {
+  return sorted(spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(s.listClassKey) && listed(sp, selected, master)));
 }
 
 /** The leveled spells of a section's list: circle first, then name. `selected` stays listed above the
  * limit (the level was lowered) so it can be unchecked instead of vanishing. */
-export function leveledOf(spells: readonly SpellOptionVm[], s: CasterSection, selected: ReadonlySet<string> = new Set()): SpellOptionVm[] {
+export function leveledOf(spells: readonly SpellOptionVm[], s: CasterSection, selected: ReadonlySet<string> = new Set(), master = false): SpellOptionVm[] {
   return sorted(
     spells.filter(
       (sp) =>
         sp.level >= 1 &&
         sp.classKeys.includes(s.listClassKey) &&
+        listed(sp, selected, master) &&
         (s.maxCircle === null || sp.level <= s.maxCircle || selected.has(sp.key)),
     ),
   );
@@ -163,7 +195,7 @@ function sorted(spells: SpellOptionVm[]): SpellOptionVm[] {
 /** A spell the search finds that no list of the sheet has, and the classes that do have it. */
 export interface OutsideSpell {
   readonly spell: SpellOptionVm;
-  /** "Bardo, Druida e Patrulheiro". */
+  /** "Bardo, Druida e Patrulheiro": only the classes the catalog names, never a key; empty when it names none. */
   readonly classes: string;
 }
 
@@ -184,7 +216,7 @@ export function outsideTheLists(
   const lists = new Set(sections.map((s) => s.listClassKey));
   const names = new Map(catalog.classes.map((c) => [c.key, c.namePt]));
   return catalog.spells
-    .filter((sp) => (cantrips ? sp.level === 0 : sp.level >= 1) && sp.namePt.toLowerCase().includes(q) && !sp.classKeys.some((k) => lists.has(k)))
+    .filter((sp) => (cantrips ? sp.level === 0 : sp.level >= 1) && !sp.archived && sp.namePt.toLowerCase().includes(q) && !sp.classKeys.some((k) => lists.has(k)))
     .slice(0, 6)
-    .map((spell) => ({ spell, classes: LIST.format(spell.classKeys.map((k) => names.get(k) ?? k)) }));
+    .map((spell) => ({ spell, classes: LIST.format(spell.classKeys.flatMap((k) => (names.get(k) ? [names.get(k)!] : []))) }));
 }

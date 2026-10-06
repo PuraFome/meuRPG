@@ -95,9 +95,17 @@ type ContentServiceClient interface {
 	// `off` marks. The entries in full, and how many characters use each, are
 	// TableContentService.ListTableEntries.
 	//
+	// With `character_id` (a player editing or levelling their own sheet), the
+	// entries that sheet uses come back even when the master archived or switched
+	// them off, still marked `archived` or `off`: the editor can show the current
+	// value and keep what the sheet has, and never offers it as a new choice. Only
+	// the caller's own sheet counts, never another player's; the master's catalog
+	// has them all anyway, so for the master it changes nothing.
+	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
-	//     member of it.
+	//     member of it; with `character_id`, also a pending member, and a
+	//     character that is not the caller's own full sheet in this campaign.
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
 	// GetSpellDetails returns everything the SRD says about one spell,
 	// structured: casting time, range, components, duration, attack or saving
@@ -325,9 +333,17 @@ type ContentServiceHandler interface {
 	// `off` marks. The entries in full, and how many characters use each, are
 	// TableContentService.ListTableEntries.
 	//
+	// With `character_id` (a player editing or levelling their own sheet), the
+	// entries that sheet uses come back even when the master archived or switched
+	// them off, still marked `archived` or `off`: the editor can show the current
+	// value and keep what the sheet has, and never offers it as a new choice. Only
+	// the caller's own sheet counts, never another player's; the master's catalog
+	// has them all anyway, so for the master it changes nothing.
+	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
-	//     member of it.
+	//     member of it; with `character_id`, also a pending member, and a
+	//     character that is not the caller's own full sheet in this campaign.
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
 	// GetSpellDetails returns everything the SRD says about one spell,
 	// structured: casting time, range, components, duration, attack or saving

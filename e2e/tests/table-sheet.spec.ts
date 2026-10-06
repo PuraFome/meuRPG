@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC } from './live-session-support';
+import { archiveEntryRPC } from './spells-support';
 import { newSignedInContext } from './support';
 import {
   changeGuardianSkillsRPC,
@@ -92,9 +93,9 @@ test(
       await expect(p.getByRole('option', { name: 'Anão' })).toBeDisabled();
       await p.keyboard.press('Escape');
       await expect(p.locator('mat-hint').filter({ hasText: '2 de 2 escolhidas' })).toBeVisible();
-      await p.getByLabel('Nome da característica', { exact: true }).fill('Olho no horizonte');
-      await p.getByLabel('Texto da característica', { exact: true }).fill('Você sempre acha o ponto mais alto de um lugar.');
-      await p.getByLabel('Equipamento do antecedente', { exact: true }).fill('Uma luneta, um rolo de corda e 10 PO.');
+      await p.getByLabel('Nome da característica*', { exact: true }).fill('Olho no horizonte');
+      await p.getByLabel('Texto da característica*', { exact: true }).fill('Você sempre acha o ponto mais alto de um lugar.');
+      await p.getByLabel('Equipamento do antecedente*', { exact: true }).fill('Uma luneta, um rolo de corda e 10 PO.');
 
       await typeScores(p, { Força: 14, Destreza: 13, Constituição: 14, Inteligência: 10, Sabedoria: 15, Carisma: 8 });
 
@@ -164,7 +165,7 @@ test(
       await expect(p.getByRole('option', { name: /^Domínio da Vida$/ })).not.toContainText('Da mesa');
       await p.getByRole('option', { name: /^Domínio do Caminho/ }).click();
       await expect(p.getByText('Nível total').locator('..')).toContainText('4');
-      await expect(p.getByText('O servidor confere os pré-requisitos de multiclasse')).toBeVisible();
+      await expect(p.getByText('Os pré-requisitos de cada classe aparecem na ficha')).toBeVisible();
 
       await typeScores(p, { Força: 10, Destreza: 12, Constituição: 14, Inteligência: 15, Sabedoria: 14, Carisma: 8 });
 
@@ -246,8 +247,9 @@ test(
       const reason = (await p.locator('#foot-reason').textContent()) ?? '';
       const howMany = Number(/(\d+)/.exec(reason)?.[1] ?? '1');
       expect(howMany).toBeGreaterThan(0);
-      for (let i = 0; i < howMany; i++) {
-        await prepare.getByRole('checkbox').nth(i).check();
+      // By name, from the druid's list the guardian casts from.
+      for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, howMany)) {
+        await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
       }
       await p.getByRole('button', { name: 'Próximo' }).click();
 
@@ -318,15 +320,15 @@ test(
       await expect(p.getByText(/truques de Mago/)).toBeVisible();
       await expect(p.getByText(/Escolha 3 magias de 1º círculo para aprender/)).toBeVisible();
       const cantrips = p.locator('#pick-cantrips');
-      await cantrips.getByRole('checkbox').nth(0).check();
-      await cantrips.getByRole('checkbox').nth(1).check();
+      await cantrips.getByRole('checkbox', { name: /^Luz/ }).check();
+      await cantrips.getByRole('checkbox', { name: /^Ilusão Menor/ }).check();
       const spells = p.locator('#pick-spells');
       // The master's own spell is on the wizard's list, so the fighter's subclass can learn it.
       await p.getByLabel('Buscar magia').fill('nanquim');
       await spells.getByRole('checkbox', { name: /Lâmina de Nanquim/ }).check();
       await p.getByLabel('Buscar magia').fill('');
-      await spells.getByRole('checkbox').nth(0).check();
-      await spells.getByRole('checkbox').nth(1).check();
+      await spells.getByRole('checkbox', { name: /^Alarme/ }).check();
+      await spells.getByRole('checkbox', { name: /^Armadura Arcana/ }).check();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       await expect(p.getByText(/Passo 4 de 4 · Resumo/)).toBeVisible();
@@ -385,17 +387,66 @@ test(
       const sheet = p.locator('app-changed-content-sheet');
       await expect(sheet.getByRole('heading', { name: 'O que mudou: Guardião do Vale' })).toBeVisible();
       await expect(sheet).toContainText('Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3.');
-      await expect(sheet).toContainText('Quem ajusta: o mestre, na ficha.');
+      await expect(sheet).toContainText('Quem ajusta: você, na ficha.');
+      await expect(sheet).toContainText('Perícias da ficha: ');
       await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
       await expect(sheet).toHaveCount(0);
 
-      // The master sees it too, and puts the numbers back: the notice goes by itself.
+      // The master sees it too.
       await m.goto(sheetOf(campaignId, characterId));
       await expect(m.locator('app-changed-content')).toContainText('A classe mudou.');
-      await changeGuardianSkillsRPC(m, campaignId, guardian, 3);
-      await p.reload();
+
+      // Ícaro's owner fixes the sheet (the notice says "você, na ficha" for a sheet nobody locked): one skill less, and
+      // the notice goes by itself, the numbers matching again. The class is not touched.
+      await p.goto(`${sheetOf(campaignId, characterId)}/editar`);
+      await p.getByRole('tab', { name: 'Perícias' }).click();
+      await p.getByRole('group', { name: 'Perícias', exact: true }).getByRole('checkbox', { name: 'Furtividade', exact: true }).first().uncheck();
+      await p.getByRole('button', { name: 'Salvar ficha' }).click();
+      await expect(p).toHaveURL(sheetOf(campaignId, characterId));
       await expect(p.getByRole('heading', { name: 'Ícaro', level: 1 })).toBeVisible();
       await expect(p.getByText('A classe mudou.')).toHaveCount(0);
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'a classe arquivada continua na ficha de quem a tem, que edita sem perder nada, e o mestre não a recebe como escolha nova',
+  { tag: ['@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const { campaignId } = await emptyTable(m, p, `Arquivada ${Date.now()}`);
+      const guardian = await createGuardianRPC(m, campaignId);
+      const body = icaroSheetBody(guardian);
+      (body.sheet as any).full.classes = [{ classKey: guardian, level: 3 }];
+      const characterId = await createSheetRPC(p, campaignId, body);
+      await archiveEntryRPC(m, campaignId, guardian);
+
+      // The owner edits: the class is still there, tagged, the Magias step stays, and the save goes through.
+      await p.goto(`${sheetOf(campaignId, characterId)}/editar`);
+      await expect(p.getByRole('combobox', { name: 'Classe', exact: true })).toContainText('Guardião do Vale');
+      await expect(p.getByRole('combobox', { name: 'Classe', exact: true })).toContainText('Arquivada');
+      await expect(p.getByRole('tab', { name: 'Magias' })).toBeVisible();
+      await p.getByRole('button', { name: 'Salvar ficha' }).click();
+      await expect(p).toHaveURL(sheetOf(campaignId, characterId));
+      await expect(p.getByText('Guardião do Vale 3').first()).toBeVisible();
+
+      // The master making a new NPC is never offered it as a new choice (the server would refuse it).
+      await m.goto(`/campanhas/${campaignId}/npcs/novo/inimigo`);
+      const classSelect = m.getByRole('combobox', { name: 'Classe', exact: true });
+      await classSelect.focus();
+      await classSelect.press('Enter');
+      await expect(m.getByRole('option', { name: 'Mago', exact: true })).toBeVisible();
+      await expect(m.getByRole('option', { name: /^Guardião do Vale/ })).toHaveCount(0);
     } finally {
       await master.close();
       await player.close();

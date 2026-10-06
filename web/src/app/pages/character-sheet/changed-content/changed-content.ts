@@ -76,13 +76,16 @@ export class ChangedContentNotice {
   private readonly bottomSheet = inject(MatBottomSheet);
 
   readonly changes = input.required<readonly ChangedContentVm[]>();
-  readonly isMaster = input(false);
+  /** The viewer can edit the sheet: "Quem ajusta: você". */
+  readonly canEdit = input(false);
+  /** The sheet's skills, by name, for the line under a sentence about them. */
+  readonly skills = input<readonly string[]>([]);
 
   protected readonly title = changeTitle;
   protected readonly intro = changeIntro;
   protected readonly announcement = changeAnnouncement;
 
   protected open(change: ChangedContentVm): void {
-    openChangedContent(this.dialog, this.bottomSheet, { change, isMaster: this.isMaster() });
+    openChangedContent(this.dialog, this.bottomSheet, { change, canEdit: this.canEdit(), skills: this.skills() });
   }
 }

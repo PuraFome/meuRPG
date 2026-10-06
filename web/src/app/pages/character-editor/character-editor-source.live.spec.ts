@@ -15,6 +15,8 @@ import {
 } from './character-editor-source.live';
 import { TestBed } from '@angular/core/testing';
 
+import { Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 
@@ -291,17 +293,26 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
               { key: 'class:fighter', namePt: 'Guerreiro', hitDie: 10, savingThrows: [], subclassLevel: 3 },
             ],
             subclasses: [
-              { key: 'subclass:ink@mesa', namePt: 'Lâmina de Tinta', classKey: 'class:fighter', spellcasting: { preparation: 1, listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } },
-              { key: 'subclass:champion', namePt: 'Campeão', classKey: 'class:fighter' },
+              { key: 'subclass:ink@mesa', namePt: 'Lâmina de Tinta', classKey: 'class:fighter', alwaysPrepared: [{ spellKey: 'spell:shield', classLevel: 3 }], spellcasting: { preparation: 1, listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } },
+              { key: 'subclass:champion', namePt: 'Campeão', classKey: 'class:fighter', alwaysPrepared: [] },
             ],
             backgrounds: [{ key: 'background:cartografo@mesa', namePt: 'Cartógrafo do Vale', equipmentPt: 'Uma luneta' }],
             skills: [],
             armor: [],
             weapons: [],
-            spells: [{ key: 'spell:ink-blade@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'] }],
+            spells: [{ key: 'spell:ink-blade@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'], archived: false, off: false }],
+            proficiencies: [
+              { key: 'proficiency:smiths-tools', namePt: 'Ferramentas de ferreiro', kind: 3 - 2 },
+              { key: 'proficiency:thieves-tools', namePt: 'Ferramentas de ladrão', kind: 7 },
+              { key: 'proficiency:light-armor', namePt: 'Armaduras leves', kind: 2 },
+            ],
+            languages: [{ key: 'language:elvish', namePt: 'Élfico', kind: 6 }],
             challengeRatings: [],
           },
         }),
+    };
+    (source as unknown as { campaignClient: unknown }).campaignClient = {
+      getCampaign: () => Promise.resolve({ campaign: { myRole: Role.PLAYER } }),
     };
     const catalog = await source.loadCatalog('camp-1');
 
@@ -314,13 +325,23 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
     // A class that casts nothing has no list.
     expect(catalog.classes[1]).toMatchObject({ isCaster: false, spellListClassKey: '', skillChoose: 0 });
     const [ink, champion] = catalog.classes[1].subclasses;
+    (source as unknown as { campaignClient: unknown }).campaignClient = {
+      getCampaign: () => Promise.resolve({ campaign: { myRole: Role.MASTER } }),
+    };
+    expect((await source.loadCatalog('camp-1')).viewerIsMaster).toBe(true);
     expect(ink).toMatchObject({ fromTable: true, casting: { preparation: 'known', listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } });
-    expect(champion).toMatchObject({ fromTable: false, casting: null });
+    expect(champion).toMatchObject({ fromTable: false, casting: null, alwaysPrepared: [] });
+    expect(ink.alwaysPrepared).toEqual([{ spellKey: 'spell:shield', classLevel: 3 }]);
     expect(catalog.backgrounds[0]).toMatchObject({ fromTable: true, equipmentPt: 'Uma luneta' });
     expect(catalog.spells[0].fromTable).toBe(true);
     expect(key('x@mesa')).toBe(true);
-    // Tools and languages for the "Outro" background: ours, until the catalog lists them.
-    expect(catalog.toolsAndLanguages.length).toBeGreaterThan(40);
+    // The tools and the languages of the "Outro" background are the catalog's own, by kind: a kit counts as a tool, armour never.
+    expect(catalog.toolsAndLanguages).toEqual([
+      { key: 'proficiency:smiths-tools', namePt: 'Ferramentas de ferreiro', kind: 'tool' },
+      { key: 'proficiency:thieves-tools', namePt: 'Ferramentas de ladrão', kind: 'tool' },
+      { key: 'language:elvish', namePt: 'Élfico', kind: 'language' },
+    ]);
+    expect(catalog.viewerIsMaster).toBe(false);
   });
 });
 

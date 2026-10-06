@@ -41,10 +41,10 @@ describe('the words around the change sentences', () => {
 });
 
 describe('ChangedContentNotice', () => {
-  function render(changes: ChangedContentVm[], isMaster = false) {
+  function render(changes: ChangedContentVm[], canEdit = false) {
     const fixture = TestBed.createComponent(ChangedContentNotice);
     fixture.componentRef.setInput('changes', changes);
-    fixture.componentRef.setInput('isMaster', isMaster);
+    fixture.componentRef.setInput('canEdit', canEdit);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
@@ -83,6 +83,36 @@ describe('ChangedContentNotice', () => {
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r, 0));
     expect(document.querySelector('app-changed-content-sheet')).toBeNull();
+  });
+
+  it('"Quem ajusta" follows who can edit the sheet: the owner of an unlocked draft fixes it themselves', async () => {
+    const { fixture, el } = render([change()], true);
+    (el.querySelector('.change__open') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain('Quem ajusta: você, na ficha.');
+    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it('says the sheet\'s skills under a sentence about skills, as drawn, and not under another', async () => {
+    const fixture = TestBed.createComponent(ChangedContentNotice);
+    fixture.componentRef.setInput('changes', [change(), change({ key: 'race:x@mesa', namePt: 'X', messages: ['X agora tem 2 traços; esta ficha tem 3.'] })]);
+    fixture.componentRef.setInput('skills', ['Atletismo', 'Natureza', 'Sobrevivência']);
+    fixture.detectChanges();
+    const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.change__open'));
+    buttons[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain('Perícias da ficha: Atletismo, Natureza e Sobrevivência.');
+    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    buttons[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).not.toContain('Perícias da ficha');
+    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
   });
 
   it('tells the master that the fix is theirs', async () => {

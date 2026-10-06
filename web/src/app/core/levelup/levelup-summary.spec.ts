@@ -83,3 +83,37 @@ describe('changeRows: a table class (E10-02 state 7)', () => {
     expect(srd.find((r) => r.key === 'slots-2')?.sub).toBe('');
   });
 });
+
+describe('changeRows: a class that starts casting, and how it learns its spells (10.12b fix round 1)', () => {
+  const none = (s: DerivedSheetLike) => s;
+  type DerivedSheetLike = ReturnType<typeof pensantus>;
+  const nonCasterBefore = () => {
+    const before = pensantus(false);
+    before.spellcasting = [];
+    before.spellSlots = [];
+    before.spells = [];
+    return none(before);
+  };
+
+  it('shows a dash, not 0 or +0, before the class casts', () => {
+    const rows = changeRows(nonCasterBefore(), pensantus(true), ctx);
+    expect(rows.find((r) => r.key === 'dc')).toMatchObject({ before: '—', after: '15' });
+    expect(rows.find((r) => r.key === 'attack')).toMatchObject({ before: '—', after: '+7' });
+    expect(rows.find((r) => r.key === 'cantrips')).toMatchObject({ before: '—' });
+    expect(rows.find((r) => r.key === 'prepared')).toMatchObject({ before: '—', after: '9' });
+  });
+
+  it('a class that prepares from its list shows "Magias preparadas" and no "Magias conhecidas"', () => {
+    const rows = changeRows(pensantus(false), pensantus(true), { ...ctx, learnsSpells: false, spells: [] });
+    expect(rows.some((r) => r.key === 'spells')).toBe(false);
+    expect(rows.some((r) => r.key === 'prepared')).toBe(true);
+  });
+
+  it('a class that learns its spells keeps "Magias conhecidas" (or the book), and a known-spells class has no prepared row', () => {
+    expect(changeRows(pensantus(false), pensantus(true), { ...ctx, learnsSpells: true }).some((r) => r.key === 'spells')).toBe(true);
+    const bard = pensantus(true);
+    bard.spellcasting[0].preparedMax = 0;
+    const rows = changeRows(pensantus(false), bard, { ...ctx, learnsSpells: true });
+    expect(rows.some((r) => r.key === 'prepared')).toBe(false);
+  });
+});

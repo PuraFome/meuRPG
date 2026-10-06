@@ -315,6 +315,11 @@ export class CharacterSheetPage {
 
   /** Explicit casts for the template, which narrows `vm.sheet.kind` in an
    * `@if` but cannot carry that narrowing into a `@let` binding. */
+  /** The skills the sheet is trained in, by name (the line of "O que mudou"). */
+  protected trainedSkills(full: FullSheetVm): string[] {
+    return full.skills.filter((s) => s.proficiency === 'proficient' || s.proficiency === 'expertise').map((s) => s.namePt);
+  }
+
   /** The sheet's own issues: the ones "A classe mudou" tells (code `table_content_changed`) are not repeated in the list. */
   protected ownIssues(full: FullSheetVm): readonly IssueVm[] {
     return full.changedContent.length > 0 ? full.issues.filter((i) => i.code !== 'table_content_changed') : full.issues;

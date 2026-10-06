@@ -26,6 +26,9 @@ export interface SummaryContext {
   readonly spellbook: boolean;
   /** How many more spells the level asks for and how many were picked: "(falta 1)". */
   readonly spellsMissing: number;
+  /** The class learns spells (a book or a known list) rather than preparing from its list: it shows "Magias conhecidas"
+   * or "Livro de magias"; a class that prepares shows only "Magias preparadas". Unset reads as it learns (the old way). */
+  readonly learnsSpells?: boolean;
   /** The class gaining the level is the table's own (its key ends in "@mesa"): the slots, which come from its table, say so. */
   readonly table?: boolean;
   /** The features the level gives by themselves, by name ("Estilo de luta", "Conjuração"). */
@@ -122,18 +125,20 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
   const bc = cast(before);
   const ac = cast(after);
   if (ac) {
-    rows.push(row('dc', 'CD das magias', String(bc?.saveDc ?? 0), String(ac.saveDc)));
-    rows.push(row('attack', 'Ataque com magia', formatModifier(bc?.attackBonus ?? 0), formatModifier(ac.attackBonus)));
-    rows.push(row('cantrips', 'Truques', String(bc?.cantripsKnown ?? 0), String(ac.cantripsKnown), newNames(ctx.cantrips, 'Novo', 'Novos')));
+    // Before a class casts there is nothing to compare: a dash, never a 0 or a +0 that looks like a number.
+    const none = '—';
+    rows.push(row('dc', 'CD das magias', bc ? String(bc.saveDc) : none, String(ac.saveDc)));
+    rows.push(row('attack', 'Ataque com magia', bc ? formatModifier(bc.attackBonus) : none, formatModifier(ac.attackBonus)));
+    rows.push(row('cantrips', 'Truques', bc ? String(bc.cantripsKnown) : none, String(ac.cantripsKnown), newNames(ctx.cantrips, 'Novo', 'Novos')));
     const known = (s: DerivedSheet) => s.spells.filter((x) => (x.spell?.level ?? 0) > 0).length;
     const knownBefore = known(before);
     const knownAfter = known(after);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';
-    if (knownAfter !== knownBefore || ctx.spells.length > 0) {
+    if (ctx.learnsSpells !== false && (knownAfter !== knownBefore || ctx.spells.length > 0)) {
       rows.push({
         key: 'spells',
         label: ctx.spellbook ? 'Livro de magias' : 'Magias conhecidas',
-        before: String(knownBefore),
+        before: bc ? String(knownBefore) : none,
         after: `${knownAfter}${missing}`,
         sub: newNames(ctx.spells, 'Nova', 'Novas'),
       });
@@ -151,7 +156,7 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
     }
     if (ac.preparedMax > 0) {
       const names = newNames(ctx.prepared, 'Nova', 'Novas');
-      rows.push(row('prepared', 'Magias preparadas', String(bc?.preparedMax ?? 0), String(ac.preparedMax), names));
+      rows.push(row('prepared', 'Magias preparadas', bc ? String(bc.preparedMax) : none, String(ac.preparedMax), names));
     }
   }
   if (ctx.newFeatures && ctx.newFeatures.length > 0) {

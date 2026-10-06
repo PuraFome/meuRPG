@@ -29,9 +29,12 @@ import type { ChangeRow } from '../../../core/levelup/levelup-summary';
           </span>
           <span class="row__values" [class.row__values--long]="(r.before + r.after).length > 24">
             @if (r.before !== '') {
-              <span class="row__before">{{ r.before }}</span>
-              <span class="mr-visually-hidden"> para </span>
-              <span aria-hidden="true" class="row__arrow">→</span>
+              <!-- The old value and its arrow stay together: a long pair wraps before the new value, never between them. -->
+              <span class="row__from">
+                <span class="row__before">{{ r.before }}</span>
+                <span class="mr-visually-hidden"> para </span>
+                <span aria-hidden="true" class="row__arrow">→</span>
+              </span>
             }
             <strong class="row__after">{{ r.after }}</strong>
           </span>

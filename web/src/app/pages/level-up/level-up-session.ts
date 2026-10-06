@@ -10,7 +10,7 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Ability, type DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { formatModifier, spellLevelLabel } from '../../core/characters/character-labels';
-import { isTableKey } from '../../core/characters/table-content';
+import { isTableKey } from '../../core/content/catalog';
 import { newKey } from '../../core/connect/idempotency';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
@@ -103,7 +103,7 @@ export class LevelUpSession {
   /** Every change of the level, before → after, from the server's derived sheets. */
   readonly rows = computed<ChangeRow[]>(() => {
     const d = this.draft;
-    const name = (key: string) => d.names().get(key) ?? key;
+    const name = (key: string) => d.names().get(key) ?? 'uma opção que saiu da lista';
     const prepared = d.prepared();
     return changeRows(this.before, this.after(), {
       hpSub: this.preview.state().after ? this.hpSub() : '',
@@ -112,20 +112,27 @@ export class LevelUpSession {
       prepared: [...prepared].map(name),
       spellbook: d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK,
       spellsMissing: Math.max(0, d.spellsAsked() - d.spells().size),
-      table: isTableKey(this.options.classKey),
+      table: this.fromTable(),
       // A table class's own features are what the master wrote, so the summary names them; the SRD's are on the sheet already.
       newFeatures: isTableKey(this.options.classKey) ? this.newFeatureNames() : [],
+      learnsSpells: d.effective().spellsKind !== LevelUpSpellsKind.UNSPECIFIED,
     });
   });
 
-  /** The features the level gives, by name: the ones with a choice too (the choice is its own step), but not the
-   * increase of an ability, the subclass, nor what the master adds in the editor. */
+  /** The features the level gives, by name, the ones with a choice too (the choice is its own step). */
   private newFeatureNames(): string[] {
-    const o = this.options;
-    const skip = new Set(o.masterAdds.map((m) => m.key));
-    return o.newFeatures
-      .filter((f) => !skip.has(f.key) && !/ability-score-improvement|subclass/.test(f.key))
-      .map((f) => f.namePt);
+    return this.options.newFeatures.map((f) => f.namePt);
+  }
+
+  /** The spell slots come from the table when the class is the table's, or the subclass that casts is (a third caster):
+   * the one picked now, or the one the sheet has. */
+  private fromTable(): boolean {
+    if (isTableKey(this.options.classKey) || isTableKey(this.draft.subclassKey())) {
+      return true;
+    }
+    const sheet = this.character.sheet?.content;
+    const own = sheet?.case === 'full' ? sheet.value.classes.find((c) => c.classKey === this.options.classKey)?.subclass : undefined;
+    return own?.case === 'subclassKey' && isTableKey(own.value);
   }
 
   /** "4 + Constituição +3", or "4 − 1 de Constituição": the die and what the Constituição adds, as words. */

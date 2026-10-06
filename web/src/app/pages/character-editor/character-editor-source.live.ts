@@ -21,12 +21,13 @@ import {
 import {
   Ability as GenAbility,
   ContentService,
+  NamedKeyKind,
   SpellPreparation as GenSpellPreparation,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
-import { isTableKey } from '../../core/characters/table-content';
+import { isTableKey } from '../../core/content/catalog';
 import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { effectivePreference } from '../../core/campaigns/dice-labels';
@@ -47,7 +48,6 @@ import {
   SubraceOptionVm,
   UpdateCharacterInput,
 } from './character-editor.types';
-import { TOOLS_AND_LANGUAGES } from './tools-and-languages';
 
 const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
   [GenCharacterKind.UNSPECIFIED]: 'player',
@@ -461,8 +461,15 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
    * `character-editor.routes.ts`) means this never outlives the page. */
   private readonly loadedFullSheets = new Map<string, GenFullSheet>();
 
-  async loadCatalog(campaignId: string): Promise<RulesCatalogVm> {
-    const res = await this.contentClient.listContent({ campaignId });
+  async loadCatalog(campaignId: string, characterId?: string): Promise<RulesCatalogVm> {
+    // With the character, the entries the sheet already has come back even when the master retired them, marked.
+    const [res, viewerIsMaster] = await Promise.all([
+      this.contentClient.listContent({ campaignId, characterId: characterId ?? '' }),
+      this.campaignClient
+        .getCampaign({ campaignId })
+        .then((r) => r.campaign?.myRole === Role.MASTER)
+        .catch(() => false),
+    ]);
     const content = res.content!;
 
     const subracesByRace = new Map<string, SubraceOptionVm[]>();
@@ -474,6 +481,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         constitutionBonus: sr.abilityBonuses?.constitution ?? 0,
         fromTable: isTableKey(sr.key),
         archived: sr.archived,
+        off: sr.off,
       });
       subracesByRace.set(sr.raceKey, list);
     }
@@ -486,6 +494,8 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         namePt: sc.namePt,
         fromTable: isTableKey(sc.key),
         archived: sc.archived,
+        off: sc.off,
+        alwaysPrepared: sc.alwaysPrepared.map((a) => ({ spellKey: a.spellKey, classLevel: a.classLevel })),
         casting: casting
           ? {
               preparation: PREPARATION_FROM_GEN[casting.preparation],
@@ -507,6 +517,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         choiceBonuses: r.choiceBonuses,
         fromTable: isTableKey(r.key),
         archived: r.archived,
+        off: r.off,
       })),
       classes: content.classes.map((c) => ({
         key: c.key,
@@ -520,6 +531,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         maxSpellLevelByLevel: c.spellcasting?.maxSpellLevelByLevel ?? [],
         fromTable: isTableKey(c.key),
         archived: c.archived,
+        off: c.off,
         skillChoose: c.skillChoice?.count ?? 0,
         savingThrows: c.savingThrows.map((a) => ABILITY_FROM_GEN[a]),
         // A table class may reuse another class's list ("Guardião do Vale" casts from the druid's).
@@ -530,6 +542,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         namePt: b.namePt,
         fromTable: isTableKey(b.key),
         archived: b.archived,
+        off: b.off,
         equipmentPt: b.equipmentPt,
       })),
       skills: content.skills.map((s) => ({
@@ -547,8 +560,17 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         level: sp.level,
         classKeys: sp.classKeys,
         fromTable: isTableKey(sp.key),
+        archived: sp.archived,
+        off: sp.off,
       })),
-      toolsAndLanguages: TOOLS_AND_LANGUAGES,
+      // The "Outro" background's tools and languages, as the catalog names them (a vehicle or a kit counts as a tool).
+      toolsAndLanguages: [
+        ...content.proficiencies
+          .filter((p) => p.kind === NamedKeyKind.TOOL || p.kind === NamedKeyKind.OTHER)
+          .map((p) => ({ key: p.key, namePt: p.namePt, kind: 'tool' as const })),
+        ...content.languages.map((l) => ({ key: l.key, namePt: l.namePt, kind: 'language' as const })),
+      ],
+      viewerIsMaster,
       challengeRatings: content.challengeRatings.map((c) => ({ rating: c.rating, xp: c.xp })),
     };
   }
@@ -584,6 +606,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
           : 'sheet_locked',
       sheetLocked:
         character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
+      preparedMax: Object.fromEntries((character.derived?.spellcasting ?? []).filter((c) => c.preparedMax > 0).map((c) => [c.classKey, c.preparedMax])),
       grantedSpellKeys: grantedSpellKeys(character.derived, sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined),
       abilityOrigin: abilityOriginFromGen(sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet).abilityOrigin : undefined),
       full,

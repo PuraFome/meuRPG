@@ -7,6 +7,7 @@ import (
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // ListContent implements rulesv1connect.ContentServiceHandler.
@@ -22,7 +23,10 @@ func (s *Service) ListContent(
 	// A pending member may read it too (RN-15): the editor needs it to
 	// create their character. The catalog is the same for everyone, but the
 	// entries the master archived: only the master receives those (RN-23).
+	// With character_id, "my sheet's entries": only the caller's own sheet (RN-10), which a pending
+	// member edits too (their character waits for approval, RN-15).
 	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
+	characterID := req.Msg.GetCharacterId()
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +34,47 @@ func (s *Service) ListContent(
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
+	if characterID != "" && !isMaster(m) {
+		keys, err := s.ownSheetKeys(ctx, m, characterID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&rulesv1.ListContentResponse{
+			Content: s.catalogKeeping(content, keys), TableRevision: i32(content.TableRevision()),
+		}), nil
+	}
 	// A content's catalog is shared and never modified; marshaling it from
 	// several requests at once is safe.
 	return connect.NewResponse(&rulesv1.ListContentResponse{
 		Content: s.catalogFor(content, isMaster(m)), TableRevision: i32(content.TableRevision()),
 	}), nil
+}
+
+// ownSheetKeys are the content keys the caller's own full sheet uses; any other
+// character (another player's, an NPC, a basic sheet, one that does not exist) is
+// `not_found`, so the answer never says which exist.
+func (s *Service) ownSheetKeys(ctx context.Context, m authz.Membership, characterID string) (map[string]bool, error) {
+	sheets, err := s.queries.ListCampaignSheets(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the caller's sheet", err)
+	}
+	for _, row := range sheets {
+		if row.ID != characterID || deref(row.PlayerUserID) != m.UserID {
+			continue
+		}
+		sheet, err := loadSheet(row.ID, row.Sheet)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the caller's sheet", err)
+		}
+		full := sheet.GetFull()
+		if full == nil {
+			break
+		}
+		out := map[string]bool{}
+		for _, kf := range rules.BuildKeys(buildOf(full)) {
+			out[kf.Key] = true
+		}
+		return out, nil
+	}
+	return nil, errCharacterNotFound()
 }

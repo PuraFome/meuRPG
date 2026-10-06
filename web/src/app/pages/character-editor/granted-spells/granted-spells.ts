@@ -14,9 +14,11 @@ import type { SpellOptionVm } from '../character-editor.types';
   selector: 'app-granted-spells',
   imports: [MatIconModule],
   template: `
-    <section class="granted" aria-labelledby="granted-title">
-      <h3 class="granted__title" id="granted-title">Sempre preparadas</h3>
-      <p class="granted__hint">Vêm da subclasse, já estão na ficha e não contam no limite de preparadas.</p>
+    <section class="granted" [attr.aria-label]="headed() ? null : 'Sempre preparadas'" [attr.aria-labelledby]="headed() ? 'granted-title' : null">
+      @if (headed()) {
+        <h3 class="granted__title" id="granted-title">{{ title() }}</h3>
+        <p class="granted__hint">{{ hint() }}</p>
+      }
       <ul class="granted__list">
         @for (spell of spells(); track spell.key) {
           <li class="granted__row">
@@ -24,6 +26,9 @@ import type { SpellOptionVm } from '../character-editor.types';
             <span class="granted__name">
               {{ spell.namePt }}
               <span class="granted__level">({{ circle(spell.level) }})</span>
+              @if (source()) {
+                <span class="granted__source">{{ source() }}</span>
+              }
             </span>
             <span class="mr-tag"><mat-icon aria-hidden="true">lock</mat-icon>Sempre preparada</span>
             <button type="button" class="granted__help" [attr.aria-label]="'Descrição de ' + spell.namePt" (click)="describe.emit(spell)">
@@ -38,6 +43,11 @@ import type { SpellOptionVm } from '../character-editor.types';
 })
 export class GrantedSpells {
   readonly spells = input.required<readonly SpellOptionVm[]>();
+  /** Inside a class's section the rows come without a heading of their own, and say which subclass gives them. */
+  readonly headed = input(true);
+  readonly title = input('Sempre preparadas');
+  readonly hint = input('Vêm da subclasse, já estão na ficha e não contam no limite de preparadas.');
+  readonly source = input('');
   readonly describe = output<SpellOptionVm>();
   protected readonly circle = spellLevelLabel;
 }

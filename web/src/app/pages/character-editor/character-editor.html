@@ -108,13 +108,16 @@
                           [block]="block"
                           [index]="$index"
                           [removable]="$index > 0"
+                          [others]="otherClassKeys($index)"
+                          [touch]="submitTried()"
+                          [problem]="serverClassProblem() === $index ? 'Essa classe se repete ou não existe. Escolha outra.' : ''"
+                          [master]="master()"
                           (changed)="changeBlock($index, $event)"
                           (removed)="removeClass($index)"
                         />
                       }
                       <p class="group-hint class-blocks__note">
-                        O servidor confere os pré-requisitos de multiclasse, os pontos de vida e os espaços de
-                        magia. O que a ficha não cumprir aparece como aviso nela, depois de criada.
+                        Os pré-requisitos de cada classe aparecem na ficha, se faltar algum.
                       </p>
                       <button matButton="outlined" type="button" class="class-blocks__add" (click)="addClass()">
                         <mat-icon aria-hidden="true">add</mat-icon>Adicionar classe
@@ -123,15 +126,18 @@
                   } @else {
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Classe</mat-label>
-                    <mat-select formControlName="className" (selectionChange)="onClassChange()">
+                    <mat-select formControlName="className" panelWidth="" (selectionChange)="onClassChange()">
                       <mat-select-trigger>
                         {{ selectedClass()?.namePt }}
-                        <app-table-mark [fromTable]="selectedClass()?.fromTable ?? false" [archived]="selectedClass()?.archived ?? false" />
+                        <app-table-mark [fromTable]="selectedClass()?.fromTable ?? false" [archived]="selectedClass()?.archived ?? false" [off]="selectedClass()?.off ?? false" />
                       </mat-select-trigger>
-                      @for (c of s.catalog.classes; track c.key) {
+                      @if (classUnlisted()) {
+                        <mat-option [value]="selectedClassKey()">Classe que saiu da lista</mat-option>
+                      }
+                      @for (c of classOptions(); track c.key) {
                         <mat-option [value]="c.key">
                           {{ c.namePt }}
-                          <app-table-mark [fromTable]="c.fromTable" [archived]="c.archived" />
+                          <app-table-mark [fromTable]="c.fromTable" [archived]="c.archived" [off]="c.off" />
                         </mat-option>
                       }
                     </mat-select>
@@ -147,16 +153,16 @@
                   } @else if ((selectedClass()?.subclasses?.length ?? 0) > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
-                      <mat-select formControlName="subclassName">
+                      <mat-select formControlName="subclassName" panelWidth="">
                         <mat-select-trigger>
                           {{ selectedSubclass()?.namePt ?? 'Nenhuma' }}
-                          <app-table-mark [fromTable]="selectedSubclass()?.fromTable ?? false" [archived]="selectedSubclass()?.archived ?? false" />
+                          <app-table-mark [fromTable]="selectedSubclass()?.fromTable ?? false" [archived]="selectedSubclass()?.archived ?? false" [off]="selectedSubclass()?.off ?? false" />
                         </mat-select-trigger>
                         <mat-option value="">Nenhuma</mat-option>
-                        @for (sc of selectedClass()?.subclasses; track sc.key) {
+                        @for (sc of subclassOptions(); track sc.key) {
                           <mat-option [value]="sc.key">
                             {{ sc.namePt }}
-                            <app-table-mark [fromTable]="sc.fromTable" [archived]="sc.archived" />
+                            <app-table-mark [fromTable]="sc.fromTable" [archived]="sc.archived" [off]="sc.off" />
                           </mat-option>
                         }
                       </mat-select>
@@ -176,15 +182,18 @@
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Raça</mat-label>
-                    <mat-select formControlName="race">
+                    <mat-select formControlName="race" panelWidth="">
                       <mat-select-trigger>
                         {{ selectedRace()?.namePt }}
-                        <app-table-mark [fromTable]="selectedRace()?.fromTable ?? false" [archived]="selectedRace()?.archived ?? false" />
+                        <app-table-mark [fromTable]="selectedRace()?.fromTable ?? false" [archived]="selectedRace()?.archived ?? false" [off]="selectedRace()?.off ?? false" />
                       </mat-select-trigger>
-                      @for (r of s.catalog.races; track r.key) {
+                      @if (raceUnlisted()) {
+                        <mat-option [value]="selectedRaceKey()">Raça que saiu da lista</mat-option>
+                      }
+                      @for (r of raceOptions(); track r.key) {
                         <mat-option [value]="r.key">
                           {{ r.namePt }}
-                          <app-table-mark [fromTable]="r.fromTable" [archived]="r.archived" />
+                          <app-table-mark [fromTable]="r.fromTable" [archived]="r.archived" [off]="r.off" />
                         </mat-option>
                       }
                     </mat-select>
@@ -197,15 +206,15 @@
                   @if (availableSubraces().length > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Sub-raça</mat-label>
-                      <mat-select formControlName="subrace">
+                      <mat-select formControlName="subrace" panelWidth="">
                         <mat-select-trigger>
                           {{ selectedSubrace()?.namePt }}
-                          <app-table-mark [fromTable]="selectedSubrace()?.fromTable ?? false" [archived]="selectedSubrace()?.archived ?? false" />
+                          <app-table-mark [fromTable]="selectedSubrace()?.fromTable ?? false" [archived]="selectedSubrace()?.archived ?? false" [off]="selectedSubrace()?.off ?? false" />
                         </mat-select-trigger>
-                        @for (sr of availableSubraces(); track sr.key) {
+                        @for (sr of subraceOptions(); track sr.key) {
                           <mat-option [value]="sr.key">
                             {{ sr.namePt }}
-                            <app-table-mark [fromTable]="sr.fromTable" [archived]="sr.archived" />
+                            <app-table-mark [fromTable]="sr.fromTable" [archived]="sr.archived" [off]="sr.off" />
                           </mat-option>
                         }
                       </mat-select>
@@ -214,15 +223,18 @@
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Antecedente</mat-label>
-                    <mat-select formControlName="background">
+                    <mat-select formControlName="background" panelWidth="">
                       <mat-select-trigger>
                         {{ selectedBackgroundVm()?.namePt ?? 'Outro (personalizado)' }}
-                        <app-table-mark [fromTable]="selectedBackgroundVm()?.fromTable ?? false" [archived]="selectedBackgroundVm()?.archived ?? false" />
+                        <app-table-mark [fromTable]="selectedBackgroundVm()?.fromTable ?? false" [archived]="selectedBackgroundVm()?.archived ?? false" [off]="selectedBackgroundVm()?.off ?? false" [masculine]="true" />
                       </mat-select-trigger>
-                      @for (bg of s.catalog.backgrounds; track bg.key) {
+                      @if (backgroundUnlisted()) {
+                        <mat-option [value]="selectedBackground()">Antecedente que saiu da lista</mat-option>
+                      }
+                      @for (bg of backgroundOptions(); track bg.key) {
                         <mat-option [value]="bg.key">
                           {{ bg.namePt }}
-                          <app-table-mark [fromTable]="bg.fromTable" [archived]="bg.archived" />
+                          <app-table-mark [fromTable]="bg.fromTable" [archived]="bg.archived" [off]="bg.off" [masculine]="true" />
                         </mat-option>
                       }
                       <mat-option value="custom">Outro (personalizado)</mat-option>
@@ -345,16 +357,16 @@
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-name field-next">
-                      <mat-label>Nome da característica</mat-label>
+                      <mat-label>Nome da característica*</mat-label>
                       <input matInput formControlName="customBackgroundFeatureName" maxlength="40" autocomplete="off" />
                     </mat-form-field>
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-wide">
-                      <mat-label>Texto da característica</mat-label>
+                      <mat-label>Texto da característica*</mat-label>
                       <textarea matInput formControlName="customBackgroundFeatureText" rows="3" maxlength="1000"></textarea>
                       <mat-error>Até 1.000 caracteres.</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-wide">
-                      <mat-label>Equipamento do antecedente</mat-label>
+                      <mat-label>Equipamento do antecedente*</mat-label>
                       <textarea matInput formControlName="customBackgroundEquipment" rows="2" maxlength="500"></textarea>
                       <mat-error>Até 500 caracteres.</mat-error>
                     </mat-form-field>
@@ -499,8 +511,13 @@
                     }
                   </p>
                   <app-fiction-notice />
-                  @if (grantedSpells().length > 0) {
-                    <app-granted-spells [spells]="grantedSpells()" (describe)="describeSpell($event)" />
+                  @if (otherGranted().length > 0) {
+                    <app-granted-spells
+                      title="Já na ficha"
+                      hint="Vêm da raça, da classe ou de uma característica, já estão na ficha e não contam no limite de preparadas."
+                      [spells]="otherGranted()"
+                      (describe)="describeSpell($event)"
+                    />
                   }
                   @for (view of sectionViews(); track view.id) {
                     <section
@@ -512,7 +529,21 @@
                         <h3 class="spell-section__title" [id]="'spell-section-' + view.id">
                           {{ sectionHeading(view.section) }}
                         </h3>
-                        <p class="group-hint">{{ view.section.namePt }} {{ view.section.level }}</p>
+                        <p class="group-hint">
+                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount) {
+                            · {{ view.preparedCount }}
+                          }
+                        </p>
+                      } @else if (view.preparedCount) {
+                        <p class="group-hint">{{ view.preparedCount }}</p>
+                      }
+                      @if (view.always.length > 0) {
+                        <app-granted-spells
+                          [spells]="view.always"
+                          [source]="view.alwaysSourcePt"
+                          [headed]="false"
+                          (describe)="describeSpell($event)"
+                        />
                       }
                       <div class="spell-grid">
                         @if (view.cantrips.show) {

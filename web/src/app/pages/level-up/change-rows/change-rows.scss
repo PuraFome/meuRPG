@@ -12,7 +12,8 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--mr-space-3);
+  flex-wrap: wrap;
+  gap: 0 var(--mr-space-3);
   padding: 8px 0;
   border-top: 1px solid var(--mr-rule);
 
@@ -79,8 +80,17 @@
 
 // Two long values ("Guardião do Vale 1 → Guardião do Vale 2") take the row and wrap between them.
 .row__values--long {
-  flex: 1 1 auto;
+  // Next to the label when it fits, under it (right aligned) when it does not.
+  flex: 1 1 14em;
+  min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0 6px;
+}
+
+.row__from {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
 }

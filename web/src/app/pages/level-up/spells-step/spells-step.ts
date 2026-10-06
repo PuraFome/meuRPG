@@ -60,7 +60,7 @@ export class SpellsStep {
   protected readonly prepared = computed(() => {
     const s = this.s();
     const d = s.draft;
-    const names = s.draft.have.prepared.map((k) => d.names().get(k) ?? k);
+    const names = s.draft.have.prepared.map((k) => d.names().get(k) ?? 'uma magia que saiu da lista');
     const book = d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK;
     const n = d.preparedAsked();
     return {

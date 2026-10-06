@@ -171,7 +171,7 @@
       <!-- Real problems only (DerivedSheet.issues); the hints are reminders,
            in "Características e traços". -->
       @if (full.changedContent.length > 0) {
-        <app-changed-content [changes]="full.changedContent" [isMaster]="vm.isMaster" />
+        <app-changed-content [changes]="full.changedContent" [canEdit]="vm.canEdit" [skills]="trainedSkills(full)" />
       }
       @if (ownIssues(full).length > 0) {
         <div class="mr-notice mr-notice--warning" role="note" aria-label="Pendências de regra">

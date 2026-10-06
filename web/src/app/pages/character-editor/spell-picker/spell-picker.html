@@ -28,6 +28,7 @@
           @if (showLevel()) {
             <span class="picker__level">({{ levelText(spell.level) }})</span>
           }
+          <app-table-mark [fromTable]="spell.fromTable" [archived]="spell.archived" [off]="spell.off" />
         </mat-checkbox>
         <!-- Reading and ticking are different actions, so "?" is its own button. -->
         <button
@@ -55,7 +56,11 @@
           </span>
           <span class="picker__out-why">Fora da lista das suas classes</span>
           <span class="picker__out-help">
-            Esta magia é de {{ o.classes }}. Você a lê em “Magias”, mas não a escolhe nesta ficha.
+            @if (o.classes) {
+              Esta magia é de {{ o.classes }}. Você a lê em “Magias”, mas não a escolhe nesta ficha.
+            } @else {
+              Você a lê em “Magias”, mas não a escolhe nesta ficha.
+            }
           </span>
           @if (magiasLink().length > 0) {
             <a class="picker__out-link" [routerLink]="magiasLink()" [attr.aria-describedby]="titleId() + '-out-' + $index">Ver em Magias</a>

@@ -118,7 +118,7 @@ function knockDetails(key: string): SpellDetailsVm {
   };
 }
 
-const SRD = { fromTable: false, archived: false };
+const SRD = { fromTable: false, archived: false, off: false };
 
 function catalog(): RulesCatalogVm {
   return {
@@ -130,6 +130,7 @@ function catalog(): RulesCatalogVm {
         choiceBonuses: [],
         fromTable: false,
         archived: false,
+        off: false,
         subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1, ...SRD }],
       },
     ],
@@ -144,7 +145,7 @@ function catalog(): RulesCatalogVm {
         savingThrows: ['int', 'wis'],
         spellListClassKey: 'class:wizard',
         preparation: 'spellbook',
-        subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação', casting: null, ...SRD }],
+        subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação', casting: null, alwaysPrepared: [], ...SRD }],
         subclassLevel: 2,
         spellcastingFirstLevel: 1,
         // Levels 1-5: circles 1, 1, 2, 2, 3.
@@ -160,7 +161,7 @@ function catalog(): RulesCatalogVm {
         savingThrows: ['wis', 'cha'],
         spellListClassKey: 'class:paladin',
         preparation: 'prepared',
-        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção', casting: null, ...SRD }],
+        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção', casting: null, alwaysPrepared: [], ...SRD }],
         subclassLevel: 3,
         spellcastingFirstLevel: 2,
         // No leveled spells at level 1.
@@ -178,25 +179,26 @@ function catalog(): RulesCatalogVm {
       { key: 'equipment:dagger', namePt: 'Adaga' },
     ],
     spells: [
-      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false },
-      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'], fromTable: false },
+      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
       {
         key: 'spell:magic-missile',
         namePt: 'Mísseis Mágicos',
         level: 1,
-        classKeys: ['class:wizard'], fromTable: false,
+        classKeys: ['class:wizard'], fromTable: false, archived: false, off: false,
       },
-      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'], fromTable: false },
-      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'], fromTable: false },
-      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'], fromTable: false },
+      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'], fromTable: false, archived: false, off: false },
       // Not on the Wizard's list — proves the picker filters by class.
       {
         key: 'spell:cure-wounds',
         namePt: 'Curar Ferimentos',
         level: 1,
-        classKeys: ['class:cleric'], fromTable: false,
+        classKeys: ['class:cleric'], fromTable: false, archived: false, off: false,
       },
     ],
+    viewerIsMaster: false,
     toolsAndLanguages: [
       { key: 'proficiency:thieves-tools', namePt: 'Ferramentas de ladrão', kind: 'tool' },
       { key: 'language:elvish', namePt: 'Élfico', kind: 'language' },
@@ -263,6 +265,14 @@ describe('CharacterEditor', () => {
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
+
+  // The first render of the editor in a cold test worker (Material, the stepper, the form) costs seconds and would land
+  // on whichever test runs first, on a loaded machine past its timeout: render once here, outside any test.
+  beforeAll(async () => {
+    configure({ id: 'camp-warm-up' });
+    await render();
+    TestBed.resetTestingModule();
+  });
 
   it('builds the create-character request from the form and the selected skills', async () => {
     configure({ id: 'camp-1' });
@@ -415,7 +425,8 @@ describe('CharacterEditor', () => {
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
-      cmp.fullForm.patchValue({ className: 'class:wizard' });
+      // The wizard chooses the subclass at level 2: below it the field is shut.
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 2 });
       fixture.detectChanges();
 
       const select = el.querySelector<HTMLElement>('mat-select[formcontrolname="subclassName"]');
@@ -596,11 +607,13 @@ describe('CharacterEditor', () => {
       className: 'class:wizard',
       background: 'background:acolyte',
     });
-    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:not-on-any-list']));
+    // A spell the catalog knows that the class's list does not have (Bênção is the paladin's) never goes; a key the
+    // catalog does not know at all is kept for the server to judge, not dropped quietly (RN-23: a retired entry).
+    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:bless', 'spell:not-in-the-catalog']));
 
     await cmp.submit();
 
-    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt']);
+    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt', 'spell:not-in-the-catalog']);
   });
 
   it('shows the fiction notice on every free-text group of a full sheet', async () => {

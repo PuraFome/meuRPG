@@ -6,6 +6,7 @@ import {
 import { Ability as GenAbility, type Skill, type Spell } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, spellLevelLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
+import { isTableKey } from '../content/catalog';
 import { joinDots } from '../format/text';
 
 /**
@@ -102,6 +103,8 @@ export interface PickItem {
   readonly sub: string;
   /** A spell off the class's own list (a Bard's Magical Secrets). */
   readonly outside?: boolean;
+  /** The master's own spell ("Da mesa"). */
+  readonly table?: boolean;
   /** Why the row cannot be picked now ("Limite de 2 de outra classe"); empty or unset when it can. */
   readonly disabled?: string;
 }
@@ -118,7 +121,7 @@ export function spellSub(spell: Spell, ...extras: string[]): string {
 }
 
 function toItem(spell: Spell, ...extras: string[]): PickItem {
-  return { key: spell.key, name: spell.namePt, sub: spellSub(spell, ...extras) };
+  return { key: spell.key, name: spell.namePt, sub: spellSub(spell, ...extras), ...(isTableKey(spell.key) ? { table: true } : {}) };
 }
 
 /** What the sheet has today, by content key: the pickers never offer it twice. */

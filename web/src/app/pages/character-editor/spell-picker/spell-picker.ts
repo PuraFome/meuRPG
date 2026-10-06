@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 
 import { RouterLink } from '@angular/router';
 
+import { TableMark } from '../../../shared/table-mark/table-mark';
 import { spellLevelLabel } from '../../../core/characters/character-labels';
 import type { OutsideSpell } from '../class-blocks';
 import { SpellOptionVm } from '../character-editor.types';
@@ -20,7 +21,7 @@ import { countLabel } from '../editor-labels';
  */
 @Component({
   selector: 'app-spell-picker',
-  imports: [MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink],
+  imports: [MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink, TableMark],
   templateUrl: './spell-picker.html',
   styleUrl: './spell-picker.scss',
 })

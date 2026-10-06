@@ -6,13 +6,15 @@ import {
   casterSections,
   hitDiceAfterFirst,
   leveledOf,
+  offered,
   outsideTheLists,
+  unlisted,
   sectionName,
   totalLevel,
 } from './class-blocks';
 
-const SRD = { fromTable: false, archived: false };
-const TABLE = { fromTable: true, archived: false };
+const SRD = { fromTable: false, archived: false, off: false };
+const TABLE = { fromTable: true, archived: false, off: false };
 
 const mk = (over: Partial<ClassOptionVm> & Pick<ClassOptionVm, 'key' | 'namePt'>): ClassOptionVm => ({
   hitDie: 8,
@@ -29,14 +31,14 @@ const mk = (over: Partial<ClassOptionVm> & Pick<ClassOptionVm, 'key' | 'namePt'>
   ...over,
 });
 
-const subclass = (over: Partial<SubclassOptionVm> & Pick<SubclassOptionVm, 'key' | 'namePt'>): SubclassOptionVm => ({ casting: null, ...SRD, ...over });
+const subclass = (over: Partial<SubclassOptionVm> & Pick<SubclassOptionVm, 'key' | 'namePt'>): SubclassOptionVm => ({ casting: null, alwaysPrepared: [], ...SRD, ...over });
 
 // The wizard's circles by class level, as the server's table gives them (first rows are enough here).
 const WIZARD_CIRCLES = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 9];
 const CLERIC_CIRCLES = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 9];
 const THIRD_CIRCLES = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4];
 
-const spell = (key: string, namePt: string, level: number, classKeys: string[]): SpellOptionVm => ({ key, namePt, level, classKeys, fromTable: key.endsWith('@mesa') });
+const spell = (key: string, namePt: string, level: number, classKeys: string[]): SpellOptionVm => ({ key, namePt, level, classKeys, fromTable: key.endsWith('@mesa'), archived: false, off: false });
 
 function catalog(): RulesCatalogVm {
   return {
@@ -89,6 +91,7 @@ function catalog(): RulesCatalogVm {
       spell('spell:animal-friendship', 'Amizade Animal', 1, ['class:bard', 'class:druid', 'class:ranger']),
       spell('spell:ink-blade@mesa', 'Lâmina de Nanquim', 1, ['class:wizard']),
     ],
+    viewerIsMaster: false,
     toolsAndLanguages: [],
     challengeRatings: [],
   };
@@ -162,5 +165,41 @@ describe('the spell lists a sheet reads from', () => {
     // What a list has is not "outside"; an empty search finds nothing.
     expect(outsideTheLists(catalog(), sections, 'escudo', false)).toEqual([]);
     expect(outsideTheLists(catalog(), sections, '', false)).toEqual([]);
+  });
+});
+
+describe('what a list offers as a new choice (RN-23, 10.1d)', () => {
+  const entry = (key: string, archived = false, off = false) => ({ key, archived, off });
+  const items = [entry('a'), entry('arch', true), entry('off', false, true), entry('both', true, true)];
+
+  it('offers an archived entry to nobody, and a switched-off one only to the master', () => {
+    expect(offered(items, [], false).map((i) => i.key)).toEqual(['a']);
+    expect(offered(items, [], true).map((i) => i.key)).toEqual(['a', 'off']);
+  });
+
+  it('keeps the value the form already has, whatever it is, so the field is never blank', () => {
+    expect(offered(items, ['arch', 'off'], false).map((i) => i.key)).toEqual(['a', 'arch', 'off']);
+  });
+
+  it('says a value the catalog does not list at all', () => {
+    expect(unlisted(items, 'ghost')).toBe(true);
+    expect(unlisted(items, 'arch')).toBe(false);
+    expect(unlisted(items, '')).toBe(false);
+  });
+
+  it('lists a retired spell only when it is picked, or, switched off, for the master', () => {
+    const [section] = casterSections(catalog(), [{ classKey: 'class:wizard', level: 3, subclassKey: '', customSubclassName: '' }]);
+    const spells = [...catalog().spells, { ...catalog().spells[0], key: 'spell:old', namePt: 'Velha', archived: true }, { ...catalog().spells[0], key: 'spell:off', namePt: 'Desligada', off: true }];
+    const keys = (selected: string[], master: boolean) => cantripsOf(spells, section, new Set(selected), master).map((s) => s.key);
+    expect(keys([], false)).toEqual(['spell:fire-bolt']);
+    expect(keys([], true).sort()).toEqual(['spell:fire-bolt', 'spell:off']);
+    expect(keys(['spell:old'], false)).toContain('spell:old');
+  });
+
+  it('never prints a class key where the catalog has no name for it', () => {
+    const sections = casterSections(catalog(), [{ classKey: 'class:wizard', level: 3, subclassKey: '', customSubclassName: '' }]);
+    const cat = catalog();
+    const out = outsideTheLists({ ...cat, spells: [...cat.spells, spell('spell:odd', 'Estranha', 1, ['class:ghost'])] }, sections, 'estranha', false);
+    expect(out[0].classes).toBe('');
   });
 });
