@@ -132,6 +132,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 		c.XPValue = int(b.GetXpValue())
 		c.PortraitImageID = b.GetPortraitImageId()
 		c.Size = sizeKey(b.GetSize())
+		c.CombatOnly, c.MonsterKey, c.ChallengeRating = b.GetCombatOnly(), b.GetMonsterKey(), b.GetChallengeRating()
 	default:
 		return link.Character{}, fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id)
 	}

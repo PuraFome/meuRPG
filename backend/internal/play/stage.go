@@ -232,6 +232,9 @@ func (s *Service) PutOnStage(
 		if len(chars) != 1 || chars[0].Player {
 			return "", "", errCharacterNotFound()
 		}
+		if chars[0].CombatOnly {
+			return "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("a monster's NPC is not a character the master can put on the stage"))
+		}
 		rows, err := c.q.ListStage(ctx, c.session.ID)
 		if err != nil {
 			return "", "", fmt.Errorf("list the stage: %w", err)

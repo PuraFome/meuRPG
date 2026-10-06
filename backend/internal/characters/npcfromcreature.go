@@ -223,5 +223,6 @@ func keepCreatureLink(current charactersdb.Character, sheet *charactersv1.Charac
 	out := proto.CloneOf(sheet)
 	out.GetBasic().MonsterKey = saved.GetBasic().GetMonsterKey()
 	out.GetBasic().AbilityScores = saved.GetBasic().GetAbilityScores()
+	out.GetBasic().CombatOnly = saved.GetBasic().GetCombatOnly()
 	return out
 }

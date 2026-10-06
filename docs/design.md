@@ -425,7 +425,7 @@ As telas da fatia 9.17 (desenhos E9-11 e E9-12). A regra de cada peça: o servid
 
 ### O bestiário e o "Criar NPC" (MR-042)
 
-As telas da fatia 10.17a (desenho E10-08, estados 1, 2, 3, 7 e 8; Etapa 10). Só o mestre as vê: o SRD é público e o servidor deixa qualquer membro ler as criaturas, então o app mostra o painel "Bestiário" (na página da campanha, depois da galeria) e as duas páginas só ao mestre, e a página diz "Só o mestre usa o bestiário da campanha." a quem abrir o endereço. "Pôr no combate" é a fatia 10.9b: não há botão nenhum dele ainda.
+As telas da fatia 10.17a (desenho E10-08, estados 1, 2, 3, 7 e 8; Etapa 10). Só o mestre as vê: o SRD é público e o servidor deixa qualquer membro ler as criaturas, então o app mostra o painel "Bestiário" (na página da campanha, depois da galeria) e as duas páginas só ao mestre, e a página diz "Só o mestre usa o bestiário da campanha." a quem abrir o endereço. "Pôr no combate" (a ordem do mestre, o que o jogador lê e o XP) é a fatia 10.17b; o servidor dele, o `AddMonsters`, está pronto desde a fatia 10.9b.
 
 | Peça | Como é |
 | --- | --- |

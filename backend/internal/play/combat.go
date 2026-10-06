@@ -182,6 +182,11 @@ type planned struct {
 	char   link.Character
 	count  int
 	hidden bool
+	// A monster of the bestiary (RN-29) is a copy of its creature's NPC with its own
+	// name and hit points: name is the base of the copies' labels (the master's, or
+	// the creature's), and hitPoints each copy's maximum, in order.
+	name      string
+	hitPoints []int
 }
 
 // participants checks who joins a combat and reads their characters. With
@@ -218,6 +223,10 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 		c, ok := byID[ids[i]]
 		if !ok {
 			return nil, errCharacterNotFound()
+		}
+		if c.CombatOnly {
+			// The NPC the app keeps for a creature's monsters is AddMonsters's.
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("participants[%d] is not a character the master can pick: use AddMonsters", i))
 		}
 		count := int(p.GetCount())
 		if count == 0 {
@@ -294,9 +303,12 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 	all := slices.Clone(existing)
 	for _, p := range parts {
 		var labels []string
-		if p.char.Player {
+		switch {
+		case p.char.Player:
 			labels = copyLabels(p.char.Name, 1, taken)
-		} else {
+		case p.name != "":
+			labels = copyLabels(p.name, p.count, taken)
+		default:
 			labels = copyLabels(p.char.Name, p.count, taken)
 		}
 		for i, label := range labels {
@@ -316,6 +328,9 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				}
 			} else {
 				hp := clamp32(p.char.HitPointsMax, 1, math.MaxInt32)
+				if i < len(p.hitPoints) {
+					hp = clamp32(p.hitPoints[i], 1, math.MaxInt32)
+				}
 				row.HpCurrent, row.HpMax, row.HpTemp = &hp, &hp, ptr(int32(0))
 				row.XpValue = clamp32(p.char.XPValue, 0, 1_000_000) // MR-016: what it gives when defeated
 				// Each copy rolls for itself, in the app (RN-19).

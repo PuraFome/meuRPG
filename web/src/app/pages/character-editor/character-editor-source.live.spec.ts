@@ -236,6 +236,7 @@ describe('a basic sheet through the editor', () => {
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
       monsterKey: '',
+      combatOnly: false,
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,
@@ -280,6 +281,7 @@ describe('a basic sheet through the editor', () => {
     const basic = {
       $typeName: 'meurpg.characters.v1.BasicSheet' as const,
       monsterKey: '',
+      combatOnly: false,
       hitPointsMax: 7,
       armorClass: 15,
       speedFt: 30,
@@ -311,6 +313,7 @@ describe('a basic sheet through the editor', () => {
     const form = toFormBasicSheet('Goblin', {
       $typeName: 'meurpg.characters.v1.BasicSheet',
       monsterKey: '',
+      combatOnly: false,
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,
