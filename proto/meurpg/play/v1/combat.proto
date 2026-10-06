@@ -499,6 +499,33 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc AddCombatants(AddCombatantsRequest) returns (AddCombatantsResponse);
 
+  // AddMonsters puts N monsters of one SRD creature into the combat ("Pôr no
+  // combate", MR-042, RN-29). Only the master may call it, while the combat is
+  // in SETUP or ACTIVE, as AddCombatants. The monsters are copies, in the
+  // combat, of one hidden NPC the app keeps for the creature (one per campaign
+  // and creature, made on the first add and reused, `BasicSheet.combat_only`;
+  // never in the master's list), so the hidden state, the initiative (rolled at
+  // once for each copy, with the creature's Dexterity modifier), the players'
+  // state words, the attacks and the XP by enemies work as for any NPC. They
+  // are named "<name> 1" to "<name> N" (a single one keeps the plain name when
+  // no other has it), start hidden unless the request says otherwise, and on a
+  // grid start without a square, for the master to place. The hit points are
+  // the creature's average, or rolled from its hit dice, for each monster; the
+  // master's log line says what was rolled. The idempotency key covers the
+  // whole add: a retry with the same parameters answers with the same ids,
+  // and with other parameters, or on a key another change used (an
+  // AddCombatants), it is `invalid_argument`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: creature_key is not an SRD creature, count is
+  //     outside 1 to 10, the name is not 1 to 30 characters on one line, the
+  //     hit-point mode is unknown, the combat would pass 40 combatants, or the
+  //     idempotency key was used for another change.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc AddMonsters(AddMonstersRequest) returns (AddMonstersResponse);
+
   // RemoveCombatant takes a combatant out of the combat. Only the master may
   // call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
   // turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
@@ -1801,6 +1828,11 @@ message Combatant {
   // the blinded and deafened conditions meanwhile. Only the master and the
   // character's own player get it.
   string familiar_sight_creature_id = 64;
+  // Only the master, for an NPC that is a monster of the bestiary (RN-29): the
+  // SRD creature it is a copy of ("monster:bandit") and its challenge rating
+  // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
+  string bestiary_creature_key = 65;
+  string challenge_rating = 66;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2128,6 +2160,46 @@ message AddCombatantsRequest {
 // AddCombatantsResponse returns the combat with the new combatants.
 message AddCombatantsResponse {
   Encounter encounter = 1;
+}
+
+// MonsterHitPoints is how the hit points of added monsters are chosen.
+enum MonsterHitPoints {
+  // Same as AVERAGE (question 81).
+  MONSTER_HIT_POINTS_UNSPECIFIED = 0;
+  // The creature's average hit points, the same for every monster.
+  MONSTER_HIT_POINTS_AVERAGE = 1;
+  // Each monster rolls the creature's hit dice, in the app (at least 1).
+  MONSTER_HIT_POINTS_ROLLED = 2;
+}
+
+// AddMonstersRequest puts monsters of one creature into the combat.
+message AddMonstersRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // A UUID the app generates once for this add and sends again on a retry.
+  string idempotency_key = 3;
+  // The SRD creature, such as "monster:bandit" (the bestiary's `key`).
+  string creature_key = 4;
+  // How many monsters, 1 to 10; unset means 1.
+  int32 count = 5;
+  // The base name, 1 to 30 characters on one line; empty takes the creature's
+  // Portuguese name. The bestiary is the public SRD: a player who knows the
+  // creature can look its numbers up, and the app never tells the players
+  // which creature a monster is beyond this name. A master who wants it secret
+  // gives another name (RN-20).
+  string name = 6;
+  // How the hit points are chosen; unset is the average.
+  MonsterHitPoints hit_points = 7;
+  // Whether the monsters start hidden from the players; unset: hidden.
+  optional bool hidden = 8;
+}
+
+// AddMonstersResponse returns the combat with the new combatants.
+message AddMonstersResponse {
+  Encounter encounter = 1;
+  // The new combatants, in the order of their names. A retry of an add that
+  // was already made returns the same ids.
+  repeated string combatant_ids = 2;
 }
 
 // RemoveCombatantRequest takes a combatant out.
@@ -3070,6 +3142,11 @@ enum CombatLogKind {
   // withdrawn) belongs to this line, so the master can undo it from here
   // (`undoable`); the attack of an answer is its own ATTACK line.
   COMBAT_LOG_KIND_OPPORTUNITY_OFFERED = 23;
+  // The master put monsters in the combat (AddMonsters, RN-29): `monsters`, with
+  // the hit points of each and the dice when they were rolled ("Bandido 1: 9 PV
+  // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
+  // before the combat begins (round 0).
+  COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3181,6 +3258,22 @@ message CombatLogEntry {
   CombatLogWildShape wild_shape = 41;
   // DOOR_OPENED: where the door is. The actor is who opened it.
   CombatLogDoor door = 42;
+  // MONSTERS_ADDED: the new monsters, in the order of their names.
+  repeated CombatLogMonster monsters = 43;
+}
+
+// CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
+message CombatLogMonster {
+  string combatant_id = 1;
+  string label = 2;
+  // Its hit points.
+  int32 hit_points = 3;
+  // Whether they were rolled; then `dice` is the creature's hit dice with the
+  // bonus ("2d8+2"), `faces` the rolled dice and `modifier` the bonus.
+  bool rolled = 4;
+  string dice = 5;
+  repeated int32 faces = 6;
+  int32 modifier = 7;
 }
 
 // CombatLogDoor is a door a move opened, in the combat log.

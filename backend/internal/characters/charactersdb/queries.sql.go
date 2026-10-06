@@ -1189,6 +1189,9 @@ WHERE campaign_id = $1::UUID
       OR (kind = 'player' AND player_user_id = $2::UUID)
   )
   AND ($3::TEXT IS NULL OR status = $3::TEXT)
+  -- The NPCs the app makes for the monsters of a combat (RN-29) are not the
+  -- master's to list.
+  AND COALESCE(sheet->'basic'->>'combat_only', 'false') <> 'true'
 ORDER BY kind <> 'player', created_at, id
 `
 

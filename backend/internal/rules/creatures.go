@@ -577,6 +577,10 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 			d.AttacksPerAction = max(d.AttacksPerAction, n)
 		}
 	}
+	// The snapshot's count, where the SRD's own text says another (corrections.json).
+	if n, ok := c.attacksPerAction[m.Key]; ok {
+		d.AttacksPerAction = n
+	}
 	for _, a := range m.SpecialAbilities {
 		d.Features = append(d.Features, Feature{
 			Key: m.Key + "#" + slugOf(a.Name), Name: a.Name, Source: m.Key, SourcePT: c.namePT(m.Key), Description: []string{a.Desc},

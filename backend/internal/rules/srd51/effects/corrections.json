@@ -1,5 +1,5 @@
 {
-  "_comment": "Corrections to data/ (never edited by hand): numbers the 5e-database snapshot has wrong against the SRD 5.1's own tables. The loader applies them over the class table rows and refuses an unknown class, field or level.",
+  "_comment": "Corrections to data/ (never edited by hand): numbers the 5e-database snapshot has wrong against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections) and over a creature's Multiattack count (creature_corrections), and refuses an unknown class, creature, field or level.",
   "corrections": [
     {
       "class": "class:warlock",
@@ -9,6 +9,32 @@
         "1": 0, "2": 2, "3": 2, "4": 2, "5": 3, "6": 3, "7": 4, "8": 4, "9": 5, "10": 5,
         "11": 5, "12": 6, "13": 6, "14": 6, "15": 7, "16": 7, "17": 7, "18": 8, "19": 8, "20": 8
       }
+    }
+  ],
+  "creature_corrections": [
+    {
+      "creature": "monster:brown-bear",
+      "field": "attacks_per_action",
+      "value": 2,
+      "source": "SRD 5.1, Brown Bear, Multiattack: one with its bite and one with its claws (the snapshot reads Bite as an ability and counts 1)"
+    },
+    {
+      "creature": "monster:gibbering-mouther",
+      "field": "attacks_per_action",
+      "value": 1,
+      "source": "SRD 5.1, Gibbering Mouther, Multiattack: one bite attack, and Blinding Spittle is a saving throw, not an attack (the snapshot counts 2)"
+    },
+    {
+      "creature": "monster:shambling-mound",
+      "field": "attacks_per_action",
+      "value": 2,
+      "source": "SRD 5.1, Shambling Mound, Multiattack: two slam attacks; Engulf is not an attack (the snapshot counts 3)"
+    },
+    {
+      "creature": "monster:veteran",
+      "field": "attacks_per_action",
+      "value": 3,
+      "source": "SRD 5.1, Veteran, Multiattack: two longsword attacks and, with a shortsword drawn, one shortsword attack (the snapshot counts 2 shortsword attacks, 4 in all)"
     }
   ]
 }

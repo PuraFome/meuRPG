@@ -2686,6 +2686,14 @@ type BasicSheet struct {
 	// keeps the saved one. It is only stored: the combat does not read it, and no
 	// screen shows it yet.
 	AbilityScores *v1.AbilityScores `protobuf:"bytes,14,opt,name=ability_scores,json=abilityScores,proto3" json:"ability_scores,omitempty"`
+	// True for the NPC the app makes by itself for a creature the master puts in
+	// a combat as monsters (AddMonsters, RN-29): one per campaign and creature,
+	// reused by every combat, never in the master's list of characters, and never
+	// a participant, a stage NPC or a token. The monsters are copies of it in the
+	// combat, each with its own hit points and name. Only the server writes it: a
+	// create or an update ignores what it receives and an update keeps the saved
+	// one.
+	CombatOnly    bool `protobuf:"varint,15,opt,name=combat_only,json=combatOnly,proto3" json:"combat_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2816,6 +2824,13 @@ func (x *BasicSheet) GetAbilityScores() *v1.AbilityScores {
 		return x.AbilityScores
 	}
 	return nil
+}
+
+func (x *BasicSheet) GetCombatOnly() bool {
+	if x != nil {
+		return x.CombatOnly
+	}
+	return false
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
@@ -8100,7 +8115,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x06silver\x18\x02 \x01(\x05R\x06silver\x12\x1a\n" +
 	"\belectrum\x18\x03 \x01(\x05R\belectrum\x12\x12\n" +
 	"\x04gold\x18\x04 \x01(\x05R\x04gold\x12\x1a\n" +
-	"\bplatinum\x18\x05 \x01(\x05R\bplatinum\"\xc0\x04\n" +
+	"\bplatinum\x18\x05 \x01(\x05R\bplatinum\"\xe1\x04\n" +
 	"\n" +
 	"BasicSheet\x12$\n" +
 	"\x0ehit_points_max\x18\x01 \x01(\x05R\fhitPointsMax\x12\x1f\n" +
@@ -8119,7 +8134,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x04size\x18\f \x01(\x0e2\x1d.meurpg.rules.v1.CreatureSizeR\x04size\x12\x1f\n" +
 	"\vmonster_key\x18\r \x01(\tR\n" +
 	"monsterKey\x12E\n" +
-	"\x0eability_scores\x18\x0e \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\rabilityScores\"\x9d\x02\n" +
+	"\x0eability_scores\x18\x0e \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\rabilityScores\x12\x1f\n" +
+	"\vcombat_only\x18\x0f \x01(\bR\n" +
+	"combatOnly\"\x9d\x02\n" +
 	"\vBasicAttack\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fattack_bonus\x18\x02 \x01(\x05R\vattackBonus\x12*\n" +

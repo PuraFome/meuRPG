@@ -273,6 +273,18 @@ type CombatRoster interface {
 	// its passive Perception and its senses (MR-035). False for a key that is not an
 	// SRD creature.
 	CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (maplink.Eyes, bool, error)
+
+	// The monsters of "Pôr no combate" (MR-042, RN-29).
+
+	// MonsterHitPoints is the creature's average hit points and hit dice; false
+	// for a key that is not an SRD creature.
+	MonsterHitPoints(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (link.MonsterHitPoints, bool, error)
+	// MonsterNpc returns the NPC the app keeps for a creature in the campaign,
+	// one per campaign and creature, made inside tx the first time (a minion with
+	// the creature's basic sheet and average hit points, `combat_only`, never in
+	// the master's list) and reused after. It is a combat character; the monsters
+	// of a combat are copies of it. False for a key that is not an SRD creature.
+	MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterUserID, monsterKey string, at time.Time) (link.Character, bool, error)
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
