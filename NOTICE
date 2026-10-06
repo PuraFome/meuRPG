@@ -28,10 +28,14 @@ System Reference Document 5.2.1
 The ways of making ability scores in the table's rules (RN-24: the standard
 array, the 27-point buy and "4d6, drop the lowest", p. 20 of the SRD 5.2.1, the
 2024 rules) come from the System Reference Document 5.2.1, used in
-backend/internal/rules/abilitymethods.go. The app labels each one "SRD 5.2.1
-(regras de 2024)". Later slices add two more tables of the same document (the XP
-budget of encounters and the values of magic items by rarity), and this notice
-will name them then.
+backend/internal/rules/abilitymethods.go. The values of magic items by rarity
+(the table "Magic Item Rarities and Values", p. 205: common 100 GP, uncommon 400,
+rare 4,000, very rare 40,000, legendary 200,000; an artifact is priceless; a
+consumable is worth half) come from the same document, used in
+backend/internal/rules/srd51/effects/magic_item_values.json and the treasure
+generator. The app labels each one "SRD 5.2.1 (regras de 2024)". A later slice
+adds one more table of the same document (the XP budget of encounters), and this
+notice will name it then.
 
 This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 

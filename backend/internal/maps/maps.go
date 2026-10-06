@@ -116,6 +116,10 @@ type CharacterDirectory interface {
 	// portraits of the NPCs a picture made from a map shows go to the image model
 	// as character references (MR-039).
 	NpcPortraits(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) (map[string]string, error)
+	// PartyLevels returns the total level of each living, active player character
+	// of the campaign (1 to 20), oldest first: the treasure generator's party level is
+	// the lowest of them (MR-044).
+	PartyLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]int, error)
 }
 
 // LiveSession is what this package needs from the live session. The play
@@ -194,6 +198,14 @@ type Rules interface {
 	// TrapPreset and LightPreset find a preset by its key.
 	TrapPreset(key string) (rules.TrapPreset, bool)
 	LightPreset(key string) (rules.LightPreset, bool)
+	// GenerateTreasure, MagicItem and MagicItemValue are the
+	// treasure generator (MR-044, TreasureService): the treasure of a mode, party level
+	// and seed, a magic item with its text, and its SRD 5.2.1 value.
+	GenerateTreasure(mode string, level int, seed uint64) (rules.Treasure, error)
+	MagicItem(key string) (rules.MagicItem, bool)
+	MagicItemValue(key string) (rules.ItemValue, bool)
+	// Version is the content version a treasure is rolled under.
+	Version() string
 }
 
 // Config holds what the maps service needs.
@@ -240,7 +252,7 @@ type Config struct {
 	MonthlyImages int32
 }
 
-// Service implements GalleryService, MapService, DungeonService and the image routes.
+// Service implements GalleryService, MapService, DungeonService, TreasureService and the image routes.
 type Service struct {
 	pool       *pgxpool.Pool
 	queries    *mapsdb.Queries
@@ -423,6 +435,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(mapsv1connect.NewMapServiceHandler(s, opts...))
 	handle(mapsv1connect.NewImageGenerationServiceHandler(s, opts...))
 	handle(mapsv1connect.NewDungeonServiceHandler(s, opts...))
+	handle(mapsv1connect.NewTreasureServiceHandler(s, opts...))
 
 	withAuthz := authz.Middleware(sessions, members, s.logger)
 	route := func(h http.HandlerFunc) http.Handler {

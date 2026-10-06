@@ -1,0 +1,460 @@
+package maps
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+// TreasureService (MR-044, RN-09, RN-10, Etapa 10, slice 10.10b): the master's
+// treasure generator. The generator itself is package rules (pure: the same mode,
+// party level and seed give the same treasure); this file is what the server does
+// around it: the party's level, the answers, and "Pôr no mapa", which makes a hidden
+// TREASURE point through the same table a point made by hand uses.
+//
+// Every method is the master's, and a player gets `not_found` from each of them
+// (requireDungeonMaster): a generated treasure never reaches a player before they
+// find the point (RN-10). Nothing is stored but the point.
+
+var _ mapsv1connect.TreasureServiceHandler = (*Service)(nil)
+
+// valueLabel is what the app writes next to a magic item's value: the table is the
+// 2024 rules'.
+const valueLabel = "Valores do SRD 5.2.1 (regras de 2024)"
+
+var (
+	modeToRules = map[mapsv1.TreasureMode]string{
+		mapsv1.TreasureMode_TREASURE_MODE_INDIVIDUAL: rules.TreasureIndividual,
+		mapsv1.TreasureMode_TREASURE_MODE_HOARD:      rules.TreasureHoard,
+	}
+	modeFromRules = map[string]mapsv1.TreasureMode{
+		rules.TreasureIndividual: mapsv1.TreasureMode_TREASURE_MODE_INDIVIDUAL,
+		rules.TreasureHoard:      mapsv1.TreasureMode_TREASURE_MODE_HOARD,
+	}
+	coinFromRules = map[string]mapsv1.TreasureCoinKind{
+		rules.CoinCopper:   mapsv1.TreasureCoinKind_TREASURE_COIN_KIND_COPPER,
+		rules.CoinSilver:   mapsv1.TreasureCoinKind_TREASURE_COIN_KIND_SILVER,
+		rules.CoinElectrum: mapsv1.TreasureCoinKind_TREASURE_COIN_KIND_ELECTRUM,
+		rules.CoinGold:     mapsv1.TreasureCoinKind_TREASURE_COIN_KIND_GOLD,
+		rules.CoinPlatinum: mapsv1.TreasureCoinKind_TREASURE_COIN_KIND_PLATINUM,
+	}
+	rarityFromRules = map[string]mapsv1.MagicItemRarity{
+		rules.RarityCommon:    mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_COMMON,
+		rules.RarityUncommon:  mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_UNCOMMON,
+		rules.RarityRare:      mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_RARE,
+		rules.RarityVeryRare:  mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_VERY_RARE,
+		rules.RarityLegendary: mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_LEGENDARY,
+		rules.RarityArtifact:  mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_ARTIFACT,
+		rules.RarityVaries:    mapsv1.MagicItemRarity_MAGIC_ITEM_RARITY_VARIES,
+	}
+	// rarityPT is how a rarity reads in a point's description.
+	rarityPT = map[string]string{
+		rules.RarityCommon: "comum", rules.RarityUncommon: "incomum", rules.RarityRare: "raro",
+		rules.RarityVeryRare: "muito raro", rules.RarityLegendary: "lendário", rules.RarityArtifact: "artefato",
+	}
+	// coinPT is the abbreviation of each coin; a PP is a "peça de prata".
+	coinPT = map[string]string{
+		rules.CoinCopper: "PC", rules.CoinSilver: "PP", rules.CoinElectrum: "PE", rules.CoinGold: "PO", rules.CoinPlatinum: "PL",
+	}
+)
+
+func errNoParty() error {
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New("the campaign has no living player character: give the party level"))
+	if detail, detailErr := connect.NewErrorDetail(&mapsv1.TreasureBlocked{Reason: mapsv1.TreasureBlockedReason_TREASURE_BLOCKED_REASON_NO_PARTY}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
+}
+
+func errContentChanged() error {
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New("the rules content changed since the treasure was generated: generate it again"))
+	if detail, detailErr := connect.NewErrorDetail(&mapsv1.TreasureBlocked{Reason: mapsv1.TreasureBlockedReason_TREASURE_BLOCKED_REASON_CONTENT_CHANGED}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
+}
+
+func errKeyUsedForAnotherChange() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was used for another change"))
+}
+
+func badTreasure(format string, a ...any) error {
+	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(format, a...))
+}
+
+// GetTreasureParty implements mapsv1connect.TreasureServiceHandler.
+func (s *Service) GetTreasureParty(
+	ctx context.Context,
+	req *connect.Request[mapsv1.GetTreasurePartyRequest],
+) (*connect.Response[mapsv1.GetTreasurePartyResponse], error) {
+	m, err := requireDungeonMaster(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	levels, err := s.characters.PartyLevels(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the party's levels", err)
+	}
+	out := &mapsv1.GetTreasurePartyResponse{LivingCount: int32(len(levels))} //nolint:gosec // G115: a handful of characters
+	if len(levels) > 0 {
+		out.LowestLevel = int32(slices.Min(levels))  //nolint:gosec // G115: 1 to 20
+		out.HighestLevel = int32(slices.Max(levels)) //nolint:gosec // G115: 1 to 20
+	}
+	return connect.NewResponse(out), nil
+}
+
+// GenerateTreasure implements mapsv1connect.TreasureServiceHandler.
+func (s *Service) GenerateTreasure(
+	ctx context.Context,
+	req *connect.Request[mapsv1.GenerateTreasureRequest],
+) (*connect.Response[mapsv1.GenerateTreasureResponse], error) {
+	m, err := requireDungeonMaster(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	mode, err := treasureMode(req.Msg.GetMode())
+	if err != nil {
+		return nil, err
+	}
+	level, err := s.partyLevel(ctx, m.CampaignID, req.Msg.PartyLevel)
+	if err != nil {
+		return nil, err
+	}
+	seed, err := seedOf(req.Msg.Seed)
+	if err != nil {
+		return nil, s.dbError(ctx, "draw a seed", err)
+	}
+	t, err := s.rules.GenerateTreasure(mode, level, seed)
+	if err != nil {
+		return nil, badTreasure("party_level must be 1 to 20")
+	}
+	return connect.NewResponse(&mapsv1.GenerateTreasureResponse{Treasure: treasureToProto(t)}), nil
+}
+
+func treasureMode(m mapsv1.TreasureMode) (string, error) {
+	mode, ok := modeToRules[m]
+	if !ok {
+		return "", badTreasure("mode must be INDIVIDUAL or HOARD")
+	}
+	return mode, nil
+}
+
+// partyLevel is the level the tables are read for: the one the master gave (1 to
+// 20), or the lowest level among the living player characters.
+func (s *Service) partyLevel(ctx context.Context, campaignID string, given *int32) (int, error) {
+	if given != nil {
+		if *given < rules.MinTreasureLevel || *given > rules.MaxTreasureLevel {
+			return 0, badTreasure("party_level must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
+		}
+		return int(*given), nil
+	}
+	levels, err := s.characters.PartyLevels(ctx, nil, campaignID)
+	if err != nil {
+		return 0, s.dbError(ctx, "read the party's levels", err)
+	}
+	if len(levels) == 0 {
+		return 0, errNoParty()
+	}
+	return max(slices.Min(levels), rules.MinTreasureLevel), nil
+}
+
+// GetMagicItem implements mapsv1connect.TreasureServiceHandler.
+func (s *Service) GetMagicItem(
+	ctx context.Context,
+	req *connect.Request[mapsv1.GetMagicItemRequest],
+) (*connect.Response[mapsv1.GetMagicItemResponse], error) {
+	if _, err := requireDungeonMaster(ctx, req.Msg.GetCampaignId()); err != nil {
+		return nil, err
+	}
+	item, ok := s.rules.MagicItem(req.Msg.GetKey())
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("magic item not found"))
+	}
+	out := &mapsv1.GetMagicItemResponse{
+		Key: item.Key, Name: item.Name, NamePt: item.NamePT, Category: item.Category,
+		Rarity: rarityFromRules[item.Rarity], Attunement: item.Attunement,
+		AttunementBy: item.AttunementBy, AttunementByPt: item.AttunementByPT,
+		Consumable: item.Consumable, SpellScroll: item.SpellScroll, ValueLabel: valueLabel,
+		Description: item.Desc, Variants: item.Variants, VariantOf: item.VariantOf,
+	}
+	if v, ok := s.rules.MagicItemValue(item.Key); ok {
+		out.Priceless, out.Halved = v.Priceless, v.Halved
+		if !v.Priceless {
+			po := int32(v.PO) //nolint:gosec // G115: at most 200,000
+			out.ValuePo = &po
+		}
+	}
+	return connect.NewResponse(out), nil
+}
+
+// PlaceTreasure implements mapsv1connect.TreasureServiceHandler.
+func (s *Service) PlaceTreasure(
+	ctx context.Context,
+	req *connect.Request[mapsv1.PlaceTreasureRequest],
+) (*connect.Response[mapsv1.PlaceTreasureResponse], error) {
+	m, err := requireDungeonMaster(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	mode, err := treasureMode(req.Msg.GetMode())
+	if err != nil {
+		return nil, err
+	}
+	level := req.Msg.GetPartyLevel()
+	if level < rules.MinTreasureLevel || level > rules.MaxTreasureLevel {
+		return nil, badTreasure("party_level must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
+	}
+	if req.Msg.Seed == nil {
+		return nil, badTreasure("seed is required: the treasure is rolled again from it")
+	}
+	key, err := cleanKey(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.GetContentVersion() == "" {
+		return nil, badTreasure("content_version is required: send the one the treasure came with")
+	}
+	if req.Msg.GetContentVersion() != s.rules.Version() {
+		return nil, errContentChanged()
+	}
+	name := defaultTreasureName(mode)
+	if req.Msg.Name != nil {
+		if name, err = cleanName("name", req.Msg.GetName()); err != nil {
+			return nil, err
+		}
+	}
+	// The server rolls the treasure again: what the app computed or showed is never
+	// trusted, only the three inputs.
+	t, err := s.rules.GenerateTreasure(mode, int(level), req.Msg.GetSeed())
+	if err != nil {
+		return nil, badTreasure("party_level must be 1 to 20")
+	}
+	description, err := cleanDescription(treasureDescription(t))
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and it is kept with a hash of the whole request:
+	// a retry returns the first point only when it is the same request.
+	scopedKey := m.CampaignID + ":" + key
+	requestHash := hashTreasureRequest(mapID, req.Msg.GetColumn(), req.Msg.GetRow(), mode, level, req.Msg.GetSeed(), name, req.Msg.GetContentVersion())
+
+	var point mapsdb.MapPoint
+	var mapRow mapsdb.Map
+	replayed := false
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		replayed = false
+		var err error
+		if mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		// A retry finds the point the first call made.
+		prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
+		if err == nil {
+			return replayOf(prior, requestHash, &point, &replayed)
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("find the point of the key: %w", err)
+		}
+		size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: m.CampaignID, ID: mapID})
+		if err != nil {
+			return fmt.Errorf("read the map's grid: %w", err)
+		}
+		g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
+		if !g.Valid() {
+			return errNoGrid()
+		}
+		sq := grid.Square{Col: int(req.Msg.GetColumn()), Row: int(req.Msg.GetRow())}
+		if !g.Contains(sq) {
+			return badTreasure("the square is outside the map's grid")
+		}
+		x, y := g.CenterOf(sq)
+		value := int32(t.GoldPO) //nolint:gosec // G115: at most 1,000,000
+		count, err := q.CountMapPoints(ctx, mapID)
+		if err != nil {
+			return fmt.Errorf("count points: %w", err)
+		}
+		if count >= s.maxPoints {
+			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
+		}
+		point, err = q.InsertTreasurePoint(ctx, mapsdb.InsertTreasurePointParams{
+			MapID: mapID, Name: name, Description: description, XBp: int32(x), YBp: int32(y), //nolint:gosec // G115: 0 to 10000
+			TreasureValuePo: &value, CreateKey: &scopedKey, CreateHash: &requestHash, Now: s.now(),
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another call with the same key won the race: its point is ours.
+			prior, err = q.GetMapPointByCreateKey(ctx, &scopedKey)
+			if err != nil {
+				return fmt.Errorf("find the point of the key: %w", err)
+			}
+			return replayOf(prior, requestHash, &point, &replayed)
+		}
+		if err != nil {
+			return fmt.Errorf("insert point: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "place a treasure", err)
+	}
+	// A new point is hidden: only the master hears about it (MR-009).
+	if !replayed {
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(point), point)
+	}
+	out, err := s.masterPoint(ctx, m, point)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.PlaceTreasureResponse{Point: out, Treasure: treasureToProto(t)}), nil
+}
+
+// replayOf takes the point an earlier call with the same key made, once it is the same
+// request (the same hash): a key reused for another change is a mistake of the app.
+func replayOf(prior mapsdb.MapPoint, hash string, into *mapsdb.MapPoint, replayed *bool) error {
+	if prior.CreateHash == nil || *prior.CreateHash != hash {
+		return errKeyUsedForAnotherChange()
+	}
+	*into, *replayed = prior, true
+	return nil
+}
+
+// hashTreasureRequest is the hash of everything that makes a PlaceTreasure what it is.
+func hashTreasureRequest(mapID string, column, row int32, mode string, level int32, seed uint64, name, version string) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d\x00%d\x00%s\x00%d\x00%d\x00%s\x00%s", mapID, column, row, mode, level, seed, name, version)))
+	return hex.EncodeToString(sum[:])
+}
+
+func defaultTreasureName(mode string) string {
+	if mode == rules.TreasureHoard {
+		return "Tesouro de covil"
+	}
+	return "Tesouro individual"
+}
+
+// treasureDescription is what the players read when they find the point: the coins,
+// the gems, the art objects and the magic items, in Portuguese, one thing to a line. The
+// values of the items are left out (they are the master's number), identical items are
+// grouped ("2 × Pergaminho de magia (1º círculo)"), and the text always fits the 2,000
+// characters of a description: the generator never gives more than 12 gems, 6 art
+// objects and 6 items.
+func treasureDescription(t rules.Treasure) string {
+	var lines []string
+	if len(t.Coins) > 0 {
+		parts := make([]string, len(t.Coins))
+		for i, c := range t.Coins {
+			parts[i] = ptInt(c.Count) + " " + coinPT[c.Coin]
+		}
+		lines = append(lines, "Moedas: "+joinPT(parts)+".")
+	}
+	pieces := func(title string, list []rules.TreasurePiece) {
+		if len(list) == 0 {
+			return
+		}
+		lines = append(lines, title+":")
+		for _, p := range list {
+			if p.Count == 1 {
+				lines = append(lines, fmt.Sprintf("- %s (%s PO)", p.NamePT, ptInt(p.ValuePO)))
+			} else {
+				lines = append(lines, fmt.Sprintf("- %d × %s (%s PO cada)", p.Count, p.NamePT, ptInt(p.ValuePO)))
+			}
+		}
+	}
+	pieces("Gemas", t.Gems)
+	pieces("Obras de arte", t.Art)
+	if len(t.Items) > 0 {
+		lines = append(lines, "Itens mágicos:")
+		var order []string
+		count := map[string]int{}
+		first := map[string]rules.TreasureItem{}
+		for _, it := range t.Items {
+			if count[it.Key] == 0 {
+				order = append(order, it.Key)
+				first[it.Key] = it
+			}
+			count[it.Key]++
+		}
+		for _, key := range order {
+			it := first[key]
+			note := "item " + rarityPT[it.Rarity]
+			if it.Attunement {
+				note += ", exige sintonização"
+			}
+			label := it.NamePT
+			if count[key] > 1 {
+				label = fmt.Sprintf("%d × %s", count[key], it.NamePT)
+			}
+			lines = append(lines, "- "+label+" ("+note+")")
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// joinPT joins "a", "b" and "c" the Portuguese way: "a, b e c".
+func joinPT(parts []string) string {
+	if len(parts) < 2 {
+		return strings.Join(parts, "")
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + " e " + parts[len(parts)-1]
+}
+
+// ptInt writes a whole number the Brazilian way: 1.200.
+func ptInt(n int) string {
+	s := strconv.Itoa(n)
+	if n < 0 {
+		return "-" + ptInt(-n)
+	}
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "." + s[i:]
+	}
+	return s
+}
+
+func treasureToProto(t rules.Treasure) *mapsv1.Treasure {
+	out := &mapsv1.Treasure{
+		Mode: modeFromRules[t.Mode], PartyLevel: int32(t.Level), Seed: t.Seed, ContentVersion: t.ContentVersion, //nolint:gosec // G115: 1 to 20
+		CoinsPo: int32(t.CoinsPO), GemsPo: int32(t.GemsPO), ArtPo: int32(t.ArtPO), //nolint:gosec // G115: bounded by the tables (1,000,000)
+		GoldPo: int32(t.GoldPO), ItemsPo: int32(t.ItemsPO), //nolint:gosec // G115: the same
+	}
+	for _, c := range t.Coins {
+		out.Coins = append(out.Coins, &mapsv1.TreasureCoinStack{Coin: coinFromRules[c.Coin], Count: int32(c.Count), ValuePo: int32(c.ValuePO)}) //nolint:gosec // G115: bounded by the tables
+	}
+	piece := func(in []rules.TreasurePiece) []*mapsv1.TreasurePiece {
+		var list []*mapsv1.TreasurePiece
+		for _, p := range in {
+			list = append(list, &mapsv1.TreasurePiece{NamePt: p.NamePT, ValuePo: int32(p.ValuePO), Count: int32(p.Count)}) //nolint:gosec // G115: bounded by the tables
+		}
+		return list
+	}
+	out.Gems, out.Art = piece(t.Gems), piece(t.Art)
+	for _, it := range t.Items {
+		out.Items = append(out.Items, &mapsv1.TreasureItem{
+			Key: it.Key, Name: it.Name, NamePt: it.NamePT, Category: it.Category, Rarity: rarityFromRules[it.Rarity],
+			ValuePo: int32(it.ValuePO), Consumable: it.Consumable, Halved: it.Halved, SpellScroll: it.SpellScroll, //nolint:gosec // G115: at most 200,000
+			Attunement: it.Attunement, AttunementByPt: it.AttunementByPT,
+		})
+	}
+	return out
+}

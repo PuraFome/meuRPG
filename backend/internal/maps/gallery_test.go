@@ -456,6 +456,10 @@ func (noCharacters) NpcPortraits(context.Context, pgx.Tx, string, []string) (map
 	return nil, errors.New("not in this test")
 }
 
+func (noCharacters) PartyLevels(context.Context, pgx.Tx, string) ([]int, error) {
+	return nil, errors.New("not in this test")
+}
+
 func (noCharacters) PartyVision(context.Context, pgx.Tx, string) ([]link.PartyMember, error) {
 	return nil, errors.New("not in this test")
 }
@@ -510,6 +514,12 @@ func (noRules) SceneCheckName(string) (string, bool)         { return "", false 
 func (noRules) NamePT(string) string                         { return "" }
 func (noRules) TrapPreset(string) (rules.TrapPreset, bool)   { return rules.TrapPreset{}, false }
 func (noRules) LightPreset(string) (rules.LightPreset, bool) { return rules.LightPreset{}, false }
+func (noRules) GenerateTreasure(string, int, uint64) (rules.Treasure, error) {
+	return rules.Treasure{}, errors.New("not in this test")
+}
+func (noRules) MagicItem(string) (rules.MagicItem, bool)      { return rules.MagicItem{}, false }
+func (noRules) MagicItemValue(string) (rules.ItemValue, bool) { return rules.ItemValue{}, false }
+func (noRules) Version() string                               { return "" }
 
 // noMembers is a MembershipSource with no members at all.
 type noMembers struct{}
