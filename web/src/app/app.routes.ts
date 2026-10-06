@@ -110,6 +110,12 @@ export const routes: Routes = [
       import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
   },
   {
+    // "Magias" (MR-045, RN-23): the players' spell reference, for every active member, the master too.
+    path: 'campanhas/:id/magias',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/spells/spells').then((m) => m.Spells),
+  },
+  {
     // The campaign document (MR-018), master only; the page tells a player
     // so. Leaving edit mode with unsaved text asks first (the guard lives
     // with the page, the page decides, so this file imports nothing of it).

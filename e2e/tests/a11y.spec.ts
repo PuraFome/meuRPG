@@ -18,6 +18,7 @@ import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './crea
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
+import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
@@ -3733,4 +3734,126 @@ test('a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos doi
       await context.close();
     }
   }
+});
+
+/**
+ * "Magias" (MR-045, E10-11): the list with the filters on, a spell open (a table spell and an SRD one), a search with no
+ * result, the phone's "Filtros" sheet, the failed list and a basic sheet with "Só as que posso aprender".
+ */
+async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, height = 900): Promise<void> {
+  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const context = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const master = await masterContext.newPage();
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  // Under 1100 px the filters live in a sheet (a bottom sheet on a phone, a dialog from a tablet).
+  const phone = width < 1100;
+  try {
+    await master.goto('/');
+    await page.goto('/');
+    const table = await tableForSpells(master, page, `Acessibilidade magias ${Date.now()}`);
+    await createInkBladeRPC(master, table.campaignId);
+    const url = `/campanhas/${table.campaignId}/magias`;
+    const rows = page.locator('button.row');
+
+    // Loading: the answer is held until the scan is done.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/meurpg.rules.v1.ContentService/ListSpells', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(url);
+    await expect(page.getByText('Buscando as magias…')).toBeAttached();
+    await expectScreenPasses(page, `Magias, carregando ${where}`);
+    release();
+    await expect(rows.first()).toBeVisible();
+    await page.unroute('**/meurpg.rules.v1.ContentService/ListSpells');
+    await expectScreenPasses(page, `Magias, a lista ${where}`);
+
+    // The filters on: the class and "Só as que posso aprender" (the panel at 1280 px, the sheet on a phone).
+    await page.goto(`${url}?classe=class:wizard&minhas=1`);
+    await expect(rows.first()).toBeVisible();
+    await expectScreenPasses(page, `Magias, filtros ligados ${where}`);
+    if (phone) {
+      await page.getByRole('button', { name: /Filtros/ }).click();
+      const sheet = page.getByRole('dialog', { name: 'Filtros' });
+      await expect(sheet.getByRole('button', { name: /^Ver \d+ magias$/ })).toBeVisible();
+      await expectScreenPasses(page, `Magias, a folha de filtros ${where}`);
+      await sheet.getByRole('button', { name: 'Fechar' }).click();
+      await expect(sheet).toBeHidden();
+    }
+
+    // A spell open: the table's own, then the SRD's.
+    await page.goto(`${url}?q=nanquim`);
+    await rows.first().click();
+    await expect(page.locator('#spell-card-title')).toHaveText('Lâmina de Nanquim');
+    await expectScreenPasses(page, `Magias, uma magia da mesa ${where}`);
+    await page.goto(`${url}?q=maos`);
+    await rows.first().click();
+    await expect(page.locator('#spell-card-title')).toHaveText('Mãos Flamejantes');
+    await expectScreenPasses(page, `Magias, uma magia do SRD ${where}`);
+
+    // No result.
+    await page.goto(`${url}?q=zzz`);
+    await expect(page.getByText('Nenhuma magia com “zzz”.')).toBeVisible();
+    await expectScreenPasses(page, `Magias, busca sem resultado ${where}`);
+
+    // A basic sheet with the filter on.
+    await page.route('**/meurpg.rules.v1.ContentService/ListSpells', (route) =>
+      (route.request().postData() ?? '').includes('characterId')
+        ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'failed_precondition', message: 'x' }) })
+        : route.continue(),
+    );
+    await page.goto(`${url}?minhas=1`);
+    await expect(page.getByText('Essa ficha é básica e não tem classes que conjuram', { exact: false })).toBeVisible();
+    await expectScreenPasses(page, `Magias, ficha básica ${where}`);
+    await page.unroute('**/meurpg.rules.v1.ContentService/ListSpells');
+
+    // Failing: the server does not answer.
+    await page.route('**/meurpg.rules.v1.ContentService/ListSpells', (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+    );
+    await page.goto(url);
+    await expect(page.getByRole('alert')).toContainText('o servidor não respondeu');
+    await expectScreenPasses(page, `Magias, erro ${where}`);
+    await page.unroute('**/meurpg.rules.v1.ContentService/ListSpells');
+    await page.getByRole('button', { name: 'Tentar de novo' }).click();
+    await expect(rows.first()).toBeVisible();
+
+    // The campaign page with its "Magias" panel.
+    await page.goto(`/campanhas/${table.campaignId}`);
+    const open = page.getByRole('link', { name: 'Abrir as magias' });
+    await open.scrollIntoViewIfNeeded();
+    await expect(open).toBeVisible();
+    await expectScreenPasses(page, `Campanha com o painel Magias ${where}`);
+  } finally {
+    await masterContext.close();
+    await context.close();
+  }
+}
+
+test('as Magias passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSpellsScreens(browser, 'light', 1280);
+});
+
+test('as Magias passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSpellsScreens(browser, 'dark', 1280);
+});
+
+test('as Magias passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSpellsScreens(browser, 'dark', 390);
+});
+
+test('as Magias passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSpellsScreens(browser, 'light', 320, 568);
+});
+
+test('as Magias passam no axe e nas conferências de layout no tema claro, no tablet de 1024 (o diálogo de filtros)', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSpellsScreens(browser, 'light', 1024, 768);
 });
