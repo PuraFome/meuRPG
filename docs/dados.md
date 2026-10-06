@@ -29,7 +29,7 @@ Tabelas novas para a mesa ao vivo:
 - `opportunity_offers`: o ataque de oportunidade que um movimento oferece a quem ele deixou para trás, até alguém responder (MR-034, RN-21, Etapa 9, fatia 9.6b).
 - `pending_damages`: o dano de um ataque ou de uma magia que acertou, e as curas, do d20 até o mestre aplicar ou descartar (MR-012, MR-014). Já existe (Etapa 6). Também guarda o dano de uma armadilha num combate (MR-035, Etapa 9, fatia 9.8: sem atacante, com `trap_point_id`).
 - `trap_damages`: o dano de uma armadilha num personagem de jogador **fora de um combate**, à espera do mestre (MR-035, RN-02, Etapa 9, fatia 9.8).
-- `puzzles`, `puzzle_runs` e `puzzle_moves`: os quebra-cabeças da campanha (só do mestre), o estado ao vivo de cada um numa sessão e uma linha por jogada, com a chave contra repetição (MR-038, RN-27, Etapa 10, fatia 10.7a). Já existem (ver [Esquema implementado](#esquema-implementado)).
+- `puzzles`, `puzzle_runs`, `puzzle_moves` e `puzzle_hint_tries`: os quebra-cabeças da campanha (só do mestre), o estado ao vivo de cada um numa sessão, uma linha por jogada, com a chave contra repetição, e uma por tentativa de ganhar uma dica por teste de perícia (MR-038, RN-27, Etapa 10, fatias 10.7a e 10.7b). Já existem (ver [Esquema implementado](#esquema-implementado)).
 - `xp_awards` e `xp_award_shares`: quem deu XP ou registrou um marco, quanto, quando e por quê, e o que cada personagem recebeu (MR-016). O modo de XP fica em `campaigns.xp_mode`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
 - `xp_award_treasures`: os tesouros que um prêmio "Voltar à cidade" converteu (MR-041, Etapa 9, fatia 9.11).
 - `planned_milestones`: os marcos que o mestre escreve antes numa campanha por marcos (MR-016, Etapa 8, fatia 8.10); `xp_awards.milestone_id` liga cada prêmio de marco ao marco planejado.
@@ -349,7 +349,7 @@ flowchart TD
         t_encounters["encounters"]
         t_combatants["combatants"]
         t_session_events["session_events"]
-        t_puzzles["puzzles, puzzle_runs, puzzle_moves"]
+        t_puzzles["puzzles, puzzle_runs, puzzle_moves, puzzle_hint_tries"]
     end
 
     subgraph maps_mod["Módulo maps"]
@@ -530,8 +530,14 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00146_add_gallery_images_generated` | `gallery_images` | `generated` (a imagem foi feita por IA, MR-039) e `parent_image_id` (o ajuste aponta para a imagem de que partiu; apagar o pai só corta o elo). |
 | `00147_create_image_requests` | `image_requests` | Cada pedido de imagem ao modelo (MR-039, RN-28): o texto do mestre, o estilo, a proporção, as referências, o estado e a vaga do mês. É também a conta do mês de cada campanha. |
 | `00148_create_image_requests_indexes` | `image_requests`, `gallery_images` | A chave contra repetição (única por campanha), a conta do mês e o filho de uma imagem (a cadeia de ajustes). |
+| `00149_add_puzzles_hint_check_parts_on_wrong` | `puzzles` | O que a fatia 10.7b acrescenta ao que o mestre escreve (MR-038, RN-27), tudo só dele: `hint_skill` e `hint_dc` (a perícia e a CD da dica por teste; as duas ou nenhuma), `parts` (a informação dividida: uma lista de `{character_id, text}`, no máximo 8) e `on_wrong` (o JSON do "Ao errar": o ponto da armadilha, as tentativas por jogador, o limite de jogadas e o de tempo). As respostas do enigma, a sequência e a mensagem e a chave da cifra não são coluna: ficam no `solution`, como as da fechadura. |
+| `00150_add_puzzle_runs_rounds_and_plays` | `puzzle_runs` | A rodada, em que os limites do "Ao errar" contam (`round_start_seq`: as jogadas dela são as de `puzzle_moves` depois dessa `seq`; `round_started_at`: de onde o limite de tempo conta; nulo enquanto a rodada é só preparada), e o toque da sequência (`plays`, quantas vezes o mestre a tocou, e `play_started_at`, quando o último começou: os passos que os jogadores leem saem dele e do relógio). |
+| `00151_add_puzzle_moves_wrong` | `puzzle_moves` | `wrong`: a jogada foi uma resposta, um sino ou uma mensagem errada. É o que gasta a tentativa do jogador e dispara a armadilha. |
+| `00152_create_puzzle_hint_tries` | `puzzle_hint_tries` | Cada tentativa de ganhar uma dica por teste de perícia (RN-27, RN-18): a rodada (cascata), o usuário e o personagem, a `idempotency_key`, `hint_index` (a dica da tentativa; `UNIQUE (run_id, user_id, hint_index)`: uma tentativa por jogador por dica), `passed`, `granted_count` (quantas dicas o jogador lê depois de passar; nulo ao falhar), o d20, o bônus, o total e se foi dado físico. A CD não é guardada, só se foi alcançada. |
+| `00153_create_puzzle_hint_tries_user_index` | `puzzle_hint_tries` | `(user_id)`: excluir a conta anula `user_id` sem varrer as tentativas. |
+| `00154_create_puzzle_hint_tries_character_index` | `puzzle_hint_tries` | `(character_id)`: o mesmo para o personagem. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123`, a `00125`, a `00141` e a `00142`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112`, a `00121`, as `00132` a `00140` e as `00143` a `00145`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, as `00128` a `00131` e as `00146` a `00148`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123`, a `00125`, a `00141` e a `00142`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112`, a `00121`, as `00132` a `00140`, as `00143` a `00145` e as `00149` a `00154`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, as `00128` a `00131` e as `00146` a `00148`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -586,11 +592,11 @@ No `play`:
 - **`opportunity_offers`** (`00108`, MR-034, RN-21) guarda o ataque de oportunidade que um movimento ofereceu a um reator hostil: quem andou, o reator, o quadrado da linha em que saiu do alcance (para onde ele volta se o ataque o leva a 0 PV) e o `state`. `pending` espera a resposta, e o turno de quem andou espera junto; `attacked` é o ataque feito (`attack_pending_id` é o dano que ele abriu, e some, `SET NULL`, se o desfazer apaga o dano); `declined` e `skipped` são o "Não atacar" do controlador e o "Seguir sem esperar" do mestre (que também é o que acontece quando o mestre encerra o turno de quem andou); `withdrawn` (`00145`) é o "Retirar a oferta" do mestre, e o desfazer põe a oferta de volta em `pending`. Num combate sem grade (`encounters.mode = 'theatre'`) quem oferece é o mestre (`OfferOpportunity`): ninguém saiu de um quadrado, então `left_col` e `left_row` são `NULL` e o `move_id` é só o identificador da oferta. `move_id` é o mesmo nas ofertas de um movimento: o desfazer do movimento as apaga. Sem dado pessoal: ids, quadrados e um estado.
 - **`pending_damages`** (`00048`, MR-012, MR-014) guarda o dano de um ataque que acertou, desde o d20 até o fim: `status` é `awaiting_reaction` (o golpe acertou um personagem que pode conjurar o Escudo e espera a resposta dele, `00057`), `awaiting_roll` (acertou, falta rolar o dano), `rolled` (rolado, num personagem de jogador, esperando o mestre), `applied` ou `discarded`. `dice_count` (já dobrado no crítico), `dice_sides` e `dice_bonus` são o dano a rolar, **copiados da ficha** quando o ataque acerta, então mudar a ficha depois não mexe numa rolagem aberta; zero dados é um número fixo. `faces`, `physical` e `amount` são o que foi rolado (ou a soma digitada com o dado físico) e o dano, nulo até rolar. `damage_type` é a chave do conteúdo, como `damage-type:fire`. Uma magia (`00056`) abre linhas que dividem o `cast_id` (um rótulo, sem chave estrangeira: o evento `spell_cast` diz o que foi a conjuração, e uma área rola o dano uma vez para todas); `healing` marca uma cura, `half` o alvo que passou na resistência (o `amount` é a metade, arredondada para baixo, e `roll_total` a rolagem inteira), `applied_amount` o que o mestre aplicou quando não foi o `amount`, e `attack_total` o total do golpe enquanto espera a reação do Escudo (para compará-lo de novo com a CA mais 5, sem rolar nada). Some com o combate ou com qualquer um dos dois combatentes (`CASCADE`). Sem índice por atacante ou alvo: só tirar um combatente procura por eles. **Dano de armadilha (`00110`, MR-035):** `attacker_id` é `NULL`, `trap_point_id` diz a armadilha, `attack_key` é `trap`, e a linha nasce já rolada (o servidor rola quando a armadilha dispara): `rolled` para um personagem de jogador (espera o mestre, RN-02) e `applied` para um NPC ou uma criatura (levou na hora).
 - **`trap_damages`** (`00111`, MR-035, RN-02): o dano que uma armadilha disparada fez a um personagem de jogador quando **não há combate** no mapa, uma linha por parte de dano (o dano em combate é uma linha de `pending_damages`). O servidor rola quando a armadilha dispara: `dice_count` (dobrado no crítico do ataque da armadilha), `dice_sides` e `dice_bonus` são o dano rolado, `faces` o que saiu, `roll_total` a rolagem inteira e `amount` o que vale (a metade, arredondada para baixo, de quem passou numa resistência que divide o dano). `status` é `rolled` (espera o mestre), `applied` ou `discarded`, e `applied_amount` é a quantia que o mestre aplicou quando não foi a rolada. `fire_id` rotula os danos de um mesmo disparo; `trap_point_id` não tem chave estrangeira (ver `00110`). Some com a sessão ou com o personagem (`CASCADE`); o índice é por sessão. Sobrevive ao fim da sessão (a sessão continua guardada): o mestre lê as que esperam da campanha inteira. O fim de um combate transforma nelas o dano de armadilha de `pending_damages` que ainda espera. Só fantasia, números e IDs.
-- **Os quebra-cabeças** (`00132` a `00135`, MR-038, RN-27, Etapa 10, fatia 10.7a) são três tabelas.
-  - **`puzzles`** é o quebra-cabeça como o mestre o faz, **só dele** (RN-10): nenhum jogador lê esta tabela, e a solução menos ainda. `config` é o JSON (o `protojson`) da configuração pública do tipo (o tamanho do painel; as rodas e o alfabeto; os pilares, os símbolos e as ligações), `solution` o da resposta (as rodas da fechadura, o mural dos pilares; as luzes não têm, o objetivo é tudo apagado) e `start` o do estado em que começa. O começo das luzes e dos pilares sai da `seed` pelo pacote `rules/puzzle`, então a mesma semente e a mesma configuração dão sempre o mesmo começo, nunca já resolvido; o da fechadura é o que o mestre escolheu. `kind` não tem `CHECK`: quem diz quais tipos existem é o código, e as fatias seguintes (o enigma, a sequência, a cifra) só acrescentam. O "Ao resolver" é `solve_action` mais `solve_target`. Um quebra-cabeça é arquivado (`archived_at`), nunca apagado, e só se edita até ser mostrado pela primeira vez.
+- **Os quebra-cabeças** (`00132` a `00135` na fatia 10.7a, `00149` a `00154` na 10.7b; MR-038, RN-27, Etapa 10) são quatro tabelas.
+  - **`puzzles`** é o quebra-cabeça como o mestre o faz, **só dele** (RN-10): nenhum jogador lê esta tabela, e a solução menos ainda. `config` é o JSON (o `protojson`) da configuração pública do tipo (o tamanho do painel; as rodas e o alfabeto; os pilares, os símbolos e as ligações), `solution` o da resposta (as rodas da fechadura, o mural dos pilares; as luzes não têm, o objetivo é tudo apagado) e `start` o do estado em que começa. O começo das luzes e dos pilares sai da `seed` pelo pacote `rules/puzzle`, então a mesma semente e a mesma configuração dão sempre o mesmo começo, nunca já resolvido; o da fechadura é o que o mestre escolheu. `kind` não tem `CHECK`: quem diz quais tipos existem é o código (`lights`, `lock`, `pillars`, `riddle`, `sequence` e `cipher`). Na fatia 10.7b `solution` passou a guardar também as respostas do enigma, os passos da sequência e a mensagem e a chave da cifra (que o jogador nunca lê), `config` o texto cifrado e o ID da pista da chave, e as colunas novas guardam a dica por teste (`hint_skill`, `hint_dc`: a CD é só do mestre), a informação dividida (`parts`) e o "Ao errar" (`on_wrong`). O "Ao resolver" é `solve_action` mais `solve_target`. Um quebra-cabeça é arquivado (`archived_at`), nunca apagado, e só se edita até ser mostrado pela primeira vez.
   - **`puzzle_runs`** é o quebra-cabeça numa sessão, e o que todos leem: uma linha por (sessão, quebra-cabeça), criada quando o mestre o mostra (ou prepara outro começo antes de mostrar: `shown_at` nulo). `state` só muda por jogadas relativas (tocar, girar), então duas jogadas ao mesmo tempo valem as duas; resolvido (`solved_at`), o estado congela, e só o "Recomeçar", o "Gerar outro começo" e o "Fechar" do mestre mexem de novo. "Recomeçar" volta a `start`; "Gerar outro começo" troca `seed` e `start` da rodada, sem mexer no quebra-cabeça. Toda mudança tranca a linha da sessão e depois a da rodada, nessa ordem.
-  - **`puzzle_moves`** guarda cada jogada da rodada, na ordem em que o servidor as aplicou, com a `idempotency_key` do app: uma jogada repetida acha a linha e volta a primeira resposta, sem jogar de novo. É também de onde a fatia 10.7b conta as tentativas de cada jogador.
-  `puzzle_moves` guarda o `user_id` (o ID da conta) de quem jogou, que é dado pessoal (ver [Privacidade](privacidade.md)); `SET NULL` o anula ao excluir a conta. O resto é fantasia, números e IDs. Uma jogada repetida volta a **rodada como está agora**, não a primeira resposta.
+  - **`puzzle_moves`** guarda cada jogada da rodada, na ordem em que o servidor as aplicou, com a `idempotency_key` do app: uma jogada repetida acha a linha e volta a primeira resposta, sem jogar de novo. Com `wrong` (fatia 10.7b), é de onde se contam as tentativas de cada jogador na rodada (as jogadas erradas depois de `puzzle_runs.round_start_seq`, por usuário). O `move` de um enigma ou de uma cifra guarda o que o jogador digitou.
+  `puzzle_moves` e `puzzle_hint_tries` guardam o `user_id` (o ID da conta) de quem jogou ou tentou, que é dado pessoal (ver [Privacidade](privacidade.md)); `SET NULL` o anula ao excluir a conta. **`puzzle_hint_tries`** (fatia 10.7b) é uma linha por tentativa de um jogador de ganhar a próxima dica rolando a perícia que o mestre pôs: as dicas que um jogador lê são as que o mestre soltou (`released_hints`) ou as que ele ganhou (`granted_count`), a maior das duas; a `UNIQUE (run_id, user_id, hint_index)` é o limite de uma tentativa por dica. O resto é fantasia, números e IDs. Uma jogada repetida volta a **rodada como está agora**, não a primeira resposta.
   - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
   - `idempotency_key` é o UUID que o app manda com a mudança; `UNIQUE (game_session_id, idempotency_key)` faz uma nova tentativa com a mesma chave não gravar nada. É `NULL` num evento sem chave (NULLs não colidem num `UNIQUE`).
   - `payload` é um JSON pequeno (objeto, até 4 KiB, por `CHECK`) com os números antes e depois: sem texto livre, sem nome. `actor_user_id` é quem fez a mudança (`ON DELETE SET NULL`: a conta excluída some do histórico) e `character_id` o personagem (`SET NULL` se ele for apagado, o que mantém o histórico).
@@ -1327,7 +1333,7 @@ erDiagram
     puzzles {
         uuid id PK
         uuid campaign_id FK "CASCADE"
-        text kind "lights, lock ou pillars"
+        text kind "lights, lock, pillars, riddle, sequence ou cipher"
         text name
         jsonb config "a configuração pública do tipo"
         jsonb solution "só do mestre"
@@ -1338,6 +1344,10 @@ erDiagram
         jsonb hints "a lista, no máximo 10"
         text solve_action "notify, open_door, reveal_point ou reveal_clue"
         jsonb solve_target "opcional"
+        text hint_skill "opcional, a perícia da dica por teste"
+        int4 hint_dc "opcional, a CD: só do mestre"
+        jsonb parts "a informação dividida, no máximo 8"
+        jsonb on_wrong "opcional, o Ao errar"
         timestamptz archived_at "opcional"
         timestamptz created_at
         timestamptz updated_at
@@ -1362,6 +1372,10 @@ erDiagram
         timestamptz last_moved_at "opcional"
         int4 moves_made
         int4 revision
+        int4 plays "quantas vezes o mestre tocou a sequência"
+        timestamptz play_started_at "opcional, o último toque"
+        int4 round_start_seq "as jogadas da rodada vêm depois"
+        timestamptz round_started_at "opcional, quando a rodada começou"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1376,6 +1390,23 @@ erDiagram
         jsonb move
         int4 revision
         bool solved
+        bool wrong "uma resposta ou um sino errado"
+        timestamptz created_at
+    }
+
+    puzzle_hint_tries {
+        uuid id PK
+        uuid run_id FK "CASCADE"
+        uuid user_id FK "SET NULL"
+        uuid character_id FK "SET NULL"
+        uuid idempotency_key "UNIQUE com run_id"
+        int4 hint_index "UNIQUE com run_id e user_id"
+        bool passed
+        int4 granted_count "opcional, as dicas que o jogador lê depois de passar"
+        int4 d20
+        int4 modifier
+        int4 total
+        bool physical
         timestamptz created_at
     }
 
@@ -1401,6 +1432,9 @@ erDiagram
     puzzles ||--o{ puzzle_runs : "é jogado em"
     puzzle_runs ||--o{ puzzle_moves : "guarda"
     characters |o--o{ puzzle_moves : "jogou"
+    puzzle_runs ||--o{ puzzle_hint_tries : "guarda"
+    users |o--o{ puzzle_hint_tries : "tentou"
+    characters |o--o{ puzzle_hint_tries : "rolou"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

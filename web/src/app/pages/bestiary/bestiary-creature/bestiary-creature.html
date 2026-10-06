@@ -1,0 +1,138 @@
+<a class="back" [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar ao Bestiário
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Criatura</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando a criatura" />
+        Carregando a ficha da criatura...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Bestiário</h1>
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre usa o bestiário da campanha.</strong></p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir o bestiário</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    </div>
+  }
+  @case ('master') {
+    @let s = state();
+    @switch (s.status) {
+      @case ('loading') {
+        <div>
+          <h1 class="mr-page-title">Criatura</h1>
+          <p class="page-status" role="status">
+            <mat-spinner diameter="24" aria-label="Carregando a criatura" />
+            Carregando a ficha da criatura...
+          </p>
+        </div>
+      }
+      @case ('not-found') {
+        <div>
+          <h1 class="mr-page-title">Criatura não encontrada</h1>
+          <div class="mr-notice mr-notice--neutral" role="alert">
+            <mat-icon aria-hidden="true">search_off</mat-icon>
+            <p>Essa criatura não existe no bestiário. Volte à lista e procure de novo.</p>
+          </div>
+        </div>
+      }
+      @case ('error') {
+        <div>
+          <h1 class="mr-page-title">Não foi possível abrir a criatura</h1>
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+          <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+        </div>
+      }
+      @case ('ready') {
+        @let c = s.creature;
+        @let t = typeLine(c);
+        <header class="head">
+          <app-creature-art class="head__art" [monsterKey]="c.summary?.key ?? ''" [type]="c.summary?.type ?? ''" />
+          <div class="head__text">
+            <h1 class="head__name">{{ c.summary?.namePt }}</h1>
+            <p class="head__sub">
+              <span lang="en">{{ t.en }}</span> · {{ t.rest }} ·
+              <span [attr.lang]="t.alignment.english ? 'en' : null">{{ t.alignment.text }}</span>
+            </p>
+          </div>
+        </header>
+
+        <div class="made" #madeBox tabindex="-1" role="group" aria-label="Confirmação">
+          @if (made(); as m) {
+            <div class="mr-notice mr-notice--success">
+              <mat-icon aria-hidden="true">check</mat-icon>
+              <div class="made__text">
+                @if (m.existed) {
+                  <p><strong>Já foi criado.</strong> O NPC desta tentativa já está na lista de NPCs.</p>
+                } @else {
+                  <p><strong>NPC criado: {{ m.name }}.</strong> Já está na lista de NPCs.</p>
+                  @if (m.attacks.length > 0) {
+                    <p>Ataques da ficha: {{ attackList(m.attacks) }}.</p>
+                  }
+                }
+                <div class="made__links">
+                  @if (m.id) {
+                    <a [routerLink]="['/campanhas', campaignId, 'personagens', m.id]">Abrir a ficha</a>
+                  } @else {
+                    <a [routerLink]="['/campanhas', campaignId]">Ver os NPCs</a>
+                  }
+                  <a [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="layout">
+          <app-stat-block class="layout__sheet" [creature]="c" [full]="true" />
+
+          <aside class="mr-panel act" aria-labelledby="act-h">
+            <h2 class="mr-panel__title" id="act-h">NPC da campanha</h2>
+            <p class="act__text">
+              Faça um NPC com nome a partir desta criatura. A criatura do bestiário não muda.
+            </p>
+            <button #createButton type="button" mat-flat-button class="act__go" (click)="openCreate(c)">
+              <mat-icon aria-hidden="true">person_add</mat-icon>Criar NPC
+            </button>
+            <p class="act__srd">
+              Dados do <a routerLink="/creditos">SRD 5.1</a> (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.
+            </p>
+          </aside>
+        </div>
+      }
+    }
+  }
+}

@@ -3,6 +3,8 @@ import { createClient } from '@connectrpc/connect';
 
 import {
   type CharacterCreature,
+  type Character,
+  CharacterKind,
   CharacterService,
   type GetSummonOptionsResponse,
   type ListWildShapeFormsResponse,
@@ -11,6 +13,7 @@ import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type CharacterVitals, PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import {
   type Creature,
+  type CreatureSize,
   type CreatureSummary,
   ContentService,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -21,8 +24,15 @@ export interface CreatureFilter {
   readonly query?: string;
   readonly type?: string;
   readonly maxCr?: string;
+  /** The lowest challenge rating (the bestiary's "ND"). */
+  readonly minCr?: string;
+  /** Only this size; unset for any (the bestiary's "Tamanho"). */
+  readonly size?: CreatureSize;
   readonly pageSize?: number;
 }
+
+/** "Criar NPC" (`CreateNpcFromCreature`): the roles a basic sheet can have. */
+export type NpcRole = 'minion' | 'story';
 
 /** One casting of a summoning spell outside a combat (`PlayService.CastSummon`). */
 export interface SummonCast {
@@ -116,9 +126,27 @@ export class CreaturesClient {
       query: filter.query ?? '',
       type: filter.type ?? '',
       maxCr: filter.maxCr ?? '',
+      minCr: filter.minCr ?? '',
+      size: filter.size,
       pageSize: filter.pageSize ?? 100,
     });
     return { creatures: res.creatures, total: res.total };
+  }
+
+  /**
+   * The bestiary's "Criar NPC" (MR-042, RN-29): a named NPC with a basic sheet made from the creature.
+   * `idempotencyKey` is made once per open dialog, so a retry or a double tap makes one NPC.
+   */
+  async createNpc(campaignId: string, creatureKey: string, name: string, role: NpcRole, idempotencyKey: string): Promise<Character | undefined> {
+    return (
+      await this.characters.createNpcFromCreature({
+        campaignId,
+        creatureKey,
+        name,
+        kind: role === 'minion' ? CharacterKind.MINION : CharacterKind.STORY,
+        idempotencyKey,
+      })
+    ).character;
   }
 
   /** One stat block, in memory after the first read. */

@@ -95,6 +95,21 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
   },
   {
+    // The bestiary (MR-042, E10-08), master only: the SRD's 334 creatures, then one creature's
+    // stat block with "Criar NPC". The pages tell a player so (the SRD is public, the app shows
+    // it to the master). The creature's route is after the list's, a plain `loadComponent` for
+    // each, like the gallery.
+    path: 'campanhas/:id/bestiario',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/bestiary/bestiary-list/bestiary-list').then((m) => m.BestiaryList),
+  },
+  {
+    path: 'campanhas/:id/bestiario/:slug',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
+  },
+  {
     // The campaign document (MR-018), master only; the page tells a player
     // so. Leaving edit mode with unsaved text asks first (the guard lives
     // with the page, the page decides, so this file imports nothing of it).

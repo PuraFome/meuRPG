@@ -3437,6 +3437,125 @@ test('as portas passam no axe e nas conferências de layout no tema claro, no ce
 });
 
 /**
+ * The bestiary (MR-042, E10-08): the list, loading and failing, a search with results, one with none, a
+ * filter set, the Ogre's stat block, the "Criar NPC" dialog (a sheet on a phone), its empty-name error, the
+ * confirmation after the NPC is made, the player's notice and the campaign page with its "Bestiário" panel.
+ */
+async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const playerContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  const player = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const listed = (p: Page, count: string) => expect(p.locator('.list__n')).toHaveText(count);
+  try {
+    await page.goto('/');
+    await player.goto('/');
+    const { campaignId } = await tableForMaps(page, player, `Acessibilidade bestiário ${Date.now()}`);
+
+    // Loading: the answer is held until the scan is done.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/meurpg.rules.v1.ContentService/ListCreatures', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(`/campanhas/${campaignId}/bestiario`);
+    await expect(page.getByText('Buscando as criaturas...')).toBeVisible();
+    await expectScreenPasses(page, `Bestiário, carregando ${where}`);
+    release();
+    await listed(page, '334 de 334 criaturas');
+    await page.unroute('**/meurpg.rules.v1.ContentService/ListCreatures');
+    await expectScreenPasses(page, `Bestiário, a lista ${where}`);
+
+    // Failing: the server does not answer.
+    await page.route('**/meurpg.rules.v1.ContentService/ListCreatures', (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+    );
+    await page.getByRole('searchbox', { name: 'Nome' }).fill('lobo');
+    await expect(page.getByRole('alert')).toContainText('o servidor não respondeu');
+    await expectScreenPasses(page, `Bestiário, erro ${where}`);
+    await page.unroute('**/meurpg.rules.v1.ContentService/ListCreatures');
+    await page.getByRole('button', { name: 'Tentar de novo' }).click();
+    await listed(page, '5 de 334 criaturas');
+    await expectScreenPasses(page, `Bestiário, busca "lobo" ${where}`);
+
+    await page.getByRole('searchbox', { name: 'Nome' }).fill('xyzzy');
+    await expect(page.getByText('Nenhuma criatura com “xyzzy”.')).toBeVisible();
+    await expectScreenPasses(page, `Bestiário, busca sem resultado ${where}`);
+
+    await page.getByRole('button', { name: 'Limpar a busca' }).click();
+    await page.locator('select[name=type]').selectOption('dragon');
+    await page.locator('select[name=size]').selectOption('huge');
+    await page.locator('select[name=cr]').selectOption('11-30');
+    await expect(page.getByRole('button', { name: 'Limpar filtros' }).first()).toBeVisible();
+    await expectScreenPasses(page, `Bestiário, filtros ligados ${where}`);
+
+    await page.goto(`/campanhas/${campaignId}/bestiario/ogre`);
+    await expect(page.getByText('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.')).toBeVisible();
+    await expectScreenPasses(page, `Bestiário, a ficha do Ogro ${where}`);
+
+    await page.getByRole('button', { name: 'Criar NPC' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Criar NPC' });
+    await expect(dialog.getByLabel('Nome do NPC')).toBeFocused();
+    await expectScreenPasses(page, `Criar NPC ${where}`);
+
+    await dialog.getByLabel('Nome do NPC').fill('');
+    await dialog.getByRole('button', { name: 'Criar NPC' }).click();
+    await expect(dialog.getByText('Dê um nome ao NPC.')).toBeVisible();
+    await expect(dialog.getByLabel('Nome do NPC')).toBeFocused();
+    await expectScreenPasses(page, `Criar NPC, nome vazio ${where}`);
+
+    await dialog.getByLabel('Nome do NPC').fill('Capitão bandido');
+    await dialog.getByRole('button', { name: 'Criar NPC' }).click();
+    await expect(page.locator('.made')).toContainText('NPC criado: Capitão bandido.');
+    await expectScreenPasses(page, `Criar NPC, a confirmação ${where}`);
+
+    await page.goto(`/campanhas/${campaignId}`);
+    const panel = page.getByRole('link', { name: 'Abrir o bestiário' });
+    await panel.scrollIntoViewIfNeeded();
+    await expect(panel).toBeVisible();
+    await expectScreenPasses(page, `Campanha com o painel Bestiário ${where}`);
+
+    // A player: no panel on the campaign page, and a calm notice on the page itself.
+    await player.goto(`/campanhas/${campaignId}/bestiario`);
+    await expect(player.getByText('Só o mestre usa o bestiário da campanha.')).toBeVisible();
+    await expectScreenPasses(player, `Bestiário, o aviso do jogador ${where}`);
+  } finally {
+    await context.close();
+    await playerContext.close();
+  }
+}
+
+test('o bestiário passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBestiaryScreens(browser, 'light', 1280);
+});
+
+test('o bestiário passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBestiaryScreens(browser, 'dark', 390);
+});
+
+test('o bestiário passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBestiaryScreens(browser, 'dark', 1024);
+});
+
+test('o bestiário passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBestiaryScreens(browser, 'light', 320);
+});
+
+/**
  * "Regras da mesa" (MR-025, RN-24, RN-09; E10-03 states 1 to 3): the page as saved, a style chosen (the notice and
  * the "Mudou" tags, the save bar lit), the XP mode question open in place, and the rules for a table with a long
  * list of reminders. The XP question needs XP already given, so the campaign has Pensantus and an award.
