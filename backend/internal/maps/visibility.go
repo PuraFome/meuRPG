@@ -165,7 +165,12 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 	}
 	if r.GridColumns != nil {
 		out.GridColumns = *r.GridColumns
-		out.GridRows = gridRows(*r.GridColumns, r.ImageWidth, r.ImageHeight)
+		out.GridRows = gridRows(*r.GridColumns, r.GridFactor, r.ImageWidth, r.ImageHeight)
+		out.SquareFactor = r.GridFactor
+		out.DrawnColumns = *r.GridColumns / r.GridFactor
+		out.DrawnRows = out.GridRows / r.GridFactor
+	} else {
+		out.SquareFactor = 1
 	}
 	out.FogEnabled, out.GroupVision, out.LayersRevision = r.FogEnabled, r.GroupVision, r.LayersRevision
 	if v.master {

@@ -167,7 +167,7 @@ func (s *Service) publishTokenWritten(ctx context.Context, campaignID string, ma
 		s.logger.ErrorContext(ctx, "maps: cannot read the map's grid", "error", err)
 		return
 	}
-	g := gridOf(mapRow.GridColumns, size.ImageWidth, size.ImageHeight)
+	g := gridOf(mapRow.GridColumns, mapRow.GridFactor, size.ImageWidth, size.ImageHeight)
 	var watch []grid.Square
 	for _, t := range []*mapsdb.MapToken{before, after} {
 		if t != nil && !t.Hidden {

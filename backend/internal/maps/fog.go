@@ -94,7 +94,7 @@ func baseLightOf(word string) grid.Light {
 // fogInputOfRow reads the fog's input from a map's row and its image's size.
 func fogInputOfRow(r mapsdb.Map, width, height int32) fogInput {
 	return fogInput{
-		mapID: r.ID, campaignID: r.CampaignID, g: gridOf(r.GridColumns, width, height),
+		mapID: r.ID, campaignID: r.CampaignID, g: gridOf(r.GridColumns, r.GridFactor, width, height),
 		base: baseLightOf(r.BaseLight), group: r.GroupVision, layersRev: r.LayersRevision, lightRev: r.LightRevision, epoch: r.VisionEpoch,
 	}
 }
@@ -102,7 +102,7 @@ func fogInputOfRow(r mapsdb.Map, width, height int32) fogInput {
 // fogInputOfDetails is fogInputOfRow for the row of ListMapDetails.
 func fogInputOfDetails(r mapsdb.ListMapDetailsRow) fogInput {
 	return fogInput{
-		mapID: r.ID, campaignID: r.CampaignID, g: gridOf(r.GridColumns, r.ImageWidth, r.ImageHeight),
+		mapID: r.ID, campaignID: r.CampaignID, g: gridOf(r.GridColumns, r.GridFactor, r.ImageWidth, r.ImageHeight),
 		base: baseLightOf(r.BaseLight), group: r.GroupVision, layersRev: r.LayersRevision, lightRev: r.LightRevision, epoch: r.VisionEpoch,
 	}
 }

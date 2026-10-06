@@ -82,7 +82,7 @@ RETURNING *;
 -- revealed_point_count is how many points every player sees: not a light, which
 -- no player ever receives, and either revealed, a triggered trap or a found
 -- treasure (a trap revealed to some characters only is the handler's to add).
-SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
+SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns, m.grid_factor,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
@@ -136,10 +136,11 @@ RETURNING *;
 
 -- name: SetMapGrid :one
 -- The master's grid (MR-013): NULL clears it, and a map without a grid has no
--- fog of war. It is a change to the map itself, so updated_at moves, but the
+-- fog of war. grid_columns is the engine's columns (the drawn ones times the
+-- factor, MR-025). It is a change to the map itself, so updated_at moves, but the
 -- revision (the name and the image's guard) does not.
 UPDATE maps
-SET grid_columns = sqlc.narg(grid_columns), fog_enabled = fog_enabled AND sqlc.narg(grid_columns)::INT4 IS NOT NULL,
+SET grid_columns = sqlc.narg(grid_columns), grid_factor = sqlc.arg(grid_factor), fog_enabled = fog_enabled AND sqlc.narg(grid_columns)::INT4 IS NOT NULL,
     updated_at = sqlc.arg(now)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
@@ -198,7 +199,7 @@ RETURNING light_revision;
 -- name: GetMapTileInfo :one
 -- What the tile route needs of a map, in one read, from the map's ID alone: its
 -- campaign, whether players see it, the fog and grid, and its image's size and type.
-SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.fog_enabled,
+SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.grid_factor, m.fog_enabled,
        g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
 FROM maps AS m
 JOIN gallery_images AS g ON g.id = m.image_id
@@ -207,7 +208,7 @@ WHERE m.id = $1;
 -- name: GetMapGrid :one
 -- A map's grid and its image's size, for the rows (package play, through
 -- SessionMaps).
-SELECT m.grid_columns, g.width AS image_width, g.height AS image_height
+SELECT m.grid_columns, m.grid_factor, g.width AS image_width, g.height AS image_height
 FROM maps AS m
 JOIN gallery_images AS g ON g.id = m.image_id
 WHERE m.campaign_id = $1 AND m.id = $2;
@@ -639,6 +640,15 @@ FROM maps AS m
 WHERE m.id = sqlc.arg(map_id) AND m.vision_epoch = sqlc.arg(epoch)
 ON CONFLICT (map_id, user_id) DO UPDATE
 SET seen = excluded.seen, epoch = excluded.epoch, updated_at = excluded.updated_at;
+
+-- name: SetMapVisionMemorySeen :exec
+-- A new calibration (MR-025) scales every player's memory to the new grid: the same
+-- player, the bytes of the bigger grid, in the epoch the calibration started (the
+-- caller bumped the map's, so a refresh of the old grid cannot write over it).
+-- updated_at moves, as for any write.
+UPDATE map_vision_memory
+SET seen = sqlc.arg(seen), epoch = sqlc.arg(epoch), updated_at = sqlc.arg(updated_at)
+WHERE map_id = sqlc.arg(map_id) AND user_id = sqlc.arg(user_id);
 
 -- name: ClearMapVisionMemory :execrows
 -- "Esquecer o que foi visto", and a new grid or image: every player forgets. The

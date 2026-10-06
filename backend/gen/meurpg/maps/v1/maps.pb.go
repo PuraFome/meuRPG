@@ -610,10 +610,12 @@ type Map struct {
 	// grid. Points and tokens have their own times.
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// The battle grid (SetMapGrid): how many squares of 1.5 m (5 ft) fit
-	// across the image's width, 4 to 200. 0 when the map has no grid.
+	// across the image's width, 4 to 200. 0 when the map has no grid. This is
+	// the grid the rules use, calibration included (MR-025): drawn_columns *
+	// square_factor. Every layer is sized by it.
 	GridColumns int32 `protobuf:"varint,12,opt,name=grid_columns,json=gridColumns,proto3" json:"grid_columns,omitempty"`
-	// How many rows of squares the grid has: round(grid_columns * image
-	// height / image width), 1 to 400. 0 when the map has no grid.
+	// How many rows of squares the grid has: drawn_rows * square_factor, 1 to
+	// 400. 0 when the map has no grid.
 	GridRows int32 `protobuf:"varint,13,opt,name=grid_rows,json=gridRows,proto3" json:"grid_rows,omitempty"`
 	// Whether the fog of war is on (SetMapFog). Every viewer gets it: a player
 	// needs to know the map has fog. False for a map without a grid.
@@ -637,6 +639,17 @@ type Map struct {
 	// server sends square by square instead (GetMapVision). Always false for the
 	// master.
 	ImageWithheld bool `protobuf:"varint,18,opt,name=image_withheld,json=imageWithheld,proto3" json:"image_withheld,omitempty"`
+	// The squares of the DRAWING across the image's width (MR-025, RN-25):
+	// grid_columns / square_factor, what SetMapGrid's `columns` set. 4 to 200;
+	// 0 when the map has no grid. The app draws the drawing's own lines on it.
+	DrawnColumns int32 `protobuf:"varint,30,opt,name=drawn_columns,json=drawnColumns,proto3" json:"drawn_columns,omitempty"`
+	// The squares of the drawing down the image's height: round(drawn_columns *
+	// image height / image width), 1 to 400. grid_rows is this times
+	// square_factor. 0 when the map has no grid.
+	DrawnRows int32 `protobuf:"varint,31,opt,name=drawn_rows,json=drawnRows,proto3" json:"drawn_rows,omitempty"`
+	// How many squares of 1.5 m each square of the drawing is worth: 1 (1.5 m,
+	// the default), 2 (3 m), 3 (4.5 m)... up to 20. 1 when the map has no grid.
+	SquareFactor  int32 `protobuf:"varint,32,opt,name=square_factor,json=squareFactor,proto3" json:"square_factor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -795,6 +808,27 @@ func (x *Map) GetImageWithheld() bool {
 		return x.ImageWithheld
 	}
 	return false
+}
+
+func (x *Map) GetDrawnColumns() int32 {
+	if x != nil {
+		return x.DrawnColumns
+	}
+	return 0
+}
+
+func (x *Map) GetDrawnRows() int32 {
+	if x != nil {
+		return x.DrawnRows
+	}
+	return 0
+}
+
+func (x *Map) GetSquareFactor() int32 {
+	if x != nil {
+		return x.SquareFactor
+	}
+	return 0
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -2562,9 +2596,15 @@ type SetMapGridRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
-	// How many squares of 1.5 m fit across the image's width: 4 to 200, or 0
-	// to clear the grid.
-	Columns       int32 `protobuf:"varint,3,opt,name=columns,proto3" json:"columns,omitempty"`
+	// How many squares of the DRAWING fit across the image's width: 4 to 200, or
+	// 0 to clear the grid. With square_factor 1 (or unset) they are squares of
+	// 1.5 m, as before the calibration existed.
+	Columns int32 `protobuf:"varint,3,opt,name=columns,proto3" json:"columns,omitempty"`
+	// How many squares of 1.5 m each square of the drawing is worth (MR-025,
+	// RN-25): 1 (1.5 m), 2 (3 m), 3 (4.5 m)... up to 20. 0 reads as 1, so a
+	// caller that never heard of the calibration keeps its behaviour. The rules'
+	// grid, columns x square_factor across, must stay within 200 x 400 squares.
+	SquareFactor  int32 `protobuf:"varint,4,opt,name=square_factor,json=squareFactor,proto3" json:"square_factor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2620,10 +2660,17 @@ func (x *SetMapGridRequest) GetColumns() int32 {
 	return 0
 }
 
+func (x *SetMapGridRequest) GetSquareFactor() int32 {
+	if x != nil {
+		return x.SquareFactor
+	}
+	return 0
+}
+
 // SetMapGridResponse returns the map as it is now.
 type SetMapGridResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The map, with grid_columns and grid_rows.
+	// The map, with grid_columns, grid_rows, drawn_columns and square_factor.
 	Map           *Map `protobuf:"bytes,1,opt,name=map,proto3" json:"map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6554,7 +6601,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x19meurpg/maps/v1/maps.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%meurpg/characters/v1/characters.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"F\n" +
 	"\n" +
 	"MapBlocked\x128\n" +
-	"\x06reason\x18\x01 \x01(\x0e2 .meurpg.maps.v1.MapBlockedReasonR\x06reason\"\xab\x05\n" +
+	"\x06reason\x18\x01 \x01(\x0e2 .meurpg.maps.v1.MapBlockedReasonR\x06reason\"\x94\x06\n" +
 	"\x03Map\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -6581,7 +6628,11 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"base_light\x18\x0f \x01(\x0e2\x1a.meurpg.maps.v1.LightLevelR\tbaseLight\x12!\n" +
 	"\fgroup_vision\x18\x10 \x01(\bR\vgroupVision\x12'\n" +
 	"\x0flayers_revision\x18\x11 \x01(\x05R\x0elayersRevision\x12%\n" +
-	"\x0eimage_withheld\x18\x12 \x01(\bR\rimageWithheld\"\x93\x01\n" +
+	"\x0eimage_withheld\x18\x12 \x01(\bR\rimageWithheld\x12#\n" +
+	"\rdrawn_columns\x18\x1e \x01(\x05R\fdrawnColumns\x12\x1d\n" +
+	"\n" +
+	"drawn_rows\x18\x1f \x01(\x05R\tdrawnRows\x12#\n" +
+	"\rsquare_factor\x18  \x01(\x05R\fsquareFactor\"\x93\x01\n" +
 	"\bMapImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12#\n" +
@@ -6721,12 +6772,13 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x1a\n" +
 	"\brevealed\x18\x03 \x01(\bR\brevealed\"?\n" +
 	"\x16SetMapRevealedResponse\x12%\n" +
-	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"e\n" +
+	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\x8a\x01\n" +
 	"\x11SetMapGridRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x18\n" +
-	"\acolumns\x18\x03 \x01(\x05R\acolumns\";\n" +
+	"\acolumns\x18\x03 \x01(\x05R\acolumns\x12#\n" +
+	"\rsquare_factor\x18\x04 \x01(\x05R\fsquareFactor\";\n" +
 	"\x12SetMapGridResponse\x12%\n" +
 	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\xd6\x03\n" +
 	"\x15CreateMapPointRequest\x12\x1f\n" +
