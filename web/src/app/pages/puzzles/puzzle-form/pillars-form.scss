@@ -1,0 +1,66 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--mr-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.help {
+  margin: -8px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.part {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.part app-pillars-board {
+  align-self: stretch;
+}
+
+.part__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.line {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.line--bad {
+  color: var(--mr-danger-ink);
+}
+
+@media (max-width: 767.98px) {
+  .again {
+    align-self: stretch;
+  }
+}
+
+.glyph app-symbol-glyph {
+  --glyph: 22px;
+}

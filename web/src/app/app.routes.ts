@@ -95,6 +95,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
   },
   {
+    // The master's puzzles (MR-038, E10-06): make one, edit one. The list is a panel on the campaign page; showing a puzzle
+    // and playing it live belong to the session page.
+    path: 'campanhas/:id/quebra-cabecas/novo',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+  },
+  {
+    path: 'campanhas/:id/quebra-cabecas/:puzzleId/editar',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+  },
+  {
     // The bestiary (MR-042, E10-08), master only: the SRD's 334 creatures, then one creature's
     // stat block with "Criar NPC". The pages tell a player so (the SRD is public, the app shows
     // it to the master). The creature's route is after the list's, a plain `loadComponent` for

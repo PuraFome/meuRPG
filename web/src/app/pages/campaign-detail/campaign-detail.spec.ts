@@ -9,6 +9,8 @@ import { AuthService, AuthState } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { GalleryClient } from '../../core/images/gallery-client';
 import { RosterClient } from '../../core/maps/roster-client';
+import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
+import { FakePuzzlesClient, lightsPuzzle } from '../../core/puzzles/puzzles-testing';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { create } from '@bufbuild/protobuf';
 import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema, ListXPAwardsResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
@@ -101,6 +103,7 @@ describe('CampaignDetail', () => {
   let fake: FakeCampaignsService;
   const experience = vi.fn();
   const listAwards = vi.fn();
+  let puzzles: FakePuzzlesClient;
 
   function configure(id = 'camp-1'): void {
     experience.mockReset().mockResolvedValue(
@@ -110,6 +113,7 @@ describe('CampaignDetail', () => {
       }),
     );
     listAwards.mockReset().mockResolvedValue(create(ListXPAwardsResponseSchema, {}));
+    puzzles = new FakePuzzlesClient();
     TestBed.configureTestingModule({
       imports: [CampaignDetail],
       providers: [
@@ -121,6 +125,7 @@ describe('CampaignDetail', () => {
         { provide: AuthService, useClass: FakeAuthService },
         { provide: ProgressionClient, useValue: { experience, listAwards } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
+        { provide: PuzzlesClient, useValue: puzzles },
       ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
@@ -245,6 +250,24 @@ describe('CampaignDetail', () => {
     const player = await render();
     expect(player.textContent).not.toContain('Bestiário');
     expect(player.querySelector('a[href$="/bestiario"]')).toBeNull();
+  });
+
+  it('shows the "Quebra-cabeças" panel only for the master (MR-038: the answers live there)', async () => {
+    configure();
+    puzzles.listResult = [lightsPuzzle('a', 'O selo da Capela')];
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const master = await render();
+    expect(master.textContent).toContain('O selo da Capela');
+    expect(master.querySelector('a[href="/campanhas/camp-1/quebra-cabecas/novo"]')).not.toBeNull();
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const player = await render();
+    expect(player.textContent).not.toContain('Quebra-cabeças');
+    expect(puzzles.calls).toEqual([]);
   });
 
   it('shows the "Galeria" panel only for the master (MR-019)', async () => {

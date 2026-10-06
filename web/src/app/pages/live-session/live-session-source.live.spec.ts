@@ -126,6 +126,18 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'creaturesChanged']);
   });
 
+  it('maps `puzzle_changed` to its own event, with the puzzle\'s ID and nothing else (MR-038)', async () => {
+    const out = [];
+    const responses = [
+      create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+      create(WatchGameSessionResponseSchema, { event: { case: 'puzzleChanged', value: { puzzleId: 'p-1' } } }),
+    ];
+    for await (const e of sourceAnswering(responses).watch('camp-1', new AbortController().signal)) {
+      out.push(e);
+    }
+    expect(out).toEqual([{ kind: 'ready' }, { kind: 'puzzleChanged', puzzleId: 'p-1' }]);
+  });
+
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
