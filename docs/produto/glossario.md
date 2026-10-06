@@ -156,6 +156,8 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Orçamento de XP | O XP que um encontro pode somar para ser de dificuldade baixa, moderada ou alta para o grupo, da tabela do SRD 5.2.1 (regras de 2024), com o rótulo na tela (MR-043). Planejado para a Etapa 10. | — |
 | Tesouro individual e de covil | Os dois jeitos do gerador de tesouro: o que uma criatura carrega, ou o acúmulo de um covil, com moedas, gemas, obras de arte e itens mágicos (MR-044). Planejado para a Etapa 10. | — |
 | Masmorra gerada | Um mapa feito pelo gerador de masmorras a partir do tamanho, das opções e de uma semente (o mesmo pedido dá a mesma masmorra), com as paredes e as portas já nas camadas (MR-010). "Redesenhar" faz a imagem de novo a partir das camadas. Planejado para a Etapa 10. | `generated_dungeons`, `rules/dungeon` |
+| Imagem gerada | Uma imagem que o mestre pede ao serviço de IA (MR-039), de três jeitos: a arte da cena, a vista isométrica de um mapa e o mapa com textura, que casa com a grade e pode virar a imagem do próprio mapa. A vista isométrica e a arte da cena feitas de um mapa mostram só o que os jogadores veem agora. Fica na galeria, escondida, até o mestre mostrar. Planejado para a Etapa 10. | `ImageGenService` |
+| Magia de área | Uma magia que pega quem está numa forma (cone, cubo, cilindro, linha ou esfera, com o tamanho em metros). No combate, quem conjura escolhe as criaturas que ela pega; o app não desenha a área no mapa. Uma magia da mesa pode ter uma área (06/10/2026). | `max_targets = 0` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
 
 ## Ver também
