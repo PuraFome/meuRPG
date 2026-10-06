@@ -7,7 +7,8 @@
 //
 // The rules, in short:
 //
-//   - Light and sight stop at walls: the same straight line between two squares'
+//   - Light and sight stop at walls (and at closed, locked and secret doors, which
+//     Scene.Doors holds): the same straight line between two squares'
 //     centers as movement (package grid), where a wall on the line, or a squeeze
 //     between two walls, blocks it.
 //   - A square's light is the brightest that reaches it: the base light of the
@@ -58,6 +59,9 @@ type Scene struct {
 	Grid grid.Grid
 	// Walls block light and sight. May be nil.
 	Walls *grid.Layer
+	// Doors block light and sight where they are closed, locked or secret (RN-26);
+	// open and barred doors let both through. May be nil.
+	Doors *grid.DoorLayer
 	// Base is the map's base light, for a square nothing is painted on. The
 	// zero value (Unpainted) counts as Dark.
 	Base grid.Light
@@ -116,7 +120,10 @@ func Compile(s Scene) (*Lit, error) {
 	if s.Painted != nil && s.Painted.Grid() != s.Grid {
 		return nil, grid.ErrBadGrid
 	}
-	sight, err := grid.NewSight(s.Grid, s.Walls)
+	if s.Doors != nil && s.Doors.Grid() != s.Grid {
+		return nil, grid.ErrBadGrid
+	}
+	sight, err := grid.NewSight(s.Grid, grid.SightWalls(s.Walls, s.Doors))
 	if err != nil {
 		return nil, err
 	}

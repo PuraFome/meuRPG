@@ -61,6 +61,12 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventOpportunityOffered {
 			continue
 		}
+		// A door a move opened is written before the move's own event too. An undo of
+		// the move leaves the door open (a door opened stays opened), and the line
+		// stays: it never closes the chain either.
+		if e.Kind == eventDoorOpened {
+			continue
+		}
 		// What the traps did that is not this combat's never closes the chain: a trap noticed
 		// after a move (the knowledge stays after an undo), a firing, a search or a disarm
 		// outside a combat or in another one, and the master settling a trap damage that

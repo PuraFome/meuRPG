@@ -246,12 +246,17 @@ func (f *fogSight) knownTerrain(ctx context.Context, tx pgx.Tx, v combatViewer) 
 }
 
 // planOn is the terrain a move is planned on: the player's known terrain on a fog
-// map, plain floor in the dark (D1), else the real one. The real move runs on the
-// real terrain and is cut short where it is blocked, and no refusal ever names a
-// wall or a creature the player does not see.
-func planOn(actual grid.Terrain, known *grid.Terrain) grid.Terrain {
-	if known == nil || known.Grid != actual.Grid {
+// map, plain floor in the dark (D1), else the real one, except that a player never
+// plans on a door the way it is: a locked door looks closed and a secret one is a
+// wall (RN-26). The real move runs on the real terrain and is cut short where it
+// is blocked, and no refusal ever names a wall, a lock or a creature the player
+// does not see. The master plans on everything.
+func planOn(v combatViewer, actual grid.Terrain, known *grid.Terrain) grid.Terrain {
+	switch {
+	case v.master:
 		return actual
+	case known == nil || known.Grid != actual.Grid:
+		return actual.ForPlayers()
 	}
 	return *known
 }
@@ -287,6 +292,9 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 	cs, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID)
 	if err != nil {
 		return ev, fmt.Errorf("list the combatants: %w", err)
+	}
+	if kind == eventDoorOpened {
+		return c.stampDoor(ctx, ev, cs)
 	}
 	var npcSquares [][]grid.Square // for each NPC in the event, where it could have been seen
 	for _, id := range ev.combatantIDs() {
@@ -339,6 +347,36 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 			}
 		}
 		if all {
+			ev.SeenBy = append(ev.SeenBy, u)
+		}
+	}
+	return ev, nil
+}
+
+// stampDoor writes into a door_opened event who may have the line, on a fog map,
+// whoever opened the door (a player's character or an NPC): the players whose
+// character saw or remembered the door's square when it happened, from the sight
+// taken before the change (the door was still a wall to the light then, which the
+// terrain the player knows has as a door), and the mover's own player. Nobody else
+// gets the line: it would tell where a door is and that someone walked through it
+// (RN-10). Never worked out again later.
+func (c *combatTx) stampDoor(ctx context.Context, ev actionEvent, cs []playdb.Combatant) (actionEvent, error) {
+	door := grid.Square{Col: int(ev.Col), Row: int(ev.Row)}
+	ev.Fogged, ev.SeenBy = true, nil
+	own := ""
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 && cs[i].UserID != nil {
+		own = *cs[i].UserID
+	}
+	for _, u := range c.sight.sight.Users() {
+		if u == own {
+			ev.SeenBy = append(ev.SeenBy, u)
+			continue
+		}
+		known, err := c.sight.knownTerrain(ctx, c.tx, combatViewer{userID: u})
+		if err != nil {
+			return ev, err
+		}
+		if known != nil && known.Doors.At(door) != grid.DoorNone {
 			ev.SeenBy = append(ev.SeenBy, u)
 		}
 	}
@@ -528,7 +566,7 @@ func (c *combatTx) coverOf(ctx context.Context, v combatViewer, terrain grid.Ter
 		return cp, nil
 	}
 	if !v.master {
-		cp.shown = coverAgainst(planOn(terrain, known), attacker, target, coverPool(cs, v))
+		cp.shown = coverAgainst(planOn(v, terrain, known), attacker, target, coverPool(cs, v))
 	}
 	if cp.real.degree == grid.CoverNone || cp.real.source != playv1.CoverSource_COVER_SOURCE_MAP {
 		return cp, nil
@@ -541,7 +579,7 @@ func (c *combatTx) coverOf(ctx context.Context, v combatViewer, terrain grid.Ter
 		}
 		unseen := c.sight.unseenFor(u, cs)
 		pool := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return o.Hidden || unseen[o.ID] })
-		if got := coverAgainst(planOn(terrain, kt), attacker, target, pool); got.degree == cp.real.degree && got.source == cp.real.source {
+		if got := coverAgainst(planOn(combatViewer{userID: u}, terrain, kt), attacker, target, pool); got.degree == cp.real.degree && got.source == cp.real.source {
 			cp.seenBy = append(cp.seenBy, u)
 		}
 	}
