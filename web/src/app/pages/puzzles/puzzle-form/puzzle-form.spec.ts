@@ -5,20 +5,27 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { GetMapLayersResponseSchema, GetMapResponseSchema, MapSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { GetMapLayersResponseSchema, GetMapResponseSchema, MapPointKind, MapSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { SceneChecks } from '../../../core/maps/scene-actions';
+import { RosterClient } from '../../../core/maps/roster-client';
 import { PuzzleInvalidReason, PuzzleInvalidSchema, PuzzleSolveAction } from '../../../../gen/meurpg/play/v1/puzzles_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { type PuzzleAccess, PuzzleAccessCheck } from '../../../core/puzzles/puzzle-access';
 import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
-import { FakePuzzlesClient, lightsPuzzle, lockPuzzle, pillarsPuzzle, preview } from '../../../core/puzzles/puzzles-testing';
+import { FakePuzzlesClient, cipherPuzzle, fakeChecks, fakeRoster, lightsPuzzle, lockPuzzle, pillarsPuzzle, preview, riddlePuzzle, sequencePuzzle } from '../../../core/puzzles/puzzles-testing';
 import { PuzzleForm } from './puzzle-form';
 
 @Component({ template: 'campanha' })
 class Stub {}
 
+/** A request as the fake recorded it: read by path, whatever its kind. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Loose = any;
+
 const lit17 = Array.from({ length: 25 }, (_, i) => i < 17);
 
-describe('PuzzleForm (MR-038, E10-06 state 2)', () => {
+// The form pulls in six kinds' forms and every field: its first test is cold, and a busy machine needs more than the default 5 s.
+describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
   let api: FakePuzzlesClient;
   let access: PuzzleAccess;
 
@@ -28,7 +35,13 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', () => {
     prep(api);
     const maps = {
       list: async () => [create(MapSchema, { id: 'm1', name: 'A capela' })],
-      get: async () => create(GetMapResponseSchema, {}),
+      get: async () =>
+        create(GetMapResponseSchema, {
+          points: [
+            { id: 't1', kind: MapPointKind.TRAP, name: 'Dardos envenenados' },
+            { id: 's1', kind: MapPointKind.SCENE, name: 'Biblioteca', clues: [{ id: 'k1', text: 'Cada letra anda três para trás.' }] },
+          ],
+        }),
       layers: async () => create(GetMapLayersResponseSchema, {}),
     };
     TestBed.configureTestingModule({
@@ -40,6 +53,8 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', () => {
         ]),
         { provide: PuzzlesClient, useValue: api },
         { provide: MapsClient, useValue: maps },
+        { provide: SceneChecks, useValue: fakeChecks },
+        { provide: RosterClient, useValue: fakeRoster },
         { provide: PuzzleAccessCheck, useValue: { check: async () => access } },
       ],
     });
@@ -80,8 +95,8 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', () => {
   it('opens on "O tipo" with "Apagar as luzes" marked, and asks the server for a start', async () => {
     const { el, pause } = await open();
     expect(el.querySelector('h1')?.textContent).toBe('Novo quebra-cabeça');
-    const kinds = Array.from(el.querySelectorAll('.opt__title')).slice(0, 3).map((t) => t.textContent?.trim());
-    expect(kinds).toEqual(['Apagar as luzes', 'Fechadura de combinação', 'Símbolos giratórios']);
+    const kinds = Array.from(el.querySelectorAll('.opt__title')).slice(0, 6).map((t) => t.textContent?.trim());
+    expect(kinds).toEqual(['Apagar as luzes', 'Fechadura de combinação', 'Símbolos giratórios', 'Enigma', 'Sequência', 'Cifra']);
     expect(el.querySelector<HTMLInputElement>('input[value="lights"]')?.checked).toBe(true);
     await pause();
     expect(api.calls.find((c) => c[0] === 'previewStart')).toBeTruthy();
@@ -265,5 +280,332 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', () => {
     access = { status: 'not-found' };
     const { el } = await open();
     expect(el.textContent).toContain('Campanha não encontrada');
+  });
+
+  describe('the riddle, the sequence and the cipher (slice 10.15b, E10-12 states 1 to 4)', () => {
+    const pick = async (el: HTMLElement, kind: string, settle: () => Promise<void>) => {
+      el.querySelector<HTMLInputElement>(`input[value="${kind}"]`)!.click();
+      await settle();
+    };
+    const enter = (field: Element) => field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    const submit = async (el: HTMLElement, settle: () => Promise<void>) => {
+      (el.querySelector('form') as HTMLFormElement).requestSubmit();
+      await settle();
+    };
+    const created = () => api.calls.find((c) => c[0] === 'create')![2] as Loose;
+
+    it('makes a riddle: the text, the accepted answers one by one with Enter, and what a wrong answer does', async () => {
+      const { el, settle } = await open(undefined, (a) => (a.createResult = riddlePuzzle('new', 'x')));
+      await pick(el, 'riddle', settle);
+      expect(el.querySelector('h2#form-title')?.textContent).toBe('Enigma');
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'A porta da Cripta pergunta');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'Moro embaixo de cada passo seu. O que sou?');
+      for (const answer of ['sombra', 'a sombra']) {
+        type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, answer);
+        enter(el.querySelector('input[name="answer"]')!);
+        await settle();
+      }
+      expect(Array.from(el.querySelectorAll('.chip__text')).map((c) => c.textContent)).toEqual(['sombra', 'a sombra']);
+      // The chips' "×" is a 44 px button with the answer in its name.
+      expect(el.querySelector('.chip__x')?.getAttribute('aria-label')).toBe('Tirar a resposta sombra');
+      // "Ao errar": spend an attempt, three per player.
+      el.querySelector<HTMLInputElement>('app-wrong-field input[value="attempts"]')!.click();
+      await settle();
+      await submit(el, settle);
+      const init = created();
+      expect(init.config).toEqual({ kind: { case: 'riddle', value: { text: 'Moro embaixo de cada passo seu. O que sou?' } } });
+      expect(init.solution).toEqual({ kind: { case: 'riddle', value: { answers: ['sombra', 'a sombra'] } } });
+      expect(init.onWrong).toEqual({ attemptsPerPlayer: 3 });
+      expect(TestBed.inject(Router).url).toBe('/campanhas/camp-1');
+    });
+
+    it('keeps an answer typed but not yet added when the master leaves the field and saves', async () => {
+      const { el, settle } = await open(undefined, (a) => (a.createResult = riddlePuzzle('new', 'x')));
+      await pick(el, 'riddle', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'O que sou?');
+      type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, 'sombra');
+      el.querySelector('input[name="answer"]')!.dispatchEvent(new Event('blur'));
+      await settle();
+      await submit(el, settle);
+      expect(created().solution.kind.value.answers).toEqual(['sombra']);
+    });
+
+    it('refuses a riddle with no answer on the field, and an answer that repeats another', async () => {
+      const { el, settle } = await open();
+      await pick(el, 'riddle', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      await submit(el, settle);
+      expect(api.calls.some((c) => c[0] === 'create')).toBe(false);
+      expect(el.textContent).toContain('Escreva o enigma que os jogadores vão ler.');
+      expect(el.textContent).toContain('Escreva pelo menos uma resposta aceita.');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'O que sou?');
+      for (const answer of ['A Sombra', 'a sombra!']) {
+        type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, answer);
+        enter(el.querySelector('input[name="answer"]')!);
+        await settle();
+      }
+      await submit(el, settle);
+      expect(el.textContent).toContain('Resposta 2: Esta resposta é igual a outra');
+    });
+
+    it('makes a sequence by tapping bells, takes the last step back, tests it and sends the steps', async () => {
+      const { el, settle } = await open(undefined, (a) => (a.createResult = sequencePuzzle('new', 'x')));
+      await pick(el, 'sequence', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'Os sinos do Salão do trono');
+      const bell = (name: string) => el.querySelector<HTMLElement>(`app-bells-board [aria-label="${name}"]`)!;
+      for (const name of ['Sino redondo', 'Sino alto', 'Sino pequeno', 'Sino redondo', 'Sino largo', 'Sino largo']) {
+        bell(name).click();
+        await settle();
+      }
+      expect(Array.from(el.querySelectorAll('app-sequence-strip li')).map((i) => i.getAttribute('aria-label'))).toEqual([
+        'Passo 1: Sino redondo',
+        'Passo 2: Sino alto',
+        'Passo 3: Sino pequeno',
+        'Passo 4: Sino redondo',
+        'Passo 5: Sino largo',
+        'Passo 6: Sino largo',
+      ]);
+      button(el, 'Apagar o último passo').click();
+      await settle();
+      expect(el.querySelectorAll('app-sequence-strip li')).toHaveLength(5);
+      expect(el.textContent).toContain('5 passos (de 3 a 12).');
+      // "Tocar para testar" lights the steps one after another, here, with no server call.
+      button(el, 'Tocar para testar').click();
+      await settle();
+      expect(el.querySelector('app-sequence-strip .slot--lit')?.getAttribute('aria-label')).toBe('Passo 1: Sino redondo');
+      await vi.advanceTimersByTimeAsync(1200);
+      await settle();
+      expect(el.querySelector('app-sequence-strip .slot--lit')?.getAttribute('aria-label')).toBe('Passo 2: Sino alto');
+      await vi.advanceTimersByTimeAsync(1200 * 5);
+      await settle();
+      expect(el.querySelector('app-sequence-strip .slot--lit')).toBeNull();
+      expect(api.calls.some((c) => c[0] === 'playSequence')).toBe(false);
+      await submit(el, settle);
+      const init = created();
+      expect(init.config).toEqual({ kind: { case: 'sequence', value: { bells: 4, steps: 5 } } });
+      expect(init.solution).toEqual({ kind: { case: 'sequence', value: { steps: [0, 1, 3, 0, 2] } } });
+    });
+
+    it('takes out the steps of a bell that is no longer there, and refuses fewer than 3 steps', async () => {
+      const { el, settle } = await open();
+      await pick(el, 'sequence', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      for (const name of ['Sino redondo', 'Sino pequeno']) {
+        el.querySelector<HTMLElement>(`app-bells-board [aria-label="${name}"]`)!.click();
+        await settle();
+      }
+      await submit(el, settle);
+      expect(api.calls.some((c) => c[0] === 'create')).toBe(false);
+      expect(el.textContent).toContain('Faltam passos: a sequência vai de 3 a 12, e tem 2.');
+      el.querySelector<HTMLElement>('[aria-label="Menos sino"]')!.click();
+      await settle();
+      expect(el.querySelectorAll('app-bells-board button')).toHaveLength(3);
+      expect(el.querySelectorAll('app-sequence-strip li')).toHaveLength(1);
+    });
+
+    it('makes a cipher: the server ciphers the message for the master after a pause, and the key is a scene clue', async () => {
+      const { el, settle, pause } = await open(undefined, (a) => (a.createResult = cipherPuzzle('new', 'x')));
+      await pick(el, 'cipher', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'A carta do Capitão');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="cipher-message"]')!, 'O tesouro está sob o altar');
+      await settle();
+      // Nothing is asked before the pause; the browser never ciphers.
+      expect(api.calls.some((c) => c[0] === 'previewCipher')).toBe(false);
+      expect(el.textContent).toContain('Cifrando a mensagem...');
+      await pause();
+      const call = api.calls.find((c) => c[0] === 'previewCipher')!;
+      expect(call[2]).toEqual({ message: 'O tesouro está sob o altar', method: { case: 'shift', value: 3 } });
+      expect(el.querySelector('.cipher')?.textContent).toBe('R WHVRXUR HVWD VRE R DOWDU');
+      // The key as a clue of a scene.
+      const clue = el.querySelector<HTMLSelectElement>('app-cipher-form select')!;
+      expect(Array.from(clue.options).map((o) => o.textContent?.trim())).toEqual(['Nenhuma (você diz a chave na mesa)', 'Biblioteca: Cada letra anda três para trás.']);
+      clue.value = 'k1';
+      clue.dispatchEvent(new Event('change'));
+      await settle();
+      await submit(el, settle);
+      const init = created();
+      expect(init.config).toEqual({ kind: { case: 'cipher', value: { keyClueId: 'k1' } } });
+      expect(init.solution).toEqual({ kind: { case: 'cipher', value: { message: 'O tesouro está sob o altar', method: { case: 'shift', value: 3 } } } });
+    });
+
+    it('asks for the keyword when the master chooses it, and refuses one that changes no letter', async () => {
+      const { el, settle, pause } = await open(undefined, (a) => (a.createResult = cipherPuzzle('new', 'x')));
+      await pick(el, 'cipher', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="cipher-message"]')!, 'Olá');
+      el.querySelector<HTMLInputElement>('app-cipher-form input[value="keyword"]')!.click();
+      await settle();
+      type(el.querySelector<HTMLInputElement>('input[name="keyword"]')!, 'abc');
+      await settle();
+      await submit(el, settle);
+      expect(api.calls.some((c) => c[0] === 'create')).toBe(false);
+      expect(el.textContent).toContain('Essa palavra-chave não troca nenhuma letra.');
+      expect(api.calls.some((c) => c[0] === 'previewCipher')).toBe(false);
+      type(el.querySelector<HTMLInputElement>('input[name="keyword"]')!, 'lua');
+      await pause();
+      expect(api.calls.find((c) => c[0] === 'previewCipher')![2]).toEqual({ message: 'Olá', method: { case: 'keyword', value: 'lua' } });
+    });
+
+    it('offers a trap and attempts only to the kinds that judge a move, and the limits to all', async () => {
+      const { el, settle } = await open();
+      const titles = () => Array.from(el.querySelectorAll('app-wrong-field .opt__title')).map((t) => t.textContent?.trim());
+      expect(titles()).toEqual(['Nada acontece', 'Limite de jogadas ou de tempo']);
+      await pick(el, 'riddle', settle);
+      expect(titles()).toEqual(['Nada acontece', 'Disparar uma armadilha do mapa', 'Gastar uma tentativa do jogador', 'Limite de jogadas ou de tempo']);
+    });
+
+    it('chooses the trap of a map, and sends it', async () => {
+      const { el, settle } = await open(undefined, (a) => (a.createResult = sequencePuzzle('new', 'x')));
+      await pick(el, 'sequence', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      for (const name of ['Sino redondo', 'Sino alto', 'Sino largo']) {
+        el.querySelector<HTMLElement>(`app-bells-board [aria-label="${name}"]`)!.click();
+        await settle();
+      }
+      el.querySelector<HTMLInputElement>('app-wrong-field input[value="trap"]')!.click();
+      await settle();
+      await settle();
+      await submit(el, settle);
+      expect(api.calls.some((c) => c[0] === 'create')).toBe(false);
+      expect(el.textContent).toContain('Escolha a armadilha do mapa que dispara.');
+      const select = el.querySelector<HTMLSelectElement>('app-wrong-field select')!;
+      expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Escolha uma armadilha', 'Dardos envenenados · A capela']);
+      select.value = 'm1|t1';
+      select.dispatchEvent(new Event('change'));
+      await settle();
+      await submit(el, settle);
+      expect(created().onWrong).toEqual({ trap: { mapId: 'm1', pointId: 't1' } });
+    });
+
+    it('writes the limits of moves and of time, one or both', async () => {
+      const { el, pause, settle } = await open(undefined, (a) => (a.createResult = lightsPuzzle('new', 'x')));
+      await pause();
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      el.querySelector<HTMLInputElement>('app-wrong-field input[value="limits"]')!.click();
+      await settle();
+      await submit(el, settle);
+      expect(el.textContent).toContain('Ponha um limite de jogadas, de minutos, ou os dois.');
+      const [moves, minutes] = Array.from(el.querySelectorAll<HTMLInputElement>('app-wrong-field input[type="text"]'));
+      type(moves, '10');
+      await settle();
+      type(minutes, '5');
+      await settle();
+      await submit(el, settle);
+      expect(created().onWrong).toEqual({ maxMoves: 10, timeLimitSeconds: 300 });
+    });
+
+    it('wins a hint by a skill check: a skill and a DC, both or neither', async () => {
+      const { el, pause, settle } = await open(undefined, (a) => (a.createResult = lightsPuzzle('new', 'x')));
+      await pause();
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      button(el, 'Adicionar uma dica').click();
+      await settle();
+      type(el.querySelector<HTMLInputElement>('app-hints-field input[type="text"]')!, 'A luz responde ao toque.');
+      const skill = el.querySelector<HTMLSelectElement>('app-hint-check-field select')!;
+      expect(Array.from(skill.options).map((o) => o.textContent?.trim())).toEqual(['Nenhuma', 'Arcanismo', 'Investigação']);
+      skill.value = 'skill:investigation';
+      skill.dispatchEvent(new Event('change'));
+      await settle();
+      await submit(el, settle);
+      expect(api.calls.some((c) => c[0] === 'create')).toBe(false);
+      expect(el.textContent).toContain('A CD vai de 1 a 30.');
+      type(el.querySelector<HTMLInputElement>('app-hint-check-field input[type="text"]')!, '13');
+      await settle();
+      await submit(el, settle);
+      expect(created().hintCheck).toEqual({ skillKey: 'skill:investigation', dc: 13 });
+    });
+
+    it('splits a clue in parts, one per player\'s character, and never offers the goblin', async () => {
+      const { el, pause, settle } = await open(undefined, (a) => (a.createResult = lightsPuzzle('new', 'x')));
+      await pause();
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      button(el, 'Adicionar parte').click();
+      await settle();
+      const owner = el.querySelector<HTMLSelectElement>('app-parts-field select')!;
+      expect(Array.from(owner.options).map((o) => o.textContent?.trim())).toEqual(['Sem dono ainda', 'Toren', 'Brisa', 'Sálvia']);
+      owner.value = 'c-toren';
+      owner.dispatchEvent(new Event('change'));
+      await settle();
+      type(el.querySelector<HTMLTextAreaElement>('app-parts-field textarea')!, 'A porta ouve o que o chão esconde…');
+      await settle();
+      expect(el.querySelector('.part__badge')?.textContent?.trim()).toBe('T');
+      button(el, 'Adicionar parte').click();
+      await settle();
+      // Toren has a part already: the second part cannot take him.
+      const second = el.querySelectorAll<HTMLSelectElement>('app-parts-field select')[1];
+      expect(Array.from(second.options).find((o) => o.value === 'c-toren')?.disabled).toBe(true);
+      type(el.querySelectorAll<HTMLTextAreaElement>('app-parts-field textarea')[1], '…os tambores ecoam três vezes.');
+      await settle();
+      await submit(el, settle);
+      expect(created().parts).toEqual([
+        { characterId: 'c-toren', text: 'A porta ouve o que o chão esconde…' },
+        { characterId: '', text: '…os tambores ecoam três vezes.' },
+      ]);
+    });
+
+    it('stops at 8 parts', async () => {
+      const { el, pause, settle } = await open();
+      await pause();
+      for (let i = 0; i < 8; i++) {
+        button(el, 'Adicionar parte').click();
+        await settle();
+      }
+      expect(el.querySelectorAll('app-parts-field .part')).toHaveLength(8);
+      expect(el.textContent).toContain('Máximo de 8 partes.');
+      button(el, 'Adicionar parte').click();
+      await settle();
+      expect(el.querySelectorAll('app-parts-field .part')).toHaveLength(8);
+    });
+
+    it('shows what the server refused under the field it names, in words, and takes the focus there', async () => {
+      const { el, settle } = await open(undefined);
+      document.body.append(el);
+      await pick(el, 'riddle', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'O que sou?');
+      type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, 'sombra');
+      el.querySelector('input[name="answer"]')!.dispatchEvent(new Event('blur'));
+      await settle();
+      api.failWith = new ConnectError('x', Code.InvalidArgument, undefined, [{ desc: PuzzleInvalidSchema, value: create(PuzzleInvalidSchema, { reason: PuzzleInvalidReason.ON_WRONG, field: 'on_wrong.trap' }) }]);
+      await submit(el, settle);
+      expect(el.querySelector('app-wrong-field .field-error')?.textContent).toContain('O “Ao errar” não vale');
+      expect(el.querySelector('.mr-notice--danger')).toBeNull();
+      // The master changes anything and the refusal goes.
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'y');
+      await settle();
+      expect(el.querySelector('app-wrong-field .field-error')).toBeNull();
+      el.remove();
+    });
+
+    it('opens a riddle in its own form and saves it with the skill check, the parts and "Ao errar" it came with', async () => {
+      const puzzle = riddlePuzzle('p1', 'A porta da Cripta pergunta', {
+        hints: ['Pense no que acompanha você ao meio-dia.'],
+        hintCheck: { skillKey: 'skill:investigation', dc: 13 },
+        parts: [{ characterId: 'c-toren', text: 'A porta ouve.', ownerUnavailable: false }],
+        onWrong: { attemptsPerPlayer: 4 },
+      });
+      const { el, settle } = await open('/campanhas/camp-1/quebra-cabecas/p1/editar', (a) => (a.getResult = puzzle));
+      expect(el.querySelector('h1')?.textContent).toBe('Editar quebra-cabeça');
+      expect(el.querySelector('textarea[name="riddle"]')).toHaveProperty('value', 'Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?');
+      expect(Array.from(el.querySelectorAll('.chip__text')).map((c) => c.textContent)).toEqual(['sombra', 'a sombra']);
+      expect(el.querySelector('app-wrong-field input[value="attempts"]')).toHaveProperty('checked', true);
+      expect(el.querySelector<HTMLInputElement>('app-hint-check-field input[type="text"]')?.value).toBe('13');
+      await submit(el, settle);
+      const call = api.calls.find((c) => c[0] === 'update')!;
+      const init = call[3] as Loose;
+      expect(init.hintCheck).toEqual({ skillKey: 'skill:investigation', dc: 13 });
+      expect(init.parts).toEqual([{ characterId: 'c-toren', text: 'A porta ouve.' }]);
+      expect(init.onWrong).toEqual({ attemptsPerPlayer: 4 });
+      expect(init.solution.kind.value.answers).toEqual(['sombra', 'a sombra']);
+    });
+
+    it('opens a cipher with its message, its key and the clue linked', async () => {
+      const puzzle = cipherPuzzle('p2', 'A carta', { config: { kind: { case: 'cipher', value: { ciphertext: 'R WHVRXUR', keyClueId: 'k1' } } } });
+      const { el } = await open('/campanhas/camp-1/quebra-cabecas/p2/editar', (a) => (a.getResult = puzzle));
+      expect(el.querySelector('textarea[name="cipher-message"]')).toHaveProperty('value', 'O tesouro está sob o altar');
+      expect(el.querySelector<HTMLSelectElement>('app-cipher-form select')?.value).toBe('k1');
+      expect(el.querySelector('app-stepper .st__value')?.textContent).toBe('3');
+    });
   });
 });

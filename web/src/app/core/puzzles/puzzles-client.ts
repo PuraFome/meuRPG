@@ -11,11 +11,16 @@ import {
   PuzzleService,
   type PuzzleSummary,
   type PreviewPuzzleStartResponse,
+  type CipherSolutionSchema,
+  type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** What the master writes about a puzzle, as `CreatePuzzle` takes it (`UpdatePuzzle` takes the same, with the ID). */
 export type PuzzleInit = Omit<MessageInitShape<typeof CreatePuzzleRequestSchema>, 'campaignId' | '$typeName'>;
+
+/** How the hint's d20 comes (RN-18): the app rolls it, or the player typed the face of a real die. */
+export type HintDie = { readonly inApp: true } | { readonly face: number };
 
 /** What a move answers: the run as the player reads it now, and whether this move solved the puzzle. */
 export interface MoveAnswer {
@@ -62,6 +67,11 @@ export class PuzzlesClient {
     return this.client.previewPuzzleStart({ campaignId, config, solution, seed });
   }
 
+  /** The message as the players will read it ("Como os jogadores a veem"): the server ciphers it, the browser never does. */
+  async previewCipher(campaignId: string, solution: MessageInitShape<typeof CipherSolutionSchema>): Promise<string> {
+    return (await this.client.previewPuzzleCipher({ campaignId, solution })).ciphertext;
+  }
+
   async archive(campaignId: string, puzzleId: string): Promise<Puzzle> {
     return need((await this.client.archivePuzzle({ campaignId, puzzleId })).puzzle, 'ArchivePuzzle');
   }
@@ -100,6 +110,11 @@ export class PuzzlesClient {
     return need((await this.client.releaseNextPuzzleHint({ campaignId, puzzleId })).run, 'ReleaseNextPuzzleHint');
   }
 
+  /** "Tocar a sequência": every player's phone shows it step by step. */
+  async playSequence(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
+    return need((await this.client.playPuzzleSequence({ campaignId, puzzleId })).run, 'PlayPuzzleSequence');
+  }
+
   // The player's session (the master may read what a player reads).
 
   async listShown(campaignId: string): Promise<PuzzleSummary[]> {
@@ -113,6 +128,16 @@ export class PuzzlesClient {
   async move(campaignId: string, puzzleId: string, move: MessageInitShape<typeof PuzzleMoveSchema>, idempotencyKey: string): Promise<MoveAnswer> {
     const res = await this.client.makePuzzleMove({ campaignId, puzzleId, move, idempotencyKey });
     return { run: need(res.run, 'MakePuzzleMove'), replayed: res.replayed, solvedByThisMove: res.solvedByThisMove };
+  }
+
+  /** "Tentar uma dica": the d20 rolls in the app, or is the face of a real die the player typed (RN-18). */
+  async tryHint(campaignId: string, puzzleId: string, die: HintDie, idempotencyKey: string): Promise<TryPuzzleHintResponse> {
+    return this.client.tryPuzzleHint({
+      campaignId,
+      puzzleId,
+      idempotencyKey,
+      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+    });
   }
 }
 

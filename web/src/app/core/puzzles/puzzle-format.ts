@@ -1,5 +1,8 @@
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+
 import {
   type Puzzle,
+  type PuzzleRun,
   PuzzleAlphabet,
   PuzzleKind,
   type PuzzleLastMove,
@@ -86,6 +89,12 @@ export function puzzleSummary(puzzle: Puzzle): string {
         kindName(puzzle.kind),
         `${plural(config.value.pillars, 'pilar', 'pilares')}, ${pillarsLinked(config.value.links) ? 'girando juntos' : 'sem ligações'}`,
       ]);
+    case 'riddle':
+      return joinDots([kindName(puzzle.kind), puzzle.solution?.kind.case === 'riddle' ? plural(puzzle.solution.kind.value.answers.length, 'resposta aceita', 'respostas aceitas') : '']);
+    case 'sequence':
+      return joinDots([kindName(puzzle.kind), `${plural(config.value.steps, 'passo', 'passos')}, ${plural(config.value.bells, 'sino', 'sinos')}`]);
+    case 'cipher':
+      return joinDots([kindName(puzzle.kind), puzzle.solution?.kind.case === 'cipher' && puzzle.solution.kind.value.method.case === 'keyword' ? 'palavra-chave' : 'deslocamento']);
     default:
       return kindName(puzzle.kind);
   }
@@ -153,9 +162,32 @@ export function lastMoveParts(last: PuzzleLastMove | undefined, own = ''): { rea
       return { who, what: `girou a ${wheelOrdinal(last.move.kind.value.wheel + 1)} roda` };
     case 'pillars':
       return { who, what: `girou o pilar ${last.move.kind.value.pillar + 1}` };
+    // The master's own read keeps what was typed or struck; a player's never does (puzzles.proto, `PuzzleLastMove.move`).
+    case 'riddle':
+      return { who, what: `${last.wrong ? 'tentou' : 'respondeu'} “${last.move.kind.value.answer}”: ${last.wrong ? 'errou' : 'acertou'}` };
+    case 'cipher':
+      return { who, what: `digitou “${last.move.kind.value.text}”: ${last.wrong ? 'errou' : 'acertou'}` };
+    case 'sequence':
+      return { who, what: last.wrong ? `errou no passo ${last.step}. A tentativa recomeçou` : `acertou o passo ${last.step}` };
     default:
       return null;
   }
+}
+
+/** The name the master gave the trap point that the last wrong move fired ("Dardos envenenados"), or `''`. */
+export function trapFired(last: PuzzleLastMove | undefined): string {
+  return last?.trapName ?? '';
+}
+
+/** "4:48": seconds as minutes and seconds, for a clock that runs down. */
+export function clockSeconds(total: number): string {
+  const seconds = Math.max(0, Math.round(total));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+/** The seconds left until `deadline`, never negative. */
+export function secondsUntil(deadline: Date, now: Date): number {
+  return Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / 1000));
 }
 
 /** The last move in words, without the time: "Lia tocou numa luz", "Toren girou a 3ª roda", "Lia girou o pilar 1". Empty for a move this screen does not know. */
@@ -203,4 +235,37 @@ export function outcomeText(outcome: PuzzleSolveOutcome): string {
 /** The clock of a solved puzzle, "21:12". */
 export function clockOf(at: Date): string {
   return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/** One counter that stays on a player's screen: "Suas tentativas  2 de 3". */
+export interface CounterRow {
+  readonly key: 'attempts' | 'moves' | 'time';
+  readonly label: string;
+  readonly value: string;
+  /** The counter is at its end (no attempts left, no moves, no time). */
+  readonly spent: boolean;
+}
+
+/**
+ * The counters of "Ao errar" the player always sees on a puzzle that has limits (E10-12 state 10): the player's own attempts left, the
+ * moves made out of the limit, and the time left out of the limit. The time ticks from the server's `deadline` (the seconds in the
+ * message are worked out when it is read), so it never needs another read to run down.
+ */
+export function limitRows(run: PuzzleRun, now: Date): CounterRow[] {
+  const limits = run.limits;
+  if (!limits) {
+    return [];
+  }
+  const rows: CounterRow[] = [];
+  if (limits.attemptsPerPlayer > 0) {
+    rows.push({ key: 'attempts', label: 'Suas tentativas', value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`, spent: limits.attemptsLeft <= 0 });
+  }
+  if (limits.maxMoves > 0) {
+    rows.push({ key: 'moves', label: 'Jogadas', value: `${limits.movesMade} de ${limits.maxMoves}`, spent: limits.movesMade >= limits.maxMoves });
+  }
+  if (limits.timeLimitSeconds > 0) {
+    const left = limits.deadline ? secondsUntil(timestampDate(limits.deadline), now) : limits.secondsLeft;
+    rows.push({ key: 'time', label: 'Tempo', value: `${clockSeconds(left)} de ${clockSeconds(limits.timeLimitSeconds)}`, spent: left <= 0 });
+  }
+  return rows;
 }

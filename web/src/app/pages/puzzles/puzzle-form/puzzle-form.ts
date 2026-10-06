@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,13 +7,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { PuzzleInvalidReason } from '../../../../gen/meurpg/play/v1/puzzles_pb';
 import {
   type Draft,
   type FormKind,
   CLUE_MAX,
+  JUDGED_KINDS,
   NAME_MAX,
   FORM_KINDS,
+  NO_WRONG,
   draftErrors,
   draftOf,
   isValid,
@@ -24,16 +25,22 @@ import {
   toInit,
 } from '../../../core/puzzles/puzzle-draft';
 import { kindIcon, kindName } from '../../../core/puzzles/puzzle-format';
-import { puzzleErrorMessage, puzzleInvalid } from '../../../core/puzzles/puzzle-errors';
+import { type FormSection, invalidSection, puzzleErrorMessage, puzzleInvalid } from '../../../core/puzzles/puzzle-errors';
 import { type PuzzleAccess, PuzzleAccessCheck } from '../../../core/puzzles/puzzle-access';
 import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { HintCheckField } from '../fields/hint-check-field';
 import { HintsField } from '../fields/hints-field';
 import { type PickOption, PickGroup } from '../fields/pick-group';
+import { PartsField } from '../fields/parts-field';
 import { SolveField } from '../fields/solve-field';
+import { WrongField } from '../fields/wrong-field';
+import { CipherForm } from './cipher-form';
 import { LightsForm } from './lights-form';
 import { LockForm } from './lock-form';
 import { PillarsForm } from './pillars-form';
+import { RiddleForm } from './riddle-form';
+import { SequenceForm } from './sequence-form';
 import { NO_PREVIEW, type StartPreview } from './start-preview';
 
 type Load = { readonly status: 'loading' } | { readonly status: 'ready' } | { readonly status: 'blocked'; readonly message: string };
@@ -50,7 +57,13 @@ const KIND_OPTIONS: readonly PickOption<FormKind>[] = FORM_KINDS.map((kind) => (
       ? 'Uma grade de luzes. Cada toque troca a luz e as quatro vizinhas.'
       : kind === 'lock'
         ? 'Rodas de dígitos, letras ou runas. Você escolhe a solução.'
-        : 'Pilares com símbolos que giram, para copiar um mural.',
+        : kind === 'pillars'
+          ? 'Pilares com símbolos que giram, para copiar um mural.'
+          : kind === 'riddle'
+            ? 'Um enigma que os jogadores respondem por escrito.'
+            : kind === 'sequence'
+              ? 'Sinos que você toca e os jogadores repetem, na mesma ordem.'
+              : 'Uma mensagem de letras trocadas, que eles decifram.',
 }));
 
 /**
@@ -69,6 +82,8 @@ const KIND_OPTIONS: readonly PickOption<FormKind>[] = FORM_KINDS.map((kind) => (
   selector: 'app-puzzle-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    CipherForm,
+    HintCheckField,
     HintsField,
     LightsForm,
     LockForm,
@@ -77,10 +92,14 @@ const KIND_OPTIONS: readonly PickOption<FormKind>[] = FORM_KINDS.map((kind) => (
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    PartsField,
     PickGroup,
     PillarsForm,
+    RiddleForm,
     RouterLink,
+    SequenceForm,
     SolveField,
+    WrongField,
   ],
   templateUrl: './puzzle-form.html',
   styleUrl: './puzzle-form.scss',
@@ -91,6 +110,7 @@ export class PuzzleForm {
   private readonly api = inject(PuzzlesClient);
   private readonly accessCheck = inject(PuzzleAccessCheck);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly campaignId = this.route.snapshot.paramMap.get('id') ?? '';
   /** The puzzle being edited, or `''` for a new one. */
@@ -108,17 +128,39 @@ export class PuzzleForm {
   protected readonly saving = signal(false);
   protected readonly notice = signal('');
   protected readonly nameServerError = signal('');
+  /** What the server refused, by the part of the form it belongs to (`invalidSection`). It clears when the master changes anything. */
+  protected readonly serverErrors = signal<Partial<Record<FormSection, string>>>({});
 
   protected readonly errors = computed(() => draftErrors(this.draft()));
   protected readonly nameError = computed(() => (this.submitted() ? (this.errors().name ?? this.nameServerError()) : this.nameServerError()));
-  protected readonly clueError = computed(() => (this.submitted() ? (this.errors().clue ?? '') : ''));
+  /** What is wrong in a part of the form: the form's own check once the master tried to save, or the server's refusal. */
+  private shown(section: FormSection, own: string | undefined): string {
+    return (this.submitted() ? own : undefined) || this.serverErrors()[section] || '';
+  }
+  protected readonly clueError = computed(() => this.shown('clue', this.errors().clue));
   protected readonly hintErrors = computed(() => (this.submitted() ? this.errors().hints : {}));
-  protected readonly targetError = computed(() => (this.submitted() ? (this.errors().target ?? '') : ''));
-  protected readonly messageError = computed(() => (this.submitted() ? (this.errors().message ?? '') : ''));
+  protected readonly targetError = computed(() => this.shown('target', this.errors().target));
+  protected readonly messageError = computed(() => this.shown('message', this.errors().message));
   protected readonly lockError = computed(() => (this.submitted() ? (this.errors().lock ?? '') : ''));
+  protected readonly riddleError = computed(() => this.shown('riddle', this.errors().riddle));
+  protected readonly answersError = computed(() => this.shown('answers', this.errors().answers));
+  protected readonly answerRows = computed(() => (this.submitted() ? this.errors().answerRows : {}));
+  protected readonly sequenceError = computed(() => this.shown('sequence', this.errors().sequence));
+  protected readonly cipherMessageError = computed(() => this.shown('cipherMessage', this.errors().cipherMessage));
+  protected readonly cipherKeyError = computed(() => (this.submitted() ? (this.errors().cipherKey ?? '') : ''));
+  protected readonly checkError = computed(() => this.shown('check', this.errors().check));
+  protected readonly wrongError = computed(() => this.shown('wrong', this.errors().wrong));
+  protected readonly partsErrors = computed(() => {
+    const server = this.serverErrors().parts;
+    const own = this.submitted() ? this.errors().parts : {};
+    return server && Object.keys(own).length === 0 ? { 0: { text: server } } : own;
+  });
+  protected readonly judged = computed(() => JUDGED_KINDS.includes(this.draft().kind));
+  /** The message and the key are good enough to cipher: the form's own checks pass. */
+  protected readonly cipherable = computed(() => !this.errors().cipherMessage && !this.errors().cipherKey);
   protected readonly kindTitle = computed(() => kindName(protoKindOf(this.draft().kind)));
   /** A generated start has to be on screen before the puzzle can be saved: what is saved is what the master saw. */
-  protected readonly startReady = computed(() => this.draft().kind === 'lock' || this.preview().status === 'ready');
+  protected readonly startReady = computed(() => !['lights', 'pillars'].includes(this.draft().kind) || this.preview().status === 'ready');
   protected readonly nameField = viewChild<ElementRef<HTMLInputElement>>('nameField');
 
   /** What the preview depends on: a change of it asks the server for a new start. */
@@ -195,13 +237,17 @@ export class PuzzleForm {
   protected patch(partial: Partial<Draft>): void {
     this.draft.update((d) => ({ ...d, ...partial }));
     this.nameServerError.set('');
+    this.serverErrors.set({});
   }
 
   /** Another kind starts that kind's form over; what is common (name, clue, hints, "Ao resolver") stays. */
   protected setKind(kind: FormKind): void {
     const d = this.draft();
-    this.draft.set({ ...newDraft(kind), name: d.name, clue: d.clue, hints: d.hints, solve: d.solve });
+    // A trap and an attempt need a move that is judged: the other kinds keep "Nada acontece" or the limits.
+    const keepWrong = JUDGED_KINDS.includes(kind) || d.wrong.option === 'none' || d.wrong.option === 'limits';
+    this.draft.set({ ...newDraft(kind), name: d.name, clue: d.clue, hints: d.hints, solve: d.solve, hintCheck: d.hintCheck, parts: d.parts, wrong: keepWrong ? d.wrong : NO_WRONG });
     this.preview.set(NO_PREVIEW);
+    this.serverErrors.set({});
   }
 
   /** "Gerar outro começo": a start the server draws now, with a new seed. */
@@ -249,9 +295,14 @@ export class PuzzleForm {
       await this.router.navigate(['/campanhas', this.campaignId]);
     } catch (err) {
       const invalid = puzzleInvalid(err);
-      if (invalid?.reason === PuzzleInvalidReason.NAME) {
+      const section = invalid ? invalidSection(invalid) : '';
+      if (section === 'name') {
         this.nameServerError.set(puzzleErrorMessage(err));
         this.focusName();
+      } else if (section !== '' && section !== 'hints') {
+        // The refusal stands under the field it belongs to, in words, and the focus goes there.
+        this.serverErrors.set({ [section]: puzzleErrorMessage(err) });
+        afterNextRender(() => this.focusFirstProblem(), { injector: this.injector });
       } else {
         this.notice.set(puzzleErrorMessage(err, 'salvar o quebra-cabeça'));
       }

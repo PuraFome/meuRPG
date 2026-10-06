@@ -68,7 +68,10 @@
           [session]="s"
           [state]="puzzles"
           [ownName]="ownCharacterName()"
+          [diceMode]="campaign()?.diceMode ?? 1"
+          [dicePreference]="campaign()?.dicePreference ?? 1"
           [reconnecting]="connection() === 'reconnecting' || connection() === 'paused'"
+          (openNotes)="openNotes()"
         />
       } @else {
       @if (!combat.fullPage()) {

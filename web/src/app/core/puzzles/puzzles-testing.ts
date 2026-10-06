@@ -16,9 +16,12 @@ import {
   PuzzleSummarySchema,
   type PreviewPuzzleStartResponse,
   PreviewPuzzleStartResponseSchema,
+  type TryPuzzleHintResponse,
+  TryPuzzleHintResponseSchema,
+  type CipherSolutionSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
-import { alphabetFaces, pillarFaces } from './puzzle-symbols';
-import type { MoveAnswer, PuzzleInit, PuzzlesClient } from './puzzles-client';
+import { alphabetFaces, bellFaces, pillarFaces } from './puzzle-symbols';
+import type { HintDie, MoveAnswer, PuzzleInit, PuzzlesClient } from './puzzles-client';
 
 /**
  * Builders and a stand-in for the puzzle specs (never imported by the app itself, so never bundled): the messages as the
@@ -81,6 +84,52 @@ export function pillarsPuzzle(id: string, name: string, partial: Init = {}): Puz
   });
 }
 
+/** The riddle of the artboard (E10-12): the master's text and the answers he accepts. */
+export function riddlePuzzle(id: string, name: string, partial: Init = {}): Puzzle {
+  return create(PuzzleSchema, {
+    id,
+    campaignId: 'camp-1',
+    kind: PuzzleKind.RIDDLE,
+    name,
+    config: { kind: { case: 'riddle', value: { text: 'Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?' } } },
+    solution: { kind: { case: 'riddle', value: { answers: ['sombra', 'a sombra'] } } },
+    start: { kind: { case: 'riddle', value: {} } },
+    minimum: { solvable: true, moves: 1, path: [] },
+    ...(partial as object),
+  });
+}
+
+/** Four bells and six steps (E10-12). */
+export function sequencePuzzle(id: string, name: string, partial: Init = {}): Puzzle {
+  return create(PuzzleSchema, {
+    id,
+    campaignId: 'camp-1',
+    kind: PuzzleKind.SEQUENCE,
+    name,
+    config: { kind: { case: 'sequence', value: { bells: 4, steps: 6 } } },
+    solution: { kind: { case: 'sequence', value: { steps: [0, 1, 3, 0, 2, 1] } } },
+    start: { kind: { case: 'sequence', value: { progress: 0 } } },
+    symbols: bellFaces(4).map((f) => ({ key: f.key, namePt: f.namePt })),
+    minimum: { solvable: true, moves: 6, path: [] },
+    ...(partial as object),
+  });
+}
+
+/** "O tesouro está sob o altar", three letters on. */
+export function cipherPuzzle(id: string, name: string, partial: Init = {}): Puzzle {
+  return create(PuzzleSchema, {
+    id,
+    campaignId: 'camp-1',
+    kind: PuzzleKind.CIPHER,
+    name,
+    config: { kind: { case: 'cipher', value: { ciphertext: 'R WHVRXUR HVWD VRE R DOWDU', keyClueId: '' } } },
+    solution: { kind: { case: 'cipher', value: { message: 'O tesouro está sob o altar', method: { case: 'shift', value: 3 } } } },
+    start: { kind: { case: 'cipher', value: {} } },
+    minimum: { solvable: true, moves: 1, path: [] },
+    ...(partial as object),
+  });
+}
+
 /** What the players read of a lights puzzle. */
 export function playerRun(puzzle: Puzzle, partial: Init = {}): PuzzleRun {
   return create(PuzzleRunSchema, {
@@ -112,6 +161,11 @@ export function summary(puzzle: Puzzle, partial: Init = {}): PuzzleSummary {
   return create(PuzzleSummarySchema, { puzzleId: puzzle.id, name: puzzle.name, kind: puzzle.kind, ...(partial as object) });
 }
 
+/** A try for a hint: what the server answers. */
+export function hintAnswer(run: PuzzleRun, passed: boolean, total = 17, partial: Init = {}): TryPuzzleHintResponse {
+  return create(TryPuzzleHintResponseSchema, { run, passed, roll: { diceCount: 1, diceSides: 20, faces: [total - 3], modifier: 3, total }, ...(partial as object) });
+}
+
 export function preview(lit: readonly boolean[], moves: number, seed = 7n): PreviewPuzzleStartResponse {
   return create(PreviewPuzzleStartResponseSchema, {
     seed,
@@ -123,6 +177,8 @@ export function preview(lit: readonly boolean[], moves: number, seed = 7n): Prev
 /** The time a spec's clock stands at. */
 export const NOW = new Date(2026, 9, 6, 21, 12, 40);
 export const at = (secondsAgo: number) => timestampFromDate(new Date(NOW.getTime() - secondsAgo * 1000));
+/** A moment `seconds` from the real clock, for a page that counts down by it. */
+export const fromNow = (seconds: number) => timestampFromDate(new Date(Date.now() + seconds * 1000));
 
 type Call = readonly [string, ...unknown[]];
 
@@ -138,6 +194,10 @@ export class FakePuzzlesClient {
   shownResult: PuzzleSummary[] = [];
   playerRunResult: PuzzleRun | undefined;
   moveResult: ((n: number) => MoveAnswer | Promise<MoveAnswer>) | undefined;
+  hintResult: ((n: number) => TryPuzzleHintResponse | Promise<TryPuzzleHintResponse>) | undefined;
+  cipherResult = 'R WHVRXUR HVWD VRE R DOWDU';
+  hintCount = 0;
+  hintKeys: string[] = [];
   failWith: unknown;
   moveCount = 0;
   moveKeys: string[] = [];
@@ -199,6 +259,21 @@ export class FakePuzzlesClient {
   run(campaignId: string, puzzleId: string): Promise<PuzzleRun> {
     return this.answer('run', [campaignId, puzzleId], this.playerRunResult as PuzzleRun);
   }
+  async previewCipher(campaignId: string, solution: MessageInitShape<typeof CipherSolutionSchema>): Promise<string> {
+    return this.answer('previewCipher', [campaignId, solution], this.cipherResult);
+  }
+  playSequence(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
+    return this.answer('playSequence', [campaignId, puzzleId], this.runResults.get(puzzleId) as MasterPuzzleRun);
+  }
+  async tryHint(campaignId: string, puzzleId: string, die: HintDie, key: string): Promise<TryPuzzleHintResponse> {
+    this.calls.push(['tryHint', campaignId, puzzleId, die, key]);
+    this.hintKeys.push(key);
+    const n = ++this.hintCount;
+    if (!this.hintResult) {
+      throw new Error('no hintResult set');
+    }
+    return this.hintResult(n);
+  }
   async move(campaignId: string, puzzleId: string, move: unknown, key: string): Promise<MoveAnswer> {
     this.calls.push(['move', campaignId, puzzleId, move, key]);
     this.moveKeys.push(key);
@@ -214,3 +289,22 @@ export class FakePuzzlesClient {
 export function asClient(fake: FakePuzzlesClient): PuzzlesClient {
   return fake as unknown as PuzzlesClient;
 }
+
+/** The 18 skills' names as the rules' content sends them (two of them are enough for a spec). */
+export const SKILLS = [
+  { key: 'skill:arcana', label: 'Arcanismo' },
+  { key: 'skill:investigation', label: 'Investigação' },
+];
+
+/** A `SceneChecks` that answers at once, for the specs that render a field or a page that reads the skills' names. */
+export const fakeChecks = { skills: async () => SKILLS };
+
+/** A `RosterClient` with Toren, Brisa and Sálvia, the artboard's party (an NPC too: a part is only for a player's character). */
+export const fakeRoster = {
+  list: async () => [
+    { id: 'c-toren', name: 'Toren', kind: 1, playerUserId: 'u1', classSummary: '', raceName: '', playerName: 'Ana' },
+    { id: 'c-brisa', name: 'Brisa', kind: 1, playerUserId: 'u2', classSummary: '', raceName: '', playerName: 'Caio' },
+    { id: 'c-salvia', name: 'Sálvia', kind: 1, playerUserId: 'u3', classSummary: '', raceName: '', playerName: 'Lia' },
+    { id: 'c-goblin', name: 'Goblin', kind: 4, playerUserId: '', classSummary: '', raceName: '', playerName: null },
+  ],
+};

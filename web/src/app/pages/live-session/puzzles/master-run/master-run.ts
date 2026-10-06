@@ -6,18 +6,20 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { type MasterPuzzleRun, PuzzleKind, PuzzleRunStatus, PuzzleSolveAction, PuzzleStopReason } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { focusWithRing } from '../../../../core/creatures/focus-ring';
 import { joinDots } from '../../../../core/format/text';
-import { clockOf, kindIcon, kindName, lastMoveParts, litCount, litWords, moveWord, agoText, outcomeText } from '../../../../core/puzzles/puzzle-format';
+import { clockOf, kindIcon, kindName, lastMoveParts, limitRows, litCount, litWords, moveWord, agoText, outcomeText, trapFired } from '../../../../core/puzzles/puzzle-format';
 import { puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
 import { LockBoard } from '../../../../shared/puzzle-boards/lock-board';
 import { PillarsBoard } from '../../../../shared/puzzle-boards/pillars-board';
 import { PuzzleHost } from '../../../../shared/puzzle-boards/puzzle-host';
+import { SequenceStrip } from '../../../../shared/puzzle-boards/sequence-strip';
+import { LimitCounters } from '../../../../shared/puzzle-boards/limit-counters';
 import { SecretPill } from '../../../../shared/puzzle-boards/secret-pill';
 import { MapAsk } from '../../../maps/map-ask/map-ask';
 import { DoorCrop } from '../door-crop/door-crop';
 
 type Ask = 'reset' | 'close';
-type Action = 'hint' | 'reseed' | 'reset' | 'close';
+type Action = 'hint' | 'reseed' | 'reset' | 'close' | 'play';
 
 /**
  * The master's live view of one shown puzzle (MR-038, E10-06 states 3 to 5): the same board the players have, static, in the same
@@ -30,12 +32,15 @@ type Action = 'hint' | 'reseed' | 'reset' | 'close';
  * - **"Recomeçar" and "Fechar" ask in place** (E10-06 state 5): the question takes the buttons' place, the focus goes to its
  *   title, "Voltar" brings the buttons back and the focus to the one that asked; nothing happens before the second tap.
  * - **Solved** (state 4): who solved it and when, what the server did ("Uma porta se abriu.") and the door on its map.
+ * - **The riddle, the sequence and the cipher** (10.15b, E10-12 state 5) add what only the master knows, each with "Só você vê": the accepted
+ *   answers, the sequence's steps, the plain message. He also reads the answer typed or the bell struck in the last move, each player's
+ *   attempts left, the counters of the limits, the trap that fired, and starts a play of the sequence ("Tocar a sequência").
  * - It reports each answer to the session page's list (`updated`); the stream then keeps it current.
  */
 @Component({
   selector: 'app-master-run',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DoorCrop, LockBoard, MapAsk, MatButtonModule, MatIconModule, PillarsBoard, PuzzleHost, SecretPill],
+  imports: [DoorCrop, LimitCounters, LockBoard, MapAsk, MatButtonModule, MatIconModule, PillarsBoard, PuzzleHost, SecretPill, SequenceStrip],
   templateUrl: './master-run.html',
   styleUrl: './master-run.scss',
 })
@@ -169,21 +174,53 @@ export class MasterRun {
     return `${joinDots([...(this.clue() ? [`Pista: “${this.clue()}”`] : []), ...hints, `Ao resolver: ${this.onSolveWords()}`])}.`;
   });
 
-  /**
-   * The dice, only when one was rolled: the last try for a hint by a skill check ("Lia rolou 14 (d20: 11) para a dica 2: passou."). The app
-   * rolls nothing else in a puzzle, so a puzzle without such a try says nothing about dice.
-   */
-  protected readonly diceLine = computed(() => {
-    const tries = this.run().hintTries;
-    const last = tries.at(-1);
-    if (!last) {
-      return '';
-    }
-    const face = last.roll?.faces[0];
-    const total = last.roll?.total ?? 0;
-    const how = face !== undefined && face !== total ? `${total} (d20: ${face})` : `${total}`;
-    return `${last.characterName} rolou ${how} para a dica ${last.hint}: ${last.passed ? 'passou' : 'não passou'}.`;
+  /** The tries for a hint by a skill check, newest last: who rolled, what, and whether it passed (the last three). */
+  protected readonly diceLines = computed(() =>
+    this.run()
+      .hintTries.slice(-3)
+      .map((t) => {
+        const face = t.roll?.faces[0];
+        const total = t.roll?.total ?? 0;
+        const how = face !== undefined && face !== total ? `${total} (d20: ${face})` : `${total}`;
+        return `${t.characterName} rolou ${how} para a dica ${t.hint}: ${t.passed ? 'passou' : 'não passou'}.`;
+      }),
+  );
+
+  // The riddle, the sequence and the cipher: what only the master knows.
+  protected readonly answers = computed(() => {
+    const solution = this.puzzle()?.solution?.kind;
+    return solution?.case === 'riddle' ? solution.value.answers : [];
   });
+  protected readonly sequenceSteps = computed(() => {
+    const solution = this.puzzle()?.solution?.kind;
+    return solution?.case === 'sequence' ? solution.value.steps : [];
+  });
+  protected readonly plays = computed(() => this.player()?.sequence?.plays ?? 0);
+  protected readonly playing = computed(() => !!this.player()?.sequence?.playing);
+  protected readonly cipherMessage = computed(() => {
+    const solution = this.puzzle()?.solution?.kind;
+    return solution?.case === 'cipher' ? solution.value.message : '';
+  });
+  /** "Toren: 2 de 3": the player of the last move, with their attempts left (a puzzle with attempts only). */
+  protected readonly lastAttempts = computed(() => {
+    const who = this.run().lastMove?.characterName;
+    const row = this.run().attempts.find((a) => a.characterName === who);
+    const per = this.puzzle()?.onWrong?.attemptsPerPlayer ?? 0;
+    return row && per > 0 ? `Tentativas dele: ${row.left} de ${per}.` : '';
+  });
+  /** Every player's attempts, "Brisa 3 de 3 · Pensantus 3 de 3". */
+  protected readonly attemptsLine = computed(() => {
+    const per = this.puzzle()?.onWrong?.attemptsPerPlayer ?? 0;
+    return per > 0 ? joinDots(this.run().attempts.map((a) => `${a.characterName}\u00a0${a.left}\u00a0de\u00a0${per}`)) : '';
+  });
+  /** The counters of the limits: moves and time (the attempts are said player by player). */
+  protected readonly counters = computed(() => {
+    const r = this.player();
+    return r ? limitRows(r, this.now()).filter((row) => row.key !== 'attempts') : [];
+  });
+  protected readonly trap = computed(() => trapFired(this.run().lastMove));
+  protected readonly trapWho = computed(() => this.run().lastMove?.characterName ?? '');
+  protected readonly judged = computed(() => this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.SEQUENCE || this.kind() === PuzzleKind.CIPHER);
 
   protected readonly id = computed(() => `mr-${this.puzzle()?.id ?? ''}`);
 
@@ -209,7 +246,9 @@ export class MasterRun {
       const next =
         action === 'hint'
           ? await this.api.releaseHint(campaign, id)
-          : action === 'reseed'
+          : action === 'play'
+            ? await this.api.playSequence(campaign, id)
+            : action === 'reseed'
             ? await this.api.reseed(campaign, id)
             : action === 'reset'
               ? await this.api.reset(campaign, id)
@@ -224,7 +263,7 @@ export class MasterRun {
       }
     } catch (err) {
       this.ask.set(null);
-      this.notice.set(puzzleErrorMessage(err, action === 'hint' ? 'soltar a dica' : action === 'close' ? 'fechar o quebra-cabeça' : 'recomeçar o quebra-cabeça'));
+      this.notice.set(puzzleErrorMessage(err, action === 'hint' ? 'soltar a dica' : action === 'play' ? 'tocar a sequência' : action === 'close' ? 'fechar o quebra-cabeça' : 'recomeçar o quebra-cabeça'));
     } finally {
       this.busy.set(null);
     }

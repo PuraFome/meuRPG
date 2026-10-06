@@ -252,3 +252,30 @@
     border-radius: 0;
   }
 }
+
+// The cipher's key, found or not yet.
+.key__title {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.key__text {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.key__text--muted {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.key__go {
+  min-height: 48px;
+}
+
+// The hints and the way to win the next: the button under the list, a notice before it.
+.hints app-hint-try {
+  margin-top: var(--mr-space-3);
+}

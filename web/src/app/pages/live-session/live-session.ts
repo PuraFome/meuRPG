@@ -562,7 +562,11 @@ export class LiveSession {
         onTrapNoticed: (notice) => void this.trapNoticed(notice.mapId, notice.pointId),
         onXpChanged: () => this.xpChanges.bump(),
         onSceneChanged: () => void this.scene.refresh(),
-        onNotesChanged: () => void this.notes.refresh(true),
+        onNotesChanged: () => {
+          void this.notes.refresh(true);
+          // A cipher's key is a clue in the notes: the open puzzle reads its run again to learn the player found it.
+          void this.puzzles.refresh();
+        },
         // The stage is part of the open scene: read it again (it names nobody).
         onStageChanged: () => void this.scene.refresh(),
         onShownImage: (image) => this.shownImageChanged(image),
