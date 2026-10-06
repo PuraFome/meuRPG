@@ -133,3 +133,38 @@ func TestListContentNamesLanguagesProficienciesAndDamageTypes(t *testing.T) {
 		t.Errorf("damage types = %v, want the 13 of the SRD, in Portuguese", dmg)
 	}
 }
+
+// TestTableContentADuplicateNameIsListedWithTheOtherViolations: a create with a name another entry has, bad dice and a bad
+// area size comes back with all three, each at its own path (the duplicate name does not return early).
+func TestTableContentADuplicateNameIsListedWithTheOtherViolations(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	master.addEntry(t, campaign, testSpell("Lâmina de Nanquim", "class:wizard"))
+
+	spell := testSpell("Lâmina de Nanquim", "class:wizard")
+	spell.Damage[0].Dice = "2d8x"
+	spell.Target = &rulesv1.TableSpellTarget{Kind: rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_AREA, Shape: rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CONE, SizeFt: 7}
+	spell.Attack = ""
+	_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, spell)))
+	var got []string
+	for _, v := range violationsOfErr(t, err) {
+		got = append(got, v.GetField()+":"+v.GetReason())
+	}
+	want := "table_spell.name_pt:duplicate_name table_spell.target.size_ft:limit table_spell.damage[0].dice:bad_value"
+	if strings.Join(got, " ") != want {
+		t.Errorf("violations = %v, want %q", got, want)
+	}
+	// An update lists them the same way.
+	other := master.addEntry(t, campaign, testSpell("Outra Lâmina", "class:wizard"))
+	renamed := cloneWithKeys(spell, bodyMessage(other))
+	_, err = master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, other.GetKey(), other.GetRevision(), renamed)))
+	got = nil
+	for _, v := range violationsOfErr(t, err) {
+		got = append(got, v.GetField())
+	}
+	if len(got) != 3 || got[0] != "table_spell.name_pt" {
+		t.Errorf("update violations = %v, want the duplicate name and the two others", got)
+	}
+}

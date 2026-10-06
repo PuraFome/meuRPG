@@ -202,12 +202,15 @@ type stored struct {
 // checkOverlay builds the campaign's whole overlay with the entries (the write's
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
-func (s *Service) checkOverlay(entries []entryRow, revision int, key string) (*rules.Content, error) {
+func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
 	if err != nil {
-		return nil, errRefusedContent(violationsOf(err, idx, key))
+		return nil, errRefusedContent(append(slices.Clone(lead), violationsOf(err, idx, key)...))
+	}
+	if len(lead) > 0 {
+		return nil, errRefusedContent(lead)
 	}
 	return content, nil
 }
@@ -215,13 +218,13 @@ func (s *Service) checkOverlay(entries []entryRow, revision int, key string) (*r
 // prepare finishes a body for a write: the keys of its features, the size of its
 // data. It works on a clone of body, so a retried transaction starts from what the
 // request had.
-func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody) (stored, error) {
+func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation) (stored, error) {
 	b := proto.Clone(body).(tableBody)
 	if v := checkShape(b); len(v) > 0 {
-		return stored{}, errRefusedContent(v)
+		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
 	if v := featureKeys(key, b, old); len(v) > 0 {
-		return stored{}, errRefusedContent(v)
+		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
 	data, err := storedData(b)
 	if err != nil {
@@ -277,10 +280,12 @@ func (s *Service) CreateTableEntry(
 			return err
 		}
 		key := entryKey(kind, body.GetNamePt(), rows)
+		// A name another entry has is one more violation of this entry, listed with the ones the rules find (not instead of them).
+		var lead []*rulesv1.TableContentViolation
 		if v := duplicateName(entries, kind, key, body.GetNamePt()); v != nil {
-			return errRefusedContent([]*rulesv1.TableContentViolation{v})
+			lead = append(lead, v)
 		}
-		st, err := prepare(key, kind, body, nil)
+		st, err := prepare(key, kind, body, nil, lead...)
 		if err != nil {
 			return err
 		}
@@ -289,7 +294,7 @@ func (s *Service) CreateTableEntry(
 			CampaignID: m.CampaignID, ContentKey: key, Kind: kindPrefix(kind), NamePt: body.GetNamePt(), Data: st.data,
 			Revision: rev, CreatedAt: now, UpdatedAt: now,
 		}
-		if _, err := s.checkOverlay(withRow(entries, st, row), int(rev), key); err != nil {
+		if _, err := s.checkOverlay(withRow(entries, st, row), int(rev), key, lead...); err != nil {
 			return err
 		}
 		row, err = q.InsertCampaignContent(ctx, charactersdb.InsertCampaignContentParams{
@@ -368,17 +373,18 @@ func (s *Service) UpdateTableEntry(
 		if err != nil {
 			return err
 		}
+		var lead []*rulesv1.TableContentViolation
 		if v := duplicateName(entries, kind, key, body.GetNamePt()); v != nil {
-			return errRefusedContent([]*rulesv1.TableContentViolation{v})
+			lead = append(lead, v)
 		}
-		st, err := prepare(key, kind, body, old.body)
+		st, err := prepare(key, kind, body, old.body, lead...)
 		if err != nil {
 			return err
 		}
 		now := s.now()
 		next := cur
 		next.NamePt, next.Data, next.Revision, next.UpdatedAt = body.GetNamePt(), st.data, rev, now
-		content, err := s.checkOverlay(withRow(entries, st, next), int(rev), key)
+		content, err := s.checkOverlay(withRow(entries, st, next), int(rev), key, lead...)
 		if err != nil {
 			return err
 		}
