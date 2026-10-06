@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { type AffectedCharacter, TableContentKind, type TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import { type AffectedCharacter, type GetClassTableDefaultsResponse, TableContentKind, type TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { formatDateTime } from '../../../core/characters/character-labels';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
@@ -25,6 +25,8 @@ import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
+import { ClassEditor } from '../class-editor/class-editor';
+import { SubclassEditor } from '../subclass-editor/subclass-editor';
 
 type PageState =
   | { status: 'loading' }
@@ -32,7 +34,7 @@ type PageState =
   | { status: 'error'; message: string }
   | { status: 'ready'; ctx: ContentContext };
 
-/** The URL's word for the kind of a new entry ("novo/magia"). Classes and subclasses have no editor yet (10.12). */
+/** The URL's word for the kind of a new entry ("novo/magia"). */
 const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   magia: TableContentKind.SPELL,
   raca: TableContentKind.RACE,
@@ -51,7 +53,14 @@ const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.SUBCLASS]: 'Nova subclasse',
 };
 
-const EDITABLE = new Set<TableContentKind>([TableContentKind.SPELL, TableContentKind.RACE, TableContentKind.SUBRACE, TableContentKind.BACKGROUND]);
+const EDITABLE = new Set<TableContentKind>([
+  TableContentKind.SPELL,
+  TableContentKind.RACE,
+  TableContentKind.SUBRACE,
+  TableContentKind.BACKGROUND,
+  TableContentKind.CLASS,
+  TableContentKind.SUBCLASS,
+]);
 
 /**
  * One entry of the table's content (MR-025, RN-23; E10-01 states 4 to 9): the master's editor for a spell, a race, a subrace
@@ -65,6 +74,7 @@ const EDITABLE = new Set<TableContentKind>([TableContentKind.SPELL, TableContent
   imports: [
     ArchiveQuestion,
     BackgroundEditor,
+    ClassEditor,
     EntryRead,
     MatButtonModule,
     MatIconModule,
@@ -72,6 +82,7 @@ const EDITABLE = new Set<TableContentKind>([TableContentKind.SPELL, TableContent
     RaceEditor,
     RouterLink,
     SpellEditor,
+    SubclassEditor,
   ],
   templateUrl: './content-entry.html',
   styleUrl: './content-entry.scss',
@@ -94,11 +105,15 @@ export class ContentEntry {
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly catalog = signal<CatalogVm | null>(null);
   protected readonly menu = signal<EffectMenuVm | null>(null);
+  /** The numbers the class and subclass editors start from (`GetClassTableDefaults`), for the master. */
+  protected readonly defaults = signal<GetClassTableDefaultsResponse | null>(null);
   /** The key of the entry in the URL; empty for a new one. */
   protected readonly key = signal('');
   /** The kind of a new entry, from the URL. */
   protected readonly newKind = signal<TableContentKind | null>(null);
   protected readonly parentKey = signal('');
+  /** A new subclass: the class it is for, from the link on the class's page. */
+  protected readonly parentClass = signal('');
   protected readonly asking = signal(false);
   protected readonly archiving = signal(false);
   protected readonly status = signal('');
@@ -110,8 +125,13 @@ export class ContentEntry {
   /** The catalog or the effect menu did not come: the page says so, with "Tentar de novo". */
   private readonly catalogError = signal('');
   private readonly menuError = signal('');
-  /** What blocks this entry: the catalog always, the menu for every editor but the spell's (which does not use it). */
-  protected readonly extrasError = computed(() => this.catalogError() || (this.kind() === TableContentKind.SPELL ? '' : this.menuError()));
+  /** What blocks this entry: the catalog always, the menu for every editor but the spell's (which does not use it), the defaults
+   * for the class and the subclass. */
+  protected readonly extrasError = computed(
+    () => this.catalogError() || (this.kind() === TableContentKind.SPELL ? '' : this.menuError()) || (this.needsDefaults() ? this.defaultsError() : ''),
+  );
+  private readonly defaultsError = signal('');
+  protected readonly needsDefaults = computed(() => this.editing() && (this.kind() === TableContentKind.CLASS || this.kind() === TableContentKind.SUBCLASS));
 
   protected readonly ctx = computed(() => {
     const s = this.state();
@@ -133,6 +153,7 @@ export class ContentEntry {
   protected readonly isNew = computed(() => this.entry() === null && this.newKind() !== null);
   protected readonly missing = computed(() => this.ctx() !== null && this.entry() === null && this.newKind() === null);
   protected readonly noEditorYet = computed(() => this.isNew() && !EDITABLE.has(this.newKind() as TableContentKind));
+
   protected readonly heading = computed(() => {
     const e = this.entry();
     if (e) {
@@ -206,6 +227,7 @@ export class ContentEntry {
       const tipo = params.get('tipo');
       this.newKind.set(tipo ? (NEW_KINDS[tipo] ?? null) : null);
       this.parentKey.set(this.route.snapshot.queryParamMap.get('raca') ?? '');
+      this.parentClass.set(this.route.snapshot.queryParamMap.get('classe') ?? '');
       void this.load();
     });
   }
@@ -240,20 +262,23 @@ export class ContentEntry {
     this.loadingExtras.set(true);
     this.catalogError.set('');
     this.menuError.set('');
+    this.defaultsError.set('');
     const catalog = this.client.catalog(ctx.campaignId).then((c) => this.catalog.set(catalogVm(c, ctx.entries)));
+    const defaults = ctx.isMaster && this.needsDefaults() ? this.client.classDefaults(ctx.campaignId).then((d) => this.defaults.set(d)) : Promise.resolve();
     const menu = ctx.isMaster
       ? this.client.effectMenu(ctx.campaignId).then((m) => {
           const vm = new EffectMenuVm(m);
           this.menu.set(vm);
         })
       : Promise.resolve();
-    void Promise.allSettled([catalog, menu]).then((results) => {
+    void Promise.allSettled([catalog, menu, defaults]).then((results) => {
       const cat = this.catalog();
       const vm = this.menu();
       if (cat && vm) {
         vm.classNamePt = (key) => cat.nameOf(key);
       }
-      const [c, m] = results;
+      const [c, m, df] = results;
+      this.defaultsError.set(df.status === 'rejected' ? contentErrorText(df.reason, 'abrir o editor') : '');
       this.catalogError.set(c.status === 'rejected' ? contentErrorText(c.reason, 'abrir esta entrada') : '');
       this.menuError.set(m.status === 'rejected' ? contentErrorText(m.reason, 'abrir o editor') : '');
       this.loadingExtras.set(false);

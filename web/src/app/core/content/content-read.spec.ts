@@ -98,6 +98,35 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     noRawKeys(read.rows.map((r) => r.value));
   });
 
+  it('reads the table of a class level by level, and the multiclass prerequisites, in words', () => {
+    const levels = Array.from({ length: 20 }, (_, i) =>
+      create(TableClassLevelSchema, {
+        profBonus: 2 + Math.floor(i / 4),
+        cantripsKnown: i === 1 ? 2 : 0,
+        slots: i === 4 ? [4, 2] : i === 1 ? [2] : [],
+        features: i === 4 ? [feature('Ataque extra', [{ type: 'extra_attack', count: 2 }])] : [],
+      }),
+    );
+    const body = create(TableClassSchema, {
+      namePt: 'Guardião do Vale',
+      hitDie: 10,
+      savingThrows: [Ability.STRENGTH, Ability.WISDOM],
+      minimums: { wisdom: 13 },
+      anyOf: { strength: 13, dexterity: 13 },
+      casting: { kind: 'half', ability: Ability.WISDOM, preparation: 'prepared' },
+      levels,
+    });
+    const read = readEntry(entry(TableContentKind.CLASS, 'Guardião do Vale', { body: { case: 'tableClass', value: body } }), nameOf);
+    const table = read.sections.find((s) => s.title === 'Tabela dos níveis')!;
+    expect(table.items).toHaveLength(20);
+    expect(table.items[0]).toEqual({ title: 'Nível 1', text: '+2' });
+    expect(table.items[1]).toEqual({ title: 'Nível 2', text: '+2 · 2 truques · 2 de 1º' });
+    expect(table.items[4]).toEqual({ title: 'Nível 5', text: '+3 · Ataque extra · 4 de 1º, 2 de 2º' });
+    const rows = Object.fromEntries(read.rows.map((r) => [r.label, flat(r.value)]));
+    expect(rows['Para multiclasse']).toBe('Sabedoria 13');
+    expect(rows['Para multiclasse (uma delas)']).toBe('Força 13, Destreza 13');
+  });
+
   it('reads a background with its tools, skills and languages by name, never by key', () => {
     const body = create(TableBackgroundSchema, {
       namePt: 'Cartógrafo do Vale',

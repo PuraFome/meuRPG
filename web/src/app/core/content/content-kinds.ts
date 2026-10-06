@@ -24,15 +24,15 @@ export interface ContentNavKind {
   readonly newLabel: string;
   /** "Já existe uma raça da mesa com este nome." */
   readonly aOne: string;
-  /** Whether this slice has an editor for it (the class and the subclass editors are 10.12). */
+  /** Whether the app has an editor for it. */
   readonly editable: boolean;
   /** The master's way in: the page of "Nova …" (empty when there is no editor yet). */
   readonly createSegment: string;
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
-  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: false, createSegment: 'classe' },
-  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: false, createSegment: 'subclasse' },
+  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: true, createSegment: 'classe' },
+  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: true, createSegment: 'subclasse' },
   { slug: 'racas', plural: 'Raças', singular: 'raça', kinds: [TableContentKind.RACE, TableContentKind.SUBRACE], newLabel: 'Nova raça', aOne: 'uma raça', editable: true, createSegment: 'raca' },
   { slug: 'antecedentes', plural: 'Antecedentes', singular: 'antecedente', kinds: [TableContentKind.BACKGROUND], newLabel: 'Novo antecedente', aOne: 'um antecedente', editable: true, createSegment: 'antecedente' },
   { slug: 'magias', plural: 'Magias', singular: 'magia', kinds: [TableContentKind.SPELL], newLabel: 'Nova magia', aOne: 'uma magia', editable: true, createSegment: 'magia' },

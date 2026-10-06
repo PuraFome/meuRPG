@@ -1,4 +1,4 @@
-import type { TableEffect, TableEntry, TableFeature, TableRace } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type { TableClass, TableClassLevel, TableEffect, TableEntry, TableFeature, TableRace } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
 import { feetToMeters, formatMeters } from '../units';
 import { CASTING_WORDS, SIZE_WORDS } from './content-kinds';
@@ -6,6 +6,7 @@ import { ABILITY_FIELDS, type Bonuses, bonusText, noBonuses } from './feature-dr
 import type { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { CatalogAbility } from './catalog';
 import { previewRows, spellToDraft } from './spell-draft';
+import { slotsText } from './class-draft';
 
 /**
  * What a player reads of an entry (MR-025, question 83: "every option that is on, in full, with the numbers and the
@@ -113,6 +114,20 @@ function names(keys: readonly string[], nameOf: NameOf): string {
   return keys.map(nameOf).join(', ');
 }
 
+/** One row of a class's table in a line: "+3 · Ataque extra, Vigília · 2 truques · 4 de 1º, 2 de 2º". What the server stored, in words. */
+function levelLine(lv: TableClassLevel, pact: boolean): string {
+  const slots = slotsText({ profBonus: lv.profBonus, cantrips: lv.cantripsKnown, spells: lv.spellsKnown, slots: [...lv.slots] }, pact);
+  return [
+    lv.profBonus > 0 ? `+${lv.profBonus}` : '',
+    lv.features.map((f) => f.namePt).join(', '),
+    lv.cantripsKnown > 0 ? `${lv.cantripsKnown} ${lv.cantripsKnown === 1 ? 'truque' : 'truques'}` : '',
+    lv.spellsKnown > 0 ? `${lv.spellsKnown} ${lv.spellsKnown === 1 ? 'magia conhecida' : 'magias conhecidas'}` : '',
+    slots,
+  ]
+    .filter((x) => x !== '')
+    .join(' · ');
+}
+
 export function readEntry(entry: TableEntry, nameOf: NameOf): EntryRead {
   const abilityName = (a: number): string => nameOf(`ability:${a}`);
   const rows: ReadRow[] = [];
@@ -180,9 +195,19 @@ export function readEntry(entry: TableEntry, nameOf: NameOf): EntryRead {
         });
       }
       rows.push({ label: 'Escolhe a subclasse', value: `no nível ${c.subclassLevel || 3}` });
+      const need = (m: TableClass['minimums']): string =>
+        ABILITY_FIELDS.filter((a) => (m?.[a] ?? 0) > 0).map((a) => `${nameOf(`ability:${a}`)} ${m?.[a]}`).join(', ');
+      const all = need(c.minimums);
+      const any = need(c.anyOf);
+      if (all) rows.push({ label: 'Para multiclasse', value: all });
+      if (any) rows.push({ label: 'Para multiclasse (uma delas)', value: any });
       const items: ReadItem[] = [];
       c.levels.forEach((lv, i) => lv.features.forEach((f) => items.push(featureItem(f, nameOf, `Nível ${i + 1} · `))));
       if (items.length > 0) sections.push({ title: 'Características', items });
+      // The table in words, level by level (the numbers the server stored; a 0 proficiency bonus is the SRD's and is not written).
+      if (c.levels.length > 0) {
+        sections.push({ title: 'Tabela dos níveis', items: c.levels.map((lv, i) => ({ title: `Nível ${i + 1}`, text: levelLine(lv, c.casting?.kind === 'pact') })) });
+      }
       break;
     }
     case 'tableSubclass': {

@@ -61,6 +61,10 @@ export interface ViolationContext {
   readonly aOne: string;
   /** The name of the entry a `key` points to, for "Sobre Corujeiro: …". */
   readonly nameOf?: (key: string) => string;
+  /** The most features a class or a subclass has (the menu's), for "Uma classe da mesa não pode ter mais de 60 características." */
+  readonly maxFeatures?: number;
+  /** How many features the entry being saved has: "Esta classe tem 61." */
+  readonly featureCount?: number;
 }
 
 const DICE_TEXT = 'Escreva o dado assim: 2d8 (de 1 a 20 dados).';
@@ -71,6 +75,42 @@ const LONG_TEXT = 'Este texto é longo demais. Encurte o parágrafo.';
  * reason answers any reason. The rows are ordered: the first that matches wins. The paths and reasons are the server's
  * (rules.TestEntryViolationPaths pins them). */
 const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
+  // A class and a subclass (E10-02): the paths and reasons of backend/internal/rules/overlay_class.go.
+  { shape: /^table_class\.hit_die$/, text: 'O dado de vida é d6, d8, d10 ou d12.' },
+  { shape: /^table_class\.saving_throws(\[\])?$/, text: 'Escolha dois testes de resistência diferentes.' },
+  { shape: /^table_class\.skill_choose$/, text: 'Quantas perícias a classe dá: de 0 até o número de perícias da lista.' },
+  { shape: /^table_class\.skill_from\[\]$/, text: 'Esta perícia não existe. Escolha da lista.' },
+  { shape: /^table_class\.(multiclass_)?proficiencies\[\]$/, text: 'Escolha uma armadura, arma ou ferramenta da lista.' },
+  { shape: /^table_class\.multiclass_skill_choose$/, text: 'As perícias de quem vem de outra classe saem da lista da classe: de 0 até o número dela.' },
+  { shape: /^table_class\.(minimums|any_of)\.[a-z]+$/, text: 'O valor mínimo vai de 1 a 30. Deixe 0 para não exigir.' },
+  { shape: /^table_class\.(minimums|any_of)$/, text: 'O pré-requisito de multiclasse é uma das seis habilidades.' },
+  { shape: /^table_class\.subclass_level$/, text: 'A subclasse se escolhe num nível de 1 a 20.' },
+  { shape: /^table_class\.asi_levels\[\]$/, text: 'Os níveis de aumento de atributo são diferentes, de 1 a 20.' },
+  { shape: /^table_(class|subclass)\.levels$/, text: 'A tabela precisa ter os 20 níveis; uma subclasse que conjura precisa de uma linha em cada nível, do começo da conjuração ao 20.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.level$/, text: 'Os níveis da subclasse vão de 1 a 20, em ordem.' },
+  { shape: /^table_class\.levels\[\]\.prof_bonus$/, text: 'O bônus de proficiência vai de +1 a +12 (vazio é o do SRD).' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.cantrips_known$/, text: 'Truques: de 0 a 30, e 0 antes de a conjuração começar.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.spells_known$/, text: 'Magias conhecidas: de 0 a 200, e 0 antes de a conjuração começar.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.slots\[\]$/, text: 'Espaços de magia: de 0 a 9 por círculo, e 0 antes de a conjuração começar. Pacto: espaços de um círculo só.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.slots$/, text: 'Quem conjura precisa de espaços de magia neste nível.' },
+  { shape: /^table_class\.levels\[\]\.features\[\]$/, reason: 'limit', text: 'LIMIT_CLASS' },
+  { shape: /^table_subclass\.levels\[\]\.features\[\]$/, reason: 'limit', text: 'LIMIT_SUBCLASS' },
+  { shape: /^table_subclass\.levels\[\]\.features$/, text: 'Uma subclasse só ganha características a partir do nível em que se escolhe.' },
+  { shape: /^table_(class|subclass)\.casting\.kind$/, text: 'Escolha como conjura.' },
+  { shape: /^table_(class|subclass)\.casting\.ability$/, text: 'Escolha a habilidade de conjuração.' },
+  { shape: /^table_(class|subclass)\.casting\.preparation$/, text: 'Escolha se as magias são preparadas ou conhecidas.' },
+  { shape: /^table_(class|subclass)\.casting\.prepared_max$/, text: 'Só quem prepara magias tem este número.' },
+  { shape: /^table_(class|subclass)\.casting\.list_from$/, reason: 'dangling_reference', text: 'Esta classe não existe mais. Escolha outra lista.' },
+  { shape: /^table_(class|subclass)\.casting\.list_from$/, text: 'Escolha uma classe que tenha lista de magias própria (uma subclasse que conjura precisa de uma).' },
+  { shape: /^table_(class|subclass)\.casting\.start_level$/, text: 'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.' },
+  { shape: /^table_(class|subclass)\.casting$/, text: 'Uma subclasse só conjura se a classe dela não conjura. Uma classe sem conjuração não tem lista de magias.' },
+  { shape: /^table_subclass\.class_key$/, text: 'A classe desta subclasse não existe mais.' },
+  { shape: /^table_subclass\.level$/, text: 'A subclasse é escolhida no nível da classe.' },
+  { shape: /^table_subclass\.always_prepared$/, text: 'Magias sempre preparadas pedem uma classe ou subclasse que conjura.' },
+  { shape: /^table_subclass\.always_prepared\[\]\.class_level$/, text: 'O nível da classe vai de 1 a 20.' },
+  { shape: /^table_subclass\.always_prepared\[\]\.spell_key$/, reason: 'dangling_reference', text: 'Esta magia não existe mais. Escolha outra.' },
+  { shape: /^table_subclass\.always_prepared\[\]\.spell_key$/, text: 'Uma magia sempre preparada é de 1º círculo ou mais, nunca um truque.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.features\[\]$/, text: 'Confira esta característica.' },
   { shape: /\.level$/, text: 'Escolha um círculo de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   { shape: /\.range\.kind$/, text: 'Esse alcance não combina com o alvo. “Só quem conjura” pede Pessoal; criaturas escolhidas pedem distância ou Toque.' },
@@ -166,6 +206,12 @@ export function violationText(v: Pick<TableContentViolation, 'field' | 'reason'>
   }
   const row = FIELD_TEXTS.find((f) => f.shape.test(shape) && (f.reason === undefined || f.reason === r));
   if (row) {
+    if (row.text === 'LIMIT_CLASS' || row.text === 'LIMIT_SUBCLASS') {
+      const max = ctx.maxFeatures ?? 60;
+      const one = row.text === 'LIMIT_CLASS' ? 'classe' : 'subclasse';
+      const has = ctx.featureCount !== undefined ? `Esta ${one} tem ${ctx.featureCount}. ` : '';
+      return `${has}Uma ${one} da mesa não pode ter mais de ${max} características.`;
+    }
     return row.text;
   }
   if (r === 'dangling_reference') {

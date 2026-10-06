@@ -76,6 +76,14 @@ export class NumberStepper {
   readonly min = input(-9);
   readonly max = input(9);
   readonly path = input('');
+  /** Shown with its sign ("+2", for a bonus); off for a count ("2"). */
+  readonly signed = input(true);
   readonly valueChange = output<number>();
-  protected readonly text = computed(() => (this.value() > 0 ? `+${this.value()}` : this.value() < 0 ? `−${Math.abs(this.value())}` : '0'));
+  protected readonly text = computed(() => {
+    const v = this.value();
+    if (!this.signed()) {
+      return String(v);
+    }
+    return v > 0 ? `+${v}` : v < 0 ? `−${Math.abs(v)}` : '0';
+  });
 }

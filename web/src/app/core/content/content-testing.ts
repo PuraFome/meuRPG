@@ -1,6 +1,8 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  type GetClassTableDefaultsResponse,
+  GetClassTableDefaultsResponseSchema,
   type GetEffectMenuResponse,
   GetEffectMenuResponseSchema,
   type TableEntry,
@@ -131,4 +133,37 @@ export function catalog(extra: Parameters<typeof catalogVm>[1] = []): CatalogVm 
     }),
     extra,
   );
+}
+
+/** `GetClassTableDefaults` with the shape of the server's: the proficiency bonus, the ASI levels and one table per way of casting.
+ * The slots are a few of the SRD's (the half caster of the paladin at 2, 5 and 9); the specs prove what the editor does with the
+ * rows, not the numbers. */
+export function classDefaults(): GetClassTableDefaultsResponse {
+  const prof = (i: number) => 2 + Math.floor(i / 4);
+  const rows = (start: number, slotsAt: (level: number) => number[], cantrips = 0, known = 0) =>
+    Array.from({ length: 20 }, (_, i) => {
+      const level = i + 1;
+      const casts = start > 0 && level >= start;
+      return { profBonus: prof(i), features: [], cantripsKnown: casts ? cantrips : 0, spellsKnown: casts ? known : 0, slots: casts ? [...slotsAt(level), ...Array<number>(9 - slotsAt(level).length).fill(0)] : [] };
+    });
+  const half = (level: number) => (level < 3 ? [2] : level < 5 ? [3] : level < 9 ? [4, 2] : [4, 3, 2]);
+  const full = (level: number) => (level < 2 ? [2] : level < 3 ? [3] : level < 5 ? [4, 2] : [4, 3, 3]);
+  const pact = (level: number) => [0, 0, level < 5 ? 2 : 4];
+  const third = (level: number) => (level < 7 ? [2] : [4, 2]);
+  return create(GetClassTableDefaultsResponseSchema, {
+    profBonus: Array.from({ length: 20 }, (_, i) => prof(i)),
+    asiLevels: [4, 8, 12, 16, 19],
+    subclassLevel: 3,
+    tables: [
+      { kind: '', preparation: '', startLevel: 0, referenceClassKey: '', rows: rows(0, () => []) },
+      { kind: 'full', preparation: 'prepared', startLevel: 1, referenceClassKey: 'class:cleric', rows: rows(1, full, 3) },
+      { kind: 'full', preparation: 'known', startLevel: 1, referenceClassKey: 'class:sorcerer', rows: rows(1, full, 4, 2) },
+      { kind: 'half', preparation: 'prepared', startLevel: 2, referenceClassKey: 'class:paladin', rows: rows(2, half) },
+      { kind: 'half', preparation: 'known', startLevel: 2, referenceClassKey: 'class:ranger', rows: rows(2, half, 0, 2) },
+      { kind: 'pact', preparation: 'known', startLevel: 1, referenceClassKey: 'class:warlock', rows: rows(1, pact, 2, 2) },
+      { kind: 'pact', preparation: 'prepared', startLevel: 1, referenceClassKey: 'class:warlock', rows: rows(1, pact, 2) },
+      { kind: 'third', preparation: 'known', startLevel: 3, referenceClassKey: '', rows: rows(3, third, 2, 3) },
+      { kind: 'third', preparation: 'prepared', startLevel: 3, referenceClassKey: '', rows: rows(3, third, 2) },
+    ],
+  });
 }

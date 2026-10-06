@@ -1,0 +1,116 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+<div class="editor">
+  <section class="mr-panel block" aria-labelledby="sc-basics-t">
+    <h2 class="mr-panel__title" id="sc-basics-t">Dados da subclasse</h2>
+    @if (d.classKey) {
+      <p class="hint">
+        Subclasse de <strong>{{ className() }}</strong>@if (chosenAt() > 0) {, escolhida no nível {{ chosenAt() }} (o da classe)}.
+        A classe não muda depois de criada.
+      </p>
+    }
+    <div class="grid grid--2">
+      <app-text-field label="Nome" [value]="d.name" [maxlength]="60" path="table_subclass.name_pt" [issues]="issuesOf('table_subclass.name_pt')" (valueChange)="patch({ name: $event })" />
+      @if (isNew()) {
+        <app-select-field label="É subclasse de" [options]="classOptions()" [value]="d.classKey" placeholder="Escolha…" path="table_subclass.class_key" [issues]="issuesOf('table_subclass.class_key')" hint="Do SRD ou da mesa. Não muda depois de criada." (valueChange)="patch({ classKey: $event })" />
+      }
+    </div>
+    <app-text-field label="Texto da subclasse" [rows]="3" [value]="d.text" path="table_subclass.desc_pt" [issues]="issuesOf('table_subclass.desc_pt')" hint="Um parágrafo por bloco, com uma linha em branco entre eles." (valueChange)="patch({ text: $event })" />
+    <app-field-note [issues]="issuesOf('table_subclass.level')" />
+  </section>
+
+  <section class="mr-panel block" aria-labelledby="features-t">
+    <app-class-features
+      [features]="d.features"
+      [menu]="menu()"
+      [levels]="featureLevels()"
+      [newLevel]="featureLevels()[0]"
+      [max]="menu().maxFeatures"
+      [baseOf]="featureBase"
+      [issuesOf]="issuesOf"
+      [spellOptions]="spellOptions()"
+      [openId]="openFeature()"
+      (openIdChange)="openFeature.set($event)"
+      (featuresChange)="setFeatures($event)"
+    />
+  </section>
+
+  <section class="mr-panel block" aria-labelledby="conjures-t">
+    <h2 class="mr-panel__title" id="conjures-t">Conjuração</h2>
+    <app-switch-field label="Esta subclasse conjura" [checked]="d.conjures" path="table_subclass.casting" (toggled)="setConjures($event)" />
+    <p class="hint">Para uma subclasse que conjura (um terço). Só vale se a classe dela não conjura.</p>
+    @if (d.conjures) {
+      <app-casting-fields
+        [casting]="d.casting"
+        [third]="true"
+        [catalog]="catalog()"
+        basePath="table_subclass.casting"
+        [issuesOf]="issuesOf"
+        (preparationChange)="setPreparation($event)"
+        (patch)="patchCasting($event)"
+      />
+      @if (question()) {
+        <div class="ask" role="alertdialog" aria-labelledby="sc-ask-t" aria-describedby="sc-ask-d">
+          <p id="sc-ask-t" class="ask__title">Refazer a tabela?</p>
+          <p id="sc-ask-d">{{ questionText() }}</p>
+          <div class="ask__actions">
+            <button matButton="filled" type="button" (click)="answerQuestion(true)">Refazer a tabela</button>
+            <button matButton="outlined" type="button" (click)="answerQuestion(false)">Manter a minha tabela</button>
+          </div>
+        </div>
+      }
+      <p class="mr-notice mr-notice--neutral note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>{{ tableNote() }}</span>
+      </p>
+      <app-level-grid
+        [rows]="gridRows()"
+        [columns]="columns()"
+        [showBonus]="false"
+        [showFeatures]="false"
+        label="Tabela da conjuração, por nível da classe"
+        path="table_subclass.levels"
+        [issuesOf]="issuesOf"
+        (edited)="editCell($event)"
+      />
+    }
+  </section>
+
+  <section class="mr-panel block" aria-labelledby="ap-t">
+    <div class="head">
+      <h2 class="mr-panel__title" id="ap-t">Magias sempre preparadas</h2>
+      <span class="hint">por nível da classe</span>
+    </div>
+    <div class="groups" data-field="table_subclass.always_prepared">
+      @for (g of d.alwaysPrepared; track g.level) {
+        <div class="group" role="group" [attr.aria-label]="'Nível ' + g.level">
+          <p class="group__level">Nível {{ g.level }}</p>
+          <div class="group__spells">
+            <app-pick-list
+              [label]="'Magias do nível ' + g.level"
+              addLabel="Adicionar magia"
+              [options]="spellOptions()"
+              [values]="g.spells"
+              (added)="addSpell(g.level, $event)"
+              (removed)="removeSpell(g.level, $event)"
+            />
+          </div>
+          <button type="button" class="link" (click)="removeGroup(g.level)">Tirar o nível {{ g.level }}</button>
+        </div>
+      }
+    </div>
+    <app-field-note [issues]="issuesOf('table_subclass.always_prepared')" />
+    @if (freeLevels().length > 0) {
+      <div class="addlevel">
+        <app-select-field label="Adicionar nível" [options]="freeLevels()" value="" placeholder="Escolha o nível…" (valueChange)="addGroup($event)" />
+      </div>
+    }
+    <p class="hint">As sempre preparadas não gastam o limite de magias preparadas. A escolha mostra as magias do SRD e as da mesa.</p>
+  </section>
+
+  <!-- Seam for slice 10.11c: the "Para os jogadores" panel with the switch "Disponível para os jogadores" (TableEntry.off) goes here,
+       before the save bar, as in E10-02 state 4. The subclass body never carries it: the switch is the entry's. -->
+
+  <app-editor-bar saveLabel="Salvar subclasse" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+</div>

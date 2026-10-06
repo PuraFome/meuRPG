@@ -1,0 +1,135 @@
+@if (tableIssues().length > 0) {
+  @for (m of tableIssues(); track m) {
+    <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+  }
+}
+<div class="scroll" role="region" tabindex="0" [attr.aria-label]="label()" [attr.data-field]="path() || null">
+  <table class="g" (keydown)="key($event)">
+    <thead>
+      <tr>
+        <th scope="col" class="g__level">Nível</th>
+        @if (showBonus()) {
+          <th scope="col">Bônus</th>
+        }
+        @if (showFeatures()) {
+          <th scope="col" class="g__features">Características</th>
+        }
+        @if (columns().cantrips) {
+          <th scope="col">Truques</th>
+        }
+        @if (columns().spells) {
+          <th scope="col">Magias</th>
+        }
+        @for (c of circles(); track c) {
+          <th scope="col" [attr.aria-label]="'Espaços de ' + (c + 1) + 'º círculo'">{{ c + 1 }}º</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of rows(); track r.level; let i = $index) {
+        <tr>
+          <th scope="row" class="g__level">{{ r.level }}</th>
+          @if (showBonus()) {
+            <td>
+              <input
+                class="cell"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="—"
+                data-col="bonus"
+                [attr.data-row]="i"
+                [attr.data-field]="r.base + '.prof_bonus'"
+                [attr.aria-label]="cellLabel(r.level, 'profBonus')"
+                [attr.aria-invalid]="bad(r.base, 'prof_bonus') ? 'true' : null"
+                [class.cell--bad]="bad(r.base, 'prof_bonus')"
+                [value]="bonusText(r.row.profBonus)"
+                (input)="edit($event, r.level, 'profBonus')"
+              />
+            </td>
+          }
+          @if (showFeatures()) {
+            <td class="g__features">
+              <div class="chips">
+                @for (c of r.chips; track c.id) {
+                  @if (c.locked) {
+                    <span class="chip chip--locked"><mat-icon aria-hidden="true">lock</mat-icon>{{ c.label }}</span>
+                  } @else {
+                    <button type="button" class="chip" (click)="chipOpened.emit(c.id)">{{ c.label }}</button>
+                  }
+                }
+                <button type="button" class="plus" [attr.aria-label]="'Adicionar característica no nível ' + r.level" (click)="featureAdded.emit(r.level)">
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                </button>
+              </div>
+            </td>
+          }
+          @if (columns().cantrips) {
+            <td>
+              <input
+                class="cell"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="—"
+                data-col="cantrips"
+                [attr.data-row]="i"
+                [attr.data-field]="r.base + '.cantrips_known'"
+                [attr.aria-label]="cellLabel(r.level, 'cantrips')"
+                [attr.aria-invalid]="bad(r.base, 'cantrips_known') ? 'true' : null"
+                [class.cell--bad]="bad(r.base, 'cantrips_known')"
+                [value]="numText(r.row.cantrips)"
+                (input)="edit($event, r.level, 'cantrips')"
+              />
+            </td>
+          }
+          @if (columns().spells) {
+            <td>
+              <input
+                class="cell"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="—"
+                data-col="spells"
+                [attr.data-row]="i"
+                [attr.data-field]="r.base + '.spells_known'"
+                [attr.aria-label]="cellLabel(r.level, 'spells')"
+                [attr.aria-invalid]="bad(r.base, 'spells_known') ? 'true' : null"
+                [class.cell--bad]="bad(r.base, 'spells_known')"
+                [value]="numText(r.row.spells)"
+                (input)="edit($event, r.level, 'spells')"
+              />
+            </td>
+          }
+          @for (c of circles(); track c) {
+            <td>
+              <input
+                class="cell"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="—"
+                [attr.data-col]="'slot' + c"
+                [attr.data-row]="i"
+                [attr.data-field]="r.base + '.slots[' + c + ']'"
+                [attr.aria-label]="cellLabel(r.level, 'slot', c)"
+                [attr.aria-invalid]="bad(r.base, 'slots[' + c + ']') ? 'true' : null"
+                [class.cell--bad]="bad(r.base, 'slots[' + c + ']')"
+                [value]="numText(r.row.slots[c])"
+                (input)="edit($event, r.level, 'slot', c)"
+              />
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+@if (problems().length > 0) {
+  <ul class="problems">
+    @for (p of problems(); track $index) {
+      <li class="inline-issue"><mat-icon aria-hidden="true">warning</mat-icon><span><strong>{{ p.where }}.</strong> {{ p.text }}</span></li>
+    }
+  </ul>
+}

@@ -1,0 +1,208 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// The grid has a fixed height (about 7 rows) and scrolls inside itself: the page does not move.
+.scroll {
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.g {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 16px;
+
+  th,
+  td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--mr-rule);
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--mr-surface);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mr-ink);
+    border-bottom: 1px solid var(--mr-line);
+  }
+
+  tbody tr:last-child th,
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+// The level stays at the left when the grid scrolls sideways.
+.g__level {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 56px;
+  min-width: 56px;
+  background: var(--mr-surface);
+  font-weight: 800;
+  text-align: left !important;
+  padding-left: 14px !important;
+}
+
+thead .g__level {
+  z-index: 3;
+}
+
+.g__features {
+  min-width: 220px;
+  text-align: left !important;
+}
+
+.cell {
+  box-sizing: border-box;
+  width: 56px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 4px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+
+  &::placeholder {
+    color: var(--mr-ink-muted);
+    font-weight: 400;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+}
+
+.cell--bad {
+  border-color: var(--mr-danger-ink);
+  border-width: 2px;
+  background: var(--mr-danger-surface);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mr-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.chip--locked {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+
+  &:hover {
+    border-color: var(--mr-control-line);
+  }
+}
+
+// A 44 px target around a 28 px "+".
+.plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mr-accent-text);
+  cursor: pointer;
+
+  .mat-icon {
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 4px;
+    border: 1px solid var(--mr-control-line);
+    border-radius: 50%;
+    font-size: 18px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -4px;
+    border-radius: 50%;
+  }
+}
+
+.problems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--mr-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inline-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-top: 1px;
+  }
+}
