@@ -1,0 +1,140 @@
+:host {
+  display: block;
+}
+
+.wf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.wf__title {
+  padding: 0;
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.wf__help {
+  margin: -2px 0 var(--mr-space-1);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.wf__note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.wf__note--bad {
+  color: var(--mr-danger-ink);
+}
+
+.opt {
+  box-sizing: border-box;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.opt--on {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+// The head is the label of the radio, which sits under the whole row (keys, group and name for free).
+.opt__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  // 41 px inside the 1.5 px border of the card: 44 px in all, like the rows of "Ao resolver".
+  min-height: 41px;
+  padding: 4px 14px;
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:has(input:focus-visible) {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.opt__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: var(--mr-surface);
+}
+
+.opt--on .opt__dot {
+  border-color: var(--mr-accent);
+  background: radial-gradient(circle, var(--mr-accent) 0 5px, var(--mr-surface) 6px);
+}
+
+.opt__title {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.opt__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: 0 14px 14px;
+}
+
+.wf__field {
+  width: 100%;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.limits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 160px));
+  gap: var(--mr-space-3);
+}
+
+.wf__num {
+  min-width: 0;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.field-bad {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+@media (max-width: 767.98px) {
+  .opt__head {
+    min-height: 45px;
+  }
+}
+
+@media (max-width: 374.98px) {
+  .limits {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

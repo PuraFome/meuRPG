@@ -1,0 +1,61 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.part__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.part__help {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.part__bad {
+  margin: 0;
+  font-size: 14px;
+}
+
+.full {
+  width: 100%;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.cipher {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 30px;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.field-bad {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+.field-error {
+  color: var(--mr-danger-ink);
+}

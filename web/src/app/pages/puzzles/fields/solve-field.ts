@@ -143,7 +143,7 @@ type Load = 'loading' | 'ready' | 'error';
           <mat-hint align="end">{{ length(solve().message) }}&nbsp;de&nbsp;{{ max }}</mat-hint>
         }
       </mat-form-field>
-      <p class="sf__note">O mestre é sempre avisado. O app não rola dados.</p>
+      <p class="sf__note">O mestre é sempre avisado. Resolver não rola dado nenhum.</p>
     </section>
   `,
   styleUrl: './solve-field.scss',

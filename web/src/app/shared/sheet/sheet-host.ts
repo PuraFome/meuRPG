@@ -23,6 +23,8 @@ export function openSheet<C, D, R>(
     labelledBy?: string;
     width?: string;
     tall?: boolean;
+    /** The bottom sheet's own panel class, instead of `mr-sheet` / `mr-sheet-tall` (a sheet with its own distance from the top). */
+    panelClass?: string;
     /** An alert that must be answered (Escudo): Esc and the backdrop do not close it. */
     alert?: boolean;
     /** A form's first field (a CSS selector inside the sheet), instead of the title. */
@@ -41,7 +43,7 @@ export function openSheet<C, D, R>(
         // The title first (README-A): a stray Enter can't roll or confirm.
         // An alert starts on its safe button (`data-initial-focus`), the others on the title.
         autoFocus: config.alert ? '[data-initial-focus]' : (config.focus ?? 'first-heading'),
-        panelClass: config.tall ? 'mr-sheet-tall' : 'mr-sheet',
+        panelClass: config.panelClass ?? (config.tall ? 'mr-sheet-tall' : 'mr-sheet'),
         disableClose: config.alert,
         restoreFocus: config.restoreFocus ?? true,
         // MatBottomSheet hands its whole config to the CDK dialog, which knows

@@ -69,6 +69,8 @@ export class GalleryCard {
   readonly campaignId = input.required<string>();
   /** Below the fold, the thumbnail loads lazily. */
   readonly eager = input(false);
+  /** For an image made by an adjustment: the name of the one it came from ("Editada de Imagem 1"). */
+  readonly parentName = input('');
 
   readonly view = output<void>();
   readonly renamed = output<GalleryImage>();

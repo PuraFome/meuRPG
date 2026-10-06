@@ -25,6 +25,14 @@ export interface ImagePickerData {
   /** Images that are the background of a hidden map, with the map's name. */
   readonly hiddenMapImages: ReadonlyMap<string, string>;
   readonly emptyError: string;
+  /**
+   * Confirming a picture that shows the whole map (`GalleryImage.shows_whole_map`: a textured map and every edit of it, RN-10) asks first,
+   * in place: the players would see the rooms they have not found. The session's "Mostrar uma imagem aos jogadores" sets it. The label is
+   * the button that goes on ("Mostrar mesmo assim"); "Voltar" shows nothing.
+   */
+  readonly wholeMapConfirmLabel?: string;
+  /** Images that are not offered at all (the portraits a request made from a map would be refused). */
+  readonly excluded?: ReadonlySet<string>;
   /** A line under the title ("Toque numa imagem da galeria da campanha."). */
   readonly lead?: string;
   /** The icon of the line under the grid (default: the eye). */
@@ -68,8 +76,13 @@ export class ImagePickerDialog {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
+  protected readonly noneExcluded: ReadonlySet<string> = new Set();
   protected readonly selectedId = signal<string | null>(this.data.current?.id ?? null);
   protected readonly picked = signal<GalleryImage | null>(null);
+  /** The images of the grid that show the whole map: they carry the tag "Mapa inteiro" (a picture of the whole map is not like the others). */
+  private readonly wholeMapIds = signal<ReadonlySet<string>>(new Set());
+  /** The in-place question over the footer ("Mostrar o mapa inteiro?"). */
+  protected readonly asking = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
 
@@ -77,6 +90,9 @@ export class ImagePickerDialog {
     const tags = new Map<string, PickerTag>();
     for (const id of this.data.hiddenMapImages.keys()) {
       tags.set(id, { icon: 'visibility_off', text: 'Fundo de mapa escondido' });
+    }
+    for (const id of this.wholeMapIds()) {
+      tags.set(id, { icon: 'map', text: 'Mapa inteiro' });
     }
     if (this.data.current) {
       tags.set(this.data.current.id, { icon: 'cast', text: this.data.currentTag });
@@ -108,7 +124,8 @@ export class ImagePickerDialog {
   }
 
   /** The gallery arrived: focus goes to the checked tile, or the first. */
-  protected onLoaded(): void {
+  protected onLoaded(images: readonly GalleryImage[] = []): void {
+    this.wholeMapIds.set(new Set(images.filter((i) => i.showsWholeMap).map((i) => i.id)));
     afterNextRender(
       () =>
         this.host.nativeElement.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus(),
@@ -127,12 +144,39 @@ export class ImagePickerDialog {
     if (this.isCurrent() || this.busy()) {
       return;
     }
+    if (this.data.wholeMapConfirmLabel && image.showsWholeMap && !this.asking()) {
+      this.ask();
+      return;
+    }
+    await this.submit(image);
+  }
+
+  /** The question: the two answers replace the footer's buttons, and the focus is on "Voltar". */
+  private ask(): void {
+    this.asking.set(true);
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(), { injector: this.injector });
+  }
+
+  protected back(): void {
+    this.asking.set(false);
+    this.error.set(null);
+  }
+
+  protected async confirmWhole(): Promise<void> {
+    const image = this.picked();
+    if (image && !this.busy()) {
+      await this.submit(image);
+    }
+  }
+
+  private async submit(image: GalleryImage): Promise<void> {
     this.busy.set(true);
     try {
       await this.data.submit(image);
       this.ref.close(true);
     } catch (err) {
       this.busy.set(false);
+      this.asking.set(false);
       this.error.set(this.data.errorMessage(err));
     }
   }

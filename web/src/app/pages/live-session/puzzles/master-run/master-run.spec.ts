@@ -16,7 +16,7 @@ import {
 import { textOf } from '../../../../core/format/text-testing';
 import { MapsClient } from '../../../../core/maps/maps-client';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
-import { NOW, FakePuzzlesClient, at, lightsPuzzle, lockPuzzle, masterRun, pillarsPuzzle, playerRun } from '../../../../core/puzzles/puzzles-testing';
+import { NOW, FakePuzzlesClient, at, cipherPuzzle, lightsPuzzle, lockPuzzle, masterRun, pillarsPuzzle, playerRun, riddlePuzzle, sequencePuzzle } from '../../../../core/puzzles/puzzles-testing';
 import { MasterRun } from './master-run';
 
 @Component({
@@ -302,4 +302,157 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       expect(button(el, 'Gerar outro começo')).toBeTruthy();
     });
   });
+
+  describe('the tries for a hint by a skill check', () => {
+    it('lists who rolled, what, and whether it passed: the last three, newest last', async () => {
+      const roll = (face: number, total: number) => ({ diceCount: 1, diceSides: 20, faces: [face], modifier: total - face, total });
+      const { el } = await render(
+        liveLights({
+          hintTries: [
+            { characterName: 'Toren', hint: 1, passed: false, roll: roll(4, 7) },
+            { characterName: 'Brisa', hint: 1, passed: true, roll: roll(16, 19) },
+            { characterName: 'Lia', hint: 2, passed: false, roll: roll(2, 5) },
+            { characterName: 'Sálvia', hint: 2, passed: true, roll: roll(18, 18) },
+          ],
+        }),
+      );
+      const lines = Array.from(el.querySelectorAll('.facts__line--quiet')).map((l) => textOf(l));
+      expect(lines).toContain('Brisa rolou 19 (d20: 16) para a dica 1: passou.');
+      expect(lines).toContain('Lia rolou 5 (d20: 2) para a dica 2: não passou.');
+      expect(lines).toContain('Sálvia rolou 18 para a dica 2: passou.');
+      expect(lines.join(' ')).not.toContain('Toren rolou');
+      // The DC is the master's own: it is on his puzzle and never on this line.
+      expect(el.textContent).not.toMatch(/\bCD\b/);
+    });
+  });
+
+  describe('Enigma (E10-12 state 5)', () => {
+    const riddle = (extra: Parameters<typeof masterRun>[2] = {}, onWrong: object = { attemptsPerPlayer: 3 }) => {
+      const puzzle = riddlePuzzle('r', 'A porta da Cripta pergunta', { onWrong });
+      const run = playerRun(puzzle, {
+        limits: { attemptsPerPlayer: 3, attemptsLeft: 3, maxMoves: 0, movesMade: 0, timeLimitSeconds: 0, secondsLeft: 0 },
+        lastMove: { characterName: 'Toren', move: { kind: { case: 'riddle', value: { answer: 'escuridão' } } }, wrong: true, changed: [], at: at(8) },
+      });
+      return masterRun(puzzle, PuzzleRunStatus.SHOWN, {
+        run,
+        lastMove: run.lastMove,
+        movesMade: 1,
+        attempts: [
+          { characterName: 'Toren', wrong: 1, left: 2 },
+          { characterName: 'Brisa', wrong: 0, left: 3 },
+          { characterName: 'Sálvia', wrong: 0, left: 3 },
+        ],
+        ...extra,
+      });
+    };
+
+    it('shows the riddle, the accepted answers with "Só você vê", the answer typed and each one\'s attempts', async () => {
+      const { el } = await render(riddle());
+      expect(textOf(el.querySelector('.rc__tags'))).toContain('Enigma');
+      expect(el.querySelector('.rc__body')?.textContent).toContain('Moro embaixo de cada passo seu');
+      const answers = el.querySelector('.answers')!;
+      expect(Array.from(answers.querySelectorAll('li')).map((l) => l.textContent)).toEqual(['sombra', 'a sombra']);
+      expect(textOf(answers.closest('.part'))).toContain('Respostas aceitas visibility_off Só você vê');
+      expect(textOf(el.querySelector('.facts'))).toContain('Última jogada: Toren tentou “escuridão”: errou, há 8 s. Tentativas de Toren: 2 de 3.');
+      expect(textOf(el.querySelector('.facts'))).toContain('Toren 2 de 3 · Brisa 3 de 3 · Sálvia 3 de 3');
+      // The master does not play: no field, no "Responder".
+      expect(el.querySelector('input, form')).toBeNull();
+    });
+
+    it('is solved: who solved it, and the buttons stay', async () => {
+      const done = riddle({ status: PuzzleRunStatus.SOLVED });
+      const { el } = await render({ ...done, run: { ...done.run!, solved: true, solvedByName: 'Brisa', solvedAt: at(60) } } as MasterPuzzleRun);
+      expect(el.querySelector('.mr-notice--success')?.textContent).toContain('Brisa resolveu “A porta da Cripta pergunta” às');
+    });
+  });
+
+  describe('Sequência (E10-12 state 5)', () => {
+    const sequence = (extra: Parameters<typeof masterRun>[2] = {}, runExtra: object = {}) => {
+      const puzzle = sequencePuzzle('s', 'Os sinos do Salão do trono', { onWrong: { trap: { mapId: 'm1', pointId: 't1' } } });
+      const run = playerRun(puzzle, {
+        sequence: { totalSteps: 6, plays: 2, playing: false, shown: [], stepMs: 1200, nextInMs: 0 },
+        lastMove: { characterName: 'Lia', move: { kind: { case: 'sequence', value: { bell: 2 } } }, wrong: true, step: 4, changed: [], at: at(8), trapName: 'Dardos envenenados' },
+        ...runExtra,
+      });
+      return masterRun(puzzle, PuzzleRunStatus.SHOWN, { run, lastMove: run.lastMove, movesMade: 5, ...extra });
+    };
+
+    it('shows the whole sequence with "Só você vê", the step that was wrong, the plays and the trap that fired', async () => {
+      const { el } = await render(sequence());
+      const strip = Array.from(el.querySelectorAll('app-sequence-strip li')).map((i) => i.getAttribute('aria-label'));
+      expect(strip).toEqual(['Passo 1: Sino redondo', 'Passo 2: Sino alto', 'Passo 3: Sino pequeno', 'Passo 4: Sino redondo', 'Passo 5: Sino largo', 'Passo 6: Sino alto']);
+      expect(textOf(el.querySelector('.part'))).toContain('A sequência visibility_off Só você vê');
+      expect(textOf(el.querySelector('.facts'))).toContain('Última jogada: Lia errou no passo 4. A tentativa recomeçou, há 8 s.');
+      expect(textOf(el.querySelector('.facts'))).toContain('Os jogadores já viram a sequência tocar 2 vezes.');
+      expect(textOf(el.querySelector('.mr-notice--warning'))).toContain('A armadilha disparou: Dardos envenenados. Foi o erro de Lia.');
+    });
+
+    it('plays it for the players with "Tocar a sequência", and the answer is the puzzle as it stands', async () => {
+      const played = sequence();
+      const { el, settle, host } = await render(played, (a) => a.runResults.set('s', { ...played, run: { ...played.run!, sequence: { ...played.run!.sequence!, plays: 3 } } } as MasterPuzzleRun));
+      button(el, 'Tocar a sequência').click();
+      await settle();
+      expect(api.calls.find((c) => c[0] === 'playSequence')).toEqual(['playSequence', 'camp-1', 's']);
+      expect(host.updates[0].run?.sequence?.plays).toBe(3);
+    });
+
+    it('says when it has not been played', async () => {
+      const never = await render(sequence({}, { sequence: { totalSteps: 6, plays: 0, playing: false, shown: [], stepMs: 1200, nextInMs: 0 }, lastMove: undefined }));
+      expect(textOf(never.el.querySelector('.facts'))).toContain('Os jogadores ainda não viram a sequência tocar');
+    });
+
+    it('says when it is playing now', async () => {
+      const now = await render(sequence({}, { sequence: { totalSteps: 6, plays: 1, playing: true, shown: [0, 1], stepMs: 1200, nextInMs: 800 } }));
+      expect(textOf(now.el.querySelector('.facts'))).toContain('Os jogadores estão vendo a sequência tocar agora.');
+    });
+
+    it('cannot play a stopped or solved sequence: the button is off and says nothing happens', async () => {
+      const stopped = sequence({ stopReason: PuzzleStopReason.MOVES }, { stopped: true });
+      const { el } = await render(stopped);
+      const play = button(el, 'Tocar a sequência');
+      expect(play.getAttribute('aria-disabled') ?? String(play.disabled)).toMatch(/true/);
+      play.click();
+      expect(api.calls.some((c) => c[0] === 'playSequence')).toBe(false);
+    });
+
+    it('says the refusal in words when the server refuses to play it', async () => {
+      const { el, settle } = await render(sequence(), (a) => {
+        a.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.STOPPED }) }]);
+      });
+      button(el, 'Tocar a sequência').click();
+      await settle();
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('O quebra-cabeça parou');
+    });
+  });
+
+  describe('Cifra (E10-12 state 5)', () => {
+    const cipher = () => {
+      const puzzle = cipherPuzzle('c', 'A carta do Capitão', { onWrong: { maxMoves: 10, timeLimitSeconds: 300 } });
+      const run = playerRun(puzzle, {
+        limits: { attemptsPerPlayer: 0, attemptsLeft: 0, maxMoves: 10, movesMade: 7, timeLimitSeconds: 300, secondsLeft: 192, deadline: timestampAt(192) },
+        lastMove: { characterName: 'Sálvia', move: { kind: { case: 'cipher', value: { text: 'o tesouro esta sobre o altar' } } }, wrong: true, changed: [], at: at(5) },
+      });
+      return masterRun(puzzle, PuzzleRunStatus.SHOWN, { run, lastMove: run.lastMove, movesMade: 7 });
+    };
+
+    it('shows the letter as the players read it, the plain message with "Só você vê", the message typed, and the counters', async () => {
+      const { el } = await render(cipher());
+      expect(el.querySelector('.cipher')?.textContent).toBe('R WHVRXUR HVWD VRE R DOWDU');
+      expect(textOf(el.querySelector('.part__label--plain'))).toContain('A mensagem: O tesouro está sob o altar visibility_off Só você vê');
+      expect(textOf(el.querySelector('.facts'))).toContain('Última jogada: Sálvia digitou “o tesouro esta sobre o altar”: errou, há 5 s.');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Jogadas 7 de 10');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Tempo 3:12 de 5:00');
+    });
+
+    it('says a limit stopped it by its reason', async () => {
+      const stopped = { ...cipher(), stopReason: PuzzleStopReason.MOVES, run: { ...cipher().run!, stopped: true } } as MasterPuzzleRun;
+      const { el } = await render(stopped);
+      expect(el.querySelector('.mr-notice--warning')?.textContent).toContain('O limite de jogadas foi atingido');
+    });
+  });
 });
+
+/** A timestamp `seconds` after the spec's clock, for a deadline. */
+function timestampAt(seconds: number) {
+  return at(-seconds);
+}

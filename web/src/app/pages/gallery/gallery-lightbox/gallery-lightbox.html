@@ -11,6 +11,12 @@
       <div class="lightbox__title">
         <h2 id="gallery-lightbox-title">{{ img.name }}</h2>
         <p class="lightbox__meta">{{ meta() }}</p>
+        @if (img.generated) {
+          <p class="lightbox__made">
+            <span class="mr-tag"><mat-icon aria-hidden="true">auto_awesome</mat-icon>Gerada por IA</span>
+            <button matButton type="button" class="lightbox__adjust" (click)="adjust.emit(img)">Pedir um ajuste</button>
+          </p>
+        }
       </div>
       <div class="lightbox__actions">
         <button

@@ -60,6 +60,8 @@ export class RollPicker {
   readonly compact = input(false);
   /** The label stays for screen readers but is not drawn: a page that already says it in its own heading. */
   readonly labelHidden = input(false);
+  /** The typed number is the whole answer (no bonus to add): its total box would only say it twice, so it stays for a screen reader alone. */
+  readonly hideTotal = input(false);
   /** No empty result box while the number is not typed: only the status text for a screen reader. */
   readonly hideWait = input(false);
   /** Typing mode, two-way: the sheet reads it to change its title. */

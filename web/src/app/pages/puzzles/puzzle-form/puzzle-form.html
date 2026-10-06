@@ -87,6 +87,23 @@
               @case ('pillars') {
                 <app-pillars-form [draft]="draft()" [preview]="preview()" (patch)="patch($event)" (again)="again()" />
               }
+              @case ('riddle') {
+                <app-riddle-form [draft]="draft()" [riddleError]="riddleError()" [answersError]="answersError()" [answerRows]="answerRows()" (patch)="patch($event)" />
+              }
+              @case ('sequence') {
+                <app-sequence-form [draft]="draft()" [error]="sequenceError()" (patch)="patch($event)" />
+              }
+              @case ('cipher') {
+                <app-cipher-form
+                  [campaignId]="campaignId"
+                  [draft]="draft()"
+                  [messageError]="cipherMessageError()"
+                  [keyError]="cipherKeyError()"
+                  [clueError]="serverErrors().cipherKey ?? ''"
+                  [cipherable]="cipherable()"
+                  (patch)="patch($event)"
+                />
+              }
             }
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" [class.field-bad]="clueError()">
@@ -105,6 +122,10 @@
 
             <app-hints-field [hints]="draft().hints" [errors]="hintErrors()" (hintsChange)="patch({ hints: $event })" />
 
+            <app-hint-check-field [campaignId]="campaignId" [check]="draft().hintCheck" [error]="checkError()" (checkChange)="patch({ hintCheck: $event })" />
+
+            <app-parts-field [campaignId]="campaignId" [parts]="draft().parts" [errors]="partsErrors()" [error]="partsError()" (partsChange)="patch({ parts: $event })" />
+
             <app-solve-field
               [campaignId]="campaignId"
               [solve]="draft().solve"
@@ -112,6 +133,8 @@
               [messageError]="messageError()"
               (solveChange)="patch({ solve: $event })"
             />
+
+            <app-wrong-field [campaignId]="campaignId" [judged]="judged()" [wrong]="draft().wrong" [error]="wrongError()" [target]="wrongField()" [kind]="draft().kind" (wrongChange)="patch({ wrong: $event })" />
 
             @if (notice()) {
               <div class="mr-notice mr-notice--danger" role="alert">

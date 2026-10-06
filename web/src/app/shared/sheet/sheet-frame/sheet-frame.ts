@@ -36,7 +36,7 @@ import { MatIconModule } from '@angular/material/icon';
       @if (subtitle()) {
         <p class="frame__sub">{{ subtitle() }}</p>
       }
-      <div #body class="frame__body" [class.frame__body--scrolls]="scrolls()"><ng-content /></div>
+      <div #body class="frame__body" [class.frame__body--scrolls]="scrolls()" [attr.tabindex]="focusableBody() && scrolls() ? 0 : null"><ng-content /></div>
       <div class="frame__foot"><ng-content select="[foot]" /></div>
     </div>
   `,
@@ -55,6 +55,9 @@ export class SheetFrame {
   readonly closable = input(true);
   /** A fixed height (a CSS length) for a dialog whose list filters: it does not jump as the results change. */
   readonly height = input('');
+
+  /** A body that scrolls and holds nothing to focus (a question whose answers are in the footer) is a tab stop itself, so the keyboard can scroll it. */
+  readonly focusableBody = input(false);
 
   readonly closed = output<void>();
 
@@ -84,6 +87,12 @@ export class SheetFrame {
         }
       }
     });
+  }
+
+  /** A question that opens under the picture is brought into view with its buttons. */
+  scrollToEnd(): void {
+    const el = this.body().nativeElement;
+    el.scrollTop = el.scrollHeight;
   }
 
   /** An error opens at the top of the scrolling body, where it is seen. */
