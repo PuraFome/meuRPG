@@ -99,6 +99,10 @@ const (
 	eventFamiliarSight      = "familiar_sight"
 )
 
+// The kind of Etapa 10 (migration 00121): a move opened a closed door (MR-010,
+// RN-26). Written by this package, in the move's transaction.
+const eventDoorOpened = "door_opened"
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).

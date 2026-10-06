@@ -200,6 +200,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			if ev.MoveID != "" {
 				byMove[ev.MoveID] = entry
 			}
+		case eventDoorOpened:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED
 		case eventCombatantHiddenSet:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
 		case eventActionTaken:
@@ -426,6 +428,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
 		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
+		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:
 		out.NowHidden = e.ev.NowHidden
 		out.ActorId, out.ActorLabel = "", ""

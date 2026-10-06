@@ -678,7 +678,7 @@ enum MapPointKind {
   MAP_POINT_KIND_LIGHT = 6;
 }
 
-// MapLayer is one of the four layers painted on a map's grid.
+// MapLayer is one of the five layers painted on a map's grid.
 enum MapLayer {
   MAP_LAYER_UNSPECIFIED = 0;
   // "Terreno difícil": one bit a square (0 clear, 1 difficult).
@@ -689,6 +689,35 @@ enum MapLayer {
   MAP_LAYER_COVER = 3;
   // "Luz": two bits a square, a LightLevel (0 not painted, 1 to 3).
   MAP_LAYER_LIGHT = 4;
+  // "Portas": four bits a square, a DoorState (0 none, 1 open, 2 closed, 3
+  // locked, 4 barred, 5 secret; RN-26). A closed, locked or secret door blocks
+  // movement, sight and light like a wall (a move opens a closed one); a barred
+  // one blocks movement only. A player never receives the layer as painted:
+  // see GetMapLayersResponse.doors.
+  MAP_LAYER_DOORS = 5;
+}
+
+// DoorState is what a square of the doors layer holds (RN-26). The numbers are
+// what MapLayer.MAP_LAYER_DOORS stores and what PaintMapCellsRequest.value
+// carries for it.
+enum DoorState {
+  // No door: also what painting 0 does (it clears the square).
+  DOOR_STATE_UNSPECIFIED = 0;
+  // "Aberta": nothing blocks.
+  DOOR_STATE_OPEN = 1;
+  // "Fechada": blocks sight, light and cover like a wall; a creature that
+  // moves into the square opens it.
+  DOOR_STATE_CLOSED = 2;
+  // "Trancada": closed and it does not open: a move that enters it stops
+  // before. A player never receives this value: it reads as CLOSED until the
+  // master opens it (the player learns it is locked by trying).
+  DOOR_STATE_LOCKED = 3;
+  // "Grade": blocks movement but not sight or light (a portcullis, bars).
+  DOOR_STATE_BARRED = 4;
+  // "Secreta": a wall to everyone who has not found it. A player never
+  // receives it, nor a door there: their wall layer has a wall on the square.
+  // Painting it CLOSED reveals it.
+  DOOR_STATE_SECRET = 5;
 }
 
 // LightLevel is how lit a square is.
@@ -1520,7 +1549,8 @@ message PaintMapCellsRequest {
   MapLayer layer = 3;
   // The value to paint: for DIFFICULT_TERRAIN and WALL, 0 clears and 1 sets; for
   // COVER, 0 none, 1 half, 2 three-quarters; for LIGHT, a LightLevel (0 clears,
-  // 1 dark, 2 dim, 3 bright).
+  // 1 dark, 2 dim, 3 bright); for DOORS, a DoorState (0 clears, 1 to 5). The
+  // master toggles a door in play the same way: painting a square OPEN or CLOSED.
   int32 value = 4;
   // The squares, 1 to 400, each inside the map's grid. A repeated square is
   // painted once.
@@ -1576,6 +1606,15 @@ message GetMapLayersResponse {
   // is kept), and the empty layers mean "nothing you know", not "nothing
   // painted". The light layer is never sent.
   bool fog_withheld = 8;
+  // The doors (a DoorState), four bits a square: square n is the low nibble of
+  // byte n/2 when n is even and the high nibble when odd (row-major, n = row ×
+  // grid_columns + col); ceil(squares/2) bytes, empty when no door is painted.
+  // The master gets it as painted. A player gets what they know of it: LOCKED
+  // reads as CLOSED (they find out by trying) and a SECRET door is left out
+  // (the wall layer has a wall there instead), and on a map with the fog of war
+  // only the squares they see now or remember. Nothing a player receives says a
+  // door is locked or secret before they try it or the master reveals it.
+  bytes doors = 9;
 }
 
 // SetMapFogRequest carries the fog settings to change. Each field set replaces

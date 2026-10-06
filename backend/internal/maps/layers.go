@@ -1,9 +1,11 @@
 package maps
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -20,15 +22,19 @@ import (
 // The painted layers of a map and its fog of war settings (MR-034, MR-036,
 // Etapa 9, D2 and D6).
 //
-// Four layers sit on a map's grid: difficult terrain and walls (one bit a
-// square), cover (two bits: none, half, three-quarters) and light (two bits: not
-// painted, dark, dim, bright). Package rules/grid owns the byte layout; this file
+// Five layers sit on a map's grid: difficult terrain and walls (one bit a
+// square), cover (two bits: none, half, three-quarters), light (two bits: not
+// painted, dark, dim, bright) and doors (four bits: none, open, closed, locked,
+// barred, secret; RN-26). Package rules/grid owns the byte layout; this file
 // stores the bytes (table map_layers, one row a map, and a layer with nothing
 // painted is NULL) and decides who reads what:
 //
-//   - the master reads all four;
-//   - a player reads the walls, the difficult terrain and the cover of a map
-//     they see, because those are things you can see, but never the light;
+//   - the master reads all five, as painted;
+//   - a player reads the walls, the difficult terrain, the cover and the doors of
+//     a map they see, because those are things you can see, but never the light,
+//     and the doors as they know them: a locked door reads closed (they learn it
+//     is locked by trying) and a secret door is no door but a wall (the walls
+//     layer they get has one there, the doors layer has nothing);
 //   - while the map has the fog of war on, a player reads only the squares
 //     their character sees now or remembers, and the walls next to a seen square
 //     (fog.go says which; GetMapLayers answers fog_withheld, "this is a filtered
@@ -72,19 +78,20 @@ func gridOf(columns *int32, width, height int32) grid.Grid {
 	return grid.Grid{Columns: int(*columns), Rows: grid.RowsFor(int(*columns), int(width), int(height))}
 }
 
-// layerSet is a map's four layers, decoded.
+// layerSet is a map's five layers, decoded.
 type layerSet struct {
 	terrain *grid.Layer
 	walls   *grid.Layer
 	cover   *grid.CoverLayer
 	light   *grid.LightLayer
+	doors   *grid.DoorLayer
 }
 
 // loadLayers decodes the stored layers for the grid. A layer that is NULL or does
 // not fit the grid (bytes of another grid, which clearLayers prevents) reads as
 // nothing painted.
 func loadLayers(row mapsdb.MapLayer, g grid.Grid) layerSet {
-	set := layerSet{terrain: grid.NewLayer(g), walls: grid.NewLayer(g), cover: grid.NewCoverLayer(g), light: grid.NewLightLayer(g)}
+	set := layerSet{terrain: grid.NewLayer(g), walls: grid.NewLayer(g), cover: grid.NewCoverLayer(g), light: grid.NewLightLayer(g), doors: grid.NewDoorLayer(g)}
 	if l, err := grid.DecodeLayer(g, row.DifficultTerrain); err == nil {
 		set.terrain = l
 	}
@@ -97,7 +104,18 @@ func loadLayers(row mapsdb.MapLayer, g grid.Grid) layerSet {
 	if l, err := grid.DecodeLightLayer(g, row.Light); err == nil {
 		set.light = l
 	}
+	if l, err := grid.DecodeDoorLayer(g, row.Doors); err == nil {
+		set.doors = l
+	}
 	return set
+}
+
+// forPlayers is the layers as a player who has not found out more reads them:
+// the doors as they know them, and the secret ones as walls (RN-26). The light
+// is theirs never, so it stays out too.
+func (set layerSet) forPlayers() layerSet {
+	walls, doors := set.doors.ForPlayers(set.walls)
+	return layerSet{terrain: set.terrain, walls: walls, cover: set.cover, doors: doors}
 }
 
 // nilIfBlank stores a layer with nothing painted as NULL, so "empty" has one
@@ -135,6 +153,7 @@ func (s *Service) PaintMapCells(
 
 	var revision, changed int32
 	var mapRow mapsdb.Map
+	playersToo := layer != mapsv1.MapLayer_MAP_LAYER_LIGHT // whether what changed is something the players read
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		changed = 0
@@ -164,25 +183,32 @@ func (s *Service) PaintMapCells(
 			return fmt.Errorf("read the layers: %w", err)
 		}
 		set := loadLayers(stored, g)
+		asPlayersRead := playersRead(set)
 		for _, sq := range squares {
 			if paint(set, layer, int(sq.GetCol()), int(sq.GetRow()), value) {
 				changed++
 			}
 		}
+		// Locking or unlocking a door, or painting a secret door where a wall is, changes
+		// nothing a player reads (a locked door reads closed, a secret one is a wall):
+		// like the light, it stays out of the number they see and out of their hints (RN-10).
+		playersToo = layer != mapsv1.MapLayer_MAP_LAYER_LIGHT &&
+			(layer != mapsv1.MapLayer_MAP_LAYER_DOORS || !bytes.Equal(asPlayersRead, playersRead(set)))
 		revision = mapRow.LayersRevision + mapRow.LightRevision
 		if changed == 0 {
 			return nil // painting what is already there changes nothing
 		}
 		err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
 			MapID: mapID, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
-			Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Now: s.now(),
+			Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: s.now(),
 		})
 		if err != nil {
 			return fmt.Errorf("write the layers: %w", err)
 		}
 		// The light is the master's alone: it has its own counter, so the number
-		// players see does not tell them when the master paints it.
-		if layer == mapsv1.MapLayer_MAP_LAYER_LIGHT {
+		// players see does not tell them when the master paints it. A change the
+		// players cannot see (above) counts there too.
+		if !playersToo {
 			light, err := q.BumpMapLightRevision(ctx, mapID)
 			if err != nil {
 				return fmt.Errorf("bump the light's revision: %w", err)
@@ -201,9 +227,17 @@ func (s *Service) PaintMapCells(
 		return nil, s.dbError(ctx, "paint a map's squares", err)
 	}
 	if changed > 0 {
-		s.layersChanged(ctx, m.CampaignID, mapRow, layer)
+		s.layersChanged(ctx, m.CampaignID, mapRow, playersToo, layer == mapsv1.MapLayer_MAP_LAYER_LIGHT)
 	}
 	return connect.NewResponse(&mapsv1.PaintMapCellsResponse{LayersRevision: revision, Changed: changed}), nil
+}
+
+// playersRead is what the layers a player reads would say if the player read them
+// whole: the walls and the doors as they know them (locked reads closed, a secret
+// door is a wall). Two states with the same bytes look the same to every player.
+func playersRead(set layerSet) []byte {
+	p := set.forPlayers()
+	return slices.Concat(p.walls.Encode(), p.doors.Encode())
 }
 
 // checkPaint checks that a value is one the layer holds.
@@ -216,6 +250,8 @@ func checkPaint(layer mapsv1.MapLayer, value int32) error {
 		highest = int32(grid.CoverThreeQuarters)
 	case mapsv1.MapLayer_MAP_LAYER_LIGHT:
 		highest = int32(grid.Bright)
+	case mapsv1.MapLayer_MAP_LAYER_DOORS:
+		highest = int32(grid.DoorSecret)
 	default:
 		return badSpec("layer is required")
 	}
@@ -237,6 +273,11 @@ func paint(set layerSet, layer mapsv1.MapLayer, col, row int, value int32) bool 
 		was := set.cover.Get(col, row)
 		set.cover.Set(col, row, cover)
 		return was != cover
+	case mapsv1.MapLayer_MAP_LAYER_DOORS:
+		door := grid.Door(value) //nolint:gosec // G115: checkPaint kept it 0 to 5
+		was := set.doors.Get(col, row)
+		set.doors.Set(col, row, door)
+		return was != door
 	default: // light
 		light := grid.Light(value) //nolint:gosec // G115: checkPaint kept it 0 to 3
 		was := set.light.Get(col, row)
@@ -251,14 +292,20 @@ func paintBit(l *grid.Layer, col, row int, on bool) bool {
 	return was != on
 }
 
-// layersChanged tells the watchers that a map's layers changed. The master
+// layersChanged tells the watchers that a map's layers changed. playersToo says
+// the players read what changed, and seeingChanged that what the fog shows changes
+// even if they do not read it (the light). The master
 // always hears; the players only when they may read the layers (a map they see,
 // no fog) and the layer is one they read (never the light). On a fog map the
 // walls and the light decide what the players see: what each one sees, and
 // remembers, is worked out again, and `vision_changed` goes to the players it
 // changed (refreshVision); terrain and cover are theirs only on squares they
 // know, and the hint of the walls and the light covers the squares they see.
-func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, layer mapsv1.MapLayer) {
+func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, playersToo, seeingChanged bool) {
+	if fogged(mapRow) && !playersToo && !seeingChanged {
+		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) { s.publishMapChanged(campaignID, mapRow.ID, false) })
+		return // only the master's own view of the layers changed
+	}
 	if fogged(mapRow) {
 		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) {
 			s.publishMapChanged(campaignID, mapRow.ID, false)
@@ -267,7 +314,7 @@ func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow m
 		return
 	}
 	players := false
-	if layer != mapsv1.MapLayer_MAP_LAYER_LIGHT && !mapRow.FogEnabled {
+	if playersToo && !mapRow.FogEnabled {
 		current, err := s.currentMap(ctx, campaignID)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "maps: read the current map", "error", err)
@@ -433,15 +480,17 @@ func (s *Service) GetMapLayers(
 			return nil, s.dbError(ctx, "work out what a player sees", err)
 		}
 		set = filterLayers(set, pv)
-		res.DifficultTerrain, res.Wall, res.Cover = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode())
-		res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover)
+		res.DifficultTerrain, res.Wall, res.Cover, res.Doors = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode()), nilIfBlank(set.doors.Encode())
+		res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover, res.Doors)
 		res.FogWithheld = true
 		return connect.NewResponse(res), nil
 	}
-	res.DifficultTerrain, res.Wall, res.Cover = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode())
 	if v.master {
 		res.Light = nilIfBlank(set.light.Encode())
+	} else {
+		set = set.forPlayers() // a locked door reads closed and a secret one is a wall (RN-26)
 	}
+	res.DifficultTerrain, res.Wall, res.Cover, res.Doors = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode()), nilIfBlank(set.doors.Encode())
 	return connect.NewResponse(res), nil
 }
 

@@ -35,6 +35,7 @@ type content struct {
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
 	monsters      map[string]*srd51.Monster
+	magicItems    map[string]*srd51.MagicItem
 	languages     map[string]*srd51.Language
 	named         map[string]*srd51.Named
 
@@ -57,6 +58,13 @@ type content struct {
 	// monsterEntries are the creatures as the lists show them, sorted by
 	// Portuguese name.
 	monsterEntries []CreatureEntry
+	// magicItemEntries are the magic items as the lists show them, sorted by
+	// Portuguese name.
+	magicItemEntries []MagicItemEntry
+	// magicUnits are the rolling units of each rarity (MagicItemUnits).
+	magicUnits map[string][]MagicItemUnit
+	// consumables are the keys of the single-use items (effects/consumables.json).
+	consumables map[string]bool
 	// traps are the trap presets and the SRD's severity tables
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
@@ -156,6 +164,7 @@ func load(fsys fs.FS) (*content, error) {
 		equipment:      map[string]*srd51.Equipment{},
 		spells:         map[string]*srd51.Spell{},
 		monsters:       map[string]*srd51.Monster{},
+		magicItems:     map[string]*srd51.MagicItem{},
 		languages:      map[string]*srd51.Language{},
 		named:          map[string]*srd51.Named{},
 		classLevels:    map[string][]*srd51.Level{},
@@ -177,6 +186,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.checkMonsters(); err != nil {
+		return nil, err
+	}
+	if err := c.checkMagicItems(); err != nil {
 		return nil, err
 	}
 	if err := c.indexLevels(fsys); err != nil {
@@ -202,7 +214,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !c.isAttackName(k) {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -232,12 +244,16 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.loadLights(fsys); err != nil {
 		return nil, err
 	}
+	if err := c.loadMagicItemEffects(fsys); err != nil {
+		return nil, err
+	}
 	if err := c.indexCasting(); err != nil {
 		return nil, err
 	}
 	c.multiclassTable = c.findMulticlassTable()
 	c.buildCatalog(nil)
 	c.buildCreatures()
+	c.buildMagicItems()
 	return c, nil
 }
 
@@ -301,6 +317,7 @@ func (c *content) loadData(fsys fs.FS) error {
 		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
 		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
 		index(fsys, "monsters.json", func(r *srd51.Monster) string { return r.Key }, c.monsters, c.namesEN, func(r *srd51.Monster) string { return r.Name }),
+		index(fsys, "magic-items.json", func(r *srd51.MagicItem) string { return r.Key }, c.magicItems, c.namesEN, func(r *srd51.MagicItem) string { return r.Name }),
 		index(fsys, "languages.json", func(r *srd51.Language) string { return r.Key }, c.languages, c.namesEN, func(r *srd51.Language) string { return r.Name }),
 	}
 	for _, name := range []string{"damage-types.json", "magic-schools.json", "weapon-properties.json", "conditions.json"} {
@@ -360,7 +377,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json, spells.json, traps.json and lights.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json, lights.json and consumables.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -369,7 +386,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json", "traps.json", "lights.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json", "traps.json", "lights.json", "consumables.json":
 			continue
 		}
 		var f struct {

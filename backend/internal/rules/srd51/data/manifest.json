@@ -41,6 +41,10 @@
    "sha256": "ea6a58268f26f8536d049bd8cb45630280188cd07d2be8b46e0e4cbe5a44feeb"
   },
   {
+   "name": "5e-SRD-Magic-Items.json",
+   "sha256": "9a6f928cbf36b268b02e09dc116995efce8a74380df0450e197117886b64993d"
+  },
+  {
    "name": "5e-SRD-Magic-Schools.json",
    "sha256": "9901d0934c16941b871a360f1e866c7ad78679bad9126baf8a5bbd0dfee37daf"
   },
@@ -117,6 +121,10 @@
   {
    "name": "levels.json",
    "sha256": "0c6c987d66e74fbdcfa13a3f957a653f0c38d68e1d8e8dae47cb0c6e1fa06b45"
+  },
+  {
+   "name": "magic-items.json",
+   "sha256": "f151ffe23b465e0bb284dfec998159aa50c9eb402b73bb0c53f063cf6df68dc8"
   },
   {
    "name": "magic-schools.json",

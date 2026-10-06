@@ -507,6 +507,9 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 - **Dado** uma porta fechada, **quando** um personagem anda até ela, **então** ela se abre, se não estiver trancada; uma porta secreta é parede para os jogadores até eu revelá-la (RN-26).
 - **Dado** a imagem gerada, **quando** os jogadores a veem, **então** ela tem só o chão e as paredes: as portas são desenhadas por cima, pela camada, e nenhum número de sala aparece.
 
+#### Implementado
+- **A camada das portas, no servidor (fatia 10.6c, 05/10/2026).** Seis estados por quadrado, o movimento que abre a porta fechada e para na trancada, e o que o jogador sabe e nunca sabe: ver [RN-26](regras.md) e [As portas](../arquitetura.md#as-portas-etapa-10-fatia-106c); testes `TestRN10_PlayersNeverSeeASecretDoor`, `TestRN10_FogFiltersTheDoors`, `TestMR010_AMoveOpensAClosedDoor` e `TestMR010_ALockedDoorStopsTheMove`. Faltam o gerador, o editor das portas e a imagem gerada.
+
 #### Dúvidas
 - **Sala limpa (ADR-0015).** O gerador `dungeon.pl` do donjon (https://donjon.bin.sh/code/dungeon/dungeon.pl) é CC BY-NC 3.0, incompatível com a Apache 2.0 do MeuRPG. O código e os dados dele nunca são copiados. Um agente leu o programa e escreveu uma especificação do comportamento, com as nossas palavras (feita em 05/10/2026); outro agente, diferente, confere que a especificação não tem código, dado nem texto do donjon; e um terceiro, que nunca leu o programa, implementa o nosso gerador só a partir dela. A especificação e a nota de origem vão no PR do gerador.
 - A ideia de desenhar a masmorra à mão (paredes falsas, água, baús e mímicos) segue valendo para o editor do mapa; as armadilhas são a [MR-035](#mr-035-armadilhas). O gerador não põe monstros, armadilhas nem tesouros: para isso há o bestiário, os encontros e o tesouro ([MR-042](#mr-042-bestiário) a [MR-044](#mr-044-gerar-tesouro)).
@@ -920,6 +923,8 @@ Nova em 05/10/2026, como a [MR-042](#mr-042-bestiário).
 - Módulos: rules, maps, progression
 
 Nova em 05/10/2026, junto com a [MR-042](#mr-042-bestiário) e a [MR-043](#mr-043-gerar-encontros).
+
+- **Fatia 10.10a (05/10/2026):** os 362 itens mágicos do SRD 5.1 estão no conteúdo de regras (`srd51/data/magic-items.json`, nomes em português `item:<índice>`, revisão fx.12), com `Content.MagicItems()`, `MagicItem(chave)` e `MagicItemUnits(raridade)` (o que um tesouro sorteia: cada item avulso e uma unidade por família e raridade); o gerador e as telas vêm na 10.10b ([Arquitetura](../arquitetura.md#itens-mágicos)).
 
 #### Critérios de aceite
 - **Dado** o nível do grupo, **quando** peço um tesouro "individual" ou "de covil", **então** o app gera as moedas, as gemas e as obras de arte (tabelas nossas, em português) e os itens mágicos do SRD 5.1, com o nome em português e o valor em PO.

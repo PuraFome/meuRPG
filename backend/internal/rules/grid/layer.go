@@ -20,8 +20,13 @@ import (
 //     CoverLayer a Cover (0 none, 1 half, 2 three-quarters; 3 is never
 //     stored). They take ceil(squares/4) bytes. The unused bits of the last
 //     byte are 0.
+//   - A DoorLayer is four bits (a nibble) per square: square n is the low
+//     nibble of byte n/2 when n is even and the high nibble when n is odd. It
+//     holds a Door (0 none, 1 open, 2 closed, 3 locked, 4 barred, 5 secret; 6
+//     to 15 are never stored). It takes ceil(squares/2) bytes. The unused
+//     nibble of the last byte (an odd number of squares) is 0.
 //
-// A wrong length, a nonzero unused bit, or (for cover) a value of 3 is
+// A wrong length, a nonzero unused bit, or (for cover) a value of 3 (for doors, one above 5) is
 // refused when decoding: the maps module sizes every layer by the grid, so
 // any of them means the bytes belong to another grid or are damaged.
 
