@@ -121,6 +121,7 @@ function minimalDerivedSheet(): DerivedSheet {
     hover: false,
     saveActions: [],
     changedContent: [],
+    backgroundEquipmentPt: '',
   };
 }
 

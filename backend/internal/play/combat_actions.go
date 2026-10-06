@@ -308,6 +308,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 		st := &playv1.SpellTargets{
 			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
+			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 		}
 		for _, slot := range e.slots {
 			if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(st.Darts, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {

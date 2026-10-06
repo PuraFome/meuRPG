@@ -116,8 +116,11 @@ type content struct {
 	offeredBy     map[string][]string
 	archived      map[string]bool
 	spellTargets  map[string]SpellTarget
-	raceChoice    map[string][]int
-	bgEquipment   map[string]string
+	// srdTargets are the hand-written targets of some SRD spells
+	// (effects/spell_targets.json), by spell key.
+	srdTargets  map[string]SpellTarget
+	raceChoice  map[string][]int
+	bgEquipment map[string]string
 	// entryRevision is the revision of each table entry at its last change.
 	entryRevision  map[string]int
 	entryChangedAt map[string]time.Time
@@ -242,6 +245,9 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.loadSpellEffects(fsys); err != nil {
 		return nil, err
 	}
+	if err := c.loadSpellTargets(fsys); err != nil {
+		return nil, err
+	}
 	if err := c.loadTraps(fsys); err != nil {
 		return nil, err
 	}
@@ -335,6 +341,13 @@ func (c *content) loadData(fsys fs.FS) error {
 	for _, b := range c.backgrounds {
 		c.namesEN[b.Feature.Key] = b.Feature.Name
 	}
+	for _, k := range sortedKeys(c.spells) {
+		s := c.spells[k]
+		if (s.AreaType == "") != (s.AreaSizeFt == 0) ||
+			(s.AreaType != "" && (!slices.Contains([]string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}, s.AreaType) || s.AreaSizeFt < 5 || s.AreaSizeFt%5 != 0)) {
+			return fmt.Errorf("data/spells.json: %s has the area %q of %d ft", k, s.AreaType, s.AreaSizeFt)
+		}
+	}
 	for k := range c.skills {
 		c.skillOrder = append(c.skillOrder, k)
 	}
@@ -390,7 +403,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json", "traps.json", "lights.json", "consumables.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json":
 			continue
 		}
 		var f struct {
@@ -669,7 +682,12 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 			continue
 		}
 		d := c.buildSpellDetails(s, e)
-		d.Target = c.spellTargets[k]
+		// The table's spell says whom it reaches itself; an SRD spell is worked out.
+		if t, ok := c.spellTargets[k]; ok {
+			d.Target = t
+		} else {
+			d.Target = c.srdTarget(s)
+		}
 		c.spellDetails[k] = d
 	}
 	for _, a := range AllAbilities() {

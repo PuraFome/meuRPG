@@ -2343,15 +2343,29 @@ func (*ClassLevel_SubclassKey) isClassLevel_Subclass() {}
 
 func (*ClassLevel_CustomSubclassName) isClassLevel_Subclass() {}
 
-// CustomBackground is a background the player describes, for one that is
-// not in the rules content, such as the Sage.
+// CustomBackground is a background the player describes (the editor's "Outro"),
+// for one that is not in the rules content, such as the Sage. It follows the SRD
+// 5.1 rule "Customizing a Background" (question 82): a name, two skills, two
+// tools or languages in any mix, a feature and the equipment. The sheet's numbers
+// use all of it (rules.v1.DerivedSheet): the skills, the tool proficiencies, the
+// languages and the feature. What is missing shows an issue, never an error.
 type CustomBackground struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The background's name: 1 to 40 characters, one line.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Content keys of the skills it grants: at most 2, no repeats. Fewer than
 	// 2 shows an issue.
-	SkillKeys     []string `protobuf:"bytes,2,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
+	SkillKeys []string `protobuf:"bytes,2,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
+	// Content keys of the tools ("proficiency:thieves-tools") and languages
+	// ("language:elvish") it grants, in any mix: at most 2 in all, no repeats.
+	// Fewer than 2 shows an issue.
+	ProficiencyKeys []string `protobuf:"bytes,3,rep,name=proficiency_keys,json=proficiencyKeys,proto3" json:"proficiency_keys,omitempty"`
+	// The feature the player writes: a name of at most 40 characters, one line,
+	// and a text of at most 1000 characters. Both empty shows an issue.
+	FeatureName string `protobuf:"bytes,4,opt,name=feature_name,json=featureName,proto3" json:"feature_name,omitempty"`
+	FeatureText string `protobuf:"bytes,5,opt,name=feature_text,json=featureText,proto3" json:"feature_text,omitempty"`
+	// The equipment, as a text of at most 500 characters. Empty shows an issue.
+	Equipment     string `protobuf:"bytes,6,opt,name=equipment,proto3" json:"equipment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2398,6 +2412,34 @@ func (x *CustomBackground) GetSkillKeys() []string {
 		return x.SkillKeys
 	}
 	return nil
+}
+
+func (x *CustomBackground) GetProficiencyKeys() []string {
+	if x != nil {
+		return x.ProficiencyKeys
+	}
+	return nil
+}
+
+func (x *CustomBackground) GetFeatureName() string {
+	if x != nil {
+		return x.FeatureName
+	}
+	return ""
+}
+
+func (x *CustomBackground) GetFeatureText() string {
+	if x != nil {
+		return x.FeatureText
+	}
+	return ""
+}
+
+func (x *CustomBackground) GetEquipment() string {
+	if x != nil {
+		return x.Equipment
+	}
+	return ""
 }
 
 // HitPoints is how the maximum hit points were decided.
@@ -8038,11 +8080,15 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\fsubclass_key\x18\x03 \x01(\tH\x00R\vsubclassKey\x122\n" +
 	"\x14custom_subclass_name\x18\x04 \x01(\tH\x00R\x12customSubclassNameB\n" +
 	"\n" +
-	"\bsubclass\"E\n" +
+	"\bsubclass\"\xd4\x01\n" +
 	"\x10CustomBackground\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"skill_keys\x18\x02 \x03(\tR\tskillKeys\"`\n" +
+	"skill_keys\x18\x02 \x03(\tR\tskillKeys\x12)\n" +
+	"\x10proficiency_keys\x18\x03 \x03(\tR\x0fproficiencyKeys\x12!\n" +
+	"\ffeature_name\x18\x04 \x01(\tR\vfeatureName\x12!\n" +
+	"\ffeature_text\x18\x05 \x01(\tR\vfeatureText\x12\x1c\n" +
+	"\tequipment\x18\x06 \x01(\tR\tequipment\"`\n" +
 	"\tHitPoints\x12=\n" +
 	"\x06method\x18\x01 \x01(\x0e2%.meurpg.characters.v1.HitPointsMethodR\x06method\x12\x14\n" +
 	"\x05rolls\x18\x02 \x03(\x05R\x05rolls\"6\n" +

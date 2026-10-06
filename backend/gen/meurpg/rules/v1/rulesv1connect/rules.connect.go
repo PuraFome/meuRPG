@@ -60,6 +60,9 @@ const (
 	// ContentServiceGetSpellDetailsProcedure is the fully-qualified name of the ContentService's
 	// GetSpellDetails RPC.
 	ContentServiceGetSpellDetailsProcedure = "/meurpg.rules.v1.ContentService/GetSpellDetails"
+	// ContentServiceListSpellsProcedure is the fully-qualified name of the ContentService's ListSpells
+	// RPC.
+	ContentServiceListSpellsProcedure = "/meurpg.rules.v1.ContentService/ListSpells"
 	// ContentServiceListCreaturesProcedure is the fully-qualified name of the ContentService's
 	// ListCreatures RPC.
 	ContentServiceListCreaturesProcedure = "/meurpg.rules.v1.ContentService/ListCreatures"
@@ -105,6 +108,37 @@ type ContentServiceClient interface {
 	//   - `not_found`: the campaign does not exist, the caller is not a
 	//     member of it, or no spell has that key.
 	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
+	// ListSpells is the players' "Magias" page (MR-045): every spell of the table,
+	// the SRD's and the master's together, found by name and filtered by class,
+	// circle and school, sorted by Portuguese name. ListContent has the whole
+	// catalog but lets a pending member in and leaves the search and the filters to
+	// the app; this is the page's own read: the same list, the same rules, one
+	// place. A row is the light `Spell`; one spell in full is GetSpellDetails.
+	//
+	// A player never receives an archived table spell, nor an archived class's
+	// key in `class_keys`; the master receives the archived ones, with the
+	// `archived` mark (RN-23). The master's switches "Opções para os jogadores"
+	// (a later slice) leave out of a player's list what is off.
+	//
+	// `character_id` is "Só as que posso aprender": the spells on the list of one
+	// of the character's casting classes up to the highest circle that class
+	// casts (cantrips included), the lists of a table class and of a third
+	// caster's subclass too, so a multiclass character gets each class's list by
+	// its own level.
+	//
+	// Only an active member may ask: a pending member (RN-15) gets `not_found`, as
+	// for ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not an active
+	//     member of it, or `character_id` is not a character the caller may see
+	//     in it.
+	//   - `invalid_argument`: query is longer than 100 characters, a level is
+	//     not 0 to 9, a filter list has more than 20 entries, page_size is not 1
+	//     to 400, or page_token is not one this list gave for these same filters.
+	//   - `failed_precondition`: `character_id` is a character with a basic
+	//     sheet (an NPC), which has no casting classes.
+	ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error)
 	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
 	// uma criatura", the Wild Shape list, the summon choices. It filters by
 	// part of the name (Portuguese or English, ignoring case and accents), by
@@ -185,6 +219,13 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listSpells: connect.NewClient[v1.ListSpellsRequest, v1.ListSpellsResponse](
+			httpClient,
+			baseURL+ContentServiceListSpellsProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ListSpells")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		listCreatures: connect.NewClient[v1.ListCreaturesRequest, v1.ListCreaturesResponse](
 			httpClient,
 			baseURL+ContentServiceListCreaturesProcedure,
@@ -220,6 +261,7 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type contentServiceClient struct {
 	listContent      *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
 	getSpellDetails  *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
+	listSpells       *connect.Client[v1.ListSpellsRequest, v1.ListSpellsResponse]
 	listCreatures    *connect.Client[v1.ListCreaturesRequest, v1.ListCreaturesResponse]
 	getCreature      *connect.Client[v1.GetCreatureRequest, v1.GetCreatureResponse]
 	listTrapPresets  *connect.Client[v1.ListTrapPresetsRequest, v1.ListTrapPresetsResponse]
@@ -234,6 +276,11 @@ func (c *contentServiceClient) ListContent(ctx context.Context, req *connect.Req
 // GetSpellDetails calls meurpg.rules.v1.ContentService.GetSpellDetails.
 func (c *contentServiceClient) GetSpellDetails(ctx context.Context, req *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
 	return c.getSpellDetails.CallUnary(ctx, req)
+}
+
+// ListSpells calls meurpg.rules.v1.ContentService.ListSpells.
+func (c *contentServiceClient) ListSpells(ctx context.Context, req *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error) {
+	return c.listSpells.CallUnary(ctx, req)
 }
 
 // ListCreatures calls meurpg.rules.v1.ContentService.ListCreatures.
@@ -287,6 +334,37 @@ type ContentServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, the caller is not a
 	//     member of it, or no spell has that key.
 	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
+	// ListSpells is the players' "Magias" page (MR-045): every spell of the table,
+	// the SRD's and the master's together, found by name and filtered by class,
+	// circle and school, sorted by Portuguese name. ListContent has the whole
+	// catalog but lets a pending member in and leaves the search and the filters to
+	// the app; this is the page's own read: the same list, the same rules, one
+	// place. A row is the light `Spell`; one spell in full is GetSpellDetails.
+	//
+	// A player never receives an archived table spell, nor an archived class's
+	// key in `class_keys`; the master receives the archived ones, with the
+	// `archived` mark (RN-23). The master's switches "Opções para os jogadores"
+	// (a later slice) leave out of a player's list what is off.
+	//
+	// `character_id` is "Só as que posso aprender": the spells on the list of one
+	// of the character's casting classes up to the highest circle that class
+	// casts (cantrips included), the lists of a table class and of a third
+	// caster's subclass too, so a multiclass character gets each class's list by
+	// its own level.
+	//
+	// Only an active member may ask: a pending member (RN-15) gets `not_found`, as
+	// for ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not an active
+	//     member of it, or `character_id` is not a character the caller may see
+	//     in it.
+	//   - `invalid_argument`: query is longer than 100 characters, a level is
+	//     not 0 to 9, a filter list has more than 20 entries, page_size is not 1
+	//     to 400, or page_token is not one this list gave for these same filters.
+	//   - `failed_precondition`: `character_id` is a character with a basic
+	//     sheet (an NPC), which has no casting classes.
+	ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error)
 	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
 	// uma criatura", the Wild Shape list, the summon choices. It filters by
 	// part of the name (Portuguese or English, ignoring case and accents), by
@@ -363,6 +441,13 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceListSpellsHandler := connect.NewUnaryHandler(
+		ContentServiceListSpellsProcedure,
+		svc.ListSpells,
+		connect.WithSchema(contentServiceMethods.ByName("ListSpells")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	contentServiceListCreaturesHandler := connect.NewUnaryHandler(
 		ContentServiceListCreaturesProcedure,
 		svc.ListCreatures,
@@ -397,6 +482,8 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 			contentServiceListContentHandler.ServeHTTP(w, r)
 		case ContentServiceGetSpellDetailsProcedure:
 			contentServiceGetSpellDetailsHandler.ServeHTTP(w, r)
+		case ContentServiceListSpellsProcedure:
+			contentServiceListSpellsHandler.ServeHTTP(w, r)
 		case ContentServiceListCreaturesProcedure:
 			contentServiceListCreaturesHandler.ServeHTTP(w, r)
 		case ContentServiceGetCreatureProcedure:
@@ -420,6 +507,10 @@ func (UnimplementedContentServiceHandler) ListContent(context.Context, *connect.
 
 func (UnimplementedContentServiceHandler) GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.GetSpellDetails is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListSpells is not implemented"))
 }
 
 func (UnimplementedContentServiceHandler) ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error) {

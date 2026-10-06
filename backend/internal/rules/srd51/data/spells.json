@@ -147,6 +147,8 @@
    "M"
   ],
   "material": "A tiny bell and a piece of fine silver wire.",
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "You set an alarm against unwanted intrusion. Choose a door, a window, or an area within range that is no larger than a 20-foot cube. Until the spell ends, an alarm alerts you whenever a Tiny or larger creature touches or enters the warded area. When you cast the spell, you can designate creatures that won't set off the alarm. You also choose whether the alarm is mental or audible.",
    "A mental alarm alerts you with a ping in your mind if you are within 1 mile of the warded area. This ping awakens you if you are sleeping.",
@@ -349,6 +351,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "A shimmering barrier extends out from you in a 10-foot radius and moves with you, remaining centered on you and hedging out creatures other than undead and constructs. The barrier lasts for the duration.",
    "The barrier prevents an affected creature from passing or reaching through. An affected creature can cast spells or make attacks with ranged or reach weapons through the barrier.",
@@ -375,6 +379,8 @@
    "M"
   ],
   "material": "A pinch of powdered iron or iron filings.",
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "A 10-foot-radius invisible sphere of antimagic surrounds you. This area is divorced from the magical energy that suffuses the multiverse. Within the sphere, spells can't be cast, summoned creatures disappear, and even magic items become mundane. Until the spell ends, the sphere moves with you, centered on you.",
    "Spells and other magical effects, except those created by an artifact or a deity, are suppressed in the sphere and can't protrude into it. A slot expended to cast a suppressed spell is consumed. While an effect is suppressed, it doesn't function, but the time it spends suppressed counts against its duration.",
@@ -408,6 +414,8 @@
    "M"
   ],
   "material": "Either a lump of alum soaked in vinegar for the antipathy effect or a drop of honey for the sympathy effect.",
+  "area_type": "cube",
+  "area_size_ft": 200,
   "desc": [
    "This spell attracts or repels creatures of your choice. You target something within range, either a Huge or smaller object or creature or an area that is no larger than a 200-foot cube. Then specify a kind of intelligent creature, such as red dragons, goblins, or vampires. You invest the target with an aura that either attracts or repels the specified creatures for the duration. Choose antipathy or sympathy as the aura's effect.",
    "***Antipathy.*** The enchantment causes creatures of the kind you designated to feel an intense urge to leave the area and avoid the target. When such a creature can see the target or comes within 60 feet of it, the creature must succeed on a wisdom saving throw or become frightened. The creature remains frightened while it can see the target or is within 60 feet of it. While frightened by the target, the creature must use its movement to move to the nearest safe spot from which it can't see the target. If the creature moves more than 60 feet from the target and can't see it, the creature is no longer frightened, but the creature becomes frightened again if it regains sight of the target or moves within 60 feet of it.",
@@ -437,6 +445,8 @@
    "M"
   ],
   "material": "A bit of bat fur.",
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "You create an invisible, magical eye within range that hovers in the air for the duration.",
    "You mentally receive visual information from the eye, which has normal vision and darkvision out to 30 feet. The eye can look in every direction.",
@@ -837,6 +847,8 @@
     }
    }
   ],
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "Squirming, ebony tentacles fill a 20-foot square on ground that you can see within range. For the duration, these tentacles turn the ground in the area into difficult terrain.",
    "When a creature enters the affected area for the first time on a turn or starts its turn there, the creature must succeed on a Dexterity saving throw or take 3d6 bludgeoning damage and be restrained by the tentacles until the spell ends. A creature that starts its turn in the area and is already restrained by the tentacles takes 3d6 bludgeoning damage.",
@@ -870,6 +882,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 100,
   "desc": [
    "You create a vertical wall of whirling, razor-sharp blades made of magical energy. The wall appears within range and lasts for the duration. You can make a straight wall up to 100 feet long, 20 feet high, and 5 feet thick, or a ringed wall up to 60 feet in diameter, 20 feet high, and 5 feet thick. The wall provides three-quarters cover to creatures behind it, and its space is difficult terrain.",
    "When a creature enters the wall's area for the first time on a turn or starts its turn there, the creature must make a dexterity saving throw. On a failed save, the creature takes 6d10 slashing damage. On a successful save, the creature takes half as much damage."
@@ -1114,6 +1128,8 @@
     }
    }
   ],
+  "area_type": "cone",
+  "area_size_ft": 15,
   "desc": [
    "As you hold your hands with thumbs touching and fingers spread, a thin sheet of flames shoots forth from your outstretched fingertips. Each creature in a 15-foot cone must make a dexterity saving throw. A creature takes 3d6 fire damage on a failed save, or half as much damage on a successful one.",
    "The fire ignites any flammable objects in the area that aren't being worn or carried."
@@ -1157,6 +1173,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 5,
   "desc": [
    "A storm cloud appears in the shape of a cylinder that is 10 feet tall with a 60-foot radius, centered on a point you can see 100 feet directly above you. The spell fails if you can't see a point in the air where the storm cloud could appear (for example, if you are in a room that can't accommodate the cloud).",
    "When you cast the spell, choose a point you can see within range. A bolt of lightning flashes down from the cloud to that point. Each creature within 5 feet of that point must make a dexterity saving throw. A creature takes 3d10 lightning damage on a failed save, or half as much damage on a successful one. On each of your turns until the spell ends, you can use your action to call down lightning in this way again, targeting the same point or a different one.",
@@ -1189,6 +1207,8 @@
   ],
   "save_ability": "cha",
   "save_success": "none",
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "You attempt to suppress strong emotions in a group of people. Each humanoid in a 20-foot-radius sphere centered on a point you choose within range must make a charisma saving throw; a creature can choose to fail this saving throw if it wishes. If a creature fails its saving throw, choose one of the following two effects. You can suppress any effect causing a target to be charmed or frightened. When this spell ends, any suppressed effect resumes, provided that its duration has not expired in the meantime.",
    "Alternatively, you can make a target indifferent about creatures of your choice that it is hostile toward. This indifference ends if the target is attacked or harmed by a spell or if it witnesses any of its friends being harmed. When the spell ends, the creature becomes hostile again, unless the GM rules otherwise."
@@ -1339,6 +1359,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 60,
   "desc": [
    "A sphere of negative energy ripples out in a 60-foot radius sphere from a point within range. Each creature in that area must make a constitution saving throw. A target takes 8d6 necrotic damage on a failed save, or half as much damage on a successful one."
   ],
@@ -1436,6 +1458,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "You create a 20-foot-radius sphere of poisonous, yellow-green fog centered on a point you choose within range. The fog spreads around corners. It lasts for the duration or until strong wind disperses the fog, ending the spell. Its area is heavily obscured.",
    "When a creature enters the spell's area for the first time on a turn or starts its turn there, that creature must make a constitution saving throw. The creature takes 5d8 poison damage on a failed save, or half as much damage on a successful one. Creatures are affected even if they hold their breath or don't need to breathe.",
@@ -1468,6 +1492,8 @@
    "M"
   ],
   "material": "A pinch of powder or sand that is colored red, yellow, and blue.",
+  "area_type": "cone",
+  "area_size_ft": 15,
   "desc": [
    "A dazzling array of flashing, colored light springs from your hand. Roll 6d10; the total is how many hit points of creatures this spell can effect. Creatures in a 15-foot cone originating from you are affected in ascending order of their current hit points (ignoring unconscious creatures and creatures that can't see).",
    "Starting with the creature that has the lowest current hit points, each creature affected by this spell is blinded until the spell ends. Subtract each creature's hit points from the total before moving on to the creature with the next lowest hit points. A creature's hit points must be equal to or less than the remaining total for that creature to be affected."
@@ -1663,6 +1689,8 @@
     }
    }
   ],
+  "area_type": "cone",
+  "area_size_ft": 60,
   "desc": [
    "A blast of cold air erupts from your hands. Each creature in a 60-foot cone must make a constitution saving throw. A creature takes 8d8 cold damage on a failed save, or half as much damage on a successful one.",
    "A creature killed by this spell becomes a frozen statue until it thaws."
@@ -1695,6 +1723,8 @@
   "material": "Three walnut shells.",
   "save_ability": "wis",
   "save_success": "none",
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "This spell assaults and twists creatures' minds, spawning delusions and provoking uncontrolled action. Each creature in a 10-foot-radius sphere centered on a point you choose within range must succeed on a Wisdom saving throw when you cast this spell or be affected by it.",
    "An affected target can't take reactions and must roll a d10 at the start of each of its turns to determine its behavior for that turn.",
@@ -1794,6 +1824,8 @@
    "M"
   ],
   "material": "Burning incense for air, soft clay for earth, sulfur and phosphorus for fire, or water and sand for water.",
+  "area_type": "cube",
+  "area_size_ft": 10,
   "desc": [
    "You call forth an elemental servant. Choose an area of air, earth, fire, or water that fills a 10-foot cube within range. An elemental of challenge rating 5 or lower appropriate to the area you chose appears in an unoccupied space within 10 feet of it. For example, a fire elemental emerges from a bonfire, and an earth elemental rises up from the ground. The elemental disappears when it drops to 0 hit points or when the spell ends.",
    "The elemental is friendly to you and your companions for the duration. Roll initiative for the elemental, which has its own turns. It obeys any verbal commands that you issue to it (no action required by you). If you don't issue any commands to the elemental, it defends itself from hostile creatures but otherwise takes no actions.",
@@ -2038,6 +2070,8 @@
     }
    }
   ],
+  "area_type": "cube",
+  "area_size_ft": 100,
   "desc": [
    "Until the spell ends, you control any freestanding water inside an area you choose that is a cube up to 100 feet on a side. You can choose from any of the following effects when you cast this spell. As an action on your turn, you can repeat the same effect or choose a different one.",
    "***Flood.*** You cause the water level of all standing water in the area to rise by as much as 20 feet. If the area includes a shore, the flooding water spills over onto dry land.",
@@ -2180,6 +2214,8 @@
    "M"
   ],
   "material": "A drop of water if creating water, or a few grains of sand if destroying it.",
+  "area_type": "cube",
+  "area_size_ft": 30,
   "desc": [
    "You either create or destroy water.",
    "***Create Water.*** You create up to 10 gallons of clean water within range in an open container. Alternatively, the water falls as rain in a 30-foot cube within range.",
@@ -2239,6 +2275,8 @@
    "M"
   ],
   "material": "A tiny piece of matter of the same type of the item you plan to create.",
+  "area_type": "cube",
+  "area_size_ft": 5,
   "desc": [
    "You pull wisps of shadow material from the Shadowfell to create a nonliving object of vegetable matter within range: soft goods, rope, wood, or something similar. You can also use this spell to create mineral objects such as stone, crystal, or metal. The object created must be no larger than a 5-foot cube, and the object must be of a form and material that you have seen before.",
    "The duration depends on the object's material. If the object is composed of multiple materials, use the shortest duration.",
@@ -2351,6 +2389,8 @@
    "M"
   ],
   "material": "Bat fur and a drop of pitch or piece of coal.",
+  "area_type": "sphere",
+  "area_size_ft": 15,
   "desc": [
    "Magical darkness spreads from a point you choose within range to fill a 15-foot-radius sphere for the duration. The darkness spreads around corners. A creature with darkvision can't see through this darkness, and nonmagical light can't illuminate it.",
    "If the point you choose is on an object you are holding or one that isn't being worn or carried, the darkness emanates from the object and moves with it. Completely covering the source of the darkness with an opaque object, such as a bowl or a helm, blocks the darkness.",
@@ -2411,6 +2451,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 60,
   "desc": [
    "A 60-foot-radius sphere of light spreads out from a point you choose within range. The sphere is bright light and sheds dim light for an additional 60 feet.",
    "If you chose a point on an object you are holding or one that isn't being worn or carried, the light shines from the object and moves with it. Completely covering the affected object with an opaque object, such as a bowl or a helm, blocks the light.",
@@ -2476,6 +2518,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "A beam of yellow light flashes from your pointing finger, then condenses to linger at a chosen point within range as a glowing bead for the duration. When the spell ends, either because your concentration is broken or because you decide to end it, the bead blossoms with a low roar into an explosion of flame that spreads around corners. Each creature in a 20-foot-radius sphere centered on that point must make a dexterity saving throw. A creature takes fire damage equal to the total accumulated damage on a failed save, or half as much damage on a successful one.",
    "The spell's base damage is 12d6. If at the end of your turn the bead has not yet detonated, the damage increases by 1d6.",
@@ -2529,6 +2573,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "For the duration, you know if there is an aberration, celestial, elemental, fey, fiend, or undead within 30 feet of you, as well as where the creature is located. Similarly, you know if there is a place or object within 30 feet of you that has been magically consecrated or desecrated.",
    "The spell can penetrate most barriers, but it is blocked by 1 foot of stone, 1 inch of common metal, a thin sheet of lead, or 3 feet of wood or dirt."
@@ -2560,6 +2606,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "For the duration, you sense the presence of magic within 30 feet of you. If you sense magic in this way, you can use your action to see a faint aura around any visible creature or object in the area that bears magic, and you learn its school of magic, if any.",
    "The spell can penetrate most barriers, but it is blocked by 1 foot of stone, 1 inch of common metal, a thin sheet of lead, or 3 feet of wood or dirt."
@@ -2590,6 +2638,8 @@
    "M"
   ],
   "material": "A yew leaf.",
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "For the duration, you can sense the presence and location of poisons, poisonous creatures, and diseases within 30 feet of you. You also identify the kind of poison, poisonous creature, or disease in each case.",
    "The spell can penetrate most barriers, but it is blocked by 1 foot of stone, 1 inch of common metal, a thin sheet of lead, or 3 feet of wood or dirt."
@@ -2718,6 +2768,8 @@
     }
    }
   ],
+  "area_type": "cube",
+  "area_size_ft": 10,
   "desc": [
    "A thin green ray springs from your pointing finger to a target that you can see within range. The target can be a creature, an object, or a creation of magical force, such as the wall created by wall of force.",
    "A creature targeted by this spell must make a dexterity saving throw. On a failed save, the target takes 10d6 + 40 force damage. If this damage reduces the target to 0 hit points, it is disintegrated.",
@@ -3058,6 +3110,8 @@
    "M"
   ],
   "material": "A pinch of dirt, a piece of rock, and a lump of clay.",
+  "area_type": "sphere",
+  "area_size_ft": 100,
   "desc": [
    "You create a seismic disturbance at a point on the ground that you can see within range. For the duration, an intense tremor rips through the ground in a 100-foot-radius circle centered on that point and shakes creatures and structures in contact with the ground in that area.",
    "The ground in the area becomes difficult terrain. Each creature on the ground that is concentrating must make a constitution saving throw. On a failed save, the creature's concentration is broken.",
@@ -3196,6 +3250,8 @@
   ],
   "save_ability": "str",
   "save_success": "none",
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "Grasping weeds and vines sprout from the ground in a 20-foot square starting form a point within range. For the duration, these plants turn the ground in the area into difficult terrain.",
    "A creature in the area when you cast the spell must succeed on a strength saving throw or be restrained by the entangling plants until the spell ends. A creature restrained by the plants can use its action to make a Strength check against your spell save DC. On a success, it frees itself.",
@@ -3360,6 +3416,8 @@
   ],
   "save_ability": "dex",
   "save_success": "none",
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "Each object in a 20-foot cube within range is outlined in blue, green, or violet light (your choice). Any creature in the area when the spell is cast is also outlined in light if it fails a dexterity saving throw. For the duration, objects and affected creatures shed dim light in a 10-foot radius.",
    "Any attack roll against an affected creature or object has advantage if the attacker can see it, and the affected creature or object can't benefit from being invisible."
@@ -3467,6 +3525,8 @@
   "material": "A white feather or the heart of a hen.",
   "save_ability": "wis",
   "save_success": "none",
+  "area_type": "cone",
+  "area_size_ft": 30,
   "desc": [
    "You project a phantasmal image of a creature's worst fears. Each creature in a 30-foot cone must succeed on a wisdom saving throw or drop whatever it is holding and become frightened for the duration.",
    "While frightened by this spell, a creature must take the Dash action and move away from you by the safest available route on each of its turns, unless there is nowhere to move. If the creature ends its turn in a location where it doesn't have line of sight to you, the creature can make a wisdom saving throw. On a successful save, the spell ends for that creature."
@@ -3747,6 +3807,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 5,
   "desc": [
    "Thin and vaporous flame surround your body for the duration of the spell, radiating a bright light bright light in a 10-foot radius and dim light for an additional 10 feet. You can end the spell using an action to make it disappear.",
    "The flames are around you a heat shield or cold, your choice. The heat shield gives you cold damage resistance and the cold resistance to fire damage.",
@@ -3782,6 +3844,8 @@
     }
    }
   ],
+  "area_type": "cube",
+  "area_size_ft": 100,
   "desc": [
    "A storm made up of sheets of roaring flame appears in a location you choose within range. The area of the storm consists of up to ten 10-foot cubes, which you can arrange as you wish. Each cube must have at least one face adjacent to the face of another cube. Each creature in the area must make a dexterity saving throw. It takes 7d10 fire damage on a failed save, or half as much damage on a successful one.",
    "The fire damages objects in the area and ignites flammable objects that aren't being worn or carried. If you choose, plant life in the area is unaffected by this spell."
@@ -3827,6 +3891,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one.",
    "The fire spreads around corners. It ignites flammable objects in the area that aren't being worn or carried."
@@ -3924,6 +3990,8 @@
     }
    }
   ],
+  "area_type": "cylinder",
+  "area_size_ft": 40,
   "desc": [
    "A vertical column of divine fire roars down from the heavens in a location you specify. Each creature in a 10-foot-radius, 40-foot-high cylinder centered on a point within range must make a dexterity saving throw. A creature takes 4d6 fire damage and 4d6 radiant damage on a failed save, or half as much damage on a successful one."
   ],
@@ -4089,6 +4157,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "You create a 20-foot-radius sphere of fog centered on a point within range. The sphere spreads around corners, and its area is heavily obscured. It lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it."
   ],
@@ -4115,6 +4185,8 @@
    "M"
   ],
   "material": "A sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp.",
+  "area_type": "cube",
+  "area_size_ft": 40000,
   "desc": [
    "You create a ward against magical travel that protects up to 40,000 square feet of floor space to a height of 30 feet above the floor. For the duration, creatures can't teleport into the area or use portals, such as those created by the gate spell, to enter the area. The spell proofs the area against planar travel, and therefore prevents creatures from accessing the area by way of the Astral Plane, Ethereal Plane, Feywild, Shadowfell, or the plane shift spell.",
    "In addition, the spell damages types of creatures that you choose when you cast it. Choose one or more of the following: celestials, elementals, fey, fiends, and undead. When a chosen creature enters the spell's area for the first time on a turn or starts its turn there, the creature takes 5d10 radiant or necrotic damage (your choice when you cast this spell).",
@@ -4143,6 +4215,8 @@
    "M"
   ],
   "material": "Ruby dust worth 1,500 gp.",
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "An immobile, invisible, cube-shaped prison composed of magical force springs into existence around an area you choose within range. The prison can be a cage or a solid box, as you choose.",
    "A prison in the shape of a cage can be up to 20 feet on a side and is made from 1/2-inch diameter bars spaced 1/2 inch apart.",
@@ -4239,6 +4313,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 60,
   "desc": [
    "A frigid globe of cold energy streaks from your fingertips to a point of your choice within range, where it explodes in a 60-foot-radius sphere. Each creature within the area must make a constitution saving throw. On a failed save, a creature takes 10d6 cold damage. On a successful save, it takes half as much damage.",
    "If the globe strikes a body of water or a liquid that is principally water (not including water-based creatures), it freezes the liquid to a depth of 6 inches over an area 30 feet square. This ice lasts for 1 minute. Creatures that were swimming on the surface of frozen water are trapped in the ice. A trapped creature can use an action to make a Strength check against your spell save DC to break free.",
@@ -4431,6 +4507,8 @@
    "M"
   ],
   "material": "A glass or crystal bead that shatters when the spell ends.",
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "An immobile, faintly shimmering barrier springs into existence in a 10-foot radius around you and remains for the duration.",
    "Any spell of 5th level or lower cast from outside the barrier can't affect creatures or objects within it, even if the spell is cast using a higher level spell slot. Such a spell can target creatures and objects within the barrier, but the spell has no effect on them. Similarly, the area within the barrier is excluded from the areas affected by such spells."
@@ -4525,6 +4603,8 @@
   "material": "A bit of pork rind or butter.",
   "save_ability": "dex",
   "save_success": "none",
+  "area_type": "cube",
+  "area_size_ft": 10,
   "desc": [
    "Slick grease covers the ground in a 10-foot square centered on a point within range and turns it into difficult terrain for the duration.",
    "When the grease appears, each creature standing in its area must succeed on a dexterity saving throw or fall prone. A creature that enters the area or ends its turn there must also succeed on a dexterity saving throw or fall prone."
@@ -4611,6 +4691,8 @@
     }
    }
   ],
+  "area_type": "cylinder",
+  "area_size_ft": 10,
   "desc": [
    "A Large spectral guardian appears and hovers for the duration in an unoccupied space of your choice that you can see within range. The guardian occupies that space and is indistinct except for a gleaming sword and shield emblazoned with the symbol of your deity.",
    "Any creature hostile to you that moves to a space within 10 feet of the guardian for the first time on a turn must succeed on a dexterity saving throw. The creature takes 20 radiant damage on a failed save, or half as much damage on a successful one. The guardian vanishes when it has dealt a total of 60 damage."
@@ -4636,6 +4718,8 @@
    "M"
   ],
   "material": "Burning incense, a small measure of brimstone and oil, a knotted string, a small amount of umber hulk blood, and a small silver rod worth at least 10 gp.",
+  "area_type": "cube",
+  "area_size_ft": 2500,
   "desc": [
    "You create a ward that protects up to 2,500 square feet of floor space (an area 50 feet square, or one hundred 5-foot squares or twenty-five 10-foot squares). The warded area can be up to 20 feet tall, and shaped as you desire. You can ward several stories of a stronghold by dividing the area among them, as long as you can walk into each contiguous area while you are casting the spell.",
    "When you cast this spell, you can specify individuals that are unaffected by any or all of the effects that you choose. You can also specify a password that, when spoken aloud, makes the speaker immune to these effects.",
@@ -4748,6 +4832,8 @@
   "material": "A legume seed.",
   "save_ability": "str",
   "save_success": "none",
+  "area_type": "line",
+  "area_size_ft": 60,
   "desc": [
    "A line of strong wind 60 feet long and 10 feet wide blasts from you in a direction you choose for the spell's duration. Each creature that starts its turn in the line must succeed on a strength saving throw or be pushed 15 feet away from you in a direction following the line.",
    "Any creature in the line must spend 2 feet of movement for every 1 foot it moves when moving closer to you.",
@@ -4779,6 +4865,8 @@
   "material": "Herbs, oils, and incense worth at least 1,000 gp, which the spell consumes.",
   "save_ability": "cha",
   "save_success": "none",
+  "area_type": "sphere",
+  "area_size_ft": 60,
   "desc": [
    "You touch a point and infuse an area around it with holy (or unholy) power. The area can have a radius up to 60 feet, and the spell fails if the radius includes an area already under the effect a hallow spell. The affected area is subject to the following effects.",
    "First, celestials, elementals, fey, fiends, and undead can't enter the area, nor can such creatures charm, frighten, or possess creatures within it. Any creature charmed, frightened, or possessed by such a creature is no longer charmed, frightened, or possessed upon entering the area. You can exclude one or more of those types of creatures from this effect.",
@@ -4820,6 +4908,8 @@
    "M"
   ],
   "material": "A stone, a twig, and a bit of green plant.",
+  "area_type": "cube",
+  "area_size_ft": 150,
   "desc": [
    "You make natural terrain in a 150-foot cube in range look, sound, and smell like some other sort of natural terrain. Thus, open fields or a road can be made to resemble a swamp, hill, crevasse, or some other difficult or impassable terrain. A pond can be made to seem like a grassy meadow, a precipice like a gentle slope, or a rock-strewn gully like a wide and smooth road. Manufactured structures, equipment, and creatures within the area aren't changed in appearance.",
    "The tactile characteristics of the terrain are unchanged, so creatures entering the area are likely to see through the illusion. If the difference isn't obvious by touch, a creature carefully examining the illusion can attempt an Intelligence (Investigation) check against your spell save DC to disbelieve it. A creature who discerns the illusion for what it is, sees it as a vague image superimposed on the terrain."
@@ -5212,6 +5302,8 @@
    "M"
   ],
   "material": "A tiny reliquary worth at least 1,000gp containing a sacred relic, such as a scrap of cloth from a saint's robe or a piece of parchment from a religious text.",
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "Divine light washes out from you and coalesces in a soft radiance in a 30-foot radius around you. Creatures of your choice in that radius when you cast this spell shed dim light in a 5-foot radius and have advantage on all saving throws, and other creatures have disadvantage on attack rolls against them until the spell ends. In addition, when a fiend or an undead hits an affected creature with a melee attack, the aura flashes with brilliant light. The attacker must succeed on a constitution saving throw or be blinded until the spell ends."
   ]
@@ -5320,6 +5412,8 @@
     }
    }
   ],
+  "area_type": "cylinder",
+  "area_size_ft": 20,
   "desc": [
    "A hail of rock-hard ice pounds to the ground in a 20-foot-radius, 40-foot-high cylinder centered on a point within range. Each creature in the cylinder must make a dexterity saving throw. A creature takes 2d8 bludgeoning damage and 4d6 cold damage on a failed save, or half as much damage on a successful one.",
    "Hailstones turn the storm's area of effect into difficult terrain until the end of your next turn."
@@ -5454,6 +5548,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "A swirling cloud of smoke shot through with white-hot embers appears in a 20-foot-radius sphere centered on a point within range. The cloud spreads around corners and is heavily obscured. It lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it.",
    "When the cloud appears, each creature in it must make a dexterity saving throw. A creature takes 10d8 fire damage on a failed save, or half as much damage on a successful one. A creature must also make this saving throw when it enters the spell's area for the first time on a turn or ends its turn there.",
@@ -5542,6 +5638,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "Swarming, biting locusts fill a 20-foot-radius sphere centered on a point you choose within range. The sphere spreads around corners. The sphere remains for the duration, and its area is lightly obscured. The sphere's area is difficult terrain.",
    "When the area appears, each creature in it must make a constitution saving throw. A creature takes 4d10 piercing damage on a failed save, or half as much damage on a successful one. A creature must also make this saving throw when it enters the spell's area for the first time on a turn or ends its turn there."
@@ -5844,6 +5942,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 100,
   "desc": [
    "A stroke of lightning forming a line 100 feet long and 5 feet wide blasts out from you in a direction you choose. Each creature in the line must make a dexterity saving throw. A creature takes 8d6 lightning damage on a failed save, or half as much damage on a successful one.",
    "The lightning ignites flammable objects in the area that aren't being worn or carried."
@@ -6061,6 +6161,8 @@
   "material": "Holy water or powdered silver and iron worth at least 100 gp, which the spell consumes.",
   "save_ability": "cha",
   "save_success": "other",
+  "area_type": "cylinder",
+  "area_size_ft": 10,
   "desc": [
    "You create a 10-foot radius, 20-foot-tall cylinder of magical energy centered on a point on the ground that you can see within range. Glowing runes appear whenever the cylinder intersects with the floor or other surface.",
    "Choose one or more of the following types of creatures: celestials, elementals, fey, fiends, or undead. The circle affects a creature of the chosen type in the following ways:",
@@ -6226,6 +6328,8 @@
    "M"
   ],
   "material": "A miniature portal carved from ivory, a small piece of polished marble, and a tiny silver spoon, each item worth at least 5 gp.",
+  "area_type": "cube",
+  "area_size_ft": 5,
   "desc": [
    "You conjure an extradimensional dwelling in range that lasts for the duration. You choose where its one entrance is located. The entrance shimmers faintly and is 5 feet wide and 10 feet tall. You and any creature you designate when you cast the spell can enter the extradimensional dwelling as long as the portal remains open. You can open or close the portal if you are within 30 feet of it. While closed, the portal is invisible.",
    "Beyond the portal is a magnificent foyer with numerous chambers beyond. The atmosphere is clean, fresh, and warm.",
@@ -6295,6 +6399,8 @@
    "8": "6d8 + MOD",
    "9": "7d8 + MOD"
   },
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "A wave of healing energy washes out from a point of your choice within range. Choose up to six creatures in a 30-foot-radius sphere centered on that point. Each target regains hit points equal to 3d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs."
   ],
@@ -6538,6 +6644,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 40,
   "desc": [
    "Blazing orbs of fire plummet to the ground at four different points you can see within range. Each creature in a 40-foot-radius sphere centered on each point you choose must make a dexterity saving throw. The sphere spreads around corners. A creature takes 20d6 fire damage and 20d6 bludgeoning damage on a failed save, or half as much damage on a successful one. A creature in the area of more than one fiery burst is affected only once.",
    "The spell damages objects in the area and ignites flammable objects that aren't being worn or carried."
@@ -6615,6 +6723,8 @@
    "V",
    "S"
   ],
+  "area_type": "cube",
+  "area_size_ft": 5280,
   "desc": [
    "You make terrain in an area up to 1 mile square look, sound, smell, and even feel like some other sort of terrain. The terrain's general shape remains the same, however. Open fields or a road could be made to resemble a swamp, hill, crevasse, or some other difficult or impassable terrain. A pond can be made to seem like a grassy meadow, a precipice like a gentle slope, or a rock-strewn gully like a wide and smooth road.",
    "Similarly, you can alter the appearance of structures, or add them where none are present. The spell doesn't disguise, conceal, or add creatures.",
@@ -6772,6 +6882,8 @@
     }
    }
   ],
+  "area_type": "cylinder",
+  "area_size_ft": 5,
   "desc": [
    "A silvery beam of pale light shines down in a 5-foot radius, 40-foot-high cylinder centered on a point within range. Until the spell ends, dim light fills the cylinder.",
    "When a creature enters the spell's area for the first time on a turn or starts its turn there, it is engulfed in ghostly flames that cause searing pain, and it must make a constitution saving throw. It takes 2d10 radiant damage on a failed save, or half as much damage on a successful one.",
@@ -6803,6 +6915,8 @@
    "M"
   ],
   "material": "An iron blade and a small bag containing a mixture of soils--clay, loam, and sand.",
+  "area_type": "cone",
+  "area_size_ft": 40,
   "desc": [
    "Choose an area of terrain no larger than 40 feet on a side within range. You can reshape dirt, sand, or clay in the area in any manner you choose for the duration. You can raise or lower the area's elevation, create or fill in a trench, erect or flatten a wall, or form a pillar. The extent of any such changes can't exceed half the area's largest dimension. So, if you affect a 40-foot square, you can create a pillar up to 20 feet high, raise or lower the square's elevation by up to 20 feet, dig a trench up to 20 feet deep, and so on. It takes 10 minutes for these changes to complete.",
    "At the end of every 10 minutes you spend concentrating on the spell, you can choose a new area of terrain to affect.",
@@ -7287,6 +7401,8 @@
     }
    }
   ],
+  "area_type": "cone",
+  "area_size_ft": 60,
   "desc": [
    "Eight multicolored rays of light flash from your hand. Each ray is a different color and has a different power and purpose. Each creature in a 60-foot cone must make a dexterity saving throw. For each target, roll a d8 to determine which color ray affects it.",
    "***1. Red.*** The target takes 10d6 fire damage on a failed save, or half as much damage on a successful one.",
@@ -7316,6 +7432,8 @@
    "V",
    "S"
   ],
+  "area_type": "line",
+  "area_size_ft": 90,
   "desc": [
    "A shimmering, multicolored plane of light forms a vertical opaque wall--up to 90 feet long, 30 feet high, and 1 inch thick--centered on a point you can see within range. Alternatively, you can shape the wall into a sphere up to 30 feet in diameter centered on a point you choose within range. The wall remains in place for the duration. If you position the wall so that it passes through a space occupied by a creature, the spell fails, and your action and the spell slot are wasted.",
    "The wall sheds bright light out to a range of 100 feet and dim light for an additional 100 feet. You and creatures you designate at the time you cast the spell can pass through and remain near the wall without harm. If another creature that can see the wall moves to within 20 feet of it or starts its turn there, the creature must succeed on a constitution saving throw or become blinded for 1 minute.",
@@ -7350,6 +7468,8 @@
    "M"
   ],
   "material": "A thin sheet of lead, a piece of opaque glass, a wad of cotton or cloth, and powdered chrysolite.",
+  "area_type": "cube",
+  "area_size_ft": 100,
   "desc": [
    "You make an area within range magically secure. The area is a cube that can be as small as 5 feet to as large as 100 feet on each side. The spell lasts for the duration or until you use an action to dismiss it.",
    "When you cast the spell, you decide what sort of security the spell provides, choosing any or all of the following properties:",
@@ -7423,6 +7543,8 @@
    "M"
   ],
   "material": "A bit of fleece and jade dust worth at least 25 gp.",
+  "area_type": "cube",
+  "area_size_ft": 30,
   "desc": [
    "You create an illusion of an object, a creature, or some other visible phenomenon within range that activates when a specific condition occurs. The illusion is imperceptible until then. It must be no larger than a 30-foot cube, and you decide when you cast the spell how the illusion behaves and what sounds it makes. This scripted performance can last up to 5 minutes.",
    "When the condition you specify occurs, the illusion springs into existence and performs in the manner you described. Once the illusion finishes performing, it disappears and remains dormant for 10 minutes. After this time, the illusion can be activated again.",
@@ -7872,6 +7994,8 @@
   "material": "A lodestone and iron filings.",
   "save_ability": "dex",
   "save_success": "other",
+  "area_type": "cylinder",
+  "area_size_ft": 50,
   "desc": [
    "This spell reverses gravity in a 50-foot-radius, 100-foot high cylinder centered on a point within range. All creatures and objects that aren't somehow anchored to the ground in the area fall upward and reach the top of the area when you cast this spell. A creature can make a dexterity saving throw to grab onto a fixed object it can reach, thus avoiding the fall.",
    "If some solid object (such as a ceiling) is encountered in this fall, falling objects and creatures strike it just as they would during a normal downward fall. If an object or creature reaches the top of the area without striking anything, it remains there, oscillating slightly, for the duration.",
@@ -8289,6 +8413,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "A sudden loud ringing noise, painfully intense, erupts from a point of your choice within range. Each creature in a 10-foot-radius sphere centered on that point must make a Constitution saving throw. A creature takes 3d8 thunder damage on a failed save, or half as much damage on a successful one. A creature made of inorganic material such as stone, crystal, or metal has disadvantage on this saving throw.",
    "A non-magical item that is not worn or carried also suffers damage if it is in the area of the spell."
@@ -8436,6 +8562,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "For the duration, no sound can be created within or pass through a 20-foot-radius sphere centered on a point you choose within range. Any creature or object entirely inside the sphere is immune to thunder damage, and creatures are deafened while entirely inside it.",
    "Casting a spell that includes a verbal component is impossible there."
@@ -8465,6 +8593,8 @@
    "M"
   ],
   "material": "A bit of fleece.",
+  "area_type": "cube",
+  "area_size_ft": 15,
   "desc": [
    "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 15-foot cube. The image appears at a spot within range and lasts for the duration. The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects.",
    "You can use your action to cause the image to move to any spot within range. As the image changes location, you can alter its appearance so that its movements appear natural for the image. For example, if you create an image of a creature and move it, you can alter the image so that it appears to be walking.",
@@ -8528,6 +8658,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "This spell sends creatures into a magical slumber. Roll 5d8; the total is how many hit points of creatures this spell can affect. Creatures within 20 feet of a point you choose within range are affected in ascending order of their current hit points (ignoring unconscious creatures).",
    "Starting with the creature that has the lowest current hit points, each creature affected by this spell falls unconscious until the spell ends, the sleeper takes damage, or someone uses an action to shake or slap the sleeper awake. Subtract each creature's hit points from the total before moving on to the creature with the next lowest hit points. A creature's hit points must be equal to or less than the remaining total for that creature to be affected.",
@@ -8562,6 +8694,8 @@
    "M"
   ],
   "material": "A pinch of dust and a few drops of water.",
+  "area_type": "cylinder",
+  "area_size_ft": 40,
   "desc": [
    "Until the spell ends, freezing rain and sleet fall in a 20-foot-tall cylinder with a 40-foot radius centered on a point you choose within range. The area is heavily obscured, and exposed flames in the area are doused.",
    "The ground in the area is covered with slick ice, making it difficult terrain. When a creature enters the spell's area for the first time on a turn or starts its turn there, it must make a dexterity saving throw. On a failed save, it falls prone.",
@@ -8594,6 +8728,8 @@
   "material": "A drop of molasses.",
   "save_ability": "wis",
   "save_success": "none",
+  "area_type": "cube",
+  "area_size_ft": 40,
   "desc": [
    "You alter time around up to six creatures of your choice in a 40-foot cube within range. Each target must succeed on a wisdom saving throw or be affected by this spell for the duration.",
    "An affected target's speed is halved, it takes a -2 penalty to AC and dexterity saving throws, and it can't use reactions. On its turn, it can use either an action or a bonus action, not both. Regardless of the creature's abilities or magic items, it can't make more than one melee or ranged attack during its turn.",
@@ -8698,6 +8834,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "You imbue plants within 30 feet of you with limited sentience and animation, giving them the ability to communicate with you and follow your simple commands. You can question plants about events in the spell's area within the past day, gaining information about creatures that have passed, weather, and other circumstances.",
    "You can also turn difficult terrain caused by plant growth (such as thickets and undergrowth) into ordinary terrain that lasts for the duration. Or you can turn ordinary terrain where plants are present into difficult terrain that lasts for the duration, causing vines and branches to hinder pursuers, for example.",
@@ -8759,6 +8897,8 @@
    "M"
   ],
   "material": "Seven sharp thorns or seven small twigs, each sharpened to a point.",
+  "area_type": "cylinder",
+  "area_size_ft": 20,
   "desc": [
    "The ground in a 20-foot radius centered on a point within range twists and sprouts hard spikes and thorns. The area becomes difficult terrain for the duration. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet it travels.",
    "The transformation of the ground is camouflaged to look natural. Any creature that can't see the area at the time the spell is cast can make a Wisdom (Perception) check against your spell save DC to recognize the terrain as hazardous before entering it."
@@ -8868,6 +9008,8 @@
   "material": "A rotten egg or several skunk cabbage leaves.",
   "save_ability": "con",
   "save_success": "none",
+  "area_type": "sphere",
+  "area_size_ft": 20,
   "desc": [
    "You create a 20-foot-radius sphere of yellow, nauseating gas centered on a point within range. The cloud spreads around corners, and its area is heavily obscured. The cloud lingers in the air for the duration.",
    "Each creature that is completely within the cloud at the start of its turn must make a constitution saving throw against poison. On a failed save, the creature spends its action that turn retching and reeling. Creatures that don't need to breathe or are immune to poison automatically succeed on this saving throw.",
@@ -8958,6 +9100,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 360,
   "desc": [
    "A churning storm cloud forms, centered on a point you can see and spreading to a radius of 360 feet. Lightning flashes in the area, thunder booms, and strong winds roar. Each creature under the cloud (no more than 5,000 feet beneath the cloud) when it appears must make a constitution saving throw. On a failed save, a creature takes 2d6 thunder damage and becomes deafened for 5 minutes.",
    "Each round you maintain concentration on this spell, the storm produces additional effects on your turn.",
@@ -9031,6 +9175,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 60,
   "desc": [
    "A beam of brilliant light flashes out from your hand in a 5-foot-wide, 60-foot-long line. Each creature in the line must make a constitution saving throw. On a failed save, a creature takes 6d8 radiant damage and is blinded until your next turn. On a successful save, it takes half as much damage and isn't blinded by this spell. Undead and oozes have disadvantage on this saving throw.",
    "You can create a new line of radiance as your action on any turn until the spell ends.",
@@ -9068,6 +9214,8 @@
     }
    }
   ],
+  "area_type": "cylinder",
+  "area_size_ft": 60,
   "desc": [
    "Brilliant sunlight flashes in a 60-foot radius centered on a point you choose within range. Each creature in that light must make a constitution saving throw. On a failed save, a creature takes 12d6 radiant damage and is blinded for 1 minute. On a successful save, it takes half as much damage and isn't blinded by this spell. Undead and oozes have disadvantage on this saving throw.",
    "A creature blinded by this spell makes another constitution saving throw at the end of each of its turns. On a successful save, it is no longer blinded.",
@@ -9095,6 +9243,8 @@
    "M"
   ],
   "material": "Mercury, phosphorus, and powdered diamond and opal with a total value of at least 1,000 gp, which the spell consumes.",
+  "area_type": "cube",
+  "area_size_ft": 10,
   "desc": [
    "When you cast this spell, you inscribe a harmful glyph either on a surface (such as a section of floor, a wall, or a table) or within an object that can be closed to conceal the glyph (such as a book, a scroll, or a treasure chest). If you choose a surface, the glyph can cover an area of the surface no larger than 10 feet in diameter. If you choose an object, that object must remain in its place; if the object is moved more than 10 feet from where you cast this spell, the glyph is broken, and the spell ends without being triggered.",
    "The glyph is nearly invisible, requiring an Intelligence (Investigation) check against your spell save DC to find it.",
@@ -9129,6 +9279,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "You gain the ability to move or manipulate creatures or objects by thought. When you cast the spell, and as your action each round for the duration, you can exert your will on one creature or object that you can see within range, causing the appropriate effect below. You can affect the same target round after round, or choose a new one at any time. If you switch targets, the prior target is no longer affected by the spell.",
    "***Creature.*** You can try to move a Huge or smaller creature. Make an ability check with your spellcasting ability contested by the creature's Strength check. If you win the contest, you move the creature up to 30 feet in any direction, including upward but not beyond the range of this spell. Until the end of your next turn, the creature is restrained in your telekinetic grip. A creature lifted upward is suspended in mid-air.",
@@ -9180,6 +9332,8 @@
   "components": [
    "V"
   ],
+  "area_type": "cube",
+  "area_size_ft": 10,
   "desc": [
    "This spell instantly transports you and up to eight willing creatures of your choice that you can see within range, or a single object that you can see within range, to a destination you select. If you target an object, it must be able to fit entirely inside a 10-foot cube, and it can't be held or carried by an unwilling creature.",
    "The destination you choose must be known to you, and it must be on the same plane of existence as you. Your familiarity with the destination determines whether you arrive there successfully. The GM rolls d100 and consults the table.",
@@ -9225,6 +9379,8 @@
    "M"
   ],
   "material": "Rare chalks and inks infused with precious gems with 50 gp, which the spell consumes.",
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "As you cast the spell, you draw a 10-foot-diameter circle on the ground inscribed with sigils that link your location to a permanent teleportation circle of your choice whose sigil sequence you know and that is on the same plane of existence as you. A shimmering portal opens within the circle you drew and remains open until the end of your next turn. Any creature that enters the portal instantly appears within 5 feet of the destination circle or in the nearest unoccupied space if that space is occupied.",
    "Many major temples, guilds, and other important places have permanent teleportation circles inscribed somewhere within their confines. Each such circle includes a unique sigil sequence--a string of magical runes arranged in a particular pattern. When you first gain the ability to cast this spell, you learn the sigil sequences for two destinations on the Material Plane, determined by the GM. You can learn additional sigil sequences during your adventures. You can commit a new sigil sequence to memory after studying it for 1 minute.",
@@ -9302,6 +9458,8 @@
     }
    }
   ],
+  "area_type": "cube",
+  "area_size_ft": 15,
   "desc": [
    "A wave of thunderous force sweeps out from you. Each creature in a 15-foot cube originating from you must make a constitution saving throw. On a failed save, a creature takes 2d8 thunder damage and is pushed 10 feet away from you. On a successful save, the creature takes half as much damage and isn't pushed.",
    "In addition, unsecured objects that are completely within the area of effect are automatically pushed 10 feet away from you by the spell's effect, and the spell emits a thunderous boom audible out to 300 feet."
@@ -9355,6 +9513,8 @@
    "M"
   ],
   "material": "A small crystal bead.",
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "A 10-foot-radius immobile dome of force springs into existence around and above you and remains stationary for the duration. The spell ends if you leave its area.",
    "Nine creatures of Medium size or smaller can fit inside the dome with you. The spell fails if its area includes a larger creature or more than nine creatures. Creatures and objects within the dome when you cast this spell can move through it freely. All other creatures and objects are barred from passing through it. Spells and other magical effects can't extend through the dome or be cast through it. The atmosphere inside the space is comfortable and dry, regardless of the weather outside.",
@@ -9690,6 +9850,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 60,
   "desc": [
    "You create a wall of fire on a solid surface within range. You can make the wall up to 60 feet long, 20 feet high, and 1 foot thick, or a ringed wall up to 20 feet in diameter, 20 feet high, and 1 foot thick. The wall is opaque and lasts for the duration.",
    "When the wall appears, each creature within its area must make a Dexterity saving throw. On a failed save, a creature takes 5d8 fire damage, or half as much damage on a successful save.",
@@ -9756,6 +9918,8 @@
     }
    }
   ],
+  "area_type": "sphere",
+  "area_size_ft": 10,
   "desc": [
    "You create a wall of ice on a solid surface within range. You can form it into a hemispherical dome or a sphere with a radius of up to 10 feet, or you can shape a flat surface made up of ten 10-foot-square panels. Each panel must be contiguous with another panel. In any form, the wall is 1 foot thick and lasts for the duration.",
    "If the wall cuts through a creature's space when it appears, the creature within its area is pushed to one side of the wall and must make a dexterity saving throw. On a failed save, the creature takes 10d6 cold damage, or half as much damage on a successful save.",
@@ -9830,6 +9994,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 60,
   "desc": [
    "You create a wall of tough, pliable, tangled brush bristling with needle-sharp thorns. The wall appears within range on a solid surface and lasts for the duration. You choose to make the wall up to 60 feet long, 10 feet high, and 5 feet thick or a circle that has a 20-foot diameter and is up to 20 feet high and 5 feet thick. The wall blocks line of sight.",
    "When the wall appears, each creature within its area must make a dexterity saving throw. On a failed save, a creature takes 7d8 piercing damage, or half as much damage on a successful save.",
@@ -9952,6 +10118,8 @@
    "M"
   ],
   "material": "A bit of spiderweb.",
+  "area_type": "cube",
+  "area_size_ft": 20,
   "desc": [
    "You conjure a mass of thick, sticky webbing at a point of your choice within range. The webs fill a 20-foot cube from that point for the duration. The webs are difficult terrain and lightly obscure their area.",
    "If the webs aren't anchored between two solid masses (such as walls or trees) or layered across a floor, wall, or ceiling, the conjured web collapses on itself, and the spell ends at the start of your next turn. Webs layered over a flat surface have a depth of 5 feet.",
@@ -9979,6 +10147,8 @@
   ],
   "save_ability": "wis",
   "save_success": "none",
+  "area_type": "sphere",
+  "area_size_ft": 30,
   "desc": [
    "Drawing on the deepest fears of a group of creatures, you create illusory creatures in their minds, visible only to them. Each creature in a 30-foot-radius sphere centered on a point of your choice within range must make a wisdom saving throw. On a failed save, a creature becomes frightened for the duration. The illusion calls on the creature's deepest fears, manifesting its worst nightmares as an implacable threat. At the start of each of the frightened creature's turns, it must succeed on a wisdom saving throw or take 4d10 psychic damage. On a successful save, the spell ends for that creature."
   ]
@@ -10040,6 +10210,8 @@
     }
    }
   ],
+  "area_type": "line",
+  "area_size_ft": 50,
   "desc": [
    "A wall of strong wind rises from the ground at a point you choose within range. You can make the wall up to 50 feet long, 15 feet high, and 1 foot thick. You can shape the wall in any way you choose so long as it makes one continuous path along the ground. The wall lasts for the duration.",
    "When the wall appears, each creature within its area must make a strength saving throw. A creature takes 3d8 bludgeoning damage on a failed save, or half as much damage on a successful one.",
@@ -10092,6 +10264,8 @@
   "components": [
    "V"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 5,
   "desc": [
    "You and up to five willing creatures within 5 feet of you instantly teleport to a previously designated sanctuary. You and any creatures that teleport with you appear in the nearest unoccupied space to the spot you designated when you prepared your sanctuary (see below). If you cast this spell without first preparing a sanctuary, the spell has no effect.",
    "You must designate a sanctuary by casting this spell within a location, such as a temple, dedicated to or strongly linked to your deity. If you attempt to cast the spell in this manner in an area that isn't dedicated to your deity, the spell has no effect."
@@ -10120,6 +10294,8 @@
    "V",
    "S"
   ],
+  "area_type": "sphere",
+  "area_size_ft": 15,
   "desc": [
    "You create a magical zone that guards against deception in a 15-foot-radius sphere centered on a point of your choice within range. Until the spell ends, a creature that enters the spell's area for the first time on a turn or starts its turn there must make a Charisma saving throw. On a failed save, a creature can't speak a deliberate lie while in the radius. You know whether each creature succeeds or fails on its saving throw.",
    "An affected creature is aware of the spell and can thus avoid answering questions to which it would normally respond with a lie. Such a creature can remain evasive in its answers as long as it remains within the boundaries of the truth."

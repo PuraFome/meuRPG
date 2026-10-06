@@ -53,6 +53,7 @@ func newPuzzleTable(t *testing.T) *puzzleTable {
 	}
 	a.h.svc.SetTerrain(msvc)
 	a.h.svc.SetPuzzleMaps(msvc)
+	a.h.svc.SetTraps(msvc) // a wrong move may fire a trap point ("Ao errar", slice 10.7b)
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
 	msvc.Mount(srv.Handle, mapsSessions{testSessions}, a.h.camps, connect.WithRequireConnectProtocolHeader())
 	server := httptest.NewServer(srv.Handler())
@@ -1339,23 +1340,33 @@ func TestMR038_SolvingRevealsAClueToTheSolverOnly(t *testing.T) {
 // test (RN-10, RN-27, the artboard E10-06): so does a new field, until someone reads
 // this list and decides that a player may have it.
 var playerRunKeys = map[string][]string{
-	"":                        {"puzzleId", "name", "kind", "config", "symbols", "state", "clue", "hints", "revision", "solved", "solvedAt", "solvedByName", "lastMove", "mural", "solvedMessage"},
-	".config":                 {"lights", "lock", "pillars"},
+	"":                        {"puzzleId", "name", "kind", "config", "symbols", "state", "clue", "hints", "revision", "solved", "solvedAt", "solvedByName", "lastMove", "mural", "solvedMessage", "limits", "stopped", "stoppedMessage", "myPart", "partHolders", "hintByCheck", "hintSkillKey", "canTryHint", "sharedHints", "sequence", "hasKeyClue", "keyClueId"},
+	".config":                 {"lights", "lock", "pillars", "riddle", "sequence", "cipher"},
 	".config.lights":          {"size"},
 	".config.lock":            {"wheels", "alphabet"},
 	".config.pillars":         {"pillars", "symbols", "links"},
 	".config.pillars.links[]": {"alsoTurns"},
+	".config.riddle":          {"text"},
+	".config.sequence":        {"bells", "steps"},
+	".config.cipher":          {"ciphertext"},
 	".symbols[]":              {"key", "namePt"},
-	".state":                  {"lights", "lock", "pillars"},
+	".state":                  {"lights", "lock", "pillars", "riddle", "sequence", "cipher"},
 	".state.lights":           {"lit"},
 	".state.lock":             {"wheels"},
 	".state.pillars":          {"pillars"},
-	".lastMove":               {"characterName", "move", "changed", "at"},
-	".lastMove.move":          {"lights", "lock", "pillars"},
-	".lastMove.move.lights":   {"row", "col"},
-	".lastMove.move.lock":     {"wheel", "delta"},
-	".lastMove.move.pillars":  {"pillar", "delta"},
-	".mural":                  {"pillars"},
+	".state.riddle":           {},
+	".state.sequence":         {"progress"},
+	".state.cipher":           {},
+	// A typed answer and a struck bell never reach the other players: the riddle, the
+	// sequence and the cipher are not in lastMove.move, whatever they say.
+	".lastMove":              {"characterName", "move", "changed", "at", "wrong", "step", "trapName"},
+	".lastMove.move":         {"lights", "lock", "pillars"},
+	".lastMove.move.lights":  {"row", "col"},
+	".lastMove.move.lock":    {"wheel", "delta"},
+	".lastMove.move.pillars": {"pillar", "delta"},
+	".mural":                 {"pillars"},
+	".limits":                {"attemptsPerPlayer", "attemptsLeft", "maxMoves", "movesMade", "timeLimitSeconds", "secondsLeft", "deadline"},
+	".sequence":              {"totalSteps", "plays", "playing", "shown", "stepMs", "nextInMs"},
 }
 
 // checkKeys fails for every object in raw (JSON) whose path or keys are not in the allowlist.
