@@ -486,6 +486,37 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 	return i, err
 }
 
+const getGeneratedDungeon = `-- name: GetGeneratedDungeon :one
+SELECT d.map_id, d.generator_version, d.seed, d.width, d.height, d.options, d.cells, d.rooms, d.created_at, d.image_id FROM generated_dungeons AS d
+JOIN maps AS m ON m.id = d.map_id
+WHERE m.campaign_id = $1 AND d.map_id = $2
+`
+
+type GetGeneratedDungeonParams struct {
+	CampaignID string
+	MapID      string
+}
+
+// The map's dungeon record, found through the map so that a map of another campaign
+// is "not found".
+func (q *Queries) GetGeneratedDungeon(ctx context.Context, arg GetGeneratedDungeonParams) (GeneratedDungeon, error) {
+	row := q.db.QueryRow(ctx, getGeneratedDungeon, arg.CampaignID, arg.MapID)
+	var i GeneratedDungeon
+	err := row.Scan(
+		&i.MapID,
+		&i.GeneratorVersion,
+		&i.Seed,
+		&i.Width,
+		&i.Height,
+		&i.Options,
+		&i.Cells,
+		&i.Rooms,
+		&i.CreatedAt,
+		&i.ImageID,
+	)
+	return i, err
+}
+
 const getMap = `-- name: GetMap :one
 SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch FROM maps
 WHERE campaign_id = $1 AND id = $2
@@ -1148,6 +1179,44 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const insertGeneratedDungeon = `-- name: InsertGeneratedDungeon :exec
+
+INSERT INTO generated_dungeons (map_id, generator_version, seed, width, height, options, cells, rooms, image_id, created_at)
+VALUES ($1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10)
+`
+
+type InsertGeneratedDungeonParams struct {
+	MapID            string
+	GeneratorVersion int32
+	Seed             int64
+	Width            int32
+	Height           int32
+	Options          []byte
+	Cells            []byte
+	Rooms            []byte
+	ImageID          *string
+	CreatedAt        time.Time
+}
+
+// Generated dungeons (MR-010, slice 10.6d): the record DungeonService keeps of a map
+// it made. The master's alone: nothing here is ever sent to a player (RN-10).
+func (q *Queries) InsertGeneratedDungeon(ctx context.Context, arg InsertGeneratedDungeonParams) error {
+	_, err := q.db.Exec(ctx, insertGeneratedDungeon,
+		arg.MapID,
+		arg.GeneratorVersion,
+		arg.Seed,
+		arg.Width,
+		arg.Height,
+		arg.Options,
+		arg.Cells,
+		arg.Rooms,
+		arg.ImageID,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const insertMap = `-- name: InsertMap :one
@@ -2519,6 +2588,21 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const setGeneratedDungeonImage = `-- name: SetGeneratedDungeonImage :exec
+UPDATE generated_dungeons SET image_id = $1 WHERE map_id = $2
+`
+
+type SetGeneratedDungeonImageParams struct {
+	ImageID *string
+	MapID   string
+}
+
+// "Redesenhar" drew a new image for the map: it is the dungeon's own now.
+func (q *Queries) SetGeneratedDungeonImage(ctx context.Context, arg SetGeneratedDungeonImageParams) error {
+	_, err := q.db.Exec(ctx, setGeneratedDungeonImage, arg.ImageID, arg.MapID)
+	return err
 }
 
 const setMapFog = `-- name: SetMapFog :one

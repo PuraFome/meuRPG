@@ -54,6 +54,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -213,7 +214,7 @@ type Config struct {
 	MaxPointsPerMap int32
 }
 
-// Service implements GalleryService, MapService and the image routes.
+// Service implements GalleryService, MapService, DungeonService and the image routes.
 type Service struct {
 	pool       *pgxpool.Pool
 	queries    *mapsdb.Queries
@@ -243,6 +244,15 @@ type Service struct {
 	maxMaps     int32
 	maxPoints   int32
 
+	// dungeonGate bounds the dungeons generated at once, and dungeonLimit the
+	// dungeons a campaign creates or redraws (dungeons.go).
+	dungeonGate chan struct{}
+	previews    campaignSlots
+	// beforeRedrawTx, when set, runs after a redraw drew its image and before its
+	// transaction: tests use it to change the map in that window.
+	beforeRedrawTx func()
+	dungeonLimit   *ratelimit.Limiter
+
 	// processing lets one image at a time be decoded, so a few uploads at
 	// once cannot take all the server's memory (package images bounds
 	// what one image may use).
@@ -267,6 +277,7 @@ func queriesIn(q *mapsdb.Queries, tx pgx.Tx) *mapsdb.Queries {
 var (
 	_ mapsv1connect.GalleryServiceHandler = (*Service)(nil)
 	_ mapsv1connect.MapServiceHandler     = (*Service)(nil)
+	_ mapsv1connect.DungeonServiceHandler = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -300,6 +311,8 @@ func New(cfg Config) (*Service, error) {
 		maxMaps:        cfg.MaxMaps,
 		maxPoints:      cfg.MaxPointsPerMap,
 		processing:     make(chan struct{}, 1),
+		dungeonGate:    make(chan struct{}, dungeonGenerators),
+		dungeonLimit:   newDungeonLimiter(),
 		tiles:          newTileRenderer(),
 	}
 	if s.logger == nil {
@@ -355,6 +368,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(mapsv1connect.NewGalleryServiceHandler(s, opts...))
 	handle(mapsv1connect.NewMapServiceHandler(s, opts...))
+	handle(mapsv1connect.NewDungeonServiceHandler(s, opts...))
 
 	withAuthz := authz.Middleware(sessions, members, s.logger)
 	route := func(h http.HandlerFunc) http.Handler {

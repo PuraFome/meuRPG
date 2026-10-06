@@ -340,6 +340,7 @@ flowchart TD
         t_map_points["map_points"]
         t_map_tokens["map_tokens, map_creature_tokens"]
         t_map_layers["map_layers"]
+        t_generated_dungeons["generated_dungeons"]
         t_map_point_reveals["map_point_reveals"]
         t_map_treasure_finders["map_treasure_finders"]
         t_scene_actions["scene_actions"]
@@ -484,8 +485,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00117_create_map_creature_tokens_index` | `map_creature_tokens` | A cascata de `creature_id` e os tokens de uma criatura. |
 | `00120_add_map_layers_doors` | `map_layers` | A camada das portas (MR-010, RN-26, Etapa 10, fatia 10.6c): `doors`, um `BYTEA` nulo de 4 bits por quadrado (0 nenhuma, 1 aberta, 2 fechada, 3 trancada, 4 grade, 5 secreta), no formato de `rules/grid`. |
 | `00121_add_door_opened_session_event_kind` | `session_events` | O `CHECK` de `kind` ganha `door_opened` (uma porta que um movimento abriu; MR-010, RN-26). O evento leva a rodada, o combatente, o quadrado da porta e de onde ele saiu, e é escrito na transação do movimento, antes do evento do próprio movimento. |
+| `00171_add_generated_dungeons_image` | `generated_dungeons` | `image_id`: a imagem da galeria que o gerador desenhou para o mapa (`ON DELETE SET NULL`; nula vale "não se sabe" e nunca bate com uma imagem). O "Redesenhar" só troca e só apaga essa imagem. |
+| `00170_create_generated_dungeons` | `generated_dungeons` | O registro de uma masmorra gerada que virou mapa (MR-010, RN-26, Etapa 10, fatia 10.6d): `map_id` (chave primária, `CASCADE`), a `generator_version`, a `seed` (o `uint64` guardado como `INT8`, os mesmos 64 bits), a largura e a altura, as `options` e as `rooms` em JSON (as mensagens da API), e as `cells` (`BYTEA`, 2 bits por quadrado). Só o mestre lê. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103` e as `00113` a `00115`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117` e a `00120`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103` e as `00113` a `00115`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00170` e a `00171`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -593,6 +596,7 @@ No `maps`:
   - `scene_discoveries` (`00072`) tem chave `(campaign_id, point_id)`, e a primeira vez vale. O `maps` grava quando um ponto de cena é revelado (`SetMapPointRevealed`, ou `UpdateMapPoint` com `revealed`) e o `play` grava quando o mestre abre a cena (`OpenScene`, mesmo num ponto escondido), na transação de cada um. Vale para o grupo todo e não some quando o ponto é escondido de novo. A lista das cenas que o jogador pode etiquetar junta com `map_points` e só mostra o que ainda é `scene`.
   - `player_notes` (`00073`, `00074`) são as anotações: `text` de 1 a 2.000 caracteres (`CHECK`), `scene_point_id` opcional (a API só aceita cena descoberta; apagar o ponto tira a etiqueta, `SET NULL`). No máximo 300 por jogador por campanha, conferido na transação do `INSERT`; as pistas recebidas não contam. Toda consulta filtra pelo autor, então a anotação de outra pessoa nunca é encontrada, nem pelo mestre. Excluir a conta ou a campanha apaga as anotações (`CASCADE`). Hoje não existe sair da campanha nem ser removido como membro ativo; quando existir, apagar as anotações do membro entra na mesma transação.
 - **`map_tokens`** (`00030`): a chave primária é `(map_id, character_id)`, um token por personagem por mapa, e lista os tokens de um mapa. O personagem é um personagem vivo da campanha, de jogador ou NPC, conferido pelo módulo `characters`; um personagem que morre continua na tabela, mas o `GetMap` não o lista. `hidden` nasce `false` para personagem de jogador e `true` para NPC (decidido em 02/10/2026, pergunta 31: o mestre revela quando quiser). Some com o mapa ou com o personagem (`CASCADE`); não há índice por `character_id`, porque só apagar um personagem procura por ele, como em `campaigns.created_by`. `carried_light` (`00096`) é a chave da luz que o personagem carrega (`light:torch`), ou `NULL`; só o mestre e o dono do personagem a recebem.
+- **`generated_dungeons`** (`00170`, MR-010, RN-26, Etapa 10, fatia 10.6d): uma linha por mapa feito pelo `DungeonService`, a chave primária é `map_id` (`CASCADE`: apagar o mapa apaga o registro). É **só do mestre**: o jogador nunca lê a tabela nem nada dela (a lista das salas, a semente e as opções entregam a masmorra, RN-10). Guarda tudo de que o mapa foi feito: a `seed` (o `uint64` do gerador como `INT8`, os mesmos 64 bits), a `generator_version` do algoritmo, `width` e `height`, as `options` como foram usadas (a mensagem `DungeonOptions` em JSON, com os padrões preenchidos e os tamanhos ímpares) e as `rooms` (uma `GetDungeonRoomsResponse` só com as salas: o piso, o quadrado do meio e as saídas, com o tipo verdadeiro de cada porta e a marca de armadilha, que a lista das salas do mestre mostra). As `cells` são a grade final dos tipos de quadrado, 2 bits cada (0 rocha, 1 sala, 2 corredor, 3 porta; o quadrado `n` fica nos bits `2 × (n mod 4)` do byte `n / 4`, do bit baixo; até 20 KB na maior grade): "Redesenhar" as usa, com as camadas de agora, para saber o que é rocha maciça. Como as células ficam guardadas, uma versão nova do gerador nunca muda um mapa que já existe. Os `CHECK`s conferem o tamanho (15 a 199 por 15 a 399) e que `cells` tem `⌈largura × altura / 4⌉` bytes (uma divisão de inteiros no CockroachDB dá decimal, então o `CHECK` compara por multiplicação). `image_id` (`00171`) é a imagem que o gerador desenhou: o "Redesenhar" só a troca e só a apaga, e recusa o mapa cuja imagem é outra. As `rooms` guardam também as portas, as escadas e a entrada (a mesma mensagem). Nenhum dado pessoal.
 - **`map_creature_tokens`** (`00116` e `00117`, MR-037): o token de uma criatura de um personagem no mapa de exploração, a chave primária é `(map_id, creature_id)`, um por criatura por mapa. Tabela própria porque a chave de `map_tokens` é `(map_id, character_id)` e um personagem tem muitas criaturas. Não há `hidden`: é um **token de grupo**, que nenhum jogador deixa de ver (D6). A criatura é uma criatura viva de um personagem da campanha (o `maps` pergunta ao `characters` por `MapCreatures`); some com o mapa ou com a criatura (`CASCADE`, com índice por `creature_id`), e a dispensada não é listada, embora a linha fique. O combate só move um token que já existe, no fim da luta; quem o cria é o mestre (`PlaceMapToken` com `creature_id`). Só IDs e uma posição.
 - **Índices** (`00031`): mapas por `(campaign_id, created_at)` e por `image_id` (o `RESTRICT` e a resposta que nomeia os mapas), pontos por `(map_id, created_at)` e por `target_map_id` (o `SET NULL`).
 - **Limites** (proposta, como a cota da galeria): 200 mapas por campanha e 200 pontos por mapa, conferidos na transação do `INSERT` (`resource_exhausted`). As listas não são paginadas.
@@ -952,6 +956,19 @@ erDiagram
         timestamptz updated_at
     }
 
+    generated_dungeons {
+        uuid map_id PK "e FK para maps, CASCADE"
+        int4 generator_version "o algoritmo que fez as células"
+        int8 seed "o uint64 do gerador"
+        int4 width "15 a 199"
+        int4 height "15 a 399"
+        jsonb options "DungeonOptions como usadas"
+        bytea cells "2 bits por quadrado"
+        jsonb rooms "as salas, as portas, as escadas e a entrada, só do mestre"
+        uuid image_id "a imagem que o gerador desenhou"
+        timestamptz created_at
+    }
+
     map_vision_memory {
         uuid map_id PK "e FK para maps, CASCADE"
         uuid user_id PK "e FK para users, CASCADE"
@@ -1153,6 +1170,7 @@ erDiagram
     character_creatures ||--o{ map_creature_tokens : "está em"
     character_creatures |o--o{ character_vitals : "é vista por"
     maps ||--o| map_layers : "tem as camadas"
+    maps ||--o| generated_dungeons : "veio de uma masmorra gerada"
     maps ||--o{ map_vision_memory : "lembrado por"
     users ||--o{ map_vision_memory : "viu"
     map_points ||--o{ map_point_reveals : "é conhecida por"
