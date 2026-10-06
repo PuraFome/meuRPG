@@ -92,3 +92,51 @@ func TestResourcesInVitals(t *testing.T) {
 		t.Errorf("a correction of rage = %v, %v; want rage 2 and the rest as they were", v.GetResources(), err)
 	}
 }
+
+// TestCasterForThirdCasterSubclass: a Fighter whose table subclass casts from the
+// wizard's list, multiclassed with a Cleric listed first, casts a wizard spell
+// with the subclass's ability and DC, not the Cleric's (the Cleric's list does
+// not have it, and the first caster is no fallback when a caster has the list).
+func TestCasterForThirdCasterSubclass(t *testing.T) {
+	t.Parallel()
+	srd, err := rules.LoadSRD()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub := rules.TableSubclass{
+		TableEntry: rules.TableEntry{Key: "subclass:cavaleiro-runico@mesa", NamePT: "Cavaleiro Rúnico"}, Class: "class:fighter",
+		Casting: &rules.TableCasting{Kind: rules.CastingThird, Ability: rules.INT, Preparation: rules.PreparationKnown, ListFrom: "class:wizard"},
+	}
+	for lvl := 3; lvl <= rules.MaxLevel; lvl++ {
+		sub.Levels = append(sub.Levels, rules.TableSubclassLevel{Level: lvl, TableLevel: rules.TableLevel{CantripsKnown: 2, SpellsKnown: 3, Slots: [9]int{2}}})
+	}
+	c, err := srd.With(rules.Overlay{Revision: 1, Subclasses: []rules.TableSubclass{sub}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := rules.Build{
+		BaseScores: map[rules.Ability]int{rules.STR: 10, rules.DEX: 10, rules.CON: 10, rules.INT: 18, rules.WIS: 14, rules.CHA: 10},
+		Race:       "race:human", Background: "background:acolyte",
+		Classes: []rules.ClassLevel{
+			{Class: "class:cleric", Subclass: "subclass:life", Level: 3},
+			{Class: "class:fighter", Subclass: sub.Key, Level: 5},
+		},
+	}
+	d := rules.Derive(b, c)
+	det, ok := c.SpellDetails("spell:fireball")
+	if !ok {
+		t.Fatal("no fireball")
+	}
+	sc := casterFor(d, det.Spell.Classes)
+	if sc == nil || sc.Class != "class:fighter" || sc.Ability != rules.INT || sc.SpellList != "class:wizard" {
+		t.Fatalf("caster = %+v", sc)
+	}
+	if want := 8 + d.ProficiencyBonus + 4; sc.SaveDC != want {
+		t.Errorf("save DC = %d, want %d (INT 18)", sc.SaveDC, want)
+	}
+	// A cleric spell still goes to the cleric.
+	cure, _ := c.SpellDetails("spell:cure-wounds")
+	if sc := casterFor(d, cure.Spell.Classes); sc == nil || sc.Class != "class:cleric" {
+		t.Errorf("cure wounds caster = %+v", sc)
+	}
+}
