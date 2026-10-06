@@ -774,46 +774,37 @@ func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*r
 	}
 }
 
-// archivedKeys are the keys of the archived entries.
-func archivedKeys(entries []entryRow) map[string]bool {
-	out := map[string]bool{}
-	for _, e := range entries {
-		if e.row.ArchivedAt != nil {
-			out[e.row.ContentKey] = true
-		}
-	}
-	return out
-}
-
-// parentArchived says whether an entry's required parent (a subclass's class, a
-// subrace's race) is archived.
-func parentArchived(e entryRow, archived map[string]bool) bool {
+// parentHidden says whether an entry's required parent (a subclass's class, a
+// subrace's race) is hidden from the players: retired or switched off.
+func parentHidden(e entryRow, hidden func(string) bool) bool {
 	switch b := e.body.(type) {
 	case *rulesv1.TableSubclass:
-		return archived[b.GetClassKey()]
+		return hidden(b.GetClassKey())
 	case *rulesv1.TableSubrace:
-		return archived[b.GetRaceKey()]
+		return hidden(b.GetRaceKey())
 	}
 	return false
 }
 
-// forPlayer is a copy of an entry for a player (RN-23): no archived key in any
-// reference of its body (the classes of a spell, the list a casting reads from, the
-// spells an effect grants or a subclass always prepares).
-func forPlayer(e entryRow, archived map[string]bool) entryRow {
-	if len(archived) == 0 {
-		return e
+// forPlayer is a copy of an entry for a player (RN-23): no hidden key (retired or
+// switched off, the SRD's too) in any reference of its body (the classes of a
+// spell, the list a casting reads from, the spells an effect grants or a subclass
+// always prepares).
+func forPlayer(e entryRow, hidden func(string) bool) entryRow {
+	if hidden == nil {
+		return e // nothing is hidden: the entry goes as it is
 	}
 	body := proto.Clone(e.body).(tableBody)
 	dropEffects := func(fs []*rulesv1.TableFeature) {
 		for _, f := range fs {
 			for _, ef := range f.GetEffects() {
-				ef.Spells = slices.DeleteFunc(ef.Spells, func(k string) bool { return archived[k] })
+				ef.Spells = slices.DeleteFunc(ef.Spells, func(k string) bool { return hidden(k) })
+				ef.From = slices.DeleteFunc(ef.From, func(k string) bool { return hidden(k) })
 			}
 		}
 	}
 	casting := func(c *rulesv1.TableCasting) {
-		if c != nil && archived[c.GetListFrom()] {
+		if c != nil && hidden(c.GetListFrom()) {
 			c.ListFrom = ""
 		}
 	}
@@ -825,7 +816,7 @@ func forPlayer(e entryRow, archived map[string]bool) entryRow {
 		}
 	case *rulesv1.TableSubclass:
 		casting(b.GetCasting())
-		b.AlwaysPrepared = slices.DeleteFunc(b.AlwaysPrepared, func(ap *rulesv1.TableAlwaysPrepared) bool { return archived[ap.GetSpellKey()] })
+		b.AlwaysPrepared = slices.DeleteFunc(b.AlwaysPrepared, func(ap *rulesv1.TableAlwaysPrepared) bool { return hidden(ap.GetSpellKey()) })
 		for _, l := range b.GetLevels() {
 			dropEffects(l.GetFeatures())
 		}
@@ -838,7 +829,7 @@ func forPlayer(e entryRow, archived map[string]bool) entryRow {
 			dropEffects([]*rulesv1.TableFeature{b.GetFeature()})
 		}
 	case *rulesv1.TableSpell:
-		b.ClassKeys = slices.DeleteFunc(b.ClassKeys, func(k string) bool { return archived[k] })
+		b.ClassKeys = slices.DeleteFunc(b.ClassKeys, func(k string) bool { return hidden(k) })
 	}
 	e.body = body
 	return e

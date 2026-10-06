@@ -42,14 +42,21 @@ func (d *testDiceRules) LevelUpDice(context.Context, pgx.Tx, string, string) (ch
 
 // liveSpy records the campaigns that got the live hint.
 type liveSpy struct {
-	mu    sync.Mutex
-	calls []string
+	mu      sync.Mutex
+	calls   []string
+	content []string // the campaigns that got content_changed
 }
 
 func (l *liveSpy) PublishXPChanged(campaignID string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.calls = append(l.calls, campaignID)
+}
+
+func (l *liveSpy) PublishContentChanged(campaignID string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.content = append(l.content, campaignID)
 }
 
 func (l *liveSpy) count() int {
