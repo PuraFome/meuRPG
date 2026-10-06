@@ -524,8 +524,8 @@ message DerivedSheet {
   // saved and that gave the sheet new issues since (RN-23, question 80: a change
   // applies at once). The numbers above already use the new rules. It is worked out
   // on every read, from the sheet's own issues, so it goes away by itself when no
-  // such issue remains (or when the sheet is saved again); a change that left the
-  // sheet with no new issue shows nothing. Each entry is also an issue with code
+  // such issue remains (saving the sheet does not clear it); a change that left
+  // the sheet with no new issue tied to the entry shows nothing. Each entry is also an issue with code
   // "table_content_changed", for the banner "A classe mudou".
   repeated ChangedContent changed_content = 41;
 }
@@ -540,7 +540,8 @@ message ChangedContent {
   // The sheet field that holds the key, with the CharacterSheet field names
   // ("full.classes[0].class_key").
   string field = 3;
-  // The content revision the entry changed at, and the one the sheet was saved at.
+  // The content revision the entry changed at, and the one the sheet was last known
+  // to fit it at.
   int32 revision = 4;
   int32 saved_revision = 5;
   // When the entry last changed (an archive is not a change).

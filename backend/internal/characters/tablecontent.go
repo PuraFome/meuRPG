@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -759,4 +760,74 @@ func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*r
 			a.taken[f.Key] = true
 		}
 	}
+}
+
+// archivedKeys are the keys of the archived entries.
+func archivedKeys(entries []entryRow) map[string]bool {
+	out := map[string]bool{}
+	for _, e := range entries {
+		if e.row.ArchivedAt != nil {
+			out[e.row.ContentKey] = true
+		}
+	}
+	return out
+}
+
+// parentArchived says whether an entry's required parent (a subclass's class, a
+// subrace's race) is archived.
+func parentArchived(e entryRow, archived map[string]bool) bool {
+	switch b := e.body.(type) {
+	case *rulesv1.TableSubclass:
+		return archived[b.GetClassKey()]
+	case *rulesv1.TableSubrace:
+		return archived[b.GetRaceKey()]
+	}
+	return false
+}
+
+// forPlayer is a copy of an entry for a player (RN-23): no archived key in any
+// reference of its body (the classes of a spell, the list a casting reads from, the
+// spells an effect grants or a subclass always prepares).
+func forPlayer(e entryRow, archived map[string]bool) entryRow {
+	if len(archived) == 0 {
+		return e
+	}
+	body := proto.Clone(e.body).(tableBody)
+	dropEffects := func(fs []*rulesv1.TableFeature) {
+		for _, f := range fs {
+			for _, ef := range f.GetEffects() {
+				ef.Spells = slices.DeleteFunc(ef.Spells, func(k string) bool { return archived[k] })
+			}
+		}
+	}
+	casting := func(c *rulesv1.TableCasting) {
+		if c != nil && archived[c.GetListFrom()] {
+			c.ListFrom = ""
+		}
+	}
+	switch b := body.(type) {
+	case *rulesv1.TableClass:
+		casting(b.GetCasting())
+		for _, l := range b.GetLevels() {
+			dropEffects(l.GetFeatures())
+		}
+	case *rulesv1.TableSubclass:
+		casting(b.GetCasting())
+		b.AlwaysPrepared = slices.DeleteFunc(b.AlwaysPrepared, func(ap *rulesv1.TableAlwaysPrepared) bool { return archived[ap.GetSpellKey()] })
+		for _, l := range b.GetLevels() {
+			dropEffects(l.GetFeatures())
+		}
+	case *rulesv1.TableRace:
+		dropEffects(b.GetTraits())
+	case *rulesv1.TableSubrace:
+		dropEffects(b.GetTraits())
+	case *rulesv1.TableBackground:
+		if b.GetFeature() != nil {
+			dropEffects([]*rulesv1.TableFeature{b.GetFeature()})
+		}
+	case *rulesv1.TableSpell:
+		b.ClassKeys = slices.DeleteFunc(b.ClassKeys, func(k string) bool { return archived[k] })
+	}
+	e.body = body
+	return e
 }

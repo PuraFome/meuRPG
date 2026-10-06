@@ -44,8 +44,8 @@ enum TableContentKind {
   TABLE_CONTENT_KIND_SPELL = 6;
 }
 
-// TableEntry is one entry of the table's content, as ListContent and the writes
-// return it: what every entry has, and the kind's message in `body`.
+// TableEntry is one entry of the table's content, as ListTableEntries and the
+// writes return it: what every entry has, and the kind's message in `body`.
 message TableEntry {
   // "<kind>:<slug>@mesa". Immutable.
   string key = 1;
@@ -137,7 +137,8 @@ message TableEffect {
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
 // background's feature.
 message TableFeature {
-  // The feature's key ("feature:class-<slug>-<name>@mesa", "trait:...",
+  // The feature's key ("feature:class-guardiao-3f9a1c--vigor@mesa": the kind, the start of the
+  // entry's slug, a short hash of the whole entry key and the feature's own name; or "trait:...",
   // "background-feature:..."). The server makes it when the feature is new (leave
   // it empty) and the editor sends it back on every update: a feature that keeps
   // its key keeps the choices sheets made on it. An empty key at a level where an
@@ -479,7 +480,8 @@ message AffectedCharacter {
   // The character's name, and the display name of its player (empty for an NPC).
   string name = 2;
   string player_display_name = 3;
-  // How many issues its sheet has now.
+  // How many new issues, tied to this entry, its sheet has now (issues the sheet
+  // did not have when it was last saved, and that depend on the entry).
   int32 issues = 4;
 }
 

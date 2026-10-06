@@ -2507,8 +2507,8 @@ type DerivedSheet struct {
 	// saved and that gave the sheet new issues since (RN-23, question 80: a change
 	// applies at once). The numbers above already use the new rules. It is worked out
 	// on every read, from the sheet's own issues, so it goes away by itself when no
-	// such issue remains (or when the sheet is saved again); a change that left the
-	// sheet with no new issue shows nothing. Each entry is also an issue with code
+	// such issue remains (saving the sheet does not clear it); a change that left
+	// the sheet with no new issue tied to the entry shows nothing. Each entry is also an issue with code
 	// "table_content_changed", for the banner "A classe mudou".
 	ChangedContent []*ChangedContent `protobuf:"bytes,41,rep,name=changed_content,json=changedContent,proto3" json:"changed_content,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -2843,7 +2843,8 @@ type ChangedContent struct {
 	// The sheet field that holds the key, with the CharacterSheet field names
 	// ("full.classes[0].class_key").
 	Field string `protobuf:"bytes,3,opt,name=field,proto3" json:"field,omitempty"`
-	// The content revision the entry changed at, and the one the sheet was saved at.
+	// The content revision the entry changed at, and the one the sheet was last known
+	// to fit it at.
 	Revision      int32 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
 	SavedRevision int32 `protobuf:"varint,5,opt,name=saved_revision,json=savedRevision,proto3" json:"saved_revision,omitempty"`
 	// When the entry last changed (an archive is not a change).

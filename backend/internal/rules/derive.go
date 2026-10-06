@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
@@ -93,7 +94,59 @@ func derive(b Build, c *content) Derived {
 
 // issue records a problem on the sheet.
 func (x *deriver) issue(code, field, format string, args ...any) {
-	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...)})
+	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...), Keys: x.issueKeys(code, field)})
+}
+
+// issueKeys are the table keys an issue depends on (Issue.Keys): the key at the
+// field it points at, and, by what the code is about, the keys whose content the
+// problem is computed from. A formula that failed at run time may come from any
+// feature of the build, so it depends on all the table keys it has.
+func (x *deriver) issueKeys(code, field string) []string {
+	if len(x.c.entryRevision) == 0 {
+		return nil // the SRD content or a table with nothing: no key to blame
+	}
+	all := BuildKeys(x.b)
+	seen := map[string]bool{}
+	var out []string
+	add := func(key string) {
+		if isTableKey(key) && !seen[key] {
+			seen[key] = true
+			out = append(out, key)
+		}
+	}
+	for _, kf := range all {
+		if kf.Field == field {
+			add(kf.Key)
+		}
+	}
+	// groups: which fields of the sheet the numbers behind a code come from.
+	var classes, race, background, spells bool
+	switch code {
+	case IssueSkillCount, IssueExpertise, IssueMulticlass, IssueSubclassLevel, IssueArmorProficiency:
+		classes, race, background = true, true, true
+	case IssueSpellCount, IssueSpellLevel, IssueSpellNotOnList:
+		classes = true
+	case IssueRaceBonus:
+		race = true
+	case IssueHitPointRolls, IssueLevel:
+		classes = true
+	case IssueFormula:
+		classes, race, background, spells = true, true, true, true
+	}
+	for _, kf := range all {
+		switch {
+		case classes && (strings.Contains(kf.Field, ".classes[") || kf.Field == "full.classes"):
+			add(kf.Key)
+		case race && (kf.Field == "full.race_key" || kf.Field == "full.subrace_key"):
+			add(kf.Key)
+		case background && kf.Field == "full.background_key":
+			add(kf.Key)
+		case spells && (strings.Contains(kf.Field, "_spell_keys[") || strings.Contains(kf.Field, "cantrip_keys[")):
+			add(kf.Key)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // resolve looks up the race, subrace and classes, turning unknown keys into

@@ -298,8 +298,8 @@ func (TableContentBlockedReason) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{3}
 }
 
-// TableEntry is one entry of the table's content, as ListContent and the writes
-// return it: what every entry has, and the kind's message in `body`.
+// TableEntry is one entry of the table's content, as ListTableEntries and the
+// writes return it: what every entry has, and the kind's message in `body`.
 type TableEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "<kind>:<slug>@mesa". Immutable.
@@ -771,7 +771,8 @@ func (x *TableEffect) GetTextPt() string {
 // background's feature.
 type TableFeature struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The feature's key ("feature:class-<slug>-<name>@mesa", "trait:...",
+	// The feature's key ("feature:class-guardiao-3f9a1c--vigor@mesa": the kind, the start of the
+	// entry's slug, a short hash of the whole entry key and the feature's own name; or "trait:...",
 	// "background-feature:..."). The server makes it when the feature is new (leave
 	// it empty) and the editor sends it back on every update: a feature that keeps
 	// its key keeps the choices sheets made on it. An empty key at a level where an
@@ -2546,7 +2547,8 @@ type AffectedCharacter struct {
 	// The character's name, and the display name of its player (empty for an NPC).
 	Name              string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	PlayerDisplayName string `protobuf:"bytes,3,opt,name=player_display_name,json=playerDisplayName,proto3" json:"player_display_name,omitempty"`
-	// How many issues its sheet has now.
+	// How many new issues, tied to this entry, its sheet has now (issues the sheet
+	// did not have when it was last saved, and that depend on the entry).
 	Issues        int32 `protobuf:"varint,4,opt,name=issues,proto3" json:"issues,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

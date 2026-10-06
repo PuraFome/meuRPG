@@ -496,6 +496,8 @@ type ChangedEntry struct {
 	// ChangedAt when.
 	Revision  int
 	ChangedAt time.Time
+	// Since is the revision the sheet was last known to fit the entry at.
+	Since int
 }
 
 // KeyField is a content key a Build uses and the sheet field that holds it.
@@ -540,15 +542,19 @@ func BuildKeys(b Build) []KeyField {
 // than savedRevision, the content revision the sheet was last saved at (RN-23,
 // question 80: a change applies at once, and the owner is told). The order is
 // the sheet's (BuildKeys).
-func (c *Content) ChangedSince(b Build, savedRevision int) []ChangedEntry {
+func (c *Content) ChangedSince(b Build, savedRevision int, baselines map[string]int) []ChangedEntry {
 	var out []ChangedEntry
 	seen := map[string]bool{}
 	for _, kf := range BuildKeys(b) {
-		if seen[kf.Key] || c.c.entryRevision[kf.Key] <= savedRevision {
+		since := savedRevision
+		if r, ok := baselines[kf.Key]; ok {
+			since = r // an entry the sheet is still flagged for keeps its older baseline
+		}
+		if seen[kf.Key] || c.c.entryRevision[kf.Key] <= since {
 			continue
 		}
 		seen[kf.Key] = true
-		out = append(out, ChangedEntry{Key: kf.Key, Field: kf.Field, Revision: c.c.entryRevision[kf.Key], ChangedAt: c.c.entryChangedAt[kf.Key]})
+		out = append(out, ChangedEntry{Key: kf.Key, Field: kf.Field, Revision: c.c.entryRevision[kf.Key], Since: since, ChangedAt: c.c.entryChangedAt[kf.Key]})
 	}
 	return out
 }

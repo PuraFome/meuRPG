@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -875,7 +876,19 @@ func TestTableContentChangeShowsOnTheSheet(t *testing.T) {
 	if n := len(master.get(t, campaign, pc.GetId()).GetDerived().GetChangedContent()); n != 1 {
 		t.Errorf("the master sees %d changed entries, want 1", n)
 	}
-	// Saving the sheet again (the master fixes it) clears the notice.
+	// A save that does not fix the mismatch keeps the notice (E10-02 state 8): the
+	// master renames the sheet, and the spell is still off the list.
+	same, err := master.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: campaign, CharacterId: pc.GetId(), Revision: got.GetRevision(), Name: "Pensantus renomeado", Sheet: got.GetSheet(),
+	}))
+	if err != nil {
+		t.Fatalf("UpdateCharacter() rename error = %v", err)
+	}
+	if n := len(same.Msg.GetCharacter().GetDerived().GetChangedContent()); n != 1 {
+		t.Errorf("after a rename that fixes nothing: %d changed entries, want the notice to stay (1)", n)
+	}
+	got = same.Msg.GetCharacter()
+	// Fixing what it says (the master takes the spell out of the book) clears it.
 	fixed := proto.Clone(got.GetSheet()).(*charactersv1.CharacterSheet)
 	fixed.GetFull().KnownSpellKeys = fixed.GetFull().KnownSpellKeys[:10]
 	up, err := master.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
@@ -885,7 +898,7 @@ func TestTableContentChangeShowsOnTheSheet(t *testing.T) {
 		t.Fatalf("UpdateCharacter() error = %v", err)
 	}
 	if n := len(up.Msg.GetCharacter().GetDerived().GetChangedContent()); n != 0 {
-		t.Errorf("after saving the sheet: %d changed entries, want none", n)
+		t.Errorf("after fixing the sheet: %d changed entries, want none", n)
 	}
 }
 
@@ -1466,5 +1479,106 @@ func TestTableContentTheClientNeverSetsTheContentRevision(t *testing.T) {
 	}
 	if got := lv.Msg.GetCharacter().GetSheet().GetFull(); got.GetContentRevision() != 3 || slices.Contains(got.GetKnownIssues(), "z|z") {
 		t.Errorf("after the level-up: revision %d, known issues %v; want 3 and not the forged one", got.GetContentRevision(), got.GetKnownIssues())
+	}
+}
+
+// TestTableContentAnIssueIsBlamedOnItsOwnEntry (the review's probe): a spell leaves
+// the wizard list, and later the text of the sheet's background changes. The sheet
+// shows one banner, on the spell; the background's update affects no sheet.
+func TestTableContentAnIssueIsBlamedOnItsOwnEntry(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, owner := h.newUser("Samuel"), h.newUser("Dona")
+	campaign := h.newCampaign(master, "Mirathel", owner)
+	bg := master.addEntry(t, campaign, testBackground("Guarda de farol"))
+	spell := master.addEntry(t, campaign, testSpell("Raio de teste", "class:wizard"))
+	sheet := sheetWithTable("race:gnome", bg.GetKey(), spell.GetKey())
+	sheet.GetFull().SubraceKey = "subrace:rock-gnome"
+	pc := owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", sheet)
+
+	moved := proto.Clone(bodyMessage(spell)).(*rulesv1.TableSpell)
+	moved.ClassKeys = []string{"class:cleric"}
+	if _, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, spell.GetKey(), spell.GetRevision(), moved))); err != nil {
+		t.Fatal(err)
+	}
+	text := testBackground("Guarda de farol")
+	text.Feature = testNote("luz", "Luz-guia", "Agora o texto é outro.")
+	res, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, bg.GetKey(), bg.GetRevision(), cloneWithKeys(text, bodyMessage(bg)))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := res.Msg.GetAffectedCharacters(); len(a) != 0 {
+		t.Errorf("a text edit of the background affects %v, want no sheet", a)
+	}
+	ch := owner.get(t, campaign, pc.GetId()).GetDerived().GetChangedContent()
+	if len(ch) != 1 || ch[0].GetKey() != spell.GetKey() {
+		t.Errorf("changed content = %v, want one banner, on the spell", ch)
+	}
+}
+
+// TestIssuesAreToldApartByTheirWholeIdentity: the code, the field and the sentence.
+func TestIssuesAreToldApartByTheirWholeIdentity(t *testing.T) {
+	t.Parallel()
+	a := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Faltam 1 perícias para escolher."}
+	b := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Há 3 perícias escolhidas; o personagem escolhe 2."}
+	f1 := rules.Issue{Code: "formula", Message: "Um efeito de A foi ignorado."}
+	f2 := rules.Issue{Code: "formula", Message: "Um efeito de B foi ignorado."}
+	if got := issueIDs([]rules.Issue{a, b, f1, f2, a}); len(got) != 4 {
+		t.Errorf("issueIDs() = %v, want four different issues", got)
+	}
+}
+
+// TestTableContentNeverNamesAnArchivedKeyToAPlayer: through references too (the
+// classes of a spell, the parent of a subclass or a subrace), in the catalog, the
+// entries and the spell's details, read as the player's JSON.
+func TestTableContentNeverNamesAnArchivedKeyToAPlayer(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, player := h.newUser("Samuel"), h.newUser("Dona")
+	campaign := h.newCampaign(master, "Mirathel", player)
+	class := master.addEntry(t, campaign, testClass("Guardião secreto"))
+	race := master.addEntry(t, campaign, testRace("Raça secreta"))
+	sub := master.addEntry(t, campaign, testSubclass("Caminho secreto", class.GetKey()))
+	subrace := master.addEntry(t, campaign, testSubrace("Sub-raça secreta", race.GetKey()))
+	spell := master.addEntry(t, campaign, testSpell("Raio de teste", "class:wizard", class.GetKey()))
+	for _, key := range []string{class.GetKey(), race.GetKey()} {
+		if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: key})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	secret := func(what string, m proto.Message) {
+		t.Helper()
+		b, err := protojson.Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range []string{class.GetKey(), race.GetKey(), sub.GetKey(), subrace.GetKey()} {
+			if strings.Contains(string(b), k) {
+				t.Errorf("%s names the archived (or parentless) key %q to a player", what, k)
+			}
+		}
+	}
+	entries, err := player.table.ListTableEntries(t.Context(), connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: campaign}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret("ListTableEntries", entries.Msg)
+	if e := entries.Msg.GetEntries(); len(e) != 1 || e[0].GetKey() != spell.GetKey() {
+		t.Errorf("the player's entries = %v, want only the spell", e)
+	}
+	catalog, err := player.content.ListContent(t.Context(), connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: campaign}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret("ListContent", catalog.Msg)
+	details, err := player.content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: spell.GetKey()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret("GetSpellDetails", details.Msg)
+	// The master still sees them all.
+	m := master.entries(t, campaign)
+	if len(m) != 5 {
+		t.Errorf("the master's entries = %d, want 5", len(m))
 	}
 }

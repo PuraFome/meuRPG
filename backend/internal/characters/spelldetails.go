@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -42,6 +43,10 @@ func (s *Service) GetSpellDetails(
 		}
 	}
 	out := spellDetailsToProto(d)
+	if !isMaster(m) {
+		// The classes whose list has the spell: an archived one is not named to a player.
+		out.Spell.ClassKeys = slices.DeleteFunc(slices.Clone(out.GetSpell().GetClassKeys()), content.Archived)
+	}
 	out.HitPointEffect = hitPointEffect(content, req.Msg.GetSpellKey(), d.Spell.Level)
 	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil
 }

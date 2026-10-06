@@ -154,6 +154,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     portraitImageId: '',
     contentRevision: 0,
     knownIssues: [],
+    contentBaselines: {},
     xpValue: 0,
     ...overrides,
   };

@@ -980,8 +980,8 @@ export type DerivedSheet = Message<"meurpg.rules.v1.DerivedSheet"> & {
    * saved and that gave the sheet new issues since (RN-23, question 80: a change
    * applies at once). The numbers above already use the new rules. It is worked out
    * on every read, from the sheet's own issues, so it goes away by itself when no
-   * such issue remains (or when the sheet is saved again); a change that left the
-   * sheet with no new issue shows nothing. Each entry is also an issue with code
+   * such issue remains (saving the sheet does not clear it); a change that left
+   * the sheet with no new issue tied to the entry shows nothing. Each entry is also an issue with code
    * "table_content_changed", for the banner "A classe mudou".
    *
    * @generated from field: repeated meurpg.rules.v1.ChangedContent changed_content = 41;
@@ -1025,7 +1025,8 @@ export type ChangedContent = Message<"meurpg.rules.v1.ChangedContent"> & {
   field: string;
 
   /**
-   * The content revision the entry changed at, and the one the sheet was saved at.
+   * The content revision the entry changed at, and the one the sheet was last known
+   * to fit it at.
    *
    * @generated from field: int32 revision = 4;
    */

@@ -35,8 +35,8 @@ const maxLiveContents = 8
 // in the same transaction, so they are the revision's, and nobody waits on a
 // shared single-flight (a request holding a connection waiting for another that
 // needs one is how a pool deadlocks). Two requests that miss at once both build.
-// A miss outside a transaction reads the revision and the rows in one read-only
-// transaction, so the content cached under a revision is that revision's.
+// A miss outside a transaction reads the revision and the rows in one
+// transaction (db.InTx's, a plain one, which is enough for a snapshot), so the content cached under a revision is that revision's.
 type TableSource struct {
 	pool    *pgxpool.Pool
 	queries *charactersdb.Queries
@@ -89,7 +89,7 @@ func (s *TableSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID stri
 		return s.contentIn(ctx, s.queries.WithTx(tx), id)
 	}
 	// Outside a transaction a hit costs one read of the revision; only a miss
-	// opens a read-only transaction, to read the revision again with the rows.
+	// opens a transaction, to read the revision again with the rows.
 	revision, err := s.queries.GetContentRevision(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s.srd, nil

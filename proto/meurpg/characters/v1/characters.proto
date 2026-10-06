@@ -972,10 +972,17 @@ message FullSheet {
   // gave the sheet a new issue since, shows "A classe mudou"
   // (DerivedSheet.changed_content). 0 when the table had no content.
   int32 content_revision = 29;
-  // The issues the sheet had when it was last saved ("code|field" of each, sorted),
-  // set by the server and ignored from the client: what "A classe mudou" compares
-  // against, so an issue the sheet already had is never blamed on a change.
+  // The issues the sheet had when it was last saved ("code|field|message" of each,
+  // sorted), set by the server and ignored from the client: what "A classe mudou"
+  // compares against, so an issue the sheet already had is never blamed on a change.
+  // An issue that was flagged and still stands is left out, so a save never clears
+  // it; only fixing what it says does.
   repeated string known_issues = 30;
+  // For each table entry the sheet is still flagged for (a changed entry with an
+  // unresolved issue tied to it), the content revision the sheet was last known to
+  // fit it at. Set by the server and ignored from the client; an entry not here
+  // uses `content_revision`.
+  map<string, int32> content_baselines = 31;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1712,8 +1719,9 @@ message LevelUpSubclass {
   int32 cantrips = 4;
   int32 skill_choices = 5;
   int32 expertise_choices = 6;
-  // The table retired this subclass (RN-23): offering it is up to the app, and
-  // choosing it is refused with ARCHIVED_CHOICE.
+  // The table retired this subclass (RN-23). Only the master receives an archived
+  // subclass; the server leaves it out for players, unless their own sheet has it.
+  // Choosing one is refused with ARCHIVED_CHOICE.
   bool archived = 7;
 }
 

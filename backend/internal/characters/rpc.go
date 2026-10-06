@@ -395,6 +395,9 @@ func (s *Service) UpdateCharacter(
 		if err := keepAbilityOrigin(m, content, storedSheet, sheet); err != nil {
 			return err
 		}
+		// A save never clears an issue that a change of the table's content flagged
+		// and that still stands.
+		carryFlags(content, storedSheet.GetFull(), sheet.GetFull())
 		if portraitCopy != nil { // the copy's gallery row, in this transaction
 			if err := portraitCopy.Insert(ctx, tx); err != nil {
 				return err

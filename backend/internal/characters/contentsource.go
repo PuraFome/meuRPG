@@ -147,11 +147,49 @@ func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 // so it needs no change here.)
 func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
 	out := proto.CloneOf(c)
+	// The archived keys: nothing a player receives may name one (RN-23), not even
+	// through a reference.
+	archived := map[string]bool{}
+	for _, r := range out.Races {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Classes {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Subclasses {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Subraces {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Backgrounds {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
+	for _, r := range out.Spells {
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+	}
 	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() })
 	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() })
 	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() })
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() })
 	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() })
 	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() })
+	// An entry whose required parent is archived goes too, and so does a reference
+	// to an archived class or race.
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return archived[r.GetClassKey()] })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return archived[r.GetRaceKey()] })
+	for _, sp := range out.Spells {
+		sp.ClassKeys = slices.DeleteFunc(sp.ClassKeys, func(k string) bool { return archived[k] })
+	}
+	for _, cl := range out.Classes {
+		if cs := cl.GetSpellcasting(); cs != nil && archived[cs.GetListClassKey()] {
+			cs.ListClassKey = ""
+		}
+	}
+	for _, sub := range out.Subclasses {
+		if cs := sub.GetSpellcasting(); cs != nil && archived[cs.GetListClassKey()] {
+			cs.ListClassKey = ""
+		}
+	}
 	return out
 }

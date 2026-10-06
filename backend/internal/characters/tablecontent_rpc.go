@@ -145,9 +145,22 @@ func (s *Service) ListTableEntries(
 			return err
 		}
 		res = &rulesv1.ListTableEntriesResponse{TableRevision: rev, ContentVersion: content.Version()}
+		archived := archivedKeys(entries)
+		var mine map[string]bool // the keys the player's own sheets use (read in this transaction)
+		if !master {
+			if mine, err = callerKeys(ctx, q, m); err != nil {
+				return wrap("read the caller's sheets", err)
+			}
+		}
 		for _, e := range entries {
-			if e.row.ArchivedAt != nil && !master {
-				continue // a player never receives a retired entry or a draft
+			if !master {
+				switch {
+				case e.row.ArchivedAt != nil:
+					continue // a player never receives a retired entry or a draft
+				case parentArchived(e, archived) && !mine[e.row.ContentKey]:
+					continue // nor an entry whose class or race is retired, unless their sheet uses it
+				}
+				e = forPlayer(e, archived)
 			}
 			res.Entries = append(res.Entries, entryToProto(e, uses[e.row.ContentKey]))
 		}
@@ -444,9 +457,9 @@ func affectedSheets(sheets []charactersdb.ListCampaignSheetsRow, content *rules.
 		if !slices.Contains(rules.TableKeys(buildOf(full)), key) {
 			continue
 		}
-		// Only the issues the sheet did not have when it was last saved: the ones
-		// this change can be blamed for.
-		if n := len(newIssues(content, full)); n > 0 {
+		// Only the new issues that depend on this entry: the ones this change can
+		// be blamed for.
+		if n := len(issuesTiedTo(content, full, key)); n > 0 {
 			out = append(out, affectedSheet{id: row.ID, name: row.Name, playerID: deref(row.PlayerUserID), issues: n})
 		}
 	}
