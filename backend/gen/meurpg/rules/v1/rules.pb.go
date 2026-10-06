@@ -2994,9 +2994,23 @@ type ChangedContent struct {
 	SavedRevision int32 `protobuf:"varint,5,opt,name=saved_revision,json=savedRevision,proto3" json:"saved_revision,omitempty"`
 	// When the entry last changed (an archive is not a change).
 	ChangedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=changed_at,json=changedAt,proto3" json:"changed_at,omitempty"`
-	// The sentences of the sheet's new issues, in Portuguese, exactly as `issues`
-	// has them ("Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem
-	// 3."): what no longer matches, for the sheet of what changed.
+	// The sentences of the sheet's new issues, in Portuguese, as a change reads. A
+	// sentence names the class or subclass it is about only when that is this entry
+	// ("Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3."); about any
+	// other it is told without a name, with the first letter in capitals ("Agora dá 4
+	// perícias no nível 1; esta ficha tem 5." for an SRD class whose count moved
+	// because a table race changed). The kinds: the skill count (or, with other
+	// sources, "O total de perícias para escolher agora é 4; esta ficha tem 5."); the
+	// spell counts, "Mago agora conhece 3 truques; esta ficha tem 4." (also "conhece N
+	// magias" and "prepara N magias", naming the subclass for a third caster; with
+	// several casters, "O total de truques conhecidos agora é 3; esta ficha tem 4.");
+	// the subclass level, "Guardião do Vale agora escolhe a subclasse no nível 5; esta
+	// ficha tem nível 3 nela."; the multiclass prerequisite, "Guardião do Vale agora
+	// pede outros atributos para multiclasse; os desta ficha não cumprem."; and an
+	// option the entry's feature stopped offering, "Guardião do Vale agora não oferece
+	// a escolha Estilo de Luta: Defesa; ela não vale mais nesta ficha." Any other issue
+	// tied to the entry is told with its own sentence in `issues`. What no longer
+	// matches, for the sheet of what changed.
 	Messages      []string `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

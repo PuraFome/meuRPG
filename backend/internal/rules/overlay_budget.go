@@ -99,7 +99,7 @@ func checkBudgets(o *Overlay) error {
 			for fi := range tc.Levels[li].Features {
 				n++
 				if n > MaxTableFeatures {
-					return ovErr(tc.Key, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures).at(path+".levels", ReasonLimit)
+					return ovErr(tc.Key, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures).at(fmt.Sprintf("%s.levels[%d].features[%d]", path, li, fi), ReasonLimit)
 				}
 				if err := bg.feature(fmt.Sprintf("%s.levels[%d].features[%d]", path, li, fi), &tc.Levels[li].Features[fi]); err != nil {
 					return err
@@ -118,7 +118,7 @@ func checkBudgets(o *Overlay) error {
 			for fi := range ts.Levels[li].Features {
 				n++
 				if n > MaxTableFeatures {
-					return ovErr(ts.Key, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures).at(path+".levels", ReasonLimit)
+					return ovErr(ts.Key, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures).at(fmt.Sprintf("%s.levels[%d].features[%d]", path, li, fi), ReasonLimit)
 				}
 				if err := bg.feature(fmt.Sprintf("%s.levels[%d].features[%d]", path, li, fi), &ts.Levels[li].Features[fi]); err != nil {
 					return err
