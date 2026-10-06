@@ -73,6 +73,10 @@ test(
 
       // The Ogre: the stat block, the SRD's text in English.
       await master.getByRole('searchbox', { name: 'Nome' }).fill('ogro');
+      // The app's result, not a race with it: wait for the server's count of the search. (A tap before the
+      // typing pause ends is covered by the Vitest spec of the list.)
+      const ogro = await serverCount(master, campaignId, 'ogro');
+      await expect(master.locator('.list__n')).toHaveText(`${ogro.total} de 334 criaturas`);
       await master.locator('.row', { hasText: 'Ogre · SRD' }).first().click();
       await expect(master.getByRole('heading', { name: 'Ogro', level: 1 })).toBeVisible();
       // Each number in its own tile, with the note that says where it comes from.

@@ -1,5 +1,6 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
@@ -8,6 +9,9 @@ import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creature
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { FakeCreaturesClient, flat, summary } from '../../../core/creatures/creatures-testing';
 import { BestiaryList } from './bestiary-list';
+
+@Component({ template: 'stat block' })
+class Stub {}
 
 describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   let api: FakeCreaturesClient;
@@ -27,7 +31,10 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     prep(api);
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/bestiario', component: BestiaryList }]),
+        provideRouter([
+          { path: 'campanhas/:id/bestiario', component: BestiaryList },
+          { path: 'campanhas/:id/bestiario/:slug', component: Stub },
+        ]),
         { provide: CreaturesClient, useValue: api },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
       ],
@@ -98,6 +105,22 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(flat(el.querySelector('.list__n'))).toBe('4 de 5 criaturas');
     expect(flat(el.querySelector('.list__note'))).toContain('A busca vale para o nome em português e para o nome do SRD, em inglês.');
     expect(el.textContent).toContain('Limpar filtros');
+  });
+
+  it('a row opened before the typing pause ends is not pulled back to the list when the pause ends', async () => {
+    const { el, settle } = await open();
+    const q = el.querySelector<HTMLInputElement>('input[type=search]')!;
+    q.value = 'ogro';
+    q.dispatchEvent(new Event('input'));
+    await settle();
+    // The tap: the navigation starts (the list stays on screen until it is done), then the pause ends.
+    const navigation = TestBed.inject(Router).navigateByUrl(el.querySelector('.row')!.getAttribute('href')!);
+    await vi.advanceTimersByTimeAsync(300);
+    await navigation;
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/campanhas/camp-1/bestiario/wolf?q=ogro');
+    // No search was sent for the typed word: the list was already leaving.
+    expect(api.searches.map((s) => s.query)).toEqual(['']);
   });
 
   it('the type, size and ND filters go to the server (an exact ND is both ends, a range its two)', async () => {

@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, computed, inject, signal } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, NavigationCancel, NavigationError, NavigationStart, Router, RouterLink } from '@angular/router';
 
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creatures/bestiary-access';
@@ -107,13 +107,31 @@ export class BestiaryList {
 
   private timer: ReturnType<typeof setTimeout> | null = null;
   private seq = 0;
+  /** A navigation away from the list (a row opened) is under way: the list must not write its URL over it. */
+  private leaving = false;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => {
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => {
       if (this.timer) {
         clearTimeout(this.timer);
       }
     });
+    // The list stays on screen while the next page's chunk loads, so the pending typing pause could still fire
+    // and its URL write would win over the row's navigation. Leaving the list cancels the pause and the write.
+    const listPath = `/campanhas/${this.campaignId}/bestiario`;
+    const sub = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart && event.url.split('?')[0] !== listPath) {
+        this.leaving = true;
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+      } else if (event instanceof NavigationCancel || event instanceof NavigationError) {
+        this.leaving = false; // the list is still the page: its URL follows the search again
+      }
+    });
+    destroyRef.onDestroy(() => sub.unsubscribe());
     void this.start();
   }
 
@@ -210,6 +228,9 @@ export class BestiaryList {
 
   /** The search goes into the URL (replacing the entry, so Back leaves the bestiary, not the last letter typed). */
   private syncUrl(): void {
+    if (this.leaving) {
+      return;
+    }
     void this.router.navigate([], {
       relativeTo: this.route,
       replaceUrl: true,
