@@ -1201,10 +1201,8 @@ describe('CharacterEditor', () => {
       Array.from(dialog.querySelectorAll('button'))
         .find((b) => b.textContent?.trim() === 'Fechar')!
         .click();
-      // The dialog leaves with a short animation: wait for it.
-      for (let i = 0; i < 40 && document.querySelector('app-spell-details'); i++) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
+      // Animations are off in unit tests (src/test-providers.ts): the dialog is gone after one turn.
+      await flush();
       fixture.detectChanges();
       expect(document.querySelector('app-spell-details')).toBeNull();
       expect(document.activeElement).toBe(help);
@@ -1614,12 +1612,13 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte' });
   }
 
-  it('asks for the table\'s ways only for a player, and not for an NPC of the master', async () => {
+  it('asks for the table\'s ways for a player', async () => {
     configure({ id: 'camp-1' });
     await render();
     expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
+  });
 
-    TestBed.resetTestingModule();
+  it('does not ask for the table\'s ways for an NPC of the master', async () => {
     configure({ id: 'camp-1', tipo: 'inimigo' });
     await render();
     expect(fake.loadAbilityTableCalls).toEqual([]);
