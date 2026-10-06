@@ -617,8 +617,9 @@ service CombatService {
   rpc RollAttack(RollAttackRequest) returns (RollAttackResponse);
 
   // RollDamage is the second step of an attack that hit: it rolls the damage
-  // of the pending damage with the attack's dice (doubled on a critical hit;
-  // the modifier is added once) and its damage type. The attacker's player
+  // of the pending damage with the attack's dice (a critical hit follows the
+  // table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+  // with their maximum kept; the modifier is added once) and its damage type. The attacker's player
   // may roll for their own attack, and the master for any.
   //
   // The roll follows the same rules as RollAttack (the player chooses on each
@@ -1215,11 +1216,13 @@ enum CombatantState {
   COMBATANT_STATE_DOWN = 5;
   // A player's character at 0 hit points with three death save failures, waiting
   // for the master to confirm the death: "Morrendo". Only the master gets it; a
-  // player gets DOWN (the failure counts are public, the word is not, and the app
+  // player gets DOWN (whatever the table's rule about the death saves, the app
   // never claims a death before the master confirms it).
   COMBATANT_STATE_DYING = 6;
   // A player's character at 0 hit points with three death save successes:
-  // "Estável". Everyone who sees the combatant gets it.
+  // "Estável". Everyone who sees the combatant gets it, also when the table hides
+  // the death saves (RN-24): that the character is stable is a result, not the road
+  // to it.
   COMBATANT_STATE_STABLE = 7;
   // A player's character whose death the master confirmed (ConfirmDeath):
   // "Morto". It stays in the list, out of the order.
@@ -1682,7 +1685,11 @@ message Combatant {
   optional int32 hit_points_temporary = 24;
   // Out of the fight (an NPC at 0 hit points). The turn skips it.
   bool defeated = 25;
-  // A player's character's death saves (everyone sees them), 0 to 3 each.
+  // A player's character's death saves, 0 to 3 each. Everyone sees them, unless
+  // the table hides them (RN-24, "só o dono e o mestre"): then only the
+  // character's owner and the master get them, and everybody else gets 0 and 0
+  // and the state word alone ("Caído"; "Estável" and "Morto" are results the
+  // table sees).
   int32 death_successes = 26;
   int32 death_failures = 27;
   // The conditions the master marked ("caído", "envenenado"; RN-22), and the
@@ -2167,12 +2174,31 @@ message DiceRoll {
   bool physical = 6;
 }
 
+// CriticalDamageRule is what a critical hit does to the damage dice: the table's
+// rule "Acertos críticos" (RN-24, MR-025), applied by the server to every
+// critical hit of the combat: weapon attacks, spell attacks, a creature's and an
+// NPC's. The browser does no dice math: it shows the hint the rule gives and
+// types what the player rolled (RN-18).
+enum CriticalDamageRule {
+  CRITICAL_DAMAGE_RULE_UNSPECIFIED = 0;
+  // The SRD's, and what the app did before the rule existed: every damage die is
+  // rolled twice (PendingDamage.dice_count is already doubled), the modifier
+  // once. The hint: "role os dados duas vezes".
+  CRITICAL_DAMAGE_RULE_DOUBLED_DICE = 1;
+  // The dice count as their maximum, and then one normal roll of them is added
+  // (PendingDamage.dice_count is the dice to roll, not doubled, and
+  // PendingDamage.critical_max the maximum that comes without rolling), the
+  // modifier once. The hint: "o máximo mais uma rolagem".
+  CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL = 2;
+}
+
 // AttackOutcome is what an attack roll did against the target's armor class.
 enum AttackOutcome {
   ATTACK_OUTCOME_UNSPECIFIED = 0;
   // The total reached the armor class: "Acertou".
   ATTACK_OUTCOME_HIT = 1;
-  // A natural 20: it hits and the damage dice double: "Crítico".
+  // A natural 20: it hits and the damage follows the table's critical rule (the
+  // dice double, or the maximum plus a roll): "Crítico".
   ATTACK_OUTCOME_CRITICAL_HIT = 2;
   // A natural 1, or a total below the armor class: "Errou".
   ATTACK_OUTCOME_MISS = 3;
@@ -2208,10 +2234,12 @@ message PendingDamage {
   // The attack, as in rules.v1.Attack.key.
   string attack_key = 4;
   PendingDamageStatus status = 5;
-  // True for a critical hit: the dice are doubled.
+  // True for a critical hit: the damage follows the table's critical rule
+  // (critical_rule).
   bool critical = 6;
-  // The damage to roll: the dice (already doubled for a critical hit) and
-  // the modifier.
+  // The damage to roll: the dice and the modifier. For a critical hit the dice
+  // are already doubled under DOUBLED_DICE; under MAX_PLUS_ROLL they are the
+  // dice of the attack, rolled once, and critical_max comes on top of them.
   int32 dice_count = 7;
   int32 dice_sides = 8;
   int32 bonus = 9;
@@ -2243,7 +2271,8 @@ message PendingDamage {
   optional int32 concentration_dc = 19;
   // APPLIED to a player's character that was already at 0 hit points: the
   // death save failures the damage caused (1, or 2 for a critical hit) instead
-  // of hit points.
+  // of hit points. When the table hides the death saves (RN-24) only the master
+  // and the target's own player get it; everybody else gets 0.
   int32 death_failures_added = 20;
   // The damage comes from a trap (MR-035): the trap's point (a UUID), and its
   // name. attacker_id is empty then, attack_key is "trap" and the damage was
@@ -2253,6 +2282,17 @@ message PendingDamage {
   // player get these rows; a trap that fired is public.
   string trap_point_id = 21;
   string trap_name = 22;
+  // The critical rule this damage was made under (the table's when the attack hit,
+  // so a change of the rules mid-combat applies from the next attack on):
+  // UNSPECIFIED for a hit that is not a critical one. It tells the screen which
+  // hint to show next to the dice, and which numbers to ask a player who rolls
+  // physical dice for (RollDamageRequest.typed_sum).
+  CriticalDamageRule critical_rule = 23;
+  // MAX_PLUS_ROLL: the maximum of the dice, which is added to the roll without
+  // rolling anything (the dice's count times their faces; the modifier is
+  // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
+  // the damage is rolled, so `dice (faces) + modifier = total` still holds.
+  int32 critical_max = 24;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2280,6 +2320,10 @@ message GetTurnOptionsResponse {
   // combatants that are not defeated (a combatant at 0 hit points can be
   // healed), with the distance and whether the spell cannot reach it.
   repeated SpellTargets spell_targets = 5;
+  // The table's critical rule (RN-24), read now: what a critical hit of this
+  // combatant's attacks and spells will do to the damage dice, so the screen can
+  // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
+  CriticalDamageRule critical_rule = 6;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2405,6 +2449,10 @@ message AttackRoll {
   // Everyone who gets the roll gets them; the armor class stays the master's.
   CoverDegree cover = 7;
   CoverSource cover_source = 8;
+  // The table's critical rule, for the screen's hint when the outcome is
+  // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
+  // on every roll: the damage itself is PendingDamage (critical_rule).
+  CriticalDamageRule critical_rule = 9;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -2427,8 +2475,10 @@ message RollDamageRequest {
   oneof roll {
     // True: the app rolls the dice on the server.
     bool roll_in_app = 5;
-    // The sum of the physical dice, without the modifier: between the number
-    // of dice and the number of dice times their faces.
+    // The sum of the physical dice, without the modifier and without
+    // PendingDamage.critical_max: between the number of dice to roll
+    // (PendingDamage.dice_count, doubled or not by the critical rule) and that
+    // number times their faces.
     int32 typed_sum = 6;
   }
 }
@@ -3184,7 +3234,13 @@ message CombatLogSpellTarget {
   int32 cover_bonus = 12;
 }
 
-// CombatLogDeathSave is a death save in the log.
+// CombatLogDeathSave is a death save in the log. When the table hides the death
+// saves (RN-24, "só o dono e o mestre") the owner and the master get the entry
+// whole; everybody else gets no entry for a save that went on (a success, a
+// failure, a revival), and for the save that made the character stable only
+// `stable`, with no roll, no outcome and zero counts: "Brisa estabilizou" is a
+// result the table sees, the road to it is not. The dead are announced by
+// COMBAT_LOG_KIND_DEATH_CONFIRMED.
 message CombatLogDeathSave {
   // The d20. Only the master and the character's own player.
   DiceRoll roll = 1;
@@ -3225,8 +3281,14 @@ message CombatLogDamage {
   // The Constitution save DC to keep a concentration the damage threatened
   // (RN-22). Only the master and the target's own player.
   optional int32 concentration_dc = 11;
-  // APPLIED to a character already at 0: the death save failures it caused.
+  // APPLIED to a character already at 0: the death save failures it caused. When
+  // the table hides the death saves (RN-24) only the master and the target's own
+  // player get it.
   int32 death_failures_added = 12;
+  // As in PendingDamage: the critical rule the damage was made under, and the
+  // maximum of the dice that came without rolling (already part of `roll.modifier`).
+  CriticalDamageRule critical_rule = 13;
+  int32 critical_max = 14;
 }
 
 // GetCombatHighlightsRequest names the combat.

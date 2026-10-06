@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -150,6 +151,10 @@ type combatTx struct {
 	sight *fogSight
 	// stamped is the last event insertEvent stamped with who could see it.
 	stamped *actionEvent
+	// rules are the table's rules (RN-24), read in this transaction when it
+	// opened: a critical hit and who sees the death saves follow them from the
+	// next roll on, and are never kept longer than the change.
+	rules tablerules.Rules
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -242,6 +247,9 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		}
 
 		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight}
+		if c.rules, err = s.tableRules(ctx, tx, w.m.CampaignID); err != nil {
+			return err
+		}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {

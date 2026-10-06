@@ -208,6 +208,11 @@ func (s *Service) viewerWith(ctx context.Context, m authz.Membership, enc playdb
 	if v.master {
 		return v, nil, nil
 	}
+	rules, err := s.tableRules(ctx, nil, m.CampaignID)
+	if err != nil {
+		return v, nil, err
+	}
+	v.hideDeath = rules.DeathSavesHidden
 	f, err := s.fogSightOf(ctx, m.CampaignID, enc)
 	if err != nil {
 		return v, nil, err
@@ -223,6 +228,7 @@ func (s *Service) viewerWith(ctx context.Context, m authz.Membership, enc playdb
 // transaction opened. cs are the combatants as the change reads them.
 func (c *combatTx) viewer(m authz.Membership, cs []playdb.Combatant) combatViewer {
 	v := viewerOf(m)
+	v.hideDeath = !v.master && c.rules.DeathSavesHidden
 	if !v.master && c.sight != nil {
 		v.unseen, v.sight = c.sight.unseenFor(v.userID, cs), c.sight
 	}

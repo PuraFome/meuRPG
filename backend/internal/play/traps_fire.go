@@ -394,7 +394,10 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 				return fmt.Errorf("find the event of this idempotency key: %w", err)
 			}
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: actorUserID}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: actorUserID})
+		if err != nil {
+			return err
+		}
 		if fired, err = s.fireOutside(ctx, c, trap, caught, creatures, manual, extend); err != nil {
 			return err
 		}
@@ -469,7 +472,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
 		}
 	}
-	outcomes, err := resolveTrap(effect, targets, s.trapD20, s.trapDice)
+	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice)
 	if err != nil {
 		return nil, err
 	}
@@ -505,13 +508,13 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			de := trapDamageEvent{
 				damageHit: damageHit{Target: ch.ID, Amount: clampInt32(d.amount), Half: d.half}, Type: d.damageType,
 				DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), Bonus: clamp32(d.bonus, -1000, 1000),
-				Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical,
+				Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
 			}
 			if ch.Player {
 				row, err := c.q.InsertTrapDamage(ctx, playdb.InsertTrapDamageParams{
 					GameSessionID: c.session.ID, TrapPointID: trap.PointID, FireID: fireID, CharacterID: ch.ID, Critical: d.critical,
 					DiceCount: de.DiceCount, DiceSides: de.DiceSides, DiceBonus: de.Bonus, DamageType: d.damageType, Faces: de.Faces,
-					RollTotal: de.RollTotal, Half: d.half, Amount: de.Amount, CreatedAt: c.now,
+					RollTotal: de.RollTotal, Half: d.half, Amount: de.Amount, CreatedAt: c.now, CriticalMax: de.CriticalMax,
 				})
 				if err != nil {
 					return nil, fmt.Errorf("open the trap's damage: %w", err)

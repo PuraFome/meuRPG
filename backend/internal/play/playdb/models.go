@@ -128,6 +128,8 @@ type PendingDamage struct {
 	RollTotal        *int32
 	AttackArmorClass *int32
 	TrapPointID      *string
+	CriticalMax      int32
+	CriticalMaxRule  bool
 }
 
 type Puzzle struct {
@@ -238,4 +240,5 @@ type TrapDamage struct {
 	AppliedAmount *int32
 	CreatedAt     time.Time
 	ResolvedAt    *time.Time
+	CriticalMax   int32
 }
