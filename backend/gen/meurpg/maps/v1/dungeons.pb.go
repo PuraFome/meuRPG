@@ -943,7 +943,8 @@ func (x *DungeonRoomRect) GetFloor() *DungeonRect {
 type PreviewDungeonRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	Options    *DungeonOptions        `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
+	// Left out, every option takes its default, as with an empty message.
+	Options *DungeonOptions `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
 	// The seed. Not set: the server draws one and returns it.
 	Seed          *uint64 `protobuf:"varint,3,opt,name=seed,proto3,oneof" json:"seed,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1126,7 +1127,8 @@ type CreateDungeonMapRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// The map's name: 1 to 80 characters, one line (as in CreateMap).
-	Name    string          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Left out, every option takes its default, as with an empty message.
 	Options *DungeonOptions `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	// The seed. Not set: the server draws one.
 	Seed          *uint64 `protobuf:"varint,4,opt,name=seed,proto3,oneof" json:"seed,omitempty"`
