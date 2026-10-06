@@ -25,6 +25,7 @@ type Character struct {
 	DiedAt              *time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+	CreateKey           *string
 }
 
 type CharacterCreature struct {

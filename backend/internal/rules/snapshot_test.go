@@ -220,21 +220,15 @@ func TestNamesPT(t *testing.T) {
 	}
 }
 
-// TestAttackNamesPT: every attack a character can have through a creature has
-// a Portuguese name: every beast up to CR 2 (Wild Shape, Conjurar Animais, the
-// familiar forms), the undead Animar os Mortos raises and the Pacto da Corrente
-// forms.
+// TestAttackNamesPT: every attack of every creature has a Portuguese name: the
+// ones a character can have through a creature (Wild Shape, Conjurar Animais, the
+// familiar forms, Animar os Mortos, the Pacto da Corrente) and the ones the
+// bestiary's "Criar NPC" copies onto an NPC's sheet (MR-042).
 func TestAttackNamesPT(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t).c
-	extra := map[string]bool{"monster:skeleton": true, "monster:zombie": true, "monster:imp": true, "monster:pseudodragon": true, "monster:quasit": true, "monster:sprite": true}
 	for _, key := range sortedKeys(c.monsters) {
-		m := c.monsters[key]
-		eighths, _ := crEighths(m.ChallengeRating)
-		if !extra[key] && (m.Type != "beast" || eighths > 16) {
-			continue
-		}
-		for _, a := range m.Actions {
+		for _, a := range c.monsters[key].Actions {
 			if !a.HasAttack {
 				continue
 			}

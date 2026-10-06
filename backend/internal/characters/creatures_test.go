@@ -159,8 +159,9 @@ func TestListAndGetCreatures(t *testing.T) {
 	}
 	for name, req := range map[string]*rulesv1.ListCreaturesRequest{
 		"a bad max_cr":             {MaxCr: "1/3"},
+		"a bad min_cr":             {MinCr: "1/3"},
 		"a negative size":          {PageSize: -1},
-		"a huge page":              {PageSize: 101},
+		"a huge page":              {PageSize: 401},
 		"a bad token":              {PageToken: "nope"},
 		"a token past end":         {PageToken: creaturesToken(9999, creaturesFilterID(&rulesv1.ListCreaturesRequest{}))},
 		"a long query":             {Query: strings.Repeat("a", 101)},
