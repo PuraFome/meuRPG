@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 )
 
 // TestRN10_AViewReadNeverSwallowsTheMoveHint is the race an e2e run caught
