@@ -384,6 +384,7 @@ type Service struct {
 	doors     DoorKeeper // the maps module, when the terrain source is one (SetTerrain)
 	fog       FogSource
 	traps     TrapBook
+	puzzles   puzzleDeps // the puzzles' maps seam and seed source (puzzles.go)
 	// afterSightRead is a test hook: it runs between the moment a change reads the
 	// sight and the moment it opens its transaction.
 	afterSightRead func(encounterID string)
@@ -432,6 +433,7 @@ func (s *Service) namesFor(ctx context.Context, campaignID string) func(key stri
 var (
 	_ playv1connect.PlayServiceHandler   = (*Service)(nil)
 	_ playv1connect.CombatServiceHandler = (*Service)(nil)
+	_ playv1connect.PuzzleServiceHandler = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -511,7 +513,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService and CombatService on a mux. handle is usually
+// Mount registers PlayService, CombatService and PuzzleService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -528,6 +530,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
