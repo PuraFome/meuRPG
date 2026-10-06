@@ -263,6 +263,12 @@ func TestMR010_PreviewIsDeterministicAndStoresNothing(t *testing.T) {
 		t.Fatalf("PreviewDungeon(no options) error = %v", err)
 	}
 	second, _ := m.previewDungeon(d.campaign, &mapsv1.DungeonOptions{}, nil)
+	// No options message at all is the same default dungeon (it used to panic).
+	seeded := first.GetSeed()
+	none, err := m.previewDungeon(d.campaign, nil, &seeded)
+	if err != nil || !proto.Equal(none, first) {
+		t.Errorf("PreviewDungeon(nil options) = %v, %v; want the default dungeon of seed %d", none, err, seeded)
+	}
 	if first.GetWidth() != 51 || first.GetHeight() != 51 || first.GetSeed() == second.GetSeed() {
 		t.Errorf("default previews: %d x %d, seeds %d and %d; want 51 x 51 and two seeds", first.GetWidth(), first.GetHeight(), first.GetSeed(), second.GetSeed())
 	}
@@ -1323,5 +1329,21 @@ func TestMR010_TheWallsLayerCoversAllRock(t *testing.T) {
 	}
 	if rock == 0 {
 		t.Fatal("the fixture has no rock")
+	}
+}
+
+// A request without the options message takes every default, like an empty
+// message, and never panics (CreateDungeonMap and PreviewDungeon both read it).
+func TestDungeonOptionsFromProtoWithoutOptionsIsTheDefault(t *testing.T) {
+	got, err := dungeonOptionsFromProto(nil, 7)
+	if err != nil {
+		t.Fatalf("dungeonOptionsFromProto(nil) error = %v", err)
+	}
+	empty, err := dungeonOptionsFromProto(&mapsv1.DungeonOptions{}, 7)
+	if err != nil {
+		t.Fatalf("dungeonOptionsFromProto(empty) error = %v", err)
+	}
+	if got != empty || got != dungeon.DefaultOptions(7) {
+		t.Errorf("nil options = %+v, want the defaults %+v", got, dungeon.DefaultOptions(7))
 	}
 }
