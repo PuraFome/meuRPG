@@ -253,12 +253,22 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
 | Render | App antigo (descontinuado): NestJS. **`server/` será removido do repositório** (decidido pelo Samuel em 29/09/2026, ver [App antigo](app-antigo.md)) | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando `server/` for removido |
 | GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência até sair num PR à parte | IP de quem visita | **Lacuna temporária.** Acaba quando `src/` for removido |
+| Google (API do Gemini) | Gera as imagens que o mestre pede (MR-039, RN-28, ADR-0019), com uma chave do AI Studio, pelo servidor | O texto que o mestre escreve, o estilo, as imagens da galeria que ele escolhe como referência e, num ajuste, a imagem anterior. Nunca nome de pessoa, e-mail nem ficha. O Google pode guardar os dados por pouco tempo, ou em cache, **em qualquer país**: conta como transferência internacional | [Termos dos serviços pagos da API do Gemini](https://ai.google.dev/gemini-api/terms) (Paid Services; nenhum modelo de imagem tem nível gratuito). **A conferir** com o Samuel: o cadastro como operador e o mecanismo de transferência (Resolução CD/ANPD nº 19/2024) |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |
 
 ### O banco do app antigo
 
 Decidido pelo Samuel em 29/09/2026: o CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesmo banco do sistema novo — é um cluster à parte, que só precisa ser descomissionado. Antes de apagar, uma tarefa única importa só os personagens de lá para o banco novo (ver [Modelo de dados](dados.md)); o resto (campanhas, mapas e sessões do app antigo, se existirem) não é importado. Depois de descomissionado, os backups dele somem no prazo do provedor (30 dias). Isso é uma tarefa do [roadmap](roadmap.md) (Etapa 11); falta só a data.
+
+### O que as imagens geradas mandam ao Google (MR-039, RN-28)
+
+- **O que vai:** o texto que o mestre escreve (como ele escreveu), o estilo, a proporção, as imagens da galeria que ele escolhe como referência (já recodificadas, sem metadado, ADR-0012) e, num ajuste, a imagem anterior com o texto da primeira imagem e os ajustes já feitos. **O que nunca vai:** nome de pessoa, e-mail, ficha, nome de jogador, ID. O servidor não acrescenta nada disso (o pedido não tem campo para eles) e um teste confere o corpo. O texto livre é do mestre e vai como ele escreveu: a tela avisa o que vai ("Não escreva nomes de pessoas") e lembra que uma foto de pessoa não deve ir como referência, como no envio de imagens.
+- **O que o Google guarda:** a chamada vai com `store=false` (a Interactions API; o padrão guardaria a interação por 55 dias no nível pago), então nada fica guardado por nossa conta. Pelos termos dos serviços pagos, o Google ainda pode guardar os dados por pouco tempo ou em cache, em qualquer país (por isso a linha acima de transferência internacional). A conferir com o Samuel: se o texto livre do mestre pede aviso no roteiro do aviso de privacidade.
+- **A idade mínima dos termos:** os termos pedem que quem usa os serviços tenha 18 anos ou mais. O MVP já é só para maiores de 18 anos (ADR-0010), e quem pede a imagem é o mestre; um jogador menor, se houver, nunca chama o serviço (só o mestre gera) e seu nome nunca vai.
+- **A marca d'água SynthID:** toda imagem gerada leva uma marca invisível que mostra que foi feita por IA; o app diz isso uma vez, na tela de gerar. Guardamos a imagem como o Google a devolveu, recodificada pelo mesmo caminho de um envio (a recodificação não é um jeito de tirar a marca: não a tocamos de propósito).
+- **A referência de uma imagem** (um JPEG de 1024 px feito da imagem, guardado ao lado dela no blob store) é derivada da imagem já sem metadados (ADR-0012), tem a mesma retenção e é apagada junto com ela.
+- **O que fica no banco:** a linha de `image_requests` (quem pediu, o texto do mestre, o estilo, as imagens de referência, o modelo, o estado). O texto é dado do mestre, e some com a campanha. Nada disso vai para o log: o texto nunca é escrito em nenhum nível, e a chave da API nunca é escrita.
 
 ## Cookies e navegador
 

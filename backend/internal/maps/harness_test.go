@@ -210,6 +210,13 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	// TestMR036_APaintHeldByTheGateStillReachesThePlayers sets its own interval.
 	svc.layerHintEvery = 0
 	h.svc = svc
+	// A request's goroutine must end before the test's pool goes away.
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		svc.WaitForGenerations(ctx)
+		svc.CancelGenerations()
+	})
 	sessionMaps.SetService(svc)
 	portraits.SetService(svc)
 
@@ -240,6 +247,7 @@ type user struct {
 	combat     playv1connect.CombatServiceClient
 	content    rulesv1connect.ContentServiceClient
 	gallery    mapsv1connect.GalleryServiceClient
+	imagegen   mapsv1connect.ImageGenerationServiceClient
 	maps       mapsv1connect.MapServiceClient
 	notes      notesv1connect.NotesServiceClient
 }
@@ -272,6 +280,7 @@ func (h *harness) clients(userID string) *user {
 		combat:     playv1connect.NewCombatServiceClient(c, url),
 		content:    rulesv1connect.NewContentServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
+		imagegen:   mapsv1connect.NewImageGenerationServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}

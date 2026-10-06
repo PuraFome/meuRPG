@@ -13,6 +13,10 @@
 //	OIDC_CA_FILE        extra CA certificates (PEM) to trust, for a local provider (optional)
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
 //	BLOB_DIR            directory for uploaded images (optional)
+//	GEMINI_API_KEY      key of the Gemini API: turns image generation on (optional, secret)
+//	GEMINI_IMAGE_MODEL  the image model (default gemini-3.1-flash-image)
+//	IMAGE_GENERATOR     "fake" uses the deterministic fake generator, never on Cloud Run (optional)
+//	IMAGE_MONTHLY_LIMIT images a campaign may generate per month (default 20)
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
@@ -59,6 +63,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -71,6 +76,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
@@ -176,6 +182,22 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Info("images are stored on disk", "dir", cfg.BlobDir)
 	}
 
+	// Image generation (MR-039, RN-28) needs a key, or the fake. imageGenerator
+	// stays a nil interface without them (never a nil *gen.Gemini), and the maps
+	// module then answers with the typed "off" reason.
+	var imageGenerator gen.Generator
+	switch {
+	case cfg.Images.Fake:
+		imageGenerator = &gen.Fake{}
+		logger.Warn("IMAGE_GENERATOR=fake: images are made by the fake generator, not by a model")
+	case cfg.Images.GeminiAPIKey != "":
+		imageGenerator = &gen.Gemini{Key: cfg.Images.GeminiAPIKey, ModelName: cfg.Images.Model, Logger: logger}
+		// The model name is not secret; the key never goes into a log line.
+		logger.Info("image generation is on", "model", imageGenerator.Model())
+	default:
+		logger.Warn("GEMINI_API_KEY is not set; image generation is off")
+	}
+
 	// Sign-in needs a provider and a database. identityService stays nil
 	// when either is missing, and the sign-in routes then answer 503.
 	// Campaigns, characters and game sessions need to know who is calling,
@@ -257,8 +279,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Live:       playService,       // the current map, and where map changes go (RN-10)
 			// maps stays on the base SRD: it reads only presets, damage types,
 			// conditions and skills, which no table's content changes (MR-025, ADR-0018).
-			Rules:   rulesContent, // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
-			Combats: playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
+			Generator:     imageGenerator,
+			MonthlyImages: int32(cfg.Images.MonthlyLimit), //nolint:gosec // G115: the config caps it at 500
+			Rules:         rulesContent,                   // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
+			Combats:       playService,                    // whether a combat runs on a map: its grid and image cannot change then (MR-034)
 			// Whether a new map starts with the fog on is a table rule (RN-24).
 			Defaults: campaignsService,
 			Logger:   logger,
@@ -363,6 +387,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
 		srv.OnShutdown(playService.Close)
+		// At shutdown the pictures in flight stop: a request still waiting for a
+		// call slot gives its slot back, the long polls answer, and a call already
+		// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
+		srv.OnShutdown(mapsService.CancelGenerations)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
 		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
@@ -387,7 +415,15 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Info("no web build found; running API-only", "dir", cfg.WebDir)
 	}
 
-	return srv.Run(ctx)
+	err = srv.Run(ctx)
+	if mapsService != nil {
+		// The goroutines write their last lines before the pool closes: about a
+		// second, inside Cloud Run's 10 s with the HTTP drain.
+		waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		mapsService.WaitForGenerations(waitCtx)
+	}
+	return err
 }
 
 // diceModes adapts the campaigns service to play's DiceModes: play only needs

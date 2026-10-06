@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -276,5 +277,48 @@ func TestIsLoopbackHost(t *testing.T) {
 		if got := IsLoopbackHost(host); got != want {
 			t.Errorf("IsLoopbackHost(%q) = %v, want %v", host, got, want)
 		}
+	}
+}
+
+func TestLoadImages(t *testing.T) {
+	t.Parallel()
+	cfg, err := Load(env(map[string]string{"GEMINI_API_KEY": " abc-not-a-real-key ", "GEMINI_IMAGE_MODEL": "m", "IMAGE_MONTHLY_LIMIT": "7"}))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Images.GeminiAPIKey.Reveal() != "abc-not-a-real-key" || cfg.Images.Model != "m" || cfg.Images.MonthlyLimit != 7 || cfg.Images.Fake {
+		t.Errorf("Images = %#v", cfg.Images)
+	}
+	// The key never prints: not with %v, %+v, %#v, nor as JSON or in a log value.
+	for _, shown := range []string{fmt.Sprintf("%v", cfg), fmt.Sprintf("%+v", cfg), fmt.Sprintf("%#v", cfg)} {
+		if strings.Contains(shown, "abc-not-a-real-key") {
+			t.Errorf("the key leaked into %q", shown)
+		}
+	}
+	if b, _ := json.Marshal(cfg.Images); strings.Contains(string(b), "abc-not-a-real-key") {
+		t.Errorf("the key leaked into JSON %s", b)
+	}
+	var out bytes.Buffer
+	slog.New(slog.NewJSONHandler(&out, nil)).Info("config", "images", cfg.Images, "key", cfg.Images.GeminiAPIKey)
+	if strings.Contains(out.String(), "abc-not-a-real-key") {
+		t.Errorf("the key leaked into the log: %s", out.String())
+	}
+
+	def, err := Load(env(nil))
+	if err != nil || def.Images.MonthlyLimit != 0 || def.Images.GeminiAPIKey != "" {
+		t.Errorf("defaults: %#v, %v", def.Images, err)
+	}
+	for name, vars := range map[string]map[string]string{
+		"a bad limit":         {"IMAGE_MONTHLY_LIMIT": "0"},
+		"a huge limit":        {"IMAGE_MONTHLY_LIMIT": "100000"},
+		"a bad generator":     {"IMAGE_GENERATOR": "dall-e"},
+		"the fake on a cloud": {"IMAGE_GENERATOR": "fake", "K_SERVICE": "api"},
+	} {
+		if _, err := Load(env(vars)); err == nil {
+			t.Errorf("%s: Load() error = nil", name)
+		}
+	}
+	if fake, err := Load(env(map[string]string{"IMAGE_GENERATOR": "fake"})); err != nil || !fake.Images.Fake {
+		t.Errorf("the fake: %v, %v", fake.Images, err)
 	}
 }

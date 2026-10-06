@@ -607,3 +607,59 @@ func TestProcessStoresPNGsAs8Bit(t *testing.T) {
 		t.Errorf("the stored PNG decodes to %T, want 8 bits a channel", out)
 	}
 }
+
+// Shrink makes the small JPEG a reference travels as: at most 1024 pixels on the
+// longer side, transparent parts on white, and never bigger than what it shrinks.
+func TestShrink(t *testing.T) {
+	t.Parallel()
+	small, resized, err := Shrink(encodePNG(t, twoColors(3000, 1500)), 1024, 85)
+	if err != nil || !resized {
+		t.Fatalf("Shrink(a large PNG) = resized %v, error %v", resized, err)
+	}
+	img, kind := decodeSize(t, small)
+	if kind != "jpeg" || img.Bounds().Dx() != 1024 || img.Bounds().Dy() != 512 {
+		t.Errorf("shrunk = %s %v, want a 1024x512 JPEG", kind, img.Bounds())
+	}
+	tall, _, err := Shrink(encodePNG(t, twoColors(500, 2000)), 1024, 85)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if img, _ := decodeSize(t, tall); img.Bounds().Dx() != 256 || img.Bounds().Dy() != 1024 {
+		t.Errorf("tall = %v, want 256x1024", img.Bounds())
+	}
+	// A JPEG that fits comes back as it is.
+	fits := encodeJPEG(t, twoColors(300, 200))
+	if got, resized, err := Shrink(fits, 1024, 85); err != nil || resized || !bytes.Equal(got, fits) {
+		t.Errorf("a small JPEG changed: %v", err)
+	}
+	// A transparent PNG is flattened onto white.
+	hole := image.NewNRGBA(image.Rect(0, 0, 40, 40))
+	flat, _, err := Shrink(encodePNG(t, hole), 1024, 85)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if img, _ := decodeSize(t, flat); color.GrayModel.Convert(img.At(20, 20)).(color.Gray).Y < 240 {
+		t.Errorf("a transparent pixel is %v, want white", img.At(20, 20))
+	}
+	if _, _, err := Shrink([]byte("not an image"), 1024, 85); !errors.Is(err, ErrUnsupportedType) {
+		t.Errorf("garbage error = %v", err)
+	}
+}
+
+// Process makes the reference of a big image from the pixels it has decoded, and
+// none for one that fits (no extra file, no extra decode).
+func TestProcessMakesTheReference(t *testing.T) {
+	t.Parallel()
+	res, err := Process(encodePNG(t, twoColors(2000, 1000)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, kind := decodeSize(t, res.Reference)
+	if kind != "jpeg" || img.Bounds().Dx() != 1024 || img.Bounds().Dy() != 512 {
+		t.Errorf("reference = %s %v, want a 1024x512 JPEG", kind, img.Bounds())
+	}
+	small, err := Process(encodePNG(t, twoColors(800, 600)))
+	if err != nil || small.Reference != nil {
+		t.Errorf("a small image's reference = %d bytes, %v; want none", len(small.Reference), err)
+	}
+}

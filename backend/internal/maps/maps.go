@@ -40,6 +40,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -50,6 +51,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
@@ -223,6 +225,13 @@ type Config struct {
 	// points. Zero means DefaultMaxMaps and DefaultMaxPointsPerMap.
 	MaxMaps         int32
 	MaxPointsPerMap int32
+	// Generator makes the pictures of ImageGenerationService (MR-039, RN-28). Nil
+	// means generation is off: the service answers failed_precondition with
+	// reason OFF, and the rest works. It also needs Blobs.
+	Generator gen.Generator
+	// MonthlyImages is how many images a campaign may generate per month. Zero
+	// means DefaultMonthlyImages.
+	MonthlyImages int32
 }
 
 // Service implements GalleryService, MapService and the image routes.
@@ -263,6 +272,22 @@ type Service struct {
 
 	// tiles is the image of a fog map as tiles per player (tiles.go).
 	tiles *tileRenderer
+
+	// The generated images (imagegen.go): the model behind them (nil: off), the
+	// month's cap per campaign, the calls in flight at once, and the goroutines
+	// to wait for at shutdown and at the end of a test.
+	generator     gen.Generator
+	monthlyImages int32
+	generating    chan struct{}
+	generations   sync.WaitGroup
+	// baseCtx is what the generation goroutines derive from; CancelGenerations
+	// cancels it at shutdown. waiters wakes the long polls of GetImageGeneration.
+	baseCtx    context.Context
+	cancelBase context.CancelFunc
+	waiters    generationWaiters
+	// onReferenceDecode, when set (a test), is called each time an original is
+	// decoded to make a reference.
+	onReferenceDecode func()
 }
 
 // queriesIn is q on the transaction, or q itself (the pool) when tx is nil. A
@@ -280,6 +305,8 @@ func queriesIn(q *mapsdb.Queries, tx pgx.Tx) *mapsdb.Queries {
 var (
 	_ mapsv1connect.GalleryServiceHandler = (*Service)(nil)
 	_ mapsv1connect.MapServiceHandler     = (*Service)(nil)
+
+	_ mapsv1connect.ImageGenerationServiceHandler = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -315,7 +342,14 @@ func New(cfg Config) (*Service, error) {
 		maxPoints:      cfg.MaxPointsPerMap,
 		processing:     make(chan struct{}, 1),
 		tiles:          newTileRenderer(),
+		generator:      cfg.Generator,
+		monthlyImages:  cfg.MonthlyImages,
+		generating:     make(chan struct{}, maxGenerating),
 	}
+	if s.monthlyImages <= 0 {
+		s.monthlyImages = DefaultMonthlyImages
+	}
+	s.baseCtx, s.cancelBase = context.WithCancel(context.Background())
 	if s.logger == nil {
 		s.logger = slog.Default()
 	}
@@ -369,6 +403,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(mapsv1connect.NewGalleryServiceHandler(s, opts...))
 	handle(mapsv1connect.NewMapServiceHandler(s, opts...))
+	handle(mapsv1connect.NewImageGenerationServiceHandler(s, opts...))
 
 	withAuthz := authz.Middleware(sessions, members, s.logger)
 	route := func(h http.HandlerFunc) http.Handler {
@@ -416,6 +451,15 @@ func blobKeys(campaignID, imageID string) (image, thumbnail string) {
 	return image, image + ".thumb"
 }
 
+// referenceKey is the key of the image's reference, the small JPEG it travels
+// as to the image model (images.ReferenceSide). Only an image bigger than that
+// has one; it is made at upload, or the first time the image is used (older
+// images), and deleted with the image.
+func referenceKey(campaignID, imageID string) string {
+	image, _ := blobKeys(campaignID, imageID)
+	return image + ".ref"
+}
+
 // deleteFiles deletes an image's files, for an image whose row is gone or
 // was never written. It goes on even if the request was canceled, and a
 // failure only leaves unreachable files behind, so it is logged, not
@@ -423,7 +467,7 @@ func blobKeys(campaignID, imageID string) (image, thumbnail string) {
 func (s *Service) deleteFiles(ctx context.Context, campaignID, imageID string) {
 	ctx = context.WithoutCancel(ctx)
 	image, thumbnail := blobKeys(campaignID, imageID)
-	for _, key := range []string{image, thumbnail} {
+	for _, key := range []string{image, thumbnail, referenceKey(campaignID, imageID)} {
 		if err := s.blobs.Delete(ctx, key); err != nil {
 			s.logger.ErrorContext(ctx, "maps: cannot delete an image file; it is left behind", "error", err)
 		}
