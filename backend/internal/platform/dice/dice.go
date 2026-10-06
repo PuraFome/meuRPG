@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Limits of an expression. A table never rolls more than a handful of
@@ -153,14 +154,19 @@ func (Crypto) Roll(sides int) (int, error) {
 }
 
 // Fixed is a Roller for tests: it returns the given faces in order, and
-// fails when they run out or a face does not fit the die.
+// fails when they run out or a face does not fit the die. It is safe for
+// concurrent use, because tests that race two requests share one (the order the
+// faces go out in is then the order the rolls happen in).
 type Fixed struct {
 	Faces []int
+	mu    sync.Mutex
 	next  int
 }
 
 // Roll implements Roller.
 func (f *Fixed) Roll(sides int) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.next >= len(f.Faces) {
 		return 0, errors.New("dice: Fixed ran out of faces")
 	}
