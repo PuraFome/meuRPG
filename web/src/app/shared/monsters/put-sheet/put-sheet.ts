@@ -205,10 +205,14 @@ export class PutMonstersSheet {
     }
   }
 
-  /** The labels of the monsters this add made, as the combat names them. */
+  /** The labels of the monsters this add made, as the combat names them, in their numbers' order ("Bandido 1, Bandido 2 e
+   * Bandido 3"): the combat lists its combatants by initiative, never the order to say them in. */
   private namesMade(encounter: Encounter, ids: readonly string[]): string {
-    const made = encounter.combatants.filter((c) => (ids.length > 0 ? ids.includes(c.id) : c.bestiaryCreatureKey === this.c.key && !c.defeated));
-    return listWithE(made.map((c) => c.label));
+    const labels =
+      ids.length > 0
+        ? ids.map((id) => encounter.combatants.find((c) => c.id === id)?.label ?? '').filter((l) => l !== '')
+        : encounter.combatants.filter((c) => c.bestiaryCreatureKey === this.c.key && !c.defeated).map((c) => c.label);
+    return listWithE([...labels].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })));
   }
 
   protected close(): void {
