@@ -55,7 +55,11 @@ func errPermission(msg string) error {
 // personal data.
 func invalidArgument(err error) error {
 	if fe, ok := errors.AsType[*fieldError](err); ok {
-		return connect.NewError(connect.CodeInvalidArgument, fe)
+		out := connect.NewError(connect.CodeInvalidArgument, fe)
+		if detail, detailErr := connect.NewErrorDetail(&charactersv1.InvalidField{Field: fe.field}); detailErr == nil {
+			out.AddDetail(detail)
+		}
+		return out
 	}
 	return err
 }

@@ -783,6 +783,15 @@ message CharacterBlocked {
   string character_id = 2;
 }
 
+// InvalidField is the error detail of CharacterService's `invalid_argument` for a
+// request field that breaks its rules, so the app can say which field without
+// reading the message. `field` is the request field's name ("name",
+// "idempotency_key", "creature_key", "kind"...), or a path inside the sheet
+// ("sheet.basic.armor_class").
+message InvalidField {
+  string field = 1;
+}
+
 // CharacterSheet is a character's game data: a full sheet for PLAYER, ENEMY
 // and BOSS, a basic sheet for MINION and STORY.
 message CharacterSheet {

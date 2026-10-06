@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 import type { Creature, CreatureDamageModifier } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { signed } from '../../core/creatures/creature-format';
-import { tight } from '../../core/format/text';
+import { formatInt, tight } from '../../core/format/text';
 import { metersText } from '../../core/units';
 
 /** The numbers of "PV": the creature's own (the owner's and the master's), or the book's. */
@@ -15,6 +15,8 @@ interface Tile {
   readonly label: string;
   readonly value: string;
   readonly of?: string;
+  /** A small line under the value: "armadura de peles", "7d10 + 21", "40 pés", "450 XP" (the bestiary's page). */
+  readonly note?: string;
 }
 
 /**
@@ -31,12 +33,15 @@ interface Tile {
   selector: 'app-stat-block',
   template: `
     @let c = creature();
-    <section class="sb mr-panel" aria-label="Ficha da criatura">
+    <section class="sb mr-panel" [class.sb--full]="full()" aria-label="Ficha da criatura">
       <div class="tiles">
         @for (t of tiles(); track t.label) {
           <div class="tile">
             <span class="tile__l">{{ t.label }}</span>
             <span class="tile__v">{{ t.value }}@if (t.of) {&nbsp;<small>{{ t.of }}</small>}</span>
+            @if (t.note) {
+              <span class="tile__n">{{ t.note }}</span>
+            }
           </div>
         }
       </div>
@@ -93,17 +98,26 @@ export class StatBlock {
   readonly creature = input.required<Creature>();
   /** The creature's own hit points; the book's (the average) when unset. */
   readonly hp = input<StatBlockHp | null>(null);
+  /**
+   * The bestiary's page (MR-042, E10-08): each tile says where its number comes from (the armor, the
+   * hit dice, the speed in feet), the challenge rating and its XP get a tile, and the proficiency
+   * bonus a line. The creature's own page leaves it off.
+   */
+  readonly full = input(false);
 
   protected readonly signed = signed;
 
   protected readonly tiles = computed<readonly Tile[]>(() => {
     const c = this.creature();
     const hp = this.hp();
+    const full = this.full();
     const out: Tile[] = [
-      { label: 'CA', value: String(c.armorClass) },
+      { label: 'CA', value: String(c.armorClass), note: full ? c.armorClassNote || c.armorClassLabelPt : undefined },
       hp
         ? { label: 'PV', value: String(hp.current), of: `de ${hp.max}` }
-        : { label: 'PV', value: String(c.hitPoints), of: c.hitPointsRoll ? `(${c.hitPointsRoll})` : '' },
+        : full
+          ? { label: 'PV', value: String(c.hitPoints), note: c.hitPointsRoll.replace(/([+-])/g, '\u00a0$1\u00a0') }
+          : { label: 'PV', value: String(c.hitPoints), of: c.hitPointsRoll ? `(${c.hitPointsRoll})` : '' },
     ];
     const speeds: [number, string][] = [
       [c.speedWalkFt, 'Deslocamento'],
@@ -115,8 +129,11 @@ export class StatBlock {
     const anySpeed = speeds.some(([ft]) => ft > 0);
     for (const [ft, label] of speeds) {
       if (ft > 0 || (!anySpeed && label === 'Deslocamento')) {
-        out.push({ label, value: tight(metersText(ft)) });
+        out.push({ label, value: tight(metersText(ft)), note: full && ft > 0 ? `${ft}\u00a0pés` : undefined });
       }
+    }
+    if (full) {
+      out.push({ label: 'Nível de desafio', value: c.summary?.challengeRating ?? '0', note: `${formatInt(c.summary?.xp ?? 0)} XP` });
     }
     return out;
   });
@@ -128,7 +145,9 @@ export class StatBlock {
     if (c.savingThrows.length > 0) {
       line('Salvaguardas', c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
     }
-    line('Perícias', c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', ') || '—');
+    if (c.skills.length > 0) {
+      line('Perícias', c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
+    }
     const modifiers: [string, readonly CreatureDamageModifier[]][] = [
       ['Vulnerável a', c.vulnerabilities],
       ['Resistente a', c.resistances],
@@ -146,7 +165,11 @@ export class StatBlock {
     const senses = c.senses.map((s) => tight(`${s.namePt} ${metersText(s.rangeFt)}`));
     line('Sentidos', [...senses, `Percepção passiva ${c.passivePerception}`].join(', '));
     line('Idiomas', c.languages || '—', c.languages !== '');
-    line('Desafio', c.summary?.challengeRating ?? '0');
+    if (this.full()) {
+      line('Bônus de proficiência', signed(c.proficiencyBonus));
+    } else {
+      line('Desafio', c.summary?.challengeRating ?? '0');
+    }
     return out;
   });
 
