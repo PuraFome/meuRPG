@@ -1,0 +1,167 @@
+<a class="back" [routerLink]="['/campanhas', campaignId]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a campanha
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Bestiário</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando o bestiário" />
+        Carregando o bestiário...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Bestiário</h1>
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre usa o bestiário da campanha.</strong></p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir o bestiário</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    </div>
+  }
+  @case ('master') {
+    <header class="head">
+      <h1 class="mr-page-title">Bestiário</h1>
+      <p class="mr-page-lead">
+        {{ catalog() !== null ? formatCatalog() : 'Criaturas' }} do SRD 5.1 · {{ a.campaignName }}
+      </p>
+    </header>
+
+    <div class="filters" role="search" aria-label="Filtros do bestiário">
+      <label class="field field--name">
+        <span class="mr-label">Nome</span>
+        <span class="box">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input type="search" name="query" autocomplete="off" [value]="query()" (input)="setQuery($any($event.target).value)" />
+        </span>
+      </label>
+      <label class="field field--type">
+        <span class="mr-label">Tipo</span>
+        <span class="box box--select">
+          <select name="type" [value]="type()" (change)="setType($any($event.target).value)">
+            <option value="" [selected]="type() === ''">Todos</option>
+            @for (t of types; track t.value) {
+              <option [value]="t.value" [selected]="type() === t.value">{{ t.label }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+      <label class="field">
+        <span class="mr-label">Tamanho</span>
+        <span class="box box--select">
+          <select name="size" [value]="size()" (change)="setSize($any($event.target).value)">
+            <option value="" [selected]="size() === ''">Todos</option>
+            @for (s of sizes; track s.value) {
+              <option [value]="s.value" [selected]="size() === s.value">{{ s.label }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+      <label class="field">
+        <span class="mr-label">ND</span>
+        <span class="box box--select">
+          <select name="cr" [value]="cr()" (change)="setCr($any($event.target).value)">
+            <option value="" [selected]="cr() === ''">Todos</option>
+            <optgroup label="Faixas">
+              @for (r of ranges; track r.value) {
+                <option [value]="r.value" [selected]="cr() === r.value">{{ r.label }}</option>
+              }
+            </optgroup>
+            <optgroup label="Um ND">
+              @for (c of ratings; track c) {
+                <option [value]="c" [selected]="cr() === c">ND {{ c }}</option>
+              }
+            </optgroup>
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+    </div>
+    @if (filtered()) {
+      <button type="button" class="clear" (click)="clear()">Limpar filtros</button>
+    }
+
+    <section class="mr-panel list" aria-labelledby="bestiary-list-h">
+      <div class="list__head">
+        <h2 class="list__t" id="bestiary-list-h">Criaturas</h2>
+        <p class="list__n" role="status" aria-live="polite">
+          @if (state().status === 'ready') {
+            {{ count() }}
+          }
+        </p>
+      </div>
+
+      @let s = state();
+      @switch (s.status) {
+        @case ('loading') {
+          <p class="list__wait">
+            <mat-spinner diameter="24" aria-label="Buscando as criaturas" />
+            Buscando as criaturas...
+          </p>
+        }
+        @case ('error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+          <button matButton="outlined" type="button" class="retry" (click)="search()">Tentar de novo</button>
+        }
+        @case ('ready') {
+          @if (rows().length === 0) {
+            <div class="empty">
+              <p class="empty__t">{{ emptyTitle() }}</p>
+              <p class="empty__s">
+                Confira a grafia ou procure pelo nome em inglês do SRD. Os filtros de tipo, tamanho e ND também contam.
+              </p>
+              <button type="button" class="clear" (click)="clear(query().trim() !== '')">
+                {{ query().trim() !== '' ? 'Limpar a busca' : 'Limpar filtros' }}
+              </button>
+            </div>
+          } @else {
+            <ul class="rows" aria-labelledby="bestiary-list-h">
+              @for (r of rows(); track r.key) {
+                <li>
+                  <app-bestiary-row [campaignId]="campaignId" [row]="r" [queryParams]="rowParams()" />
+                </li>
+              }
+            </ul>
+            @if (query().trim() !== '') {
+              <p class="list__note">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                A busca vale para o nome em português e para o nome do SRD, em inglês.
+              </p>
+            }
+          }
+        }
+      }
+    </section>
+  }
+}

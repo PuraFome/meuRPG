@@ -55,9 +55,9 @@ describe('EditorBar', () => {
     }
   });
 
-  it('offers the four tools, "Apagar" and the brush when painting; the chosen tool is checked and pressed', () => {
+  it('offers the five tools, "Apagar" and the brush when painting; the chosen tool is checked and pressed', () => {
     setup('paint');
-    for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Apagar']) {
+    for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Porta', 'Apagar']) {
       expect(button(name), name).toBeTruthy();
     }
     expect(button('Terreno difícil').getAttribute('aria-pressed')).toBe('true');
@@ -81,6 +81,21 @@ describe('EditorBar', () => {
     expect(settings.at(-1)?.light).toBe(1);
     setup('paint', true, { ...DEFAULT_SETTINGS, tool: 'wall' });
     expect(el.textContent).not.toContain('Cobertura pintada');
+  });
+
+  it('opens a second line for the kind of door: each kind with its own mark, checked when chosen, and "Tirar a porta"', () => {
+    setup('paint', true, { ...DEFAULT_SETTINGS, tool: 'door', door: 3 });
+    expect(el.textContent).toContain('Tipo de porta');
+    const names = Array.from(el.querySelectorAll('[aria-labelledby="bar-door"] button')).map((b) => b.textContent?.replace(/\s+/g, ' ').trim());
+    expect(names.map((n) => n?.replace('check', '').trim())).toEqual(['Fechada', 'Aberta', 'Trancada', 'Grade', 'Secreta']);
+    // One mark each, in the drawing the map uses.
+    expect(el.querySelectorAll('[aria-labelledby="bar-door"] app-door-mark')).toHaveLength(5);
+    expect(button('Trancada').getAttribute('aria-pressed')).toBe('true');
+    expect(button('Trancada').textContent).toContain('check');
+    button('Grade').click();
+    expect(settings.at(-1)).toMatchObject({ tool: 'door', door: 4, erase: false });
+    button('Tirar a porta').click();
+    expect(settings.at(-1)?.erase).toBe(true);
   });
 
   it('cannot paint without a grid: the tools say so (aria-disabled, dashed) and change nothing', () => {

@@ -110,6 +110,9 @@ services:
       OIDC_MAX_AGE: 1h
       # Uploaded images (the gallery, MR-019) go to the volume below.
       BLOB_DIR: /var/lib/meurpg/images
+      # Generated images (MR-039) come from the deterministic fake generator, with
+      # no key and no network. The API refuses this value on Cloud Run.
+      IMAGE_GENERATOR: fake
     volumes:
       # A named volume, so images survive `make down` and `make up`. The
       # image creates this folder owned by nonroot, the user the API runs

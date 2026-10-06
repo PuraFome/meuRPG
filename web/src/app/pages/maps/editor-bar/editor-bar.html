@@ -58,11 +58,12 @@
           [disabled]="!canPaint()"
           disabledInteractive
           [attr.aria-describedby]="canPaint() ? null : 'bar-why'"
-          (click)="canPaint() && set({ tool: t.tool })"
+          (click)="canPaint() && set(settings().tool === 'door' && t.tool !== 'door' ? { tool: t.tool, erase: false } : { tool: t.tool })"
         >
           <mat-icon class="chk" [class.chk--hide]="!toolOn(t.tool)" aria-hidden="true">check</mat-icon><mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ toolLabel[t.tool] }}
         </button>
       }
+      @if (settings().tool !== 'door') {
       <button
         matButton="outlined"
         type="button"
@@ -77,7 +78,9 @@
       >
         <mat-icon class="chk" [class.chk--hide]="!eraseOn()" aria-hidden="true">check</mat-icon><mat-icon aria-hidden="true">ink_eraser</mat-icon>Apagar
       </button>
+      }
     </div>
+    @if (settings().tool !== 'door') {
     <span class="bar__sep" aria-hidden="true"></span>
     <span class="bar__label" id="bar-brush">Pincel</span>
     <div class="seg seg--small" role="radiogroup" aria-labelledby="bar-brush" (keydown)="onSegKey($event)" [class.seg--off]="!canPaint()">
@@ -87,6 +90,7 @@
         </button>
       }
     </div>
+    }
     <div class="bar__zoom" role="group" aria-label="Zoom do mapa">
       <button type="button" class="bar__icon" aria-label="Reduzir" (click)="zoomOut.emit()"><mat-icon aria-hidden="true">remove</mat-icon></button>
       <button type="button" class="bar__icon" aria-label="Ampliar" (click)="zoomIn.emit()"><mat-icon aria-hidden="true">add</mat-icon></button>
@@ -126,6 +130,23 @@
           }
         </div>
         <span class="bar__hint">O que você pinta vale por quadrado, e a luz não atravessa parede. Só vale com a névoa ligada.</span>
+      </div>
+    }
+    @if (canPaint() && settings().tool === 'door') {
+      <div class="bar__row">
+        <span class="bar__label" id="bar-door">Tipo de porta</span>
+        <div class="bar__group" role="group" aria-labelledby="bar-door">
+          @for (d of doorChoices; track d) {
+            <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="!settings().erase && settings().door === d" [attr.aria-pressed]="!settings().erase && settings().door === d" (click)="set({ door: d, erase: false })">
+              <mat-icon class="chk" [class.chk--hide]="settings().erase || settings().door !== d" aria-hidden="true">check</mat-icon>
+              <span class="bar__door" aria-hidden="true"><app-door-mark [state]="d" /></span>{{ doorLabel[d] }}
+            </button>
+          }
+        </div>
+        <span class="bar__sep" aria-hidden="true"></span>
+        <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="settings().erase" [attr.aria-pressed]="settings().erase" (click)="set({ erase: !settings().erase })">
+          <mat-icon aria-hidden="true">close</mat-icon>Tirar a porta
+        </button>
       </div>
     }
   }

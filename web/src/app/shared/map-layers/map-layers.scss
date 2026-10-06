@@ -116,3 +116,37 @@
 .cursor--erase {
   border-style: dashed;
 }
+
+// A door's square: the mark (`app-door-mark`) fills it.
+.sq--door {
+  display: block;
+}
+
+// The door tool's cursor holds the mark of the kind it paints and says it in words, above the square (below at the top edge).
+.cursor__door {
+  position: absolute;
+  inset: 0;
+  // Faint, so it never hides a token's initial or the door above.
+  opacity: 0.4;
+}
+
+.cursor__tag {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  padding: 2px 8px;
+  transform: translateX(-50%);
+  border: 1px solid var(--mr-map-token-ink);
+  border-radius: 999px;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.cursor__tag--below {
+  top: calc(100% + 4px);
+  bottom: auto;
+}

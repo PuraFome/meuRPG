@@ -81,6 +81,49 @@ func (q *Queries) BumpMapLightRevision(ctx context.Context, id string) (int32, e
 	return light_revision, err
 }
 
+const cancelSentImageRequest = `-- name: CancelSentImageRequest :execrows
+UPDATE image_requests
+SET status = 'canceled', finished_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NOT NULL
+`
+
+type CancelSentImageRequestParams struct {
+	CampaignID string
+	ID         string
+	FinishedAt *time.Time
+}
+
+// Cancel after the request left: only the wait stops. The slot stays spent,
+// and an image that comes is stored all the same.
+func (q *Queries) CancelSentImageRequest(ctx context.Context, arg CancelSentImageRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelSentImageRequest, arg.CampaignID, arg.ID, arg.FinishedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const cancelUnsentImageRequest = `-- name: CancelUnsentImageRequest :execrows
+UPDATE image_requests
+SET status = 'canceled', refunded = true, finished_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NULL
+`
+
+type CancelUnsentImageRequestParams struct {
+	CampaignID string
+	ID         string
+	FinishedAt *time.Time
+}
+
+// Cancel before the request left: the slot is refunded.
+func (q *Queries) CancelUnsentImageRequest(ctx context.Context, arg CancelUnsentImageRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelUnsentImageRequest, arg.CampaignID, arg.ID, arg.FinishedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearMapVisionMemory = `-- name: ClearMapVisionMemory :execrows
 UPDATE maps SET vision_epoch = vision_epoch + 1
 WHERE id = $1
@@ -141,6 +184,26 @@ func (q *Queries) ClearTreasureFound(ctx context.Context, arg ClearTreasureFound
 	return i, err
 }
 
+const countImageSlots = `-- name: CountImageSlots :one
+SELECT count(*)::INT4 FROM image_requests
+WHERE campaign_id = $1 AND quota_month = $2 AND NOT refunded
+`
+
+type CountImageSlotsParams struct {
+	CampaignID string
+	QuotaMonth string
+}
+
+// The slots the campaign spent in a month: its requests that were not
+// refunded. Read inside the reserving transaction (SERIALIZABLE makes two
+// racing requests for the last slot retry, and the second one sees it taken).
+func (q *Queries) CountImageSlots(ctx context.Context, arg CountImageSlotsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countImageSlots, arg.CampaignID, arg.QuotaMonth)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countMapPoints = `-- name: CountMapPoints :one
 SELECT count(*)::INT4 AS point_count FROM map_points
 WHERE map_id = $1
@@ -168,6 +231,28 @@ func (q *Queries) CountMaps(ctx context.Context, campaignID string) (int32, erro
 	return map_count, err
 }
 
+const countOpenImageRequests = `-- name: CountOpenImageRequests :one
+SELECT count(*)::INT4 FROM image_requests
+WHERE campaign_id = $1 AND created_at > $2
+  AND (status = 'pending' OR (status = 'canceled' AND sent_at IS NOT NULL AND image_id IS NULL))
+`
+
+type CountOpenImageRequestsParams struct {
+	CampaignID string
+	CreatedAt  time.Time
+}
+
+// The requests that may still put an image in the gallery: pending, or canceled
+// after the send without an image yet (only recent ones). The reserve step
+// counts them against the gallery's room, so a full gallery cannot fail after
+// the model was paid.
+func (q *Queries) CountOpenImageRequests(ctx context.Context, arg CountOpenImageRequestsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countOpenImageRequests, arg.CampaignID, arg.CreatedAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countSceneActions = `-- name: CountSceneActions :one
 SELECT count(*)::INT4 AS action_count FROM scene_actions
 WHERE point_id = $1
@@ -183,7 +268,7 @@ func (q *Queries) CountSceneActions(ctx context.Context, pointID string) (int32,
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
 `
 
 type DeleteGalleryImageParams struct {
@@ -205,6 +290,8 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+		&i.Generated,
+		&i.ParentImageID,
 	)
 	return i, err
 }
@@ -447,8 +534,108 @@ func (q *Queries) DeleteTreasureFinders(ctx context.Context, pointID string) err
 	return err
 }
 
+const expireSentImageRequests = `-- name: ExpireSentImageRequests :exec
+UPDATE image_requests
+SET status = 'failed', reason = 'timeout', finished_at = $1
+WHERE campaign_id = $2 AND status = 'pending' AND sent_at IS NOT NULL AND sent_at < $3
+`
+
+type ExpireSentImageRequestsParams struct {
+	Now        *time.Time
+	CampaignID string
+	Before     *time.Time
+}
+
+// A request that left and is still pending long after it was sent: it timed
+// out. The slot stays spent (the call may have been billed), and a picture that
+// still arrives is stored (FinishImageRequestDone allows it, once).
+func (q *Queries) ExpireSentImageRequests(ctx context.Context, arg ExpireSentImageRequestsParams) error {
+	_, err := q.db.Exec(ctx, expireSentImageRequests, arg.Now, arg.CampaignID, arg.Before)
+	return err
+}
+
+const expireUnsentImageRequests = `-- name: ExpireUnsentImageRequests :exec
+UPDATE image_requests
+SET status = 'failed', reason = 'timeout', refunded = true, finished_at = $1
+WHERE campaign_id = $2 AND status = 'pending' AND sent_at IS NULL AND created_at < $3
+`
+
+type ExpireUnsentImageRequestsParams struct {
+	Now        *time.Time
+	CampaignID string
+	Before     time.Time
+}
+
+// A request that never left the server and is still pending long after it was
+// made lost its server (a restart): it fails and refunds its slot, so it never
+// blocks the month's count for good.
+func (q *Queries) ExpireUnsentImageRequests(ctx context.Context, arg ExpireUnsentImageRequestsParams) error {
+	_, err := q.db.Exec(ctx, expireUnsentImageRequests, arg.Now, arg.CampaignID, arg.Before)
+	return err
+}
+
+const finishImageRequestDone = `-- name: FinishImageRequestDone :execrows
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE 'done' END,
+    reason = '', image_id = $1, finished_at = $2
+WHERE campaign_id = $3 AND id = $4 AND image_id IS NULL
+  AND (status IN ('pending', 'canceled') OR (status = 'failed' AND reason = 'timeout' AND sent_at IS NOT NULL AND NOT refunded))
+`
+
+type FinishImageRequestDoneParams struct {
+	ImageID    *string
+	Now        *time.Time
+	CampaignID string
+	ID         string
+}
+
+// The image is in the gallery. Allowed once, from pending, from canceled (it
+// keeps its status, with the image) and from a timeout after the send; zero
+// rows means it ended another way or already has an image, and the caller
+// rolls its gallery insert back.
+func (q *Queries) FinishImageRequestDone(ctx context.Context, arg FinishImageRequestDoneParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishImageRequestDone,
+		arg.ImageID,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishImageRequestFailed = `-- name: FinishImageRequestFailed :exec
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE $1 END,
+    reason = $2, refunded = true, finished_at = $3
+WHERE campaign_id = $4 AND id = $5 AND status IN ('pending', 'canceled') AND NOT refunded
+`
+
+type FinishImageRequestFailedParams struct {
+	Status     string
+	Reason     string
+	Now        *time.Time
+	CampaignID string
+	ID         string
+}
+
+// Nothing was generated: refused or failed, and the slot is back. A request
+// the master canceled in the meantime stays canceled (with the slot back).
+func (q *Queries) FinishImageRequestFailed(ctx context.Context, arg FinishImageRequestFailedParams) error {
+	_, err := q.db.Exec(ctx, finishImageRequestFailed,
+		arg.Status,
+		arg.Reason,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	return err
+}
+
 const getGalleryImage = `-- name: GetGalleryImage :one
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
 WHERE id = $1
 `
 
@@ -467,13 +654,15 @@ func (q *Queries) GetGalleryImage(ctx context.Context, id string) (GalleryImage,
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+		&i.Generated,
+		&i.ParentImageID,
 	)
 	return i, err
 }
 
 const getGalleryImageInCampaign = `-- name: GetGalleryImageInCampaign :one
 
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -499,6 +688,8 @@ func (q *Queries) GetGalleryImageInCampaign(ctx context.Context, arg GetGalleryI
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+		&i.Generated,
+		&i.ParentImageID,
 	)
 	return i, err
 }
@@ -554,6 +745,129 @@ func (q *Queries) GetGeneratedDungeon(ctx context.Context, arg GetGeneratedDunge
 		&i.Rooms,
 		&i.CreatedAt,
 		&i.ImageID,
+	)
+	return i, err
+}
+
+const getImageRequest = `-- name: GetImageRequest :one
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+WHERE campaign_id = $1 AND id = $2
+`
+
+type GetImageRequestParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetImageRequest(ctx context.Context, arg GetImageRequestParams) (ImageRequest, error) {
+	row := q.db.QueryRow(ctx, getImageRequest, arg.CampaignID, arg.ID)
+	var i ImageRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RequestedBy,
+		&i.IdempotencyKey,
+		&i.Kind,
+		&i.Prompt,
+		&i.Style,
+		&i.AspectRatio,
+		&i.Model,
+		&i.ReferenceIds,
+		&i.CharacterIds,
+		&i.SourceImageID,
+		&i.Number,
+		&i.QuotaMonth,
+		&i.Status,
+		&i.Reason,
+		&i.Refunded,
+		&i.ImageID,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.FinishedAt,
+	)
+	return i, err
+}
+
+const getImageRequestByKey = `-- name: GetImageRequestByKey :one
+
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+WHERE campaign_id = $1 AND idempotency_key = $2
+`
+
+type GetImageRequestByKeyParams struct {
+	CampaignID     string
+	IdempotencyKey string
+}
+
+// Generated images (MR-039, RN-28, ADR-0019). image_requests holds each
+// request and, by its rows of a month that were not refunded, the campaign's
+// monthly count.
+// A retry with the same idempotency key finds the first request.
+func (q *Queries) GetImageRequestByKey(ctx context.Context, arg GetImageRequestByKeyParams) (ImageRequest, error) {
+	row := q.db.QueryRow(ctx, getImageRequestByKey, arg.CampaignID, arg.IdempotencyKey)
+	var i ImageRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RequestedBy,
+		&i.IdempotencyKey,
+		&i.Kind,
+		&i.Prompt,
+		&i.Style,
+		&i.AspectRatio,
+		&i.Model,
+		&i.ReferenceIds,
+		&i.CharacterIds,
+		&i.SourceImageID,
+		&i.Number,
+		&i.QuotaMonth,
+		&i.Status,
+		&i.Reason,
+		&i.Refunded,
+		&i.ImageID,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.FinishedAt,
+	)
+	return i, err
+}
+
+const getImageRequestForImage = `-- name: GetImageRequestForImage :one
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+WHERE campaign_id = $1 AND image_id = $2
+`
+
+type GetImageRequestForImageParams struct {
+	CampaignID string
+	ImageID    *string
+}
+
+// The request that made an image.
+func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageRequestForImageParams) (ImageRequest, error) {
+	row := q.db.QueryRow(ctx, getImageRequestForImage, arg.CampaignID, arg.ImageID)
+	var i ImageRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RequestedBy,
+		&i.IdempotencyKey,
+		&i.Kind,
+		&i.Prompt,
+		&i.Style,
+		&i.AspectRatio,
+		&i.Model,
+		&i.ReferenceIds,
+		&i.CharacterIds,
+		&i.SourceImageID,
+		&i.Number,
+		&i.QuotaMonth,
+		&i.Status,
+		&i.Reason,
+		&i.Refunded,
+		&i.ImageID,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.FinishedAt,
 	)
 	return i, err
 }
@@ -1190,21 +1504,23 @@ func (q *Queries) InsertClueReveal(ctx context.Context, arg InsertClueRevealPara
 }
 
 const insertGalleryImage = `-- name: InsertGalleryImage :one
-INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
 `
 
 type InsertGalleryImageParams struct {
-	ID          string
-	CampaignID  string
-	UploadedBy  *string
-	Name        string
-	ContentType string
-	Width       int32
-	Height      int32
-	ByteSize    int32
-	CreatedAt   time.Time
+	ID            string
+	CampaignID    string
+	UploadedBy    *string
+	Name          string
+	ContentType   string
+	Width         int32
+	Height        int32
+	ByteSize      int32
+	CreatedAt     time.Time
+	Generated     bool
+	ParentImageID *string
 }
 
 func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImageParams) (GalleryImage, error) {
@@ -1218,6 +1534,8 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 		arg.Height,
 		arg.ByteSize,
 		arg.CreatedAt,
+		arg.Generated,
+		arg.ParentImageID,
 	)
 	var i GalleryImage
 	err := row.Scan(
@@ -1230,6 +1548,8 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+		&i.Generated,
+		&i.ParentImageID,
 	)
 	return i, err
 }
@@ -1270,6 +1590,78 @@ func (q *Queries) InsertGeneratedDungeon(ctx context.Context, arg InsertGenerate
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const insertImageRequest = `-- name: InsertImageRequest :one
+INSERT INTO image_requests (
+    id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
+    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15)
+RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at
+`
+
+type InsertImageRequestParams struct {
+	ID             string
+	CampaignID     string
+	RequestedBy    *string
+	IdempotencyKey string
+	Kind           string
+	Prompt         string
+	Style          string
+	AspectRatio    string
+	Model          string
+	ReferenceIds   []string
+	CharacterIds   []string
+	SourceImageID  *string
+	Number         int32
+	QuotaMonth     string
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequestParams) (ImageRequest, error) {
+	row := q.db.QueryRow(ctx, insertImageRequest,
+		arg.ID,
+		arg.CampaignID,
+		arg.RequestedBy,
+		arg.IdempotencyKey,
+		arg.Kind,
+		arg.Prompt,
+		arg.Style,
+		arg.AspectRatio,
+		arg.Model,
+		arg.ReferenceIds,
+		arg.CharacterIds,
+		arg.SourceImageID,
+		arg.Number,
+		arg.QuotaMonth,
+		arg.CreatedAt,
+	)
+	var i ImageRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RequestedBy,
+		&i.IdempotencyKey,
+		&i.Kind,
+		&i.Prompt,
+		&i.Style,
+		&i.AspectRatio,
+		&i.Model,
+		&i.ReferenceIds,
+		&i.CharacterIds,
+		&i.SourceImageID,
+		&i.Number,
+		&i.QuotaMonth,
+		&i.Status,
+		&i.Reason,
+		&i.Refunded,
+		&i.ImageID,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.FinishedAt,
+	)
+	return i, err
 }
 
 const insertMap = `-- name: InsertMap :one
@@ -1687,7 +2079,7 @@ func (q *Queries) ListDiscoveredScenes(ctx context.Context, campaignID string) (
 }
 
 const listGalleryImages = `-- name: ListGalleryImages :many
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
 WHERE campaign_id = $1
 ORDER BY created_at DESC, id DESC
 `
@@ -1712,6 +2104,86 @@ func (q *Queries) ListGalleryImages(ctx context.Context, campaignID string) ([]G
 			&i.Height,
 			&i.ByteSize,
 			&i.CreatedAt,
+			&i.Generated,
+			&i.ParentImageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImageChain = `-- name: ListImageChain :many
+WITH RECURSIVE up AS (
+    SELECT g.id, g.parent_image_id FROM gallery_images g
+    WHERE g.campaign_id = $1 AND g.id = $2
+    UNION ALL
+    SELECT p.id, p.parent_image_id FROM gallery_images p JOIN up ON p.id = up.parent_image_id
+), tree AS (
+    SELECT g.id, g.parent_image_id FROM gallery_images g
+    WHERE g.id = (SELECT u.id FROM up u WHERE u.parent_image_id IS NULL)
+    UNION ALL
+    SELECT c.id, c.parent_image_id FROM gallery_images c JOIN tree t ON c.parent_image_id = t.id
+)
+SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size,
+       g.created_at, g.generated, g.parent_image_id,
+       COALESCE(r.prompt, '')::TEXT AS prompt, COALESCE(r.number, 0)::INT4 AS number
+FROM tree t
+JOIN gallery_images g ON g.id = t.id
+LEFT JOIN image_requests r ON r.image_id = g.id
+ORDER BY g.created_at, g.id
+`
+
+type ListImageChainParams struct {
+	CampaignID string
+	ID         string
+}
+
+type ListImageChainRow struct {
+	ID            string
+	CampaignID    string
+	UploadedBy    *string
+	Name          string
+	ContentType   string
+	Width         int32
+	Height        int32
+	ByteSize      int32
+	CreatedAt     time.Time
+	Generated     bool
+	ParentImageID *string
+	Prompt        string
+	Number        int32
+}
+
+// Every image of the edit tree an image belongs to (its root, and every edit
+// below it), oldest first, with the master's text that made each one.
+func (q *Queries) ListImageChain(ctx context.Context, arg ListImageChainParams) ([]ListImageChainRow, error) {
+	rows, err := q.db.Query(ctx, listImageChain, arg.CampaignID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListImageChainRow
+	for rows.Next() {
+		var i ListImageChainRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.UploadedBy,
+			&i.Name,
+			&i.ContentType,
+			&i.Width,
+			&i.Height,
+			&i.ByteSize,
+			&i.CreatedAt,
+			&i.Generated,
+			&i.ParentImageID,
+			&i.Prompt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -1724,7 +2196,7 @@ func (q *Queries) ListGalleryImages(ctx context.Context, campaignID string) ([]G
 }
 
 const listLeftImages = `-- name: ListLeftImages :many
-SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at FROM campaign_left_images l
+SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at, g.generated, g.parent_image_id FROM campaign_left_images l
 JOIN gallery_images g ON g.id = l.image_id
 WHERE l.campaign_id = $1
 ORDER BY l.left_at, g.id
@@ -1751,6 +2223,8 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 			&i.Height,
 			&i.ByteSize,
 			&i.CreatedAt,
+			&i.Generated,
+			&i.ParentImageID,
 		); err != nil {
 			return nil, err
 		}
@@ -2557,6 +3031,28 @@ func (q *Queries) ListTreasureFindsOfSession(ctx context.Context, sessionID stri
 	return items, nil
 }
 
+const markImageRequestSent = `-- name: MarkImageRequestSent :execrows
+UPDATE image_requests
+SET sent_at = $3
+WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NULL
+`
+
+type MarkImageRequestSentParams struct {
+	CampaignID string
+	ID         string
+	SentAt     *time.Time
+}
+
+// The moment the request leaves the server. No row means it was canceled
+// first, and nothing is sent.
+func (q *Queries) MarkImageRequestSent(ctx context.Context, arg MarkImageRequestSentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markImageRequestSent, arg.CampaignID, arg.ID, arg.SentAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const moveMapCreatureToken = `-- name: MoveMapCreatureToken :exec
 UPDATE map_creature_tokens
 SET x_bp = $3, y_bp = $4, updated_at = $5
@@ -2620,11 +3116,23 @@ func (q *Queries) MoveMapToken(ctx context.Context, arg MoveMapTokenParams) (Map
 	return i, err
 }
 
+const nextImageRequestNumber = `-- name: NextImageRequestNumber :one
+SELECT (COALESCE(max(number), 0) + 1)::INT4 FROM image_requests
+WHERE campaign_id = $1
+`
+
+func (q *Queries) NextImageRequestNumber(ctx context.Context, campaignID string) (int32, error) {
+	row := q.db.QueryRow(ctx, nextImageRequestNumber, campaignID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const renameGalleryImage = `-- name: RenameGalleryImage :one
 UPDATE gallery_images
 SET name = $3
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
 `
 
 type RenameGalleryImageParams struct {
@@ -2646,6 +3154,8 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+		&i.Generated,
+		&i.ParentImageID,
 	)
 	return i, err
 }

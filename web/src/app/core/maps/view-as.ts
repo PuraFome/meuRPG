@@ -27,6 +27,7 @@ export class ViewAsMap {
     this.fog = new FogView(
       (mapId, as) => this.api.vision(this.campaignId(), mapId, as ?? ''),
       (mapId, as) => this.api.layers(this.campaignId(), mapId, as ?? ''),
+      () => true,
     );
   }
 

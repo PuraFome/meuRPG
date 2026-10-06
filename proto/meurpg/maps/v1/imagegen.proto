@@ -1,0 +1,365 @@
+syntax = "proto3";
+
+package meurpg.maps.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/maps/v1/gallery.proto";
+
+// ImageGenerationService makes pictures with an image model (the Gemini API,
+// ADR-0019) for the campaign's master (MR-039, RN-28). Slice 10.8a serves the
+// scene art and the edits; the images made from a map (the isometric view, the
+// map with a texture) come in 10.8b, as new RPCs or new fields here.
+//
+// Only the campaign's master may call it. A player, a pending member and
+// anyone outside the campaign get `not_found`, as for a hidden image: the
+// service must not say that a campaign generates images. Every call is also
+// `unauthenticated` without a session.
+//
+// How a request goes (RN-28):
+//
+//  1. GenerateSceneImage or EditGeneratedImage reserves one of the campaign's
+//     monthly slots in a short transaction and answers at once, with the
+//     request in state PENDING.
+//  2. The server calls the model, outside any transaction.
+//  3. The picture is stored like an upload (decoded and encoded again, no
+//     metadata) as a new, hidden gallery image, and the request becomes
+//     DONE. Or nothing came, the request becomes REFUSED or FAILED, and the
+//     slot goes back.
+//
+// The app asks GetImageGeneration until the state is not PENDING. There is no
+// stream hint: players never learn that a request exists.
+//
+// What goes to Google: the master's text as written, the style, the aspect
+// ratio and the gallery images the master chose (for an edit: the previous
+// picture and the earlier texts). The server never adds a person's name, an
+// e-mail or a sheet. The app tells the master what goes.
+//
+// Every failure the master can act on is a `failed_precondition` with an
+// ImageGenerationBlocked detail (generation off, the month's limit, the
+// gallery full); the other codes are the usual ones: `invalid_argument` (a bad
+// text, style, ratio or too many references), `not_found` (an image that is
+// not the campaign's) and `unavailable` (the database).
+service ImageGenerationService {
+  // GetImageGenerationStatus says whether generation is on and how many of
+  // the month's images the campaign has left ("Restam 17 de 20 imagens em
+  // outubro."). It works when generation is off (enabled false).
+  rpc GetImageGenerationStatus(GetImageGenerationStatusRequest) returns (GetImageGenerationStatusResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GenerateSceneImage asks for the "arte da cena" from the master's text,
+  // with up to 10 gallery images of objects and 4 of characters as
+  // references. It answers at once with a PENDING request. The same
+  // idempotency_key in the same campaign gives the same request back, and
+  // never generates twice.
+  //
+  // Errors: `invalid_argument` (empty or over-long text, a ratio or style
+  // that is not in the lists, too many references, a bad key);
+  // `not_found` (a reference that is not an image of the campaign);
+  // `failed_precondition` with ImageGenerationBlocked (OFF, LIMIT_REACHED,
+  // GALLERY_FULL).
+  rpc GenerateSceneImage(GenerateSceneImageRequest) returns (GenerateSceneImageResponse);
+
+  // EditGeneratedImage asks for a change to an image that was generated: the
+  // server sends the previous image again, with the text that made it, the
+  // earlier adjustments and the new instruction (the model keeps nothing).
+  // The result is a new gallery image whose parent_image_id is this one. It
+  // costs one slot, like a new image, and has the same idempotency rule.
+  //
+  // Errors: as GenerateSceneImage, and `not_found` when the image is not a
+  // generated image of the campaign.
+  rpc EditGeneratedImage(EditGeneratedImageRequest) returns (EditGeneratedImageResponse);
+
+  // GetImageGeneration reads a request: PENDING, DONE (with the gallery image),
+  // REFUSED or FAILED (with a Portuguese reason), or CANCELED. With
+  // wait_seconds it is a long poll: it answers when the state changes. A request
+  // that never left the server and stays PENDING for ten minutes fails and gives
+  // its slot back; one that left and is still PENDING ten minutes after fails as
+  // timed out with the slot spent (it may have been billed), and if its picture
+  // still arrives it is stored and the request becomes DONE, once. Both happen
+  // when the request is read.
+  rpc GetImageGeneration(GetImageGenerationRequest) returns (GetImageGenerationResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CancelImageGeneration stops waiting for a request. Before the request
+  // left the server, it is canceled and the slot goes back
+  // (slot_spent false). After it left, only the wait stops: the slot stays
+  // spent, and an image that still arrives goes to the gallery (the request
+  // stays CANCELED with its image_id set). A request that already ended is
+  // returned as it is.
+  rpc CancelImageGeneration(CancelImageGenerationRequest) returns (CancelImageGenerationResponse);
+
+  // ListImageEdits lists the edit chain of an image: its root, and every edit
+  // below it, oldest first (follow parent_image_id for the links). Empty
+  // (just the image) for an image that was never edited.
+  rpc ListImageEdits(ListImageEditsRequest) returns (ListImageEditsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// ImageStyle is the style the master picks. The server turns it into the
+// words that go to the model.
+enum ImageStyle {
+  // No style ("Sem estilo").
+  IMAGE_STYLE_UNSPECIFIED = 0;
+  // "Pintura a óleo".
+  IMAGE_STYLE_OIL_PAINTING = 1;
+  // "Aquarela".
+  IMAGE_STYLE_WATERCOLOR = 2;
+  // "Nanquim".
+  IMAGE_STYLE_INK = 3;
+  // "Arte digital".
+  IMAGE_STYLE_DIGITAL_ART = 4;
+  // "Ilustração de livro".
+  IMAGE_STYLE_BOOK_ILLUSTRATION = 5;
+}
+
+// ImageAspectRatio is one of the 10 ratios the model returns (width:height).
+enum ImageAspectRatio {
+  // The server's default for the kind (16:9 for a scene).
+  IMAGE_ASPECT_RATIO_UNSPECIFIED = 0;
+  IMAGE_ASPECT_RATIO_1_1 = 1;
+  IMAGE_ASPECT_RATIO_3_2 = 2;
+  IMAGE_ASPECT_RATIO_2_3 = 3;
+  IMAGE_ASPECT_RATIO_3_4 = 4;
+  IMAGE_ASPECT_RATIO_4_3 = 5;
+  IMAGE_ASPECT_RATIO_4_5 = 6;
+  IMAGE_ASPECT_RATIO_5_4 = 7;
+  IMAGE_ASPECT_RATIO_9_16 = 8;
+  IMAGE_ASPECT_RATIO_16_9 = 9;
+  IMAGE_ASPECT_RATIO_21_9 = 10;
+}
+
+// ImageGenerationKind is what a request asks for.
+enum ImageGenerationKind {
+  IMAGE_GENERATION_KIND_UNSPECIFIED = 0;
+  // The scene art, from the master's text and gallery references.
+  IMAGE_GENERATION_KIND_SCENE = 1;
+  // An edit of a generated image.
+  IMAGE_GENERATION_KIND_EDIT = 2;
+}
+
+// ImageGenerationState is where a request is.
+enum ImageGenerationState {
+  IMAGE_GENERATION_STATE_UNSPECIFIED = 0;
+  // Waiting for the model. The slot is reserved.
+  IMAGE_GENERATION_STATE_PENDING = 1;
+  // The picture is in the gallery (image_id).
+  IMAGE_GENERATION_STATE_DONE = 2;
+  // The service refused the text, or stopped for safety. The slot is back.
+  IMAGE_GENERATION_STATE_REFUSED = 3;
+  // No picture came, or the service did not answer. The slot is back.
+  IMAGE_GENERATION_STATE_FAILED = 4;
+  // The master stopped waiting.
+  IMAGE_GENERATION_STATE_CANCELED = 5;
+}
+
+// ImageGenerationFailure says why a REFUSED or FAILED request ended, for the
+// app's message (reason_pt has the server's own Portuguese).
+enum ImageGenerationFailure {
+  IMAGE_GENERATION_FAILURE_UNSPECIFIED = 0;
+  // The service answered with no picture ("O serviço não gerou uma imagem").
+  IMAGE_GENERATION_FAILURE_NO_IMAGE = 1;
+  // The service refused the text or stopped for safety.
+  IMAGE_GENERATION_FAILURE_REFUSED = 2;
+  // The service timed out, failed or could not be reached, also after the retry.
+  IMAGE_GENERATION_FAILURE_UNAVAILABLE = 3;
+  // A picture came but the gallery had no room for it (the slot stays spent).
+  IMAGE_GENERATION_FAILURE_GALLERY_FULL = 4;
+  // An image the request needed is gone (deleted meanwhile).
+  IMAGE_GENERATION_FAILURE_IMAGE_MISSING = 5;
+  // The request was lost with a server restart.
+  IMAGE_GENERATION_FAILURE_TIMEOUT = 6;
+  // The image service is not available to the app (a key it refused: an
+  // operator's problem). The slot is back. "O serviço de imagens não está
+  // disponível."
+  IMAGE_GENERATION_FAILURE_SERVICE_OFF = 7;
+}
+
+// ImageGeneration is one request to the model.
+message ImageGeneration {
+  // The request's ID (a UUID).
+  string id = 1;
+  // The campaign (a UUID).
+  string campaign_id = 2;
+  ImageGenerationKind kind = 3;
+  ImageGenerationState state = 4;
+  // Why it ended without a picture, for REFUSED and FAILED (and for a
+  // CANCELED one that failed after the cancel).
+  ImageGenerationFailure failure = 5;
+  // The same, in Portuguese, written by the server: never the model's own
+  // message. Empty when there is no failure.
+  string reason_pt = 6;
+  // The master's text: for a scene, the description; for an edit, the new
+  // instruction. It is the master's own data.
+  string prompt = 7;
+  ImageStyle style = 8;
+  ImageAspectRatio aspect_ratio = 9;
+  // The order of the campaign's requests, 1, 2, 3...: the image is named
+  // "Imagem {number}".
+  int32 number = 10;
+  // The gallery image, once there is one (DONE, or CANCELED after the request
+  // left and the picture still came). Empty before.
+  string image_id = 11;
+  // For an edit, the image it started from (a UUID).
+  string source_image_id = 12;
+  // The gallery images of objects and places sent as references.
+  repeated string reference_image_ids = 13;
+  // True while the request counts against the month: false once the slot was
+  // given back (a refusal, a failure, a cancel before it left).
+  bool slot_spent = 14;
+  google.protobuf.Timestamp created_at = 15;
+  // When it ended, empty while PENDING.
+  google.protobuf.Timestamp finished_at = 16;
+  // The gallery images of characters sent as references.
+  repeated string character_image_ids = 17;
+}
+
+// ImageGenerationStatus is the campaign's month, and what a request may carry.
+message ImageGenerationStatus {
+  // False when generation is off on this server (no key, or no image storage).
+  bool enabled = 1;
+  // How many images the campaign may generate per month.
+  int32 monthly_limit = 2;
+  // How many slots it spent this month (pending ones included).
+  int32 used_this_month = 3;
+  // monthly_limit - used_this_month, never below zero ("Restam 17 de 20").
+  int32 remaining = 4;
+  // The month, "2026-10", in Brazil's time (UTC-3).
+  string month = 5;
+  // When the count starts over: the first instant of the next month.
+  google.protobuf.Timestamp resets_at = 6;
+  // The longest text, in characters (500).
+  int32 max_prompt_characters = 7;
+  // The most references a request carries: 10 of objects and 4 of characters.
+  int32 max_object_references = 8;
+  int32 max_character_references = 9;
+}
+
+// ImageGenerationBlockedReason says why a request cannot be made now.
+enum ImageGenerationBlockedReason {
+  IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED = 0;
+  // Generation is off on this server (no key, or no image storage).
+  IMAGE_GENERATION_BLOCKED_REASON_OFF = 1;
+  // The campaign spent the month's images.
+  IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED = 2;
+  // The gallery is full: no room for another image.
+  IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL = 3;
+  // The request is too big for the service even with the images shrunk to
+  // 1024 pixels (about 8 MiB in all): choose fewer references.
+  IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE = 4;
+}
+
+// ImageGenerationBlocked is the error detail of `failed_precondition` from
+// the generating RPCs.
+message ImageGenerationBlocked {
+  ImageGenerationBlockedReason reason = 1;
+  // The month's status, for "Volta em 1º de novembro".
+  ImageGenerationStatus status = 2;
+}
+
+message GetImageGenerationStatusRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+}
+
+message GetImageGenerationStatusResponse {
+  ImageGenerationStatus status = 1;
+}
+
+message GenerateSceneImageRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // A key the app makes for this try (1 to 64 characters, such as a UUID): a
+  // retry with the same key never generates twice.
+  string idempotency_key = 2;
+  // What to draw, in the master's words: 1 to 500 characters. It goes to
+  // Google as written.
+  string prompt = 3;
+  ImageStyle style = 4;
+  // Empty means 16:9.
+  ImageAspectRatio aspect_ratio = 5;
+  // Gallery images of objects and places, at most 10 (UUIDs).
+  repeated string object_image_ids = 6;
+  // Gallery images of characters (the portraits of NPCs and enemies), at
+  // most 4 (UUIDs).
+  repeated string character_image_ids = 7;
+}
+
+message GenerateSceneImageResponse {
+  // The request, PENDING (or what an earlier try with the same key became).
+  ImageGeneration generation = 1;
+  // The month after reserving the slot.
+  ImageGenerationStatus status = 2;
+}
+
+message EditGeneratedImageRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The generated image to edit (a UUID).
+  string image_id = 2;
+  // As GenerateSceneImageRequest.idempotency_key.
+  string idempotency_key = 3;
+  // The new instruction ("mais escura, com uma ponte"): 1 to 500 characters.
+  string instruction = 4;
+}
+
+message EditGeneratedImageResponse {
+  ImageGeneration generation = 1;
+  ImageGenerationStatus status = 2;
+}
+
+message GetImageGenerationRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The request's ID (a UUID).
+  string generation_id = 2;
+  // A long poll: how many seconds, 0 to 25 (more is 25), the call may wait for
+  // the request to leave PENDING. It answers as soon as the state changes, when
+  // the wait ends (still PENDING) or when the server shuts down. 0 answers at
+  // once. The app keeps one such call open while it waits, which also keeps the
+  // server's instance busy (Cloud Run gives CPU only to a request in flight).
+  int32 wait_seconds = 3;
+}
+
+message GetImageGenerationResponse {
+  ImageGeneration generation = 1;
+  // The gallery image, when there is one.
+  GalleryImage image = 2;
+  ImageGenerationStatus status = 3;
+}
+
+message CancelImageGenerationRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The request's ID (a UUID).
+  string generation_id = 2;
+}
+
+message CancelImageGenerationResponse {
+  ImageGeneration generation = 1;
+  ImageGenerationStatus status = 2;
+}
+
+message ListImageEditsRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // Any image of the chain (a UUID).
+  string image_id = 2;
+}
+
+message ListImageEditsResponse {
+  // The chain, oldest first.
+  repeated ImageEdit edits = 1;
+}
+
+// ImageEdit is one image of an edit chain.
+message ImageEdit {
+  GalleryImage image = 1;
+  // The master's text that made it: the description of the first image, the
+  // instruction of an edit. Empty for an image without a request.
+  string prompt = 2;
+  // The request's number ("Imagem {number}"), 0 without a request.
+  int32 number = 3;
+}

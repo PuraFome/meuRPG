@@ -6,10 +6,11 @@ import type { MapPoint, MapToken } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { isPinKind } from '../../core/traps/trap-text';
 import { combatantInitial } from '../../core/combat/combat-view';
 import type { FogError, FogStatus } from '../../core/maps/fog-view';
-import { hasLayers, type MapLayers, NO_LAYERS } from '../../core/maps/layers';
+import { type DoorSquare, hasLayers, type MapLayers, NO_LAYERS } from '../../core/maps/layers';
 import { tokenKey } from '../../core/maps/map-state';
 import { type Vision, Sight, seenCount, tileRects, visionLegend } from '../../core/maps/vision';
 import { CombatantToken } from '../combatant-token/combatant-token';
+import { DoorPicks } from '../map-layers/door-picks';
 import { MapLayersLegend } from '../map-layers/map-layers-legend';
 import { centroid, tokenInitial, ViewToken } from '../map-view/map-geometry';
 import { type MapMove, MapView } from '../map-view/map-view';
@@ -48,7 +49,7 @@ export interface FogViewer {
  */
 @Component({
   selector: 'app-fog-map',
-  imports: [CombatantToken, FogBase, MapLayersLegend, MapPins, MapPinsLegend, MapView, MatIconModule],
+  imports: [CombatantToken, DoorPicks, FogBase, MapLayersLegend, MapPins, MapPinsLegend, MapView, MatIconModule],
   templateUrl: './fog-map.html',
   styleUrl: './fog-map.scss',
 })
@@ -79,6 +80,8 @@ export class FogMap {
   readonly isMaster = input(false);
   /** `tokens`: the master drags a token; `view`: pan and zoom only. */
   readonly mode = input<'view' | 'tokens'>('view');
+  /** The master's map: each door is a button that opens its sheet (E10-05 10). */
+  readonly doorTaps = input(false);
   /** A click on a point opens it (the map page). */
   readonly selectablePoints = input(false);
   /** The card "Você vê ..." under the legend (players). */
@@ -95,6 +98,8 @@ export class FogMap {
   readonly notices = input(true);
 
   readonly pointSelect = output<string>();
+  /** The master tapped a door (`doorTaps`). */
+  readonly doorPick = output<DoorSquare>();
   readonly moved = output<MapMove>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);

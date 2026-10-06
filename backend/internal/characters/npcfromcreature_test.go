@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -379,6 +380,75 @@ func TestCreateNpcFromCreatureRace(t *testing.T) {
 		var n int
 		if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1 AND create_key = $2", campaign, key).Scan(&n); err != nil || n != 1 {
 			t.Errorf("round %d: %d rows for the key, %v; want 1", round, n, err)
+		}
+	}
+}
+
+// TestGetCreatureNpcAttackNames: the attacks the stat block says "Criar NPC"
+// copies are the very attacks the created NPC's sheet holds, in the same order
+// and with the same names, for creatures with one, two and no fitting attack.
+func TestGetCreatureNpcAttackNames(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	for _, key := range []string{"monster:ogre", "monster:bandit", "monster:bandit-captain", "monster:wolf"} {
+		got, err := master.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: campaign, Key: key}))
+		if err != nil {
+			t.Fatalf("GetCreature(%s) = %v", key, err)
+		}
+		npc, err := npcFromCreature(t, master, campaign, key, "Cópia "+key, charactersv1.CharacterKind_CHARACTER_KIND_MINION, uuid.New().String())
+		if err != nil {
+			t.Fatalf("CreateNpcFromCreature(%s) = %v", key, err)
+		}
+		var made []string
+		for _, a := range npc.GetSheet().GetBasic().GetAttacks() {
+			made = append(made, a.GetName())
+		}
+		names := got.Msg.GetCreature().GetNpcAttackNames()
+		if len(made) == 0 || len(names) != len(made) {
+			t.Fatalf("%s: GetCreature says %q, the NPC got %q", key, names, made)
+		}
+		for i := range made {
+			if names[i] != made[i] {
+				t.Errorf("%s: attack %d is %q in GetCreature and %q on the NPC", key, i, names[i], made[i])
+			}
+		}
+	}
+}
+
+// TestCreateNpcFromCreatureNamesTheField: a refused request says which field in
+// the InvalidField detail, so the app need not read the message.
+func TestCreateNpcFromCreatureNamesTheField(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	minion := charactersv1.CharacterKind_CHARACTER_KIND_MINION
+	key := uuid.New().String()
+	if _, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", minion, key); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct{ field, creature, name, idem string }{
+		{"name", "monster:ogre", "   ", uuid.New().String()},
+		{"idempotency_key", "monster:ogre", "Grak", "not-a-uuid"},
+		{"idempotency_key", "monster:ogre", "Outro nome", key},
+		{"creature_key", "monster:not-there", "Grak", uuid.New().String()},
+	} {
+		_, err := npcFromCreature(t, master, campaign, c.creature, c.name, minion, c.idem)
+		wantCode(t, "field "+c.field, err, connect.CodeInvalidArgument)
+		var got string
+		if ce, ok := errors.AsType[*connect.Error](err); ok {
+			for _, d := range ce.Details() {
+				if v, derr := d.Value(); derr == nil {
+					if f, ok := v.(*charactersv1.InvalidField); ok {
+						got = f.GetField()
+					}
+				}
+			}
+		}
+		if got != c.field {
+			t.Errorf("refusal for %s says field %q", c.field, got)
 		}
 	}
 }

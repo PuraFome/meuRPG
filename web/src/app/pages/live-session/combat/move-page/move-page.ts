@@ -92,6 +92,8 @@ export class MovePage {
   readonly busy = input(false);
   /** A refusal from the server ("Longe demais…"), shown like a local one. */
   readonly serverError = input('');
+  /** The last move stopped before a locked door (RN-26): the notice says why, and the map keeps drawing "Porta fechada". */
+  readonly lockedDoor = input(false);
   /** Where the combatant can go (`GetMoveOptions`); `null` until it is read, or when it failed. */
   readonly options = input<GetMoveOptionsResponse | null>(null);
   readonly optionsFailed = input(false);
@@ -295,6 +297,12 @@ export class MovePage {
       if (this.serverError()) {
         const at = untracked(() => this.chosen());
         this.errorFor.set(at);
+      }
+    });
+    // A locked door stopped the move: the square chosen is behind us now, so the choice is cleared (and "Mover para cá" with it).
+    effect(() => {
+      if (this.lockedDoor()) {
+        untracked(() => this.chosen.set(null));
       }
     });
     // The high jump starts at the most it can do (E9-06: 1,8 m).

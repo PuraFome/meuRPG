@@ -1655,6 +1655,12 @@ message Creature {
   repeated CreatureAction actions = 27;
   repeated CreatureTrait reactions = 28;
   repeated CreatureTrait legendary_actions = 29;
+  // The names, in Portuguese when the content has one, of the attacks the
+  // bestiary's "Criar NPC" copies to the NPC's basic sheet (MR-042): at most
+  // three, in the order the sheet gets them. GetCreature fills it with the same
+  // function CreateNpcFromCreature builds the sheet with, so the dialog and the
+  // NPC can never differ. Empty when no attack fits a basic sheet.
+  repeated string npc_attack_names = 30;
 }
 
 // CreatureAbilityScore is one ability of a stat block.

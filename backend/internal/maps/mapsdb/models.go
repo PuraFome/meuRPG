@@ -9,15 +9,17 @@ import (
 )
 
 type GalleryImage struct {
-	ID          string
-	CampaignID  string
-	UploadedBy  *string
-	Name        string
-	ContentType string
-	Width       int32
-	Height      int32
-	ByteSize    int32
-	CreatedAt   time.Time
+	ID            string
+	CampaignID    string
+	UploadedBy    *string
+	Name          string
+	ContentType   string
+	Width         int32
+	Height        int32
+	ByteSize      int32
+	CreatedAt     time.Time
+	Generated     bool
+	ParentImageID *string
 }
 
 type GeneratedDungeon struct {
@@ -31,6 +33,30 @@ type GeneratedDungeon struct {
 	Rooms            []byte
 	CreatedAt        time.Time
 	ImageID          *string
+}
+
+type ImageRequest struct {
+	ID             string
+	CampaignID     string
+	RequestedBy    *string
+	IdempotencyKey string
+	Kind           string
+	Prompt         string
+	Style          string
+	AspectRatio    string
+	Model          string
+	ReferenceIds   []string
+	CharacterIds   []string
+	SourceImageID  *string
+	Number         int32
+	QuotaMonth     string
+	Status         string
+	Reason         string
+	Refunded       bool
+	ImageID        *string
+	CreatedAt      time.Time
+	SentAt         *time.Time
+	FinishedAt     *time.Time
 }
 
 type Map struct {
