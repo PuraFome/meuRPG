@@ -137,13 +137,18 @@ export class TrapPanel {
       });
   }
 
-  /** Who can be caught: the combatants of a combat on this map, otherwise the characters with a token on it. */
-  private targetsFor(p: MapPoint): readonly PickRow[] {
+  /** Who can be caught: the combatants of a combat on this map, otherwise the characters with a token on it; `null`
+   * while the trap's "Quem notaria" is still being read. */
+  private targetsFor(p: MapPoint): readonly PickRow[] | null {
     const e = this.encounter();
     if (e) {
       return e.combatants.map((c) => ({ id: c.id, name: c.label, sub: isPlayer(c) ? 'Personagem' : 'NPC' }));
     }
-    return (this.board().noticers().get(p.id)?.noticers ?? [])
+    const read = this.board().noticers().get(p.id);
+    if (!read) {
+      return this.board().noticersFailed().has(p.id) ? [] : null;
+    }
+    return read.noticers
       .filter((n) => n.onMap)
       .map((n) => ({ id: n.characterId, name: n.characterName, sub: n.inRange ? 'Perto da armadilha, até 3 m' : 'Longe da armadilha' }));
   }
@@ -151,16 +156,20 @@ export class TrapPanel {
   protected fire(p: MapPoint, extend = false): void {
     const firing = extend ? this.board().firingOf(p.id) : null;
     const opener = this.document.activeElement as HTMLElement | null;
+    // The list follows the board: the dialog can open before the trap's "Quem notaria" arrives (a snapshot taken
+    // here stayed empty, "Ninguém com token no mapa", when the master was quicker than the read).
+    const stop = this.encounter() ? () => undefined : this.board().watchWhileFiring(p.id);
     openTrapFire(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       mapId: this.mapId(),
       point: p,
-      targets: this.targetsFor(p),
+      targets: computed(() => this.targetsFor(p)),
       extendFiringId: firing?.id ?? '',
-      targetsFailed: this.encounter() === null && this.board().noticersFailed().has(p.id),
+      targetsFailed: computed(() => this.encounter() === null && this.board().noticersFailed().has(p.id)),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((done) => {
+        stop();
         focusWithRing(opener);
         if (done) {
           this.fired(p, done, extend);

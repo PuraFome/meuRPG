@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
@@ -25,7 +26,7 @@ describe('TrapFireSheet', () => {
       campaignId: 'c',
       mapId: 'm',
       point: create(MapPointSchema, { id: 'x', kind: MapPointKind.TRAP, name: 'Fosso escondido', description: 'No corredor' }),
-      targets: [{ id: 't', name: 'Toren', sub: 'Perto da armadilha' }, { id: 'b', name: 'Brisa', sub: 'Longe da armadilha' }],
+      targets: signal([{ id: 't', name: 'Toren', sub: 'Perto da armadilha' }, { id: 'b', name: 'Brisa', sub: 'Longe da armadilha' }]),
       extendFiringId: '',
       ...extra,
     };
@@ -70,8 +71,19 @@ describe('TrapFireSheet', () => {
   });
 
   it('says the read failed, not that nobody is on the map', () => {
-    const { el } = setup({ targets: [], targetsFailed: true });
+    const { el } = setup({ targets: signal([]), targetsFailed: signal(true) });
     expect(el.textContent).toContain('Não deu para ler quem está no mapa');
     expect(el.textContent).not.toContain('Ninguém com token no mapa');
+  });
+
+  it('opens before the list is read, says so, and fills it in when it arrives (the master may be quicker than the read)', () => {
+    const targets = signal<readonly { id: string; name: string; sub: string }[] | null>(null);
+    const { fixture, el } = setup({ targets });
+    expect(el.textContent).toContain('Lendo quem está no mapa');
+    expect(el.textContent).not.toContain('Ninguém com token no mapa');
+    targets.set([{ id: 't', name: 'Toren', sub: 'Perto da armadilha' }]);
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Toren');
+    expect(el.textContent).not.toContain('Lendo quem está no mapa');
   });
 });
