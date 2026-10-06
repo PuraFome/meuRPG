@@ -1,0 +1,163 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.shot {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+}
+
+// The picture is about 40 % of the screen's height at most and never wider than the dialog; the grid is drawn over the picture itself.
+.shot__frame {
+  position: relative;
+  width: min(100%, calc(40vh * var(--ar)));
+  margin-inline: auto;
+  aspect-ratio: var(--ar);
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+// The map's grid over the textured picture: thin light lines, one stroke for all of them.
+.shot__grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+
+  path {
+    stroke: var(--mr-on-accent);
+    stroke-opacity: 0.45;
+    stroke-width: 1;
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+
+  // The question is the card's own box: room around its heading for the focus ring (it is not clipped), and no second border.
+  &.ask {
+    padding: 8px 8px 0;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.note {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.caption {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.chain__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chain__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li + li::before {
+    content: '›';
+    padding: 0 var(--mr-space-2);
+    color: var(--mr-ink-muted);
+  }
+}
+
+.chain__now {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-sm);
+  color: var(--mr-accent-text);
+}
+
+.chain__link {
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.edit__field {
+  width: 100%;
+}
+
+.privacy {
+  padding: 10px 16px;
+  font-size: 15px;
+  line-height: 21px;
+}
+
+// The question over the result: the title and its words here, the two answers in the footer.
+.ask__title {
+  align-self: flex-start;
+  margin: 0 -6px;
+  padding: 2px 6px;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.ask__title:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 2px;
+}

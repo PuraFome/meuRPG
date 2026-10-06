@@ -1,0 +1,234 @@
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  padding-top: 8px;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+// "Mapa" first, then the map, then the rest. From 1100 px the map is on the left over two rows and the column on the right; below, one column.
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'sel'
+    'map'
+    'rest';
+  gap: var(--mr-space-3) var(--mr-space-4);
+
+  &:not(.cols--one) {
+    @media (min-width: 1100px) {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        'map sel'
+        'map rest';
+      align-items: start;
+    }
+  }
+}
+
+.cols__sel {
+  grid-area: sel;
+}
+
+.cols__map {
+  grid-area: map;
+}
+
+.cols__rest {
+  grid-area: rest;
+}
+
+.cols__sel,
+.cols__map,
+.cols__rest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+// The map never takes the whole dialog: it scrolls inside, so the help sentence stays in view.
+.pick {
+  max-height: min(44dvh, 480px);
+  overflow: auto;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.legend--map {
+  display: none;
+
+  @media (min-width: 1100px) {
+    display: flex;
+  }
+}
+
+.legend--side {
+  @media (min-width: 1100px) {
+    display: none;
+  }
+}
+
+.pick {
+  border-radius: var(--mr-radius-md);
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.help {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.where {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.rooms {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+}
+
+.rooms__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.room {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+    color: var(--mr-accent-text);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.what {
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.what__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.what__gold {
+  margin: var(--mr-space-1) 0 0;
+  font-weight: 700;
+}
+
+.what__inside,
+.what__gold-line {
+  margin: var(--mr-space-1) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+// Cancelar and the one filled button, the same size; side by side on a phone, right-aligned from a tablet up.
+.actions {
+  display: flex;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    justify-content: flex-end;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+
+  @media (max-width: 559.98px) {
+    flex: 1 1 0;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+}
+
+.no {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}

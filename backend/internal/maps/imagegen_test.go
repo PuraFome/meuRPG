@@ -143,7 +143,7 @@ func TestMR039_GenerateAndEditAScene(t *testing.T) {
 		t.Fatalf("first request = %v; want DONE with an image", first)
 	}
 	img := first.GetImage()
-	if !img.GetGenerated() || img.GetParentImageId() != "" || img.GetName() != "Imagem 1" || img.GetContentType() != "image/png" {
+	if !img.GetGenerated() || img.GetParentImageId() != "" || !strings.HasPrefix(img.GetName(), "Arte da cena · ") || img.GetContentType() != "image/png" {
 		t.Errorf("first image = %v", img)
 	}
 	if first.GetGeneration().GetImageId() != img.GetId() || first.GetGeneration().GetNumber() != 1 || !first.GetGeneration().GetSlotSpent() {
@@ -167,7 +167,7 @@ func TestMR039_GenerateAndEditAScene(t *testing.T) {
 	}
 	second := master.waitGeneration(campaign, edit.Msg.GetGeneration().GetId())
 	child := second.GetImage()
-	if child == nil || child.GetParentImageId() != img.GetId() || !child.GetGenerated() || child.GetName() != "Imagem 2" {
+	if child == nil || child.GetParentImageId() != img.GetId() || !child.GetGenerated() || child.GetName() != img.GetName()+" (ajuste)" {
 		t.Fatalf("edited image = %v", child)
 	}
 

@@ -100,6 +100,9 @@ func bodyToOverlayPath(list string, i int, field string) string {
 	return fmt.Sprintf("%s[%d].%s", list, i, rest)
 }
 
+// The class and subclass paths and reasons are pinned by TestClassRefusalsNameTheirField (overlay_fields_test.go); the web
+// copies them into content-violations.spec.ts (CLASS_ROWS): change a row there and here together.
+//
 // TestEntryViolationPaths: every row of the table above comes back at its exact
 // path with its reason, and a saving throw never lands on a class's field.
 func TestEntryViolationPaths(t *testing.T) {
@@ -170,6 +173,25 @@ func TestAnEntryReportsEveryViolationAtOnce(t *testing.T) {
 			o.Backgrounds[0].Tools = []string{"proficiency:light-armor"}
 			o.Backgrounds[0].LanguageChoices = 9
 		}, []string{"backgrounds[0].skills[1]", "backgrounds[0].language_choices", "backgrounds[0].tools[0]"}},
+		// A class and a subclass (slice 10.12 fix round 1): three mistakes need one save, not three.
+		{"a class", func(o *Overlay) {
+			o.Classes[1].HitDie = 7
+			o.Classes[1].SavingThrows = []Ability{CON, CON}
+			o.Classes[1].SkillFrom[1] = "skill:nope"
+			o.Classes[1].Levels[0].CantripsKnown = 99
+			o.Classes[1].Levels[4].Slots[2] = 12
+		}, []string{"classes[1].hit_die", "classes[1].saving_throws[1]", "classes[1].skill_from[1]", "classes[1].levels[0].cantrips_known", "classes[1].levels[4].slots[2]"}},
+		{"a class's casting and multiclass", func(o *Overlay) {
+			o.Classes[1].Casting.Ability = "luck"
+			o.Classes[1].Casting.StartLevel = 40
+			o.Classes[1].Minimums = map[Ability]int{WIS: 99, INT: 0}
+			o.Classes[1].ASILevels = []int{4, 4, 25}
+		}, []string{"classes[1].minimums.intelligence", "classes[1].minimums.wisdom", "classes[1].asi_levels[1]", "classes[1].asi_levels[2]", "classes[1].casting.ability", "classes[1].casting.start_level"}},
+		{"a subclass", func(o *Overlay) {
+			o.Subclasses[2].DescPT = []string{strings.Repeat("x", 5000)}
+			o.Subclasses[2].AlwaysPrepared[0].ClassLevel = 25
+			o.Subclasses[2].AlwaysPrepared = append(o.Subclasses[2].AlwaysPrepared, TableAlwaysPrepared{ClassLevel: 3, Spell: "spell:nope"})
+		}, []string{"subclasses[2].desc_pt[0]", "subclasses[2].always_prepared[0].class_level", "subclasses[2].always_prepared[2].spell_key"}},
 	}
 	for _, tc := range cases {
 		o := fullOverlay(t, srd)

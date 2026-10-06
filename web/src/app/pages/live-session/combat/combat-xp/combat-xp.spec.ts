@@ -110,6 +110,29 @@ describe('CombatXp (E7-06)', () => {
     expect(text(el)).toContain(`2.600${nbsp}XP agora`);
   });
 
+  it('counts each monster\'s ND: three Bandidos are 3 × 25 = 75 XP, 18 each among four, 3 left over (E10-08 state 9)', async () => {
+    const bandits = [1, 2, 3].map((n) =>
+      combatant({ id: `b${n}`, label: `Bandido ${n}`, defeated: true, state: CombatantState.DEFEATED, xpValue: 25, challengeRating: '1/8', bestiaryCreatureKey: 'monster:bandit' }),
+    );
+    const four = [...party, combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'cs' })];
+    experience.mockResolvedValue(experienceOf({ cp: 2600, ct: 2250, cb: 1950, cs: 2000 }));
+    const { fixture, el } = setup([...bandits, ...four]);
+    await ready(fixture);
+    expect(Array.from(el.querySelectorAll('.kind__t')).map((k) => text(k as HTMLElement).trim())).toEqual([`Bandido 1 a 3 · ND 1/8 · 25${nbsp}XP cada`]);
+    expect(Array.from(el.querySelectorAll('.kind__n')).map((k) => k.textContent)).toEqual([`75${nbsp}XP`]);
+    expect(el.querySelector('.total__n')?.textContent).toBe(`75${nbsp}XP`);
+    expect(text(el)).toContain('Total dos 3 derrotados');
+    expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(`18${nbsp}XP para cada`);
+    expect(el.querySelector('app-xp-split .split__sum')?.textContent).toContain('3');
+    expect(give(el).textContent?.trim()).toBe(`Dar 18${nbsp}XP a cada um`);
+  });
+
+  it('lists no kinds when no monster of the bestiary was defeated (the block is as it always was)', async () => {
+    const { fixture, el } = setup();
+    await ready(fixture);
+    expect(el.querySelector('.kinds')).toBeNull();
+  });
+
   it('checks by default who fought and is alive or down; the dead come unchecked and cannot be checked', async () => {
     const dead = combatant({ id: 'm', label: 'Morto Teste', kind: CombatantKind.PLAYER, characterId: 'cm', state: CombatantState.DEAD });
     const { fixture, el } = setup([...goblins, ...party, dead]);

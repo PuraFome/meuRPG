@@ -217,20 +217,21 @@ export function draftToBackground(d: BackgroundDraft, menu: EffectMenuVm): Backg
   };
 }
 
-/** The paths of the inputs a list of features draws: the name, the text and, for each effect, its type and the fields the
- * menu says that type reads. A violation at a path with no input lands on the nearest one above (`inputFor`). */
-export function featurePaths(prefix: string, features: readonly FeatureDraft[], menu: EffectMenuVm): string[] {
-  const out: string[] = [];
-  features.forEach((f, i) => {
-    const base = `${prefix}[${i}]`;
-    out.push(base, `${base}.name_pt`, `${base}.desc_pt`);
-    f.effects.forEach((e, k) => {
-      const at = `${base}.effects[${k}]`;
-      out.push(at, `${at}.type`);
-      for (const field of menu.fieldsOf(e.type)) {
-        out.push(`${at}.${field.name}`);
-      }
-    });
+/** The paths of the inputs one feature draws, at `base` ("table_class.levels[4].features[0]"): the feature, its name and text and, for
+ * each effect, its type and the fields the menu says that type reads. */
+export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuVm): string[] {
+  const out: string[] = [base, `${base}.name_pt`, `${base}.desc_pt`];
+  f.effects.forEach((e, k) => {
+    const at = `${base}.effects[${k}]`;
+    out.push(at, `${at}.type`);
+    for (const field of menu.fieldsOf(e.type)) {
+      out.push(`${at}.${field.name}`);
+    }
   });
   return out;
+}
+
+/** The paths of the inputs a list of features draws. A violation at a path with no input lands on the nearest one above (`inputFor`). */
+export function featurePaths(prefix: string, features: readonly FeatureDraft[], menu: EffectMenuVm): string[] {
+  return features.flatMap((f, i) => featureOwnPaths(`${prefix}[${i}]`, f, menu));
 }

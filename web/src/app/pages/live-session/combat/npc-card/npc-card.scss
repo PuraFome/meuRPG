@@ -196,6 +196,21 @@
   color: var(--mr-danger-ink);
 }
 
+// The master's way to the creature's stat block (a monster of the bestiary, RN-29): "Ficha da criatura", an accent link.
+.card__sheet {
+  align-self: flex-start;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+}
+
+.card__sheet--desk {
+  align-self: center;
+  margin-left: auto;
+}
+
 // "Oferecer ataque de oportunidade" (a combat without a map): outlined and full width, the page's one filled button stays "Próximo turno".
 .offer {
   --mat-button-outlined-container-height: 48px;

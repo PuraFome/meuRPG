@@ -46,6 +46,28 @@
             <app-pillars-board label="O mural" [pillars]="muralPillars()" [faces]="faces()" />
           </div>
         }
+        @case (Kind.RIDDLE) {
+          <app-puzzle-host [run]="r" mode="view" />
+          <div class="part">
+            <p class="part__label">Respostas aceitas <app-secret-pill /></p>
+            <ul class="answers" aria-label="Respostas aceitas">
+              @for (a of answers(); track $index) {
+                <li>{{ a }}</li>
+              }
+            </ul>
+          </div>
+        }
+        @case (Kind.SEQUENCE) {
+          <div class="part">
+            <p class="part__label">A sequência <app-secret-pill /></p>
+            <app-sequence-strip [faces]="faces()" [steps]="sequenceSteps()" [total]="sequenceSteps().length" label="A sequência, passo a passo" />
+          </div>
+          <app-puzzle-host [run]="r" mode="view" />
+        }
+        @case (Kind.CIPHER) {
+          <app-puzzle-host [run]="r" mode="view" />
+          <p class="part__label part__label--plain"><strong>A mensagem:</strong> {{ cipherMessage() }} <app-secret-pill /></p>
+        }
         @default {
           <app-puzzle-host [run]="r" mode="view" />
         }
@@ -53,15 +75,38 @@
 
       <div class="facts">
         @if (last(); as l) {
-          <p class="facts__line"><strong>Última jogada:</strong> {{ l.who }} {{ l.what }}, {{ lastAgo() }}.</p>
+          <p class="facts__line"><strong>Última jogada:</strong> {{ l.who }} {{ l.what }}, {{ lastAgo() }}.@if (lastAttempts()) { {{ lastAttempts() }} }</p>
+        }
+        @if (attemptsLine()) {
+          <p class="facts__line facts__line--quiet">{{ attemptsLine() }}</p>
+        }
+        @if (kind() === Kind.SEQUENCE) {
+          <p class="facts__line facts__line--quiet">
+            @if (playing()) {
+              Os jogadores estão vendo a sequência tocar agora.
+            } @else if (plays() === 0) {
+              Os jogadores ainda não viram a sequência tocar: toque-a para eles repetirem.
+            } @else {
+              Os jogadores já viram a sequência tocar {{ plays() === 1 ? '1 vez' : plays() + ' vezes' }}.
+            }
+          </p>
+        }
+        @if (counters().length > 0) {
+          <app-limit-counters [rows]="counters()" />
+        }
+        @if (trap()) {
+          <div class="mr-notice mr-notice--warning" role="status">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p><strong>A armadilha disparou:</strong> {{ trap() }}. Foi o erro de {{ trapWho() }}. Você decide o que acontece.</p>
+          </div>
         }
         @if (kind() === Kind.LIGHTS) {
           <p class="facts__line"><strong>{{ lit() }}</strong> {{ lit() === 1 ? 'acesa' : 'acesas' }} · <strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
-        } @else {
+        } @else if (!movesCounted()) {
           <p class="facts__line"><strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
         }
         @if (!frozen() && minimum(); as m) {
-          @if (kind() !== Kind.LOCK) {
+          @if (kind() !== Kind.LOCK && !judged()) {
             @if (m.solvable) {
               <p class="facts__line facts__line--quiet">Faltam, no mínimo, <strong>{{ m.moves }} {{ minWord() }}</strong>{{ ' ' }}<span class="facts__from">({{ fromStart() }} desde o começo)</span>.</p>
             } @else {
@@ -75,8 +120,8 @@
         @if (solutionShown() && kind() === Kind.PILLARS && turns()) {
           <p class="facts__line facts__line--quiet">Giros que resolvem: {{ turns() }} <app-secret-pill /></p>
         }
-        @if (diceLine()) {
-          <p class="facts__line facts__line--quiet">{{ diceLine() }}</p>
+        @for (line of diceLines(); track $index) {
+          <p class="facts__line facts__line--quiet">{{ line }}</p>
         }
         <p class="facts__meta">{{ meta() }}</p>
       </div>
@@ -118,6 +163,11 @@
     </app-map-ask>
   } @else {
     <div class="acts">
+      @if (kind() === Kind.SEQUENCE && !closed()) {
+        <button matButton="outlined" type="button" data-act="play" [disabled]="frozen() || busy() !== null" disabledInteractive [class.mr-button--off]="frozen()" (click)="!frozen() && act('play')">
+          <mat-icon aria-hidden="true">notifications</mat-icon>{{ busy() === 'play' ? 'Tocando...' : 'Tocar a sequência' }}
+        </button>
+      }
       @if ((kind() === Kind.LOCK || kind() === Kind.PILLARS) && !solved()) {
         <button matButton="outlined" type="button" [attr.aria-pressed]="solutionShown()" (click)="solutionShown.set(!solutionShown())">
           <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar a solução só para mim

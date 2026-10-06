@@ -252,3 +252,83 @@ func TestMigrationsDownWorksOnTheatreRows(t *testing.T) {
 		t.Errorf("after Down then Up: %d combats on a grid, want 1", encounters)
 	}
 }
+
+// TestMigrationsBackfillAChainOfEditsOfAnyDepth: 00167 marks a textured map and every edit below it as showing the
+// whole map, however long the chain (RN-10: the app never shows such an image with one tap), and leaves a scene art
+// and its edits alone. It also runs again without changing anything.
+func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
+	t.Parallel()
+	db := freshDatabase(t)
+	ctx := t.Context()
+	provider, err := NewProvider(db)
+	if err != nil {
+		t.Fatalf("NewProvider() error = %v", err)
+	}
+	if _, err := provider.UpTo(ctx, 166); err != nil {
+		t.Fatalf("UpTo(166) error = %v", err)
+	}
+	scan := func(query string, dest ...any) {
+		t.Helper()
+		if err := db.QueryRowContext(ctx, query).Scan(dest...); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+	var user, campaign string
+	scan(`INSERT INTO users DEFAULT VALUES RETURNING id`, &user)
+	scan(fmt.Sprintf(`INSERT INTO campaigns (name, xp_mode, created_by) VALUES ('Mirathel', 'enemies', '%s') RETURNING id`, user), &campaign)
+	image := func(parent string) string {
+		var id string
+		p := "NULL"
+		if parent != "" {
+			p = "'" + parent + "'"
+		}
+		scan(fmt.Sprintf(`INSERT INTO gallery_images (id, campaign_id, name, content_type, width, height, byte_size, created_at, generated, parent_image_id)
+			VALUES (gen_random_uuid(), '%s', 'x', 'image/png', 10, 10, 10, now(), true, %s) RETURNING id`, campaign, p), &id)
+		return id
+	}
+	n := 0
+	request := func(kind, imageID string) {
+		n++
+		exec(t, db, fmt.Sprintf(`INSERT INTO image_requests (id, campaign_id, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids,
+			number, quota_month, status, reason, refunded, image_id, created_at)
+			VALUES (gen_random_uuid(), '%s', 'k%d', '%s', 'p', '', '16:9', 'm', '{}', '{}', %d, '2026-10', 'done', '', false, '%s', now())`, campaign, n, kind, n, imageID))
+	}
+	texture := image("")
+	request("textured_map", texture)
+	chain := []string{texture}
+	for range 5 {
+		chain = append(chain, image(chain[len(chain)-1]))
+	}
+	scene := image("")
+	request("map_scene", scene)
+	sceneEdit := image(scene)
+
+	if _, err := provider.UpTo(ctx, 167); err != nil {
+		t.Fatalf("UpTo(167) error = %v", err)
+	}
+	marked := func(id string) string {
+		var kind string
+		scan(fmt.Sprintf(`SELECT generated_kind FROM gallery_images WHERE id = '%s'`, id), &kind)
+		return kind
+	}
+	for i, id := range chain {
+		if got := marked(id); got != "textured_map" {
+			t.Errorf("image %d of the chain of a textured map is %q, want textured_map", i, got)
+		}
+	}
+	for name, id := range map[string]string{"the scene art": scene, "its edit": sceneEdit} {
+		if got := marked(id); got != "" {
+			t.Errorf("%s is %q, want it left alone", name, got)
+		}
+	}
+	// Down does nothing to the data, and Up again changes nothing.
+	if _, err := provider.DownTo(ctx, 166); err != nil {
+		t.Fatalf("DownTo(166) error = %v", err)
+	}
+	if _, err := provider.UpTo(ctx, 167); err != nil {
+		t.Fatalf("UpTo(167) again error = %v", err)
+	}
+	if got := marked(chain[len(chain)-1]); got != "textured_map" {
+		t.Errorf("the deepest edit after a second run is %q", got)
+	}
+}

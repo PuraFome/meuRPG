@@ -13,7 +13,8 @@ import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
-import { FakePuzzlesClient, lightsPuzzle, masterRun, playerRun, summary } from '../../core/puzzles/puzzles-testing';
+import { SceneChecks } from '../../core/maps/scene-actions';
+import { FakePuzzlesClient, fakeChecks, lightsPuzzle, masterRun, playerRun, summary } from '../../core/puzzles/puzzles-testing';
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -171,6 +172,7 @@ describe('LiveSession', () => {
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
         { provide: PuzzlesClient, useValue: puzzles },
+        { provide: SceneChecks, useValue: fakeChecks },
         { provide: SessionSummaryClient, useValue: { get: summary } },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },

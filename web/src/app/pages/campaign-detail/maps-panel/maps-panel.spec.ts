@@ -41,11 +41,12 @@ describe('MapsPanel', () => {
     expect(rows[1].textContent).toContain('Escondido');
   });
 
-  it('gives the master "Gerar masmorra", next to "Novo mapa", on the maps list (MR-010)', async () => {
+  it('gives the master "Gerar masmorra" and "Gerar tesouro", next to "Novo mapa", on the maps list (MR-010, MR-044)', async () => {
     const el = await render(true, new FakeMapsClient());
     const links = Array.from(el.querySelectorAll('.maps__actions a'));
-    expect(links.map((a) => a.textContent?.replace('add', '').replace('castle', '').trim())).toEqual(['Novo mapa', 'Gerar masmorra']);
+    expect(links.map((a) => a.textContent?.replace('add', '').replace('castle', '').replace('paid', '').trim())).toEqual(['Novo mapa', 'Gerar masmorra', 'Gerar tesouro']);
     expect(links[1]!.getAttribute('href')).toBe('/campanhas/camp-1/mapas/masmorra');
+    expect(links[2]!.getAttribute('href')).toBe('/campanhas/camp-1/tesouro');
   });
 
   it('gives a player no panel while there is no map, and no "Novo mapa" ever', async () => {

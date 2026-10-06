@@ -17,10 +17,11 @@
       [campaignId]="data.campaignId"
       [(selectedId)]="selectedId"
       [tags]="tags()"
+      [excluded]="data.excluded ?? noneExcluded"
       label="Imagem da galeria"
       [describedBy]="error() ? 'image-picker-error' : null"
       (picked)="choose($event)"
-      (loaded)="onLoaded()"
+      (loaded)="onLoaded($event)"
     />
   </div>
 
@@ -30,6 +31,16 @@
         <mat-icon aria-hidden="true">error</mat-icon>{{ message }}
       </p>
     }
+    @if (asking()) {
+      <div class="dlg__ask" role="group" aria-labelledby="image-picker-ask">
+        <h3 class="dlg__ask-title" id="image-picker-ask">Mostrar o mapa inteiro?</h3>
+        <p class="dlg__ask-text"><mat-icon aria-hidden="true">warning</mat-icon>Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.</p>
+        <div class="dlg__actions">
+          <button matButton="outlined" type="button" class="dlg__confirm" data-initial-focus [disabled]="busy()" (click)="back()">Voltar</button>
+          <button matButton="filled" type="button" class="dlg__confirm" [disabled]="busy()" (click)="confirmWhole()">{{ data.wholeMapConfirmLabel }}</button>
+        </div>
+      </div>
+    } @else {
     @if (note()) {
       <p class="dlg__note">
         <mat-icon aria-hidden="true">{{ data.noteIcon ?? 'visibility' }}</mat-icon>{{ note() }}
@@ -65,5 +76,6 @@
       }
       <button [matButton]="data.dashedUntilPicked ? 'outlined' : 'text'" type="button" class="dlg__cancel" (click)="close()">Cancelar</button>
     </div>
+    }
   </footer>
 </div>

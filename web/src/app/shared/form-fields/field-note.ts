@@ -28,6 +28,10 @@ import { MatIconModule } from '@angular/material/icon';
       display: block;
     }
 
+    :host(:empty) {
+      display: none;
+    }
+
     .note {
       display: flex;
       align-items: flex-start;

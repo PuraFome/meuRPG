@@ -1,0 +1,118 @@
+:host {
+  display: block;
+}
+
+// The cards sit above the board with the same step as the launch strip, and take no room when there is none.
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-6);
+}
+
+.enc {
+  // As drawn (E10-09 state 7): a card about 440 px wide, not the whole page, from a tablet up.
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.enc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.enc__flag {
+  flex: none;
+}
+
+.enc__t {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+
+// "Só você vê": the crossed eye and the words, so it never rests on colour alone.
+.enc__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 12px 2px 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+p {
+  margin: 0;
+}
+
+.enc__guide {
+  font-size: 14px;
+  line-height: 19px;
+
+  a {
+    font-weight: 700;
+    color: var(--mr-accent-text);
+  }
+}
+
+.enc__band {
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 30px;
+}
+
+.enc__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.enc__row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto 90px;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 48px;
+  padding: 4px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.enc__n {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.enc__nd {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.enc__xp {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.enc__go {
+  width: 100%;
+  --mat-button-filled-container-height: 48px;
+
+  @media (min-width: 768px) {
+    --mat-button-filled-container-height: 44px;
+  }
+}

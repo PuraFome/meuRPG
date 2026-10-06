@@ -24,6 +24,10 @@ describe('Creditos', () => {
     expect(SRD_521_ATTRIBUTION).toContain('https://www.dndbeyond.com/srd');
     expect(el.textContent).toContain('SRD 5.2.1 (regras de 2024)');
     expect(el.textContent).toContain('XP Budget per Character');
+    // The item values the treasure generator shows (MR-044) are named with their page, next to the XP budget's p. 201.
+    expect(el.textContent).toContain('(p. 201)');
+    expect(el.textContent).toContain('Magic Item Rarities and');
+    expect(el.textContent?.replace(/\s+/g, ' ')).toContain('Values” (p. 205)');
   });
 
   it('never mentions the "D&D" or "Dungeons & Dragons" trademark', () => {

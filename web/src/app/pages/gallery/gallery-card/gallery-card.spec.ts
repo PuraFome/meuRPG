@@ -147,4 +147,17 @@ describe('GalleryCard', () => {
     await settle();
     expect(deleted.map((i) => i.id)).toEqual(['img-taverna']);
   });
+  it('tags an image the app generated "Gerada por IA", and an adjustment says which image it came from; a plain image has neither', async () => {
+    expect(plain(el.textContent)).not.toContain('Gerada por IA');
+    fixture.componentRef.setInput('image', galleryImage('img-2', 'Imagem 2', { generated: true, parentImageId: 'img-1' }));
+    fixture.componentRef.setInput('parentName', 'Imagem 1');
+    await settle();
+    expect(plain(el.textContent)).toContain('Gerada por IA');
+    expect(plain(el.textContent)).toContain('Editada de Imagem 1');
+    fixture.componentRef.setInput('image', galleryImage('img-1', 'Imagem 1', { generated: true }));
+    fixture.componentRef.setInput('parentName', '');
+    await settle();
+    expect(plain(el.textContent)).toContain('Gerada por IA');
+    expect(plain(el.textContent)).not.toContain('Editada de');
+  });
 });

@@ -1,0 +1,132 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.full {
+  width: 100%;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.answers__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.answers__help {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.answers__bad {
+  margin: 0;
+  font-size: 14px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  max-width: 100%;
+  padding-inline-start: 14px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+}
+
+.chip--bad {
+  border-color: var(--mr-danger-ink);
+}
+
+.chip__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.chip__x {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mr-accent-text);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.add {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+}
+
+.add__field {
+  flex: 1;
+  min-width: 0;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.add__go {
+  flex: none;
+  min-height: 56px;
+}
+
+.field-bad {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+.field-error {
+  color: var(--mr-danger-ink);
+}
+
+@media (max-width: 479.98px) {
+  .add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add__go {
+    min-height: 48px;
+  }
+}

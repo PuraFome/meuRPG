@@ -95,7 +95,13 @@
         <div class="mr-notice mr-notice--warning" role="status">
           <mat-icon aria-hidden="true">warning</mat-icon>
           <div>
-            <p><strong>{{ affected().length === 1 ? '1 ficha ficou com aviso' : affected().length + ' fichas ficaram com aviso' }}.</strong> Elas usam esta entrada e não fecham mais com a regra nova:</p>
+            <p>
+              @if (affected().length === 1) {
+                <strong>1 ficha ficou com aviso.</strong> Ela usa esta entrada e não fecha mais com a regra nova:
+              } @else {
+                <strong>{{ affected().length }} fichas ficaram com aviso.</strong> Elas usam esta entrada e não fecham mais com a regra nova:
+              }
+            </p>
             <ul class="affected">
               @for (a of affected(); track a.characterId) {
                 <li>
@@ -146,7 +152,7 @@
             <p>{{ extrasError() }}</p>
           </div>
           <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
-        } @else if (catalog() && (menu() || kind() === Kind.SPELL)) {
+        } @else if (catalog() && (menu() || kind() === Kind.SPELL) && (!needsDefaults() || defaults())) {
           @switch (kind()) {
             @case (Kind.SPELL) {
               <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
@@ -156,6 +162,12 @@
             }
             @case (Kind.SUBRACE) {
               <app-race-editor mode="subrace" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="subraceParent()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.CLASS) {
+              <app-class-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.SUBCLASS) {
+              <app-subclass-editor [campaignId]="campaignId()" [entry]="entry()" [parentKey]="parentClass()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.BACKGROUND) {
               <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />

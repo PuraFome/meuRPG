@@ -252,6 +252,23 @@ describe('CampaignDetail', () => {
     expect(player.querySelector('a[href$="/bestiario"]')).toBeNull();
   });
 
+  it('shows the "Encontros" panel only for the master (MR-043: the builder and what it keeps are his secret, RN-10)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const master = await render();
+    const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Montar um encontro'));
+    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/encontros');
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const player = await render();
+    expect(player.textContent).not.toContain('Encontros');
+    expect(player.querySelector('a[href$="/encontros"]')).toBeNull();
+  });
+
   it('shows the "Quebra-cabeças" panel only for the master (MR-038: the answers live there)', async () => {
     configure();
     puzzles.listResult = [lightsPuzzle('a', 'O selo da Capela')];

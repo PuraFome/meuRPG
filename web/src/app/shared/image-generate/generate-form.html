@@ -1,0 +1,121 @@
+@if (issue(); as problem) {
+  <div class="mr-notice mr-notice--danger" id="gen-error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ problem.text }}</p>
+  </div>
+}
+
+<section class="part" aria-label="Como a imagem é feita">
+  <app-kind-strip [choices]="choices()" [value]="form().kind" describedBy="gen-kind-note" (valueChange)="setKind($event)" />
+  <p class="hint" id="gen-kind-note">{{ about() }}</p>
+</section>
+
+@if (fromMapDrawing()) {
+  <section class="along" aria-labelledby="gen-along-title">
+    @if (referenceState() === 'loading') {
+      <div class="along__shot along__shot--wait" aria-hidden="true"></div>
+      <p class="along__text" role="status">Montando o desenho que vai junto…</p>
+    } @else if (referenceState() === 'error') {
+      <div class="mr-notice mr-notice--danger along__error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>Não deu para montar o desenho do mapa.</strong>
+          <button type="button" class="link" (click)="retryReference.emit()">Tentar de novo</button>
+        </p>
+      </div>
+    } @else if (reference(); as ref) {
+      <img
+        class="along__shot"
+        [src]="ref.previewUrl"
+        [alt]="'O desenho do mapa que vai junto: ' + ref.seenSquares + ' de ' + ref.totalSquares + ' quadrados à mostra.'"
+      />
+      <div class="along__text">
+        <h3 class="along__title" id="gen-along-title">O que vai junto</h3>
+        <p class="along__lead">{{ along().lead }}</p>
+        <p class="along__body">{{ along().body }}</p>
+        @if (!ref.playersSee && !texture()) {
+          <p class="along__warn" role="alert"><mat-icon aria-hidden="true">warning</mat-icon>{{ noPlayers }}</p>
+        }
+      </div>
+    }
+  </section>
+}
+
+@if (phone()) {
+  <ng-container *ngTemplateOutlet="promptPart" />
+}
+
+@if (showNpcs() && referenceState() === 'ready') {
+  <section class="part">
+    <app-npc-picks [npcs]="npcs()" [marked]="form().npcIds" [maxPortraits]="maxCharacters()" (toggled)="toggleNpc($event)" />
+  </section>
+}
+
+<section class="part">
+  <app-reference-picks
+    [images]="references()"
+    [maxObjects]="maxObjects()"
+    [maxCharacters]="maxCharacters()"
+    [characterNames]="characterNames()"
+    (add)="pickReference.emit()"
+    (removed)="removeReference.emit($event)"
+  />
+</section>
+
+@if (!phone()) {
+  <ng-container *ngTemplateOutlet="promptPart" />
+}
+
+<section class="part">
+  <h3 class="label" id="gen-style-label">Estilo</h3>
+  <app-choice-row label="Estilo" [symmetric]="true" [choices]="styles" [value]="form().style" describedBy="gen-style-privacy" (valueChange)="setStyle($event)" />
+  <p class="hint" id="gen-style-privacy">{{ stylePrivacy }}</p>
+</section>
+
+@if (!texture()) {
+  <section class="part">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Proporção</mat-label>
+      <select matNativeControl aria-describedby="gen-ratio-privacy" (change)="setRatio($event)">
+        @for (r of ratios; track r.value) {
+          <option [value]="r.value" [selected]="r.value === form().ratio">{{ r.label }}</option>
+        }
+      </select>
+    </mat-form-field>
+    <p class="hint" id="gen-ratio-privacy">{{ ratioPrivacy }}</p>
+  </section>
+}
+
+@if (status(); as s) {
+  <section class="month">
+    <p class="month__text"><b>{{ remaining() }}</b></p>
+    <div class="meter" aria-hidden="true"><span class="meter__used" [style.width.%]="leftPercent()"></span></div>
+  </section>
+}
+
+<ng-template #promptPart>
+<section class="part">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="prompt">
+    <mat-label>{{ promptLabel() }}</mat-label>
+    <textarea
+      matInput
+      rows="3"
+      [value]="form().prompt"
+      [attr.maxlength]="maxPrompt()"
+      aria-describedby="gen-count gen-privacy"
+      (input)="setPrompt($event)"
+    ></textarea>
+  </mat-form-field>
+  <p class="count" id="gen-count">{{ length() }} de {{ maxPrompt() }} caracteres</p>
+  <div class="mr-notice mr-notice--neutral privacy" id="gen-privacy" role="note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>{{ promptPrivacy }}</p>
+  </div>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="prompt name">
+    <mat-label>Nome da imagem</mat-label>
+    <input matInput autocomplete="off" [attr.maxlength]="maxName" [value]="form().name" aria-describedby="gen-name-hint" (input)="setName($event)" />
+  </mat-form-field>
+  <p class="hint" id="gen-name-hint">Os jogadores leem este nome se você mostrar a imagem a eles. Vazio, o app dá um nome pelo texto.</p>
+</section>
+</ng-template>
+

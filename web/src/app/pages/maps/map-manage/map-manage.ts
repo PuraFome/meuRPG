@@ -20,6 +20,8 @@ import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapView } from '../../../shared/map-view/map-view';
+import { GenerateImageButton } from '../../../shared/image-generate/generate-image-button';
+import type { GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
 import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
 import { EditorOverlay } from '../editor-overlay/editor-overlay';
 import { FogPanel } from '../fog-panel/fog-panel';
@@ -33,7 +35,7 @@ import { FogPanel } from '../fog-panel/fog-panel';
  */
 @Component({
   selector: 'app-map-manage',
-  imports: [DungeonRooms, EditorOverlay, FogPanel, MapLayersLegend, MapLegend, MapPinsLegend, MapPointsList, MapTokensList, MapView, MatIconModule],
+  imports: [DungeonRooms, EditorOverlay, FogPanel, GenerateImageButton, MapLayersLegend, MapLegend, MapPinsLegend, MapPointsList, MapTokensList, MapView, MatIconModule],
   templateUrl: './map-manage.html',
   styleUrl: './map-manage.scss',
 })
@@ -75,6 +77,14 @@ export class MapManage {
     const l = this.painted.layers().light;
     return { bright: (l?.bright.length ?? 0) > 0, dim: (l?.dim.length ?? 0) > 0, dark: (l?.dark.length ?? 0) > 0 };
   });
+
+  /** "Gerar imagem" made the textured map the map's image: show it and read the rest of the map again. */
+  protected onImageGenerated(outcome: GenerateOutcome): void {
+    if (outcome.map) {
+      this.state().setMap(outcome.map);
+      void this.state().refresh();
+    }
+  }
 
   constructor() {
     const roster = inject(RosterClient);

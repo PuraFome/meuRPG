@@ -1,0 +1,135 @@
+@let t = treasure();
+<section class="result" aria-labelledby="treasure-result-h">
+  <header class="result__head">
+    <h2 class="result__title" id="treasure-result-h" tabindex="-1">{{ title() }}</h2>
+    <p class="result__seed">Semente <span data-testid="treasure-seed">{{ t.seed }}</span></p>
+  </header>
+
+  <div class="kinds">
+    <section class="kind" aria-labelledby="tr-coins-h">
+      <h3 class="kind__title" id="tr-coins-h">
+        <mat-icon aria-hidden="true">paid</mat-icon>
+        <span>Moedas</span>
+        <b class="kind__sum">{{ po(t.coinsPo) }}</b>
+      </h3>
+      <ul class="rows">
+        @for (c of coins(); track c.key) {
+          <li class="row">
+            <span class="row__main">
+              <b>{{ c.count }}</b>
+              @if (c.rate) {
+                <span class="row__sub">{{ c.rate }}</span>
+              }
+            </span>
+            <span class="row__val">{{ c.value }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    @if (hoard()) {
+      @if (hasGemsOrArt()) {
+        <section class="kind" aria-labelledby="tr-gems-h">
+          <h3 class="kind__title" id="tr-gems-h">
+            <mat-icon aria-hidden="true">diamond</mat-icon>
+            <span>{{ piecesTitle() }}</span>
+            <b class="kind__sum">{{ po(gemsAndArtPo()) }}</b>
+          </h3>
+          @if (gemRows().length > 0) {
+            @if (piecesBoth()) {
+              <p class="kind__sub">Gemas <b>{{ po(t.gemsPo) }}</b></p>
+            }
+            <ul class="rows">
+              @for (g of gemRows(); track g.name) {
+                <li class="row">
+                  <span class="row__main">
+                    <b>{{ g.title }}</b>
+                    @if (g.each) {
+                      <span class="row__sub">{{ g.each }}</span>
+                    }
+                  </span>
+                  <span class="row__val">{{ g.value }}</span>
+                </li>
+              }
+            </ul>
+          }
+          @if (artRows().length > 0) {
+            @if (piecesBoth()) {
+              <p class="kind__sub">Obras de arte <b>{{ po(t.artPo) }}</b></p>
+            }
+            <ul class="rows">
+              @for (a of artRows(); track a.name) {
+                <li class="row">
+                  <span class="row__main">
+                    <b>{{ a.title }}</b>
+                    @if (a.each) {
+                      <span class="row__sub">{{ a.each }}</span>
+                    }
+                  </span>
+                  <span class="row__val">{{ a.value }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      @if (items().length > 0) {
+        <section class="kind" aria-labelledby="tr-items-h">
+          <h3 class="kind__title" id="tr-items-h">
+            <mat-icon aria-hidden="true">auto_awesome</mat-icon>
+            <span class="kind__nowrap">Itens mágicos</span>
+            <b class="kind__sum">{{ po(t.itemsPo) }}<span class="kind__in"> em valor</span></b>
+          </h3>
+          <ul class="rows rows--items">
+            @for (g of items(); track g.item.key) {
+              <li class="row row--item">
+                <app-treasure-item-row [group]="g" (describe)="open(g.item.key, g.item.namePt, $event)" />
+              </li>
+            }
+          </ul>
+          <p class="note">
+            {{ valueLabel }} · <a routerLink="/creditos" target="_blank" rel="noopener">Créditos<span class="mr-visually-hidden"> (abre em outra aba)</span></a>. {{ consumableRule }}
+          </p>
+        </section>
+      }
+    }
+
+    <section class="totals" aria-labelledby="tr-total-h">
+      <h3 class="mr-visually-hidden" id="tr-total-h">Totais</h3>
+      <dl class="totals__list">
+        <div class="totals__row">
+          <dt>{{ goldLabel() }}</dt>
+          <dd data-testid="treasure-gold">{{ po(t.goldPo) }}</dd>
+        </div>
+        @if (hoard()) {
+          <div class="totals__row totals__row--items">
+            <dt>Itens mágicos <span class="totals__note">(valor de tabela, ficam como itens, não viram XP)</span></dt>
+            <dd data-testid="treasure-items">{{ po(t.itemsPo) }}</dd>
+          </div>
+          <div class="totals__row totals__row--total">
+            <dt>Valor total</dt>
+            <dd>{{ po(total()) }}</dd>
+          </div>
+        }
+      </dl>
+      <p class="gold-line">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span data-testid="treasure-gold-line">{{ goldSentence() }}</span>
+      </p>
+    </section>
+  </div>
+
+  <div class="actions">
+    @if (placedLink(); as link) {
+      <a mat-flat-button class="act act--go" [routerLink]="link"><mat-icon aria-hidden="true">map</mat-icon>Abrir o mapa</a>
+    } @else {
+      <button type="button" mat-flat-button class="act act--go" [disabled]="busy()" disabledInteractive (click)="!busy() && place.emit()">
+        <mat-icon aria-hidden="true">add_location_alt</mat-icon>Pôr no mapa
+      </button>
+    }
+    <button type="button" mat-stroked-button class="act act--again" [disabled]="busy()" disabledInteractive (click)="!busy() && again.emit()">
+      <mat-icon aria-hidden="true">casino</mat-icon>{{ busy() ? 'Gerando...' : 'Gerar outro' }}
+    </button>
+  </div>
+</section>

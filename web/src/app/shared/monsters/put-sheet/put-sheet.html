@@ -1,0 +1,137 @@
+<app-sheet-frame
+  title="Pôr no combate"
+  [subtitle]="c.namePt + ' do bestiário'"
+  [phone]="inSheet"
+  height="min(760px, calc(92dvh - 48px))"
+  titleId="put-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <div class="who">
+      <app-creature-art class="who__art" [monsterKey]="c.key" [type]="c.type" />
+      <p class="who__text">
+        <strong class="who__n">{{ c.namePt }}</strong>
+        <span class="who__s"><span lang="en">{{ c.name }}</span> · {{ c.sizePt }} · {{ typeLabel }} · {{ meta() }}</span>
+      </p>
+    </div>
+
+    <div class="field">
+      <span class="mr-label" id="put-combat-l">Combate</span>
+      <p class="readonly" aria-labelledby="put-combat-l">
+        @if (loading()) {
+          Lendo o combate da sessão...
+        } @else if (target(); as t) {
+          {{ t.name }} · {{ t.running ? 'em andamento' : 'em preparação' }}
+        } @else if (noSession()) {
+          Sem sessão aberta
+        } @else {
+          Nenhum combate aberto
+        }
+      </p>
+      @if (starting()) {
+        <p class="field__hint">O combate nasce agora, com o grupo todo e os monstros. Cada um rola a própria iniciativa.</p>
+      } @else if (noSession() && !error()) {
+        <p class="field__hint">Os monstros entram num combate da sessão. Abra a sessão e volte.</p>
+      }
+    </div>
+
+    @if (full()) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>O combate está cheio.</strong> Um combate tem no máximo 40 combatentes: tire um antes de pôr mais.</p>
+      </div>
+    }
+    <!-- "Quantos" and "Nome" side by side from a tablet up, so "Escondidos no início" stays in view on a short screen. -->
+    <div class="pair">
+      @if (!full()) {
+      <div class="field">
+        <span class="mr-label" id="put-count-l">Quantos</span>
+        <div class="count">
+          <app-count-stepper [value]="count()" [min]="1" [max]="room()" [noun]="c.namePt" (valueChange)="count.set($event)" />
+          <p class="count__names" aria-live="polite">Entram como <strong>{{ sentence() }}</strong>.</p>
+        </div>
+        @if (target() && room() < 10) {
+          <p class="field__hint">Cabem mais {{ room() }} neste combate: ele tem no máximo 40 combatentes.</p>
+        }
+      </div>
+      }
+
+      <div class="field">
+      <label class="mr-label" for="put-name">Nome</label>
+      <span class="box" [class.box--bad]="nameError()">
+        <input
+          id="put-name"
+          name="name"
+          type="text"
+          autocomplete="off"
+          [attr.maxlength]="max"
+          [value]="name()"
+          [attr.aria-invalid]="nameError() ? 'true' : null"
+          [attr.aria-describedby]="nameError() ? 'put-name-err' : 'put-name-count'"
+          (input)="setName($any($event.target).value)"
+          (keydown.enter)="put()"
+        />
+      </span>
+      <span class="field__foot">
+        @if (nameError()) {
+          <span class="field__err" id="put-name-err" role="alert">{{ nameError() }}</span>
+        }
+        <span class="field__count" id="put-name-count">{{ nameCounter(name().length, max) }}</span>
+      </span>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="mr-label" aria-hidden="true">Pontos de vida</span>
+      <app-segmented label="Pontos de vida" [segments]="hpSegments" [value]="hp()" (choose)="hp.set($event)" />
+      <p class="field__hint">
+        @if (hp() === 'rolled') {
+          Cada monstro rola os dados de vida da criatura ao entrar, e o resultado fica no registro, que só você lê.
+        } @else {
+          “Média” usa os PV médios da criatura em todos; “Rolar” faz cada um rolar os dados de vida ao entrar.
+        }
+      </p>
+    </div>
+
+    <app-hidden-switch
+      label="Escondidos no início"
+      hint="Só você vê até revelar. Os jogadores não sabem que eles existem."
+      [checked]="hidden()"
+      (toggle)="hidden.set($event)"
+    />
+
+    <p class="note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>Cada um rola a própria iniciativa. Os jogadores veem só “Ileso” ou “Ferido”, nunca os PV, e o XP por inimigos conta o ND de cada um.</span>
+    </p>
+  </div>
+
+  <div foot>
+    @if (blocked(); as why) {
+      <p class="why" id="put-why">{{ why }}</p>
+    }
+    <!-- The filled button first in the DOM: on top on a phone, at the right in the dialog. -->
+    <div class="actions">
+      <button
+        type="button"
+        mat-flat-button
+        class="go"
+        [class.mr-button--off]="busy() || blocked() !== ''"
+        [disabled]="busy() || blocked() !== ''"
+        disabledInteractive
+        [attr.aria-describedby]="blocked() ? 'put-why' : null"
+        (click)="put()"
+      >
+        <mat-icon aria-hidden="true">{{ starting() ? 'swords' : 'add' }}</mat-icon>{{ goLabel() }}
+      </button>
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+    </div>
+  </div>
+</app-sheet-frame>

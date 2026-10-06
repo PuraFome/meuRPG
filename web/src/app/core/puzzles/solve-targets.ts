@@ -38,6 +38,14 @@ export interface ClueChoice {
   readonly pointName: string;
 }
 
+export interface TrapChoice {
+  readonly mapId: string;
+  readonly mapName: string;
+  readonly pointId: string;
+  /** The name the master gave the trap point. */
+  readonly name: string;
+}
+
 /** The reads `SolveTargets` needs; `MapsClient` is one. */
 export type TargetsApi = Pick<MapsClient, 'list' | 'get' | 'layers'>;
 
@@ -86,6 +94,17 @@ export class SolveTargets {
       points
         .filter((point) => point.kind === MapPointKind.SCENE)
         .flatMap((point) => point.clues.map((clue) => ({ id: clue.id, text: clue.text, pointName: point.name || 'Cena sem nome' }))),
+    );
+  }
+
+  /** Every trap point of every map of the campaign ("Ao errar" fires one): "Dardos envenenados · Salão do trono". */
+  async traps(): Promise<TrapChoice[]> {
+    const maps = await this.maps();
+    const reads = await Promise.all(maps.map((m) => this.read(m.id)));
+    return reads.flatMap(({ points }, i) =>
+      points
+        .filter((point) => point.kind === MapPointKind.TRAP)
+        .map((point) => ({ mapId: maps[i].id, mapName: maps[i].name, pointId: point.id, name: point.name || 'Armadilha sem nome' })),
     );
   }
 

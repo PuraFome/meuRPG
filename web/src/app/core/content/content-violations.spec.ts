@@ -87,6 +87,68 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
     ['', 'size_limit', 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.'],
   ];
 
+  // The class and the subclass (slice 10.12): the paths and reasons of backend/internal/rules/overlay_class.go (`bad(...)` and
+  // `asiLevels`, `minimums`). Change a row there and here together.
+  const CLASS_ROWS: readonly (readonly [string, string, string])[] = [
+    ['table_class.hit_die', 'bad_value', 'O dado de vida é d6, d8, d10 ou d12.'],
+    ['table_class.saving_throws', 'bad_value', 'Escolha dois testes de resistência diferentes.'],
+    ['table_class.saving_throws[1]', 'bad_value', 'Escolha dois testes de resistência diferentes.'],
+    ['table_class.skill_choose', 'bad_value', 'Quantas perícias a classe dá: de 0 até o número de perícias da lista.'],
+    ['table_class.skill_from[2]', 'dangling_reference', 'Esta perícia não existe. Escolha da lista.'],
+    ['table_class.proficiencies[0]', 'dangling_reference', 'Escolha uma armadura, arma ou ferramenta da lista.'],
+    ['table_class.multiclass_proficiencies[1]', 'dangling_reference', 'Escolha uma armadura, arma ou ferramenta da lista.'],
+    ['table_class.multiclass_skill_choose', 'bad_value', 'As perícias de quem vem de outra classe saem da lista da classe: de 0 até o número dela.'],
+    ['table_class.minimums.wisdom', 'bad_value', 'O valor mínimo vai de 1 a 30.'],
+    ['table_class.any_of.strength', 'bad_value', 'O valor mínimo vai de 1 a 30.'],
+    ['table_class.subclass_level', 'bad_value', 'Esta classe não tem nível de subclasse entre 1 e 20.'],
+    ['table_class.asi_levels[1]', 'bad_value', 'Os níveis de aumento de atributo são diferentes, de 1 a 20.'],
+    ['table_class.levels', 'bad_table', 'A tabela dos níveis precisa ter os 20 níveis.'],
+    ['table_subclass.levels', 'bad_table', 'Uma subclasse que conjura precisa de uma linha em cada nível, do começo da conjuração ao 20.'],
+    ['table_class.minimums', 'bad_value', 'O pré-requisito de multiclasse precisa de uma habilidade.'],
+    ['table_class.levels[4].prof_bonus', 'bad_value', 'O bônus de proficiência vai de +1 a +12 (vazio é o do SRD).'],
+    ['table_class.levels[4].cantrips_known', 'bad_table', 'Truques: de 0 a 30, e 0 antes de a conjuração começar.'],
+    ['table_class.levels[4].spells_known', 'bad_table', 'Magias conhecidas: de 0 a 200, e 0 antes de a conjuração começar.'],
+    ['table_class.levels[4].slots[2]', 'bad_table', 'Espaços de magia: de 0 a 9 por círculo, e 0 antes de a conjuração começar. Pacto: espaços de um círculo só.'],
+    ['table_class.levels[4].slots', 'bad_table', 'Quem conjura precisa de espaços de magia neste nível.'],
+    ['table_class.levels[19].features[0]', 'limit', 'Uma classe da mesa não pode ter mais de 60 características.'],
+    ['table_class.levels[0].features[0].effects[0].value', 'bad_formula', 'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.'],
+    ['table_class.casting.kind', 'bad_casting', 'Escolha como conjura.'],
+    ['table_class.casting.ability', 'bad_casting', 'Escolha a habilidade de conjuração.'],
+    ['table_class.casting.preparation', 'bad_casting', 'Escolha se as magias são preparadas ou conhecidas.'],
+    ['table_class.casting.prepared_max', 'bad_casting', 'Só quem prepara magias tem este número.'],
+    ['table_class.casting.list_from', 'dangling_reference', 'Esta classe não existe mais. Escolha outra lista.'],
+    ['table_class.casting.list_from', 'bad_casting', 'Escolha uma classe que tenha lista de magias própria (uma subclasse que conjura precisa de uma).'],
+    ['table_class.casting.start_level', 'bad_casting', 'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.'],
+    ['table_subclass.class_key', 'dangling_reference', 'A classe desta subclasse não existe mais.'],
+    ['table_subclass.level', 'bad_value', 'A subclasse é escolhida no nível da classe.'],
+    ['table_subclass.casting', 'bad_casting', 'Uma subclasse só conjura se a classe dela não conjura. Uma classe sem conjuração não tem lista de magias.'],
+    ['table_subclass.levels[3].level', 'bad_table', 'Os níveis da subclasse vão de 1 a 20, em ordem.'],
+    ['table_subclass.levels[3].features', 'bad_table', 'Uma subclasse só ganha características a partir do nível em que se escolhe.'],
+    ['table_subclass.levels[3].slots[0]', 'bad_table', 'Espaços de magia: de 0 a 9 por círculo, e 0 antes de a conjuração começar. Pacto: espaços de um círculo só.'],
+    ['table_subclass.levels[3].features[1]', 'limit', 'Uma subclasse da mesa não pode ter mais de 60 características.'],
+    ['table_subclass.always_prepared', 'bad_casting', 'Magias sempre preparadas pedem uma classe ou subclasse que conjura.'],
+    ['table_subclass.always_prepared[0].class_level', 'bad_value', 'O nível da classe vai de 1 a 20.'],
+    ['table_subclass.always_prepared[0].spell_key', 'dangling_reference', 'Esta magia não existe mais. Escolha outra.'],
+    ['table_subclass.always_prepared[0].spell_key', 'bad_value', 'Uma magia sempre preparada é de 1º círculo ou mais, nunca um truque.'],
+    ['table_class.any_of.dexterity', 'bad_value', 'O valor mínimo vai de 1 a 30.'],
+    ['table_class.levels[3].features[1].name_pt', 'bad_name', 'O nome tem de 1 a 60 letras.'],
+    ['table_class.class_key', 'immutable', 'Isto não muda depois de criado.'],
+    ['table_class.name_pt', 'duplicate_name', 'Já existe uma classe da mesa com este nome. Escolha outro.'],
+  ];
+
+  it.each(CLASS_ROWS)('writes the class path %s (%s) in Portuguese', (field, reason, text) => {
+    expect(violationText({ field, reason }, { aOne: 'uma classe' })).toBe(text);
+  });
+
+  it('counts the features of a class in the limit sentence, with the menu\'s limit', () => {
+    expect(violationText({ field: 'table_class.levels[19].features[0]', reason: 'limit' }, { aOne: 'uma classe', maxFeatures: 60, featureCount: 61 })).toBe(
+      'Esta classe tem 61. Uma classe da mesa não pode ter mais de 60 características.',
+    );
+    expect(violationText({ field: 'table_subclass.levels[1].features[3]', reason: 'limit' }, { aOne: 'uma subclasse', maxFeatures: 60, featureCount: 61 })).toBe(
+      'Esta subclasse tem 61. Uma subclasse da mesa não pode ter mais de 60 características.',
+    );
+  });
+
   it.each(SERVER_ROWS)('writes %s (%s) in Portuguese from the code and the path, never the message', (field, reason, text) => {
     expect(violationText({ field, reason }, ctx)).toBe(text);
   });

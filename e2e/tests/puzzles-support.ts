@@ -1,9 +1,10 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
+import { toren } from './combat-support';
 import { endOpenSessionRPC, openSessionPage, startSessionRPC } from './live-session-support';
 import { mapToPaint, type EditorMap } from './editor-support';
 import { tableForMaps, type MapsTable } from './maps-support';
-import { callRPC } from './support';
+import { callRPC, characterRpcBody, createCharacterRPC, newSignedInContext } from './support';
 
 // Setup for the puzzle specs (Etapa 10, slice 10.15a: MR-038, RN-27, RN-10; E10-06). The puzzles, their runs and the doors come
 // through the API; what is under test is the screens: the master's form, list and live view, and the player's boards. The tests also
@@ -157,4 +158,129 @@ export async function openMasterSession(master: Page, campaignId: string): Promi
 
 export function puzzleRoute(campaignId: string, ...rest: string[]): string {
   return ['', 'campanhas', campaignId, ...rest].join('/');
+}
+
+// Slice 10.15b: the riddle, the sequence and the cipher, the skill check for a hint, the split information and "Ao errar".
+
+/** The riddle of the artboards (E10-12), with the two answers the master accepts. */
+export const RIDDLE = {
+  text: 'Moro embaixo de cada passo seu, mas nunca peso nada. A tocha me estica, o meio-dia me encolhe. O que sou?',
+  answers: ['sombra', 'a sombra'],
+};
+
+/** The sequence of the artboards: six steps of four bells (0 = Sino redondo, 1 = alto, 2 = largo, 3 = pequeno). */
+export const SEQUENCE = [0, 1, 3, 0, 2, 1];
+export const BELL_NAMES = ['Sino redondo', 'Sino alto', 'Sino largo', 'Sino pequeno'];
+
+/** The cipher of the artboards: three letters on. */
+export const CIPHER = { message: 'O tesouro está sob o altar', ciphertext: 'R WHVRXUR HVWD VRE R DOWDU' };
+
+export async function createRiddleRPC(master: Page, campaignId: string, name: string, extra: Body = {}): Promise<string> {
+  const body = await expectOk(
+    await callRPC(master, `${service}/CreatePuzzle`, {
+      campaignId,
+      name,
+      config: { riddle: { text: RIDDLE.text } },
+      solution: { riddle: { answers: RIDDLE.answers } },
+      ...extra,
+    }),
+  );
+  return (body.puzzle as { id: string }).id;
+}
+
+export async function createSequenceRPC(master: Page, campaignId: string, name: string, extra: Body = {}, steps: number[] = SEQUENCE): Promise<string> {
+  const body = await expectOk(
+    await callRPC(master, `${service}/CreatePuzzle`, {
+      campaignId,
+      name,
+      config: { sequence: { bells: 4, steps: steps.length } },
+      solution: { sequence: { steps } },
+      ...extra,
+    }),
+  );
+  return (body.puzzle as { id: string }).id;
+}
+
+export async function createCipherRPC(master: Page, campaignId: string, name: string, extra: Body = {}, keyClueId = ''): Promise<string> {
+  const body = await expectOk(
+    await callRPC(master, `${service}/CreatePuzzle`, {
+      campaignId,
+      name,
+      config: { cipher: { keyClueId } },
+      solution: { cipher: { message: CIPHER.message, shift: 3 } },
+      ...extra,
+    }),
+  );
+  return (body.puzzle as { id: string }).id;
+}
+
+/** "Tocar a sequência", as the master. */
+export async function playSequenceRPC(master: Page, campaignId: string, puzzleId: string): Promise<void> {
+  await expectOk(await callRPC(master, `${service}/PlayPuzzleSequence`, { campaignId, puzzleId }));
+}
+
+/** A trap point on the table's map (born hidden, as a master makes one), for "Ao errar"; returns its ID. */
+export async function trapPointRPC(master: Page, campaignId: string, mapId: string, name: string): Promise<string> {
+  const res = await callRPC(master, 'meurpg.maps.v1.MapService/CreateMapPoint', {
+    campaignId,
+    mapId,
+    kind: 'MAP_POINT_KIND_TRAP',
+    name,
+    description: 'No salão',
+    xBp: 2500,
+    yBp: 2500,
+    trap: { noticeDc: 30, findDc: 5, areaSize: 1, trigger: 'TRAP_TRIGGER_MANUAL', effect: { damage: [{ dice: '3', damageTypeKey: 'damage-type:piercing' }] } },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return ((await res.json()) as { point: { id: string } }).point.id;
+}
+
+/** A scene of the table's map with one clue: the key of a cipher. Returns the clue's ID. */
+export async function sceneClueRPC(master: Page, campaignId: string, mapId: string, sceneName: string, text: string): Promise<string> {
+  const point = await callRPC(master, 'meurpg.maps.v1.MapService/CreateMapPoint', { campaignId, mapId, kind: 'MAP_POINT_KIND_SCENE', name: sceneName, description: 'Uma sala', xBp: 7500, yBp: 2500 });
+  expect(point.ok(), await point.text()).toBeTruthy();
+  const pointId = ((await point.json()) as { point: { id: string } }).point.id;
+  const clue = await callRPC(master, 'meurpg.maps.v1.MapService/AddSceneClue', { campaignId, mapId, pointId, text });
+  expect(clue.ok(), await clue.text()).toBeTruthy();
+  const clues = ((await clue.json()) as { clues: { id: string }[] }).clues;
+  return clues[clues.length - 1].id;
+}
+
+export async function revealClueRPC(master: Page, campaignId: string, clueId: string, characterIds: string[]): Promise<void> {
+  const res = await callRPC(master, 'meurpg.maps.v1.MapService/RevealSceneClue', { campaignId, clueId, characterIds });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+export async function setDiceModeRPC(master: Page, campaignId: string, mode: 'DICE_MODE_PLAYERS_CHOOSE' | 'DICE_MODE_APP' | 'DICE_MODE_PHYSICAL'): Promise<void> {
+  const res = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+export interface SecondPlayer {
+  page: Page;
+  characterId: string;
+  context: BrowserContext;
+  close: () => Promise<void>;
+}
+
+/**
+ * A second player with a character in the table (the account "E-mail Não Verificado", whose session `auth.setup.ts` saves): Toren, the
+ * fighter. The split information and the riddle's per-player attempts need two people.
+ */
+export async function secondPlayer(browser: Browser, master: Page, campaignId: string, viewport = { width: 1280, height: 1000 }): Promise<SecondPlayer> {
+  const context = await newSignedInContext(browser, 'E-mail Não Verificado', { viewport });
+  const page = await context.newPage();
+  await page.goto('/');
+  const invite = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateInvite', { campaignId, maxUses: 1, expiresIn: '3600s' });
+  expect(invite.ok(), await invite.text()).toBeTruthy();
+  const joined = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token: (await invite.json()).token });
+  expect(joined.ok(), await joined.text()).toBeTruthy();
+  const made = await createCharacterRPC(page, campaignId, characterRpcBody('PLAYER', toren));
+  expect(made.ok(), await made.text()).toBeTruthy();
+  return { page, characterId: (await made.json()).character.id as string, context, close: () => context.close() };
+}
+
+/** "Mostrar a próxima dica", as the master. */
+export async function releaseHintRPC(master: Page, campaignId: string, puzzleId: string): Promise<void> {
+  await expectOk(await callRPC(master, `${service}/ReleaseNextPuzzleHint`, { campaignId, puzzleId }));
 }
