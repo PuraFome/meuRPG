@@ -274,7 +274,7 @@ O módulo `rules` é puro: os testes dele rodam sem banco, sem Docker e sem rede
 | `go test ./internal/rules/dungeon` | O gerador de masmorras (MR-010): propriedades sobre muitas opções (todos os invariantes da especificação), os hashes de ouro, o vetor do gerador de números, a independência dos fluxos e os casos de borda. Puro, sem banco, uns 4 segundos (uns 32 com `-race`); `DUNGEON_SWEEP=1` roda ainda uma varredura de 20 000 combinações. |
 | `go test ./internal/rules/dungeon -run Golden -update` | Regrava `testdata/golden.json` (um hash da grade por caso) depois de uma mudança intencional na saída do gerador. Mudar a saída pede subir `Version` em `types.go`; revise o diff antes do commit. |
 | `go test ./internal/rules/dungeon -run '^$' -fuzz FuzzOptions -fuzztime 60s` | Fuzz das opções do gerador: nenhuma entrada pode dar pânico, e toda saída aceita passa em todos os invariantes. O CI não roda o fuzz; rode ao mexer no gerador. |
-| `go test ./internal/rules/dungeon -run '^$' -bench 'Generate|Worst|PromptOf' -benchmem` | Mede o gerador de 31 × 31 até 199 × 399, os piores casos construídos (`Worst`) e o `PromptOf` no pior caso (`PromptOf`). O orçamento: o maior abaixo de 50 ms (teto de 250 ms) e o `PromptOf` abaixo de 20 ms. |
+| `go test ./internal/rules/dungeon -run '^$' -bench 'Generate|Worst|PromptOf' -benchmem` | Mede o gerador de 31 × 31 até 199 × 399, os piores casos construídos (`Worst`) e o `PromptOf` no pior caso (`PromptOf`). O orçamento: o maior abaixo de 50 ms (teto de 250 ms) e o `PromptOf` abaixo de 20 ms. Os testes só conferem esses tempos com `MEURPG_MEASURE=1` e sem `-race`, numa máquina tranquila: numa máquina ocupada, ou no CI, um teste de relógio falha à toa. |
 
 O conteúdo fica em `backend/internal/rules/srd51`:
 
