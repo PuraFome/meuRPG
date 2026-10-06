@@ -88,6 +88,7 @@ import (
 var (
 	_ play.TerrainSource = (*maps.Service)(nil)
 	_ play.DoorKeeper    = (*maps.Service)(nil)
+	_ play.PuzzleMaps    = (*maps.Service)(nil) // a solved puzzle opens a door, reveals a point or a clue (MR-038)
 )
 
 // Build information, replaced at build time with:
@@ -265,7 +266,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		}
 		// the combat walks over the layers the master painted (MR-034, RN-21)
 		playService.SetTerrain(mapsService)
-		playService.SetFog(mapsService) // combat per player on a fog map: who sees which NPC (MR-036)
+		playService.SetPuzzleMaps(mapsService) // "Ao resolver" of a puzzle (MR-038, RN-27)
+		playService.SetFog(mapsService)        // combat per player on a fog map: who sees which NPC (MR-036)
 		// traps in play (MR-035): play asks maps for the traps (where, what a character
 		// sees, who knows them) and maps asks play to fire one when a token lands in it
 		playService.SetTraps(mapsService)

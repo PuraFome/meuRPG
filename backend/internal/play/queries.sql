@@ -753,3 +753,106 @@ ORDER BY o.created_at, o.id;
 -- Where trap damages are now (applied by the master since the firing), by ID.
 SELECT id, status, applied_amount FROM trap_damages
 WHERE id = ANY($1::uuid[]);
+
+-- Puzzles (MR-038, RN-27, Etapa 10): what the master makes (puzzles), what a
+-- session plays (puzzle_runs) and every move (puzzle_moves). The service is in
+-- puzzles*.go.
+
+-- name: InsertPuzzle :one
+INSERT INTO puzzles (
+    campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
+    solve_action, solve_target, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
+RETURNING *;
+
+-- name: GetPuzzle :one
+SELECT * FROM puzzles
+WHERE campaign_id = $1 AND id = $2;
+
+-- name: GetPuzzleForUpdate :one
+-- One puzzle of the campaign, locked until the transaction ends: an edit and a
+-- show of the same puzzle take turns.
+SELECT * FROM puzzles
+WHERE campaign_id = $1 AND id = $2
+FOR UPDATE;
+
+-- name: ListPuzzles :many
+-- The campaign's puzzles, newest first; the archived ones only when asked.
+SELECT * FROM puzzles
+WHERE campaign_id = $1 AND (archived_at IS NULL OR sqlc.arg(include_archived)::bool)
+ORDER BY created_at DESC, id;
+
+-- name: UpdatePuzzle :one
+-- Everything the master writes about a puzzle.
+UPDATE puzzles
+SET name = $3, config = $4, solution = $5, seed = $6, start = $7, minimum_moves = $8,
+    clue = $9, hints = $10, solve_action = $11, solve_target = $12, updated_at = $13
+WHERE campaign_id = $1 AND id = $2
+RETURNING *;
+
+-- name: SetPuzzleArchived :one
+UPDATE puzzles
+SET archived_at = $3, updated_at = $4
+WHERE campaign_id = $1 AND id = $2
+RETURNING *;
+
+-- name: ListShownPuzzleIDs :many
+-- The campaign's puzzles that were shown in any session: they can no longer be edited.
+SELECT DISTINCT r.puzzle_id FROM puzzle_runs AS r
+JOIN puzzles AS p ON p.id = r.puzzle_id
+WHERE p.campaign_id = $1 AND r.shown_at IS NOT NULL;
+
+-- name: InsertPuzzleRun :one
+-- A run starts with its state at its start.
+INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $6)
+RETURNING *;
+
+-- name: GetPuzzleRun :one
+SELECT * FROM puzzle_runs
+WHERE game_session_id = $1 AND puzzle_id = $2;
+
+-- name: GetPuzzleRunForUpdate :one
+-- The run, locked until the transaction ends. Every change locks the session first
+-- (GetOpenGameSessionForUpdate) and then the run, so two changes take turns.
+SELECT * FROM puzzle_runs
+WHERE game_session_id = $1 AND puzzle_id = $2
+FOR UPDATE;
+
+-- name: ListPuzzleRuns :many
+SELECT * FROM puzzle_runs
+WHERE game_session_id = $1;
+
+-- name: ListShownPuzzleRuns :many
+-- What a session shows now: shown and not closed, in the order they were shown.
+SELECT r.*, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+JOIN puzzles AS p ON p.id = r.puzzle_id
+WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
+ORDER BY r.shown_at, r.id;
+
+-- name: SavePuzzleRun :one
+-- Writes every field of the run that changes after it is made: the caller holds the
+-- run's row lock and worked the new values out from the row it read.
+UPDATE puzzle_runs
+SET seed = $2, start = $3, state = $4, released_hints = $5, shown_at = $6, closed_at = $7,
+    solved_at = $8, solved_by_character_id = $9, solve_outcome = $10,
+    last_mover_character_id = $11, last_move = $12, last_moved_at = $13,
+    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17
+WHERE id = $1
+RETURNING *;
+
+-- name: GetPuzzleMoveByKey :one
+-- The move a call with this key already made, if any.
+SELECT * FROM puzzle_moves
+WHERE run_id = $1 AND idempotency_key = $2;
+
+-- name: InsertPuzzleMove :one
+INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
+
+-- name: DeletePreparedPuzzleRuns :exec
+-- The runs of a puzzle that were prepared ("Gerar outro começo") and never shown: an
+-- edit of the puzzle makes their start wrong, so they go (the master draws another).
+DELETE FROM puzzle_runs
+WHERE puzzle_id = $1 AND shown_at IS NULL;
