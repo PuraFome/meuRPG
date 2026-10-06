@@ -117,8 +117,8 @@
     @if (blocked(); as why) {
       <p class="why" id="put-why">{{ why }}</p>
     }
+    <!-- The filled button first in the DOM: on top on a phone, at the right in the dialog. -->
     <div class="actions">
-      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
       <button
         type="button"
         mat-flat-button
@@ -131,6 +131,7 @@
       >
         <mat-icon aria-hidden="true">{{ starting() ? 'swords' : 'add' }}</mat-icon>{{ goLabel() }}
       </button>
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
     </div>
   </div>
 </app-sheet-frame>

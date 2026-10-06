@@ -166,21 +166,6 @@
     --mat-button-outlined-container-height: 48px;
   }
 
-  .go {
-    flex: 2 1 0;
-  }
-
-  .no {
-    flex: 1 1 0;
-  }
-
-  .box {
-    --field-h: 48px;
-  }
-}
-
-// 320 px: the long label gets a line of its own, under "Cancelar", instead of being cut.
-@media (max-width: 359.98px) {
   .actions {
     flex-direction: column;
   }
@@ -189,5 +174,9 @@
   .no {
     flex: none;
     width: 100%;
+  }
+
+  .box {
+    --field-h: 48px;
   }
 }

@@ -175,10 +175,12 @@
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
 
   @media (min-width: 560px) {
-    justify-content: flex-end;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
   }
 }
 
@@ -199,7 +201,8 @@
 @media (max-width: 559.98px) {
   .go,
   .no {
-    flex: 1 1 0;
+    flex: none;
+    width: 100%;
     --mat-button-filled-container-height: 48px;
     --mat-button-outlined-container-height: 48px;
   }

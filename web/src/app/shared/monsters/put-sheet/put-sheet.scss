@@ -142,10 +142,12 @@
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
 
   @media (min-width: 560px) {
-    justify-content: flex-end;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
   }
 }
 
@@ -170,13 +172,11 @@
     --mat-button-outlined-container-height: 48px;
   }
 
-  // Footers side by side and equal when both labels fit; the label of the main one may be long ("Criar o combate e pôr").
-  .go {
-    flex: 2 1 0;
-  }
-
+  // Stacked, filled first, both full width and 48 px (a long label such as "Criar o combate e pôr" never runs to the edge).
+  .go,
   .no {
-    flex: 1 1 0;
+    flex: none;
+    width: 100%;
   }
 
   .box {
