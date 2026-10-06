@@ -27,6 +27,8 @@ export interface ViewPoint {
   readonly xBp: number;
   readonly yBp: number;
   readonly revealed: boolean;
+  /** A generated dungeon's stair (`StairDirection`: 1 up, 2 down), 0 for any other point. */
+  readonly stairs?: number;
   /** A fog map: the point is on a square the viewer saw before and does not see now (drawn darkened). */
   readonly remembered?: boolean;
   /** A treasure marked found, a trap shown to some characters or already fired: the players know it (`pointHidden`). */

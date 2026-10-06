@@ -58,8 +58,8 @@ export class PointSheet {
 
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
   protected found = () => this.point().kind === MapPointKind.TREASURE && this.point().treasureFoundAt !== undefined;
-  protected icon = () => pointKindIcon(this.point().kind);
-  protected kind = () => pointKindLabel(this.point().kind);
+  protected icon = () => pointKindIcon(this.point().kind, this.point().stairs);
+  protected kind = () => pointKindLabel(this.point().kind, this.point().stairs);
 
   constructor() {
     // Opening the sheet moves focus to its title (a panel that appears on

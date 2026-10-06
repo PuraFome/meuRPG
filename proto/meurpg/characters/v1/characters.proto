@@ -1172,6 +1172,14 @@ message BasicSheet {
   // keeps the saved one. It is only stored: the combat does not read it, and no
   // screen shows it yet.
   meurpg.rules.v1.AbilityScores ability_scores = 14;
+  // True for the NPC the app makes by itself for a creature the master puts in
+  // a combat as monsters (AddMonsters, RN-29): one per campaign and creature,
+  // reused by every combat, never in the master's list of characters, and never
+  // a participant, a stage NPC or a token. The monsters are copies of it in the
+  // combat, each with its own hit points and name. Only the server writes it: a
+  // create or an update ignores what it receives and an update keeps the saved
+  // one.
+  bool combat_only = 15;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus

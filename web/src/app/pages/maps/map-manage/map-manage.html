@@ -24,6 +24,7 @@
       [rows]="map()?.gridRows ?? 0"
       [layers]="painted.layers()"
       [points]="state().points()"
+      [highlight]="roomOutline()"
     />
   </app-map-view>
 }
@@ -40,6 +41,19 @@
 
 @if (map(); as m) {
   <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" />
+}
+
+@if (dungeon.failed()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>
+      <strong>Não deu para ler as salas da masmorra.</strong>
+      <button type="button" class="link" (click)="reloadDungeon()">Tentar de novo</button>
+    </p>
+  </div>
+}
+@if (dungeon.rooms(); as d) {
+  <app-dungeon-rooms [campaignId]="campaignId()" [mapId]="map()?.id ?? ''" [info]="d" [state]="state()" (outline)="onRoomOutline($event)" (changed)="reloadDungeon()" />
 }
 
 @if (reveals.error(); as message) {

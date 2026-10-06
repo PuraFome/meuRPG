@@ -105,6 +105,7 @@
             [lightReach]="lightReach()"
             [faded]="mode() === 'paint'"
             [selectedId]="selectedPoint()?.id ?? null"
+            [highlight]="roomOutline()"
           />
           @if (paint.painting()) {
             <app-paint-surface
@@ -151,6 +152,19 @@
     </div>
 
     <aside class="layout__side" [attr.aria-label]="mode() === 'paint' ? 'Camadas e grade' : 'Item selecionado'">
+      @if (dungeon.rooms(); as d) {
+        @if (map(); as m) {
+          <app-dungeon-image [campaignId]="campaignId()" [map]="m" [info]="d" [prepare]="beforeRedraw" (redrawn)="onMapChanged($event)" (refused)="refreshFlags(); reloadDungeon()" />
+        }
+      } @else if (dungeon.failed()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>
+            <strong>Não deu para ler as salas da masmorra.</strong>
+            <button matButton type="button" (click)="reloadDungeon()">Tentar de novo</button>
+          </p>
+        </div>
+      }
       @if (mode() === 'paint') {
         @if (paint.painting() && paint.settings().tool === 'cover') {
           <app-cover-degrees />
@@ -255,6 +269,9 @@
             </div>
           </section>
         } @else {
+          @if (dungeon.rooms(); as d) {
+            <app-dungeon-rooms [campaignId]="campaignId()" [mapId]="mapId()" [info]="d" [state]="state()" (outline)="onRoomOutline($event)" (changed)="reloadDungeon()" />
+          }
           @if (map()?.fogEnabled && viewAsPeople().length > 0) {
             <app-view-as-list
               [people]="viewAsPeople()"

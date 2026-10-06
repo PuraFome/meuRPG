@@ -430,3 +430,35 @@ func TestCorrectionsAreClosed(t *testing.T) {
 		t.Errorf("applyCorrections = %v, level 4 %d, level 5 %d; want only level 4 changed to 2", err, invocationsKnown(rows[3]), invocationsKnown(rows[4]))
 	}
 }
+
+// TestCreatureCorrectionsAreClosed: the loader refuses a creature correction it does
+// not know, and accepts a good one.
+func TestCreatureCorrectionsAreClosed(t *testing.T) {
+	t.Parallel()
+	monsters := map[string]*srd51.Monster{
+		"monster:veteran": {Actions: []srd51.MonsterAction{{Name: "Multiattack", Multiattack: [][]srd51.MonsterAttackCount{{{Name: "Longsword", Count: 2, Kind: "melee"}}}}}},
+		"monster:rat":     {Actions: []srd51.MonsterAction{{Name: "Bite"}}},
+	}
+	one := func(creature, field, value string) string {
+		return `{"creature_corrections":[{"creature":"` + creature + `","field":"` + field + `","value":` + value + `,"source":"SRD"}]}`
+	}
+	for name, doc := range map[string]string{
+		"unknown creature": one("monster:nope", "attacks_per_action", "2"),
+		"unknown field":    one("monster:veteran", "hit_points", "2"),
+		"no Multiattack":   one("monster:rat", "attacks_per_action", "2"),
+		"duplicate":        `{"creature_corrections":[{"creature":"monster:veteran","field":"attacks_per_action","value":3,"source":"SRD"},{"creature":"monster:veteran","field":"attacks_per_action","value":2,"source":"SRD"}]}`,
+		"value below 1":    one("monster:veteran", "attacks_per_action", "0"),
+		"value above 20":   one("monster:veteran", "attacks_per_action", "21"),
+		"without a source": `{"creature_corrections":[{"creature":"monster:veteran","field":"attacks_per_action","value":3}]}`,
+	} {
+		c := &content{classLevels: map[string][]*srd51.Level{}, monsters: monsters}
+		fsys := fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}
+		if err := c.applyCorrections(fsys); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	c := &content{classLevels: map[string][]*srd51.Level{}, monsters: monsters}
+	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(one("monster:veteran", "attacks_per_action", "3"))}}); err != nil || c.attacksPerAction["monster:veteran"] != 3 {
+		t.Errorf("a good correction = %v, %v; want it applied", err, c.attacksPerAction)
+	}
+}

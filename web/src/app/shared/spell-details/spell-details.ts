@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { SpellDetailsVm } from './spell-details.types';
-import { SpellFieldValue, spellFields, spellSubtitle } from './spell-details-format';
+import { SpellBody } from './spell-body';
+import { spellSubtitle } from './spell-details-format';
 
 export interface SpellDetailsData {
   /** The Portuguese name the "?" belongs to: the title shows it while the details load. */
@@ -31,7 +32,7 @@ type DetailsState =
  */
 @Component({
   selector: 'app-spell-details',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, SpellBody],
   templateUrl: './spell-details.html',
   styleUrl: './spell-details.scss',
 })
@@ -53,25 +54,9 @@ export class SpellDetails {
     const s = this.state();
     return s.status === 'ready' ? s.details : null;
   });
-  protected readonly fields = computed(() => {
-    const d = this.details();
-    return d ? spellFields(d) : null;
-  });
   protected readonly subtitle = computed(() => {
     const d = this.details();
     return d ? spellSubtitle(d) : '';
-  });
-  /** The four fields in the order the sheet prints them. */
-  protected readonly rows = computed<{ label: string; value: SpellFieldValue }[]>(() => {
-    const f = this.fields();
-    return f
-      ? [
-          { label: 'Tempo de conjuração', value: f.castingTime },
-          { label: 'Alcance', value: f.range },
-          { label: 'Componentes', value: f.components },
-          { label: 'Duração', value: f.duration },
-        ]
-      : [];
   });
 
   constructor() {

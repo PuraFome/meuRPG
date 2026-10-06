@@ -68,7 +68,13 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 		HitPointsMax:    int(b.GetHitPointsMax()),
 		SpeedWalkFt:     int(b.GetSpeedFt()),
 		Initiative:      int(b.GetInitiativeBonus()),
-		StandardActions: content.StandardActions(),
+		StandardActions: content.StandardActions(), AttacksPerAction: 1,
+	}
+	// A sheet made from a creature makes as many attacks per Attack action as the
+	// creature's Multiattack says (MR-042); the three attacks it holds are the
+	// ones it picks from.
+	if m, ok := content.MonsterDerived(b.GetMonsterKey()); ok {
+		d.AttacksPerAction = max(m.AttacksPerAction, 1)
 	}
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))

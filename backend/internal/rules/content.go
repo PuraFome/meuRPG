@@ -36,9 +36,12 @@ type content struct {
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
 	monsters      map[string]*srd51.Monster
-	magicItems    map[string]*srd51.MagicItem
-	languages     map[string]*srd51.Language
-	named         map[string]*srd51.Named
+	// attacksPerAction holds the creature corrections of effects/corrections.json:
+	// the Multiattack count the snapshot has wrong, by creature key.
+	attacksPerAction map[string]int
+	magicItems       map[string]*srd51.MagicItem
+	languages        map[string]*srd51.Language
+	named            map[string]*srd51.Named
 
 	// classLevels[class][n-1] is row n of the class table, and
 	// subclassLevels[subclass][n] the subclass row at class level n.
@@ -762,6 +765,10 @@ func sortedKeys[T any](m map[string]T) []string {
 	return keys
 }
 
+// creatureCorrectionFields are the creature numbers effects/corrections.json may
+// correct. The set is closed.
+var creatureCorrectionFields = []string{"attacks_per_action"}
+
 // correctionFields are the class table columns effects/corrections.json may
 // correct. The set is closed.
 var correctionFields = []string{"invocations_known"}
@@ -780,9 +787,35 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			Source  string         `json:"source"`
 			ByLevel map[string]int `json:"by_level"`
 		} `json:"corrections"`
+		Creatures []struct {
+			Creature string `json:"creature"`
+			Field    string `json:"field"`
+			Value    int    `json:"value"`
+			Source   string `json:"source"`
+		} `json:"creature_corrections"`
 	}
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
+	}
+	c.attacksPerAction = map[string]int{}
+	for _, corr := range f.Creatures {
+		m, ok := c.monsters[corr.Creature]
+		if !ok {
+			return fmt.Errorf("%s: unknown creature %q", name, corr.Creature)
+		}
+		if !slices.Contains(creatureCorrectionFields, corr.Field) {
+			return fmt.Errorf("%s: %s: field %q cannot be corrected", name, corr.Creature, corr.Field)
+		}
+		if corr.Value < 1 || corr.Value > 20 || corr.Source == "" {
+			return fmt.Errorf("%s: %s: %s needs a value of 1 to 20 and a source", name, corr.Creature, corr.Field)
+		}
+		if !slices.ContainsFunc(m.Actions, func(a srd51.MonsterAction) bool { return len(a.Multiattack) > 0 }) {
+			return fmt.Errorf("%s: %s has no Multiattack to correct", name, corr.Creature)
+		}
+		if _, dup := c.attacksPerAction[corr.Creature]; dup {
+			return fmt.Errorf("%s: %s is corrected twice", name, corr.Creature)
+		}
+		c.attacksPerAction[corr.Creature] = corr.Value
 	}
 	for _, corr := range f.Corrections {
 		rows, ok := c.classLevels[corr.Class]

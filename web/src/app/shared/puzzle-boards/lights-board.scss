@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  width: 100%;
+  --cell-max: 48px;
+  --gap: 3px;
+  max-width: calc(var(--n) * var(--cell-max) + (var(--n) - 1) * var(--gap));
+}
+
+.lb {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: var(--gap);
+}
+
+// A light: a square that is at least 44 px where a finger meets it. Off: the surface and an empty ring; on: the warm
+// ground and a sun (the warning tokens, which are warm in both themes).
+.cell {
+  position: relative;
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: 8px;
+  background: var(--mr-surface);
+  color: var(--mr-ink-muted);
+  font: inherit;
+  cursor: default;
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
+}
+
+.cell--lit {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+button.cell {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: -5px; // inside the cell, so it never leaves the board on a touching phone
+    z-index: 1;
+  }
+}
+
+// Just changed: a dashed garnet frame, drawn inside so neighbours never cover it.
+.cell--changed::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 2px dashed var(--mr-accent);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+// The master's hint: a solid garnet frame (the cell's own border turns garnet and thick).
+.cell--hint {
+  border: 3px solid var(--mr-accent);
+}
+
+[aria-disabled='true'] .cell,
+.cell[aria-disabled='true'] {
+  opacity: 0.85;
+  cursor: default;
+}
+
+// A phone under 375 px: the lights touch, each with its own border, and a player's board bleeds 6 px from the edge.
+@media (max-width: 374.98px) {
+  :host {
+    --gap: 0px;
+  }
+
+  :host(.lb--play) {
+    margin-inline: calc(6px - var(--mr-gutter));
+    width: calc(100% + 2 * (var(--mr-gutter) - 6px));
+  }
+
+  .cell {
+    border-radius: 6px;
+  }
+}
