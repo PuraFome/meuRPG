@@ -108,9 +108,9 @@ type tileSource struct {
 	jpeg                       bool // it is a JPEG (the fog's edge is a block wide)
 }
 
-func tileSourceOf(mapID, campaignID, imageID, contentType string, columns *int32, width, height int32) tileSource {
+func tileSourceOf(mapID, campaignID, imageID, contentType string, columns *int32, factor, width, height int32) tileSource {
 	return tileSource{
-		mapID: mapID, campaignID: campaignID, imageID: imageID, g: gridOf(columns, width, height),
+		mapID: mapID, campaignID: campaignID, imageID: imageID, g: gridOf(columns, factor, width, height),
 		width: int(width), height: int(height), jpeg: contentType == "image/jpeg",
 	}
 }
@@ -835,7 +835,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 	if master != (as != "") { // a player sends no `as`, and the master gets tiles only as a player
 		return errMapNotFound()
 	}
-	src := tileSourceOf(info.ID, info.CampaignID, info.ImageID, info.ImageContentType, info.GridColumns, info.ImageWidth, info.ImageHeight)
+	src := tileSourceOf(info.ID, info.CampaignID, info.ImageID, info.ImageContentType, info.GridColumns, info.GridFactor, info.ImageWidth, info.ImageHeight)
 	if !info.FogEnabled || !src.g.Valid() {
 		return errMapNotFound()
 	}
@@ -865,7 +865,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 		if !foggedFor(v, row) {
 			return errMapNotFound()
 		}
-		src = tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.ImageWidth, row.ImageHeight)
+		src = tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 		vt = buildTiles(pv, src)
 		s.tiles.views.put(mapID, viewer, gen, vt)
 	}

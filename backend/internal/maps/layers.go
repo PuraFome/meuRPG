@@ -69,13 +69,16 @@ func errNoGrid() error {
 	return errMapBlocked(mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_NO_GRID, "the map has no grid")
 }
 
-// gridOf is the grid of a map row with its image's size: the zero Grid when the
-// map has none.
-func gridOf(columns *int32, width, height int32) grid.Grid {
+// gridOf is the grid the rules use for a map row with its image's size: the
+// zero Grid when the map has none. columns is the engine's (grid_columns, the
+// drawn ones times the factor, MR-025), and the rows are the drawn rows times the
+// factor, so a square of the drawing is always a whole block of rules squares.
+func gridOf(columns *int32, factor, width, height int32) grid.Grid {
 	if columns == nil {
 		return grid.Grid{}
 	}
-	return grid.Grid{Columns: int(*columns), Rows: grid.RowsFor(int(*columns), int(width), int(height))}
+	f := max(int(factor), 1)
+	return grid.Grid{Columns: int(*columns), Rows: grid.RowsFor(int(*columns)/f, int(width), int(height)) * f}
 }
 
 // layerSet is a map's five layers, decoded.
@@ -172,7 +175,7 @@ func (s *Service) PaintMapCells(
 		if err != nil {
 			return fmt.Errorf("read the map's grid: %w", err)
 		}
-		g := gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight)
+		g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
 		for i, sq := range squares {
 			if !g.Contains(grid.Square{Col: int(sq.GetCol()), Row: int(sq.GetRow())}) {
 				return badSpec("squares[%d] is outside the map's grid of %d x %d squares", i, g.Columns, g.Rows)
@@ -185,8 +188,20 @@ func (s *Service) PaintMapCells(
 		set := loadLayers(stored, g)
 		asPlayersRead := playersRead(set)
 		for _, sq := range squares {
-			if paint(set, layer, int(sq.GetCol()), int(sq.GetRow()), value) {
-				changed++
+			// A door is a whole square of the drawing (MR-025): on a calibrated map
+			// painting one square of it paints its block, so locking, unlocking or
+			// revealing is one action. The other layers are painted square by square.
+			f := 1
+			if layer == mapsv1.MapLayer_MAP_LAYER_DOORS {
+				f = max(int(mapRow.GridFactor), 1)
+			}
+			bc, br := int(sq.GetCol())/f*f, int(sq.GetRow())/f*f
+			for r := br; r < br+f; r++ {
+				for c := bc; c < bc+f; c++ {
+					if paint(set, layer, c, r, value) {
+						changed++
+					}
+				}
 			}
 		}
 		// Locking or unlocking a door, or painting a secret door where a wall is, changes
@@ -458,7 +473,7 @@ func (s *Service) GetMapLayers(
 	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
 		return nil, errMapNotFound() // a hidden map is not found to a player (RN-10)
 	}
-	g := gridOf(row.GridColumns, row.ImageWidth, row.ImageHeight)
+	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 	res := &mapsv1.GetMapLayersResponse{GridColumns: int32(g.Columns), GridRows: int32(g.Rows), LayersRevision: row.LayersRevision} //nolint:gosec // G115: a grid is at most 200 x 400
 	if v.master {
 		res.LayersRevision += row.LightRevision
