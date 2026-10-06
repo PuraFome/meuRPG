@@ -268,6 +268,10 @@ func (x *deriver) collectEffects() {
 			}
 			parent := x.optionParent(key, f.Parent)
 			if parent == "" || !owned[parent] {
+				// A table feature may offer an SRD option (a fighting style).
+				parent = x.offeredParent(key, owned)
+			}
+			if parent == "" || !owned[parent] {
 				x.issue(IssueUnknownKey, field, "%s não vale para este personagem.", c.namePT(key))
 				continue
 			}
@@ -351,6 +355,17 @@ func (x *deriver) optionParent(key, parent string) string {
 		return parent
 	}
 	return x.c.optionParents[key]
+}
+
+// offeredParent finds the table feature the character owns that offers option
+// key, or "".
+func (x *deriver) offeredParent(key string, owned map[string]bool) string {
+	for _, p := range x.c.offeredBy[key] {
+		if owned[p] {
+			return p
+		}
+	}
+	return ""
 }
 
 // buildEnv gives formulas their view of the character.

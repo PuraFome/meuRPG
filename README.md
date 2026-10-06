@@ -103,6 +103,8 @@ make e2e     # testes pela tela (Playwright) e de acessibilidade (axe)
 make down    # derruba tudo
 ```
 
+No Mac, dá para rodar tudo sem Docker: `make db-native-start` e depois `make up LOCAL_STACK=native` (ver [Tudo nativo](CONTRIBUTING.md#tudo-nativo-mac-opcional)).
+
 Abra `http://localhost:8080` no Chrome e clique em "Entrar": o login vai para o **devidp**, um provedor de teste que só existe na sua máquina e no CI, e um clique em "Mestre Teste" volta logado. O Safari não aceita cookie `Secure` em `http://localhost`.
 
 Para mexer só nas telas, com recarga automática, deixe o `make up` rodando e suba o Angular em modo dev, em `http://localhost:4200`:

@@ -110,6 +110,65 @@ type SpellDamage struct {
 	ByCharacterLevel map[int]string
 }
 
+// Spell target kinds, as in SpellTarget.Kind.
+const (
+	// TargetSelf: the caster only.
+	TargetSelf = "self"
+	// TargetCreature: one creature.
+	TargetCreature = "creature"
+	// TargetCreatures: several creatures, TargetCount of them at the spell's
+	// own level, and PerSlotLevel more for each slot level above it.
+	TargetCreatures = "creatures"
+	// TargetArea: every creature in an area (Shape, SizeFt).
+	TargetArea = "area"
+)
+
+// Area shapes, as in SpellTarget.Shape.
+const (
+	ShapeCone     = "cone"
+	ShapeCube     = "cube"
+	ShapeCylinder = "cylinder"
+	ShapeLine     = "line"
+	ShapeSphere   = "sphere"
+)
+
+// SpellTarget says whom a spell reaches. Only the table's spells have one
+// (RN-23): the SRD's spells say it in their text, so for them Kind is empty and
+// the combat code reads the text. The area's shape is data, never drawn by
+// combat: it reads an area as "any number of targets" (MaxTargets 0). The web
+// writes the size ("cone de 4,5 m"), so the engine keeps feet.
+type SpellTarget struct {
+	// Kind is one of the Target* constants, or "" for an SRD spell.
+	Kind string
+	// Count is how many creatures a TargetCreatures spell takes at its own
+	// level, and PerSlotLevel how many more for each slot level above it.
+	Count        int
+	PerSlotLevel int
+	// Shape (a Shape* constant) and SizeFt, in 5-foot steps, are the area of a
+	// TargetArea spell: the cone's length, the cube's side, the cylinder's and
+	// the sphere's radius, the line's length.
+	Shape  string
+	SizeFt int
+}
+
+// IsArea says the spell takes any number of targets: an area.
+func (t SpellTarget) IsArea() bool { return t.Kind == TargetArea }
+
+// MaxTargets is the most creatures the spell takes when cast with a slot of
+// slotLevel (spellLevel is the spell's own level), or 0 for any number (an
+// area, or an SRD spell, whose text says it) and for a spell that only affects
+// the caster: play's maxTargetsOf answers 0 for a self-only spell, because the
+// caster is not a target the player picks.
+func (t SpellTarget) MaxTargets(slotLevel, spellLevel int) int {
+	switch t.Kind {
+	case TargetCreature:
+		return 1
+	case TargetCreatures:
+		return t.Count + t.PerSlotLevel*max(slotLevel-spellLevel, 0)
+	}
+	return 0
+}
+
 // SpellDetails is everything the SRD says about one spell, structured. The
 // catalog keeps it apart from the light SpellEntry that ListContent returns,
 // because the text is long: the app fetches it per spell (GetSpellDetails).
@@ -127,9 +186,12 @@ type SpellDetails struct {
 	// HealBySlotLevel is the healing by slot level ("1d8 + MOD"), nil when
 	// the spell does not heal.
 	HealBySlotLevel map[int]string
-	// Description and HigherLevel are the SRD's English paragraphs.
+	// Description and HigherLevel are the SRD's English paragraphs (the
+	// table's, in Portuguese, for a table spell).
 	Description []string
 	HigherLevel []string
+	// Target is set for a table spell only (see SpellTarget).
+	Target SpellTarget
 }
 
 // SpellDetails returns the details of a spell key, and whether it exists.

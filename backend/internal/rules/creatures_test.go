@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -319,6 +320,106 @@ func TestListCreatures(t *testing.T) {
 	}
 	if _, err := c.ListCreatures(CreatureFilter{MaxCR: "1/3"}); err == nil {
 		t.Error("1/3 is not a challenge rating")
+	}
+}
+
+// TestListCreaturesBestiary: the filters the bestiary (MR-042) adds to the Etapa
+// 9 ones, and what a row carries.
+func TestListCreaturesBestiary(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	keys := func(f CreatureFilter) []string {
+		var out []string
+		for _, e := range mustList(t, c, f) {
+			out = append(out, e.Key)
+		}
+		return out
+	}
+
+	// A row: the English name, the armor class and the average hit points.
+	for _, e := range mustList(t, c, CreatureFilter{Query: "dire wolf"}) {
+		if e.Name != "Dire Wolf" || e.NamePT != "Lobo atroz" || e.ArmorClass != 14 || e.HitPoints != 37 {
+			t.Errorf("dire wolf row = %+v", e)
+		}
+	}
+	if got := mustList(t, c, CreatureFilter{Query: "wolf"}); len(got) == 0 || got[0].ArmorClass == 0 || got[0].HitPoints == 0 {
+		t.Errorf("rows without numbers: %+v", got)
+	}
+
+	// E10-08: "lobo" finds the Portuguese names, and "Wolf spider" through "wolf".
+	lobo := keys(CreatureFilter{Query: "lobo"})
+	for _, k := range []string{"monster:wolf", "monster:giant-wolf-spider", "monster:dire-wolf", "monster:winter-wolf"} {
+		if !slices.Contains(lobo, k) {
+			t.Errorf("\"lobo\" does not find %s: %v", k, lobo)
+		}
+	}
+	if wolf := keys(CreatureFilter{Query: "wolf"}); !slices.Contains(wolf, "monster:giant-wolf-spider") || len(wolf) <= len(lobo)-1 {
+		t.Errorf("\"wolf\" = %v", wolf)
+	}
+
+	// The sizes.
+	for _, size := range []string{"Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"} {
+		list := mustList(t, c, CreatureFilter{Size: size})
+		if len(list) == 0 {
+			t.Errorf("no %s creature", size)
+		}
+		for _, e := range list {
+			if e.Size != size {
+				t.Errorf("%s is %s, not %s", e.Key, e.Size, size)
+			}
+		}
+	}
+	if got := keys(CreatureFilter{Size: "Large", Query: "lobo"}); !slices.Contains(got, "monster:dire-wolf") || slices.Contains(got, "monster:wolf") {
+		t.Errorf("Large \"lobo\" = %v", got)
+	}
+
+	// The range, both ends included.
+	between := mustList(t, c, CreatureFilter{MinCR: "1/4", MaxCR: "1"})
+	seen := map[string]bool{}
+	for _, e := range between {
+		seen[e.ChallengeRating] = true
+		if v, _ := crEighths(e.ChallengeRating); v < 2 || v > 8 {
+			t.Errorf("%s has CR %s, outside 1/4 to 1", e.Key, e.ChallengeRating)
+		}
+	}
+	if !seen["1/4"] || !seen["1"] || !seen["1/2"] {
+		t.Errorf("the range leaves out an end: %v", seen)
+	}
+	exact := mustList(t, c, CreatureFilter{MinCR: "2", MaxCR: "2"})
+	if len(exact) == 0 {
+		t.Error("min = max is the one rating")
+	}
+	for _, e := range exact {
+		if e.ChallengeRating != "2" {
+			t.Errorf("%s has CR %s", e.Key, e.ChallengeRating)
+		}
+	}
+	if low := mustList(t, c, CreatureFilter{MinCR: "20"}); len(low) == 0 || len(low) > 40 {
+		t.Errorf("CR 20 and up = %d creatures", len(low))
+	}
+	// Only a MinCR is a floor, only a MaxCR a ceiling, and the zero value both open.
+	if n := len(mustList(t, c, CreatureFilter{MinCR: "0"})); n != 334 {
+		t.Errorf("MinCR 0 = %d, want all 334", n)
+	}
+
+	// A filter that cannot be right.
+	if _, err := c.ListCreatures(CreatureFilter{MinCR: "3", MaxCR: "2"}); !errors.Is(err, ErrChallengeRange) {
+		t.Errorf("min 3 above max 2: %v", err)
+	}
+	if _, err := c.ListCreatures(CreatureFilter{MinCR: "1/3"}); !errors.Is(err, ErrChallengeRating) {
+		t.Errorf("min 1/3: %v", err)
+	}
+	if _, err := c.ListCreatures(CreatureFilter{MaxCR: "31"}); !errors.Is(err, ErrChallengeRating) {
+		t.Errorf("max 31: %v", err)
+	}
+	for f, field := range map[string]CreatureFilter{"min_cr": {MinCR: "1/3"}, "max_cr": {MaxCR: "99"}, "size": {Size: "Colossal"}} {
+		_, err := c.ListCreatures(field)
+		if fe, ok := errors.AsType[*CreatureFilterError](err); !ok || fe.Field != f {
+			t.Errorf("a bad %s: error %v does not name the field", f, err)
+		}
+	}
+	if _, err := c.ListCreatures(CreatureFilter{Size: "Colossal"}); !errors.Is(err, ErrCreatureSize) {
+		t.Errorf("a size the SRD does not have: %v", err)
 	}
 }
 

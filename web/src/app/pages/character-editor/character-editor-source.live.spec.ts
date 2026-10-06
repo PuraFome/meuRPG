@@ -216,6 +216,7 @@ describe('a basic sheet through the editor', () => {
   it('reads and writes initiative and attacks, with the damage type and the reach', () => {
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      monsterKey: '',
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,
@@ -259,6 +260,7 @@ describe('a basic sheet through the editor', () => {
   it('carries the ND and the XP the minion gives through the form, so a save never wipes them (E7-11)', () => {
     const basic = {
       $typeName: 'meurpg.characters.v1.BasicSheet' as const,
+      monsterKey: '',
       hitPointsMax: 7,
       armorClass: 15,
       speedFt: 30,
@@ -289,6 +291,7 @@ describe('a basic sheet through the editor', () => {
   it('sends the old damage text back unchanged while there are no attacks', () => {
     const form = toFormBasicSheet('Goblin', {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      monsterKey: '',
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,

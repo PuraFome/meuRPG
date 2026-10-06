@@ -172,7 +172,7 @@ const (
 	solveRevealClue  = "reveal_clue"
 )
 
-// The session events of a puzzle (migration 00134): IDs only.
+// The session events of a puzzle (migration 00136): IDs only.
 const (
 	eventPuzzleShown  = "puzzle_shown"
 	eventPuzzleSolved = "puzzle_solved"

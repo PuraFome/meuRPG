@@ -27,6 +27,9 @@ type caster struct {
 	e   *Effect
 	row *srd51.Level
 	sc  *Spellcasting
+	// list is the class whose spell list the caster reads: its own class, or a
+	// third caster's list (the class a table subclass casts from).
+	list string
 }
 
 // spellcasting computes each casting class's numbers, the spell slots
@@ -37,17 +40,20 @@ func (x *deriver) spellcasting() {
 	c := x.c
 	var casters []caster
 	for _, oc := range x.classes {
-		cast, ok := c.casting[oc.key]
+		cast, ok := c.castingFor(oc.key, oc.subclass)
 		if !ok || oc.level < cast.level {
 			continue
 		}
 		e := cast.effect
 		a := Ability(e.Ability)
-		row := c.classLevels[oc.key][oc.level-1]
+		row := c.castingRow(oc.key, oc.level, cast)
+		if row == nil {
+			continue
+		}
 		sc := Spellcasting{
 			Class: oc.key, ClassNamePT: c.namePT(oc.key), Ability: a,
 			SaveDC: 8 + x.prof + x.mods[a], AttackBonus: x.prof + x.mods[a],
-			PreparesSpells: e.Prepares, Ritual: e.Ritual,
+			PreparesSpells: e.Prepares, Ritual: e.Ritual, SpellList: cast.list,
 		}
 		if s := row.Spellcasting; s != nil {
 			sc.CantripsKnown = s.CantripsKnown
@@ -64,7 +70,7 @@ func (x *deriver) spellcasting() {
 			sc.PreparedMax = max(n, 0)
 		}
 		x.d.Spellcasting = append(x.d.Spellcasting, sc)
-		casters = append(casters, caster{oc: oc, e: e, row: row})
+		casters = append(casters, caster{oc: oc, e: e, row: row, list: cast.list})
 	}
 	// casters[i] goes with Spellcasting[i]; point at it once the slice
 	// stops growing.
@@ -108,10 +114,11 @@ func (x *deriver) pactMagic(cs caster) {
 }
 
 // multiclassSlots applies the multiclass spellcaster table: add the levels
-// of full casters and half the levels (rounded down) of half casters, and
-// read the slots of that caster level. The table is the same as a full
-// caster's class table, so the slots come from the first full-caster class
-// in the content.
+// of full casters, half the levels (rounded down) of half casters and a third
+// of the levels (rounded down) of third casters, and read the slots of that
+// caster level. The table is the same as a full caster's class table, so the
+// slots come from the first full-caster class of the SRD (never a table class,
+// whose table is its own).
 func (x *deriver) multiclassSlots(casters []caster) {
 	level := 0
 	for _, cs := range casters {
@@ -120,19 +127,15 @@ func (x *deriver) multiclassSlots(casters []caster) {
 			level += cs.oc.level
 		case "half":
 			level += cs.oc.level / 2
+		case "third":
+			level += cs.oc.level / 3
 		}
 	}
-	if level < 1 {
+	if level < 1 || x.c.multiclassTable == "" {
 		return
 	}
-	for _, key := range sortedKeys(x.c.casting) {
-		if x.c.casting[key].effect.Progression != "full" {
-			continue
-		}
-		if s := x.c.classLevels[key][min(level, MaxLevel)-1].Spellcasting; s != nil {
-			copy(x.d.SpellSlots, s.Slots[:])
-		}
-		return
+	if s := x.c.classLevels[x.c.multiclassTable][min(level, MaxLevel)-1].Spellcasting; s != nil {
+		copy(x.d.SpellSlots, s.Slots[:])
 	}
 }
 
@@ -141,7 +144,7 @@ func (x *deriver) characterSpells(casters []caster) {
 	c := x.c
 	onClassList := func(s *srd51.Spell) bool {
 		for _, cs := range casters {
-			if slices.Contains(s.Classes, cs.oc.key) {
+			if c.onList(s, cs.list) {
 				return true
 			}
 			if cs.oc.subclass != nil && slices.Contains(s.Subclasses, cs.oc.subclass.Key) {
@@ -221,7 +224,7 @@ func (x *deriver) characterSpells(casters []caster) {
 			return true
 		}
 		for _, cs := range casters {
-			if preparation(cs.e) == PreparationKnown && slices.Contains(s.Classes, cs.oc.key) {
+			if preparation(cs.e) == PreparationKnown && c.onList(s, cs.list) {
 				return true
 			}
 		}
@@ -255,14 +258,25 @@ func (x *deriver) characterSpells(casters []caster) {
 		if s.Level != 0 {
 			x.issue(IssueSpellLevel, field, "%s não é um truque.", c.namePT(key))
 		}
-		fromExtraList := slices.ContainsFunc(extraCantripLists, func(cl string) bool { return slices.Contains(s.Classes, cl) })
+		fromExtraList := slices.ContainsFunc(extraCantripLists, func(cl string) bool { return c.onList(s, cl) })
 		if !onClassList(s) && !granted[key] && !fromExtraList {
 			x.issue(IssueSpellNotOnList, field, "%s não está na lista de magias do personagem.", c.namePT(key))
 		}
 		addSpell(s, true)
 	}
-	if len(x.b.Cantrips) > cantripsMax {
-		x.issue(IssueSpellCount, "full.cantrip_keys", "Há %d truques; o personagem conhece %d.", len(x.b.Cantrips), cantripsMax)
+	// A spell an effect grants (a race's cantrip) comes on top of the class's
+	// numbers: it counts against none of them.
+	notGranted := func(keys []string) int {
+		n := 0
+		for _, k := range keys {
+			if !granted[k] {
+				n++
+			}
+		}
+		return n
+	}
+	if n := notGranted(x.b.Cantrips); n > cantripsMax {
+		x.issue(IssueSpellCount, "full.cantrip_keys", "Há %d truques; o personagem conhece %d.", n, cantripsMax)
 	}
 
 	// Spells known (a wizard's spellbook, or a known caster's spells) and
@@ -276,7 +290,8 @@ func (x *deriver) characterSpells(casters []caster) {
 		switch {
 		case s.Level == 0:
 			x.issue(IssueSpellLevel, field, "%s é um truque: vai na lista de truques.", c.namePT(key))
-		case s.Level > maxLevel:
+		case s.Level > maxLevel && !granted[key]:
+			// A granted spell is cast with the feature's own uses, not with a slot.
 			x.issue(IssueSpellLevel, field, "%s é de %dº nível; o personagem conjura até o %dº.", c.namePT(key), s.Level, maxLevel)
 		}
 		if !onClassList(s) && !granted[key] && !alwaysPrepared[key] && !offList {
@@ -290,9 +305,9 @@ func (x *deriver) characterSpells(casters []caster) {
 	offListLeft, extraKnown := 0, 0
 	for _, f := range x.d.Features {
 		switch {
-		case strings.HasPrefix(f.Key, "feature:magical-secrets-"):
+		case strings.HasPrefix(f.Key, "feature:magical-secrets-") && !isTableKey(f.Key):
 			offListLeft += 2
-		case f.Key == "feature:additional-magical-secrets":
+		case f.Key == "feature:additional-magical-secrets" && !isTableKey(f.Key):
 			offListLeft += 2
 			extraKnown += 2
 		}
@@ -314,7 +329,7 @@ func (x *deriver) characterSpells(casters []caster) {
 		if !ok {
 			continue
 		}
-		if !alwaysPrepared[key] {
+		if !alwaysPrepared[key] && !granted[key] {
 			counted++
 		}
 		if hasSpellbook && onlySpellbook && !slices.Contains(x.b.SpellsKnown, key) {
@@ -327,8 +342,8 @@ func (x *deriver) characterSpells(casters []caster) {
 			addSpell(s, true)
 		}
 	}
-	if hasKnownCaster && !hasSpellbook && len(x.b.SpellsKnown) > knownMax+extraKnown {
-		x.issue(IssueSpellCount, "full.known_spell_keys", "Há %d magias conhecidas; o personagem conhece %d.", len(x.b.SpellsKnown), knownMax+extraKnown)
+	if n := notGranted(x.b.SpellsKnown); hasKnownCaster && !hasSpellbook && n > knownMax+extraKnown {
+		x.issue(IssueSpellCount, "full.known_spell_keys", "Há %d magias conhecidas; o personagem conhece %d.", n, knownMax+extraKnown)
 	}
 	if preparedMax > 0 && counted > preparedMax {
 		x.issue(IssueSpellCount, "full.prepared_spell_keys", "Há %d magias preparadas; o personagem prepara %d.", counted, preparedMax)

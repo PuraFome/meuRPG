@@ -14,7 +14,7 @@ const approveCharacter = `-- name: ApproveCharacter :one
 UPDATE characters
 SET status = 'active'
 WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type ApproveCharacterParams struct {
@@ -45,6 +45,7 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -279,7 +280,7 @@ func (q *Queries) EndStoryEditing(ctx context.Context, campaignID string) (int64
 }
 
 const getCharacter = `-- name: GetCharacter :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 `
 
@@ -308,6 +309,42 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+	)
+	return i, err
+}
+
+const getCharacterByCreateKey = `-- name: GetCharacterByCreateKey :one
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
+WHERE campaign_id = $1::UUID AND create_key = $2::UUID
+`
+
+type GetCharacterByCreateKeyParams struct {
+	CampaignID string
+	CreateKey  string
+}
+
+func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterByCreateKeyParams) (Character, error) {
+	row := q.db.QueryRow(ctx, getCharacterByCreateKey, arg.CampaignID, arg.CreateKey)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -396,7 +433,7 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 }
 
 const getCharacterForUpdate = `-- name: GetCharacterForUpdate :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 FOR UPDATE
 `
@@ -429,6 +466,7 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -577,7 +615,7 @@ VALUES (
     $1::UUID, $2, $3, $4,
     $5, $6, $7, $8, $9, $9
 )
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type InsertCharacterParams struct {
@@ -628,6 +666,7 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -777,6 +816,66 @@ func (q *Queries) InsertLevelUpRoll(ctx context.Context, arg InsertLevelUpRollPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const insertNpcFromCreature = `-- name: InsertNpcFromCreature :one
+INSERT INTO characters
+    (campaign_id, kind, master_user_id, status, name, sheet, story, create_key, created_at, updated_at)
+VALUES (
+    $1::UUID, $2, $3, 'active', $4, $5,
+    $6, $7::UUID, $8, $8
+)
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+`
+
+type InsertNpcFromCreatureParams struct {
+	CampaignID   string
+	Kind         string
+	MasterUserID *string
+	Name         string
+	Sheet        []byte
+	Story        []byte
+	CreateKey    string
+	Now          time.Time
+}
+
+// The NPC of "Criar NPC" (MR-042). create_key is the dialog's idempotency key;
+// a second call with the same key inserts nothing (the unique index
+// characters_campaign_id_create_key_idx), and the caller reads the first one
+// with GetCharacterByCreateKey. kind and master_user_id as for any NPC.
+func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCreatureParams) (Character, error) {
+	row := q.db.QueryRow(ctx, insertNpcFromCreature,
+		arg.CampaignID,
+		arg.Kind,
+		arg.MasterUserID,
+		arg.Name,
+		arg.Sheet,
+		arg.Story,
+		arg.CreateKey,
+		arg.Now,
+	)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+	)
+	return i, err
 }
 
 const listCharacterNames = `-- name: ListCharacterNames :many
@@ -1590,7 +1689,7 @@ const markCharacterDead = `-- name: MarkCharacterDead :one
 UPDATE characters
 SET status = 'dead', died_at = COALESCE(died_at, $1::TIMESTAMPTZ)
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type MarkCharacterDeadParams struct {
@@ -1621,6 +1720,7 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -1766,7 +1866,7 @@ const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type SetStoryEditingParams struct {
@@ -1797,6 +1897,7 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -1860,7 +1961,7 @@ const updateCharacterSheet = `-- name: UpdateCharacterSheet :one
 UPDATE characters
 SET name = $1, sheet = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND revision = $6
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type UpdateCharacterSheetParams struct {
@@ -1901,6 +2002,7 @@ func (q *Queries) UpdateCharacterSheet(ctx context.Context, arg UpdateCharacterS
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
@@ -1909,7 +2011,7 @@ const updateCharacterStory = `-- name: UpdateCharacterStory :one
 UPDATE characters
 SET story = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4 AND revision = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
 `
 
 type UpdateCharacterStoryParams struct {
@@ -1947,6 +2049,7 @@ func (q *Queries) UpdateCharacterStory(ctx context.Context, arg UpdateCharacterS
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
 	)
 	return i, err
 }
