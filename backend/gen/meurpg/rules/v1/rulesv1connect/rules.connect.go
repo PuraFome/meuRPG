@@ -108,10 +108,11 @@ type ContentServiceClient interface {
 	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
 	// uma criatura", the Wild Shape list, the summon choices. It filters by
 	// part of the name (Portuguese or English, ignoring case and accents), by
-	// creature type, by highest challenge rating and by speeds, sorts by
-	// Portuguese name, and answers a page at a time (page_size 1 to 100, 50 by
-	// default, page_token). Every row has the Portuguese name, size, type,
-	// challenge rating and XP. The creatures are public SRD rules, the same for
+	// creature type, by size, by challenge rating (lowest and highest) and by
+	// speeds, sorts by Portuguese name, and answers a page at a time (page_size 1
+	// to 400, 50 by default, page_token; 400 holds the whole bestiary). Every row has the Portuguese and the
+	// English name, size, type, challenge rating, XP, armor class and average
+	// hit points (the bestiary's row, MR-042). The creatures are public SRD rules, the same for
 	// every campaign; only an active member of the campaign may ask, and a
 	// pending member (RN-15) gets `not_found` on purpose: a player waiting for
 	// approval needs no creature to build its character.
@@ -119,9 +120,10 @@ type ContentServiceClient interface {
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an
 	//     active member of it.
-	//   - `invalid_argument`: max_cr is not one of the SRD's challenge ratings,
-	//     query is longer than 100 characters, page_size is not 1 to 100, or
-	//     page_token is not one this list gave for these same filters.
+	//   - `invalid_argument`: min_cr or max_cr is not one of the SRD's challenge
+	//     ratings, min_cr is above max_cr, size is not a creature size, query is
+	//     longer than 100 characters, page_size is not 1 to 400, or page_token is
+	//     not one this list gave for these same filters.
 	ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error)
 	// GetCreature returns one creature's stat block, for the screen that shows
 	// it: armor class, hit points, speeds, abilities, saves and skills, damage
@@ -288,10 +290,11 @@ type ContentServiceHandler interface {
 	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
 	// uma criatura", the Wild Shape list, the summon choices. It filters by
 	// part of the name (Portuguese or English, ignoring case and accents), by
-	// creature type, by highest challenge rating and by speeds, sorts by
-	// Portuguese name, and answers a page at a time (page_size 1 to 100, 50 by
-	// default, page_token). Every row has the Portuguese name, size, type,
-	// challenge rating and XP. The creatures are public SRD rules, the same for
+	// creature type, by size, by challenge rating (lowest and highest) and by
+	// speeds, sorts by Portuguese name, and answers a page at a time (page_size 1
+	// to 400, 50 by default, page_token; 400 holds the whole bestiary). Every row has the Portuguese and the
+	// English name, size, type, challenge rating, XP, armor class and average
+	// hit points (the bestiary's row, MR-042). The creatures are public SRD rules, the same for
 	// every campaign; only an active member of the campaign may ask, and a
 	// pending member (RN-15) gets `not_found` on purpose: a player waiting for
 	// approval needs no creature to build its character.
@@ -299,9 +302,10 @@ type ContentServiceHandler interface {
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an
 	//     active member of it.
-	//   - `invalid_argument`: max_cr is not one of the SRD's challenge ratings,
-	//     query is longer than 100 characters, page_size is not 1 to 100, or
-	//     page_token is not one this list gave for these same filters.
+	//   - `invalid_argument`: min_cr or max_cr is not one of the SRD's challenge
+	//     ratings, min_cr is above max_cr, size is not a creature size, query is
+	//     longer than 100 characters, page_size is not 1 to 400, or page_token is
+	//     not one this list gave for these same filters.
 	ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error)
 	// GetCreature returns one creature's stat block, for the screen that shows
 	// it: armor class, hit points, speeds, abilities, saves and skills, damage

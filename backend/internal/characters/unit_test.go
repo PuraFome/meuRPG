@@ -112,6 +112,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 
 	calls := map[string]error{}
 	_, calls["CreateCharacter"] = c.CreateCharacter(ctx, connect.NewRequest(&charactersv1.CreateCharacterRequest{CampaignId: id}))
+	_, calls["CreateNpcFromCreature"] = c.CreateNpcFromCreature(ctx, connect.NewRequest(&charactersv1.CreateNpcFromCreatureRequest{CampaignId: id, CreatureKey: "monster:ogre"}))
 	_, calls["GetCharacter"] = c.GetCharacter(ctx, connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListCharacters"] = c.ListCharacters(ctx, connect.NewRequest(&charactersv1.ListCharactersRequest{CampaignId: id}))
 	_, calls["UpdateCharacter"] = c.UpdateCharacter(ctx, connect.NewRequest(&charactersv1.UpdateCharacterRequest{CampaignId: id, CharacterId: id}))

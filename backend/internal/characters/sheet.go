@@ -120,6 +120,9 @@ func checkSheet(content *rules.Content, sheet *charactersv1.CharacterSheet) (*ch
 		if basic == nil {
 			basic = &charactersv1.BasicSheet{}
 		}
+		// The creature link and its ability scores are the server's: only
+		// CreateNpcFromCreature writes them (MR-042).
+		basic.MonsterKey, basic.AbilityScores = "", nil
 		if err := cleanBasicSheet(basic); err != nil {
 			return nil, err
 		}

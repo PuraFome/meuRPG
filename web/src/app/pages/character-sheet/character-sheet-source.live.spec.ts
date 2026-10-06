@@ -226,6 +226,7 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
   it('has no alignment or XP for a BasicSheet NPC', () => {
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      monsterKey: '',
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 13,

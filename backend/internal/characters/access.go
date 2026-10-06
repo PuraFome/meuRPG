@@ -15,6 +15,8 @@ import (
 // characters_status_valid).
 const (
 	kindPlayer    = "player"
+	kindMinion    = "minion"
+	kindStory     = "story"
 	statusActive  = "active"
 	statusDead    = "dead"
 	statusPending = "pending"

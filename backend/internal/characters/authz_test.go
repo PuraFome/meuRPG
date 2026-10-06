@@ -124,6 +124,18 @@ func TestAuthorizationMatrix(t *testing.T) {
 			[6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodePermissionDenied},
 		},
 
+		// "Criar NPC" from a creature (MR-042): the master's, like any NPC.
+		{
+			"CreateNpcFromCreature", "", nil, func(ctx context.Context, u *user) error {
+				_, err := u.api.CreateNpcFromCreature(ctx, connect.NewRequest(&charactersv1.CreateNpcFromCreatureRequest{
+					CampaignId: campaign, CreatureKey: "monster:ogre", Name: "Grak", Kind: charactersv1.CharacterKind_CHARACTER_KIND_MINION,
+					IdempotencyKey: uuid.New().String(),
+				}))
+				return err
+			},
+			[6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
+		},
+
 		{
 			"GetCharacter", "player character", nil, get(pc.GetId()),
 			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},

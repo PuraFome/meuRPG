@@ -7458,12 +7458,18 @@ type ListCreaturesRequest struct {
 	// Shape rules).
 	NoFly  bool `protobuf:"varint,5,opt,name=no_fly,json=noFly,proto3" json:"no_fly,omitempty"`
 	NoSwim bool `protobuf:"varint,6,opt,name=no_swim,json=noSwim,proto3" json:"no_swim,omitempty"`
-	// How many rows to return, 1 to 100; 0 means 50.
+	// How many rows to return, 1 to 400; 0 means 50. The bestiary asks for 400,
+	// which is all of the 334 creatures at once.
 	PageSize int32 `protobuf:"varint,7,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// The next_page_token of the previous page; empty for the first. It is
 	// only good for the same filters: with other ones, the call fails with
 	// `invalid_argument`.
-	PageToken     string `protobuf:"bytes,8,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageToken string `protobuf:"bytes,8,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Only the creatures of this size. UNSPECIFIED (the default) means any size.
+	Size CreatureSize `protobuf:"varint,9,opt,name=size,proto3,enum=meurpg.rules.v1.CreatureSize" json:"size,omitempty"`
+	// The lowest challenge rating, one of the SRD's like max_cr. Empty for no
+	// lower limit. With max_cr, min_cr must not be the higher one.
+	MinCr         string `protobuf:"bytes,10,opt,name=min_cr,json=minCr,proto3" json:"min_cr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7554,6 +7560,20 @@ func (x *ListCreaturesRequest) GetPageToken() string {
 	return ""
 }
 
+func (x *ListCreaturesRequest) GetSize() CreatureSize {
+	if x != nil {
+		return x.Size
+	}
+	return CreatureSize_CREATURE_SIZE_UNSPECIFIED
+}
+
+func (x *ListCreaturesRequest) GetMinCr() string {
+	if x != nil {
+		return x.MinCr
+	}
+	return ""
+}
+
 // ListCreaturesResponse is one page of creatures, sorted by Portuguese name.
 type ListCreaturesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -7640,8 +7660,12 @@ type CreatureSummary struct {
 	// The XP the creature gives when defeated, by its challenge rating.
 	Xp int32 `protobuf:"varint,10,opt,name=xp,proto3" json:"xp,omitempty"`
 	// Whether the stat block has a fly or a swim speed.
-	CanFly        bool `protobuf:"varint,11,opt,name=can_fly,json=canFly,proto3" json:"can_fly,omitempty"`
-	CanSwim       bool `protobuf:"varint,12,opt,name=can_swim,json=canSwim,proto3" json:"can_swim,omitempty"`
+	CanFly  bool `protobuf:"varint,11,opt,name=can_fly,json=canFly,proto3" json:"can_fly,omitempty"`
+	CanSwim bool `protobuf:"varint,12,opt,name=can_swim,json=canSwim,proto3" json:"can_swim,omitempty"`
+	// The armor class and the average hit points, for the bestiary's row ("CA 13
+	// · PV 11"). The English name is `name`.
+	ArmorClass    int32 `protobuf:"varint,13,opt,name=armor_class,json=armorClass,proto3" json:"armor_class,omitempty"`
+	HitPoints     int32 `protobuf:"varint,14,opt,name=hit_points,json=hitPoints,proto3" json:"hit_points,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7758,6 +7782,20 @@ func (x *CreatureSummary) GetCanSwim() bool {
 		return x.CanSwim
 	}
 	return false
+}
+
+func (x *CreatureSummary) GetArmorClass() int32 {
+	if x != nil {
+		return x.ArmorClass
+	}
+	return 0
+}
+
+func (x *CreatureSummary) GetHitPoints() int32 {
+	if x != nil {
+		return x.HitPoints
+	}
+	return 0
 }
 
 // GetCreatureRequest names a creature.
@@ -9367,7 +9405,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x12\x1b\n" +
-	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\"\xe4\x01\n" +
+	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\"\xae\x02\n" +
 	"\x14ListCreaturesRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x14\n" +
@@ -9378,11 +9416,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\ano_swim\x18\x06 \x01(\bR\x06noSwim\x12\x1b\n" +
 	"\tpage_size\x18\a \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\b \x01(\tR\tpageToken\"\x95\x01\n" +
+	"page_token\x18\b \x01(\tR\tpageToken\x121\n" +
+	"\x04size\x18\t \x01(\x0e2\x1d.meurpg.rules.v1.CreatureSizeR\x04size\x12\x15\n" +
+	"\x06min_cr\x18\n" +
+	" \x01(\tR\x05minCr\"\x95\x01\n" +
 	"\x15ListCreaturesResponse\x12>\n" +
 	"\tcreatures\x18\x01 \x03(\v2 .meurpg.rules.v1.CreatureSummaryR\tcreatures\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\xb3\x02\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xf3\x02\n" +
 	"\x0fCreatureSummary\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9396,7 +9437,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x02xp\x18\n" +
 	" \x01(\x05R\x02xp\x12\x17\n" +
 	"\acan_fly\x18\v \x01(\bR\x06canFly\x12\x19\n" +
-	"\bcan_swim\x18\f \x01(\bR\acanSwim\"G\n" +
+	"\bcan_swim\x18\f \x01(\bR\acanSwim\x12\x1f\n" +
+	"\varmor_class\x18\r \x01(\x05R\n" +
+	"armorClass\x12\x1d\n" +
+	"\n" +
+	"hit_points\x18\x0e \x01(\x05R\thitPoints\"G\n" +
 	"\x12GetCreatureRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x10\n" +
@@ -9874,47 +9919,48 @@ var file_meurpg_rules_v1_rules_proto_depIdxs = []int32{
 	92,  // 115: meurpg.rules.v1.SpellOption.slots:type_name -> meurpg.rules.v1.SlotChoice
 	40,  // 116: meurpg.rules.v1.ActionOption.action:type_name -> meurpg.rules.v1.Action
 	89,  // 117: meurpg.rules.v1.ActionOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	96,  // 118: meurpg.rules.v1.ListCreaturesResponse.creatures:type_name -> meurpg.rules.v1.CreatureSummary
-	99,  // 119: meurpg.rules.v1.GetCreatureResponse.creature:type_name -> meurpg.rules.v1.Creature
-	96,  // 120: meurpg.rules.v1.Creature.summary:type_name -> meurpg.rules.v1.CreatureSummary
-	100, // 121: meurpg.rules.v1.Creature.abilities:type_name -> meurpg.rules.v1.CreatureAbilityScore
-	101, // 122: meurpg.rules.v1.Creature.saving_throws:type_name -> meurpg.rules.v1.CreatureBonus
-	101, // 123: meurpg.rules.v1.Creature.skills:type_name -> meurpg.rules.v1.CreatureBonus
-	103, // 124: meurpg.rules.v1.Creature.vulnerabilities:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	103, // 125: meurpg.rules.v1.Creature.resistances:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	103, // 126: meurpg.rules.v1.Creature.immunities:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	102, // 127: meurpg.rules.v1.Creature.condition_immunities:type_name -> meurpg.rules.v1.CreatureNamedKey
-	47,  // 128: meurpg.rules.v1.Creature.senses:type_name -> meurpg.rules.v1.Sense
-	104, // 129: meurpg.rules.v1.Creature.traits:type_name -> meurpg.rules.v1.CreatureTrait
-	105, // 130: meurpg.rules.v1.Creature.actions:type_name -> meurpg.rules.v1.CreatureAction
-	104, // 131: meurpg.rules.v1.Creature.reactions:type_name -> meurpg.rules.v1.CreatureTrait
-	104, // 132: meurpg.rules.v1.Creature.legendary_actions:type_name -> meurpg.rules.v1.CreatureTrait
-	4,   // 133: meurpg.rules.v1.CreatureAbilityScore.ability:type_name -> meurpg.rules.v1.Ability
-	4,   // 134: meurpg.rules.v1.CreatureBonus.ability:type_name -> meurpg.rules.v1.Ability
-	102, // 135: meurpg.rules.v1.CreatureDamageModifier.types:type_name -> meurpg.rules.v1.CreatureNamedKey
-	106, // 136: meurpg.rules.v1.CreatureAction.damage:type_name -> meurpg.rules.v1.CreatureDamagePart
-	107, // 137: meurpg.rules.v1.CreatureAction.save:type_name -> meurpg.rules.v1.CreatureSave
-	108, // 138: meurpg.rules.v1.CreatureAction.multiattack:type_name -> meurpg.rules.v1.CreatureMultiattackRoutine
-	4,   // 139: meurpg.rules.v1.CreatureSave.ability:type_name -> meurpg.rules.v1.Ability
-	18,  // 140: meurpg.rules.v1.CreatureSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
-	109, // 141: meurpg.rules.v1.CreatureMultiattackRoutine.attacks:type_name -> meurpg.rules.v1.CreatureAttackCount
-	72,  // 142: meurpg.rules.v1.ContentService.ListContent:input_type -> meurpg.rules.v1.ListContentRequest
-	74,  // 143: meurpg.rules.v1.ContentService.GetSpellDetails:input_type -> meurpg.rules.v1.GetSpellDetailsRequest
-	94,  // 144: meurpg.rules.v1.ContentService.ListCreatures:input_type -> meurpg.rules.v1.ListCreaturesRequest
-	97,  // 145: meurpg.rules.v1.ContentService.GetCreature:input_type -> meurpg.rules.v1.GetCreatureRequest
-	21,  // 146: meurpg.rules.v1.ContentService.ListTrapPresets:input_type -> meurpg.rules.v1.ListTrapPresetsRequest
-	23,  // 147: meurpg.rules.v1.ContentService.ListLightPresets:input_type -> meurpg.rules.v1.ListLightPresetsRequest
-	73,  // 148: meurpg.rules.v1.ContentService.ListContent:output_type -> meurpg.rules.v1.ListContentResponse
-	75,  // 149: meurpg.rules.v1.ContentService.GetSpellDetails:output_type -> meurpg.rules.v1.GetSpellDetailsResponse
-	95,  // 150: meurpg.rules.v1.ContentService.ListCreatures:output_type -> meurpg.rules.v1.ListCreaturesResponse
-	98,  // 151: meurpg.rules.v1.ContentService.GetCreature:output_type -> meurpg.rules.v1.GetCreatureResponse
-	22,  // 152: meurpg.rules.v1.ContentService.ListTrapPresets:output_type -> meurpg.rules.v1.ListTrapPresetsResponse
-	24,  // 153: meurpg.rules.v1.ContentService.ListLightPresets:output_type -> meurpg.rules.v1.ListLightPresetsResponse
-	148, // [148:154] is the sub-list for method output_type
-	142, // [142:148] is the sub-list for method input_type
-	142, // [142:142] is the sub-list for extension type_name
-	142, // [142:142] is the sub-list for extension extendee
-	0,   // [0:142] is the sub-list for field type_name
+	19,  // 118: meurpg.rules.v1.ListCreaturesRequest.size:type_name -> meurpg.rules.v1.CreatureSize
+	96,  // 119: meurpg.rules.v1.ListCreaturesResponse.creatures:type_name -> meurpg.rules.v1.CreatureSummary
+	99,  // 120: meurpg.rules.v1.GetCreatureResponse.creature:type_name -> meurpg.rules.v1.Creature
+	96,  // 121: meurpg.rules.v1.Creature.summary:type_name -> meurpg.rules.v1.CreatureSummary
+	100, // 122: meurpg.rules.v1.Creature.abilities:type_name -> meurpg.rules.v1.CreatureAbilityScore
+	101, // 123: meurpg.rules.v1.Creature.saving_throws:type_name -> meurpg.rules.v1.CreatureBonus
+	101, // 124: meurpg.rules.v1.Creature.skills:type_name -> meurpg.rules.v1.CreatureBonus
+	103, // 125: meurpg.rules.v1.Creature.vulnerabilities:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	103, // 126: meurpg.rules.v1.Creature.resistances:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	103, // 127: meurpg.rules.v1.Creature.immunities:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	102, // 128: meurpg.rules.v1.Creature.condition_immunities:type_name -> meurpg.rules.v1.CreatureNamedKey
+	47,  // 129: meurpg.rules.v1.Creature.senses:type_name -> meurpg.rules.v1.Sense
+	104, // 130: meurpg.rules.v1.Creature.traits:type_name -> meurpg.rules.v1.CreatureTrait
+	105, // 131: meurpg.rules.v1.Creature.actions:type_name -> meurpg.rules.v1.CreatureAction
+	104, // 132: meurpg.rules.v1.Creature.reactions:type_name -> meurpg.rules.v1.CreatureTrait
+	104, // 133: meurpg.rules.v1.Creature.legendary_actions:type_name -> meurpg.rules.v1.CreatureTrait
+	4,   // 134: meurpg.rules.v1.CreatureAbilityScore.ability:type_name -> meurpg.rules.v1.Ability
+	4,   // 135: meurpg.rules.v1.CreatureBonus.ability:type_name -> meurpg.rules.v1.Ability
+	102, // 136: meurpg.rules.v1.CreatureDamageModifier.types:type_name -> meurpg.rules.v1.CreatureNamedKey
+	106, // 137: meurpg.rules.v1.CreatureAction.damage:type_name -> meurpg.rules.v1.CreatureDamagePart
+	107, // 138: meurpg.rules.v1.CreatureAction.save:type_name -> meurpg.rules.v1.CreatureSave
+	108, // 139: meurpg.rules.v1.CreatureAction.multiattack:type_name -> meurpg.rules.v1.CreatureMultiattackRoutine
+	4,   // 140: meurpg.rules.v1.CreatureSave.ability:type_name -> meurpg.rules.v1.Ability
+	18,  // 141: meurpg.rules.v1.CreatureSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
+	109, // 142: meurpg.rules.v1.CreatureMultiattackRoutine.attacks:type_name -> meurpg.rules.v1.CreatureAttackCount
+	72,  // 143: meurpg.rules.v1.ContentService.ListContent:input_type -> meurpg.rules.v1.ListContentRequest
+	74,  // 144: meurpg.rules.v1.ContentService.GetSpellDetails:input_type -> meurpg.rules.v1.GetSpellDetailsRequest
+	94,  // 145: meurpg.rules.v1.ContentService.ListCreatures:input_type -> meurpg.rules.v1.ListCreaturesRequest
+	97,  // 146: meurpg.rules.v1.ContentService.GetCreature:input_type -> meurpg.rules.v1.GetCreatureRequest
+	21,  // 147: meurpg.rules.v1.ContentService.ListTrapPresets:input_type -> meurpg.rules.v1.ListTrapPresetsRequest
+	23,  // 148: meurpg.rules.v1.ContentService.ListLightPresets:input_type -> meurpg.rules.v1.ListLightPresetsRequest
+	73,  // 149: meurpg.rules.v1.ContentService.ListContent:output_type -> meurpg.rules.v1.ListContentResponse
+	75,  // 150: meurpg.rules.v1.ContentService.GetSpellDetails:output_type -> meurpg.rules.v1.GetSpellDetailsResponse
+	95,  // 151: meurpg.rules.v1.ContentService.ListCreatures:output_type -> meurpg.rules.v1.ListCreaturesResponse
+	98,  // 152: meurpg.rules.v1.ContentService.GetCreature:output_type -> meurpg.rules.v1.GetCreatureResponse
+	22,  // 153: meurpg.rules.v1.ContentService.ListTrapPresets:output_type -> meurpg.rules.v1.ListTrapPresetsResponse
+	24,  // 154: meurpg.rules.v1.ContentService.ListLightPresets:output_type -> meurpg.rules.v1.ListLightPresetsResponse
+	149, // [149:155] is the sub-list for method output_type
+	143, // [143:149] is the sub-list for method input_type
+	143, // [143:143] is the sub-list for extension type_name
+	143, // [143:143] is the sub-list for extension extendee
+	0,   // [0:143] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_rules_v1_rules_proto_init() }
