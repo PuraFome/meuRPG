@@ -19,8 +19,8 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     const data: PartyNpcData = {
       campaignId: 'camp-1',
       npcs: [
-        { id: 'npc-1', name: 'Orin, o guia', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null },
-        { id: 'npc-2', name: 'Velha Odra', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null },
+        { id: 'npc-1', name: 'Orin, o guia', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: '' },
+        { id: 'npc-2', name: 'Velha Odra', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: '' },
       ],
       entries: [{ creatureKey: GOBLIN.key, count: 2 }],
       party: [],
