@@ -864,17 +864,14 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		PactMagicBefore: pact(o.PactBefore), PactMagicAfter: pact(o.PactAfter),
 		NewFeatures: named(o.NewFeatures), MasterAdds: named(o.MasterAdds), AnyClassSpells: i32(o.AnyClassSpells),
 	}
-	switch o.SpellsKind {
-	case rules.PreparationSpellbook:
-		out.SpellsKind = charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_SPELLBOOK
-	case rules.PreparationKnown:
-		out.SpellsKind = charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_KNOWN
-	}
+	out.SpellsKind = spellsKindOf(o.SpellsKind)
 	for _, sub := range o.Subclasses {
 		out.Subclasses = append(out.Subclasses, &charactersv1.LevelUpSubclass{
 			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: choices(sub.FeatureChoices),
 			Cantrips: i32(sub.Cantrips), SkillChoices: i32(sub.SkillChoices), ExpertiseChoices: i32(sub.ExpertiseChoices),
 			Archived: sub.Archived,
+			Spells:   i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),
+			Prepares: sub.Prepares, PreparedMaxAfter: i32(sub.PreparedMaxAfter),
 		})
 	}
 	return out
@@ -903,4 +900,16 @@ func hitPointsRuleToProto(rule HitPointsRule) charactersv1.LevelUpHitPointsRule 
 		return charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_AVERAGE_ONLY
 	}
 	return charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_PLAYER_CHOOSES
+}
+
+// spellsKindOf is where the new spells of a level go: the wizard's spellbook or a
+// known caster's list; unspecified for a class that adds none.
+func spellsKindOf(kind string) charactersv1.LevelUpSpellsKind {
+	switch kind {
+	case rules.PreparationSpellbook:
+		return charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_SPELLBOOK
+	case rules.PreparationKnown:
+		return charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_KNOWN
+	}
+	return charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_UNSPECIFIED
 }

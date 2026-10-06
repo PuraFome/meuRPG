@@ -186,6 +186,10 @@ type LevelUpSubclass struct {
 	// that does not cast).
 	SpellList     string
 	MaxSpellLevel int
+	// Prepares says a third caster's subclass prepares its spells, and
+	// PreparedMaxAfter is how many it may prepare at the new level once chosen.
+	Prepares         bool
+	PreparedMaxAfter int
 	// Archived says the table retired this subclass (see RaceEntry.Archived):
 	// the screen does not offer it as a new choice.
 	Archived bool
@@ -372,6 +376,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 					ls.Cantrips += max(with.Cantrips-o.Cantrips, 0)
 					ls.Spells, ls.SpellsKind = max(with.Spells-o.Spells, 0), with.SpellsKind
 					ls.SpellList, ls.MaxSpellLevel = with.SpellList, with.MaxSpellLevel
+					ls.Prepares, ls.PreparedMaxAfter = with.Prepares, with.PreparedMaxAfter
 				}
 				o.Subclasses = append(o.Subclasses, ls)
 			}

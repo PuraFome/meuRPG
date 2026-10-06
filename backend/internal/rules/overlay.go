@@ -67,7 +67,12 @@ const (
 type Overlay struct {
 	// Revision is the table's content_revision. It goes in the content
 	// version: "srd51@<commit>+fx.<n>+mesa.<revision>".
-	Revision    int
+	Revision int
+	// Strict lists the entries the caller is writing now (their keys). A field an
+	// effect's type does not read is refused in them (a write is checked); in the
+	// others, which come from storage, it is ignored, so a stray field can never
+	// make a campaign unreadable.
+	Strict      []string
 	Classes     []TableClass
 	Subclasses  []TableSubclass
 	Races       []TableRace
@@ -579,11 +584,15 @@ type overlayBuilder struct {
 	classSubLevel map[string]int
 	// pending are the effects to compile once every entry exists.
 	pending []pendingEffects
+	// strict is Overlay.Strict as a set.
+	strict map[string]bool
 }
 
 type pendingEffects struct {
 	owner   string
 	effects []Effect
+	// strict says the entry is being written: see Overlay.Strict.
+	strict bool
 	// path is where the effects are in the Overlay, for errors.
 	path string
 }
@@ -616,6 +625,10 @@ func (b *overlayBuilder) build(o Overlay) error {
 		return err
 	}
 	b.entries, b.used = map[string]bool{}, map[string]bool{}
+	b.strict = map[string]bool{}
+	for _, k := range o.Strict {
+		b.strict[k] = true
+	}
 	b.classListFrom, b.classCasts, b.classSubLevel = map[string]string{}, map[string]string{}, map[string]int{}
 	spells := byKey(o.Spells, func(e *TableSpell) string { return e.Key })
 	races := byKey(o.Races, func(e *TableRace) string { return e.Key })
@@ -645,7 +658,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 
 	for _, i := range spells {
 		path := fmt.Sprintf("spells[%d]", i)
-		if err := b.addSpell(&o.Spells[i]); err != nil {
+		if err := b.addSpell(&o.Spells[i], path); err != nil {
 			return locate(err, path)
 		}
 	}
