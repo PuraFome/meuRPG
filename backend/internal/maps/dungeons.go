@@ -912,6 +912,11 @@ var (
 // naming the option. The seed and the algorithm version are the server's.
 func dungeonOptionsFromProto(in *mapsv1.DungeonOptions, seed uint64) (dungeon.Options, error) {
 	o := dungeon.DefaultOptions(seed)
+	// A request without options is the default dungeon, like an empty message (every
+	// option is optional); reading a field of the nil message would panic.
+	if in == nil {
+		in = &mapsv1.DungeonOptions{}
+	}
 	set := func(dst *int, v *int32) {
 		if v != nil {
 			*dst = int(*v)
