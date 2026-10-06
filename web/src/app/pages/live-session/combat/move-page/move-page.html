@@ -95,6 +95,15 @@
         @if (jumping() && jumps(); as limits) {
           <app-jump-panel [limits]="limits" [kind]="kind()" [height]="height()" [atMin]="atMin()" [atMax]="atMax()" (step)="step($event)" />
         }
+        <!-- A live region that is on the page before the text arrives, so a screen reader reads the notice when a locked door stops the move. -->
+        <div role="status" aria-live="polite" class="move__live">
+          @if (lockedDoor() && !visibleError()) {
+            <div class="mr-notice mr-notice--warning">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              <p><strong class="move__strong">A porta está trancada.</strong>O movimento para antes dela. Só o mestre a destranca.</p>
+            </div>
+          }
+        </div>
         @if (visibleError()) {
           <div class="mr-notice mr-notice--danger" role="alert">
             <mat-icon aria-hidden="true">block</mat-icon>

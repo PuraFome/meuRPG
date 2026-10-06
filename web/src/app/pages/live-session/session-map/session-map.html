@@ -70,6 +70,8 @@
             [viewer]="viewer()"
             [isMaster]="isMaster()"
             [mode]="isMaster() && !phone() ? 'tokens' : 'view'"
+            [doorTaps]="isMaster()"
+            (doorPick)="openDoor($event)"
             [pins]="true"
             [senses]="senses()"
             [carried]="carriedName()"
@@ -161,6 +163,12 @@
               [tokens]="isMaster() && !phone() ? [] : state().tokens()"
             />
             <app-map-pins-legend [points]="state().points()" [isMaster]="isMaster()" />
+            @if (isMaster()) {
+              <p class="map__hint">
+                <mat-icon aria-hidden="true">door_front</mat-icon>
+                Sem a névoa, as portas deste mapa se abrem, fecham e trancam no editor do mapa (“Abrir mapa”).
+              </p>
+            }
           </div>
           <div class="map__actions">
             @if (searchable()) {

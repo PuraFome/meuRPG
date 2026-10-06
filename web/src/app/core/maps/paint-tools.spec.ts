@@ -15,6 +15,11 @@ describe('strokeOf', () => {
     expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'light', light: 3 })).toEqual({ layer: MapLayer.LIGHT, value: 3 });
   });
 
+  it('paints the chosen door in the doors layer, and 0 takes it away', () => {
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'door', door: 3 })).toEqual({ layer: MapLayer.DOORS, value: 3 });
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'door', door: 3, erase: true })).toEqual({ layer: MapLayer.DOORS, value: 0 });
+  });
+
   it('erases the chosen tool\'s layer with 0', () => {
     expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'cover', cover: 2, erase: true })).toEqual({ layer: MapLayer.COVER, value: 0 });
     expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'light', erase: true })).toEqual({ layer: MapLayer.LIGHT, value: 0 });
@@ -57,6 +62,11 @@ describe('paintHint', () => {
     expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'cover', cover: 2 })).toBe('Cobertura · Três quartos · arraste para pintar · Shift apaga');
     expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'light', light: 3, erase: true })).toBe('Luz · arraste para apagar');
   });
+
+  it('says the kind of door and that a tap puts it', () => {
+    expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'door', door: 5 })).toBe('Porta · Secreta · toque para pôr · Shift tira');
+    expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'door', erase: true })).toBe('Porta · toque numa porta para tirá-la');
+  });
 });
 
 /** The words use no-break spaces to keep a number with its unit. */
@@ -75,7 +85,8 @@ describe('layerLines', () => {
 
   it('counts what each layer holds, in the words of the artboard', () => {
     const lines = layerLines(some);
-    expect(lines.map((l) => l.name)).toEqual(['Terreno difícil', 'Parede', 'Cobertura', 'Luz']);
+    expect(lines.map((l) => l.name)).toEqual(['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Portas']);
+    expect(lines[4].detail).toBe('nada pintado');
     expect(plain(lines[0].detail)).toContain('2 quadrados');
     expect(plain(lines[0].detail)).toContain('custa +1,5 m por quadrado');
     expect(plain(lines[1].detail)).toContain('1 quadrado');

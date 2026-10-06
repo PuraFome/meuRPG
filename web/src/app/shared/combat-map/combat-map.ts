@@ -4,13 +4,14 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from '../../core/combat/combat-grid';
-import type { MapLayers } from '../../core/maps/layers';
+import type { DoorSquare, MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
 import { isCreature } from '../../core/combat/creature-names';
 import { CombatantToken } from '../combatant-token/combatant-token';
 import type { Vision } from '../../core/maps/vision';
 import { FogBase } from '../fog-map/fog-base';
+import { DoorPicks } from '../map-layers/door-picks';
 import { MapLayersOverlay } from '../map-layers/map-layers';
 
 /** The map's picture: its URL and size (the frame is reserved from it). */
@@ -58,7 +59,7 @@ export interface TokenDrop extends Square {
  * - **Fog (Etapa 9):** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
  *   shading of what they see) instead of the image; the combatants are what the server sends them.
  * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
- *   by `app-map-layers` over the image.
+ *   by `app-map-layers` over the image, and the doors (Etapa 10), one mark per kind; with `doorPicks` the master taps a door.
  * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.
@@ -74,7 +75,7 @@ export interface TokenDrop extends Square {
  */
 @Component({
   selector: 'app-combat-map',
-  imports: [CombatantToken, FogBase, MapLayersOverlay, MatIconModule],
+  imports: [CombatantToken, DoorPicks, FogBase, MapLayersOverlay, MatIconModule],
   templateUrl: './combat-map.html',
   styleUrl: './combat-map.scss',
 })
@@ -100,6 +101,8 @@ export class CombatMap {
   readonly pickSquares = input(false);
   /** Side of one square in pixels; `null` fits the map to its container. */
   readonly cellPx = input<number | null>(null);
+  /** The master's map: each door is a button that opens its sheet (E10-05 10), over the layers and under the tokens. */
+  readonly doorPicks = input(false);
   /** The "Vez" word above the one on turn: left out where the page is about one mover (the "Mover" page). */
   readonly showTurn = input(true);
 
@@ -107,6 +110,8 @@ export class CombatMap {
   readonly choose = output<Square>();
   /** Enter on the chosen square in `pickSquares` mode. */
   readonly confirm = output<void>();
+  /** The master tapped a door (`doorPicks`). */
+  readonly doorPick = output<DoorSquare>();
   /** A token was dropped on a square (a drag, or Enter after the arrows). */
   readonly tokenDrop = output<TokenDrop>();
   /** The places of the fog map whose tile has arrived. */
@@ -201,6 +206,14 @@ export class CombatMap {
   protected readonly canMove = computed(
     () => this.masterMoves() || this.ownMoveId() !== null || this.pickSquares(),
   );
+
+  /** Whether the cost pill of the chosen square goes above it: below by default, but never over a door (it would hide the mark), and above at the bottom edge. */
+  protected costAbove(at: Square): boolean {
+    const door = (row: number) => (this.layers()?.doors ?? []).some((d) => d.col === at.col && d.row === row);
+    const belowFree = at.row + 2 < this.rows() && !door(at.row + 1);
+    const aboveFree = at.row > 0 && !door(at.row - 1);
+    return !belowFree && (aboveFree || at.row + 2 >= this.rows());
+  }
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
@@ -342,6 +355,10 @@ export class CombatMap {
   // ---- keyboard ----
 
   protected onKeydown(event: KeyboardEvent): void {
+    // A door's own button (the master's sheet) keeps Enter and the arrows for itself.
+    if ((event.target as HTMLElement).closest('[data-door]')) {
+      return;
+    }
     if (!this.canMove()) {
       return;
     }

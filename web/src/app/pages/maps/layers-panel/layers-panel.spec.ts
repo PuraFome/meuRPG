@@ -11,8 +11,13 @@ const layers: MapLayers = {
   terrain: [1, 2, 3, 4].map((col) => ({ col, row: 9 })),
   half: [{ col: 19, row: 7 }, { col: 19, row: 8 }],
   threeQuarters: [{ col: 20, row: 4 }],
+  doors: [
+    { col: 3, row: 3, state: 2, axis: 'h' },
+    { col: 8, row: 3, state: 3, axis: 'h' },
+    { col: 9, row: 9, state: 5, axis: 'v' },
+  ],
 };
-const all: LayerVisibility = { terrain: true, wall: true, cover: true, light: true };
+const all: LayerVisibility = { terrain: true, wall: true, cover: true, light: true, door: true };
 
 describe('LayersPanel', () => {
   let fixture: ComponentFixture<LayersPanel>;
@@ -39,14 +44,15 @@ describe('LayersPanel', () => {
   }
   const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
 
-  it('lists the four layers with what each holds, in the artboard\'s words', () => {
+  it('lists the five layers with what each holds, in the artboard\'s words', () => {
     setup();
-    for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz']) {
+    for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Portas']) {
       expect(text()).toContain(name);
     }
     expect(text()).toContain('4 quadrados · custa +1,5 m por quadrado');
     expect(text()).toContain('242 quadrados · bloqueia movimento, visão e luz');
     expect(text()).toContain('2 quadrados de meia cobertura e 1 de três quartos');
+    expect(text()).toContain('3 portas · 1 trancada · 1 secreta');
     expect(text()).toContain('nada pintado');
     expect(text()).toContain('Claro');
     expect(text()).toContain('Penumbra');
@@ -56,7 +62,7 @@ describe('LayersPanel', () => {
   it('a switch shows or hides a layer on his own map', () => {
     setup();
     const wall = el.querySelector<HTMLElement>('button[role="switch"][aria-labelledby$="-label"]')!;
-    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(4);
+    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(5);
     expect(wall.getAttribute('aria-checked')).toBe('true');
     wall.click();
     expect(changes).toEqual([{ ...all, terrain: false }]);

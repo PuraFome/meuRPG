@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import type { MapLayers } from '../../core/maps/layers';
+import type { DoorKind, MapLayers } from '../../core/maps/layers';
+import { DoorMark } from './door-mark';
 
 /**
  * The map's painted layers drawn over its image (Etapa 9, MAP-LANGUAGE.md),
@@ -9,7 +10,8 @@ import type { MapLayers } from '../../core/maps/layers';
  * of the square (a dotted square filled from the bottom to one half, "Meia
  * cobertura", or to three quarters, "Três quartos"). Each mark has a name in
  * `MapLayersLegend`: never colour alone, and never an object's name, because
- * the app knows only the degree.
+ * the app knows only the degree. The **doors** (Etapa 10, `app-door-mark`) are one mark per kind, drawn only as they arrive:
+ * a player's layers have no padlock and no secret door.
  *
  * Presentational and pure drawing: it takes the decoded squares
  * (`core/maps/layers.ts`) and decides nothing about what they do. It sits in
@@ -30,6 +32,8 @@ export interface BrushCursor {
   readonly w: number;
   readonly h: number;
   readonly erase?: boolean;
+  /** The door tool: the kind the next tap would paint, drawn inside the cursor, and the words over it ("Fechada → Trancada"). */
+  readonly door?: { readonly state: DoorKind | null; readonly label: string };
 }
 
 @Component({
@@ -41,6 +45,9 @@ export interface BrushCursor {
     }
     @for (s of layers().walls; track s.row * 1000 + s.col) {
       <span class="sq sq--wall" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
+    }
+    @for (d of layers().doors ?? []; track d.row * 1000 + d.col) {
+      <span class="sq sq--door" [style.left.%]="x(d.col)" [style.top.%]="y(d.row)"><app-door-mark [state]="d.state" [axis]="d.axis" /></span>
     }
     @for (s of layers().half; track s.row * 1000 + s.col) {
       <span class="sq sq--cover sq--half" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
@@ -67,10 +74,18 @@ export interface BrushCursor {
         [style.top.%]="y(c.row)"
         [style.width.%]="(c.w / columns()) * 100"
         [style.height.%]="(c.h / rows()) * 100"
-      ></span>
+      >
+        @if (c.door; as d) {
+          @if (!c.erase && d.state) {
+            <app-door-mark class="cursor__door" [state]="d.state" />
+          }
+          <span class="cursor__tag" [class.cursor__tag--below]="c.row === 0">{{ d.label }}</span>
+        }
+      </span>
     }
   `,
   styleUrl: './map-layers.scss',
+  imports: [DoorMark],
   host: { 'aria-hidden': 'true' },
 })
 export class MapLayersOverlay {

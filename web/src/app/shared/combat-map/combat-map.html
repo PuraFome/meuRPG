@@ -37,6 +37,9 @@
         <app-map-layers [layers]="l" />
       }
     }
+    @if (doorPicks() && layers(); as l) {
+      <app-door-picks [layers]="l" [columns]="columns()" [rows]="rows()" (pick)="doorPick.emit($event)" />
+    }
     <svg
       class="cm__grid"
       aria-hidden="true"
@@ -109,7 +112,7 @@
       >
         <mat-icon>{{ f.refused ? 'block' : 'check' }}</mat-icon>
         @if (f.label) {
-          <span class="cm__cost" [class.cm__cost--above]="f.square.row + 2 >= rows()">{{ f.label }}</span>
+          <span class="cm__cost" [class.cm__cost--above]="costAbove(f.square)">{{ f.label }}</span>
         }
       </span>
     }
