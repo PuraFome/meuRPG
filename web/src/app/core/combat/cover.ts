@@ -40,6 +40,11 @@ export function coverText(cover: CoverDegree, source: CoverSource): string {
   return word ? (from ? `${word} (${from})` : word) : '';
 }
 
+/** What the degree adds to the armor class, in words ("+2 na CA"), or `''` (none, total). The SRD's fixed numbers, said where a player reads the cover that counted. */
+export function coverBonusText(cover: CoverDegree): string {
+  return cover === CoverDegree.HALF ? '+2 na CA' : cover === CoverDegree.THREE_QUARTERS ? '+5 na CA' : '';
+}
+
 /** Which pictogram a degree draws (`mr-swatch--half`, `--three`); total has none. */
 export function coverMark(cover: CoverDegree): 'half' | 'three' | null {
   return cover === CoverDegree.HALF ? 'half' : cover === CoverDegree.THREE_QUARTERS ? 'three' : null;

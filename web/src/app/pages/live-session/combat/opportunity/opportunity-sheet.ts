@@ -52,7 +52,7 @@ export type OpportunityAnswer = { readonly attackKey: string; readonly options: 
         </div>
       }
       @if (gone()) {
-        <p class="what" role="status">O mestre respondeu por você: esse ataque de oportunidade não espera mais a sua resposta.</p>
+        <p class="what" role="status">O mestre respondeu por você ou retirou a oferta: esse ataque de oportunidade não espera mais a sua resposta.</p>
       } @else {
         <p class="what">{{ question() }}</p>
         <p class="small">{{ spend() }}</p>

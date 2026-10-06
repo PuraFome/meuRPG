@@ -2,7 +2,7 @@
   <h2 class="groups__title" id="groups-title">O que você pode fazer</h2>
 
   @if (desktop()) {
-    <app-economy-tiles [own]="own()" [attacksLeft]="attacksLeft()" [attacksPerAction]="attacksPerAction()" />
+    <app-economy-tiles [own]="own()" [attacksLeft]="attacksLeft()" [attacksPerAction]="attacksPerAction()" [theatre]="theatre()" />
   }
 
   @if (note()) {
@@ -21,6 +21,47 @@
       <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
       <button mat-stroked-button type="button" (click)="rollDamage.emit()">Rolar o dano</button>
     </div>
+  }
+
+  @if (theatre()) {
+    <!-- E10-04 state 7: Movimento first, right after the economy tiles. -->
+  <section class="group" aria-labelledby="g-move">
+    <header class="group__head">
+      <h3 class="group__name" id="g-move">Movimento</h3>
+      @if (!theatre()) {
+        <app-group-state [word]="own().disengaged ? 'Desengajado' : movement().pill" [icon]="own().disengaged ? 'directions_run' : 'arrow_forward'" />
+      }
+    </header>
+    @if (theatre()) {
+      <!-- E10-04 state 7: no "Mover" page and no map: one phrase and one button, dashed with its reason once the movement is spent. -->
+      <p class="group__why group__why--plain" id="spend-why">
+        {{ locked() || (movement().left > 0 ? 'Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.' : 'Você já gastou todo o movimento deste turno.') }}
+      </p>
+      <button
+        mat-stroked-button
+        type="button"
+        class="spend"
+        [class.mr-button--off]="movement().left <= 0 || !!locked()"
+        [disabled]="movement().left <= 0 || !!locked() || busy()"
+        disabledInteractive
+        [attr.aria-describedby]="movement().left <= 0 || locked() ? 'spend-why' : null"
+        (click)="movement().left > 0 && !locked() && move.emit()"
+      >
+        <mat-icon aria-hidden="true">directions_run</mat-icon>Gastar movimento
+      </button>
+    } @else {
+      <app-action-row
+        name=""
+        [detail]="movement().text"
+        [button]="movement().left <= 0 ? '' : 'Mover'"
+        buttonLabel="Mover"
+        [off]="!!locked()"
+        [reason]="locked()"
+        [busy]="busy()"
+        (press)="move.emit()"
+      />
+    }
+  </section>
   }
 
   <section class="group" aria-labelledby="g-action">
@@ -201,21 +242,43 @@
       }
     </section>
   }
-
+  @if (!theatre()) {
   <section class="group" aria-labelledby="g-move">
     <header class="group__head">
       <h3 class="group__name" id="g-move">Movimento</h3>
-      <app-group-state [word]="own().disengaged ? 'Desengajado' : movement().pill" [icon]="own().disengaged ? 'directions_run' : 'arrow_forward'" />
+      @if (!theatre()) {
+        <app-group-state [word]="own().disengaged ? 'Desengajado' : movement().pill" [icon]="own().disengaged ? 'directions_run' : 'arrow_forward'" />
+      }
     </header>
-    <app-action-row
-      name=""
-      [detail]="movement().text"
-      [button]="movement().left <= 0 ? '' : 'Mover'"
-      buttonLabel="Mover"
-      [off]="!!locked()"
-      [reason]="locked()"
-      [busy]="busy()"
-      (press)="move.emit()"
-    />
+    @if (theatre()) {
+      <!-- E10-04 state 7: no "Mover" page and no map: one phrase and one button, dashed with its reason once the movement is spent. -->
+      <p class="group__why group__why--plain" id="spend-why">
+        {{ locked() || (movement().left > 0 ? 'Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.' : 'Você já gastou todo o movimento deste turno.') }}
+      </p>
+      <button
+        mat-stroked-button
+        type="button"
+        class="spend"
+        [class.mr-button--off]="movement().left <= 0 || !!locked()"
+        [disabled]="movement().left <= 0 || !!locked() || busy()"
+        disabledInteractive
+        [attr.aria-describedby]="movement().left <= 0 || locked() ? 'spend-why' : null"
+        (click)="movement().left > 0 && !locked() && move.emit()"
+      >
+        <mat-icon aria-hidden="true">directions_run</mat-icon>Gastar movimento
+      </button>
+    } @else {
+      <app-action-row
+        name=""
+        [detail]="movement().text"
+        [button]="movement().left <= 0 ? '' : 'Mover'"
+        buttonLabel="Mover"
+        [off]="!!locked()"
+        [reason]="locked()"
+        [busy]="busy()"
+        (press)="move.emit()"
+      />
+    }
   </section>
+  }
 </section>

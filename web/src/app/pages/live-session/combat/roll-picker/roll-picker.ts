@@ -43,6 +43,8 @@ export class RollPicker {
   readonly hint = input('');
   /** The caption of the total box ("Total do ataque"). */
   readonly totalNote = input('Total');
+  /** The fixed parts added to what is typed, said in the field's place of the modifier ("+ 8 do crítico + 3 de modificador"). */
+  readonly fixedText = input('');
   /** What the buttons are called when the way is a damage roll. */
   readonly appLabel = input('Rolar no app');
   /** The master's NPC card has no filled button of its own ("Próximo turno" owns it). */
@@ -83,6 +85,9 @@ export class RollPicker {
     return v === null ? null : { sum: v + this.modifier(), text: typedTotal(v, this.modifier()) };
   });
   protected readonly bonusText = computed(() => {
+    if (this.fixedText()) {
+      return this.fixedText();
+    }
     const m = this.modifier();
     return m === 0 ? '' : `${m < 0 ? '−' : '+'} ${Math.abs(m)} de ${this.max() === 20 ? 'bônus' : 'modificador'}`;
   });

@@ -1,7 +1,12 @@
 <section class="card" aria-labelledby="npc-title">
   @if (narrow()) {
     <!-- The phone's one turn card (E6-12): whose turn, then what to do, then "Próximo turno". -->
-    <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
+    <div class="card__top">
+      <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
+      @if (theatre()) {
+        <app-theatre-pill />
+      }
+    </div>
     <div class="card__who">
       @if (isNpc()) {
         <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
@@ -16,12 +21,12 @@
         <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="64" fit="cover" [decorative]="true" />
       }
       <h2 class="card__title" id="npc-title">
-        {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
+        {{ full() ? 'Ações ' + ofLabel() : 'Dano de ' + subject().label }}
       </h2>
     </div>
   }
 
-  @if (isNpc()) {
+  @if (full()) {
     <div class="stats">
       @if (stats().hp; as hp) {
         <div class="stat">
@@ -37,7 +42,7 @@
       }
       <div class="stat stat--wide">
         <span class="stat__cap">Deslocamento</span>
-        <span class="stat__val">{{ stats().speed.meters }}<small>&nbsp;· {{ stats().speed.squares }}</small></span>
+        <span class="stat__val">{{ stats().speed.meters }}@if (stats().speed.squares) {<small>&nbsp;· {{ stats().speed.squares }}</small>}</span>
       </div>
     </div>
 
@@ -56,7 +61,33 @@
       </li>
     </ul>
 
-    @if (attacks().length) {
+    @if (theatre() && !down()) {
+      <app-master-spend [campaignId]="campaignId()" [encounterId]="encounter().id" [subject]="subject()" [state]="state()" />
+    }
+    @if (theatre() && isNpc()) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="offer"
+        [class.mr-button--off]="!!offerWhy()"
+        [attr.aria-expanded]="offering()"
+        [attr.aria-describedby]="offerWhy() ? 'offer-why' : null"
+        [disabled]="!!offerWhy()"
+        disabledInteractive
+        (click)="!offerWhy() && offer.emit()"
+      >
+        <mat-icon aria-hidden="true">swords</mat-icon>Oferecer ataque de oportunidade
+      </button>
+      @if (offerWhy()) {
+        <p class="offer__why" id="offer-why">{{ offerWhy() }}</p>
+      }
+      <!-- The form opens right here, under its button. -->
+      <ng-content select="[offer-slot]" />
+    }
+
+    @if (!isNpc()) {
+      <!-- A player's own turn, seen by the master in a combat without a map: the movement he may spend for them, and the damage below. -->
+    } @else if (attacks().length) {
       <p class="card__cap">Ataque</p>
       <app-attack-choice [attacks]="attacks()" [selected]="attackKey()" (pick)="pickAttack($event)" />
 

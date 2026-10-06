@@ -34,7 +34,7 @@ export interface LiveStreamHandlers {
   onLeftImages?(): void;
   /** `encounter_changed`: the combat changed; the page reads it again when
    * `revision` is newer than its copy. */
-  onEncounterChanged?(change: { encounterId: string; revision: number }): void;
+  onEncounterChanged?(change: { encounterId: string; revision: number; mode?: number }): void;
   /** `turn_changed`: applied in place, per audience. */
   onTurnChanged?(turn: TurnChange): void;
   /** `combatant_moved`: applied in place. */

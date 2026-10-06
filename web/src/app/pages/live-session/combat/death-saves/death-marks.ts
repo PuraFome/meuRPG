@@ -75,25 +75,79 @@ export class DeathMarks {
   protected readonly dots = computed(() => marks(this.count()));
 }
 
-/** The two rows of marks on the master's order, side by side: successes then failures (E6-30). */
+/** The two rows of marks on the master's order, side by side: successes then failures (E6-30). With the table's rule "só o dono e o mestre"
+ * (RN-24) they say who else sees them, in the words and the eye-off icon of the player's own card (E10-04 state 6). */
 @Component({
   selector: 'app-death-row',
-  imports: [DeathMarks],
+  imports: [DeathMarks, MatIconModule],
   template: `
-    <app-death-marks kind="success" [count]="successes()" [size]="24" />
-    <app-death-marks kind="failure" [count]="failures()" [size]="24" />
+    @if (ownerOnly()) {
+      <span class="cap">Testes contra a morte</span>
+      <span class="pill"><mat-icon aria-hidden="true">visibility_off</mat-icon>Dono e mestre</span>
+    }
+    <span class="grp">
+      <span class="lbl">Sucessos {{ successes() }} de 3</span>
+      <app-death-marks kind="success" [count]="successes()" [size]="24" />
+    </span>
+    <span class="grp">
+      <span class="lbl">Falhas {{ failures() }} de 3</span>
+      <app-death-marks kind="failure" [count]="failures()" [size]="24" />
+    </span>
   `,
   styles: `
     :host {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 4px 12px;
       margin-top: 4px;
     }
+
+    .grp {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lbl {
+      font-size: 14px;
+      color: var(--mr-ink-muted);
+      white-space: nowrap;
+    }
+
+    .cap {
+      flex: 1 0 100%;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-sizing: border-box;
+      height: 26px;
+      padding: 0 10px 0 8px;
+      border: 1px solid var(--mr-control-line);
+      border-radius: var(--mr-radius-pill);
+      color: var(--mr-ink-muted);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .pill .mat-icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
   `,
-  host: { 'aria-hidden': 'true' },
 })
 export class DeathRow {
   readonly successes = input.required<number>();
   readonly failures = input.required<number>();
+  /** Only the owner and the master see the marks. */
+  readonly ownerOnly = input(false);
 }

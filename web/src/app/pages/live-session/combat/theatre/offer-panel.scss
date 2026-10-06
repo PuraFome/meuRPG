@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 18px 20px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.offer__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.offer__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.offer__sub {
+  margin: 4px 0 0;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.offer__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-danger-ink);
+
+  mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.row--on {
+  padding: 7px 11px;
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.row--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}
+
+.row__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+}
+
+.row--on .row__dot {
+  border: 6px solid var(--mr-accent);
+}
+
+.row__name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.row__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  text-align: right;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+
+  // Two buttons of one size, from a phone to a desktop.
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 220px);
+  }
+}
+
+.btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  min-width: 0;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
