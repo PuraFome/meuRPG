@@ -291,6 +291,9 @@ type actionEvent struct {
 	From             *moveState `json:"from,omitempty"`
 	// StoppedEarly says a creature the mover did not see cut the move short.
 	StoppedEarly bool `json:"stopped_early,omitempty"`
+	// LockedDoor says a locked door stopped the move (RN-26); a replay of the move
+	// under the same key says it again.
+	LockedDoor bool `json:"locked_door,omitempty"`
 
 	// Opportunity attacks (MR-034, RN-21). MoveID is set on a move that made
 	// offers (they share it: the undo of the move deletes them). OfferID is the

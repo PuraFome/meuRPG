@@ -83,6 +83,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
 
+// The maps module opens the doors the combat walks into (RN-26): play picks it up
+// from SetTerrain by a type assertion, so a drifted signature must fail here.
+var (
+	_ play.TerrainSource = (*maps.Service)(nil)
+	_ play.DoorKeeper    = (*maps.Service)(nil)
+)
+
 // Build information, replaced at build time with:
 //
 //	go build -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse HEAD)"

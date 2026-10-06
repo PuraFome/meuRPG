@@ -1281,6 +1281,11 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS = 58;
   // StartFamiliarSight, StopFamiliarSight: see `familiar_sight_reason`.
   ENCOUNTER_BLOCKED_REASON_FAMILIAR_SIGHT_BLOCKED = 59;
+  // MoveCombatant: the first square of the move is a locked door (RN-26), so the
+  // combatant cannot take a step: "A porta está trancada." Nothing is spent. A
+  // move that gets some squares before the locked door is no refusal: it ends
+  // before the door (MoveCombatantResponse.locked_door).
+  ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED = 60;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1803,6 +1808,11 @@ message MoveCombatantResponse {
   // ones the caller may see). It is true even when every reactor is hidden from
   // the caller (the wait itself is a hint, accepted).
   bool provoked = 3;
+  // True when the move ended before a locked door that stopped it (RN-26): the
+  // screen says "A porta está trancada." The movement spent is the real cost up
+  // to where the combatant stopped. A player only gets it for a door they know
+  // (see or remember); otherwise the move reads as stopped_early.
+  bool locked_door = 4;
 }
 
 // GetMoveOptionsRequest names a combatant.
@@ -2794,6 +2804,10 @@ enum CombatLogKind {
   // Everyone who sees the actor gets the line; the damage the beast's fall carried
   // over to the druid is the druid's player's and the master's alone (RN-20).
   COMBAT_LOG_KIND_WILD_SHAPE = 21;
+  // A move opened a closed door (RN-26, "Toren abriu a porta"): the actor and
+  // `door`. On a map without the fog everyone gets the line; with the fog, the players whose character saw or remembers the door when it opened, and the mover's player (RN-10). Any combatant's move can open a door. The
+  // master's undo of the move does not close the door, so the line stays.
+  COMBAT_LOG_KIND_DOOR_OPENED = 22;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -2903,6 +2917,15 @@ message CombatLogEntry {
   TrapFiring trap = 40;
   // WILD_SHAPE: the form change. The actor is the druid.
   CombatLogWildShape wild_shape = 41;
+  // DOOR_OPENED: where the door is. The actor is who opened it.
+  CombatLogDoor door = 42;
+}
+
+// CombatLogDoor is a door a move opened, in the combat log.
+message CombatLogDoor {
+  // The door's square: col counts from the left edge and row from the top.
+  int32 col = 1;
+  int32 row = 2;
 }
 
 // CombatLogSpell is a spell in the combat log: the cast, or a reaction.

@@ -1,6 +1,6 @@
 // Package grid is the geometry of a map's grid (MR-034, RN-21, Etapa 9): the
 // squares and their size, the painted layers (walls, difficult terrain,
-// light), the straight line between two squares, what a move costs, which
+// light, cover, doors), the straight line between two squares, what a move costs, which
 // squares a mover reaches, and the range of attacks and spells.
 //
 // Like the rest of package rules it is pure: no database, network, clock or

@@ -381,6 +381,7 @@ type Service struct {
 	roster    CombatRoster
 	dice      DiceModes
 	terrain   TerrainSource
+	doors     DoorKeeper // the maps module, when the terrain source is one (SetTerrain)
 	fog       FogSource
 	traps     TrapBook
 	// afterSightRead is a test hook: it runs between the moment a change reads the
@@ -461,6 +462,7 @@ func New(cfg Config) (*Service, error) {
 		roster:    cfg.Roster,
 		dice:      cfg.Dice,
 		terrain:   cfg.Terrain,
+		doors:     doorKeeperOf(cfg.Terrain),
 		roller:    cfg.Roller,
 		logger:    cfg.Logger,
 		now:       cfg.Now,

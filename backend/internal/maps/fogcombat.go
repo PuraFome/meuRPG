@@ -79,8 +79,8 @@ func (c *combatSight) CanSee(from grid.Square, senses vision.Senses, to grid.Squ
 	return c.sg.entry.lit.CanSee(vision.Viewer{At: from, Senses: senses}, to)
 }
 
-// KnownTerrain is the terrain the player knows: the walls, the difficult terrain
-// and the cover of the squares they see now or remember, and plain floor
+// KnownTerrain is the terrain the player knows: the walls, the difficult terrain,
+// the cover and the doors (as a player knows them) of the squares they see now or remember, and plain floor
 // everywhere else (D1: the move is planned on what the player knows, and cut short
 // by what they do not).
 func (c *combatSight) KnownTerrain(ctx context.Context, tx pgx.Tx, userID string) (grid.Terrain, error) {
@@ -96,7 +96,7 @@ func (c *combatSight) KnownTerrain(ctx context.Context, tx pgx.Tx, userID string
 	}
 	pv := c.sg.newView(userID, memory)
 	set := filterLayers(*pv.layers, pv)
-	t = grid.Terrain{Grid: c.in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover}
+	t = grid.Terrain{Grid: c.in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors}
 	c.mu.Lock()
 	c.known[userID] = t
 	c.mu.Unlock()

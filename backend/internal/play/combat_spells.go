@@ -324,7 +324,7 @@ func (s *Service) CastSpell(
 			if len(targs) > 0 {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
-		} else if err := s.checkTargets(v, planOn(terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+		} else if err := s.checkTargets(v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
 			return nil, err
 		}
 		var summon *summoning
