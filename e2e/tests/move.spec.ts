@@ -231,7 +231,7 @@ test(
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
       await expect(prompt).toBeVisible();
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Pensantus' });
-      await expect(card.getByText('Se você seguir sem esperar, o Pensantus perde essa reação.')).toBeVisible();
+      await expect(card.getByText('Se você seguir sem esperar, o Pensantus não ataca e continua com a reação.')).toBeVisible();
       await card.getByRole('button', { name: 'Seguir sem esperar' }).click();
       await expect(card).toHaveCount(0);
       // The player's prompt says the master answered, and only closes.

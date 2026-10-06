@@ -189,3 +189,26 @@ app-action-row + .group__sub,
 .slots + app-action-row {
   border-top: 1px solid var(--mr-rule);
 }
+
+// "Gastar movimento" (a combat without a map, E10-04 state 7): the movement's one button, 48px on a phone and the same outline as the other actions.
+.spend {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  align-self: stretch;
+  width: 100%;
+  margin-top: 8px;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.group__why--plain {
+  margin: 0;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+  line-height: 20px;
+}

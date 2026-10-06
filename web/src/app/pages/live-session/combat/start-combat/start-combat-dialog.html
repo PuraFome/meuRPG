@@ -39,7 +39,27 @@
           />
         </mat-form-field>
 
-        @if (data.map; as map) {
+        <section class="mode" aria-labelledby="mode-title">
+          <h3 class="sec__title" id="mode-title">Como este combate é jogado</h3>
+          <app-dice-choice
+            name="combat-mode"
+            label="Como este combate é jogado"
+            [options]="modeOptions"
+            [value]="playMode()"
+            (valueChange)="chooseMode($event)"
+            [inert]="modeInert()"
+            [notes]="modeNotes()"
+            [grid]="true"
+          />
+          @if (theatre()) {
+            <p class="mr-notice mr-notice--neutral why" data-testid="theatre-why">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <span><b>{{ why }}</b> {{ whyMore }}</span>
+            </p>
+          }
+        </section>
+
+        @if (!theatre() && data.map; as map) {
           <div class="map">
             <div class="map__thumb">
               @if (map.columns > 0) {
@@ -71,7 +91,26 @@
             </div>
           </div>
         }
-        @if (!data.map) {
+        @if (theatre()) {
+          @if (data.map && !hasGrid()) {
+            <!-- A map without a grid is no map for "Com mapa", and the way to give it one stays here. -->
+            <div class="mr-notice mr-notice--neutral" role="status">
+              <mat-icon aria-hidden="true">grid_off</mat-icon>
+              <p>
+                <strong>Esse mapa ainda não tem grade.</strong>
+                O combate com mapa precisa dela.
+                <a
+                  class="map__link"
+                  [routerLink]="['/campanhas', data.campaignId, 'mapas', data.map.id, 'grade']"
+                  (click)="close()"
+                  [queryParams]="{ de: 'sessao' }"
+                >
+                  <mat-icon aria-hidden="true">grid_on</mat-icon>Definir a grade
+                </a>
+              </p>
+            </div>
+          }
+        } @else if (!data.map) {
           <div class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">warning</mat-icon>
             <p>

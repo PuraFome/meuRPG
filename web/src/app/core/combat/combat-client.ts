@@ -54,8 +54,9 @@ export interface StartExtras {
   readonly monstersHidden?: boolean;
   /** A BATTLE point of the campaign the combat starts from (never with the combat without a map). */
   readonly mapPointId?: string;
-  /** The combat without a map ("teatro da mente", RN-25): no map point goes with it, and the monsters have no squares. */
-  readonly theatre?: boolean;
+  /** "Com mapa" or "Sem mapa (teatro da mente)" (RN-25). Left out, the server reads the table's "combate com mapa" rule
+   * (RN-24); THEATRE sends no map point, and the monsters have no squares. */
+  readonly mode?: EncounterMode;
 }
 
 /** What `AddMonsters` answers: the combat and the ids of the new combatants, in the order of their names. */
@@ -91,6 +92,12 @@ export interface MoveResult {
   /** The move stopped before a locked door (RN-26): the page says "A porta está trancada." */
   readonly lockedDoor: boolean;
   readonly provoked: boolean;
+}
+
+/** What "Gastar movimento" answers: the combat, and what the combatant has left (tenths of a foot). */
+export interface SpendResult {
+  readonly encounter: Encounter;
+  readonly movementLeftDft: number;
 }
 
 /** What a damage call answers: the combat and the damage as it is now. For an
@@ -187,13 +194,15 @@ export class CombatClient {
     idempotencyKey: string,
     extras: StartExtras = {},
   ): Promise<Encounter> {
+    const theatre = extras.mode === EncounterMode.THEATRE;
     const res = await this.client.startEncounter({
       campaignId,
       idempotencyKey,
       name,
       participants: participants.map(toParticipant),
-      mapPointId: extras.theatre ? '' : (extras.mapPointId ?? ''),
-      mode: extras.theatre ? EncounterMode.THEATRE : EncounterMode.UNSPECIFIED,
+      mapPointId: theatre ? '' : (extras.mapPointId ?? ''),
+      // Left out, the server reads the table's "combate com mapa" rule (RN-24).
+      ...(extras.mode === undefined ? {} : { mode: extras.mode }),
       ...(extras.monsters && extras.monsters.length > 0
         ? {
             monsters: extras.monsters.map((m) => ({ creatureKey: m.creatureKey, count: m.count, name: m.name ?? '' })),
@@ -339,6 +348,24 @@ export class CombatClient {
   async skipOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
     const res = await this.client.skipOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
     return need(res.encounter, 'SkipOpportunity');
+  }
+
+  /** "Gastar movimento" (a combat without a map, RN-25): whole feet, never more than what is left. The server says what is left. */
+  async spendMovement(campaignId: string, encounterId: string, combatantId: string, distanceFt: number, idempotencyKey: string): Promise<SpendResult> {
+    const res = await this.client.spendMovement({ campaignId, encounterId, combatantId, distanceFt, idempotencyKey });
+    return { encounter: need(res.encounter, 'SpendMovement'), movementLeftDft: res.movementLeftDft };
+  }
+
+  /** The master's "Oferecer ataque de oportunidade" (a combat without a map): who left whose reach. */
+  async offerOpportunity(campaignId: string, encounterId: string, moverId: string, reactorId: string, idempotencyKey: string): Promise<Encounter> {
+    const res = await this.client.offerOpportunity({ campaignId, encounterId, moverId, reactorId, idempotencyKey });
+    return need(res.encounter, 'OfferOpportunity');
+  }
+
+  /** "Retirar a oferta": an offer nobody answered is taken back; the reactor keeps its reaction. */
+  async withdrawOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
+    const res = await this.client.withdrawOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+    return need(res.encounter, 'WithdrawOpportunity');
   }
 
   async setHidden(

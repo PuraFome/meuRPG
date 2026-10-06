@@ -257,3 +257,18 @@
     font-size: 20px;
   }
 }
+
+// "Como este combate é jogado" (RN-25): the two radio cards and, under "Sem mapa", the one line that says why.
+.mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.why {
+  align-items: flex-start;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  background: var(--mr-ground);
+}

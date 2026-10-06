@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { creatureSlug } from '../../../../core/creatures/bestiary-format';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,15 +22,19 @@ import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
+import { restamText } from '../../../../core/combat/theatre';
+import { ofThe } from '../../../../core/combat/move-plan';
 import { joinDots } from '../../../../core/format/text';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
-import { combatantInitial, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
+import { combatantInitial, isDown, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
 import { NextTurn } from '../combat-bar/next-turn';
 import { RollPicker } from '../roll-picker/roll-picker';
+import { MasterSpend } from '../theatre/master-spend';
+import { TheatrePill } from '../theatre/theatre-pill';
 import { AttackChoice } from './attack-choice';
 import { PendingDamages } from './pending-damages';
 
@@ -47,7 +52,7 @@ import { PendingDamages } from './pending-damages';
  */
 @Component({
   selector: 'app-npc-card',
-  imports: [AttackChoice, CombatantToken, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker, RouterLink],
+  imports: [AttackChoice, CombatantToken, MasterSpend, MatButtonModule, TheatrePill, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker, RouterLink],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
 })
@@ -71,6 +76,14 @@ export class NpcCard {
   readonly reactionStopped = input(false);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
+  /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
+  readonly theatre = input(false);
+  /** The offer's form is open: "Oferecer ataque de oportunidade" says so. */
+  readonly offering = input(false);
+  /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
+  readonly offerWhy = input('');
+  /** "Oferecer ataque de oportunidade": the page opens the form. */
+  readonly offer = output<void>();
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
   readonly next = output<boolean>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
@@ -97,6 +110,12 @@ export class NpcCard {
   /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
   protected readonly creatureSlug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey));
   protected readonly isNpc = computed(() => !isPlayer(this.subject()) && !isCreature(this.subject()));
+  /** The one on turn is at 0 hit points: nobody spends movement for them. */
+  /** "do Goblin", "da Brisa". */
+  protected readonly ofLabel = computed(() => ofThe([this.subject().label]));
+  protected readonly down = computed(() => isDown(this.subject()));
+  /** The card with the stats, the economy and the movement: an NPC's, and in a combat without a map also a player's (the master spends their movement when they are away). */
+  protected readonly full = computed(() => this.isNpc() || (this.theatre() && !this.isCreatureSubject()));
   protected readonly attacks = computed<Attack[]>(() =>
     (this.options()?.options?.attacks ?? []).flatMap((a) => (a.attack && a.attack.saveDc === 0 ? [a.attack] : [])),
   );
@@ -122,8 +141,10 @@ export class NpcCard {
     return {
       hp: c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
       ac: c.armorClass,
-      speed: { meters: metersFixed(c.speedDft / 10), squares: squaresText(reachSquares(c.speedFt)) },
-      movement: joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
+      speed: { meters: metersFixed(c.speedDft / 10), squares: this.theatre() ? '' : squaresText(reachSquares(c.speedFt)) },
+      movement: this.theatre()
+        ? restamText(c.movementLeftDft)
+        : joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
     };
   });
   protected readonly result = computed(() => {

@@ -113,6 +113,8 @@ export class TurnBar {
   readonly attacksLeft = input(0);
   /** An opportunity attack waits for an answer: the list of what is left and the end button say so instead. */
   readonly waiting = input('');
+  /** No map (RN-25): the movement is a number of meters, said as "Movimento 9,0 m". */
+  readonly theatre = input(false);
 
   /** In a joint turn, who else must end their part (labels; "o mestre" is the hidden one's). */
   readonly joint = input<readonly string[] | null>(null);
@@ -148,7 +150,8 @@ export class TurnBar {
     if (!c.reactionUsed) {
       items.push({ name: 'Reação' });
     }
-    if (c.movementLeftFt > 0) {
+    // Without a map the movement is said once, in its tile ("3,0 m de 9,0 m"), not again here.
+    if (c.movementLeftFt > 0 && !this.theatre()) {
       items.push({ name: 'Mover', amount: tight(joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))])) });
     }
     return items;

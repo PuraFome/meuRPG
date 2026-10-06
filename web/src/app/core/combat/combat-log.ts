@@ -83,6 +83,8 @@ export interface LogContext {
   readonly master: boolean;
   /** The labels of the player characters in this combat. */
   readonly players: ReadonlySet<string>;
+  /** The combat is played without a map (RN-25): a move is "gastou 6,0 m de movimento", and the start says so. */
+  readonly theatre?: boolean;
 }
 
 const NO_CONTEXT: LogContext = { master: false, players: new Set() };
@@ -346,6 +348,10 @@ function deathSaveText(e: CombatLogEntry): string {
   if (!s) {
     return ' faz um teste contra a morte';
   }
+  // A table that hides the death saves (RN-24) tells everyone else only the result: no roll, no outcome, no counts.
+  if (s.stable && !s.roll && s.outcome === DeathSaveOutcome.UNSPECIFIED) {
+    return ' estabilizou';
+  }
   const word =
     s.outcome === DeathSaveOutcome.REVIVED
       ? 'volta com 1 PV'
@@ -411,6 +417,12 @@ function hitPointsText(e: CombatLogEntry): string {
   return ` teve os PV ajustados pelo mestre${after}`;
 }
 
+/** Movement spent by number, in a combat without a map: "gastou 6,0 m de movimento". */
+function spentText(e: CombatLogEntry): string {
+  const length = e.distanceDft > 0 ? metersFixed(e.distanceDft / 10) : metersFixed(e.distanceFt);
+  return ` gastou ${length} de movimento`;
+}
+
 /** A move: "anda 3,0 m", "saltou 4,5 m" or "saltou 1,8 m para cima". A long jump that landed in
  * difficult terrain reminds the master (only he gets the flag) of the SRD's Acrobacia check: the app rolls nothing. */
 function movedText(e: CombatLogEntry): string {
@@ -433,14 +445,20 @@ export function logLine(
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
   switch (e.kind) {
     case CombatLogKind.COMBAT_BEGUN:
-      return { ...base, icon: 'flag', actor: '', text: encounterName ? `Combate iniciado: ${encounterName}` : 'Combate iniciado' };
+      return {
+        ...base,
+        icon: 'flag',
+        actor: '',
+        text:
+          (encounterName ? `Combate iniciado: ${encounterName}` : 'Combate iniciado') + (ctx.theatre ? ', sem mapa (teatro da mente)' : ''),
+      };
     case CombatLogKind.ATTACK:
       // A spell attack (Raio de Fogo) has the sparkles E6-15 draws for spells.
       return { ...base, icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords', text: attackText(e) };
     case CombatLogKind.ACTION:
       return { ...base, icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt', text: actionText(e) };
     case CombatLogKind.MOVED:
-      return { ...base, icon: 'arrow_forward', text: movedText(e) };
+      return { ...base, icon: ctx.theatre ? 'directions_run' : 'arrow_forward', text: ctx.theatre ? spentText(e) : movedText(e) };
     case CombatLogKind.HIT_POINTS_ADJUSTED:
       // The server puts the NPC whose hit points changed in the target.
       return { ...base, actor: e.actorLabel || e.targetLabel, icon: 'healing', text: hitPointsText(e) };
@@ -476,6 +494,9 @@ export function logLine(
       return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };
     case CombatLogKind.WILD_SHAPE:
       return { ...base, icon: 'pets', text: wildShapeText(e) };
+    case CombatLogKind.OPPORTUNITY_OFFERED:
+      // The master offered it, in a combat without a map: the mover is the actor and the reactor the target.
+      return { ...base, icon: 'swords', text: ` saiu do alcance de ${e.targetLabel || 'alguém'}` };
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
@@ -595,6 +616,8 @@ export function undoLabel(e: CombatLogEntry): string {
       return `a magia ${e.keyNamePt || ''} ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`.replace('  ', ' ');
     case CombatLogKind.REACTION:
       return `a reação ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`;
+    case CombatLogKind.OPPORTUNITY_OFFERED:
+      return `a oferta de ataque de oportunidade a ${e.targetLabel || 'alguém'}`;
     case CombatLogKind.DEATH_SAVE:
       return `o teste contra a morte ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`;
     case CombatLogKind.CONDITIONS_CHANGED:

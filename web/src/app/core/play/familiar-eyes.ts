@@ -76,6 +76,8 @@ export function familiarSightMessage(err: unknown, name = 'O familiar'): string 
         return 'Você já está vendo pelos olhos do familiar.';
       case FamiliarSightBlockedReason.NOT_SEEING:
         return 'Você já voltou aos seus olhos.';
+      case FamiliarSightBlockedReason.NO_MAP:
+        return 'Sem mapa, não dá para ver pelos olhos do familiar: o combate não tem posições.';
       case FamiliarSightBlockedReason.COMBAT_NOT_BEGUN:
         return 'O combate ainda não começou. Espere a sua vez para ver pelos olhos do familiar.';
       default:

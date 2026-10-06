@@ -362,6 +362,14 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	for _, r := range c.ChallengeRatings {
 		out.ChallengeRatings = append(out.ChallengeRatings, &rulesv1.ChallengeRating{Rating: r.Rating, Xp: i32(r.XP)})
 	}
+	named := func(in []rules.NamedEntry) []*rulesv1.NamedKey {
+		var list []*rulesv1.NamedKey
+		for _, n := range in {
+			list = append(list, &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT})
+		}
+		return list
+	}
+	out.Languages, out.Proficiencies, out.DamageTypes = named(c.Languages), named(c.Proficiencies), named(c.DamageTypes)
 	return out
 }
 

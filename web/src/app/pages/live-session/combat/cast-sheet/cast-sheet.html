@@ -79,7 +79,7 @@
       @if (nextRoll(); as r) {
         <div class="dmg">
           <p class="dmg__what">
-            {{ r.what }}.{{ r.pending.critical ? ' Acerto crítico: os dados dobram.' : '' }}
+            {{ r.what }}.{{ r.crit && (!canApp || typing()) ? ' ' + r.crit : '' }}
             @if (r.count > 1) {
               Role um de cada vez ou todos no app.
             }
@@ -90,11 +90,12 @@
             [canType]="canTypeDamage"
             [preferApp]="preferApp"
             [label]="r.label"
-            [hint]="'Digite a soma dos dados, de ' + r.range.min + ' a ' + r.range.max + '. O app soma o modificador.'"
+            [hint]="r.typedHint"
             [totalNote]="r.pending.healing ? 'Cura total' : 'Dano total'"
             [min]="r.range.min"
             [max]="r.range.max"
-            [modifier]="r.pending.bonus"
+            [modifier]="r.modifier"
+            [fixedText]="r.fixedText"
             [busy]="busy()"
             [appLabel]="r.count > 1 ? 'Rolar o dano no app' : 'Rolar ' + r.name + ' no app'"
             [sticky]="true"

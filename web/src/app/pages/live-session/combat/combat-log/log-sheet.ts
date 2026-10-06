@@ -10,6 +10,8 @@ export interface LogSheetData {
   readonly encounterName: string;
   /** A player's log says it holds only what their character sees. */
   readonly master: boolean;
+  /** The table hides the death saves (RN-24) and this is not their owner's screen. */
+  readonly deathNote?: boolean;
 }
 
 /**
@@ -37,11 +39,33 @@ export interface LogSheetData {
         </button>
       </div>
       <app-log-list class="sheet__list" [groups]="data.groups()" />
+      @if (data.deathNote) {
+        <p class="note">
+          <mat-icon aria-hidden="true">info</mat-icon>Esta mesa só deixa o dono e o mestre verem os testes contra a morte.
+        </p>
+      }
     </div>
   `,
   styles: `
     :host {
       display: block;
+    }
+
+    .note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 4px 0 0;
+      font-size: 14px;
+      line-height: 19px;
+      color: var(--mr-ink-muted);
+
+      mat-icon {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        font-size: 20px;
+      }
     }
 
     .sheet {

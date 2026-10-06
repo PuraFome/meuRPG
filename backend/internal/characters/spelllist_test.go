@@ -317,7 +317,7 @@ func TestMR025_TheSpellDetailsSayWhomItReaches(t *testing.T) {
 	bad := testSpell("Mau Alvo", "class:wizard")
 	bad.Range = &rulesv1.TableSpellRange{Kind: rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF}
 	_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, bad)))
-	if vs := violationsOfErr(t, err); len(vs) != 1 || vs[0].GetField() != "table_spell.target" {
+	if vs := violationsOfErr(t, err); len(vs) != 1 || vs[0].GetField() != "table_spell.range.kind" {
 		t.Errorf("a self spell that picks a creature: violations = %v", vs)
 	}
 

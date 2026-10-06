@@ -197,6 +197,9 @@
 }
 
 .player__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
   grid-area: side;
   min-width: 0;
 }
@@ -210,4 +213,58 @@
     flex: 1 1 100%;
     margin: 0;
   }
+}
+
+// A combat without a map, the master's screen (E10-04 state 2): the card, its movement and the offer on the left, the order on the right;
+// below 1280px one column, the card first and the order right after it, then the cover and the log.
+.theatre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1280px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 500px;
+    grid-template-areas:
+      'top order'
+      'rest order';
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.theatre__top,
+.theatre__rest,
+.theatre__order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  min-width: 0;
+}
+
+.theatre__top {
+  grid-area: top;
+
+  // Nothing above the card: an empty column takes no gap, and neither does a host with nothing in it (no offer, no death question).
+  &:empty,
+  &:not(:has(> :not(:empty))) {
+    display: none;
+  }
+
+  > :empty {
+    display: none;
+  }
+}
+
+.theatre__rest {
+  grid-area: rest;
+}
+
+.theatre__order {
+  grid-area: order;
+}
+
+.theatre__end {
+  display: block;
 }

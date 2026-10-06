@@ -504,6 +504,18 @@ func violationsOf(err error, idx overlayIndex, entry string) []*rulesv1.TableCon
 	if !ok {
 		return []*rulesv1.TableContentViolation{{Reason: rules.ReasonOverlay, Message: err.Error()}}
 	}
+	// An entry with several things wrong comes back with every one of them (MR-025):
+	// the editor marks each field at once.
+	var out []*rulesv1.TableContentViolation
+	for _, o := range oe.Violations() {
+		out = append(out, violationOf(o, idx, entry))
+	}
+	return out
+}
+
+// violationOf is one overlay error as the API's violation: the path of the field
+// in the request's body, and the key when the entry is not the one being written.
+func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv1.TableContentViolation {
 	v := &rulesv1.TableContentViolation{Reason: oe.Reason, Message: oe.Message}
 	if v.Reason == "" {
 		v.Reason = rules.ReasonValue
@@ -511,20 +523,20 @@ func violationsOf(err error, idx overlayIndex, entry string) []*rulesv1.TableCon
 	m := overlayPath.FindStringSubmatch(oe.Field)
 	if m == nil {
 		v.Field = oe.Field
-		return []*rulesv1.TableContentViolation{v}
+		return v
 	}
 	n, _ := strconv.Atoi(m[2])
 	list := idx[m[1]]
 	if n < 0 || n >= len(list) {
 		v.Field = oe.Field
-		return []*rulesv1.TableContentViolation{v}
+		return v
 	}
 	e := list[n]
 	v.Field = "table_" + kindPrefix(e.kind) + m[3]
 	if e.row.ContentKey != entry {
 		v.Key = e.row.ContentKey
 	}
-	return []*rulesv1.TableContentViolation{v}
+	return v
 }
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and

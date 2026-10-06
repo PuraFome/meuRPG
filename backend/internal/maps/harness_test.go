@@ -34,6 +34,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1/notesv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
@@ -44,6 +45,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -225,8 +227,19 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 		t.Fatalf("notes.New() error = %v", err)
 	}
 
+	// The XP: "Voltar à cidade" turns a found treasure into XP (MR-041, MR-044).
+	xp, err := progression.New(progression.Config{
+		Pool: pool, Party: chars, Combats: live, Log: live, Treasures: NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now,
+	})
+	if err != nil {
+		t.Fatalf("progression.New() error = %v", err)
+	}
+	chars.SetLevelUps(xp)
+	camps.SetXPAwards(xp)
+
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
+	xp.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	camps.Mount(srv.Handle, fakeSessions{}, opt)
 	chars.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	live.Mount(srv.Handle, fakeSessions{}, camps, opt)
@@ -250,6 +263,8 @@ type user struct {
 	imagegen   mapsv1connect.ImageGenerationServiceClient
 	maps       mapsv1connect.MapServiceClient
 	dungeons   mapsv1connect.DungeonServiceClient
+	treasure   mapsv1connect.TreasureServiceClient
+	xp         progressionv1connect.ProgressionServiceClient
 	notes      notesv1connect.NotesServiceClient
 }
 
@@ -284,6 +299,8 @@ func (h *harness) clients(userID string) *user {
 		imagegen:   mapsv1connect.NewImageGenerationServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
 		dungeons:   mapsv1connect.NewDungeonServiceClient(c, url),
+		treasure:   mapsv1connect.NewTreasureServiceClient(c, url),
+		xp:         progressionv1connect.NewProgressionServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}
 }

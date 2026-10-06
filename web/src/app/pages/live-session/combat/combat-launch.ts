@@ -60,7 +60,7 @@ export function openStartCombat(dialog: MatDialog, phone: boolean, data: StartCo
           @if (state().map()) {
             Escolha quem luta e o app pede a iniciativa de todos.
           } @else {
-            Escolha um mapa em "Mapa atual" para poder iniciar um combate.
+            Sem um mapa atual, o combate é no teatro da mente: só a ordem, o movimento por número e a sua palavra.
           }
         </p>
       </div>
@@ -68,9 +68,6 @@ export function openStartCombat(dialog: MatDialog, phone: boolean, data: StartCo
         mat-stroked-button
         type="button"
         class="launch__button"
-        [disabled]="!state().map()"
-        disabledInteractive
-        [class.launch__button--off]="!state().map()"
         (click)="open()"
       >
         <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
@@ -106,14 +103,6 @@ export function openStartCombat(dialog: MatDialog, phone: boolean, data: StartCo
       --mat-button-outlined-label-text-color: var(--mr-ink);
       flex: none;
     }
-
-    .launch__button--off {
-  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
-  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
-      --mat-button-outlined-label-text-color: var(--mr-ink-muted);
-      border-style: dashed;
-      cursor: default;
-    }
   `,
 })
 export class CombatLaunch {
@@ -129,9 +118,7 @@ export class CombatLaunch {
 
   protected open(): void {
     const map = this.map();
-    if (!map) {
-      return;
-    }
+    // Without a map the combat starts without one (the theatre of the mind, RN-25): the dialog offers the choice.
     openStartCombat(this.dialog, this.phone(), { campaignId: this.campaignId(), mode: 'start', map }).subscribe((encounter) => {
       if (encounter) {
         this.started.emit(encounter);

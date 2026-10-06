@@ -8,7 +8,11 @@ import { RouterLink } from '@angular/router';
 
 import { DiceMode, DicePreference, Role } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../../gen/meurpg/characters/v1/characters_pb';
-import { type Encounter, EncounterBlockedReason } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { type Encounter, EncounterBlockedReason, EncounterMode } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { DiceOption } from '../../../../core/campaigns/dice-labels';
+import { TableRulesClient } from '../../../../core/campaigns/table-rules';
+import { THEATRE_WHY, THEATRE_WHY_DIALOG } from '../../../../core/combat/theatre';
+import { DiceChoice } from '../../../../shared/dice-choice/dice-choice';
 import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
 import { CombatClient, type JoinSpec, type MonsterHp, newKey } from '../../../../core/combat/combat-client';
@@ -81,6 +85,7 @@ const MAX_COMBATANTS = 40;
   selector: 'app-start-combat-dialog',
   imports: [
     CombatMap,
+    DiceChoice,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -101,13 +106,43 @@ export class StartCombatDialog {
   private readonly combat = inject(CombatClient);
   private readonly roster = inject(RosterClient);
   private readonly campaigns = inject(CampaignsService);
+  private readonly tableRules = inject(TableRulesClient);
   /** One key for this dialog: a second tap on the button can't start two. */
   private readonly key = newKey();
 
   protected readonly adding = this.data.mode === 'add';
+  /** How the combat is played (RN-25), fixed once it starts: with the table's "combate com mapa" rule as the default, and "Sem mapa" when the session has no map. */
+  protected readonly playMode = signal<EncounterMode>(
+    this.data.map && this.data.map.columns > 0 ? EncounterMode.GRID : EncounterMode.THEATRE,
+  );
+  /** The person chose: the table's rule, read a moment later, no longer moves the choice. */
+  private modeTouched = false;
+  protected readonly theatre = computed(() => this.playMode() === EncounterMode.THEATRE);
+  protected readonly modeOptions: readonly DiceOption<EncounterMode>[] = [
+    {
+      value: EncounterMode.GRID,
+      title: 'Com mapa',
+      description: 'Posições, alcance, névoa, armadilhas e portas valem. Pede um mapa com grade.',
+    },
+    {
+      value: EncounterMode.THEATRE,
+      title: 'Sem mapa (teatro da mente)',
+      description: 'Só a ordem, o movimento por número e a sua palavra: você decide quem está ao alcance. Não precisa de mapa.',
+    },
+  ];
+  /** "Com mapa" waits when the session has no map: dashed, with the reason where its line is. */
+  protected readonly modeInert = computed<readonly EncounterMode[]>(() => (this.mapReady() ? [] : [EncounterMode.GRID]));
+  protected readonly modeNotes = computed<Partial<Record<number, string>>>(() =>
+    this.mapReady() ? {} : { [EncounterMode.GRID]: this.data.map ? 'O mapa atual não tem grade.' : 'A sessão não tem um mapa atual.' },
+  );
+  /** A map with a grid: a map without one counts as no map for "Com mapa". */
+  private readonly mapReady = computed(() => !!this.data.map && this.data.map.columns > 0 && !this.noGridMap());
+  protected readonly why = THEATRE_WHY;
+  protected readonly whyMore = THEATRE_WHY_DIALOG;
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly saved = this.data.saved ?? null;
-  protected readonly name = signal(this.saved?.pointName ?? this.data.map?.name ?? '');
+  // Without a map to name it after, the combat starts as "Combate": the master renames it.
+  protected readonly name = signal(this.saved?.pointName ?? this.data.map?.name ?? 'Combate');
   /** The monsters' hit points and whether they start hidden: the encounter's choice, the master's to change here. */
   protected readonly monsterHp = signal<MonsterHp>(this.saved?.hp ?? 'average');
   protected readonly monstersHidden = signal(this.saved?.hidden ?? true);
@@ -154,10 +189,10 @@ export class StartCombatDialog {
     if (this.state() !== 'ready') {
       return 'Carregando quem pode lutar.';
     }
-    if (!this.adding && !this.data.map) {
+    if (!this.adding && !this.theatre() && !this.data.map) {
       return 'Escolha o mapa atual da sessão primeiro.';
     }
-    if (!this.hasGrid() || this.noGridMap()) {
+    if (!this.theatre() && (!this.hasGrid() || this.noGridMap())) {
       return 'O mapa precisa de uma grade.';
     }
     if (!this.adding && !this.nameOk()) {
@@ -179,12 +214,35 @@ export class StartCombatDialog {
     void this.load();
   }
 
+  /** The table's rule is only the default the dialog offers (RN-24): read apart, so a failure leaves the dialog as it is. The dialog
+   * waits for it before it is ready, so the radio never flips under the master's hand. */
+  private async readRule(): Promise<void> {
+    if (this.adding || !this.mapReady()) {
+      return;
+    }
+    try {
+      const rules = await this.tableRules.get(this.data.campaignId);
+      if (!this.modeTouched && !rules.saved.combatStartsWithMap) {
+        this.playMode.set(EncounterMode.THEATRE);
+      }
+    } catch {
+      // Without the rule the combat starts the way it always did: with a map.
+    }
+  }
+
+  protected chooseMode(mode: EncounterMode): void {
+    this.modeTouched = true;
+    this.playMode.set(mode);
+    this.error.set('');
+  }
+
   private async load(): Promise<void> {
     try {
       const [entries, members, campaign] = await Promise.all([
         this.roster.list(this.data.campaignId),
         this.campaigns.listMembers(this.data.campaignId),
         this.campaigns.getCampaign(this.data.campaignId),
+        this.readRule(),
       ]);
       const mode = campaign.campaign?.diceMode ?? DiceMode.PLAYERS_CHOOSE;
       const byUser = new Map(
@@ -286,12 +344,13 @@ export class StartCombatDialog {
             this.key,
             this.saved
               ? {
+                  mode: this.playMode(),
                   monsters: this.saved.groups.map((g) => ({ creatureKey: g.key, count: g.count })),
                   monsterHp: this.monsterHp(),
                   monstersHidden: this.monstersHidden(),
                   mapPointId: this.saved.pointId,
                 }
-              : {},
+              : { mode: this.playMode() },
           );
       this.ref.close(encounter);
     } catch (err) {

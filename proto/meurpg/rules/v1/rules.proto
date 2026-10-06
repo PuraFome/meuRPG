@@ -944,6 +944,21 @@ message Content {
   // creature gives when defeated (MR-016); the master may type another
   // value.
   repeated ChallengeRating challenge_ratings = 13;
+  // The SRD's languages, with their Portuguese names, so a player reads "Comum" and
+  // never "language:common" (a race's languages, a background's).
+  repeated NamedKey languages = 14;
+  // The SRD's proficiencies a table entry may name: tools, armor, weapons and the
+  // rest (the same values the master's GetEffectMenu lists carry).
+  repeated NamedKey proficiencies = 15;
+  // The SRD's damage types, with their Portuguese names ("damage-type:fire").
+  repeated NamedKey damage_types = 16;
+}
+
+// NamedKey is a content key with its Portuguese name.
+message NamedKey {
+  // Content key, such as "language:common" or "proficiency:thieves-tools".
+  string key = 1;
+  string name_pt = 2;
 }
 
 // ChallengeRating is one row of the SRD's "Experience Points by Challenge

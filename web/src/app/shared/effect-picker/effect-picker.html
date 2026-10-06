@@ -1,0 +1,95 @@
+<div class="type">
+  <app-select-field
+    [label]="label()"
+    [options]="typeOptions()"
+    [value]="effect().type"
+    [path]="path('type')"
+    [issues]="typeIssues()"
+    [hint]="typeHint()"
+    (valueChange)="setType($event)"
+  />
+</div>
+<div class="fields">
+  @for (f of fields(); track f.name) {
+    <div class="frow">
+      <div class="frow__field">
+        @switch (f.kind) {
+          @case ('choice') {
+            <app-select-field
+              [label]="labelOf(f)"
+              [options]="choiceOptions(f)"
+              [value]="read(f.name)"
+              [placeholder]="f.required ? 'Escolha…' : ''"
+              [path]="path(f.name)"
+              [issues]="issues(f.name)"
+              (valueChange)="setChoice(f, $event)"
+            />
+          }
+          @case ('choices') {
+            <app-pick-list
+              [label]="labelOf(f)"
+              [addLabel]="'Adicionar ' + labelOf(f).toLowerCase()"
+              [options]="pickOptions(f)"
+              [values]="list(f.name)"
+              [path]="path(f.name)"
+              [issues]="issues(f.name)"
+              (added)="add(f.name, $event)"
+              (removed)="remove(f.name, $event)"
+            />
+          }
+          @case ('number') {
+            @if (f.name === 'range_ft') {
+              <app-text-field
+                [label]="labelOf(f)"
+                [value]="meters()"
+                suffix="m"
+                inputmode="decimal"
+                [path]="path(f.name)"
+                [issues]="issues(f.name)"
+                (valueChange)="setMeters($event)"
+              />
+            } @else {
+              <app-text-field
+                [label]="labelOf(f)"
+                [value]="read(f.name)"
+                inputmode="numeric"
+                [path]="path(f.name)"
+                [issues]="issues(f.name)"
+                (valueChange)="setNumber(f.name, $event)"
+              />
+            }
+          }
+          @case ('text') {
+            <app-text-field
+              [label]="labelOf(f)"
+              [value]="read(f.name)"
+              [rows]="f.name === 'text_pt' ? 2 : 0"
+              [path]="path(f.name)"
+              [issues]="issues(f.name)"
+              (valueChange)="setText(f.name, $event)"
+            />
+          }
+          @default {
+            <app-text-field
+              [label]="labelOf(f)"
+              [value]="read(f.name)"
+              [path]="path(f.name)"
+              [issues]="issues(f.name)"
+              (valueChange)="setText(f.name, $event)"
+            />
+          }
+        }
+      </div>
+      <!-- The hint sits beside its field (a refusal, when there is one, is under the field). -->
+      @if (issues(f.name).length === 0 && beside(f); as hint) {
+        <p class="frow__hint">{{ hint }}</p>
+      }
+    </div>
+  }
+  @if (hidden() > 0 || expanded()) {
+    <button type="button" class="more" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+      <mat-icon aria-hidden="true">{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      {{ expanded() ? 'Menos opções' : 'Mais opções' }}
+    </button>
+  }
+</div>

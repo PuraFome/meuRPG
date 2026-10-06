@@ -55,6 +55,9 @@
               <mat-icon aria-hidden="true">hourglass_top</mat-icon>{{ wait }}
             </span>
           }
+          @if (theatre()) {
+            <app-theatre-pill />
+          }
         </span>
       </div>
     </div>
@@ -77,8 +80,12 @@
       <div class="confirm__text">
         <h2 id="end-title" class="confirm__title">Encerrar o combate?</h2>
         <p id="end-text">
-          Os tokens dos jogadores ficam nos quadrados em que estão agora. Não dá para voltar ao
-          combate.
+          @if (theatre()) {
+            Não dá para voltar ao combate.
+          } @else {
+            Os tokens dos jogadores ficam nos quadrados em que estão agora. Não dá para voltar ao
+            combate.
+          }
         </p>
       </div>
       <div class="confirm__buttons">

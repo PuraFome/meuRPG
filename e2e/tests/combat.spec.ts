@@ -47,7 +47,9 @@ test(
       await m.goto(`/campanhas/${campaignId}/sessao`);
       await m.getByRole('button', { name: 'Iniciar combate' }).click();
       await expect(m.getByText('Esse mapa ainda não tem grade.')).toBeVisible();
-      await expect(m.getByRole('button', { name: 'Iniciar combate' }).last()).toHaveAttribute('aria-disabled', 'true');
+      // A map without a grid is no map for "Com mapa" (RN-25): that choice waits with its reason, and "Sem mapa" is the one chosen.
+      await expect(m.getByRole('radio', { name: /^Com mapa/ })).toBeDisabled();
+      await expect(m.getByRole('radio', { name: /Sem mapa \(teatro da mente\)/ })).toBeChecked();
       await m.getByRole('link', { name: 'Definir a grade' }).click();
       await expect(m.getByRole('heading', { name: 'Grade do mapa' })).toBeVisible();
       // Columns 4 is below the screen's 5 to 60; 30 gives 21 rows for 2000 x 1400.
@@ -295,8 +297,10 @@ test('o jogador ataca com dados físicos: digita o d20 e a soma do dano, e o gob
     await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
     // A natural 20 is a critical hit: the dice double.
     await expect(sheet.locator('.pill', { hasText: 'Crítico' })).toBeVisible();
-    await expect(sheet.getByText('Acerto crítico: os dados do dano dobram (2d10).')).toBeVisible();
+    // With the app's dice the server rolls them: the rule's line comes only once the player types a physical roll.
+    await expect(sheet.getByText('Acerto crítico: o dano segue a regra da mesa.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(sheet.getByText('Acerto crítico: role os dados duas vezes (2d10 no total).')).toBeVisible();
     await sheet.getByLabel(/Role 2d10/).fill('21');
     await expect(sheet.getByText('Digite um número de 2 a 20')).toBeVisible();
     await sheet.getByLabel(/Role 2d10/).fill('12');

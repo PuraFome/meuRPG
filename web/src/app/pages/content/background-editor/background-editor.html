@@ -1,0 +1,50 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="data-t">
+      <h2 class="mr-panel__title" id="data-t">Dados do antecedente</h2>
+      <div class="grid grid--2">
+        <app-text-field label="Nome" [value]="d.name" [maxlength]="60" path="table_background.name_pt" [issues]="issuesOf('table_background.name_pt')" (valueChange)="patch({ name: $event })" />
+      </div>
+      <div class="grid grid--2">
+        <app-select-field label="Primeira perícia" [options]="skillOptions()" [value]="d.skills[0]" placeholder="Escolha…" path="table_background.skills[0]" [issues]="issuesOf('table_background.skills[0]')" (valueChange)="setSkill(0, $event)" />
+        <app-select-field label="Segunda perícia" [options]="skillOptions()" [value]="d.skills[1]" placeholder="Escolha…" path="table_background.skills[1]" [issues]="issuesOf('table_background.skills[1]')" (valueChange)="setSkill(1, $event)" />
+      </div>
+      @for (m of issuesOf('table_background.skills'); track m) {
+        <p class="inline-issue" role="note">{{ m }}</p>
+      }
+      <app-pick-list label="Ferramentas" addLabel="Adicionar ferramenta" [options]="toolOptions()" [values]="d.tools" path="table_background.tools" [issues]="issuesOf('table_background.tools')" hint="Da lista do SRD." (added)="patch({ tools: [...d.tools, $event] })" (removed)="patch({ tools: d.tools.filter((k) => k !== $event) })" />
+      <div class="grid grid--2">
+        <app-text-field label="Idiomas à escolha" [value]="d.languageChoices > 0 ? '' + d.languageChoices : ''" inputmode="numeric" path="table_background.language_choices" [issues]="issuesOf('table_background.language_choices')" (valueChange)="setCount($event)" />
+      </div>
+      <app-text-field label="Equipamento" [value]="d.equipment" [rows]="2" path="table_background.equipment_pt" [issues]="issuesOf('table_background.equipment_pt')" hint="Em texto, com as suas palavras." (valueChange)="patch({ equipment: $event })" />
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="feat-t">
+      <h2 class="mr-panel__title" id="feat-t">Característica</h2>
+      <app-feature-editor
+        [feature]="d.feature"
+        [menu]="menu()"
+        basePath="table_background.feature"
+        [issuesOf]="issuesOf"
+        [spellOptions]="spellOptions()"
+        nameLabel="Nome da característica"
+        (featureChange)="setFeature($event)"
+      />
+    </section>
+
+    <app-editor-bar saveLabel="Salvar antecedente" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ d.name.trim() || 'Novo antecedente' }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+  </aside>
+</div>

@@ -71,6 +71,10 @@ export class OrderList {
   readonly add = output<void>();
   /** "Condições…": the combatant's ID. */
   readonly conditions = output<string>();
+  /** The table hides the death saves from the other players (RN-24): the master's marks say who else sees them. */
+  readonly deathsHidden = input(false);
+  /** A combat without a map: the cover is marked in its own panel ("Cobertura dos alvos"), not row by row. */
+  readonly theatre = input(false);
   /** The cover each combatant has against whoever has the turn (`GetTurnOptions`
    * of the master's subject), and who that is: "Três quartos (do mapa) contra o Pensantus". */
   readonly coverAgainst = input<ReadonlyMap<string, { cover: CoverDegree; source: CoverSource }>>(new Map());
@@ -81,6 +85,8 @@ export class OrderList {
   readonly side = output<{ id: string; side: CombatantSide }>();
   /** The master's manual cover mark. */
   readonly cover = output<{ id: string; cover: CoverDegree }>();
+  /** In a combat without a map the menu's "Marcar cobertura…" opens the theatre cover editor (the fallback for a joint or master turn). */
+  readonly coverEdit = output<string>();
   /** The characters whose "Confirmar a morte" question the master put away. */
   readonly deathDismissed = input<ReadonlySet<string>>(new Set());
   /** "Confirmar a morte": the question again. */

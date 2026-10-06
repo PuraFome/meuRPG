@@ -229,7 +229,7 @@ export function turnBanner(e: Encounter): TurnBanner {
   const who = currentCombatant(e);
   const next = nextCombatant(e);
   return {
-    title: who ? (who.mine ? `Sua vez, ${who.label}` : who.kind === CombatantKind.CREATURE ? creatureTurnTitle(e, [who], false) : `Vez do ${who.label}`) : 'Ninguém está na vez',
+    title: who ? (who.mine ? `Sua vez, ${who.label}` : who.kind === CombatantKind.CREATURE ? creatureTurnTitle(e, [who], false) : `Vez d${article(who.label) === 'a' ? 'a' : 'o'} ${who.label}`) : 'Ninguém está na vez',
     who,
     mine: who?.mine ?? false,
     masterTurn: false,
