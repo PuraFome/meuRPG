@@ -197,7 +197,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)
 	}
-	cfg := Config{Pool: pool, Blobs: blobs, Characters: chars, Live: live, Combats: live, Rules: content, Logger: logger, Now: clock.Now}
+	cfg := Config{Pool: pool, Blobs: blobs, Characters: chars, Live: live, Combats: live, Defaults: camps, Rules: content, Logger: logger, Now: clock.Now}
 	for _, c := range configure {
 		c(&cfg)
 	}

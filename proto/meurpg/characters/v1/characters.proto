@@ -102,8 +102,54 @@ service CharacterService {
   //   - `permission_denied`: the caller's role may not create this kind.
   //   - `failed_precondition`: the player already has a living character in
   //     this campaign. The error carries a CharacterBlocked detail with
-  //     reason LIVING_CHARACTER_EXISTS and that character's ID.
+  //     reason LIVING_CHARACTER_EXISTS and that character's ID. Or the base
+  //     scores of a player's sheet do not follow the way they say they were
+  //     made, or the table does not allow that way (RN-24): an
+  //     AbilityScoresRefusal detail.
+  //
+  // The base scores of a PLAYER's full sheet are checked against
+  // `ability_method` (RN-24). Nothing else is: the master's NPCs and the
+  // master's later edits are free, and so is the rest of the sheet.
   rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
+
+  // GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
+  // stored for the caller's next new character in this campaign (RN-24), and
+  // none when no roll was made yet. The same sets come back on every call until
+  // CreateCharacter uses them. Only a player, or a pending member, may call it:
+  // the master's NPCs are free. It only reads, but stays POST-only, because a
+  // GET would put the campaign ID in the URL.
+  //
+  // Errors: `not_found` for a campaign the caller is not in; `permission_denied`
+  // for the master.
+  rpc GetAbilityRolls(GetAbilityRollsRequest) returns (GetAbilityRollsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RollAbilityScores makes the six sets of "4d6, drop the lowest" for the
+  // caller's next new character, stores them, and returns them (RN-24). It is
+  // idempotent: while the stored sets are not used by a CreateCharacter, a
+  // second call returns the same sets (`already_rolled`), so reloading the page
+  // never rerolls. After a CreateCharacter that used them, the next call makes
+  // new ones.
+  //
+  // With physical dice (RN-18: the campaign forces them, or the player's
+  // preference is physical under "cada jogador escolhe") the player types the
+  // dice instead, once: `typed_dice` holds the six sets, four dice each. Without
+  // `typed_dice` the server rolls. A campaign that forces the app refuses typed
+  // dice, and one that forces physical dice refuses a roll without them. Typed
+  // dice sent again are accepted only when they are the stored ones.
+  //
+  // Only a player, or a pending member, may call it.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is the master.
+  //   - `invalid_argument`: `typed_dice` is not six sets of four dice, each 1
+  //     to 6.
+  //   - `failed_precondition`: an AbilityScoresRefusal detail: the table does
+  //     not allow 4d6 (METHOD_NOT_ALLOWED), the dice rule refuses this way of
+  //     rolling (DICE_FORCED_IN_APP, DICE_FORCED_PHYSICAL), or other dice were
+  //     already stored (ROLLS_ALREADY_STORED).
+  rpc RollAbilityScores(RollAbilityScoresRequest) returns (RollAbilityScoresResponse);
 
   // GetCharacter returns one character with its sheet, its story, and the
   // numbers the server derives from the sheet (MR-004). The campaign's
@@ -733,6 +779,9 @@ enum CharacterBlockedReason {
   CHARACTER_BLOCKED_REASON_CREATURE_IN_COMBAT = 10;
   // GiveCreature, or a summon, for a character that has 40 creatures already.
   CHARACTER_BLOCKED_REASON_CREATURE_LIMIT = 11;
+  // RollLevelUpHitPoints in a campaign whose rule is that everybody takes the
+  // average (RN-24, HIT_POINTS_RULE_AVERAGE).
+  CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY = 12;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -861,6 +910,26 @@ message FullSheet {
   // value on a player's character. The server keeps it as sent; deleting the
   // gallery image clears it.
   string portrait_image_id = 27;
+  // How the base scores were made (RN-24), kept by the server: set by
+  // CreateCharacter from `ability_method` for a player's sheet, and never taken
+  // from the client afterwards (a value sent in CreateCharacter or UpdateCharacter is
+  // ignored). While the sheet is the player's draft, a player's UpdateCharacter
+  // that changes the base scores is checked against it. Unset for NPCs, for
+  // sheets made before the rules and for an unspecified `ability_method`.
+  AbilityOrigin ability_origin = 28;
+}
+
+// AbilityOrigin is the way a player made a sheet's base scores, as the server
+// recorded it at creation.
+message AbilityOrigin {
+  // Never UNSPECIFIED.
+  AbilityMethod method = 1;
+  // With ROLLED_4D6: the six stored sets the scores come from (the stored rolls
+  // are consumed by the creation, so the sheet keeps them).
+  repeated AbilityRollSet rolls = 2;
+  // With ROLLED_4D6: true when the player typed the dice (physical dice), false
+  // when the server rolled them.
+  bool typed = 3;
 }
 
 // ClassLevel is one class of a character and its level in it.
@@ -1099,12 +1168,128 @@ message CreateCharacterRequest {
   CharacterSheet sheet = 4;
   // Optional; unset means an empty story.
   CharacterStory story = 5;
+  // How the base scores of a PLAYER's sheet were made (RN-24); the server
+  // checks them against it and against what the table allows. Unspecified is
+  // the client that shipped before the rules: it is accepted, with only the
+  // sheet's own ranges checked, while the table allows every way, and refused
+  // (METHOD_NOT_ALLOWED) once the master switched one off. That leniency goes away
+  // once the web sends the method: then an unspecified method is refused. An
+  // unknown value is `invalid_argument`. Ignored for an NPC.
+  AbilityMethod ability_method = 6;
 }
 
 // CreateCharacterResponse returns the new character.
 message CreateCharacterResponse {
   // The new character, with revision 1.
   Character character = 1;
+}
+
+// AbilityMethod is how a player made the base scores of a new sheet (RN-24). The
+// standard array, the point buy and 4d6 come from the SRD 5.2.1 (the 2024 rules,
+// CC BY 4.0, p. 20, the same numbers as 2014); the app labels them "SRD 5.2.1
+// (regras de 2024)".
+enum AbilityMethod {
+  // Not said (a client from before the rules): see
+  // CreateCharacterRequest.ability_method.
+  ABILITY_METHOD_UNSPECIFIED = 0;
+  // The six scores are 15, 14, 13, 12, 10 and 8, each given to one ability.
+  ABILITY_METHOD_STANDARD_ARRAY = 1;
+  // Each score is 8 to 15 and the cost of the six is at most 27 points (8 = 0,
+  // 9 = 1, 10 = 2, 11 = 3, 12 = 4, 13 = 5, 14 = 7, 15 = 9).
+  ABILITY_METHOD_POINT_BUY = 2;
+  // The six scores are the results of the sets stored by RollAbilityScores,
+  // each used once, in any order.
+  ABILITY_METHOD_ROLLED_4D6 = 3;
+  // Each score is typed, 3 to 18, before the race's bonus.
+  ABILITY_METHOD_TYPED = 4;
+}
+
+// AbilityScoresRefusalReason says why the ability scores of a new sheet, or a
+// roll of them, are refused, so the app shows its own copy for each.
+enum AbilityScoresRefusalReason {
+  ABILITY_SCORES_REFUSAL_REASON_UNSPECIFIED = 0;
+  // The table does not allow this method (RN-24).
+  ABILITY_SCORES_REFUSAL_REASON_METHOD_NOT_ALLOWED = 1;
+  // STANDARD_ARRAY, but the scores are not 15, 14, 13, 12, 10 and 8, each once.
+  ABILITY_SCORES_REFUSAL_REASON_NOT_STANDARD_ARRAY = 2;
+  // POINT_BUY, but a score is outside 8 to 15 or more than 27 points are spent.
+  ABILITY_SCORES_REFUSAL_REASON_BAD_POINT_BUY = 3;
+  // ROLLED_4D6, but no sets are stored (call RollAbilityScores first).
+  ABILITY_SCORES_REFUSAL_REASON_NO_ROLLS_STORED = 4;
+  // ROLLED_4D6, but the scores are not the six stored results, each once.
+  ABILITY_SCORES_REFUSAL_REASON_NOT_THE_ROLLS = 5;
+  // TYPED, but a score is outside 3 to 18.
+  ABILITY_SCORES_REFUSAL_REASON_TYPED_OUT_OF_RANGE = 6;
+  // RollAbilityScores with typed dice, in a campaign where everybody rolls in the
+  // app (RN-18).
+  ABILITY_SCORES_REFUSAL_REASON_DICE_FORCED_IN_APP = 7;
+  // RollAbilityScores without typed dice, in a campaign where everybody rolls
+  // physical dice (RN-18).
+  ABILITY_SCORES_REFUSAL_REASON_DICE_FORCED_PHYSICAL = 8;
+  // RollAbilityScores with typed dice, when other sets are already stored: the
+  // dice are typed once.
+  ABILITY_SCORES_REFUSAL_REASON_ROLLS_ALREADY_STORED = 9;
+  // The manual ability bonuses (`extra_ability_bonuses`) add up, in their positive
+  // values, to more than the race lets the player place (the half-elf's +1 to two
+  // abilities, a table race's choice) plus 2 for each Ability Score Improvement the
+  // classes reached: they would get around the way the scores were made. Negative
+  // values are free; the master's edits too.
+  ABILITY_SCORES_REFUSAL_REASON_EXTRA_BONUSES = 10;
+}
+
+// AbilityScoresRefusal is the error detail of the `failed_precondition` of
+// CreateCharacter and RollAbilityScores that concerns the ability scores.
+message AbilityScoresRefusal {
+  AbilityScoresRefusalReason reason = 1;
+  // The method the call used, for the reasons about a method.
+  AbilityMethod method = 2;
+}
+
+// AbilityRollSet is one roll of "4d6, drop the lowest": four dice.
+message AbilityRollSet {
+  // The four dice, each 1 to 6. The lowest is the one that is dropped (the
+  // first, when several are the lowest).
+  repeated int32 dice = 1;
+  // The result: the dice added without the lowest, 3 to 18.
+  int32 total = 2;
+}
+
+// AbilityRolls are the six sets stored for a player's next new character.
+message AbilityRolls {
+  // Six sets, in the order they were rolled or typed.
+  repeated AbilityRollSet sets = 1;
+  // True when the player typed the dice (physical dice); false when the server
+  // rolled them.
+  bool typed = 2;
+  // When they were rolled or typed.
+  google.protobuf.Timestamp rolled_at = 3;
+}
+
+// GetAbilityRollsRequest names the campaign.
+message GetAbilityRollsRequest {
+  string campaign_id = 1;
+}
+
+// GetAbilityRollsResponse returns the stored sets.
+message GetAbilityRollsResponse {
+  // Unset when no sets are stored.
+  AbilityRolls rolls = 1;
+}
+
+// RollAbilityScoresRequest asks for the sets, typed or rolled by the server.
+message RollAbilityScoresRequest {
+  string campaign_id = 1;
+  // Physical dice: the six sets the player typed, four dice each, 1 to 6. Empty
+  // for the server to roll.
+  repeated AbilityRollSet typed_dice = 2;
+}
+
+// RollAbilityScoresResponse returns the stored sets.
+message RollAbilityScoresResponse {
+  AbilityRolls rolls = 1;
+  // True when the sets were stored before this call and are returned as they
+  // were.
+  bool already_rolled = 2;
 }
 
 // GetCharacterRequest names a character of a campaign.
@@ -1400,6 +1585,24 @@ message LevelUpOptions {
   // class: RollLevelUpHitPoints and LevelUpCharacter answer
   // HIT_POINT_ROLL_OTHER_CLASS.
   string kept_hit_point_roll_class_key = 34;
+  // Which hit points methods the table allows (RN-24). With ROLL_ONLY the
+  // average is refused (LevelUpCharacter with AVERAGE answers HIT_POINTS_RULE);
+  // with AVERAGE_ONLY the rolls are refused (RollLevelUpHitPoints answers
+  // HIT_POINTS_AVERAGE_ONLY, and ROLLED_IN_APP and ROLLED_PHYSICAL answer
+  // HIT_POINTS_RULE). Independent of dice_rule, which says where a roll happens.
+  LevelUpHitPointsRule hit_points_rule = 35;
+}
+
+// LevelUpHitPointsRule is which methods of deciding a level's hit points the
+// table allows (RN-24).
+enum LevelUpHitPointsRule {
+  LEVEL_UP_HIT_POINTS_RULE_UNSPECIFIED = 0;
+  // The player chooses between rolling and the average (the default).
+  LEVEL_UP_HIT_POINTS_RULE_PLAYER_CHOOSES = 1;
+  // Everybody rolls; the average is refused.
+  LEVEL_UP_HIT_POINTS_RULE_ROLL_ONLY = 2;
+  // Everybody takes the average; a roll is refused.
+  LEVEL_UP_HIT_POINTS_RULE_AVERAGE_ONLY = 3;
 }
 
 // LevelUpSubclass is a subclass the player may pick at this level, with the
@@ -1532,6 +1735,10 @@ enum LevelUpRefusalReason {
   // says "peça ao mestre para corrigir a ficha", and the master edits it.
   // `field` is the sheet field.
   LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER = 18;
+  // The hit points method is one the table's rule does not allow (RN-24): the
+  // average where everybody rolls, or a roll where everybody takes the average.
+  // `field` is "choices.hit_points.method".
+  LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE = 19;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a

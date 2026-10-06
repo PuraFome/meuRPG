@@ -141,6 +141,9 @@ type levelUpTarget struct {
 	idx      int
 	// content is the campaign's rules content, read in the caller's transaction.
 	content *rules.Content
+	// rules are the campaign's table rules, read with the content: the hit points
+	// method the table allows (RN-24).
+	rules TableRules
 }
 
 // newLevelUpTarget runs the checks every guided level-up call shares, on a
@@ -167,7 +170,7 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if row.Kind != kindPlayer || full == nil || s.levelUps == nil {
 		return levelUpTarget{}, cannot
 	}
-	content, err := s.contentFor(ctx, tx, m.CampaignID)
+	content, tableRules, err := s.content.For(ctx, tx, m.CampaignID)
 	if err != nil {
 		return levelUpTarget{}, wrap("read rules content", err)
 	}
@@ -198,7 +201,7 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if idx < 0 {
 		return levelUpTarget{}, invalidArgument(fieldErr("class_key", "is not a class of the character"))
 	}
-	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content}, nil
+	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content, rules: tableRules}, nil
 }
 
 // readLevelUpTarget is newLevelUpTarget for a read: the row is not locked.
@@ -247,6 +250,7 @@ func (s *Service) GetLevelUpOptions(
 	if out.DiceRule, err = s.diceRule(ctx, nil, m); err != nil {
 		return nil, s.dbError(ctx, "read the dice setting", err)
 	}
+	out.HitPointsRule = hitPointsRuleToProto(t.rules.HitPoints)
 	roll, err := s.queries.GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
 	switch {
 	case err == nil:
@@ -327,6 +331,10 @@ func (s *Service) RollLevelUpHitPoints(
 		}
 		if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL {
 			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL, row.ID)
+		}
+		// A table where everybody takes the average never rolls (RN-24).
+		if t.rules.HitPoints == HitPointsAverage {
+			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY, row.ID)
 		}
 		offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
 		if lerr != nil {
@@ -648,6 +656,16 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 	}
 	hp := rules.LevelUpHitPoints{Average: true}
 	value := offer.HitPointAverage
+	// The table's rule (RN-24) refuses the method it does not allow, with the
+	// average standing in for the rest of the plan. A preview without a method
+	// has not chosen one, so it is not refused.
+	if chosen := choices.GetHitPoints().GetMethod(); chosen != charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_UNSPECIFIED &&
+		!hitPointsMethodAllowed(t.rules.HitPoints, chosen) {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: "choices.hit_points.method", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE,
+		}
+		method = charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE
+	}
 	switch method {
 	case charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP:
 		rule, err := s.diceRule(ctx, tx, m)
@@ -840,4 +858,29 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		})
 	}
 	return out
+}
+
+// hitPointsMethodAllowed says whether the table's rule allows the method (RN-24):
+// with "roll" only the rolled methods, with "average" only the average, and with
+// the default every method.
+func hitPointsMethodAllowed(rule HitPointsRule, m charactersv1.LevelUpHitPointsMethod) bool {
+	average := m == charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE
+	switch rule {
+	case HitPointsRoll:
+		return !average
+	case HitPointsAverage:
+		return average
+	}
+	return true
+}
+
+// hitPointsRuleToProto is the rule GetLevelUpOptions tells the app.
+func hitPointsRuleToProto(rule HitPointsRule) charactersv1.LevelUpHitPointsRule {
+	switch rule {
+	case HitPointsRoll:
+		return charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_ROLL_ONLY
+	case HitPointsAverage:
+		return charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_AVERAGE_ONLY
+	}
+	return charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_PLAYER_CHOOSES
 }

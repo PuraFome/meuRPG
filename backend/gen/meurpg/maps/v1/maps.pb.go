@@ -615,8 +615,11 @@ type Map struct {
 	// How many rows of squares the grid has: round(grid_columns * image
 	// height / image width), 1 to 400. 0 when the map has no grid.
 	GridRows int32 `protobuf:"varint,13,opt,name=grid_rows,json=gridRows,proto3" json:"grid_rows,omitempty"`
-	// Whether the fog of war is on (SetMapFog). Every viewer gets it: a player
-	// needs to know the map has fog. False for a map without a grid.
+	// Whether the fog of war is on (SetMapFog, or the table's rule "névoa nos mapas
+	// novos", RN-24, which comes on when the map's first grid is set: a map created
+	// while the rule is on has no fog until then, because the fog is made of the
+	// grid's squares). Every viewer gets it: a player needs to know the map has
+	// fog. False for a map without a grid.
 	FogEnabled bool `protobuf:"varint,14,opt,name=fog_enabled,json=fogEnabled,proto3" json:"fog_enabled,omitempty"`
 	// The light of a square nobody lit and the master did not paint: DARK, DIM or
 	// BRIGHT, DARK by default. Only the master gets it; UNSPECIFIED for a player.

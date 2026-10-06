@@ -125,6 +125,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["PreviewLevelUp"] = c.PreviewLevelUp(ctx, connect.NewRequest(&charactersv1.PreviewLevelUpRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RollLevelUpHitPoints"] = c.RollLevelUpHitPoints(ctx, connect.NewRequest(&charactersv1.RollLevelUpHitPointsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["LevelUpCharacter"] = c.LevelUpCharacter(ctx, connect.NewRequest(&charactersv1.LevelUpCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["GetAbilityRolls"] = c.GetAbilityRolls(ctx, connect.NewRequest(&charactersv1.GetAbilityRollsRequest{CampaignId: id}))
+	_, calls["RollAbilityScores"] = c.RollAbilityScores(ctx, connect.NewRequest(&charactersv1.RollAbilityScoresRequest{CampaignId: id}))
 	_, calls["ListLevelUps"] = c.ListLevelUps(ctx, connect.NewRequest(&charactersv1.ListLevelUpsRequest{CampaignId: id}))
 	_, calls["ListCharacterCreatures"] = c.ListCharacterCreatures(ctx, connect.NewRequest(&charactersv1.ListCharacterCreaturesRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GiveCreature"] = c.GiveCreature(ctx, connect.NewRequest(&charactersv1.GiveCreatureRequest{CampaignId: id, CharacterId: id, MonsterKey: "monster:wolf"}))
@@ -176,8 +178,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 15 {
-		t.Errorf("found %d reads, want 15 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets)", len(reads))
+	if len(reads) != 16 {
+		t.Errorf("found %d reads, want 16 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

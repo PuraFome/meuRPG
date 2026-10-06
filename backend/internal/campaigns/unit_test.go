@@ -147,6 +147,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RevokeInvite"] = c.RevokeInvite(ctx, connect.NewRequest(&campaignsv1.RevokeInviteRequest{CampaignId: id, InviteId: id}))
 	_, calls["SetCampaignDiceMode"] = c.SetCampaignDiceMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignDiceModeRequest{CampaignId: id, Mode: campaignsv1.DiceMode_DICE_MODE_APP}))
 	_, calls["SetMyDicePreference"] = c.SetMyDicePreference(ctx, connect.NewRequest(&campaignsv1.SetMyDicePreferenceRequest{CampaignId: id, Preference: campaignsv1.DicePreference_DICE_PREFERENCE_APP}))
+	_, calls["GetTableRules"] = c.GetTableRules(ctx, connect.NewRequest(&campaignsv1.GetTableRulesRequest{CampaignId: id}))
+	_, calls["SetTableRules"] = c.SetTableRules(ctx, connect.NewRequest(&campaignsv1.SetTableRulesRequest{CampaignId: id, Rules: validRules()}))
+	_, calls["SetCampaignXpMode"] = c.SetCampaignXpMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignXpModeRequest{CampaignId: id, XpMode: campaignsv1.XpMode_XP_MODE_GOLD}))
 	_, calls["AcceptInvite"] = c.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: "x"}))
 
 	methods := campaignsv1.File_meurpg_campaigns_v1_campaigns_proto.Services().ByName("CampaignService").Methods()

@@ -30,6 +30,13 @@ type recordingSource struct {
 	asks  []contentAsk
 }
 
+func (r *recordingSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+	r.mu.Lock()
+	r.asks = append(r.asks, contentAsk{campaignID: campaignID, inTx: tx != nil})
+	r.mu.Unlock()
+	return r.inner.ContentFor(ctx, tx, campaignID)
+}
+
 func (r *recordingSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
 	r.mu.Lock()
 	r.asks = append(r.asks, contentAsk{campaignID: campaignID, inTx: tx != nil})
