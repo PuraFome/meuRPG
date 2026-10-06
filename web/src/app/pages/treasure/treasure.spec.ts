@@ -158,7 +158,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     expect(plain(flat(el.querySelector('[data-testid=treasure-items]')))).toBe('4.850 PO');
     expect(plain(flat(el.querySelector('.totals__row--items dt')))).toContain('ficam como itens, não viram XP');
     expect(plain(flat(el.querySelector('.totals__row--total')))).toBe('Valor total 5.367 PO');
-    expect(plain(flat(el.querySelector('.kinds .note')))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba). Itens que se gastam valem a metade.');
+    expect(plain(flat(el.querySelector('.kinds .note')))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba). Itens que se gastam valem a metade, menos os pergaminhos de magia.');
   });
 
   it('an individual treasure is coins only: no gems, no art, no items, and the total is the gold', async () => {

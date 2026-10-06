@@ -79,7 +79,7 @@ describe('treasure-format: what the server rolled, in words (MR-044)', () => {
       'Comum vale 100 PO; um item que se gasta vale a metade.',
     );
     expect(itemValueRule(magicItemResponse({ valuePo: 400, consumable: true, spellScroll: true, rarity: MagicItemRarity.UNCOMMON }))).toContain('não é dividido ao meio');
-    expect(itemValueRule(magicItemResponse())).toBe('Itens que se gastam valem a metade. Este não se gasta.');
+    expect(itemValueRule(magicItemResponse())).toBe('Itens que se gastam valem a metade, menos os pergaminhos de magia. Este não se gasta.');
     expect(itemValueRule(magicItemResponse({ valuePo: undefined, priceless: true }))).toBe('Um artefato não tem preço.');
   });
 

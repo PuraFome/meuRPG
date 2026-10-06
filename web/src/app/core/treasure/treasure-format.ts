@@ -22,7 +22,7 @@ import { formatInt, tight } from '../format/text';
 export const VALUE_LABEL = 'Valores do SRD 5.2.1 (regras de 2024)';
 
 /** Said under every value of an item, with "Créditos" next to it. */
-export const CONSUMABLE_RULE = 'Itens que se gastam valem a metade.';
+export const CONSUMABLE_RULE = 'Itens que se gastam valem a metade, menos os pergaminhos de magia.';
 
 /** "1.200 PO", "460 PO": the number and its unit tied by a no-break space, pt-BR thousands separator. */
 export function po(value: number): string {

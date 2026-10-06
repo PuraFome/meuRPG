@@ -62,7 +62,7 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
     expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('4.000 PO');
     expect(flat(el.querySelector('.value__src'))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba)');
     expect(el.querySelector('.value__src a')?.getAttribute('href')).toBe('/creditos');
-    expect(flat(el.querySelector('.value__rule'))).toBe('Itens que se gastam valem a metade. Este não se gasta.');
+    expect(flat(el.querySelector('.value__rule'))).toBe('Itens que se gastam valem a metade, menos os pergaminhos de magia. Este não se gasta.');
   });
 
   it('puts the SRD text in English with lang="en", one paragraph per entry, and says it is in English', async () => {
