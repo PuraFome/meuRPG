@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -87,8 +88,12 @@ type TableEntry struct {
 	Archived bool
 	// Revision is the table's content revision at the entry's last change (0 for
 	// an entry made outside the server, as in tests). ChangedSince compares it
-	// with the revision a sheet was saved at.
+	// with the revision a sheet was saved at. An archive is not a change: it does
+	// not move it.
 	Revision int
+	// ChangedAt is when the entry last changed (a creation or an edit, never an
+	// archive); the zero time for an entry made outside the server.
+	ChangedAt time.Time
 }
 
 // TableFeature is a class, subclass or background feature, or a race's trait.
@@ -487,8 +492,10 @@ type ChangedEntry struct {
 	// Key is the entry's key and Field the sheet field that holds it, with the
 	// CharacterSheet field names ("full.classes[0].class_key").
 	Key, Field string
-	// Revision is the content revision at which the entry last changed.
-	Revision int
+	// Revision is the content revision at which the entry last changed, and
+	// ChangedAt when.
+	Revision  int
+	ChangedAt time.Time
 }
 
 // KeyField is a content key a Build uses and the sheet field that holds it.
@@ -541,7 +548,7 @@ func (c *Content) ChangedSince(b Build, savedRevision int) []ChangedEntry {
 			continue
 		}
 		seen[kf.Key] = true
-		out = append(out, ChangedEntry{Key: kf.Key, Field: kf.Field, Revision: c.c.entryRevision[kf.Key]})
+		out = append(out, ChangedEntry{Key: kf.Key, Field: kf.Field, Revision: c.c.entryRevision[kf.Key], ChangedAt: c.c.entryChangedAt[kf.Key]})
 	}
 	return out
 }
@@ -833,6 +840,7 @@ func (b *overlayBuilder) register(e TableEntry) {
 	}
 	if e.Revision > 0 {
 		b.n.entryRevision[e.Key] = e.Revision
+		b.n.entryChangedAt[e.Key] = e.ChangedAt
 	}
 }
 
@@ -861,6 +869,7 @@ func (c *content) cloneForOverlay() *content {
 	n.offeredBy = map[string][]string{}
 	n.archived = map[string]bool{}
 	n.entryRevision = map[string]int{}
+	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
 	n.raceChoice = map[string][]int{}
 	n.bgEquipment = map[string]string{}

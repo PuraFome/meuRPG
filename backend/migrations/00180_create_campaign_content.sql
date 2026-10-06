@@ -10,7 +10,10 @@
 -- data is the protojson (proto field names) of the kind's message in
 -- rules/v1/table_content.proto, without the key and the archive mark. revision
 -- is the campaign's content revision (campaign_content_state) at the entry's
--- last change: a sheet saved at an older revision is told the entry changed.
+-- last change, and updated_at when: a sheet saved at an older revision is told
+-- the entry changed, if the change left it with new issues. Archiving and
+-- unarchiving are not changes: they set archived_at and leave revision and
+-- updated_at alone.
 --
 -- Nothing is deleted: archived_at retires an entry. Sheets that use it keep
 -- working, but it is not offered as a new choice (ADR-0018, section 7).

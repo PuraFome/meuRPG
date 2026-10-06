@@ -171,6 +171,22 @@ func (q *Queries) CountLiveCreaturesOfCharacter(ctx context.Context, arg CountLi
 	return column_1, err
 }
 
+const deleteAbilityRolls = `-- name: DeleteAbilityRolls :exec
+DELETE FROM character_ability_rolls
+WHERE campaign_id = $1::UUID AND user_id = $2::UUID
+`
+
+type DeleteAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// A sheet used the sets (CreateCharacter): the next character gets new ones.
+func (q *Queries) DeleteAbilityRolls(ctx context.Context, arg DeleteAbilityRollsParams) error {
+	_, err := q.db.Exec(ctx, deleteAbilityRolls, arg.CampaignID, arg.UserID)
+	return err
+}
+
 const deleteCreatures = `-- name: DeleteCreatures :exec
 DELETE FROM character_creatures
 WHERE campaign_id = $1::UUID AND id = ANY($2::UUID[])
@@ -300,6 +316,31 @@ func (q *Queries) EndStoryEditing(ctx context.Context, campaignID string) (int64
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getAbilityRolls = `-- name: GetAbilityRolls :one
+SELECT sets, source, rolled_at FROM character_ability_rolls
+WHERE campaign_id = $1::UUID AND user_id = $2::UUID
+`
+
+type GetAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+}
+
+type GetAbilityRollsRow struct {
+	Sets     []byte
+	Source   string
+	RolledAt time.Time
+}
+
+// The six sets of 4d6 stored for the player's next new character in the
+// campaign (RN-24): the same sets come back until a sheet uses them.
+func (q *Queries) GetAbilityRolls(ctx context.Context, arg GetAbilityRollsParams) (GetAbilityRollsRow, error) {
+	row := q.db.QueryRow(ctx, getAbilityRolls, arg.CampaignID, arg.UserID)
+	var i GetAbilityRollsRow
+	err := row.Scan(&i.Sets, &i.Source, &i.RolledAt)
+	return i, err
 }
 
 const getCampaignContent = `-- name: GetCampaignContent :one
@@ -672,6 +713,36 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightConditions,
 	)
 	return i, err
+}
+
+const insertAbilityRolls = `-- name: InsertAbilityRolls :execrows
+INSERT INTO character_ability_rolls (campaign_id, user_id, sets, source, rolled_at)
+VALUES ($1::UUID, $2::UUID, $3::JSONB, $4, $5)
+ON CONFLICT (campaign_id, user_id) DO NOTHING
+`
+
+type InsertAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+	Sets       []byte
+	Source     string
+	Now        time.Time
+}
+
+// Stores the sets. A second insert for the same player and campaign does
+// nothing (0 rows), so the first sets stand: asking again never rerolls.
+func (q *Queries) InsertAbilityRolls(ctx context.Context, arg InsertAbilityRollsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertAbilityRolls,
+		arg.CampaignID,
+		arg.UserID,
+		arg.Sets,
+		arg.Source,
+		arg.Now,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertCampaignContent = `-- name: InsertCampaignContent :one
@@ -1980,27 +2051,25 @@ func (q *Queries) ReviveCreatures(ctx context.Context, arg ReviveCreaturesParams
 
 const setCampaignContentArchived = `-- name: SetCampaignContentArchived :one
 UPDATE campaign_content
-SET archived_at = CASE WHEN $1::BOOL THEN $2::TIMESTAMPTZ ELSE NULL END,
-    revision = $3, updated_at = $2
-WHERE campaign_id = $4::UUID AND content_key = $5
+SET archived_at = CASE WHEN $1::BOOL THEN $2::TIMESTAMPTZ ELSE NULL END
+WHERE campaign_id = $3::UUID AND content_key = $4
 RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
 `
 
 type SetCampaignContentArchivedParams struct {
 	Archived   bool
 	Now        time.Time
-	Revision   int32
 	CampaignID string
 	ContentKey string
 }
 
-// archived true retires the entry, false brings it back. The revision is the
-// campaign's new one: an archive is a change too.
+// archived true retires the entry, false brings it back. Neither is a change of
+// the entry: its revision and updated_at stay (a sheet that uses it is not told it
+// changed). The campaign's revision still goes up, for the cache (BumpContentRevision).
 func (q *Queries) SetCampaignContentArchived(ctx context.Context, arg SetCampaignContentArchivedParams) (CampaignContent, error) {
 	row := q.db.QueryRow(ctx, setCampaignContentArchived,
 		arg.Archived,
 		arg.Now,
-		arg.Revision,
 		arg.CampaignID,
 		arg.ContentKey,
 	)

@@ -515,6 +515,23 @@ WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.status = 'active'
 ORDER BY cc.created_at, cc.id;
 
+-- name: GetAbilityRolls :one
+-- The six sets of 4d6 stored for the player's next new character in the
+-- campaign (RN-24): the same sets come back until a sheet uses them.
+SELECT sets, source, rolled_at FROM character_ability_rolls
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND user_id = sqlc.arg(user_id)::UUID;
+
+-- name: InsertAbilityRolls :execrows
+-- Stores the sets. A second insert for the same player and campaign does
+-- nothing (0 rows), so the first sets stand: asking again never rerolls.
+INSERT INTO character_ability_rolls (campaign_id, user_id, sets, source, rolled_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(user_id)::UUID, sqlc.arg(sets)::JSONB, sqlc.arg(source), sqlc.arg(now))
+ON CONFLICT (campaign_id, user_id) DO NOTHING;
+
+-- name: DeleteAbilityRolls :exec
+-- A sheet used the sets (CreateCharacter): the next character gets new ones.
+DELETE FROM character_ability_rolls
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND user_id = sqlc.arg(user_id)::UUID;
 
 -- The table's own content (MR-025, RN-23, ADR-0018): campaign_content, one row
 -- per entry, and campaign_content_state, the campaign's content revision.
@@ -562,11 +579,11 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND content_key = sqlc.arg(conte
 RETURNING *;
 
 -- name: SetCampaignContentArchived :one
--- archived true retires the entry, false brings it back. The revision is the
--- campaign's new one: an archive is a change too.
+-- archived true retires the entry, false brings it back. Neither is a change of
+-- the entry: its revision and updated_at stay (a sheet that uses it is not told it
+-- changed). The campaign's revision still goes up, for the cache (BumpContentRevision).
 UPDATE campaign_content
-SET archived_at = CASE WHEN sqlc.arg(archived)::BOOL THEN sqlc.arg(now)::TIMESTAMPTZ ELSE NULL END,
-    revision = sqlc.arg(revision), updated_at = sqlc.arg(now)
+SET archived_at = CASE WHEN sqlc.arg(archived)::BOOL THEN sqlc.arg(now)::TIMESTAMPTZ ELSE NULL END
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND content_key = sqlc.arg(content_key)
 RETURNING *;
 

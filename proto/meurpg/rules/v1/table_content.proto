@@ -2,8 +2,8 @@ syntax = "proto3";
 
 // The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
 // subclasses, races, subraces, backgrounds and spells that the master writes for
-// one campaign. The RPCs are ContentService's (rules.proto); the messages are
-// here.
+// one campaign. The RPCs are TableContentService's, below; the catalog the
+// character editor builds from is ContentService.ListContent (rules.proto).
 //
 // One typed message per kind, each mapping one to one onto the fields the rules
 // engine takes (package rules, Overlay). The server checks all of them with the
@@ -61,11 +61,15 @@ message TableEntry {
   // overwrite each other.
   int32 revision = 5;
   google.protobuf.Timestamp created_at = 6;
+  // When the entry last changed: its creation or its last edit. Archiving and
+  // unarchiving do not move it, nor `revision`.
   google.protobuf.Timestamp updated_at = 7;
   // How many characters of the campaign use the entry (race, subrace, class,
   // subclass, background, or as a known, prepared or cantrip spell). Filled for
   // the master only; 0 for a player.
   int32 characters_using = 8;
+  // When the master archived the entry; unset while it is not archived.
+  google.protobuf.Timestamp archived_at = 9;
   // The entry itself. Exactly one is set, the one of `kind`.
   oneof body {
     TableClass table_class = 10;
@@ -428,8 +432,10 @@ message TableContentViolation {
   // "duplicate_key", "reserved_key", "bad_name", "bad_text", "dangling_reference"
   // (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
   // "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
-  // (a key, kind or parent changed), "entry_limit" (300 entries), "size_limit"
-  // (64 KiB).
+  // (a key, kind or parent changed, or a spell crossing between cantrip and
+  // leveled), "duplicate_name" (another entry of the kind has the name) and
+  // "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
+  // field.
   string reason = 2;
   // English, for logs and tests.
   string message = 3;
@@ -438,27 +444,26 @@ message TableContentViolation {
 }
 
 // TableContentRefusal is the error detail of `invalid_argument` on a
-// ContentService write the rules refused. Nothing was changed.
+// TableContentService write the rules refused. Nothing was changed.
 message TableContentRefusal {
   repeated TableContentViolation violations = 1;
 }
 
-// TableContentBlockedReason says why a ContentService write cannot be done now.
+// TableContentBlockedReason says why a TableContentService write cannot be done now.
 enum TableContentBlockedReason {
   TABLE_CONTENT_BLOCKED_REASON_UNSPECIFIED = 0;
   // The entry changed since the editor read it (`expected_revision` is stale).
   // The app says "Esta entrada mudou enquanto você editava". It comes as
   // `aborted`, like a stale sheet, with this detail.
   TABLE_CONTENT_BLOCKED_REASON_STALE = 1;
-  // The entry is archived: unarchive it before changing it (also the answer to
-  // archiving an entry that is already archived).
+  // ArchiveTableEntry on an entry that is already archived. (An archived entry
+  // can still be edited: it is only not offered as a new choice.)
   TABLE_CONTENT_BLOCKED_REASON_ARCHIVED = 2;
-  // UnarchiveTableEntry on an entry that is not archived, or ArchiveTableEntry on
-  // one that is already.
+  // UnarchiveTableEntry on an entry that is not archived.
   TABLE_CONTENT_BLOCKED_REASON_NOT_ARCHIVED = 3;
 }
 
-// TableContentBlocked is the error detail of ContentService's
+// TableContentBlocked is the error detail of TableContentService's
 // `failed_precondition` and `aborted`.
 message TableContentBlocked {
   TableContentBlockedReason reason = 1;
@@ -523,11 +528,12 @@ service TableContentService {
   // UpdateTableEntry replaces an entry's body. The kind, the key and the parent
   // (a subclass's class, a subrace's race) never change. Only the master.
   // `expected_revision` must be the entry's `revision`, or the call is `aborted`
-  // with a TableContentBlocked STALE detail. An archived entry is
-  // `failed_precondition` (TableContentBlocked ARCHIVED). Everything else is as
-  // CreateTableEntry. Sheets that use the entry recalculate at once and show "A
-  // classe mudou" (an issue of the derived sheet); the response says which ones
-  // have issues now.
+  // with a TableContentBlocked STALE detail. An archived entry can be edited, and
+  // stays archived. Everything else is as CreateTableEntry. A spell never crosses
+  // between cantrip and leveled (`level` is an `immutable` violation when it would),
+  // because a sheet keeps cantrips and leveled spells in different lists. Sheets
+  // that use the entry recalculate at once; the ones that end with new issues show
+  // "A classe mudou" (DerivedSheet.changed_content), and the response says which.
   //
   // Errors: as CreateTableEntry, plus `not_found` for an unknown key.
   rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {}

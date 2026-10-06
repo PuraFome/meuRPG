@@ -150,7 +150,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 	if full := sheet.GetFull(); full != nil {
 		build := buildOf(full)
 		c.Derived = derivedToProto(rules.Derive(build, content))
-		addChangedContent(c.Derived, content, build, int(full.GetContentRevision()))
+		addChangedContent(c.Derived, content, build, full)
 	}
 	return c, nil
 }

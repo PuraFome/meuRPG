@@ -13,7 +13,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// NewSource returns the live source over the SRD content and the test pool.
+// NewSource returns the live source over the SRD content and the test pool. It
+// reads no table rules (the defaults), like the suites that use it expect.
 func NewSource(pool *pgxpool.Pool, srd *rules.Content) characters.ContentSource {
-	return characters.NewTableSource(pool, srd)
+	return characters.NewTableSource(pool, srd, nil)
 }

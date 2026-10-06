@@ -207,9 +207,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Pool:     pool,
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			// Each campaign plays with the SRD plus the table's own content (MR-025,
-			// ADR-0018); SRD is the base content for what no table changes (the conditions).
-			Content: characters.NewTableSource(pool, rulesContent),
+			// Every campaign plays with the SRD plus the table's own content (MR-025,
+			// RN-23, ADR-0018) and the table rules its master saved (RN-24). SRD is
+			// the base content for what no table changes (the conditions).
+			Content: characters.NewTableSource(pool, rulesContent, campaignsService),
 			SRD:     rulesContent,
 			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 			Logger:  logger,
@@ -259,7 +260,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			// conditions and skills, which no table's content changes (MR-025, ADR-0018).
 			Rules:   rulesContent, // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
 			Combats: playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
-			Logger:  logger,
+			// Whether a new map starts with the fog on is a table rule (RN-24).
+			Defaults: campaignsService,
+			Logger:   logger,
 		})
 		if err != nil {
 			return err
@@ -290,6 +293,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// Changing the XP mode asks for a confirmation when XP was already awarded (RN-09).
+		campaignsService.SetXPAwards(progressionService)
 		charactersService.SetLevelUps(progressionService)
 		// The players' private notes (MR-030) read the scenes the group
 		// discovered and the clues revealed to each player from the maps

@@ -153,6 +153,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     challengeRating: '',
     portraitImageId: '',
     contentRevision: 0,
+    knownIssues: [],
     xpValue: 0,
     ...overrides,
   };

@@ -103,6 +103,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     xpValue: 450,
     portraitImageId: '',
     contentRevision: 0,
+    knownIssues: [],
   };
 }
 
@@ -166,6 +167,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       xpValue: loaded.xpValue,
       portraitImageId: loaded.portraitImageId,
       contentRevision: loaded.contentRevision,
+      knownIssues: loaded.knownIssues,
     });
   });
 

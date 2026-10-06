@@ -303,15 +303,21 @@ func TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack(t *testing.
 				t.Errorf("feature keys after the update = %v, want the same %v", got, keysBefore)
 			}
 			archived, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: created.GetKey()}))
-			if err != nil || !archived.Msg.GetEntry().GetArchived() {
-				t.Fatalf("ArchiveTableEntry() = %v, %v; want an archived entry", archived, err)
+			if err != nil || !archived.Msg.GetEntry().GetArchived() || !archived.Msg.GetEntry().GetArchivedAt().IsValid() {
+				t.Fatalf("ArchiveTableEntry() = %v, %v; want an archived entry with its date", archived, err)
+			}
+			if archived.Msg.GetEntry().GetRevision() != updated.GetRevision() || !archived.Msg.GetEntry().GetUpdatedAt().AsTime().Equal(updated.GetUpdatedAt().AsTime()) ||
+				archived.Msg.GetTableRevision() <= updated.GetRevision() {
+				t.Errorf("an archive moved the entry's revision or date (%d, %v), or not the campaign's (%d): it is not a change of the entry",
+					archived.Msg.GetEntry().GetRevision(), archived.Msg.GetEntry().GetUpdatedAt(), archived.Msg.GetTableRevision())
 			}
 			if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: created.GetKey()})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 				t.Errorf("archiving twice: error = %v, want failed_precondition", err)
 			}
-			_, err = master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, created.GetKey(), archived.Msg.GetEntry().GetRevision(), tc.renamed)))
-			if connect.CodeOf(err) != connect.CodeFailedPrecondition || blockedOf(t, err).GetReason() != rulesv1.TableContentBlockedReason_TABLE_CONTENT_BLOCKED_REASON_ARCHIVED {
-				t.Errorf("updating an archived entry: error = %v, want failed_precondition ARCHIVED", err)
+			// An archived entry can still be edited, and stays archived.
+			edited, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, created.GetKey(), archived.Msg.GetEntry().GetRevision(), cloneWithKeys(tc.renamed, bodyMessage(updated)))))
+			if err != nil || !edited.Msg.GetEntry().GetArchived() || !edited.Msg.GetEntry().GetArchivedAt().IsValid() {
+				t.Errorf("updating an archived entry: %v, %v; want it saved, still archived", edited, err)
 			}
 			back, err := master.table.UnarchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: campaign, Key: created.GetKey()}))
 			if err != nil || back.Msg.GetEntry().GetArchived() {
@@ -390,9 +396,10 @@ func TestTableContentFeatureKeysAreStable(t *testing.T) {
 	campaign := h.newCampaign(master, "Mirathel")
 	created := master.addEntry(t, campaign, testClass("Guardião"))
 	first := featureKeysOf(bodyMessage(created))
-	if len(first) != 3 || first[0] != "feature:class-guardiao--vigor@mesa" || first[2] != "feature:class-guardiao--surto@mesa" {
+	if len(first) != 3 || !strings.HasPrefix(first[0], "feature:class-guardiao-") || !strings.HasSuffix(first[0], "--vigor@mesa") || !strings.HasSuffix(first[2], "--surto@mesa") {
 		t.Fatalf("feature keys = %v, want ones made from the class and the feature names", first)
 	}
+	stem := strings.TrimSuffix(first[0], "vigor@mesa")
 	// Rename "Vigor" and send it back with its key; add a new "Vigor" and leave it keyless.
 	next := proto.Clone(bodyMessage(created)).(*rulesv1.TableClass)
 	next.Levels[0].Features[0].NamePt = "Vigor de Ferro"
@@ -405,7 +412,7 @@ func TestTableContentFeatureKeysAreStable(t *testing.T) {
 	if after[0] != first[0] || after[1] != first[1] || after[3] != first[2] {
 		t.Errorf("keys after the rename = %v, want the first ones kept (%v)", after, first)
 	}
-	if after[2] != "feature:class-guardiao--vigor@mesa" && after[2] != "feature:class-guardiao--vigor-2@mesa" {
+	if after[2] != stem+"vigor@mesa" && after[2] != stem+"vigor-2@mesa" {
 		t.Errorf("the new feature's key = %q", after[2])
 	}
 	if after[2] == after[0] {
@@ -753,8 +760,8 @@ func TestTableContentIsLive(t *testing.T) {
 func TestTableContentConcurrentWrites(t *testing.T) {
 	t.Parallel()
 	const n = 8
-	h := newHarnessWith(t, func(*Config) {})
-	dbtest.PoolSize(t, n)
+	dbtest.PoolSize(t, n) // before the harness: its pool is the one that must hold n connections
+	h := newHarness(t)
 	master := h.newUser("Samuel")
 	campaign := h.newCampaign(master, "Mirathel")
 
@@ -840,6 +847,27 @@ func TestTableContentChangeShowsOnTheSheet(t *testing.T) {
 	if banner == nil || !strings.HasPrefix(banner.GetMessage(), "A magia Raio de teste mudou") || banner.GetField() != ch[0].GetField() {
 		t.Errorf("banner = %v, want the issue 'A magia ... mudou' at the field", banner)
 	}
+	if len(ch[0].GetMessages()) == 0 || !ch[0].GetChangedAt().IsValid() {
+		t.Errorf("changed content = %v, want the sentences of what no longer fits and the date of the change", ch[0])
+	}
+	for _, msg := range ch[0].GetMessages() {
+		if !slices.ContainsFunc(got.GetDerived().GetIssues(), func(is *rulesv1.Issue) bool { return is.GetMessage() == msg }) {
+			t.Errorf("message %q is not one of the sheet's issues", msg)
+		}
+	}
+	// It goes away by itself when nothing tied to it remains: the master puts the
+	// spell back on the wizard list, and the sheet, read again, shows nothing.
+	back, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, spell.GetKey(), res.Msg.GetEntry().GetRevision(), bodyMessage(spell))))
+	if err != nil {
+		t.Fatalf("UpdateTableEntry() back error = %v", err)
+	}
+	if n := len(owner.get(t, campaign, pc.GetId()).GetDerived().GetChangedContent()); n != 0 {
+		t.Errorf("after the entry fits again: %d changed entries, want none (no save needed)", n)
+	}
+	if _, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, spell.GetKey(), back.Msg.GetEntry().GetRevision(), moved))); err != nil {
+		t.Fatalf("UpdateTableEntry() again error = %v", err)
+	}
+	got = owner.get(t, campaign, pc.GetId())
 	if n := len(other.get(t, campaign, bystander.GetId()).GetDerived().GetChangedContent()); n != 0 {
 		t.Errorf("another player's sheet has %d changed entries, want none", n)
 	}
@@ -883,8 +911,8 @@ func TestTableContentAnUnrelatedEditIsNeverRefusedForAChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := owner.get(t, campaign, pc.GetId())
-	if len(got.GetDerived().GetChangedContent()) != 1 {
-		t.Fatalf("changed content = %v, want the background", got.GetDerived().GetChangedContent())
+	if len(got.GetDerived().GetChangedContent()) != 0 {
+		t.Fatalf("changed content = %v, want none: a change with no new issue on the sheet shows nothing", got.GetDerived().GetChangedContent())
 	}
 	renamed, err := owner.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
 		CampaignId: campaign, CharacterId: pc.GetId(), Revision: got.GetRevision(), Name: "Pensantus, o Sábio", Sheet: got.GetSheet(),
@@ -1067,5 +1095,376 @@ func TestPlayerCatalogWithoutArchived(t *testing.T) {
 	}
 	if len(c.GetRaces()) != 2 {
 		t.Errorf("the master's catalog lost entries: %v", c.GetRaces())
+	}
+}
+
+// sheetWithTable is a player's sheet that uses the table's race, background and
+// a known spell, and, for a fighter, the table's subclass.
+func sheetWithTable(race, background, spell string) *charactersv1.CharacterSheet {
+	s := pensantusSheet()
+	f := s.GetFull()
+	f.RaceKey, f.SubraceKey = race, ""
+	f.Background = &charactersv1.FullSheet_BackgroundKey{BackgroundKey: background}
+	f.SkillProficiencyKeys = []string{"skill:investigation", "skill:medicine"}
+	f.KnownSpellKeys = append(f.KnownSpellKeys, spell)
+	return s
+}
+
+// TestTableContentEveryMechanicalChangeLetsTheSheetSave (question 80, the review's
+// finding): the master makes every mechanical change an entry allows, and the
+// player can still rename the sheet that uses it.
+func TestTableContentEveryMechanicalChangeLetsTheSheetSave(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, owner, other := h.newUser("Samuel"), h.newUser("Dona"), h.newUser("Outra")
+	campaign := h.newCampaign(master, "Mirathel", owner, other)
+	race := master.addEntry(t, campaign, testRace("Anão das Brumas"))
+	bg := master.addEntry(t, campaign, testBackground("Guarda de farol"))
+	spell := master.addEntry(t, campaign, testSpell("Raio de teste", "class:wizard"))
+	sub := master.addEntry(t, campaign, testSubclass("Caminho do Vento", "class:fighter"))
+
+	pc := owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", sheetWithTable(race.GetKey(), bg.GetKey(), spell.GetKey()))
+	toren := other.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores:        &rulesv1.AbilityScores{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 8, Wisdom: 10, Charisma: 10},
+		RaceKey:           "race:human",
+		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Classes:           []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 3, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: sub.GetKey()}}},
+		ArmorKey:          "equipment:chain-mail",
+		WeaponKeys:        []string{"equipment:longsword"},
+		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-defense"},
+	}}})
+
+	update := func(key string, e *rulesv1.TableEntry, body proto.Message) *rulesv1.TableEntry {
+		t.Helper()
+		res, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, key, e.GetRevision(), cloneWithKeys(body, bodyMessage(e)))))
+		if err != nil {
+			t.Fatalf("UpdateTableEntry(%s) error = %v", key, err)
+		}
+		return res.Msg.GetEntry()
+	}
+	// The race: size, speed, the bonuses to place, languages, a new trait.
+	r := proto.Clone(bodyMessage(race)).(*rulesv1.TableRace)
+	r.Size, r.SpeedFt, r.ChoiceBonuses, r.LanguageChoices, r.DarkvisionFt = "Large", 40, []int32{1, 1, 1}, 0, 0
+	r.Traits = append(r.Traits, &rulesv1.TableFeature{NamePt: "Pele de pedra", Effects: []*rulesv1.TableEffect{{Type: "modifier", Target: "ac.base", Mode: "set", Value: "14"}}})
+	update(race.GetKey(), race, r)
+	// The background: other skills (one the sheet also chose), no tools, a new feature.
+	b := testBackground("Guarda de farol")
+	b.Skills, b.Tools, b.LanguageChoices = []string{"skill:investigation", "skill:medicine"}, nil, 0
+	b.Feature = testNote("outra", "Outra luz", "Texto novo.")
+	update(bg.GetKey(), bg, b)
+	// The spell: another circle (still leveled), school, classes, damage, concentration.
+	sp := testSpell("Raio de teste", "class:cleric")
+	sp.Level, sp.SchoolKey, sp.Concentration = 3, "school:necromancy", true
+	sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE}
+	sp.Damage = []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:cold", Dice: "8d6", PerSlotLevel: "1d6"}}
+	update(spell.GetKey(), spell, sp)
+	// The subclass: other features.
+	su := testSubclass("Caminho do Vento", "class:fighter")
+	su.Levels = []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{
+		{NamePt: "Golpe novo", Effects: []*rulesv1.TableEffect{{Type: "proficiency", Proficiency: "skill:athletics"}}},
+		{NamePt: "Outro golpe", Effects: []*rulesv1.TableEffect{{Type: "note", TextPt: "Nota."}}},
+	}}}
+	update(sub.GetKey(), sub, su)
+
+	for name, c := range map[string]struct {
+		u  *user
+		id string
+	}{"Pensantus": {owner, pc.GetId()}, "Toren": {other, toren.GetId()}} {
+		got := c.u.get(t, campaign, c.id)
+		renamed, err := c.u.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+			CampaignId: campaign, CharacterId: c.id, Revision: got.GetRevision(), Name: name + " renomeado", Sheet: got.GetSheet(),
+		}))
+		if err != nil || renamed.Msg.GetCharacter().GetName() != name+" renomeado" {
+			t.Errorf("%s: the player's rename after every mechanical change: %v, %v; want it saved", name, renamed, err)
+		}
+	}
+	// And the master edits a locked sheet the same way.
+	h.lockSheets(campaign)
+	for name, id := range map[string]string{"Pensantus": pc.GetId(), "Toren": toren.GetId()} {
+		got := master.get(t, campaign, id)
+		if _, err := master.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+			CampaignId: campaign, CharacterId: id, Revision: got.GetRevision(), Name: name + " de novo", Sheet: got.GetSheet(),
+		})); err != nil {
+			t.Errorf("%s: the master's rename of the locked sheet: error = %v, want it saved", name, err)
+		}
+	}
+}
+
+// TestTableContentASpellNeverCrossesCantripAndLeveled: a sheet keeps cantrips and
+// leveled spells in different lists, and Validate refuses a spell in the wrong
+// one, so the edit is refused on the entry.
+func TestTableContentASpellNeverCrossesCantripAndLeveled(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	leveled := master.addEntry(t, campaign, testSpell("Raio de teste", "class:wizard"))
+	cantrip := testSpell("Faísca de teste", "class:wizard")
+	cantrip.Level, cantrip.Damage = 0, []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:lightning", Dice: "1d8", PerTier: "1d8"}}
+	cantripEntry := master.addEntry(t, campaign, cantrip)
+
+	toCantrip := proto.Clone(bodyMessage(leveled)).(*rulesv1.TableSpell)
+	toCantrip.Level, toCantrip.Damage = 0, cantrip.Damage
+	_, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, leveled.GetKey(), leveled.GetRevision(), toCantrip)))
+	if v := violationsOfErr(t, err); len(v) != 1 || v[0].GetReason() != "immutable" || v[0].GetField() != "table_spell.level" {
+		t.Errorf("leveled to cantrip: violations = %v, want immutable at level", v)
+	}
+	toLeveled := proto.Clone(bodyMessage(cantripEntry)).(*rulesv1.TableSpell)
+	toLeveled.Level, toLeveled.Damage = 2, []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:lightning", Dice: "2d8", PerSlotLevel: "1d8"}}
+	_, err = master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, cantripEntry.GetKey(), cantripEntry.GetRevision(), toLeveled)))
+	if v := violationsOfErr(t, err); len(v) != 1 || v[0].GetReason() != "immutable" || v[0].GetField() != "table_spell.level" {
+		t.Errorf("cantrip to leveled: violations = %v, want immutable at level", v)
+	}
+	// Leveled to another circle is fine.
+	other := proto.Clone(bodyMessage(leveled)).(*rulesv1.TableSpell)
+	other.Level = 3
+	if _, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, leveled.GetKey(), leveled.GetRevision(), other))); err != nil {
+		t.Errorf("leveled to another circle: error = %v", err)
+	}
+}
+
+// TestTableContentArchivedSubclassesAreNotOffered: a player's level-up options never
+// list a subclass the master archived (unless their sheet has it); the master's do,
+// marked.
+func TestTableContentArchivedSubclassesAreNotOffered(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 0)
+	sub := tb.master.addEntry(t, tb.campaign, testSubclass("Caminho do Vento", "class:fighter"))
+	live := tb.master.addEntry(t, tb.campaign, testSubclass("Caminho da Chuva", "class:fighter"))
+	toren := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores:        &rulesv1.AbilityScores{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 8, Wisdom: 10, Charisma: 10},
+		RaceKey:           "race:human",
+		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Classes:           []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 2}},
+		ArmorKey:          "equipment:chain-mail",
+		WeaponKeys:        []string{"equipment:longsword"},
+		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-defense"},
+		ExperiencePoints:  900,
+	}}}
+	player := tb.h.newUser("Quarta")
+	tb.h.join(tb.master, tb.campaign, player)
+	pc := player.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", toren)
+	tb.h.lockSheets(tb.campaign)
+	pc = player.get(t, tb.campaign, pc.GetId())
+	if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: sub.GetKey()})); err != nil {
+		t.Fatal(err)
+	}
+	keys := func(o *charactersv1.LevelUpOptions) map[string]bool {
+		out := map[string]bool{}
+		for _, s := range o.GetSubclasses() {
+			out[s.GetKey()] = s.GetArchived()
+		}
+		return out
+	}
+	po, err := tb.options(player, pc)
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions() error = %v", err)
+	}
+	if k := keys(po); k[sub.GetKey()] || len(k) == 0 || !hasKey(k, live.GetKey()) || hasKey(k, sub.GetKey()) {
+		t.Errorf("the player's subclasses = %v, want the live one and not the archived one", k)
+	}
+	mo, err := tb.options(tb.master, pc)
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions() as the master error = %v", err)
+	}
+	if k := keys(mo); !hasKey(k, sub.GetKey()) || !k[sub.GetKey()] || k[live.GetKey()] {
+		t.Errorf("the master's subclasses = %v, want the archived one marked and the live one not", k)
+	}
+}
+
+func hasKey(m map[string]bool, k string) bool { _, ok := m[k]; return ok }
+
+// TestTableContentArchivedSpellsAreNotShown: GetSpellDetails answers not_found for
+// an archived table spell, for a player or a pending member, unless one of their
+// own sheets uses it; the master reads it.
+func TestTableContentArchivedSpellsAreNotShown(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, owner, other, pending := h.newUser("Samuel"), h.newUser("Dona"), h.newUser("Outra"), h.newUser("Pendente")
+	campaign := h.newCampaign(master, "Mirathel", owner, other)
+	h.joinPending(master, campaign, pending)
+	spell := master.addEntry(t, campaign, testSpell("Raio de teste", "class:wizard"))
+	owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", pensantusWith(spell.GetKey()))
+	pending.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pendente", pensantusWith(spell.GetKey()))
+	if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: spell.GetKey()})); err != nil {
+		t.Fatal(err)
+	}
+	read := func(u *user) error {
+		_, err := u.content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: spell.GetKey()}))
+		return err
+	}
+	if err := read(master); err != nil {
+		t.Errorf("the master: error = %v, want it read", err)
+	}
+	if err := read(other); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("a player without it: error = %v, want not_found", err)
+	}
+	if err := read(owner); err != nil {
+		t.Errorf("a player whose sheet uses it: error = %v, want it read", err)
+	}
+	if err := read(pending); err != nil {
+		t.Errorf("a pending member whose sheet uses it: error = %v, want it read", err)
+	}
+	stranger := h.newUser("Pendente 2")
+	h.joinPending(master, campaign, stranger)
+	if err := read(stranger); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("a pending member without it: error = %v, want not_found", err)
+	}
+}
+
+// afterReadSource runs hook once, right after the first content read made outside a
+// transaction: the moment a write of the table's content can commit between a
+// handler's read and its transaction.
+type afterReadSource struct {
+	ContentSource
+	mu   sync.Mutex
+	hook func()
+}
+
+func (a *afterReadSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+	c, err := a.ContentSource.ContentFor(ctx, tx, campaignID)
+	a.mu.Lock()
+	hook := a.hook
+	if tx == nil && hook != nil {
+		a.hook = nil
+	} else {
+		hook = nil
+	}
+	a.mu.Unlock()
+	if hook != nil {
+		hook()
+	}
+	return c, err
+}
+
+// TestTableContentWritesAreOrderedAgainstContentWrites: an archive that commits
+// between CreateCharacter's read of the content and its transaction is seen by the
+// transaction, which checks the sheet again (ADR-0018, section 5).
+func TestTableContentWritesAreOrderedAgainstContentWrites(t *testing.T) {
+	t.Parallel()
+	var src *afterReadSource
+	h := newHarnessWith(t, func(c *Config) {
+		src = &afterReadSource{ContentSource: c.Content}
+		c.Content = src
+	})
+	master, owner := h.newUser("Samuel"), h.newUser("Dona")
+	campaign := h.newCampaign(master, "Mirathel", owner)
+	bg := master.addEntry(t, campaign, testBackground("Guarda de farol"))
+	sheet := pensantusSheet()
+	sheet.GetFull().Background = &charactersv1.FullSheet_BackgroundKey{BackgroundKey: bg.GetKey()}
+	sheet.GetFull().SkillProficiencyKeys = []string{"skill:investigation", "skill:medicine"}
+
+	src.hook = func() {
+		if _, err := master.table.ArchiveTableEntry(context.Background(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: bg.GetKey()})); err != nil {
+			t.Errorf("the archive in between: %v", err)
+		}
+	}
+	_, err := owner.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Pensantus", Sheet: sheet,
+	}))
+	if b := charBlocked(t, err); b.GetReason() != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT || b.GetContentKey() != bg.GetKey() {
+		t.Errorf("CreateCharacter with an archive in between: %v, want ARCHIVED_CONTENT (the transaction saw the archive)", b)
+	}
+	// The same for an update that takes a background the master archives in between.
+	pc := owner.createPensantus(t, campaign)
+	bg2 := master.addEntry(t, campaign, testBackground("Outro fundo"))
+	src.hook = func() {
+		if _, err := master.table.ArchiveTableEntry(context.Background(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: bg2.GetKey()})); err != nil {
+			t.Errorf("the archive in between: %v", err)
+		}
+	}
+	sheet2 := pensantusSheet()
+	sheet2.GetFull().Background = &charactersv1.FullSheet_BackgroundKey{BackgroundKey: bg2.GetKey()}
+	sheet2.GetFull().SkillProficiencyKeys = []string{"skill:investigation", "skill:medicine"}
+	_, err = owner.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: campaign, CharacterId: pc.GetId(), Revision: pc.GetRevision(), Name: pc.GetName(), Sheet: sheet2,
+	}))
+	if b := charBlocked(t, err); b.GetReason() != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT || b.GetContentKey() != bg2.GetKey() {
+		t.Errorf("UpdateCharacter with an archive in between: %v, want ARCHIVED_CONTENT", b)
+	}
+}
+
+// TestTableContentFeatureKeysOfLongNames: two entries whose long names share a
+// beginning never make the same feature keys.
+func TestTableContentFeatureKeysOfLongNames(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	stem := strings.Repeat("a", 40)
+	a := master.addEntry(t, campaign, testClass(stem+" um"))
+	b := master.addEntry(t, campaign, testClass(stem+" dois"))
+	ka, kb := featureKeysOf(bodyMessage(a)), featureKeysOf(bodyMessage(b))
+	if len(ka) != 3 || len(kb) != 3 {
+		t.Fatalf("keys = %v and %v, want three each", ka, kb)
+	}
+	for _, k := range ka {
+		if slices.Contains(kb, k) || len(k) > len("feature:")+rules.MaxSlugLength+len("@mesa") {
+			t.Errorf("feature key %q is shared by the two entries, or too long", k)
+		}
+	}
+}
+
+// TestTableContentTheClientNeverSetsTheContentRevision: what a client sends in
+// FullSheet.content_revision and known_issues is ignored on create, update and
+// level-up: the server writes the revision it checked the sheet against.
+func TestTableContentTheClientNeverSetsTheContentRevision(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.SetLevelUps(xpLevelUps{})
+	master, owner, player := h.newUser("Samuel"), h.newUser("Dona"), h.newUser("Quarta")
+	campaign := h.newCampaign(master, "Mirathel", owner, player)
+	master.addEntry(t, campaign, testBackground("Guarda de farol")) // the campaign's revision is 1
+
+	forged := pensantusSheet()
+	forged.GetFull().ContentRevision, forged.GetFull().KnownIssues = 999, []string{"unknown_key|full.race_key"}
+	pc := owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", forged)
+	if got := pc.GetSheet().GetFull(); got.GetContentRevision() != 1 || len(got.GetKnownIssues()) != 0 {
+		t.Errorf("after create: revision %d, known issues %v; want 1 and none", got.GetContentRevision(), got.GetKnownIssues())
+	}
+	again := proto.Clone(pc.GetSheet()).(*charactersv1.CharacterSheet)
+	again.GetFull().ContentRevision, again.GetFull().KnownIssues = 777, []string{"x|y"}
+	up, err := master.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: campaign, CharacterId: pc.GetId(), Revision: pc.GetRevision(), Name: pc.GetName(), Sheet: again,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := up.Msg.GetCharacter().GetSheet().GetFull(); got.GetContentRevision() != 1 || len(got.GetKnownIssues()) != 0 {
+		t.Errorf("after update: revision %d, known issues %v; want 1 and none", got.GetContentRevision(), got.GetKnownIssues())
+	}
+	// Level-up: Toren, a Fighter 3 with 2,700 XP (level 4 is his), after a second table write.
+	master.addEntry(t, campaign, testBackground("Outro fundo"))
+	toren := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores:        &rulesv1.AbilityScores{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 8, Wisdom: 10, Charisma: 10},
+		RaceKey:           "race:human",
+		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Classes:           []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 4, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: "subclass:champion"}}},
+		ArmorKey:          "equipment:chain-mail",
+		WeaponKeys:        []string{"equipment:longsword"},
+		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-defense"},
+		ExperiencePoints:  6500,
+		ContentRevision:   999,
+		KnownIssues:       []string{"z|z"},
+	}}}
+	tc := player.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", toren)
+	if got := tc.GetSheet().GetFull().GetContentRevision(); got != 2 {
+		t.Fatalf("Toren's revision = %d, want 2", got)
+	}
+	master.addEntry(t, campaign, testBackground("Terceiro fundo"))
+	h.lockSheets(campaign)
+	tc = player.get(t, campaign, tc.GetId())
+	lv, err := player.api.LevelUpCharacter(t.Context(), connect.NewRequest(&charactersv1.LevelUpCharacterRequest{
+		CampaignId: campaign, CharacterId: tc.GetId(), Revision: tc.GetRevision(),
+		Choices: &charactersv1.LevelUpChoices{
+			ClassKey:  "class:fighter",
+			HitPoints: &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("LevelUpCharacter() error = %v", err)
+	}
+	if got := lv.Msg.GetCharacter().GetSheet().GetFull(); got.GetContentRevision() != 3 || slices.Contains(got.GetKnownIssues(), "z|z") {
+		t.Errorf("after the level-up: revision %d, known issues %v; want 3 and not the forged one", got.GetContentRevision(), got.GetKnownIssues())
 	}
 }

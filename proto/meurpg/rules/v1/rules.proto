@@ -23,6 +23,8 @@ syntax = "proto3";
 //     the app converts them for display.
 package meurpg.rules.v1;
 
+import "google/protobuf/timestamp.proto";
+
 // ContentService lists the rules content that a campaign's characters can
 // be built from.
 //
@@ -519,15 +521,18 @@ message DerivedSheet {
   // knocks prone), with their DC. Empty for a character.
   repeated SaveAction save_actions = 40;
   // The table's entries this sheet uses that changed after the sheet was last
-  // saved (RN-23, question 80: a change applies at once). The numbers above already
-  // use the new rules; each entry is also an issue with code
-  // "table_content_changed", for the banner "A classe mudou". Saving the sheet
-  // clears them.
+  // saved and that gave the sheet new issues since (RN-23, question 80: a change
+  // applies at once). The numbers above already use the new rules. It is worked out
+  // on every read, from the sheet's own issues, so it goes away by itself when no
+  // such issue remains (or when the sheet is saved again); a change that left the
+  // sheet with no new issue shows nothing. Each entry is also an issue with code
+  // "table_content_changed", for the banner "A classe mudou".
   repeated ChangedContent changed_content = 41;
 }
 
 // ChangedContent is a table entry a sheet uses that changed after the sheet was
-// last saved.
+// last saved, and what no longer fits the sheet because of it. Never who changed
+// it nor the history of its edits.
 message ChangedContent {
   // The entry's key ("class:guardiao-do-vale@mesa") and its Portuguese name.
   string key = 1;
@@ -538,6 +543,12 @@ message ChangedContent {
   // The content revision the entry changed at, and the one the sheet was saved at.
   int32 revision = 4;
   int32 saved_revision = 5;
+  // When the entry last changed (an archive is not a change).
+  google.protobuf.Timestamp changed_at = 6;
+  // The sentences of the sheet's new issues, in Portuguese, exactly as `issues`
+  // has them ("Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem
+  // 3."): what no longer matches, for the sheet of what changed.
+  repeated string messages = 7;
 }
 
 // SaveAction is a creature's action that asks for a saving throw.

@@ -815,6 +815,29 @@ func (q *Queries) SetPlannedMilestonePosition(ctx context.Context, arg SetPlanne
 	return err
 }
 
+const sumLiveAwards = `-- name: SumLiveAwards :one
+SELECT count(*)::INT4 AS awards,
+       COALESCE((SELECT sum(s.xp) FROM xp_award_shares AS s JOIN xp_awards AS a2 ON a2.id = s.award_id
+                 WHERE a2.campaign_id = $1::UUID AND a2.undone_at IS NULL), 0)::INT8 AS total_xp
+FROM xp_awards
+WHERE campaign_id = $1::UUID AND undone_at IS NULL
+`
+
+type SumLiveAwardsRow struct {
+	Awards  int32
+	TotalXp int64
+}
+
+// How much XP the campaign gave and has not undone (RN-09): the awards that
+// stand (a milestone mark is one, with no XP) and what the characters got from
+// them. The master's change of the XP mode asks before it goes on.
+func (q *Queries) SumLiveAwards(ctx context.Context, campaignID string) (SumLiveAwardsRow, error) {
+	row := q.db.QueryRow(ctx, sumLiveAwards, campaignID)
+	var i SumLiveAwardsRow
+	err := row.Scan(&i.Awards, &i.TotalXp)
+	return i, err
+}
+
 const updatePlannedMilestoneText = `-- name: UpdatePlannedMilestoneText :exec
 UPDATE planned_milestones SET text = $1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4::UUID

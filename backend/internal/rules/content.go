@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
@@ -118,7 +119,8 @@ type content struct {
 	raceChoice    map[string][]int
 	bgEquipment   map[string]string
 	// entryRevision is the revision of each table entry at its last change.
-	entryRevision map[string]int
+	entryRevision  map[string]int
+	entryChangedAt map[string]time.Time
 }
 
 // classCasting is how a class (or a third-caster subclass) casts: its

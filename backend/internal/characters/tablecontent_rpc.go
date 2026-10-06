@@ -333,17 +333,15 @@ func (s *Service) UpdateTableEntry(
 		if err != nil {
 			return wrap("read a table entry", err)
 		}
-		switch {
-		case cur.ArchivedAt != nil:
-			return errBlockedContent(connect.CodeFailedPrecondition, rulesv1.TableContentBlockedReason_TABLE_CONTENT_BLOCKED_REASON_ARCHIVED, key, "the entry is archived: unarchive it before changing it")
-		case cur.Revision != req.Msg.GetExpectedRevision():
+		// An archived entry can still be edited (it stays archived).
+		if cur.Revision != req.Msg.GetExpectedRevision() {
 			return errBlockedContent(connect.CodeAborted, rulesv1.TableContentBlockedReason_TABLE_CONTENT_BLOCKED_REASON_STALE, key, "the entry changed since you opened it; reload it and try again")
 		}
 		old, err := decodeRow(cur)
 		if err != nil {
 			return err
 		}
-		if v := parentChanged(kind, old.body, body); v != nil {
+		if v := immutableChange(kind, old.body, body); v != nil {
 			return errRefusedContent([]*rulesv1.TableContentViolation{v})
 		}
 		rows, err := q.ListCampaignContent(ctx, m.CampaignID)
@@ -395,11 +393,22 @@ func (s *Service) UpdateTableEntry(
 	return connect.NewResponse(res), nil
 }
 
-// parentChanged is a violation when the parent of a subclass (its class) or of a
-// subrace (its race) differs from the stored one: the parent never changes.
-func parentChanged(kind rulesv1.TableContentKind, old, next tableBody) *rulesv1.TableContentViolation {
+// immutableChange is a violation when an edit changes what never changes: the
+// parent of a subclass (its class) or of a subrace (its race), or a spell going
+// between cantrip and leveled. The last one is why: a sheet keeps its cantrips and
+// its leveled spells in different lists, and Validate refuses a spell in the wrong
+// one, so such an edit would make an unrelated save of a sheet that uses the spell
+// fail (question 80: a change of an entry never stops another edit).
+func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv1.TableContentViolation {
 	var from, to, field string
 	switch kind {
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL:
+		if (old.(*rulesv1.TableSpell).GetLevel() == 0) != (next.(*rulesv1.TableSpell).GetLevel() == 0) {
+			return &rulesv1.TableContentViolation{
+				Field: "table_spell.level", Reason: reasonImmutable, Message: "a spell never goes between cantrip and leveled: make a new one",
+			}
+		}
+		return nil
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS:
 		from, to, field = old.(*rulesv1.TableSubclass).GetClassKey(), next.(*rulesv1.TableSubclass).GetClassKey(), "table_subclass.class_key"
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBRACE:
@@ -432,11 +441,12 @@ func affectedSheets(sheets []charactersdb.ListCampaignSheetsRow, content *rules.
 		if full == nil {
 			continue
 		}
-		build := buildOf(full)
-		if !slices.Contains(rules.TableKeys(build), key) {
+		if !slices.Contains(rules.TableKeys(buildOf(full)), key) {
 			continue
 		}
-		if n := len(rules.Derive(build, content).Issues); n > 0 {
+		// Only the issues the sheet did not have when it was last saved: the ones
+		// this change can be blamed for.
+		if n := len(newIssues(content, full)); n > 0 {
 			out = append(out, affectedSheet{id: row.ID, name: row.Name, playerID: deref(row.PlayerUserID), issues: n})
 		}
 	}
@@ -526,7 +536,7 @@ func (s *Service) setArchived(ctx context.Context, m authz.Membership, key strin
 		}
 		now := s.now()
 		row, err := q.SetCampaignContentArchived(ctx, charactersdb.SetCampaignContentArchivedParams{
-			CampaignID: m.CampaignID, ContentKey: key, Archived: archive, Revision: rev, Now: now,
+			CampaignID: m.CampaignID, ContentKey: key, Archived: archive, Now: now,
 		})
 		if err != nil {
 			return wrap("archive a table entry", err)

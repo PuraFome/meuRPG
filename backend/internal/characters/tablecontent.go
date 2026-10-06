@@ -1,6 +1,8 @@
 package characters
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -196,7 +198,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 	idx := overlayIndex{}
 	for _, e := range entries {
 		te := rules.TableEntry{
-			Key: e.row.ContentKey, NamePT: e.row.NamePt, Archived: e.row.ArchivedAt != nil, Revision: int(e.row.Revision),
+			Key: e.row.ContentKey, NamePT: e.row.NamePt, Archived: e.row.ArchivedAt != nil, Revision: int(e.row.Revision), ChangedAt: e.row.UpdatedAt,
 		}
 		switch b := e.body.(type) {
 		case *rulesv1.TableClass:
@@ -482,6 +484,7 @@ func entryToProto(e entryRow, inUse int) *rulesv1.TableEntry {
 	out := &rulesv1.TableEntry{
 		Key: e.row.ContentKey, Kind: e.kind, NamePt: e.row.NamePt, Archived: e.row.ArchivedAt != nil,
 		Revision: e.row.Revision, CreatedAt: timestamppb.New(e.row.CreatedAt), UpdatedAt: timestamppb.New(e.row.UpdatedAt),
+		ArchivedAt: timestamp(e.row.ArchivedAt),
 	}
 	if inUse > 0 {
 		out.CharactersUsing = i32(inUse)
@@ -633,26 +636,37 @@ func featureKeys(entryKey string, body, old tableBody) []*rulesv1.TableContentVi
 	a.collectOld(old)
 	var out []*rulesv1.TableContentViolation
 	a.violations = &out
-	slug := slugOfStoredKey(entryKey)
 	switch b := body.(type) {
 	case *rulesv1.TableClass:
 		for i, l := range b.GetLevels() {
-			a.assign(fmt.Sprintf("table_class.levels[%d]", i), "feature:", "class-"+slug+"--", i+1, l.GetFeatures())
+			a.assign(fmt.Sprintf("table_class.levels[%d]", i), "feature:", featureStem("class", entryKey), i+1, l.GetFeatures())
 		}
 	case *rulesv1.TableSubclass:
 		for i, l := range b.GetLevels() {
-			a.assign(fmt.Sprintf("table_subclass.levels[%d]", i), "feature:", "subclass-"+slug+"--", int(l.GetLevel()), l.GetFeatures())
+			a.assign(fmt.Sprintf("table_subclass.levels[%d]", i), "feature:", featureStem("subclass", entryKey), int(l.GetLevel()), l.GetFeatures())
 		}
 	case *rulesv1.TableRace:
-		a.assign("table_race", "trait:", "race-"+slug+"--", 0, b.GetTraits())
+		a.assign("table_race", "trait:", featureStem("race", entryKey), 0, b.GetTraits())
 	case *rulesv1.TableSubrace:
-		a.assign("table_subrace", "trait:", "subrace-"+slug+"--", 0, b.GetTraits())
+		a.assign("table_subrace", "trait:", featureStem("subrace", entryKey), 0, b.GetTraits())
 	case *rulesv1.TableBackground:
 		if f := b.GetFeature(); f != nil {
-			a.assign("table_background", "background-feature:", "background-"+slug+"--", 0, []*rulesv1.TableFeature{f})
+			a.assign("table_background", "background-feature:", featureStem("background", entryKey), 0, []*rulesv1.TableFeature{f})
 		}
 	}
 	return out
+}
+
+// featureStem is the start of the keys of an entry's features: the kind, a short
+// part of the entry's slug, a short hash of the whole entry key and "--" (which a
+// slug never has, so the stem and the feature's own slug cannot run together). The
+// hash is what keeps two entries whose long names share a beginning from making
+// the same feature keys, and the short slug leaves room for the feature's name
+// inside the engine's 60 characters.
+func featureStem(kind, entryKey string) string {
+	sum := sha256.Sum256([]byte(entryKey))
+	slug := strings.TrimRight(truncate(slugOfStoredKey(entryKey), 16), "-")
+	return kind + "-" + slug + "-" + hex.EncodeToString(sum[:3]) + "--"
 }
 
 type keyAssigner struct {

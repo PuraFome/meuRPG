@@ -105,6 +105,7 @@ func checkSheet(content *rules.Content, sheet *charactersv1.CharacterSheet) (*ch
 		// The revision of the table's content this sheet is saved with (RN-23): the
 		// server's, never the client's.
 		full.ContentRevision = i32(content.TableRevision())
+		full.KnownIssues = issueKeys(rules.Derive(buildOf(full), content).Issues)
 		if err := rules.Validate(buildOf(full), content); err != nil {
 			if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
 				return nil, &fieldError{field: "sheet." + ve.Field, err: errors.New(ve.Message)}

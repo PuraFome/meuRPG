@@ -2,62 +2,53 @@ package characters
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// ContentSource gives the rules content a campaign plays with (MR-025, RN-23;
-// ADR-0018). Every read of the content in this package goes through it, so
-// the table's own content (slice 10.1c) can differ per campaign without
-// touching the call sites again.
+// ContentSource gives the rules content and the table rules a campaign plays
+// with (MR-025, RN-23, RN-24; ADR-0018). Every read of the content in this
+// package goes through it, so the table's own content (slice 10.1c) can differ
+// per campaign without touching the call sites again.
 type ContentSource interface {
 	// For returns the rules content and the table rules of a campaign. tx is
 	// the caller's transaction (nil outside one): an implementation that reads
 	// the campaign's content revision does it in tx, never through the pool
 	// while a transaction is open (PR #121's rule).
 	For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error)
+	// ContentFor is For for a caller that only needs the content: it skips the read
+	// of the table rules, which is a database read per call.
+	ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error)
 }
 
-// TableRules are the rules a table chooses (RN-23). Its zero value is the SRD
-// defaults, so a campaign that chose nothing is TableRules{}: each field says
-// what a table changes, never what the SRD already does. It lives here, not in
-// its own package, because only this module reads it so far; nothing reads a
-// field yet, and the defaults are the behavior the code already has.
-type TableRules struct {
-	// HitPoints is what a player may do with the hit die of a level-up. The zero
-	// value is HitPointsPlayerChooses: roll or take the average.
-	HitPoints HitPointsRule
-	// AbilityMethodsOff are the ways of generating ability scores the table does
-	// not allow. The zero value allows all of them.
-	AbilityMethodsOff AbilityMethods
-	// CriticalMaxPlusRoll makes a critical hit the maximum of the dice plus a
-	// roll, instead of the SRD's doubled dice.
-	CriticalMaxPlusRoll bool
-	// DeathSavesHidden hides the other characters' death saves from the players,
-	// instead of the SRD's visible ones.
-	DeathSavesHidden bool
-	// Reminders is the list of the table's reminders; none by default.
-	Reminders []string
-}
+// TableRules are the rules a table chooses (RN-23, RN-24): the shared value of
+// package tablerules. Its zero value is the SRD defaults, so a campaign that
+// chose nothing is TableRules{}.
+type TableRules = tablerules.Rules
 
-// HitPointsRule is how a level-up's hit points are decided. The zero value is
-// the SRD's: the player chooses.
-type HitPointsRule string
+// HitPointsRule is how a level-up's hit points are decided. The zero value is the
+// SRD's: the player chooses.
+type HitPointsRule = tablerules.HitPointsRule
 
 // The hit points rules.
 const (
 	// HitPointsPlayerChooses lets the player pick rolling or the average.
-	HitPointsPlayerChooses HitPointsRule = ""
+	HitPointsPlayerChooses = tablerules.HitPointsPlayerChooses
+	// HitPointsRoll makes everybody roll; the average is refused.
+	HitPointsRoll = tablerules.HitPointsRoll
+	// HitPointsAverage makes everybody take the average; a roll is refused.
+	HitPointsAverage = tablerules.HitPointsAverage
 )
 
-// AbilityMethods is a set of ways of generating ability scores.
-type AbilityMethods struct {
-	StandardArray, PointBuy, Roll bool
-}
+// AbilityMethods is a set of ways of making ability scores.
+type AbilityMethods = tablerules.AbilityMethods
 
 // DefaultTableRules returns the SRD defaults: the zero value.
 func DefaultTableRules() TableRules { return TableRules{} }
@@ -69,15 +60,37 @@ type SRDSource struct{ content *rules.Content }
 // NewSRDSource returns the SRD source over content (rules.LoadSRD).
 func NewSRDSource(content *rules.Content) SRDSource { return SRDSource{content: content} }
 
+// ContentFor implements ContentSource.
+func (s SRDSource) ContentFor(context.Context, pgx.Tx, string) (*rules.Content, error) {
+	return s.content, nil
+}
+
 // For implements ContentSource.
 func (s SRDSource) For(context.Context, pgx.Tx, string) (*rules.Content, TableRules, error) {
 	return s.content, DefaultTableRules(), nil
 }
 
-// contentFor is the content of a campaign, read in tx (nil outside one).
+// TableRulesReader reads the rules a table saved (package campaigns implements
+// it: campaigns.Service.StoredTableRules).
+type TableRulesReader interface {
+	// StoredTableRules returns the table rules of a campaign, the defaults when
+	// it never saved any. It reads inside tx when the caller has one (nil: the
+	// pool).
+	StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID string) (TableRules, error)
+}
+
+// contentFor is the content of a campaign, read in tx (nil outside one), without
+// the table rules (a caller that needs them asks s.content.For).
 func (s *Service) contentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
-	c, _, err := s.content.For(ctx, tx, campaignID)
-	return c, err
+	return s.content.ContentFor(ctx, tx, campaignID)
+}
+
+// TableRulesFor is the table rules of a campaign, read in tx (nil outside one).
+// Package play reads the critical and the death saves through it in slice 10.4b
+// (cmd/api connects them), and nothing else needs the content with it.
+func (s *Service) TableRulesFor(ctx context.Context, tx pgx.Tx, campaignID string) (TableRules, error) {
+	_, r, err := s.content.For(ctx, tx, campaignID)
+	return r, err
 }
 
 // maxCatalogs is how many contents' catalogs are kept: the plan's budget of
@@ -127,43 +140,18 @@ func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	return p
 }
 
-// withoutArchived is a catalog without the entries the table retired, for the
-// players (RN-23): a copy that shares everything else. A class's list of
-// subclasses lives in the SRD content, so it needs no change here.
+// withoutArchived is a copy of a catalog without the entries the table retired,
+// for the players (RN-23). It clones the whole message and filters the six lists,
+// so a field a later slice adds to Content is in the players' catalog too and can
+// never silently vanish. (A class's list of subclasses lives in the SRD content,
+// so it needs no change here.)
 func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
-	out := &rulesv1.Content{
-		ContentVersion: c.ContentVersion, Attribution: c.Attribution, Abilities: c.Abilities, Skills: c.Skills,
-		Armor: c.Armor, Weapons: c.Weapons, ChallengeRatings: c.ChallengeRatings,
-	}
-	for _, r := range c.Races {
-		if !r.GetArchived() {
-			out.Races = append(out.Races, r)
-		}
-	}
-	for _, r := range c.Subraces {
-		if !r.GetArchived() {
-			out.Subraces = append(out.Subraces, r)
-		}
-	}
-	for _, r := range c.Classes {
-		if !r.GetArchived() {
-			out.Classes = append(out.Classes, r)
-		}
-	}
-	for _, r := range c.Subclasses {
-		if !r.GetArchived() {
-			out.Subclasses = append(out.Subclasses, r)
-		}
-	}
-	for _, r := range c.Backgrounds {
-		if !r.GetArchived() {
-			out.Backgrounds = append(out.Backgrounds, r)
-		}
-	}
-	for _, r := range c.Spells {
-		if !r.GetArchived() {
-			out.Spells = append(out.Spells, r)
-		}
-	}
+	out := proto.CloneOf(c)
+	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() })
+	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() })
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() })
+	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() })
+	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() })
 	return out
 }

@@ -1,10 +1,15 @@
 package characters
 
 import (
+	"context"
 	"slices"
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -61,23 +66,98 @@ var changedKinds = map[string]string{
 
 // IssueTableContentChanged is the code of the issue "A classe mudou" (and its
 // kin), on the derived sheet of a sheet that uses a table entry which changed
-// after the sheet was last saved.
+// after the sheet was last saved and that has issues it did not have then.
 const IssueTableContentChanged = "table_content_changed"
 
+// issueKeys is a set of issues as the sheet stores it ("code|field", sorted, no
+// repeats): what the sheet already had, so a later issue is told apart.
+func issueKeys(issues []rules.Issue) []string {
+	var out []string
+	for _, is := range issues {
+		out = append(out, is.Code+"|"+is.Field)
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+// newIssues are the issues a sheet has now that it did not have when it was
+// last saved (full.KnownIssues): the ones a change of a table entry it uses can
+// be blamed for.
+func newIssues(content *rules.Content, full *charactersv1.FullSheet) []rules.Issue {
+	known := full.GetKnownIssues()
+	var out []rules.Issue
+	for _, is := range rules.Derive(buildOf(full), content).Issues {
+		if !slices.Contains(known, is.Code+"|"+is.Field) {
+			out = append(out, is)
+		}
+	}
+	return out
+}
+
 // addChangedContent tells the sheet's owner that a table entry it uses changed
-// (RN-23, question 80): the numbers already use the new rules, and each entry is
-// an issue plus a ChangedContent, for the banner and the sheet of what changed. It
-// is a notice, never a Validate error: it blocks nothing, and saving the sheet
-// clears it. savedRevision is the content revision the sheet was last saved at.
-func addChangedContent(d *rulesv1.DerivedSheet, content *rules.Content, build rules.Build, savedRevision int) {
-	for _, ch := range content.ChangedSince(build, savedRevision) {
+// and no longer fits (RN-23, question 80, E10-02 state 8). The numbers already
+// use the new rules; this is the notice. It shows only while the sheet has a
+// Derive issue that it did not have when it was last saved AND an entry it uses
+// changed after that: worked out on every read, so it goes away by itself when no
+// such issue remains, and a change that left no new issue (a text edit) shows
+// nothing. It is never a Validate error, so it blocks nothing; saving the sheet
+// again (which records its issues and revision) clears it as well. d is derived
+// from build with content.
+func addChangedContent(d *rulesv1.DerivedSheet, content *rules.Content, build rules.Build, full *charactersv1.FullSheet) {
+	saved := int(full.GetContentRevision())
+	changed := content.ChangedSince(build, saved)
+	if len(changed) == 0 {
+		return
+	}
+	known := full.GetKnownIssues()
+	var messages []string
+	for _, is := range d.Issues {
+		if !slices.Contains(known, is.Code+"|"+is.Field) {
+			messages = append(messages, is.Message)
+		}
+	}
+	if len(messages) == 0 {
+		return
+	}
+	for _, ch := range changed {
 		name := content.NamePT(ch.Key)
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
-			Key: ch.Key, NamePt: name, Field: ch.Field, Revision: i32(ch.Revision), SavedRevision: i32(savedRevision),
+			Key: ch.Key, NamePt: name, Field: ch.Field, Revision: i32(ch.Revision), SavedRevision: i32(saved),
+			ChangedAt: timestampOf(ch.ChangedAt), Messages: messages,
 		})
 		d.Issues = append(d.Issues, &rulesv1.Issue{
 			Code: IssueTableContentChanged, Field: ch.Field,
-			Message: changedKinds[keyKind(ch.Key)] + " " + name + " mudou depois da última vez que esta ficha foi salva. Os números já usam as regras novas.",
+			Message: changedKinds[keyKind(ch.Key)] + " " + name + " mudou: a ficha ficou com avisos que não tinha. Os números já usam as regras novas.",
 		})
 	}
+}
+
+func timestampOf(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+	return timestamppb.New(t)
+}
+
+// callerUses says whether one of the caller's own characters in the campaign uses
+// the content key: what lets a player keep reading about an entry the master
+// archived after their sheet took it.
+func (s *Service) callerUses(ctx context.Context, m authz.Membership, key string) (bool, error) {
+	sheets, err := s.queries.ListCampaignSheets(ctx, m.CampaignID)
+	if err != nil {
+		return false, err
+	}
+	for _, row := range sheets {
+		if deref(row.PlayerUserID) != m.UserID {
+			continue
+		}
+		sheet, err := loadSheet(row.ID, row.Sheet)
+		if err != nil {
+			return false, err
+		}
+		if full := sheet.GetFull(); full != nil && slices.Contains(rules.TableKeys(buildOf(full)), key) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

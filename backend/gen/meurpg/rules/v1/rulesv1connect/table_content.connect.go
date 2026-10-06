@@ -4,8 +4,8 @@
 
 // The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
 // subclasses, races, subraces, backgrounds and spells that the master writes for
-// one campaign. The RPCs are ContentService's (rules.proto); the messages are
-// here.
+// one campaign. The RPCs are TableContentService's, below; the catalog the
+// character editor builds from is ContentService.ListContent (rules.proto).
 //
 // One typed message per kind, each mapping one to one onto the fields the rules
 // engine takes (package rules, Overlay). The server checks all of them with the
@@ -103,11 +103,12 @@ type TableContentServiceClient interface {
 	// UpdateTableEntry replaces an entry's body. The kind, the key and the parent
 	// (a subclass's class, a subrace's race) never change. Only the master.
 	// `expected_revision` must be the entry's `revision`, or the call is `aborted`
-	// with a TableContentBlocked STALE detail. An archived entry is
-	// `failed_precondition` (TableContentBlocked ARCHIVED). Everything else is as
-	// CreateTableEntry. Sheets that use the entry recalculate at once and show "A
-	// classe mudou" (an issue of the derived sheet); the response says which ones
-	// have issues now.
+	// with a TableContentBlocked STALE detail. An archived entry can be edited, and
+	// stays archived. Everything else is as CreateTableEntry. A spell never crosses
+	// between cantrip and leveled (`level` is an `immutable` violation when it would),
+	// because a sheet keeps cantrips and leveled spells in different lists. Sheets
+	// that use the entry recalculate at once; the ones that end with new issues show
+	// "A classe mudou" (DerivedSheet.changed_content), and the response says which.
 	//
 	// Errors: as CreateTableEntry, plus `not_found` for an unknown key.
 	UpdateTableEntry(context.Context, *connect.Request[v1.UpdateTableEntryRequest]) (*connect.Response[v1.UpdateTableEntryResponse], error)
@@ -238,11 +239,12 @@ type TableContentServiceHandler interface {
 	// UpdateTableEntry replaces an entry's body. The kind, the key and the parent
 	// (a subclass's class, a subrace's race) never change. Only the master.
 	// `expected_revision` must be the entry's `revision`, or the call is `aborted`
-	// with a TableContentBlocked STALE detail. An archived entry is
-	// `failed_precondition` (TableContentBlocked ARCHIVED). Everything else is as
-	// CreateTableEntry. Sheets that use the entry recalculate at once and show "A
-	// classe mudou" (an issue of the derived sheet); the response says which ones
-	// have issues now.
+	// with a TableContentBlocked STALE detail. An archived entry can be edited, and
+	// stays archived. Everything else is as CreateTableEntry. A spell never crosses
+	// between cantrip and leveled (`level` is an `immutable` violation when it would),
+	// because a sheet keeps cantrips and leveled spells in different lists. Sheets
+	// that use the entry recalculate at once; the ones that end with new issues show
+	// "A classe mudou" (DerivedSheet.changed_content), and the response says which.
 	//
 	// Errors: as CreateTableEntry, plus `not_found` for an unknown key.
 	UpdateTableEntry(context.Context, *connect.Request[v1.UpdateTableEntryRequest]) (*connect.Response[v1.UpdateTableEntryResponse], error)

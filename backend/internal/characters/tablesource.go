@@ -3,12 +3,14 @@ package characters
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -17,23 +19,29 @@ import (
 // with a real table, so 8 stay far below the instance's 512 MiB (docs/operacao.md).
 const maxLiveContents = 8
 
-// TableSource is the ContentSource that gives a campaign its own content: the SRD
-// with the table's entries on top (MR-025, RN-23, ADR-0018).
+// TableSource is the ContentSource that gives a campaign what it plays with: the
+// SRD with the table's own entries on top (MR-025, RN-23, ADR-0018) and the table
+// rules its master saved (RN-24).
 //
-// For reads the campaign's content revision in the caller's transaction (never
+// It reads the campaign's content revision in the caller's transaction (never
 // through the pool while one is open: PR #121's rule), and that read is also what
 // orders a content write against a sheet write. The content is cached by
 // (campaign, revision), at most maxLiveContents of them, the least recently used
 // dropped first. A campaign whose master wrote nothing (revision 0) gets the SRD
-// content itself, with no query beyond the revision.
+// content itself, with no query beyond the revision. The table rules are read
+// through the same tx, by a TableRulesReader (nil: the defaults, no read).
 //
 // A miss inside a transaction is built for that request alone: it reads the rows
 // in the same transaction, so they are the revision's, and nobody waits on a
 // shared single-flight (a request holding a connection waiting for another that
 // needs one is how a pool deadlocks). Two requests that miss at once both build.
+// A miss outside a transaction reads the revision and the rows in one read-only
+// transaction, so the content cached under a revision is that revision's.
 type TableSource struct {
+	pool    *pgxpool.Pool
 	queries *charactersdb.Queries
 	srd     *rules.Content
+	tables  TableRulesReader
 
 	mu    sync.Mutex
 	cache map[liveKey]*rules.Content
@@ -45,27 +53,65 @@ type liveKey struct {
 	revision   int32
 }
 
-// NewTableSource returns the live source over the SRD content (rules.LoadSRD).
-func NewTableSource(pool *pgxpool.Pool, srd *rules.Content) *TableSource {
-	return &TableSource{queries: charactersdb.New(pool), srd: srd, cache: map[liveKey]*rules.Content{}}
+// NewTableSource returns the live source over the SRD content (rules.LoadSRD)
+// and the reader of the saved table rules (campaigns.Service; nil for the SRD
+// defaults).
+func NewTableSource(pool *pgxpool.Pool, srd *rules.Content, tables TableRulesReader) *TableSource {
+	return &TableSource{pool: pool, queries: charactersdb.New(pool), srd: srd, tables: tables, cache: map[liveKey]*rules.Content{}}
 }
 
-// For implements ContentSource. TableRules are the SRD's until the table's rules
-// (RN-24, slice 10.4a) have a place to be stored.
+// For implements ContentSource.
 func (s *TableSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
-	c, err := s.content(ctx, tx, campaignID)
-	return c, DefaultTableRules(), err
+	if _, ok := parseUUID(campaignID); !ok {
+		return s.srd, DefaultTableRules(), nil // an ID that is no campaign has nothing of its own
+	}
+	c, err := s.ContentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, TableRules{}, err
+	}
+	if s.tables == nil {
+		return c, DefaultTableRules(), nil
+	}
+	r, err := s.tables.StoredTableRules(ctx, tx, campaignID)
+	if err != nil {
+		return nil, TableRules{}, fmt.Errorf("read the table rules: %w", err)
+	}
+	return c, r, nil
 }
 
-func (s *TableSource) content(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+// ContentFor implements ContentSource: the content, without the table rules.
+func (s *TableSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
 	id, ok := parseUUID(campaignID)
 	if !ok {
 		return s.srd, nil // an ID that is no campaign has no content of its own
 	}
-	q := s.queries
 	if tx != nil {
-		q = q.WithTx(tx)
+		return s.contentIn(ctx, s.queries.WithTx(tx), id)
 	}
+	// Outside a transaction a hit costs one read of the revision; only a miss
+	// opens a read-only transaction, to read the revision again with the rows.
+	revision, err := s.queries.GetContentRevision(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.srd, nil
+	}
+	if err != nil {
+		return nil, wrap("read the content revision", err)
+	}
+	if c := s.cached(liveKey{id, revision}); c != nil {
+		return c, nil
+	}
+	var c *rules.Content
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		c, err = s.contentIn(ctx, s.queries.WithTx(tx), id)
+		return err
+	})
+	return c, err
+}
+
+// contentIn is the content of a campaign read with q, which is one transaction's
+// (the revision and the rows are one snapshot).
+func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id string) (*rules.Content, error) {
 	revision, err := q.GetContentRevision(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s.srd, nil

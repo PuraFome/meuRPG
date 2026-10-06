@@ -134,7 +134,7 @@ func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
 	srd := loadRules(t)
-	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: NewTableSource(pool, srd), SRD: srd, Logger: logger, Now: h.clock.Now}
+	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: NewTableSource(pool, srd, camps), SRD: srd, Logger: logger, Now: h.clock.Now}
 	if tweak != nil {
 		tweak(&cfg)
 	}
