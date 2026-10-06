@@ -520,6 +520,14 @@ func (x *deriver) hasHandler(name string) bool {
 // background key, and any of its parts filled in.
 func (x *deriver) customBackground() bool {
 	b := x.b
-	return b.Background == "" && (b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 || len(b.CustomBackgroundProficiencies) > 0 ||
-		b.CustomBackgroundFeatureName != "" || b.CustomBackgroundFeature != "" || b.CustomBackgroundEquipment != "")
+	return b.Background == "" && (b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 || x.customBackgroundStarted())
+}
+
+// customBackgroundStarted says any of the parts SRD 5.1 "Customizing a
+// Background" adds to the name and the skills (the tools or languages, the
+// feature, the equipment) is filled in: the sheet was written by an editor that
+// knows them.
+func (x *deriver) customBackgroundStarted() bool {
+	b := x.b
+	return len(b.CustomBackgroundProficiencies) > 0 || b.CustomBackgroundFeatureName != "" || b.CustomBackgroundFeature != "" || b.CustomBackgroundEquipment != ""
 }

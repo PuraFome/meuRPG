@@ -138,7 +138,9 @@ func reachOf(sp link.Spell) (ft int32, limited bool) {
 
 // selfOnly says the spell reaches the caster alone: Self, and not an area that
 // comes out of the caster (Mãos Flamejantes).
-func selfOnly(sp link.Spell) bool { return sp.RangeKind == rules.RangeSelf && !sp.Area }
+func selfOnly(sp link.Spell) bool {
+	return sp.CasterOnly || (sp.RangeKind == rules.RangeSelf && !sp.Area)
+}
 
 // maxTargetsOf is how many targets a spell takes at a slot level for a player:
 // 0 means any number. An area takes any; a spell that says how many it takes (a

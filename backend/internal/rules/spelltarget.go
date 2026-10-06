@@ -2,9 +2,13 @@ package rules
 
 import (
 	"fmt"
+	"io/fs"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -51,12 +55,76 @@ func textExtraTarget(s *srd51.Spell) bool {
 	return extraTargetRE.MatchString(strings.Join(s.HigherLevel, " "))
 }
 
-// srdTarget says whom an SRD spell reaches: the structured area when the
-// database has one, then the prose. The kinds are the table's (SpellTarget), with
-// two differences: "creatures" with a Count of 0 is "as many as the caster picks"
-// (the text says how many; the master is never held to it), and "creature" may
-// take PerSlotLevel more for each circle above (Hold Person).
-func srdTarget(s *srd51.Spell) SpellTarget {
+// spellTargetFile is the shape of effects/spell_targets.json: the hand-written
+// overrides of srdTarget, for the spells whose structured area or text says the
+// wrong thing.
+type spellTargetFile struct {
+	Comment string                         `json:"_comment"`
+	Spells  map[string]spellTargetOverride `json:"spells"`
+}
+
+type spellTargetOverride struct {
+	Kind         string `json:"kind"`
+	Count        int    `json:"count,omitempty"`
+	PerSlotLevel int    `json:"per_slot_level,omitempty"`
+	Shape        string `json:"shape,omitempty"`
+	SizeFt       int    `json:"size_ft,omitempty"`
+	LabelPT      string `json:"label_pt,omitempty"`
+}
+
+// loadSpellTargets reads and checks effects/spell_targets.json: every key is a
+// spell of the content, the kinds are closed, and an area has a shape and a size
+// in steps of 5 ft.
+func (c *content) loadSpellTargets(fsys fs.FS) error {
+	var f spellTargetFile
+	if err := readJSON(fsys, "effects/spell_targets.json", &f); err != nil {
+		return err
+	}
+	c.srdTargets = map[string]SpellTarget{}
+	for _, key := range sortedKeys(f.Spells) {
+		in := f.Spells[key]
+		fail := func(format string, a ...any) error {
+			return fmt.Errorf("effects/spell_targets.json: %s: %s", key, fmt.Sprintf(format, a...))
+		}
+		if _, ok := c.spells[key]; !ok {
+			return fmt.Errorf("effects/spell_targets.json: %q is not a spell of the content", key)
+		}
+		t := SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
+		switch in.Kind {
+		case TargetSelf, TargetNone, TargetCreature:
+			if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
+				return fail("a %s target takes no other field", in.Kind)
+			}
+		case TargetCreatures:
+			if in.Count < 1 || in.Count > 20 || in.PerSlotLevel < 0 || in.PerSlotLevel > 10 || in.Shape != "" || in.SizeFt != 0 {
+				return fail("creatures: a count of 1 to 20 and 0 to 10 more per slot level")
+			}
+		case TargetArea:
+			if !slices.Contains([]string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}, in.Shape) || in.SizeFt < 5 || in.SizeFt%5 != 0 || in.Count != 0 || in.PerSlotLevel != 0 {
+				return fail("an area is a cone, cube, cylinder, line or sphere of a multiple of 5 ft")
+			}
+		default:
+			return fail("the kind %q is not creature, creatures, area, self or none", in.Kind)
+		}
+		if utf8.RuneCountInString(in.LabelPT) > 80 || strings.ContainsFunc(in.LabelPT, unicode.IsControl) {
+			return fail("label_pt is one line of at most 80 characters")
+		}
+		c.srdTargets[key] = t
+	}
+	return nil
+}
+
+// srdTarget says whom an SRD spell reaches: the hand-written override when there
+// is one (effects/spell_targets.json), then the structured area of the database,
+// then the prose. The kinds are the table's (SpellTarget), with differences: "creatures" with a
+// Count of 0 is "as many as the caster picks" (the text says how many; the master
+// is never held to it), "creature" may take PerSlotLevel more for each circle
+// above (Hold Person), and "none" is no creature at all (a point, an object, a
+// place).
+func (c *content) srdTarget(s *srd51.Spell) SpellTarget {
+	if t, ok := c.srdTargets[s.Key]; ok {
+		return t
+	}
 	extra := 0
 	if textExtraTarget(s) {
 		extra = 1
@@ -89,9 +157,14 @@ func (t SpellTarget) AnyNumber() bool {
 // ("Cone de 4,5 m"). Empty for a spell without a target (none today: every spell
 // of the content has one).
 func (t SpellTarget) LabelPT() string {
+	if t.Label != "" {
+		return t.Label
+	}
 	switch t.Kind {
 	case TargetSelf:
 		return "Só quem conjura"
+	case TargetNone:
+		return "Nenhuma criatura"
 	case TargetCreature:
 		return "Uma criatura"
 	case TargetCreatures:

@@ -882,7 +882,8 @@ export type TableSpellTarget = Message<"meurpg.rules.v1.TableSpellTarget"> & {
 
   /**
    * CREATURES: how many at the spell's own circle (2 or more), and how many more
-   * for each circle above it.
+   * for each circle above it. CREATURE: only `per_slot_level`, how many more for
+   * each circle above ("uma criatura, mais uma por círculo", as Hold Person).
    *
    * @generated from field: int32 count = 2;
    */

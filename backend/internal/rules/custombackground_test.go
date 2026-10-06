@@ -78,13 +78,24 @@ func TestCustomBackgroundIssues(t *testing.T) {
 		"no feature text":      {func(b *Build) { b.CustomBackgroundFeature = "" }, []string{IssueMissing + " full.custom_background.feature_name"}},
 		"no feature name":      {func(b *Build) { b.CustomBackgroundFeatureName = "" }, []string{IssueMissing + " full.custom_background.feature_name"}},
 		"no equipment":         {func(b *Build) { b.CustomBackgroundEquipment = "" }, []string{IssueMissing + " full.custom_background.equipment"}},
-		"only a name": {func(b *Build) {
-			b.CustomBackgroundSkills, b.CustomBackgroundProficiencies = nil, nil
+		// A sheet written before the new parts existed (the name and the two skills): nothing new.
+		"an old sheet": {func(b *Build) {
+			b.CustomBackgroundProficiencies = nil
 			b.CustomBackgroundFeatureName, b.CustomBackgroundFeature, b.CustomBackgroundEquipment = "", "", ""
-		}, []string{
-			IssueSkillCount + " full.custom_background.skill_keys", IssueMissing + " full.custom_background.proficiency_keys",
-			IssueMissing + " full.custom_background.feature_name", IssueMissing + " full.custom_background.equipment",
-		}},
+		}, nil},
+		// Once any of the new parts is filled in, the editor that writes them saved it: the rest is missing.
+		"only the equipment": {func(b *Build) {
+			b.CustomBackgroundProficiencies = nil
+			b.CustomBackgroundFeatureName, b.CustomBackgroundFeature = "", ""
+		}, []string{IssueMissing + " full.custom_background.proficiency_keys", IssueMissing + " full.custom_background.feature_name"}},
+		"only a feature name": {func(b *Build) {
+			b.CustomBackgroundProficiencies, b.CustomBackgroundFeature, b.CustomBackgroundEquipment = nil, "", ""
+		}, []string{IssueMissing + " full.custom_background.proficiency_keys", IssueMissing + " full.custom_background.feature_name", IssueMissing + " full.custom_background.equipment"}},
+		// A language the race gives uses one of the two picks for nothing (the gnome speaks Gnomish).
+		"a language of the race": {
+			func(b *Build) { b.CustomBackgroundProficiencies = []string{"language:gnomish", "language:elvish"} },
+			[]string{IssueMissing + " full.custom_background.proficiency_keys[0]"},
+		},
 	} {
 		b := customBuild()
 		tc.edit(&b)

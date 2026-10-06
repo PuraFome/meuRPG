@@ -121,6 +121,9 @@ const (
 	TargetCreatures = "creatures"
 	// TargetArea: every creature in an area (Shape, SizeFt).
 	TargetArea = "area"
+	// TargetNone: no creature at all, a point, an object or a place (an SRD
+	// spell's only: the table has none). There is nobody to pick.
+	TargetNone = "none"
 )
 
 // Area shapes, as in SpellTarget.Shape.
@@ -149,10 +152,17 @@ type SpellTarget struct {
 	// the sphere's radius, the line's length.
 	Shape  string
 	SizeFt int
+	// Label, when set, is the text LabelPT writes instead of the one worked out
+	// (an SRD override's: "Cilindro de 3 m de raio"). A table spell has none.
+	Label string
 }
 
 // IsArea says the spell hits every creature in an area.
 func (t SpellTarget) IsArea() bool { return t.Kind == TargetArea }
+
+// CasterOnly says the spell has nobody to pick: it reaches the caster alone, or no
+// creature at all.
+func (t SpellTarget) CasterOnly() bool { return t.Kind == TargetSelf || t.Kind == TargetNone }
 
 // MaxTargets is the most creatures the spell takes when cast with a slot of
 // slotLevel (spellLevel is the spell's own level), or 0 for any number (see

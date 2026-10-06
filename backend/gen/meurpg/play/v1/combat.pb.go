@@ -6054,10 +6054,11 @@ type SpellTargets struct {
 	Darts []*DartsAtSlot `protobuf:"bytes,5,rep,name=darts,proto3" json:"darts,omitempty"`
 	// How many more targets the spell takes for each slot level above its own: 1 for
 	// an SRD spell that says "one additional creature", the master's number for a
-	// table spell ("três criaturas, duas a mais por círculo"). 0 when it takes no
-	// more, and for Magic Missile and Scorching Ray, whose darts and rays are
-	// counted apart. `extra_target_per_level` is true when this is above 0, and for
-	// Magic Missile.
+	// table spell ("três criaturas, duas a mais por círculo"). 1 for Magic Missile
+	// (a dart more) and Scorching Ray (a ray more): with `max_targets`, the targets
+	// at a slot level are `max_targets + targets_per_level * (slot level - the
+	// spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
+	// when this is above 0.
 	TargetsPerLevel int32 `protobuf:"varint,6,opt,name=targets_per_level,json=targetsPerLevel,proto3" json:"targets_per_level,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

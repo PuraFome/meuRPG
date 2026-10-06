@@ -223,10 +223,19 @@ func diceText(count, sides int) string { return fmt.Sprintf("%dd%d", count, side
 // checkTarget checks a spell's target and returns it with only the fields its
 // kind uses.
 func checkTarget(key string, t SpellTarget) (SpellTarget, error) {
+	if t.Label != "" {
+		return t, ovErr(key, "a table spell's target has no text of its own: the server writes it")
+	}
 	switch t.Kind {
-	case TargetSelf, TargetCreature:
+	case TargetSelf:
 		if t.Count != 0 || t.PerSlotLevel != 0 || t.Shape != "" || t.SizeFt != 0 {
 			return t, ovErr(key, "a %s target takes nothing else", t.Kind)
+		}
+	case TargetCreature:
+		// One creature, and, if the master wants, one more for each circle above
+		// ("uma criatura, mais uma por círculo", as Hold Person).
+		if t.Count != 0 || t.PerSlotLevel < 0 || t.PerSlotLevel > 10 || t.Shape != "" || t.SizeFt != 0 {
+			return t, ovErr(key, "one creature takes only 0 to 10 more per slot level")
 		}
 	case TargetCreatures:
 		if t.Count < 2 || t.Count > 20 || t.PerSlotLevel < 0 || t.PerSlotLevel > 10 || t.Shape != "" || t.SizeFt != 0 {

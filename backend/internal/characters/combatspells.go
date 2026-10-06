@@ -95,12 +95,14 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	// Whom it reaches: the table spell's own target, or the SRD spell's (the
 	// structured area, then the text; see rules.SpellTarget).
 	out.Area = det.Target.AnyNumber()
-	// Magic Missile's darts and Scorching Ray's rays are counted by play itself: how
-	// many targets they take is how many darts and rays there are.
-	if det.Spell.Key != "spell:magic-missile" && det.Spell.Key != "spell:scorching-ray" {
-		out.TargetCount = det.Target.MaxTargets(det.Spell.Level, det.Spell.Level)
-		out.TargetPerLevel = det.Target.PerSlotLevel
-		out.ExtraTargetPerLevel = det.Target.PerSlotLevel > 0
+	out.CasterOnly = det.Target.CasterOnly()
+	out.TargetCount = det.Target.MaxTargets(det.Spell.Level, det.Spell.Level)
+	out.TargetPerLevel = det.Target.PerSlotLevel
+	out.ExtraTargetPerLevel = det.Target.PerSlotLevel > 0
+	if out.CasterOnly {
+		// There is nobody else to roll for: a spell that only reaches the caster
+		// (Contact Other Plane asks the caster's own save) rolls no saving throw.
+		out.SaveAbility, out.SaveOnSuccess, out.SaveDC = "", "", 0
 	}
 	return out, nil
 }

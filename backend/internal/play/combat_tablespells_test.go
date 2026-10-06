@@ -96,7 +96,7 @@ func newTableCasters(t *testing.T) *armed {
 
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-		book := []string{tableBolt, tableBreath, tableEcho, tableWatch, shieldSpell}
+		book := []string{tableBolt, tableBreath, tableEcho, tableWatch, shieldSpell, scorchingRay, "spell:detect-magic"}
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 5,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt, tableSpark}, book, book)
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
@@ -383,4 +383,43 @@ func TestMR025_ATableCantripGrowsByTheCharactersLevel(t *testing.T) {
 			t.Errorf("slots used at circle %d = %d, a cantrip spends none", lvl, got)
 		}
 	}
+}
+
+// TestMR025_ScorchingRayTakesOneMoreRayForEachCircle: the rays are targets: three at the
+// 2nd circle and one more for each circle above, and the app is told (max_targets plus
+// targets_per_level), as for Magic Missile's darts.
+func TestMR025_ScorchingRayTakesOneMoreRayForEachCircle(t *testing.T) {
+	t.Parallel()
+	a := newTableCasters(t)
+	e := a.castersFight(t, 4) // four goblins and the Capitão: five to pick from
+	st := spellTargetsOf(a.mustOptions(t, a.ana, e, "Pensantus"), scorchingRay)
+	if st == nil || st.GetMaxTargets() != 3 || !st.GetExtraTargetPerLevel() || st.GetTargetsPerLevel() != 1 {
+		t.Fatalf("Raio Ardente's targets = %v, want 3, and one more for each circle", st)
+	}
+	five := a.at(t, "Goblin 1", "Goblin 2", "Goblin 3", "Goblin 4", "Capitão Goblin")
+	_, err := a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), five, poolInApp)
+	wantCode(t, "five rays at the 3rd circle", err, connect.CodeInvalidArgument)
+	if got := usedSlots(a.vitals(t, a.pens), 3); got != 0 {
+		t.Fatalf("a refused cast spent %d slots", got)
+	}
+	a.h.roller.queue(10, 10, 10, 10)
+	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), five[:4], poolInApp)
+	if len(cast.GetCast().GetTargets()) != 4 {
+		t.Errorf("rays at the 3rd circle = %d, want 4", len(cast.GetCast().GetTargets()))
+	}
+}
+
+// TestMR025_ASpellForTheCasterAloneHasNobodyToPick: Detectar Magia (Pessoal) lists only
+// the caster, takes no other target, and is cast with none.
+func TestMR025_ASpellForTheCasterAloneHasNobodyToPick(t *testing.T) {
+	t.Parallel()
+	a := newTableCasters(t)
+	e := a.castersFight(t, 1)
+	st := spellTargetsOf(a.mustOptions(t, a.ana, e, "Pensantus"), "spell:detect-magic")
+	if st == nil || st.GetMaxTargets() != 0 || len(st.GetTargets()) != 1 {
+		t.Fatalf("Detectar Magia's targets = %v, want only the caster", st)
+	}
+	_, err := a.cast(t, a.ana, e, "Pensantus", "spell:detect-magic", slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
+	wantCode(t, "a target for a spell that reaches the caster alone", err, connect.CodeInvalidArgument)
+	a.mustCast(t, a.ana, e, "Pensantus", "spell:detect-magic", slotOfLevel(1), nil, noCastRoll)
 }

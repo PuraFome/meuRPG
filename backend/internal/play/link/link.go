@@ -217,6 +217,9 @@ type Spell struct {
 	// come from the same fields of rules.SpellTarget.
 	TargetCount    int
 	TargetPerLevel int
+	// CasterOnly says there is nobody to pick: the spell reaches the caster alone,
+	// or no creature at all (a point, an object, a place), whatever its range.
+	CasterOnly bool
 	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
 	// Damage and Heal are nil for it, and the cast applies HP instead.
 	HP *HPEffect

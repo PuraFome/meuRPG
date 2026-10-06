@@ -736,6 +736,9 @@ const (
 	SpellTargetKind_SPELL_TARGET_KIND_AREA SpellTargetKind = 3
 	// Only the caster ("Só quem conjura").
 	SpellTargetKind_SPELL_TARGET_KIND_SELF SpellTargetKind = 4
+	// No creature at all: a point, an object or a place (Olho Arcano, Luz). An SRD
+	// spell's only. There is nobody to pick.
+	SpellTargetKind_SPELL_TARGET_KIND_NONE SpellTargetKind = 5
 )
 
 // Enum value maps for SpellTargetKind.
@@ -746,6 +749,7 @@ var (
 		2: "SPELL_TARGET_KIND_CREATURES",
 		3: "SPELL_TARGET_KIND_AREA",
 		4: "SPELL_TARGET_KIND_SELF",
+		5: "SPELL_TARGET_KIND_NONE",
 	}
 	SpellTargetKind_value = map[string]int32{
 		"SPELL_TARGET_KIND_UNSPECIFIED": 0,
@@ -753,6 +757,7 @@ var (
 		"SPELL_TARGET_KIND_CREATURES":   2,
 		"SPELL_TARGET_KIND_AREA":        3,
 		"SPELL_TARGET_KIND_SELF":        4,
+		"SPELL_TARGET_KIND_NONE":        5,
 	}
 )
 
@@ -6126,8 +6131,9 @@ type ListSpellsRequest struct {
 	SchoolKeys []string `protobuf:"bytes,5,rep,name=school_keys,json=schoolKeys,proto3" json:"school_keys,omitempty"`
 	// "Só as que posso aprender" for this character (see the RPC).
 	CharacterId string `protobuf:"bytes,6,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
-	// How many rows to return, 1 to 400; 0 means 100. The page asks for 400,
-	// which holds all of the SRD's 319 spells and the table's.
+	// How many rows to return, 1 to 400; 0 means 100. The page asks for 400; a
+	// longer list (the SRD's 319 spells and up to 300 of the table's) comes in
+	// pages, with next_page_token.
 	PageSize int32 `protobuf:"varint,7,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// The next_page_token of the previous page; empty for the first.
 	PageToken     string `protobuf:"bytes,8,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
@@ -6512,7 +6518,9 @@ type SpellTarget struct {
 	Shape  SpellAreaShape `protobuf:"varint,4,opt,name=shape,proto3,enum=meurpg.rules.v1.SpellAreaShape" json:"shape,omitempty"`
 	SizeFt int32          `protobuf:"varint,5,opt,name=size_ft,json=sizeFt,proto3" json:"size_ft,omitempty"`
 	// The target as the "Magias" page writes it, in the table's units: "Uma
-	// criatura", "Várias criaturas", "Só quem conjura" or "Cone de 4,5 m".
+	// criatura", "Várias criaturas", "Só quem conjura", "Nenhuma criatura" or
+	// "Cone de 4,5 m". For some SRD spells it is our own words (hand-written, in
+	// effects/spell_targets.json) where the database's area would mislead.
 	LabelPt       string `protobuf:"bytes,6,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -10074,13 +10082,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0eWeaponCategory\x12\x1f\n" +
 	"\x1bWEAPON_CATEGORY_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WEAPON_CATEGORY_SIMPLE\x10\x01\x12\x1b\n" +
-	"\x17WEAPON_CATEGORY_MARTIAL\x10\x02*\xad\x01\n" +
+	"\x17WEAPON_CATEGORY_MARTIAL\x10\x02*\xc9\x01\n" +
 	"\x0fSpellTargetKind\x12!\n" +
 	"\x1dSPELL_TARGET_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aSPELL_TARGET_KIND_CREATURE\x10\x01\x12\x1f\n" +
 	"\x1bSPELL_TARGET_KIND_CREATURES\x10\x02\x12\x1a\n" +
 	"\x16SPELL_TARGET_KIND_AREA\x10\x03\x12\x1a\n" +
-	"\x16SPELL_TARGET_KIND_SELF\x10\x04*\xbf\x01\n" +
+	"\x16SPELL_TARGET_KIND_SELF\x10\x04\x12\x1a\n" +
+	"\x16SPELL_TARGET_KIND_NONE\x10\x05*\xbf\x01\n" +
 	"\x0eSpellAreaShape\x12 \n" +
 	"\x1cSPELL_AREA_SHAPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15SPELL_AREA_SHAPE_CONE\x10\x01\x12\x19\n" +

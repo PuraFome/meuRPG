@@ -1199,8 +1199,9 @@ message ListSpellsRequest {
   repeated string school_keys = 5;
   // "Só as que posso aprender" for this character (see the RPC).
   string character_id = 6;
-  // How many rows to return, 1 to 400; 0 means 100. The page asks for 400,
-  // which holds all of the SRD's 319 spells and the table's.
+  // How many rows to return, 1 to 400; 0 means 100. The page asks for 400; a
+  // longer list (the SRD's 319 spells and up to 300 of the table's) comes in
+  // pages, with next_page_token.
   int32 page_size = 7;
   // The next_page_token of the previous page; empty for the first.
   string page_token = 8;
@@ -1276,6 +1277,9 @@ enum SpellTargetKind {
   SPELL_TARGET_KIND_AREA = 3;
   // Only the caster ("Só quem conjura").
   SPELL_TARGET_KIND_SELF = 4;
+  // No creature at all: a point, an object or a place (Olho Arcano, Luz). An SRD
+  // spell's only. There is nobody to pick.
+  SPELL_TARGET_KIND_NONE = 5;
 }
 
 // SpellAreaShape is the shape of a spell's area.
@@ -1304,7 +1308,9 @@ message SpellTarget {
   SpellAreaShape shape = 4;
   int32 size_ft = 5;
   // The target as the "Magias" page writes it, in the table's units: "Uma
-  // criatura", "Várias criaturas", "Só quem conjura" or "Cone de 4,5 m".
+  // criatura", "Várias criaturas", "Só quem conjura", "Nenhuma criatura" or
+  // "Cone de 4,5 m". For some SRD spells it is our own words (hand-written, in
+  // effects/spell_targets.json) where the database's area would mislead.
   string label_pt = 6;
 }
 

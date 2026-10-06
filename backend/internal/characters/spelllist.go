@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultSpellsPage = 100
-	maxSpellsPage     = 400 // the SRD's 319 spells and the table's 300 entries
+	maxSpellsPage     = 400 // the page size the app asks for; a longer list comes in pages
 	maxSpellQuery     = 100
 	maxSpellFilters   = 20
 )
@@ -48,8 +48,11 @@ func (s *Service) ListSpells(
 	if utf8.RuneCountInString(msg.GetQuery()) > maxSpellQuery {
 		return nil, invalidArgument(fieldErr("query", "must have at most %d characters", maxSpellQuery))
 	}
-	if len(msg.GetLevels()) > maxSpellFilters || len(msg.GetSchoolKeys()) > maxSpellFilters {
+	if len(msg.GetLevels()) > maxSpellFilters {
 		return nil, invalidArgument(fieldErr("levels", "must have at most %d entries", maxSpellFilters))
+	}
+	if len(msg.GetSchoolKeys()) > maxSpellFilters {
+		return nil, invalidArgument(fieldErr("school_keys", "must have at most %d entries", maxSpellFilters))
 	}
 	filter := rules.SpellFilter{Query: msg.GetQuery(), Class: msg.GetClassKey(), Schools: msg.GetSchoolKeys()}
 	for _, l := range msg.GetLevels() {

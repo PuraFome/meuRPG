@@ -162,6 +162,7 @@ var (
 		rules.TargetCreatures: rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES,
 		rules.TargetArea:      rulesv1.SpellTargetKind_SPELL_TARGET_KIND_AREA,
 		rules.TargetSelf:      rulesv1.SpellTargetKind_SPELL_TARGET_KIND_SELF,
+		rules.TargetNone:      rulesv1.SpellTargetKind_SPELL_TARGET_KIND_NONE,
 	}
 	spellAreaShapeToProto = map[string]rulesv1.SpellAreaShape{
 		rules.ShapeCone:     rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CONE,

@@ -201,9 +201,13 @@ func TestMR045_TheSpellsPage(t *testing.T) {
 		"a negative page":   {CampaignId: campaign, PageSize: -1},
 		"a bad token":       {CampaignId: campaign, PageToken: "x"},
 		"21 school filters": {CampaignId: campaign, SchoolKeys: make([]string, 21)},
+		"21 circles":        {CampaignId: campaign, Levels: make([]int32, 21)},
 	} {
 		_, err := dona.content.ListSpells(t.Context(), connect.NewRequest(req))
 		wantCode(t, "ListSpells() with "+name, err, connect.CodeInvalidArgument)
+		if name == "21 school filters" && !strings.Contains(err.Error(), "school_keys") {
+			t.Errorf("%s: %v, want the field school_keys", name, err)
+		}
 	}
 }
 
@@ -301,10 +305,12 @@ func TestMR025_TheSpellDetailsSayWhomItReaches(t *testing.T) {
 	pessoal.Range = &rulesv1.TableSpellRange{Kind: rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF}
 	pessoal.Target = &rulesv1.TableSpellTarget{Kind: rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF}
 	pessoal.Attack, pessoal.Damage = "", nil
+	hold := testSpell("Prisão de Nanquim", "class:wizard")
+	hold.Target = &rulesv1.TableSpellTarget{Kind: rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_CREATURE, PerSlotLevel: 1}
 	several := testSpell("Par de Nanquim", "class:wizard")
 	several.Target = &rulesv1.TableSpellTarget{Kind: rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_CREATURES, Count: 3, PerSlotLevel: 2}
 	keys := map[string]*rulesv1.TableEntry{}
-	for _, s := range []*rulesv1.TableSpell{cone, toque, pessoal, several} {
+	for _, s := range []*rulesv1.TableSpell{cone, toque, pessoal, several, hold} {
 		keys[s.GetNamePt()] = master.addEntry(t, campaign, s)
 	}
 	// A self spell that picks creatures is refused: Pessoal reaches the caster or an area.
@@ -328,10 +334,14 @@ func TestMR025_TheSpellDetailsSayWhomItReaches(t *testing.T) {
 		{"spell:fireball", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_AREA, rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_SPHERE, 20, 0, 0, "Esfera de 6 m", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{"spell:shield", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_SELF, 0, 0, 0, 0, "Só quem conjura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF},
 		{"spell:fire-bolt", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURE, 0, 0, 0, 0, "Uma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
-		{"spell:bless", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 0, 1, "Várias criaturas", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
+		{"spell:bless", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 3, 1, "Várias criaturas", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
+		{"spell:detect-magic", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_SELF, 0, 0, 0, 0, "Só quem conjura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF},
+		{"spell:arcane-eye", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_NONE, 0, 0, 0, 0, "Nenhuma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
+		{"spell:flame-strike", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_AREA, rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CYLINDER, 10, 0, 0, "Cilindro de 3 m de raio", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{keys["Sopro de Nanquim"].GetKey(), rulesv1.SpellTargetKind_SPELL_TARGET_KIND_AREA, rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CONE, 15, 0, 0, "Cone de 4,5 m", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF},
 		{keys["Mão de Nanquim"].GetKey(), rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURE, 0, 0, 0, 0, "Uma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_TOUCH},
 		{keys["Vigia de Nanquim"].GetKey(), rulesv1.SpellTargetKind_SPELL_TARGET_KIND_SELF, 0, 0, 0, 0, "Só quem conjura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF},
+		{keys["Prisão de Nanquim"].GetKey(), rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURE, 0, 0, 0, 1, "Uma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{keys["Par de Nanquim"].GetKey(), rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 3, 2, "Várias criaturas", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 	} {
 		res, err := dona.content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: tc.key}))
