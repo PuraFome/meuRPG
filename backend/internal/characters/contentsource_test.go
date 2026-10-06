@@ -151,8 +151,8 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 	t.Parallel()
 	s := offlineService(t)
 	a := loadRules(t)
-	first := s.catalogFor(a)
-	if again := s.catalogFor(a); first != again { // the same content: one catalog
+	first := s.catalogFor(a, true)
+	if again := s.catalogFor(a, true); first != again { // the same content: one catalog
 		t.Error("catalogFor() built the catalog of one content twice")
 	}
 	if first == nil || len(first.GetRaces()) == 0 {
@@ -162,7 +162,7 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.catalogFor(b) == first {
+	if s.catalogFor(b, true) == first {
 		t.Error("two contents share a catalog")
 	}
 	for range maxCatalogs { // more contents than the cache keeps: the oldest goes
@@ -170,7 +170,7 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		s.catalogFor(c)
+		s.catalogFor(c, true)
 	}
 	s.catalogs.mu.Lock()
 	n, kept := len(s.catalogs.catalog), s.catalogs.catalog[a]

@@ -368,6 +368,9 @@ type ClassEntry struct {
 	// included.
 	Subclasses []string
 	Archived   bool
+	// SpellListFrom is the class whose spell list a table class reuses, or empty
+	// (its own list: the spells that name it).
+	SpellListFrom string
 }
 
 // SubclassEntry is a subclass in the Catalog.

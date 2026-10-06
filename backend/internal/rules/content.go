@@ -117,6 +117,8 @@ type content struct {
 	spellTargets  map[string]SpellTarget
 	raceChoice    map[string][]int
 	bgEquipment   map[string]string
+	// entryRevision is the revision of each table entry at its last change.
+	entryRevision map[string]int
 }
 
 // classCasting is how a class (or a third-caster subclass) casts: its
@@ -573,6 +575,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 			Key: k, Name: cl.Name, NamePT: c.namePT(k), HitDie: cl.HitDie,
 			SkillChoices: cl.SkillChoices.Choose, SkillOptions: cl.SkillChoices.From,
 			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k],
+			SpellListFrom: c.listFrom[k],
 		}
 		for _, s := range cl.SavingThrows {
 			if a, ok := ability(s); ok {

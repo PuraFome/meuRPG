@@ -16,7 +16,8 @@
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CampaignDocumentService, CharacterService, ContentService, PlayService,
+// CampaignDocumentService, CharacterService, ContentService,
+// TableContentService, PlayService,
 // ProgressionService,
 // GalleryService and MapService need sign-in too; without it, they are not
 // mounted. Images also need BLOB_DIR: without it, the image routes and
@@ -206,9 +207,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Pool:     pool,
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			// Every campaign plays with the SRD until the table's own content (MR-025)
-			// arrives; SRD is the base content for what no table changes (the conditions).
-			Content: characters.NewSRDSource(rulesContent),
+			// Each campaign plays with the SRD plus the table's own content (MR-025,
+			// ADR-0018); SRD is the base content for what no table changes (the conditions).
+			Content: characters.NewTableSource(pool, rulesContent),
 			SRD:     rulesContent,
 			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 			Logger:  logger,

@@ -42,9 +42,13 @@ service ContentService {
   // it, and so may a pending member (RN-15, MR-024), who needs it to create
   // their character while they wait for the master's approval.
   //
-  // Today every campaign gets the same SRD 5.1 content. The request still
-  // names the campaign because the table's own content (homebrew, ADR-0008)
-  // will depend on it.
+  // The catalog is the campaign's own (MR-025, RN-23): the SRD 5.1 content plus
+  // the table's classes, subclasses, races, subraces, backgrounds and spells,
+  // with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
+  // table has content). A player never receives an archived entry (the master's
+  // drafts and retired entries); a master receives them, with the `archived`
+  // mark. The entries in full, and how many characters use each, are
+  // TableContentService.ListTableEntries.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
@@ -512,6 +516,26 @@ message DerivedSheet {
   // A creature's actions that ask for a saving throw (a breath, a bite that
   // knocks prone), with their DC. Empty for a character.
   repeated SaveAction save_actions = 40;
+  // The table's entries this sheet uses that changed after the sheet was last
+  // saved (RN-23, question 80: a change applies at once). The numbers above already
+  // use the new rules; each entry is also an issue with code
+  // "table_content_changed", for the banner "A classe mudou". Saving the sheet
+  // clears them.
+  repeated ChangedContent changed_content = 41;
+}
+
+// ChangedContent is a table entry a sheet uses that changed after the sheet was
+// last saved.
+message ChangedContent {
+  // The entry's key ("class:guardiao-do-vale@mesa") and its Portuguese name.
+  string key = 1;
+  string name_pt = 2;
+  // The sheet field that holds the key, with the CharacterSheet field names
+  // ("full.classes[0].class_key").
+  string field = 3;
+  // The content revision the entry changed at, and the one the sheet was saved at.
+  int32 revision = 4;
+  int32 saved_revision = 5;
 }
 
 // SaveAction is a creature's action that asks for a saving throw.
@@ -889,6 +913,11 @@ message Race {
   // Increases the player chooses, such as the Half-Elf's two +1, are not
   // here: the sheet records them as extra bonuses.
   AbilityScores ability_bonuses = 5;
+  // The table retired it (RN-23): a master sees it, a player never does.
+  bool archived = 6;
+  // The bonuses the player places on abilities of their choice, such as [2, 1]
+  // for "+2 and +1 to your choice"; empty for the SRD's races.
+  repeated int32 choice_bonuses = 7;
 }
 
 // Subrace is a subrace of one race.
@@ -901,6 +930,8 @@ message Subrace {
   string race_key = 4;
   // The subrace's ability score increases, added to the race's.
   AbilityScores ability_bonuses = 5;
+  // The table retired it (see Race.archived).
+  bool archived = 6;
 }
 
 // CharacterClass is a class from the rules content.
@@ -920,6 +951,8 @@ message CharacterClass {
   int32 subclass_level = 7;
   // How the class casts spells. Unset for a class that never casts.
   ClassSpellcasting spellcasting = 8;
+  // The table retired it (see Race.archived).
+  bool archived = 9;
 }
 
 // SkillChoice is "choose `count` skills from this list".
@@ -960,6 +993,9 @@ message ClassSpellcasting {
   // The Warlock's entry is its pact slot circle. Clients use it to list only
   // the spells the character can take; the server still validates on save.
   repeated int32 max_spell_level_by_level = 4;
+  // The class whose spell list a table class reuses ("class:cleric"); empty is the
+  // class's own list (the spells that name it).
+  string list_class_key = 5;
 }
 
 // Subclass is a subclass of one class.
@@ -970,6 +1006,23 @@ message Subclass {
   string name_pt = 3;
   // Content key of the class it belongs to, such as "class:wizard".
   string class_key = 4;
+  // The table retired it (see Race.archived).
+  bool archived = 5;
+  // Set for a subclass that casts on its own (a third caster, the table's only).
+  SubclassSpellcasting spellcasting = 6;
+}
+
+// SubclassSpellcasting is how a third caster's subclass casts.
+message SubclassSpellcasting {
+  Ability ability = 1;
+  SpellPreparation preparation = 2;
+  // The class whose spell list it casts from.
+  string list_class_key = 3;
+  // The class level casting starts at.
+  int32 first_level = 4;
+  // The highest circle at each class level, 20 entries, as
+  // ClassSpellcasting.max_spell_level_by_level.
+  repeated int32 max_spell_level_by_level = 5;
 }
 
 // Background is a background from the rules content.
@@ -980,6 +1033,10 @@ message Background {
   string name_pt = 3;
   // Content keys of the skills the background grants.
   repeated string skill_keys = 4;
+  // The table retired it (see Race.archived).
+  bool archived = 5;
+  // A table background's equipment text; empty for the SRD's.
+  string equipment_pt = 6;
 }
 
 // Skill is one of the 18 skills.
@@ -1045,6 +1102,8 @@ message Spell {
   bool ritual = 8;
   // Whether it needs concentration.
   bool concentration = 9;
+  // The table retired it (see Race.archived).
+  bool archived = 10;
 }
 
 // ListContentRequest names a campaign.
@@ -1054,7 +1113,13 @@ message ListContentRequest {
 
 // ListContentResponse returns the campaign's rules content.
 message ListContentResponse {
+  // The catalog. For a player, without the archived entries.
   Content content = 1;
+  // The campaign's content revision (0 while the table has no content of its
+  // own). It is in `content.content_version` too, after "+mesa.". The table's
+  // entries in full, for the editors, are
+  // TableContentService.ListTableEntries.
+  int32 table_revision = 2;
 }
 
 // GetSpellDetailsRequest names a spell. The campaign is there for access

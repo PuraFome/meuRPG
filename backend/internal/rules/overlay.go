@@ -85,6 +85,10 @@ type TableEntry struct {
 	Key      string
 	NamePT   string
 	Archived bool
+	// Revision is the table's content revision at the entry's last change (0 for
+	// an entry made outside the server, as in tests). ChangedSince compares it
+	// with the revision a sheet was saved at.
+	Revision int
 }
 
 // TableFeature is a class, subclass or background feature, or a race's trait.
@@ -473,6 +477,75 @@ func buildKeys(b Build, want func(string) bool) []string {
 	return sortedKeys(seen)
 }
 
+// TableRevision is the content revision of the table layer this content has
+// (the Overlay's Revision), or 0 for the plain SRD content.
+func (c *Content) TableRevision() int { return c.c.tableRevision }
+
+// ChangedEntry is a table entry a sheet uses that changed after the sheet was
+// last saved.
+type ChangedEntry struct {
+	// Key is the entry's key and Field the sheet field that holds it, with the
+	// CharacterSheet field names ("full.classes[0].class_key").
+	Key, Field string
+	// Revision is the content revision at which the entry last changed.
+	Revision int
+}
+
+// KeyField is a content key a Build uses and the sheet field that holds it.
+type KeyField struct {
+	Key, Field string
+}
+
+// BuildKeys lists the content keys a Build uses with the sheet field of each,
+// with the CharacterSheet field names ("full.classes[0].class_key"), in the
+// sheet's order: race, subrace, classes and subclasses, background, cantrips,
+// known spells, prepared spells and feature choices.
+func BuildKeys(b Build) []KeyField {
+	var out []KeyField
+	add := func(key, field string) {
+		if key != "" {
+			out = append(out, KeyField{Key: key, Field: field})
+		}
+	}
+	add(b.Race, "full.race_key")
+	add(b.Subrace, "full.subrace_key")
+	for i, cl := range b.Classes {
+		add(cl.Class, fmt.Sprintf("full.classes[%d].class_key", i))
+		add(cl.Subclass, fmt.Sprintf("full.classes[%d].subclass_key", i))
+	}
+	add(b.Background, "full.background_key")
+	for i, k := range b.Cantrips {
+		add(k, fmt.Sprintf("full.cantrip_keys[%d]", i))
+	}
+	for i, k := range b.SpellsKnown {
+		add(k, fmt.Sprintf("full.known_spell_keys[%d]", i))
+	}
+	for i, k := range b.SpellsPrepared {
+		add(k, fmt.Sprintf("full.prepared_spell_keys[%d]", i))
+	}
+	for i, k := range b.FeatureChoices {
+		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+	}
+	return out
+}
+
+// ChangedSince lists the table entries a Build uses whose last change is newer
+// than savedRevision, the content revision the sheet was last saved at (RN-23,
+// question 80: a change applies at once, and the owner is told). The order is
+// the sheet's (BuildKeys).
+func (c *Content) ChangedSince(b Build, savedRevision int) []ChangedEntry {
+	var out []ChangedEntry
+	seen := map[string]bool{}
+	for _, kf := range BuildKeys(b) {
+		if seen[kf.Key] || c.c.entryRevision[kf.Key] <= savedRevision {
+			continue
+		}
+		seen[kf.Key] = true
+		out = append(out, ChangedEntry{Key: kf.Key, Field: kf.Field, Revision: c.c.entryRevision[kf.Key]})
+	}
+	return out
+}
+
 // IsTableKey says whether a content key is the table's ("...@mesa").
 func IsTableKey(key string) bool { return isTableKey(key) }
 
@@ -758,6 +831,9 @@ func (b *overlayBuilder) register(e TableEntry) {
 	if e.Archived {
 		b.n.archived[e.Key] = true
 	}
+	if e.Revision > 0 {
+		b.n.entryRevision[e.Key] = e.Revision
+	}
 }
 
 // cloneForOverlay is a content whose maps can be added to without touching c:
@@ -784,6 +860,7 @@ func (c *content) cloneForOverlay() *content {
 	n.listFrom = map[string]string{}
 	n.offeredBy = map[string][]string{}
 	n.archived = map[string]bool{}
+	n.entryRevision = map[string]int{}
 	n.spellTargets = map[string]SpellTarget{}
 	n.raceChoice = map[string][]int{}
 	n.bgEquipment = map[string]string{}

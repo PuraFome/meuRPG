@@ -1,0 +1,639 @@
+syntax = "proto3";
+
+// The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
+// subclasses, races, subraces, backgrounds and spells that the master writes for
+// one campaign. The RPCs are ContentService's (rules.proto); the messages are
+// here.
+//
+// One typed message per kind, each mapping one to one onto the fields the rules
+// engine takes (package rules, Overlay). The server checks all of them with the
+// loaders and checks of the SRD content, so a table entry is as sure as an SRD
+// one; what it refuses comes back as an `invalid_argument` with a field violation
+// per error (TableContentViolation).
+//
+// Keys. An entry's key is "<kind>:<slug>@mesa", such as
+// "class:cavaleiro-runico@mesa". The server makes the slug from the Portuguese
+// name when the entry is created, and the key never changes after that, not even
+// when the name does: sheets store the key. The features of a class or subclass,
+// the traits of a race and the feature of a background have keys too, made by the
+// server and kept while the feature exists (see TableFeature.key).
+//
+// What a table entry never does: run code. A feature's effects come from a closed
+// menu (TableEffect), and a feature with no effects is text only.
+//
+// Names, texts and effects are in Portuguese; distances are in feet.
+package meurpg.rules.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// TableContentKind says what an entry is.
+enum TableContentKind {
+  TABLE_CONTENT_KIND_UNSPECIFIED = 0;
+  // A class: the contract of ADR-0018, section 8.
+  TABLE_CONTENT_KIND_CLASS = 1;
+  // A subclass of an SRD class or of a table class.
+  TABLE_CONTENT_KIND_SUBCLASS = 2;
+  // A race.
+  TABLE_CONTENT_KIND_RACE = 3;
+  // A subrace of an SRD race or of a table race.
+  TABLE_CONTENT_KIND_SUBRACE = 4;
+  // A background.
+  TABLE_CONTENT_KIND_BACKGROUND = 5;
+  // A spell.
+  TABLE_CONTENT_KIND_SPELL = 6;
+}
+
+// TableEntry is one entry of the table's content, as ListContent and the writes
+// return it: what every entry has, and the kind's message in `body`.
+message TableEntry {
+  // "<kind>:<slug>@mesa". Immutable.
+  string key = 1;
+  TableContentKind kind = 2;
+  // The Portuguese name. The same as the body's name_pt.
+  string name_pt = 3;
+  // The master retired the entry (ArchiveTableEntry): sheets that use it keep
+  // working, but it is not offered as a new choice. Players never receive an
+  // archived entry.
+  bool archived = 4;
+  // The campaign's content revision at the entry's last change. UpdateTableEntry
+  // takes it back as `expected_revision`, so two masters editing at once cannot
+  // overwrite each other.
+  int32 revision = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  // How many characters of the campaign use the entry (race, subrace, class,
+  // subclass, background, or as a known, prepared or cantrip spell). Filled for
+  // the master only; 0 for a player.
+  int32 characters_using = 8;
+  // The entry itself. Exactly one is set, the one of `kind`.
+  oneof body {
+    TableClass table_class = 10;
+    TableSubclass table_subclass = 11;
+    TableRace table_race = 12;
+    TableSubrace table_subrace = 13;
+    TableBackground table_background = 14;
+    TableSpell table_spell = 15;
+  }
+}
+
+// TableEffect is one effect of a feature, from the closed menu: what the engine
+// computes with, never code. `type` is "modifier", "proficiency", "resource",
+// "sense", "roll_mode", "grant_action", "extra_attack", "choice" or "note"; only
+// the fields of the type are read, and a field the type does not use is refused.
+// A feature with no effects is text only and always valid. Formulas ("value",
+// "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
+// prof(), floor, ceil, min and max, and must compile.
+message TableEffect {
+  string type = 1;
+  // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
+  // "initiative", "attack.weapon.melee", "attack.weapon.ranged",
+  // "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
+  // "save.<ability>"), how ("add", "max" or "set") and the formula.
+  string target = 2;
+  string mode = 3;
+  string value = 4;
+  // modifier: a Bool formula; the effect applies only while it is true.
+  string when = 5;
+  // Makes an effect situational ("against:magic"): the engine shows it as a
+  // reminder and the master decides.
+  repeated string tags = 6;
+  // proficiency: a skill key, "skill:*", "save.<ability>", "initiative" or a
+  // proficiency key ("proficiency:heavy-armor"), and the level ("half", "full" or
+  // "expertise"; empty is "full").
+  string proficiency = 7;
+  string level = 8;
+  // roll_mode: "advantage" or "disadvantage" on the `targets` ("save.int",
+  // "skill.stealth").
+  string roll = 9;
+  repeated string targets = 10;
+  // sense: "darkvision", "blindsight", "tremorsense" or "truesight", and its range.
+  string sense = 11;
+  int32 range_ft = 12;
+  // resource: a name for the resource, the formula of its maximum and when it
+  // comes back ("short_rest", "long_rest", "dawn" or "none").
+  string resource = 13;
+  string max = 14;
+  string recharge = 15;
+  // choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
+  // "language", "tool" or "feature"), how many, and from which keys. For
+  // extra_attack, `count` is how many attacks the Attack action makes.
+  string choice = 16;
+  int32 count = 17;
+  repeated string from = 18;
+  // grant_action: "action", "bonus_action", "reaction", "free" or "movement".
+  string economy = 19;
+  // note: spells the feature grants (a race that knows a cantrip).
+  repeated string spells = 20;
+  // The text for the sheet, in Portuguese, when a note, a resource or an action
+  // needs one. "{value}" is the value with its sign, "{n}" without it.
+  string text_pt = 21;
+}
+
+// TableFeature is a class or subclass feature, a race or subrace trait, or a
+// background's feature.
+message TableFeature {
+  // The feature's key ("feature:class-<slug>-<name>@mesa", "trait:...",
+  // "background-feature:..."). The server makes it when the feature is new (leave
+  // it empty) and the editor sends it back on every update: a feature that keeps
+  // its key keeps the choices sheets made on it. An empty key at a level where an
+  // existing feature has the same name takes that feature's key.
+  string key = 1;
+  string name_pt = 2;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 3;
+  repeated TableEffect effects = 4;
+}
+
+// TableCasting is how a class, or a third caster's subclass, casts.
+message TableCasting {
+  // "full", "half" or "pact" for a class; "third" for a subclass.
+  string kind = 1;
+  Ability ability = 2;
+  // "known" or "prepared".
+  string preparation = 3;
+  // The class whose spell list it casts from: an SRD class or a table class that
+  // has its own list. Empty for a class is its own list (the spells that name
+  // it); required for a third caster.
+  string list_from = 4;
+  // A formula for how many spells a class that prepares may prepare. Empty is the
+  // ability modifier plus the class level (half of it for a half caster), at
+  // least 1.
+  string prepared_max = 5;
+  // The class level casting starts at; 0 is 1 (2 for half, 3 for third).
+  int32 start_level = 6;
+  // Whether it casts rituals.
+  bool ritual = 7;
+}
+
+// TableClassLevel is one row of a class's 20-level table.
+message TableClassLevel {
+  // The proficiency bonus at this level; 0 is the SRD's.
+  int32 prof_bonus = 1;
+  // The features gained at this level.
+  repeated TableFeature features = 2;
+  // The casting columns of the row; all zero for a class that does not cast.
+  int32 cantrips_known = 3;
+  int32 spells_known = 4;
+  // The spell slots by circle, 1st first: nine entries, or none. Pact magic has
+  // exactly one entry that is not zero.
+  repeated int32 slots = 5;
+}
+
+// TableClass is a class.
+message TableClass {
+  string name_pt = 1;
+  // 6, 8, 10 or 12.
+  int32 hit_die = 2;
+  // The two saving throws of a character who starts in this class.
+  repeated Ability saving_throws = 3;
+  // "Choose `skill_choose` skills from `skill_from`" at level 1 (SRD skill keys).
+  int32 skill_choose = 4;
+  repeated string skill_from = 5;
+  // Armor, weapon and tool proficiency keys of a character who starts in it
+  // ("proficiency:light-armor").
+  repeated string proficiencies = 6;
+  // The multiclass prerequisites: every ability here with a score above 0 must be
+  // met, or, with `any_of`, one of its abilities instead. A score of 0 means
+  // "not asked".
+  AbilityScores minimums = 7;
+  AbilityScores any_of = 8;
+  // What taking this class as a later class gives.
+  repeated string multiclass_proficiencies = 9;
+  int32 multiclass_skill_choose = 10;
+  // The class level the subclass is chosen at, 1 to 20; 0 is 3.
+  int32 subclass_level = 11;
+  // The levels with an Ability Score Improvement; empty is 4, 8, 12, 16 and 19.
+  // The server writes the features.
+  repeated int32 asi_levels = 12;
+  // How the class casts; unset for a class that does not.
+  TableCasting casting = 13;
+  // The class table: exactly 20 rows, level 1 first.
+  repeated TableClassLevel levels = 14;
+}
+
+// TableAlwaysPrepared is a spell a subclass always has prepared from a class
+// level (a domain's, an oath's); it does not count against the prepared limit.
+message TableAlwaysPrepared {
+  int32 class_level = 1;
+  // A spell key, of the SRD or the table.
+  string spell_key = 2;
+}
+
+// TableSubclassLevel is a subclass's features at one class level and, for a third
+// caster, the casting columns there.
+message TableSubclassLevel {
+  // The class level, 1 to 20. Rows are in ascending order.
+  int32 level = 1;
+  repeated TableFeature features = 2;
+  int32 cantrips_known = 3;
+  int32 spells_known = 4;
+  repeated int32 slots = 5;
+}
+
+// TableSubclass is a subclass.
+message TableSubclass {
+  string name_pt = 1;
+  // The parent class's key. Immutable.
+  string class_key = 2;
+  // The class level the choice happens at: the parent's, or 0 for "the parent's".
+  int32 level = 3;
+  repeated string desc_pt = 4;
+  repeated TableSubclassLevel levels = 5;
+  // Makes the subclass a third caster ("third"); the parent class must not cast.
+  // Its levels need a row, with the casting columns, for every level from the
+  // start level to 20.
+  TableCasting casting = 6;
+  repeated TableAlwaysPrepared always_prepared = 7;
+}
+
+// TableRace is a race.
+message TableRace {
+  string name_pt = 1;
+  // "Tiny", "Small", "Medium" or "Large".
+  string size = 2;
+  int32 speed_ft = 3;
+  // The fixed ability bonuses.
+  AbilityScores ability_bonuses = 4;
+  // Bonuses the player places on abilities of their choice, such as [2, 1] for "+2
+  // and +1 to your choice"; each goes on a different ability.
+  repeated int32 choice_bonuses = 5;
+  // 0, or the range of the darkvision, in feet.
+  int32 darkvision_ft = 6;
+  // SRD language keys always known, and how many more are chosen.
+  repeated string languages = 7;
+  int32 language_choices = 8;
+  repeated TableFeature traits = 9;
+}
+
+// TableSubrace is a subrace.
+message TableSubrace {
+  string name_pt = 1;
+  // The parent race's key. Immutable.
+  string race_key = 2;
+  AbilityScores ability_bonuses = 3;
+  repeated TableFeature traits = 4;
+}
+
+// TableBackground is a background: two skills, tools and languages, and a feature
+// that is a text.
+message TableBackground {
+  string name_pt = 1;
+  // The two skills it gives (SRD skill keys).
+  repeated string skills = 2;
+  // Tool proficiency keys ("proficiency:thieves-tools").
+  repeated string tools = 3;
+  int32 language_choices = 4;
+  // The equipment, as a text.
+  string equipment_pt = 5;
+  TableFeature feature = 6;
+}
+
+// TableSpellTargetKind says whom a table spell reaches.
+enum TableSpellTargetKind {
+  TABLE_SPELL_TARGET_KIND_UNSPECIFIED = 0;
+  // One creature.
+  TABLE_SPELL_TARGET_KIND_CREATURE = 1;
+  // Several creatures: `count`, and `per_slot_level` more for each circle above
+  // the spell's own.
+  TABLE_SPELL_TARGET_KIND_CREATURES = 2;
+  // An area: `shape` and `size_ft`. In combat the caster picks the creatures it
+  // catches; the map does not draw it.
+  TABLE_SPELL_TARGET_KIND_AREA = 3;
+  // Only the caster.
+  TABLE_SPELL_TARGET_KIND_SELF = 4;
+}
+
+// TableAreaShape is the shape of an area spell.
+enum TableAreaShape {
+  TABLE_AREA_SHAPE_UNSPECIFIED = 0;
+  // The size is the length.
+  TABLE_AREA_SHAPE_CONE = 1;
+  // The size is the side.
+  TABLE_AREA_SHAPE_CUBE = 2;
+  // The size is the radius.
+  TABLE_AREA_SHAPE_CYLINDER = 3;
+  // The size is the length.
+  TABLE_AREA_SHAPE_LINE = 4;
+  // The size is the radius.
+  TABLE_AREA_SHAPE_SPHERE = 5;
+}
+
+// TableSpellTarget is whom a table spell reaches (required).
+message TableSpellTarget {
+  TableSpellTargetKind kind = 1;
+  // CREATURES: how many at the spell's own circle (2 or more), and how many more
+  // for each circle above it.
+  int32 count = 2;
+  int32 per_slot_level = 3;
+  // AREA: the shape and the size, in feet, in steps of 5 (1,5 m); 5 to 300.
+  TableAreaShape shape = 4;
+  int32 size_ft = 5;
+}
+
+// TableSpellCastingTime is how long a table spell takes to cast. An action, a bonus
+// action or a reaction takes 1; minutes and hours 1 to 60.
+message TableSpellCastingTime {
+  CastingTimeUnit unit = 1;
+  int32 amount = 2;
+  // A reaction's trigger, in Portuguese ("quando você sofre dano"); only for a
+  // reaction.
+  string trigger_pt = 3;
+}
+
+// TableSpellRange is a table spell's range. Special is not allowed.
+message TableSpellRange {
+  SpellRangeKind kind = 1;
+  // For RANGED: 5 to 5280, in steps of 5.
+  int32 distance_ft = 2;
+}
+
+// TableSpellDuration is a table spell's duration. Special is not allowed.
+message TableSpellDuration {
+  SpellDurationKind kind = 1;
+  // For TIMED: 1 to 999 of a unit.
+  int32 amount = 2;
+  SpellDurationUnit unit = 3;
+  // Writes "up to"; a concentration spell always has it.
+  bool up_to = 4;
+}
+
+// TableSpellComponents says which components a table spell has.
+message TableSpellComponents {
+  bool verbal = 1;
+  bool somatic = 2;
+  bool material = 3;
+  // Describes the material; goes with `material`, and only with it.
+  string material_pt = 4;
+}
+
+// TableSpellDamage is one damage type of a table spell. The dice are plain dice
+// ("8d6", "1d6"), the extra ones of the same die as `dice`.
+message TableSpellDamage {
+  // An SRD damage type key ("damage-type:fire").
+  string damage_type_key = 1;
+  // The damage at the spell's own level (a leveled spell) or at level 1 (a cantrip).
+  string dice = 2;
+  // The extra dice for each slot level above the spell's own (a leveled spell).
+  string per_slot_level = 3;
+  // The extra dice at each cantrip tier: levels 5, 11 and 17 (a cantrip).
+  string per_tier = 4;
+}
+
+// TableSpellHeal is a table spell's healing.
+message TableSpellHeal {
+  string dice = 1;
+  string per_slot_level = 2;
+  // Adds the spellcasting modifier.
+  bool adds_modifier = 3;
+}
+
+// TableSpell is a spell. Its details become the SpellDetails of the SRD's spells,
+// so the combat that resolves an SRD spell resolves this one.
+message TableSpell {
+  string name_pt = 1;
+  // 0 (a cantrip) to 9.
+  int32 level = 2;
+  // An SRD school key ("school:evocation").
+  string school_key = 3;
+  TableSpellCastingTime casting_time = 4;
+  TableSpellRange range = 5;
+  TableSpellDuration duration = 6;
+  TableSpellComponents components = 7;
+  // Needs a timed duration. A ritual needs a level of 1 or more.
+  bool concentration = 8;
+  bool ritual = 9;
+  // The classes (SRD or table) whose list has the spell.
+  repeated string class_keys = 10;
+  repeated string desc_pt = 11;
+  repeated string higher_level_pt = 12;
+  TableSpellTarget target = 13;
+  // "melee", "ranged" or empty (no spell attack). Not together with `save`.
+  string attack = 14;
+  // The saving throw it asks for: NONE or HALF on a success. Unset for none.
+  SpellSave save = 15;
+  repeated TableSpellDamage damage = 16;
+  TableSpellHeal heal = 17;
+}
+
+// TableContentViolation is one thing the server refused in a write: the path of
+// the field in the request's body and a stable reason code. The app writes the
+// Portuguese text from the code; nobody parses `message`.
+message TableContentViolation {
+  // The path, with the body's field names and its own indexes
+  // ("table_class.levels[4].features[0].effects[1].value"). Empty for the content
+  // as a whole.
+  string field = 1;
+  // One of: "limit" (a count, a size or a budget is over its limit), "bad_key",
+  // "duplicate_key", "reserved_key", "bad_name", "bad_text", "dangling_reference"
+  // (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
+  // "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
+  // (a key, kind or parent changed), "entry_limit" (300 entries), "size_limit"
+  // (64 KiB).
+  string reason = 2;
+  // English, for logs and tests.
+  string message = 3;
+  // The entry the violation is about, when it is not the one being written.
+  string key = 4;
+}
+
+// TableContentRefusal is the error detail of `invalid_argument` on a
+// ContentService write the rules refused. Nothing was changed.
+message TableContentRefusal {
+  repeated TableContentViolation violations = 1;
+}
+
+// TableContentBlockedReason says why a ContentService write cannot be done now.
+enum TableContentBlockedReason {
+  TABLE_CONTENT_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The entry changed since the editor read it (`expected_revision` is stale).
+  // The app says "Esta entrada mudou enquanto você editava". It comes as
+  // `aborted`, like a stale sheet, with this detail.
+  TABLE_CONTENT_BLOCKED_REASON_STALE = 1;
+  // The entry is archived: unarchive it before changing it (also the answer to
+  // archiving an entry that is already archived).
+  TABLE_CONTENT_BLOCKED_REASON_ARCHIVED = 2;
+  // UnarchiveTableEntry on an entry that is not archived, or ArchiveTableEntry on
+  // one that is already.
+  TABLE_CONTENT_BLOCKED_REASON_NOT_ARCHIVED = 3;
+}
+
+// TableContentBlocked is the error detail of ContentService's
+// `failed_precondition` and `aborted`.
+message TableContentBlocked {
+  TableContentBlockedReason reason = 1;
+  // The entry's key.
+  string key = 2;
+}
+
+// AffectedCharacter is a character of the campaign that uses an entry which was
+// just changed and now has issues on its sheet (the master's list in "A classe
+// mudou").
+message AffectedCharacter {
+  string character_id = 1;
+  // The character's name, and the display name of its player (empty for an NPC).
+  string name = 2;
+  string player_display_name = 3;
+  // How many issues its sheet has now.
+  int32 issues = 4;
+}
+
+// TableContentService reads and writes the table's own content (MR-025, RN-23,
+// ADR-0018). The catalog the character editor builds sheets from is
+// ContentService.ListContent, which already includes the table's entries; this
+// service is for the entries in full and for the master's writes.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of, methods answer
+// `not_found`, exactly as for a campaign that does not exist (ADR-0011). An ID
+// that is not a UUID is answered like an ID that does not exist. Responses carry
+// `Cache-Control: no-store`. Reads carry a campaign ID, so they are IDEMPOTENT
+// and POST-only (docs/privacidade.md).
+service TableContentService {
+  // ListTableEntries returns the table's entries in full, sorted by kind and
+  // Portuguese name, for the editors and for what a player reads of an option
+  // (the class numbers and effects, question 83). Any active member of the
+  // campaign may call it; a pending member gets `not_found` (they only need the
+  // catalog). The master gets every entry, archived ones included, with
+  // `characters_using`; a player gets the ones that are not archived, and never
+  // sees a count. Until the master's on/off switches (MR-025, "Opções para os
+  // jogadores"), every entry that is not archived is on.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not an active
+  //     member of it.
+  rpc ListTableEntries(ListTableEntriesRequest) returns (ListTableEntriesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CreateTableEntry adds an entry to the table's own content (MR-025, RN-23).
+  // Only the master. The server makes the key from the name (unique in the
+  // campaign, never changing) and the keys of the features inside. The whole
+  // campaign's content is checked with the rules engine before anything is
+  // written; a refusal changes nothing. The content revision goes up. The change
+  // is live at once, for locked sheets too.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the campaign's master.
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  //   - `invalid_argument`: a TableContentRefusal detail lists every violation
+  //     (the 300-entry and 64 KiB limits included).
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+
+  // UpdateTableEntry replaces an entry's body. The kind, the key and the parent
+  // (a subclass's class, a subrace's race) never change. Only the master.
+  // `expected_revision` must be the entry's `revision`, or the call is `aborted`
+  // with a TableContentBlocked STALE detail. An archived entry is
+  // `failed_precondition` (TableContentBlocked ARCHIVED). Everything else is as
+  // CreateTableEntry. Sheets that use the entry recalculate at once and show "A
+  // classe mudou" (an issue of the derived sheet); the response says which ones
+  // have issues now.
+  //
+  // Errors: as CreateTableEntry, plus `not_found` for an unknown key.
+  rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {}
+
+  // ArchiveTableEntry retires an entry: nothing is deleted. Sheets that use it
+  // keep working; it is no longer offered as a new choice, and a new sheet, an
+  // edit or a level-up that picks it is refused. Only the master. Archiving an
+  // archived entry is `failed_precondition` (TableContentBlocked ARCHIVED).
+  //
+  // Errors: `permission_denied`, `not_found`, `failed_precondition`.
+  rpc ArchiveTableEntry(ArchiveTableEntryRequest) returns (ArchiveTableEntryResponse) {}
+
+  // UnarchiveTableEntry brings an archived entry back. The campaign's content is
+  // checked again (an entry cannot come back if something it needs is gone).
+  // Only the master.
+  //
+  // Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
+  // `invalid_argument` (a TableContentRefusal).
+  rpc UnarchiveTableEntry(UnarchiveTableEntryRequest) returns (UnarchiveTableEntryResponse) {}
+}
+
+// ListTableEntriesRequest names a campaign.
+message ListTableEntriesRequest {
+  string campaign_id = 1;
+}
+
+// ListTableEntriesResponse carries the table's entries.
+message ListTableEntriesResponse {
+  repeated TableEntry entries = 1;
+  // The campaign's content revision, 0 while the table has no content of its own.
+  int32 table_revision = 2;
+  // The content version the revision makes, such as "srd51@0123456789ab+fx.12+mesa.7".
+  string content_version = 3;
+}
+
+// CreateTableEntryRequest adds an entry.
+message CreateTableEntryRequest {
+  string campaign_id = 1;
+  // The entry. Exactly one, which gives the kind. The feature keys are left
+  // empty; the key of the entry is made by the server from the body's name_pt.
+  oneof body {
+    TableClass table_class = 10;
+    TableSubclass table_subclass = 11;
+    TableRace table_race = 12;
+    TableSubrace table_subrace = 13;
+    TableBackground table_background = 14;
+    TableSpell table_spell = 15;
+  }
+}
+
+// CreateTableEntryResponse returns the new entry.
+message CreateTableEntryResponse {
+  // The entry as stored: the key, the keys of the features and the revision.
+  TableEntry entry = 1;
+  // The campaign's new content revision.
+  int32 table_revision = 2;
+}
+
+// UpdateTableEntryRequest replaces an entry's body.
+message UpdateTableEntryRequest {
+  string campaign_id = 1;
+  // The entry's key.
+  string key = 2;
+  // The entry's `revision` as the editor read it.
+  int32 expected_revision = 3;
+  // The new body: the kind of the key, its parent unchanged. The features keep
+  // the keys the editor read; a new feature has none.
+  oneof body {
+    TableClass table_class = 10;
+    TableSubclass table_subclass = 11;
+    TableRace table_race = 12;
+    TableSubrace table_subrace = 13;
+    TableBackground table_background = 14;
+    TableSpell table_spell = 15;
+  }
+}
+
+// UpdateTableEntryResponse returns the entry as stored.
+message UpdateTableEntryResponse {
+  TableEntry entry = 1;
+  int32 table_revision = 2;
+  // The characters that use the entry and have issues on their sheets with the
+  // new rules (never the ones without), for the master's "Fichas com aviso".
+  repeated AffectedCharacter affected_characters = 3;
+}
+
+// ArchiveTableEntryRequest names an entry.
+message ArchiveTableEntryRequest {
+  string campaign_id = 1;
+  string key = 2;
+}
+
+// ArchiveTableEntryResponse returns the archived entry.
+message ArchiveTableEntryResponse {
+  TableEntry entry = 1;
+  int32 table_revision = 2;
+}
+
+// UnarchiveTableEntryRequest names an entry.
+message UnarchiveTableEntryRequest {
+  string campaign_id = 1;
+  string key = 2;
+}
+
+// UnarchiveTableEntryResponse returns the entry that came back.
+message UnarchiveTableEntryResponse {
+  TableEntry entry = 1;
+  int32 table_revision = 2;
+}

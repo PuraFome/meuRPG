@@ -65,6 +65,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
+	if key, _, found := newArchivedChoice(content, nil, sheet.GetFull()); found {
+		return nil, errArchivedChoice("", key)
+	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -315,6 +318,15 @@ func (s *Service) UpdateCharacter(
 		}
 		if current.Revision != revision {
 			return errStaleRevision()
+		}
+		// A table entry the master archived is not a new choice (RN-23); the ones
+		// the stored sheet already has stay.
+		stored, err := loadSheet(current.ID, current.Sheet)
+		if err != nil {
+			return err
+		}
+		if key, _, found := newArchivedChoice(content, stored.GetFull(), sheet.GetFull()); found {
+			return errArchivedChoice(current.ID, key)
 		}
 		if portraitCopy != nil { // the copy's gallery row, in this transaction
 			if err := portraitCopy.Insert(ctx, tx); err != nil {

@@ -8,6 +8,18 @@ import (
 	"time"
 )
 
+type CampaignContent struct {
+	CampaignID string
+	ContentKey string
+	Kind       string
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	ArchivedAt *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type Character struct {
 	ID                  string
 	CampaignID          *string

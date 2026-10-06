@@ -326,6 +326,7 @@ flowchart TD
         t_character_vitals["character_vitals, character_wild_shapes"]
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
         t_character_creatures["character_creatures"]
+        t_campaign_content["campaign_content, campaign_content_state"]
     end
 
     subgraph play["Módulo play"]
@@ -484,8 +485,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00117_create_map_creature_tokens_index` | `map_creature_tokens` | A cascata de `creature_id` e os tokens de uma criatura. |
 | `00120_add_map_layers_doors` | `map_layers` | A camada das portas (MR-010, RN-26, Etapa 10, fatia 10.6c): `doors`, um `BYTEA` nulo de 4 bits por quadrado (0 nenhuma, 1 aberta, 2 fechada, 3 trancada, 4 grade, 5 secreta), no formato de `rules/grid`. |
 | `00121_add_door_opened_session_event_kind` | `session_events` | O `CHECK` de `kind` ganha `door_opened` (uma porta que um movimento abriu; MR-010, RN-26). O evento leva a rodada, o combatente, o quadrado da porta e de onde ele saiu, e é escrito na transação do movimento, antes do evento do próprio movimento. |
+| `00180_create_campaign_content` | `campaign_content` | O conteúdo da mesa (MR-025, RN-23, ADR-0018, Etapa 10, fatia 10.1c): uma linha por entrada, `(campaign_id, content_key)` de chave primária, o tipo, o nome em português, o `data` (o protojson do proto do tipo, até 64 KiB conferidos pelo servidor e 128 KiB pelo `CHECK`), a revisão da última mudança e `archived_at`. Nada é apagado: arquiva-se. |
+| `00181_create_campaign_content_state` | `campaign_content_state` | A revisão do conteúdo da campanha, uma linha por campanha, que sobe de um a cada escrita no `campaign_content`. Sem linha é a revisão 0. Está no `characters`, e não em `campaigns.content_revision` como a ADR-0018 dizia, para o `characters` não escrever uma coluna de outro módulo. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103` e as `00113` a `00115`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117` e a `00120`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00180` e a `00181`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117` e a `00120`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -520,6 +523,7 @@ No `characters`:
 - **`story_editing_allowed`** é a liberação da história que o mestre dá, personagem por personagem (RN-01). O início de cada sessão desliga todas as liberações da campanha.
 - **`revision`** sobe a cada mudança de nome, ficha ou história. Um salvamento com revisão velha recebe `aborted` na API, então duas pessoas editando ao mesmo tempo não apagam o trabalho uma da outra. Travar, morrer e liberar a história não mexem na revisão. `sheet_schema` marca a versão do documento da ficha, para uma futura v2.
 - **`character_master_notes`** tem a chave primária `(campaign_id, character_id)`: o mesmo NPC em duas campanhas (MR-022) terá notas separadas. Notas vazias apagam a linha. As notas somem com a campanha ou com o personagem, inclusive o personagem pendente recusado; essa exclusão procura as notas por `character_id` sem índice, o que é barato numa tabela pequena, como já era na exclusão de conta.
+- **`campaign_content` e `campaign_content_state`** (`00180` e `00181`, MR-025, RN-23, ADR-0018): o conteúdo da mesa. Cada **entrada** (classe, subclasse, raça, sub-raça, antecedente ou magia) é uma linha, com a chave `<tipo>:<nome>@mesa` (que o servidor faz do nome na criação e nunca muda), o nome em português, o `data` (o protojson da mensagem do tipo, em `rules/v1/table_content.proto`, com as chaves das características que o servidor fez), a revisão da campanha na última mudança da entrada e `archived_at`. A chave é única por campanha, as entradas somem com a campanha (`CASCADE`) e **nada se apaga**: o que uma ficha já usa precisa continuar valendo, então a saída é arquivar. Os limites são 300 entradas por campanha e 64 KiB de `data` por entrada (a regra do servidor, que mostra o erro no campo; o `CHECK` de 128 KiB é a última defesa, com folga para o JSONB ser mais comprido que o protojson compacto). **A revisão da campanha** vive em `campaign_content_state` (uma linha por campanha, criada pela primeira escrita; sem linha é 0) e sobe de um **na mesma transação** de toda escrita; toda escrita começa por subi-la, então duas escritas da mesma campanha rodam uma depois da outra, e toda leitura do conteúdo lê essa linha dentro da transação de quem chama (ver [Arquitetura](arquitetura.md#o-conteúdo-da-mesa-ao-vivo-etapa-10-fatia-101c)). A revisão com que cada ficha foi salva pela última vez fica **dentro do documento da ficha** (`FullSheet.content_revision`, escrito pelo servidor a cada salvamento), sem coluna nova: a entrada que mudou depois dela vira o aviso "A classe mudou". (Uma coluna em `characters` foi tentada e abandonada: a tabela tem TTL por linha, e qualquer `ALTER` repetido reescreve a expressão do TTL, o que o `TestMigrationsAreSafeToRerun` vê como mudança de esquema.) Só nomes e textos que o mestre escreve, sem dado pessoal (ver [Privacidade](privacidade.md)).
 - **Personagem recusado** (MR-024): o `RejectCharacter` apaga na hora a linha do personagem pendente, com a história, e a participação pendente do jogador. É a única exclusão de personagem fora da exclusão de conta, e a query só apaga linha com `status = 'pending'`: um personagem aprovado muda de estado, nunca de linha (RN-03).
 - **Retenção**: não há TTL para personagens, com uma exceção: o personagem de jogador órfão, sem jogador (a conta foi excluída) e sem campanha (a campanha foi apagada). Ninguém mais o alcança, e ele ainda guarda o texto livre de quem o escreveu. A `00020` põe um TTL por linha cuja expressão só vale para esse caso (`CASE WHEN kind = 'player' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END`); o job diário do CockroachDB apaga a linha. O teste `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` lê essa configuração da tabela e confere a expressão sobre linhas de verdade.
 - **Índices**: `(campaign_id, player_user_id)` serve às listas e à trava. Não há índice por `player_user_id` nem por `master_user_id` sozinhos: só a exclusão de conta procura por eles, como em `campaigns.created_by`.
@@ -690,6 +694,24 @@ erDiagram
         uuid campaign_id PK "e FK para campaigns"
         uuid character_id PK "e FK para characters"
         text notes "1 a 20000"
+        timestamptz updated_at
+    }
+
+    campaign_content {
+        uuid campaign_id PK "e FK para campaigns, CASCADE"
+        text content_key PK "tipo:nome@mesa, nunca muda"
+        text kind "class, subclass, race, subrace, background ou spell"
+        text name_pt "1 a 80"
+        jsonb data "protojson do tipo, até 64 KiB (CHECK 128)"
+        int4 revision "revisão da campanha na última mudança"
+        timestamptz archived_at "opcional, nada se apaga"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    campaign_content_state {
+        uuid campaign_id PK "e FK para campaigns, CASCADE"
+        int4 revision "sobe a cada escrita, na mesma transação"
         timestamptz updated_at
     }
 
@@ -1118,6 +1140,8 @@ erDiagram
     campaigns |o--o{ characters : "reúne"
     campaigns ||--o{ character_master_notes : "guarda"
     characters ||--o{ character_master_notes : "tem"
+    campaigns ||--o{ campaign_content : "tem o conteúdo da mesa"
+    campaigns ||--o| campaign_content_state : "conta as escritas do conteúdo"
     campaigns ||--o{ game_sessions : "realiza"
     characters ||--o| character_vitals : "tem"
     characters ||--o{ character_level_ups : "subiu de nível"

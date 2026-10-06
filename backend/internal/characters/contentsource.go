@@ -88,29 +88,82 @@ const maxCatalogs = 8
 // catalogCache is ListContent's answer per content, built on first use and
 // bounded to maxCatalogs, so a content that is no longer in use is not kept alive.
 type catalogCache struct {
-	mu      sync.Mutex
-	order   []*rules.Content // oldest first
+	mu    sync.Mutex
+	order []*rules.Content // oldest first
+	// catalog is the master's catalog (every entry); players is the same without
+	// the archived entries, made when a player first asks.
 	catalog map[*rules.Content]*rulesv1.Content
+	players map[*rules.Content]*rulesv1.Content
 }
 
 // catalogFor is ListContent's answer for a content: the same content gives the
 // same catalog, built once (while it is among the last maxCatalogs).
-func (s *Service) catalogFor(c *rules.Content) *rulesv1.Content {
+func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	cc := &s.catalogs
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	if v, ok := cc.catalog[c]; ok {
+	v, ok := cc.catalog[c]
+	if !ok {
+		v = catalogToProto(c.Catalog())
+		if cc.catalog == nil {
+			cc.catalog, cc.players = map[*rules.Content]*rulesv1.Content{}, map[*rules.Content]*rulesv1.Content{}
+		}
+		if len(cc.order) >= maxCatalogs {
+			delete(cc.catalog, cc.order[0])
+			delete(cc.players, cc.order[0])
+			cc.order = cc.order[1:]
+		}
+		cc.order = append(cc.order, c)
+		cc.catalog[c] = v
+	}
+	if master {
 		return v
 	}
-	v := catalogToProto(c.Catalog())
-	if cc.catalog == nil {
-		cc.catalog = map[*rules.Content]*rulesv1.Content{}
+	p, ok := cc.players[c]
+	if !ok {
+		p = withoutArchived(v)
+		cc.players[c] = p
 	}
-	if len(cc.order) >= maxCatalogs {
-		delete(cc.catalog, cc.order[0])
-		cc.order = cc.order[1:]
+	return p
+}
+
+// withoutArchived is a catalog without the entries the table retired, for the
+// players (RN-23): a copy that shares everything else. A class's list of
+// subclasses lives in the SRD content, so it needs no change here.
+func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
+	out := &rulesv1.Content{
+		ContentVersion: c.ContentVersion, Attribution: c.Attribution, Abilities: c.Abilities, Skills: c.Skills,
+		Armor: c.Armor, Weapons: c.Weapons, ChallengeRatings: c.ChallengeRatings,
 	}
-	cc.order = append(cc.order, c)
-	cc.catalog[c] = v
-	return v
+	for _, r := range c.Races {
+		if !r.GetArchived() {
+			out.Races = append(out.Races, r)
+		}
+	}
+	for _, r := range c.Subraces {
+		if !r.GetArchived() {
+			out.Subraces = append(out.Subraces, r)
+		}
+	}
+	for _, r := range c.Classes {
+		if !r.GetArchived() {
+			out.Classes = append(out.Classes, r)
+		}
+	}
+	for _, r := range c.Subclasses {
+		if !r.GetArchived() {
+			out.Subclasses = append(out.Subclasses, r)
+		}
+	}
+	for _, r := range c.Backgrounds {
+		if !r.GetArchived() {
+			out.Backgrounds = append(out.Backgrounds, r)
+		}
+	}
+	for _, r := range c.Spells {
+		if !r.GetArchived() {
+			out.Spells = append(out.Spells, r)
+		}
+	}
+	return out
 }

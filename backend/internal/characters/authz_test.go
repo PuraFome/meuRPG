@@ -231,6 +231,38 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// The table's own content (RN-23): the master writes, every active member
+		// reads, a pending member only reads the catalog (ListContent).
+		{"CreateTableEntry", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.CreateTableEntry(ctx, connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+				CampaignId: campaign, Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: testBackground("Guarda de farol")},
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"ListTableEntries", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ListTableEntries(ctx, connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"UpdateTableEntry", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.UpdateTableEntry(ctx, connect.NewRequest(&rulesv1.UpdateTableEntryRequest{
+				CampaignId: campaign, Key: "background:guarda-de-farol@mesa", ExpectedRevision: tableRevisionOf(t, master, campaign, "background:guarda-de-farol@mesa"),
+				Body: &rulesv1.UpdateTableEntryRequest_TableBackground{TableBackground: testBackground("Guarda de farol")},
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"ArchiveTableEntry", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: "background:guarda-de-farol@mesa"}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"UnarchiveTableEntry", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.UnarchiveTableEntry(ctx, connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: campaign, Key: "background:guarda-de-farol@mesa"}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// A game session starts: the sheet locks, and the story permission
 		// the master gave above ends (RN-01).
 		{
@@ -345,6 +377,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 	for _, service := range []protoreflect.ServiceDescriptor{
 		charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService"),
 		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService"),
+		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService"),
 	} {
 		for i := range service.Methods().Len() {
 			if name := string(service.Methods().Get(i).Name()); !covered[name] {

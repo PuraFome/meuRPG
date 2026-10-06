@@ -702,6 +702,12 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 		return levelUpPlan{}, invalidArgument(err)
 	}
 	plan.sheet = checked.GetFull()
+	// A table entry the master archived is not a new choice (RN-23).
+	if _, field, found := newArchivedChoice(t.content, t.full, plan.sheet); found && plan.refusal == nil {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE,
+		}
+	}
 	if plan.refusal == nil {
 		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content); err != nil {
 			le, ok := errors.AsType[*rules.LevelUpError](err)
