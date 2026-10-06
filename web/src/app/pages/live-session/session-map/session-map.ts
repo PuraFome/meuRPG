@@ -1,5 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -8,6 +10,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { Map as MapMessage, MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import type { DoorSquare } from '../../../core/maps/layers';
 import { lightKeyName } from '../../../core/maps/carried-light';
 import type { FogView } from '../../../core/maps/fog-view';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
@@ -28,6 +31,7 @@ import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
 import { FogPlayerTools } from '../fog-tools/fog-player-tools';
 import { LiveSessionSource } from '../live-session.types';
 
@@ -76,6 +80,8 @@ export class SessionMap {
   private readonly moves = new MoveSaves();
   private readonly source = inject(LiveSessionSource);
   private readonly sceneApi = inject(SceneClient);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<MapState>();
@@ -150,6 +156,21 @@ export class SessionMap {
   protected readonly masterImage = computed(() => this.image());
   protected readonly carriedName = computed(() => lightKeyName(this.ownToken()?.carriedLight ?? '').toLocaleLowerCase('pt-BR'));
   protected readonly seeingName = computed(() => (this.seeing() ? (this.seeingFamiliar() ?? 'familiar') : null));
+
+  /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
+  protected openDoor(door: DoorSquare): void {
+    const mapId = this.map()?.id;
+    if (!mapId) {
+      return;
+    }
+    const data: DoorSheetData = {
+      campaignId: this.campaignId(),
+      mapId,
+      door,
+      wall: (this.fog()?.layers().walls ?? []).some((w) => w.col === door.col && w.row === door.row),
+    };
+    openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
+  }
 
   protected async openScene(point: MapPoint): Promise<void> {
     const state = this.scene();

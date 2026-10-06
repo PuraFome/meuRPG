@@ -33,10 +33,14 @@ describe('MapEditor', () => {
   let api: FakeMapsClient;
   let state: MapState;
 
-  async function setup(mapPartial: Parameters<typeof mapMessage>[2] = { gridColumns: 24, gridRows: 16, fogEnabled: false }, inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {}) {
+  async function setup(
+    mapPartial: Parameters<typeof mapMessage>[2] = { gridColumns: 24, gridRows: 16, fogEnabled: false },
+    inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {},
+    layers: { wall?: Uint8Array; doors?: Uint8Array } = {},
+  ) {
     api = new FakeMapsClient();
     const map = mapMessage('map-1', 'A caverna do Vale Seco', mapPartial);
-    api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), doors: new Uint8Array(), fogWithheld: false };
+    api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), doors: new Uint8Array(), fogWithheld: false, ...layers };
     state = new MapState(async () => mapResponse(map, [tavern, pit, chest, torch], [mapToken('c-pensantus', 'Pensantus')]));
     await state.open('map-1');
     TestBed.resetTestingModule();
@@ -64,7 +68,10 @@ describe('MapEditor', () => {
     fixture.detectChanges();
   };
   const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const button = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim().endsWith(t))!;
+  const button = (t: string, last = false) => {
+    const all = Array.from(el.querySelectorAll<HTMLElement>('button')).filter((b) => b.textContent?.trim().endsWith(t));
+    return (last ? all[all.length - 1] : all[0])!;
+  };
   const radio = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(t))!;
   const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
   /** The painted squares are drawn once a frame: let one go by. */
@@ -287,6 +294,152 @@ describe('MapEditor', () => {
       await settle();
       // The fog is on: the players may have seen something.
       expect(fixture.componentInstance['paint'].erases()).toBe(true);
+    });
+  });
+
+  describe('the door tool', () => {
+    /** A 24 x 16 map with one wall square at (9, 6), under Pensantus's token (40 % of each side), and one at (15, 2) with a closed door on it. */
+    const wallAt = (...squares: [number, number][]) => {
+      const bytes = new Uint8Array(48);
+      for (const [col, row] of squares) {
+        const n = row * 24 + col;
+        bytes[n >> 3] |= 1 << (n & 7);
+      }
+      return bytes;
+    };
+    const tap = async (col: number, row: number) => {
+      surface()!.stroke.emit({ centers: [{ col, row }], erase: false });
+      await frame();
+      await settle();
+    };
+    async function paintMode(layers: { wall?: Uint8Array; doors?: Uint8Array } = { wall: wallAt([9, 6], [15, 2]) }) {
+      await setup(undefined, undefined, layers);
+      radio('Pintar').click();
+      await settle();
+      button('Porta').click();
+      await settle();
+    }
+
+    it('is the fifth tool: a second line picks the kind, with "Tirar a porta", and the side panel says what a tap does', async () => {
+      await paintMode();
+      expect(button('Porta').getAttribute('aria-pressed')).toBe('true');
+      expect(text()).toContain('Tipo de porta');
+      for (const name of ['Fechada', 'Aberta', 'Trancada', 'Grade', 'Secreta', 'Tirar a porta']) {
+        expect(button(name), name).toBeTruthy();
+      }
+      expect(button('Fechada').getAttribute('aria-pressed')).toBe('true');
+      expect(text()).toContain('Toque num quadrado para pôr a porta do tipo escolhido.');
+      expect(text()).toContain('Portas');
+    });
+
+    it('a tap on a wall with floor on both sides opens the gap and paints the chosen door: the wall goes first, then the door', async () => {
+      await paintMode();
+      button('Trancada').click();
+      await settle();
+      await tap(15, 2);
+      await flush();
+      expect(api.paints).toEqual([
+        // The safe order (RN-10): the door first, then the wall goes, so no player sees a gap in between.
+        { layer: MapLayer.DOORS, value: 3, squares: [{ col: 15, row: 2 }] },
+        { layer: MapLayer.WALL, value: 0, squares: [{ col: 15, row: 2 }] },
+      ]);
+      expect(text()).toContain('1 porta · 1 trancada');
+      // The master sees the padlock on the map and in the legend; nobody else gets a locked door.
+      expect(el.querySelectorAll('.sq--door').length).toBe(1);
+      expect(text()).toContain('Porta trancada (só você vê)');
+    });
+
+    it('a tap where no door fits says why, in place, and paints nothing', async () => {
+      await paintMode();
+      await tap(3, 3);
+      await flush();
+      expect(api.paints).toEqual([]);
+      const alert = el.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain('Aqui não dá: uma porta precisa de chão dos dois lados.');
+    });
+
+    it('"Tirar a porta" closes the gap again as a wall', async () => {
+      await paintMode();
+      await tap(15, 2);
+      await flush();
+      api.paints.length = 0;
+      button('Tirar a porta').click();
+      await settle();
+      await tap(15, 2);
+      await flush();
+      expect(api.paints).toEqual([
+        // Taking the door away: the wall comes back first.
+        { layer: MapLayer.WALL, value: 1, squares: [{ col: 15, row: 2 }] },
+        { layer: MapLayer.DOORS, value: 0, squares: [{ col: 15, row: 2 }] },
+      ]);
+    });
+
+    it('asks first, in place, before a closed door goes where someone stands, and paints it only on "Pôr a porta"', async () => {
+      await paintMode();
+      await tap(9, 6);
+      await flush();
+      expect(api.paints).toEqual([]);
+      expect(text()).toContain('Pôr a porta onde há alguém?');
+      expect(text()).toContain('Pensantus está nesse quadrado');
+      button('Voltar').click();
+      await settle();
+      expect(text()).not.toContain('Pôr a porta onde há alguém?');
+      expect(api.paints).toEqual([]);
+      await tap(9, 6);
+      button('Pôr a porta').click();
+      await flush();
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.DOORS}:2`, `${MapLayer.WALL}:0`]);
+    });
+
+    it('"Tirar a porta" over someone asks too: the wall that comes back would hide them', async () => {
+      const doors = new Uint8Array(192);
+      // A closed door at (9, 6), under Pensantus's token: square 153 is the high nibble of byte 76.
+      doors[76] = 0x20;
+      await paintMode({ wall: wallAt([8, 6], [10, 6]), doors });
+      button('Tirar a porta').click();
+      await settle();
+      await tap(9, 6);
+      await flush();
+      expect(api.paints).toEqual([]);
+      expect(text()).toContain('Tirar a porta onde há alguém?');
+      expect(text()).toContain('Com a parede de volta');
+      button('Tirar a porta', true).click();
+      await flush();
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.WALL}:1`, `${MapLayer.DOORS}:0`]);
+    });
+
+    it('the door tool\'s row has no "Apagar" and no brush (one square at a time), and the cursor says "Aqui não dá" where a tap would be refused', async () => {
+      await paintMode();
+      expect(el.querySelector('#bar-brush')).toBeNull();
+      expect(Array.from(el.querySelectorAll('[aria-label="Ferramenta de pintura"] button')).some((b) => b.textContent?.trim().endsWith('Apagar'))).toBe(false);
+      surface()!.hover.emit({ col: 3, row: 3 });
+      await settle();
+      expect(el.querySelector('.cursor__tag')?.textContent?.trim()).toBe('Aqui não dá');
+      expect(el.querySelector('.cursor .cursor__door')).toBeNull();
+      surface()!.hover.emit({ col: 15, row: 2 });
+      await settle();
+      expect(el.querySelector('.cursor__tag')?.textContent?.trim()).toBe('Fechada');
+      expect(el.querySelector('.cursor .cursor__door')).not.toBeNull();
+    });
+
+    it('does not ask for an open door or a grade: they do not hide anyone', async () => {
+      await paintMode();
+      button('Aberta').click();
+      await settle();
+      await tap(9, 6);
+      await flush();
+      expect(text()).not.toContain('Pôr a porta onde há alguém?');
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.DOORS}:1`, `${MapLayer.WALL}:0`]);
+    });
+
+    it('a secret door is drawn with the wall\'s hatch for the master and named in the legend with the crossed eye', async () => {
+      await paintMode();
+      button('Secreta').click();
+      await settle();
+      await tap(15, 2);
+      await flush();
+      expect(text()).toContain('Porta secreta (só você vê)');
+      expect(text()).toContain('1 porta · 1 secreta');
     });
   });
 

@@ -102,6 +102,11 @@ func checkSheet(content *rules.Content, sheet *charactersv1.CharacterSheet) (*ch
 		if err := cleanFullSheet(full); err != nil {
 			return nil, err
 		}
+		// The revision of the table's content this sheet is saved with (RN-23): the
+		// server's, never the client's.
+		full.ContentRevision = i32(content.TableRevision())
+		full.KnownIssues = issueIDs(rules.Derive(buildOf(full), content).Issues)
+		full.ContentBaselines = nil // the server's: carryFlags sets it when a save keeps a flag
 		if err := rules.Validate(buildOf(full), content); err != nil {
 			if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
 				return nil, &fieldError{field: "sheet." + ve.Field, err: errors.New(ve.Message)}

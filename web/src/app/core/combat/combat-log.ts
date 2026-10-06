@@ -476,6 +476,9 @@ export function logLine(
       return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };
     case CombatLogKind.WILD_SHAPE:
       return { ...base, icon: 'pets', text: wildShapeText(e) };
+    case CombatLogKind.DOOR_OPENED:
+      // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
+      return { ...base, icon: 'door_open', text: ' abriu a porta' };
     default:
       return null;
   }

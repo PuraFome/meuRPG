@@ -190,14 +190,31 @@ func (s *Service) process(ctx context.Context, data []byte) (*images.Result, err
 // checks the quota. If anything fails after a file was written, the files
 // are deleted again.
 func (s *Service) store(ctx context.Context, m authz.Membership, name string, res *images.Result) (mapsdb.GalleryImage, error) {
+	return s.storeImage(ctx, m.CampaignID, &m.UserID, name, res, false, nil, nil)
+}
+
+// storeImage is store for any image of the campaign: uploadedBy is who made it
+// (nil when nobody is left to name), and a generated image (MR-039) says so and,
+// when it is an edit, names its parent (kept only if that image still exists
+// inside the transaction: the master may have deleted it meanwhile). finish, when
+// set, runs inside the same transaction after the insert, and an error from it
+// rolls the image back and is returned as it is: the generated image and the
+// request that made it are recorded together, or not at all.
+func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy *string, name string, res *images.Result, generated bool, parent *string, finish func(ctx context.Context, q *mapsdb.Queries, imageID string) error) (mapsdb.GalleryImage, error) {
+	m := authz.Membership{CampaignID: campaignID}
 	id := uuid.New().String()
 	imageKey, thumbnailKey := blobKeys(m.CampaignID, id)
-	files := []struct {
-		key     string
-		content []byte
-	}{{imageKey, res.Data}, {thumbnailKey, res.Thumbnail}}
+	type file struct {
+		key         string
+		contentType string
+		content     []byte
+	}
+	files := []file{{imageKey, res.ContentType, res.Data}, {thumbnailKey, res.ContentType, res.Thumbnail}}
+	if res.Reference != nil {
+		files = append(files, file{referenceKey(m.CampaignID, id), images.JPEG, res.Reference})
+	}
 	for _, f := range files {
-		if err := s.blobs.Put(ctx, f.key, res.ContentType, bytes.NewReader(f.content)); err != nil {
+		if err := s.blobs.Put(ctx, f.key, f.contentType, bytes.NewReader(f.content)); err != nil {
 			s.deleteFiles(ctx, m.CampaignID, id)
 			s.logger.ErrorContext(ctx, "maps: cannot store an image file", "error", err)
 			return mapsdb.GalleryImage{}, errStorage()
@@ -215,24 +232,40 @@ func (s *Service) store(ctx context.Context, m authz.Membership, name string, re
 		if usage.ImageCount >= s.maxImages || usage.ByteCount+int64(size) > int64(s.maxBytes) {
 			return errQuota()
 		}
+		parentID := parent
+		if parentID != nil {
+			if _, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: *parentID}); errors.Is(err, pgx.ErrNoRows) {
+				parentID = nil
+			} else if err != nil {
+				return fmt.Errorf("find the parent image: %w", err)
+			}
+		}
 		row, err = q.InsertGalleryImage(ctx, mapsdb.InsertGalleryImageParams{
-			ID:          id,
-			CampaignID:  m.CampaignID,
-			UploadedBy:  &m.UserID,
-			Name:        name,
-			ContentType: res.ContentType,
-			Width:       int32(res.Width),  //nolint:gosec // G115: at most images.MaxSide
-			Height:      int32(res.Height), //nolint:gosec // G115: at most images.MaxSide
-			ByteSize:    size,
-			CreatedAt:   s.now(),
+			ID:            id,
+			CampaignID:    m.CampaignID,
+			UploadedBy:    uploadedBy,
+			Name:          name,
+			ContentType:   res.ContentType,
+			Width:         int32(res.Width),  //nolint:gosec // G115: at most images.MaxSide
+			Height:        int32(res.Height), //nolint:gosec // G115: at most images.MaxSide
+			ByteSize:      size,
+			CreatedAt:     s.now(),
+			Generated:     generated,
+			ParentImageID: parentID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert gallery image: %w", err)
+		}
+		if finish != nil {
+			return finish(ctx, q, id)
 		}
 		return nil
 	})
 	if err != nil {
 		s.deleteFiles(ctx, m.CampaignID, id)
+		if errors.Is(err, errRequestClosed) {
+			return mapsdb.GalleryImage{}, err
+		}
 		if he, ok := errors.AsType[*httpError](err); ok {
 			return mapsdb.GalleryImage{}, he
 		}

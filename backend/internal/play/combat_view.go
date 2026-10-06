@@ -58,6 +58,16 @@ func (v combatViewer) seesAt(c playdb.Combatant, sq grid.Square) bool {
 	return !c.Hidden && v.sight != nil && c.Kind == kindNPC && v.sight.sight.Sees(v.userID, sq)
 }
 
+// seesAtOffer is seesAt for the square an opportunity offer was made at. An offer
+// the master made by hand (a combat without a map, RN-25) has no square: nobody
+// stood anywhere, so the viewer sees the mover only if they see it now.
+func (v combatViewer) seesAtOffer(c playdb.Combatant, o playdb.OpportunityOffer) bool {
+	if o.LeftCol == nil || o.LeftRow == nil {
+		return v.sees(c)
+	}
+	return v.seesAt(c, grid.Square{Col: int(*o.LeftCol), Row: int(*o.LeftRow)})
+}
+
 func viewerOf(m authz.Membership) combatViewer {
 	return combatViewer{master: m.Role == authz.RoleMaster, userID: m.UserID}
 }
@@ -197,6 +207,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 		MapId:       deref(e.MapID),
 		GridColumns: e.GridColumns,
 		GridRows:    e.GridRows,
+		Mode:        modeProto(e.Mode),
 		Revision:    e.Revision,
 		StartedAt:   timestampOrNil(e.StartedAt),
 		EndedAt:     timestampOrNil(e.EndedAt),
@@ -535,7 +546,7 @@ func (s *Service) publishEncounterChanged(ctx context.Context, campaignID string
 	f, err := s.fogSightOf(ctx, campaignID, e)
 	if err != nil || f != nil {
 		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
-		blind := playdb.Encounter{ID: e.ID}
+		blind := playdb.Encounter{ID: e.ID, Mode: e.Mode}
 		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(blind)})
 		return
 	}

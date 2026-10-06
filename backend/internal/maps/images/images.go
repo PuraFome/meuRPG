@@ -84,6 +84,11 @@ type Result struct {
 	// Thumbnail is the image shrunk to ThumbnailSide pixels on its longer
 	// side. A small image is its own thumbnail.
 	Thumbnail []byte
+	// Reference is the JPEG of at most ReferenceSide pixels that the image
+	// travels as to the image model (MR-039), made from the pixels already
+	// decoded. Nil for an image that fits in ReferenceSide on both sides: it
+	// needs none.
+	Reference []byte
 }
 
 // format is a type of image that Process accepts.
@@ -172,6 +177,11 @@ func finish(contentType string, img image.Image, shrink func(image.Image) image.
 	res := &Result{ContentType: contentType, Width: b.Dx(), Height: b.Dy(), Data: out, Thumbnail: out}
 	if b.Dx() > ThumbnailSide || b.Dy() > ThumbnailSide {
 		if res.Thumbnail, err = encode(contentType, shrink(img)); err != nil {
+			return nil, err
+		}
+	}
+	if makeReference && (b.Dx() > ReferenceSide || b.Dy() > ReferenceSide) {
+		if res.Reference, err = reference(img, ReferenceSide, ReferenceQuality); err != nil {
 			return nil, err
 		}
 	}
@@ -340,13 +350,118 @@ func thumbnailCost(w, h int) int64 {
 }
 
 // thumbnail shrinks img with the Catmull-Rom filter, which keeps a map's
-// grid lines crisp where a cheaper filter would blur or jag them.
+// grid lines crisp where a cheaper filter would blur or jag them. It scales in
+// bands (scaleBands), so its scratch space is a band's, not the image's.
 func thumbnail(img image.Image) image.Image {
 	b := img.Bounds()
 	tw, th := thumbnailSize(b.Dx(), b.Dy())
 	dst := image.NewRGBA(image.Rect(0, 0, tw, th))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, b, xdraw.Src, nil)
+	scaleBands(dst, img, xdraw.Src)
 	return dst
+}
+
+// scaleBands scales img into all of dst with the Catmull-Rom filter, a band of
+// 32 destination rows at a time. x/image/draw's scaler keeps a scratch buffer of
+// the destination's width by the source rows it is given, four float64s each:
+// for a whole 8000 x 5000 image into 480 columns that is 77 MB, and into 1024
+// columns 163 MB. A band gives it only the source rows of its destination rows
+// (a few MB), so a big image costs its own pixels and nothing more. The seams
+// between bands only clamp the filter at the band's edge: a slightly narrower
+// average there, invisible in a thumbnail or a reference.
+func scaleBands(dst *image.RGBA, img image.Image, op xdraw.Op) {
+	const bandRows = 32
+	b := img.Bounds()
+	w, h := dst.Bounds().Dx(), dst.Bounds().Dy()
+	for y0 := 0; y0 < h; y0 += bandRows {
+		y1 := min(y0+bandRows, h)
+		// The source rows of this band of the destination (the last band ends on
+		// the last source row).
+		sy0 := b.Min.Y + y0*b.Dy()/h
+		sy1 := b.Min.Y + y1*b.Dy()/h
+		if sy1 <= sy0 {
+			sy1 = sy0 + 1
+		}
+		xdraw.CatmullRom.Scale(dst, image.Rect(0, y0, w, y1), img, image.Rect(b.Min.X, sy0, b.Max.X, sy1), op, nil)
+	}
+}
+
+// makeReference switches the reference step of Process off, for the memory
+// measure to compare an upload with and without it (measure_test.go).
+var makeReference = true
+
+// The reference image (MR-039): the small JPEG a stored image travels as when
+// the image model gets it as a reference.
+const (
+	// ReferenceSide is its longer side, in pixels.
+	ReferenceSide = 1024
+	// ReferenceQuality is its JPEG quality.
+	ReferenceQuality = 85
+)
+
+// Shrink makes the reference of a stored image: a JPEG of at most side pixels
+// on the longer side (quality 1 to 100), flattened onto white when it has
+// transparent pixels. resized says that the image was bigger than side, so the
+// result is worth keeping for the next time (package maps stores it). It is
+// never what is stored as the image. data is checked like Process checks an
+// upload (type, size, memory), so the caller runs it one at a time, as it runs
+// Process, and its memory peak is the decoded image and the file, as an upload's.
+//
+// An image that already fits and is a JPEG comes back as it is: a stored image
+// has no metadata. The error is one of this package's Err values.
+func Shrink(data []byte, side, quality int) (out []byte, resized bool, err error) {
+	f := sniff(data)
+	if f == 0 {
+		return nil, false, ErrUnsupportedType
+	}
+	cfg, err := decodeConfig(f, data)
+	if err != nil || cfg.Width < 1 || cfg.Height < 1 {
+		return nil, false, ErrCorrupt
+	}
+	if cfg.Width > MaxSide || cfg.Height > MaxSide || cfg.Width*cfg.Height > MaxPixels {
+		return nil, false, ErrDimensions
+	}
+	if f == formatJPEG && cfg.Width <= side && cfg.Height <= side {
+		return data, false, nil
+	}
+	var jh jpegHeader
+	if f == formatJPEG {
+		jh = readJPEGHeader(data)
+	}
+	if decodeCost(f, cfg, jh, isInterlacedPNG(data)) > maxDecodeBytes {
+		return nil, false, ErrDimensions
+	}
+	img, err := decode(f, data)
+	if err != nil {
+		return nil, false, ErrCorrupt
+	}
+	out, err = reference(img, side, quality)
+	b := img.Bounds()
+	return out, b.Dx() > side || b.Dy() > side, err
+}
+
+// reference shrinks a decoded image into a JPEG of at most side pixels on the
+// longer side. It scales straight from img into the small destination, in bands
+// of destination rows: the scaler's scratch space is one band's (a few MB), not
+// the whole image's, and no full-size copy of img is made. Process uses it too,
+// with the image it has already decoded, so an upload needs no second decode.
+func reference(img image.Image, side, quality int) ([]byte, error) {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w > side || h > side {
+		if w >= h {
+			w, h = side, max(1, (h*side+w/2)/w)
+		} else {
+			w, h = max(1, (w*side+h/2)/h), side
+		}
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	xdraw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, xdraw.Src)
+	scaleBands(dst, img, xdraw.Over)
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: quality}); err != nil {
+		return nil, errors.Join(errors.New("images: encode"), err)
+	}
+	return buf.Bytes(), nil
 }
 
 // thumbnailOfDrawing is thumbnail for what Encode gets, the server's own drawings: a

@@ -52,7 +52,8 @@ let nextId = 0;
     // Room for the focus ring around the words, so it never touches them.
     // Room under the title too, for the sticky save bar of "Regras da mesa" on a phone.
     .ask__title {
-      scroll-margin-bottom: 160px;
+      // The ring hugs the words, never a box across the whole panel (it read as an error frame).
+      align-self: flex-start;
       margin: 0 -6px;
       padding: 2px 6px;
       font-family: var(--mr-font-display);

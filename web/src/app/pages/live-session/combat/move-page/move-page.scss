@@ -257,3 +257,12 @@
     width: auto;
   }
 }
+
+// The bold line of the locked-door notice, then its sentence under it (E10-05 9).
+.move__strong {
+  display: block;
+}
+
+.move__live:empty {
+  display: none;
+}

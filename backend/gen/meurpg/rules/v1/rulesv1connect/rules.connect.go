@@ -82,9 +82,13 @@ type ContentServiceClient interface {
 	// it, and so may a pending member (RN-15, MR-024), who needs it to create
 	// their character while they wait for the master's approval.
 	//
-	// Today every campaign gets the same SRD 5.1 content. The request still
-	// names the campaign because the table's own content (homebrew, ADR-0008)
-	// will depend on it.
+	// The catalog is the campaign's own (MR-025, RN-23): the SRD 5.1 content plus
+	// the table's classes, subclasses, races, subraces, backgrounds and spells,
+	// with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
+	// table has content). A player never receives an archived entry (the master's
+	// drafts and retired entries); a master receives them, with the `archived`
+	// mark. The entries in full, and how many characters use each, are
+	// TableContentService.ListTableEntries.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -260,9 +264,13 @@ type ContentServiceHandler interface {
 	// it, and so may a pending member (RN-15, MR-024), who needs it to create
 	// their character while they wait for the master's approval.
 	//
-	// Today every campaign gets the same SRD 5.1 content. The request still
-	// names the campaign because the table's own content (homebrew, ADR-0008)
-	// will depend on it.
+	// The catalog is the campaign's own (MR-025, RN-23): the SRD 5.1 content plus
+	// the table's classes, subclasses, races, subraces, backgrounds and spells,
+	// with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
+	// table has content). A player never receives an archived entry (the master's
+	// drafts and retired entries); a master receives them, with the `archived`
+	// mark. The entries in full, and how many characters use each, are
+	// TableContentService.ListTableEntries.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a

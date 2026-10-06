@@ -202,6 +202,7 @@ export class LiveSession {
   protected readonly fog = new FogView(
     (mapId, as) => this.mapsApi.vision(this.campaignId(), mapId, as ?? ''),
     (mapId, as) => this.mapsApi.layers(this.campaignId(), mapId, as ?? ''),
+    () => !this.isMaster(),
   );
   /** The current map's ID when it has the fog on and the session is live; the master reads it too (his own map is drawn by the same component). */
   private readonly fogMapId = computed(() => {

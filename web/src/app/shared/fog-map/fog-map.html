@@ -93,6 +93,9 @@
             (settledChange)="onSettled($event)"
             (loadingChange)="onLoading($event)"
           />
+          @if (doorTaps() && layers(); as l) {
+            <app-door-picks mapOverlay [layers]="l" [columns]="v.columns" [rows]="v.rows" (pick)="doorPick.emit($event)" />
+          }
           @if (pins()) {
             <app-map-pins mapOverlay [points]="points()" [columns]="v.columns" [rows]="v.rows" [isMaster]="isMaster()" />
           }

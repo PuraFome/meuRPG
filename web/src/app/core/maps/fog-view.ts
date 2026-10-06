@@ -67,6 +67,8 @@ export class FogView {
   constructor(
     private readonly loadVision: (mapId: string, as: string | null) => Promise<GetMapVisionResponse>,
     private readonly loadLayers: (mapId: string, as: string | null) => Promise<PackedLayers>,
+    /** The viewer is a player, or the master looking as one: the doors are decoded with the guard (RN-10). */
+    private readonly player: () => boolean = () => false,
   ) {}
 
   /** Shows what `as` (or the signed-in player) sees of `mapId`; `null` closes it.
@@ -115,7 +117,7 @@ export class FogView {
         this.vision.set(next);
       }
       this.error.set(null);
-      this.layers.set(decodeLayers(layers));
+      this.layers.set(decodeLayers(layers, this.player()));
       this.status.set('ready');
     } catch (err) {
       if (generation === this.generation) {
