@@ -1705,11 +1705,15 @@ func TestMR038_TheHintIsThrottled(t *testing.T) {
 	})
 	w := p.ana.watch(t, p.campaignID)
 	w.ready(t)
+	start := time.Now()
 	p.show(t, lock.GetId())
+	var beforeLast time.Time
 	for range 12 {
+		beforeLast = time.Now()
 		p.mustMove(t, p.caio, lock.GetId(), lockMove(0, 1))
 	}
-	hints := 0
+	lastMove := time.Now()
+	var hints []time.Time
 	deadline := time.After(3 * time.Second)
 loop:
 	for {
@@ -1719,16 +1723,25 @@ loop:
 				break loop
 			}
 			if ev.GetPuzzleChanged() != nil {
-				hints++
+				hints = append(hints, time.Now())
 			}
 		case <-deadline:
 			break loop
 		}
 	}
-	// 13 changes (the show and 12 moves) in well under 3 s: the first goes at once, and
-	// the rest merge into the hints of the intervals that follow.
-	if hints < 2 || hints > 5 {
-		t.Errorf("%d hints for 13 changes, want a few (2 to 5): the first at once and the last one never lost", hints)
+	// 13 changes (the show and 12 moves). The gate's timing is TestPuzzleGate's (a fake
+	// clock); here, through the stream, what holds on any machine: the changes were
+	// merged (never more hints than one per interval of the time the moves took, plus
+	// the trailing one), and the last change was announced after the last move.
+	if len(hints) < 2 {
+		t.Fatalf("%d hints for 13 changes, want the first at once and a trailing one", len(hints))
+	}
+	every := p.h.svc.puzzles.hintEvery
+	if most := 2 + int(lastMove.Sub(start)/every); len(hints) > most {
+		t.Errorf("%d hints for 13 changes in %v, want at most %d (one per %v): the changes were not merged", len(hints), lastMove.Sub(start), most, every)
+	}
+	if end := hints[len(hints)-1]; end.Before(beforeLast) {
+		t.Errorf("the last hint came before the last move started: the last change was lost")
 	}
 }
 

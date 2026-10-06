@@ -93,11 +93,30 @@ const defaultHintEvery = 250 * time.Millisecond
 type puzzleGate struct {
 	mu   sync.Mutex
 	keys map[string]*puzzleGateState
+	// now and after are the clock; nil means the real one (time.Now, time.AfterFunc).
+	// Tests set them to drive the gate without sleeping.
+	now   func() time.Time
+	after func(time.Duration, func())
 }
 
 type puzzleGateState struct {
-	last  time.Time
-	timer *time.Timer
+	last    time.Time
+	waiting bool // a hint is scheduled for the end of the interval
+}
+
+func (g *puzzleGate) clock() time.Time {
+	if g.now != nil {
+		return g.now()
+	}
+	return time.Now()
+}
+
+func (g *puzzleGate) schedule(d time.Duration, f func()) {
+	if g.after != nil {
+		g.after(d, f)
+		return
+	}
+	time.AfterFunc(d, f)
 }
 
 func (g *puzzleGate) fire(key string, every time.Duration, send func()) {
@@ -105,9 +124,10 @@ func (g *puzzleGate) fire(key string, every time.Duration, send func()) {
 	if g.keys == nil {
 		g.keys = map[string]*puzzleGateState{}
 	}
+	now := g.clock()
 	if len(g.keys) > 256 { // the table stays small: idle keys go
 		for k, st := range g.keys {
-			if k != key && st.timer == nil && time.Since(st.last) > time.Minute {
+			if k != key && !st.waiting && now.Sub(st.last) > time.Minute {
 				delete(g.keys, k)
 			}
 		}
@@ -117,21 +137,22 @@ func (g *puzzleGate) fire(key string, every time.Duration, send func()) {
 		st = &puzzleGateState{}
 		g.keys[key] = st
 	}
-	if st.timer != nil { // a hint is already waiting: this change merges into it
+	if st.waiting { // a hint is already waiting: this change merges into it
 		g.mu.Unlock()
 		return
 	}
-	if wait := every - time.Since(st.last); wait > 0 {
-		st.timer = time.AfterFunc(wait, func() {
+	if wait := every - now.Sub(st.last); wait > 0 {
+		st.waiting = true
+		g.schedule(wait, func() {
 			g.mu.Lock()
-			st.timer, st.last = nil, time.Now()
+			st.waiting, st.last = false, g.clock()
 			g.mu.Unlock()
 			send()
 		})
 		g.mu.Unlock()
 		return
 	}
-	st.last = time.Now()
+	st.last = now
 	g.mu.Unlock()
 	send()
 }
