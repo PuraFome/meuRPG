@@ -880,7 +880,14 @@ message FullSheet {
   string subrace_key = 3;
   // The character's classes: 1 to 12 entries, no class twice, levels adding
   // up to 1 to 20. The first one is the starting class, which gives the
-  // saving throws. The app offers one class; more is multiclassing.
+  // saving throws. A sheet may be made multiclassed from the start (a new
+  // character that joins at the group's level, Mage 3 and Cleric 1): each class
+  // takes its own subclass, the table's included, once its level reaches the
+  // class's subclass level. CreateCharacter accepts it: the SRD's multiclass
+  // prerequisites of every class (the first too) are issues of the sheet, never a
+  // refusal; the hit points follow the table's rule over the levels after the
+  // first of all the classes together; and the spell slots follow the multiclass
+  // spellcaster table (a third caster's subclass counts a third of its levels).
   repeated ClassLevel classes = 4;
   // The background. Unset while none is chosen, which shows an issue.
   oneof background {
@@ -1746,6 +1753,23 @@ message LevelUpSubclass {
   // subclass; the server leaves it out for players, unless their own sheet has it.
   // Choosing one is refused with ARCHIVED_CHOICE.
   bool archived = 7;
+  // What a third caster's subclass (the table's only) adds: how many spells it
+  // knows from this level (the first row of its table, or the rise over the level
+  // before when the subclass is picked later), where they go, the class whose list
+  // they come from and the highest circle they may have. All zero for a subclass
+  // that does not cast. Add `spells` to the level's spells and read them from
+  // `spell_list_class_key`, up to `max_spell_level`, once the player picks it
+  // (slice 10.3).
+  int32 spells = 8;
+  LevelUpSpellsKind spells_kind = 9;
+  string spell_list_class_key = 10;
+  int32 max_spell_level = 11;
+  // A third caster's subclass that prepares its spells (instead of knowing them):
+  // `prepares` is true and `prepared_max_after` is how many it may prepare at the new
+  // level once the subclass is chosen (the level-up's own prepared_max_after only
+  // counts it after the pick).
+  bool prepares = 12;
+  int32 prepared_max_after = 13;
 }
 
 // LevelUpFeatureChoice is "choose `choose` of `options`" for a feature the

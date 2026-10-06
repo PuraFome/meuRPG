@@ -89,12 +89,75 @@ func derive(b Build, c *content) Derived {
 	x.resourcesAndActions()
 	x.effectHints()
 	x.checkChoices()
+	// Only an issue tied to a table entry is ever blamed on a change.
+	for i := range d.Issues {
+		if len(d.Issues[i].Keys) == 0 {
+			d.Issues[i].ChangeMessage, d.Issues[i].ChangeSubject = "", ""
+		}
+	}
 	return *d
 }
 
 // issue records a problem on the sheet.
 func (x *deriver) issue(code, field, format string, args ...any) {
 	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...), Keys: x.issueKeys(code, field)})
+}
+
+// issueChange records an issue and, when it is tied to a table entry, the
+// sentence "A classe mudou" tells it with (Issue.ChangeMessage).
+func (x *deriver) issueChange(code, field, subject, change, message string) {
+	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: message, Keys: x.issueKeys(code, field), ChangeMessage: change, ChangeSubject: subject})
+}
+
+// countPT writes a count with its noun in Portuguese: "1 perícia", "2 perícias".
+func countPT(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+// tieToOfferers ties the last issue (an SRD option the sheet no longer has the
+// feature for) to the table entries whose features offer options of the same SRD
+// set: the entry where that option set comes from. An entry that has nothing to do
+// with the option is never blamed (a table subclass of another class), and the
+// returned key is the first of them, for the sentence.
+func (x *deriver) tieToOfferers(parent string) string {
+	if len(x.c.entryRevision) == 0 || parent == "" {
+		return ""
+	}
+	last := &x.d.Issues[len(x.d.Issues)-1]
+	first := ""
+	for _, a := range x.active {
+		e := a.effect
+		if e.Type != "choice" || e.Choice != "feature" || !isTableKey(a.owner) {
+			continue
+		}
+		f := x.c.features[a.owner]
+		if f == nil {
+			continue
+		}
+		entry := f.Class
+		if f.Subclass != "" {
+			entry = f.Subclass
+		}
+		if !isTableKey(entry) {
+			continue
+		}
+		for _, from := range e.From {
+			if of := x.c.features[from]; of != nil && x.optionParent(from, of.Parent) == parent {
+				if !slices.Contains(last.Keys, entry) {
+					last.Keys = append(last.Keys, entry)
+				}
+				if first == "" {
+					first = entry
+				}
+				break
+			}
+		}
+	}
+	slices.Sort(last.Keys)
+	return first
 }
 
 // issueKeys are the table keys an issue depends on (Issue.Keys): the key at the
@@ -196,7 +259,9 @@ func (x *deriver) resolve() {
 			case !ok || sub.Class != cl.Class:
 				x.issue(IssueUnknownKey, field+".subclass_key", "A subclasse escolhida não é de %s.", c.namePT(cl.Class))
 			case level < class.SubclassLevel:
-				x.issue(IssueSubclassLevel, field+".subclass_key", "%s escolhe a subclasse no nível %d.", c.namePT(cl.Class), class.SubclassLevel)
+				x.issueChange(IssueSubclassLevel, field+".subclass_key", cl.Class,
+					fmt.Sprintf("agora escolhe a subclasse no nível %d; esta ficha tem nível %d nela.", class.SubclassLevel, level),
+					fmt.Sprintf("%s escolhe a subclasse no nível %d.", c.namePT(cl.Class), class.SubclassLevel))
 				oc.subclass = sub
 			default:
 				oc.subclass = sub
@@ -338,7 +403,12 @@ func (x *deriver) collectEffects() {
 				parent = x.offeredParent(key, owned)
 			}
 			if parent == "" || !owned[parent] {
-				x.issue(IssueUnknownKey, field, "%s não vale para este personagem.", c.namePT(key))
+				x.issueChange(IssueUnknownKey, field, "", fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key)), fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)))
+				if entry := x.tieToOfferers(x.optionParent(key, f.Parent)); entry != "" {
+					last := &x.d.Issues[len(x.d.Issues)-1]
+					last.ChangeSubject = entry
+					last.ChangeMessage = fmt.Sprintf("agora não oferece a escolha %s; ela não vale mais nesta ficha.", c.namePT(key))
+				}
 				continue
 			}
 			add(key)

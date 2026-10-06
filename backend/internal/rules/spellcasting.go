@@ -275,8 +275,25 @@ func (x *deriver) characterSpells(casters []caster) {
 		}
 		return n
 	}
+	// whoCasts is the sentence "A classe mudou" tells a spell count that changed,
+	// and the entry it is about: with one caster and no other source of the spells,
+	// "agora conhece 3 truques; esta ficha tem 4." about the class (the subclass,
+	// for a third caster, whose numbers are the subclass's); otherwise only the
+	// total, with no entry named.
+	whoCasts := func(verb, what, total string, allowed, have int, otherSource bool) (subject, change string) {
+		if len(casters) != 1 || otherSource {
+			return "", fmt.Sprintf("o total de %s agora é %d; esta ficha tem %d.", total, allowed, have)
+		}
+		subject = casters[0].oc.key
+		if cast, ok := c.castingFor(casters[0].oc.key, casters[0].oc.subclass); ok && cast.sub != "" {
+			subject = cast.sub
+		}
+		return subject, fmt.Sprintf("agora %s %s; esta ficha tem %d.", verb, what, have)
+	}
 	if n := notGranted(x.b.Cantrips); n > cantripsMax {
-		x.issue(IssueSpellCount, "full.cantrip_keys", "Há %d truques; o personagem conhece %d.", n, cantripsMax)
+		subject, change := whoCasts("conhece", countPT(cantripsMax, "truque", "truques"), "truques conhecidos", cantripsMax, n, extraCantrips > 0)
+		x.issueChange(IssueSpellCount, "full.cantrip_keys", subject, change,
+			fmt.Sprintf("Há %d truques; o personagem conhece %d.", n, cantripsMax))
 	}
 
 	// Spells known (a wizard's spellbook, or a known caster's spells) and
@@ -343,10 +360,14 @@ func (x *deriver) characterSpells(casters []caster) {
 		}
 	}
 	if n := notGranted(x.b.SpellsKnown); hasKnownCaster && !hasSpellbook && n > knownMax+extraKnown {
-		x.issue(IssueSpellCount, "full.known_spell_keys", "Há %d magias conhecidas; o personagem conhece %d.", n, knownMax+extraKnown)
+		subject, change := whoCasts("conhece", countPT(knownMax+extraKnown, "magia", "magias"), "magias conhecidas", knownMax+extraKnown, n, extraKnown > 0)
+		x.issueChange(IssueSpellCount, "full.known_spell_keys", subject, change,
+			fmt.Sprintf("Há %d magias conhecidas; o personagem conhece %d.", n, knownMax+extraKnown))
 	}
 	if preparedMax > 0 && counted > preparedMax {
-		x.issue(IssueSpellCount, "full.prepared_spell_keys", "Há %d magias preparadas; o personagem prepara %d.", counted, preparedMax)
+		subject, change := whoCasts("prepara", countPT(preparedMax, "magia", "magias"), "magias preparadas", preparedMax, counted, false)
+		x.issueChange(IssueSpellCount, "full.prepared_spell_keys", subject, change,
+			fmt.Sprintf("Há %d magias preparadas; o personagem prepara %d.", counted, preparedMax))
 	}
 
 	slices.SortFunc(x.d.Spells, func(a, b CharacterSpell) int {
