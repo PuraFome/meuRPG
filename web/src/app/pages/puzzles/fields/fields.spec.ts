@@ -200,7 +200,7 @@ describe('SolveField ("Ao resolver", E10-06 state 2)', () => {
     const options = Array.from(el.querySelectorAll('.opt__title')).map((t) => t.textContent?.trim());
     expect(options).toEqual(['Só me avisar', 'Abrir uma porta', 'Revelar um ponto do mapa', 'Revelar uma pista']);
     expect(el.querySelector<HTMLInputElement>('input[type="radio"]')?.checked).toBe(true);
-    expect(el.textContent).toContain('O mestre é sempre avisado. O app não rola dados.');
+    expect(el.textContent).toContain('O mestre é sempre avisado. Resolver não rola dado nenhum.');
     expect(el.querySelector('mat-form-field select')).toBeNull();
   });
 

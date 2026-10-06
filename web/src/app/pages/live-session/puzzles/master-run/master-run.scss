@@ -164,3 +164,30 @@
   outline: 2px solid var(--mr-focus);
   outline-offset: 2px;
 }
+
+// The riddle's accepted answers, one under another, as plain words.
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0.4em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 17px;
+  line-height: 24px;
+
+  li:not(:last-child)::after {
+    content: '·';
+    margin-inline-start: 0.4em;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.part__label--plain {
+  color: var(--mr-ink);
+}
+
+// The counters, label and value, stay a phrase's width on the wide card (on a phone they are the card's width anyway).
+app-limit-counters {
+  max-width: 360px;
+}
