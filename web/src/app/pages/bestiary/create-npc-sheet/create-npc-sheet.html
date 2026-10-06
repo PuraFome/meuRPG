@@ -1,0 +1,93 @@
+<app-sheet-frame
+  title="Criar NPC"
+  [subtitle]="'Do bestiário: ' + creatureName()"
+  [phone]="inSheet"
+  height="min(720px, calc(92dvh - 48px))"
+  titleId="npc-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <div class="based">
+      <app-creature-art class="based__art" [monsterKey]="data.creature.summary?.key ?? ''" [type]="data.creature.summary?.type ?? ''" />
+      <p class="based__text">
+        <span class="based__l">Baseado em</span>
+        <strong class="based__n">{{ creatureName() }}</strong>
+        <span class="based__s"><span lang="en">{{ englishName() }}</span> · {{ challenge() }}</span>
+      </p>
+    </div>
+
+    <div class="field">
+      <label class="mr-label" for="npc-name">Nome do NPC</label>
+      <span class="box" [class.box--bad]="nameError()">
+        <input
+          id="npc-name"
+          name="name"
+          type="text"
+          autocomplete="off"
+          [attr.maxlength]="max"
+          [value]="name()"
+          [attr.aria-invalid]="nameError() ? 'true' : null"
+          [attr.aria-describedby]="nameError() ? 'npc-name-err' : 'npc-name-count'"
+          (input)="setName($any($event.target).value)"
+          (keydown.enter)="create()"
+        />
+      </span>
+      <span class="field__foot">
+        @if (nameError()) {
+          <span class="field__err" id="npc-name-err" role="alert">{{ nameError() }}</span>
+        }
+        <span class="field__count" id="npc-name-count">{{ nameCounter(name().length, max) }}</span>
+      </span>
+    </div>
+
+    <fieldset class="role">
+      <legend class="mr-label">Papel</legend>
+      <div class="seg">
+        @for (r of roles; track r.value) {
+          <label class="seg__opt" [class.seg__opt--on]="role() === r.value">
+            <input type="radio" class="mr-visually-hidden" name="role" [value]="r.value" [checked]="role() === r.value" (change)="setRole(r.value)" />
+            @if (role() === r.value) {
+              <mat-icon aria-hidden="true">check</mat-icon>
+            }
+            {{ r.label }}
+          </label>
+        }
+      </div>
+      <p class="role__hint">{{ roleHint() }}</p>
+    </fieldset>
+
+    <section class="nums" aria-labelledby="npc-nums-h">
+      <h3 class="nums__t" id="npc-nums-h">Os números vêm da criatura</h3>
+      <dl class="nums__grid">
+        <div class="num"><dt>CA</dt><dd>{{ data.creature.armorClass }}</dd></div>
+        <div class="num"><dt>PV</dt><dd>{{ data.creature.hitPoints }}</dd></div>
+        <div class="num"><dt>Deslocamento</dt><dd>{{ speed }}</dd></div>
+        @for (a of data.creature.abilities; track a.ability) {
+          <div class="num"><dt>{{ a.namePt }}</dt><dd>{{ a.score }}</dd></div>
+        }
+      </dl>
+      <p class="nums__line">{{ oneLine }} e os atributos vêm da criatura.</p>
+    </section>
+
+    <p class="note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ attackNote() }}</span>
+    </p>
+  </div>
+
+  <div foot>
+    <div class="actions">
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button type="button" mat-flat-button class="go" [class.mr-button--off]="busy()" [disabled]="busy()" disabledInteractive (click)="create()">
+        <mat-icon aria-hidden="true">person_add</mat-icon>{{ busy() ? 'Criando...' : 'Criar NPC' }}
+      </button>
+    </div>
+  </div>
+</app-sheet-frame>
