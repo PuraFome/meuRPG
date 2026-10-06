@@ -428,6 +428,12 @@ const (
 	// unmarks it (UnmarkTreasureFound), so a session's summary never loses it
 	// silently.
 	MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_FOUND MapBlockedReason = 4
+	// The map is no longer the generated dungeon's (DungeonService.RedrawDungeonMap):
+	// its image is not the one the generator drew (the master put another image on the
+	// map), its grid or the image's size changed, or its layers were cleared (a new image
+	// or grid does that). A redraw would draw from layers that are not the dungeon's, or
+	// change the size the layers are measured by, so it is refused.
+	MapBlockedReason_MAP_BLOCKED_REASON_IMAGE_CHANGED MapBlockedReason = 5
 )
 
 // Enum value maps for MapBlockedReason.
@@ -438,6 +444,7 @@ var (
 		2: "MAP_BLOCKED_REASON_COMBAT_RUNNING",
 		3: "MAP_BLOCKED_REASON_TREASURE_CONVERTED",
 		4: "MAP_BLOCKED_REASON_TREASURE_FOUND",
+		5: "MAP_BLOCKED_REASON_IMAGE_CHANGED",
 	}
 	MapBlockedReason_value = map[string]int32{
 		"MAP_BLOCKED_REASON_UNSPECIFIED":        0,
@@ -445,6 +452,7 @@ var (
 		"MAP_BLOCKED_REASON_COMBAT_RUNNING":     2,
 		"MAP_BLOCKED_REASON_TREASURE_CONVERTED": 3,
 		"MAP_BLOCKED_REASON_TREASURE_FOUND":     4,
+		"MAP_BLOCKED_REASON_IMAGE_CHANGED":      5,
 	}
 )
 
@@ -7134,13 +7142,14 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x1bTRAP_REVEAL_HOW_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17TRAP_REVEAL_HOW_NOTICED\x10\x01\x12\x1c\n" +
 	"\x18TRAP_REVEAL_HOW_SEARCHED\x10\x02\x12\x1a\n" +
-	"\x16TRAP_REVEAL_HOW_MASTER\x10\x03*\xcf\x01\n" +
+	"\x16TRAP_REVEAL_HOW_MASTER\x10\x03*\xf5\x01\n" +
 	"\x10MapBlockedReason\x12\"\n" +
 	"\x1eMAP_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aMAP_BLOCKED_REASON_NO_GRID\x10\x01\x12%\n" +
 	"!MAP_BLOCKED_REASON_COMBAT_RUNNING\x10\x02\x12)\n" +
 	"%MAP_BLOCKED_REASON_TREASURE_CONVERTED\x10\x03\x12%\n" +
-	"!MAP_BLOCKED_REASON_TREASURE_FOUND\x10\x04*~\n" +
+	"!MAP_BLOCKED_REASON_TREASURE_FOUND\x10\x04\x12$\n" +
+	" MAP_BLOCKED_REASON_IMAGE_CHANGED\x10\x05*~\n" +
 	"\x14SceneActionDirection\x12&\n" +
 	"\"SCENE_ACTION_DIRECTION_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19SCENE_ACTION_DIRECTION_UP\x10\x01\x12\x1f\n" +

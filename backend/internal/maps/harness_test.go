@@ -241,6 +241,7 @@ type user struct {
 	content    rulesv1connect.ContentServiceClient
 	gallery    mapsv1connect.GalleryServiceClient
 	maps       mapsv1connect.MapServiceClient
+	dungeons   mapsv1connect.DungeonServiceClient
 	notes      notesv1connect.NotesServiceClient
 }
 
@@ -273,6 +274,7 @@ func (h *harness) clients(userID string) *user {
 		content:    rulesv1connect.NewContentServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
+		dungeons:   mapsv1connect.NewDungeonServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}
 }
