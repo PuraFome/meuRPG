@@ -193,6 +193,10 @@ type LevelUpSubclass struct {
 	// Archived says the table retired this subclass (see RaceEntry.Archived):
 	// the screen does not offer it as a new choice.
 	Archived bool
+	// Off says the master switched this subclass off for the players (RN-23): its own
+	// switch. The offer is for a character that has the class, so an off class does
+	// not hide it.
+	Off bool
 }
 
 // LevelUpFeatureChoice is "choose Choose of Options" for a feature gained
@@ -366,7 +370,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 			if s, ok := c.subclasses[key]; ok {
 				g := c.subclassGains(s, newLevel)
 				ls := LevelUpSubclass{
-					Key: key, NamePT: c.namePT(key), Archived: c.archived[key], FeatureChoices: c.namedChoices(b, g.choices),
+					Key: key, NamePT: c.namePT(key), Archived: c.archived[key], Off: c.off[key], FeatureChoices: c.namedChoices(b, g.choices),
 					Cantrips: g.cantrips, SkillChoices: g.skills, ExpertiseChoices: g.expertise,
 				}
 				if _, third := c.subCasting[key]; third && sub == nil {

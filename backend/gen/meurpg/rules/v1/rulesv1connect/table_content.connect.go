@@ -70,6 +70,12 @@ const (
 	// TableContentServiceUnarchiveTableEntryProcedure is the fully-qualified name of the
 	// TableContentService's UnarchiveTableEntry RPC.
 	TableContentServiceUnarchiveTableEntryProcedure = "/meurpg.rules.v1.TableContentService/UnarchiveTableEntry"
+	// TableContentServiceListOptionSwitchesProcedure is the fully-qualified name of the
+	// TableContentService's ListOptionSwitches RPC.
+	TableContentServiceListOptionSwitchesProcedure = "/meurpg.rules.v1.TableContentService/ListOptionSwitches"
+	// TableContentServiceSetOptionSwitchesProcedure is the fully-qualified name of the
+	// TableContentService's SetOptionSwitches RPC.
+	TableContentServiceSetOptionSwitchesProcedure = "/meurpg.rules.v1.TableContentService/SetOptionSwitches"
 	// TableContentServiceGetClassTableDefaultsProcedure is the fully-qualified name of the
 	// TableContentService's GetClassTableDefaults RPC.
 	TableContentServiceGetClassTableDefaultsProcedure = "/meurpg.rules.v1.TableContentService/GetClassTableDefaults"
@@ -84,10 +90,12 @@ type TableContentServiceClient interface {
 	// Portuguese name, for the editors and for what a player reads of an option
 	// (the class numbers and effects, question 83). Any active member of the
 	// campaign may call it; a pending member gets `not_found` (they only need the
-	// catalog). The master gets every entry, archived ones included, with
-	// `characters_using`; a player gets the ones that are not archived, and never
-	// sees a count. Until the master's on/off switches (MR-025, "Opções para os
-	// jogadores"), every entry that is not archived is on.
+	// catalog). The master gets every entry, archived and off ones included, with
+	// `characters_using` and the `off` mark; a player gets the ones that are not
+	// archived and not off (nor the subclass of an off or archived class, nor the
+	// subrace of an off or archived race, unless their own sheet uses it), and never
+	// sees a count. A reference inside an entry to something a player may not see (a
+	// class, a granted spell) is left out of what a player receives.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an active
@@ -132,6 +140,40 @@ type TableContentServiceClient interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
+	// every class, subclass, race, subrace, background and spell of the campaign, the
+	// SRD's and the table's, each with its on/off state and how many of the
+	// campaign's player characters use it, sorted by kind and Portuguese name. It is
+	// what the screen draws "o que cada jogador vê" from. Only the master; what a
+	// player reads is ContentService.ListContent and ListTableEntries.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	ListOptionSwitches(context.Context, *connect.Request[v1.ListOptionSwitchesRequest]) (*connect.Response[v1.ListOptionSwitchesResponse], error)
+	// SetOptionSwitches turns options off or on for the players, SRD and table
+	// entries alike, in one transaction (up to 700 at once). Everything is on by
+	// default. An off option is treated as an archived one for the players, in every
+	// read (the catalog, ListTableEntries, ListSpells, GetSpellDetails, the level-up
+	// options, the references inside other entries): they never receive it, and the
+	// subclasses of an off class and the subraces of an off race go with it. A sheet
+	// that already has it keeps working, and an unrelated edit is never refused; a
+	// player's new choice of it is refused (CharacterBlocked SWITCHED_OFF_CONTENT,
+	// LevelUpRefusal SWITCHED_OFF_CHOICE). The master sees everything, with `off`.
+	//
+	// A call that changes something raises the campaign's content revision and sends
+	// the live hint `content_changed` to the campaign's session (RN-10). A call that
+	// changes nothing (everything already in the state asked) changes nothing and
+	// sends nothing. Only the master.
+	//
+	// Errors:
+	//   - `permission_denied`, `not_found`;
+	//   - `invalid_argument`: no switch at all, more than 700, a key that is not a
+	//     class, subclass, race, subrace, background or spell of the campaign's
+	//     content, or the same key twice.
+	//
+	// An archived table entry can be switched like any other (it stays hidden from
+	// the players either way); a call whose switches are all in the state asked is
+	// not an error: it answers OK with `changed` 0.
+	SetOptionSwitches(context.Context, *connect.Request[v1.SetOptionSwitchesRequest]) (*connect.Response[v1.SetOptionSwitchesResponse], error)
 	// GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
 	// ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
 	// Improvement levels, and the 20-row table of each way of casting (none, full,
@@ -199,6 +241,19 @@ func NewTableContentServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 			connect.WithClientOptions(opts...),
 		),
+		listOptionSwitches: connect.NewClient[v1.ListOptionSwitchesRequest, v1.ListOptionSwitchesResponse](
+			httpClient,
+			baseURL+TableContentServiceListOptionSwitchesProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("ListOptionSwitches")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		setOptionSwitches: connect.NewClient[v1.SetOptionSwitchesRequest, v1.SetOptionSwitchesResponse](
+			httpClient,
+			baseURL+TableContentServiceSetOptionSwitchesProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("SetOptionSwitches")),
+			connect.WithClientOptions(opts...),
+		),
 		getClassTableDefaults: connect.NewClient[v1.GetClassTableDefaultsRequest, v1.GetClassTableDefaultsResponse](
 			httpClient,
 			baseURL+TableContentServiceGetClassTableDefaultsProcedure,
@@ -223,6 +278,8 @@ type tableContentServiceClient struct {
 	updateTableEntry      *connect.Client[v1.UpdateTableEntryRequest, v1.UpdateTableEntryResponse]
 	archiveTableEntry     *connect.Client[v1.ArchiveTableEntryRequest, v1.ArchiveTableEntryResponse]
 	unarchiveTableEntry   *connect.Client[v1.UnarchiveTableEntryRequest, v1.UnarchiveTableEntryResponse]
+	listOptionSwitches    *connect.Client[v1.ListOptionSwitchesRequest, v1.ListOptionSwitchesResponse]
+	setOptionSwitches     *connect.Client[v1.SetOptionSwitchesRequest, v1.SetOptionSwitchesResponse]
 	getClassTableDefaults *connect.Client[v1.GetClassTableDefaultsRequest, v1.GetClassTableDefaultsResponse]
 	getEffectMenu         *connect.Client[v1.GetEffectMenuRequest, v1.GetEffectMenuResponse]
 }
@@ -252,6 +309,16 @@ func (c *tableContentServiceClient) UnarchiveTableEntry(ctx context.Context, req
 	return c.unarchiveTableEntry.CallUnary(ctx, req)
 }
 
+// ListOptionSwitches calls meurpg.rules.v1.TableContentService.ListOptionSwitches.
+func (c *tableContentServiceClient) ListOptionSwitches(ctx context.Context, req *connect.Request[v1.ListOptionSwitchesRequest]) (*connect.Response[v1.ListOptionSwitchesResponse], error) {
+	return c.listOptionSwitches.CallUnary(ctx, req)
+}
+
+// SetOptionSwitches calls meurpg.rules.v1.TableContentService.SetOptionSwitches.
+func (c *tableContentServiceClient) SetOptionSwitches(ctx context.Context, req *connect.Request[v1.SetOptionSwitchesRequest]) (*connect.Response[v1.SetOptionSwitchesResponse], error) {
+	return c.setOptionSwitches.CallUnary(ctx, req)
+}
+
 // GetClassTableDefaults calls meurpg.rules.v1.TableContentService.GetClassTableDefaults.
 func (c *tableContentServiceClient) GetClassTableDefaults(ctx context.Context, req *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error) {
 	return c.getClassTableDefaults.CallUnary(ctx, req)
@@ -269,10 +336,12 @@ type TableContentServiceHandler interface {
 	// Portuguese name, for the editors and for what a player reads of an option
 	// (the class numbers and effects, question 83). Any active member of the
 	// campaign may call it; a pending member gets `not_found` (they only need the
-	// catalog). The master gets every entry, archived ones included, with
-	// `characters_using`; a player gets the ones that are not archived, and never
-	// sees a count. Until the master's on/off switches (MR-025, "Opções para os
-	// jogadores"), every entry that is not archived is on.
+	// catalog). The master gets every entry, archived and off ones included, with
+	// `characters_using` and the `off` mark; a player gets the ones that are not
+	// archived and not off (nor the subclass of an off or archived class, nor the
+	// subrace of an off or archived race, unless their own sheet uses it), and never
+	// sees a count. A reference inside an entry to something a player may not see (a
+	// class, a granted spell) is left out of what a player receives.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an active
@@ -317,6 +386,40 @@ type TableContentServiceHandler interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
+	// every class, subclass, race, subrace, background and spell of the campaign, the
+	// SRD's and the table's, each with its on/off state and how many of the
+	// campaign's player characters use it, sorted by kind and Portuguese name. It is
+	// what the screen draws "o que cada jogador vê" from. Only the master; what a
+	// player reads is ContentService.ListContent and ListTableEntries.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	ListOptionSwitches(context.Context, *connect.Request[v1.ListOptionSwitchesRequest]) (*connect.Response[v1.ListOptionSwitchesResponse], error)
+	// SetOptionSwitches turns options off or on for the players, SRD and table
+	// entries alike, in one transaction (up to 700 at once). Everything is on by
+	// default. An off option is treated as an archived one for the players, in every
+	// read (the catalog, ListTableEntries, ListSpells, GetSpellDetails, the level-up
+	// options, the references inside other entries): they never receive it, and the
+	// subclasses of an off class and the subraces of an off race go with it. A sheet
+	// that already has it keeps working, and an unrelated edit is never refused; a
+	// player's new choice of it is refused (CharacterBlocked SWITCHED_OFF_CONTENT,
+	// LevelUpRefusal SWITCHED_OFF_CHOICE). The master sees everything, with `off`.
+	//
+	// A call that changes something raises the campaign's content revision and sends
+	// the live hint `content_changed` to the campaign's session (RN-10). A call that
+	// changes nothing (everything already in the state asked) changes nothing and
+	// sends nothing. Only the master.
+	//
+	// Errors:
+	//   - `permission_denied`, `not_found`;
+	//   - `invalid_argument`: no switch at all, more than 700, a key that is not a
+	//     class, subclass, race, subrace, background or spell of the campaign's
+	//     content, or the same key twice.
+	//
+	// An archived table entry can be switched like any other (it stays hidden from
+	// the players either way); a call whose switches are all in the state asked is
+	// not an error: it answers OK with `changed` 0.
+	SetOptionSwitches(context.Context, *connect.Request[v1.SetOptionSwitchesRequest]) (*connect.Response[v1.SetOptionSwitchesResponse], error)
 	// GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
 	// ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
 	// Improvement levels, and the 20-row table of each way of casting (none, full,
@@ -380,6 +483,19 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 		connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tableContentServiceListOptionSwitchesHandler := connect.NewUnaryHandler(
+		TableContentServiceListOptionSwitchesProcedure,
+		svc.ListOptionSwitches,
+		connect.WithSchema(tableContentServiceMethods.ByName("ListOptionSwitches")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	tableContentServiceSetOptionSwitchesHandler := connect.NewUnaryHandler(
+		TableContentServiceSetOptionSwitchesProcedure,
+		svc.SetOptionSwitches,
+		connect.WithSchema(tableContentServiceMethods.ByName("SetOptionSwitches")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tableContentServiceGetClassTableDefaultsHandler := connect.NewUnaryHandler(
 		TableContentServiceGetClassTableDefaultsProcedure,
 		svc.GetClassTableDefaults,
@@ -406,6 +522,10 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 			tableContentServiceArchiveTableEntryHandler.ServeHTTP(w, r)
 		case TableContentServiceUnarchiveTableEntryProcedure:
 			tableContentServiceUnarchiveTableEntryHandler.ServeHTTP(w, r)
+		case TableContentServiceListOptionSwitchesProcedure:
+			tableContentServiceListOptionSwitchesHandler.ServeHTTP(w, r)
+		case TableContentServiceSetOptionSwitchesProcedure:
+			tableContentServiceSetOptionSwitchesHandler.ServeHTTP(w, r)
 		case TableContentServiceGetClassTableDefaultsProcedure:
 			tableContentServiceGetClassTableDefaultsHandler.ServeHTTP(w, r)
 		case TableContentServiceGetEffectMenuProcedure:
@@ -437,6 +557,14 @@ func (UnimplementedTableContentServiceHandler) ArchiveTableEntry(context.Context
 
 func (UnimplementedTableContentServiceHandler) UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.UnarchiveTableEntry is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) ListOptionSwitches(context.Context, *connect.Request[v1.ListOptionSwitchesRequest]) (*connect.Response[v1.ListOptionSwitchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.ListOptionSwitches is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) SetOptionSwitches(context.Context, *connect.Request[v1.SetOptionSwitchesRequest]) (*connect.Response[v1.SetOptionSwitchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.SetOptionSwitches is not implemented"))
 }
 
 func (UnimplementedTableContentServiceHandler) GetClassTableDefaults(context.Context, *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error) {

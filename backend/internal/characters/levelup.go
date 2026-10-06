@@ -43,11 +43,18 @@ type DiceRules interface {
 
 // Live is the session's live stream (package play implements it): a level-up
 // changes the sheet everyone watches, so every stream of the campaign gets the
-// same content-free hint as an XP award, `xp_changed`.
+// same content-free hint as an XP award, `xp_changed`; a write to the table's
+// content gets `content_changed`.
 type Live interface {
 	// PublishXPChanged tells every stream of the campaign that the XP or the
 	// levels changed. Call it after the commit.
 	PublishXPChanged(campaignID string)
+	// PublishContentChanged tells every stream of the campaign that the table's
+	// content changed (an entry written, archived or brought back, an option
+	// switched on or off): `content_changed`, a hint with no content (RN-10) that
+	// each app answers by reading the content as its own role. Call it after the
+	// commit. The play module throttles it per campaign.
+	PublishContentChanged(campaignID string)
 }
 
 // SetLive connects the live stream. Without it, a level-up still works and
@@ -248,15 +255,23 @@ func (s *Service) GetLevelUpOptions(
 	}
 	out := levelUpOptionsToProto(offer)
 	if !isMaster(m) {
-		// A subclass the master archived is not offered to a player (RN-23), unless
+		// A subclass the master archived or switched off is not offered to a player (RN-23), unless
 		// the character's own sheet already has it.
 		out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
-			return sub.GetArchived() && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
+			return (sub.GetArchived() || sub.GetOff()) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
 		})
-		// Nor a reference to an archived class the sheet does not use (a list a table
-		// class reuses).
-		if k := out.GetSpellListClassKey(); k != "" && t.content.Archived(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k }) {
+		// Nor a reference to a hidden class the sheet does not use (a list a table
+		// class or subclass reuses).
+		hiddenList := func(k string) bool {
+			return k != "" && t.content.Hidden(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k })
+		}
+		if hiddenList(out.GetSpellListClassKey()) {
 			out.SpellListClassKey = ""
+		}
+		for _, sub := range out.Subclasses {
+			if hiddenList(sub.GetSpellListClassKey()) {
+				sub.SpellListClassKey = ""
+			}
 		}
 	}
 	if out.DiceRule, err = s.diceRule(ctx, nil, m); err != nil {
@@ -299,6 +314,13 @@ func (s *Service) PreviewLevelUp(
 	plan, err := s.planLevelUp(ctx, m, t, choices)
 	if err != nil {
 		return nil, s.dbError(ctx, "preview a level up", err)
+	}
+	// A choice refused for being retired or switched off builds no sheet: a player who
+	// guesses such a key must not read its features in `after` (RN-23).
+	switch plan.refusal.GetReason() {
+	case charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE,
+		charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE:
+		return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{Refusal: plan.refusal}), nil
 	}
 	return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{
 		After:   derivedToProto(rules.Derive(buildOf(plan.sheet), t.content)),
@@ -739,6 +761,12 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 			Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE,
 		}
 	}
+	// Nor an option the master switched off, for a player (RN-23).
+	if _, field, found := newOffChoice(t.content, t.full, plan.sheet); found && plan.refusal == nil && !isMaster(m) {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE,
+		}
+	}
 	if plan.refusal == nil {
 		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content); err != nil {
 			le, ok := errors.AsType[*rules.LevelUpError](err)
@@ -869,8 +897,8 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		out.Subclasses = append(out.Subclasses, &charactersv1.LevelUpSubclass{
 			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: choices(sub.FeatureChoices),
 			Cantrips: i32(sub.Cantrips), SkillChoices: i32(sub.SkillChoices), ExpertiseChoices: i32(sub.ExpertiseChoices),
-			Archived: sub.Archived,
-			Spells:   i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),
+			Archived: sub.Archived, Off: sub.Off,
+			Spells: i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),
 			Prepares: sub.Prepares, PreparedMaxAfter: i32(sub.PreparedMaxAfter),
 		})
 	}
