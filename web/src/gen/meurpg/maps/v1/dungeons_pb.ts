@@ -316,6 +316,8 @@ export type PreviewDungeonRequest = Message<"meurpg.maps.v1.PreviewDungeonReques
   campaignId: string;
 
   /**
+   * Left out, every option takes its default, as with an empty message.
+   *
    * @generated from field: meurpg.maps.v1.DungeonOptions options = 2;
    */
   options?: DungeonOptions | undefined;
@@ -432,6 +434,8 @@ export type CreateDungeonMapRequest = Message<"meurpg.maps.v1.CreateDungeonMapRe
   name: string;
 
   /**
+   * Left out, every option takes its default, as with an empty message.
+   *
    * @generated from field: meurpg.maps.v1.DungeonOptions options = 3;
    */
   options?: DungeonOptions | undefined;
