@@ -281,10 +281,11 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Characters: charactersService, // the characters that may stand on a map (MR-012)
 			Live:       playService,       // the current map, and where map changes go (RN-10)
 			// maps stays on the base SRD: it reads only presets, damage types,
-			// conditions and skills, which no table's content changes (MR-025, ADR-0018).
+			// conditions, skills and the SRD's magic items and treasure tables, which no
+			// table's content changes (MR-025, ADR-0018).
 			Generator:     imageGenerator,
 			MonthlyImages: int32(cfg.Images.MonthlyLimit), //nolint:gosec // G115: the config caps it at 500
-			Rules:         rulesContent,                   // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
+			Rules:         rulesContent,                   // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036), the treasure generator (MR-044)
 			Combats:       playService,                    // whether a combat runs on a map: its grid and image cannot change then (MR-034)
 			// Whether a new map starts with the fog on is a table rule (RN-24).
 			Defaults: campaignsService,

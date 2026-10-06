@@ -70,6 +70,10 @@ type content struct {
 	magicUnits map[string][]MagicItemUnit
 	// consumables are the keys of the single-use items (effects/consumables.json).
 	consumables map[string]bool
+	// treasure is the generator's content: the SRD 5.2.1 values of the magic
+	// items and our tables of coins, gems and art (effects/magic_item_values.json
+	// and effects/treasure.json).
+	treasure treasureTables
 	// traps are the trap presets and the SRD's severity tables
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
@@ -274,6 +278,9 @@ func load(fsys fs.FS) (*content, error) {
 	c.buildCatalog(nil)
 	c.buildCreatures()
 	c.buildMagicItems()
+	if err := c.loadTreasure(fsys); err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -404,7 +411,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json and consumables.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json, consumables.json, magic_item_values.json and treasure.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -413,7 +420,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
 			continue
 		}
 		var f struct {
