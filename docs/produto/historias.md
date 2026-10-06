@@ -1,6 +1,6 @@
 # Histórias e critérios de aceite
 
-O MVP tem 34 histórias, mais 2 pré-requisitos — 36 no total até o MVP. Em 05/10/2026, no plano da Etapa 10, entraram as MR-042 a MR-044 (o bestiário, os encontros e o tesouro). Em 03/10/2026, o Vinicius ampliou o MVP: entraram a MR-010 e a MR-025 e as novas MR-029 a MR-039 (Etapas 8 a 10, ver [Roadmap](../roadmap.md)); no mesmo dia, depois das respostas do Samuel, vieram a MR-040 (Etapa 8) e a MR-041 (Etapa 9), além de critérios novos na MR-013 e na MR-014. Das 18 de antes: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
+O MVP tem 35 histórias, mais 2 pré-requisitos — 37 no total até o MVP. Em 05/10/2026, no plano da Etapa 10, entraram as MR-042 a MR-044 (o bestiário, os encontros e o tesouro) e, com a pergunta 83, a MR-045 (consultar as magias); as ideias das perguntas 76 e 79 que ficaram para depois estão na MR-046 e na MR-047. Em 03/10/2026, o Vinicius ampliou o MVP: entraram a MR-010 e a MR-025 e as novas MR-029 a MR-039 (Etapas 8 a 10, ver [Roadmap](../roadmap.md)); no mesmo dia, depois das respostas do Samuel, vieram a MR-040 (Etapa 8) e a MR-041 (Etapa 9), além de critérios novos na MR-013 e na MR-014. Das 18 de antes: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
@@ -46,6 +46,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-042](#mr-042-bestiário) | Combate | MVP (Etapa 10) |
 | [MR-043](#mr-043-gerar-encontros) | Combate | MVP (Etapa 10) |
 | [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP (Etapa 10) |
+| [MR-045](#mr-045-consultar-as-magias) | Regras | MVP (Etapa 10) |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -56,6 +57,8 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | Depois |
 | [MR-026](#mr-026-propor-uma-raça-ou-classe-nova) | Regras | Depois |
 | [MR-027](#mr-027-ler-as-regras-de-um-pdf) | Regras | Depois |
+| [MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso) | Regras | Depois |
+| [MR-047](#mr-047-mais-quebra-cabeças) | Sessão | Depois |
 
 ## Prioridade: MVP
 
@@ -474,11 +477,13 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 - **Dado** uma campanha que permite 4d6 descartando o menor, **quando** o jogador rola os atributos de uma ficha nova, **então** o servidor rola e guarda, e rolar de novo devolve o mesmo.
 - **Dado** um mapa desenhado com quadrados de 3 m, **quando** o mestre diz "cada quadrado deste desenho vale 3 m", **então** o app conta quatro quadrados de 1,5 m em cada um, e o movimento, o alcance e a névoa seguem as regras de sempre (RN-25).
 - **Dado** um combate que o mestre começa sem mapa ("teatro da mente"), **quando** o jogador se move, **então** ele gasta o movimento por número ("Restam 6 m"), sem posição na grade, **e** o mestre julga o alcance (RN-25, ADR-0017).
-- **Dado** uma ficha que usa conteúdo da mesa, **quando** alguém tenta levá-la para outra campanha, **então** o app recusa e diz por quê.
+- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente ou magia (do SRD ou da mesa), **então** os jogadores não a veem nem a escolhem mais; o que está ligado eles veem por inteiro, com os números e os efeitos (pergunta 83).
+- **Dado** uma entrada da mesa arquivada, **quando** o mestre a desarquiva, **então** ela volta a aparecer como escolha nova.
+- **Dado** um personagem com antecedente de texto livre (o "Outro" do editor), **quando** o jogador o preenche, **então** escolhe, como na regra do SRD 5.1 "Personalizar um antecedente", duas perícias, duas ferramentas ou idiomas no total, uma característica (com o texto dele) e o equipamento, **e** a ficha calcula com isso (pergunta 82, respondida em 05/10/2026).
 
 #### Dúvidas
-- Perguntas 76 a 78 e 80 a 84 do documento de acompanhamento, com os nossos padrões: o app segue o padrão até o Samuel responder.
-- O personagem com antecedente ou subclasse de texto livre (o "Outro" do editor) continua valendo (pergunta 82).
+- Respondidas em 05/10/2026: as perguntas 77, 78, 80, 82 e 84 (ver [Perguntas em aberto](perguntas-em-aberto.md#respondidas-em-05102026)). A 76 (o estilo da mesa) e a 83 (o que os jogadores veem) foram respondidas no mesmo dia.
+- O antecedente e a subclasse de texto livre (o "Outro" do editor) continuam valendo (pergunta 82); o antecedente ganha as escolhas do SRD 5.1, acima.
 - Ficam fora do MVP: copiar o conteúdo para outra campanha (MR-026), monstros e itens mágicos próprios, talentos fora do SRD, o flanqueamento e a grade hexagonal.
 
 ### MR-010: Gerar masmorras
@@ -492,7 +497,7 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 #### Critérios de aceite
 - **Dado** que sou mestre de "Mirathel", **quando** peço uma masmorra com um tamanho (de 21 a 121 quadrados de lado, ou o que eu digitar), o formato (sem forma, anel, cruz, elipse, losango), o tamanho das salas, o jeito dos corredores (labirinto, sinuosos ou retos), a quantidade e o tipo das portas e as escadas, **então** o app gera um mapa com salas, corredores, portas e escadas, conectado: dá para chegar a todas as salas.
 - **Dado** o mesmo tamanho, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
-- **Dado** uma masmorra gerada, **quando** ela vira um mapa, **então** é um mapa da campanha como os outros, escondido dos jogadores (RN-10), com a grade, as paredes e as portas já pintadas nas camadas, as escadas como pontos de submapa e a lista das salas ao lado do mapa, só para o mestre, com "Pôr uma cena nesta sala".
+- **Dado** uma masmorra gerada, **quando** ela vira um mapa, **então** é um mapa da campanha como os outros, escondido dos jogadores (RN-10) e com a névoa de guerra ligada (assim, mesmo com a imagem com textura, a sala atrás de uma porta secreta só aparece para quem a vê), com a grade, as paredes e as portas já pintadas nas camadas, as escadas como pontos de submapa e a lista das salas ao lado do mapa, só para o mestre, com "Pôr uma cena nesta sala".
 - **Dado** uma masmorra gerada, **quando** eu a edito no editor do mapa (paredes, portas, terreno, pontos), **então** "Redesenhar" faz a imagem de novo a partir das paredes e das portas de agora, sem apagar o que eu pintei.
 - **Dado** uma porta fechada, **quando** um personagem anda até ela, **então** ela se abre, se não estiver trancada; uma porta secreta é parede para os jogadores até eu revelá-la (RN-26).
 - **Dado** a imagem gerada, **quando** os jogadores a veem, **então** ela tem só o chão e as paredes: as portas são desenhadas por cima, pela camada, e nenhum número de sala aparece.
@@ -762,24 +767,30 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 **Como** mestre, **quero** criar quebra-cabeças que os jogadores resolvem no app, ao vivo numa cena, **para** variar o ritmo da sessão.
 
 - Prioridade: MVP (Etapa 10)
-- Regras: RN-10, RN-27
-- Módulos: play
+- Regras: RN-10, RN-18, RN-27
+- Módulos: play, maps
 
 #### Critérios de aceite
-- **Dado** que sou mestre de "Mirathel", **quando** crio um quebra-cabeça de um dos três tipos ("Apagar as luzes", a fechadura de combinação ou os símbolos giratórios), **então** ele fica guardado na campanha e só eu o vejo.
+- **Dado** que sou mestre de "Mirathel", **quando** crio um quebra-cabeça de um dos seis tipos ("Apagar as luzes", a fechadura de combinação, os símbolos giratórios, o enigma, a sequência para repetir ou a cifra), **então** ele fica guardado na campanha e só eu o vejo.
 - **Dado** um quebra-cabeça "Apagar as luzes" de 5 por 5, **quando** o crio, **então** o servidor gera um começo que tem solução e nunca já resolvido, **e** eu vejo quantos toques bastam.
-- **Dado** uma sessão aberta, **quando** o mestre mostra um quebra-cabeça, **então** os jogadores o veem e o resolvem ao vivo, todos no mesmo estado, com a pista que o mestre escreveu.
+- **Dado** uma sessão aberta, **quando** o mestre mostra um quebra-cabeça, **então** os jogadores o veem e o resolvem ao vivo, todos no mesmo estado, com a pista que o mestre escreveu, **e** veem quem fez a última jogada (o nome do personagem).
 - **Dado** um quebra-cabeça mostrado, **quando** dois jogadores jogam ao mesmo tempo, **então** as duas jogadas valem, e todos veem o estado novo.
-- **Dado** um quebra-cabeça mostrado, **quando** os jogadores o resolvem, **então** o servidor confere a solução (o jogador nunca recebe a resposta), o quebra-cabeça para **e** o mestre é avisado e decide o que acontece (RN-27).
-- **Dado** um quebra-cabeça mostrado, **quando** o mestre o recomeça ou o fecha, **então** os jogadores veem o começo de novo, ou param de vê-lo.
+- **Dado** um enigma, **quando** um jogador digita a resposta, **então** o servidor a compara com as respostas que o mestre aceita, sem ligar para maiúsculas e acentos, **e** o jogador nunca recebe a resposta certa.
+- **Dado** uma sequência para repetir, **quando** o mestre a toca, **então** os jogadores veem a sequência acontecer **e** depois a repetem; o servidor confere a ordem.
+- **Dado** uma cifra, **quando** os jogadores a abrem, **então** veem a mensagem cifrada e decifram com a chave que acharam como pista na aventura; o servidor confere a mensagem decifrada.
+- **Dado** um quebra-cabeça com dicas, **quando** o mestre solta a próxima dica, **então** os jogadores a veem; **quando** um jogador passa num teste de perícia contra a CD que o mestre pôs (Investigação, Arcanismo...), **então** ele recebe a próxima dica (RN-18: no app ou com o dado físico).
+- **Dado** um quebra-cabeça de informação dividida, **quando** os jogadores o abrem, **então** cada um vê só a sua parte da pista, a que o mestre deu a ele, **e** eles precisam conversar para resolver.
+- **Dado** um quebra-cabeça com consequências, **quando** uma jogada errada acontece (uma combinação ou resposta errada), **então** o que o mestre escolheu acontece: uma armadilha do mapa dispara (MR-035), uma tentativa do jogador se gasta, ou o limite de jogadas ou de tempo chega mais perto; no fim do limite, o quebra-cabeça para e o mestre é avisado.
+- **Dado** um quebra-cabeça mostrado, **quando** os jogadores o resolvem, **então** o servidor confere a solução (o jogador nunca recebe a resposta), o quebra-cabeça para, o mestre é avisado **e** acontece o que ele escolheu em "Ao resolver": só o aviso (padrão), abrir uma porta (RN-26), revelar um ponto do mapa ou revelar uma pista da cena a quem resolveu (RN-27).
+- **Dado** um quebra-cabeça mostrado, **quando** o mestre o recomeça ou o fecha, **então** os jogadores veem o mesmo começo de novo, ou param de vê-lo; "Gerar outro começo" ("Apagar as luzes" e símbolos giratórios) é uma ação à parte do mestre.
 
 #### Dúvidas
-- Os três tipos entraram, decidido pelo Vinicius em 05/10/2026 (os símbolos giratórios lembram os pilares de Skyrim, com símbolos nossos).
-- O que resolver dá (pergunta 79): o padrão é o mestre decidir, sem teste de perícia automático.
+- Os três primeiros tipos foram decididos pelo Vinicius em 05/10/2026 (os símbolos giratórios lembram os pilares de Skyrim, com símbolos nossos). A pergunta 79 (respondida em 05/10/2026) acrescentou ao MVP as dicas, "Ao resolver", as consequências, a dica por teste de perícia, a informação dividida, o enigma, a sequência e a cifra, para a sessão não ficar repetitiva.
+- O resto das ideias ficou para depois do MVP: [MR-047](#mr-047-mais-quebra-cabeças).
 
 ### MR-039: Imagens geradas para masmorras e cenas
 
-**Como** mestre, **quero** gerar uma imagem a partir da masmorra ou da descrição de uma cena, e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
+**Como** mestre, **quero** gerar uma imagem a partir da masmorra, de um mapa ou da descrição de uma cena (a arte da cena, uma vista isométrica do mapa ou o próprio mapa com textura, casando com a grade) e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
 
 - Prioridade: MVP (Etapa 10)
 - Regras: RN-10, RN-28
@@ -789,12 +800,17 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 - **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, com o texto e o estilo dele, **então** o app gera a imagem e a guarda na galeria da campanha, escondida dos jogadores.
 - **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero, **e** guarda a nova ao lado da anterior.
 - **Dado** que o limite do mês da campanha foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando volta.
-- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas e o texto do mestre, nunca dado pessoal (RN-28).
+- **Dado** um mapa com grade (gerado ou desenhado), **quando** o mestre pede "O mapa com textura", **então** o app gera o próprio mapa visto de cima, com o chão e as paredes no lugar, recortado e ajustado para casar com a grade, **e** o mestre pode pô-lo como imagem do mapa sem apagar as camadas nem o que os jogadores já viram (pergunta 85).
+- **Dado** um mapa, **quando** o mestre pede "Vista isométrica", **então** o app gera a arte do mapa em perspectiva isométrica, que vai para a galeria como arte da cena.
+- **Dado** um mapa com tokens, um combate ou NPCs em cena, **quando** o mestre pede uma imagem, **então** ele escolhe quais NPCs e inimigos aparecem nela (os retratos da galeria vão como referência) **e** só esses aparecem; ele também pode escolher outras imagens da galeria como referência.
+- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas, o texto do mestre e as referências que ele escolheu, nunca dado pessoal (RN-28).
+- **Dado** um mapa com uma porta secreta ainda não revelada, **quando** o app monta o desenho de referência do mapa com textura, **então** a porta vai como parede, **e** a imagem não mostra a passagem (RN-10, RN-26).
+- **Dado** uma arte da cena ou uma vista isométrica feita a partir de um mapa com uma sala secreta, **quando** o mestre vai mostrá-la, **então** o app avisa que ela mostra também o que está atrás das portas secretas.
 - **Dado** que o serviço recusa um pedido ou não devolve imagem, **quando** o mestre espera a imagem, **então** o app diz isso em português ("O serviço não gerou uma imagem"), sem gastar a vaga do mês.
 
 #### Relacionadas
 - Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, de 03/10/2026, que usava o Vertex AI). O modelo é configurável: `gemini-3.1-flash-image` por padrão (o `gemini-2.5-flash-image` foi desligado em 02/10/2026). O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md); a chave é um segredo, e o custo e o limite ficam em [Operação](../operacao.md).
-- A imagem é arte da cena, não o mapa da batalha: o modelo devolve imagens em proporções fixas, que não casam com a grade. Pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater (pergunta 85).
+- Três jeitos, todos no MVP (pergunta 85, respondida e corrigida pelo Vinicius em 05/10/2026): a arte da cena, a vista isométrica de um mapa e o mapa com textura, que casa com a grade. O modelo devolve uma de 10 proporções fixas (1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9 e 21:9, de 512 px a 4K), então o servidor manda o desenho do mapa (o chão e as paredes) na proporção mais próxima da grade, completado com rocha, recorta o mapa do resultado e o ajusta ao tamanho da grade. As camadas continuam sendo a verdade do jogo: se a imagem escorregar um pouco de uma parede, o mestre gera de novo. Cada pedido aceita até 10 imagens de objetos e 4 de personagens como referência (documentação do Gemini, conferida em 05/10/2026).
 
 #### Dúvidas
 - O número do limite por campanha por mês sai depois de medir o custo com a chave de verdade (US$ 0,067 por imagem de 1K no `gemini-3.1-flash-image`, em 05/10/2026).
@@ -867,7 +883,7 @@ Nova em 05/10/2026, no plano da Etapa 10: o Vinicius pediu as três ferramentas 
 - **Dado** uma criatura do bestiário, **quando** o mestre escolhe "Criar NPC", **então** o app faz uma ficha básica de NPC com os números dela, que o mestre pode renomear e editar.
 
 #### Dúvidas
-- Os PV ao pôr no combate (pergunta 81): o padrão é a média; o mestre pode rolar.
+- Os PV ao pôr no combate (pergunta 81, aceita em 05/10/2026): a média; o mestre pode rolar.
 - Monstros próprios ficam fora do MVP.
 
 ### MR-043: Gerar encontros
@@ -881,13 +897,13 @@ Nova em 05/10/2026, no plano da Etapa 10: o Vinicius pediu as três ferramentas 
 Nova em 05/10/2026, como a [MR-042](#mr-042-bestiário).
 
 #### Critérios de aceite
-- **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
+- **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha, mais os NPCs que eu puser no grupo, com o nível que eu disser), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
 - **Dado** um encontro montado, **quando** o guardo num ponto de batalha do mapa, **então** "Começar este combate" põe os monstros dele no combate, como na [MR-042](#mr-042-bestiário).
-- **Dado** uma dificuldade e, se eu quiser, um tipo de criatura, **quando** peço "Gerar encontro", **então** o app monta um com criaturas do SRD, um líder e um grupo, que nunca passa do orçamento nem traz criatura de ND acima do nível do grupo mais 3; "Gerar outro" faz um novo, e posso trocar uma criatura.
+- **Dado** uma dificuldade e, se eu quiser, um tipo de criatura, **quando** peço "Gerar encontro", **então** o app monta um com criaturas do SRD, um líder e um grupo, que nunca passa do orçamento nem traz criatura de ND acima do menor nível do grupo mais 3 (os NPCs do grupo contam, com o nível que o mestre deu); "Gerar outro" faz um novo, e posso trocar uma criatura.
 - **Dado** a mesma dificuldade, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
 
 #### Dúvidas
-- Quem é o grupo do encontro (pergunta 86): o padrão são os personagens de jogador vivos da campanha.
+- Quem é o grupo do encontro (pergunta 86, respondida em 05/10/2026): os personagens de jogador vivos da campanha, mais os NPCs que o mestre puser no grupo naquele momento da história.
 - A tabela de orçamento é a "XP Budget per Character" do SRD 5.2.1 (CC BY 4.0), com crédito no `NOTICE` e na página "Créditos"; o SRD 5.1 não tem tabela de dificuldade. Se ela combina com os monstros de 2014, a mesa vê depois de jogar (Vinicius, 05/10/2026).
 
 ### MR-044: Gerar tesouro
@@ -911,6 +927,24 @@ Nova em 05/10/2026, junto com a [MR-042](#mr-042-bestiário) e a [MR-043](#mr-04
 #### Dúvidas
 - Os valores por raridade vêm da tabela "Magic Item Rarities and Values" do SRD 5.2.1 (CC BY 4.0, p. 205), com crédito: comum 100 PO, incomum 400, raro 4.000, muito raro 40.000, lendário 200.000; um item que se gasta (uma poção) vale a metade. O SRD 5.1 não tem valores nem tabelas de tesouro aleatório, então as tabelas de moedas, gemas e arte são nossas.
 - Itens mágicos próprios ficam fora do MVP.
+
+### MR-045: Consultar as magias
+
+**Como** jogador, **quero** consultar todas as magias da mesa no app, **para** ler o que cada uma faz antes de escolher e durante a sessão.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: RN-23
+- Módulos: characters, rules
+
+Nova em 05/10/2026 (pergunta 83): uma parte da [MR-020](#mr-020-consultar-o-livro-de-regras), só com as magias, adiantada para o MVP.
+
+#### Critérios de aceite
+- **Dado** que sou jogador de "Mirathel", **quando** abro "Magias", **então** vejo todas as magias disponíveis na mesa (as do SRD e as da mesa que o mestre deixou ligadas), com a busca pelo nome e os filtros por classe, círculo e escola, **e** cada uma abre a descrição inteira.
+- **Dado** uma magia que o mestre desligou em "Opções para os jogadores", **quando** procuro por ela, **então** ela não aparece.
+- **Dado** a minha ficha, **quando** escolho magias, **então** só posso escolher as da lista da minha classe; numa ficha com multiclasse, as de cada classe, pelo nível nela.
+
+#### Dúvidas
+- O mestre aceitar uma magia fora da lista da classe fica para depois do MVP ([MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso)).
 
 ## Prioridade: MVP (pré-requisito)
 
@@ -992,13 +1026,18 @@ Fora do MVP. Entram na Etapa 11 do [roadmap](../roadmap.md).
 - Regras: —
 - Módulos: rules
 
+As magias vieram antes, no MVP: [MR-045](#mr-045-consultar-as-magias) (decidido em 05/10/2026, pergunta 83).
+
 ### MR-021: Copiar personagem
 
 **Como** jogador, **quero** copiar meu personagem para outra campanha, **para** jogar as duas ao mesmo tempo ou uma continuação.
 
 - Prioridade: Depois
-- Regras: RN-03
+- Regras: RN-03, RN-23
 - Módulos: characters
+
+#### Critérios de aceite (proposta)
+- **Dado** uma ficha que usa conteúdo da mesa (uma classe, raça ou magia que o mestre cadastrou), **quando** o jogador tenta copiá-la para outra campanha, **então** o app recusa e diz por quê: o conteúdo da mesa vale só na campanha dele (RN-23; veio da MR-025 em 05/10/2026).
 
 #### Relacionadas
 - RN-03: respondida em 29/09/2026 (ver [Regras de negócio](regras.md)).
@@ -1008,8 +1047,11 @@ Fora do MVP. Entram na Etapa 11 do [roadmap](../roadmap.md).
 **Como** mestre, **quero** usar meus NPCs em várias campanhas, **para** não recriar o mesmo vilão.
 
 - Prioridade: Depois
-- Regras: RN-04
+- Regras: RN-04, RN-23
 - Módulos: characters
+
+#### Critérios de aceite (proposta)
+- **Dado** um NPC que usa conteúdo da mesa, **quando** o mestre o leva para outra campanha, **então** o app recusa e diz por quê (RN-23; veio da MR-025 em 05/10/2026).
 
 ### MR-023: Passar ou dividir a campanha
 
@@ -1055,6 +1097,43 @@ Prioridade decidida em 02/10/2026 (pergunta 21): sim, mas depois do cadastro pel
 
 #### Dúvidas
 - Ler um PDF de regras automaticamente precisa de um serviço de IA, que custa por uso e recebe o PDF. Um livro oficial tem direito autoral: o app não pode redistribuir o texto, e o resultado só pode aparecer para a mesa. Quando não der para ler o PDF, o cadastro fica com o mestre (MR-025). O app não guarda o PDF: ele fica só enquanto é processado (ver [Privacidade](../privacidade.md#a-definir)).
+
+### MR-046: O estilo da mesa, recurso por recurso
+
+**Como** mestre, **quero** escolher, recurso por recurso, o que o app faz na minha mesa, **para** usar o app do jeito que eu mestro, do tudo digital à mesa clássica.
+
+- Prioridade: Depois
+- Regras: RN-24
+- Módulos: campaigns, play, maps, characters
+
+Nova em 05/10/2026 (pergunta 76): no MVP entram os três estilos prontos da página "Regras da mesa" (RN-24); o resto das ideias fica guardado aqui.
+
+#### Ideias (das personas da pergunta 76: o mestre narrador, o da mesa física, o tático, o iniciante, o improvisador e a mesa sem celulares)
+- O app avisar em vez de impedir: o movimento além do deslocamento, o alcance, os espaços de magia (o mestre decide).
+- Esconder os mapas dos jogadores, ou o celular do jogador só com a ficha.
+- Quem age pelo celular: os jogadores, ou o mestre lança tudo e os jogadores só acompanham.
+- Quem sobe de nível: o jogador pela ficha (hoje, MR-040) ou só o mestre.
+- As palavras de estado dos inimigos ("Ferido"): mostrar ou esconder.
+- O mestre aceitar uma magia fora da lista da classe ([MR-045](#mr-045-consultar-as-magias)).
+- Um interruptor por recurso, com os estilos prontos como ponto de partida.
+
+### MR-047: Mais quebra-cabeças
+
+**Como** mestre, **quero** mais tipos de quebra-cabeça e mais jeitos de dar recompensa, **para** casar o desafio com a história da minha campanha.
+
+- Prioridade: Depois
+- Regras: RN-27
+- Módulos: play, maps
+
+Nova em 05/10/2026 (pergunta 79): o MVP já tem seis tipos, as dicas, a dica por teste de perícia, a informação dividida, as consequências e "Ao resolver" ([MR-038](#mr-038-quebra-cabeças)); o resto das ideias fica guardado aqui.
+
+#### Ideias
+- Peças deslizantes.
+- Placas de pressão na grade do mapa (pisar nos quadrados na ordem certa).
+- Balança e pesos.
+- Um raio de luz e espelhos na grade (usando a visão do mapa).
+- Os símbolos tirados da galeria do mestre e um texto para cada estado do quebra-cabeça.
+- Recompensas: XP, um item posto como tesouro no mapa, uma nota da história.
 
 ## Ver também
 
