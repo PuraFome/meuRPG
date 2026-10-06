@@ -122,6 +122,12 @@ export const routes: Routes = [
       import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
   },
   {
+    // "Magias" (MR-045, RN-23): the players' spell reference, for every active member, the master too.
+    path: 'campanhas/:id/magias',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/spells/spells').then((m) => m.Spells),
+  },
+  {
     // The campaign document (MR-018), master only; the page tells a player
     // so. Leaving edit mode with unsaved text asks first (the guard lives
     // with the page, the page decides, so this file imports nothing of it).
@@ -136,6 +142,13 @@ export const routes: Routes = [
     path: 'campanhas/:id/regras',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/table-rules/table-rules').then((m) => m.TableRulesPage),
+  },
+  {
+    // "Conteúdo da mesa" (MR-025, RN-23, E10-01): the table's own classes, races, backgrounds and spells; the master's list and
+    // editors, and the players' read view. `loadChildren` so the editors stay out of the eager bundle.
+    path: 'campanhas/:id/conteudo',
+    canActivate: [authGuard],
+    loadChildren: () => import('./pages/content/content.routes').then((m) => m.CONTENT_ROUTES),
   },
   {
     // New map (MR-008, E5-31). Before `mapas/:mapId`, so "novo" is not read

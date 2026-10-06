@@ -83,7 +83,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 		n.traits[f.Key] = t
 	}
 	if len(f.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: f.Key, effects: f.Effects, path: path, strict: b.strict[k.owner]})
+		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: f.Effects, path: path, strict: b.strict[k.owner]})
 	}
 	return nil
 }
@@ -362,8 +362,21 @@ func validResourceName(s string) bool {
 // compileEffects checks and compiles every pending effect with the SRD's own
 // compiler (compileEffect), once the entries they refer to exist. The overlay's
 // Effect values are copied, so the caller's are never written.
-func (b *overlayBuilder) compileEffects() error {
+func (b *overlayBuilder) compileEffects() error { return b.compileEffectsOf("") }
+
+// compileEffectsOf compiles the pending effects of one owner (every owner when it
+// is empty). Every effect that is wrong is reported, not only the first, but only
+// those of one owner: the first one to fail.
+func (b *overlayBuilder) compileEffectsOf(owner string) error {
+	var c entryErrors
+	failing := ""
 	for _, p := range b.pending {
+		if owner != "" && p.entry != owner {
+			continue
+		}
+		if failing != "" && p.entry != failing {
+			continue
+		}
 		out := make([]*Effect, 0, len(p.effects))
 		for i := range p.effects {
 			e := p.effects[i]
@@ -373,17 +386,21 @@ func (b *overlayBuilder) compileEffects() error {
 				stripUnused(&e)
 			}
 			if err := b.checkEffect(p.owner, at, &e, p.strict); err != nil {
-				return err
+				c.add(err)
+				failing = p.entry
+				continue
 			}
 			if err := b.n.compileEffect(p.owner, &e); err != nil {
 				attr, reason := effectError(&e, err.Error())
-				return ovErr(p.owner, "%v", err).at(at+attr, reason)
+				c.add(ovErr(p.owner, "%v", err).at(at+attr, reason))
+				failing = p.entry
+				continue
 			}
 			out = append(out, &e)
 		}
 		b.n.effects[p.owner] = append(b.n.effects[p.owner], out...)
 	}
-	return nil
+	return c.err()
 }
 
 // compileOwn compiles an effect the engine wrote itself (the spellcasting
@@ -397,58 +414,69 @@ func (b *overlayBuilder) compileOwn(owner, path string, e *Effect) error {
 	return nil
 }
 
+// abilityField is the name of an ability in the API's AbilityScores message, where
+// the violations point ("table_race.ability_bonuses.wisdom").
+var abilityField = map[Ability]string{STR: "strength", DEX: "dexterity", CON: "constitution", INT: "intelligence", WIS: "wisdom", CHA: "charisma"}
+
 // bonusMap turns a map of ability bonuses into the SRD's shape, checking the
-// abilities and the size of each bonus.
-func bonusMap(key string, in map[Ability]int) (map[string]int, error) {
+// abilities and the size of each bonus. A bonus out of range is a violation at
+// ability_bonuses.<ability>, in the abilities' order.
+func bonusMap(c *entryErrors, key, path string, in map[Ability]int) map[string]int {
 	out := make(map[string]int, len(in))
-	for a, v := range in {
-		if _, ok := abilityIndex[a]; !ok {
-			return nil, ovErr(key, "unknown ability in the ability bonuses")
+	for _, a := range AllAbilities() {
+		v, ok := in[a]
+		if !ok {
+			continue
 		}
 		if v < -maxRaceBonus || v > maxRaceBonus {
-			return nil, ovErr(key, "an ability bonus is %d to %d", -maxRaceBonus, maxRaceBonus)
+			c.at(key, path, ".ability_bonuses."+abilityField[a], ReasonLimit, "an ability bonus is %d to %d", -maxRaceBonus, maxRaceBonus)
 		}
 		out[string(a)] = v
 	}
-	return out, nil
+	for a := range in {
+		if _, ok := abilityIndex[a]; !ok {
+			c.at(key, path, ".ability_bonuses", ReasonValue, "unknown ability in the ability bonuses")
+		}
+	}
+	return out
 }
 
 // maxRaceBonus bounds a race's ability bonus, in either direction.
 const maxRaceBonus = 4
 
-// addRace registers a race and its traits.
+// addRace registers a race and its traits. Every field that is wrong is reported
+// at its own path (size, speed_ft, ability_bonuses.<ability>, choice_bonuses[i],
+// languages[i]...), in one error.
 func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 	n := b.n
 	key := tr.Key
+	var c entryErrors
 	if !slices.Contains([]string{"Tiny", "Small", "Medium", "Large"}, tr.Size) {
-		return ovErr(key, "size is Tiny, Small, Medium or Large")
+		c.at(key, path, ".size", ReasonValue, "size is Tiny, Small, Medium or Large")
 	}
 	if tr.SpeedFt < 5 || tr.SpeedFt > 120 || tr.SpeedFt%5 != 0 {
-		return ovErr(key, "the speed is 5 to 120 feet, in steps of 5")
+		c.at(key, path, ".speed_ft", ReasonLimit, "the speed is 5 to 120 feet, in steps of 5")
 	}
 	if tr.DarkvisionFt < 0 || tr.DarkvisionFt > 120 || tr.DarkvisionFt%5 != 0 {
-		return ovErr(key, "the darkvision is 0 or 5 to 120 feet, in steps of 5")
+		c.at(key, path, ".darkvision_ft", ReasonLimit, "the darkvision is 0 or 5 to 120 feet, in steps of 5")
 	}
-	bonuses, err := bonusMap(key, tr.AbilityBonuses)
-	if err != nil {
-		return err
-	}
+	bonuses := bonusMap(&c, key, path, tr.AbilityBonuses)
 	choice := slices.Clone(tr.ChoiceBonuses)
 	if len(choice) > len(abilityIndex) {
-		return ovErr(key, "at most %d bonuses to place", len(abilityIndex))
+		c.at(key, path, ".choice_bonuses", ReasonLimit, "at most %d bonuses to place", len(abilityIndex))
 	}
-	for _, v := range choice {
+	for i, v := range choice {
 		if v < 1 || v > maxRaceBonus {
-			return ovErr(key, "a bonus to place is 1 to %d", maxRaceBonus)
+			c.at(key, path, fmt.Sprintf(".choice_bonuses[%d]", i), ReasonLimit, "a bonus to place is 1 to %d", maxRaceBonus)
 		}
 	}
 	slices.SortFunc(choice, func(a, c int) int { return c - a })
 	if tr.LanguageChoices < 0 || tr.LanguageChoices > 4 {
-		return ovErr(key, "languages to choose is 0 to 4")
+		c.at(key, path, ".language_choices", ReasonLimit, "languages to choose is 0 to 4")
 	}
-	for _, l := range tr.Languages {
+	for i, l := range tr.Languages {
 		if _, ok := b.base.languages[l]; !ok {
-			return ovErr(key, "language %q is not in the SRD", l)
+			c.at(key, path, fmt.Sprintf(".languages[%d]", i), ReasonReference, "language %q is not in the SRD", l)
 		}
 	}
 	race := &srd51.Race{
@@ -458,9 +486,13 @@ func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 	for i := range tr.Traits {
 		t := &tr.Traits[i]
 		if err := b.addFeature(t, featureKind{prefix: "trait:", owner: key}, fmt.Sprintf("%s.traits[%d]", path, i)); err != nil {
-			return err
+			c.add(locate(err, fmt.Sprintf("%s.traits[%d]", path, i)))
+			continue
 		}
 		race.Traits = append(race.Traits, t.Key)
+	}
+	if err := c.err(); err != nil {
+		return err
 	}
 	b.register(tr.TableEntry)
 	n.races[key] = race
@@ -469,7 +501,7 @@ func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 	}
 	if tr.DarkvisionFt > 0 {
 		// The darkvision is an effect of the race itself: Derive reads those too.
-		b.pending = append(b.pending, pendingEffects{owner: key, effects: []Effect{{Type: "sense", Sense: "darkvision", RangeFt: tr.DarkvisionFt}}, path: path + ".darkvision_ft"})
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: []Effect{{Type: "sense", Sense: "darkvision", RangeFt: tr.DarkvisionFt}}, path: path + ".darkvision_ft"})
 	}
 	return nil
 }
@@ -478,20 +510,22 @@ func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 // the race when the race is the SRD's.
 func (b *overlayBuilder) addSubrace(ts *TableSubrace, path string) error {
 	key := ts.Key
+	var c entryErrors
 	if !b.isRace(ts.Race) {
-		return ovErr(key, "the race %q does not exist", ts.Race)
+		c.at(key, path, ".race_key", ReasonReference, "the race %q does not exist", ts.Race)
 	}
-	bonuses, err := bonusMap(key, ts.AbilityBonuses)
-	if err != nil {
-		return err
-	}
+	bonuses := bonusMap(&c, key, path, ts.AbilityBonuses)
 	sub := &srd51.Subrace{Key: key, Name: ts.NamePT, Race: ts.Race, AbilityBonuses: bonuses}
 	for i := range ts.Traits {
 		t := &ts.Traits[i]
 		if err := b.addFeature(t, featureKind{prefix: "trait:", owner: key}, fmt.Sprintf("%s.traits[%d]", path, i)); err != nil {
-			return err
+			c.add(locate(err, fmt.Sprintf("%s.traits[%d]", path, i)))
+			continue
 		}
 		sub.Traits = append(sub.Traits, t.Key)
+	}
+	if err := c.err(); err != nil {
+		return err
 	}
 	b.register(ts.TableEntry)
 	b.n.subraces[key] = sub
@@ -502,31 +536,39 @@ func (b *overlayBuilder) addSubrace(ts *TableSubrace, path string) error {
 	return nil
 }
 
-// addBackground registers a background and its feature.
+// addBackground registers a background and its feature. Every field that is wrong
+// is reported at its own path (skills[i], tools[i], language_choices, feature...).
 func (b *overlayBuilder) addBackground(tb *TableBackground, path string) error {
 	n := b.n
 	key := tb.Key
-	if len(tb.Skills) != CustomBackgroundSkillCount || tb.Skills[0] == tb.Skills[1] {
-		return ovErr(key, "a background gives %d different skills", CustomBackgroundSkillCount)
+	var c entryErrors
+	if len(tb.Skills) != CustomBackgroundSkillCount {
+		c.at(key, path, ".skills", ReasonValue, "a background gives %d different skills", CustomBackgroundSkillCount)
 	}
-	for _, s := range tb.Skills {
+	for i, s := range tb.Skills {
 		if _, ok := b.base.skills[s]; !ok {
-			return ovErr(key, "skill %q is not in the SRD", s)
+			c.at(key, path, fmt.Sprintf(".skills[%d]", i), ReasonReference, "skill %q is not in the SRD", s)
+		} else if slices.Contains(tb.Skills[:i], s) {
+			c.at(key, path, fmt.Sprintf(".skills[%d]", i), ReasonValue, "a background gives %d different skills", CustomBackgroundSkillCount)
 		}
 	}
-	if len(tb.Tools) > 4 || tb.LanguageChoices < 0 || tb.LanguageChoices > 4 {
-		return ovErr(key, "at most 4 tools and 4 languages to choose")
+	if len(tb.Tools) > 4 {
+		c.at(key, path, ".tools", ReasonLimit, "at most 4 tools")
 	}
-	for _, t := range tb.Tools {
+	if tb.LanguageChoices < 0 || tb.LanguageChoices > 4 {
+		c.at(key, path, ".language_choices", ReasonLimit, "at most 4 languages to choose")
+	}
+	for i, t := range tb.Tools {
 		if p, ok := b.base.proficiencies[t]; !ok || (p.Kind != "tool" && p.Kind != "other") {
-			return ovErr(key, "%q is not a tool proficiency of the SRD", t)
+			c.at(key, path, fmt.Sprintf(".tools[%d]", i), ReasonReference, "%q is not a tool proficiency of the SRD", t)
 		}
 	}
-	if err := checkText(key, []string{tb.EquipmentPT}); err != nil {
-		return err
-	}
+	checkTextAt(&c, key, path, ".equipment_pt", []string{tb.EquipmentPT})
 	f := &tb.Feature
 	if err := b.addFeature(f, featureKind{prefix: "background-feature:", owner: key}, path+".feature"); err != nil {
+		c.add(locate(err, path+".feature"))
+	}
+	if err := c.err(); err != nil {
 		return err
 	}
 	b.register(tb.TableEntry)

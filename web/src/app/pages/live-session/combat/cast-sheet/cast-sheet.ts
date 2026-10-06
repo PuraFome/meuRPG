@@ -44,6 +44,7 @@ import {
 } from '../../../../core/combat/cast-flow';
 import { type AttackDie, type DamageDie, type PoolDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
+import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { poolDice, poolRollText } from '../../../../core/combat/hp-effects';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -354,6 +355,12 @@ export class CastSheet {
       label: p.diceCount > 1 ? `Role ${name} para o dano: some os dois` : `Role ${name} para o dano`,
       what: p.healing ? `Cura em ${who.join(', ')}` : `Dano em ${who.join(', ')}`,
       count: this.groups().length,
+      // A critical spell attack follows the table's rule: what to roll, said the way it asks (RN-24).
+      crit: p.critical ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? 'Acerto crítico: os dados dobram.') : '',
+      typedHint: criticalTypedHint(p.criticalRule, name, sumRange(p.diceCount, p.diceSides).min, sumRange(p.diceCount, p.diceSides).max, p.criticalMax),
+      // The modifier and the critical's fixed maximum, the server's numbers, added in the total before it is sent.
+      modifier: p.bonus + p.criticalMax,
+      fixedText: fixedParts(p.criticalMax, p.bonus),
     };
   });
 

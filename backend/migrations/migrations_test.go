@@ -253,7 +253,7 @@ func TestMigrationsDownWorksOnTheatreRows(t *testing.T) {
 	}
 }
 
-// TestMigrationsBackfillAChainOfEditsOfAnyDepth: 00161 marks a textured map and every edit below it as showing the
+// TestMigrationsBackfillAChainOfEditsOfAnyDepth: 00167 marks a textured map and every edit below it as showing the
 // whole map, however long the chain (RN-10: the app never shows such an image with one tap), and leaves a scene art
 // and its edits alone. It also runs again without changing anything.
 func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
@@ -264,8 +264,8 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
-	if _, err := provider.UpTo(ctx, 160); err != nil {
-		t.Fatalf("UpTo(160) error = %v", err)
+	if _, err := provider.UpTo(ctx, 166); err != nil {
+		t.Fatalf("UpTo(166) error = %v", err)
 	}
 	scan := func(query string, dest ...any) {
 		t.Helper()
@@ -303,8 +303,8 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 	request("map_scene", scene)
 	sceneEdit := image(scene)
 
-	if _, err := provider.UpTo(ctx, 161); err != nil {
-		t.Fatalf("UpTo(161) error = %v", err)
+	if _, err := provider.UpTo(ctx, 167); err != nil {
+		t.Fatalf("UpTo(167) error = %v", err)
 	}
 	marked := func(id string) string {
 		var kind string
@@ -322,11 +322,11 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 		}
 	}
 	// Down does nothing to the data, and Up again changes nothing.
-	if _, err := provider.DownTo(ctx, 160); err != nil {
-		t.Fatalf("DownTo(160) error = %v", err)
+	if _, err := provider.DownTo(ctx, 166); err != nil {
+		t.Fatalf("DownTo(166) error = %v", err)
 	}
-	if _, err := provider.UpTo(ctx, 161); err != nil {
-		t.Fatalf("UpTo(161) again error = %v", err)
+	if _, err := provider.UpTo(ctx, 167); err != nil {
+		t.Fatalf("UpTo(167) again error = %v", err)
 	}
 	if got := marked(chain[len(chain)-1]); got != "textured_map" {
 		t.Errorf("the deepest edit after a second run is %q", got)

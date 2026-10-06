@@ -828,6 +828,15 @@ enum CharacterBlockedReason {
   // campaign (ADR-0018, section 10; the copy of MR-021 and the reuse of NPCs in
   // MR-022): `content_key` is one of the keys.
   CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS = 14;
+  // CreateCharacter or UpdateCharacter by a player picks an option the master
+  // switched off in "Opções para os jogadores" (RN-23), or the subclass of an off
+  // class or the subrace of an off race when the sheet lacks that class or race:
+  // `content_key` says which. A sheet that already has it keeps it, and one that
+  // has an off class or race may still pick its subclass or subrace (the child's
+  // own switch decides); only a new choice is refused. The master is not refused:
+  // the switch hides an option from the players, not from any sheet the master
+  // edits (an NPC, or a player's sheet, which then keeps the option).
+  CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT = 15;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -838,7 +847,7 @@ message CharacterBlocked {
   // LIVING_CHARACTER_EXISTS, the player's living character, so the app can
   // link to it.
   string character_id = 2;
-  // For ARCHIVED_CONTENT and TABLE_CONTENT_STAYS, the table's content key that
+  // For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
   // blocks the call; empty otherwise.
   string content_key = 3;
 }
@@ -1761,6 +1770,11 @@ message LevelUpSubclass {
   // subclass; the server leaves it out for players, unless their own sheet has it.
   // Choosing one is refused with ARCHIVED_CHOICE.
   bool archived = 7;
+  // The master switched this subclass off for the players (RN-23): its own switch;
+  // an off class does not mark its subclasses here, because the offer is for a
+  // character that already has the class. The server leaves it out for players,
+  // unless their own sheet has it, and refuses it with SWITCHED_OFF_CHOICE.
+  bool off = 14;
   // What a third caster's subclass (the table's only) adds: how many spells it
   // knows from this level (the first row of its table, or the rise over the level
   // before when the subclass is picked later), where they go, the class whose list
@@ -1900,6 +1914,11 @@ enum LevelUpRefusalReason {
   // A choice of the level is a table entry the master archived (a subclass, a
   // spell...): it is not a new choice any more (RN-23). `field` is the sheet field.
   LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE = 20;
+  // A choice of the level, made by a player, is an option the master switched off
+  // (RN-23: a subclass, a spell, the class of a multiclass...). `field` is the
+  // sheet field. The master is not refused. PreviewLevelUp answers this and
+  // ARCHIVED_CHOICE with no `after`.
+  LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE = 21;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a
@@ -1925,6 +1944,8 @@ message PreviewLevelUpRequest {
 
 // PreviewLevelUpResponse is the sheet the choices would make.
 message PreviewLevelUpResponse {
+  // Unset when the refusal is ARCHIVED_CHOICE or SWITCHED_OFF_CHOICE: a retired or
+  // switched off option is never built into a sheet a player reads.
   // The derived numbers after the level up, as far as the choices go. The
   // app compares it with Character.derived: level, abilities, hit points, hit
   // dice, spell save DC and attack bonus, saves, skills, passive scores,

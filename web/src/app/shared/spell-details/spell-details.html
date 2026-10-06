@@ -38,53 +38,7 @@
       }
       @case ('ready') {
         @if (details(); as d) {
-          @if (d.ritual || d.concentration) {
-            <p class="spell__tags">
-              @if (d.ritual) {
-                <span class="mr-tag">Ritual</span>
-              }
-              @if (d.concentration) {
-                <span class="mr-tag">Concentração</span>
-              }
-            </p>
-          }
-          <dl class="spell__facts">
-            @for (row of rows(); track row.label) {
-              <div class="spell__fact">
-                <dt>{{ row.label }}</dt>
-                <dd>
-                  @if (row.value.fallback) {
-                    <span lang="en">{{ row.value.english }}</span>
-                    <span class="spell__note">(texto do SRD)</span>
-                  } @else {
-                    {{ row.value.text }}
-                    @if (row.value.english) {
-                      <span lang="en" class="spell__english">{{ row.value.english }}</span>
-                    }
-                  }
-                </dd>
-              </div>
-            }
-          </dl>
-
-          <section class="spell__text" aria-labelledby="spell-srd-label">
-            <h3 class="spell__label" id="spell-srd-label">Texto do SRD 5.1 (em inglês)</h3>
-            <div class="spell__prose" lang="en">
-              @for (paragraph of d.description; track $index) {
-                <p>{{ paragraph }}</p>
-              }
-            </div>
-          </section>
-          @if (d.higherLevel.length > 0) {
-            <section class="spell__text" aria-labelledby="spell-higher-label">
-              <h3 class="spell__label" id="spell-higher-label">Em círculos maiores</h3>
-              <div class="spell__prose" lang="en">
-                @for (paragraph of d.higherLevel; track $index) {
-                  <p>{{ paragraph }}</p>
-                }
-              </div>
-            </section>
-          }
+          <app-spell-body [details]="d" />
         }
       }
     }

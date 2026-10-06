@@ -1,0 +1,184 @@
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { create } from '@bufbuild/protobuf';
+import { BehaviorSubject } from 'rxjs';
+
+import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import { CampaignsService } from '../../../core/campaigns/campaigns.service';
+import { TableContentClient } from '../../../core/content/content-client';
+import { entry, menuResponse, mirathel } from '../../../core/content/content-testing';
+import { ContentEntry } from './content-entry';
+
+describe('ContentEntry', () => {
+  const originalMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  const list = vi.fn();
+  const catalog = vi.fn();
+  const effectMenu = vi.fn();
+  const archive = vi.fn();
+  const unarchive = vi.fn();
+  const getCampaign = vi.fn();
+  let params$ = new BehaviorSubject(convertToParamMap({}));
+
+  async function setup(role: Role, key: string, entries = mirathel(), opts: { failCatalog?: boolean; failMenu?: boolean } = {}) {
+    list.mockReset().mockResolvedValue({ entries, tableRevision: 7 });
+    catalog.mockReset().mockResolvedValue(create(ContentSchema, {}));
+    effectMenu.mockReset().mockResolvedValue(menuResponse());
+    if (opts.failCatalog) catalog.mockRejectedValue(new Error('offline'));
+    if (opts.failMenu) effectMenu.mockRejectedValue(new Error('offline'));
+    archive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: true }));
+    unarchive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: false }));
+    getCampaign.mockReset().mockResolvedValue({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
+    params$ = new BehaviorSubject(convertToParamMap({ id: 'camp-1', key }));
+    window.matchMedia = (() => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { paramMap: params$, snapshot: { queryParamMap: convertToParamMap({}) } } },
+        { provide: CampaignsService, useValue: { getCampaign } },
+        { provide: TableContentClient, useValue: { list, catalog, effectMenu, archive, unarchive } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ContentEntry);
+    await settle(fixture);
+    return { fixture, el: fixture.nativeElement as HTMLElement, params$ };
+  }
+
+  async function settle(fixture: { detectChanges(): void; whenStable(): Promise<unknown> }) {
+    for (let i = 0; i < 4; i++) {
+      fixture.detectChanges();
+      await new Promise((r) => setTimeout(r));
+      await fixture.whenStable();
+    }
+    fixture.detectChanges();
+  }
+
+  const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const click = (el: HTMLElement, label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => text(b).includes(label))!.click();
+
+  it('opens the race in the editor for the master, with the state in words and "Arquivar"', async () => {
+    const { el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    expect(text(el.querySelector('h1')!)).toBe('Corujeiro');
+    expect(el.querySelector('app-race-editor')).not.toBeNull();
+    expect(text(el.querySelector('.tags')!)).toContain('Raça da mesa');
+    expect(text(el.querySelector('.tags')!)).toContain('Em uso por 2 fichas');
+    expect(text(el)).toContain('Voltar para Raças');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar'))).toBe(true);
+  });
+
+  it('asks in place, turns "Salvar raça" off with the reason, and archives: the result says it and offers "Desarquivar"', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    click(el, 'Arquivar');
+    await settle(fixture);
+    const ask = el.querySelector('app-archive-question')!;
+    expect(text(ask)).toContain('Arquivar Corujeiro?');
+    expect(text(ask)).toContain('As fichas que usam Corujeiro continuam funcionando. A entrada só deixa de aparecer para fichas novas.');
+    expect(text(ask)).toContain('2 fichas usam Corujeiro agora.');
+    expect(text(el.querySelector('app-editor-bar')!)).toContain('Responda à pergunta de arquivar para voltar a salvar.');
+    expect(document.activeElement?.id).toBe('ask-t');
+    // "Voltar" closes it and nothing is archived.
+    click(ask as HTMLElement, 'Voltar');
+    await settle(fixture);
+    expect(el.querySelector('app-archive-question')).toBeNull();
+    expect(archive).not.toHaveBeenCalled();
+    click(el, 'Arquivar');
+    await settle(fixture);
+    click(el.querySelector('app-archive-question') as HTMLElement, 'Arquivar Corujeiro');
+    await settle(fixture);
+    expect(archive).toHaveBeenCalledWith('camp-1', 'race:corujeiro@mesa');
+    expect(text(el.querySelector('.archived')!)).toContain('A raça Corujeiro está arquivada.');
+    expect(text(el.querySelector('.archived')!)).toContain('A entrada só deixa de aparecer para fichas novas.');
+    expect(text(el.querySelector('.tags')!)).toContain('Arquivada · 2 fichas usam');
+    // An archived entry can still be edited, and there is no "Apagar".
+    expect(el.querySelector('app-race-editor')).not.toBeNull();
+    expect(text(el)).not.toContain('Apagar');
+    click(el, 'Desarquivar');
+    await settle(fixture);
+    expect(unarchive).toHaveBeenCalledWith('camp-1', 'race:corujeiro@mesa');
+    expect(el.querySelector('.archived')).toBeNull();
+  });
+
+  it('gives a player the read view of a race in full, with no editor, no state and no "Arquivar"', async () => {
+    const onlyOn = mirathel().map((e) => ({ ...e, charactersUsing: 0 }));
+    const { el } = await setup(Role.PLAYER, 'race:corujeiro@mesa', onlyOn);
+    expect(el.querySelector('app-entry-read')).not.toBeNull();
+    expect(el.querySelector('app-race-editor')).toBeNull();
+    expect(text(el)).toContain('Voltar para Conteúdo da mesa');
+    expect(text(el.querySelector('.tags')!)).toBe('menu_bookRaça da mesa');
+    expect(text(el)).toContain('Deslocamento');
+    expect(el.querySelector('form, input')).toBeNull();
+    expect(Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar'))).toBe(false);
+    expect(effectMenu).not.toHaveBeenCalled();
+  });
+
+  it('reads a class for the master, since its editor is the next slice', async () => {
+    const { el } = await setup(Role.MASTER, 'class:guardi-o-do-vale@mesa');
+    expect(el.querySelector('app-entry-read')).not.toBeNull();
+    expect(text(el)).toContain('Testes de resistência');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar'))).toBe(true);
+  });
+
+  it('says so when the entry is not in the list (a player never gets an archived one)', async () => {
+    const { el } = await setup(Role.PLAYER, 'class:bardo-das-cinzas@mesa', mirathel().filter((e) => !e.archived));
+    expect(text(el)).toContain('Entrada não encontrada');
+    expect(entry(TableContentKind.CLASS, 'x')).toBeDefined();
+  });
+
+  it('keeps an unsaved draft when the entry is archived and brought back', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    const field = () => el.querySelector<HTMLInputElement>('[data-field="table_race.name_pt"]')!;
+    field().value = 'Corujeiro Pálido';
+    field().dispatchEvent(new Event('input'));
+    await settle(fixture);
+    click(el, 'Arquivar');
+    await settle(fixture);
+    click(el.querySelector('app-archive-question') as HTMLElement, 'Arquivar Corujeiro');
+    await settle(fixture);
+    expect(archive).toHaveBeenCalled();
+    expect(field().value).toBe('Corujeiro Pálido');
+    click(el, 'Desarquivar');
+    await settle(fixture);
+    expect(field().value).toBe('Corujeiro Pálido');
+  });
+
+  it('leaves nothing of the last entry when the page goes to another one', async () => {
+    const { fixture, el, params$: p } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    const page = fixture.componentInstance as unknown as Record<string, { set(v: unknown): void; (): unknown }>;
+    page['savedLine'].set('A raça Corujeiro foi salva.');
+    page['affected'].set([{ characterId: 'c1', name: 'Pensantus' }]);
+    page['actionError'].set('Não foi possível arquivar.');
+    await settle(fixture);
+    expect(text(el)).toContain('A raça Corujeiro foi salva.');
+    p.next(convertToParamMap({ id: 'camp-1', key: 'spell:l-mina-de-nanquim@mesa' }));
+    await settle(fixture);
+    expect(text(el)).not.toContain('A raça Corujeiro foi salva.');
+    expect(text(el)).not.toContain('Pensantus');
+    expect(text(el)).not.toContain('Não foi possível arquivar.');
+    expect(text(el.querySelector('h1')!)).toBe('Lâmina de Nanquim');
+  });
+
+  it('says so, with "Tentar de novo", when the catalog or the effect menu does not come (no endless loading)', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa', mirathel(), { failMenu: true });
+    expect(el.querySelector('[role="alert"]')).not.toBeNull();
+    expect(text(el)).toContain('Tentar de novo');
+    expect(el.querySelector('mat-spinner')).toBeNull();
+    effectMenu.mockResolvedValue(menuResponse());
+    click(el, 'Tentar de novo');
+    await settle(fixture);
+    expect(el.querySelector('app-race-editor')).not.toBeNull();
+    const failed = await setup(Role.PLAYER, 'race:corujeiro@mesa', mirathel(), { failCatalog: true });
+    expect(text(failed.el)).toContain('Tentar de novo');
+  });
+
+  it('opens the spell editor with the catalog alone: it does not wait for the effect menu', async () => {
+    const { el } = await setup(Role.MASTER, 'spell:l-mina-de-nanquim@mesa', mirathel(), { failMenu: true });
+    expect(el.querySelector('app-spell-editor')).not.toBeNull();
+    expect(text(el)).not.toContain('Tentar de novo');
+  });
+});

@@ -1,0 +1,71 @@
+@if (showSearch()) {
+  <label class="field">
+    <span class="mr-label">Buscar pelo nome</span>
+    <span class="box">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        type="search"
+        name="query"
+        autocomplete="off"
+        placeholder="Nome da magia"
+        [value]="filter().query"
+        (input)="state().typeQuery($any($event.target).value)"
+      />
+    </span>
+  </label>
+}
+
+<label class="field">
+  <span class="mr-label">Classe</span>
+  <span class="box box--select">
+    <select name="class" [value]="filter().classKey" (change)="state().change({ classKey: $any($event.target).value })">
+      <option value="" [selected]="filter().classKey === ''">Todas</option>
+      @for (c of classes(); track c.key) {
+        <option [value]="c.key" [selected]="filter().classKey === c.key">{{ c.namePt }}{{ c.archived ? ' (arquivada)' : '' }}</option>
+      }
+    </select>
+    <mat-icon aria-hidden="true">expand_more</mat-icon>
+  </span>
+</label>
+
+<fieldset class="levels">
+  <legend class="mr-label">Círculo</legend>
+  <div class="chips">
+    <button type="button" class="chip" [class.chip--on]="filter().levels.length === 0" [attr.aria-pressed]="filter().levels.length === 0" (click)="allLevels()">Todos</button>
+    @for (c of chips; track c.level) {
+      <button
+        type="button"
+        class="chip"
+        [class.chip--round]="c.level > 0"
+        [class.chip--on]="filter().levels.includes(c.level)"
+        [attr.aria-pressed]="filter().levels.includes(c.level)"
+        [attr.aria-label]="c.level === 0 ? 'Truque' : c.level + 'º círculo'"
+        (click)="toggle(c.level)"
+      >
+        {{ c.label }}
+      </button>
+    }
+  </div>
+</fieldset>
+
+<label class="field">
+  <span class="mr-label">Escola</span>
+  <span class="box box--select">
+    <select name="school" [value]="filter().schoolKey" (change)="state().change({ schoolKey: $any($event.target).value })">
+      <option value="" [selected]="filter().schoolKey === ''">Todas</option>
+      @for (s of schools; track s.key) {
+        <option [value]="s.key" [selected]="filter().schoolKey === s.key">{{ s.label }}</option>
+      }
+    </select>
+    <mat-icon aria-hidden="true">expand_more</mat-icon>
+  </span>
+</label>
+
+@if (mine(); as m) {
+  <app-reveal-switch
+    label="Só as que posso aprender"
+    [hint]="mineHint()"
+    [checked]="filter().onlyMine"
+    (checkedChange)="state().change({ onlyMine: $event })"
+  />
+}

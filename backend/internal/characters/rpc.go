@@ -74,6 +74,9 @@ func (s *Service) CreateCharacter(
 	if key, _, found := newArchivedChoice(content, nil, sheet.GetFull()); found {
 		return nil, errArchivedChoice("", key)
 	}
+	if key, _, found := newOffChoice(content, nil, sheet.GetFull()); found && !isMaster(m) {
+		return nil, errOffChoice("", key)
+	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -120,6 +123,9 @@ func (s *Service) CreateCharacter(
 			}
 			if key, _, found := newArchivedChoice(tc, nil, again.GetFull()); found {
 				return errArchivedChoice("", key)
+			}
+			if key, _, found := newOffChoice(tc, nil, again.GetFull()); found && !isMaster(m) {
+				return errOffChoice("", key)
 			}
 			sheet = again
 			if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
@@ -389,6 +395,9 @@ func (s *Service) UpdateCharacter(
 		// the stored sheet already has stay.
 		if key, _, found := newArchivedChoice(content, storedSheet.GetFull(), sheet.GetFull()); found {
 			return errArchivedChoice(current.ID, key)
+		}
+		if key, _, found := newOffChoice(content, storedSheet.GetFull(), sheet.GetFull()); found && !isMaster(m) {
+			return errOffChoice(current.ID, key)
 		}
 		// The ability origin is the server's: kept from the stored sheet, and a
 		// player's draft edit of the base scores is checked against it (RN-24).

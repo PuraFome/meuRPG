@@ -145,7 +145,11 @@ func (s *Service) ListTableEntries(
 			return err
 		}
 		res = &rulesv1.ListTableEntriesResponse{TableRevision: rev, ContentVersion: content.Version()}
-		archived := archivedKeys(entries)
+		// What a player never receives (RN-23): retired or switched off, SRD or table.
+		var hidden func(string) bool
+		if content.AnyHidden() {
+			hidden = content.Hidden
+		}
 		var mine map[string]bool // the keys the player's own sheets use (read in this transaction)
 		if !master {
 			if mine, err = callerKeys(ctx, q, m); err != nil {
@@ -155,14 +159,16 @@ func (s *Service) ListTableEntries(
 		for _, e := range entries {
 			if !master {
 				switch {
-				case e.row.ArchivedAt != nil:
-					continue // a player never receives a retired entry or a draft
-				case parentArchived(e, archived) && !mine[e.row.ContentKey]:
-					continue // nor an entry whose class or race is retired, unless their sheet uses it
+				case e.row.ArchivedAt != nil || content.Off(e.row.ContentKey):
+					continue // a player never receives a retired or switched off entry, or a draft
+				case hidden != nil && (parentHidden(e, hidden) || hidden(e.row.ContentKey)) && !mine[e.row.ContentKey]:
+					continue // nor an entry whose class or race is retired or off, unless their sheet uses it
 				}
-				e = forPlayer(e, archived)
+				e = forPlayer(e, hidden)
 			}
-			res.Entries = append(res.Entries, entryToProto(e, uses[e.row.ContentKey]))
+			pe := entryToProto(e, uses[e.row.ContentKey])
+			pe.Off = content.Off(e.row.ContentKey)
+			res.Entries = append(res.Entries, pe)
 		}
 		slices.SortStableFunc(res.Entries, func(a, b *rulesv1.TableEntry) int {
 			if d := tableKindOrder(a.GetKind()) - tableKindOrder(b.GetKind()); d != 0 {
@@ -202,12 +208,15 @@ type stored struct {
 // checkOverlay builds the campaign's whole overlay with the entries (the write's
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
-func (s *Service) checkOverlay(entries []entryRow, revision int, key string) (*rules.Content, error) {
+func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
 	if err != nil {
-		return nil, errRefusedContent(violationsOf(err, idx, key))
+		return nil, errRefusedContent(append(slices.Clone(lead), violationsOf(err, idx, key)...))
+	}
+	if len(lead) > 0 {
+		return nil, errRefusedContent(lead)
 	}
 	return content, nil
 }
@@ -215,13 +224,13 @@ func (s *Service) checkOverlay(entries []entryRow, revision int, key string) (*r
 // prepare finishes a body for a write: the keys of its features, the size of its
 // data. It works on a clone of body, so a retried transaction starts from what the
 // request had.
-func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody) (stored, error) {
+func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation) (stored, error) {
 	b := proto.Clone(body).(tableBody)
 	if v := checkShape(b); len(v) > 0 {
-		return stored{}, errRefusedContent(v)
+		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
 	if v := featureKeys(key, b, old); len(v) > 0 {
-		return stored{}, errRefusedContent(v)
+		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
 	data, err := storedData(b)
 	if err != nil {
@@ -277,10 +286,12 @@ func (s *Service) CreateTableEntry(
 			return err
 		}
 		key := entryKey(kind, body.GetNamePt(), rows)
+		// A name another entry has is one more violation of this entry, listed with the ones the rules find (not instead of them).
+		var lead []*rulesv1.TableContentViolation
 		if v := duplicateName(entries, kind, key, body.GetNamePt()); v != nil {
-			return errRefusedContent([]*rulesv1.TableContentViolation{v})
+			lead = append(lead, v)
 		}
-		st, err := prepare(key, kind, body, nil)
+		st, err := prepare(key, kind, body, nil, lead...)
 		if err != nil {
 			return err
 		}
@@ -289,7 +300,7 @@ func (s *Service) CreateTableEntry(
 			CampaignID: m.CampaignID, ContentKey: key, Kind: kindPrefix(kind), NamePt: body.GetNamePt(), Data: st.data,
 			Revision: rev, CreatedAt: now, UpdatedAt: now,
 		}
-		if _, err := s.checkOverlay(withRow(entries, st, row), int(rev), key); err != nil {
+		if _, err := s.checkOverlay(withRow(entries, st, row), int(rev), key, lead...); err != nil {
 			return err
 		}
 		row, err = q.InsertCampaignContent(ctx, charactersdb.InsertCampaignContentParams{
@@ -300,6 +311,8 @@ func (s *Service) CreateTableEntry(
 			return wrap("insert a table entry", err)
 		}
 		res = &rulesv1.CreateTableEntryResponse{
+			// No sheet can use an entry that did not exist a moment ago: the count is 0, set
+			// for the master as every write response does.
 			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, 0), TableRevision: rev,
 		}
 		return nil
@@ -307,6 +320,7 @@ func (s *Service) CreateTableEntry(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a table entry", err)
 	}
+	s.publishContentChanged(m.CampaignID)
 	return connect.NewResponse(res), nil
 }
 
@@ -366,17 +380,18 @@ func (s *Service) UpdateTableEntry(
 		if err != nil {
 			return err
 		}
+		var lead []*rulesv1.TableContentViolation
 		if v := duplicateName(entries, kind, key, body.GetNamePt()); v != nil {
-			return errRefusedContent([]*rulesv1.TableContentViolation{v})
+			lead = append(lead, v)
 		}
-		st, err := prepare(key, kind, body, old.body)
+		st, err := prepare(key, kind, body, old.body, lead...)
 		if err != nil {
 			return err
 		}
 		now := s.now()
 		next := cur
 		next.NamePt, next.Data, next.Revision, next.UpdatedAt = body.GetNamePt(), st.data, rev, now
-		content, err := s.checkOverlay(withRow(entries, st, next), int(rev), key)
+		content, err := s.checkOverlay(withRow(entries, st, next), int(rev), key, lead...)
 		if err != nil {
 			return err
 		}
@@ -393,14 +408,24 @@ func (s *Service) UpdateTableEntry(
 		if affected, err = affectedSheets(sheets, content, key); err != nil {
 			return err
 		}
-		res = &rulesv1.UpdateTableEntryResponse{
-			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, 0), TableRevision: rev,
+		uses, err := characterUses(sheets)
+		if err != nil {
+			return err
 		}
+		res = &rulesv1.UpdateTableEntryResponse{
+			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, uses[key]), TableRevision: rev,
+		}
+		offKeys, err := q.ListContentOff(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("read the options switched off", err)
+		}
+		res.Entry.Off = slices.Contains(offKeys, key)
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a table entry", err)
 	}
+	s.publishContentChanged(m.CampaignID)
 	if res.AffectedCharacters, err = s.affectedToProto(ctx, affected); err != nil {
 		return nil, s.dbError(ctx, "read display names", err)
 	}
@@ -572,8 +597,26 @@ func (s *Service) setArchived(ctx context.Context, m authz.Membership, key strin
 		if err != nil {
 			return err
 		}
-		out, revision = entryToProto(e, 0), rev
+		// The master's count: archiving does not change who uses the entry, and the
+		// editor shows it ("Arquivado · 2 fichas usam").
+		sheets, err := q.ListCampaignSheets(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("list the campaign's sheets", err)
+		}
+		uses, err := characterUses(sheets)
+		if err != nil {
+			return err
+		}
+		out, revision = entryToProto(e, uses[key]), rev
+		offKeys, err := q.ListContentOff(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("read the options switched off", err)
+		}
+		out.Off = slices.Contains(offKeys, key)
 		return nil
 	})
+	if err == nil {
+		s.publishContentChanged(m.CampaignID)
+	}
 	return out, revision, err
 }

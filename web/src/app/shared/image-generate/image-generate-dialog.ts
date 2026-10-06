@@ -35,8 +35,8 @@ import { type GenerateIssue, blockedOf, blockedText, generateIssue, invalidField
 import { type ImageForm, type PickableNpc, buildRequest, formProblem } from '../../core/images/imagegen-form';
 import { ImageRun } from '../../core/images/imagegen-run';
 import { ShownImageClient, showImageIssue } from '../../core/images/shown-client';
-import { SheetFrame } from '../../pages/live-session/combat/sheet-frame/sheet-frame';
-import { injectSheet, openSheet } from '../../pages/live-session/combat/sheet-host';
+import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
+import { injectSheet, openSheet } from '../sheet/sheet-host';
 import { openImagePicker } from '../gallery-picker/image-picker-dialog/image-picker-dialog';
 import { type ReferenceView, GenerateForm } from './generate-form';
 import { GenerateResult, type ResultView, type ShowStage, type UseStage } from './generate-result';

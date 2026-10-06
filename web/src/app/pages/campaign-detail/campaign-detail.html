@@ -89,6 +89,24 @@
               <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'regras']">{{ isMaster ? 'Abrir as regras' : 'Ler as regras' }}</a>
             </div>
           </section>
+          <section class="mr-panel" aria-labelledby="content-heading">
+            <h2 class="mr-panel__title" id="content-heading">Conteúdo da mesa</h2>
+            @if (isMaster) {
+              <p class="rules-lead">As classes, raças, antecedentes e magias que você cria para esta campanha. O SRD continua valendo.</p>
+            } @else {
+              <p class="rules-lead">O que o mestre criou para esta campanha: classes, raças, antecedentes e magias.</p>
+            }
+            <div>
+              <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'conteudo']">{{ isMaster ? 'Abrir o conteúdo' : 'Ler o conteúdo' }}</a>
+            </div>
+          </section>
+          <section class="mr-panel" aria-labelledby="spells-heading">
+            <h2 class="mr-panel__title" id="spells-heading">Magias</h2>
+            <p class="rules-lead">As magias do SRD e as que o mestre criou para a mesa: procure pelo nome e filtre por classe, círculo e escola.</p>
+            <div>
+              <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'magias']">Abrir as magias</a>
+            </div>
+          </section>
           @if (isMaster) { <app-document-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" /> }
           <section class="mr-panel" aria-labelledby="members-heading">
             <h2 class="mr-panel__title" id="members-heading">Membros</h2>

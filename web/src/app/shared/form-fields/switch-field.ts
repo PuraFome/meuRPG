@@ -1,0 +1,131 @@
+import { Component, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+let nextId = 0;
+
+/**
+ * A switch with its words (the app's ink track and check, as "Névoa de guerra"): the label and, beside it, the state in a word
+ * ("Ligado", "Desligado"), so it never depends on colour. A real `role="switch"` button, a 44 px target.
+ */
+@Component({
+  selector: 'app-switch-field',
+  imports: [MatIconModule],
+  template: `
+    <div class="row">
+      <button
+        type="button"
+        role="switch"
+        class="switch"
+        [class.switch--on]="checked()"
+        [attr.aria-checked]="checked()"
+        [attr.aria-labelledby]="labelId"
+        [attr.data-field]="path() || null"
+        (click)="toggled.emit(!checked())"
+      >
+        <span class="switch__handle">
+          @if (checked()) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          }
+        </span>
+      </button>
+      <span class="text">
+        <span class="label" [id]="labelId">{{ label() }}</span>
+        <span class="state">{{ checked() ? 'Ligado' : 'Desligado' }}</span>
+      </span>
+    </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: var(--mr-space-3);
+      min-height: 48px;
+    }
+
+    .text {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 2px 10px;
+    }
+
+    .label {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .state {
+      font-size: 14px;
+      color: var(--mr-ink-muted);
+    }
+
+    .switch {
+      flex: none;
+      position: relative;
+      box-sizing: border-box;
+      width: 52px;
+      height: 32px;
+      padding: 0;
+      border: 2px solid var(--mr-control-line);
+      border-radius: 16px;
+      background: var(--mr-surface);
+      cursor: pointer;
+
+      &--on {
+        border-color: var(--mr-ink);
+        background: var(--mr-ink);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--mr-focus);
+        outline-offset: 2px;
+      }
+    }
+
+    .switch__handle {
+      position: absolute;
+      top: 50%;
+      left: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--mr-control-line);
+      transform: translateY(-50%);
+
+      .mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        color: var(--mr-ink);
+      }
+
+      .switch--on & {
+        left: 24px;
+        width: 24px;
+        height: 24px;
+        background: var(--mr-surface);
+      }
+
+      .switch--on & .mat-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 20px;
+      }
+    }
+  `,
+})
+export class SwitchField {
+  readonly label = input.required<string>();
+  readonly checked = input.required<boolean>();
+  readonly path = input('');
+  readonly toggled = output<boolean>();
+  protected readonly labelId = `sw-${nextId++}`;
+}

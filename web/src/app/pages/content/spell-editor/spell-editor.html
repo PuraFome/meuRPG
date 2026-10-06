@@ -1,0 +1,170 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="data-t">
+      <h2 class="mr-panel__title" id="data-t">Dados da magia</h2>
+      <div class="grid grid--3">
+        <app-text-field class="span-2" label="Nome" [value]="d.name" [maxlength]="60" path="table_spell.name_pt" [issues]="saver.issues('table_spell.name_pt')" (valueChange)="patch({ name: $event })" />
+        <app-select-field label="Círculo" [options]="levels()" [value]="d.level" path="table_spell.level" [issues]="saver.issues('table_spell.level')" (valueChange)="patch({ level: $event })" />
+      </div>
+      <div class="grid grid--3">
+        <app-select-field label="Escola" [options]="schools()" [value]="d.schoolKey" path="table_spell.school_key" [issues]="saver.issues('table_spell.school_key')" (valueChange)="patch({ schoolKey: $event })" />
+        <app-select-field label="Tempo de conjuração" [options]="timeSelect" [value]="d.time" path="table_spell.casting_time.unit" [issues]="saver.issues('table_spell.casting_time.unit')" (valueChange)="patch({ time: $any($event) })" />
+        @if (d.time === 'minute' || d.time === 'hour') {
+          <app-text-field label="Quantos" [value]="numberText(d.timeAmount)" inputmode="numeric" path="table_spell.casting_time.amount" [issues]="saver.issues('table_spell.casting_time.amount')" hint="De 1 a 60." (valueChange)="setCount($event, 'timeAmount')" />
+        }
+      </div>
+      @if (d.time === 'reaction') {
+        <app-text-field label="Quando ela é conjurada" [value]="d.trigger" path="table_spell.casting_time.trigger_pt" [issues]="saver.issues('table_spell.casting_time.trigger_pt')" hint="Em palavras: “quando você sofre dano”." (valueChange)="patch({ trigger: $event })" />
+      }
+      <div class="grid grid--3">
+        <app-select-field label="Alcance" [options]="rangeOptions" [value]="d.range" path="table_spell.range.kind" [issues]="saver.issues('table_spell.range.kind')" (valueChange)="patch({ range: $any($event) })" />
+        @if (d.range === 'ranged') {
+          <app-text-field label="Distância" [value]="d.rangeM" suffix="m" inputmode="decimal" path="table_spell.range.distance_ft" [issues]="saver.issues('table_spell.range.distance_ft')" hint="Em passos de 1,5 m." (valueChange)="patch({ rangeM: $event })" />
+        }
+        <app-select-field label="Duração" [options]="durationOptions" [value]="d.duration" path="table_spell.duration.kind" [issues]="saver.issues('table_spell.duration.kind')" (valueChange)="patch({ duration: $any($event) })" />
+      </div>
+      @if (d.duration === 'timed') {
+        <div class="grid grid--3">
+          <app-text-field label="Duração: quantos" [value]="numberText(d.durationAmount)" inputmode="numeric" path="table_spell.duration.amount" [issues]="saver.issues('table_spell.duration.amount')" (valueChange)="setCount($event, 'durationAmount')" />
+          <app-select-field label="Unidade" [options]="durationUnits" [value]="d.durationUnit" path="table_spell.duration.unit" [issues]="saver.issues('table_spell.duration.unit')" (valueChange)="patch({ durationUnit: $any($event) })" />
+          <app-check-row label="Até esse tempo" [checked]="d.upTo || d.concentration" [disabled]="d.concentration" path="table_spell.duration.up_to" (toggled)="patch({ upTo: $event })" />
+        </div>
+      }
+      <fieldset class="components">
+        <legend class="mr-label">Componentes</legend>
+        <div class="components__row">
+          <app-check-row label="V" [checked]="d.verbal" path="table_spell.components.verbal" (toggled)="patch({ verbal: $event })" />
+          <app-check-row label="S" [checked]="d.somatic" path="table_spell.components.somatic" (toggled)="patch({ somatic: $event })" />
+          <app-check-row label="M" [checked]="d.material" path="table_spell.components.material" (toggled)="patch({ material: $event })" />
+          @if (d.material) {
+            <app-text-field class="components__material" label="Material" [value]="d.materialPt" path="table_spell.components.material_pt" [issues]="saver.issues('table_spell.components.material_pt')" (valueChange)="patch({ materialPt: $event })" />
+          }
+        </div>
+      </fieldset>
+      <div class="switches">
+        <app-switch-field label="Concentração" [checked]="d.concentration" path="table_spell.concentration" (toggled)="patch({ concentration: $event })" />
+        <app-switch-field label="Ritual" [checked]="d.ritual" path="table_spell.ritual" (toggled)="patch({ ritual: $event })" />
+      </div>
+      @if (saver.issues('table_spell.concentration').length > 0 || saver.issues('table_spell.ritual').length > 0) {
+        <p class="inline-issue" role="note">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          {{ saver.issues('table_spell.concentration')[0] || saver.issues('table_spell.ritual')[0] }}
+        </p>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="combat-t">
+      <h2 class="mr-panel__title" id="combat-t">O que ela faz no combate</h2>
+      <p class="hint">Opcional. Com ataque ou teste de resistência e dano, o combate resolve a magia como uma do SRD. Sem isso, ela vale só como texto na ficha.</p>
+
+      <div class="group" data-field="table_spell.target.kind">
+        <p class="group__label" aria-hidden="true">Alvo</p>
+        <app-segmented label="Alvo" [segments]="targetOptions" [value]="d.target" (choose)="setTarget($event)" />
+      </div>
+      @if (saver.issues('table_spell.target.kind').length > 0) {
+        <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ saver.issues('table_spell.target.kind')[0] }}</p>
+      }
+      @switch (d.target) {
+        @case ('creatures') {
+          <div class="grid grid--3">
+            <app-text-field label="Quantas criaturas" [value]="numberText(d.count)" inputmode="numeric" path="table_spell.target.count" [issues]="saver.issues('table_spell.target.count')" hint="2 ou mais." (valueChange)="setCount($event, 'count')" />
+            @if (d.level > 0) {
+              <app-text-field class="span-2" label="Mais por círculo" [value]="numberText(d.perSlot)" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="saver.issues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada círculo acima do ' + d.level + 'º. Vazio: nenhuma.'" (valueChange)="setCount($event, 'perSlot')" />
+            }
+          </div>
+        }
+        @case ('creature') {
+          @if (d.level > 0 && (morePerCircle() || d.perSlot > 0 || saver.issues('table_spell.target.per_slot_level').length > 0)) {
+            <div class="grid grid--3">
+              <app-text-field class="span-2" label="Mais por círculo" [value]="numberText(d.perSlot)" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="saver.issues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada círculo acima do ' + d.level + 'º. Vazio: só uma.'" (valueChange)="setCount($event, 'perSlot')" />
+            </div>
+          } @else if (d.level > 0) {
+            <button type="button" class="link" (click)="morePerCircle.set(true)"><mat-icon aria-hidden="true">add</mat-icon>Mais criaturas por círculo</button>
+          }
+        }
+        @case ('area') {
+          <div class="grid grid--3">
+            <app-select-field label="Forma" [options]="shapeOptions" [value]="d.shape" path="table_spell.target.shape" [issues]="saver.issues('table_spell.target.shape')" (valueChange)="patch({ shape: $any($event) })" />
+            <app-text-field [label]="sizeText()" [value]="d.sizeM" suffix="m" inputmode="decimal" path="table_spell.target.size_ft" [issues]="saver.issues('table_spell.target.size_ft')" hint="Em passos de 1,5 m." (valueChange)="patch({ sizeM: $event })" />
+          </div>
+        }
+      }
+
+      <div class="group" data-field="table_spell.attack">
+        <p class="group__label" aria-hidden="true">Mecânica</p>
+        <app-segmented label="Mecânica" [segments]="mechanicOptions" [value]="d.mechanic" (choose)="patch({ mechanic: $any($event) })" />
+      </div>
+      @switch (d.mechanic) {
+        @case ('attack') {
+          <div class="grid grid--3">
+            <app-select-field label="Tipo de ataque" [options]="attackOptions" [value]="d.attack" path="table_spell.attack" [issues]="saver.issues('table_spell.attack')" (valueChange)="patch({ attack: $any($event) })" />
+            <app-text-field label="Dano" [value]="d.dice" path="table_spell.damage[0].dice" [issues]="saver.issues('table_spell.damage[0].dice')" hint="Como 2d8." (valueChange)="patch({ dice: $event })" />
+            <app-select-field label="Tipo de dano" [options]="damageTypes()" [value]="d.damageType" path="table_spell.damage[0].damage_type_key" [issues]="saver.issues('table_spell.damage[0].damage_type_key')" (valueChange)="patch({ damageType: $event })" />
+          </div>
+          <div class="grid grid--3">
+            <app-text-field class="span-2" [label]="moreText()" [value]="d.more" [path]="d.level === 0 ? 'table_spell.damage[0].per_tier' : 'table_spell.damage[0].per_slot_level'" [issues]="saver.issues(d.level === 0 ? 'table_spell.damage[0].per_tier' : 'table_spell.damage[0].per_slot_level')" [hint]="moreNote()" (valueChange)="patch({ more: $event })" />
+          </div>
+        }
+        @case ('save') {
+          <div class="grid grid--4">
+            <app-select-field label="Habilidade" [options]="abilityOptions()" [value]="d.saveAbility" path="table_spell.save.ability" [issues]="saver.issues('table_spell.save.ability')" (valueChange)="patch({ saveAbility: $event })" />
+            <app-select-field label="Ao passar" [options]="successOptions" [value]="d.saveOnSuccess" path="table_spell.save.on_success" [issues]="saver.issues('table_spell.save.on_success')" (valueChange)="patch({ saveOnSuccess: $any($event) })" />
+            <app-text-field label="Dano" [value]="d.dice" path="table_spell.damage[0].dice" [issues]="saver.issues('table_spell.damage[0].dice')" hint="Como 3d6. Deixe vazio se não causa dano." (valueChange)="patch({ dice: $event })" />
+            <app-select-field label="Tipo de dano" [options]="damageTypes()" [value]="d.damageType" path="table_spell.damage[0].damage_type_key" [issues]="saver.issues('table_spell.damage[0].damage_type_key')" (valueChange)="patch({ damageType: $event })" />
+          </div>
+          <div class="grid grid--3">
+            <app-text-field class="span-2" [label]="moreText()" [value]="d.more" [path]="d.level === 0 ? 'table_spell.damage[0].per_tier' : 'table_spell.damage[0].per_slot_level'" [issues]="saver.issues(d.level === 0 ? 'table_spell.damage[0].per_tier' : 'table_spell.damage[0].per_slot_level')" [hint]="moreNote()" (valueChange)="patch({ more: $event })" />
+          </div>
+        }
+        @case ('heal') {
+          <div class="grid grid--3">
+            <app-text-field label="Cura" [value]="d.healDice" path="table_spell.heal.dice" [issues]="saver.issues('table_spell.heal.dice')" hint="Como 1d8." (valueChange)="patch({ healDice: $event })" />
+            <app-text-field label="Mais cura por círculo" [value]="d.healMore" path="table_spell.heal.per_slot_level" [issues]="saver.issues('table_spell.heal.per_slot_level')" hint="Como 1d8, ao conjurar com um espaço maior." (valueChange)="patch({ healMore: $event })" />
+            <app-check-row label="Soma o modificador de conjuração" [checked]="d.healModifier" path="table_spell.heal.adds_modifier" (toggled)="patch({ healModifier: $event })" />
+          </div>
+        }
+      }
+      @if (d.mechanic === 'save') {
+        <p class="hint">Em “Teste de resistência” você escolhe a habilidade e o que acontece ao passar (metade ou nada); em “Cura”, o dado e o que soma.</p>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="learn-t">
+      <h2 class="mr-panel__title" id="learn-t">Quem pode aprender</h2>
+      <p class="hint">Marque as classes que recebem esta magia na lista. Os jogadores só a escolhem na ficha se a classe dela a tem.</p>
+      <div class="classes" role="group" aria-labelledby="learn-t" data-field="table_spell.class_keys">
+        @for (c of classes(); track c.key) {
+          <app-check-row [label]="c.name" [checked]="d.classKeys.includes(c.key)" (toggled)="toggleClass(c.key, $event)">
+            @if (c.table) {
+              <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+            }
+          </app-check-row>
+        }
+      </div>
+      @for (m of saver.issues('table_spell.class_keys'); track m) {
+        <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="text-t">
+      <h2 class="mr-panel__title" id="text-t">Texto</h2>
+      <app-text-field label="Descrição" [rows]="4" [value]="d.text" path="table_spell.desc_pt" [issues]="saver.issues('table_spell.desc_pt')" hint="Escreva com as suas palavras. Não cole texto de livros." (valueChange)="patch({ text: $event })" />
+      <app-text-field label="Em círculos maiores (opcional, só texto)" [rows]="2" [value]="d.higher" path="table_spell.higher_level_pt" [issues]="saver.issues('table_spell.higher_level_pt')" hint="O que muda ao conjurar com um espaço maior. É só texto: o combate não faz conta com ele." (valueChange)="patch({ higher: $event })" />
+    </section>
+
+    <app-editor-bar saveLabel="Salvar magia" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ previewName() }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+  </aside>
+</div>

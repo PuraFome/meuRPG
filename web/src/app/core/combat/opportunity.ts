@@ -102,7 +102,13 @@ export function playerQuestion(offer: OpportunityOffer, reactorIsCharacter = tru
 
 /** What the answer spends: "Gasta a sua reação." or "Gasta a reação do Lobo atroz 1.". */
 export function spendText(offer: OpportunityOffer, reactorIsCharacter = true): string {
-  return reactorIsCharacter ? 'Gasta a sua reação.' : `Gasta a reação ${ofThe([offer.reactorLabel])}.`;
+  const cost = reactorIsCharacter ? 'Gasta a sua reação.' : `Gasta a reação ${ofThe([offer.reactorLabel])}.`;
+  // The master offered it by hand (a combat without a map): nobody has a square, so the prompt says who judged the reach.
+  if (!offer.byHand) {
+    return cost;
+  }
+  const he = article(offer.moverLabel) === 'a' ? 'ela' : 'ele';
+  return `${cost} O mestre disse que ${he} saiu do ${reactorIsCharacter ? 'seu alcance' : `alcance ${ofThe([offer.reactorLabel])}`}.`;
 }
 
 /** The master's: "O Toren saiu do alcance do Goblin 2." */

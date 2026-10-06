@@ -89,8 +89,10 @@ type ContentServiceClient interface {
 	// the table's classes, subclasses, races, subraces, backgrounds and spells,
 	// with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
 	// table has content). A player never receives an archived entry (the master's
-	// drafts and retired entries); a master receives them, with the `archived`
-	// mark. The entries in full, and how many characters use each, are
+	// drafts and retired entries) nor an option the master switched off in "Opções
+	// para os jogadores" (SRD or table, with the subclasses of an off class and the
+	// subraces of an off race); a master receives them, with the `archived` and
+	// `off` marks. The entries in full, and how many characters use each, are
 	// TableContentService.ListTableEntries.
 	//
 	// Errors:
@@ -118,7 +120,9 @@ type ContentServiceClient interface {
 	// A player never receives an archived table spell, nor an archived class's
 	// key in `class_keys`; the master receives the archived ones, with the
 	// `archived` mark (RN-23). The master's switches "Opções para os jogadores"
-	// (a later slice) leave out of a player's list what is off.
+	// (TableContentService.SetOptionSwitches) leave out of a player's list the
+	// spells that are off, and the off classes from `class_keys`; the master gets
+	// them with the `off` mark.
 	//
 	// `character_id` is "Só as que posso aprender": the spells on the list of one
 	// of the character's casting classes up to the highest circle that class
@@ -315,8 +319,10 @@ type ContentServiceHandler interface {
 	// the table's classes, subclasses, races, subraces, backgrounds and spells,
 	// with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
 	// table has content). A player never receives an archived entry (the master's
-	// drafts and retired entries); a master receives them, with the `archived`
-	// mark. The entries in full, and how many characters use each, are
+	// drafts and retired entries) nor an option the master switched off in "Opções
+	// para os jogadores" (SRD or table, with the subclasses of an off class and the
+	// subraces of an off race); a master receives them, with the `archived` and
+	// `off` marks. The entries in full, and how many characters use each, are
 	// TableContentService.ListTableEntries.
 	//
 	// Errors:
@@ -344,7 +350,9 @@ type ContentServiceHandler interface {
 	// A player never receives an archived table spell, nor an archived class's
 	// key in `class_keys`; the master receives the archived ones, with the
 	// `archived` mark (RN-23). The master's switches "Opções para os jogadores"
-	// (a later slice) leave out of a player's list what is off.
+	// (TableContentService.SetOptionSwitches) leave out of a player's list the
+	// spells that are off, and the off classes from `class_keys`; the master gets
+	// them with the `off` mark.
 	//
 	// `character_id` is "Só as que posso aprender": the spells on the list of one
 	// of the character's casting classes up to the highest circle that class

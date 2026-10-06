@@ -85,10 +85,21 @@ func (s *Service) ListSpells(
 		}
 	}
 	master := isMaster(m)
+	if !master && filter.Class != "" && content.Hidden(filter.Class) {
+		// A class the player may not see answers as an unknown one (an empty list), so a
+		// guessed key is never confirmed; unless their own sheet uses the class.
+		uses, err := s.callerUses(ctx, m, filter.Class)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the caller's sheets", err)
+		}
+		if !uses {
+			return connect.NewResponse(&rulesv1.ListSpellsResponse{ContentVersion: content.Version()}), nil
+		}
+	}
 	if !master {
-		// A player never reads a spell the master retired. The switches of "Opções
-		// para os jogadores" (slice 10.1d) join this one test.
-		filter.Hidden = content.Archived
+		// A player never reads a spell the master retired or switched off ("Opções
+		// para os jogadores"): one test, Content.Hidden.
+		filter.Hidden = content.Hidden
 	}
 	list := content.ListSpells(filter)
 	res := &rulesv1.ListSpellsResponse{Total: i32(len(list)), ContentVersion: content.Version()}
@@ -99,8 +110,8 @@ func (s *Service) ListSpells(
 	for _, e := range list[offset:end] {
 		sp := spellToProto(e)
 		if !master {
-			// The classes whose list has the spell: an archived one is not named to a player.
-			sp.ClassKeys = slices.DeleteFunc(slices.Clone(sp.GetClassKeys()), content.Archived)
+			// The classes whose list has the spell: a hidden one is not named to a player.
+			sp.ClassKeys = slices.DeleteFunc(slices.Clone(sp.GetClassKeys()), content.Hidden)
 		}
 		res.Spells = append(res.Spells, sp)
 	}

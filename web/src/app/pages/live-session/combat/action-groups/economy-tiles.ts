@@ -28,7 +28,9 @@ import { tight } from '../../../../core/format/text';
         <span class="tile__name">Movimento</span>
         <span class="tile__word tile__word--num">{{ move().text }}</span>
         <span class="bar" aria-hidden="true"><span class="bar__fill" [style.width.%]="move().percent"></span></span>
-        <span class="tile__sub">{{ move().free }}</span>
+        @if (!theatre()) {
+          <span class="tile__sub">{{ move().free }}</span>
+        }
       </li>
     </ul>
   `,
@@ -39,6 +41,8 @@ export class EconomyTiles {
   /** Extra Attack: the attacks that remain once the first spent the action. */
   readonly attacksLeft = input(0);
   readonly attacksPerAction = input(1);
+  /** No map (RN-25): the movement is a number of meters, with no squares to count. */
+  readonly theatre = input(false);
 
   protected readonly tiles = computed(() => {
     const c = this.own();

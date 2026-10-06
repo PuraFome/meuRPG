@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+
+.move {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.move__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.move__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.move__hint {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-rule);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+.move__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.move__cap {
+  flex: 1 0 100%;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  @media (min-width: 768px) {
+    flex: 0 1 auto;
+  }
+}
+
+.move__go {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  white-space: nowrap;
+
+  // On a phone the button takes its own full-width line under the stepper.
+  @media (max-width: 767.98px) {
+    --mat-button-outlined-container-height: 48px;
+    flex: 1 0 100%;
+  }
+}
+
+.move__why {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.move__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-danger-ink);
+
+  mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

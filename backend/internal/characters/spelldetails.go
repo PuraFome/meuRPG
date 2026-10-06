@@ -31,9 +31,10 @@ func (s *Service) GetSpellDetails(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
-	// A table spell the master archived is not shown to a player (RN-23), unless one
-	// of their own sheets in the campaign uses it: it answers as an unknown spell.
-	if content.Archived(req.Msg.GetSpellKey()) && !isMaster(m) {
+	// A spell the master archived or switched off is not shown to a player (RN-23),
+	// unless one of their own sheets in the campaign uses it: it answers as an
+	// unknown spell.
+	if content.Hidden(req.Msg.GetSpellKey()) && !isMaster(m) {
 		uses, err := s.callerUses(ctx, m, req.Msg.GetSpellKey())
 		if err != nil {
 			return nil, s.dbError(ctx, "read the caller's sheets", err)
@@ -44,8 +45,8 @@ func (s *Service) GetSpellDetails(
 	}
 	out := spellDetailsToProto(d)
 	if !isMaster(m) {
-		// The classes whose list has the spell: an archived one is not named to a player.
-		out.Spell.ClassKeys = slices.DeleteFunc(slices.Clone(out.GetSpell().GetClassKeys()), content.Archived)
+		// The classes whose list has the spell: a hidden one is not named to a player.
+		out.Spell.ClassKeys = slices.DeleteFunc(slices.Clone(out.GetSpell().GetClassKeys()), content.Hidden)
 	}
 	out.HitPointEffect = hitPointEffect(content, req.Msg.GetSpellKey(), d.Spell.Level)
 	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil

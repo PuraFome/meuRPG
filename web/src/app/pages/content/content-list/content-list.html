@@ -1,0 +1,217 @@
+@let s = state();
+@if (s.status !== 'not-found') {
+  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para a campanha
+  </a>
+}
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Conteúdo da mesa</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando o conteúdo da mesa" />
+        Carregando o conteúdo da mesa...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir o conteúdo da mesa</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ready') {
+    <header class="head">
+      <div class="head__text">
+        <h1 class="mr-page-title" tabindex="-1" #title>Conteúdo da mesa</h1>
+        @if (!isMaster()) {
+          <p class="mr-page-lead">{{ s.ctx.campaignName }} · o que o mestre criou para esta campanha</p>
+        } @else if (phone()) {
+          <p class="mr-page-lead">{{ s.ctx.campaignName }} · você é o mestre</p>
+        } @else {
+          <p class="mr-page-lead">{{ s.ctx.campaignName }} · O que você cadastra aqui vale só nesta campanha. O SRD continua valendo.</p>
+        }
+      </div>
+      @if (isMaster() && !phone()) {
+        <a matButton="outlined" class="head__action" [routerLink]="['/campanhas', campaignId(), 'regras']">Regras da mesa</a>
+      }
+    </header>
+
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+    @if (actionError()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ actionError() }}</p>
+      </div>
+    }
+
+    @if (!isMaster()) {
+      <!-- A player: every entry that is on, in full, kind by kind. The server left out the archived ones and the counts. -->
+      @if (panels().length === 0) {
+        <section class="mr-panel" aria-labelledby="empty-t">
+          <h2 class="mr-panel__title" id="empty-t">Nada cadastrado ainda</h2>
+          <p class="muted">O mestre ainda não criou nada para esta mesa. O SRD continua valendo.</p>
+        </section>
+      }
+      @for (p of panels(); track p.nav.slug) {
+        <section class="mr-panel kind" [attr.aria-labelledby]="'kind-' + p.nav.slug">
+          <div class="kind__head">
+            <h2 class="mr-panel__title" [id]="'kind-' + p.nav.slug">{{ p.nav.plural }}</h2>
+            <span class="count" aria-label="{{ p.rows.length }} {{ p.rows.length === 1 ? 'opção' : 'opções' }}">{{ p.rows.length }}</span>
+          </div>
+          <ul class="mr-list">
+            @for (e of p.rows; track e.key) {
+              <li>
+                <a class="row row--read" [routerLink]="link(e)">
+                  <span class="row__text">
+                    <span class="row__name">{{ e.namePt }}</span>
+                    <span class="row__sub">{{ support(e) }}</span>
+                    <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+                  </span>
+                  <mat-icon class="row__go" aria-hidden="true">chevron_right</mat-icon>
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    } @else if (phone()) {
+      <!-- The master on a phone: reads and archives (E10-01 state 10). -->
+      <div class="mr-notice mr-notice--neutral">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.</p>
+      </div>
+      <app-select-field label="Tipo" [options]="kindOptions()" [value]="slug()" (valueChange)="pickKind($event)" />
+      <section class="mr-panel" [attr.aria-label]="current().plural">
+        @if (rows().length === 0) {
+          <p class="muted">Nada cadastrado ainda.</p>
+        } @else {
+          <ul class="mr-list">
+            @for (e of rows(); track e.key) {
+              <li class="prow" [class.row--archived]="e.archived">
+                <a class="prow__text" [routerLink]="link(e)">
+                  <span class="row__name">{{ e.namePt }}</span>
+                  <span class="row__sub">{{ support(e) }}</span>
+                  @if (stateOf(e); as st) {
+                    <span class="mr-tag">
+                      @if (st.archived) {
+                        <mat-icon aria-hidden="true">archive</mat-icon>
+                      }{{ st.text }}
+                    </span>
+                  }
+                </a>
+                <button
+                  type="button"
+                  class="prow__btn"
+                  [attr.aria-label]="(e.archived ? 'Desarquivar ' : 'Arquivar ') + e.namePt"
+                  [disabled]="busyKey() === e.key"
+                  (click)="toggleArchive(e)"
+                >
+                  <mat-icon aria-hidden="true">{{ e.archived ? 'unarchive' : 'archive' }}</mat-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+      <p class="limit">{{ entries().length }} de 300 entradas na campanha.</p>
+    } @else {
+      <!-- The master on a laptop (E10-01 states 1 and 2). -->
+      <div class="layout">
+        <nav class="menu mr-panel" aria-label="Tipos de conteúdo">
+          <ul class="menu__list">
+            @for (n of nav; track n.slug) {
+              <li>
+                <a
+                  class="menu__item"
+                  [routerLink]="[]"
+                  [queryParams]="{ tipo: n.slug }"
+                  [attr.aria-current]="slug() === n.slug ? 'page' : null"
+                  [class.menu__item--on]="slug() === n.slug"
+                >
+                  <span>{{ n.plural }}</span>
+                  <span class="menu__count">{{ counts().get(n.slug) }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+          <p class="menu__limit">{{ limit() }}</p>
+        </nav>
+
+        <section class="mr-panel list" [attr.aria-labelledby]="'list-t'">
+          <div class="list__head">
+            <h2 class="mr-panel__title" id="list-t">{{ current().plural }}</h2>
+            @if (current().editable && counts().get(current().slug)) {
+              <span class="list__actions">
+                @if (current().slug === 'racas') {
+                  <a matButton="outlined" [routerLink]="newSubraceLink()"><mat-icon aria-hidden="true">add</mat-icon>Nova sub-raça</a>
+                }
+                <a matButton="filled" [routerLink]="newLink(current())"><mat-icon aria-hidden="true">add</mat-icon>{{ current().newLabel }}</a>
+              </span>
+            }
+          </div>
+          @if (counts().get(current().slug) === 0) {
+            <div class="empty">
+              <mat-icon aria-hidden="true">menu_book</mat-icon>
+              <div>
+                <p class="empty__title">Nada cadastrado ainda.</p>
+                <p class="muted">O que você cadastrar aqui vale só em {{ s.ctx.campaignName }}.</p>
+              </div>
+            </div>
+            @if (current().editable) {
+              <div class="empty__new">
+                @if (current().slug === 'racas') {
+                  <a matButton="outlined" [routerLink]="newSubraceLink()"><mat-icon aria-hidden="true">add</mat-icon>Nova sub-raça</a>
+                }
+                <a matButton="filled" [routerLink]="newLink(current())"><mat-icon aria-hidden="true">add</mat-icon>{{ current().newLabel }}</a>
+              </div>
+            }
+          } @else {
+            <div class="filters">
+              <app-text-field [label]="'Buscar pelo nome'" [value]="query()" (valueChange)="setQuery($event)" />
+              <app-select-field label="Mostrar" [options]="filterOptions" [value]="filter()" (valueChange)="setFilter($event)" />
+            </div>
+            @if (rows().length === 0) {
+              <p class="muted" role="status">Nenhuma entrada com esta busca. Mude a busca ou o filtro.</p>
+            } @else {
+              <ul class="mr-list">
+                @for (e of rows(); track e.key) {
+                  <li>
+                    <a class="row" [class.row--archived]="e.archived" [routerLink]="link(e)">
+                      <span class="row__text">
+                        <span class="row__name">{{ e.namePt }}</span>
+                        <span class="row__sub">{{ support(e) }}</span>
+                      </span>
+                      @if (stateOf(e); as st) {
+                        <span class="mr-tag">
+                          @if (st.archived) {
+                            <mat-icon aria-hidden="true">archive</mat-icon>
+                          }{{ st.text }}
+                        </span>
+                      }
+                      <mat-icon class="row__go" aria-hidden="true">chevron_right</mat-icon>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        </section>
+      </div>
+    }
+  }
+}

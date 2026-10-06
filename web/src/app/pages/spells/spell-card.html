@@ -1,0 +1,48 @@
+<article class="card" aria-labelledby="spell-card-title">
+  <header class="card__head">
+    <h2 class="card__title" id="spell-card-title" tabindex="-1">{{ title() }}</h2>
+    @if (details(); as d) {
+      @if (d.table) {
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      }
+      @if (d.archived) {
+        <span class="mr-tag"><mat-icon aria-hidden="true">inventory_2</mat-icon>Arquivada</span>
+      }
+    }
+  </header>
+
+  @switch (state().status) {
+    @case ('loading') {
+      <p class="card__wait" role="status"><mat-spinner diameter="20" aria-hidden="true" /> Carregando a descrição…</p>
+    }
+    @case ('error') {
+      @if (state(); as s) {
+        @if (s.status === 'error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+          @if (s.canRetry) {
+            <button matButton="outlined" type="button" class="card__retry" (click)="retry.emit()">Tentar de novo</button>
+          }
+        }
+      }
+    }
+    @case ('ready') {
+      @if (details(); as d) {
+        <p class="card__line">
+          @if (english()) {
+            <span lang="en">{{ english() }}</span> ·
+          }
+          {{ line() }}
+        </p>
+        <app-spell-body [details]="d" [plain]="true" />
+        @if (!d.table) {
+          <p class="card__credit">
+            Texto do SRD 5.1, em inglês. <a routerLink="/creditos">Créditos</a>
+          </p>
+        }
+      }
+    }
+  }
+</article>

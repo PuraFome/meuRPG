@@ -69,6 +69,13 @@ type Character struct {
 	MonsterKey, ChallengeRating string
 }
 
+// PartyMember is a player's character as an encounter's budget reads it (MR-043):
+// its name and its total level.
+type PartyMember struct {
+	ID, Name string
+	Level    int
+}
+
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's
 // width and down its height. The zero Grid means the map has none.
 type Grid struct {

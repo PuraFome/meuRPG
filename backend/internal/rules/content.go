@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -69,10 +70,17 @@ type content struct {
 	magicUnits map[string][]MagicItemUnit
 	// consumables are the keys of the single-use items (effects/consumables.json).
 	consumables map[string]bool
+	// treasure is the generator's content: the SRD 5.2.1 values of the magic
+	// items and our tables of coins, gems and art (effects/magic_item_values.json
+	// and effects/treasure.json).
+	treasure treasureTables
 	// traps are the trap presets and the SRD's severity tables
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
 	lights []LightPreset
+	// encounterBudget is the XP per character of each level, band by band, index 0
+	// being level 1 (effects/encounter_budget.json, SRD 5.2.1).
+	encounterBudget []encounter.Budget
 	// standardActions are the actions every character has.
 	standardActions []Action
 	// levelXP[n-1] is the XP to reach level n, and ratings the SRD's challenge
@@ -118,7 +126,10 @@ type content struct {
 	listFrom      map[string]string
 	offeredBy     map[string][]string
 	archived      map[string]bool
-	spellTargets  map[string]SpellTarget
+	// off are the keys (the SRD's and the table's) the master switched off for the
+	// players ("Opções para os jogadores", RN-23); empty without a table layer.
+	off          map[string]bool
+	spellTargets map[string]SpellTarget
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
 	srdTargets  map[string]SpellTarget
@@ -257,6 +268,9 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.loadLights(fsys); err != nil {
 		return nil, err
 	}
+	if err := c.loadEncounterBudget(fsys); err != nil {
+		return nil, err
+	}
 	if err := c.loadMagicItemEffects(fsys); err != nil {
 		return nil, err
 	}
@@ -267,6 +281,9 @@ func load(fsys fs.FS) (*content, error) {
 	c.buildCatalog(nil)
 	c.buildCreatures()
 	c.buildMagicItems()
+	if err := c.loadTreasure(fsys); err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -397,7 +414,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json, spells.json, traps.json, lights.json and consumables.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json, consumables.json, magic_item_values.json and treasure.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -406,7 +423,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
 			continue
 		}
 		var f struct {
@@ -578,13 +595,13 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		cat.Races = append(cat.Races, RaceEntry{
 			Key: k, Name: r.Name, NamePT: c.namePT(k), SpeedFt: r.SpeedFt, Size: r.Size,
 			AbilityBonuses: abilityMap(r.AbilityBonuses), Subraces: r.Subraces,
-			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k],
+			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.subraces) {
 		s := c.subraces[k]
 		cat.Subraces = append(cat.Subraces, SubraceEntry{
-			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k],
+			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.classes) {
@@ -592,7 +609,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		e := ClassEntry{
 			Key: k, Name: cl.Name, NamePT: c.namePT(k), HitDie: cl.HitDie,
 			SkillChoices: cl.SkillChoices.Choose, SkillOptions: cl.SkillChoices.From,
-			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k],
+			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k], Off: c.off[k],
 			SpellListFrom: c.listFrom[k],
 		}
 		for _, s := range cl.SavingThrows {
@@ -617,7 +634,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	}
 	for _, k := range sortedKeys(c.subclasses) {
 		s := c.subclasses[k]
-		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k]}
+		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k], Off: c.off[k]}
 		if cast, ok := c.subCasting[k]; ok {
 			sc := &SubclassCasting{
 				Kind: cast.effect.Progression, Ability: Ability(cast.effect.Ability), Preparation: preparation(cast.effect),
@@ -636,7 +653,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	}
 	for _, k := range sortedKeys(c.backgrounds) {
 		b := c.backgrounds[k]
-		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills, EquipmentPT: c.bgEquipment[k], Archived: c.archived[k]})
+		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills, EquipmentPT: c.bgEquipment[k], Archived: c.archived[k], Off: c.off[k]})
 	}
 	for _, k := range c.skillOrder {
 		s := c.skills[k]
@@ -676,11 +693,11 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 			Key: k, Name: s.Name, NamePT: c.namePT(k), Level: s.Level,
 			School: s.School, SchoolNamePT: c.namePT(s.School),
 			Classes: c.spellClasses(s), Ritual: s.Ritual, Concentration: s.Concentration,
-			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k],
+			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k], Off: c.off[k],
 		}
 		cat.Spells = append(cat.Spells, e)
 		c.spellEntries[k] = e
-		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && slices.Equal(d.Spell.Classes, e.Classes) {
+		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && d.Spell.Off == e.Off && slices.Equal(d.Spell.Classes, e.Classes) {
 			c.spellDetails[k] = d
 			continue
 		}
@@ -711,6 +728,20 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	sortPT(cat.Weapons, func(e WeaponEntry) string { return e.NamePT })
 	sortPT(cat.Spells, func(e SpellEntry) string { return e.NamePT })
 	cat.ChallengeRatings = slices.Clone(c.ratings)
+	for _, k := range sortedKeys(c.languages) {
+		cat.Languages = append(cat.Languages, NamedEntry{Key: k, NamePT: c.namePT(k)})
+	}
+	for _, k := range sortedKeys(c.proficiencies) {
+		cat.Proficiencies = append(cat.Proficiencies, NamedEntry{Key: k, NamePT: c.proficiencyNamePT(k)})
+	}
+	for _, k := range sortedKeys(c.named) {
+		if strings.HasPrefix(k, "damage-type:") {
+			cat.DamageTypes = append(cat.DamageTypes, NamedEntry{Key: k, NamePT: c.namePT(k)})
+		}
+	}
+	sortPT(cat.Languages, func(e NamedEntry) string { return e.NamePT })
+	sortPT(cat.Proficiencies, func(e NamedEntry) string { return e.NamePT })
+	sortPT(cat.DamageTypes, func(e NamedEntry) string { return e.NamePT })
 	c.catalog = cat
 }
 
