@@ -361,7 +361,7 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 			return
 		}
 		e.set = loadLayers(stored, in.g)
-		if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Base: in.base, Painted: e.set.light, Sources: sources}); err != nil {
+		if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources}); err != nil {
 			e.err = fmt.Errorf("compile the map's light: %w", err)
 		}
 	}
@@ -660,7 +660,7 @@ func (p *playerView) revision() int32 {
 		return hashOf(p.pack())
 	}
 	f := filterLayers(*p.layers, p)
-	return hashOf(p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode())
+	return hashOf(p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode())
 }
 
 // hashOf is a 31-bit hash of bytes, for the revisions the app compares.

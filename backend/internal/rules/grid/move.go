@@ -84,6 +84,11 @@ type Terrain struct {
 	// Cover is the painted cover: three-quarters squares block movement
 	// like a wall (but not sight or light), half-cover squares can be crossed.
 	Cover *CoverLayer
+	// Doors are the doors (RN-26): a closed one is crossed by opening it (Move
+	// and MoveUntil say which), a locked, barred or secret one blocks the move,
+	// and closed, locked and secret ones are walls for cover (and, through
+	// SightWalls, for sight and light).
+	Doors *DoorLayer
 }
 
 // ErrBadGrid is returned for a grid a map cannot have, or a layer sized for
@@ -98,21 +103,36 @@ func (t Terrain) Validate() error {
 	if !t.Grid.Valid() {
 		return ErrBadGrid
 	}
-	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) {
+	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) {
 		return ErrBadGrid
 	}
 	return nil
 }
 
-// wall says whether a square is a wall: it blocks sight, light and movement.
+// SightWalls is what stops sight and light on the terrain: the walls and the
+// closed, locked and secret doors.
+func (t Terrain) SightWalls() *Layer { return SightWalls(t.Walls, t.Doors) }
+
+// door is the door on a square.
+func (t Terrain) door(sq Square) Door { return t.Doors.Get(sq.Col, sq.Row) }
+
+// wall says whether a square is a wall for cover: it blocks sight and light.
+// A closed, locked or secret door counts as one.
 func (t Terrain) wall(sq Square) bool {
-	return !t.Grid.Contains(sq) || t.Walls.Has(sq)
+	return !t.Grid.Contains(sq) || t.Walls.Has(sq) || t.door(sq).BlocksSight()
 }
 
-// solid says whether a square blocks movement: a wall, or a square of
-// three-quarters cover.
+// solidGround says whether a square blocks movement whatever its door: a wall,
+// or a square of three-quarters cover.
+func (t Terrain) solidGround(sq Square) bool {
+	return !t.Grid.Contains(sq) || t.Walls.Has(sq) || t.Cover.Get(sq.Col, sq.Row) == CoverThreeQuarters
+}
+
+// solid says whether a square blocks movement: a wall, a square of
+// three-quarters cover, or a door that does not open by walking into it
+// (locked, barred, secret). A closed door does not: the move opens it.
 func (t Terrain) solid(sq Square) bool {
-	return t.wall(sq) || t.Cover.Get(sq.Col, sq.Row) == CoverThreeQuarters
+	return t.solidGround(sq) || t.door(sq).BlocksMove()
 }
 
 // Mover says how a creature moves. A flier ignores difficult terrain (walls
@@ -150,7 +170,14 @@ func lengthDFt(from, to Square) int {
 // blocked says whether a step cannot be entered: its square blocks movement,
 // or the line squeezes between two squares that do and touch at a corner.
 func (t Terrain) blocked(s Step) bool {
-	return t.solid(s.Square) || (s.Corner && t.solid(s.SideA) && t.solid(s.SideB))
+	return t.solid(s.Square) || (s.Corner && t.squeezes(s.SideA) && t.squeezes(s.SideB))
+}
+
+// squeezes says whether a square closes one side of a corner step, the way it
+// does for sight (Sight.Clear): whatever blocks movement, and also a closed door,
+// which a move opens only by entering its square, not by slipping past its corner.
+func (t Terrain) squeezes(sq Square) bool {
+	return t.solid(sq) || t.door(sq) == DoorClosed
 }
 
 // Move is the result of one straight move.
@@ -168,6 +195,10 @@ type Move struct {
 	CostDFt int
 	// Entered are the squares the line enters, in order, the destination last.
 	Entered []Square
+	// Opens are the closed doors the line enters, in order: the move opens
+	// them (RN-26). Planning with this move opens nothing; the caller that really
+	// moves does.
+	Opens []Square
 }
 
 // Move is the cost of a straight move from one square to another (D1): the
@@ -177,7 +208,7 @@ type Move struct {
 // hostile or not). A flier pays no extra for difficult terrain.
 //
 // The move is blocked by a wall, a square of three-quarters cover, a squeeze
-// between two of them, a hostile creature the mover cannot pass (it can only
+// between two of them, a locked, barred or secret door, a hostile creature the mover cannot pass (it can only
 // when the two are two sizes apart), and by ending in a square another
 // creature holds (a Tiny creature may share a square with another Tiny one).
 func (t Terrain) Move(from, to Square, occ Occupants, m Mover) Move {
@@ -187,7 +218,8 @@ func (t Terrain) Move(from, to Square, occ Occupants, m Mover) Move {
 // Jump is the cost of a long jump between two squares: the length of the line,
 // with no extra for difficult terrain or creatures on the way (the jumper
 // clears them). It cannot cross a wall or a square of three-quarters cover,
-// and it cannot end in a square another creature holds.
+// nor a door that is not open (a jumper cannot open one on the way), and it
+// cannot end in a square another creature holds.
 func (t Terrain) Jump(from, to Square, occ Occupants, m Mover) Move {
 	return t.walk(from, to, occ, m, true)
 }
@@ -200,7 +232,17 @@ func (t Terrain) walk(from, to Square, occ Occupants, m Mover, clears bool) Move
 	res := Move{CostDFt: lengthDFt(from, to), Entered: make([]Square, 0, len(line))}
 	for _, s := range line {
 		if t.blocked(s) {
-			return Move{Blocked: true, By: StopWall}
+			by := StopWall
+			if t.door(s.Square) == DoorLocked && !t.solidGround(s.Square) {
+				by = StopLocked
+			}
+			return Move{Blocked: true, By: by}
+		}
+		if t.door(s.Square) == DoorClosed {
+			if clears {
+				return Move{Blocked: true, By: StopWall}
+			}
+			res.Opens = append(res.Opens, s.Square)
 		}
 		res.Entered = append(res.Entered, s.Square)
 		o, occupied := occupantAt(occ, s.Square)
@@ -231,6 +273,8 @@ const (
 	// StopWall: the next square is a wall, a square of three-quarters cover or
 	// a squeeze between two of them.
 	StopWall StopReason = "wall"
+	// StopLocked: the next square is a locked door (RN-26).
+	StopLocked StopReason = "locked"
 	// StopMarked: the mover entered a square of the stop set (a trap's area)
 	// and stops there.
 	StopMarked StopReason = "marked"
@@ -261,6 +305,12 @@ type Stopped struct {
 	// Reached is an earlier square.
 	Marked   bool
 	MarkedAt Square
+	// Opens are the closed doors the mover really entered (Entered, so only up to
+	// Reached), in order: the move opens them (RN-26).
+	Opens []Square
+	// LockedAt is the locked door that stopped the move, when Reason is
+	// StopLocked: the square right after Reached on the line.
+	LockedAt Square
 }
 
 // MoveUntil is the move as it really happens when the mover may not know all
@@ -269,7 +319,9 @@ type Stopped struct {
 // server runs the plan here with what is really there: the move follows the
 // line and ends
 //
-//   - before the first wall, square of three-quarters cover or squeeze;
+//   - before the first wall, square of three-quarters cover, squeeze, barred or
+//     secret door, and before a locked door (StopLocked: the mover walked up to
+//     it and could not open it);
 //   - before a hostile creature it cannot pass;
 //   - before the first square it cannot afford with the movement left (left,
 //     in tenths of a foot; pass math.MaxInt for no limit, as for the master),
@@ -301,6 +353,9 @@ walk:
 		switch {
 		case t.blocked(s):
 			reason = StopWall
+			if t.door(s.Square) == DoorLocked && !t.solidGround(s.Square) {
+				reason, res.LockedAt = StopLocked, s.Square
+			}
 			break walk
 		case occupied && !m.passes(o):
 			reason = StopOccupied
@@ -333,7 +388,7 @@ walk:
 			break
 		}
 		entered, costs = entered[:len(entered)-1], costs[:len(costs)-1]
-		if !res.Marked {
+		if !res.Marked && reason != StopLocked { // the lock is the better answer
 			reason = StopOccupied
 		}
 	}
@@ -346,6 +401,11 @@ walk:
 	}
 	res.Reason = reason
 	res.Entered = entered
+	for _, sq := range entered {
+		if t.door(sq) == DoorClosed {
+			res.Opens = append(res.Opens, sq)
+		}
+	}
 	return res
 }
 

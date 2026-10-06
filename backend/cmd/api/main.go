@@ -83,6 +83,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
 
+// The maps module opens the doors the combat walks into (RN-26): play picks it up
+// from SetTerrain by a type assertion, so a drifted signature must fail here.
+var (
+	_ play.TerrainSource = (*maps.Service)(nil)
+	_ play.DoorKeeper    = (*maps.Service)(nil)
+)
+
 // Build information, replaced at build time with:
 //
 //	go build -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse HEAD)"
@@ -199,9 +206,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Pool:     pool,
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			Rules:    rulesContent,
-			Dice:     levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
-			Logger:   logger,
+			// Every campaign plays with the SRD until the table's own content (MR-025)
+			// arrives; SRD is the base content for what no table changes (the conditions).
+			Content: characters.NewSRDSource(rulesContent),
+			SRD:     rulesContent,
+			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
+			Logger:  logger,
 		})
 		if err != nil {
 			return err
@@ -244,9 +254,11 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Blobs:      blobs,             // nil: images are off
 			Characters: charactersService, // the characters that may stand on a map (MR-012)
 			Live:       playService,       // the current map, and where map changes go (RN-10)
-			Rules:      rulesContent,      // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
-			Combats:    playService,       // whether a combat runs on a map: its grid and image cannot change then (MR-034)
-			Logger:     logger,
+			// maps stays on the base SRD: it reads only presets, damage types,
+			// conditions and skills, which no table's content changes (MR-025, ADR-0018).
+			Rules:   rulesContent, // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
+			Combats: playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
+			Logger:  logger,
 		})
 		if err != nil {
 			return err

@@ -139,6 +139,8 @@ type levelUpTarget struct {
 	// classKey is the class that gains the level; idx its place in the sheet.
 	classKey string
 	idx      int
+	// content is the campaign's rules content, read in the caller's transaction.
+	content *rules.Content
 }
 
 // newLevelUpTarget runs the checks every guided level-up call shares, on a
@@ -165,7 +167,11 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if row.Kind != kindPlayer || full == nil || s.levelUps == nil {
 		return levelUpTarget{}, cannot
 	}
-	d := rules.Derive(buildOf(full), s.rules)
+	content, err := s.contentFor(ctx, tx, m.CampaignID)
+	if err != nil {
+		return levelUpTarget{}, wrap("read rules content", err)
+	}
+	d := rules.Derive(buildOf(full), content)
 	reason, err := s.levelUps.LevelUpReason(ctx, tx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
 	if err != nil {
 		return levelUpTarget{}, wrap("check the level up", err)
@@ -176,7 +182,7 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	build := buildOf(full)
 	// A sheet that does not pass today's rules by itself cannot be fixed by
 	// the level's choices: it is the master's to correct.
-	if err := rules.Validate(build, s.rules); err != nil {
+	if err := rules.Validate(build, content); err != nil {
 		field := ""
 		if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
 			field = ve.Field
@@ -192,7 +198,7 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if idx < 0 {
 		return levelUpTarget{}, invalidArgument(fieldErr("class_key", "is not a class of the character"))
 	}
-	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx}, nil
+	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content}, nil
 }
 
 // readLevelUpTarget is newLevelUpTarget for a read: the row is not locked.
@@ -233,7 +239,7 @@ func (s *Service) GetLevelUpOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the level up options", err)
 	}
-	offer, err := rules.LevelUpOptions(t.build, t.classKey, s.rules)
+	offer, err := rules.LevelUpOptions(t.build, t.classKey, t.content)
 	if err != nil {
 		return nil, levelUpRulesError(err)
 	}
@@ -279,7 +285,7 @@ func (s *Service) PreviewLevelUp(
 		return nil, s.dbError(ctx, "preview a level up", err)
 	}
 	return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{
-		After:   derivedToProto(rules.Derive(buildOf(plan.sheet), s.rules)),
+		After:   derivedToProto(rules.Derive(buildOf(plan.sheet), t.content)),
 		Refusal: plan.refusal,
 	}), nil
 }
@@ -322,7 +328,7 @@ func (s *Service) RollLevelUpHitPoints(
 		if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL {
 			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL, row.ID)
 		}
-		offer, lerr := rules.LevelUpOptions(t.build, t.classKey, s.rules)
+		offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
 		if lerr != nil {
 			return levelUpRulesError(lerr)
 		}
@@ -387,6 +393,10 @@ func (s *Service) LevelUpCharacter(
 		return nil, invalidArgument(fieldErr("choices.hit_points.method", "is required"))
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var row charactersdb.Character
 	var leveled bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -457,7 +467,7 @@ func (s *Service) LevelUpCharacter(
 	if leveled && s.live != nil {
 		s.live.PublishXPChanged(m.CampaignID)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a leveled up character", err)
 	}
@@ -515,6 +525,10 @@ func (s *Service) ListLevelUps(
 	if err != nil {
 		return nil, s.dbError(ctx, "read display names", err)
 	}
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	for _, row := range rows {
 		choices := &charactersv1.LevelUpChoices{}
 		if err := loadJSON.Unmarshal(row.Choices, choices); err != nil {
@@ -523,9 +537,9 @@ func (s *Service) ListLevelUps(
 		res.LevelUps = append(res.LevelUps, &charactersv1.LevelUp{
 			Id: row.ID, CharacterId: row.CharacterID, CharacterName: row.CharacterName,
 			PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
-			ClassKey:          row.ClassKey, ClassNamePt: s.rules.NamePT(row.ClassKey),
+			ClassKey:          row.ClassKey, ClassNamePt: content.NamePT(row.ClassKey),
 			FromLevel: row.FromLevel, ToLevel: row.ToLevel,
-			Choices: choices, NamesPt: s.levelUpNames(row.ClassKey, choices),
+			Choices: choices, NamesPt: levelUpNames(content, row.ClassKey, choices),
 			CreatedAt: timestamppb.New(row.CreatedAt),
 		})
 	}
@@ -533,12 +547,12 @@ func (s *Service) ListLevelUps(
 }
 
 // levelUpNames names every content key a level-up's choices hold.
-func (s *Service) levelUpNames(classKey string, c *charactersv1.LevelUpChoices) map[string]string {
+func levelUpNames(content *rules.Content, classKey string, c *charactersv1.LevelUpChoices) map[string]string {
 	names := map[string]string{}
 	keys := slices.Concat([]string{classKey, c.GetSubclassKey()}, c.GetCantripKeys(), c.GetKnownSpellKeys(),
 		c.GetPreparedSpellKeys(), c.GetFeatureChoiceKeys(), c.GetSkillProficiencyKeys(), c.GetExpertiseSkillKeys())
 	for _, k := range keys {
-		if name := s.rules.NamePT(k); k != "" && name != "" {
+		if name := content.NamePT(k); k != "" && name != "" {
 			names[k] = name
 		}
 	}
@@ -620,7 +634,7 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 	if err := checkLevelUpChoices(choices); err != nil {
 		return levelUpPlan{}, invalidArgument(err)
 	}
-	offer, lerr := rules.LevelUpOptions(t.build, t.classKey, s.rules)
+	offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
 	if lerr != nil {
 		return levelUpPlan{}, levelUpRulesError(lerr)
 	}
@@ -678,18 +692,18 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 	plan.record.HitPoints = &charactersv1.LevelUpHitPoints{Method: method, Value: i32(value)}
 
 	// The new Build, written onto a copy of the stored sheet.
-	after, err := rules.ApplyLevelUp(t.build, levelUpChoicesFromProto(t.classKey, choices, hp), s.rules)
+	after, err := rules.ApplyLevelUp(t.build, levelUpChoicesFromProto(t.classKey, choices, hp), t.content)
 	if err != nil {
 		return levelUpPlan{}, levelUpRulesError(err)
 	}
 	plan.sheet = applyLevelUp(t.full, after, t.idx)
-	checked, err := s.checkSheet(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
+	checked, err := checkSheet(t.content, &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
 	if err != nil {
 		return levelUpPlan{}, invalidArgument(err)
 	}
 	plan.sheet = checked.GetFull()
 	if plan.refusal == nil {
-		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), s.rules); err != nil {
+		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content); err != nil {
 			le, ok := errors.AsType[*rules.LevelUpError](err)
 			if !ok {
 				return levelUpPlan{}, err

@@ -69,6 +69,10 @@ func (s *Service) Party(ctx context.Context, campaignID string) ([]link.Member, 
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party", err)
 	}
+	content, err := s.contentFor(ctx, nil, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := make([]link.Member, 0, len(rows))
 	for _, row := range rows {
 		sheet, err := loadSheet(row.ID, row.Sheet)
@@ -79,7 +83,7 @@ func (s *Service) Party(ctx context.Context, campaignID string) ([]link.Member, 
 		if full == nil {
 			continue // never: a player character has a full sheet
 		}
-		d := rules.Derive(buildOf(full), s.rules)
+		d := rules.Derive(buildOf(full), content)
 		out = append(out, link.Member{
 			ID: row.ID, Name: row.Name, PlayerUserID: deref(row.PlayerUserID),
 			Level: i32(d.TotalLevel), XP: full.GetExperiencePoints(), NextLevelXP: i32(d.NextLevelXP),

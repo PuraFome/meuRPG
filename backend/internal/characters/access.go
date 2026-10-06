@@ -108,8 +108,9 @@ func blockedReason(state charactersv1.CharacterState) charactersv1.CharacterBloc
 
 // characterToProto builds the Character a member sees: m is the caller,
 // who may see the row (canSee), and playerDisplayName the owning player's
-// display name. A full sheet gets its derived numbers.
-func (s *Service) characterToProto(row charactersdb.Character, m authz.Membership, playerDisplayName string) (*charactersv1.Character, error) {
+// display name. A full sheet gets its derived numbers, from content (the
+// campaign's).
+func (s *Service) characterToProto(content *rules.Content, row charactersdb.Character, m authz.Membership, playerDisplayName string) (*charactersv1.Character, error) {
 	sheet, err := loadSheet(row.ID, row.Sheet)
 	if err != nil {
 		return nil, err
@@ -145,7 +146,7 @@ func (s *Service) characterToProto(row charactersdb.Character, m authz.Membershi
 		CanApprove:           master && state == charactersv1.CharacterState_CHARACTER_STATE_PENDING,
 	}
 	if full := sheet.GetFull(); full != nil {
-		c.Derived = derivedToProto(rules.Derive(buildOf(full), s.rules))
+		c.Derived = derivedToProto(rules.Derive(buildOf(full), content))
 	}
 	return c, nil
 }

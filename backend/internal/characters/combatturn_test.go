@@ -17,7 +17,7 @@ import (
 func TestBasicSheetFeedsTheTurnOptions(t *testing.T) {
 	t.Parallel()
 	s := offlineService(t)
-	d := s.basicDerived(&charactersv1.BasicSheet{
+	d := basicDerived(s.srd, &charactersv1.BasicSheet{
 		HitPointsMax: 27, ArmorClass: 18, SpeedFt: 30,
 		Attacks: []*charactersv1.BasicAttack{
 			{Name: "Cimitarra", AttackBonus: 4, DamageDiceCount: 1, DamageDiceSides: 6, DamageBonus: 2, DamageType: charactersv1.DamageType_DAMAGE_TYPE_SLASHING},

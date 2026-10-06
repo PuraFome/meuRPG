@@ -34,9 +34,33 @@ type TerrainSource interface {
 	Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error)
 }
 
+// DoorKeeper opens the doors a move walks into (MR-010, RN-26). The maps module
+// implements it too (maps.Service.OpenDoors and DoorsChanged), and SetTerrain
+// picks it up from the same value, so there is nothing more to wire.
+type DoorKeeper interface {
+	// OpenDoors opens, inside tx, the doors at the squares of the map that are
+	// still closed, and returns the ones it opened. It raises the layers' revision
+	// of the map.
+	OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID string, squares []grid.Square) ([]grid.Square, error)
+	// DoorsChanged tells the watchers, after the commit, that doors of the map
+	// were opened.
+	DoorsChanged(ctx context.Context, campaignID, mapID string)
+}
+
 // SetTerrain connects the source of the maps' layers. play and maps need each
-// other, so cmd/api calls it once maps exists, before the server starts.
-func (s *Service) SetTerrain(t TerrainSource) { s.terrain = t }
+// other, so cmd/api calls it once maps exists, before the server starts. A
+// source that is also a DoorKeeper opens the doors the moves walk into; without
+// one the doors stay as they are.
+func (s *Service) SetTerrain(t TerrainSource) {
+	s.terrain = t
+	s.doors = doorKeeperOf(t)
+}
+
+// doorKeeperOf is the source as a DoorKeeper, nil when it is not one.
+func doorKeeperOf(t TerrainSource) DoorKeeper {
+	d, _ := t.(DoorKeeper)
+	return d
+}
 
 // terrainOf is the terrain of the encounter's map. The grid is the one copied
 // into the encounter when it started: layers sized for another grid (the map's
@@ -237,14 +261,16 @@ func (s *Service) MoveCombatant(
 
 	var moved playdb.Combatant
 	var made actionEvent
-	var stoppedEarly bool // a creature the player does not see cut the move short
-	var logged bool       // the move is a line of the combat log
-	var offered []string  // the reactors the move offered an attack
-	var markCleared bool  // the move took the master's cover mark off
-	var th *trapHook      // the traps the move may fire (combat_traps.go, MR-035)
-	var moveID string     // the id of the opportunity offers the move made, if any
+	var stoppedEarly bool    // a creature the player does not see cut the move short
+	var logged bool          // the move is a line of the combat log
+	var offered []string     // the reactors the move offered an attack
+	var markCleared bool     // the move took the master's cover mark off
+	var th *trapHook         // the traps the move may fire (combat_traps.go, MR-035)
+	var moveID string        // the id of the opportunity offers the move made, if any
+	var opened []grid.Square // the closed doors the move opened (RN-26)
+	var lockedDoor bool      // a locked door stopped the move (a player only learns of one they know)
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
-		logged, stoppedEarly, moveID = false, false, ""
+		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -311,7 +337,7 @@ func (s *Service) MoveCombatant(
 			if err != nil {
 				return nil, err
 			}
-			plan := planOn(terrain, known) // the walls and rubble the player knows; the rest is floor to them
+			plan := planOn(v, terrain, known) // the walls and rubble the player knows; the rest is floor to them
 			mover, origin := moverOf(target), squareOfCombatant(target)
 			left := movementLeftDFt(target)
 			switch jump {
@@ -325,6 +351,15 @@ func (s *Service) MoveCombatant(
 				}
 				st := terrain.MoveUntil(origin, to, all, mover, th.stops(), left)
 				stoppedEarly = st.Reason != grid.StopNone && (st.Reason != grid.StopMarked || st.Reached != to) // a trap's area is not "in the way" when it is where the mover went
+				if st.Reason == grid.StopLocked && doorKnown(plan, st.LockedAt) {
+					// The player learns the door is locked by trying it (RN-26). A door they
+					// do not see (the fog) is "something in the way" like any other.
+					stoppedEarly, lockedDoor = false, true
+					if len(st.Entered) == 0 {
+						return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED, "the door is locked")
+					}
+				}
+				opened = st.Opens
 				th.marked(st.Marked, st.MarkedAt)
 				to, cost = st.Reached, st.CostDFt
 				length = grid.LengthDFt(origin, to)
@@ -371,6 +406,19 @@ func (s *Service) MoveCombatant(
 				cost, last = int(height), 0
 			}
 		}
+		if v.master && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && placed(target) && terrain.Doors.Count() > 0 {
+			// The master's move is free and no wall stops it, but the doors do what they
+			// do for everyone (RN-26): it opens the closed ones on its line, and a locked,
+			// barred or secret one stops it before. The master unlocks by painting.
+			origin := squareOfCombatant(target)
+			st := grid.Terrain{Grid: terrain.Grid, Doors: terrain.Doors}.MoveUntil(origin, to, nil, moverOf(target), nil, math.MaxInt)
+			if st.Reason == grid.StopLocked && len(st.Entered) == 0 {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED, "the door is locked")
+			}
+			stoppedEarly, lockedDoor = st.Reason != grid.StopNone, st.Reason == grid.StopLocked
+			to, opened = st.Reached, st.Opens
+			length = grid.LengthDFt(origin, to)
+		}
 		newCol, newRow := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
 		// The master's cover mark clears when the combatant changes square, not
 		// when nobody moved (a high jump, a move to where it stands).
@@ -380,7 +428,7 @@ func (s *Service) MoveCombatant(
 			markCleared = coverMark != "" && coverMark != "none"
 			coverMark = "none"
 		}
-		made.StoppedEarly = stoppedEarly
+		made.StoppedEarly, made.LockedDoor = stoppedEarly, lockedDoor
 
 		used := int(target.MovementUsedDft) + cost
 		if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
@@ -406,6 +454,9 @@ func (s *Service) MoveCombatant(
 		moved.GridCol, moved.GridRow, moved.MovementUsedFt, moved.MovementUsedDft = &newCol, &newRow, clamp32(used/10, 0, math.MaxInt32), clamp32(used, 0, math.MaxInt32)
 		moved.LastMoveDft, moved.CoverMark = clamp32(last, 0, math.MaxInt32), coverMark
 		c.characterID = &target.CharacterID
+		if opened, err = s.openDoors(ctx, c, target, opened, from); err != nil {
+			return nil, err
+		}
 
 		// The log tells how far a combatant went on its turn: the line between
 		// where it was and where it goes, whoever moves it.
@@ -443,7 +494,10 @@ func (s *Service) MoveCombatant(
 			}
 		}
 		s.positionChanged(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From)) // the fog remembers what it showed
-		if logged {
+		if len(opened) > 0 && s.doors != nil && d.enc.MapID != nil {                 // the map's layers changed, and what the players see with them
+			s.doors.DoorsChanged(ctx, m.CampaignID, *d.enc.MapID)
+		}
+		if logged || len(opened) > 0 {
 			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !moved.Hidden)
 		}
 		th.after(ctx, m.CampaignID, d.enc)
@@ -456,7 +510,38 @@ func (s *Service) MoveCombatant(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the move", err)
 	}
-	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out, StoppedEarly: ev.StoppedEarly, Provoked: ev.MoveID != ""}), nil
+	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out, StoppedEarly: ev.StoppedEarly, Provoked: ev.MoveID != "", LockedDoor: ev.LockedDoor}), nil
+}
+
+// doorKnown says whether the terrain a player plans on has a door on the square:
+// they see it, or remember it (a door in the dark is not theirs to know).
+func doorKnown(plan grid.Terrain, sq grid.Square) bool {
+	return plan.Doors.At(sq) != grid.DoorNone
+}
+
+// openDoors opens, inside the move's transaction, the closed doors the mover
+// walked into (RN-26): the doors layer changes through the maps module with the
+// move's transaction, and a door_opened event is written for each door that
+// really opened, before the move's own event. The event is the door's: the
+// master's undo of the move puts the mover back but leaves the door open, as a
+// door opened stays opened. It returns the doors it opened.
+func (s *Service) openDoors(ctx context.Context, c *combatTx, mover playdb.Combatant, squares []grid.Square, from *moveState) ([]grid.Square, error) {
+	if len(squares) == 0 || s.doors == nil || c.enc.MapID == nil {
+		return nil, nil
+	}
+	opened, err := s.doors.OpenDoors(ctx, c.tx, c.session.CampaignID, *c.enc.MapID, squares)
+	if err != nil {
+		return nil, fmt.Errorf("open the doors on the way: %w", err)
+	}
+	for _, sq := range opened {
+		if err := insertEvent(ctx, c, eventDoorOpened, &c.actorUserID, nil, actionEvent{
+			Round: c.enc.Round, Secret: mover.Hidden, Actor: mover.ID,
+			Col: clamp32(sq.Col, 0, math.MaxInt32), Row: clamp32(sq.Row, 0, math.MaxInt32), From: from,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return opened, nil
 }
 
 // The two jumps as a move event keeps them.
@@ -584,7 +669,7 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
-	out := moveOptions(planOn(terrain, known), who, occupantsFor(d.cs, who, v))
+	out := moveOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
 	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
 		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
 	}

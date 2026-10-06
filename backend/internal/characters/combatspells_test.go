@@ -23,7 +23,7 @@ func TestSpellTargetingFollowsTheSRDText(t *testing.T) {
 		"spell:hold-person": false, "spell:cure-wounds": false, "spell:healing-word": false, "spell:sacred-flame": false,
 		"spell:guiding-bolt": false, "spell:magic-missile": false, "spell:shield": false, "spell:scorching-ray": false,
 	} {
-		det, ok := s.rules.SpellDetails(key)
+		det, ok := s.srd.SpellDetails(key)
 		if !ok {
 			t.Errorf("%s is not in the content", key)
 			continue
@@ -33,7 +33,7 @@ func TestSpellTargetingFollowsTheSRDText(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]bool{"spell:hold-person": true, "spell:charm-person": true, "spell:bless": true, "spell:cure-wounds": false, "spell:shield": false} {
-		det, _ := s.rules.SpellDetails(key)
+		det, _ := s.srd.SpellDetails(key)
 		if got := extraTargetRE.MatchString(joinLines(det.HigherLevel)); got != want {
 			t.Errorf("an additional target per level for %s = %v, want %v", key, got, want)
 		}

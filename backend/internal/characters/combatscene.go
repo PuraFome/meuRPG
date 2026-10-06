@@ -15,7 +15,7 @@ import (
 // check, and the DC never passes through it. `not_found` for a character that
 // is not one of the campaign's living ones.
 func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, keys []string) ([]link.SceneOption, error) {
-	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +37,7 @@ func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, chara
 // SceneCheckName implements play.CombatRoster: the Portuguese name of a scene
 // check by its key, "" for any other key.
 func (s *Service) SceneCheckName(key string) string {
-	name, _ := s.rules.SceneCheckName(key)
+	// The skills are the SRD's: no table content adds one (plan D1).
+	name, _ := s.srd.SceneCheckName(key)
 	return name
 }

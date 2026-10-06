@@ -72,7 +72,7 @@ func (noMembers) ClearPendingExpiry(context.Context, pgx.Tx, string, string) err
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()
-	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Rules: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(loadRules(t)), SRD: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -83,10 +83,11 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool, content := lazyPool(t), loadRules(t)
 	for name, cfg := range map[string]Config{
-		"no Pool":     {Profiles: noProfiles{}, Members: noMembers{}, Rules: content},
-		"no Profiles": {Pool: pool, Members: noMembers{}, Rules: content},
-		"no Members":  {Pool: pool, Profiles: noProfiles{}, Rules: content},
-		"no Rules":    {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}},
+		"no Pool":     {Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(content), SRD: content},
+		"no Profiles": {Pool: pool, Members: noMembers{}, Content: NewSRDSource(content), SRD: content},
+		"no Members":  {Pool: pool, Profiles: noProfiles{}, Content: NewSRDSource(content), SRD: content},
+		"no Content":  {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}, SRD: content},
+		"no SRD":      {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(content)},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() with %s succeeded", name)
@@ -263,7 +264,7 @@ func TestPermissions(t *testing.T) {
 		{"owner, pending", row(kindPlayer, statusPending, nil, false), pendingOwner, [6]bool{true, true, false, false, false, false}},
 	}
 	for _, tt := range tests {
-		c, err := svc.characterToProto(tt.row, tt.m, "")
+		c, err := svc.characterToProto(loadRules(t), tt.row, tt.m, "")
 		if err != nil {
 			t.Fatalf("%s: characterToProto() error = %v", tt.name, err)
 		}
@@ -489,15 +490,13 @@ func TestCatalogToProto(t *testing.T) {
 // is not package rules' gives invalid_argument naming the field.
 func TestCheckSheet(t *testing.T) {
 	t.Parallel()
-	svc := offlineService(t)
-
 	sheet := pensantusSheet()
 	full := sheet.GetFull()
 	full.Equipment[0].Name = "  Grimório  "
 	full.GetCustomBackground().Name = " Sábio "
 	full.Languages = []string{" Dracônico "}
 	full.CustomFeaturesText = "\n  Pesquisador.\r\n"
-	cleaned, err := svc.checkSheet(sheet)
+	cleaned, err := checkSheet(loadRules(t), sheet)
 	if err != nil {
 		t.Fatalf("checkSheet() error = %v", err)
 	}
@@ -608,7 +607,7 @@ func TestCheckSheet(t *testing.T) {
 	for _, tt := range tests {
 		s := pensantusSheet()
 		tt.edit(s)
-		_, err := svc.checkSheet(s)
+		_, err := checkSheet(loadRules(t), s)
 		fe, ok := errors.AsType[*fieldError](err)
 		if !ok || fe.field != tt.field {
 			t.Errorf("%s: checkSheet() error = %v, want one about %s", tt.name, err, tt.field)

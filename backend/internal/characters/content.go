@@ -11,10 +11,10 @@ import (
 
 // ListContent implements rulesv1connect.ContentServiceHandler.
 //
-// It lives here, not in package campaigns as ADR-0008 sketches, because
-// today the content is only the SRD snapshot that package rules embeds:
-// there is no table content to read from the database yet. Every campaign
-// gets the same catalog, built once in New.
+// It lives here, not in package campaigns as ADR-0008 sketches: the content
+// comes from the ContentSource, which today gives every campaign the SRD
+// snapshot that package rules embeds. The catalog is built once per content
+// (catalogFor), so a campaign with its own content gets its own.
 func (s *Service) ListContent(
 	ctx context.Context,
 	req *connect.Request[rulesv1.ListContentRequest],
@@ -24,7 +24,11 @@ func (s *Service) ListContent(
 	if _, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	// The catalog is shared and never modified; marshaling it from several
-	// requests at once is safe.
-	return connect.NewResponse(&rulesv1.ListContentResponse{Content: s.catalog}), nil
+	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	// A content's catalog is shared and never modified; marshaling it from
+	// several requests at once is safe.
+	return connect.NewResponse(&rulesv1.ListContentResponse{Content: s.catalogFor(content)}), nil
 }
