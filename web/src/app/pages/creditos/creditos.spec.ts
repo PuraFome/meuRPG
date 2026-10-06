@@ -23,6 +23,7 @@ describe('Creditos', () => {
     expect(SRD_521_ATTRIBUTION).toContain('System Reference Document 5.2.1');
     expect(SRD_521_ATTRIBUTION).toContain('https://www.dndbeyond.com/srd');
     expect(el.textContent).toContain('SRD 5.2.1 (regras de 2024)');
+    expect(el.textContent).toContain('XP Budget per Character');
   });
 
   it('never mentions the "D&D" or "Dungeons & Dragons" trademark', () => {

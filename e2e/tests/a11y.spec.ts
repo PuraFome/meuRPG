@@ -4152,6 +4152,7 @@ test('as Magias passam no axe e nas conferências de layout no tema claro, no ta
   await scanSpellsScreens(browser, 'light', 1024, 768);
 });
 
+/**
  * "Conteúdo da mesa" (MR-025, RN-23; E10-01): the master's list and editors (a spell, a race, a background), the question to
  * archive, a refusal on its field; the same list on a phone with the sheet that asks to archive; and what a player reads. The
  * entries come through the API, with one archived so its state shows.
@@ -4266,5 +4267,3 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
 });
-
-/**

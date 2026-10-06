@@ -25,13 +25,19 @@ Portuguese names and structured rule effects written by us.
 System Reference Document 5.2.1
 -------------------------------
 
-The ways of making ability scores in the table's rules (RN-24: the standard
-array, the 27-point buy and "4d6, drop the lowest", p. 20 of the SRD 5.2.1, the
-2024 rules) come from the System Reference Document 5.2.1, used in
-backend/internal/rules/abilitymethods.go. The app labels each one "SRD 5.2.1
-(regras de 2024)". Later slices add two more tables of the same document (the XP
-budget of encounters and the values of magic items by rarity), and this notice
-will name them then.
+Two tables of the System Reference Document 5.2.1 (the 2024 rules) are used:
+
+- The ways of making ability scores in the table's rules (RN-24: the standard
+  array, the 27-point buy and "4d6, drop the lowest", p. 20 of the SRD 5.2.1),
+  in backend/internal/rules/abilitymethods.go.
+- The "XP Budget per Character" table (p. 201): the XP a party spends at each
+  level in a low, moderate or high encounter, in
+  backend/internal/rules/srd51/effects/encounter_budget.json, used by the
+  encounter builder (backend/internal/rules/encounter).
+
+The app labels each one "SRD 5.2.1 (regras de 2024)". A later slice adds a third
+table of the same document (the values of magic items by rarity), and this
+notice will name it then.
 
 This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 

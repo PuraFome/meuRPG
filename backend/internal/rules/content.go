@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -73,6 +74,9 @@ type content struct {
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
 	lights []LightPreset
+	// encounterBudget is the XP per character of each level, band by band, index 0
+	// being level 1 (effects/encounter_budget.json, SRD 5.2.1).
+	encounterBudget []encounter.Budget
 	// standardActions are the actions every character has.
 	standardActions []Action
 	// levelXP[n-1] is the XP to reach level n, and ratings the SRD's challenge
@@ -257,6 +261,9 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.loadLights(fsys); err != nil {
 		return nil, err
 	}
+	if err := c.loadEncounterBudget(fsys); err != nil {
+		return nil, err
+	}
 	if err := c.loadMagicItemEffects(fsys); err != nil {
 		return nil, err
 	}
@@ -397,7 +404,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json, spells.json, traps.json, lights.json and consumables.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json and consumables.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -406,7 +413,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json":
 			continue
 		}
 		var f struct {
