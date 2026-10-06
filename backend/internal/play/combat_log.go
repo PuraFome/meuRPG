@@ -118,6 +118,13 @@ func (s *Service) ListCombatLog(
 	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
 	// rules about hidden combatants are worked out from the combatants as they are.
 	v := viewerOf(m)
+	if !v.master {
+		rules, err := s.tableRules(ctx, nil, m.CampaignID)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the table's rules", err)
+		}
+		v.hideDeath = rules.DeathSavesHidden
+	}
 	entries := buildLog(events)
 
 	res := &playv1.ListCombatLogResponse{}
@@ -183,8 +190,10 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		if err != nil {
 			continue // never: this package wrote it
 		}
-		if ev.Round == 0 {
-			continue // the log starts when the combat begins: the setup is not in it
+		// The log starts when the combat begins: the setup is not in it. The master's line of
+		// the monsters he put in (their rolled hit points) is the exception: it is his from the setup.
+		if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {
+			continue
 		}
 		entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}}
 		switch e.Kind {
@@ -202,6 +211,11 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			}
 		case eventDoorOpened:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED
+		case eventCombatantsAdded:
+			if ev.Monsters == nil {
+				continue // reinforcements (AddCombatants) are no line
+			}
+			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED, true
 		case eventCombatantHiddenSet:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
 		case eventActionTaken:
@@ -427,6 +441,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:
+		for _, it := range e.ev.Monsters.Items {
+			out.Monsters = append(out.Monsters, &playv1.CombatLogMonster{
+				CombatantId: it.ID, Label: byID[it.ID].Label, HitPoints: it.HitPoints, Rolled: it.Dice != "", Dice: it.Dice, Faces: it.Faces, Modifier: it.Modifier,
+			})
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
 		if out.DistanceDft == 0 { // an event written before the tenths of a foot
@@ -495,6 +515,16 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		if after == nil {
 			after = &deathState{}
 		}
+		if v.hiddenFrom(e.ev.DeathHidden, actor) {
+			// The table keeps the road to the owner and the master (RN-24): a save that
+			// went on is no line for anybody else, and the one that made the character
+			// stable says only that it did, a result the table sees.
+			if after.Successes < 3 || e.ev.DeathOutcome != deathSuccess {
+				return nil, false
+			}
+			out.DeathSave = &playv1.CombatLogDeathSave{Stable: true}
+			break
+		}
 		out.DeathSave = &playv1.CombatLogDeathSave{
 			Outcome: deathOutcomeToProto[e.ev.DeathOutcome], Successes: after.Successes, Failures: after.Failures,
 			Stable: after.Successes >= 3, Dying: v.master && after.Failures >= 3,
@@ -551,6 +581,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	r := d.roll
 	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
 	out.Half, out.Healing = d.hit.Half, r.Heal
+	out.CriticalRule, out.CriticalMax = pendingCriticalRule(r.Critical, r.CriticalMaxRule), r.CriticalMax
 	if r.Heal && !v.master && !v.owns(target) {
 		// A heal capped at the maximum would tell how many hit points the target
 		// lacked: everyone but the master and the target's player gets the roll (RN-20).
@@ -560,7 +591,10 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
 	}
 	if d.applied != nil { // the master's apply of a character's damage
-		out.Amount, out.DeathFailuresAdded = d.applied.Amount, d.applied.FailuresAdded
+		out.Amount = d.applied.Amount
+		if !v.hiddenFrom(d.applied.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
+			out.DeathFailuresAdded = d.applied.FailuresAdded
+		}
 		if d.applied.Overridden && v.master {
 			rolled := d.applied.Rolled
 			out.RolledAmount = &rolled
@@ -592,11 +626,15 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 		return d // the attack hit and its damage is not rolled yet
 	}
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
+	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage
-		d.Amount, d.DeathFailuresAdded = ap.Amount, ap.FailuresAdded
+		d.Amount = ap.Amount
+		if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
+			d.DeathFailuresAdded = ap.FailuresAdded
+		}
 		if ap.Overridden && master {
 			rolled := ap.Rolled
 			d.RolledAmount = &rolled

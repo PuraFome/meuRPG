@@ -85,6 +85,9 @@ const (
 	// CombatServiceAddCombatantsProcedure is the fully-qualified name of the CombatService's
 	// AddCombatants RPC.
 	CombatServiceAddCombatantsProcedure = "/meurpg.play.v1.CombatService/AddCombatants"
+	// CombatServiceAddMonstersProcedure is the fully-qualified name of the CombatService's AddMonsters
+	// RPC.
+	CombatServiceAddMonstersProcedure = "/meurpg.play.v1.CombatService/AddMonsters"
 	// CombatServiceRemoveCombatantProcedure is the fully-qualified name of the CombatService's
 	// RemoveCombatant RPC.
 	CombatServiceRemoveCombatantProcedure = "/meurpg.play.v1.CombatService/RemoveCombatant"
@@ -530,6 +533,32 @@ type CombatServiceClient interface {
 	//     a count outside 1 to 10.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	AddCombatants(context.Context, *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error)
+	// AddMonsters puts N monsters of one SRD creature into the combat ("Pôr no
+	// combate", MR-042, RN-29). Only the master may call it, while the combat is
+	// in SETUP or ACTIVE, as AddCombatants. The monsters are copies, in the
+	// combat, of one hidden NPC the app keeps for the creature (one per campaign
+	// and creature, made on the first add and reused, `BasicSheet.combat_only`;
+	// never in the master's list), so the hidden state, the initiative (rolled at
+	// once for each copy, with the creature's Dexterity modifier), the players'
+	// state words, the attacks and the XP by enemies work as for any NPC. They
+	// are named "<name> 1" to "<name> N" (a single one keeps the plain name when
+	// no other has it), start hidden unless the request says otherwise, and on a
+	// grid start without a square, for the master to place. The hit points are
+	// the creature's average, or rolled from its hit dice, for each monster; the
+	// master's log line says what was rolled. The idempotency key covers the
+	// whole add: a retry with the same parameters answers with the same ids,
+	// and with other parameters, or on a key another change used (an
+	// AddCombatants), it is `invalid_argument`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: creature_key is not an SRD creature, count is
+	//     outside 1 to 10, the name is not 1 to 30 characters on one line, the
+	//     hit-point mode is unknown, the combat would pass 40 combatants, or the
+	//     idempotency key was used for another change.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	AddMonsters(context.Context, *connect.Request[v1.AddMonstersRequest]) (*connect.Response[v1.AddMonstersResponse], error)
 	// RemoveCombatant takes a combatant out of the combat. Only the master may
 	// call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
 	// turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
@@ -642,8 +671,9 @@ type CombatServiceClient interface {
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
 	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
 	// RollDamage is the second step of an attack that hit: it rolls the damage
-	// of the pending damage with the attack's dice (doubled on a critical hit;
-	// the modifier is added once) and its damage type. The attacker's player
+	// of the pending damage with the attack's dice (a critical hit follows the
+	// table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+	// with their maximum kept; the modifier is added once) and its damage type. The attacker's player
 	// may roll for their own attack, and the master for any.
 	//
 	// The roll follows the same rules as RollAttack (the player chooses on each
@@ -1181,6 +1211,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("AddCombatants")),
 			connect.WithClientOptions(opts...),
 		),
+		addMonsters: connect.NewClient[v1.AddMonstersRequest, v1.AddMonstersResponse](
+			httpClient,
+			baseURL+CombatServiceAddMonstersProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("AddMonsters")),
+			connect.WithClientOptions(opts...),
+		),
 		removeCombatant: connect.NewClient[v1.RemoveCombatantRequest, v1.RemoveCombatantResponse](
 			httpClient,
 			baseURL+CombatServiceRemoveCombatantProcedure,
@@ -1330,6 +1366,7 @@ type combatServiceClient struct {
 	setCombatantCover        *connect.Client[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse]
 	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
 	addCombatants            *connect.Client[v1.AddCombatantsRequest, v1.AddCombatantsResponse]
+	addMonsters              *connect.Client[v1.AddMonstersRequest, v1.AddMonstersResponse]
 	removeCombatant          *connect.Client[v1.RemoveCombatantRequest, v1.RemoveCombatantResponse]
 	endEncounter             *connect.Client[v1.EndEncounterRequest, v1.EndEncounterResponse]
 	getTurnOptions           *connect.Client[v1.GetTurnOptionsRequest, v1.GetTurnOptionsResponse]
@@ -1426,6 +1463,11 @@ func (c *combatServiceClient) SetCombatantHidden(ctx context.Context, req *conne
 // AddCombatants calls meurpg.play.v1.CombatService.AddCombatants.
 func (c *combatServiceClient) AddCombatants(ctx context.Context, req *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error) {
 	return c.addCombatants.CallUnary(ctx, req)
+}
+
+// AddMonsters calls meurpg.play.v1.CombatService.AddMonsters.
+func (c *combatServiceClient) AddMonsters(ctx context.Context, req *connect.Request[v1.AddMonstersRequest]) (*connect.Response[v1.AddMonstersResponse], error) {
+	return c.addMonsters.CallUnary(ctx, req)
 }
 
 // RemoveCombatant calls meurpg.play.v1.CombatService.RemoveCombatant.
@@ -1914,6 +1956,32 @@ type CombatServiceHandler interface {
 	//     a count outside 1 to 10.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	AddCombatants(context.Context, *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error)
+	// AddMonsters puts N monsters of one SRD creature into the combat ("Pôr no
+	// combate", MR-042, RN-29). Only the master may call it, while the combat is
+	// in SETUP or ACTIVE, as AddCombatants. The monsters are copies, in the
+	// combat, of one hidden NPC the app keeps for the creature (one per campaign
+	// and creature, made on the first add and reused, `BasicSheet.combat_only`;
+	// never in the master's list), so the hidden state, the initiative (rolled at
+	// once for each copy, with the creature's Dexterity modifier), the players'
+	// state words, the attacks and the XP by enemies work as for any NPC. They
+	// are named "<name> 1" to "<name> N" (a single one keeps the plain name when
+	// no other has it), start hidden unless the request says otherwise, and on a
+	// grid start without a square, for the master to place. The hit points are
+	// the creature's average, or rolled from its hit dice, for each monster; the
+	// master's log line says what was rolled. The idempotency key covers the
+	// whole add: a retry with the same parameters answers with the same ids,
+	// and with other parameters, or on a key another change used (an
+	// AddCombatants), it is `invalid_argument`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: creature_key is not an SRD creature, count is
+	//     outside 1 to 10, the name is not 1 to 30 characters on one line, the
+	//     hit-point mode is unknown, the combat would pass 40 combatants, or the
+	//     idempotency key was used for another change.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	AddMonsters(context.Context, *connect.Request[v1.AddMonstersRequest]) (*connect.Response[v1.AddMonstersResponse], error)
 	// RemoveCombatant takes a combatant out of the combat. Only the master may
 	// call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
 	// turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
@@ -2026,8 +2094,9 @@ type CombatServiceHandler interface {
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
 	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
 	// RollDamage is the second step of an attack that hit: it rolls the damage
-	// of the pending damage with the attack's dice (doubled on a critical hit;
-	// the modifier is added once) and its damage type. The attacker's player
+	// of the pending damage with the attack's dice (a critical hit follows the
+	// table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+	// with their maximum kept; the modifier is added once) and its damage type. The attacker's player
 	// may roll for their own attack, and the master for any.
 	//
 	// The roll follows the same rules as RollAttack (the player chooses on each
@@ -2561,6 +2630,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("AddCombatants")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceAddMonstersHandler := connect.NewUnaryHandler(
+		CombatServiceAddMonstersProcedure,
+		svc.AddMonsters,
+		connect.WithSchema(combatServiceMethods.ByName("AddMonsters")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceRemoveCombatantHandler := connect.NewUnaryHandler(
 		CombatServiceRemoveCombatantProcedure,
 		svc.RemoveCombatant,
@@ -2722,6 +2797,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceSetCombatantHiddenHandler.ServeHTTP(w, r)
 		case CombatServiceAddCombatantsProcedure:
 			combatServiceAddCombatantsHandler.ServeHTTP(w, r)
+		case CombatServiceAddMonstersProcedure:
+			combatServiceAddMonstersHandler.ServeHTTP(w, r)
 		case CombatServiceRemoveCombatantProcedure:
 			combatServiceRemoveCombatantHandler.ServeHTTP(w, r)
 		case CombatServiceEndEncounterProcedure:
@@ -2831,6 +2908,10 @@ func (UnimplementedCombatServiceHandler) SetCombatantHidden(context.Context, *co
 
 func (UnimplementedCombatServiceHandler) AddCombatants(context.Context, *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AddCombatants is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) AddMonsters(context.Context, *connect.Request[v1.AddMonstersRequest]) (*connect.Response[v1.AddMonstersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AddMonsters is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) RemoveCombatant(context.Context, *connect.Request[v1.RemoveCombatantRequest]) (*connect.Response[v1.RemoveCombatantResponse], error) {

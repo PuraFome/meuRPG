@@ -16,6 +16,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -248,7 +249,11 @@ func (s *Service) GetTurnOptions(
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
 	terrain = planOn(v, terrain, known)
-	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who)}
+	table, err := s.tableRules(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the table's rules", err)
+	}
+	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who), CriticalRule: criticalRuleProto(table)}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {
 			continue // a saving throw, not an attack roll: the spells slice
@@ -303,6 +308,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 		st := &playv1.SpellTargets{
 			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
+			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 		}
 		for _, slot := range e.slots {
 			if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(st.Darts, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
@@ -415,6 +421,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 	out := &playv1.PendingDamage{
 		Id: p.ID, AttackerId: deref(p.AttackerID), TargetId: p.TargetID, AttackKey: p.AttackKey,
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
+		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
@@ -426,7 +433,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		if p.RollTotal != nil { // a half damage's roll is the whole one
 			total = *p.RollTotal
 		}
-		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, total, p.Physical)
+		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
 		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })
@@ -726,7 +733,7 @@ func (s *Service) RollAttack(
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
-			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction,
+			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			ActionBefore: attacker.ActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			// The armor class the roll was compared with (an active Escudo's +5
 			// included): the master's answer shows it, a player's never does.
@@ -805,6 +812,7 @@ func (s *Service) RollAttack(
 	roll := &playv1.AttackRoll{
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
+		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
 	}
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
@@ -945,9 +953,12 @@ func (s *Service) RollDamage(
 			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool { return o.Status != pendingAwaitingRoll })
 		}
 
-		// The damage: the dice, doubled on a critical hit when it hit, plus the
-		// modifier once. A flat damage needs no dice (and so no way of rolling).
-		expr := dice.Expr{Count: int(p.DiceCount), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus)}
+		// The damage: the dice (doubled on a critical hit under the SRD's rule, as the
+		// pending damage kept them), plus the modifier once, plus what the table's
+		// critical rule adds without rolling (the dice's maximum, in "máximo mais uma
+		// rolagem"; typed_sum never includes it). A flat damage needs no dice (and so
+		// no way of rolling).
+		expr := dice.Expr{Count: int(p.DiceCount), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
 		var roll dice.Result
 		if p.DiceCount == 0 {
 			roll = dice.Result{Expr: expr, Modifier: expr.Modifier, Total: expr.Modifier}
@@ -972,7 +983,7 @@ func (s *Service) RollDamage(
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: p.DiceBonus, Faces: faces,
+			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		for _, g := range group {
@@ -1158,6 +1169,9 @@ func decorate(p *playv1.PendingDamage, ev actionEvent, v combatViewer, owner fun
 	if p.GetId() == ev.Pending {
 		dc = ev.ConcentrationDC
 		p.DeathFailuresAdded = ev.FailuresAdded
+		if t, ok := owner(p.GetTargetId()); ok && v.hiddenFrom(ev.DeathHidden, t) { // RN-24: the owner's and the master's
+			p.DeathFailuresAdded = 0
+		}
 	}
 	for _, h := range ev.Settled {
 		if h.Pending == p.GetId() {
@@ -1260,7 +1274,7 @@ func (s *Service) ApplyPendingDamage(
 			if err != nil {
 				return nil, err
 			}
-			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
+			made.DeathBefore, made.Death, made.FailuresAdded, made.DeathHidden = before, after, added, c.rules.DeathSavesHidden
 			made.Before = ptr(hpStateOf(now))
 			made.After = made.Before
 		} else if now.GetWildShape() != nil {

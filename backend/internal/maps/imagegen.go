@@ -227,6 +227,8 @@ type newRequest struct {
 	characters  []string // gallery image IDs of characters
 	source      *string  // an edit's image
 	requestedBy string
+	// mapReq is set for a request made from a map (the three kinds of imagegen_map.go).
+	mapReq *mapRequest
 	// prepared are the shrunk images the call will carry (prepare), made before
 	// the slot is reserved.
 	prepared prepared
@@ -341,6 +343,14 @@ func (s *Service) expireStale(ctx context.Context, q *mapsdb.Queries, campaignID
 type prepared struct {
 	references []gen.Reference // objects first, then characters
 	previous   *gen.Image      // an edit's image
+	// For a request made from a map (prepareMap): the drawing, the NPCs' portraits
+	// that were added to the characters, the map as it was seen, the ratio the server
+	// picked (the textured map's) and the rooms of a generated dungeon's textured map.
+	drawing   *gen.Image
+	npcImages []string
+	basis     *mapBasis
+	ratio     string
+	rooms     []string
 }
 
 // begin checks what can be checked cheaply, prepares the images, and reserves
@@ -369,12 +379,21 @@ func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (m
 	case status.GetRemaining() <= 0:
 		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED, status)
 	}
-	prep, err := s.prepare(ctx, campaignID, n)
+	prep, err := s.prepare(ctx, campaignID, n, status)
 	if err != nil {
 		return mapsdb.ImageRequest{}, nil, err
 	}
 	n.prepared = prep
-	if size := (gen.Request{Prompt: n.prompt, References: prep.references, Edit: editStub(n, prep)}).BodySize(); size > gen.MaxBodyBytes {
+	// The NPCs' portraits are character references like any other: the row records them.
+	n.characters = append(append([]string{}, n.characters...), prep.npcImages...)
+	if prep.ratio != "" {
+		n.ratio = prep.ratio
+	}
+	stub := gen.Request{Prompt: n.prompt, References: prep.references, Edit: editStub(n, prep), Drawing: prep.drawing, Rooms: prep.rooms}
+	if prep.drawing != nil {
+		stub.Layout = layoutOf(n.kind)
+	}
+	if size := stub.BodySize(); size > gen.MaxBodyBytes {
 		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE, status)
 	}
 	return s.reserve(ctx, n, campaignID)
@@ -391,8 +410,13 @@ func editStub(n newRequest, p prepared) *gen.Edit {
 // prepare reads the request's images from the blob store, as the campaign's own
 // images (never a URL from the browser), and shrinks each one to a small JPEG.
 // An image that is not the campaign's is `not_found`.
-func (s *Service) prepare(ctx context.Context, campaignID string, n newRequest) (prepared, error) {
+func (s *Service) prepare(ctx context.Context, campaignID string, n newRequest, status *mapsv1.ImageGenerationStatus) (prepared, error) {
 	var p prepared
+	if n.mapReq != nil {
+		if err := s.prepareMap(ctx, campaignID, &n, &p, status); err != nil {
+			return p, err
+		}
+	}
 	if n.source != nil {
 		src, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: *n.source})
 		if errors.Is(err, pgx.ErrNoRows) || err == nil && !src.Generated {
@@ -410,7 +434,7 @@ func (s *Service) prepare(ctx context.Context, campaignID string, n newRequest) 
 	for _, character := range []bool{false, true} {
 		ids := n.references
 		if character {
-			ids = n.characters
+			ids = append(append([]string{}, n.characters...), p.npcImages...)
 		}
 		for _, id := range ids {
 			img, err := s.shrunkImage(ctx, campaignID, id)
@@ -569,10 +593,13 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		}
 		month, _ := monthOf(s.now())
 		id := uuid.New().String()
+		basis := n.prepared.basis.params()
 		row, err = q.InsertImageRequest(ctx, mapsdb.InsertImageRequestParams{
 			ID: id, CampaignID: campaignID, RequestedBy: &n.requestedBy, IdempotencyKey: n.key,
 			Kind: n.kind, Prompt: n.prompt, Style: n.style, AspectRatio: n.ratio, Model: s.generator.Model(),
 			ReferenceIds: nonNil(n.references), CharacterIds: nonNil(n.characters), SourceImageID: n.source, Number: number, QuotaMonth: month, CreatedAt: s.now(),
+			MapID: basis.mapID, MapImageID: basis.imageID, MapGridColumns: basis.gridColumns, MapGridFactor: basis.gridFactor, MapWidth: basis.width, MapHeight: basis.height,
+			MapPlanHash: basis.planHash, PadX0: basis.pad[0], PadY0: basis.pad[1], PadX1: basis.pad[2], PadY1: basis.pad[3],
 		})
 		if err != nil {
 			return fmt.Errorf("insert the request: %w", err)
@@ -785,6 +812,15 @@ func (s *Service) generationToProto(r mapsdb.ImageRequest) *mapsv1.ImageGenerati
 		g.Kind = mapsv1.ImageGenerationKind_IMAGE_GENERATION_KIND_SCENE
 	case kindEdit:
 		g.Kind = mapsv1.ImageGenerationKind_IMAGE_GENERATION_KIND_EDIT
+	case kindMapScene:
+		g.Kind = mapsv1.ImageGenerationKind_IMAGE_GENERATION_KIND_MAP_SCENE
+	case kindIsometric:
+		g.Kind = mapsv1.ImageGenerationKind_IMAGE_GENERATION_KIND_ISOMETRIC
+	case kindTexturedMap:
+		g.Kind = mapsv1.ImageGenerationKind_IMAGE_GENERATION_KIND_TEXTURED_MAP
+	}
+	if r.MapID != nil {
+		g.MapId = *r.MapID
 	}
 	switch r.Status {
 	case statePending:
@@ -1042,7 +1078,13 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	// The picture is here: finish it on a context of its own, even in a shutdown.
 	fin, cancelFin := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancelFin()
-	res, err := s.process(fin, picture.Data)
+	var res *images.Result
+	if row.Kind == kindTexturedMap {
+		// The textured map is the map's rectangle of the padded canvas, in the size of the map's image.
+		res, err = s.cropToMap(fin, picture.Data, row)
+	} else {
+		res, err = s.process(fin, picture.Data)
+	}
 	if err != nil {
 		s.logger.WarnContext(fin, "maps: the generated picture cannot be used", "error", err)
 		s.finishFailed(campaignID, id, stateFailed, reasonNoImage)
@@ -1118,6 +1160,12 @@ func (s *Service) modelRequest(ctx context.Context, row mapsdb.ImageRequest, pre
 		req.Edit = edit
 	} else {
 		req.Prompt = row.Prompt
+	}
+	if isMapKind(row.Kind) {
+		if prep.drawing == nil {
+			return gen.Request{}, reasonImageMissing, errors.New("a request made from a map has no drawing")
+		}
+		req.Drawing, req.Layout, req.Rooms = prep.drawing, layoutOf(row.Kind), prep.rooms
 	}
 	return req, "", nil
 }

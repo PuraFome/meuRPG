@@ -162,6 +162,76 @@ func Encode(img image.Image) (*Result, error) {
 	return finish(PNG, to8bit(img), thumbnailOfDrawing)
 }
 
+// MaxFitPixels is the most pixels CropFit makes: 16 megapixels, 64 MB as it is
+// drawn, and more than a picture the model returns (at most 4K) can fill.
+const MaxFitPixels = 16_000_000
+
+// The most a model answer CropFit decodes may be on a side (the model returns at most
+// 4K), and the most memory the whole call may need, the decoded answer and the
+// working copy of the output together: the slot's budget (docs/operacao.md). A
+// 4096 x 4096 answer into 16 megapixels measures 151 MiB; the limit leaves it room.
+const (
+	maxFitAnswerSide = 4096
+	maxFitBytes      = 178 << 20
+)
+
+// CropFit is Process for a picture the model made of a map's drawing padded to
+// its ratio (MR-039): it decodes data (checked as Process does), takes the
+// rectangle crop(w, h) gives for the picture's size, scales that to exactly outW x
+// outH pixels, and stores it as a JPEG with no metadata and its thumbnail. The
+// result has the map's own size, so it can stand in for the map's image and keep
+// its grid and layers. The error is one of this package's Err values: ErrDimensions
+// also for an output over MaxFitPixels, an answer over 4096 pixels on a side, a decode
+// that with the output would pass the slot's 178 MiB, and a crop that is empty.
+func CropFit(data []byte, crop func(w, h int) image.Rectangle, outW, outH int) (*Result, error) {
+	if outW < 1 || outH < 1 || outW > MaxSide || outH > MaxSide || outW*outH > MaxFitPixels {
+		return nil, ErrDimensions
+	}
+	if len(data) > MaxBytes {
+		return nil, ErrTooLarge
+	}
+	f := sniff(data)
+	if f == 0 {
+		return nil, ErrUnsupportedType
+	}
+	cfg, err := decodeConfig(f, data)
+	if err != nil || cfg.Width < 1 || cfg.Height < 1 {
+		return nil, ErrCorrupt
+	}
+	if cfg.Width > maxFitAnswerSide || cfg.Height > maxFitAnswerSide {
+		return nil, ErrDimensions
+	}
+	var jh jpegHeader
+	if f == formatJPEG {
+		jh = readJPEGHeader(data)
+	}
+	// The decoded answer and the output's working copy (4 bytes a pixel) live together.
+	if cost := decodeCost(f, cfg, jh, isInterlacedPNG(data)) + 4*int64(outW)*int64(outH); cost > maxFitBytes {
+		return nil, ErrDimensions
+	}
+	img, err := decode(f, data)
+	if err != nil {
+		return nil, ErrCorrupt
+	}
+	if f == formatJPEG {
+		img = upright(img, jh.orientation)
+	}
+	b := img.Bounds()
+	rect := crop(b.Dx(), b.Dy()).Add(b.Min).Intersect(b)
+	if rect.Empty() {
+		return nil, ErrDimensions
+	}
+	sub, ok := img.(interface {
+		SubImage(image.Rectangle) image.Image
+	})
+	if !ok {
+		return nil, ErrCorrupt
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, outW, outH))
+	scaleBands(dst, sub.SubImage(rect), xdraw.Src)
+	return finish(JPEG, dst, thumbnail)
+}
+
 // finish encodes img as contentType, refuses a file over MaxBytes and adds the
 // thumbnail.
 func finish(contentType string, img image.Image, shrink func(image.Image) image.Image) (*Result, error) {

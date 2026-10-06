@@ -220,6 +220,13 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
+		// The "Magias" page (MR-045) is for an active member: the pending member
+		// has the catalog (ListContent) and gets not_found here (RN-15).
+		{"ListSpells", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.ListSpells(ctx, connect.NewRequest(&rulesv1.ListSpellsRequest{CampaignId: campaign, Query: "mãos"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// The creatures are public rules, but only for an active member: the
 		// pending member gets not_found (RN-15).
 		{"ListCreatures", "", nil, func(ctx context.Context, u *user) error {
@@ -272,6 +279,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 
 		{"UnarchiveTableEntry", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.table.UnarchiveTableEntry(ctx, connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: campaign, Key: "background:guarda-de-farol@mesa"}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"GetClassTableDefaults", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.GetClassTableDefaults(ctx, connect.NewRequest(&rulesv1.GetClassTableDefaultsRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"GetEffectMenu", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.GetEffectMenu(ctx, connect.NewRequest(&rulesv1.GetEffectMenuRequest{CampaignId: campaign}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 

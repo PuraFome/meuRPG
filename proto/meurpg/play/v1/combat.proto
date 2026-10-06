@@ -499,6 +499,33 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc AddCombatants(AddCombatantsRequest) returns (AddCombatantsResponse);
 
+  // AddMonsters puts N monsters of one SRD creature into the combat ("Pôr no
+  // combate", MR-042, RN-29). Only the master may call it, while the combat is
+  // in SETUP or ACTIVE, as AddCombatants. The monsters are copies, in the
+  // combat, of one hidden NPC the app keeps for the creature (one per campaign
+  // and creature, made on the first add and reused, `BasicSheet.combat_only`;
+  // never in the master's list), so the hidden state, the initiative (rolled at
+  // once for each copy, with the creature's Dexterity modifier), the players'
+  // state words, the attacks and the XP by enemies work as for any NPC. They
+  // are named "<name> 1" to "<name> N" (a single one keeps the plain name when
+  // no other has it), start hidden unless the request says otherwise, and on a
+  // grid start without a square, for the master to place. The hit points are
+  // the creature's average, or rolled from its hit dice, for each monster; the
+  // master's log line says what was rolled. The idempotency key covers the
+  // whole add: a retry with the same parameters answers with the same ids,
+  // and with other parameters, or on a key another change used (an
+  // AddCombatants), it is `invalid_argument`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: creature_key is not an SRD creature, count is
+  //     outside 1 to 10, the name is not 1 to 30 characters on one line, the
+  //     hit-point mode is unknown, the combat would pass 40 combatants, or the
+  //     idempotency key was used for another change.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc AddMonsters(AddMonstersRequest) returns (AddMonstersResponse);
+
   // RemoveCombatant takes a combatant out of the combat. Only the master may
   // call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
   // turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
@@ -617,8 +644,9 @@ service CombatService {
   rpc RollAttack(RollAttackRequest) returns (RollAttackResponse);
 
   // RollDamage is the second step of an attack that hit: it rolls the damage
-  // of the pending damage with the attack's dice (doubled on a critical hit;
-  // the modifier is added once) and its damage type. The attacker's player
+  // of the pending damage with the attack's dice (a critical hit follows the
+  // table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+  // with their maximum kept; the modifier is added once) and its damage type. The attacker's player
   // may roll for their own attack, and the master for any.
   //
   // The roll follows the same rules as RollAttack (the player chooses on each
@@ -1215,11 +1243,13 @@ enum CombatantState {
   COMBATANT_STATE_DOWN = 5;
   // A player's character at 0 hit points with three death save failures, waiting
   // for the master to confirm the death: "Morrendo". Only the master gets it; a
-  // player gets DOWN (the failure counts are public, the word is not, and the app
+  // player gets DOWN (whatever the table's rule about the death saves, the app
   // never claims a death before the master confirms it).
   COMBATANT_STATE_DYING = 6;
   // A player's character at 0 hit points with three death save successes:
-  // "Estável". Everyone who sees the combatant gets it.
+  // "Estável". Everyone who sees the combatant gets it, also when the table hides
+  // the death saves (RN-24): that the character is stable is a result, not the road
+  // to it.
   COMBATANT_STATE_STABLE = 7;
   // A player's character whose death the master confirmed (ConfirmDeath):
   // "Morto". It stays in the list, out of the order.
@@ -1682,7 +1712,11 @@ message Combatant {
   optional int32 hit_points_temporary = 24;
   // Out of the fight (an NPC at 0 hit points). The turn skips it.
   bool defeated = 25;
-  // A player's character's death saves (everyone sees them), 0 to 3 each.
+  // A player's character's death saves, 0 to 3 each. Everyone sees them, unless
+  // the table hides them (RN-24, "só o dono e o mestre"): then only the
+  // character's owner and the master get them, and everybody else gets 0 and 0
+  // and the state word alone ("Caído"; "Estável" and "Morto" are results the
+  // table sees).
   int32 death_successes = 26;
   int32 death_failures = 27;
   // The conditions the master marked ("caído", "envenenado"; RN-22), and the
@@ -1794,6 +1828,11 @@ message Combatant {
   // the blinded and deafened conditions meanwhile. Only the master and the
   // character's own player get it.
   string familiar_sight_creature_id = 64;
+  // Only the master, for an NPC that is a monster of the bestiary (RN-29): the
+  // SRD creature it is a copy of ("monster:bandit") and its challenge rating
+  // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
+  string bestiary_creature_key = 65;
+  string challenge_rating = 66;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2123,6 +2162,46 @@ message AddCombatantsResponse {
   Encounter encounter = 1;
 }
 
+// MonsterHitPoints is how the hit points of added monsters are chosen.
+enum MonsterHitPoints {
+  // Same as AVERAGE (question 81).
+  MONSTER_HIT_POINTS_UNSPECIFIED = 0;
+  // The creature's average hit points, the same for every monster.
+  MONSTER_HIT_POINTS_AVERAGE = 1;
+  // Each monster rolls the creature's hit dice, in the app (at least 1).
+  MONSTER_HIT_POINTS_ROLLED = 2;
+}
+
+// AddMonstersRequest puts monsters of one creature into the combat.
+message AddMonstersRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // A UUID the app generates once for this add and sends again on a retry.
+  string idempotency_key = 3;
+  // The SRD creature, such as "monster:bandit" (the bestiary's `key`).
+  string creature_key = 4;
+  // How many monsters, 1 to 10; unset means 1.
+  int32 count = 5;
+  // The base name, 1 to 30 characters on one line; empty takes the creature's
+  // Portuguese name. The bestiary is the public SRD: a player who knows the
+  // creature can look its numbers up, and the app never tells the players
+  // which creature a monster is beyond this name. A master who wants it secret
+  // gives another name (RN-20).
+  string name = 6;
+  // How the hit points are chosen; unset is the average.
+  MonsterHitPoints hit_points = 7;
+  // Whether the monsters start hidden from the players; unset: hidden.
+  optional bool hidden = 8;
+}
+
+// AddMonstersResponse returns the combat with the new combatants.
+message AddMonstersResponse {
+  Encounter encounter = 1;
+  // The new combatants, in the order of their names. A retry of an add that
+  // was already made returns the same ids.
+  repeated string combatant_ids = 2;
+}
+
 // RemoveCombatantRequest takes a combatant out.
 message RemoveCombatantRequest {
   string campaign_id = 1;
@@ -2167,12 +2246,31 @@ message DiceRoll {
   bool physical = 6;
 }
 
+// CriticalDamageRule is what a critical hit does to the damage dice: the table's
+// rule "Acertos críticos" (RN-24, MR-025), applied by the server to every
+// critical hit of the combat: weapon attacks, spell attacks, a creature's and an
+// NPC's. The browser does no dice math: it shows the hint the rule gives and
+// types what the player rolled (RN-18).
+enum CriticalDamageRule {
+  CRITICAL_DAMAGE_RULE_UNSPECIFIED = 0;
+  // The SRD's, and what the app did before the rule existed: every damage die is
+  // rolled twice (PendingDamage.dice_count is already doubled), the modifier
+  // once. The hint: "role os dados duas vezes".
+  CRITICAL_DAMAGE_RULE_DOUBLED_DICE = 1;
+  // The dice count as their maximum, and then one normal roll of them is added
+  // (PendingDamage.dice_count is the dice to roll, not doubled, and
+  // PendingDamage.critical_max the maximum that comes without rolling), the
+  // modifier once. The hint: "o máximo mais uma rolagem".
+  CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL = 2;
+}
+
 // AttackOutcome is what an attack roll did against the target's armor class.
 enum AttackOutcome {
   ATTACK_OUTCOME_UNSPECIFIED = 0;
   // The total reached the armor class: "Acertou".
   ATTACK_OUTCOME_HIT = 1;
-  // A natural 20: it hits and the damage dice double: "Crítico".
+  // A natural 20: it hits and the damage follows the table's critical rule (the
+  // dice double, or the maximum plus a roll): "Crítico".
   ATTACK_OUTCOME_CRITICAL_HIT = 2;
   // A natural 1, or a total below the armor class: "Errou".
   ATTACK_OUTCOME_MISS = 3;
@@ -2208,10 +2306,12 @@ message PendingDamage {
   // The attack, as in rules.v1.Attack.key.
   string attack_key = 4;
   PendingDamageStatus status = 5;
-  // True for a critical hit: the dice are doubled.
+  // True for a critical hit: the damage follows the table's critical rule
+  // (critical_rule).
   bool critical = 6;
-  // The damage to roll: the dice (already doubled for a critical hit) and
-  // the modifier.
+  // The damage to roll: the dice and the modifier. For a critical hit the dice
+  // are already doubled under DOUBLED_DICE; under MAX_PLUS_ROLL they are the
+  // dice of the attack, rolled once, and critical_max comes on top of them.
   int32 dice_count = 7;
   int32 dice_sides = 8;
   int32 bonus = 9;
@@ -2243,7 +2343,8 @@ message PendingDamage {
   optional int32 concentration_dc = 19;
   // APPLIED to a player's character that was already at 0 hit points: the
   // death save failures the damage caused (1, or 2 for a critical hit) instead
-  // of hit points.
+  // of hit points. When the table hides the death saves (RN-24) only the master
+  // and the target's own player get it; everybody else gets 0.
   int32 death_failures_added = 20;
   // The damage comes from a trap (MR-035): the trap's point (a UUID), and its
   // name. attacker_id is empty then, attack_key is "trap" and the damage was
@@ -2253,6 +2354,17 @@ message PendingDamage {
   // player get these rows; a trap that fired is public.
   string trap_point_id = 21;
   string trap_name = 22;
+  // The critical rule this damage was made under (the table's when the attack hit,
+  // so a change of the rules mid-combat applies from the next attack on):
+  // UNSPECIFIED for a hit that is not a critical one. It tells the screen which
+  // hint to show next to the dice, and which numbers to ask a player who rolls
+  // physical dice for (RollDamageRequest.typed_sum).
+  CriticalDamageRule critical_rule = 23;
+  // MAX_PLUS_ROLL: the maximum of the dice, which is added to the roll without
+  // rolling anything (the dice's count times their faces; the modifier is
+  // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
+  // the damage is rolled, so `dice (faces) + modifier = total` still holds.
+  int32 critical_max = 24;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2280,6 +2392,10 @@ message GetTurnOptionsResponse {
   // combatants that are not defeated (a combatant at 0 hit points can be
   // healed), with the distance and whether the spell cannot reach it.
   repeated SpellTargets spell_targets = 5;
+  // The table's critical rule (RN-24), read now: what a critical hit of this
+  // combatant's attacks and spells will do to the damage dice, so the screen can
+  // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
+  CriticalDamageRule critical_rule = 6;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2298,6 +2414,14 @@ message SpellTargets {
   // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
   // for each level above). Empty for any other spell.
   repeated DartsAtSlot darts = 5;
+  // How many more targets the spell takes for each slot level above its own: 1 for
+  // an SRD spell that says "one additional creature", the master's number for a
+  // table spell ("três criaturas, duas a mais por círculo"). 1 for Magic Missile
+  // (a dart more) and Scorching Ray (a ray more): with `max_targets`, the targets
+  // at a slot level are `max_targets + targets_per_level * (slot level - the
+  // spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
+  // when this is above 0.
+  int32 targets_per_level = 6;
 }
 
 // DartsAtSlot is how many darts a slot level makes.
@@ -2397,6 +2521,10 @@ message AttackRoll {
   // Everyone who gets the roll gets them; the armor class stays the master's.
   CoverDegree cover = 7;
   CoverSource cover_source = 8;
+  // The table's critical rule, for the screen's hint when the outcome is
+  // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
+  // on every roll: the damage itself is PendingDamage (critical_rule).
+  CriticalDamageRule critical_rule = 9;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -2419,8 +2547,10 @@ message RollDamageRequest {
   oneof roll {
     // True: the app rolls the dice on the server.
     bool roll_in_app = 5;
-    // The sum of the physical dice, without the modifier: between the number
-    // of dice and the number of dice times their faces.
+    // The sum of the physical dice, without the modifier and without
+    // PendingDamage.critical_max: between the number of dice to roll
+    // (PendingDamage.dice_count, doubled or not by the critical rule) and that
+    // number times their faces.
     int32 typed_sum = 6;
   }
 }
@@ -3012,6 +3142,11 @@ enum CombatLogKind {
   // withdrawn) belongs to this line, so the master can undo it from here
   // (`undoable`); the attack of an answer is its own ATTACK line.
   COMBAT_LOG_KIND_OPPORTUNITY_OFFERED = 23;
+  // The master put monsters in the combat (AddMonsters, RN-29): `monsters`, with
+  // the hit points of each and the dice when they were rolled ("Bandido 1: 9 PV
+  // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
+  // before the combat begins (round 0).
+  COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3123,6 +3258,22 @@ message CombatLogEntry {
   CombatLogWildShape wild_shape = 41;
   // DOOR_OPENED: where the door is. The actor is who opened it.
   CombatLogDoor door = 42;
+  // MONSTERS_ADDED: the new monsters, in the order of their names.
+  repeated CombatLogMonster monsters = 43;
+}
+
+// CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
+message CombatLogMonster {
+  string combatant_id = 1;
+  string label = 2;
+  // Its hit points.
+  int32 hit_points = 3;
+  // Whether they were rolled; then `dice` is the creature's hit dice with the
+  // bonus ("2d8+2"), `faces` the rolled dice and `modifier` the bonus.
+  bool rolled = 4;
+  string dice = 5;
+  repeated int32 faces = 6;
+  int32 modifier = 7;
 }
 
 // CombatLogDoor is a door a move opened, in the combat log.
@@ -3176,7 +3327,13 @@ message CombatLogSpellTarget {
   int32 cover_bonus = 12;
 }
 
-// CombatLogDeathSave is a death save in the log.
+// CombatLogDeathSave is a death save in the log. When the table hides the death
+// saves (RN-24, "só o dono e o mestre") the owner and the master get the entry
+// whole; everybody else gets no entry for a save that went on (a success, a
+// failure, a revival), and for the save that made the character stable only
+// `stable`, with no roll, no outcome and zero counts: "Brisa estabilizou" is a
+// result the table sees, the road to it is not. The dead are announced by
+// COMBAT_LOG_KIND_DEATH_CONFIRMED.
 message CombatLogDeathSave {
   // The d20. Only the master and the character's own player.
   DiceRoll roll = 1;
@@ -3217,8 +3374,14 @@ message CombatLogDamage {
   // The Constitution save DC to keep a concentration the damage threatened
   // (RN-22). Only the master and the target's own player.
   optional int32 concentration_dc = 11;
-  // APPLIED to a character already at 0: the death save failures it caused.
+  // APPLIED to a character already at 0: the death save failures it caused. When
+  // the table hides the death saves (RN-24) only the master and the target's own
+  // player get it.
   int32 death_failures_added = 12;
+  // As in PendingDamage: the critical rule the damage was made under, and the
+  // maximum of the dice that came without rolling (already part of `roll.modifier`).
+  CriticalDamageRule critical_rule = 13;
+  int32 critical_max = 14;
 }
 
 // GetCombatHighlightsRequest names the combat.

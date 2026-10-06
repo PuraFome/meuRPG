@@ -27,6 +27,7 @@ func locate(err error, path string) error {
 }
 
 var reasonWords = []struct{ words, reason string }{
+	{"casting time", ReasonValue}, // a spell's, not a class's casting
 	{"reserved", ReasonReservedKey},
 	{"already exists", ReasonDuplicateKey},
 	{"the key must|slug", ReasonKey},
@@ -63,6 +64,7 @@ var attrWords = []struct{ word, attr string }{
 	{"subclass is chosen", "subclass_level"},
 	{"class table needs", "levels"},
 	{"Ability Score Improvement", "asi_levels"},
+	{"casting time", "casting_time"},
 	{"casting", "casting"},
 	{"spell list", "casting.list_from"},
 	{"prepared_max", "casting.prepared_max"},
@@ -74,14 +76,13 @@ var attrWords = []struct{ word, attr string }{
 	{"bonus", "ability_bonuses"},
 	{"tool", "tools"},
 	{"spell level", "level"},
-	{"school", "school"},
+	{"school", "school_key"},
 	{"target", "target"},
 	{"area", "target"},
 	{"saving throw is", "save"},
 	{"damage", "damage"},
 	{"healing", "heal"},
 	{"cantrip does not heal", "heal"},
-	{"casting time", "casting_time"},
 	{"range", "range"},
 	{"duration", "duration"},
 	{"concentration", "duration"},
@@ -89,8 +90,8 @@ var attrWords = []struct{ word, attr string }{
 	{"ritual", "ritual"},
 	{"attack", "attack"},
 	{"always-prepared", "always_prepared"},
-	{"the race", "race"},
-	{"the class", "class"},
+	{"the race", "race_key"},
+	{"the class", "class_key"},
 	{"subclass levels", "levels"},
 	{"table row", "levels"},
 }

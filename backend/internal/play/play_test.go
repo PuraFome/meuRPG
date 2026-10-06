@@ -649,6 +649,14 @@ func (noRoster) CreatureEyes(context.Context, pgx.Tx, string, string) (maplink.E
 	return maplink.Eyes{}, false, nil
 }
 
+func (noRoster) MonsterHitPoints(context.Context, pgx.Tx, string, string) (link.MonsterHitPoints, bool, error) {
+	return link.MonsterHitPoints{}, false, nil
+}
+
+func (noRoster) MonsterNpc(context.Context, pgx.Tx, string, string, string, time.Time) (link.Character, bool, error) {
+	return link.Character{}, false, nil
+}
+
 type noDice struct{}
 
 func (noDice) ForcedDice(context.Context, pgx.Tx, string, string) (DiceForce, error) {
@@ -767,6 +775,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
 	_, combat["SetCombatantHidden"] = cc.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: id}))
 	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
+	_, combat["AddMonsters"] = cc.AddMonsters(ctx, connect.NewRequest(&playv1.AddMonstersRequest{CampaignId: id}))
 	_, combat["RemoveCombatant"] = cc.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: id}))
 	_, combat["EndEncounter"] = cc.EndEncounter(ctx, connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: id}))
 	_, combat["GetTurnOptions"] = cc.GetTurnOptions(ctx, connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: id}))

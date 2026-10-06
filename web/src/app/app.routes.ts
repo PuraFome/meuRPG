@@ -132,12 +132,25 @@ export const routes: Routes = [
       import('./pages/campaign-document/campaign-document').then((m) => m.CampaignDocumentPage),
   },
   {
+    // "Regras da mesa" (MR-025, RN-24, RN-09), master only: the page says so to a player.
+    path: 'campanhas/:id/regras',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/table-rules/table-rules').then((m) => m.TableRulesPage),
+  },
+  {
     // New map (MR-008, E5-31). Before `mapas/:mapId`, so "novo" is not read
     // as a map's ID. Plain `loadComponent`, like the gallery: the clients
     // are root services that only lazy code imports.
     path: 'campanhas/:id/mapas/novo',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/maps/map-new/map-new').then((m) => m.MapNew),
+  },
+  {
+    // "Gerar masmorra" (MR-010, E10-05), master only: the options, the server's preview and "Criar o mapa". Before `mapas/:mapId`, so
+    // "masmorra" is not read as a map's ID. Plain `loadComponent`, like "Novo mapa": its client is a root service that only lazy code imports.
+    path: 'campanhas/:id/mapas/masmorra',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/dungeon-new/dungeon-new').then((m) => m.DungeonNew),
   },
   {
     // The map's battle grid (MR-013, E6-02), master only: the squares of

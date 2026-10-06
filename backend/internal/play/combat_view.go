@@ -46,6 +46,24 @@ type combatViewer struct {
 	// sight is what the players see of the combat's map, for the viewer's own
 	// questions (seesAt); nil without the fog and for the master.
 	sight *fogSight
+	// hideDeath is the table's rule "testes contra a morte só para o dono e o
+	// mestre" (RN-24) as it applies to this viewer: the death saves of a
+	// character that is not theirs are not theirs to see. Never set for the
+	// master, and false when the table leaves them visible (the default).
+	hideDeath bool
+}
+
+// deathHiddenFrom says whether the table hides this character's death saves
+// from the viewer: the successes, the failures, each roll and every
+// intermediate step. Its owner and the master always see them.
+func (v combatViewer) deathHiddenFrom(c playdb.Combatant) bool {
+	return v.hideDeath && !v.master && !v.owns(c)
+}
+
+// hiddenFrom is deathHiddenFrom for an event that was stamped when it was written:
+// whether the table hid the death saves then, whatever it says now.
+func (v combatViewer) hiddenFrom(stamped bool, c playdb.Combatant) bool {
+	return stamped && !v.master && !v.owns(c)
 }
 
 // seesAt says whether the viewer sees the combatant standing on the square, as it
@@ -197,7 +215,7 @@ func (d *encounterData) npcOnlyGroups(v combatViewer) []*playv1.NpcGroup {
 // view builds the Encounter the viewer sees. vitals are the player
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
-func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, portraits map[string]string, names func(key string) string) *playv1.Encounter {
+func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, npcs map[string]masterNPC, names func(key string) string) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -228,7 +246,10 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			if c.Kind == kindPlayer { // a creature's character_id is its owner's: never the owner's vitals
 				vit = vitals[c.CharacterID]
 			}
-			p := combatantToProto(c, v, ties[c.ID], vit, armorClass[sheetKey(c)], portraits[sheetKey(c)], actsNow(e, c), names)
+			p := combatantToProto(c, v, ties[c.ID], vit, armorClass[sheetKey(c)], npcs[sheetKey(c)].portrait, actsNow(e, c), names)
+			if v.master { // the creature of a monster: the master's alone (RN-20)
+				p.BestiaryCreatureKey, p.ChallengeRating = npcs[sheetKey(c)].monsterKey, npcs[sheetKey(c)].challengeRating
+			}
 			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 				shareEconomy(p, c)
 			}
@@ -264,6 +285,12 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		Side:               sideProto(c.Side),
 		Size:               sizeProto(c.Size),
 		CoverMark:          coverDegreeProto(markKeyOf(c)),
+	}
+	if v.deathHiddenFrom(c) {
+		// The table keeps the death saves to the owner and the master (RN-24): the
+		// counts are not sent. The state word below says "Caído", or the result
+		// ("Estável", "Morto").
+		out.DeathSuccesses, out.DeathFailures = 0, 0
 	}
 	for _, key := range c.Conditions {
 		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
@@ -431,7 +458,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		}
 	}
 	names := s.namesFor(ctx, m.CampaignID) // the content is read once for the whole view
-	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), names)
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.npcDetails(ctx, m, d), names)
 	if v.sight != nil { // a fog map: the revision is what this player could see happen
 		if out.Revision, err = s.visibleRevision(ctx, d.enc.ID, v.userID); err != nil {
 			return nil, s.dbError(ctx, "count what the player could see", err)
@@ -470,11 +497,17 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 	return out
 }
 
-// portraits reads the portrait URL of each NPC in the combat, for the master's
-// card only (MR-031): a player sees a portrait only on the stage, and only the
-// name and the image there. A sheet that can't be read gives no portrait: the
-// app draws the initials.
-func (s *Service) portraits(ctx context.Context, m authz.Membership, d *encounterData) map[string]string {
+// masterNPC is what the master's copy shows of an NPC besides its numbers: its
+// portrait and, for a monster of the bestiary, the creature and its ND.
+type masterNPC struct {
+	portrait, monsterKey, challengeRating string
+}
+
+// npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its
+// creature and ND, for the master's card only (MR-031, RN-29): a player sees a
+// portrait only on the stage, and only the name and the image there, and never the
+// creature. A sheet that can't be read gives none: the app draws the initials.
+func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encounterData) map[string]masterNPC {
 	if m.Role != authz.RoleMaster {
 		return nil
 	}
@@ -491,11 +524,13 @@ func (s *Service) portraits(ctx context.Context, m authz.Membership, d *encounte
 	if err != nil {
 		return nil
 	}
-	out := make(map[string]string, len(chars))
+	out := make(map[string]masterNPC, len(chars))
 	for _, c := range chars {
+		n := masterNPC{monsterKey: c.MonsterKey, challengeRating: c.ChallengeRating}
 		if c.PortraitImageID != "" {
-			out[c.ID] = imagesPath + c.PortraitImageID
+			n.portrait = imagesPath + c.PortraitImageID
 		}
+		out[c.ID] = n
 	}
 	return out
 }

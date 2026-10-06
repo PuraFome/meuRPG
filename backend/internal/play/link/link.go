@@ -60,6 +60,13 @@ type Character struct {
 	// in tenths of a foot (rules/combat.JumpLimits); 0 for a sheet with no
 	// Strength. Standing, each is half.
 	JumpLongDFt, JumpHighDFt int
+	// CombatOnly marks the NPC the app keeps for a creature's monsters (RN-29):
+	// never a participant, a stage NPC or a token.
+	CombatOnly bool
+	// MonsterKey and ChallengeRating are the SRD creature an NPC was made from
+	// ("monster:bandit") and its ND ("1/8"), "" for an NPC the master typed: the
+	// master's view of a monster.
+	MonsterKey, ChallengeRating string
 }
 
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's
@@ -210,6 +217,16 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// TargetCount is how many targets the spell takes at its own level (0 when the
+	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
+	// how many more it takes for each slot level above its own. A table spell
+	// says both itself ("três criaturas, uma a mais por círculo"); an SRD spell's
+	// come from the same fields of rules.SpellTarget.
+	TargetCount    int
+	TargetPerLevel int
+	// CasterOnly says there is nobody to pick: the spell reaches the caster alone,
+	// or no creature at all (a point, an object, a place), whatever its range.
+	CasterOnly bool
 	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
 	// Damage and Heal are nil for it, and the cast applies HP instead.
 	HP *HPEffect
@@ -435,4 +452,12 @@ type CreatureChanges struct {
 	// Dismissed are the creatures that were defeated and are dismissed now;
 	// Revived the ones that were dismissed as defeated and an undo healed.
 	Dismissed, Revived []Creature
+}
+
+// MonsterHitPoints are the hit points of an SRD creature: its average, and the
+// dice it rolls them with ("2d8+2" is 2, 8, 2). DiceCount is 0 when the
+// creature's dice are not known, and then the average is all there is.
+type MonsterHitPoints struct {
+	Average                         int
+	DiceCount, DiceSides, DiceBonus int
 }

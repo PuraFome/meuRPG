@@ -343,12 +343,13 @@ WHERE character_id = sqlc.arg(character_id)
 -- A hit's damage waits for its roll, or, for a hit on a player's character that
 -- may cast Escudo, for the target's reaction (attack_total is then kept for the
 -- new comparison). A spell's damages carry their cast_id, and may be a heal or
--- a half damage.
+-- a half damage. critical_max is what a critical hit adds without rolling (the
+-- table's rule "máximo mais uma rolagem", RN-24).
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -636,9 +637,9 @@ RETURNING encounter_id;
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
-    created_at, resolved_at, trap_point_id
+    created_at, resolved_at, trap_point_id, critical_max, critical_max_rule
 ) VALUES (
-    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14
+    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14, $15, $16
 )
 RETURNING *;
 
@@ -655,8 +656,8 @@ ORDER BY p.created_at, p.id;
 -- A trap's damage to a player's character outside a combat.
 INSERT INTO trap_damages (
     game_session_id, trap_point_id, fire_id, character_id, status, critical,
-    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at
-) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at, critical_max
+) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 RETURNING *;
 
 -- name: ListCampaignTrapDamages :many

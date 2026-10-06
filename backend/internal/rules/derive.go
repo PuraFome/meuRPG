@@ -89,12 +89,75 @@ func derive(b Build, c *content) Derived {
 	x.resourcesAndActions()
 	x.effectHints()
 	x.checkChoices()
+	// Only an issue tied to a table entry is ever blamed on a change.
+	for i := range d.Issues {
+		if len(d.Issues[i].Keys) == 0 {
+			d.Issues[i].ChangeMessage, d.Issues[i].ChangeSubject = "", ""
+		}
+	}
 	return *d
 }
 
 // issue records a problem on the sheet.
 func (x *deriver) issue(code, field, format string, args ...any) {
 	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...), Keys: x.issueKeys(code, field)})
+}
+
+// issueChange records an issue and, when it is tied to a table entry, the
+// sentence "A classe mudou" tells it with (Issue.ChangeMessage).
+func (x *deriver) issueChange(code, field, subject, change, message string) {
+	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: message, Keys: x.issueKeys(code, field), ChangeMessage: change, ChangeSubject: subject})
+}
+
+// countPT writes a count with its noun in Portuguese: "1 perícia", "2 perícias".
+func countPT(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+// tieToOfferers ties the last issue (an SRD option the sheet no longer has the
+// feature for) to the table entries whose features offer options of the same SRD
+// set: the entry where that option set comes from. An entry that has nothing to do
+// with the option is never blamed (a table subclass of another class), and the
+// returned key is the first of them, for the sentence.
+func (x *deriver) tieToOfferers(parent string) string {
+	if len(x.c.entryRevision) == 0 || parent == "" {
+		return ""
+	}
+	last := &x.d.Issues[len(x.d.Issues)-1]
+	first := ""
+	for _, a := range x.active {
+		e := a.effect
+		if e.Type != "choice" || e.Choice != "feature" || !isTableKey(a.owner) {
+			continue
+		}
+		f := x.c.features[a.owner]
+		if f == nil {
+			continue
+		}
+		entry := f.Class
+		if f.Subclass != "" {
+			entry = f.Subclass
+		}
+		if !isTableKey(entry) {
+			continue
+		}
+		for _, from := range e.From {
+			if of := x.c.features[from]; of != nil && x.optionParent(from, of.Parent) == parent {
+				if !slices.Contains(last.Keys, entry) {
+					last.Keys = append(last.Keys, entry)
+				}
+				if first == "" {
+					first = entry
+				}
+				break
+			}
+		}
+	}
+	slices.Sort(last.Keys)
+	return first
 }
 
 // issueKeys are the table keys an issue depends on (Issue.Keys): the key at the
@@ -196,7 +259,9 @@ func (x *deriver) resolve() {
 			case !ok || sub.Class != cl.Class:
 				x.issue(IssueUnknownKey, field+".subclass_key", "A subclasse escolhida não é de %s.", c.namePT(cl.Class))
 			case level < class.SubclassLevel:
-				x.issue(IssueSubclassLevel, field+".subclass_key", "%s escolhe a subclasse no nível %d.", c.namePT(cl.Class), class.SubclassLevel)
+				x.issueChange(IssueSubclassLevel, field+".subclass_key", cl.Class,
+					fmt.Sprintf("agora escolhe a subclasse no nível %d; esta ficha tem nível %d nela.", class.SubclassLevel, level),
+					fmt.Sprintf("%s escolhe a subclasse no nível %d.", c.namePT(cl.Class), class.SubclassLevel))
 				oc.subclass = sub
 			default:
 				oc.subclass = sub
@@ -276,7 +341,20 @@ func (x *deriver) collectEffects() {
 		feature(bg.Feature.Key, bg.Feature.Name, bg.Key, 0, bg.Feature.Desc)
 	} else if x.b.Background != "" {
 		x.issue(IssueUnknownKey, "full.background_key", "O antecedente escolhido não existe no conteúdo %s.", c.version)
-	} else if x.b.CustomBackgroundName == "" && len(x.b.CustomBackgroundSkills) == 0 {
+	} else if x.customBackground() {
+		// The player's own background (SRD 5.1 "Customizing a Background"): its
+		// feature is the player's text, like a table background's text feature.
+		if x.b.CustomBackgroundFeatureName != "" || x.b.CustomBackgroundFeature != "" {
+			var desc []string
+			if x.b.CustomBackgroundFeature != "" {
+				desc = []string{x.b.CustomBackgroundFeature}
+			}
+			x.d.Features = append(x.d.Features, Feature{
+				Key: CustomBackgroundFeatureKey, Name: x.b.CustomBackgroundFeatureName, NamePT: x.b.CustomBackgroundFeatureName,
+				Source: CustomBackgroundKey, SourcePT: x.b.CustomBackgroundName, Description: desc,
+			})
+		}
+	} else if x.b.Background == "" {
 		x.issue(IssueMissing, "full.background_key", "Escolha um antecedente.")
 	}
 
@@ -325,7 +403,12 @@ func (x *deriver) collectEffects() {
 				parent = x.offeredParent(key, owned)
 			}
 			if parent == "" || !owned[parent] {
-				x.issue(IssueUnknownKey, field, "%s não vale para este personagem.", c.namePT(key))
+				x.issueChange(IssueUnknownKey, field, "", fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key)), fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)))
+				if entry := x.tieToOfferers(x.optionParent(key, f.Parent)); entry != "" {
+					last := &x.d.Issues[len(x.d.Issues)-1]
+					last.ChangeSubject = entry
+					last.ChangeMessage = fmt.Sprintf("agora não oferece a escolha %s; ela não vale mais nesta ficha.", c.namePT(key))
+				}
 				continue
 			}
 			add(key)
@@ -388,8 +471,10 @@ func (x *deriver) names() {
 	}
 	if _, ok := c.backgrounds[x.b.Background]; ok {
 		x.d.BackgroundNamePT = c.namePT(x.b.Background)
+		x.d.BackgroundEquipmentPT = c.bgEquipment[x.b.Background]
 	} else if x.b.Background == "" {
 		x.d.BackgroundNamePT = x.b.CustomBackgroundName
+		x.d.BackgroundEquipmentPT = x.b.CustomBackgroundEquipment
 	}
 	for _, oc := range x.classes {
 		dc := DerivedClass{ClassKey: oc.key, NamePT: c.namePT(oc.key), Level: oc.level, SubclassNamePT: oc.customSubclass}
@@ -499,4 +584,20 @@ func (x *deriver) hasHandler(name string) bool {
 		}
 	}
 	return false
+}
+
+// customBackground says the sheet has a background of the player's own: no
+// background key, and any of its parts filled in.
+func (x *deriver) customBackground() bool {
+	b := x.b
+	return b.Background == "" && (b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 || x.customBackgroundStarted())
+}
+
+// customBackgroundStarted says any of the parts SRD 5.1 "Customizing a
+// Background" adds to the name and the skills (the tools or languages, the
+// feature, the equipment) is filled in: the sheet was written by an editor that
+// knows them.
+func (x *deriver) customBackgroundStarted() bool {
+	b := x.b
+	return len(b.CustomBackgroundProficiencies) > 0 || b.CustomBackgroundFeatureName != "" || b.CustomBackgroundFeature != "" || b.CustomBackgroundEquipment != ""
 }

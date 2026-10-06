@@ -1189,6 +1189,9 @@ WHERE campaign_id = $1::UUID
       OR (kind = 'player' AND player_user_id = $2::UUID)
   )
   AND ($3::TEXT IS NULL OR status = $3::TEXT)
+  -- The NPCs the app makes for the monsters of a combat (RN-29) are not the
+  -- master's to list.
+  AND COALESCE(sheet->'basic'->>'combat_only', 'false') <> 'true'
 ORDER BY kind <> 'player', created_at, id
 `
 
@@ -1740,6 +1743,49 @@ func (q *Queries) ListMapCreatures(ctx context.Context, arg ListMapCreaturesPara
 			&i.MonsterKey,
 			&i.PlayerUserID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNpcPortraits = `-- name: ListNpcPortraits :many
+SELECT id, COALESCE(NULLIF(sheet -> 'full' ->> 'portrait_image_id', ''), NULLIF(sheet -> 'basic' ->> 'portrait_image_id', ''), '')::TEXT AS portrait_image_id
+FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+  AND kind <> 'player'
+  AND status = 'active'
+`
+
+type ListNpcPortraitsParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListNpcPortraitsRow struct {
+	ID              string
+	PortraitImageID string
+}
+
+// The gallery image of the portrait of each of the given NPCs of the campaign
+// (living, active ones), "" for an NPC without one. A full sheet keeps it under
+// 'full', a basic one under 'basic' (package maps asks, to send an NPC's portrait
+// to the image model as a character reference, MR-039).
+func (q *Queries) ListNpcPortraits(ctx context.Context, arg ListNpcPortraitsParams) ([]ListNpcPortraitsRow, error) {
+	rows, err := q.db.Query(ctx, listNpcPortraits, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNpcPortraitsRow
+	for rows.Next() {
+		var i ListNpcPortraitsRow
+		if err := rows.Scan(&i.ID, &i.PortraitImageID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

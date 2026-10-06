@@ -59,9 +59,9 @@ func TestRenderDrawsFloorsAndWalls(t *testing.T) {
 	if got := at(1*side, 1*side); got != idxInk {
 		t.Errorf("the room's north-west corner = %d, want ink", got)
 	}
-	// Every pixel of every solid square is wall or hatch, the secret door's included,
-	// and both appear (the hatch is drawn).
-	hatch := 0
+	// Every pixel of every solid square is the flat wall color, the secret door's
+	// included: the image has no hatch (the app draws the wall mark over the walls layer,
+	// so the map has one wall treatment).
 	for row := range 5 {
 		for col := range 5 {
 			if !f.Solid[row*5+col] {
@@ -69,22 +69,13 @@ func TestRenderDrawsFloorsAndWalls(t *testing.T) {
 			}
 			for y := row * side; y < (row+1)*side; y++ {
 				for x := col * side; x < (col+1)*side; x++ {
-					switch c := at(x, y); c {
-					case idxHatch:
-						hatch++
-					case idxWall:
-					default:
-						t.Fatalf("pixel (%d, %d) of the wall square (%d, %d) is index %d, want wall or hatch", x, y, col, row, c)
+					if c := at(x, y); c != idxWall {
+						t.Fatalf("pixel (%d, %d) of the wall square (%d, %d) is index %d, want the flat wall", x, y, col, row, c)
 					}
 				}
 			}
 		}
 	}
-	if hatch == 0 {
-		t.Error("no hatch on the walls")
-	}
-	// The secret door's square (2, 0) is in that count: the squares around it are
-	// solid and it differs from them by nothing but the hatch's phase.
 }
 
 // The image is a pure function of the plan, and a size that is not a multiple of

@@ -131,6 +131,11 @@ func (x *deriver) proficiencies() {
 		for _, p := range bg.Proficiencies {
 			grant(p)
 		}
+	} else if x.b.Background == "" {
+		// A custom background's tools; its languages are listed by languages().
+		for _, p := range x.b.CustomBackgroundProficiencies {
+			grant(p)
+		}
 	}
 	for _, a := range x.active {
 		e := a.effect
@@ -154,16 +159,20 @@ func (x *deriver) proficiencies() {
 
 // proficiencyName is the Portuguese name of a proficiency, or of the one
 // piece of equipment it covers.
-func (x *deriver) proficiencyName(key string) string {
-	if n, ok := x.c.namesPT[key]; ok {
+func (x *deriver) proficiencyName(key string) string { return x.c.proficiencyNamePT(key) }
+
+// proficiencyNamePT is the same for the content: the sheet and the effect menu
+// name a tool alike.
+func (c *content) proficiencyNamePT(key string) string {
+	if n, ok := c.namesPT[key]; ok {
 		return n
 	}
-	if p := x.c.proficiencies[key]; p != nil && len(p.Refs) == 1 {
-		if n, ok := x.c.namesPT[p.Refs[0]]; ok {
+	if p := c.proficiencies[key]; p != nil && len(p.Refs) == 1 {
+		if n, ok := c.namesPT[p.Refs[0]]; ok {
 			return n
 		}
 	}
-	return x.c.namesEN[key]
+	return c.namesEN[key]
 }
 
 // savingThrows: the starting class's saves plus any save proficiency from

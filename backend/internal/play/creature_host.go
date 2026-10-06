@@ -46,7 +46,10 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if len(leaving) == 0 {
 		return "", nil
 	}
-	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: at, actorUserID: actorUserID, svc: s}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: at, actorUserID: actorUserID, svc: s})
+	if err != nil {
+		return "", err
+	}
 	// A creature that leaves keeps the hit points it has (it may be dismissed
 	// right after, which the characters module settles).
 	if err := s.writeBackCreatures(ctx, c, leaving); err != nil {

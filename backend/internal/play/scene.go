@@ -188,7 +188,10 @@ func (s *Service) OpenScene(
 		if session, err = q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID, OpenScenePointID: &point}); err != nil {
 			return fmt.Errorf("open the scene: %w", err)
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now()})
+		if err != nil {
+			return err
+		}
 		// Opening a scene, even a hidden point's, makes it "discovered": the
 		// players see its name in the open scene, so they may tag notes with
 		// it (MR-030, question 61).
@@ -247,7 +250,10 @@ func (s *Service) CloseScene(
 		if _, err := q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID}); err != nil {
 			return fmt.Errorf("close the scene: %w", err)
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now()})
+		if err != nil {
+			return err
+		}
 		if _, err := insertSceneEvent(ctx, c, eventSceneClosed, &m.UserID, nil, sceneEvent{PointID: *session.OpenScenePointID}); err != nil {
 			return err
 		}
@@ -697,7 +703,10 @@ func (s *Service) RollSceneCheck(
 		if action.DC > 0 {
 			ev.Passed = ptr(roll.Total >= action.DC)
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID})
+		if err != nil {
+			return err
+		}
 		at = c.now
 		rollID, err = insertSceneEvent(ctx, c, eventSceneCheckRolled, &m.UserID, &key, ev)
 		return err
@@ -801,7 +810,10 @@ func (s *Service) GrantSceneAttempt(
 		if scene.Actions[i].MaxAttempts == 0 {
 			return nil // unlimited: there is nothing to add
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: ptr(characterID.String())}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: ptr(characterID.String())})
+		if err != nil {
+			return err
+		}
 		granted = true
 		_, err = insertSceneEvent(ctx, c, eventSceneAttemptGranted, &m.UserID, &key, sceneGrantEvent{PointID: scene.PointID, ActionID: scene.Actions[i].ID})
 		return err

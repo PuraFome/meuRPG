@@ -1,8 +1,9 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.13",
+  "ContentVersion": "srd51@a8abc93b235c+fx.15",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
+  "BackgroundEquipmentPT": "Um tinteiro, uma pena, uma faca pequena e roupas comuns.",
   "Classes": [
     {
       "ClassKey": "class:wizard",
@@ -824,6 +825,15 @@
       "Description": null
     },
     {
+      "Key": "background-feature:custom",
+      "Name": "Pesquisador",
+      "NamePT": "Pesquisador",
+      "Source": "background:custom",
+      "Level": 0,
+      "SourcePT": "Sábio",
+      "Description": null
+    },
+    {
       "Key": "feature:spellcasting-wizard",
       "Name": "Spellcasting: Wizard",
       "NamePT": "Conjuração: Mago",
@@ -877,6 +887,14 @@
     {
       "Key": "language:gnomish",
       "NamePT": "Gnômico"
+    },
+    {
+      "Key": "language:draconic",
+      "NamePT": "Dracônico"
+    },
+    {
+      "Key": "language:elvish",
+      "NamePT": "Élfico"
     }
   ],
   "Proficiencies": [

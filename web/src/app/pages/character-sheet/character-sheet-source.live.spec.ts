@@ -121,6 +121,7 @@ function minimalDerivedSheet(): DerivedSheet {
     hover: false,
     saveActions: [],
     changedContent: [],
+    backgroundEquipmentPt: '',
   };
 }
 
@@ -229,6 +230,7 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
       monsterKey: '',
+      combatOnly: false,
       size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 13,

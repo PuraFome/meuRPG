@@ -139,11 +139,14 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListWildShapeForms"] = c.ListWildShapeForms(ctx, connect.NewRequest(&charactersv1.ListWildShapeFormsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
+	_, calls["ListSpells"] = content.ListSpells(ctx, connect.NewRequest(&rulesv1.ListSpellsRequest{CampaignId: id}))
 	_, calls["ListCreatures"] = content.ListCreatures(ctx, connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: id}))
 	_, calls["GetCreature"] = content.GetCreature(ctx, connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: id, Key: "monster:wolf"}))
 	_, calls["ListTrapPresets"] = content.ListTrapPresets(ctx, connect.NewRequest(&rulesv1.ListTrapPresetsRequest{CampaignId: id}))
 	_, calls["ListLightPresets"] = content.ListLightPresets(ctx, connect.NewRequest(&rulesv1.ListLightPresetsRequest{CampaignId: id}))
 	_, calls["ListTableEntries"] = table.ListTableEntries(ctx, connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: id}))
+	_, calls["GetClassTableDefaults"] = table.GetClassTableDefaults(ctx, connect.NewRequest(&rulesv1.GetClassTableDefaultsRequest{CampaignId: id}))
+	_, calls["GetEffectMenu"] = table.GetEffectMenu(ctx, connect.NewRequest(&rulesv1.GetEffectMenuRequest{CampaignId: id}))
 	_, calls["CreateTableEntry"] = table.CreateTableEntry(ctx, connect.NewRequest(&rulesv1.CreateTableEntryRequest{CampaignId: id}))
 	_, calls["UpdateTableEntry"] = table.UpdateTableEntry(ctx, connect.NewRequest(&rulesv1.UpdateTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
 	_, calls["ArchiveTableEntry"] = table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
@@ -187,8 +190,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 17 {
-		t.Errorf("found %d reads, want 17 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries)", len(reads))
+	if len(reads) != 20 {
+		t.Errorf("found %d reads, want 20 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

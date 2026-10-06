@@ -13,6 +13,14 @@ export const SRD_ATTRIBUTION =
   'This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.';
 
 /**
+ * The exact SRD 5.2.1 attribution (CC-BY-4.0), as in the repository's `NOTICE`: three tables of the
+ * 2024 rules (the ways of making ability scores, the encounter XP budget, the magic item values) are
+ * used and labelled "SRD 5.2.1 (regras de 2024)" wherever they show.
+ */
+export const SRD_521_ATTRIBUTION =
+  'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
+
+/**
  * "/creditos": public (not behind `authGuard`), linked from the footer on
  * every page. Required by CC-BY-4.0 for the SRD 5.1 content the `rules`
  * module ships. The SRD 5.1 PDF's own terms ask that no other attribution to
@@ -28,4 +36,5 @@ export const SRD_ATTRIBUTION =
 })
 export class Creditos {
   protected readonly srdAttribution = SRD_ATTRIBUTION;
+  protected readonly srd521Attribution = SRD_521_ATTRIBUTION;
 }

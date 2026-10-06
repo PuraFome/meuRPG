@@ -16,7 +16,7 @@
           @if (p.kind === Treasure) {
             <app-chest-icon />
           } @else {
-            <mat-icon>{{ icon(p.kind) }}</mat-icon>
+            <mat-icon>{{ icon(p.kind, p.stairs) }}</mat-icon>
           }
           @if (r.hidden) {
             <span class="row__badge"><mat-icon>visibility_off</mat-icon></span>

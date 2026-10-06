@@ -136,7 +136,7 @@ func (s *Service) RollDeathSave(
 		r := combat.DeathSave(face, int(who.DeathSuccesses), int(who.DeathFailures))
 		made = actionEvent{
 			Round: c.enc.Round, Actor: who.ID, D20: clamp32(face, 1, 20), Physical: roll.Physical, DeathOutcome: deathOutcomeOf(face),
-			DeathBefore: deathOf(who),
+			DeathBefore: deathOf(who), DeathHidden: c.rules.DeathSavesHidden,
 		}
 		after := deathState{Successes: clamp32(r.Successes, 0, 3), Failures: clamp32(r.Failures, 0, 3), Rolled: true}
 		if r.Outcome == combat.DeathSaveRevived {

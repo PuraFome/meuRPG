@@ -204,6 +204,7 @@ type stored struct {
 // content, or the refusal.
 func (s *Service) checkOverlay(entries []entryRow, revision int, key string) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
+	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
 	if err != nil {
 		return nil, errRefusedContent(violationsOf(err, idx, key))

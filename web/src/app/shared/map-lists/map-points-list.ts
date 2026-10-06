@@ -25,7 +25,7 @@ export interface TreasureMark {
 
 /** "Submapa: Torre de Mirathel", or just "Batalha". */
 export function pointSub(point: MapPoint): string {
-  const kind = pointKindLabel(point.kind);
+  const kind = pointKindLabel(point.kind, point.stairs);
   return point.targetMap ? `${kind}: ${point.targetMap.name}` : kind;
 }
 

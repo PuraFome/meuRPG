@@ -5,9 +5,15 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
+import { create } from '@bufbuild/protobuf';
+
 import {
+  AbilityScoresRefusalReason,
+  AbilityScoresRefusalSchema,
   CharacterBlockedReason,
   CharacterBlockedSchema,
+  LevelUpRefusalReason,
+  LevelUpRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { GalleryClient } from '../../core/images/gallery-client';
 import { galleryImage, galleryUsage } from '../../core/images/gallery-testing';
@@ -15,12 +21,27 @@ import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.ty
 import { CharacterEditor } from './character-editor';
 import { createAttackGroup } from './npc-short-form/basic-form';
 import {
+  AbilityRollsVm,
+  AbilityTableVm,
   CharacterEditorSource,
   CharacterForEdit,
   CreateCharacterInput,
   RulesCatalogVm,
   UpdateCharacterInput,
 } from './character-editor.types';
+
+const STORED_ROLLS: AbilityRollsVm = {
+  sets: [
+    { dice: [6, 5, 5, 2], total: 16 },
+    { dice: [5, 5, 4, 1], total: 14 },
+    { dice: [5, 4, 4, 3], total: 13 },
+    { dice: [4, 4, 4, 2], total: 12 },
+    { dice: [4, 3, 3, 2], total: 10 },
+    { dice: [3, 3, 2, 1], total: 8 },
+  ],
+  typed: false,
+  rolledAt: new Date('2026-10-05T20:14:00'),
+};
 
 @Injectable()
 class FakeCharacterEditorSource {
@@ -33,6 +54,21 @@ class FakeCharacterEditorSource {
   updateCharacterCalls: UpdateCharacterInput[] = [];
   updateCharacterFn: (input: UpdateCharacterInput) => Promise<{ revision: number }> = () =>
     Promise.resolve({ revision: 2 });
+
+  /** The table's ways of making scores: `null` is the master's free editor (and every spec written before the rules). */
+  abilityTable: AbilityTableVm | null = null;
+  loadAbilityTableCalls: string[] = [];
+  loadAbilityTable(campaignId: string): Promise<AbilityTableVm | null> {
+    this.loadAbilityTableCalls.push(campaignId);
+    return Promise.resolve(this.abilityTable);
+  }
+  rollCalls: (readonly (readonly number[])[] | undefined)[] = [];
+  rollFn: (typed?: readonly (readonly number[])[]) => Promise<AbilityRollsVm> = () =>
+    Promise.resolve(STORED_ROLLS);
+  rollAbilityScores(_campaignId: string, typed?: readonly (readonly number[])[]): Promise<AbilityRollsVm> {
+    this.rollCalls.push(typed);
+    return this.rollFn(typed);
+  }
 
   loadCatalog(campaignId: string): Promise<RulesCatalogVm> {
     return this.loadCatalogFn(campaignId);
@@ -1529,5 +1565,208 @@ describe('CharacterEditor, the NPC portrait', () => {
       await cmp(fixture).submit();
       expect(fake.updateCharacterCalls[1].full).toMatchObject({ portraitImageId: 'img-1' });
     });
+  });
+});
+
+describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN-24)', () => {
+  let fake: FakeCharacterEditorSource;
+
+  const table: AbilityTableVm = {
+    standardArray: true,
+    pointBuy: true,
+    rolled4d6: true,
+    typed: true,
+    standardValues: [15, 14, 13, 12, 10, 8],
+    pointBuyCosts: [0, 1, 2, 3, 4, 5, 7, 9],
+    pointBuyMinScore: 8,
+    pointBuyBudget: 27,
+    typedMin: 3,
+    typedMax: 18,
+    hitPoints: 'player_chooses',
+    physicalDice: false,
+    diceForced: false,
+    rolls: null,
+  };
+
+  function configure(params: Record<string, string>, abilityTable: AbilityTableVm | null = table): void {
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        { provide: ActivatedRoute, useValue: routeParams(params) },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+    fake.abilityTable = abilityTable;
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  function fillBasics(cmp: any): void {
+    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte' });
+  }
+
+  it('asks for the table\'s ways only for a player, and not for an NPC of the master', async () => {
+    configure({ id: 'camp-1' });
+    await render();
+    expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1', tipo: 'inimigo' });
+    await render();
+    expect(fake.loadAbilityTableCalls).toEqual([]);
+  });
+
+  it('shows the methods in place of the free fields, and keeps the free ones where there is no table', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (fixture.componentInstance as any).stepper?.goTo?.(1);
+    fixture.detectChanges();
+    expect(el.querySelector('app-table-ability-scores')).not.toBeNull();
+    expect(el.querySelector('app-ability-scores')).toBeNull();
+    expect(el.textContent).toContain('Escolha como fazer os seis valores');
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1' }, null);
+    const free = await render();
+    expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
+    expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
+  });
+
+  it('sends the chosen method with the sheet, and refuses to save while it is not complete', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    fillBasics(cmp);
+    fixture.detectChanges();
+    await flush();
+
+    // The standard array is the first way: nothing is placed yet.
+    expect(cmp.abilityMethod()).toBe('standard_array');
+    expect(cmp.abilitiesIncomplete()).toBe(true);
+    await cmp.submit();
+    expect(fake.createCharacterCalls).toHaveLength(0);
+    expect(cmp.invalidSummary()).toContain('coloque cada valor do conjunto num atributo');
+
+    // Typed values: complete, and the method goes with the request.
+    const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
+    const typed = Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!;
+    typed.click();
+    fixture.detectChanges();
+    await flush();
+    cmp.fullForm.get('abilities')?.patchValue({ str: 12, dex: 14, con: 13, int: 8, wis: 16, cha: 10 });
+    fixture.detectChanges();
+    await cmp.submit();
+    expect(fake.createCharacterCalls).toHaveLength(1);
+    expect(fake.createCharacterCalls[0].abilityMethod).toBe('typed');
+    expect(fake.createCharacterCalls[0].full?.abilities).toMatchObject({ str: 12, dex: 14, wis: 16 });
+  });
+
+  it('shows the server\'s refusal of the scores by its reason', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    fillBasics(cmp);
+    fixture.detectChanges();
+    const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
+    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!.click();
+    fixture.detectChanges();
+    await flush();
+    fake.createCharacterFn = () =>
+      Promise.reject(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          { desc: AbilityScoresRefusalSchema, value: create(AbilityScoresRefusalSchema, { reason: AbilityScoresRefusalReason.METHOD_NOT_ALLOWED }) },
+        ]),
+      );
+    await cmp.submit();
+    fixture.detectChanges();
+    expect(cmp.saveState()).toEqual({
+      status: 'error',
+      message: 'O mestre não liberou esse jeito de fazer os atributos nesta mesa. Escolha outro.',
+    });
+  });
+
+  it('offers only the hit points the table\'s rule allows, and starts on the one it leaves', async () => {
+    configure({ id: 'camp-1' }, { ...table, hitPoints: 'roll' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    expect(cmp.fullForm.controls.hitPointsMethod.value).toBe('rolled');
+    expect(el.querySelector('mat-radio-group.hp-methods')).toBeNull();
+    expect(el.textContent).toContain('A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.');
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1' }, { ...table, hitPoints: 'average' });
+    const avg = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((avg.fixture.componentInstance as any).fullForm.controls.hitPointsMethod.value).toBe('average');
+    expect(avg.el.querySelector('mat-radio-group.hp-methods')).toBeNull();
+    expect(avg.el.textContent).toContain('A mesa usa a média nos pontos de vida: o dado não é oferecido.');
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1' });
+    const both = await render();
+    expect(both.el.querySelectorAll('mat-radio-group.hp-methods mat-radio-button')).toHaveLength(2);
+  });
+
+  it('says the table\'s hit points rule when the server refuses a new sheet for it', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    fillBasics(cmp);
+    fixture.detectChanges();
+    const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
+    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!.click();
+    fixture.detectChanges();
+    await flush();
+    fake.createCharacterFn = () =>
+      Promise.reject(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.HIT_POINTS_RULE }) },
+        ]),
+      );
+    await cmp.submit();
+    expect(cmp.saveState().message).toContain('A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º');
+  });
+
+  it('a player editing their own draft keeps the method its scores were made by, with its limits', async () => {
+    configure({ id: 'camp-1', characterId: 'ch-1' });
+    fake.abilityTable = table;
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({
+        kind: 'player' as const,
+        revision: 2,
+        blocked: null,
+        sheetLocked: false,
+        full: null,
+        basic: null,
+        abilityOrigin: { method: 'point_buy' as const, rolls: null },
+      });
+    const { el } = await render();
+    expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
+    expect(el.querySelector('app-table-ability-scores')).not.toBeNull();
+    expect(el.querySelector('app-ability-scores')).toBeNull();
+    expect(el.textContent).toContain('Os valores desta ficha foram feitos por este jeito');
+
+    // The master (no table), or a sheet without a recorded method, keeps the free editor.
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1', characterId: 'ch-1' }, null);
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({ kind: 'player' as const, revision: 2, blocked: null, sheetLocked: false, full: null, basic: null, abilityOrigin: { method: 'point_buy' as const, rolls: null } });
+    const free = await render();
+    expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
+    expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });
 });

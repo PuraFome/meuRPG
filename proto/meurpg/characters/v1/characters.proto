@@ -880,7 +880,14 @@ message FullSheet {
   string subrace_key = 3;
   // The character's classes: 1 to 12 entries, no class twice, levels adding
   // up to 1 to 20. The first one is the starting class, which gives the
-  // saving throws. The app offers one class; more is multiclassing.
+  // saving throws. A sheet may be made multiclassed from the start (a new
+  // character that joins at the group's level, Mage 3 and Cleric 1): each class
+  // takes its own subclass, the table's included, once its level reaches the
+  // class's subclass level. CreateCharacter accepts it: the SRD's multiclass
+  // prerequisites of every class (the first too) are issues of the sheet, never a
+  // refusal; the hit points follow the table's rule over the levels after the
+  // first of all the classes together; and the spell slots follow the multiclass
+  // spellcaster table (a third caster's subclass counts a third of its levels).
   repeated ClassLevel classes = 4;
   // The background. Unset while none is chosen, which shows an issue.
   oneof background {
@@ -1024,14 +1031,28 @@ message ClassLevel {
   }
 }
 
-// CustomBackground is a background the player describes, for one that is
-// not in the rules content, such as the Sage.
+// CustomBackground is a background the player describes (the editor's "Outro"),
+// for one that is not in the rules content, such as the Sage. It follows the SRD
+// 5.1 rule "Customizing a Background" (question 82): a name, two skills, two
+// tools or languages in any mix, a feature and the equipment. The sheet's numbers
+// use all of it (rules.v1.DerivedSheet): the skills, the tool proficiencies, the
+// languages and the feature. What is missing shows an issue, never an error.
 message CustomBackground {
   // The background's name: 1 to 40 characters, one line.
   string name = 1;
   // Content keys of the skills it grants: at most 2, no repeats. Fewer than
   // 2 shows an issue.
   repeated string skill_keys = 2;
+  // Content keys of the tools ("proficiency:thieves-tools") and languages
+  // ("language:elvish") it grants, in any mix: at most 2 in all, no repeats.
+  // Fewer than 2 shows an issue.
+  repeated string proficiency_keys = 3;
+  // The feature the player writes: a name of at most 40 characters, one line,
+  // and a text of at most 1000 characters. Both empty shows an issue.
+  string feature_name = 4;
+  string feature_text = 5;
+  // The equipment, as a text of at most 500 characters. Empty shows an issue.
+  string equipment = 6;
 }
 
 // HitPointsMethod is how a character's maximum hit points grow after the
@@ -1151,6 +1172,14 @@ message BasicSheet {
   // keeps the saved one. It is only stored: the combat does not read it, and no
   // screen shows it yet.
   meurpg.rules.v1.AbilityScores ability_scores = 14;
+  // True for the NPC the app makes by itself for a creature the master puts in
+  // a combat as monsters (AddMonsters, RN-29): one per campaign and creature,
+  // reused by every combat, never in the master's list of characters, and never
+  // a participant, a stage NPC or a token. The monsters are copies of it in the
+  // combat, each with its own hit points and name. Only the server writes it: a
+  // create or an update ignores what it receives and an update keeps the saved
+  // one.
+  bool combat_only = 15;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
@@ -1732,6 +1761,23 @@ message LevelUpSubclass {
   // subclass; the server leaves it out for players, unless their own sheet has it.
   // Choosing one is refused with ARCHIVED_CHOICE.
   bool archived = 7;
+  // What a third caster's subclass (the table's only) adds: how many spells it
+  // knows from this level (the first row of its table, or the rise over the level
+  // before when the subclass is picked later), where they go, the class whose list
+  // they come from and the highest circle they may have. All zero for a subclass
+  // that does not cast. Add `spells` to the level's spells and read them from
+  // `spell_list_class_key`, up to `max_spell_level`, once the player picks it
+  // (slice 10.3).
+  int32 spells = 8;
+  LevelUpSpellsKind spells_kind = 9;
+  string spell_list_class_key = 10;
+  int32 max_spell_level = 11;
+  // A third caster's subclass that prepares its spells (instead of knowing them):
+  // `prepares` is true and `prepared_max_after` is how many it may prepare at the new
+  // level once the subclass is chosen (the level-up's own prepared_max_after only
+  // counts it after the pick).
+  bool prepares = 12;
+  int32 prepared_max_after = 13;
 }
 
 // LevelUpFeatureChoice is "choose `choose` of `options`" for a feature the

@@ -21,7 +21,8 @@ import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
-import { cavePoints, clickSquare, dragSquares, editorRoute } from './editor-support';
+import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
+import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
 import { closePuzzleRPC, createLightsRPC, createLockRPC, createPillarsRPC, endTable, moveRPC, puzzleRoute, showPuzzleRPC, solveByThePathRPC, tableForPuzzles } from './puzzles-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -3554,6 +3555,280 @@ test('o bestiário passa no axe e nas conferências de layout no tema claro, no 
   test.setTimeout(300_000);
   await scanBestiaryScreens(browser, 'light', 320);
 });
+
+/**
+ * "Regras da mesa" (MR-025, RN-24, RN-09; E10-03 states 1 to 3): the page as saved, a style chosen (the notice and
+ * the "Mudou" tags, the save bar lit), the XP mode question open in place, and the rules for a table with a long
+ * list of reminders. The XP question needs XP already given, so the campaign has Pensantus and an award.
+ */
+async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForXp(m, p, `Acessibilidade regras ${Date.now()}`);
+    await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'A porta da torre', characterIds: [table.characterId], amount: 50 });
+    await setTableRulesRPC(m, table.campaignId, { houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'] });
+    const where = `(${colorScheme}, ${width}px)`;
+
+    await m.goto(`/campanhas/${table.campaignId}`);
+    await expect(m.getByRole('heading', { level: 1 })).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Campanha com o painel Regras da mesa ${where}`);
+
+    await open(m, `/campanhas/${table.campaignId}/regras`);
+    await expectScreenPasses(m, `Regras da mesa ${where}`);
+    await pickRadio(m, /Mesa física/);
+    await expect(m.getByText(/o estilo preencheu/)).toBeVisible();
+    await expectScreenPasses(m, `Regras da mesa, um estilo escolhido ${where}`);
+    await pickRadio(m, /Por marcos/);
+    await m.getByRole('button', { name: 'Mudar para marcos' }).click();
+    await expect(m.getByRole('heading', { name: 'Mudar para “por marcos”?' })).toBeVisible();
+    await expectScreenPasses(m, `Regras da mesa, mudar o modo de XP ${where}`);
+
+    // A player is told it is the master's page.
+    await open(p, `/campanhas/${table.campaignId}/regras`);
+    await expect(p.getByText('Só o mestre muda as regras da mesa.')).toBeVisible();
+    await expectScreenPasses(p, `Regras da mesa, visto por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'light', 1280);
+});
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'dark', 390);
+});
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'dark', 320);
+});
+
+/**
+ * The "Atributos" step of a player who makes a new sheet by the table's rules (E10-03 state 4): the four ways, each
+ * with what it shows (the placing of the standard array, the point buy with the points left, the 4d6 the server
+ * rolled and the physical dice to type, and the typed values).
+ */
+async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await newSignedInContext(browser, 'Mestre Teste');
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade atributos ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    await open(p, `/campanhas/${campaignId}/personagens/novo`);
+    await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
+    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
+    await expectScreenPasses(p, `Atributos, conjunto padrão ${where}`);
+
+    await method(p, 'Pontos');
+    for (let i = 0; i < 7; i++) {
+      await p.getByRole('button', { name: 'Aumentar Sabedoria', exact: true }).click();
+    }
+    await expect(p.getByText('Restam 18 pontos')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, compra por pontos ${where}`);
+
+    await method(p, '4d6');
+    await expectScreenPasses(p, `Atributos, 4d6 ainda sem rolar ${where}`);
+    await p.getByRole('button', { name: 'Rolar os atributos' }).click();
+    await expect(p.getByText(/Rolados em/)).toBeVisible();
+    await expectScreenPasses(p, `Atributos, 4d6 rolados pelo servidor ${where}`);
+
+    await method(p, 'Digitar');
+    await p.getByLabel('Força', { exact: true }).fill('19');
+    await expectScreenPasses(p, `Atributos, digitar com um valor fora do limite ${where}`);
+
+    // Physical dice: a second campaign where everybody rolls their own.
+    const physical = await campaignWithEmptyPlayer(m, p, `Acessibilidade dados ${Date.now()}`);
+    await setTableRulesRPC(m, physical, { diceMode: 'DICE_MODE_PHYSICAL' });
+    await open(p, `/campanhas/${physical}/personagens/novo`);
+    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await method(p, '4d6');
+    await expect(p.getByText('Digite os quatro dados de cada rolagem.')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, dados físicos a digitar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'light', 1280);
+});
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'dark', 390);
+});
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'light', 320);
+});
+
+/** The grid calibration (E10-03 state 5): the panel of a calibrated map, the question with "Outro", and "Mudar a grade?". */
+async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto('/');
+    const campaignId = await masterCampaign(page, `Acessibilidade calibração ${Date.now()}`);
+    const map = await mapToPaint(page, campaignId, 'A torre em ruínas', 12);
+    const painted = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: map.mapId, layer: 'MAP_LAYER_WALL', value: 1, squares: wallSquares() });
+    expect(painted.ok()).toBeTruthy();
+    const where = `(${colorScheme}, ${width}px)`;
+    await page.goto(editorRoute(campaignId, map.mapId));
+    await expect(page.getByRole('radio', { name: 'Pintar' })).toBeVisible();
+    await page.getByRole('radio', { name: 'Pintar' }).click();
+    const grid = page.getByRole('region', { name: 'Grade' });
+    await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
+    await expect(page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' })).toBeFocused();
+    await expectScreenPasses(page, `Calibração da grade, a pergunta ${where}`);
+    await pickRadio(page.locator('app-calibrate-ask'), /Outro/);
+    await page.getByLabel('Quanto vale o quadrado', { exact: true }).fill('4,5');
+    await expect(page.getByText('o mapa terá 36 × 24 quadrados.')).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, Outro ${where}`);
+    await factor(page, '3 m');
+    await page.getByRole('button', { name: 'Salvar a grade' }).click();
+    await expect(grid.getByText('cada um vale 3 m')).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, o mapa calibrado ${where}`);
+    await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
+    await factor(page, '4,5 m');
+    await page.getByRole('button', { name: 'Salvar a grade' }).click();
+    await expect(page.getByRole('heading', { name: 'Mudar a grade?' })).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, Mudar a grade? ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'light', 1280);
+});
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'dark', 1024);
+});
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'light', 768);
+});
+
+test('a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos dois temas', { tag: ['@a11y', '@licenca'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await open(page, '/creditos');
+      await expect(page.getByText('System Reference Document 5.2.1', { exact: false }).first()).toBeVisible();
+      await expectScreenPasses(page, `Créditos (${scheme}, ${width}px)`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// The dungeon generator (slice 10.14b, MR-010, RN-26, RN-10; E10-05 1 to 6): the "Gerar masmorra" page (the options and the server's preview,
+// a refused size, the preview loading and failing, a map being created), the generated map with its rooms list (and a room chosen),
+// "Redesenhar" asked in place, and the "Imagem" panel in "Pintar". On a phone the page only says it is for a computer, and the master reads
+// the rooms list under the map. Every state goes through axe and the alignment checks.
+async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  try {
+    await m.goto('/');
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade masmorra ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    expect(made.ok(), await made.text()).toBeTruthy();
+    const mapId = (await made.json()).map.id as string;
+    const route = `/campanhas/${campaignId}/mapas/masmorra`;
+    const preview = m.getByRole('img', { name: /^Prévia da masmorra/ });
+
+    await open(m, `/campanhas/${campaignId}`);
+    await expect(m.getByRole('link', { name: 'Gerar masmorra' })).toBeVisible();
+    await expectScreenPasses(m, `Campanha, "Gerar masmorra" ao lado de "Novo mapa" ${where}`);
+
+    if (phone) {
+      await open(m, route);
+      await expect(m.getByText('Gerar masmorra é no notebook.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra no celular ${where}`);
+    } else {
+      await open(m, route);
+      await expect(preview).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, as opções e a prévia ${where}`);
+      await m.getByRole('radio', { name: 'Outro' }).click();
+      await m.getByRole('textbox', { name: 'Quadrados no lado maior' }).fill('130');
+      await expect(m.getByText('Corrija o tamanho para ver a masmorra.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, um tamanho recusado ${where}`);
+
+      // The preview loading, and failing.
+      await m.route('**/*DungeonService/PreviewDungeon', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+      await m.goto(route);
+      await expect(m.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, a prévia com falha ${where}`);
+      await m.unroute('**/*DungeonService/PreviewDungeon');
+      await m.route('**/*DungeonService/PreviewDungeon', () => new Promise(() => undefined));
+      await m.goto(route);
+      await expect(m.getByRole('status').filter({ hasText: 'Carregando a prévia...' })).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, carregando a prévia ${where}`);
+      await m.unroute('**/*DungeonService/PreviewDungeon');
+
+      // Creating: the server does not answer, so the steps stay on screen.
+      await m.route('**/*DungeonService/CreateDungeonMap', () => new Promise(() => undefined));
+      await m.goto(route);
+      await expect(preview).toBeVisible();
+      await m.getByRole('button', { name: 'Criar o mapa' }).click();
+      await expect(m.getByText('Criando o mapa. Costuma levar poucos segundos.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, criando o mapa ${where}`);
+      await m.unroute('**/*DungeonService/CreateDungeonMap');
+    }
+
+    // The generated map: on a computer the editor with the rooms list; on a phone the list under the map.
+    await open(m, `/campanhas/${campaignId}/mapas/${mapId}`);
+    await expect(m.getByRole('heading', { name: 'Salas', exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Mapa gerado, a lista das salas ${where}`);
+    await m.locator('app-dungeon-rooms .room__head').nth(1).click();
+    await expect(m.locator('app-dungeon-rooms .room--on')).toHaveCount(1);
+    await expectScreenPasses(m, `Mapa gerado, uma sala escolhida ${where}`);
+    if (!phone) {
+      await m.getByRole('region', { name: 'Imagem' }).getByRole('button', { name: 'Redesenhar' }).click();
+      await expect(m.getByRole('heading', { name: 'Redesenhar a imagem?' })).toBeVisible();
+      await expectScreenPasses(m, `Mapa gerado, "Redesenhar" perguntado ${where}`);
+      await m.getByRole('button', { name: 'Voltar' }).click();
+      await m.getByRole('radio', { name: 'Pintar' }).click();
+      await expect(m.getByRole('region', { name: 'Imagem' })).toBeVisible();
+      await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+      await expectScreenPasses(m, `Mapa gerado, "Pintar" com o painel Imagem ${where}`);
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`o gerador de masmorras passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-010'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDungeonScreens(browser, scheme, width);
+  });
+}
 
 
 /**

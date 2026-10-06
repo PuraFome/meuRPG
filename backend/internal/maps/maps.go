@@ -111,6 +111,11 @@ type CharacterDirectory interface {
 	// PortraitInUse says whether any NPC of the campaign has the gallery image as
 	// its portrait.
 	PortraitInUse(ctx context.Context, campaignID, imageID string) (bool, error)
+	// NpcPortraits returns, for those of ids that are living NPCs of the campaign,
+	// the gallery image of each one's portrait ("" for none), by character ID: the
+	// portraits of the NPCs a picture made from a map shows go to the image model
+	// as character references (MR-039).
+	NpcPortraits(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) (map[string]string, error)
 }
 
 // LiveSession is what this package needs from the live session. The play

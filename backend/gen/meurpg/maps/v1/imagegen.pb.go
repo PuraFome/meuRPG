@@ -172,6 +172,13 @@ const (
 	ImageGenerationKind_IMAGE_GENERATION_KIND_SCENE ImageGenerationKind = 1
 	// An edit of a generated image.
 	ImageGenerationKind_IMAGE_GENERATION_KIND_EDIT ImageGenerationKind = 2
+	// The scene art of a map, from what the players' characters see now.
+	ImageGenerationKind_IMAGE_GENERATION_KIND_MAP_SCENE ImageGenerationKind = 3
+	// The isometric view of a map, from what the players' characters see now.
+	ImageGenerationKind_IMAGE_GENERATION_KIND_ISOMETRIC ImageGenerationKind = 4
+	// The map with a texture: the whole map's floors and walls, painted, in the
+	// size of the map's image.
+	ImageGenerationKind_IMAGE_GENERATION_KIND_TEXTURED_MAP ImageGenerationKind = 5
 )
 
 // Enum value maps for ImageGenerationKind.
@@ -180,11 +187,17 @@ var (
 		0: "IMAGE_GENERATION_KIND_UNSPECIFIED",
 		1: "IMAGE_GENERATION_KIND_SCENE",
 		2: "IMAGE_GENERATION_KIND_EDIT",
+		3: "IMAGE_GENERATION_KIND_MAP_SCENE",
+		4: "IMAGE_GENERATION_KIND_ISOMETRIC",
+		5: "IMAGE_GENERATION_KIND_TEXTURED_MAP",
 	}
 	ImageGenerationKind_value = map[string]int32{
-		"IMAGE_GENERATION_KIND_UNSPECIFIED": 0,
-		"IMAGE_GENERATION_KIND_SCENE":       1,
-		"IMAGE_GENERATION_KIND_EDIT":        2,
+		"IMAGE_GENERATION_KIND_UNSPECIFIED":  0,
+		"IMAGE_GENERATION_KIND_SCENE":        1,
+		"IMAGE_GENERATION_KIND_EDIT":         2,
+		"IMAGE_GENERATION_KIND_MAP_SCENE":    3,
+		"IMAGE_GENERATION_KIND_ISOMETRIC":    4,
+		"IMAGE_GENERATION_KIND_TEXTURED_MAP": 5,
 	}
 )
 
@@ -368,6 +381,17 @@ const (
 	// The request is too big for the service even with the images shrunk to
 	// 1024 pixels (about 8 MiB in all): choose fewer references.
 	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE ImageGenerationBlockedReason = 4
+	// The players see nothing of the map: no living character of a player stands
+	// on it, so there is no players' view to start from (MAP_SCENE, ISOMETRIC).
+	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING ImageGenerationBlockedReason = 5
+	// The map has no grid: the pictures made from a map need one.
+	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID ImageGenerationBlockedReason = 6
+	// The map's image is over 16 megapixels: a textured map has the size of the
+	// image it replaces, and the server makes none that large.
+	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE ImageGenerationBlockedReason = 7
+	// The map is no longer what the textured map was made from: another image, a
+	// new grid or another calibration (UseGeneratedImageAsMapImage).
+	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED ImageGenerationBlockedReason = 8
 )
 
 // Enum value maps for ImageGenerationBlockedReason.
@@ -378,13 +402,21 @@ var (
 		2: "IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED",
 		3: "IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL",
 		4: "IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE",
+		5: "IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING",
+		6: "IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID",
+		7: "IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE",
+		8: "IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED",
 	}
 	ImageGenerationBlockedReason_value = map[string]int32{
-		"IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED":       0,
-		"IMAGE_GENERATION_BLOCKED_REASON_OFF":               1,
-		"IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED":     2,
-		"IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL":      3,
-		"IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE": 4,
+		"IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED":         0,
+		"IMAGE_GENERATION_BLOCKED_REASON_OFF":                 1,
+		"IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED":       2,
+		"IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL":        3,
+		"IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE":   4,
+		"IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING": 5,
+		"IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID":     6,
+		"IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE": 7,
+		"IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED":         8,
 	}
 )
 
@@ -453,8 +485,11 @@ type ImageGeneration struct {
 	FinishedAt *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
 	// The gallery images of characters sent as references.
 	CharacterImageIds []string `protobuf:"bytes,17,rep,name=character_image_ids,json=characterImageIds,proto3" json:"character_image_ids,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The map a request of kind MAP_SCENE, ISOMETRIC or TEXTURED_MAP was made from
+	// (a UUID); empty for the others, and after the map is deleted.
+	MapId         string `protobuf:"bytes,18,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ImageGeneration) Reset() {
@@ -604,6 +639,13 @@ func (x *ImageGeneration) GetCharacterImageIds() []string {
 		return x.CharacterImageIds
 	}
 	return nil
+}
+
+func (x *ImageGeneration) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
 }
 
 // ImageGenerationStatus is the campaign's month, and what a request may carry.
@@ -1543,11 +1585,621 @@ func (x *ImageEdit) GetNumber() int32 {
 	return 0
 }
 
+type GetMapImageReferenceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The campaign (a UUID).
+	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The map (a UUID).
+	MapId string `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+	Kind          ImageGenerationKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.maps.v1.ImageGenerationKind" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMapImageReferenceRequest) Reset() {
+	*x = GetMapImageReferenceRequest{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMapImageReferenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMapImageReferenceRequest) ProtoMessage() {}
+
+func (x *GetMapImageReferenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMapImageReferenceRequest.ProtoReflect.Descriptor instead.
+func (*GetMapImageReferenceRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetMapImageReferenceRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *GetMapImageReferenceRequest) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *GetMapImageReferenceRequest) GetKind() ImageGenerationKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ImageGenerationKind_IMAGE_GENERATION_KIND_UNSPECIFIED
+}
+
+type GetMapImageReferenceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The drawing, a PNG of at most 512 pixels on the longer side: what the model
+	// gets, smaller. Never sent to a player.
+	Preview []byte `protobuf:"bytes,1,opt,name=preview,proto3" json:"preview,omitempty"`
+	// "image/png".
+	PreviewContentType string `protobuf:"bytes,2,opt,name=preview_content_type,json=previewContentType,proto3" json:"preview_content_type,omitempty"`
+	// MAP_SCENE and ISOMETRIC: false when no living character of a player is on the
+	// map, so the drawing is all black and a request would be refused
+	// (PLAYERS_SEE_NOTHING). Always true for TEXTURED_MAP.
+	PlayersSeeSomething bool `protobuf:"varint,3,opt,name=players_see_something,json=playersSeeSomething,proto3" json:"players_see_something,omitempty"`
+	// The squares the drawing shows and the map's squares in all: "12 de 600".
+	SeenSquares  int32 `protobuf:"varint,4,opt,name=seen_squares,json=seenSquares,proto3" json:"seen_squares,omitempty"`
+	TotalSquares int32 `protobuf:"varint,5,opt,name=total_squares,json=totalSquares,proto3" json:"total_squares,omitempty"`
+	// The NPCs the master may choose to appear: the creatures of the map the players
+	// see now (not hidden, on a square a character sees, and none while a combat runs
+	// on the map). The same list for MAP_SCENE and ISOMETRIC; empty for TEXTURED_MAP,
+	// which takes no characters. A creature the players do not
+	// see is not here, and GenerateMapImage refuses it.
+	Creatures []*MapImageCreature `protobuf:"bytes,6,rep,name=creatures,proto3" json:"creatures,omitempty"`
+	// TEXTURED_MAP: the model's ratio the whole map is padded to, and the map's size
+	// in squares.
+	PaddedRatio ImageAspectRatio `protobuf:"varint,7,opt,name=padded_ratio,json=paddedRatio,proto3,enum=meurpg.maps.v1.ImageAspectRatio" json:"padded_ratio,omitempty"`
+	GridColumns int32            `protobuf:"varint,8,opt,name=grid_columns,json=gridColumns,proto3" json:"grid_columns,omitempty"`
+	GridRows    int32            `protobuf:"varint,9,opt,name=grid_rows,json=gridRows,proto3" json:"grid_rows,omitempty"`
+	// TEXTURED_MAP of a generated dungeon: how many rooms go in the text.
+	RoomsListed int32 `protobuf:"varint,10,opt,name=rooms_listed,json=roomsListed,proto3" json:"rooms_listed,omitempty"`
+	// TEXTURED_MAP: true when the map's image has more than max_texture_pixels, so a
+	// textured map would be refused (MAP_IMAGE_TOO_LARGE): the screen disables the
+	// choice and says why. The limit is on the image's pixels (16,000,000, such as
+	// 4,000 x 4,000), whatever the grid.
+	TextureTooLarge  bool  `protobuf:"varint,11,opt,name=texture_too_large,json=textureTooLarge,proto3" json:"texture_too_large,omitempty"`
+	MaxTexturePixels int64 `protobuf:"varint,12,opt,name=max_texture_pixels,json=maxTexturePixels,proto3" json:"max_texture_pixels,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GetMapImageReferenceResponse) Reset() {
+	*x = GetMapImageReferenceResponse{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMapImageReferenceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMapImageReferenceResponse) ProtoMessage() {}
+
+func (x *GetMapImageReferenceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMapImageReferenceResponse.ProtoReflect.Descriptor instead.
+func (*GetMapImageReferenceResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetMapImageReferenceResponse) GetPreview() []byte {
+	if x != nil {
+		return x.Preview
+	}
+	return nil
+}
+
+func (x *GetMapImageReferenceResponse) GetPreviewContentType() string {
+	if x != nil {
+		return x.PreviewContentType
+	}
+	return ""
+}
+
+func (x *GetMapImageReferenceResponse) GetPlayersSeeSomething() bool {
+	if x != nil {
+		return x.PlayersSeeSomething
+	}
+	return false
+}
+
+func (x *GetMapImageReferenceResponse) GetSeenSquares() int32 {
+	if x != nil {
+		return x.SeenSquares
+	}
+	return 0
+}
+
+func (x *GetMapImageReferenceResponse) GetTotalSquares() int32 {
+	if x != nil {
+		return x.TotalSquares
+	}
+	return 0
+}
+
+func (x *GetMapImageReferenceResponse) GetCreatures() []*MapImageCreature {
+	if x != nil {
+		return x.Creatures
+	}
+	return nil
+}
+
+func (x *GetMapImageReferenceResponse) GetPaddedRatio() ImageAspectRatio {
+	if x != nil {
+		return x.PaddedRatio
+	}
+	return ImageAspectRatio_IMAGE_ASPECT_RATIO_UNSPECIFIED
+}
+
+func (x *GetMapImageReferenceResponse) GetGridColumns() int32 {
+	if x != nil {
+		return x.GridColumns
+	}
+	return 0
+}
+
+func (x *GetMapImageReferenceResponse) GetGridRows() int32 {
+	if x != nil {
+		return x.GridRows
+	}
+	return 0
+}
+
+func (x *GetMapImageReferenceResponse) GetRoomsListed() int32 {
+	if x != nil {
+		return x.RoomsListed
+	}
+	return 0
+}
+
+func (x *GetMapImageReferenceResponse) GetTextureTooLarge() bool {
+	if x != nil {
+		return x.TextureTooLarge
+	}
+	return false
+}
+
+func (x *GetMapImageReferenceResponse) GetMaxTexturePixels() int64 {
+	if x != nil {
+		return x.MaxTexturePixels
+	}
+	return 0
+}
+
+// MapImageCreature is an NPC a request made from a map may show.
+type MapImageCreature struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The character (a UUID).
+	CharacterId string `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The NPC's name, for the master's list. It never goes to Google.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The gallery image of its portrait, empty when it has none (then choosing it
+	// sends no reference). It goes as a character reference.
+	PortraitImageId string `protobuf:"bytes,3,opt,name=portrait_image_id,json=portraitImageId,proto3" json:"portrait_image_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MapImageCreature) Reset() {
+	*x = MapImageCreature{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MapImageCreature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MapImageCreature) ProtoMessage() {}
+
+func (x *MapImageCreature) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapImageCreature.ProtoReflect.Descriptor instead.
+func (*MapImageCreature) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *MapImageCreature) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *MapImageCreature) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MapImageCreature) GetPortraitImageId() string {
+	if x != nil {
+		return x.PortraitImageId
+	}
+	return ""
+}
+
+type GenerateMapImageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The campaign (a UUID).
+	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The map (a UUID).
+	MapId string `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+	Kind ImageGenerationKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.maps.v1.ImageGenerationKind" json:"kind,omitempty"`
+	// As GenerateSceneImageRequest.idempotency_key.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// What to draw, in the master's words: 1 to 500 characters. It goes to Google
+	// as written.
+	Prompt string     `protobuf:"bytes,5,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Style  ImageStyle `protobuf:"varint,6,opt,name=style,proto3,enum=meurpg.maps.v1.ImageStyle" json:"style,omitempty"`
+	// The ratio of MAP_SCENE and ISOMETRIC; empty means 16:9. TEXTURED_MAP ignores
+	// it: the server picks the model's ratio closest to the map's.
+	AspectRatio ImageAspectRatio `protobuf:"varint,7,opt,name=aspect_ratio,json=aspectRatio,proto3,enum=meurpg.maps.v1.ImageAspectRatio" json:"aspect_ratio,omitempty"`
+	// Gallery images of objects and places, at most 10 (UUIDs).
+	ObjectImageIds []string `protobuf:"bytes,8,rep,name=object_image_ids,json=objectImageIds,proto3" json:"object_image_ids,omitempty"`
+	// Gallery images of characters, as GenerateSceneImageRequest.
+	CharacterImageIds []string `protobuf:"bytes,9,rep,name=character_image_ids,json=characterImageIds,proto3" json:"character_image_ids,omitempty"`
+	// NPCs that appear (MAP_SCENE and ISOMETRIC only; character IDs from
+	// GetMapImageReference.creatures): their
+	// portraits go as character references, together with character_image_ids, at
+	// most 4 in all (an image listed twice counts once).
+	NpcCharacterIds []string `protobuf:"bytes,10,rep,name=npc_character_ids,json=npcCharacterIds,proto3" json:"npc_character_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GenerateMapImageRequest) Reset() {
+	*x = GenerateMapImageRequest{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateMapImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateMapImageRequest) ProtoMessage() {}
+
+func (x *GenerateMapImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateMapImageRequest.ProtoReflect.Descriptor instead.
+func (*GenerateMapImageRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GenerateMapImageRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *GenerateMapImageRequest) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *GenerateMapImageRequest) GetKind() ImageGenerationKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ImageGenerationKind_IMAGE_GENERATION_KIND_UNSPECIFIED
+}
+
+func (x *GenerateMapImageRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *GenerateMapImageRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *GenerateMapImageRequest) GetStyle() ImageStyle {
+	if x != nil {
+		return x.Style
+	}
+	return ImageStyle_IMAGE_STYLE_UNSPECIFIED
+}
+
+func (x *GenerateMapImageRequest) GetAspectRatio() ImageAspectRatio {
+	if x != nil {
+		return x.AspectRatio
+	}
+	return ImageAspectRatio_IMAGE_ASPECT_RATIO_UNSPECIFIED
+}
+
+func (x *GenerateMapImageRequest) GetObjectImageIds() []string {
+	if x != nil {
+		return x.ObjectImageIds
+	}
+	return nil
+}
+
+func (x *GenerateMapImageRequest) GetCharacterImageIds() []string {
+	if x != nil {
+		return x.CharacterImageIds
+	}
+	return nil
+}
+
+func (x *GenerateMapImageRequest) GetNpcCharacterIds() []string {
+	if x != nil {
+		return x.NpcCharacterIds
+	}
+	return nil
+}
+
+type GenerateMapImageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The request, PENDING (or what an earlier try with the same key became).
+	Generation *ImageGeneration `protobuf:"bytes,1,opt,name=generation,proto3" json:"generation,omitempty"`
+	// The month after reserving the slot.
+	Status        *ImageGenerationStatus `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateMapImageResponse) Reset() {
+	*x = GenerateMapImageResponse{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateMapImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateMapImageResponse) ProtoMessage() {}
+
+func (x *GenerateMapImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateMapImageResponse.ProtoReflect.Descriptor instead.
+func (*GenerateMapImageResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GenerateMapImageResponse) GetGeneration() *ImageGeneration {
+	if x != nil {
+		return x.Generation
+	}
+	return nil
+}
+
+func (x *GenerateMapImageResponse) GetStatus() *ImageGenerationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+type UseGeneratedImageAsMapImageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The campaign (a UUID).
+	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The textured map's gallery image (a UUID).
+	ImageId       string `protobuf:"bytes,2,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UseGeneratedImageAsMapImageRequest) Reset() {
+	*x = UseGeneratedImageAsMapImageRequest{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseGeneratedImageAsMapImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseGeneratedImageAsMapImageRequest) ProtoMessage() {}
+
+func (x *UseGeneratedImageAsMapImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseGeneratedImageAsMapImageRequest.ProtoReflect.Descriptor instead.
+func (*UseGeneratedImageAsMapImageRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *UseGeneratedImageAsMapImageRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *UseGeneratedImageAsMapImageRequest) GetImageId() string {
+	if x != nil {
+		return x.ImageId
+	}
+	return ""
+}
+
+type UseGeneratedImageAsMapImageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The map as the master reads it, with its new image and the same layers.
+	Map           *Map `protobuf:"bytes,1,opt,name=map,proto3" json:"map,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UseGeneratedImageAsMapImageResponse) Reset() {
+	*x = UseGeneratedImageAsMapImageResponse{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseGeneratedImageAsMapImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseGeneratedImageAsMapImageResponse) ProtoMessage() {}
+
+func (x *UseGeneratedImageAsMapImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseGeneratedImageAsMapImageResponse.ProtoReflect.Descriptor instead.
+func (*UseGeneratedImageAsMapImageResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *UseGeneratedImageAsMapImageResponse) GetMap() *Map {
+	if x != nil {
+		return x.Map
+	}
+	return nil
+}
+
+// ImageGenerationInvalidField is the error detail of `invalid_argument` from
+// GenerateMapImage when a request field breaks a rule that is not its shape: it
+// names the field, never the value.
+type ImageGenerationInvalidField struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The request field, such as "npc_character_ids" or "character_image_ids".
+	Field         string `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImageGenerationInvalidField) Reset() {
+	*x = ImageGenerationInvalidField{}
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImageGenerationInvalidField) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageGenerationInvalidField) ProtoMessage() {}
+
+func (x *ImageGenerationInvalidField) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_imagegen_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageGenerationInvalidField.ProtoReflect.Descriptor instead.
+func (*ImageGenerationInvalidField) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_imagegen_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ImageGenerationInvalidField) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
 var File_meurpg_maps_v1_imagegen_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\n" +
-	"\x1dmeurpg/maps/v1/imagegen.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cmeurpg/maps/v1/gallery.proto\"\xf7\x05\n" +
+	"\x1dmeurpg/maps/v1/imagegen.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cmeurpg/maps/v1/gallery.proto\x1a\x19meurpg/maps/v1/maps.proto\"\x8e\x06\n" +
 	"\x0fImageGeneration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -1570,7 +2222,8 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12;\n" +
 	"\vfinished_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"finishedAt\x12.\n" +
-	"\x13character_image_ids\x18\x11 \x03(\tR\x11characterImageIds\"\x8d\x03\n" +
+	"\x13character_image_ids\x18\x11 \x03(\tR\x11characterImageIds\x12\x15\n" +
+	"\x06map_id\x18\x12 \x01(\tR\x05mapId\"\x8d\x03\n" +
 	"\x15ImageGenerationStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12#\n" +
 	"\rmonthly_limit\x18\x02 \x01(\x05R\fmonthlyLimit\x12&\n" +
@@ -1643,7 +2296,56 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\tImageEdit\x122\n" +
 	"\x05image\x18\x01 \x01(\v2\x1c.meurpg.maps.v1.GalleryImageR\x05image\x12\x16\n" +
 	"\x06prompt\x18\x02 \x01(\tR\x06prompt\x12\x16\n" +
-	"\x06number\x18\x03 \x01(\x05R\x06number*\xb8\x01\n" +
+	"\x06number\x18\x03 \x01(\x05R\x06number\"\x8e\x01\n" +
+	"\x1bGetMapImageReferenceRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x127\n" +
+	"\x04kind\x18\x03 \x01(\x0e2#.meurpg.maps.v1.ImageGenerationKindR\x04kind\"\xa8\x04\n" +
+	"\x1cGetMapImageReferenceResponse\x12\x18\n" +
+	"\apreview\x18\x01 \x01(\fR\apreview\x120\n" +
+	"\x14preview_content_type\x18\x02 \x01(\tR\x12previewContentType\x122\n" +
+	"\x15players_see_something\x18\x03 \x01(\bR\x13playersSeeSomething\x12!\n" +
+	"\fseen_squares\x18\x04 \x01(\x05R\vseenSquares\x12#\n" +
+	"\rtotal_squares\x18\x05 \x01(\x05R\ftotalSquares\x12>\n" +
+	"\tcreatures\x18\x06 \x03(\v2 .meurpg.maps.v1.MapImageCreatureR\tcreatures\x12C\n" +
+	"\fpadded_ratio\x18\a \x01(\x0e2 .meurpg.maps.v1.ImageAspectRatioR\vpaddedRatio\x12!\n" +
+	"\fgrid_columns\x18\b \x01(\x05R\vgridColumns\x12\x1b\n" +
+	"\tgrid_rows\x18\t \x01(\x05R\bgridRows\x12!\n" +
+	"\frooms_listed\x18\n" +
+	" \x01(\x05R\vroomsListed\x12*\n" +
+	"\x11texture_too_large\x18\v \x01(\bR\x0ftextureTooLarge\x12,\n" +
+	"\x12max_texture_pixels\x18\f \x01(\x03R\x10maxTexturePixels\"u\n" +
+	"\x10MapImageCreature\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
+	"\x11portrait_image_id\x18\x03 \x01(\tR\x0fportraitImageId\"\xc8\x03\n" +
+	"\x17GenerateMapImageRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x127\n" +
+	"\x04kind\x18\x03 \x01(\x0e2#.meurpg.maps.v1.ImageGenerationKindR\x04kind\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x16\n" +
+	"\x06prompt\x18\x05 \x01(\tR\x06prompt\x120\n" +
+	"\x05style\x18\x06 \x01(\x0e2\x1a.meurpg.maps.v1.ImageStyleR\x05style\x12C\n" +
+	"\faspect_ratio\x18\a \x01(\x0e2 .meurpg.maps.v1.ImageAspectRatioR\vaspectRatio\x12(\n" +
+	"\x10object_image_ids\x18\b \x03(\tR\x0eobjectImageIds\x12.\n" +
+	"\x13character_image_ids\x18\t \x03(\tR\x11characterImageIds\x12*\n" +
+	"\x11npc_character_ids\x18\n" +
+	" \x03(\tR\x0fnpcCharacterIds\"\x9a\x01\n" +
+	"\x18GenerateMapImageResponse\x12?\n" +
+	"\n" +
+	"generation\x18\x01 \x01(\v2\x1f.meurpg.maps.v1.ImageGenerationR\n" +
+	"generation\x12=\n" +
+	"\x06status\x18\x02 \x01(\v2%.meurpg.maps.v1.ImageGenerationStatusR\x06status\"`\n" +
+	"\"UseGeneratedImageAsMapImageRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x19\n" +
+	"\bimage_id\x18\x02 \x01(\tR\aimageId\"L\n" +
+	"#UseGeneratedImageAsMapImageResponse\x12%\n" +
+	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"3\n" +
+	"\x1bImageGenerationInvalidField\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field*\xb8\x01\n" +
 	"\n" +
 	"ImageStyle\x12\x1b\n" +
 	"\x17IMAGE_STYLE_UNSPECIFIED\x10\x00\x12\x1c\n" +
@@ -1664,11 +2366,14 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x17IMAGE_ASPECT_RATIO_9_16\x10\b\x12\x1b\n" +
 	"\x17IMAGE_ASPECT_RATIO_16_9\x10\t\x12\x1b\n" +
 	"\x17IMAGE_ASPECT_RATIO_21_9\x10\n" +
-	"*}\n" +
+	"*\xef\x01\n" +
 	"\x13ImageGenerationKind\x12%\n" +
 	"!IMAGE_GENERATION_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bIMAGE_GENERATION_KIND_SCENE\x10\x01\x12\x1e\n" +
-	"\x1aIMAGE_GENERATION_KIND_EDIT\x10\x02*\xef\x01\n" +
+	"\x1aIMAGE_GENERATION_KIND_EDIT\x10\x02\x12#\n" +
+	"\x1fIMAGE_GENERATION_KIND_MAP_SCENE\x10\x03\x12#\n" +
+	"\x1fIMAGE_GENERATION_KIND_ISOMETRIC\x10\x04\x12&\n" +
+	"\"IMAGE_GENERATION_KIND_TEXTURED_MAP\x10\x05*\xef\x01\n" +
 	"\x14ImageGenerationState\x12&\n" +
 	"\"IMAGE_GENERATION_STATE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eIMAGE_GENERATION_STATE_PENDING\x10\x01\x12\x1f\n" +
@@ -1684,20 +2389,27 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"%IMAGE_GENERATION_FAILURE_GALLERY_FULL\x10\x04\x12*\n" +
 	"&IMAGE_GENERATION_FAILURE_IMAGE_MISSING\x10\x05\x12$\n" +
 	" IMAGE_GENERATION_FAILURE_TIMEOUT\x10\x06\x12(\n" +
-	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a*\x94\x02\n" +
+	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a*\xec\x03\n" +
 	"\x1cImageGenerationBlockedReason\x12/\n" +
 	"+IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#IMAGE_GENERATION_BLOCKED_REASON_OFF\x10\x01\x121\n" +
 	"-IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED\x10\x02\x120\n" +
 	",IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL\x10\x03\x125\n" +
-	"1IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE\x10\x042\xc5\x05\n" +
+	"1IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE\x10\x04\x127\n" +
+	"3IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING\x10\x05\x123\n" +
+	"/IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID\x10\x06\x127\n" +
+	"3IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE\x10\a\x12/\n" +
+	"+IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED\x10\b2\xad\b\n" +
 	"\x16ImageGenerationService\x12\x82\x01\n" +
 	"\x18GetImageGenerationStatus\x12/.meurpg.maps.v1.GetImageGenerationStatusRequest\x1a0.meurpg.maps.v1.GetImageGenerationStatusResponse\"\x03\x90\x02\x02\x12k\n" +
 	"\x12GenerateSceneImage\x12).meurpg.maps.v1.GenerateSceneImageRequest\x1a*.meurpg.maps.v1.GenerateSceneImageResponse\x12k\n" +
 	"\x12EditGeneratedImage\x12).meurpg.maps.v1.EditGeneratedImageRequest\x1a*.meurpg.maps.v1.EditGeneratedImageResponse\x12p\n" +
 	"\x12GetImageGeneration\x12).meurpg.maps.v1.GetImageGenerationRequest\x1a*.meurpg.maps.v1.GetImageGenerationResponse\"\x03\x90\x02\x02\x12t\n" +
 	"\x15CancelImageGeneration\x12,.meurpg.maps.v1.CancelImageGenerationRequest\x1a-.meurpg.maps.v1.CancelImageGenerationResponse\x12d\n" +
-	"\x0eListImageEdits\x12%.meurpg.maps.v1.ListImageEditsRequest\x1a&.meurpg.maps.v1.ListImageEditsResponse\"\x03\x90\x02\x02B\xbb\x01\n" +
+	"\x0eListImageEdits\x12%.meurpg.maps.v1.ListImageEditsRequest\x1a&.meurpg.maps.v1.ListImageEditsResponse\"\x03\x90\x02\x02\x12v\n" +
+	"\x14GetMapImageReference\x12+.meurpg.maps.v1.GetMapImageReferenceRequest\x1a,.meurpg.maps.v1.GetMapImageReferenceResponse\"\x03\x90\x02\x02\x12e\n" +
+	"\x10GenerateMapImage\x12'.meurpg.maps.v1.GenerateMapImageRequest\x1a(.meurpg.maps.v1.GenerateMapImageResponse\x12\x86\x01\n" +
+	"\x1bUseGeneratedImageAsMapImage\x122.meurpg.maps.v1.UseGeneratedImageAsMapImageRequest\x1a3.meurpg.maps.v1.UseGeneratedImageAsMapImageResponseB\xbb\x01\n" +
 	"\x12com.meurpg.maps.v1B\rImagegenProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1;mapsv1\xa2\x02\x03MMX\xaa\x02\x0eMeurpg.Maps.V1\xca\x02\x0eMeurpg\\Maps\\V1\xe2\x02\x1aMeurpg\\Maps\\V1\\GPBMetadata\xea\x02\x10Meurpg::Maps::V1b\x06proto3"
 
 var (
@@ -1713,32 +2425,41 @@ func file_meurpg_maps_v1_imagegen_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_maps_v1_imagegen_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_meurpg_maps_v1_imagegen_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_meurpg_maps_v1_imagegen_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_meurpg_maps_v1_imagegen_proto_goTypes = []any{
-	(ImageStyle)(0),                          // 0: meurpg.maps.v1.ImageStyle
-	(ImageAspectRatio)(0),                    // 1: meurpg.maps.v1.ImageAspectRatio
-	(ImageGenerationKind)(0),                 // 2: meurpg.maps.v1.ImageGenerationKind
-	(ImageGenerationState)(0),                // 3: meurpg.maps.v1.ImageGenerationState
-	(ImageGenerationFailure)(0),              // 4: meurpg.maps.v1.ImageGenerationFailure
-	(ImageGenerationBlockedReason)(0),        // 5: meurpg.maps.v1.ImageGenerationBlockedReason
-	(*ImageGeneration)(nil),                  // 6: meurpg.maps.v1.ImageGeneration
-	(*ImageGenerationStatus)(nil),            // 7: meurpg.maps.v1.ImageGenerationStatus
-	(*ImageGenerationBlocked)(nil),           // 8: meurpg.maps.v1.ImageGenerationBlocked
-	(*GetImageGenerationStatusRequest)(nil),  // 9: meurpg.maps.v1.GetImageGenerationStatusRequest
-	(*GetImageGenerationStatusResponse)(nil), // 10: meurpg.maps.v1.GetImageGenerationStatusResponse
-	(*GenerateSceneImageRequest)(nil),        // 11: meurpg.maps.v1.GenerateSceneImageRequest
-	(*GenerateSceneImageResponse)(nil),       // 12: meurpg.maps.v1.GenerateSceneImageResponse
-	(*EditGeneratedImageRequest)(nil),        // 13: meurpg.maps.v1.EditGeneratedImageRequest
-	(*EditGeneratedImageResponse)(nil),       // 14: meurpg.maps.v1.EditGeneratedImageResponse
-	(*GetImageGenerationRequest)(nil),        // 15: meurpg.maps.v1.GetImageGenerationRequest
-	(*GetImageGenerationResponse)(nil),       // 16: meurpg.maps.v1.GetImageGenerationResponse
-	(*CancelImageGenerationRequest)(nil),     // 17: meurpg.maps.v1.CancelImageGenerationRequest
-	(*CancelImageGenerationResponse)(nil),    // 18: meurpg.maps.v1.CancelImageGenerationResponse
-	(*ListImageEditsRequest)(nil),            // 19: meurpg.maps.v1.ListImageEditsRequest
-	(*ListImageEditsResponse)(nil),           // 20: meurpg.maps.v1.ListImageEditsResponse
-	(*ImageEdit)(nil),                        // 21: meurpg.maps.v1.ImageEdit
-	(*timestamppb.Timestamp)(nil),            // 22: google.protobuf.Timestamp
-	(*GalleryImage)(nil),                     // 23: meurpg.maps.v1.GalleryImage
+	(ImageStyle)(0),                             // 0: meurpg.maps.v1.ImageStyle
+	(ImageAspectRatio)(0),                       // 1: meurpg.maps.v1.ImageAspectRatio
+	(ImageGenerationKind)(0),                    // 2: meurpg.maps.v1.ImageGenerationKind
+	(ImageGenerationState)(0),                   // 3: meurpg.maps.v1.ImageGenerationState
+	(ImageGenerationFailure)(0),                 // 4: meurpg.maps.v1.ImageGenerationFailure
+	(ImageGenerationBlockedReason)(0),           // 5: meurpg.maps.v1.ImageGenerationBlockedReason
+	(*ImageGeneration)(nil),                     // 6: meurpg.maps.v1.ImageGeneration
+	(*ImageGenerationStatus)(nil),               // 7: meurpg.maps.v1.ImageGenerationStatus
+	(*ImageGenerationBlocked)(nil),              // 8: meurpg.maps.v1.ImageGenerationBlocked
+	(*GetImageGenerationStatusRequest)(nil),     // 9: meurpg.maps.v1.GetImageGenerationStatusRequest
+	(*GetImageGenerationStatusResponse)(nil),    // 10: meurpg.maps.v1.GetImageGenerationStatusResponse
+	(*GenerateSceneImageRequest)(nil),           // 11: meurpg.maps.v1.GenerateSceneImageRequest
+	(*GenerateSceneImageResponse)(nil),          // 12: meurpg.maps.v1.GenerateSceneImageResponse
+	(*EditGeneratedImageRequest)(nil),           // 13: meurpg.maps.v1.EditGeneratedImageRequest
+	(*EditGeneratedImageResponse)(nil),          // 14: meurpg.maps.v1.EditGeneratedImageResponse
+	(*GetImageGenerationRequest)(nil),           // 15: meurpg.maps.v1.GetImageGenerationRequest
+	(*GetImageGenerationResponse)(nil),          // 16: meurpg.maps.v1.GetImageGenerationResponse
+	(*CancelImageGenerationRequest)(nil),        // 17: meurpg.maps.v1.CancelImageGenerationRequest
+	(*CancelImageGenerationResponse)(nil),       // 18: meurpg.maps.v1.CancelImageGenerationResponse
+	(*ListImageEditsRequest)(nil),               // 19: meurpg.maps.v1.ListImageEditsRequest
+	(*ListImageEditsResponse)(nil),              // 20: meurpg.maps.v1.ListImageEditsResponse
+	(*ImageEdit)(nil),                           // 21: meurpg.maps.v1.ImageEdit
+	(*GetMapImageReferenceRequest)(nil),         // 22: meurpg.maps.v1.GetMapImageReferenceRequest
+	(*GetMapImageReferenceResponse)(nil),        // 23: meurpg.maps.v1.GetMapImageReferenceResponse
+	(*MapImageCreature)(nil),                    // 24: meurpg.maps.v1.MapImageCreature
+	(*GenerateMapImageRequest)(nil),             // 25: meurpg.maps.v1.GenerateMapImageRequest
+	(*GenerateMapImageResponse)(nil),            // 26: meurpg.maps.v1.GenerateMapImageResponse
+	(*UseGeneratedImageAsMapImageRequest)(nil),  // 27: meurpg.maps.v1.UseGeneratedImageAsMapImageRequest
+	(*UseGeneratedImageAsMapImageResponse)(nil), // 28: meurpg.maps.v1.UseGeneratedImageAsMapImageResponse
+	(*ImageGenerationInvalidField)(nil),         // 29: meurpg.maps.v1.ImageGenerationInvalidField
+	(*timestamppb.Timestamp)(nil),               // 30: google.protobuf.Timestamp
+	(*GalleryImage)(nil),                        // 31: meurpg.maps.v1.GalleryImage
+	(*Map)(nil),                                 // 32: meurpg.maps.v1.Map
 }
 var file_meurpg_maps_v1_imagegen_proto_depIdxs = []int32{
 	2,  // 0: meurpg.maps.v1.ImageGeneration.kind:type_name -> meurpg.maps.v1.ImageGenerationKind
@@ -1746,9 +2467,9 @@ var file_meurpg_maps_v1_imagegen_proto_depIdxs = []int32{
 	4,  // 2: meurpg.maps.v1.ImageGeneration.failure:type_name -> meurpg.maps.v1.ImageGenerationFailure
 	0,  // 3: meurpg.maps.v1.ImageGeneration.style:type_name -> meurpg.maps.v1.ImageStyle
 	1,  // 4: meurpg.maps.v1.ImageGeneration.aspect_ratio:type_name -> meurpg.maps.v1.ImageAspectRatio
-	22, // 5: meurpg.maps.v1.ImageGeneration.created_at:type_name -> google.protobuf.Timestamp
-	22, // 6: meurpg.maps.v1.ImageGeneration.finished_at:type_name -> google.protobuf.Timestamp
-	22, // 7: meurpg.maps.v1.ImageGenerationStatus.resets_at:type_name -> google.protobuf.Timestamp
+	30, // 5: meurpg.maps.v1.ImageGeneration.created_at:type_name -> google.protobuf.Timestamp
+	30, // 6: meurpg.maps.v1.ImageGeneration.finished_at:type_name -> google.protobuf.Timestamp
+	30, // 7: meurpg.maps.v1.ImageGenerationStatus.resets_at:type_name -> google.protobuf.Timestamp
 	5,  // 8: meurpg.maps.v1.ImageGenerationBlocked.reason:type_name -> meurpg.maps.v1.ImageGenerationBlockedReason
 	7,  // 9: meurpg.maps.v1.ImageGenerationBlocked.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
 	7,  // 10: meurpg.maps.v1.GetImageGenerationStatusResponse.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
@@ -1759,29 +2480,44 @@ var file_meurpg_maps_v1_imagegen_proto_depIdxs = []int32{
 	6,  // 15: meurpg.maps.v1.EditGeneratedImageResponse.generation:type_name -> meurpg.maps.v1.ImageGeneration
 	7,  // 16: meurpg.maps.v1.EditGeneratedImageResponse.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
 	6,  // 17: meurpg.maps.v1.GetImageGenerationResponse.generation:type_name -> meurpg.maps.v1.ImageGeneration
-	23, // 18: meurpg.maps.v1.GetImageGenerationResponse.image:type_name -> meurpg.maps.v1.GalleryImage
+	31, // 18: meurpg.maps.v1.GetImageGenerationResponse.image:type_name -> meurpg.maps.v1.GalleryImage
 	7,  // 19: meurpg.maps.v1.GetImageGenerationResponse.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
 	6,  // 20: meurpg.maps.v1.CancelImageGenerationResponse.generation:type_name -> meurpg.maps.v1.ImageGeneration
 	7,  // 21: meurpg.maps.v1.CancelImageGenerationResponse.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
 	21, // 22: meurpg.maps.v1.ListImageEditsResponse.edits:type_name -> meurpg.maps.v1.ImageEdit
-	23, // 23: meurpg.maps.v1.ImageEdit.image:type_name -> meurpg.maps.v1.GalleryImage
-	9,  // 24: meurpg.maps.v1.ImageGenerationService.GetImageGenerationStatus:input_type -> meurpg.maps.v1.GetImageGenerationStatusRequest
-	11, // 25: meurpg.maps.v1.ImageGenerationService.GenerateSceneImage:input_type -> meurpg.maps.v1.GenerateSceneImageRequest
-	13, // 26: meurpg.maps.v1.ImageGenerationService.EditGeneratedImage:input_type -> meurpg.maps.v1.EditGeneratedImageRequest
-	15, // 27: meurpg.maps.v1.ImageGenerationService.GetImageGeneration:input_type -> meurpg.maps.v1.GetImageGenerationRequest
-	17, // 28: meurpg.maps.v1.ImageGenerationService.CancelImageGeneration:input_type -> meurpg.maps.v1.CancelImageGenerationRequest
-	19, // 29: meurpg.maps.v1.ImageGenerationService.ListImageEdits:input_type -> meurpg.maps.v1.ListImageEditsRequest
-	10, // 30: meurpg.maps.v1.ImageGenerationService.GetImageGenerationStatus:output_type -> meurpg.maps.v1.GetImageGenerationStatusResponse
-	12, // 31: meurpg.maps.v1.ImageGenerationService.GenerateSceneImage:output_type -> meurpg.maps.v1.GenerateSceneImageResponse
-	14, // 32: meurpg.maps.v1.ImageGenerationService.EditGeneratedImage:output_type -> meurpg.maps.v1.EditGeneratedImageResponse
-	16, // 33: meurpg.maps.v1.ImageGenerationService.GetImageGeneration:output_type -> meurpg.maps.v1.GetImageGenerationResponse
-	18, // 34: meurpg.maps.v1.ImageGenerationService.CancelImageGeneration:output_type -> meurpg.maps.v1.CancelImageGenerationResponse
-	20, // 35: meurpg.maps.v1.ImageGenerationService.ListImageEdits:output_type -> meurpg.maps.v1.ListImageEditsResponse
-	30, // [30:36] is the sub-list for method output_type
-	24, // [24:30] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	31, // 23: meurpg.maps.v1.ImageEdit.image:type_name -> meurpg.maps.v1.GalleryImage
+	2,  // 24: meurpg.maps.v1.GetMapImageReferenceRequest.kind:type_name -> meurpg.maps.v1.ImageGenerationKind
+	24, // 25: meurpg.maps.v1.GetMapImageReferenceResponse.creatures:type_name -> meurpg.maps.v1.MapImageCreature
+	1,  // 26: meurpg.maps.v1.GetMapImageReferenceResponse.padded_ratio:type_name -> meurpg.maps.v1.ImageAspectRatio
+	2,  // 27: meurpg.maps.v1.GenerateMapImageRequest.kind:type_name -> meurpg.maps.v1.ImageGenerationKind
+	0,  // 28: meurpg.maps.v1.GenerateMapImageRequest.style:type_name -> meurpg.maps.v1.ImageStyle
+	1,  // 29: meurpg.maps.v1.GenerateMapImageRequest.aspect_ratio:type_name -> meurpg.maps.v1.ImageAspectRatio
+	6,  // 30: meurpg.maps.v1.GenerateMapImageResponse.generation:type_name -> meurpg.maps.v1.ImageGeneration
+	7,  // 31: meurpg.maps.v1.GenerateMapImageResponse.status:type_name -> meurpg.maps.v1.ImageGenerationStatus
+	32, // 32: meurpg.maps.v1.UseGeneratedImageAsMapImageResponse.map:type_name -> meurpg.maps.v1.Map
+	9,  // 33: meurpg.maps.v1.ImageGenerationService.GetImageGenerationStatus:input_type -> meurpg.maps.v1.GetImageGenerationStatusRequest
+	11, // 34: meurpg.maps.v1.ImageGenerationService.GenerateSceneImage:input_type -> meurpg.maps.v1.GenerateSceneImageRequest
+	13, // 35: meurpg.maps.v1.ImageGenerationService.EditGeneratedImage:input_type -> meurpg.maps.v1.EditGeneratedImageRequest
+	15, // 36: meurpg.maps.v1.ImageGenerationService.GetImageGeneration:input_type -> meurpg.maps.v1.GetImageGenerationRequest
+	17, // 37: meurpg.maps.v1.ImageGenerationService.CancelImageGeneration:input_type -> meurpg.maps.v1.CancelImageGenerationRequest
+	19, // 38: meurpg.maps.v1.ImageGenerationService.ListImageEdits:input_type -> meurpg.maps.v1.ListImageEditsRequest
+	22, // 39: meurpg.maps.v1.ImageGenerationService.GetMapImageReference:input_type -> meurpg.maps.v1.GetMapImageReferenceRequest
+	25, // 40: meurpg.maps.v1.ImageGenerationService.GenerateMapImage:input_type -> meurpg.maps.v1.GenerateMapImageRequest
+	27, // 41: meurpg.maps.v1.ImageGenerationService.UseGeneratedImageAsMapImage:input_type -> meurpg.maps.v1.UseGeneratedImageAsMapImageRequest
+	10, // 42: meurpg.maps.v1.ImageGenerationService.GetImageGenerationStatus:output_type -> meurpg.maps.v1.GetImageGenerationStatusResponse
+	12, // 43: meurpg.maps.v1.ImageGenerationService.GenerateSceneImage:output_type -> meurpg.maps.v1.GenerateSceneImageResponse
+	14, // 44: meurpg.maps.v1.ImageGenerationService.EditGeneratedImage:output_type -> meurpg.maps.v1.EditGeneratedImageResponse
+	16, // 45: meurpg.maps.v1.ImageGenerationService.GetImageGeneration:output_type -> meurpg.maps.v1.GetImageGenerationResponse
+	18, // 46: meurpg.maps.v1.ImageGenerationService.CancelImageGeneration:output_type -> meurpg.maps.v1.CancelImageGenerationResponse
+	20, // 47: meurpg.maps.v1.ImageGenerationService.ListImageEdits:output_type -> meurpg.maps.v1.ListImageEditsResponse
+	23, // 48: meurpg.maps.v1.ImageGenerationService.GetMapImageReference:output_type -> meurpg.maps.v1.GetMapImageReferenceResponse
+	26, // 49: meurpg.maps.v1.ImageGenerationService.GenerateMapImage:output_type -> meurpg.maps.v1.GenerateMapImageResponse
+	28, // 50: meurpg.maps.v1.ImageGenerationService.UseGeneratedImageAsMapImage:output_type -> meurpg.maps.v1.UseGeneratedImageAsMapImageResponse
+	42, // [42:51] is the sub-list for method output_type
+	33, // [33:42] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_maps_v1_imagegen_proto_init() }
@@ -1790,13 +2526,14 @@ func file_meurpg_maps_v1_imagegen_proto_init() {
 		return
 	}
 	file_meurpg_maps_v1_gallery_proto_init()
+	file_meurpg_maps_v1_maps_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_maps_v1_imagegen_proto_rawDesc), len(file_meurpg_maps_v1_imagegen_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   16,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

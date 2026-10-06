@@ -39,3 +39,17 @@ test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca
   // catch only the header (seen locally, 30/09/2026).
   await expect(page.locator('body')).toContainText(attribution);
 });
+
+// The SRD 5.2.1 line (CC BY 4.0): the three tables of the 2024 rules the app uses are credited with the exact
+// paragraph of NOTICE, which this test reads at runtime, like the 5.1 one above.
+test('a página de créditos mostra a atribuição do SRD 5.2.1 e o rótulo das regras de 2024', { tag: '@licenca' }, async ({ page }) => {
+  test.fixme(!fs.existsSync(noticePath), 'NOTICE not written yet');
+  const text = fs.readFileSync(noticePath, 'utf-8');
+  const paragraph = text.split(/\n\s*\n/).find((p) => p.includes('This work includes material from the System Reference Document 5.2.1'));
+  if (!paragraph) {
+    throw new Error(`NOTICE has no SRD 5.2.1 attribution paragraph: ${noticePath}`);
+  }
+  await page.goto('/creditos');
+  await expect(page.locator('body')).toContainText(paragraph.replace(/\s+/g, ' ').trim());
+  await expect(page.locator('body')).toContainText('SRD 5.2.1 (regras de 2024)');
+});

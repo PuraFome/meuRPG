@@ -27,7 +27,7 @@
 }
 
 // The map stays on screen while the taller panel scrolls beside it, under the 64px app bar. Painting has short panels and the
-// fog settings under the map: no sticky there.
+// fog settings under the map, and a generated dungeon has its "Imagem" panel under the map: no sticky there.
 .layout__map {
   display: flex;
   flex-direction: column;
@@ -132,4 +132,18 @@
 
 .leave__text {
   margin: 0;
+}
+
+// The calibrated map's two grids in the legend: the drawing's solid line, the rules' dotted one (RN-25).
+.gl {
+  display: inline-block;
+  width: 20px;
+  height: 0;
+  margin-inline-end: 8px;
+  vertical-align: middle;
+  border-top: 2px solid var(--mr-ink-muted);
+
+  &--rules {
+    border-top: 2px dotted var(--mr-ink-muted);
+  }
 }

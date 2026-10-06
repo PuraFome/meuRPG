@@ -1,0 +1,64 @@
+<section class="mr-panel rooms" aria-labelledby="rooms-title">
+  <h2 class="mr-panel__title" id="rooms-title">Salas</h2>
+  <p class="rooms__only"><span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span> A imagem não leva números de sala.</p>
+  <ol class="rooms__list">
+    @for (room of rooms(); track room.id) {
+      <li class="room" [class.room--on]="selected() === room.id">
+        <button type="button" class="room__head" [attr.aria-pressed]="selected() === room.id" (click)="toggle(room)">
+          <span class="room__n" aria-hidden="true">{{ room.id }}</span>
+          <span class="room__title"><strong>Sala {{ room.id }}</strong> <span class="room__size">{{ size(room) }}</span></span>
+        </button>
+        <div class="room__body">
+          @if (entranceRoom() === room.id) {
+            <p class="room__chip"><app-stair-mark class="room__stair" direction="up" />Escada para cima: a entrada</p>
+          }
+          @for (s of stairs(room); track $index) {
+            @if (!(entranceRoom() === room.id && s.up)) {
+              <p class="room__chip"><app-stair-mark class="room__stair" [direction]="s.up ? 'up' : 'down'" />{{ s.up ? 'Escada para cima' : 'Escada para baixo' }}</p>
+            }
+          }
+          @if (secret(room)) {
+            <p class="room__chip"><mat-icon aria-hidden="true">visibility_off</mat-icon>Atrás de uma porta secreta</p>
+          }
+          @if (exits(room).length > 0) {
+            <ul class="room__exits" [attr.aria-label]="'Saídas da sala ' + room.id">
+              @for (e of exits(room); track $index) {
+                <li>
+                  {{ e.text }}
+                  @if (e.trapped) {
+                    <span class="room__trap"><mat-icon aria-hidden="true">warning</mat-icon>{{ trapNote }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (scenes(room)) {
+            <p class="room__scenes">{{ scenes(room) }}</p>
+          }
+          @if (problem(); as p) {
+            @if (p.room === room.id) {
+              <p class="room__error" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ p.text }}</p>
+            }
+          }
+          <button matButton type="button" class="room__place" [disabled]="busy() !== null" (click)="place(room)">Pôr uma cena nesta sala</button>
+        </div>
+      </li>
+    }
+  </ol>
+  @if (corridorStairs().length > 0) {
+    <h3 class="rooms__apart">Fora das salas</h3>
+    <ul class="rooms__stairs">
+      @for (s of corridorStairs(); track $index) {
+        <li class="stairrow">
+          <app-stair-mark class="stairrow__mark" [direction]="s.up ? 'up' : 'down'" />
+          <span class="stairrow__text">
+            <strong>{{ s.up ? 'Escada para cima' : 'Escada para baixo' }}{{ s.entrance ? ': a entrada' : '' }}</strong>
+            <span>num corredor, coluna {{ s.col }}, linha {{ s.row }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+  }
+  <!-- The region is always there (a live region must exist before its words do) and hidden while empty. -->
+  <p class="rooms__done" [class.mr-visually-hidden]="!message()" role="status" aria-live="polite">{{ message() }}</p>
+</section>

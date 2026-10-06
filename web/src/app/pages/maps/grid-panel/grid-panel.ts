@@ -23,6 +23,8 @@ import { MapBlockedReason } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { editorErrorMessage, mapBlockedReason } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MapAsk } from '../map-ask/map-ask';
+import { CalibrateAsk } from './calibrate-ask';
+import { factorLabel, maxDrawnColumns } from '../../../core/maps/calibration';
 
 /** The server takes 4 to 200 columns (`SetMapGrid`). */
 const MIN = 4;
@@ -39,7 +41,7 @@ const DEFAULT = 20;
  */
 @Component({
   selector: 'app-grid-panel',
-  imports: [MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [CalibrateAsk, MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid-panel.html',
   styleUrl: './grid-panel.scss',
@@ -60,18 +62,30 @@ export class GridPanel {
   readonly blocked = output<void>();
 
   protected readonly asking = signal(false);
+  /** "Cada quadrado deste desenho vale" is open (RN-25). */
+  protected readonly calibrating = signal(false);
   protected readonly typed = signal(String(DEFAULT));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly opener = viewChild('opener', { read: ElementRef<HTMLButtonElement> });
+  private readonly calibrator = viewChild('calibrator', { read: ElementRef<HTMLButtonElement> });
   private readonly field = viewChild('field', { read: ElementRef<HTMLInputElement> });
 
   protected readonly hasGrid = computed(() => this.map().gridColumns > 0);
   protected readonly image = computed(() => this.map().image);
+  /** How many squares of 1,5 m a square of the drawing is worth (1 for a map never calibrated). */
+  protected readonly factor = computed(() => Math.max(1, this.map().squareFactor));
+  /** The columns of the DRAWING: what "Mudar a grade" changes (the rules' grid is these times the factor). */
+  protected readonly drawnColumns = computed(() => this.map().drawnColumns || this.map().gridColumns);
+  protected readonly drawnRows = computed(() => this.map().drawnRows || Math.round(this.map().gridRows / this.factor()));
+  protected readonly calibrated = computed(() => this.factor() > 1);
+  protected readonly factorText = computed(() => factorLabel(this.factor()));
+  /** The most columns the drawing can have at this factor: the rules' grid stays within 200 columns. */
+  protected readonly maxColumns = computed(() => Math.min(MAX, maxDrawnColumns(this.factor())));
   protected readonly columns = computed(() => {
     const t = this.typed().trim();
     const n = /^\d{1,3}$/.test(t) ? Number(t) : NaN;
-    return n >= MIN && n <= MAX ? n : null;
+    return n >= MIN && n <= this.maxColumns() ? n : null;
   });
   protected readonly rows = computed(() => {
     const image = this.image();
@@ -80,15 +94,31 @@ export class GridPanel {
   });
   protected readonly invalid = computed(() => this.columns() === null);
   /** The size really changes: asking for the same grid would only erase for nothing. */
-  protected readonly changes = computed(() => this.columns() !== this.map().gridColumns);
+  protected readonly changes = computed(() => this.columns() !== this.drawnColumns());
   protected readonly min = MIN;
-  protected readonly max = MAX;
+  protected readonly max = computed(() => this.maxColumns());
 
   /** Opens the question (a map with a grid), or just the field (without one). */
   protected start(): void {
-    this.typed.set(String(this.hasGrid() ? this.map().gridColumns : DEFAULT));
+    this.typed.set(String(this.hasGrid() ? this.drawnColumns() : DEFAULT));
     this.error.set('');
     this.asking.set(true);
+  }
+
+  /** Opens "Cada quadrado deste desenho vale". */
+  protected calibrate(): void {
+    this.asking.set(false);
+    this.calibrating.set(true);
+  }
+
+  protected closeCalibration(): void {
+    this.calibrating.set(false);
+    afterNextRender(() => focusWithRing(this.calibrator()?.nativeElement), { injector: this.injector });
+  }
+
+  protected onCalibrated(map: MapMessage): void {
+    this.changed.emit(map);
+    this.closeCalibration();
   }
 
   protected cancel(): void {
@@ -110,7 +140,7 @@ export class GridPanel {
     this.busy.set(true);
     this.error.set('');
     try {
-      this.changed.emit(await this.api.setGrid(this.campaignId(), this.map().id, columns));
+      this.changed.emit(await this.api.setGrid(this.campaignId(), this.map().id, columns, this.factor()));
       this.asking.set(false);
       afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
     } catch (err) {

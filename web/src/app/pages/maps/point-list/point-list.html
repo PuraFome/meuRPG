@@ -11,7 +11,7 @@
               @if (r.point.kind === Treasure) {
                 <app-chest-icon />
               } @else {
-                <mat-icon>{{ icon(r.point.kind) }}</mat-icon>
+                <mat-icon>{{ icon(r.point.kind, r.point.stairs) }}</mat-icon>
               }
             </span>
             <span class="pl__text">

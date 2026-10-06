@@ -1,0 +1,115 @@
+:host {
+  display: block;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.row__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-4);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+
+  &--on {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent-soft);
+    color: var(--mr-accent-text);
+    font-weight: 700;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  // The check's room is kept on every chip, so choosing one never changes how the rows wrap.
+  .chk--off {
+    visibility: hidden;
+  }
+
+  @media (max-width: 599.98px) {
+    min-height: 48px;
+  }
+}
+
+// One bordered strip: the items share the border and each takes an equal share of the row.
+.row--strip {
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+
+  .row__item {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--mr-space-2);
+    border: 0;
+    border-radius: 0;
+    font-size: 15px;
+    white-space: nowrap;
+
+    & + & {
+      border-left: 1px solid var(--mr-control-line);
+    }
+  }
+
+  .row__item--on {
+    box-shadow: inset 0 0 0 1px var(--mr-accent);
+  }
+
+  // In a strip the check shows only on the chosen one (the items share the room, so nothing re-wraps).
+  .chk--off {
+    display: none;
+  }
+}
+
+// On a narrow screen a strip would squeeze its words: it becomes chips, two to a row at least.
+@media (max-width: 479.98px) {
+  .row--strip {
+    flex-wrap: wrap;
+    gap: var(--mr-space-2);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+
+    .row__item {
+      flex: 1 1 calc(50% - var(--mr-space-2));
+      border: 1px solid var(--mr-control-line);
+      border-radius: var(--mr-radius-sm);
+
+      & + & {
+        border-left: 1px solid var(--mr-control-line);
+      }
+    }
+
+    .row__item--on {
+      border-color: var(--mr-accent);
+      box-shadow: none;
+    }
+  }
+}

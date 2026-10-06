@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -180,7 +182,9 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 		name := content.NamePT(f.entry.Key)
 		var messages []string
 		for _, is := range f.issues {
-			messages = append(messages, is.Message)
+			// The sentence as a change reads it ("agora dá 2 perícias"), when the
+			// engine has one for this issue; otherwise the issue's own.
+			messages = append(messages, changeSentence(is, f.entry.Key, name))
 		}
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
 			Key: f.entry.Key, NamePt: name, Field: f.entry.Field, Revision: i32(f.entry.Revision), SavedRevision: i32(f.entry.Since),
@@ -191,6 +195,23 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 			Message: changedKinds[keyKind(f.entry.Key)] + " " + name + " mudou: a ficha ficou com avisos que não tinha. Os números já usam as regras novas.",
 		})
 	}
+}
+
+// changeSentence is how "A classe mudou" tells an issue: the sentence of the
+// change, naming the class or subclass it is about only when that is the entry that
+// changed ("Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3."),
+// and without a name for any other (an SRD class's number changed by a race's
+// trait is never blamed on the SRD class). An issue with no change sentence is told
+// with its own.
+func changeSentence(is rules.Issue, changed, name string) string {
+	if is.ChangeMessage == "" {
+		return is.Message
+	}
+	if is.ChangeSubject != "" && is.ChangeSubject == changed {
+		return name + " " + is.ChangeMessage
+	}
+	r, size := utf8.DecodeRuneInString(is.ChangeMessage)
+	return string(unicode.ToUpper(r)) + is.ChangeMessage[size:]
 }
 
 func timestampOf(t time.Time) *timestamppb.Timestamp {

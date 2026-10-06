@@ -452,3 +452,33 @@ func TestCreateNpcFromCreatureNamesTheField(t *testing.T) {
 		}
 	}
 }
+
+// TestBasicDerivedFollowsTheCreaturesMultiattack: a sheet made from a creature
+// makes as many attacks per Attack action as the creature's Multiattack gives (the
+// Veterano makes two), a typed NPC one, and the monster hit points parse for every
+// creature (MR-042, RN-29).
+func TestBasicDerivedFollowsTheCreaturesMultiattack(t *testing.T) {
+	t.Parallel()
+	content := loadRules(t)
+	veteran, err := npcSheetFromCreature(content, "monster:veteran")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stat, _ := content.MonsterDerived("monster:veteran")
+	if got := basicDerived(content, veteran).AttacksPerAction; got < 2 || got != stat.AttacksPerAction {
+		t.Errorf("a Veterano's attacks per action = %d, want its Multiattack's %d (more than one)", got, stat.AttacksPerAction)
+	}
+	if got := basicDerived(content, &charactersv1.BasicSheet{HitPointsMax: 5, ArmorClass: 10}).AttacksPerAction; got != 1 {
+		t.Errorf("a typed NPC's attacks per action = %d, want 1", got)
+	}
+	entries, err := content.ListCreatures(rules.CreatureFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		hp, ok := monsterHitPoints(content, e.Key)
+		if !ok || hp.DiceCount < 1 {
+			t.Errorf("%s: hit points = %+v, %v; want the dice to parse, or ROLLED falls back to the average", e.Key, hp, ok)
+		}
+	}
+}
