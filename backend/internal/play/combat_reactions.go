@@ -74,9 +74,13 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 		}
 	}
 	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
+	// The table's critical rule (RN-24), read in this transaction: the dice to
+	// roll, doubled or not, and the maximum that comes without rolling. A hit that
+	// is not a critical one rolls its dice as they are.
+	count, fixed := combat.CriticalDice(rules.DiceFormula{Count: dmg.Count, Sides: dmg.Sides}, critical, criticalRuleOf(c.rules))
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
-		DiceCount: clamp32(combat.DiceToRoll(rules.DiceFormula{Count: dmg.Count}, critical), 0, 100),
+		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000),
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
 		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: ptr(clamp32(attackAC, 0, math.MaxInt32)),
 	})

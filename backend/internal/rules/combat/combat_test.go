@@ -71,6 +71,56 @@ func TestDamageTotal(t *testing.T) {
 	}
 }
 
+// TestDamageTotalUnder is the damage of a hit under each critical rule, with fixed
+// dice: the SRD's doubled dice, and the maximum of the dice plus one roll (the
+// bonus once, in both).
+func TestDamageTotalUnder(t *testing.T) {
+	t.Parallel()
+	axe := rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}
+	fireBall := rules.DiceFormula{Count: 8, Sides: 6}
+	tests := []struct {
+		name         string
+		f            rules.DiceFormula
+		faces        []int
+		critical     bool
+		rule         CriticalRule
+		want         int
+		count, fixed int
+		err          bool
+	}{
+		{"not a critical: the rule does not matter (doubled)", axe, []int{6}, false, CriticalDoubledDice, 9, 1, 0, false},
+		{"not a critical: the rule does not matter (max)", axe, []int{6}, false, CriticalMaxPlusRoll, 9, 1, 0, false},
+		{"doubled dice: two rolls and the bonus once", axe, []int{6, 8}, true, CriticalDoubledDice, 17, 2, 0, false},
+		{"max plus a roll: 8 + 6 + 3", axe, []int{6}, true, CriticalMaxPlusRoll, 17, 1, 8, false},
+		{"max plus a roll with a low roll: 8 + 1 + 3", axe, []int{1}, true, CriticalMaxPlusRoll, 12, 1, 8, false},
+		{"several dice: 2d6+4 is 12 + the roll + 4", rules.DiceFormula{Count: 2, Sides: 6, Bonus: 4}, []int{3, 5}, true, CriticalMaxPlusRoll, 24, 2, 12, false},
+		{"no bonus: 1d10 at its best", rules.DiceFormula{Count: 1, Sides: 10}, []int{10}, true, CriticalMaxPlusRoll, 20, 1, 10, false},
+		{"a flat damage has no dice to double or maximize", rules.DiceFormula{Bonus: 5}, nil, true, CriticalMaxPlusRoll, 5, 0, 0, false},
+		{"a negative bonus cannot go below 0", rules.DiceFormula{Count: 1, Sides: 4, Bonus: -9}, []int{1}, true, CriticalMaxPlusRoll, 0, 1, 4, false},
+		{"under max-plus-roll, the doubled number of dice is refused", axe, []int{6, 2}, true, CriticalMaxPlusRoll, 0, 1, 8, true},
+		{"under doubled dice, one die is refused", axe, []int{6}, true, CriticalDoubledDice, 0, 2, 0, true},
+		{"a face above the die", axe, []int{9}, true, CriticalMaxPlusRoll, 0, 1, 8, true},
+		{"eight dice at the maximum, then eight more", fireBall, []int{1, 1, 1, 1, 1, 1, 1, 1}, true, CriticalMaxPlusRoll, 56, 8, 48, false},
+	}
+	for _, tt := range tests {
+		count, fixed := CriticalDice(tt.f, tt.critical, tt.rule)
+		if count != tt.count || fixed != tt.fixed {
+			t.Errorf("%s: CriticalDice = %d dice and %d fixed, want %d and %d", tt.name, count, fixed, tt.count, tt.fixed)
+		}
+		got, err := DamageTotalUnder(tt.f, tt.faces, tt.critical, tt.rule)
+		if (err != nil) != tt.err || got != tt.want || (err != nil && !errors.Is(err, ErrBadRoll)) {
+			t.Errorf("%s: DamageTotalUnder = %d, %v; want %d, error %v", tt.name, got, err, tt.want, tt.err)
+		}
+	}
+	// The SRD's rule gives what DamageTotal always gave.
+	if a, _ := DamageTotal(axe, []int{6, 8}, true); a != 17 {
+		t.Fatalf("DamageTotal(critical) = %d, want 17", a)
+	}
+	if b, _ := DamageTotalUnder(axe, []int{6, 8}, true, CriticalDoubledDice); b != 17 {
+		t.Errorf("DamageTotalUnder(doubled) = %d, want the same 17", b)
+	}
+}
+
 func TestApplyDamage(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

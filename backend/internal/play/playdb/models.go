@@ -128,6 +128,7 @@ type PendingDamage struct {
 	RollTotal        *int32
 	AttackArmorClass *int32
 	TrapPointID      *string
+	CriticalMax      int32
 }
 
 type Puzzle struct {

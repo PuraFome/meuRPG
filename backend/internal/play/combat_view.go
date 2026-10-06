@@ -46,6 +46,18 @@ type combatViewer struct {
 	// sight is what the players see of the combat's map, for the viewer's own
 	// questions (seesAt); nil without the fog and for the master.
 	sight *fogSight
+	// hideDeath is the table's rule "testes contra a morte só para o dono e o
+	// mestre" (RN-24) as it applies to this viewer: the death saves of a
+	// character that is not theirs are not theirs to see. Never set for the
+	// master, and false when the table leaves them visible (the default).
+	hideDeath bool
+}
+
+// deathHiddenFrom says whether the table hides this character's death saves
+// from the viewer: the successes, the failures, each roll and every
+// intermediate step. Its owner and the master always see them.
+func (v combatViewer) deathHiddenFrom(c playdb.Combatant) bool {
+	return v.hideDeath && !v.master && !v.owns(c)
 }
 
 // seesAt says whether the viewer sees the combatant standing on the square, as it
@@ -264,6 +276,12 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		Side:               sideProto(c.Side),
 		Size:               sizeProto(c.Size),
 		CoverMark:          coverDegreeProto(markKeyOf(c)),
+	}
+	if v.deathHiddenFrom(c) {
+		// The table keeps the death saves to the owner and the master (RN-24): the
+		// counts are not sent. The state word below says "Caído", or the result
+		// ("Estável", "Morto").
+		out.DeathSuccesses, out.DeathFailures = 0, 0
 	}
 	for _, key := range c.Conditions {
 		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
