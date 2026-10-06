@@ -77,6 +77,16 @@ export class TrapBoard {
     this.open.delete(pointId);
   }
 
+  /** "Disparar…" needs a trap's "Quem notaria" even when its card is closed: read it while the dialog is open (the
+   * dialog follows the answer as it arrives). The function returned stops, unless the card itself was watching. */
+  watchWhileFiring(pointId: string): () => void {
+    if (this.open.has(pointId)) {
+      return () => undefined;
+    }
+    void this.watchNoticers(pointId);
+    return () => this.unwatchNoticers(pointId);
+  }
+
   private async refreshNoticers(): Promise<void> {
     await Promise.all([...this.open].map((id) => this.loadNoticers(id)));
   }

@@ -1,0 +1,355 @@
+syntax = "proto3";
+
+package meurpg.maps.v1;
+
+import "meurpg/maps/v1/maps.proto";
+
+// TreasureService generates the treasure of a creature or of a lair and puts it on
+// a map (MR-044, RN-09, RN-10, Etapa 10, slice 10.10b).
+//
+// The generator is a pure function of the mode, the party level and a seed
+// (backend/internal/rules, treasure_generate.go): the same three always give the
+// same treasure. The coins, the gems and the art objects come from tables of our
+// own, in Portuguese (the SRD 5.1 has no treasure tables); the magic items are the
+// SRD 5.1's, with the Portuguese names the app gives them; and their value in gold
+// pieces (PO) is the SRD 5.2.1's table "Magic Item Rarities and Values" (2024
+// rules, CC BY 4.0), which the screen labels "Valores do SRD 5.2.1 (regras de 2024)".
+//
+// Every method is the master's. A player, a member who is still pending and
+// anyone who is not a member of the campaign get `not_found` from every method,
+// exactly as for a map that does not exist (RN-10): a generated treasure is
+// never sent to a player before they find the point on the map. Nothing here
+// reaches the live stream but the map's own `points_changed`, which a hidden
+// point never sends to a player.
+//
+// The value of a treasure:
+//   - gold_po is what becomes the gold of a treasure point: the coins (each stack
+//     rounded down to whole PO, 10 PP = 1 PO), the gems and the art objects. In a
+//     campaign that gives XP by gold, "Voltar à cidade" turns it into XP
+//     (MR-041).
+//   - items_po is what the magic items are worth, shown apart. A magic item is
+//     never XP: it stays an item, in the point's description.
+//
+// The value of a magic item is the SRD 5.2.1 value of its rarity (common 100 PO,
+// uncommon 400, rare 4,000, very rare 40,000, legendary 200,000), halved for a
+// consumable, with one exception we chose: a Spell Scroll is worth its rarity's
+// value whole, because the SRD 5.2.1 note leaves Spell Scrolls out of the halving
+// (the 2014 scrolls have the SRD 5.1 rarity by spell level, and the screen says
+// so). An artifact has no price and a treasure never holds one. A family whose
+// rarity varies (the Potion of Healing) is drawn as one of its variants, and the
+// value is the variant's.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `not_found`: the campaign, the map or the item does not exist, or the caller
+//     is not the campaign's master (a player, a pending member and a non-member
+//     are answered alike).
+//   - `unavailable`: the database did not answer; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`.
+service TreasureService {
+  // GetTreasureParty says how strong the campaign's party is: the lowest and the
+  // highest level among its living player characters ("O grupo está nos níveis 4
+  // e 5"). The treasure tables use the lowest, so the treasure never passes what
+  // the weakest character can handle. With no living player character the counts
+  // are 0 and the master must give a level to GenerateTreasure.
+  rpc GetTreasureParty(GetTreasurePartyRequest) returns (GetTreasurePartyResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GenerateTreasure rolls a treasure and stores nothing. The same mode, party
+  // level and seed always give the same treasure. Without a party_level it uses the
+  // lowest level among the campaign's living player characters; without a seed the
+  // server draws one and returns it ("Gerar outro" is a new call without a seed).
+  //
+  // Errors:
+  //   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20.
+  //   - `failed_precondition` (TreasureBlocked NO_PARTY): no party_level was given
+  //     and the campaign has no living player character.
+  rpc GenerateTreasure(GenerateTreasureRequest) returns (GenerateTreasureResponse);
+
+  // GetMagicItem returns a magic item as "Ver descrição" shows it: its rarity, its
+  // value (with the source label), whether it needs attunement, and the SRD 5.1's
+  // text in English. The key is an item's `key`, such as "item:ring-of-protection".
+  //
+  // Errors:
+  //   - `not_found`: also when the key is not a magic item.
+  rpc GetMagicItem(GetMagicItemRequest) returns (GetMagicItemResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PlaceTreasure puts a generated treasure on a map: a hidden TREASURE point
+  // (RN-10) at the middle of a square, with the gold of the treasure as its value
+  // (gold_po only: never the items) and the coins, gems, art objects and magic
+  // items written in its description, in Portuguese. The server rolls the treasure
+  // again from the mode, the party level and the seed, and never trusts a total
+  // from the app. The point is the master's until a player finds it, and it turns
+  // into XP in a campaign that gives XP by gold exactly as a point made by hand does.
+  //
+  // It reads no party level: the level comes in the request. It is idempotent: the
+  // idempotency_key is unique in the campaign and is kept with a hash of the whole
+  // request (map, square, mode, level, seed, name and content version). A call with
+  // the same key and the same request returns the point the first call made and
+  // creates nothing; the same key with any other request is `invalid_argument`.
+  //
+  // Errors:
+  //   - `invalid_argument`: the mode, the party level or the seed is missing or out
+  //     of range, the square is outside the grid, the idempotency_key is not 1 to
+  //     64 characters or was used for another change, or the name is longer than 80
+  //     characters, or the content_version is missing.
+  //   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid; a generated
+  //     treasure needs a square, so it cannot be placed on a map without one.
+  //   - `failed_precondition` (TreasureBlocked CONTENT_CHANGED): content_version is not
+  //     the server's; generate the treasure again.
+  //   - `resource_exhausted`: the map already has 200 points.
+  rpc PlaceTreasure(PlaceTreasureRequest) returns (PlaceTreasureResponse);
+}
+
+// TreasureMode is the kind of treasure.
+enum TreasureMode {
+  TREASURE_MODE_UNSPECIFIED = 0;
+  // "Individual": what one creature carries. Coins only.
+  TREASURE_MODE_INDIVIDUAL = 1;
+  // "De covil": what a lair guards. Coins, gems, art objects and magic items.
+  TREASURE_MODE_HOARD = 2;
+}
+
+// TreasureCoinKind is a coin. A PP is a "peça de prata": 10 PP = 1 PO.
+enum TreasureCoinKind {
+  TREASURE_COIN_KIND_UNSPECIFIED = 0;
+  // PC, peça de cobre: 100 PC = 1 PO.
+  TREASURE_COIN_KIND_COPPER = 1;
+  // PP, peça de prata: 10 PP = 1 PO.
+  TREASURE_COIN_KIND_SILVER = 2;
+  // PE, peça de electro: 2 PE = 1 PO.
+  TREASURE_COIN_KIND_ELECTRUM = 3;
+  // PO, peça de ouro.
+  TREASURE_COIN_KIND_GOLD = 4;
+  // PL, peça de platina: 1 PL = 10 PO.
+  TREASURE_COIN_KIND_PLATINUM = 5;
+}
+
+// MagicItemRarity is the rarity of a magic item, from the commonest.
+enum MagicItemRarity {
+  MAGIC_ITEM_RARITY_UNSPECIFIED = 0;
+  MAGIC_ITEM_RARITY_COMMON = 1;
+  MAGIC_ITEM_RARITY_UNCOMMON = 2;
+  MAGIC_ITEM_RARITY_RARE = 3;
+  MAGIC_ITEM_RARITY_VERY_RARE = 4;
+  MAGIC_ITEM_RARITY_LEGENDARY = 5;
+  // An artifact has no price, and a treasure never holds one.
+  MAGIC_ITEM_RARITY_ARTIFACT = 6;
+  // Only on a family whose variants have different rarities (GetMagicItem of the
+  // Potion of Healing): a treasure never holds one, it holds a variant.
+  MAGIC_ITEM_RARITY_VARIES = 7;
+}
+
+// TreasureBlockedReason says why a treasure call was refused.
+enum TreasureBlockedReason {
+  TREASURE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // No party_level was given and the campaign has no living player character to
+  // take it from: the master gives the level.
+  TREASURE_BLOCKED_REASON_NO_PARTY = 1;
+  // PlaceTreasure's content_version is not the server's: the tables or the items
+  // changed since the treasure was generated, so the same seed would now give another
+  // treasure. The app generates it again ("gere de novo").
+  TREASURE_BLOCKED_REASON_CONTENT_CHANGED = 2;
+}
+
+// TreasureBlocked is the error detail of TreasureService's `failed_precondition`.
+message TreasureBlocked {
+  // Why the call was refused.
+  TreasureBlockedReason reason = 1;
+}
+
+// TreasureCoinStack is a stack of one coin that came up.
+message TreasureCoinStack {
+  TreasureCoinKind coin = 1;
+  // How many pieces of the coin, at least 1.
+  int32 count = 2;
+  // What the stack comes to in whole PO, rounded down (7 PC are 0 PO).
+  int32 value_po = 3;
+}
+
+// TreasurePiece is one kind of gem or art object, with how many of it.
+message TreasurePiece {
+  // Our Portuguese name ("Ágata", "Cálice de prata gravado").
+  string name_pt = 1;
+  // What one is worth, in PO.
+  int32 value_po = 2;
+  // How many of it, at least 1: two Agates are one piece with count 2.
+  int32 count = 3;
+}
+
+// TreasureItem is a magic item of a treasure.
+message TreasureItem {
+  // The item, such as "item:cloak-of-elvenkind". For a family that was drawn it is
+  // the variant ("item:armor-1"): never a family whose rarity varies.
+  string key = 1;
+  // The SRD 5.1's name, in English.
+  string name = 2;
+  // Our Portuguese name.
+  string name_pt = 3;
+  // "armor", "weapon", "ammunition", "potion", "scroll", "ring", "rod", "staff",
+  // "wand" or "wondrous-item".
+  string category = 4;
+  // The rarity: never ARTIFACT or VARIES in a treasure.
+  MagicItemRarity rarity = 5;
+  // The SRD 5.2.1 value of the rarity in PO, halved for a consumable (see
+  // `halved`). Always above 0 in a treasure.
+  int32 value_po = 6;
+  // Whether the item is used up: potions, scrolls, ammunition and the other single-use
+  // items.
+  bool consumable = 7;
+  // Whether value_po is half of the rarity's value, because the item is a
+  // consumable ("metade de 100 PO"). A Spell Scroll is a consumable that is never halved.
+  bool halved = 8;
+  // Whether the item is a Spell Scroll (any level).
+  bool spell_scroll = 9;
+  // Whether the item needs attunement ("Exige sintonização"), and who may attune,
+  // in Portuguese ("por um paladino"), or "".
+  bool attunement = 10;
+  string attunement_by_pt = 11;
+}
+
+// Treasure is a generated treasure. Everything in it follows from the mode, the
+// party level and the seed.
+message Treasure {
+  TreasureMode mode = 1;
+  // The party level the tables were read for, 1 to 20. The tables are in bands of
+  // levels: 1 to 4, 5 to 10, 11 to 16 and 17 to 20.
+  int32 party_level = 2;
+  // The seed: the same mode, level and seed give this treasure again.
+  uint64 seed = 3;
+  // The coins that came up, from the least valuable (PC, PP, PE, PO, PL). Empty ones are left out.
+  repeated TreasureCoinStack coins = 4;
+  // The gems and the art objects (hoard only), the cheapest first.
+  repeated TreasurePiece gems = 5;
+  repeated TreasurePiece art = 6;
+  // The magic items (hoard only), in the order they were rolled.
+  repeated TreasureItem items = 7;
+  // What the coins, the gems and the art come to, in PO.
+  int32 coins_po = 8;
+  int32 gems_po = 9;
+  int32 art_po = 10;
+  // coins_po + gems_po + art_po: the gold of the treasure point, which becomes XP in
+  // a campaign that gives XP by gold (MR-041).
+  int32 gold_po = 11;
+  // What the magic items are worth, apart. They never become XP.
+  int32 items_po = 12;
+  // The rules content version the treasure was rolled under (such as
+  // "srd51@a8abc93b235c+fx.17"). A seed gives the same treasure only within one
+  // version: send it back in PlaceTreasure.
+  string content_version = 13;
+}
+
+message GetTreasurePartyRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+}
+
+message GetTreasurePartyResponse {
+  // How many living player characters the campaign has.
+  int32 living_count = 1;
+  // The lowest and the highest level among them, 1 to 20; 0 when there is none.
+  int32 lowest_level = 2;
+  int32 highest_level = 3;
+}
+
+message GenerateTreasureRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // Required: INDIVIDUAL or HOARD.
+  TreasureMode mode = 2;
+  // The party level, 1 to 20. Unset: the lowest level among the living player
+  // characters.
+  optional int32 party_level = 3;
+  // The seed. Unset: the server draws one.
+  optional uint64 seed = 4;
+}
+
+message GenerateTreasureResponse {
+  // The treasure, with the party level and the seed it was rolled with.
+  Treasure treasure = 1;
+}
+
+message GetMagicItemRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The item, such as "item:ring-of-protection".
+  string key = 2;
+}
+
+message GetMagicItemResponse {
+  // The item, such as "item:ring-of-protection".
+  string key = 1;
+  // The SRD 5.1's name in English, and our Portuguese name.
+  string name = 2;
+  string name_pt = 3;
+  // "armor", "weapon", "ammunition", "potion", "scroll", "ring", "rod", "staff",
+  // "wand" or "wondrous-item".
+  string category = 4;
+  MagicItemRarity rarity = 5;
+  // Whether the item needs attunement, who may attune in the SRD's words
+  // (English, "by a paladin") and in Portuguese ("por um paladino"); "" for anyone.
+  bool attunement = 6;
+  string attunement_by = 7;
+  string attunement_by_pt = 8;
+  // Whether the item is used up, and whether it is a Spell Scroll.
+  bool consumable = 9;
+  bool spell_scroll = 10;
+  // The value in PO by the SRD 5.2.1 table, halved for a consumable (`halved`). Unset
+  // for an artifact (`priceless`) and for a family whose rarity varies, which has no
+  // value of its own: its variants do.
+  optional int32 value_po = 11;
+  // The artifact has no price: "sem preço".
+  bool priceless = 12;
+  // Whether value_po is half of the rarity's value.
+  bool halved = 13;
+  // The label the app writes next to the value: "Valores do SRD 5.2.1 (regras de
+  // 2024)". The values are the 2024 rules' and the item is the 2014 rules'.
+  string value_label = 14;
+  // The SRD 5.1's text in English, one paragraph per entry; the first is the
+  // type-and-rarity line. The app shows it with lang="en".
+  repeated string description = 15;
+  // The keys of a family's variants, in the SRD's order; empty for any other item.
+  repeated string variants = 16;
+  // The family a variant belongs to; "" for any other item.
+  string variant_of = 17;
+}
+
+message PlaceTreasureRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The map the point goes on (a UUID). It needs a grid.
+  string map_id = 2;
+  // The treasure, as GenerateTreasure returned it: all three are required. The
+  // server rolls it again from them.
+  TreasureMode mode = 3;
+  int32 party_level = 4;
+  optional uint64 seed = 5;
+  // The square, counted from 0 from the top left, in the rules' squares of 1.5 m
+  // (the map's grid_columns and grid_rows, calibration included: with a
+  // grid_factor of 2 a square of the drawing is 2 x 2 of these). The point goes in
+  // the middle of it.
+  int32 column = 6;
+  int32 row = 7;
+  // The point's name, 1 to 80 characters. Unset: "Tesouro de covil" or
+  // "Tesouro individual".
+  optional string name = 8;
+  // 1 to 64 characters, chosen once by the app for the dialog it opened: a retry
+  // with the same key and the same request returns the same point instead of making
+  // another, and the key is unique in the campaign.
+  string idempotency_key = 9;
+  // The content_version of the Treasure the app is placing (Treasure.content_version).
+  string content_version = 10;
+}
+
+message PlaceTreasureResponse {
+  // The point as the master sees it now. The first call makes it hidden, a TREASURE
+  // with `treasure_value_po` = gold_po; on a replay it is the same point as it is
+  // now, so the master may have edited or revealed it since.
+  MapPoint point = 1;
+  // The treasure the point holds, as the server rolled it.
+  Treasure treasure = 2;
+}

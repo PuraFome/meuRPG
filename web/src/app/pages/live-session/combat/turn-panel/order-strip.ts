@@ -183,7 +183,8 @@ export class OrderStrip {
   }
 
   protected tags(c: Combatant): string[] {
-    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
+    // The chip is 104 px: the cover says its degree only ("Meia cobertura"); the full words ("marcada pelo mestre") are in the lists and the cast.
+    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c).map((t) => t.replace(' · marcada pelo mestre', ''))];
   }
 
   protected readonly items = computed(() => orderItems(this.encounter(), false));

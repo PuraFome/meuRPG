@@ -1,0 +1,11 @@
+{
+ "source": "SRD 5.2.1 (regras de 2024), p. 205, tabela \"Magic Item Rarities and Values\" (CC BY 4.0)",
+ "values_po": {
+  "common": 100,
+  "uncommon": 400,
+  "rare": 4000,
+  "very_rare": 40000,
+  "legendary": 200000
+ },
+ "consumable_divisor": 2
+}
