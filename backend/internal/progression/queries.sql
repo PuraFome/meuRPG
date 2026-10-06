@@ -177,3 +177,13 @@ SELECT award_id, point_id, value_po
 FROM xp_award_treasures
 WHERE award_id = ANY(sqlc.arg(award_ids)::UUID[])
 ORDER BY award_id, point_id;
+
+-- name: SumLiveAwards :one
+-- How much XP the campaign gave and has not undone (RN-09): the awards that
+-- stand (a milestone mark is one, with no XP) and what the characters got from
+-- them. The master's change of the XP mode asks before it goes on.
+SELECT count(*)::INT4 AS awards,
+       COALESCE((SELECT sum(s.xp) FROM xp_award_shares AS s JOIN xp_awards AS a2 ON a2.id = s.award_id
+                 WHERE a2.campaign_id = sqlc.arg(campaign_id)::UUID AND a2.undone_at IS NULL), 0)::INT8 AS total_xp
+FROM xp_awards
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND undone_at IS NULL;

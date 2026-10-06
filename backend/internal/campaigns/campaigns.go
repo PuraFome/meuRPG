@@ -117,6 +117,8 @@ type Service struct {
 	// characters is set once, before the service handles any call
 	// (SetCharacters).
 	characters Characters
+	// xpAwards is set once, before the service handles any call (SetXPAwards).
+	xpAwards XPAwards
 }
 
 // The compiler checks that Service implements both interfaces.

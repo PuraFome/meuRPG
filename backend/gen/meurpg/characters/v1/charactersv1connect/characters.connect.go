@@ -53,6 +53,12 @@ const (
 	// CharacterServiceCreateCharacterProcedure is the fully-qualified name of the CharacterService's
 	// CreateCharacter RPC.
 	CharacterServiceCreateCharacterProcedure = "/meurpg.characters.v1.CharacterService/CreateCharacter"
+	// CharacterServiceGetAbilityRollsProcedure is the fully-qualified name of the CharacterService's
+	// GetAbilityRolls RPC.
+	CharacterServiceGetAbilityRollsProcedure = "/meurpg.characters.v1.CharacterService/GetAbilityRolls"
+	// CharacterServiceRollAbilityScoresProcedure is the fully-qualified name of the CharacterService's
+	// RollAbilityScores RPC.
+	CharacterServiceRollAbilityScoresProcedure = "/meurpg.characters.v1.CharacterService/RollAbilityScores"
 	// CharacterServiceCreateNpcFromCreatureProcedure is the fully-qualified name of the
 	// CharacterService's CreateNpcFromCreature RPC.
 	CharacterServiceCreateNpcFromCreatureProcedure = "/meurpg.characters.v1.CharacterService/CreateNpcFromCreature"
@@ -159,8 +165,50 @@ type CharacterServiceClient interface {
 	//   - `permission_denied`: the caller's role may not create this kind.
 	//   - `failed_precondition`: the player already has a living character in
 	//     this campaign. The error carries a CharacterBlocked detail with
-	//     reason LIVING_CHARACTER_EXISTS and that character's ID.
+	//     reason LIVING_CHARACTER_EXISTS and that character's ID. Or the base
+	//     scores of a player's sheet do not follow the way they say they were
+	//     made, or the table does not allow that way (RN-24): an
+	//     AbilityScoresRefusal detail.
+	//
+	// The base scores of a PLAYER's full sheet are checked against
+	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
+	// master's later edits are free, and so is the rest of the sheet.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
+	// GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
+	// stored for the caller's next new character in this campaign (RN-24), and
+	// none when no roll was made yet. The same sets come back on every call until
+	// CreateCharacter uses them. Only a player, or a pending member, may call it:
+	// the master's NPCs are free. It only reads, but stays POST-only, because a
+	// GET would put the campaign ID in the URL.
+	//
+	// Errors: `not_found` for a campaign the caller is not in; `permission_denied`
+	// for the master.
+	GetAbilityRolls(context.Context, *connect.Request[v1.GetAbilityRollsRequest]) (*connect.Response[v1.GetAbilityRollsResponse], error)
+	// RollAbilityScores makes the six sets of "4d6, drop the lowest" for the
+	// caller's next new character, stores them, and returns them (RN-24). It is
+	// idempotent: while the stored sets are not used by a CreateCharacter, a
+	// second call returns the same sets (`already_rolled`), so reloading the page
+	// never rerolls. After a CreateCharacter that used them, the next call makes
+	// new ones.
+	//
+	// With physical dice (RN-18: the campaign forces them, or the player's
+	// preference is physical under "cada jogador escolhe") the player types the
+	// dice instead, once: `typed_dice` holds the six sets, four dice each. Without
+	// `typed_dice` the server rolls. A campaign that forces the app refuses typed
+	// dice, and one that forces physical dice refuses a roll without them. Typed
+	// dice sent again are accepted only when they are the stored ones.
+	//
+	// Only a player, or a pending member, may call it.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is the master.
+	//   - `invalid_argument`: `typed_dice` is not six sets of four dice, each 1
+	//     to 6.
+	//   - `failed_precondition`: an AbilityScoresRefusal detail: the table does
+	//     not allow 4d6 (METHOD_NOT_ALLOWED), the dice rule refuses this way of
+	//     rolling (DICE_FORCED_IN_APP, DICE_FORCED_PHYSICAL), or other dice were
+	//     already stored (ROLLS_ALREADY_STORED).
+	RollAbilityScores(context.Context, *connect.Request[v1.RollAbilityScoresRequest]) (*connect.Response[v1.RollAbilityScoresResponse], error)
 	// CreateNpcFromCreature is the bestiary's "Criar NPC" (MR-042, RN-29): it
 	// makes a named NPC with a basic sheet filled in from an SRD creature, for
 	// the master who wants "Grak, o ogro" rather than a typed NPC. The sheet
@@ -618,6 +666,19 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("CreateCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		getAbilityRolls: connect.NewClient[v1.GetAbilityRollsRequest, v1.GetAbilityRollsResponse](
+			httpClient,
+			baseURL+CharacterServiceGetAbilityRollsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GetAbilityRolls")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		rollAbilityScores: connect.NewClient[v1.RollAbilityScoresRequest, v1.RollAbilityScoresResponse](
+			httpClient,
+			baseURL+CharacterServiceRollAbilityScoresProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RollAbilityScores")),
+			connect.WithClientOptions(opts...),
+		),
 		createNpcFromCreature: connect.NewClient[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse](
 			httpClient,
 			baseURL+CharacterServiceCreateNpcFromCreatureProcedure,
@@ -771,6 +832,8 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // characterServiceClient implements CharacterServiceClient.
 type characterServiceClient struct {
 	createCharacter         *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
+	getAbilityRolls         *connect.Client[v1.GetAbilityRollsRequest, v1.GetAbilityRollsResponse]
+	rollAbilityScores       *connect.Client[v1.RollAbilityScoresRequest, v1.RollAbilityScoresResponse]
 	createNpcFromCreature   *connect.Client[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse]
 	getCharacter            *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
 	listCharacters          *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
@@ -799,6 +862,16 @@ type characterServiceClient struct {
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
 func (c *characterServiceClient) CreateCharacter(ctx context.Context, req *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error) {
 	return c.createCharacter.CallUnary(ctx, req)
+}
+
+// GetAbilityRolls calls meurpg.characters.v1.CharacterService.GetAbilityRolls.
+func (c *characterServiceClient) GetAbilityRolls(ctx context.Context, req *connect.Request[v1.GetAbilityRollsRequest]) (*connect.Response[v1.GetAbilityRollsResponse], error) {
+	return c.getAbilityRolls.CallUnary(ctx, req)
+}
+
+// RollAbilityScores calls meurpg.characters.v1.CharacterService.RollAbilityScores.
+func (c *characterServiceClient) RollAbilityScores(ctx context.Context, req *connect.Request[v1.RollAbilityScoresRequest]) (*connect.Response[v1.RollAbilityScoresResponse], error) {
+	return c.rollAbilityScores.CallUnary(ctx, req)
 }
 
 // CreateNpcFromCreature calls meurpg.characters.v1.CharacterService.CreateNpcFromCreature.
@@ -952,8 +1025,50 @@ type CharacterServiceHandler interface {
 	//   - `permission_denied`: the caller's role may not create this kind.
 	//   - `failed_precondition`: the player already has a living character in
 	//     this campaign. The error carries a CharacterBlocked detail with
-	//     reason LIVING_CHARACTER_EXISTS and that character's ID.
+	//     reason LIVING_CHARACTER_EXISTS and that character's ID. Or the base
+	//     scores of a player's sheet do not follow the way they say they were
+	//     made, or the table does not allow that way (RN-24): an
+	//     AbilityScoresRefusal detail.
+	//
+	// The base scores of a PLAYER's full sheet are checked against
+	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
+	// master's later edits are free, and so is the rest of the sheet.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
+	// GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
+	// stored for the caller's next new character in this campaign (RN-24), and
+	// none when no roll was made yet. The same sets come back on every call until
+	// CreateCharacter uses them. Only a player, or a pending member, may call it:
+	// the master's NPCs are free. It only reads, but stays POST-only, because a
+	// GET would put the campaign ID in the URL.
+	//
+	// Errors: `not_found` for a campaign the caller is not in; `permission_denied`
+	// for the master.
+	GetAbilityRolls(context.Context, *connect.Request[v1.GetAbilityRollsRequest]) (*connect.Response[v1.GetAbilityRollsResponse], error)
+	// RollAbilityScores makes the six sets of "4d6, drop the lowest" for the
+	// caller's next new character, stores them, and returns them (RN-24). It is
+	// idempotent: while the stored sets are not used by a CreateCharacter, a
+	// second call returns the same sets (`already_rolled`), so reloading the page
+	// never rerolls. After a CreateCharacter that used them, the next call makes
+	// new ones.
+	//
+	// With physical dice (RN-18: the campaign forces them, or the player's
+	// preference is physical under "cada jogador escolhe") the player types the
+	// dice instead, once: `typed_dice` holds the six sets, four dice each. Without
+	// `typed_dice` the server rolls. A campaign that forces the app refuses typed
+	// dice, and one that forces physical dice refuses a roll without them. Typed
+	// dice sent again are accepted only when they are the stored ones.
+	//
+	// Only a player, or a pending member, may call it.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is the master.
+	//   - `invalid_argument`: `typed_dice` is not six sets of four dice, each 1
+	//     to 6.
+	//   - `failed_precondition`: an AbilityScoresRefusal detail: the table does
+	//     not allow 4d6 (METHOD_NOT_ALLOWED), the dice rule refuses this way of
+	//     rolling (DICE_FORCED_IN_APP, DICE_FORCED_PHYSICAL), or other dice were
+	//     already stored (ROLLS_ALREADY_STORED).
+	RollAbilityScores(context.Context, *connect.Request[v1.RollAbilityScoresRequest]) (*connect.Response[v1.RollAbilityScoresResponse], error)
 	// CreateNpcFromCreature is the bestiary's "Criar NPC" (MR-042, RN-29): it
 	// makes a named NPC with a basic sheet filled in from an SRD creature, for
 	// the master who wants "Grak, o ogro" rather than a typed NPC. The sheet
@@ -1407,6 +1522,19 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("CreateCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceGetAbilityRollsHandler := connect.NewUnaryHandler(
+		CharacterServiceGetAbilityRollsProcedure,
+		svc.GetAbilityRolls,
+		connect.WithSchema(characterServiceMethods.ByName("GetAbilityRolls")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceRollAbilityScoresHandler := connect.NewUnaryHandler(
+		CharacterServiceRollAbilityScoresProcedure,
+		svc.RollAbilityScores,
+		connect.WithSchema(characterServiceMethods.ByName("RollAbilityScores")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceCreateNpcFromCreatureHandler := connect.NewUnaryHandler(
 		CharacterServiceCreateNpcFromCreatureProcedure,
 		svc.CreateNpcFromCreature,
@@ -1558,6 +1686,10 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
 			characterServiceCreateCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceGetAbilityRollsProcedure:
+			characterServiceGetAbilityRollsHandler.ServeHTTP(w, r)
+		case CharacterServiceRollAbilityScoresProcedure:
+			characterServiceRollAbilityScoresHandler.ServeHTTP(w, r)
 		case CharacterServiceCreateNpcFromCreatureProcedure:
 			characterServiceCreateNpcFromCreatureHandler.ServeHTTP(w, r)
 		case CharacterServiceGetCharacterProcedure:
@@ -1615,6 +1747,14 @@ type UnimplementedCharacterServiceHandler struct{}
 
 func (UnimplementedCharacterServiceHandler) CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CreateCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GetAbilityRolls(context.Context, *connect.Request[v1.GetAbilityRollsRequest]) (*connect.Response[v1.GetAbilityRollsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GetAbilityRolls is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RollAbilityScores(context.Context, *connect.Request[v1.RollAbilityScoresRequest]) (*connect.Response[v1.RollAbilityScoresResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RollAbilityScores is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) CreateNpcFromCreature(context.Context, *connect.Request[v1.CreateNpcFromCreatureRequest]) (*connect.Response[v1.CreateNpcFromCreatureResponse], error) {

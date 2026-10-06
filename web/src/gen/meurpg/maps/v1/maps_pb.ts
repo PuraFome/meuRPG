@@ -149,8 +149,11 @@ export type Map = Message<"meurpg.maps.v1.Map"> & {
   gridRows: number;
 
   /**
-   * Whether the fog of war is on (SetMapFog). Every viewer gets it: a player
-   * needs to know the map has fog. False for a map without a grid.
+   * Whether the fog of war is on (SetMapFog, or the table's rule "névoa nos mapas
+   * novos", RN-24, which comes on when the map's first grid is set: a map created
+   * while the rule is on has no fog until then, because the fog is made of the
+   * grid's squares). Every viewer gets it: a player needs to know the map has
+   * fog. False for a map without a grid.
    *
    * @generated from field: bool fog_enabled = 14;
    */
