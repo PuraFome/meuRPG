@@ -256,6 +256,10 @@ type actionEvent struct {
 	DeathBefore   *deathState `json:"death_before,omitempty"`
 	DeathOutcome  string      `json:"death_outcome,omitempty"`
 	FailuresAdded int32       `json:"failures_added,omitempty"`
+	// DeathHidden says the table hid the death saves when this event was written
+	// (RN-24): the owner and the master read its rolls and failures, nobody else, and
+	// a later change of the rule never rewrites it, as the fog's SeenBy does not.
+	DeathHidden bool `json:"death_hidden,omitempty"`
 	// The master applied another amount than the rolled one (Rolled), and the
 	// damage threatened a concentration (ConcentrationDC).
 	Overridden      bool  `json:"overridden,omitempty"`

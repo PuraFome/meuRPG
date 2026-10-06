@@ -171,7 +171,10 @@ func (s *Service) changeStage(ctx context.Context, m authz.Membership, what stri
 			return fmt.Errorf("lock the open session: %w", err)
 		}
 		sessionID = session.ID
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now()})
+		if err != nil {
+			return err
+		}
 		change, characterID, err := apply(c)
 		if err != nil || change == "" {
 			return err

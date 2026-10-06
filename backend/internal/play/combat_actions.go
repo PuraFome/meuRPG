@@ -420,7 +420,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 	out := &playv1.PendingDamage{
 		Id: p.ID, AttackerId: deref(p.AttackerID), TargetId: p.TargetID, AttackKey: p.AttackKey,
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
-		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMax), CriticalMax: p.CriticalMax,
+		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
@@ -982,7 +982,7 @@ func (s *Service) RollDamage(
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, Faces: faces,
+			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		for _, g := range group {
@@ -1168,7 +1168,7 @@ func decorate(p *playv1.PendingDamage, ev actionEvent, v combatViewer, owner fun
 	if p.GetId() == ev.Pending {
 		dc = ev.ConcentrationDC
 		p.DeathFailuresAdded = ev.FailuresAdded
-		if t, ok := owner(p.GetTargetId()); ok && v.deathHiddenFrom(t) { // RN-24: the owner's and the master's
+		if t, ok := owner(p.GetTargetId()); ok && v.hiddenFrom(ev.DeathHidden, t) { // RN-24: the owner's and the master's
 			p.DeathFailuresAdded = 0
 		}
 	}
@@ -1273,7 +1273,7 @@ func (s *Service) ApplyPendingDamage(
 			if err != nil {
 				return nil, err
 			}
-			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
+			made.DeathBefore, made.Death, made.FailuresAdded, made.DeathHidden = before, after, added, c.rules.DeathSavesHidden
 			made.Before = ptr(hpStateOf(now))
 			made.After = made.Before
 		} else if now.GetWildShape() != nil {

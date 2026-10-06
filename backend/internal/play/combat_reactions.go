@@ -80,7 +80,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 	count, fixed := combat.CriticalDice(rules.DiceFormula{Count: dmg.Count, Sides: dmg.Sides}, critical, criticalRuleOf(c.rules))
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
-		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000),
+		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000), CriticalMaxRule: critical && c.rules.CriticalMaxPlusRoll,
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
 		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: ptr(clamp32(attackAC, 0, math.MaxInt32)),
 	})

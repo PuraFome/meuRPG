@@ -88,7 +88,7 @@ func (s *Service) ListTrapDamages(
 		res.Damages = append(res.Damages, &playv1.TrapDamage{
 			Id: p.ID, EncounterId: p.EncounterID, TrapPointId: deref(p.TrapPointID), TrapName: trapNames[deref(p.TrapPointID)],
 			CharacterId: who.CharacterID, CharacterName: names[who.CharacterID], CombatantId: p.TargetID,
-			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, num(p.RollTotal), false),
+			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, num(p.RollTotal), false),
 			Amount: num(p.Amount), DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType], Half: p.Half, Critical: p.Critical,
 			AppliedAmount: p.AppliedAmount, CreatedAt: timestamppb.New(p.CreatedAt),
 		})
@@ -105,7 +105,7 @@ func (s *Service) ListTrapDamages(
 func trapDamageOf(d playdb.ListCampaignTrapDamagesRow) playdb.TrapDamage {
 	return playdb.TrapDamage{
 		ID: d.ID, GameSessionID: d.GameSessionID, TrapPointID: d.TrapPointID, FireID: d.FireID, CharacterID: d.CharacterID, Status: d.Status,
-		Critical: d.Critical, DiceCount: d.DiceCount, DiceSides: d.DiceSides, DiceBonus: d.DiceBonus, DamageType: d.DamageType, Faces: d.Faces,
+		Critical: d.Critical, DiceCount: d.DiceCount, DiceSides: d.DiceSides, DiceBonus: d.DiceBonus, CriticalMax: d.CriticalMax, DamageType: d.DamageType, Faces: d.Faces,
 		RollTotal: d.RollTotal, Half: d.Half, Amount: d.Amount, AppliedAmount: d.AppliedAmount, CreatedAt: d.CreatedAt, ResolvedAt: d.ResolvedAt,
 	}
 }
@@ -118,7 +118,7 @@ func trapDamageProto(d playdb.TrapDamage, trapName, characterName string) *playv
 	}[d.Status]
 	return &playv1.TrapDamage{
 		Id: d.ID, TrapPointId: d.TrapPointID, TrapName: trapName, CharacterId: d.CharacterID, CharacterName: characterName, Status: status,
-		Roll: diceRoll(d.DiceCount, d.DiceSides, d.Faces, d.DiceBonus, d.RollTotal, false), Amount: d.Amount,
+		Roll: diceRoll(d.DiceCount, d.DiceSides, d.Faces, d.DiceBonus+d.CriticalMax, d.RollTotal, false), Amount: d.Amount,
 		DamageTypeKey: d.DamageType, DamageTypePt: damageTypePT[d.DamageType], Half: d.Half, Critical: d.Critical,
 		AppliedAmount: d.AppliedAmount, CreatedAt: timestamppb.New(d.CreatedAt),
 	}
@@ -173,7 +173,10 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 		if row.Status != "rolled" {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &row.CharacterID, actorUserID: m.UserID}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &row.CharacterID, actorUserID: m.UserID})
+		if err != nil {
+			return err
+		}
 		ev := actionEvent{Pending: row.ID, Target: row.CharacterID, Key: "trap", Amount: row.Amount, DamageType: row.DamageType}
 		final, applied := "discarded", (*int32)(nil)
 		if apply {
@@ -294,7 +297,7 @@ func (s *Service) keepTrapDamage(ctx context.Context, c *combatTx, cs []playdb.C
 		}
 		if _, err := c.q.InsertTrapDamage(ctx, playdb.InsertTrapDamageParams{
 			GameSessionID: c.session.ID, TrapPointID: deref(p.TrapPointID), FireID: p.ID, CharacterID: cs[i].CharacterID, Critical: p.Critical,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, DiceBonus: p.DiceBonus, DamageType: p.DamageType, Faces: p.Faces,
+			DiceCount: p.DiceCount, DiceSides: p.DiceSides, DiceBonus: p.DiceBonus, CriticalMax: p.CriticalMax, DamageType: p.DamageType, Faces: p.Faces,
 			RollTotal: num(p.RollTotal), Half: p.Half, Amount: num(p.Amount), CreatedAt: p.CreatedAt,
 		}); err != nil {
 			return fmt.Errorf("keep the trap damage: %w", err)

@@ -530,7 +530,7 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00146_add_gallery_images_generated` | `gallery_images` | `generated` (a imagem foi feita por IA, MR-039) e `parent_image_id` (o ajuste aponta para a imagem de que partiu; apagar o pai só corta o elo). |
 | `00147_create_image_requests` | `image_requests` | Cada pedido de imagem ao modelo (MR-039, RN-28): o texto do mestre, o estilo, a proporção, as referências, o estado e a vaga do mês. É também a conta do mês de cada campanha. |
 | `00148_create_image_requests_indexes` | `image_requests`, `gallery_images` | A chave contra repetição (única por campanha), a conta do mês e o filho de uma imagem (a cadeia de ajustes). |
-| `00155_add_pending_damages_critical_max` | `pending_damages` | `critical_max`: o que um crítico soma ao dano sem rolar, o máximo dos dados, na regra da mesa "máximo mais uma rolagem" (MR-025, RN-24, Etapa 10, fatia 10.4b); 0 num acerto que não é crítico e nos dados dobrados, que é toda linha anterior a ela. Com a regra, `dice_count` são os dados que se rolam, sem dobrar. |
+| `00155_add_pending_damages_critical_max` | `pending_damages`, `trap_damages` | `critical_max` (nas duas): o que um crítico soma ao dano sem rolar, o máximo dos dados, na regra da mesa "máximo mais uma rolagem" (MR-025, RN-24, Etapa 10, fatia 10.4b); 0 num acerto que não é crítico e nos dados dobrados, que é toda linha anterior a ela. Com a regra, `dice_count` são os dados que se rolam, sem dobrar. `critical_max_rule` (só em `pending_damages`): a regra era essa quando o acerto foi aberto, para um crítico de dano fixo também dizer a regra. |
 
 As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123`, a `00125`, a `00141` e a `00142`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112`, a `00121`, as `00132` a `00140`, as `00143` a `00145` e a `00155`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, as `00128` a `00131` e as `00146` a `00148`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
@@ -976,8 +976,10 @@ erDiagram
         uuid target_id FK "combatants, CASCADE"
         text attack_key "arma ou truque"
         text status "awaiting_reaction, awaiting_roll, rolled, applied ou discarded"
-        bool critical "dados dobrados"
-        int4 dice_count "já dobrado no crítico"
+        bool critical "acerto crítico"
+        int4 dice_count "os dados a rolar: dobrados no crítico, ou os de sempre no máximo mais uma rolagem"
+        int4 critical_max "o máximo dos dados que um crítico soma sem rolar, 0 fora dele"
+        bool critical_max_rule "a mesa estava no máximo mais uma rolagem"
         int4 dice_sides
         int4 dice_bonus
         text damage_type "damage-type:fire"
@@ -1004,6 +1006,7 @@ erDiagram
         int4 dice_count
         int4 dice_sides
         int4 dice_bonus
+        int4 critical_max "o máximo que um crítico soma sem rolar"
         text damage_type "damage-type:fire"
         int4_array faces
         int4 roll_total

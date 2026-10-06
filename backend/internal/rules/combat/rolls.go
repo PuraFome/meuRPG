@@ -73,25 +73,6 @@ func CriticalDice(f rules.DiceFormula, critical bool, rule CriticalRule) (count,
 	return f.Count * 2, 0
 }
 
-// DamageTotalUnder is DamageTotal for a table's critical rule: the rolled
-// faces, the formula's bonus and, for a critical hit under CriticalMaxPlusRoll,
-// the dice's maximum. Damage never goes below 0. ErrBadRoll says the faces do
-// not fit the dice that are rolled.
-func DamageTotalUnder(f rules.DiceFormula, faces []int, critical bool, rule CriticalRule) (int, error) {
-	count, fixed := CriticalDice(f, critical, rule)
-	if len(faces) != count {
-		return 0, fmt.Errorf("%w: want %d dice, got %d", ErrBadRoll, count, len(faces))
-	}
-	total := f.Bonus + fixed
-	for _, face := range faces {
-		if face < 1 || face > f.Sides {
-			return 0, fmt.Errorf("%w: %d on a d%d", ErrBadRoll, face, f.Sides)
-		}
-		total += face
-	}
-	return max(total, 0), nil
-}
-
 // DiceRange is the smallest and largest total of the dice alone (without
 // the bonus), for checking a total typed from physical dice.
 func DiceRange(f rules.DiceFormula, critical bool) (lowest, highest int) {

@@ -102,6 +102,10 @@ type trapDamageEvent struct {
 	Faces     []int32 `json:"faces,omitempty"`
 	RollTotal int32   `json:"roll_total"`
 	Critical  bool    `json:"critical,omitempty"`
+	// CriticalMax is what the table's critical rule added without rolling (already
+	// in RollTotal); MaxRule says the table's rule was "máximo mais uma rolagem".
+	CriticalMax int32 `json:"critical_max,omitempty"`
+	MaxRule     bool  `json:"critical_max_rule,omitempty"`
 }
 
 // trapD20 and trapDice are the server's rolls for a trap: always in the app (the
@@ -168,7 +172,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 	if err != nil {
 		return nil, err
 	}
-	outcomes, err := resolveTrap(effect, targets, s.trapD20, s.trapDice)
+	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +243,7 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, Critical: d.critical,
 		DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), DiceBonus: clamp32(d.bonus, -1000, 1000),
 		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: ptr(clampInt32(d.rollTotal)), Half: d.half,
-		CreatedAt: c.now, ResolvedAt: resolved, TrapPointID: &pointID,
+		CreatedAt: c.now, ResolvedAt: resolved, TrapPointID: &pointID, CriticalMax: clamp32(d.criticalMax, 0, 10000), CriticalMaxRule: d.maxRule,
 	})
 	if err != nil {
 		return trapDamageEvent{}, fmt.Errorf("open the trap's damage: %w", err)
@@ -253,7 +257,7 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	}
 	return trapDamageEvent{
 		damageHit: hit, Type: d.damageType, DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), Bonus: clamp32(d.bonus, -1000, 1000),
-		Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical,
+		Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
 	}, nil
 }
 
@@ -567,7 +571,7 @@ func firingProto(ev *trapFireEvent, id, name string, v trapView) *playv1.TrapFir
 			// The dice of the target's own player and the master's; everyone else
 			// gets what the creature lost.
 			if mine {
-				row.Roll = diceRoll(d.DiceCount, d.DiceSides, d.Faces, d.Bonus, d.RollTotal, false)
+				row.Roll = diceRoll(d.DiceCount, d.DiceSides, d.Faces, d.Bonus+d.CriticalMax, d.RollTotal, false)
 			}
 			t.Damages = append(t.Damages, row)
 		}

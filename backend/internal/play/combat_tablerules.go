@@ -49,14 +49,31 @@ func criticalRuleProto(r tablerules.Rules) playv1.CriticalDamageRule {
 }
 
 // pendingCriticalRule is the rule a pending damage was made under: none for a hit
-// that was not a critical one, otherwise the maximum was kept (critical_max) or
-// the dice were doubled.
-func pendingCriticalRule(critical bool, criticalMax int32) playv1.CriticalDamageRule {
+// that was not a critical one, otherwise the one the table had when it was opened
+// (critical_max_rule: a critical hit with a flat damage keeps no maximum, and still
+// reports it).
+func pendingCriticalRule(critical, maxRule bool) playv1.CriticalDamageRule {
 	switch {
 	case !critical:
 		return playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_UNSPECIFIED
-	case criticalMax > 0:
+	case maxRule:
 		return playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL
 	}
 	return playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_DOUBLED_DICE
+}
+
+// openTx makes the combatTx of a change that is not a write() (the session's
+// end, the scenes, the traps, the creatures' leaving), with the table's rules
+// read in its transaction: every combatTx is built here or in writeOnce, so no
+// path can forget them (a critical hit and the death saves follow them).
+func (s *Service) openTx(ctx context.Context, c combatTx) (*combatTx, error) {
+	if c.session.CampaignID == "" {
+		return &c, nil // a change of the master's after the session ended (a trap damage): no combat to follow the rules
+	}
+	rules, err := s.tableRules(ctx, c.tx, c.session.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	c.rules = rules
+	return &c, nil
 }

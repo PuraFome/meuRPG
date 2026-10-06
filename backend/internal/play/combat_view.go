@@ -60,6 +60,12 @@ func (v combatViewer) deathHiddenFrom(c playdb.Combatant) bool {
 	return v.hideDeath && !v.master && !v.owns(c)
 }
 
+// hiddenFrom is deathHiddenFrom for an event that was stamped when it was written:
+// whether the table hid the death saves then, whatever it says now.
+func (v combatViewer) hiddenFrom(stamped bool, c playdb.Combatant) bool {
+	return stamped && !v.master && !v.owns(c)
+}
+
 // seesAt says whether the viewer sees the combatant standing on the square, as it
 // stood there at some moment (an opportunity offer's square, a move's old one): a
 // combatant they see now, or an NPC whose square they see, whatever it is now.

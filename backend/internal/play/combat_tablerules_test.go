@@ -10,7 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 )
 
@@ -253,6 +255,30 @@ func TestRN24_TheCriticalFollowsTheTablesRule(t *testing.T) {
 	if p := plain.GetPendingDamage(); p.GetCritical() || p.GetCriticalMax() != 0 || p.GetCriticalRule() != playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_UNSPECIFIED || p.GetDiceCount() != 1 {
 		t.Errorf("a hit that is not a critical one = %v, want one die, no critical rule and nothing kept", p)
 	}
+
+	// An opportunity attack (a reaction, off the attacker's turn) follows the rule too.
+	if _, err := a.endTurn(t, a.master, e, true); err != nil { // Brisa's plain hit waits: dropped
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	e = a.passTo(t, e, "Brisa")
+	a.h.roller.queue(20)
+	opp := a.mustAttackAsReaction(t, e, "Ogro", sword, "Toren")
+	wantCritical(t, "the opportunity attack", opp.GetPendingDamage(), playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL, 1, 6)
+	a.h.roller.queue(4)
+	wantRolled(t, "the opportunity attack", a.mustDamage(t, a.master, e, opp.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage(), 12, []int32{4}, 8)
+
+	// A spell that attacks with real dice: the typed sum is of the 4 dice, never of the 24 kept.
+	cast := a.mustCast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Ogro"), func(r *playv1.CastSpellRequest) {
+		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 20}
+	})
+	bolt := cast.GetCast().GetPendingDamages()[0]
+	wantCritical(t, "the typed Raio Guia", bolt, playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL, 4, 24)
+	for _, sum := range []int32{3, 25} {
+		if _, err := a.damage(t, a.bia, e, bolt.GetId(), typedDamage(sum)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("typed_sum %d for 4 dice = %v, want invalid_argument", sum, err)
+		}
+	}
+	wantRolled(t, "the typed Raio Guia", a.mustDamage(t, a.bia, e, bolt.GetId(), typedDamage(10)).GetPendingDamage(), 34, nil, 24)
 }
 
 // TestRN24_ACreaturesCriticalFollowsTheRule: a summoned creature's attack (the
@@ -652,40 +678,107 @@ func TestRN24_ADeathTheMasterConfirmsIsTheTables(t *testing.T) {
 }
 
 // TestRN24_VisibleDeathSavesAreUnchanged: with the table's default (everyone sees
-// them) the counts and the lines are as they always were, and so is the rule when
-// it is changed back.
+// them) the counts and the lines are as they always were. Changing the rule never
+// rewrites the past: the lines written while the saves were visible stay visible
+// after the table hides them, the ones written while they were hidden stay hidden
+// after it shows them again; the counts, which are the present state, follow the
+// rule as it is now. A change applies from the next roll on.
 func TestRN24_VisibleDeathSavesAreUnchanged(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(0))
 	a.mustEndTurn(t, a.ana, e)
-	a.h.roller.queue(14)
-	if _, err := a.deathSave(t, a.caio, e, "Toren", rollApp); err != nil {
-		t.Fatalf("RollDeathSave() error = %v", err)
+	roll := func(face int) {
+		t.Helper()
+		a.h.roller.queue(face)
+		if _, err := a.deathSave(t, a.caio, e, "Toren", rollApp); err != nil {
+			t.Fatalf("RollDeathSave(%d) error = %v", face, err)
+		}
+		a.mustEndTurn(t, a.caio, e)
+		e = a.passTo(t, e, "Toren")
 	}
-	check := func(label string) {
+	// What each reads: the counts (the present) and how many lines, with the d20 only
+	// for the owner and the master, as it always was.
+	check := func(label string, counts map[string]int32, lines map[string]int) {
 		t.Helper()
 		for who, u := range map[string]*user{"master": a.master, "Toren's player": a.caio, "Pensantus's player": a.ana} {
 			c := byLabel(t, a.get(t, u), "Toren")
-			lines := deathLines(a.log(t, u, e))
-			if c.GetDeathSuccesses() != 1 || len(lines) != 1 || lines[0].GetDeathSave().GetSuccesses() != 1 ||
-				lines[0].GetDeathSave().GetOutcome() != playv1.DeathSaveOutcome_DEATH_SAVE_OUTCOME_SUCCESS {
-				t.Errorf("%s: %s reads %d successes and the lines %v, want 1 and one success line", label, who, c.GetDeathSuccesses(), lines)
+			got := deathLines(a.log(t, u, e))
+			if c.GetDeathSuccesses()+c.GetDeathFailures() != counts[who] || len(got) != lines[who] {
+				t.Errorf("%s: %s reads %d marks and %d lines, want %d and %d", label, who, c.GetDeathSuccesses()+c.GetDeathFailures(), len(got), counts[who], lines[who])
 			}
-			// The d20 stays the owner's and the master's, as it always was.
-			if len(lines) == 1 {
-				if got := lines[0].GetDeathSave().GetRoll() != nil; got != (who != "Pensantus's player") {
-					t.Errorf("%s: %s reads the d20 = %v", label, who, got)
+			for _, l := range got {
+				if hasRoll := l.GetDeathSave().GetRoll() != nil; hasRoll != (who != "Pensantus's player") {
+					t.Errorf("%s: %s reads a line with the d20 = %v", label, who, hasRoll)
 				}
 			}
 		}
 	}
-	check("the default")
-	a.setRules(t, hiddenDeath)
-	a.seesNoDeathSaves(t, "Pensantus's player", a.ana, e)
+	roll(14) // visible
+	check("visible", map[string]int32{"master": 1, "Toren's player": 1, "Pensantus's player": 1}, map[string]int{"master": 1, "Toren's player": 1, "Pensantus's player": 1})
+
+	a.setRules(t, hiddenDeath) // the first line stays as it was; the counts are hidden now
+	check("hidden, nothing rolled yet", map[string]int32{"master": 1, "Toren's player": 1, "Pensantus's player": 0}, map[string]int{"master": 1, "Toren's player": 1, "Pensantus's player": 1})
+	roll(12) // hidden
+	check("hidden", map[string]int32{"master": 2, "Toren's player": 2, "Pensantus's player": 0}, map[string]int{"master": 2, "Toren's player": 2, "Pensantus's player": 1})
+
 	a.setRules(t, deathSavesAre(campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL))
-	check("the rule set back")
+	// The line written while they were hidden is not revealed now; the counts are public again.
+	check("visible again, nothing rolled yet", map[string]int32{"master": 2, "Toren's player": 2, "Pensantus's player": 2}, map[string]int{"master": 2, "Toren's player": 2, "Pensantus's player": 1})
+	roll(5) // visible: a failure
+	check("visible again", map[string]int32{"master": 3, "Toren's player": 3, "Pensantus's player": 3}, map[string]int{"master": 3, "Toren's player": 3, "Pensantus's player": 2})
+}
+
+// TestRN24_ATrapsCriticalFollowsTheRule: a trap's natural 20 is a critical hit like
+// any other, in a combat and outside one: under "máximo mais uma rolagem" it rolls
+// the dice once and keeps the maximum.
+func TestRN24_ATrapsCriticalFollowsTheRule(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.setRules(t, criticalIs(maxRoll))
+	darts := func(name string, col, row int, targets rulesv1.TrapTargets) *mapsv1.MapPoint {
+		return r.trap(t, name, col, row, func(s *mapsv1.TrapSpec) {
+			s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL
+			s.Effect = &rulesv1.TrapEffect{Attack: &rulesv1.TrapAttack{Bonus: 12, Count: 1, Damage: &rulesv1.TrapDamage{Dice: "1d6", DamageTypeKey: "damage-type:piercing"}}, Targets: targets}
+		})
+	}
+
+	// Outside a combat: the damage waits for the master as a trap damage.
+	outside := darts("Dardo fora", 12, 7, rulesv1.TrapTargets_TRAP_TARGETS_AREA)
+	r.place(t, r.pens.GetId(), 12, 7)
+	r.h.roller.queue(20, 3)
+	if _, err := r.fireByHand(t, outside); err != nil {
+		t.Fatalf("FireTrap() outside a combat error = %v", err)
+	}
+	d := r.trapDamages(t)
+	if len(d) != 1 || !d[0].GetCritical() || d[0].GetAmount() != 9 || d[0].GetRoll().GetDiceCount() != 1 || d[0].GetRoll().GetModifier() != 6 || d[0].GetRoll().GetTotal() != 9 {
+		t.Fatalf("the trap damage outside a combat = %v, want a critical 1d6 (3) plus the 6 kept = 9", d)
+	}
+
+	// In a combat, under each rule.
+	r.fight(t)
+	for n, c := range []struct {
+		rule        campaignsv1.CriticalRule
+		faces       []int
+		dice, kept  int32
+		amount, mod int32
+	}{
+		{maxRoll, []int{20, 3}, 1, 6, 9, 6},
+		{doubled, []int{20, 3, 4}, 2, 0, 7, 0},
+	} {
+		r.setRules(t, criticalIs(c.rule))
+		hand := darts("Dardo dentro", 15+n, 12, rulesv1.TrapTargets_TRAP_TARGETS_MANUAL)
+		r.h.roller.queue(c.faces...)
+		res, err := r.fireByHand(t, hand, r.id(t, "Toren"))
+		if err != nil {
+			t.Fatalf("FireTrap() in a combat error = %v", err)
+		}
+		dm := res.GetFiring().GetCaught()[0].GetDamages()
+		if len(dm) != 1 || !dm[0].GetCritical() || dm[0].GetAmount() != c.amount || dm[0].GetRoll().GetDiceCount() != c.dice || dm[0].GetRoll().GetModifier() != c.mod {
+			t.Errorf("the critical trap damage under %v = %v, want %d dice, %d kept, %d in all", c.rule, dm, c.dice, c.kept, c.amount)
+		}
+	}
 }
 
 // ---- the combat without a grid: no difference by mode ----

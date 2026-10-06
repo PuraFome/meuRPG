@@ -472,7 +472,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
 		} else if e.ev.Pending != "" {
-			out.Damage = e.damage(dice, v.master, v.master || v.owns(target), v.deathHiddenFrom(target), out)
+			out.Damage = e.damage(dice, v.master, v.master || v.owns(target), out)
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		if e.ev.Heal { // Retomar o fôlego: only the master and its own player see the numbers
@@ -502,7 +502,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		if after == nil {
 			after = &deathState{}
 		}
-		if v.deathHiddenFrom(actor) {
+		if v.hiddenFrom(e.ev.DeathHidden, actor) {
 			// The table keeps the road to the owner and the master (RN-24): a save that
 			// went on is no line for anybody else, and the one that made the character
 			// stable says only that it did, a result the table sees.
@@ -568,7 +568,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	r := d.roll
 	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
 	out.Half, out.Healing = d.hit.Half, r.Heal
-	out.CriticalRule, out.CriticalMax = pendingCriticalRule(r.Critical, r.CriticalMax), r.CriticalMax
+	out.CriticalRule, out.CriticalMax = pendingCriticalRule(r.Critical, r.CriticalMaxRule), r.CriticalMax
 	if r.Heal && !v.master && !v.owns(target) {
 		// A heal capped at the maximum would tell how many hit points the target
 		// lacked: everyone but the master and the target's player gets the roll (RN-20).
@@ -579,7 +579,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	}
 	if d.applied != nil { // the master's apply of a character's damage
 		out.Amount = d.applied.Amount
-		if !v.deathHiddenFrom(target) { // a hit at 0 is a death save failure (RN-24)
+		if !v.hiddenFrom(d.applied.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
 			out.DeathFailuresAdded = d.applied.FailuresAdded
 		}
 		if d.applied.Overridden && v.master {
@@ -607,19 +607,19 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 // damage is the damage of an attack as the viewer gets it. The target's hit
 // points after it are the master's alone, set on the entry; the concentration
 // DC is the master's and the target's own player's (targetsOwn).
-func (e *logEntry) damage(dice, master, targetsOwn, deathHidden bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
+func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
 	d := &playv1.CombatLogDamage{Status: e.status}
 	if e.dmg == nil {
 		return d // the attack hit and its damage is not rolled yet
 	}
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
-	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMax), e.dmg.CriticalMax
+	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage
 		d.Amount = ap.Amount
-		if !deathHidden { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
+		if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
 			d.DeathFailuresAdded = ap.FailuresAdded
 		}
 		if ap.Overridden && master {

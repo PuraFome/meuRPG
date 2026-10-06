@@ -52,6 +52,11 @@ type trapDamageRoll struct {
 	amount              int // what lands: the roll, or half of it for a creature that saved
 	half                bool
 	critical            bool
+	// criticalMax is what the table's critical rule adds without rolling (the dice's
+	// maximum, "máximo mais uma rolagem"), already in rollTotal; maxRule says the
+	// table had that rule when it fired.
+	criticalMax int
+	maxRule     bool
 }
 
 // trapAttackRoll is one attack of the trap at a creature.
@@ -106,8 +111,10 @@ func parseTrapDice(s string) (dice.Expr, error) {
 }
 
 // resolveTrap rolls the trap's effect against the creatures it caught, in the
-// order given. d20 rolls one d20 and says its face; rollDice rolls damage dice.
-func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, d20 func() (int, error), rollDice func(dice.Expr) (dice.Result, error)) ([]trapOutcome, error) {
+// order given. rule is the table's critical rule (RN-24), which a trap's critical
+// hit follows like any other. d20 rolls one d20 and says its face; rollDice rolls
+// damage dice.
+func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.CriticalRule, d20 func() (int, error), rollDice func(dice.Expr) (dice.Result, error)) ([]trapOutcome, error) {
 	out := make([]trapOutcome, len(targets))
 	for i, t := range targets {
 		out[i].target = t
@@ -120,14 +127,15 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, d20 func() (int, e
 		if err != nil {
 			return trapDamageRoll{}, fmt.Errorf("read the trap's damage %q: %w", d.GetDice(), err)
 		}
-		r := trapDamageRoll{damageType: d.GetDamageTypeKey(), critical: critical, half: half, bonus: expr.Modifier}
+		r := trapDamageRoll{damageType: d.GetDamageTypeKey(), critical: critical, half: half, bonus: expr.Modifier, maxRule: critical && rule == combat.CriticalMaxPlusRoll}
 		if expr.Count > 0 {
-			expr.Count = combat.DiceToRoll(rules.DiceFormula{Count: expr.Count}, critical)
+			count, fixed := combat.CriticalDice(rules.DiceFormula{Count: expr.Count, Sides: expr.Sides}, critical, rule)
+			expr.Count = count
 			res, err := rollDice(expr)
 			if err != nil {
 				return trapDamageRoll{}, err
 			}
-			r.count, r.sides, r.faces, r.rollTotal = expr.Count, expr.Sides, res.Faces, res.Total
+			r.count, r.sides, r.faces, r.criticalMax, r.rollTotal = expr.Count, expr.Sides, res.Faces, fixed, res.Total+fixed
 		} else {
 			r.rollTotal = expr.Modifier
 		}
