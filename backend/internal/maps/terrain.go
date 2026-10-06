@@ -12,7 +12,8 @@ import (
 )
 
 // Terrain is what a combat on the map runs over (MR-034, RN-21, D2): the grid
-// and the walls, the difficult terrain and the cover the master painted. It
+// and the walls, the difficult terrain, the cover and the doors the master painted
+// (as painted: the truth, locked and secret doors included). It
 // implements play.TerrainSource. Like the other seams between modules it takes
 // no caller and checks nobody: it runs after play's own authorization, and
 // play never sends a layer to a player (it only walks the squares). The map
@@ -42,5 +43,5 @@ func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID stri
 		return grid.Terrain{}, fmt.Errorf("read the layers: %w", err)
 	}
 	set := loadLayers(stored, g)
-	return grid.Terrain{Grid: g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover}, nil
+	return grid.Terrain{Grid: g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors}, nil
 }

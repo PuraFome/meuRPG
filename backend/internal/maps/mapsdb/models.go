@@ -53,6 +53,7 @@ type MapLayer struct {
 	Cover            []byte
 	Light            []byte
 	UpdatedAt        time.Time
+	Doors            []byte
 }
 
 type MapPoint struct {

@@ -247,7 +247,7 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
-	terrain = planOn(terrain, known)
+	terrain = planOn(v, terrain, known)
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who)}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {

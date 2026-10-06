@@ -165,14 +165,14 @@ SELECT * FROM map_layers
 WHERE map_id = $1;
 
 -- name: UpsertMapLayers :exec
--- Writes the four layers of a map (NULL for a layer with nothing painted). The
+-- Writes the five layers of a map (NULL for a layer with nothing painted). The
 -- handler holds the map's row lock (GetMapForUpdate), so two batches of paint
 -- take turns.
-INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, updated_at)
-VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.arg(now))
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, updated_at)
+VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.narg(doors), sqlc.arg(now))
 ON CONFLICT (map_id) DO UPDATE
 SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
-    light = excluded.light, updated_at = excluded.updated_at;
+    light = excluded.light, doors = excluded.doors, updated_at = excluded.updated_at;
 
 -- name: DeleteMapLayers :execrows
 -- Clears every layer of the map: the grid's columns or the image changed.

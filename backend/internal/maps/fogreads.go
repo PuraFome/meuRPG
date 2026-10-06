@@ -128,19 +128,23 @@ func (s *Service) fogViewOf(ctx context.Context, r mapsdb.ListMapDetailsRow, v v
 	return pv, points, tokens, nil
 }
 
-// filterLayers is a player's copy of the layers: the walls, the difficult terrain
-// and the cover of the squares they see now or remember (a wall next to a seen
-// square is one of them). The light is never theirs.
+// filterLayers is a player's copy of the layers: the walls, the difficult terrain,
+// the cover and the doors of the squares they see now or remember (a wall next to
+// a seen square is one of them). The doors are as a player knows them: a locked
+// door reads closed, and a secret one is a wall there and no door (RN-26). The
+// light is never theirs.
 func filterLayers(set layerSet, pv *playerView) layerSet {
-	out := layerSet{terrain: grid.NewLayer(pv.g), walls: grid.NewLayer(pv.g), cover: grid.NewCoverLayer(pv.g)}
+	out := layerSet{terrain: grid.NewLayer(pv.g), walls: grid.NewLayer(pv.g), cover: grid.NewCoverLayer(pv.g), doors: grid.NewDoorLayer(pv.g)}
 	for row := 0; row < pv.g.Rows; row++ {
 		for col := 0; col < pv.g.Columns; col++ {
 			if !pv.known(grid.Square{Col: col, Row: row}) {
 				continue
 			}
 			out.terrain.Set(col, row, set.terrain.Get(col, row))
-			out.walls.Set(col, row, set.walls.Get(col, row))
+			door, secretWall := set.doors.Get(col, row).AsPlayerKnows()
+			out.walls.Set(col, row, set.walls.Get(col, row) || secretWall)
 			out.cover.Set(col, row, set.cover.Get(col, row))
+			out.doors.Set(col, row, door)
 		}
 	}
 	return out

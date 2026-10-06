@@ -36,7 +36,7 @@ describe('MapEditor', () => {
   async function setup(mapPartial: Parameters<typeof mapMessage>[2] = { gridColumns: 24, gridRows: 16, fogEnabled: false }, inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {}) {
     api = new FakeMapsClient();
     const map = mapMessage('map-1', 'A caverna do Vale Seco', mapPartial);
-    api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), fogWithheld: false };
+    api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), doors: new Uint8Array(), fogWithheld: false };
     state = new MapState(async () => mapResponse(map, [tavern, pit, chest, torch], [mapToken('c-pensantus', 'Pensantus')]));
     await state.open('map-1');
     TestBed.resetTestingModule();
