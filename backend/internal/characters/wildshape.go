@@ -36,12 +36,12 @@ const wildShapeAction = "feature:wild-shape"
 // beast's armor class, hit points, speeds, attacks and senses, and no spells. A
 // form that is no longer allowed or known (the content changed) is ignored, so the
 // character never loses its own numbers.
-func (s *Service) derive(full *charactersv1.FullSheet, beast *string) rules.Derived {
-	d := rules.Derive(buildOf(full), s.rules)
+func derive(content *rules.Content, full *charactersv1.FullSheet, beast *string) rules.Derived {
+	d := rules.Derive(buildOf(full), content)
 	if beast == nil || *beast == "" {
 		return d
 	}
-	shaped, err := s.rules.WildShapeDerived(d, *beast)
+	shaped, err := content.WildShapeDerived(d, *beast)
 	if err != nil {
 		return d
 	}
@@ -62,8 +62,8 @@ func (s *Service) queriesIn(tx pgx.Tx) *charactersdb.Queries {
 }
 
 // beastSize is the size of a beast as a link.Character.Size.
-func (s *Service) beastSize(beast string) string {
-	if c, ok := s.rules.CreatureByKey(beast); ok {
+func beastSize(content *rules.Content, beast string) string {
+	if c, ok := content.CreatureByKey(beast); ok {
 		return strings.ToLower(c.Size)
 	}
 	return "medium"
@@ -96,13 +96,17 @@ func (s *Service) ListWildShapeForms(
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := &charactersv1.ListWildShapeFormsResponse{}
 	if full := sheet.GetFull(); full != nil {
 		b := buildOf(full)
-		if limit, ok := s.rules.WildShapeLimitFor(b); ok {
+		if limit, ok := content.WildShapeLimitFor(b); ok {
 			out.MaxCr, out.NoFly, out.NoSwim = limit.MaxCR, limit.NoFly, limit.NoSwim
 		}
-		for _, e := range s.rules.WildShapeForms(b) {
+		for _, e := range content.WildShapeForms(b) {
 			out.Forms = append(out.Forms, creatureSummaryToProto(e))
 		}
 	}
@@ -119,7 +123,8 @@ func notFoundOrDB(ctx context.Context, s *Service, err error, what string) error
 
 // shapedVitals reads a living player character's vitals and its numbers in a
 // combat (speed, size, jumps: the beast's, in a form) inside the transaction.
-func (s *Service) shapedVitals(ctx context.Context, q *charactersdb.Queries, campaignID, characterID string) (*playv1.CharacterVitals, link.Character, charactersdb.GetVitalsRow, error) {
+func (s *Service) shapedVitals(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID, characterID string) (*playv1.CharacterVitals, link.Character, charactersdb.GetVitalsRow, error) {
+	q := s.queries.WithTx(tx)
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return nil, link.Character{}, charactersdb.GetVitalsRow{}, errCharacterNotFound()
@@ -128,11 +133,11 @@ func (s *Service) shapedVitals(ctx context.Context, q *charactersdb.Queries, cam
 	if err != nil {
 		return nil, link.Character{}, row, notFoundOrWrap(err, "read the vitals")
 	}
-	m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, link.Character{}, row, err
 	}
-	body, err := s.combatCharacter(row.ID, kindPlayer, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+	body, err := combatCharacter(content, row.ID, kindPlayer, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, link.Character{}, row, err
 	}
@@ -158,8 +163,11 @@ func notFoundOrWrap(err error, what string) error {
 // and `not_found` for anything but a living, active player's character. It implements
 // play.VitalsKeeper; the caller spends the use and the action.
 func (s *Service) AssumeWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string) (before, after *playv1.CharacterVitals, body link.Character, err error) {
-	q := s.queries.WithTx(tx)
-	before, _, row, err := s.shapedVitals(ctx, q, campaignID, characterID)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, link.Character{}, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
 	if err != nil {
 		return nil, nil, link.Character{}, err
 	}
@@ -170,11 +178,11 @@ func (s *Service) AssumeWildShape(ctx context.Context, tx pgx.Tx, campaignID, ch
 	if err != nil {
 		return nil, nil, link.Character{}, err
 	}
-	derived, ok := s.rules.MonsterDerived(beast)
-	if !ok || sheet.GetFull() == nil || !s.rules.WildShapeAllows(buildOf(sheet.GetFull()), beast) {
+	derived, ok := content.MonsterDerived(beast)
+	if !ok || sheet.GetFull() == nil || !content.WildShapeAllows(buildOf(sheet.GetFull()), beast) {
 		return nil, nil, link.Character{}, link.ErrBeastNotAllowed
 	}
-	after, body, err = s.writeWildShape(ctx, q, campaignID, row, before, &beast, int32(max(derived.HitPointsMax, 1))) //nolint:gosec // G115: a stat block's hit points
+	after, body, err = s.writeWildShape(ctx, tx, content, campaignID, row, before, &beast, int32(max(derived.HitPointsMax, 1))) //nolint:gosec // G115: a stat block's hit points
 	return before, after, body, err
 }
 
@@ -183,24 +191,28 @@ func (s *Service) AssumeWildShape(ctx context.Context, tx pgx.Tx, campaignID, ch
 // the form ends and how an undo puts it back; it checks nothing about the beast
 // (AssumeWildShape does). It implements play.VitalsKeeper.
 func (s *Service) SetWildShape(ctx context.Context, tx pgx.Tx, campaignID, characterID, beast string, hp int32) (after *playv1.CharacterVitals, body link.Character, err error) {
-	q := s.queries.WithTx(tx)
-	before, _, row, err := s.shapedVitals(ctx, q, campaignID, characterID)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, link.Character{}, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
 	if err != nil {
 		return nil, link.Character{}, err
 	}
 	if beast == "" {
-		return s.writeWildShape(ctx, q, campaignID, row, before, nil, 0)
+		return s.writeWildShape(ctx, tx, content, campaignID, row, before, nil, 0)
 	}
-	if _, ok := s.rules.MonsterDerived(beast); !ok {
+	if _, ok := content.MonsterDerived(beast); !ok {
 		return nil, link.Character{}, link.ErrBeastNotAllowed
 	}
-	return s.writeWildShape(ctx, q, campaignID, row, before, &beast, max(hp, 1))
+	return s.writeWildShape(ctx, tx, content, campaignID, row, before, &beast, max(hp, 1))
 }
 
 // writeWildShape saves the form (the beast with hp hit points, or none for the
 // character's own shape), bumps the vitals' revision and reads the vitals and the
 // body back.
-func (s *Service) writeWildShape(ctx context.Context, q *charactersdb.Queries, campaignID string, row charactersdb.GetVitalsRow, before *playv1.CharacterVitals, beast *string, hp int32) (*playv1.CharacterVitals, link.Character, error) {
+func (s *Service) writeWildShape(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID string, row charactersdb.GetVitalsRow, before *playv1.CharacterVitals, beast *string, hp int32) (*playv1.CharacterVitals, link.Character, error) {
+	q := s.queries.WithTx(tx)
 	var err error
 	if beast != nil {
 		err = q.SetWildShape(ctx, charactersdb.SetWildShapeParams{CharacterID: row.ID, Beast: *beast, Hp: hp, Now: s.now()})
@@ -213,7 +225,7 @@ func (s *Service) writeWildShape(ctx context.Context, q *charactersdb.Queries, c
 	if _, err := q.TouchVitals(ctx, charactersdb.TouchVitalsParams{CharacterID: row.ID, HitPointsCurrent: before.GetHitPointsCurrent(), Now: s.now()}); err != nil {
 		return nil, link.Character{}, wrap("save the vitals", err)
 	}
-	after, body, _, err := s.shapedVitals(ctx, q, campaignID, row.ID)
+	after, body, _, err := s.shapedVitals(ctx, tx, content, campaignID, row.ID)
 	return after, body, err
 }
 
@@ -229,9 +241,13 @@ func (s *Service) FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, charact
 	if err != nil {
 		return link.Creature{}, false, wrap("list the creatures", err)
 	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return link.Creature{}, false, wrap("read rules content", err)
+	}
 	for _, r := range rows {
 		if r.CharacterCreature.Source == creatureSourceFamiliar {
-			return s.creatureOf(creatureView{CharacterCreature: r.CharacterCreature, ownerUserID: r.PlayerUserID}), true, nil
+			return creatureOf(content, creatureView{CharacterCreature: r.CharacterCreature, ownerUserID: r.PlayerUserID}), true, nil
 		}
 	}
 	return link.Creature{}, false, nil
@@ -243,7 +259,11 @@ func (s *Service) FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, charact
 // implements play.VitalsKeeper.
 func (s *Service) SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, characterID, creatureID string, inCombat bool, conditions []string) (*playv1.CharacterVitals, error) {
 	q := s.queries.WithTx(tx)
-	before, _, row, err := s.shapedVitals(ctx, q, campaignID, characterID)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +280,7 @@ func (s *Service) SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, c
 	if _, err := q.SetFamiliarSight(ctx, params); err != nil {
 		return nil, wrap("save the familiar's sight", err)
 	}
-	after, _, _, err := s.shapedVitals(ctx, q, campaignID, row.ID)
+	after, _, _, err := s.shapedVitals(ctx, tx, content, campaignID, row.ID)
 	return after, err
 }
 

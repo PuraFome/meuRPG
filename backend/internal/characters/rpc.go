@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Every handler starts with one explicit check: authz.RequireCampaignMember
@@ -53,7 +54,11 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, invalidArgument(&fieldError{field: "name", err: err})
 	}
-	sheet, err := s.checkSheet(req.Msg.GetSheet())
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	sheet, err := checkSheet(content, req.Msg.GetSheet())
 	if err == nil {
 		err = checkSheetKind(kind, sheet)
 	}
@@ -127,7 +132,7 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a character", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a new character", err)
 	}
@@ -154,7 +159,11 @@ func (s *Service) GetCharacter(
 	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 		return nil, errCharacterNotFound()
 	}
-	c, err := s.character(ctx, row, m)
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}
@@ -194,6 +203,10 @@ func (s *Service) ListCharacters(
 		return nil, s.dbError(ctx, "read display names", err)
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	res := &charactersv1.ListCharactersResponse{}
 	for _, row := range rows {
 		summary := &charactersv1.CharacterSummary{
@@ -215,7 +228,7 @@ func (s *Service) ListCharacters(
 			}
 		}
 		if full := sheet.GetFull(); full != nil {
-			labels := s.rules.Summary(buildOf(full))
+			labels := content.Summary(buildOf(full))
 			summary.ClassSummary = labels.ClassSummaryPT
 			summary.RaceNamePt = labels.RaceNamePT
 		}
@@ -245,7 +258,11 @@ func (s *Service) UpdateCharacter(
 	if err != nil {
 		return nil, invalidArgument(&fieldError{field: "name", err: err})
 	}
-	sheet, err := s.checkSheet(req.Msg.GetSheet())
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	sheet, err := checkSheet(content, req.Msg.GetSheet())
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -321,7 +338,7 @@ func (s *Service) UpdateCharacter(
 		}
 		return nil, s.dbError(ctx, "update a character", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read an updated character", err)
 	}
@@ -354,6 +371,10 @@ func (s *Service) UpdateCharacterStory(
 		return nil, s.dbError(ctx, "encode a story", err)
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -384,7 +405,7 @@ func (s *Service) UpdateCharacterStory(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a story", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read an updated character", err)
 	}
@@ -406,6 +427,10 @@ func (s *Service) SetStoryEditing(
 	}
 	allowed := req.Msg.GetAllowed()
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -429,7 +454,7 @@ func (s *Service) SetStoryEditing(
 	if err != nil {
 		return nil, s.dbError(ctx, "set story editing", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}
@@ -450,6 +475,10 @@ func (s *Service) MarkCharacterDead(
 		return nil, errCharacterNotFound()
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -475,7 +504,7 @@ func (s *Service) MarkCharacterDead(
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a character dead", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}
@@ -593,7 +622,7 @@ func visibleForUpdate(ctx context.Context, q *charactersdb.Queries, m authz.Memb
 
 // character builds the Character response for a row the caller may see,
 // with its player's display name.
-func (s *Service) character(ctx context.Context, row charactersdb.Character, m authz.Membership) (*charactersv1.Character, error) {
+func (s *Service) character(ctx context.Context, content *rules.Content, row charactersdb.Character, m authz.Membership) (*charactersv1.Character, error) {
 	var displayName string
 	if row.PlayerUserID != nil {
 		displayNames, err := s.displayNames(ctx, []string{*row.PlayerUserID})
@@ -602,7 +631,7 @@ func (s *Service) character(ctx context.Context, row charactersdb.Character, m a
 		}
 		displayName = displayNames[*row.PlayerUserID]
 	}
-	c, err := s.characterToProto(row, m, displayName)
+	c, err := s.characterToProto(content, row, m, displayName)
 	if err != nil {
 		return nil, err
 	}

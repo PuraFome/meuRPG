@@ -46,6 +46,10 @@ func (s *Service) ApproveCharacter(
 		return nil, errCharacterNotFound()
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -76,7 +80,7 @@ func (s *Service) ApproveCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "approve a character", err)
 	}
-	c, err := s.character(ctx, row, m)
+	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}

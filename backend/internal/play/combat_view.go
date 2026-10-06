@@ -419,13 +419,14 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 			byCharacter[vit.GetCharacterId()] = vit
 		}
 	}
-	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), s.nameOf)
+	names := s.namesFor(ctx, m.CampaignID) // the content is read once for the whole view
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), names)
 	if v.sight != nil { // a fog map: the revision is what this player could see happen
 		if out.Revision, err = s.visibleRevision(ctx, d.enc.ID, v.userID); err != nil {
 			return nil, s.dbError(ctx, "count what the player could see", err)
 		}
 	}
-	prompts, err := s.reactionPrompts(ctx, m, d, v)
+	prompts, err := s.reactionPrompts(ctx, m, d, v, names)
 	if err != nil {
 		return nil, err
 	}

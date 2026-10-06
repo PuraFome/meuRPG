@@ -90,37 +90,37 @@ func takesFullSheet(kind string) bool {
 
 // checkSheet checks a sheet from a request and returns a copy with its text
 // cleaned (trimmed), ready to store. A full sheet also goes through
-// rules.Validate. It does not know the character's kind: the caller checks
+// rules.Validate, with the campaign's content. It does not know the character's kind: the caller checks
 // that the sheet's type matches it (checkSheetKind).
-func (s *Service) checkSheet(sheet *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
-	switch content := sheet.GetContent().(type) {
+func checkSheet(content *rules.Content, sheet *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
+	switch body := sheet.GetContent().(type) {
 	case *charactersv1.CharacterSheet_Full:
-		full := proto.CloneOf(content.Full)
+		full := proto.CloneOf(body.Full)
 		if full == nil {
 			full = &charactersv1.FullSheet{}
 		}
 		if err := cleanFullSheet(full); err != nil {
 			return nil, err
 		}
-		if err := rules.Validate(buildOf(full), s.rules); err != nil {
+		if err := rules.Validate(buildOf(full), content); err != nil {
 			if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
 				return nil, &fieldError{field: "sheet." + ve.Field, err: errors.New(ve.Message)}
 			}
 			return nil, err
 		}
-		if err := s.checkChallenge("sheet.full", full.GetChallengeRating(), full.GetXpValue()); err != nil {
+		if err := checkChallenge(content, "sheet.full", full.GetChallengeRating(), full.GetXpValue()); err != nil {
 			return nil, err
 		}
 		return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: full}}, nil
 	case *charactersv1.CharacterSheet_Basic:
-		basic := proto.CloneOf(content.Basic)
+		basic := proto.CloneOf(body.Basic)
 		if basic == nil {
 			basic = &charactersv1.BasicSheet{}
 		}
 		if err := cleanBasicSheet(basic); err != nil {
 			return nil, err
 		}
-		if err := s.checkChallenge("sheet.basic", basic.GetChallengeRating(), basic.GetXpValue()); err != nil {
+		if err := checkChallenge(content, "sheet.basic", basic.GetChallengeRating(), basic.GetXpValue()); err != nil {
 			return nil, err
 		}
 		return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}, nil
@@ -132,9 +132,9 @@ func (s *Service) checkSheet(sheet *charactersv1.CharacterSheet) (*charactersv1.
 // checkChallenge checks an NPC's challenge rating and the XP it gives (MR-016,
 // D1): the rating is empty or one of the rules' ("1/8", "5"), the XP 0 to
 // maxXPValue. field is where the sheet is in the request, for the error.
-func (s *Service) checkChallenge(field, rating string, xp int32) error {
+func checkChallenge(content *rules.Content, field, rating string, xp int32) error {
 	if rating != "" {
-		if _, ok := s.rules.XPForChallenge(rating); !ok {
+		if _, ok := content.XPForChallenge(rating); !ok {
 			return fieldErr(field+".challenge_rating", "is not a challenge rating of the rules (0, 1/8, 1/4, 1/2, 1 to 30)")
 		}
 	}

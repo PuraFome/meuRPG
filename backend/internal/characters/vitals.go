@@ -67,7 +67,7 @@ type vitalsMax struct {
 
 // maxima derives the maximums from a stored sheet. A player character
 // always has a full sheet; anything else has no hit points, slots or dice.
-func (s *Service) maxima(characterID string, doc []byte, beast *string) (vitalsMax, error) {
+func maxima(content *rules.Content, characterID string, doc []byte, beast *string) (vitalsMax, error) {
 	sheet, err := loadSheet(characterID, doc)
 	if err != nil {
 		return vitalsMax{}, err
@@ -76,10 +76,10 @@ func (s *Service) maxima(characterID string, doc []byte, beast *string) (vitalsM
 	if full == nil {
 		return vitalsMax{}, nil
 	}
-	d := rules.Derive(buildOf(full), s.rules)
+	d := rules.Derive(buildOf(full), content)
 	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources}
-	if b, ok := s.rules.MonsterDerived(deref(beast)); ok && beast != nil {
-		m.beast, m.beastNamePT, m.beastMax = *beast, s.rules.NamePT(*beast), max(b.HitPointsMax, 1)
+	if b, ok := content.MonsterDerived(deref(beast)); ok && beast != nil {
+		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}
 	for i, n := range d.SpellSlots {
 		if i < maxSpellLevel {
@@ -183,9 +183,13 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 	if err != nil {
 		return nil, s.dbError(ctx, "list vitals", err)
 	}
+	content, err := s.contentFor(ctx, nil, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list vitals", err)
+	}
 	out := make([]*playv1.CharacterVitals, 0, len(rows))
 	for _, row := range rows {
-		m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
+		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
 		if err != nil {
 			return nil, s.dbError(ctx, "list vitals", err)
 		}
@@ -200,17 +204,19 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 // GetVitals returns one living, active player character's vitals, or a
 // `not_found` Connect error when characterID is not one in the campaign.
 func (s *Service) GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, s.queries, campaignID, characterID)
+	return s.getVitals(ctx, nil, campaignID, characterID)
 }
 
 // GetVitalsTx is GetVitals inside tx, so a change that computes from the
 // vitals and writes them back (the master applying damage) reads what its own
 // transaction will overwrite, never a stale copy.
 func (s *Service) GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, s.queries.WithTx(tx), campaignID, characterID)
+	return s.getVitals(ctx, tx, campaignID, characterID)
 }
 
-func (s *Service) getVitals(ctx context.Context, q *charactersdb.Queries, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+// getVitals reads the vitals in tx (nil: the pool).
+func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+	q := s.queriesIn(tx)
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
@@ -219,7 +225,11 @@ func (s *Service) getVitals(ctx context.Context, q *charactersdb.Queries, campai
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err) // no row: not_found
 	}
-	m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "get vitals", err)
+	}
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err)
 	}
@@ -256,7 +266,11 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err != nil {
 		return nil, nil, wrap("get vitals", err)
 	}
-	m, err := s.maxima(row.ID, row.Sheet, row.WildShapeBeast)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, wrap("read rules content", err)
+	}
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
 	if err != nil {
 		return nil, nil, err
 	}

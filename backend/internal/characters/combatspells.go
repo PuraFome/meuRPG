@@ -29,11 +29,11 @@ import (
 // is not one of the campaign's living ones, or a spell the content does not
 // have.
 func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error) {
-	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Spell{}, err
 	}
-	det, ok := s.rules.SpellDetails(spellKey)
+	det, ok := content.SpellDetails(spellKey)
 	if !ok {
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
@@ -84,16 +84,16 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	}
 	// A spell that reads hit points rolls no damage and opens no heal: the cast
 	// applies the effect itself.
-	if fx, ok := s.rules.SpellEffect(spellKey, slotLevel); ok {
+	if fx, ok := content.SpellEffect(spellKey, slotLevel); ok {
 		out.Damage, out.Heal = nil, nil
 		out.HP = &link.HPEffect{
 			Kind: fx.Kind, Pool: link.Dice{Count: fx.Dice.Count, Sides: fx.Dice.Sides}, Condition: fx.Condition,
 			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends,
 		}
 	}
-	_, summonErr := s.rules.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
+	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
-	out.IgnoresCover = s.rules.IgnoresCover(spellKey)
+	out.IgnoresCover = content.IgnoresCover(spellKey)
 	out.Area = isArea(det)
 	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
 	return out, nil
@@ -160,7 +160,7 @@ func isArea(det *rules.SpellDetails) bool {
 // the bonus is 0 and Known is false, and the log says so. `not_found` for a
 // character that is not one of the campaign's living ones.
 func (s *Service) CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error) {
-	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Save{}, err
 	}
@@ -188,17 +188,24 @@ func (s *Service) MarkDead(ctx context.Context, tx pgx.Tx, campaignID, character
 }
 
 // Conditions implements play.CombatRoster: the SRD's conditions the master may
-// mark as labels (RN-22), with their Portuguese names.
+// mark as labels (RN-22), with their Portuguese names. They are the SRD's: no
+// table content adds one (plan D1), so this needs no campaign.
 func (s *Service) Conditions() []link.Named {
 	var out []link.Named
-	for _, c := range s.rules.Conditions() {
+	for _, c := range s.srd.Conditions() {
 		out = append(out, link.Named{Key: c.Key, NamePT: c.NamePT})
 	}
 	return out
 }
 
-// NamePT implements play.CombatRoster: the Portuguese name of a content key,
-// for a spell the combat shows (the one a character concentrates on, Escudo).
-func (s *Service) NamePT(key string) string {
-	return s.rules.NamePT(key)
+// ContentNames implements play.CombatRoster: the Portuguese name of a content
+// key ("" for an unknown one), bound to the campaign's content, which is read
+// once. The combat shows names for spells (the one a character concentrates on,
+// Escudo) and Wild Shape beasts.
+func (s *Service) ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error) {
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, wrap("read rules content", err)
+	}
+	return content.NamePT, nil
 }

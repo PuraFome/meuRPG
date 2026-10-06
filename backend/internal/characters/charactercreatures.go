@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -110,11 +111,11 @@ func (v creatureView) visibleTo(m authz.Membership) bool {
 	return isMaster(m) || (v.ownerUserID != nil && *v.ownerUserID == m.UserID)
 }
 
-// creatureToProto builds the CharacterCreature the caller sees. The caller may
+// characterCreatureToProto builds the CharacterCreature the caller sees. The caller may
 // see it (visibleTo).
-func (s *Service) creatureToProto(c charactersdb.CharacterCreature) *charactersv1.CharacterCreature {
+func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCreature) *charactersv1.CharacterCreature {
 	return &charactersv1.CharacterCreature{
-		Id: c.ID, CharacterId: c.CharacterID, MonsterKey: c.MonsterKey, MonsterNamePt: s.rules.NamePT(c.MonsterKey), Name: c.Name,
+		Id: c.ID, CharacterId: c.CharacterID, MonsterKey: c.MonsterKey, MonsterNamePt: content.NamePT(c.MonsterKey), Name: c.Name,
 		Source: creatureSourceToProto[c.Source], Attack: creatureAttackNumber[c.Attack], SummonGroupId: c.SummonGroupID,
 		DependsOnConcentration: c.ConcentrationCastID != nil,
 		HitPointsCurrent:       c.HpCurrent, HitPointsMax: c.HpMax, CreatedAt: timestamppb.New(c.CreatedAt),
@@ -123,13 +124,13 @@ func (s *Service) creatureToProto(c charactersdb.CharacterCreature) *charactersv
 
 // creatureOf is the link.Creature of a row: the numbers a combat copies come
 // from the stat block (its Dexterity modifier, its best speed).
-func (s *Service) creatureOf(v creatureView) link.Creature {
+func creatureOf(content *rules.Content, v creatureView) link.Creature {
 	out := link.Creature{
 		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: deref(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
 		Source: v.Source, Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
 		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax),
 	}
-	if d, ok := s.rules.MonsterDerived(v.MonsterKey); ok {
+	if d, ok := content.MonsterDerived(v.MonsterKey); ok {
 		out.InitiativeBonus = d.Initiative
 		// It walks, or flies when it can (the movement uses the better of the two);
 		// swimming and climbing speeds are never the speed on the map.
@@ -137,7 +138,7 @@ func (s *Service) creatureOf(v creatureView) link.Creature {
 		jumps := combat.JumpLimits(d)
 		out.JumpLongDFt, out.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
 	}
-	if c, ok := s.rules.CreatureByKey(v.MonsterKey); ok {
+	if c, ok := content.CreatureByKey(v.MonsterKey); ok {
 		out.Size = strings.ToLower(c.Size)
 	}
 	return out
@@ -234,9 +235,13 @@ func (s *Service) ListCharacterCreatures(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the creatures", err)
 	}
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := &charactersv1.ListCharacterCreaturesResponse{}
 	for _, r := range rows {
-		out.Creatures = append(out.Creatures, s.creatureToProto(r.CharacterCreature))
+		out.Creatures = append(out.Creatures, characterCreatureToProto(content, r.CharacterCreature))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -254,8 +259,12 @@ func (s *Service) GiveCreature(
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	key := req.Msg.GetMonsterKey()
-	if _, ok := s.rules.CreatureByKey(key); !ok {
+	if _, ok := content.CreatureByKey(key); !ok {
 		return nil, invalidArgument(fieldErr("monster_key", "is not an SRD creature"))
 	}
 	name := ""
@@ -300,7 +309,7 @@ func (s *Service) GiveCreature(
 	if s.creatureHost != nil {
 		s.creatureHost.PublishCreaturesChanged(m.CampaignID, ownerUser)
 	}
-	return connect.NewResponse(&charactersv1.GiveCreatureResponse{Creature: s.creatureToProto(created)}), nil
+	return connect.NewResponse(&charactersv1.GiveCreatureResponse{Creature: characterCreatureToProto(content, created)}), nil
 }
 
 // logCreatureEvent writes a creature event to the open session's history, when
@@ -331,6 +340,10 @@ func (s *Service) RenameCreature(
 	name, err := cleanCreatureName(req.Msg.GetName())
 	if err != nil {
 		return nil, err
+	}
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
 	}
 	var v creatureView
 	var encounterID string
@@ -363,7 +376,7 @@ func (s *Service) RenameCreature(
 			s.creatureHost.PublishEncounterChanged(ctx, m.CampaignID, encounterID)
 		}
 	}
-	return connect.NewResponse(&charactersv1.RenameCreatureResponse{Creature: s.creatureToProto(v.CharacterCreature)}), nil
+	return connect.NewResponse(&charactersv1.RenameCreatureResponse{Creature: characterCreatureToProto(content, v.CharacterCreature)}), nil
 }
 
 // DismissCreature implements charactersv1connect.CharacterServiceHandler.
@@ -462,6 +475,10 @@ func (s *Service) AdjustCreatureHitPoints(
 		return nil, invalidArgument(fieldErr(mode, "must be 0 to 9999"))
 	}
 
+	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	var v creatureView
 	defeated := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -520,7 +537,7 @@ func (s *Service) AdjustCreatureHitPoints(
 	}
 	out := &charactersv1.AdjustCreatureHitPointsResponse{}
 	if !defeated {
-		out.Creature = s.creatureToProto(v.CharacterCreature)
+		out.Creature = characterCreatureToProto(content, v.CharacterCreature)
 	}
 	return connect.NewResponse(out), nil
 }
