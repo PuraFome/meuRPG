@@ -59,7 +59,7 @@ server/.nuxt
 # Architecture Decision Records live in a separate private repository
 /docs/adr/
 
-# Binaries built in backend/ by hand (go build)
+# Binaries built by hand in backend/ (go build): never committed
 /backend/api
 /backend/migrate
 /backend/devidp

@@ -108,7 +108,14 @@ func (s *Service) GetCreature(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownCreature)
 	}
-	return connect.NewResponse(&rulesv1.GetCreatureResponse{Creature: creatureToProto(c)}), nil
+	res := creatureToProto(c)
+	// The attacks "Criar NPC" would copy: the very sheet the creation builds, so they never differ.
+	if basic, err := npcSheetFromCreature(content, req.Msg.GetKey()); err == nil {
+		for _, a := range basic.GetAttacks() {
+			res.NpcAttackNames = append(res.NpcAttackNames, a.GetName())
+		}
+	}
+	return connect.NewResponse(&rulesv1.GetCreatureResponse{Creature: res}), nil
 }
 
 // creaturesFilterID is a short fingerprint of the filters, so a page token only

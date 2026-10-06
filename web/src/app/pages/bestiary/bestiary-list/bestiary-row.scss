@@ -1,0 +1,123 @@
+// Phone: the art and the name, then the type and size, the ND and the numbers under them.
+:host {
+  display: block;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 24px;
+  grid-template-areas:
+    'art name go'
+    '. meta go';
+  align-items: center;
+  column-gap: var(--mr-space-3);
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 10px var(--mr-space-4);
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--mr-accent-soft);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.row__art {
+  grid-area: art;
+  align-self: start;
+}
+
+.row__name {
+  grid-area: name;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__pt {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.row__en {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.row__meta,
+.row__kind,
+.row__nd,
+.row__stats {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.row__meta {
+  grid-area: meta;
+}
+
+.row__kind,
+.row__nd,
+.row__stats {
+  display: none;
+}
+
+.row__kind {
+  grid-area: kind;
+}
+
+.row__nd {
+  grid-area: nd;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.row__stats {
+  grid-area: stats;
+}
+
+.row__go {
+  grid-area: go;
+  color: var(--mr-ink-muted);
+}
+
+// A tablet and up: one line per creature. The CA and PV column shows from 1100 px (at 1024 it goes).
+@media (min-width: 768px) {
+  .row__meta {
+    display: none;
+  }
+
+  .row__kind,
+  .row__nd {
+    display: block;
+  }
+
+  .row {
+    grid-template-columns: 40px minmax(0, 1fr) 190px 64px 24px;
+    grid-template-areas: 'art name kind nd go';
+    min-height: 68px;
+  }
+
+}
+
+@media (min-width: 1100px) {
+  .row {
+    grid-template-columns: 40px minmax(0, 1fr) 190px 64px 120px 24px;
+    grid-template-areas: 'art name kind nd stats go';
+  }
+
+  .row__stats {
+    display: block;
+  }
+}
+
