@@ -268,6 +268,10 @@ O módulo `rules` é puro: os testes dele rodam sem banco, sem Docker e sem rede
 | `go test ./internal/rules -run '^$' -bench Derive -benchmem` | Mede um `Derive`, que roda a cada leitura de ficha. |
 | `go test ./internal/rules/vision -run '^$' -bench . -benchmem` | Mede a névoa de guerra: a caverna do desenho, um mapa de 60 × 40 e o maior (200 × 400), no escuro e iluminado, com borda e pilares e com paredes esparsas. O orçamento: a caverna bem abaixo de 1 ms, o 60 × 40 abaixo de 10 ms e o 200 × 400 abaixo de 300 ms. |
 | `go test ./internal/rules/grid ./internal/rules/vision` | A geometria do mapa (grade, camadas, linha reta, custo do movimento, alcance, cobertura) e a visão: puros, conferidos contra os números da caverna dos desenhos da Etapa 9. Rodam sem banco. |
+| `go test ./internal/rules/dungeon` | O gerador de masmorras (MR-010): propriedades sobre muitas opções (todos os invariantes da especificação), os hashes de ouro, o vetor do gerador de números, a independência dos fluxos e os casos de borda. Puro, sem banco, uns 4 segundos (uns 32 com `-race`); `DUNGEON_SWEEP=1` roda ainda uma varredura de 20 000 combinações. |
+| `go test ./internal/rules/dungeon -run Golden -update` | Regrava `testdata/golden.json` (um hash da grade por caso) depois de uma mudança intencional na saída do gerador. Mudar a saída pede subir `Version` em `types.go`; revise o diff antes do commit. |
+| `go test ./internal/rules/dungeon -run '^$' -fuzz FuzzOptions -fuzztime 60s` | Fuzz das opções do gerador: nenhuma entrada pode dar pânico, e toda saída aceita passa em todos os invariantes. O CI não roda o fuzz; rode ao mexer no gerador. |
+| `go test ./internal/rules/dungeon -run '^$' -bench 'Generate|Worst|PromptOf' -benchmem` | Mede o gerador de 31 × 31 até 199 × 399, os piores casos construídos (`Worst`) e o `PromptOf` no pior caso (`PromptOf`). O orçamento: o maior abaixo de 50 ms (teto de 250 ms) e o `PromptOf` abaixo de 20 ms. |
 
 O conteúdo fica em `backend/internal/rules/srd51`:
 
