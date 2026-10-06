@@ -318,6 +318,7 @@ message DungeonRoomRect {
 // PreviewDungeonRequest carries the options and the seed of a preview.
 message PreviewDungeonRequest {
   string campaign_id = 1;
+  // Left out, every option takes its default, as with an empty message.
   DungeonOptions options = 2;
   // The seed. Not set: the server draws one and returns it.
   optional uint64 seed = 3;
@@ -352,6 +353,7 @@ message CreateDungeonMapRequest {
   string campaign_id = 1;
   // The map's name: 1 to 80 characters, one line (as in CreateMap).
   string name = 2;
+  // Left out, every option takes its default, as with an empty message.
   DungeonOptions options = 3;
   // The seed. Not set: the server draws one.
   optional uint64 seed = 4;
