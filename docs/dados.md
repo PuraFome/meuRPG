@@ -33,6 +33,7 @@ Tabelas novas para a mesa ao vivo:
 - `xp_award_treasures`: os tesouros que um prêmio "Voltar à cidade" converteu (MR-041, Etapa 9, fatia 9.11).
 - `planned_milestones`: os marcos que o mestre escreve antes numa campanha por marcos (MR-016, Etapa 8, fatia 8.10); `xp_awards.milestone_id` liga cada prêmio de marco ao marco planejado.
 - `character_level_ups` e `character_level_up_rolls`: o registro de cada subida de nível feita pelo jogador na ficha travada, que o mestre lê como "O que mudou", e o dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
+- `campaign_table_rules` e `character_ability_rolls`: as regras da mesa de uma campanha (os PV da subida de nível, os jeitos de fazer atributos, o crítico, os testes contra a morte, o combate e a névoa dos mapas novos, as regras da casa) e os 4d6 que o servidor rolou para a próxima ficha de um jogador (MR-025, RN-24). Já existem (Etapa 10, fatia 10.4a, ver [Esquema implementado](#esquema-implementado)).
 - `stage_npcs`: os NPCs "em cena" na cena aberta de uma sessão, na ordem em que entraram, no máximo 4, com quem fala (MR-031). Já existe (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `scene_actions`: as ações que o mestre pôs numa cena de RP (MR-015). A cena não tem tabela própria: é um ponto do mapa do tipo `scene` (`map_points`), e a cena aberta na sessão é a coluna `game_sessions.open_scene_point_id`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
 - `scene_clues` e `scene_clue_reveals`: as pistas que o mestre prepara numa cena e a quem ele as revelou, com a cópia do texto que o jogador recebeu (MR-029). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)). O texto "Ganchos e anotações" é a coluna `map_points.hooks`.
@@ -120,6 +121,15 @@ erDiagram
         text token_hash
         timestamptz expires_at
         bool requires_approval
+    }
+
+    campaign_table_rules {
+        uuid campaign_id PK "e FK, CASCADE"
+        text hit_points_rule
+        text critical_rule
+        text death_saves
+        bool combat_starts_with_map
+        bool fog_on_new_maps
     }
 
     campaign_documents {
@@ -270,6 +280,7 @@ erDiagram
 
     campaigns ||--o{ campaign_members : "tem"
     campaigns ||--o{ campaign_invites : "gera"
+    campaigns ||--o| campaign_table_rules : "escolhe as regras"
     campaigns ||--o| campaign_documents : "tem"
     campaigns |o--o{ characters : "reune"
     campaigns ||--o{ campaign_characters : "reusa NPCs"
@@ -318,6 +329,7 @@ flowchart TD
         t_campaign_members["campaign_members"]
         t_campaign_invites["campaign_invites"]
         t_campaign_documents["campaign_documents"]
+        t_campaign_table_rules["campaign_table_rules"]
     end
 
     subgraph characters_mod["Módulo characters"]
@@ -326,6 +338,7 @@ flowchart TD
         t_character_master_notes["character_master_notes"]
         t_character_vitals["character_vitals, character_wild_shapes"]
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
+        t_character_ability_rolls["character_ability_rolls"]
         t_character_creatures["character_creatures"]
     end
 
@@ -487,10 +500,14 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00121_add_door_opened_session_event_kind` | `session_events` | O `CHECK` de `kind` ganha `door_opened` (uma porta que um movimento abriu; MR-010, RN-26). O evento leva a rodada, o combatente, o quadrado da porta e de onde ele saiu, e é escrito na transação do movimento, antes do evento do próprio movimento. |
 | `00122_add_characters_create_key` | `characters` | A coluna `create_key` (UUID, opcional): a chave de idempotência do "Criar NPC" a partir de uma criatura (MR-042). Põe de novo o TTL da `00020`, porque o `ADD COLUMN` faz o CockroachDB reescrever a expressão dele e o teste de reexecução veria a tabela mudar. |
 | `00123_create_characters_create_key_index` | `characters` | Índice único parcial `(campaign_id, create_key)` onde `create_key` não é nulo: a mesma chave não faz dois NPCs, nem com duas chamadas ao mesmo tempo. |
+| `00124_create_campaign_table_rules` | `campaign_table_rules` | As regras da mesa de uma campanha (MR-025, RN-24, Etapa 10, fatia 10.4a): os PV da subida de nível, os jeitos de fazer atributos, o crítico, os testes contra a morte, o combate com ou sem mapa e a névoa dos mapas novos, e as regras da casa. |
+| `00125_create_character_ability_rolls` | `character_ability_rolls` | Os seis jogos de 4d6 que o servidor rolou (ou o jogador digitou, com dado físico) para a próxima ficha de um jogador na campanha (MR-025, RN-24). |
+| `00126_add_campaigns_xp_mode_changed_at` | `campaigns` | `xp_mode_changed_at`: quando o mestre mudou o modo de XP pela última vez, depois de criada a campanha (RN-09). |
+| `00127_add_maps_fog_on_first_grid` | `maps` | `fog_on_first_grid`: a regra da mesa "névoa nos mapas novos" estava ligada quando o mapa nasceu e ainda não foi aplicada; a névoa liga com a primeira grade (RN-24). |
 | `00128_add_maps_grid_factor` | `maps` | Coluna `grid_factor` (`INT4`, padrão 1): a calibração da grade (MR-025, RN-25, Etapa 10, fatia 10.5a), quantos quadrados de 1,5 m vale cada quadrado do desenho. `grid_columns` continua sendo o que as regras usam (as colunas do desenho vezes o fator), então nenhum leitor da grade mudou. |
 | `00129_add_maps_grid_factor_valid` | `maps` | `CHECK` da calibração: fator de 1 a 20, e `grid_columns` múltiplo do fator. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122` e a `00123`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00128` e a `00129`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123` e a `00125`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112` e a `00121`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, a `00128` e a `00129`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -588,6 +605,8 @@ No `maps`:
 - **`map_treasure_finders`** (`00095`, MR-041): quem achou um tesouro, `(point_id, character_id)`. Marcar de novo troca o conjunto; desmarcar apaga. Some com o tesouro ou com o personagem.
 - **`scene_actions`** (`00064`, `00065`, MR-015) são as ações de uma cena de RP, uma linha por ação: `point_id` é um ponto `scene` (`ON DELETE CASCADE`; a API só aceita ação em ponto desse tipo, e apaga as ações quando o ponto muda de tipo), `position` ordena as ações do ponto a partir de 0 (não é única: mover renumera a lista numa transação), `key` é `skill:<perícia>`, `ability:<atributo>` ou `save:<atributo>` (o `CHECK` só deixa passar esse formato, e a API confere a chave no catálogo das regras, `rules.Content.SceneCheckName`: ataque, magia e habilidade de combate nunca entram, MR-015), `name` é o nome que o mestre deu ("Convencer o guarda", até 60 caracteres, vazio para nenhum) e `dc` vai de 1 a 30 ou é `NULL`. No máximo 20 ações por ponto (pergunta 51, aceita pelo Samuel em 03/10/2026), conferido na transação do `INSERT`. A CD o mestre sempre recebe; o jogador só a recebe quando `map_points.show_dc` está ligada (RN-20). `max_attempts` (`00082`, pergunta 55) é quantas vezes cada jogador pode rolar a ação enquanto a cena está aberta: 1 por padrão, de 1 a 5, ou 0 para sem limite; as rolagens e as tentativas dadas ficam em `session_events`, então baixar o limite não apaga nada. `map_points.show_dc` (`00081`, pergunta 52) é a chave "Mostrar a CD aos jogadores", desligada por padrão; só um ponto de cena a liga, e um ponto que deixa de ser cena a perde.
 - **O registro da subida de nível** (`00078`, `00079`, MR-040) é `character_level_ups`: uma linha por subida guiada, escrita na mesma transação que grava a ficha e nunca mais mudada. `campaign_id` e `character_id` são `ON DELETE CASCADE`. `class_key` é a classe que ganhou o nível, `from_level` e `to_level` são os níveis totais (`to_level = from_level + 1`, conferido por `CHECK`), `hp_method` (`average`, `rolled_in_app` ou `rolled_physical`) e `hp_value` (1 a 12) repetem os PV do nível para o histórico ser lido sem abrir o JSON, e `choices` é o `protojson` de `LevelUpChoices`: só o que foi novo (o aumento de atributo, a subclasse, os truques, as magias, as preparadas, as opções, as perícias e a especialização) e os PV, tudo em chaves de conteúdo e números, nenhum texto livre. O mestre lê o registro da campanha do mais novo ao mais antigo, em páginas de até 50 (`ListLevelUps`, com `page_token`), pelo índice `(campaign_id, created_at DESC, id DESC)`. **O dado rolado** (`00080`) é `character_level_up_rolls`, uma linha por `(character_id, to_level)`, **não** por classe: o servidor rola o dado de vida do próximo nível uma vez e devolve o mesmo resultado nas chamadas seguintes, então o jogador não rola de novo até gostar do número (RN-18), e um personagem de duas classes não rola um d6 e um d12 para o mesmo nível e fica com o melhor. `class_key` é a classe que rolou, e a rolagem só vale para ela. Se o mestre baixa o nível na ficha, a rolagem de um nível acima fica guardada e ainda vale quando o personagem chegar lá. A subida usa a linha e a apaga; o valor continua em `character_level_ups`. `die` (6, 8, 10 ou 12) e `value` (1 a `die`) são conferidos por `CHECK`.
+- **As regras da mesa** (`00124`, MR-025, RN-24) são `campaign_table_rules`: uma linha por campanha (a chave primária é `campaign_id`, com `CASCADE`). **Sem linha valem os padrões**, que são o que o app fazia antes (o código lê a falta da linha como o valor zero de `tablerules.Rules`), então nenhuma campanha precisa de preenchimento e quem nunca abre "Regras da mesa" nunca ganha linha. `hit_points_rule` (`roll`, `average` ou `player_chooses`, o padrão), os quatro jeitos de fazer atributos como `bool` (`ability_standard_array`, `ability_point_buy`, `ability_roll_4d6`, `ability_typed`, todos ligados por padrão, com um `CHECK` de que pelo menos um fica ligado), `critical_rule` (`doubled_dice`, o padrão, ou `max_plus_roll`) e `death_saves` (`visible_to_all`, o padrão, ou `owner_and_master`), os dois últimos só guardados: o combate os aplica na fatia 10.4b. `combat_starts_with_map` (padrão `true`: a fatia 10.5b a lê) e `fog_on_new_maps` (padrão `false`: o `maps` a lê ao criar um mapa) completam as três escolhas que um estilo da mesa preenche. `house_rules` é um `TEXT[]` de até 20 lembretes (o servidor também limita cada um a 200 caracteres), que o app só mostra. **O modo de dados fica em `campaigns.dice_mode`** (`00036`): o estilo da mesa o escreve ali, na mesma transação, e **o estilo nunca é guardado**: sai do modo de dados, de `combat_starts_with_map` e de `fog_on_new_maps`, e "Personalizado" é o que não bate com nenhum dos três. Texto livre só nas regras da casa, que o mestre escreve para a mesa (ficção, sem dado pessoal).
+- **Os 4d6 guardados** (`00125`, MR-025, RN-24) são `character_ability_rolls`: uma linha por jogador e campanha (`PRIMARY KEY (campaign_id, user_id)`, os dois com `CASCADE`). `sets` é o JSON dos seis jogos de quatro dados, como `[[6,5,5,2],...]` (o menor dado de cada jogo é o descartado; o resultado é a soma dos outros três), e `source` é `app` (o servidor rolou) ou `typed` (o jogador digitou os dados, com dado físico, RN-18). O servidor devolve os mesmos jogos até o `CreateCharacter` de um jogador usá-los, na mesma transação que cria a ficha, que apaga a linha: a próxima ficha rola de novo. Só números.
 - **O palco** (`00076`, `00077`, MR-031, D7) é uma tabela pequena, `stage_npcs`, e não colunas de `game_sessions`: uma linha por NPC em cena, com `game_session_id` e `character_id` (os dois `ON DELETE CASCADE`: um NPC apagado sai de cena), `position` (a ordem de entrada, a partir de 0; um NPC novo toma a maior posição mais um, então tirar um deixa um buraco que não muda a ordem), `speaking` e `created_at`. `UNIQUE (game_session_id, character_id)` impede o mesmo NPC duas vezes, e o índice único parcial `stage_npcs_one_speaker` (`00077`) deixa no máximo um falando. O limite de 4 é conferido na transação que insere, com a linha da sessão travada, como o das ações de uma cena. `id` é o lugar no palco, feito quando o NPC entra: é o que a cópia do jogador leva no lugar do ID do personagem, que é segredo do mestre (RN-20). Fechar ou trocar a cena apaga as linhas da sessão; a sessão encerrada só deixa de ser lida. Cada mudança é um `session_events` `stage_changed`, com o payload só de IDs (`change`: `put`, `taken_off`, `speaker` ou `cleared`, e o `character_id`).
 - **O NPC feito de uma criatura** (MR-042, `00122` e `00123`): `CreateNpcFromCreature` grava uma ficha básica comum, com dois campos novos no JSON dela, `monster_key` (a criatura de que veio, para a tela mostrar a ficha do SRD) e `ability_scores` (os seis atributos da criatura), mais a PV, a CA, o deslocamento, o ND e o XP que a ficha básica já tinha. Os dois campos novos não pedem migration, porque a ficha é JSON; só o servidor os escreve (`CreateCharacter` e `UpdateCharacter` ignoram o que chega, e a edição mantém os salvos). A migration existe por causa da **idempotência**: `characters.create_key` guarda a chave que o app mandou com o diálogo, e o índice único parcial faz uma repetição devolver o NPC que a primeira chamada fez. É só um ID opaco, sem dado pessoal. As outras criações de personagem não têm chave (a coluna fica nula).
 - **O retrato do NPC** (MR-031) não tem coluna: é o campo `portrait_image_id` do JSON da ficha (`FullSheet` e `BasicSheet`), o ID de uma imagem da galeria da campanha. A ficha de um jogador o recusa, e o servidor confere que a imagem é da campanha. Apagar a imagem da galeria tira o campo das fichas que o têm, na mesma transação, e sobe a `revision` delas (`UPDATE ... sheet #- '{...}'`); sem migration, porque a ficha é JSON.
@@ -760,6 +779,29 @@ erDiagram
         int4 die "6, 8, 10 ou 12"
         int4 value "1 a die"
         timestamptz created_at
+    }
+
+    campaign_table_rules {
+        uuid campaign_id PK "e FK, CASCADE"
+        text hit_points_rule "roll, average ou player_chooses"
+        bool ability_standard_array "os quatro jeitos: pelo menos um"
+        bool ability_point_buy
+        bool ability_roll_4d6
+        bool ability_typed
+        text critical_rule "doubled_dice ou max_plus_roll"
+        text death_saves "visible_to_all ou owner_and_master"
+        bool combat_starts_with_map
+        bool fog_on_new_maps
+        text_array house_rules "até 20 lembretes"
+        timestamptz updated_at
+    }
+
+    character_ability_rolls {
+        uuid campaign_id PK "e FK, CASCADE"
+        uuid user_id PK "e FK, CASCADE"
+        jsonb sets "seis jogos de quatro dados"
+        text source "app ou typed"
+        timestamptz rolled_at
     }
 
     session_events {
@@ -1130,6 +1172,9 @@ erDiagram
     characters ||--o{ character_level_ups : "subiu de nível"
     campaigns ||--o{ character_level_ups : "registra"
     characters ||--o{ character_level_up_rolls : "tem o dado guardado"
+    campaigns ||--o| campaign_table_rules : "escolhe as regras"
+    campaigns ||--o{ character_ability_rolls : "guarda os 4d6 de"
+    users ||--o{ character_ability_rolls : "rolou para a próxima ficha"
     game_sessions ||--o{ session_events : "registra"
     users |o--o{ session_events : "fez"
     characters |o--o{ session_events : "é assunto de"

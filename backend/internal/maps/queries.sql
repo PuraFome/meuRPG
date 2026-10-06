@@ -68,9 +68,10 @@ SELECT count(*)::INT4 AS map_count FROM maps
 WHERE campaign_id = $1;
 
 -- name: InsertMap :one
--- A new map starts hidden (revealed_at NULL).
-INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
-VALUES (sqlc.arg(campaign_id), sqlc.arg(name), sqlc.arg(image_id), sqlc.arg(now), sqlc.arg(now))
+-- A new map starts hidden (revealed_at NULL), with no fog: when the table's
+-- rules want it (RN-24) it comes on with the first grid (fog_on_first_grid).
+INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id), sqlc.arg(name), sqlc.arg(image_id), sqlc.arg(fog_on_first_grid), sqlc.arg(now), sqlc.arg(now))
 RETURNING *;
 
 -- name: ListMapDetails :many
@@ -145,6 +146,13 @@ SET grid_columns = sqlc.narg(grid_columns), grid_factor = sqlc.arg(grid_factor),
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
 
+-- name: ApplyFogRule :one
+-- The table's rule "névoa nos mapas novos" met the map's first grid (RN-24): the
+-- fog comes on, and the rule is spent.
+UPDATE maps SET fog_enabled = true, fog_on_first_grid = false, updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
+RETURNING *;
+
 -- name: SetMapFog :one
 -- The fog of war's settings (MR-036): each one the handler sends replaces the
 -- current value, the others stay. updated_at moves only when something a
@@ -152,6 +160,7 @@ RETURNING *;
 -- master's, and a player must not learn that it changed.
 UPDATE maps
 SET fog_enabled = COALESCE(sqlc.narg(fog_enabled)::BOOL, fog_enabled),
+    fog_on_first_grid = fog_on_first_grid AND sqlc.narg(fog_enabled)::BOOL IS NULL,
     base_light = COALESCE(sqlc.narg(base_light)::TEXT, base_light),
     group_vision = COALESCE(sqlc.narg(group_vision)::BOOL, group_vision),
     updated_at = CASE WHEN COALESCE(sqlc.narg(fog_enabled)::BOOL, fog_enabled) <> fog_enabled

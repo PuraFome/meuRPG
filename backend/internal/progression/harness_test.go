@@ -159,6 +159,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("New() error = %v", err)
 	}
 	chars.SetLevelUps(svc)
+	camps.SetXPAwards(svc) // changing the XP mode asks once XP was awarded (RN-09)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	var sessions Sessions = fakeSessions{}

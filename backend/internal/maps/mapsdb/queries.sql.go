@@ -10,6 +10,45 @@ import (
 	"time"
 )
 
+const applyFogRule = `-- name: ApplyFogRule :one
+UPDATE maps SET fog_enabled = true, fog_on_first_grid = false, updated_at = $1
+WHERE campaign_id = $2 AND id = $3
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+`
+
+type ApplyFogRuleParams struct {
+	Now        time.Time
+	CampaignID string
+	ID         string
+}
+
+// The table's rule "névoa nos mapas novos" met the map's first grid (RN-24): the
+// fog comes on, and the rule is spent.
+func (q *Queries) ApplyFogRule(ctx context.Context, arg ApplyFogRuleParams) (Map, error) {
+	row := q.db.QueryRow(ctx, applyFogRule, arg.Now, arg.CampaignID, arg.ID)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
+		&i.GridFactor,
+	)
+	return i, err
+}
+
 const bumpMapLayersRevision = `-- name: BumpMapLayersRevision :one
 UPDATE maps
 SET layers_revision = layers_revision + 1
@@ -173,7 +212,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type DeleteMapParams struct {
@@ -202,6 +241,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -488,7 +528,7 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -516,13 +556,14 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -554,6 +595,7 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -1162,24 +1204,27 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 }
 
 const insertMap = `-- name: InsertMap :one
-INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4)
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type InsertMapParams struct {
-	CampaignID string
-	Name       string
-	ImageID    string
-	Now        time.Time
+	CampaignID     string
+	Name           string
+	ImageID        string
+	FogOnFirstGrid bool
+	Now            time.Time
 }
 
-// A new map starts hidden (revealed_at NULL).
+// A new map starts hidden (revealed_at NULL), with no fog: when the table's
+// rules want it (RN-24) it comes on with the first grid (fog_on_first_grid).
 func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, error) {
 	row := q.db.QueryRow(ctx, insertMap,
 		arg.CampaignID,
 		arg.Name,
 		arg.ImageID,
+		arg.FogOnFirstGrid,
 		arg.Now,
 	)
 	var i Map
@@ -1199,6 +1244,7 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -2538,13 +2584,14 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 const setMapFog = `-- name: SetMapFog :one
 UPDATE maps
 SET fog_enabled = COALESCE($1::BOOL, fog_enabled),
+    fog_on_first_grid = fog_on_first_grid AND $1::BOOL IS NULL,
     base_light = COALESCE($2::TEXT, base_light),
     group_vision = COALESCE($3::BOOL, group_vision),
     updated_at = CASE WHEN COALESCE($1::BOOL, fog_enabled) <> fog_enabled
                         OR COALESCE($3::BOOL, group_vision) <> group_vision
                       THEN $4::TIMESTAMPTZ ELSE updated_at END
 WHERE campaign_id = $5 AND id = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type SetMapFogParams struct {
@@ -2586,6 +2633,7 @@ func (q *Queries) SetMapFog(ctx context.Context, arg SetMapFogParams) (Map, erro
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -2596,7 +2644,7 @@ UPDATE maps
 SET grid_columns = $1, grid_factor = $2, fog_enabled = fog_enabled AND $1::INT4 IS NOT NULL,
     updated_at = $3
 WHERE campaign_id = $4 AND id = $5
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type SetMapGridParams struct {
@@ -2636,6 +2684,7 @@ func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, er
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -2645,7 +2694,7 @@ const setMapImageOnly = `-- name: SetMapImageOnly :one
 UPDATE maps
 SET image_id = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type SetMapImageOnlyParams struct {
@@ -2681,6 +2730,7 @@ func (q *Queries) SetMapImageOnly(ctx context.Context, arg SetMapImageOnlyParams
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -2691,7 +2741,7 @@ UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type SetMapRevealedParams struct {
@@ -2728,6 +2778,7 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err
@@ -2995,7 +3046,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
 `
 
 type UpdateMapParams struct {
@@ -3035,6 +3086,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.LayersRevision,
 		&i.LightRevision,
 		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
 		&i.GridFactor,
 	)
 	return i, err

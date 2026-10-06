@@ -101,11 +101,14 @@ func TestPendingMayCallIsTheAgreedList(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		campaignsv1connect.CampaignServiceGetCampaignProcedure,
+		campaignsv1connect.CampaignServiceGetTableRulesProcedure,
 		charactersv1connect.CharacterServiceCreateCharacterProcedure,
 		charactersv1connect.CharacterServiceGetCharacterProcedure,
 		charactersv1connect.CharacterServiceListCharactersProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure,
+		charactersv1connect.CharacterServiceGetAbilityRollsProcedure,
+		charactersv1connect.CharacterServiceRollAbilityScoresProcedure,
 		rulesv1connect.ContentServiceListContentProcedure,
 		rulesv1connect.ContentServiceGetSpellDetailsProcedure,
 	}
