@@ -170,6 +170,19 @@ Para testar o envio com `curl`:
 
 O envio não é Connect, então não precisa do `Connect-Protocol-Version`. A proteção contra CSRF (`http.CrossOriginProtection`) julga só os headers que o navegador põe sozinho, `Sec-Fetch-Site` e `Origin`: o `curl` não manda nenhum dos dois, e passa. Com `-H 'Sec-Fetch-Site: cross-site'` ou `-H 'Origin: https://outro.site'`, a resposta é `403`, como seria para uma página de outro site. No app, o navegador manda `Sec-Fetch-Site: same-origin`, que passa.
 
+## Imagens geradas por IA
+
+A geração de imagens (MR-039, RN-28) chama a API do Gemini. Sem chave, fica desligada e o resto do app funciona.
+
+| Variável | Obrigatória | O que é |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | Não | A chave do Google AI Studio. **Segredo:** nunca vai para o repositório, para um teste, para o log ou para uma mensagem de erro (o backend a mostra como `[REDACTED]`). Sem ela, o log de início diz que a geração está desligada e as chamadas respondem `failed_precondition` com o motivo `OFF` |
+| `GEMINI_IMAGE_MODEL` | Não | O modelo; padrão `gemini-3.1-flash-image` |
+| `IMAGE_GENERATOR` | Não | `fake` usa o gerador falso (`backend/internal/maps/images/gen`): sem chave e sem rede, devolve um PNG determinístico da proporção pedida. É o que o `make up` (Docker e nativo) usa. Um `[recusa]`, `[vazio]`, `[erro]` ou `[lento]` no texto do pedido faz o falso recusar, não devolver imagem, falhar ou demorar. O servidor se recusa a subir com `fake` no Cloud Run |
+| `IMAGE_MONTHLY_LIMIT` | Não | Imagens por campanha por mês; padrão 20 (ver [Operação](docs/operacao.md#imagens-geradas-a-api-do-gemini)) |
+
+Os testes usam sempre o gerador falso. O teste com o modelo de verdade, `TestRealGemini` (em `backend/internal/maps/images/gen`), gera uma imagem pequena e só roda com `MEURPG_TEST_GEMINI_API_KEY` definida na sua máquina (e, se quiser, `MEURPG_TEST_GEMINI_MODEL`): sem ela, é pulado, e o CI nunca a define. As medidas de memória (`MEURPG_MEASURE=1`) estão em [Operação](docs/operacao.md#imagens-geradas-a-api-do-gemini). Os testes de integração do módulo: `go test -race -run 'TestMR039|TestRN28|TestRN10_AGeneratedImage' ./internal/maps/`, contra o banco dos testes.
+
 ## Testes ponta a ponta (Playwright)
 
 Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScript, com `package.json` próprio e versões fixas.
@@ -227,15 +240,16 @@ O jogador de um mapa com névoa recebe a imagem em peças montadas no servidor (
 
 | Parte | Memória |
 | --- | --- |
-| A decodificação da primeira peça (a imagem decodificada, o arquivo de até 10 MiB e a cópia que `io.ReadAll` faz), uma de cada vez e sem coincidir com um envio (a vaga é a mesma) | até uns 195 MB, passageiros |
+| Uma imagem decodificada na vaga do envio (`processing`: uma por vez no servidor, sem coincidir com outra): a primeira peça da névoa (a imagem decodificada, o arquivo de até 10 MiB e a cópia que `io.ReadAll` faz), o envio e a referência para a IA (MR-039). Medido com 40 megapixels em PNG de 8 bits: a primeira peça uns 195 MB; o envio (`images.Process`) **178 MiB** mais o arquivo lido e a cópia dele (até uns 20 MB), uns **200 MB**; encolher a referência 172 MiB (o arquivo é lido uma vez, num buffer do tamanho exato). **O número do envio estava subestimado e foi medido e corrigido nesta mudança:** media-se 230 MiB, porque a miniatura e a referência usavam o espaço de trabalho do reescalonador do tamanho da imagem (77 MB e 163 MB); agora escalam em faixas de 32 linhas (uns 8 MB). A imagem de 40 megapixels em JPEG: 78 MiB | até uns **200 MB**, passageiros |
 | As cópias de trabalho: 2 mapas de até 2.048 × 2.048 (16,8 MB no pior caso de proporção) | até 34 MB |
 | O cache de peças prontas | 32 MiB (33,5 MB), contados em bytes |
 | As cenas e visões da névoa por jogador (`TestSceneMemory`) | até 19 MB |
-| Soma | **uns 280 MB**, mais uns 50 MB do resto do servidor: dentro dos 400 MiB do `GOMEMLIMIT` e dos 512 MiB da instância |
+| As respostas da geração de imagens (MR-039): **1 chamada ao modelo por vez** (`maxGenerating`), uma resposta de até 8 MiB, lida direto para uma estrutura (medido: cerca de 2,5 vezes a resposta, uns 20 MiB no teto; uma imagem de 1K tem uns 2 MB, e na prática uns 5 MiB), e as imagens encolhidas do pedido, até uns 6 MiB | até uns 26 MB |
+| Soma | 200 + 34 + 33,5 + 19 + 26 = **uns 313 MB**, mais uns 50 MB do resto do servidor (**uns 363 MB**): dentro dos 400 MiB do `GOMEMLIMIT` e dos 512 MiB da instância. Com 2 chamadas ao mesmo tempo seriam uns 389 MB, e por isso é 1 |
 
 Uma imagem cuja decodificação passaria de 192 MiB (um PNG de 16 bits de mais de 24 megapixels, de antes de o envio guardar só 8 bits por canal) é recusada na primeira peça, com `503`; um JPEG de 40 megapixels decodifica em uns 60 MB.
 
-Para medir de novo: `MEURPG_MEASURE=1 go test -run 'TestTileMemory|TestTileRequestTiming' -v ./internal/maps` (este com o banco de teste) e `go test -run '^$' -bench 'Tile' -benchmem ./internal/maps` (em `backend/`, sem `-race`: o detector multiplica o tempo e a memória).
+Para medir de novo: `MEURPG_MEASURE=1 go test -run 'TestTileMemory|TestTileRequestTiming' -v ./internal/maps` (este com o banco de teste), e, para a geração de imagens, `MEURPG_MEASURE=1 go test -run 'TestShrinkMemory|TestMeasureMemory' -v ./internal/maps/images/...` e `go test -run '^$' -bench 'Tile' -benchmem ./internal/maps` (em `backend/`, sem `-race`: o detector multiplica o tempo e a memória).
 
 ### O editor do mapa no navegador
 

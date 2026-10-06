@@ -365,6 +365,7 @@ flowchart TD
         t_scene_clue_reveals["scene_clue_reveals"]
         t_scene_discoveries["scene_discoveries"]
         t_gallery_images["gallery_images"]
+        t_image_requests["image_requests"]
     end
 
     subgraph progression["Módulo progression"]
@@ -526,8 +527,11 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00143_add_encounters_mode` | `encounters` | Coluna `mode` (`TEXT`, padrão `grid`): o modo do combate (MR-025, RN-25, ADR-0017, Etapa 10, fatia 10.5b), `grid` (no mapa, como todo combate foi até aqui; o padrão é o preenchimento dos que existem) ou `theatre` (o "teatro da mente", sem mapa). Escolhido ao começar e nunca muda. |
 | `00144_add_encounters_mode_valid` | `encounters` | `CHECK`s do modo: `grid` ou `theatre`, e a grade do combate: no modo `grid` os limites de sempre (4 a 200 colunas, 1 a 400 linhas); no `theatre`, 0 por 0, sem mapa e sem ponto de mapa. |
 | `00145_relax_opportunity_offers_for_theatre` | `opportunity_offers` | `left_col` e `left_row` passam a aceitar `NULL` (a oferta que o mestre faz num combate sem grade não tem quadrado; os dois são `NULL` juntos ou nenhum), e o `state` ganha `withdrawn` (o mestre tirou a oferta antes de alguém responder). |
+| `00146_add_gallery_images_generated` | `gallery_images` | `generated` (a imagem foi feita por IA, MR-039) e `parent_image_id` (o ajuste aponta para a imagem de que partiu; apagar o pai só corta o elo). |
+| `00147_create_image_requests` | `image_requests` | Cada pedido de imagem ao modelo (MR-039, RN-28): o texto do mestre, o estilo, a proporção, as referências, o estado e a vaga do mês. É também a conta do mês de cada campanha. |
+| `00148_create_image_requests_indexes` | `image_requests`, `gallery_images` | A chave contra repetição (única por campanha), a conta do mês e o filho de uma imagem (a cadeia de ajustes). |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123`, a `00125`, a `00141` e a `00142`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112`, a `00121`, as `00132` a `00140` e as `00143` a `00145`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, as `00128` a `00131`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036`, a `00037`, a `00124` e a `00126`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102`, a `00103`, as `00113` a `00115`, a `00122`, a `00123`, a `00125`, a `00141` e a `00142`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104`, a `00105`, a `00108`, a `00109`, as `00110` a `00112`, a `00121`, as `00132` a `00140` e as `00143` a `00145`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106`, a `00107`, a `00116`, a `00117`, a `00120`, a `00127`, as `00128` a `00131` e as `00146` a `00148`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -611,7 +615,9 @@ No `progression` (Etapa 7, MR-016, RN-09, RN-12):
 
 No `maps`:
 
-- **`gallery_images` guarda só a descrição da imagem; o arquivo fica no blob store** (em disco no ambiente local, no Cloud Storage em produção), sob `campaigns/<campaign_id>/images/<id>` e `…/<id>.thumb`. Por isso `id` não tem `DEFAULT`: a API cria o ID antes de gravar os arquivos, cujas chaves o levam. Os arquivos vão primeiro e a linha por último, então toda linha tem os arquivos; apagar faz o contrário (ver [Arquitetura](arquitetura.md#módulo-maps-galeria-e-imagens)).
+- **`gallery_images` guarda só a descrição da imagem; o arquivo fica no blob store** (em disco no ambiente local, no Cloud Storage em produção), sob `campaigns/<campaign_id>/images/<id>` e `…/<id>.thumb` (e `…/<id>.ref`, a referência de 1024 px que vai para a IA, só nas imagens maiores que isso: ver [Arquitetura](arquitetura.md#imagens-geradas-por-ia-mr-039-rn-28-adr-0019-fatia-10-8a)). Por isso `id` não tem `DEFAULT`: a API cria o ID antes de gravar os arquivos, cujas chaves o levam. Os arquivos vão primeiro e a linha por último, então toda linha tem os arquivos; apagar faz o contrário (ver [Arquitetura](arquitetura.md#módulo-maps-galeria-e-imagens)).
+- **`generated` e `parent_image_id` (MR-039).** Uma imagem que o `ImageGenerationService` guardou tem `generated = true` e é escondida dos jogadores como qualquer imagem (RN-10). Um ajuste aponta para a imagem de que partiu (`parent_image_id`, `ON DELETE SET NULL`: apagar a mãe deixa a filha inteira, sem o elo); a cadeia de ajustes é a árvore desses elos (`ListImageEdits`, uma consulta recursiva).
+- **`image_requests` é o pedido e a conta do mês.** A vaga do mês de uma campanha são as linhas do mês (`quota_month`, "2026-10", no horário fixo UTC-3, porque o Brasil não tem horário de verão desde 2019) que não foram devolvidas (`refunded`). A vida de uma linha: `pending` sem `sent_at` (a vaga está reservada e o pedido não saiu: "Cancelar" devolve a vaga), `pending` com `sent_at` (saiu: "Cancelar" só para a espera, a vaga fica gasta e a imagem, se vier, vai para a galeria), `done` (com `image_id`), `refused` ou `failed` (nada foi gerado: `refunded = true`, com o `reason`) e `canceled`. Uma linha `pending` que nunca saiu do servidor há mais de 10 minutos (ele reiniciou no meio) falha e devolve a vaga; uma que saiu (`sent_at`) e continua `pending` 10 minutos depois falha como `timeout` **com a vaga gasta** (a chamada pode ter sido cobrada), e se a imagem ainda chegar, ela entra na galeria e o pedido vira `done`, uma vez só, na mesma transação do `INSERT`. Os dois acontecem quando alguém lê o pedido, o estado do mês ou pede outra imagem. A `idempotency_key` (única por campanha) faz um novo pedido com a mesma chave devolver a primeira linha. `prompt` é o texto do mestre, como escreveu (1 a 500 caracteres, `CHECK`); é dado dele, sem TTL, e some com a campanha (`CASCADE`). `reference_ids` e `character_ids` são os IDs das imagens da galeria enviadas como referência, em texto (sem chave estrangeira: uma imagem apagada depois só faz o pedido de novo falhar com "uma imagem foi apagada"). Os pedidos de um mês e o número "Imagem n" leem o índice `(campaign_id, quota_month)`.
 - **A imagem guardada não é a enviada:** o servidor a codificou de novo, sem metadados, como JPEG ou PNG. `content_type`, `width`, `height` e `byte_size` descrevem a imagem guardada, e os `CHECK`s repetem os limites da API (`image/jpeg` ou `image/png`, 1 a 8.192 px por lado, até 10 MiB). `byte_size` conta na cota da campanha: 300 imagens e 500 MiB, conferidos na mesma transação do `INSERT`.
 - **`name`** nasce do nome do arquivo e o mestre muda depois (1 a 80 caracteres, `CHECK`). É texto livre, como o nome da campanha.
 - **`uploaded_by`** é quem enviou, para quando a campanha tiver mais de um mestre (RN-13). Não sai na API. `ON DELETE SET NULL`: a imagem fica com a campanha quando a conta sai. Sem índice, como `campaigns.created_by`.
@@ -1017,6 +1023,32 @@ erDiagram
         int4 height "1 a 8192"
         int4 byte_size "até 10 MiB, conta na cota"
         timestamptz created_at
+        bool generated "feita por IA (MR-039), padrão false"
+        uuid parent_image_id FK "a imagem de que esta é um ajuste, opcional, SET NULL"
+    }
+
+    image_requests {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        uuid requested_by FK "opcional, SET NULL"
+        text idempotency_key "única na campanha, 1 a 64"
+        text kind "scene ou edit"
+        text prompt "o texto do mestre, 1 a 500"
+        text style "oil_painting, watercolor... ou vazio"
+        text aspect_ratio "uma das 10 do modelo"
+        text model
+        text_array reference_ids "imagens de objetos, IDs"
+        text_array character_ids "imagens de personagens, IDs"
+        uuid source_image_id FK "o ajuste parte dela, SET NULL"
+        int4 number "Imagem n"
+        text quota_month "2026-10, em UTC-3"
+        text status "pending, done, refused, failed, canceled"
+        text reason "no_image, refused, unavailable..."
+        bool refunded "a vaga voltou"
+        uuid image_id FK "a imagem guardada, SET NULL"
+        timestamptz created_at
+        timestamptz sent_at "saiu do servidor, opcional"
+        timestamptz finished_at "opcional"
     }
 
     maps {
@@ -1241,6 +1273,11 @@ erDiagram
     characters |o--o{ session_events : "é assunto de"
     campaigns ||--o{ gallery_images : "guarda"
     users |o--o{ gallery_images : "enviou"
+    gallery_images |o--o{ gallery_images : "é ajuste de"
+    campaigns ||--o{ image_requests : "pede"
+    users |o--o{ image_requests : "pediu"
+    gallery_images |o--o{ image_requests : "é o resultado de"
+    gallery_images |o--o{ image_requests : "é a origem de um ajuste"
     campaigns ||--o| campaign_documents : "tem"
     users |o--o{ campaign_documents : "salvou por último"
     campaigns ||--o{ maps : "possui"
