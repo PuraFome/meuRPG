@@ -6,7 +6,7 @@
   height="min(780px, calc(92dvh - 48px))"
   (closed)="cancel()"
 >
-  <div class="stack" [class.stack--wide]="!phone">
+  <div class="stack">
     @if (failure(); as f) {
       <div class="mr-notice mr-notice--danger notice" role="alert" tabindex="-1">
         <mat-icon aria-hidden="true">error</mat-icon>
@@ -40,10 +40,14 @@
             <p><strong>Esta campanha ainda não tem mapa.</strong> Crie um mapa com grade e volte para pôr o tesouro nele.</p>
           </div>
         } @else {
+          @let d = detail();
           <div class="cols" [class.cols--one]="phone">
-            <div class="cols__map">
-              @let d = detail();
-              @if (!phone) {
+            <div class="cols__sel">
+              <app-select-field label="Mapa" [options]="mapOptions()" [value]="mapId()" path="map" (valueChange)="chooseMap($event)" />
+            </div>
+
+            @if (!phone) {
+              <div class="cols__map">
                 @switch (d.status) {
                   @case ('loading') {
                     <p class="status" role="status">
@@ -64,14 +68,7 @@
                         <p>{{ noGridText }}</p>
                       </div>
                     } @else if (image(); as img) {
-                      <div
-                        class="pick"
-                        tabindex="0"
-                        role="group"
-                        aria-label="Quadrado do tesouro no mapa"
-                        aria-describedby="place-map-help"
-                        (keydown)="onKeydown($event)"
-                      >
+                      <div class="pick" tabindex="0" role="group" aria-label="Quadrado do tesouro no mapa" aria-describedby="place-map-help" (keydown)="onKeydown($event)">
                         <app-map-view
                           [image]="img"
                           [mapName]="d.map.name"
@@ -92,68 +89,67 @@
                             [layers]="layers()"
                             [points]="points()"
                             [highlight]="outline()"
+                            selectedId="treasure-preview"
                           />
                         </app-map-view>
                       </div>
                       <p class="help" id="place-map-help">Toque num quadrado do mapa para mudar. Com o mapa em foco, as setas movem o quadrado (Shift: 5 de cada vez).</p>
-                      <app-map-layers-legend [layers]="layers()" [stairs]="stairKinds()" />
+                      <div class="legend legend--map">
+                        <app-map-layers-legend [layers]="layers()" [stairs]="stairKinds()" />
+                        <app-map-pins-legend [points]="points()" [isMaster]="true" />
+                      </div>
                     } @else {
                       <p class="mr-muted">Este mapa não tem imagem.</p>
                     }
                   }
                 }
-              }
-            </div>
+              </div>
+            }
 
-            <div class="cols__side">
-              <app-select-field
-                label="Mapa"
-                [options]="mapOptions()"
-                [value]="mapId()"
-                path="map"
-                (valueChange)="chooseMap($event)"
-              />
-
+            <div class="cols__rest">
               @if (phone) {
-                @let pd = detail();
-                @if (pd.status === 'loading') {
+                @if (d.status === 'loading') {
                   <p class="status" role="status">
                     <mat-spinner diameter="24" aria-label="Carregando o mapa" />
                     Abrindo o mapa...
                   </p>
-                } @else if (pd.status === 'error') {
+                } @else if (d.status === 'error') {
                   <div class="mr-notice mr-notice--danger" role="alert">
                     <mat-icon aria-hidden="true">error</mat-icon>
                     <p>Não deu para abrir este mapa. <button type="button" class="link" (click)="chooseMap(mapId())">Tentar de novo</button></p>
                   </div>
-                } @else if (pd.status === 'ready') {
-                  @if (!hasGrid()) {
-                    <div class="mr-notice mr-notice--neutral" role="status" data-testid="no-grid">
-                      <mat-icon aria-hidden="true">grid_off</mat-icon>
-                      <p>{{ noGridText }}</p>
-                    </div>
-                  } @else if (rooms().length > 0) {
-                    <fieldset class="rooms">
-                      <legend class="mr-label">Em que sala?</legend>
-                      <div class="rooms__grid">
-                        @for (r of rooms(); track r.id) {
-                          <label class="room" [class.room--on]="roomChosen(r)">
-                            <input type="radio" class="mr-visually-hidden" name="room" [value]="r.id" [checked]="roomChosen(r)" (change)="pickRoom(r)" />
-                            @if (roomChosen(r)) {
-                              <mat-icon aria-hidden="true">check</mat-icon>
-                            }
-                            Sala {{ r.id }}
-                          </label>
-                        }
-                      </div>
-                    </fieldset>
-                    <p class="help">No celular o ponto cai no meio da sala; ajuste o quadrado no mapa, no notebook.</p>
-                  } @else {
-                    <p class="help" data-testid="no-rooms">Este mapa não tem salas: o ponto cai no meio do mapa. Ajuste o quadrado no mapa, no notebook.</p>
-                  }
+                } @else if (d.status === 'ready' && !hasGrid()) {
+                  <div class="mr-notice mr-notice--neutral" role="status" data-testid="no-grid">
+                    <mat-icon aria-hidden="true">grid_off</mat-icon>
+                    <p>{{ noGridText }}</p>
+                  </div>
                 }
-              } @else if (placeText()) {
-                <p class="where">Onde <b>Na {{ placeText() }}</b>.</p>
+              }
+
+              @if (d.status === 'ready' && hasGrid()) {
+                @if (rooms().length > 0) {
+                  <fieldset class="rooms">
+                    <legend class="mr-label">Em que sala?</legend>
+                    <div class="rooms__grid">
+                      @for (r of rooms(); track r.id) {
+                        <label class="room" [class.room--on]="roomChosen(r)">
+                          <input type="radio" class="mr-visually-hidden" name="room" [value]="r.id" [checked]="roomChosen(r)" (change)="pickRoom(r)" />
+                          @if (roomChosen(r)) {
+                            <mat-icon aria-hidden="true">check</mat-icon>
+                          }
+                          Sala {{ r.id }}
+                        </label>
+                      }
+                    </div>
+                  </fieldset>
+                  @if (phone) {
+                    <p class="help">No celular o ponto cai no meio da sala; ajuste o quadrado no mapa, no notebook.</p>
+                  } @else if (placeText()) {
+                    <p class="where"><span class="mr-label">Onde</span> Na {{ placeText() }}.</p>
+                  }
+                } @else if (phone) {
+                  <p class="help" data-testid="no-rooms">Este mapa não tem salas: o ponto cai no meio do mapa. Ajuste o quadrado no mapa, no notebook.</p>
+                }
               }
 
               <app-text-field
@@ -170,11 +166,18 @@
                   Tesouro
                   <span class="mr-tag mr-tag--hidden"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
                 </h3>
-                <p class="what__gold">{{ goldText() }} em moedas, gemas e arte.</p>
+                <p class="what__gold">{{ goldText() }} {{ kindsText() }}.</p>
                 <p class="what__inside">Na descrição: {{ inside() }}.</p>
                 <p class="what__gold-line">{{ goldSentence() }}</p>
               </section>
               <p class="help">O ponto fica escondido até um jogador achar o tesouro.</p>
+
+              @if (!phone && d.status === 'ready' && hasGrid() && image()) {
+                <div class="legend legend--side">
+                  <app-map-layers-legend [layers]="layers()" [stairs]="stairKinds()" />
+                  <app-map-pins-legend [points]="points()" [isMaster]="true" />
+                </div>
+              }
             </div>
           </div>
         }
@@ -184,15 +187,7 @@
 
   <div foot class="actions">
     <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="cancel()">Cancelar</button>
-    <button
-      type="button"
-      mat-flat-button
-      class="go"
-      [class.mr-button--off]="!canPlace()"
-      [disabled]="!canPlace()"
-      disabledInteractive
-      (click)="place()"
-    >
+    <button type="button" mat-flat-button class="go" [class.mr-button--off]="!canPlace()" [disabled]="!canPlace()" disabledInteractive (click)="place()">
       <mat-icon aria-hidden="true">add_location_alt</mat-icon>{{ busy() ? 'Pondo...' : 'Pôr no mapa' }}
     </button>
   </div>

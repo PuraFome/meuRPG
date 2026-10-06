@@ -2,7 +2,7 @@
   [title]="item()?.namePt ?? data.namePt"
   [phone]="inSheet"
   titleId="item-t"
-  height="min(640px, calc(92dvh - 48px))"
+  [height]="inSheet ? 'min(640px, calc(92dvh - 48px))' : ''"
   (closed)="close()"
 >
   @let s = state();
@@ -40,8 +40,8 @@
           <h3 class="cap" id="item-value-h">Valor</h3>
           <p class="value__num">{{ value() }}</p>
           <p class="value__src">
-            {{ valueLabel }} ·
-            <a routerLink="/creditos" target="_blank" rel="noopener">Créditos</a>
+            {{ i.valueLabel || valueLabel }} ·
+            <a routerLink="/creditos" target="_blank" rel="noopener">Créditos<span class="mr-visually-hidden"> (abre em outra aba)</span></a>
           </p>
           <p class="value__rule">{{ rule() }}</p>
         </section>

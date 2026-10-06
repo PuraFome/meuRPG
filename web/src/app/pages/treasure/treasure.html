@@ -57,29 +57,29 @@
         <app-segmented label="Tipo" [segments]="modes" [value]="mode()" (choose)="setMode($event)" />
         <p class="hint" data-testid="mode-hint">{{ modeHint() }}</p>
 
-        <div class="level" role="group" aria-labelledby="treasure-level-l">
-          <span class="level__label" id="treasure-level-l">Nível do grupo</span>
-          <div class="level__stepper">
-            <button type="button" class="level__btn" aria-label="Menos um nível" [disabled]="level() <= minLevel" (click)="step(-1)">
-              <mat-icon aria-hidden="true">remove</mat-icon>
-            </button>
-            <output class="level__value" data-testid="treasure-level" aria-live="polite">{{ level() }}</output>
-            <button type="button" class="level__btn" aria-label="Mais um nível" [disabled]="level() >= maxLevel" (click)="step(1)">
-              <mat-icon aria-hidden="true">add</mat-icon>
-            </button>
+        <app-number-stepper label="Nível do grupo" [value]="level()" [min]="minLevel" [max]="maxLevel" [signed]="false" [softDisable]="true" (valueChange)="setLevel($event)" />
+        @if (partyFailed()) {
+          <div class="mr-notice mr-notice--warning" role="alert" data-testid="party-failed">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>
+              Não deu para ler o nível do grupo: o servidor não respondeu. Escolha o nível à mão ou
+              <button type="button" class="link" (click)="loadParty()">tente de novo</button>.
+            </p>
           </div>
-        </div>
-        <p class="hint" data-testid="party-help">{{ help() }}</p>
+        } @else {
+          <p class="hint" data-testid="party-help">{{ help() }}</p>
+        }
 
         <button
           type="button"
           class="generate"
           [matButton]="generated() ? 'outlined' : 'filled'"
           [class.generate--ghost]="generated()"
-          [disabled]="generation().status === 'busy'"
+          [disabled]="rolling()"
+          disabledInteractive
           (click)="generate()"
         >
-          <mat-icon aria-hidden="true">casino</mat-icon>{{ generation().status === 'busy' ? 'Gerando...' : 'Gerar tesouro' }}
+          <mat-icon aria-hidden="true">casino</mat-icon>{{ rolling() ? 'Gerando...' : 'Gerar tesouro' }}
         </button>
         <p class="hint">A mesma semente e o mesmo pedido dão o mesmo tesouro.</p>
       </section>
@@ -124,10 +124,7 @@
                       <strong>Tesouro posto{{ p.place ? ' na ' + p.place : ' em ' + p.mapName }}.</strong>
                       {{ placedSummary() }}, escondido: só você vê.
                     </p>
-                    <p class="placed__gold">{{ placedXpLine() }}</p>
-                    <p class="placed__links">
-                      <a [routerLink]="['/campanhas', campaignId, 'mapas', p.mapId]">Abrir o mapa</a>
-                    </p>
+                    <p class="placed__gold" data-testid="treasure-placed-line">{{ placedXp() }}</p>
                   </div>
                 </div>
               }
@@ -135,6 +132,8 @@
                 [treasure]="g.treasure"
                 [xpMode]="xpMode()"
                 [campaignName]="campaignName()"
+                [busy]="rolling()"
+                [placedLink]="placedLink()"
                 (place)="openPlace()"
                 (again)="generate()"
                 (openItem)="openItem($event)"

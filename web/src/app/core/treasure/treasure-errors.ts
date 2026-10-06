@@ -58,7 +58,7 @@ export function placeFailure(err: unknown): PlaceFailure {
   return {
     generateAgain: false,
     text: describeConnectError(err, {
-      [Code.InvalidArgument]: 'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa, ou o nome passa de 80 letras. O mapa pode ter mudado; escolha o quadrado de novo.',
+      [Code.InvalidArgument]: 'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado; ele foi aberto de novo, escolha o quadrado outra vez.',
       [Code.NotFound]: 'Esse mapa não existe mais, ou você não é o mestre da campanha. Escolha outro mapa.',
       [Code.ResourceExhausted]: 'O mapa chegou ao limite de 200 pontos. Apague um ponto ou escolha outro mapa.',
       [Code.Aborted]: 'O mapa mudou enquanto o tesouro era posto. Tente de novo.',

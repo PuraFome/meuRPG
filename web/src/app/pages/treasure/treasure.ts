@@ -12,7 +12,8 @@ import { focusWithRing } from '../../core/creatures/focus-ring';
 import { type TreasureAccess, TreasureAccessCheck } from '../../core/treasure/treasure-access';
 import { TreasureClient } from '../../core/treasure/treasure-client';
 import { generateFailure } from '../../core/treasure/treasure-errors';
-import { goldLine, modeText, partyHelp, partyText, placedGoldLine, placedSummary } from '../../core/treasure/treasure-format';
+import { goldLine, modeText, partyHelp, placedSummary, placedXpLine } from '../../core/treasure/treasure-format';
+import { NumberStepper } from '../../shared/form-fields/number-stepper';
 import { Segmented, type Segment } from '../../shared/segmented/segmented';
 import { openSheet } from '../../shared/sheet/sheet-host';
 import { ItemSheet, type ItemSheetData } from './item-sheet/item-sheet';
@@ -49,7 +50,7 @@ const MAX_LEVEL = 20;
  */
 @Component({
   selector: 'app-treasure',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, Segmented, TreasureResult],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, NumberStepper, RouterLink, Segmented, TreasureResult],
   templateUrl: './treasure.html',
   styleUrl: './treasure.scss',
 })
@@ -69,12 +70,15 @@ export class TreasurePage {
   protected readonly level = signal(MIN_LEVEL);
   protected readonly generation = signal<Generation>({ status: 'idle' });
   protected readonly placed = signal<Placed | null>(null);
+  /** A treasure is being rolled: the old result stays on screen with its buttons resting, and the new title takes the focus when it lands. */
+  protected readonly rolling = signal(false);
+  /** The party could not be read: the page says so, with a way to try again, instead of saying the party is empty. */
+  protected readonly partyFailed = signal(false);
   protected readonly minLevel = MIN_LEVEL;
   protected readonly maxLevel = MAX_LEVEL;
 
   private readonly placedBox = viewChild<ElementRef<HTMLElement>>('placedBox');
-  private readonly resultBox = viewChild<ElementRef<HTMLElement>>('resultBox');
-  private readonly placeButton = viewChild<ElementRef<HTMLElement>>('resultHost');
+  private readonly resultBox = viewChild<ElementRef<HTMLElement>>('resultHost');
   private generationId = 0;
 
   protected readonly campaignName = computed(() => {
@@ -93,8 +97,7 @@ export class TreasurePage {
     }
     return `${who} · para o grupo de nível ${p.lowestLevel === p.highestLevel ? p.lowestLevel : `${p.lowestLevel} e ${p.highestLevel}`}`;
   });
-  protected readonly partyText = computed(() => partyText(this.party()));
-  protected readonly help = computed(() => partyHelp(this.party()));
+  protected readonly help = computed(() => (this.partyFailed() ? '' : partyHelp(this.party())));
   protected readonly modeHint = computed(() =>
     this.mode() === 'hoard' ? 'De covil: o tesouro guardado num esconderijo.' : 'Individual: o que uma criatura carrega.',
   );
@@ -108,13 +111,17 @@ export class TreasurePage {
   });
   protected readonly placedSummary = computed(() => {
     const p = this.placed();
-    return p ? placedSummary(p.goldPo, p.itemCount) : '';
+    return p ? placedSummary(p.goldPo, p.itemCount, this.generated()?.mode === TreasureMode.HOARD) : '';
   });
-  protected readonly placedGold = computed(() => {
+  protected readonly placedXp = computed(() => {
     const p = this.placed();
-    return p ? placedGoldLine(this.xpMode(), p.goldPo, p.itemCount) : '';
+    return p ? placedXpLine(this.xpMode(), this.campaignName(), p.goldPo, p.itemCount) : '';
   });
-  protected readonly placedXpLine = computed(() => goldLine(this.xpMode(), this.campaignName()));
+  protected readonly placedLink = computed(() => {
+    const p = this.placed();
+    return p ? ['/campanhas', this.campaignId, 'mapas', p.mapId] : null;
+  });
+  protected readonly goldSentence = computed(() => goldLine(this.xpMode(), this.campaignName()));
 
   constructor() {
     void this.start();
@@ -127,6 +134,11 @@ export class TreasurePage {
     if (access.status !== 'master') {
       return;
     }
+    await this.loadParty();
+  }
+
+  protected async loadParty(): Promise<void> {
+    this.partyFailed.set(false);
     try {
       const p = await this.api.party(this.campaignId);
       this.party.set({ livingCount: p.livingCount, lowestLevel: p.lowestLevel, highestLevel: p.highestLevel });
@@ -134,8 +146,9 @@ export class TreasurePage {
         this.level.set(Math.min(MAX_LEVEL, p.lowestLevel));
       }
     } catch {
-      // The level stays at 1 and the master sets it; the page says nothing of the party.
+      // The level stays where it is and the master sets it; the page says the party could not be read.
       this.party.set(null);
+      this.partyFailed.set(true);
     }
   }
 
@@ -143,15 +156,21 @@ export class TreasurePage {
     this.mode.set(value);
   }
 
-  protected step(by: number): void {
-    this.level.update((l) => Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, l + by)));
+  protected setLevel(level: number): void {
+    this.level.set(Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, level)));
   }
 
-  /** "Gerar tesouro" and "Gerar outro": a new call without a seed, so the server draws one. Generating again replaces the result and clears the confirmation: nothing was put on a map by it. */
+  /** "Gerar tesouro", "Gerar outro" and "Gerar de novo": a new call without a seed, so the server draws one. Generating again replaces the result (the old one stays on screen while the server rolls) and clears the confirmation: nothing is put on a map by it. */
   protected async generate(): Promise<void> {
+    if (this.rolling()) {
+      return;
+    }
     const id = ++this.generationId;
-    this.generation.set({ status: 'busy' });
-    this.placed.set(null);
+    const again = this.generation().status === 'ready';
+    this.rolling.set(true);
+    if (!again) {
+      this.generation.set({ status: 'busy' });
+    }
     try {
       const res = await this.api.generate(this.campaignId, this.mode() === 'hoard' ? TreasureMode.HOARD : TreasureMode.INDIVIDUAL, this.level());
       if (id !== this.generationId) {
@@ -160,10 +179,19 @@ export class TreasurePage {
       if (!res.treasure) {
         throw new Error('GenerateTreasure answered without a treasure');
       }
+      this.placed.set(null);
       this.generation.set({ status: 'ready', treasure: res.treasure });
+      if (again) {
+        // The new title is where the person looks next.
+        afterNextRender(() => focusWithRing(this.resultBox()?.nativeElement.querySelector<HTMLElement>('.result__title')), { injector: this.injector });
+      }
     } catch (err) {
       if (id === this.generationId) {
         this.generation.set({ status: 'error', message: generateFailure(err) });
+      }
+    } finally {
+      if (id === this.generationId) {
+        this.rolling.set(false);
       }
     }
   }
@@ -207,7 +235,7 @@ export class TreasurePage {
           { injector: this.injector },
         );
       } else {
-        focusWithRing(this.placeButton()?.nativeElement.querySelector<HTMLElement>('.act--go'));
+        focusWithRing(this.resultBox()?.nativeElement.querySelector<HTMLElement>('.act--go'));
       }
     });
   }

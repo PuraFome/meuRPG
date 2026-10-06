@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, inject, signal } from '@angular/core';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -15,10 +16,11 @@ import { type MapLayers, NO_LAYERS, decodeLayers } from '../../../core/maps/laye
 import { MapsClient } from '../../../core/maps/maps-client';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
 import { NO_GRID_TEXT, type PlaceFailure, placeFailure } from '../../../core/treasure/treasure-errors';
-import { coinRows, goldLine, groupItems, pieceRows, placedGoldLine, po } from '../../../core/treasure/treasure-format';
+import { coinRows, goldKinds, goldLine, groupItems, pieceRows, po } from '../../../core/treasure/treasure-format';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
+import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapView } from '../../../shared/map-view/map-view';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../shared/sheet/sheet-host';
@@ -68,7 +70,7 @@ const SHIFT_STEP = 5;
  */
 @Component({
   selector: 'app-place-sheet',
-  imports: [EditorOverlay, MapLayersLegend, MapView, MatButtonModule, MatIconModule, MatProgressSpinnerModule, SelectField, SheetFrame, TextField],
+  imports: [EditorOverlay, MapLayersLegend, MapPinsLegend, MapView, MatButtonModule, MatIconModule, MatProgressSpinnerModule, SelectField, SheetFrame, TextField],
   templateUrl: './place-sheet.html',
   styleUrl: './place-sheet.scss',
 })
@@ -152,6 +154,7 @@ export class PlaceSheet {
     return r ? `Sala ${r.id}` : '';
   });
   protected readonly modeName = computed(() => (this.data.treasure.mode === TreasureMode.HOARD ? 'Tesouro de covil' : 'Tesouro individual'));
+  protected readonly kindsText = computed(() => goldKinds(this.data.treasure.mode === TreasureMode.HOARD));
   protected readonly goldText = computed(() => po(this.data.treasure.goldPo));
   protected readonly itemCount = computed(() => this.data.treasure.items.length);
   protected readonly inside = computed(() => {
@@ -192,11 +195,13 @@ export class PlaceSheet {
     }
   }
 
-  protected async chooseMap(id: string): Promise<void> {
+  protected async chooseMap(id: string, keepFailure = false): Promise<void> {
     const generation = ++this.detailGeneration;
     this.mapId.set(id);
     this.square.set(null);
-    this.failure.set(null);
+    if (!keepFailure) {
+      this.failure.set(null);
+    }
     this.key = newKey();
     this.detail.set({ status: 'loading' });
     try {
@@ -316,6 +321,10 @@ export class PlaceSheet {
     } catch (err) {
       this.failure.set(placeFailure(err));
       this.host.nativeElement.querySelector<HTMLElement>('.notice')?.focus?.();
+      if (ConnectError.from(err, Code.Unavailable).code === Code.InvalidArgument) {
+        // The square is outside the grid the server has now: the map changed under the dialog, so read it again and redraw.
+        void this.chooseMap(m.id, true);
+      }
     } finally {
       this.busy.set(false);
     }
@@ -329,5 +338,4 @@ export class PlaceSheet {
     this.sheet.close();
   }
 
-  protected readonly placedGoldLine = placedGoldLine;
 }

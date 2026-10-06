@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { createDungeonRPC } from './dungeon-support';
+import { createDungeonRPC, roomsRPC } from './dungeon-support';
 import { tableForGold } from './gold-support';
 import { canvasPng, createMapRPC, revealMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { callRPC, newSignedInContext } from './support';
@@ -36,9 +36,9 @@ test(
 
       // The party is Pensantus (level 3): the level starts there and the master raises it to 4.
       await expect(master.getByTestId('party-help')).toContainText('O grupo está no nível 3.');
-      await expect(master.getByTestId('treasure-level')).toHaveText('3');
-      await master.getByRole('button', { name: 'Mais um nível' }).click();
-      await expect(master.getByTestId('treasure-level')).toHaveText('4');
+      await expect(master.locator('.step__value')).toHaveText('3');
+      await master.getByRole('button', { name: 'Mais Nível do grupo' }).click();
+      await expect(master.locator('.step__value')).toHaveText('4');
 
       await master.getByRole('button', { name: 'Gerar tesouro' }).click();
       await expect(master.getByRole('heading', { name: 'Tesouro de covil · nível 4' })).toBeVisible();
@@ -109,7 +109,9 @@ test(
       const dialog = master.getByRole('dialog', { name: 'Pôr no mapa' });
       await expect(dialog.locator('select[data-field=map]')).toHaveValue(mapId);
       await expect(dialog.getByText(/Onde\s+Na Sala \d+/)).toBeVisible();
-      // The square moves with the arrow keys; the map is the master's drawing.
+      // The rooms are radios beside the map: Sala 2, then one step east with the arrow key.
+      await dialog.locator('.room', { hasText: 'Sala 2' }).click();
+      await expect(dialog.getByText(/Onde\s+Na Sala 2/)).toBeVisible();
       await dialog.getByRole('group', { name: 'Quadrado do tesouro no mapa' }).focus();
       await master.keyboard.press('ArrowRight');
       await dialog.getByLabel('Nome do ponto (opcional)').fill('Cofre da cripta');
@@ -117,17 +119,25 @@ test(
       await expect(dialog).toHaveCount(0);
 
       const done = master.getByTestId('treasure-placed');
-      await expect(done).toContainText('Tesouro posto');
+      await expect(done).toContainText('Tesouro posto na Sala 2');
       await expect(done).toContainText('escondido: só você vê');
-      await expect(done.getByRole('link', { name: 'Abrir o mapa' })).toHaveAttribute('href', `/campanhas/${campaignId}/mapas/${mapId}`);
+      // The treasure is on the map: "Abrir o mapa" is the main button and there is no "Pôr no mapa" left for it.
+      await expect(master.getByRole('link', { name: 'Abrir o mapa' })).toHaveAttribute('href', `/campanhas/${campaignId}/mapas/${mapId}`);
+      await expect(master.getByRole('button', { name: 'Pôr no mapa' })).toHaveCount(0);
+      await expect(master.getByRole('button', { name: 'Gerar outro' })).toBeVisible();
 
-      // The master reads the point: a hidden TREASURE worth the gold only, never the items.
+      // The master reads the point: a hidden TREASURE worth the gold only, never the items, on the square east of Sala 2's middle.
       const mine = await mapPointsRPC(master, campaignId, mapId);
       const point = mine.points.find((p) => p.name === 'Cofre da cripta')!;
       expect(point).toBeTruthy();
       expect(point.kind).toBe('MAP_POINT_KIND_TREASURE');
       expect(point.revealed ?? false).toBe(false);
       expect(Number(point.treasureValuePo)).toBe(gold);
+      const room = ((await roomsRPC(master, campaignId, mapId)).rooms as { id: number; centerCol?: number; centerRow?: number }[]).find((r) => r.id === 2)!;
+      const columns = mine.map.gridColumns as number;
+      const rows = mine.map.gridRows as number;
+      expect(Math.abs((point.xBp as number) - (((room.centerCol ?? 0) + 1.5) / columns) * 10000)).toBeLessThanOrEqual(2);
+      expect(Math.abs((point.yBp as number) - (((room.centerRow ?? 0) + 0.5) / rows) * 10000)).toBeLessThanOrEqual(2);
 
       // The player's JSON never has the point, its name, its gold or what is inside.
       const theirs = await mapPointsRPC(player, campaignId, mapId);
@@ -160,7 +170,7 @@ test(
 
       await master.goto(treasureRoute(table.campaignId));
       await master.getByRole('button', { name: 'Gerar tesouro' }).click();
-      await expect(master.getByTestId('treasure-gold-line')).toHaveText(`Em ${name}, o grupo converte isto em XP em “Voltar à cidade”.`);
+      await expect(master.getByTestId('treasure-gold-line')).toHaveText(`${name} dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.`);
       const gold = Number((await master.getByTestId('treasure-gold').textContent())!.replace(/[^\d]/g, ''));
       // A hoard's items are shown apart and are not part of the gold.
       await master.getByRole('button', { name: 'Pôr no mapa' }).click();
@@ -168,7 +178,8 @@ test(
       await expect(dialog.getByText('converte isto em XP em “Voltar à cidade”')).toBeVisible();
       await dialog.getByRole('button', { name: 'Pôr no mapa' }).click();
       await expect(dialog).toHaveCount(0);
-      await expect(master.getByTestId('treasure-placed')).toContainText('converte isto em XP');
+      await expect(master.getByTestId('treasure-placed-line')).toContainText(`${name} dá XP por ouro: o grupo converte ${gold.toLocaleString('pt-BR')} PO em XP em “Voltar à cidade”.`);
+      await expect(master.getByRole('button', { name: 'Pôr no mapa' })).toHaveCount(0);
 
       const placed = (await mapPointsRPC(master, table.campaignId, table.mapId)).points.find((p) => p.kind === 'MAP_POINT_KIND_TREASURE')!;
       expect(Number(placed.treasureValuePo)).toBe(gold);

@@ -94,6 +94,16 @@
   color: var(--mr-ink-muted);
 }
 
+.kind__nowrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 359.98px) {
+  .kind__in {
+    display: none;
+  }
+}
+
 .kind__sub {
   display: flex;
   justify-content: space-between;
@@ -234,6 +244,13 @@
     flex: 1 1 0;
     --mat-button-filled-container-height: 48px;
     --mat-button-outlined-container-height: 48px;
+  }
+
+  // The artboard's phone puts "Gerar outro" first.
+  @media (max-width: 559.98px) {
+    &--again {
+      order: -1;
+    }
   }
 
   &--again {

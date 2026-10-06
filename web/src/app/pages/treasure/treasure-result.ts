@@ -44,9 +44,12 @@ export class TreasureResult {
   readonly campaignName = input.required<string>();
   /** The treasure is being replaced: the buttons rest. */
   readonly busy = input(false);
+  /** Where "Abrir o mapa" goes once the treasure was put on a map: then "Pôr no mapa" is gone for this treasure (a second one would make a second point). */
+  readonly placedLink = input<readonly string[] | null>(null);
 
   readonly place = output<void>();
   readonly again = output<void>();
+  protected readonly goldLabel = computed(() => (this.hoard() ? 'Moedas, gemas e arte' : 'Moedas'));
   readonly openItem = output<ItemOpen>();
 
   protected readonly valueLabel = VALUE_LABEL;
@@ -59,6 +62,9 @@ export class TreasureResult {
   protected readonly artRows = computed(() => pieceRows(this.treasure().art));
   protected readonly items = computed(() => groupItems(this.treasure().items));
   protected readonly hasGemsOrArt = computed(() => this.gemRows().length + this.artRows().length > 0);
+  /** The title follows what came up: "Gemas" or "Obras de arte" alone (its total is the title's), both together with the sum. */
+  protected readonly piecesTitle = computed(() => (this.gemRows().length > 0 && this.artRows().length > 0 ? 'Gemas e obras de arte' : this.gemRows().length > 0 ? 'Gemas' : 'Obras de arte'));
+  protected readonly piecesBoth = computed(() => this.gemRows().length > 0 && this.artRows().length > 0);
   protected readonly gemsAndArtPo = computed(() => this.treasure().gemsPo + this.treasure().artPo);
   protected readonly total = computed(() => this.treasure().goldPo + this.treasure().itemsPo);
   protected readonly goldSentence = computed(() => goldLine(this.xpMode(), this.campaignName()));

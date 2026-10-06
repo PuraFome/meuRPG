@@ -78,7 +78,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     expect(flat(el.querySelector('[data-testid=party-help]'))).toBe(
       'O grupo está nos níveis 4 e 5. A tabela usa o menor nível, para o tesouro não passar do que o grupo aguenta.',
     );
-    expect(flat(el.querySelector('[data-testid=treasure-level]'))).toBe('4');
+    expect(flat(el.querySelector('.step__value'))).toBe('4');
     expect(flat(el.querySelector('.empty'))).toContain('Nada gerado ainda.');
     expect(el.querySelector<HTMLInputElement>('.seg__item input:checked')?.value).toBe('hoard');
     expect(flat(el.querySelector('[data-testid=mode-hint]'))).toBe('De covil: o tesouro guardado num esconderijo.');
@@ -89,15 +89,15 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el } = await open((a) => (a.partyAnswer = partyResponse({ livingCount: 0, lowestLevel: 0, highestLevel: 0 })));
     expect(flat(el.querySelector('.sub'))).toBe('Mirathel');
     expect(flat(el.querySelector('[data-testid=party-help]'))).toContain('Escolha o nível, de 1 a 20');
-    expect(flat(el.querySelector('[data-testid=treasure-level]'))).toBe('1');
+    expect(flat(el.querySelector('.step__value'))).toBe('1');
   });
 
   it('the level is a counter between 1 and 20', async () => {
     const { el, settle, button } = await open((a) => (a.partyAnswer = partyResponse({ lowestLevel: 20, highestLevel: 20 })));
-    expect(button('Mais').disabled).toBe(true);
+    expect(button('Mais').getAttribute('aria-disabled')).toBe('true');
     button('Menos').click();
     await settle();
-    expect(flat(el.querySelector('[data-testid=treasure-level]'))).toBe('19');
+    expect(flat(el.querySelector('.step__value'))).toBe('19');
   });
 
   it('"Gerar tesouro" sends the mode, the level and no seed, and draws what the server returns', async () => {
@@ -133,7 +133,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     button('Gerar tesouro').click();
     await settle();
     const gems = Array.from(el.querySelectorAll('#tr-gems-h ~ .rows .row')).map((r) => plain(flat(r)));
-    expect(gems).toEqual(['2 × Ágata 10 PO cada 20 PO', 'Quartzo azul 10 PO', 'Cálice de prata gravado 25 PO']);
+    expect(gems).toEqual(['2 × Ágata 6 PO cada 12 PO', 'Quartzo azul 18 PO', 'Cálice de prata gravado 27 PO']);
   });
 
   it('the magic items are grouped, with their English name (lang="en"), rarity, value and attunement', async () => {
@@ -154,11 +154,11 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
-    expect(plain(flat(el.querySelector('[data-testid=treasure-gold]')))).toBe('515 PO');
+    expect(plain(flat(el.querySelector('[data-testid=treasure-gold]')))).toBe('517 PO');
     expect(plain(flat(el.querySelector('[data-testid=treasure-items]')))).toBe('4.850 PO');
     expect(plain(flat(el.querySelector('.totals__row--items dt')))).toContain('ficam como itens, não viram XP');
-    expect(plain(flat(el.querySelector('.totals__row--total')))).toBe('Valor total 5.365 PO');
-    expect(plain(flat(el.querySelector('.kinds .note')))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos. Itens que se gastam valem a metade.');
+    expect(plain(flat(el.querySelector('.totals__row--total')))).toBe('Valor total 5.367 PO');
+    expect(plain(flat(el.querySelector('.kinds .note')))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba). Itens que se gastam valem a metade.');
   });
 
   it('an individual treasure is coins only: no gems, no art, no items, and the total is the gold', async () => {
@@ -196,18 +196,51 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     page = await open();
     page.button('Gerar tesouro').click();
     await page.settle();
-    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe('Em Estrada de Ouro, o grupo converte isto em XP em “Voltar à cidade”.');
+    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe('Estrada de Ouro dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.');
   });
 
-  it('while the server rolls, the button says "Gerando..." and rests', async () => {
+  it('while the server rolls, the button says "Gerando..." and rests (still focusable)', async () => {
     let release = () => undefined as void;
-    const { settle, button } = await open((a) => (a.gate = new Promise<void>((r) => (release = r))));
-    button('Gerar tesouro').click();
+    const { el, settle } = await open((a) => (a.gate = new Promise<void>((r) => (release = r))));
+    const go = el.querySelector<HTMLButtonElement>('button.generate')!;
+    go.click();
     await settle();
-    expect(button('Gerando').disabled).toBe(true);
+    expect(flat(go)).toBe('Gerando...');
+    expect(isOff(go)).toBe(true);
     release();
     await settle();
-    expect(button('Gerar tesouro').disabled).toBe(false);
+    expect(isOff(el.querySelector<HTMLButtonElement>('button.generate')!)).toBe(false);
+  });
+
+  it('"Gerar outro" keeps the old result on screen with its buttons resting, and the new title takes the focus when it lands', async () => {
+    const { el, settle, button } = await open();
+    button('Gerar tesouro').click();
+    await settle();
+    let release = () => undefined as void;
+    api.gate = new Promise<void>((r) => (release = r));
+    api.drawSeed = 77n;
+    const again = el.querySelector<HTMLButtonElement>('.act--again')!;
+    again.click();
+    await settle();
+    expect(flat(el.querySelector('.result__seed'))).toBe('Semente 2209');
+    expect(isOff(again)).toBe(true);
+    expect(isOff(el.querySelector<HTMLButtonElement>('.act--go')!)).toBe(true);
+    release();
+    await settle();
+    expect(flat(el.querySelector('.result__seed'))).toBe('Semente 77');
+    expect(document.activeElement).toBe(el.querySelector('.result__title'));
+  });
+
+  it('a party that could not be read says so, with its own sentence and a way to try again, never "sem personagem vivo"', async () => {
+    const { el, settle } = await open((a) => a.failWith.set('party', new ConnectError('down', Code.Unavailable)));
+    expect(flat(el.querySelector('[data-testid=party-failed]'))).toContain('Não deu para ler o nível do grupo');
+    expect(el.querySelector('[data-testid=party-help]')).toBeNull();
+    expect(flat(el.querySelector('.options'))).not.toContain('ainda não tem personagem');
+    api.failWith.clear();
+    el.querySelector<HTMLButtonElement>('[data-testid=party-failed] .link')!.click();
+    await settle();
+    expect(el.querySelector('[data-testid=party-failed]')).toBeNull();
+    expect(flat(el.querySelector('.step__value'))).toBe('4');
   });
 
   it('a refusal shows its words with "Tentar de novo"; no party says to choose the level', async () => {
@@ -240,16 +273,26 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
-    dialogResult = { kind: 'placed', point: {}, mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 3', goldPo: 515, itemCount: 4 };
+    dialogResult = { kind: 'placed', point: {}, mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 3', goldPo: 517, itemCount: 4 };
     button('Pôr no mapa').click();
     await settle();
     const data = opened[0]!.config.data as { treasure: { seed: bigint; contentVersion: string }; xpMode: XpMode };
     expect(data.treasure.seed).toBe(2209n);
     expect(data.treasure.contentVersion).toBe('srd51@a8abc93b235c+fx.17');
     const done = el.querySelector('[data-testid=treasure-placed]')!;
-    expect(plain(flat(done))).toContain('Tesouro posto na Sala 3. 515 PO e 4 itens, escondido: só você vê.');
-    expect(flat(done)).toContain('Mirathel dá XP por inimigos');
-    expect(done.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1');
+    expect(plain(flat(done))).toContain('Tesouro posto na Sala 3. 517 PO em moedas, gemas e arte e 4 itens, escondido: só você vê.');
+    // The treasure is on the map: "Abrir o mapa" is the main button and "Pôr no mapa" is gone, so a second point cannot be made by accident.
+    expect(flat(el.querySelector('[data-testid=treasure-placed-line]'))).toBe('Mirathel dá XP por inimigos: o ouro do tesouro não vira XP. Os 4 itens ficam na descrição.');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa'))).toBe(false);
+    const openLink = el.querySelector<HTMLAnchorElement>('.actions a.act--go')!;
+    expect(flat(openLink)).toBe('Abrir o mapa');
+    expect(openLink.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1');
+    expect(flat(el.querySelector('.act--again'))).toBe('Gerar outro');
+    // A new treasure brings "Pôr no mapa" back.
+    button('Gerar outro').click();
+    await settle();
+    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa'))).toBe(true);
+    expect(el.querySelector('[data-testid=treasure-placed]')).toBeNull();
   });
 
   it('"again" from the sheet (the tables changed) generates a new treasure and clears the confirmation', async () => {

@@ -60,7 +60,7 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
   it('gives the value with the 2024 label, the credits link and the rule in words', async () => {
     const { el } = await setup();
     expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('4.000 PO');
-    expect(flat(el.querySelector('.value__src'))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos');
+    expect(flat(el.querySelector('.value__src'))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba)');
     expect(el.querySelector('.value__src a')?.getAttribute('href')).toBe('/creditos');
     expect(flat(el.querySelector('.value__rule'))).toBe('Itens que se gastam valem a metade. Este não se gasta.');
   });

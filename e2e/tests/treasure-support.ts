@@ -22,11 +22,12 @@ export async function generateTreasureRPC(
 }
 
 /** The points of a map, as `GetMap` gives the caller (the raw JSON text too, to prove what a player never receives). */
-export async function mapPointsRPC(page: Page, campaignId: string, mapId: string): Promise<{ points: Record<string, any>[]; text: string }> {
+export async function mapPointsRPC(page: Page, campaignId: string, mapId: string): Promise<{ points: Record<string, any>[]; map: Record<string, any>; text: string }> {
   const res = await callRPC(page, 'meurpg.maps.v1.MapService/GetMap', { campaignId, mapId });
   expect(res.ok(), await res.text()).toBeTruthy();
   const text = await res.text();
-  return { points: (JSON.parse(text).points ?? []) as Record<string, any>[], text };
+  const body = JSON.parse(text);
+  return { points: (body.points ?? []) as Record<string, any>[], map: (body.map ?? {}) as Record<string, any>, text };
 }
 
 /** Puts a grid on a map made from a plain image (the "Pôr no mapa" square needs one). */

@@ -4530,7 +4530,10 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await m.getByRole('button', { name: 'Pôr no mapa' }).click();
     await expect(dialogOrSheet.getByRole('heading', { name: 'Pôr no mapa' })).toBeVisible();
     await expect(dialogOrSheet.getByText(width < 768 ? 'Em que sala?' : /Onde\s+Na Sala/)).toBeVisible();
-    await m.waitForTimeout(800);
+    if (width >= 768) {
+      await expect(dialogOrSheet.locator('.mv__img')).toBeVisible();
+      await expect.poll(() => dialogOrSheet.locator('.mv__img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    }
     await expectScreenPasses(m, `Tesouro, "Pôr no mapa" ${where}`);
     await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'Mapa sem grade · sem grade' });
     await expect(dialogOrSheet.getByTestId('no-grid')).toBeVisible();

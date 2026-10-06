@@ -4,6 +4,7 @@
 
 .stack {
   display: flex;
+  padding-top: 8px;
   flex-direction: column;
   gap: var(--mr-space-3);
 }
@@ -27,26 +28,73 @@
   cursor: pointer;
 }
 
-// The map beside the column from 1100 px of dialog; one column below (a tablet: the map first, scrolling inside the dialog).
+// "Mapa" first, then the map, then the rest. From 1100 px the map is on the left over two rows and the column on the right; below, one column.
 .cols {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--mr-space-4);
+  grid-template-areas:
+    'sel'
+    'map'
+    'rest';
+  gap: var(--mr-space-3) var(--mr-space-4);
 
   &:not(.cols--one) {
     @media (min-width: 1100px) {
       grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        'map sel'
+        'map rest';
       align-items: start;
     }
   }
 }
 
+.cols__sel {
+  grid-area: sel;
+}
+
+.cols__map {
+  grid-area: map;
+}
+
+.cols__rest {
+  grid-area: rest;
+}
+
+.cols__sel,
 .cols__map,
-.cols__side {
+.cols__rest {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
   min-width: 0;
+}
+
+// The map never takes the whole dialog: it scrolls inside, so the help sentence stays in view.
+.pick {
+  max-height: min(44dvh, 480px);
+  overflow: auto;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.legend--map {
+  display: none;
+
+  @media (min-width: 1100px) {
+    display: flex;
+  }
+}
+
+.legend--side {
+  @media (min-width: 1100px) {
+    display: none;
+  }
 }
 
 .pick {
@@ -66,6 +114,8 @@
 }
 
 .where {
+  display: flex;
+  flex-direction: column;
   margin: 0;
 }
 

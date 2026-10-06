@@ -1,7 +1,7 @@
 @let t = treasure();
 <section class="result" aria-labelledby="treasure-result-h">
   <header class="result__head">
-    <h2 class="result__title" id="treasure-result-h">{{ title() }}</h2>
+    <h2 class="result__title" id="treasure-result-h" tabindex="-1">{{ title() }}</h2>
     <p class="result__seed">Semente <span data-testid="treasure-seed">{{ t.seed }}</span></p>
   </header>
 
@@ -32,11 +32,13 @@
         <section class="kind" aria-labelledby="tr-gems-h">
           <h3 class="kind__title" id="tr-gems-h">
             <mat-icon aria-hidden="true">diamond</mat-icon>
-            <span class="kind__long">Gemas e obras de arte</span>
+            <span>{{ piecesTitle() }}</span>
             <b class="kind__sum">{{ po(gemsAndArtPo()) }}</b>
           </h3>
           @if (gemRows().length > 0) {
-            <p class="kind__sub">Gemas <b>{{ po(t.gemsPo) }}</b></p>
+            @if (piecesBoth()) {
+              <p class="kind__sub">Gemas <b>{{ po(t.gemsPo) }}</b></p>
+            }
             <ul class="rows">
               @for (g of gemRows(); track g.name) {
                 <li class="row">
@@ -52,7 +54,9 @@
             </ul>
           }
           @if (artRows().length > 0) {
-            <p class="kind__sub">Obras de arte <b>{{ po(t.artPo) }}</b></p>
+            @if (piecesBoth()) {
+              <p class="kind__sub">Obras de arte <b>{{ po(t.artPo) }}</b></p>
+            }
             <ul class="rows">
               @for (a of artRows(); track a.name) {
                 <li class="row">
@@ -74,7 +78,7 @@
         <section class="kind" aria-labelledby="tr-items-h">
           <h3 class="kind__title" id="tr-items-h">
             <mat-icon aria-hidden="true">auto_awesome</mat-icon>
-            <span>Itens mágicos</span>
+            <span class="kind__nowrap">Itens mágicos</span>
             <b class="kind__sum">{{ po(t.itemsPo) }}<span class="kind__in"> em valor</span></b>
           </h3>
           <ul class="rows rows--items">
@@ -85,7 +89,7 @@
             }
           </ul>
           <p class="note">
-            {{ valueLabel }} · <a routerLink="/creditos" target="_blank" rel="noopener">Créditos</a>. {{ consumableRule }}
+            {{ valueLabel }} · <a routerLink="/creditos" target="_blank" rel="noopener">Créditos<span class="mr-visually-hidden"> (abre em outra aba)</span></a>. {{ consumableRule }}
           </p>
         </section>
       }
@@ -95,7 +99,7 @@
       <h3 class="mr-visually-hidden" id="tr-total-h">Totais</h3>
       <dl class="totals__list">
         <div class="totals__row">
-          <dt>{{ hoard() ? 'Moedas, gemas e arte' : 'Moedas' }}</dt>
+          <dt>{{ goldLabel() }}</dt>
           <dd data-testid="treasure-gold">{{ po(t.goldPo) }}</dd>
         </div>
         @if (hoard()) {
@@ -117,11 +121,15 @@
   </div>
 
   <div class="actions">
-    <button type="button" mat-flat-button class="act act--go" [disabled]="busy()" (click)="place.emit()">
-      <mat-icon aria-hidden="true">add_location_alt</mat-icon>Pôr no mapa
-    </button>
-    <button type="button" mat-stroked-button class="act act--again" [disabled]="busy()" (click)="again.emit()">
-      <mat-icon aria-hidden="true">casino</mat-icon>Gerar outro
+    @if (placedLink(); as link) {
+      <a mat-flat-button class="act act--go" [routerLink]="link"><mat-icon aria-hidden="true">map</mat-icon>Abrir o mapa</a>
+    } @else {
+      <button type="button" mat-flat-button class="act act--go" [disabled]="busy()" disabledInteractive (click)="!busy() && place.emit()">
+        <mat-icon aria-hidden="true">add_location_alt</mat-icon>Pôr no mapa
+      </button>
+    }
+    <button type="button" mat-stroked-button class="act act--again" [disabled]="busy()" disabledInteractive (click)="!busy() && again.emit()">
+      <mat-icon aria-hidden="true">casino</mat-icon>{{ busy() ? 'Gerando...' : 'Gerar outro' }}
     </button>
   </div>
 </section>

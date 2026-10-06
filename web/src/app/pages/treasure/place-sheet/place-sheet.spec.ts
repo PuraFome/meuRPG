@@ -6,14 +6,14 @@ import { create } from '@bufbuild/protobuf';
 
 import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { MapBlockedReason, MapBlockedSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import { TreasureBlockedReason, TreasureBlockedSchema } from '../../../../gen/meurpg/maps/v1/treasure_pb';
+import { type Treasure, TreasureBlockedReason, TreasureBlockedSchema } from '../../../../gen/meurpg/maps/v1/treasure_pb';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { FakeDungeonsClient } from '../../../core/maps/dungeons-testing';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient, mapMessage, mapResponse } from '../../../core/maps/maps-testing';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
-import { FakeTreasureClient, sampleHoard } from '../../../core/treasure/treasure-testing';
+import { FakeTreasureClient, sampleHoard, sampleIndividual } from '../../../core/treasure/treasure-testing';
 import { PlaceSheet, type PlaceSheetData } from './place-sheet';
 
 const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
@@ -24,7 +24,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   let dungeons: FakeDungeonsClient;
   let close: ReturnType<typeof vi.fn>;
 
-  async function setup(opts: { phone?: boolean; xpMode?: XpMode; prep?: () => void } = {}) {
+  async function setup(opts: { phone?: boolean; xpMode?: XpMode; prep?: () => void; treasure?: Treasure } = {}) {
     treasure = new FakeTreasureClient();
     maps = new FakeMapsClient();
     dungeons = new FakeDungeonsClient();
@@ -38,7 +38,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     }
     opts.prep?.();
     close = vi.fn();
-    const data: PlaceSheetData = { campaignId: 'camp-1', treasure: sampleHoard(), xpMode: opts.xpMode ?? XpMode.ENEMIES, campaignName: 'Mirathel' };
+    const data: PlaceSheetData = { campaignId: 'camp-1', treasure: opts.treasure ?? sampleHoard(), xpMode: opts.xpMode ?? XpMode.ENEMIES, campaignName: 'Mirathel' };
     TestBed.configureTestingModule({
       providers: [
         { provide: TreasureClient, useValue: treasure },
@@ -92,7 +92,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   it('the summary says the gold apart from the items, in words, and what the campaign does with it', async () => {
     const { el } = await setup();
     const what = plain(flat(el.querySelector('.what')))!;
-    expect(what).toContain('515 PO em moedas, gemas e arte.');
+    expect(what).toContain('517 PO em moedas, gemas e arte.');
     expect(what).toContain('Na descrição: 1.200 PP, 340 PO, 2 × Ágata, Quartzo azul, Cálice de prata gravado, Poção de Cura, Capa Élfica, Varinha de Mísseis Mágicos, Anel de Proteção.');
     expect(what).toContain('Mirathel dá XP por inimigos');
   });
@@ -115,7 +115,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
       name: '',
     });
     expect(treasure.placed[0]!.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
-    expect(close).toHaveBeenCalledWith(expect.objectContaining({ kind: 'placed', mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 1', goldPo: 515, itemCount: 4 }));
+    expect(close).toHaveBeenCalledWith(expect.objectContaining({ kind: 'placed', mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 1', goldPo: 517, itemCount: 4 }));
   });
 
   it('the arrow keys move the square inside the grid, Shift by five', async () => {
@@ -157,6 +157,33 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     button('Pôr no mapa').click();
     await settle();
     expect(treasure.placed[2]!.idempotencyKey).not.toBe(treasure.placed[1]!.idempotencyKey);
+  });
+
+  it('on a desktop the rooms are radios beside the map too: choosing one moves the square to its middle, and the map outlines the room', async () => {
+    const { el, button, settle } = await setup();
+    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual(['Sala 1', 'Sala 2', 'Sala 3']);
+    el.querySelectorAll<HTMLInputElement>('.room input')[2]!.click();
+    await settle();
+    expect(flat(el.querySelector('.where'))).toBe('Onde Na Sala 3.');
+    button('Pôr no mapa').click();
+    await settle();
+    expect(treasure.placed[0]).toMatchObject({ column: 5, row: 6 });
+  });
+
+  it('a square the server refuses reads the map again, so a changed grid is drawn, and says so', async () => {
+    const { el, button, settle } = await setup();
+    treasure.failWith.set('place', new ConnectError('x', Code.InvalidArgument));
+    const before = maps.calls.filter((c) => c === 'get map-1').length;
+    button('Pôr no mapa').click();
+    await settle();
+    expect(maps.calls.filter((c) => c === 'get map-1').length).toBe(before + 1);
+    expect(el.querySelector('[role=alert]')?.textContent).toContain('fora da grade');
+    expect(el.querySelector('[role=alert]')?.textContent).not.toContain('80 letras');
+  });
+
+  it('an individual treasure says its gold is coins only', async () => {
+    const { el } = await setup({ treasure: sampleIndividual() });
+    expect(flat(el.querySelector('.what__gold'))?.replace(/\u00a0/g, ' ')).toBe('33 PO em moedas.');
   });
 
   it('a double tap makes one request', async () => {
@@ -233,7 +260,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     const { el, button, settle } = await setup({ phone: true });
     expect(el.querySelector('app-map-view')).toBeNull();
     expect(flat(el.querySelector('.frame__sub'))).toBe('Um ponto de tesouro escondido');
-    expect(Array.from(el.querySelectorAll('.room')).map((r) => flat(r))).toEqual(['Sala 1', 'Sala 2', 'Sala 3']);
+    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual(['Sala 1', 'Sala 2', 'Sala 3']);
     el.querySelectorAll<HTMLInputElement>('.room input')[2]!.click();
     await settle();
     expect(el.querySelector('.room--on')?.textContent).toContain('Sala 3');

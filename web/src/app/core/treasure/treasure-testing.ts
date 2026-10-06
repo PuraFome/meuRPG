@@ -22,7 +22,7 @@ import type { PlaceTreasureArgs } from './treasure-client';
 
 /**
  * Builders and a stand-in for the treasure specs (never imported by the app itself, so never bundled): a treasure as the server
- * returns it (the artboard E10-10's hoard for level 4, with its sums) and a `TreasureClient` that remembers its calls.
+ * returns it (the artboard E10-10's hoard for level 4, with its sums; the gem and art values are our own tiers (6 and 18 PO gems, 9 and 27 PO art), not the artboard's) and a `TreasureClient` that remembers its calls.
  */
 export const CONTENT_VERSION = 'srd51@a8abc93b235c+fx.17';
 
@@ -49,7 +49,7 @@ export function hoardItems(): TreasureItem[] {
   ];
 }
 
-/** The artboard's hoard for level 4: 340 PO and 1.200 PP of coins (460), gems (30), art (25): 515 PO of gold; the items 4.850 PO. */
+/** The artboard's hoard for level 4: 340 PO and 1.200 PP of coins (460), gems (30), art (27): 517 PO of gold; the items 4.850 PO. */
 export function sampleHoard(partial: MessageInitShape<typeof TreasureSchema> = {}): Treasure {
   return create(TreasureSchema, {
     mode: TreasureMode.HOARD,
@@ -60,15 +60,15 @@ export function sampleHoard(partial: MessageInitShape<typeof TreasureSchema> = {
       { coin: TreasureCoinKind.GOLD, count: 340, valuePo: 340 },
     ],
     gems: [
-      { namePt: 'Ágata', valuePo: 10, count: 2 },
-      { namePt: 'Quartzo azul', valuePo: 10, count: 1 },
+      { namePt: 'Ágata', valuePo: 6, count: 2 },
+      { namePt: 'Quartzo azul', valuePo: 18, count: 1 },
     ],
-    art: [{ namePt: 'Cálice de prata gravado', valuePo: 25, count: 1 }],
+    art: [{ namePt: 'Cálice de prata gravado', valuePo: 27, count: 1 }],
     items: hoardItems(),
     coinsPo: 460,
     gemsPo: 30,
-    artPo: 25,
-    goldPo: 515,
+    artPo: 27,
+    goldPo: 517,
     itemsPo: 4850,
     contentVersion: CONTENT_VERSION,
     ...partial,
@@ -128,7 +128,7 @@ export class FakeTreasureClient {
   /** What a call waits for before it answers (to hold the busy state). */
   gate: Promise<void> | null = null;
   /** The point `place` answers with. */
-  point: MapPoint = mapPoint('treasure-1', 'Tesouro de covil', { kind: MapPointKind.TREASURE, treasureValuePo: 515, revealed: false });
+  point: MapPoint = mapPoint('treasure-1', 'Tesouro de covil', { kind: MapPointKind.TREASURE, treasureValuePo: 517, revealed: false });
 
   private fail(method: string): void {
     const err = this.failWith.get(method);

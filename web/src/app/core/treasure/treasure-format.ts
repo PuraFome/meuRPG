@@ -184,28 +184,23 @@ export function treasureTitle(mode: TreasureMode, level: number): string {
   return `${mode === TreasureMode.HOARD ? 'Tesouro de covil' : 'Tesouro individual'} · nível ${level}`;
 }
 
-/** "Mirathel · para o grupo de nível 4 e 5" and its variants: the sentence under the page's title. */
-export function partyText(party: { livingCount: number; lowestLevel: number; highestLevel: number } | null): string {
-  if (!party || party.livingCount === 0) {
-    return 'Nenhum personagem de jogador vivo na campanha: escolha o nível do grupo.';
-  }
-  return party.lowestLevel === party.highestLevel ? `O grupo está no nível ${party.lowestLevel}.` : `O grupo está nos níveis ${party.lowestLevel} e ${party.highestLevel}.`;
-}
-
 /** The sentence under "Nível do grupo": the party, then why the lowest level is the one the table reads. */
 export function partyHelp(party: { livingCount: number; lowestLevel: number; highestLevel: number } | null): string {
-  if (!party || party.livingCount === 0) {
+  if (!party) {
+    return '';
+  }
+  if (party.livingCount === 0) {
     return 'A campanha ainda não tem personagem de jogador vivo. Escolha o nível, de 1 a 20.';
   }
   const where = party.lowestLevel === party.highestLevel ? `O grupo está no nível ${party.lowestLevel}.` : `O grupo está nos níveis ${party.lowestLevel} e ${party.highestLevel}.`;
   return `${where} A tabela usa o menor nível, para o tesouro não passar do que o grupo aguenta.`;
 }
 
-/** What happens to the treasure's gold in this campaign (MR-041, RN-09); on the result, before it is put on the map, and again on the confirmation. */
+/** What happens to the treasure's gold in this campaign (MR-041, RN-09), on the result, before it is put on the map. */
 export function goldLine(xpMode: XpMode, campaignName: string): string {
   switch (xpMode) {
     case XpMode.GOLD:
-      return `Em ${campaignName}, o grupo converte isto em XP em “Voltar à cidade”.`;
+      return `${campaignName} dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.`;
     case XpMode.MILESTONES:
       return `${campaignName} sobe de nível por marcos: o ouro do tesouro não vira XP.`;
     default:
@@ -213,17 +208,20 @@ export function goldLine(xpMode: XpMode, campaignName: string): string {
   }
 }
 
-/** The confirmation's line about the gold, with its amount ("515 PO para converter em “Voltar à cidade”"). */
-export function placedGoldLine(xpMode: XpMode, goldPo: number, itemCount: number): string {
+/** The same sentence once the treasure is on the map, with the amount and what stays in the description (E10-10 state 5). */
+export function placedXpLine(xpMode: XpMode, campaignName: string, goldPo: number, itemCount: number): string {
   const items = itemCount === 0 ? '' : itemCount === 1 ? ' O item fica na descrição.' : ` Os ${itemCount} itens ficam na descrição.`;
-  if (xpMode === XpMode.GOLD) {
-    return tight(`${po(goldPo)} para converter em “Voltar à cidade”.${items}`);
-  }
-  return tight(`${po(goldPo)} em moedas, gemas e arte, escondido: só você vê.${items}`);
+  const line = xpMode === XpMode.GOLD ? `${campaignName} dá XP por ouro: o grupo converte ${po(goldPo)} em XP em “Voltar à cidade”.` : goldLine(xpMode, campaignName);
+  return tight(`${line}${items}`);
 }
 
-/** "515 PO e 4 itens", the summary of a placed treasure. */
-export function placedSummary(goldPo: number, itemCount: number): string {
+/** What the gold is made of: a hoard's coins, gems and art, an individual treasure's coins only. */
+export function goldKinds(hoard: boolean): string {
+  return hoard ? 'em moedas, gemas e arte' : 'em moedas';
+}
+
+/** "515 PO em moedas, gemas e arte e 4 itens": what was put on the map, the gold first and the items apart. */
+export function placedSummary(goldPo: number, itemCount: number, hoard: boolean): string {
   const items = itemCount === 0 ? '' : itemCount === 1 ? ' e 1 item' : ` e ${itemCount} itens`;
-  return tight(`${po(goldPo)}${items}`);
+  return tight(`${po(goldPo)} ${goldKinds(hoard)}${items}`);
 }

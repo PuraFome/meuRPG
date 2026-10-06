@@ -70,57 +70,21 @@
   color: var(--mr-ink-muted);
 }
 
-.level {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
-}
-
-.level__label {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.level__stepper {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-2);
-}
-
-.level__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
+.link {
   padding: 0;
-  border: 1px solid var(--mr-control-line);
-  border-radius: var(--mr-radius-sm);
-  background: var(--mr-surface);
-  color: var(--mr-ink);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
   cursor: pointer;
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--mr-focus);
-    outline-offset: 2px;
-  }
-}
-
-.level__value {
-  min-width: 40px;
-  text-align: center;
-  font-family: var(--mr-font-display);
-  font-size: 26px;
-  font-weight: 800;
 }
 
 .generate {
+  border-radius: var(--mr-radius-sm);
+  --mat-button-filled-container-shape: var(--mr-radius-sm);
+  --mat-button-outlined-container-shape: var(--mr-radius-sm);
   --mat-button-filled-container-height: 48px;
   --mat-button-outlined-container-height: 48px;
   align-self: stretch;
@@ -171,7 +135,3 @@
   color: var(--mr-ink-muted);
 }
 
-.placed__links a {
-  color: var(--mr-accent-text);
-  font-weight: 700;
-}

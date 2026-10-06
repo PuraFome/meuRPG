@@ -10,7 +10,8 @@ import {
   itemValueText,
   partyHelp,
   pieceRows,
-  placedGoldLine,
+  placedXpLine,
+  goldKinds,
   placedSummary,
   po,
   rarityText,
@@ -35,13 +36,13 @@ describe('treasure-format: what the server rolled, in words (MR-044)', () => {
     ]);
   });
 
-  it('gems and art: "2 × Ágata" with "10 PO cada" and the stack\'s value; one piece has no "cada"', () => {
+  it('gems and art: "2 × Ágata" with "6 PO cada" and the stack\'s value; one piece has no "cada"', () => {
     const t = sampleHoard();
     expect(pieceRows(t.gems).map((r) => [r.title, plain(r.each), plain(r.value)])).toEqual([
-      ['2 × Ágata', '10 PO cada', '20 PO'],
-      ['Quartzo azul', '', '10 PO'],
+      ['2 × Ágata', '6 PO cada', '12 PO'],
+      ['Quartzo azul', '', '18 PO'],
     ]);
-    expect(pieceRows(t.art).map((r) => [r.title, plain(r.value)])).toEqual([['Cálice de prata gravado', '25 PO']]);
+    expect(pieceRows(t.art).map((r) => [r.title, plain(r.value)])).toEqual([['Cálice de prata gravado', '27 PO']]);
   });
 
   it('identical magic items are one row with "2 ×", in the order each first came up', () => {
@@ -88,19 +89,24 @@ describe('treasure-format: what the server rolled, in words (MR-044)', () => {
     );
     expect(partyHelp({ livingCount: 3, lowestLevel: 4, highestLevel: 4 })).toContain('O grupo está no nível 4.');
     expect(partyHelp({ livingCount: 0, lowestLevel: 0, highestLevel: 0 })).toContain('ainda não tem personagem de jogador vivo');
+    // A party that could not be read is the page's own notice, never this sentence.
+    expect(partyHelp(null)).toBe('');
   });
 
   it('the gold line says what the gold does in each campaign (RN-09, MR-041)', () => {
     expect(goldLine(XpMode.ENEMIES, 'Mirathel')).toBe('Mirathel dá XP por inimigos: o ouro do tesouro não vira XP.');
-    expect(goldLine(XpMode.GOLD, 'Estrada de Ouro')).toBe('Em Estrada de Ouro, o grupo converte isto em XP em “Voltar à cidade”.');
+    expect(goldLine(XpMode.GOLD, 'Estrada de Ouro')).toBe('Estrada de Ouro dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.');
     expect(goldLine(XpMode.MILESTONES, 'Mirathel')).toBe('Mirathel sobe de nível por marcos: o ouro do tesouro não vira XP.');
   });
 
   it('the confirmation counts only the gold; the items stay in the description', () => {
-    expect(plain(placedGoldLine(XpMode.GOLD, 515, 4))).toBe('515 PO para converter em “Voltar à cidade”. Os 4 itens ficam na descrição.');
-    expect(plain(placedGoldLine(XpMode.ENEMIES, 33, 0))).toBe('33 PO em moedas, gemas e arte, escondido: só você vê.');
-    expect(plain(placedSummary(515, 4))).toBe('515 PO e 4 itens');
-    expect(plain(placedSummary(515, 1))).toBe('515 PO e 1 item');
+    expect(plain(placedXpLine(XpMode.GOLD, 'Estrada de Ouro', 515, 4))).toBe('Estrada de Ouro dá XP por ouro: o grupo converte 515 PO em XP em “Voltar à cidade”. Os 4 itens ficam na descrição.');
+    expect(plain(placedXpLine(XpMode.ENEMIES, 'Mirathel', 33, 0))).toBe('Mirathel dá XP por inimigos: o ouro do tesouro não vira XP.');
+    expect(plain(placedXpLine(XpMode.ENEMIES, 'Mirathel', 515, 1))).toContain('O item fica na descrição.');
+    expect(plain(placedSummary(515, 4, true))).toBe('515 PO em moedas, gemas e arte e 4 itens');
+    expect(plain(placedSummary(515, 1, true))).toBe('515 PO em moedas, gemas e arte e 1 item');
+    expect(plain(placedSummary(33, 0, false))).toBe('33 PO em moedas');
+    expect(goldKinds(false)).toBe('em moedas');
   });
 
   it('titles the treasure by its kind and level', () => {
