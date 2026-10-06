@@ -699,3 +699,100 @@ func TestEncodeAPaletteImage(t *testing.T) {
 		t.Errorf("Encode(too wide) error = %v, want ErrDimensions", err)
 	}
 }
+
+// CropFit takes the map's rectangle of a picture and scales it to the map image's
+// size: the result is exactly that size, a JPEG with no metadata, and holds the part
+// that was cut, not the rest.
+func TestCropFit(t *testing.T) {
+	t.Parallel()
+	// 160 x 90: red on the left 20 columns and the right 20, green between (the map).
+	src := image.NewNRGBA(image.Rect(0, 0, 160, 90))
+	for y := range 90 {
+		for x := range 160 {
+			c := color.NRGBA{G: 200, A: 255}
+			if x < 20 || x >= 140 {
+				c = color.NRGBA{R: 200, A: 255}
+			}
+			src.SetNRGBA(x, y, c)
+		}
+	}
+	data := encodePNG(t, src)
+	res, err := CropFit(data, func(w, h int) image.Rectangle { return image.Rect(w*20/160, 0, w*140/160, h) }, 60, 45)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ContentType != JPEG || res.Width != 60 || res.Height != 45 {
+		t.Fatalf("CropFit() = %s %dx%d, want image/jpeg 60x45", res.ContentType, res.Width, res.Height)
+	}
+	got, format := decodeSize(t, res.Data)
+	if format != "jpeg" || got.Bounds().Dx() != 60 || got.Bounds().Dy() != 45 {
+		t.Fatalf("the stored picture is %s %v", format, got.Bounds())
+	}
+	for _, p := range [][2]int{{0, 0}, {59, 0}, {0, 44}, {59, 44}, {30, 22}} {
+		if r, g, _, _ := got.At(p[0], p[1]).RGBA(); r>>8 > 60 || g>>8 < 150 {
+			t.Errorf("pixel %v is not green: the cut leaked the margin", p)
+		}
+	}
+	// The same crop on a bigger answer of the same proportions gives the same shape.
+	big := image.NewNRGBA(image.Rect(0, 0, 320, 180))
+	for y := range 180 {
+		for x := range 320 {
+			c := color.NRGBA{G: 200, A: 255}
+			if x < 40 || x >= 280 {
+				c = color.NRGBA{R: 200, A: 255}
+			}
+			big.SetNRGBA(x, y, c)
+		}
+	}
+	res, err = CropFit(encodePNG(t, big), func(w, h int) image.Rectangle { return image.Rect(w*20/160, 0, w*140/160, h) }, 60, 45)
+	if err != nil || res.Width != 60 || res.Height != 45 {
+		t.Errorf("a bigger answer: %v, %v", res, err)
+	}
+}
+
+func TestCropFitRefuses(t *testing.T) {
+	t.Parallel()
+	data := encodePNG(t, twoColors(40, 30))
+	whole := func(w, h int) image.Rectangle { return image.Rect(0, 0, w, h) }
+	for name, tc := range map[string]struct {
+		data []byte
+		crop func(w, h int) image.Rectangle
+		w, h int
+		want error
+	}{
+		"an output over 16 megapixels": {data, whole, 5000, 4000, ErrDimensions},
+		"an output with no size":       {data, whole, 0, 10, ErrDimensions},
+		"an output over the side":      {data, whole, MaxSide + 1, 10, ErrDimensions},
+		"an empty crop":                {data, func(int, int) image.Rectangle { return image.Rect(5, 5, 5, 9) }, 10, 10, ErrDimensions},
+		"a crop outside the picture":   {data, func(int, int) image.Rectangle { return image.Rect(100, 100, 200, 200) }, 10, 10, ErrDimensions},
+		"not an image":                 {[]byte("hello"), whole, 10, 10, ErrUnsupportedType},
+		"a broken PNG":                 {data[:len(data)/2], whole, 10, 10, ErrCorrupt},
+	} {
+		if _, err := CropFit(tc.data, tc.crop, tc.w, tc.h); !errors.Is(err, tc.want) {
+			t.Errorf("%s: error = %v, want %v", name, err, tc.want)
+		}
+	}
+}
+
+// A big answer that is cheap on disk is refused before it is decoded: 8000 x 5000 (40
+// megapixels) in half a megabyte, the reviewer's case, and one just over 4096 on a side.
+func TestCropFitRefusesAnAnswerThatBreaksTheMemoryBudget(t *testing.T) {
+	t.Parallel()
+	whole := func(w, h int) image.Rectangle { return image.Rect(0, 0, w, h) }
+	big := encodePNG(t, image.NewGray(image.Rect(0, 0, 8000, 5000)))
+	if len(big) > 2<<20 {
+		t.Fatalf("the fixture is %d bytes, want a cheap file", len(big))
+	}
+	if _, err := CropFit(big, whole, 4000, 4000); !errors.Is(err, ErrDimensions) {
+		t.Errorf("an 8000 x 5000 answer: error = %v, want ErrDimensions", err)
+	}
+	wide := encodePNG(t, image.NewGray(image.Rect(0, 0, 4097, 100)))
+	if _, err := CropFit(wide, whole, 100, 100); !errors.Is(err, ErrDimensions) {
+		t.Errorf("a 4097 pixel answer: error = %v, want ErrDimensions", err)
+	}
+	// What the model really returns, 4096 x 4096 into the biggest output, fits.
+	ok := encodePNG(t, image.NewGray(image.Rect(0, 0, 4096, 4096)))
+	if _, err := CropFit(ok, whole, 4000, 4000); err != nil {
+		t.Errorf("a 4096 x 4096 answer into 16 megapixels: error = %v, want it to fit", err)
+	}
+}

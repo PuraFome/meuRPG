@@ -51,6 +51,15 @@ const (
 	// ImageGenerationServiceListImageEditsProcedure is the fully-qualified name of the
 	// ImageGenerationService's ListImageEdits RPC.
 	ImageGenerationServiceListImageEditsProcedure = "/meurpg.maps.v1.ImageGenerationService/ListImageEdits"
+	// ImageGenerationServiceGetMapImageReferenceProcedure is the fully-qualified name of the
+	// ImageGenerationService's GetMapImageReference RPC.
+	ImageGenerationServiceGetMapImageReferenceProcedure = "/meurpg.maps.v1.ImageGenerationService/GetMapImageReference"
+	// ImageGenerationServiceGenerateMapImageProcedure is the fully-qualified name of the
+	// ImageGenerationService's GenerateMapImage RPC.
+	ImageGenerationServiceGenerateMapImageProcedure = "/meurpg.maps.v1.ImageGenerationService/GenerateMapImage"
+	// ImageGenerationServiceUseGeneratedImageAsMapImageProcedure is the fully-qualified name of the
+	// ImageGenerationService's UseGeneratedImageAsMapImage RPC.
+	ImageGenerationServiceUseGeneratedImageAsMapImageProcedure = "/meurpg.maps.v1.ImageGenerationService/UseGeneratedImageAsMapImage"
 )
 
 // ImageGenerationServiceClient is a client for the meurpg.maps.v1.ImageGenerationService service.
@@ -100,6 +109,56 @@ type ImageGenerationServiceClient interface {
 	// below it, oldest first (follow parent_image_id for the links). Empty
 	// (just the image) for an image that was never edited.
 	ListImageEdits(context.Context, *connect.Request[v1.ListImageEditsRequest]) (*connect.Response[v1.ListImageEditsResponse], error)
+	// GetMapImageReference shows what a request made from a map would send, before
+	// the master asks: the drawing (a small PNG) and, for the players' view, the NPCs
+	// the master may choose to appear ("Quem aparece na imagem"). Nothing is
+	// generated and no slot is used. For MAP_SCENE and ISOMETRIC the drawing is what
+	// the players' characters see now (the union of their views, as the fog of war
+	// works it out, without what they remember), never what is behind an unrevealed
+	// secret door; on a map without the fog it is the whole map, without what is
+	// hidden. For TEXTURED_MAP it is the whole map, padded to the model's closest
+	// ratio.
+	//
+	// Errors: `invalid_argument` (a kind that is not made from a map), `not_found`
+	// (a map that is not the campaign's) and `failed_precondition` with
+	// ImageGenerationBlocked (MAP_HAS_NO_GRID).
+	GetMapImageReference(context.Context, *connect.Request[v1.GetMapImageReferenceRequest]) (*connect.Response[v1.GetMapImageReferenceResponse], error)
+	// GenerateMapImage asks for a picture made from a map: the scene art or the
+	// isometric view of what the players see now, or the textured map of the whole
+	// map. It answers at once with a PENDING request, reserves a slot and follows
+	// GetImageGeneration, the cancel and the idempotency key like GenerateSceneImage.
+	// For MAP_SCENE and ISOMETRIC the master may choose NPCs to appear: only those
+	// the players see now (the others are refused, so the picture does not give away
+	// what is hidden), and their portraits go as character references. The portrait of
+	// an NPC whose token is on this map and whom the players do not see now is also
+	// refused when it comes in character_image_ids; a gallery image that is no NPC's
+	// portrait stays the master's choice. TEXTURED_MAP takes no characters at all
+	// (npc_character_ids and character_image_ids must be empty): the picture can become
+	// the map the players read, and a creature painted in it is no creature of the
+	// map. A textured map is cropped back to the map and resized to the size of its
+	// image, so it can replace it.
+	//
+	// Errors: as GenerateSceneImage, `invalid_argument` (with an
+	// ImageGenerationInvalidField detail) also for a kind that is not made from a map,
+	// for an NPC the players do not see (or too many characters in all), for a
+	// hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+	// `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
+	// PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
+	// the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
+	GenerateMapImage(context.Context, *connect.Request[v1.GenerateMapImageRequest]) (*connect.Response[v1.GenerateMapImageResponse], error)
+	// UseGeneratedImageAsMapImage makes a finished textured map the image of the map
+	// it was made from, keeping the grid, the calibration, the painted layers, the
+	// points, the tokens and what the players remember: the picture has exactly the
+	// size of the old image. The old image stays in the gallery. A fog map's image is
+	// always its own: when the picture is also used another way (shown to the players,
+	// an NPC's portrait...) the map gets a copy of it, as UpdateMap gives. It is idempotent: a repeat of a Use that already happened,
+	// while the image it set (the picture, or the copy a fog map got) is still the map's
+	// image, answers the same, with no new copy and no write. Refused with
+	// ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
+	// are no longer what the request was made from, or its walls (a painted wall, a
+	// revealed secret door: what the drawing showed) changed since; and `not_found`
+	// when the image is not a textured map generated for a map of the campaign.
+	UseGeneratedImageAsMapImage(context.Context, *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error)
 }
 
 // NewImageGenerationServiceClient constructs a client for the meurpg.maps.v1.ImageGenerationService
@@ -152,17 +211,39 @@ func NewImageGenerationServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getMapImageReference: connect.NewClient[v1.GetMapImageReferenceRequest, v1.GetMapImageReferenceResponse](
+			httpClient,
+			baseURL+ImageGenerationServiceGetMapImageReferenceProcedure,
+			connect.WithSchema(imageGenerationServiceMethods.ByName("GetMapImageReference")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		generateMapImage: connect.NewClient[v1.GenerateMapImageRequest, v1.GenerateMapImageResponse](
+			httpClient,
+			baseURL+ImageGenerationServiceGenerateMapImageProcedure,
+			connect.WithSchema(imageGenerationServiceMethods.ByName("GenerateMapImage")),
+			connect.WithClientOptions(opts...),
+		),
+		useGeneratedImageAsMapImage: connect.NewClient[v1.UseGeneratedImageAsMapImageRequest, v1.UseGeneratedImageAsMapImageResponse](
+			httpClient,
+			baseURL+ImageGenerationServiceUseGeneratedImageAsMapImageProcedure,
+			connect.WithSchema(imageGenerationServiceMethods.ByName("UseGeneratedImageAsMapImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // imageGenerationServiceClient implements ImageGenerationServiceClient.
 type imageGenerationServiceClient struct {
-	getImageGenerationStatus *connect.Client[v1.GetImageGenerationStatusRequest, v1.GetImageGenerationStatusResponse]
-	generateSceneImage       *connect.Client[v1.GenerateSceneImageRequest, v1.GenerateSceneImageResponse]
-	editGeneratedImage       *connect.Client[v1.EditGeneratedImageRequest, v1.EditGeneratedImageResponse]
-	getImageGeneration       *connect.Client[v1.GetImageGenerationRequest, v1.GetImageGenerationResponse]
-	cancelImageGeneration    *connect.Client[v1.CancelImageGenerationRequest, v1.CancelImageGenerationResponse]
-	listImageEdits           *connect.Client[v1.ListImageEditsRequest, v1.ListImageEditsResponse]
+	getImageGenerationStatus    *connect.Client[v1.GetImageGenerationStatusRequest, v1.GetImageGenerationStatusResponse]
+	generateSceneImage          *connect.Client[v1.GenerateSceneImageRequest, v1.GenerateSceneImageResponse]
+	editGeneratedImage          *connect.Client[v1.EditGeneratedImageRequest, v1.EditGeneratedImageResponse]
+	getImageGeneration          *connect.Client[v1.GetImageGenerationRequest, v1.GetImageGenerationResponse]
+	cancelImageGeneration       *connect.Client[v1.CancelImageGenerationRequest, v1.CancelImageGenerationResponse]
+	listImageEdits              *connect.Client[v1.ListImageEditsRequest, v1.ListImageEditsResponse]
+	getMapImageReference        *connect.Client[v1.GetMapImageReferenceRequest, v1.GetMapImageReferenceResponse]
+	generateMapImage            *connect.Client[v1.GenerateMapImageRequest, v1.GenerateMapImageResponse]
+	useGeneratedImageAsMapImage *connect.Client[v1.UseGeneratedImageAsMapImageRequest, v1.UseGeneratedImageAsMapImageResponse]
 }
 
 // GetImageGenerationStatus calls meurpg.maps.v1.ImageGenerationService.GetImageGenerationStatus.
@@ -193,6 +274,22 @@ func (c *imageGenerationServiceClient) CancelImageGeneration(ctx context.Context
 // ListImageEdits calls meurpg.maps.v1.ImageGenerationService.ListImageEdits.
 func (c *imageGenerationServiceClient) ListImageEdits(ctx context.Context, req *connect.Request[v1.ListImageEditsRequest]) (*connect.Response[v1.ListImageEditsResponse], error) {
 	return c.listImageEdits.CallUnary(ctx, req)
+}
+
+// GetMapImageReference calls meurpg.maps.v1.ImageGenerationService.GetMapImageReference.
+func (c *imageGenerationServiceClient) GetMapImageReference(ctx context.Context, req *connect.Request[v1.GetMapImageReferenceRequest]) (*connect.Response[v1.GetMapImageReferenceResponse], error) {
+	return c.getMapImageReference.CallUnary(ctx, req)
+}
+
+// GenerateMapImage calls meurpg.maps.v1.ImageGenerationService.GenerateMapImage.
+func (c *imageGenerationServiceClient) GenerateMapImage(ctx context.Context, req *connect.Request[v1.GenerateMapImageRequest]) (*connect.Response[v1.GenerateMapImageResponse], error) {
+	return c.generateMapImage.CallUnary(ctx, req)
+}
+
+// UseGeneratedImageAsMapImage calls
+// meurpg.maps.v1.ImageGenerationService.UseGeneratedImageAsMapImage.
+func (c *imageGenerationServiceClient) UseGeneratedImageAsMapImage(ctx context.Context, req *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error) {
+	return c.useGeneratedImageAsMapImage.CallUnary(ctx, req)
 }
 
 // ImageGenerationServiceHandler is an implementation of the meurpg.maps.v1.ImageGenerationService
@@ -243,6 +340,56 @@ type ImageGenerationServiceHandler interface {
 	// below it, oldest first (follow parent_image_id for the links). Empty
 	// (just the image) for an image that was never edited.
 	ListImageEdits(context.Context, *connect.Request[v1.ListImageEditsRequest]) (*connect.Response[v1.ListImageEditsResponse], error)
+	// GetMapImageReference shows what a request made from a map would send, before
+	// the master asks: the drawing (a small PNG) and, for the players' view, the NPCs
+	// the master may choose to appear ("Quem aparece na imagem"). Nothing is
+	// generated and no slot is used. For MAP_SCENE and ISOMETRIC the drawing is what
+	// the players' characters see now (the union of their views, as the fog of war
+	// works it out, without what they remember), never what is behind an unrevealed
+	// secret door; on a map without the fog it is the whole map, without what is
+	// hidden. For TEXTURED_MAP it is the whole map, padded to the model's closest
+	// ratio.
+	//
+	// Errors: `invalid_argument` (a kind that is not made from a map), `not_found`
+	// (a map that is not the campaign's) and `failed_precondition` with
+	// ImageGenerationBlocked (MAP_HAS_NO_GRID).
+	GetMapImageReference(context.Context, *connect.Request[v1.GetMapImageReferenceRequest]) (*connect.Response[v1.GetMapImageReferenceResponse], error)
+	// GenerateMapImage asks for a picture made from a map: the scene art or the
+	// isometric view of what the players see now, or the textured map of the whole
+	// map. It answers at once with a PENDING request, reserves a slot and follows
+	// GetImageGeneration, the cancel and the idempotency key like GenerateSceneImage.
+	// For MAP_SCENE and ISOMETRIC the master may choose NPCs to appear: only those
+	// the players see now (the others are refused, so the picture does not give away
+	// what is hidden), and their portraits go as character references. The portrait of
+	// an NPC whose token is on this map and whom the players do not see now is also
+	// refused when it comes in character_image_ids; a gallery image that is no NPC's
+	// portrait stays the master's choice. TEXTURED_MAP takes no characters at all
+	// (npc_character_ids and character_image_ids must be empty): the picture can become
+	// the map the players read, and a creature painted in it is no creature of the
+	// map. A textured map is cropped back to the map and resized to the size of its
+	// image, so it can replace it.
+	//
+	// Errors: as GenerateSceneImage, `invalid_argument` (with an
+	// ImageGenerationInvalidField detail) also for a kind that is not made from a map,
+	// for an NPC the players do not see (or too many characters in all), for a
+	// hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+	// `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
+	// PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
+	// the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
+	GenerateMapImage(context.Context, *connect.Request[v1.GenerateMapImageRequest]) (*connect.Response[v1.GenerateMapImageResponse], error)
+	// UseGeneratedImageAsMapImage makes a finished textured map the image of the map
+	// it was made from, keeping the grid, the calibration, the painted layers, the
+	// points, the tokens and what the players remember: the picture has exactly the
+	// size of the old image. The old image stays in the gallery. A fog map's image is
+	// always its own: when the picture is also used another way (shown to the players,
+	// an NPC's portrait...) the map gets a copy of it, as UpdateMap gives. It is idempotent: a repeat of a Use that already happened,
+	// while the image it set (the picture, or the copy a fog map got) is still the map's
+	// image, answers the same, with no new copy and no write. Refused with
+	// ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
+	// are no longer what the request was made from, or its walls (a painted wall, a
+	// revealed secret door: what the drawing showed) changed since; and `not_found`
+	// when the image is not a textured map generated for a map of the campaign.
+	UseGeneratedImageAsMapImage(context.Context, *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error)
 }
 
 // NewImageGenerationServiceHandler builds an HTTP handler from the service implementation. It
@@ -291,6 +438,25 @@ func NewImageGenerationServiceHandler(svc ImageGenerationServiceHandler, opts ..
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	imageGenerationServiceGetMapImageReferenceHandler := connect.NewUnaryHandler(
+		ImageGenerationServiceGetMapImageReferenceProcedure,
+		svc.GetMapImageReference,
+		connect.WithSchema(imageGenerationServiceMethods.ByName("GetMapImageReference")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	imageGenerationServiceGenerateMapImageHandler := connect.NewUnaryHandler(
+		ImageGenerationServiceGenerateMapImageProcedure,
+		svc.GenerateMapImage,
+		connect.WithSchema(imageGenerationServiceMethods.ByName("GenerateMapImage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	imageGenerationServiceUseGeneratedImageAsMapImageHandler := connect.NewUnaryHandler(
+		ImageGenerationServiceUseGeneratedImageAsMapImageProcedure,
+		svc.UseGeneratedImageAsMapImage,
+		connect.WithSchema(imageGenerationServiceMethods.ByName("UseGeneratedImageAsMapImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.maps.v1.ImageGenerationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ImageGenerationServiceGetImageGenerationStatusProcedure:
@@ -305,6 +471,12 @@ func NewImageGenerationServiceHandler(svc ImageGenerationServiceHandler, opts ..
 			imageGenerationServiceCancelImageGenerationHandler.ServeHTTP(w, r)
 		case ImageGenerationServiceListImageEditsProcedure:
 			imageGenerationServiceListImageEditsHandler.ServeHTTP(w, r)
+		case ImageGenerationServiceGetMapImageReferenceProcedure:
+			imageGenerationServiceGetMapImageReferenceHandler.ServeHTTP(w, r)
+		case ImageGenerationServiceGenerateMapImageProcedure:
+			imageGenerationServiceGenerateMapImageHandler.ServeHTTP(w, r)
+		case ImageGenerationServiceUseGeneratedImageAsMapImageProcedure:
+			imageGenerationServiceUseGeneratedImageAsMapImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -336,4 +508,16 @@ func (UnimplementedImageGenerationServiceHandler) CancelImageGeneration(context.
 
 func (UnimplementedImageGenerationServiceHandler) ListImageEdits(context.Context, *connect.Request[v1.ListImageEditsRequest]) (*connect.Response[v1.ListImageEditsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.ImageGenerationService.ListImageEdits is not implemented"))
+}
+
+func (UnimplementedImageGenerationServiceHandler) GetMapImageReference(context.Context, *connect.Request[v1.GetMapImageReferenceRequest]) (*connect.Response[v1.GetMapImageReferenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.ImageGenerationService.GetMapImageReference is not implemented"))
+}
+
+func (UnimplementedImageGenerationServiceHandler) GenerateMapImage(context.Context, *connect.Request[v1.GenerateMapImageRequest]) (*connect.Response[v1.GenerateMapImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.ImageGenerationService.GenerateMapImage is not implemented"))
+}
+
+func (UnimplementedImageGenerationServiceHandler) UseGeneratedImageAsMapImage(context.Context, *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.ImageGenerationService.UseGeneratedImageAsMapImage is not implemented"))
 }
