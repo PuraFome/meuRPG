@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -60,9 +61,9 @@ func TestWithAtTheBudgets(t *testing.T) {
 	after := heap()
 	retained := float64(after-before) / 1e6
 	t.Logf("at the budgets: %v best of 5, %.2f MB kept (one content)", best, retained)
-	if raceEnabled {
-		t.Log("-race: the time is not held")
-	} else if best > 50*time.Millisecond {
+	// The time is held only when asked (MEURPG_MEASURE=1, on a quiet machine,
+	// without -race): on a busy one, or in CI, a clock check fails for nothing.
+	if os.Getenv("MEURPG_MEASURE") == "1" && !raceEnabled && best > 50*time.Millisecond {
 		t.Errorf("With at the budgets took %v, want under 50 ms", best)
 	}
 	if retained > 8 {
@@ -71,21 +72,39 @@ func TestWithAtTheBudgets(t *testing.T) {
 	runtime.KeepAlive(kept)
 }
 
+// breakFormula replaces every effect whose formula is text with one that does
+// not compile.
+func breakFormula(o *Overlay, text string) {
+	for i := range o.Backgrounds {
+		fx := o.Backgrounds[i].Feature.Effects
+		for j := range fx {
+			if fx[j].Value == text {
+				fx[j].Value = "max(1,"
+			}
+		}
+	}
+}
+
 // TestBudgetRefusalsHappenBeforeAnyCompile: the 2,001st effect and the 501st
-// distinct formula are refused with the limit named, and fast (nothing was
-// compiled).
+// distinct formula are refused with the limit named, before anything is
+// compiled. Every copy of one formula is broken: had With compiled anything
+// first, it would have answered with that formula's error, not the limit.
+// (No clock: a timing check fails on a busy machine.)
 func TestBudgetRefusalsHappenBeforeAnyCompile(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
+	const first = `max(1, mod("str") + 1)` // the first effect's formula in budgetOverlay
 
 	moreEffects := budgetOverlay()
+	breakFormula(&moreEffects, first)
 	bg := moreEffects.Backgrounds[0]
 	bg.Key = "background:um-a-mais" + tableSuffix
 	bg.Feature = TableFeature{Key: "background-feature:um-a-mais" + tableSuffix, NamePT: "F", Effects: []Effect{{Type: "note"}}}
 	moreEffects.Backgrounds = append(moreEffects.Backgrounds, bg)
 
 	moreFormulas := budgetOverlay()
-	moreFormulas.Backgrounds[0].Feature.Effects[0].Value = "max(2, 3)"
+	breakFormula(&moreFormulas, first)
+	moreFormulas.Backgrounds[0].Feature.Effects[1].Value = "max(2, 3)"
 
 	for name, tc := range map[string]struct {
 		o    Overlay
@@ -94,14 +113,10 @@ func TestBudgetRefusalsHappenBeforeAnyCompile(t *testing.T) {
 		"effects":  {moreEffects, "more than 2000 effects"},
 		"formulas": {moreFormulas, "more than 500 distinct formulas"},
 	} {
-		start := time.Now()
 		_, err := srd.With(tc.o)
 		var oe *OverlayError
 		if !errors.As(err, &oe) || oe.Reason != ReasonLimit || !strings.Contains(oe.Message, tc.want) {
-			t.Errorf("%s: err = %v", name, err)
-		}
-		if d := time.Since(start); d > 20*time.Millisecond && !raceEnabled {
-			t.Errorf("%s: the refusal took %v: it must not compile anything", name, d)
+			t.Errorf("%s: err = %v, want the limit %q before any compile", name, err, tc.want)
 		}
 	}
 }
