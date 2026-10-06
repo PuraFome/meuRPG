@@ -71,6 +71,35 @@ func TestDamageTotal(t *testing.T) {
 	}
 }
 
+// TestCriticalDice is the dice of a hit under each critical rule: the SRD's doubled
+// dice, and the dice once with the maximum kept (the bonus is never part of it).
+func TestCriticalDice(t *testing.T) {
+	t.Parallel()
+	axe := rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}
+	tests := []struct {
+		name         string
+		f            rules.DiceFormula
+		critical     bool
+		rule         CriticalRule
+		count, fixed int
+	}{
+		{"not a critical (doubled)", axe, false, CriticalDoubledDice, 1, 0},
+		{"not a critical (max)", axe, false, CriticalMaxPlusRoll, 1, 0},
+		{"doubled dice", axe, true, CriticalDoubledDice, 2, 0},
+		{"max plus a roll: 8 kept, one die", axe, true, CriticalMaxPlusRoll, 1, 8},
+		{"several dice: 2d6 keeps 12", rules.DiceFormula{Count: 2, Sides: 6, Bonus: 4}, true, CriticalMaxPlusRoll, 2, 12},
+		{"eight dice, then none doubled", rules.DiceFormula{Count: 8, Sides: 6}, true, CriticalMaxPlusRoll, 8, 48},
+		{"a flat damage has nothing to double or keep", rules.DiceFormula{Bonus: 5}, true, CriticalMaxPlusRoll, 0, 0},
+		{"a flat damage doubled", rules.DiceFormula{Bonus: 5}, true, CriticalDoubledDice, 0, 0},
+	}
+	for _, tt := range tests {
+		count, fixed := CriticalDice(tt.f, tt.critical, tt.rule)
+		if count != tt.count || fixed != tt.fixed {
+			t.Errorf("%s: CriticalDice = %d dice and %d fixed, want %d and %d", tt.name, count, fixed, tt.count, tt.fixed)
+		}
+	}
+}
+
 func TestApplyDamage(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

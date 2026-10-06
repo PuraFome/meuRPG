@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
@@ -82,14 +83,14 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 		n.traits[f.Key] = t
 	}
 	if len(f.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: f.Key, effects: f.Effects, path: path})
+		b.pending = append(b.pending, pendingEffects{owner: f.Key, effects: f.Effects, path: path, strict: b.strict[k.owner]})
 	}
 	return nil
 }
 
 // checkEffect is the closed menu: what is not on it is refused, naming the key.
 // The error carries the effect's path.
-func (b *overlayBuilder) checkEffect(owner, path string, e *Effect) error {
+func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool) error {
 	fail := func(attr, reason, format string, args ...any) error {
 		return ovErr(owner, format, args...).at(path+attr, reason)
 	}
@@ -98,6 +99,9 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect) error {
 	}
 	if !slices.Contains(overlayEffectTypes, e.Type) {
 		return fail(".type", ReasonEffect, "effect type %q is not on the table's menu", e.Type)
+	}
+	if name := unusedField(e); strict && name != "" {
+		return fail("."+name, ReasonValue, "the field %s is not used by a %s effect", name, e.Type)
 	}
 	if len(e.Spells) > 0 {
 		// A spell the effect grants (a race that knows a cantrip, a once-a-day
@@ -144,6 +148,205 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect) error {
 	return nil
 }
 
+// ownFields are the fields only some effect types read. Every other field of the
+// menu (when, tags, text_pt) any type may have; the fields of the engine's own
+// effects (the spellcasting, the wild shape, the handler) never come from the
+// table.
+var ownFields = map[string][]string{
+	"modifier":     {"target", "mode", "value"},
+	"proficiency":  {"proficiency", "level"},
+	"roll_mode":    {"roll", "targets"},
+	"sense":        {"sense", "range_ft"},
+	"resource":     {"resource", "max", "recharge"},
+	"choice":       {"choice", "count", "from"},
+	"extra_attack": {"count"},
+	"grant_action": {"economy"},
+	"note":         {"value", "spells"},
+}
+
+// unusedField is the first field of e, in the order of the proto message, that
+// its type does not read (a modifier with a recharge, a sense with a count), or
+// "". The editor sends only what the type shows, so a stray value is a mistake
+// worth naming, not something to ignore silently.
+func unusedField(e *Effect) string {
+	set := map[string]bool{
+		"target": e.Target != "", "mode": e.Mode != "", "value": e.Value != "",
+		"proficiency": e.Proficiency != "", "level": e.Level != "", "roll": e.Roll != "", "targets": len(e.Targets) > 0,
+		"sense": e.Sense != "", "range_ft": e.RangeFt != 0, "resource": e.Resource != "", "max": e.Max != "", "recharge": e.Recharge != "",
+		"choice": e.Choice != "", "count": e.Count != 0, "from": len(e.From) > 0, "economy": e.Economy != "",
+	}
+	own := ownFields[e.Type]
+	for _, name := range effectFieldOrder {
+		if set[name] && !slices.Contains(own, name) {
+			return name
+		}
+	}
+	switch {
+	case e.Ability != "":
+		return "ability"
+	case e.Progression != "":
+		return "progression"
+	case e.Prepares:
+		return "prepares"
+	case e.PreparedMax != "":
+		return "prepared_max"
+	case e.Spellbook:
+		return "spellbook"
+	case e.Ritual:
+		return "ritual"
+	case e.Handler != "":
+		return "handler"
+	case e.MaxCR != "":
+		return "max_cr"
+	case e.NoFly:
+		return "no_fly"
+	case e.NoSwim:
+		return "no_swim"
+	}
+	return ""
+}
+
+// stripUnused clears every field e's type does not read, so an effect that came
+// from storage with a stray one still compiles (Overlay.Strict).
+func stripUnused(e *Effect) {
+	for name := unusedField(e); name != ""; name = unusedField(e) {
+		clearEffectField(e, name)
+	}
+}
+
+func clearEffectField(e *Effect, name string) {
+	switch name {
+	case "target":
+		e.Target = ""
+	case "mode":
+		e.Mode = ""
+	case "value":
+		e.Value = ""
+	case "proficiency":
+		e.Proficiency = ""
+	case "level":
+		e.Level = ""
+	case "roll":
+		e.Roll = ""
+	case "targets":
+		e.Targets = nil
+	case "sense":
+		e.Sense = ""
+	case "range_ft":
+		e.RangeFt = 0
+	case "resource":
+		e.Resource = ""
+	case "max":
+		e.Max = ""
+	case "recharge":
+		e.Recharge = ""
+	case "choice":
+		e.Choice = ""
+	case "count":
+		e.Count = 0
+	case "from":
+		e.From = nil
+	case "economy":
+		e.Economy = ""
+	case "ability":
+		e.Ability = ""
+	case "progression":
+		e.Progression = ""
+	case "prepares":
+		e.Prepares = false
+	case "prepared_max":
+		e.PreparedMax = ""
+	case "spellbook":
+		e.Spellbook = false
+	case "ritual":
+		e.Ritual = false
+	case "handler":
+		e.Handler = ""
+	case "max_cr":
+		e.MaxCR = ""
+	case "no_fly":
+		e.NoFly = false
+	case "no_swim":
+		e.NoSwim = false
+	}
+}
+
+// effectFieldOrder is the order of the type-specific fields in TableEffect.
+var effectFieldOrder = []string{
+	"target", "mode", "value", "proficiency", "level", "roll", "targets", "sense", "range_ft",
+	"resource", "max", "recharge", "choice", "count", "from", "economy",
+}
+
+// effectError says which TableEffect field a compile error of the engine is
+// about, so the editor can point at it: the formula that failed to compile
+// (when, value or max), the target, the mode and so on. The messages are the
+// engine's own (compileEffect), which the SRD load shares.
+func effectError(e *Effect, msg string) (attr, reason string) {
+	has := func(words ...string) bool {
+		for _, w := range words {
+			if strings.Contains(msg, w) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("formula "):
+		for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}} {
+			if f.src != "" && has("formula "+strconv.Quote(f.src)) {
+				return "." + f.name, ReasonFormula
+			}
+		}
+		return "", ReasonFormula
+	case has("unknown target"):
+		if e.Type == "roll_mode" {
+			return ".targets", ReasonValue
+		}
+		return ".target", ReasonValue
+	case has("unknown mode"):
+		return ".mode", ReasonValue
+	case has("value is required", "a value needs"):
+		if has("text_pt") {
+			return ".text_pt", ReasonValue
+		}
+		return ".value", ReasonValue
+	case has("unknown proficiency"):
+		return ".proficiency", ReasonValue
+	case has("unknown level"):
+		return ".level", ReasonValue
+	case has("unknown roll"):
+		return ".roll", ReasonValue
+	case has("targets are required"):
+		return ".targets", ReasonValue
+	case has("sense needs"):
+		if slices.Contains(senses, e.Sense) {
+			return ".range_ft", ReasonValue
+		}
+		return ".sense", ReasonValue
+	case has("resource needs"):
+		switch {
+		case e.Resource == "":
+			return ".resource", ReasonValue
+		case e.Max == "":
+			return ".max", ReasonValue
+		}
+		return ".recharge", ReasonValue
+	case has("unknown choice"):
+		return ".choice", ReasonValue
+	case has("in from"):
+		return ".from", ReasonReference
+	case has("unknown economy"):
+		return ".economy", ReasonValue
+	case has("extra_attack needs"):
+		return ".count", ReasonValue
+	case has("empty tag"):
+		return ".tags", ReasonValue
+	case has("unknown spell"):
+		return ".spells", ReasonReference
+	}
+	return "", ReasonValue
+}
+
 func validResourceName(s string) bool {
 	if len(s) < 1 || len(s) > 40 {
 		return false
@@ -166,14 +369,14 @@ func (b *overlayBuilder) compileEffects() error {
 			e := p.effects[i]
 			at := fmt.Sprintf("%s.effects[%d]", p.path, i)
 			e.Tags, e.Targets, e.From, e.Spells = slices.Clone(e.Tags), slices.Clone(e.Targets), slices.Clone(e.From), slices.Clone(e.Spells)
-			if err := b.checkEffect(p.owner, at, &e); err != nil {
+			if !p.strict {
+				stripUnused(&e)
+			}
+			if err := b.checkEffect(p.owner, at, &e, p.strict); err != nil {
 				return err
 			}
 			if err := b.n.compileEffect(p.owner, &e); err != nil {
-				attr, reason := "", ReasonValue
-				if strings.Contains(err.Error(), "formula") {
-					attr, reason = ".formula", ReasonFormula
-				}
+				attr, reason := effectError(&e, err.Error())
 				return ovErr(p.owner, "%v", err).at(at+attr, reason)
 			}
 			out = append(out, &e)
@@ -185,9 +388,10 @@ func (b *overlayBuilder) compileEffects() error {
 
 // compileOwn compiles an effect the engine wrote itself (the spellcasting
 // effect), which is not on the table's menu.
-func (b *overlayBuilder) compileOwn(owner string, e *Effect) error {
+func (b *overlayBuilder) compileOwn(owner, path string, e *Effect) error {
 	if err := b.n.compileEffect(owner, e); err != nil {
-		return ovErr(owner, "%v", err)
+		// The only thing the table writes into it is the prepared formula.
+		return ovErr(owner, "%v", err).at(path+".casting.prepared_max", ReasonFormula)
 	}
 	b.n.effects[owner] = append(b.n.effects[owner], e)
 	return nil

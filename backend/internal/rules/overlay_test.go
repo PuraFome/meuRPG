@@ -431,9 +431,9 @@ func TestSpellDetailsOfTableSpells(t *testing.T) {
 	if cantrip.Spell.Level != 0 {
 		t.Errorf("cantrip level = %d", cantrip.Spell.Level)
 	}
-	// An SRD spell has no target and is read from its text.
+	// An SRD spell's target is worked out from the database's structured area.
 	srdDet, _ := c.SpellDetails("spell:fireball")
-	if srdDet.Target != (SpellTarget{}) {
+	if srdDet.Target != (SpellTarget{Kind: TargetArea, Shape: ShapeSphere, SizeFt: 20}) {
 		t.Errorf("fireball target = %+v", srdDet.Target)
 	}
 }
@@ -998,7 +998,7 @@ func TestWithRefusals(t *testing.T) {
 		{"spell target missing", func(o *Overlay) { o.Spells[0].Target = SpellTarget{} }, []string{"target"}},
 		{"area without a shape", func(o *Overlay) { o.Spells[1].Target.Shape = "" }, []string{"cone, cube"}},
 		{"area size", func(o *Overlay) { o.Spells[1].Target.SizeFt = 12 }, []string{"steps of 5"}},
-		{"one creature with a count", func(o *Overlay) { o.Spells[0].Target.Count = 2 }, []string{"takes nothing else"}},
+		{"one creature with a count", func(o *Overlay) { o.Spells[0].Target.Count = 2 }, []string{"takes only 0 to 10 more"}},
 		{"creatures with a count of 1", func(o *Overlay) { o.Spells[2].Target.Count = 1 }, []string{"several creatures"}},
 		{"attack and save", func(o *Overlay) { o.Spells[0].Save = &SpellSave{Ability: DEX, OnSuccess: "half"} }, []string{"not both"}},
 		{"attack with an area", func(o *Overlay) { o.Spells[1].Attack = "melee"; o.Spells[1].Save = nil }, []string{"area target"}},
@@ -1246,7 +1246,7 @@ func TestOverlayErrorFields(t *testing.T) {
 	}{
 		{"a formula deep in a class", func(o *Overlay) {
 			o.Classes[2].Levels[4].Features = []TableFeature{tf("x", "X", Effect{Type: "note"}, Effect{Type: "modifier", Target: "ac", Mode: "add", Value: "rand()"})}
-		}, "classes[2].levels[4].features[0].effects[1].formula", ReasonFormula},
+		}, "classes[2].levels[4].features[0].effects[1].value", ReasonFormula},
 		{"a handler in a trait", func(o *Overlay) {
 			o.Races[0].Traits[0].Effects = []Effect{{Type: "handler", Handler: "monk.martial_arts"}}
 		}, "races[0].traits[0].effects[0].type", ReasonEffect},
@@ -1255,7 +1255,7 @@ func TestOverlayErrorFields(t *testing.T) {
 		{"a duplicate", func(o *Overlay) { o.Spells[1].Key = o.Spells[0].Key }, "spells[1].key", ReasonDuplicateKey},
 		{"a hit die", func(o *Overlay) { o.Classes[1].HitDie = 7 }, "classes[1].hit_die", ReasonValue},
 		{"rows", func(o *Overlay) { o.Classes[3].Levels = o.Classes[3].Levels[:5] }, "classes[3].levels", ReasonTable},
-		{"a dangling parent", func(o *Overlay) { o.Subclasses[2].Class = "class:fantasma@mesa" }, "subclasses[2].class", ReasonReference},
+		{"a dangling parent", func(o *Overlay) { o.Subclasses[2].Class = "class:fantasma@mesa" }, "subclasses[2].class_key", ReasonReference},
 		{"a trait budget", func(o *Overlay) {
 			for n := 0; n < 61; n++ {
 				o.Races[0].Traits = append(o.Races[0].Traits, TableFeature{Key: "trait:t" + strconv.Itoa(n) + tableSuffix, NamePT: "T"})

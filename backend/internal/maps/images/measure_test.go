@@ -91,3 +91,33 @@ func TestShrinkMemory(t *testing.T) {
 			name, float64(len(data))/(1<<20), float64(peak)/(1<<20), float64(total)/(1<<20), float64(len(out))/(1<<10))
 	}
 }
+
+// TestCropFitMemory measures the textured map's worst case (MR-039): the model's
+// biggest answer (a 4096 x 4096 PNG, the 4K of a 1:1 ratio) cropped to a map image of
+// 16 megapixels (MaxFitPixels, 4000 x 4000), the most the server makes. Run it with
+// MEURPG_MEASURE=1 -v (docs/operacao.md has the numbers).
+func TestCropFitMemory(t *testing.T) {
+	if os.Getenv("MEURPG_MEASURE") == "" {
+		t.Skip("set MEURPG_MEASURE=1 to measure")
+	}
+	img := image.NewNRGBA(image.Rect(0, 0, 4096, 4096))
+	for y := range 4096 {
+		for x := range 4096 {
+			o := y*img.Stride + x*4
+			img.Pix[o], img.Pix[o+1], img.Pix[o+2], img.Pix[o+3] = uint8(x/16), uint8(y/16), uint8((x+y)/32), 255
+		}
+	}
+	data := encodePNG(t, img)
+	img = nil
+	var res *Result
+	start := time.Now()
+	peak, total := peakHeap(func() {
+		var err error
+		res, err = CropFit(data, func(w, h int) image.Rectangle { return image.Rect(0, 0, w, h) }, 4000, 4000)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Logf("CropFit of a 4096x4096 PNG (%.1f MiB) to 4000x4000: %v, peak live heap %.0f MiB, allocated %.0f MiB, result %.1f MiB",
+		float64(len(data))/(1<<20), time.Since(start).Round(time.Millisecond), float64(peak)/(1<<20), float64(total)/(1<<20), float64(len(res.Data))/(1<<20))
+}

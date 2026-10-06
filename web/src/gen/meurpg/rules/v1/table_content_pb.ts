@@ -37,7 +37,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/rules/v1/table_content.proto.
  */
 export const file_meurpg_rules_v1_table_content: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZXVycGcvcnVsZXMvdjEvdGFibGVfY29udGVudC5wcm90bxIPbWV1cnBnLnJ1bGVzLnYxIvwECgpUYWJsZUVudHJ5EgsKA2tleRgBIAEoCRIvCgRraW5kGAIgASgOMiEubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ29udGVudEtpbmQSDwoHbmFtZV9wdBgDIAEoCRIQCghhcmNoaXZlZBgEIAEoCBIQCghyZXZpc2lvbhgFIAEoBRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIYChBjaGFyYWN0ZXJzX3VzaW5nGAggASgFEi8KC2FyY2hpdmVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIyCgt0YWJsZV9jbGFzcxgKIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzSAASOAoOdGFibGVfc3ViY2xhc3MYCyABKAsyHi5tZXVycGcucnVsZXMudjEuVGFibGVTdWJjbGFzc0gAEjAKCnRhYmxlX3JhY2UYDCABKAsyGi5tZXVycGcucnVsZXMudjEuVGFibGVSYWNlSAASNgoNdGFibGVfc3VicmFjZRgNIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YnJhY2VIABI8ChB0YWJsZV9iYWNrZ3JvdW5kGA4gASgLMiAubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQmFja2dyb3VuZEgAEjIKC3RhYmxlX3NwZWxsGA8gASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxIAEIGCgRib2R5ItgCCgtUYWJsZUVmZmVjdBIMCgR0eXBlGAEgASgJEg4KBnRhcmdldBgCIAEoCRIMCgRtb2RlGAMgASgJEg0KBXZhbHVlGAQgASgJEgwKBHdoZW4YBSABKAkSDAoEdGFncxgGIAMoCRITCgtwcm9maWNpZW5jeRgHIAEoCRINCgVsZXZlbBgIIAEoCRIMCgRyb2xsGAkgASgJEg8KB3RhcmdldHMYCiADKAkSDQoFc2Vuc2UYCyABKAkSEAoIcmFuZ2VfZnQYDCABKAUSEAoIcmVzb3VyY2UYDSABKAkSCwoDbWF4GA4gASgJEhAKCHJlY2hhcmdlGA8gASgJEg4KBmNob2ljZRgQIAEoCRINCgVjb3VudBgRIAEoBRIMCgRmcm9tGBIgAygJEg8KB2Vjb25vbXkYEyABKAkSDgoGc3BlbGxzGBQgAygJEg8KB3RleHRfcHQYFSABKAkibAoMVGFibGVGZWF0dXJlEgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg8KB2Rlc2NfcHQYAyADKAkSLQoHZWZmZWN0cxgEIAMoCzIcLm1ldXJwZy5ydWxlcy52MS5UYWJsZUVmZmVjdCKqAQoMVGFibGVDYXN0aW5nEgwKBGtpbmQYASABKAkSKQoHYWJpbGl0eRgCIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EhMKC3ByZXBhcmF0aW9uGAMgASgJEhEKCWxpc3RfZnJvbRgEIAEoCRIUCgxwcmVwYXJlZF9tYXgYBSABKAkSEwoLc3RhcnRfbGV2ZWwYBiABKAUSDgoGcml0dWFsGAcgASgIIpMBCg9UYWJsZUNsYXNzTGV2ZWwSEgoKcHJvZl9ib251cxgBIAEoBRIvCghmZWF0dXJlcxgCIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUSFgoOY2FudHJpcHNfa25vd24YAyABKAUSFAoMc3BlbGxzX2tub3duGAQgASgFEg0KBXNsb3RzGAUgAygFItMDCgpUYWJsZUNsYXNzEg8KB25hbWVfcHQYASABKAkSDwoHaGl0X2RpZRgCIAEoBRIvCg1zYXZpbmdfdGhyb3dzGAMgAygOMhgubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHkSFAoMc2tpbGxfY2hvb3NlGAQgASgFEhIKCnNraWxsX2Zyb20YBSADKAkSFQoNcHJvZmljaWVuY2llcxgGIAMoCRIwCghtaW5pbXVtcxgHIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEi4KBmFueV9vZhgIIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEiAKGG11bHRpY2xhc3NfcHJvZmljaWVuY2llcxgJIAMoCRIfChdtdWx0aWNsYXNzX3NraWxsX2Nob29zZRgKIAEoBRIWCg5zdWJjbGFzc19sZXZlbBgLIAEoBRISCgphc2lfbGV2ZWxzGAwgAygFEi4KB2Nhc3RpbmcYDSABKAsyHS5tZXVycGcucnVsZXMudjEuVGFibGVDYXN0aW5nEjAKBmxldmVscxgOIAMoCzIgLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzTGV2ZWwiPQoTVGFibGVBbHdheXNQcmVwYXJlZBITCgtjbGFzc19sZXZlbBgBIAEoBRIRCglzcGVsbF9rZXkYAiABKAkikQEKElRhYmxlU3ViY2xhc3NMZXZlbBINCgVsZXZlbBgBIAEoBRIvCghmZWF0dXJlcxgCIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUSFgoOY2FudHJpcHNfa25vd24YAyABKAUSFAoMc3BlbGxzX2tub3duGAQgASgFEg0KBXNsb3RzGAUgAygFIvcBCg1UYWJsZVN1YmNsYXNzEg8KB25hbWVfcHQYASABKAkSEQoJY2xhc3Nfa2V5GAIgASgJEg0KBWxldmVsGAMgASgFEg8KB2Rlc2NfcHQYBCADKAkSMwoGbGV2ZWxzGAUgAygLMiMubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3ViY2xhc3NMZXZlbBIuCgdjYXN0aW5nGAYgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ2FzdGluZxI9Cg9hbHdheXNfcHJlcGFyZWQYByADKAsyJC5tZXVycGcucnVsZXMudjEuVGFibGVBbHdheXNQcmVwYXJlZCKAAgoJVGFibGVSYWNlEg8KB25hbWVfcHQYASABKAkSDAoEc2l6ZRgCIAEoCRIQCghzcGVlZF9mdBgDIAEoBRI3Cg9hYmlsaXR5X2JvbnVzZXMYBCABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIWCg5jaG9pY2VfYm9udXNlcxgFIAMoBRIVCg1kYXJrdmlzaW9uX2Z0GAYgASgFEhEKCWxhbmd1YWdlcxgHIAMoCRIYChBsYW5ndWFnZV9jaG9pY2VzGAggASgFEi0KBnRyYWl0cxgJIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUimQEKDFRhYmxlU3VicmFjZRIPCgduYW1lX3B0GAEgASgJEhAKCHJhY2Vfa2V5GAIgASgJEjcKD2FiaWxpdHlfYm9udXNlcxgDIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEi0KBnRyYWl0cxgEIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUioQEKD1RhYmxlQmFja2dyb3VuZBIPCgduYW1lX3B0GAEgASgJEg4KBnNraWxscxgCIAMoCRINCgV0b29scxgDIAMoCRIYChBsYW5ndWFnZV9jaG9pY2VzGAQgASgFEhQKDGVxdWlwbWVudF9wdBgFIAEoCRIuCgdmZWF0dXJlGAYgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRmVhdHVyZSKvAQoQVGFibGVTcGVsbFRhcmdldBIzCgRraW5kGAEgASgOMiUubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxUYXJnZXRLaW5kEg0KBWNvdW50GAIgASgFEhYKDnBlcl9zbG90X2xldmVsGAMgASgFEi4KBXNoYXBlGAQgASgOMh8ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQXJlYVNoYXBlEg8KB3NpemVfZnQYBSABKAUiawoVVGFibGVTcGVsbENhc3RpbmdUaW1lEi4KBHVuaXQYASABKA4yIC5tZXVycGcucnVsZXMudjEuQ2FzdGluZ1RpbWVVbml0Eg4KBmFtb3VudBgCIAEoBRISCgp0cmlnZ2VyX3B0GAMgASgJIlUKD1RhYmxlU3BlbGxSYW5nZRItCgRraW5kGAEgASgOMh8ubWV1cnBnLnJ1bGVzLnYxLlNwZWxsUmFuZ2VLaW5kEhMKC2Rpc3RhbmNlX2Z0GAIgASgFIpcBChJUYWJsZVNwZWxsRHVyYXRpb24SMAoEa2luZBgBIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uS2luZBIOCgZhbW91bnQYAiABKAUSMAoEdW5pdBgDIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uVW5pdBINCgV1cF90bxgEIAEoCCJeChRUYWJsZVNwZWxsQ29tcG9uZW50cxIOCgZ2ZXJiYWwYASABKAgSDwoHc29tYXRpYxgCIAEoCBIQCghtYXRlcmlhbBgDIAEoCBITCgttYXRlcmlhbF9wdBgEIAEoCSJjChBUYWJsZVNwZWxsRGFtYWdlEhcKD2RhbWFnZV90eXBlX2tleRgBIAEoCRIMCgRkaWNlGAIgASgJEhYKDnBlcl9zbG90X2xldmVsGAMgASgJEhAKCHBlcl90aWVyGAQgASgJIk0KDlRhYmxlU3BlbGxIZWFsEgwKBGRpY2UYASABKAkSFgoOcGVyX3Nsb3RfbGV2ZWwYAiABKAkSFQoNYWRkc19tb2RpZmllchgDIAEoCCLVBAoKVGFibGVTcGVsbBIPCgduYW1lX3B0GAEgASgJEg0KBWxldmVsGAIgASgFEhIKCnNjaG9vbF9rZXkYAyABKAkSPAoMY2FzdGluZ190aW1lGAQgASgLMiYubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxDYXN0aW5nVGltZRIvCgVyYW5nZRgFIAEoCzIgLm1ldXJwZy5ydWxlcy52MS5UYWJsZVNwZWxsUmFuZ2USNQoIZHVyYXRpb24YBiABKAsyIy5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbER1cmF0aW9uEjkKCmNvbXBvbmVudHMYByABKAsyJS5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbENvbXBvbmVudHMSFQoNY29uY2VudHJhdGlvbhgIIAEoCBIOCgZyaXR1YWwYCSABKAgSEgoKY2xhc3Nfa2V5cxgKIAMoCRIPCgdkZXNjX3B0GAsgAygJEhcKD2hpZ2hlcl9sZXZlbF9wdBgMIAMoCRIxCgZ0YXJnZXQYDSABKAsyIS5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbFRhcmdldBIOCgZhdHRhY2sYDiABKAkSKAoEc2F2ZRgPIAEoCzIaLm1ldXJwZy5ydWxlcy52MS5TcGVsbFNhdmUSMQoGZGFtYWdlGBAgAygLMiEubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxEYW1hZ2USLQoEaGVhbBgRIAEoCzIfLm1ldXJwZy5ydWxlcy52MS5UYWJsZVNwZWxsSGVhbCJUChVUYWJsZUNvbnRlbnRWaW9sYXRpb24SDQoFZmllbGQYASABKAkSDgoGcmVhc29uGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSCwoDa2V5GAQgASgJIlEKE1RhYmxlQ29udGVudFJlZnVzYWwSOgoKdmlvbGF0aW9ucxgBIAMoCzImLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNvbnRlbnRWaW9sYXRpb24iXgoTVGFibGVDb250ZW50QmxvY2tlZBI6CgZyZWFzb24YASABKA4yKi5tZXVycGcucnVsZXMudjEuVGFibGVDb250ZW50QmxvY2tlZFJlYXNvbhILCgNrZXkYAiABKAkiZAoRQWZmZWN0ZWRDaGFyYWN0ZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgDIAEoCRIOCgZpc3N1ZXMYBCABKAUiLgoXTGlzdFRhYmxlRW50cmllc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkieQoYTGlzdFRhYmxlRW50cmllc1Jlc3BvbnNlEiwKB2VudHJpZXMYASADKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBRIXCg9jb250ZW50X3ZlcnNpb24YAyABKAkigAMKF0NyZWF0ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjIKC3RhYmxlX2NsYXNzGAogASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ2xhc3NIABI4Cg50YWJsZV9zdWJjbGFzcxgLIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YmNsYXNzSAASMAoKdGFibGVfcmFjZRgMIAEoCzIaLm1ldXJwZy5ydWxlcy52MS5UYWJsZVJhY2VIABI2Cg10YWJsZV9zdWJyYWNlGA0gASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3VicmFjZUgAEjwKEHRhYmxlX2JhY2tncm91bmQYDiABKAsyIC5tZXVycGcucnVsZXMudjEuVGFibGVCYWNrZ3JvdW5kSAASMgoLdGFibGVfc3BlbGwYDyABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbEgAQgYKBGJvZHkiXgoYQ3JlYXRlVGFibGVFbnRyeVJlc3BvbnNlEioKBWVudHJ5GAEgASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRW50cnkSFgoOdGFibGVfcmV2aXNpb24YAiABKAUiqAMKF1VwZGF0ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgsKA2tleRgCIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgDIAEoBRIyCgt0YWJsZV9jbGFzcxgKIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzSAASOAoOdGFibGVfc3ViY2xhc3MYCyABKAsyHi5tZXVycGcucnVsZXMudjEuVGFibGVTdWJjbGFzc0gAEjAKCnRhYmxlX3JhY2UYDCABKAsyGi5tZXVycGcucnVsZXMudjEuVGFibGVSYWNlSAASNgoNdGFibGVfc3VicmFjZRgNIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YnJhY2VIABI8ChB0YWJsZV9iYWNrZ3JvdW5kGA4gASgLMiAubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQmFja2dyb3VuZEgAEjIKC3RhYmxlX3NwZWxsGA8gASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxIAEIGCgRib2R5Ip8BChhVcGRhdGVUYWJsZUVudHJ5UmVzcG9uc2USKgoFZW50cnkYASABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBRI/ChNhZmZlY3RlZF9jaGFyYWN0ZXJzGAMgAygLMiIubWV1cnBnLnJ1bGVzLnYxLkFmZmVjdGVkQ2hhcmFjdGVyIjwKGEFyY2hpdmVUYWJsZUVudHJ5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRILCgNrZXkYAiABKAkiXwoZQXJjaGl2ZVRhYmxlRW50cnlSZXNwb25zZRIqCgVlbnRyeRgBIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUVudHJ5EhYKDnRhYmxlX3JldmlzaW9uGAIgASgFIj4KGlVuYXJjaGl2ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgsKA2tleRgCIAEoCSJhChtVbmFyY2hpdmVUYWJsZUVudHJ5UmVzcG9uc2USKgoFZW50cnkYASABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBSrzAQoQVGFibGVDb250ZW50S2luZBIiCh5UQUJMRV9DT05URU5UX0tJTkRfVU5TUEVDSUZJRUQQABIcChhUQUJMRV9DT05URU5UX0tJTkRfQ0xBU1MQARIfChtUQUJMRV9DT05URU5UX0tJTkRfU1VCQ0xBU1MQAhIbChdUQUJMRV9DT05URU5UX0tJTkRfUkFDRRADEh4KGlRBQkxFX0NPTlRFTlRfS0lORF9TVUJSQUNFEAQSIQodVEFCTEVfQ09OVEVOVF9LSU5EX0JBQ0tHUk9VTkQQBRIcChhUQUJMRV9DT05URU5UX0tJTkRfU1BFTEwQBirQAQoUVGFibGVTcGVsbFRhcmdldEtpbmQSJwojVEFCTEVfU1BFTExfVEFSR0VUX0tJTkRfVU5TUEVDSUZJRUQQABIkCiBUQUJMRV9TUEVMTF9UQVJHRVRfS0lORF9DUkVBVFVSRRABEiUKIVRBQkxFX1NQRUxMX1RBUkdFVF9LSU5EX0NSRUFUVVJFUxACEiAKHFRBQkxFX1NQRUxMX1RBUkdFVF9LSU5EX0FSRUEQAxIgChxUQUJMRV9TUEVMTF9UQVJHRVRfS0lORF9TRUxGEAQqvwEKDlRhYmxlQXJlYVNoYXBlEiAKHFRBQkxFX0FSRUFfU0hBUEVfVU5TUEVDSUZJRUQQABIZChVUQUJMRV9BUkVBX1NIQVBFX0NPTkUQARIZChVUQUJMRV9BUkVBX1NIQVBFX0NVQkUQAhIdChlUQUJMRV9BUkVBX1NIQVBFX0NZTElOREVSEAMSGQoVVEFCTEVfQVJFQV9TSEFQRV9MSU5FEAQSGwoXVEFCTEVfQVJFQV9TSEFQRV9TUEhFUkUQBSrLAQoZVGFibGVDb250ZW50QmxvY2tlZFJlYXNvbhIsCihUQUJMRV9DT05URU5UX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJgoiVEFCTEVfQ09OVEVOVF9CTE9DS0VEX1JFQVNPTl9TVEFMRRABEikKJVRBQkxFX0NPTlRFTlRfQkxPQ0tFRF9SRUFTT05fQVJDSElWRUQQAhItCilUQUJMRV9DT05URU5UX0JMT0NLRURfUkVBU09OX05PVF9BUkNISVZFRBADMrsEChNUYWJsZUNvbnRlbnRTZXJ2aWNlEmwKEExpc3RUYWJsZUVudHJpZXMSKC5tZXVycGcucnVsZXMudjEuTGlzdFRhYmxlRW50cmllc1JlcXVlc3QaKS5tZXVycGcucnVsZXMudjEuTGlzdFRhYmxlRW50cmllc1Jlc3BvbnNlIgOQAgISaQoQQ3JlYXRlVGFibGVFbnRyeRIoLm1ldXJwZy5ydWxlcy52MS5DcmVhdGVUYWJsZUVudHJ5UmVxdWVzdBopLm1ldXJwZy5ydWxlcy52MS5DcmVhdGVUYWJsZUVudHJ5UmVzcG9uc2UiABJpChBVcGRhdGVUYWJsZUVudHJ5EigubWV1cnBnLnJ1bGVzLnYxLlVwZGF0ZVRhYmxlRW50cnlSZXF1ZXN0GikubWV1cnBnLnJ1bGVzLnYxLlVwZGF0ZVRhYmxlRW50cnlSZXNwb25zZSIAEmwKEUFyY2hpdmVUYWJsZUVudHJ5EikubWV1cnBnLnJ1bGVzLnYxLkFyY2hpdmVUYWJsZUVudHJ5UmVxdWVzdBoqLm1ldXJwZy5ydWxlcy52MS5BcmNoaXZlVGFibGVFbnRyeVJlc3BvbnNlIgAScgoTVW5hcmNoaXZlVGFibGVFbnRyeRIrLm1ldXJwZy5ydWxlcy52MS5VbmFyY2hpdmVUYWJsZUVudHJ5UmVxdWVzdBosLm1ldXJwZy5ydWxlcy52MS5VbmFyY2hpdmVUYWJsZUVudHJ5UmVzcG9uc2UiAELGAQoTY29tLm1ldXJwZy5ydWxlcy52MUIRVGFibGVDb250ZW50UHJvdG9QAVo+Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3J1bGVzL3YxO3J1bGVzdjGiAgNNUliqAg9NZXVycGcuUnVsZXMuVjHKAg9NZXVycGdcUnVsZXNcVjHiAhtNZXVycGdcUnVsZXNcVjFcR1BCTWV0YWRhdGHqAhFNZXVycGc6OlJ1bGVzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
+  fileDesc("CiNtZXVycGcvcnVsZXMvdjEvdGFibGVfY29udGVudC5wcm90bxIPbWV1cnBnLnJ1bGVzLnYxIvwECgpUYWJsZUVudHJ5EgsKA2tleRgBIAEoCRIvCgRraW5kGAIgASgOMiEubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ29udGVudEtpbmQSDwoHbmFtZV9wdBgDIAEoCRIQCghhcmNoaXZlZBgEIAEoCBIQCghyZXZpc2lvbhgFIAEoBRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIYChBjaGFyYWN0ZXJzX3VzaW5nGAggASgFEi8KC2FyY2hpdmVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIyCgt0YWJsZV9jbGFzcxgKIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzSAASOAoOdGFibGVfc3ViY2xhc3MYCyABKAsyHi5tZXVycGcucnVsZXMudjEuVGFibGVTdWJjbGFzc0gAEjAKCnRhYmxlX3JhY2UYDCABKAsyGi5tZXVycGcucnVsZXMudjEuVGFibGVSYWNlSAASNgoNdGFibGVfc3VicmFjZRgNIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YnJhY2VIABI8ChB0YWJsZV9iYWNrZ3JvdW5kGA4gASgLMiAubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQmFja2dyb3VuZEgAEjIKC3RhYmxlX3NwZWxsGA8gASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxIAEIGCgRib2R5ItgCCgtUYWJsZUVmZmVjdBIMCgR0eXBlGAEgASgJEg4KBnRhcmdldBgCIAEoCRIMCgRtb2RlGAMgASgJEg0KBXZhbHVlGAQgASgJEgwKBHdoZW4YBSABKAkSDAoEdGFncxgGIAMoCRITCgtwcm9maWNpZW5jeRgHIAEoCRINCgVsZXZlbBgIIAEoCRIMCgRyb2xsGAkgASgJEg8KB3RhcmdldHMYCiADKAkSDQoFc2Vuc2UYCyABKAkSEAoIcmFuZ2VfZnQYDCABKAUSEAoIcmVzb3VyY2UYDSABKAkSCwoDbWF4GA4gASgJEhAKCHJlY2hhcmdlGA8gASgJEg4KBmNob2ljZRgQIAEoCRINCgVjb3VudBgRIAEoBRIMCgRmcm9tGBIgAygJEg8KB2Vjb25vbXkYEyABKAkSDgoGc3BlbGxzGBQgAygJEg8KB3RleHRfcHQYFSABKAkibAoMVGFibGVGZWF0dXJlEgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg8KB2Rlc2NfcHQYAyADKAkSLQoHZWZmZWN0cxgEIAMoCzIcLm1ldXJwZy5ydWxlcy52MS5UYWJsZUVmZmVjdCKqAQoMVGFibGVDYXN0aW5nEgwKBGtpbmQYASABKAkSKQoHYWJpbGl0eRgCIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EhMKC3ByZXBhcmF0aW9uGAMgASgJEhEKCWxpc3RfZnJvbRgEIAEoCRIUCgxwcmVwYXJlZF9tYXgYBSABKAkSEwoLc3RhcnRfbGV2ZWwYBiABKAUSDgoGcml0dWFsGAcgASgIIpMBCg9UYWJsZUNsYXNzTGV2ZWwSEgoKcHJvZl9ib251cxgBIAEoBRIvCghmZWF0dXJlcxgCIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUSFgoOY2FudHJpcHNfa25vd24YAyABKAUSFAoMc3BlbGxzX2tub3duGAQgASgFEg0KBXNsb3RzGAUgAygFItMDCgpUYWJsZUNsYXNzEg8KB25hbWVfcHQYASABKAkSDwoHaGl0X2RpZRgCIAEoBRIvCg1zYXZpbmdfdGhyb3dzGAMgAygOMhgubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHkSFAoMc2tpbGxfY2hvb3NlGAQgASgFEhIKCnNraWxsX2Zyb20YBSADKAkSFQoNcHJvZmljaWVuY2llcxgGIAMoCRIwCghtaW5pbXVtcxgHIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEi4KBmFueV9vZhgIIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEiAKGG11bHRpY2xhc3NfcHJvZmljaWVuY2llcxgJIAMoCRIfChdtdWx0aWNsYXNzX3NraWxsX2Nob29zZRgKIAEoBRIWCg5zdWJjbGFzc19sZXZlbBgLIAEoBRISCgphc2lfbGV2ZWxzGAwgAygFEi4KB2Nhc3RpbmcYDSABKAsyHS5tZXVycGcucnVsZXMudjEuVGFibGVDYXN0aW5nEjAKBmxldmVscxgOIAMoCzIgLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzTGV2ZWwiPQoTVGFibGVBbHdheXNQcmVwYXJlZBITCgtjbGFzc19sZXZlbBgBIAEoBRIRCglzcGVsbF9rZXkYAiABKAkikQEKElRhYmxlU3ViY2xhc3NMZXZlbBINCgVsZXZlbBgBIAEoBRIvCghmZWF0dXJlcxgCIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUSFgoOY2FudHJpcHNfa25vd24YAyABKAUSFAoMc3BlbGxzX2tub3duGAQgASgFEg0KBXNsb3RzGAUgAygFIvcBCg1UYWJsZVN1YmNsYXNzEg8KB25hbWVfcHQYASABKAkSEQoJY2xhc3Nfa2V5GAIgASgJEg0KBWxldmVsGAMgASgFEg8KB2Rlc2NfcHQYBCADKAkSMwoGbGV2ZWxzGAUgAygLMiMubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3ViY2xhc3NMZXZlbBIuCgdjYXN0aW5nGAYgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ2FzdGluZxI9Cg9hbHdheXNfcHJlcGFyZWQYByADKAsyJC5tZXVycGcucnVsZXMudjEuVGFibGVBbHdheXNQcmVwYXJlZCKAAgoJVGFibGVSYWNlEg8KB25hbWVfcHQYASABKAkSDAoEc2l6ZRgCIAEoCRIQCghzcGVlZF9mdBgDIAEoBRI3Cg9hYmlsaXR5X2JvbnVzZXMYBCABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIWCg5jaG9pY2VfYm9udXNlcxgFIAMoBRIVCg1kYXJrdmlzaW9uX2Z0GAYgASgFEhEKCWxhbmd1YWdlcxgHIAMoCRIYChBsYW5ndWFnZV9jaG9pY2VzGAggASgFEi0KBnRyYWl0cxgJIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUimQEKDFRhYmxlU3VicmFjZRIPCgduYW1lX3B0GAEgASgJEhAKCHJhY2Vfa2V5GAIgASgJEjcKD2FiaWxpdHlfYm9udXNlcxgDIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzEi0KBnRyYWl0cxgEIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZUZlYXR1cmUioQEKD1RhYmxlQmFja2dyb3VuZBIPCgduYW1lX3B0GAEgASgJEg4KBnNraWxscxgCIAMoCRINCgV0b29scxgDIAMoCRIYChBsYW5ndWFnZV9jaG9pY2VzGAQgASgFEhQKDGVxdWlwbWVudF9wdBgFIAEoCRIuCgdmZWF0dXJlGAYgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRmVhdHVyZSKvAQoQVGFibGVTcGVsbFRhcmdldBIzCgRraW5kGAEgASgOMiUubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxUYXJnZXRLaW5kEg0KBWNvdW50GAIgASgFEhYKDnBlcl9zbG90X2xldmVsGAMgASgFEi4KBXNoYXBlGAQgASgOMh8ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQXJlYVNoYXBlEg8KB3NpemVfZnQYBSABKAUiawoVVGFibGVTcGVsbENhc3RpbmdUaW1lEi4KBHVuaXQYASABKA4yIC5tZXVycGcucnVsZXMudjEuQ2FzdGluZ1RpbWVVbml0Eg4KBmFtb3VudBgCIAEoBRISCgp0cmlnZ2VyX3B0GAMgASgJIlUKD1RhYmxlU3BlbGxSYW5nZRItCgRraW5kGAEgASgOMh8ubWV1cnBnLnJ1bGVzLnYxLlNwZWxsUmFuZ2VLaW5kEhMKC2Rpc3RhbmNlX2Z0GAIgASgFIpcBChJUYWJsZVNwZWxsRHVyYXRpb24SMAoEa2luZBgBIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uS2luZBIOCgZhbW91bnQYAiABKAUSMAoEdW5pdBgDIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uVW5pdBINCgV1cF90bxgEIAEoCCJeChRUYWJsZVNwZWxsQ29tcG9uZW50cxIOCgZ2ZXJiYWwYASABKAgSDwoHc29tYXRpYxgCIAEoCBIQCghtYXRlcmlhbBgDIAEoCBITCgttYXRlcmlhbF9wdBgEIAEoCSJjChBUYWJsZVNwZWxsRGFtYWdlEhcKD2RhbWFnZV90eXBlX2tleRgBIAEoCRIMCgRkaWNlGAIgASgJEhYKDnBlcl9zbG90X2xldmVsGAMgASgJEhAKCHBlcl90aWVyGAQgASgJIk0KDlRhYmxlU3BlbGxIZWFsEgwKBGRpY2UYASABKAkSFgoOcGVyX3Nsb3RfbGV2ZWwYAiABKAkSFQoNYWRkc19tb2RpZmllchgDIAEoCCLVBAoKVGFibGVTcGVsbBIPCgduYW1lX3B0GAEgASgJEg0KBWxldmVsGAIgASgFEhIKCnNjaG9vbF9rZXkYAyABKAkSPAoMY2FzdGluZ190aW1lGAQgASgLMiYubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxDYXN0aW5nVGltZRIvCgVyYW5nZRgFIAEoCzIgLm1ldXJwZy5ydWxlcy52MS5UYWJsZVNwZWxsUmFuZ2USNQoIZHVyYXRpb24YBiABKAsyIy5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbER1cmF0aW9uEjkKCmNvbXBvbmVudHMYByABKAsyJS5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbENvbXBvbmVudHMSFQoNY29uY2VudHJhdGlvbhgIIAEoCBIOCgZyaXR1YWwYCSABKAgSEgoKY2xhc3Nfa2V5cxgKIAMoCRIPCgdkZXNjX3B0GAsgAygJEhcKD2hpZ2hlcl9sZXZlbF9wdBgMIAMoCRIxCgZ0YXJnZXQYDSABKAsyIS5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbFRhcmdldBIOCgZhdHRhY2sYDiABKAkSKAoEc2F2ZRgPIAEoCzIaLm1ldXJwZy5ydWxlcy52MS5TcGVsbFNhdmUSMQoGZGFtYWdlGBAgAygLMiEubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxEYW1hZ2USLQoEaGVhbBgRIAEoCzIfLm1ldXJwZy5ydWxlcy52MS5UYWJsZVNwZWxsSGVhbCJUChVUYWJsZUNvbnRlbnRWaW9sYXRpb24SDQoFZmllbGQYASABKAkSDgoGcmVhc29uGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSCwoDa2V5GAQgASgJIlEKE1RhYmxlQ29udGVudFJlZnVzYWwSOgoKdmlvbGF0aW9ucxgBIAMoCzImLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNvbnRlbnRWaW9sYXRpb24iXgoTVGFibGVDb250ZW50QmxvY2tlZBI6CgZyZWFzb24YASABKA4yKi5tZXVycGcucnVsZXMudjEuVGFibGVDb250ZW50QmxvY2tlZFJlYXNvbhILCgNrZXkYAiABKAkiZAoRQWZmZWN0ZWRDaGFyYWN0ZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgDIAEoCRIOCgZpc3N1ZXMYBCABKAUiLgoXTGlzdFRhYmxlRW50cmllc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkieQoYTGlzdFRhYmxlRW50cmllc1Jlc3BvbnNlEiwKB2VudHJpZXMYASADKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBRIXCg9jb250ZW50X3ZlcnNpb24YAyABKAkigAMKF0NyZWF0ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjIKC3RhYmxlX2NsYXNzGAogASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQ2xhc3NIABI4Cg50YWJsZV9zdWJjbGFzcxgLIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YmNsYXNzSAASMAoKdGFibGVfcmFjZRgMIAEoCzIaLm1ldXJwZy5ydWxlcy52MS5UYWJsZVJhY2VIABI2Cg10YWJsZV9zdWJyYWNlGA0gASgLMh0ubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3VicmFjZUgAEjwKEHRhYmxlX2JhY2tncm91bmQYDiABKAsyIC5tZXVycGcucnVsZXMudjEuVGFibGVCYWNrZ3JvdW5kSAASMgoLdGFibGVfc3BlbGwYDyABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVTcGVsbEgAQgYKBGJvZHkiXgoYQ3JlYXRlVGFibGVFbnRyeVJlc3BvbnNlEioKBWVudHJ5GAEgASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRW50cnkSFgoOdGFibGVfcmV2aXNpb24YAiABKAUiqAMKF1VwZGF0ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgsKA2tleRgCIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgDIAEoBRIyCgt0YWJsZV9jbGFzcxgKIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUNsYXNzSAASOAoOdGFibGVfc3ViY2xhc3MYCyABKAsyHi5tZXVycGcucnVsZXMudjEuVGFibGVTdWJjbGFzc0gAEjAKCnRhYmxlX3JhY2UYDCABKAsyGi5tZXVycGcucnVsZXMudjEuVGFibGVSYWNlSAASNgoNdGFibGVfc3VicmFjZRgNIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5UYWJsZVN1YnJhY2VIABI8ChB0YWJsZV9iYWNrZ3JvdW5kGA4gASgLMiAubWV1cnBnLnJ1bGVzLnYxLlRhYmxlQmFja2dyb3VuZEgAEjIKC3RhYmxlX3NwZWxsGA8gASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlU3BlbGxIAEIGCgRib2R5Ip8BChhVcGRhdGVUYWJsZUVudHJ5UmVzcG9uc2USKgoFZW50cnkYASABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBRI/ChNhZmZlY3RlZF9jaGFyYWN0ZXJzGAMgAygLMiIubWV1cnBnLnJ1bGVzLnYxLkFmZmVjdGVkQ2hhcmFjdGVyIjwKGEFyY2hpdmVUYWJsZUVudHJ5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRILCgNrZXkYAiABKAkiXwoZQXJjaGl2ZVRhYmxlRW50cnlSZXNwb25zZRIqCgVlbnRyeRgBIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5UYWJsZUVudHJ5EhYKDnRhYmxlX3JldmlzaW9uGAIgASgFIj4KGlVuYXJjaGl2ZVRhYmxlRW50cnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgsKA2tleRgCIAEoCSJhChtVbmFyY2hpdmVUYWJsZUVudHJ5UmVzcG9uc2USKgoFZW50cnkYASABKAsyGy5tZXVycGcucnVsZXMudjEuVGFibGVFbnRyeRIWCg50YWJsZV9yZXZpc2lvbhgCIAEoBSIzChxHZXRDbGFzc1RhYmxlRGVmYXVsdHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIpUBCh1HZXRDbGFzc1RhYmxlRGVmYXVsdHNSZXNwb25zZRISCgpwcm9mX2JvbnVzGAEgAygFEhIKCmFzaV9sZXZlbHMYAiADKAUSFgoOc3ViY2xhc3NfbGV2ZWwYAyABKAUSNAoGdGFibGVzGAQgAygLMiQubWV1cnBnLnJ1bGVzLnYxLkNhc3RpbmdUYWJsZURlZmF1bHQimgEKE0Nhc3RpbmdUYWJsZURlZmF1bHQSDAoEa2luZBgBIAEoCRITCgtwcmVwYXJhdGlvbhgCIAEoCRITCgtzdGFydF9sZXZlbBgDIAEoBRIbChNyZWZlcmVuY2VfY2xhc3Nfa2V5GAQgASgJEi4KBHJvd3MYBSADKAsyIC5tZXVycGcucnVsZXMudjEuVGFibGVDbGFzc0xldmVsIisKFEdldEVmZmVjdE1lbnVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIogDChVHZXRFZmZlY3RNZW51UmVzcG9uc2USLgoFdHlwZXMYASADKAsyHy5tZXVycGcucnVsZXMudjEuRWZmZWN0TWVudVR5cGUSLgoFbGlzdHMYAiADKAsyHy5tZXVycGcucnVsZXMudjEuRWZmZWN0TWVudUxpc3QSNQoLb3B0aW9uX3NldHMYAyADKAsyIC5tZXVycGcucnVsZXMudjEuRWZmZWN0T3B0aW9uU2V0Ei8KB2hlbHBlcnMYBCADKAsyHi5tZXVycGcucnVsZXMudjEuRm9ybXVsYUhlbHBlchIVCg1jbGFzc19pbmRleGVzGAUgAygJEh4KFm1heF9mZWF0dXJlc19wZXJfY2xhc3MYBiABKAUSHwoXbWF4X2VmZmVjdHNfcGVyX2ZlYXR1cmUYByABKAUSGwoTbWF4X3RhZ3NfcGVyX2VmZmVjdBgIIAEoBRIYChBleHRyYV9hdHRhY2tfbWluGAkgASgFEhgKEGV4dHJhX2F0dGFja19tYXgYCiABKAUicgoORWZmZWN0TWVudVR5cGUSDAoEdHlwZRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg8KB2hpbnRfcHQYAyABKAkSMAoGZmllbGRzGAQgAygLMiAubWV1cnBnLnJ1bGVzLnYxLkVmZmVjdE1lbnVGaWVsZCJnCg9FZmZlY3RNZW51RmllbGQSDAoEbmFtZRgBIAEoCRIQCghyZXF1aXJlZBgCIAEoCBIMCgRraW5kGAMgASgJEgwKBGxpc3QYBCABKAkSCwoDbWluGAUgASgFEgsKA21heBgGIAEoBSJACg9FZmZlY3RNZW51VmFsdWUSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDwoHaGludF9wdBgDIAEoCSJQCg5FZmZlY3RNZW51TGlzdBIMCgRuYW1lGAEgASgJEjAKBnZhbHVlcxgCIAMoCzIgLm1ldXJwZy5ydWxlcy52MS5FZmZlY3RNZW51VmFsdWUicgoPRWZmZWN0T3B0aW9uU2V0EgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg4KBmNob29zZRgDIAEoBRIxCgdvcHRpb25zGAQgAygLMiAubWV1cnBnLnJ1bGVzLnYxLkVmZmVjdE1lbnVWYWx1ZSI/Cg1Gb3JtdWxhSGVscGVyEgwKBGNhbGwYASABKAkSDwoHcmV0dXJucxgCIAEoCRIPCgdoaW50X3B0GAMgASgJKvMBChBUYWJsZUNvbnRlbnRLaW5kEiIKHlRBQkxFX0NPTlRFTlRfS0lORF9VTlNQRUNJRklFRBAAEhwKGFRBQkxFX0NPTlRFTlRfS0lORF9DTEFTUxABEh8KG1RBQkxFX0NPTlRFTlRfS0lORF9TVUJDTEFTUxACEhsKF1RBQkxFX0NPTlRFTlRfS0lORF9SQUNFEAMSHgoaVEFCTEVfQ09OVEVOVF9LSU5EX1NVQlJBQ0UQBBIhCh1UQUJMRV9DT05URU5UX0tJTkRfQkFDS0dST1VORBAFEhwKGFRBQkxFX0NPTlRFTlRfS0lORF9TUEVMTBAGKtABChRUYWJsZVNwZWxsVGFyZ2V0S2luZBInCiNUQUJMRV9TUEVMTF9UQVJHRVRfS0lORF9VTlNQRUNJRklFRBAAEiQKIFRBQkxFX1NQRUxMX1RBUkdFVF9LSU5EX0NSRUFUVVJFEAESJQohVEFCTEVfU1BFTExfVEFSR0VUX0tJTkRfQ1JFQVRVUkVTEAISIAocVEFCTEVfU1BFTExfVEFSR0VUX0tJTkRfQVJFQRADEiAKHFRBQkxFX1NQRUxMX1RBUkdFVF9LSU5EX1NFTEYQBCq/AQoOVGFibGVBcmVhU2hhcGUSIAocVEFCTEVfQVJFQV9TSEFQRV9VTlNQRUNJRklFRBAAEhkKFVRBQkxFX0FSRUFfU0hBUEVfQ09ORRABEhkKFVRBQkxFX0FSRUFfU0hBUEVfQ1VCRRACEh0KGVRBQkxFX0FSRUFfU0hBUEVfQ1lMSU5ERVIQAxIZChVUQUJMRV9BUkVBX1NIQVBFX0xJTkUQBBIbChdUQUJMRV9BUkVBX1NIQVBFX1NQSEVSRRAFKssBChlUYWJsZUNvbnRlbnRCbG9ja2VkUmVhc29uEiwKKFRBQkxFX0NPTlRFTlRfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABImCiJUQUJMRV9DT05URU5UX0JMT0NLRURfUkVBU09OX1NUQUxFEAESKQolVEFCTEVfQ09OVEVOVF9CTE9DS0VEX1JFQVNPTl9BUkNISVZFRBACEi0KKVRBQkxFX0NPTlRFTlRfQkxPQ0tFRF9SRUFTT05fTk9UX0FSQ0hJVkVEEAMynQYKE1RhYmxlQ29udGVudFNlcnZpY2USbAoQTGlzdFRhYmxlRW50cmllcxIoLm1ldXJwZy5ydWxlcy52MS5MaXN0VGFibGVFbnRyaWVzUmVxdWVzdBopLm1ldXJwZy5ydWxlcy52MS5MaXN0VGFibGVFbnRyaWVzUmVzcG9uc2UiA5ACAhJpChBDcmVhdGVUYWJsZUVudHJ5EigubWV1cnBnLnJ1bGVzLnYxLkNyZWF0ZVRhYmxlRW50cnlSZXF1ZXN0GikubWV1cnBnLnJ1bGVzLnYxLkNyZWF0ZVRhYmxlRW50cnlSZXNwb25zZSIAEmkKEFVwZGF0ZVRhYmxlRW50cnkSKC5tZXVycGcucnVsZXMudjEuVXBkYXRlVGFibGVFbnRyeVJlcXVlc3QaKS5tZXVycGcucnVsZXMudjEuVXBkYXRlVGFibGVFbnRyeVJlc3BvbnNlIgASbAoRQXJjaGl2ZVRhYmxlRW50cnkSKS5tZXVycGcucnVsZXMudjEuQXJjaGl2ZVRhYmxlRW50cnlSZXF1ZXN0GioubWV1cnBnLnJ1bGVzLnYxLkFyY2hpdmVUYWJsZUVudHJ5UmVzcG9uc2UiABJyChNVbmFyY2hpdmVUYWJsZUVudHJ5EisubWV1cnBnLnJ1bGVzLnYxLlVuYXJjaGl2ZVRhYmxlRW50cnlSZXF1ZXN0GiwubWV1cnBnLnJ1bGVzLnYxLlVuYXJjaGl2ZVRhYmxlRW50cnlSZXNwb25zZSIAEnsKFUdldENsYXNzVGFibGVEZWZhdWx0cxItLm1ldXJwZy5ydWxlcy52MS5HZXRDbGFzc1RhYmxlRGVmYXVsdHNSZXF1ZXN0Gi4ubWV1cnBnLnJ1bGVzLnYxLkdldENsYXNzVGFibGVEZWZhdWx0c1Jlc3BvbnNlIgOQAgISYwoNR2V0RWZmZWN0TWVudRIlLm1ldXJwZy5ydWxlcy52MS5HZXRFZmZlY3RNZW51UmVxdWVzdBomLm1ldXJwZy5ydWxlcy52MS5HZXRFZmZlY3RNZW51UmVzcG9uc2UiA5ACAkLGAQoTY29tLm1ldXJwZy5ydWxlcy52MUIRVGFibGVDb250ZW50UHJvdG9QAVo+Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3J1bGVzL3YxO3J1bGVzdjGiAgNNUliqAg9NZXVycGcuUnVsZXMuVjHKAg9NZXVycGdcUnVsZXNcVjHiAhtNZXVycGdcUnVsZXNcVjFcR1BCTWV0YWRhdGHqAhFNZXVycGc6OlJ1bGVzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
 
 /**
  * TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -882,7 +882,8 @@ export type TableSpellTarget = Message<"meurpg.rules.v1.TableSpellTarget"> & {
 
   /**
    * CREATURES: how many at the spell's own circle (2 or more), and how many more
-   * for each circle above it.
+   * for each circle above it. CREATURE: only `per_slot_level`, how many more for
+   * each circle above ("uma criatura, mais uma por círculo", as Hold Person).
    *
    * @generated from field: int32 count = 2;
    */
@@ -947,7 +948,10 @@ export const TableSpellCastingTimeSchema: GenMessage<TableSpellCastingTime> = /*
   messageDesc(file_meurpg_rules_v1_table_content, 13);
 
 /**
- * TableSpellRange is a table spell's range. Special is not allowed.
+ * TableSpellRange is a table spell's range: SELF ("Pessoal"), TOUCH ("Toque"), SIGHT,
+ * UNLIMITED or RANGED with a distance. Special is not allowed. SELF only goes with a
+ * target of SELF or an AREA that comes out of the caster; a spell that picks one or
+ * several creatures has a distance or TOUCH.
  *
  * @generated from message meurpg.rules.v1.TableSpellRange
  */
@@ -1241,9 +1245,14 @@ export const TableSpellSchema: GenMessage<TableSpell> = /*@__PURE__*/
  */
 export type TableContentViolation = Message<"meurpg.rules.v1.TableContentViolation"> & {
   /**
-   * The path, with the body's field names and its own indexes
-   * ("table_class.levels[4].features[0].effects[1].value"). Empty for the content
-   * as a whole.
+   * The path of the field the editor draws, with the body's field names and its
+   * own indexes ("table_class.levels[4].slots[2]",
+   * "table_class.levels[4].features[0].effects[1].value",
+   * "table_subclass.always_prepared[1].spell_key",
+   * "table_class.casting.list_from"): one field per rule, so the editor marks the
+   * input and not the whole entry. Empty for the content as a whole. A formula that
+   * does not compile is at the effect's `value`, `when` or `max`, and a field the
+   * effect's type does not read (GetEffectMenu) is at that field.
    *
    * @generated from field: string field = 1;
    */
@@ -1722,6 +1731,469 @@ export const UnarchiveTableEntryResponseSchema: GenMessage<UnarchiveTableEntryRe
   messageDesc(file_meurpg_rules_v1_table_content, 33);
 
 /**
+ * GetClassTableDefaultsRequest names a campaign.
+ *
+ * @generated from message meurpg.rules.v1.GetClassTableDefaultsRequest
+ */
+export type GetClassTableDefaultsRequest = Message<"meurpg.rules.v1.GetClassTableDefaultsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetClassTableDefaultsRequest.
+ * Use `create(GetClassTableDefaultsRequestSchema)` to create a new message.
+ */
+export const GetClassTableDefaultsRequestSchema: GenMessage<GetClassTableDefaultsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 34);
+
+/**
+ * GetClassTableDefaultsResponse carries the defaults of the 20-level table.
+ *
+ * @generated from message meurpg.rules.v1.GetClassTableDefaultsResponse
+ */
+export type GetClassTableDefaultsResponse = Message<"meurpg.rules.v1.GetClassTableDefaultsResponse"> & {
+  /**
+   * The proficiency bonus by level, 20 entries, level 1 first: +2 at levels 1 to 4
+   * up to +6 at 17 to 20. A TableClassLevel with a `prof_bonus` of 0 means this.
+   *
+   * @generated from field: repeated int32 prof_bonus = 1;
+   */
+  profBonus: number[];
+
+  /**
+   * The levels with an Ability Score Improvement (4, 8, 12, 16 and 19): what an
+   * empty TableClass.asi_levels means.
+   *
+   * @generated from field: repeated int32 asi_levels = 2;
+   */
+  asiLevels: number[];
+
+  /**
+   * The class level the subclass is chosen at when TableClass.subclass_level is 0 (3).
+   *
+   * @generated from field: int32 subclass_level = 3;
+   */
+  subclassLevel: number;
+
+  /**
+   * One table per way of casting, in this order: none, then full, half, pact and
+   * third, each with the ways of preparing it offers.
+   *
+   * @generated from field: repeated meurpg.rules.v1.CastingTableDefault tables = 4;
+   */
+  tables: CastingTableDefault[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetClassTableDefaultsResponse.
+ * Use `create(GetClassTableDefaultsResponseSchema)` to create a new message.
+ */
+export const GetClassTableDefaultsResponseSchema: GenMessage<GetClassTableDefaultsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 35);
+
+/**
+ * CastingTableDefault is the default 20-level table of one way of casting.
+ *
+ * @generated from message meurpg.rules.v1.CastingTableDefault
+ */
+export type CastingTableDefault = Message<"meurpg.rules.v1.CastingTableDefault"> & {
+  /**
+   * "" for a class that does not cast, "full", "half" or "pact" for a class, and
+   * "third" for the casting of a subclass (TableCasting.kind).
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * "known" or "prepared" (TableCasting.preparation); empty for a class that does
+   * not cast.
+   *
+   * @generated from field: string preparation = 2;
+   */
+  preparation: string;
+
+  /**
+   * The class level casting starts at by default: 1 for a full caster and for pact
+   * magic, 2 for a half caster, 3 for a third caster; 0 for a class that does not
+   * cast. The rows before it have the casting columns at zero.
+   *
+   * @generated from field: int32 start_level = 3;
+   */
+  startLevel: number;
+
+  /**
+   * The SRD class whose table the numbers are ("class:cleric", "class:paladin"...);
+   * empty for the third caster, whose slots are the full table at a third of the
+   * level, rounded up.
+   *
+   * @generated from field: string reference_class_key = 4;
+   */
+  referenceClassKey: string;
+
+  /**
+   * The 20 rows, level 1 first, ready to be the `levels` of a TableClass (the
+   * features are empty). A subclass takes the rows from `start_level` on.
+   *
+   * @generated from field: repeated meurpg.rules.v1.TableClassLevel rows = 5;
+   */
+  rows: TableClassLevel[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.CastingTableDefault.
+ * Use `create(CastingTableDefaultSchema)` to create a new message.
+ */
+export const CastingTableDefaultSchema: GenMessage<CastingTableDefault> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 36);
+
+/**
+ * GetEffectMenuRequest names a campaign (its classes are in the menu).
+ *
+ * @generated from message meurpg.rules.v1.GetEffectMenuRequest
+ */
+export type GetEffectMenuRequest = Message<"meurpg.rules.v1.GetEffectMenuRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetEffectMenuRequest.
+ * Use `create(GetEffectMenuRequestSchema)` to create a new message.
+ */
+export const GetEffectMenuRequestSchema: GenMessage<GetEffectMenuRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 37);
+
+/**
+ * GetEffectMenuResponse carries the closed menu of effects.
+ *
+ * @generated from message meurpg.rules.v1.GetEffectMenuResponse
+ */
+export type GetEffectMenuResponse = Message<"meurpg.rules.v1.GetEffectMenuResponse"> & {
+  /**
+   * The effect types, in the picker's order. "Só texto" is a feature with none.
+   *
+   * @generated from field: repeated meurpg.rules.v1.EffectMenuType types = 1;
+   */
+  types: EffectMenuType[];
+
+  /**
+   * The closed lists the types' fields point at (EffectMenuField.list).
+   *
+   * @generated from field: repeated meurpg.rules.v1.EffectMenuList lists = 2;
+   */
+  lists: EffectMenuList[];
+
+  /**
+   * The SRD features that offer options: what a `choice` effect of kind "feature"
+   * may list in `from`.
+   *
+   * @generated from field: repeated meurpg.rules.v1.EffectOptionSet option_sets = 3;
+   */
+  optionSets: EffectOptionSet[];
+
+  /**
+   * The functions a formula may call.
+   *
+   * @generated from field: repeated meurpg.rules.v1.FormulaHelper helpers = 4;
+   */
+  helpers: FormulaHelper[];
+
+  /**
+   * What `classLevel("...")` takes: the SRD's classes and the campaign's, by their
+   * key without "class:".
+   *
+   * @generated from field: repeated string class_indexes = 5;
+   */
+  classIndexes: string[];
+
+  /**
+   * The most features one class or subclass has, and the most effects one feature
+   * has, and the most tags one effect has.
+   *
+   * @generated from field: int32 max_features_per_class = 6;
+   */
+  maxFeaturesPerClass: number;
+
+  /**
+   * @generated from field: int32 max_effects_per_feature = 7;
+   */
+  maxEffectsPerFeature: number;
+
+  /**
+   * @generated from field: int32 max_tags_per_effect = 8;
+   */
+  maxTagsPerEffect: number;
+
+  /**
+   * The attacks an extra_attack effect may make, from and to.
+   *
+   * @generated from field: int32 extra_attack_min = 9;
+   */
+  extraAttackMin: number;
+
+  /**
+   * @generated from field: int32 extra_attack_max = 10;
+   */
+  extraAttackMax: number;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetEffectMenuResponse.
+ * Use `create(GetEffectMenuResponseSchema)` to create a new message.
+ */
+export const GetEffectMenuResponseSchema: GenMessage<GetEffectMenuResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 38);
+
+/**
+ * EffectMenuType is one effect type of the menu.
+ *
+ * @generated from message meurpg.rules.v1.EffectMenuType
+ */
+export type EffectMenuType = Message<"meurpg.rules.v1.EffectMenuType"> & {
+  /**
+   * TableEffect.type.
+   *
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * The picker's label and its one-line explanation, in Portuguese.
+   *
+   * @generated from field: string name_pt = 2;
+   */
+  namePt: string;
+
+  /**
+   * @generated from field: string hint_pt = 3;
+   */
+  hintPt: string;
+
+  /**
+   * The fields the type reads, in the order the editor shows them. Any other field
+   * of TableEffect set on this type is refused when the entry is written (a
+   * TableContentViolation of reason "bad_value" at that field); one that is already
+   * stored is ignored. `when`, `tags` and `text_pt` are accepted on every type, and
+   * are listed only where they are usual. A note's `value` (a number shown in
+   * `text_pt`) needs a `text_pt` to show it in. What `from` takes depends on the
+   * kind of choice: for "feature", the keys of one EffectOptionSet; for "skill" and
+   * "expertise", skill keys (`skills`); for "language", language keys (`languages`);
+   * for "tool", tool keys (`tools`); for "cantrip" and "spell", a spell list: SRD
+   * class keys (`class:wizard`) whose list the player picks from (ClassIndexes
+   * lists them). Empty `from` is any of the kind.
+   *
+   * @generated from field: repeated meurpg.rules.v1.EffectMenuField fields = 4;
+   */
+  fields: EffectMenuField[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EffectMenuType.
+ * Use `create(EffectMenuTypeSchema)` to create a new message.
+ */
+export const EffectMenuTypeSchema: GenMessage<EffectMenuType> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 39);
+
+/**
+ * EffectMenuField is a field of an effect type.
+ *
+ * @generated from message meurpg.rules.v1.EffectMenuField
+ */
+export type EffectMenuField = Message<"meurpg.rules.v1.EffectMenuField"> & {
+  /**
+   * The name of the TableEffect field ("target", "range_ft", "text_pt"...).
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The effect is refused without it.
+   *
+   * @generated from field: bool required = 2;
+   */
+  required: boolean;
+
+  /**
+   * How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
+   * "text", "number", "choice" (one value of `list`), "choices" (several) or "tags".
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * The EffectMenuList the value comes from, when it is a closed list; empty for a
+   * free value. For a `choice` effect's `from` the list depends on the kind chosen:
+   * skills (`skills`), languages (`languages`), tools (`tools`) or, for "feature",
+   * the keys of an option set.
+   *
+   * @generated from field: string list = 4;
+   */
+  list: string;
+
+  /**
+   * The bounds of a number; 0 when there is none.
+   *
+   * @generated from field: int32 min = 5;
+   */
+  min: number;
+
+  /**
+   * @generated from field: int32 max = 6;
+   */
+  max: number;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EffectMenuField.
+ * Use `create(EffectMenuFieldSchema)` to create a new message.
+ */
+export const EffectMenuFieldSchema: GenMessage<EffectMenuField> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 40);
+
+/**
+ * EffectMenuValue is a value of a closed list.
+ *
+ * @generated from message meurpg.rules.v1.EffectMenuValue
+ */
+export type EffectMenuValue = Message<"meurpg.rules.v1.EffectMenuValue"> & {
+  /**
+   * What the effect stores ("add", "skill.stealth", "long_rest"...).
+   *
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string name_pt = 2;
+   */
+  namePt: string;
+
+  /**
+   * A short explanation where the name alone does not say; often empty.
+   *
+   * @generated from field: string hint_pt = 3;
+   */
+  hintPt: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EffectMenuValue.
+ * Use `create(EffectMenuValueSchema)` to create a new message.
+ */
+export const EffectMenuValueSchema: GenMessage<EffectMenuValue> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 41);
+
+/**
+ * EffectMenuList is a closed list a field takes.
+ *
+ * @generated from message meurpg.rules.v1.EffectMenuList
+ */
+export type EffectMenuList = Message<"meurpg.rules.v1.EffectMenuList"> & {
+  /**
+   * "modifier_targets", "modifier_modes", "proficiency_targets",
+   * "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
+   * "economies", "choice_kinds", "skills", "languages", "tools" or "tag_prefixes".
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated meurpg.rules.v1.EffectMenuValue values = 2;
+   */
+  values: EffectMenuValue[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EffectMenuList.
+ * Use `create(EffectMenuListSchema)` to create a new message.
+ */
+export const EffectMenuListSchema: GenMessage<EffectMenuList> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 42);
+
+/**
+ * EffectOptionSet is an SRD feature that offers options, such as a fighting style.
+ *
+ * @generated from message meurpg.rules.v1.EffectOptionSet
+ */
+export type EffectOptionSet = Message<"meurpg.rules.v1.EffectOptionSet"> & {
+  /**
+   * The offering feature's key and its Portuguese name.
+   *
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string name_pt = 2;
+   */
+  namePt: string;
+
+  /**
+   * How many the SRD lets the character pick; 0 when it depends on the level (the
+   * eldritch invocations).
+   *
+   * @generated from field: int32 choose = 3;
+   */
+  choose: number;
+
+  /**
+   * @generated from field: repeated meurpg.rules.v1.EffectMenuValue options = 4;
+   */
+  options: EffectMenuValue[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EffectOptionSet.
+ * Use `create(EffectOptionSetSchema)` to create a new message.
+ */
+export const EffectOptionSetSchema: GenMessage<EffectOptionSet> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 43);
+
+/**
+ * FormulaHelper is a function a formula may call.
+ *
+ * @generated from message meurpg.rules.v1.FormulaHelper
+ */
+export type FormulaHelper = Message<"meurpg.rules.v1.FormulaHelper"> & {
+  /**
+   * How it is written: `mod("<atributo>")`.
+   *
+   * @generated from field: string call = 1;
+   */
+  call: string;
+
+  /**
+   * What it gives: "number", "text" or "yes/no".
+   *
+   * @generated from field: string returns = 2;
+   */
+  returns: string;
+
+  /**
+   * What it is for, in Portuguese.
+   *
+   * @generated from field: string hint_pt = 3;
+   */
+  hintPt: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.FormulaHelper.
+ * Use `create(FormulaHelperSchema)` to create a new message.
+ */
+export const FormulaHelperSchema: GenMessage<FormulaHelper> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_table_content, 44);
+
+/**
  * TableContentKind says what an entry is.
  *
  * @generated from enum meurpg.rules.v1.TableContentKind
@@ -1816,7 +2288,7 @@ export enum TableSpellTargetKind {
   AREA = 3,
 
   /**
-   * Only the caster.
+   * Only the caster ("Só quem conjura"); the range must be SELF.
    *
    * @generated from enum value: TABLE_SPELL_TARGET_KIND_SELF = 4;
    */
@@ -2031,6 +2503,45 @@ export const TableContentService: GenService<{
     methodKind: "unary";
     input: typeof UnarchiveTableEntryRequestSchema;
     output: typeof UnarchiveTableEntryResponseSchema;
+  },
+  /**
+   * GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
+   * ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
+   * Improvement levels, and the 20-row table of each way of casting (none, full,
+   * half, pact and a subclass's third caster, each preparing or knowing its
+   * spells), with the slots, the cantrips and the spells known of the SRD's own
+   * class tables. The browser computes none of it: the master edits from these
+   * rows and the writes come back through CreateTableEntry and UpdateTableEntry,
+   * which check them as they check any edit. Only the master.
+   *
+   * Errors: `permission_denied`, `not_found`.
+   *
+   * @generated from rpc meurpg.rules.v1.TableContentService.GetClassTableDefaults
+   */
+  getClassTableDefaults: {
+    methodKind: "unary";
+    input: typeof GetClassTableDefaultsRequestSchema;
+    output: typeof GetClassTableDefaultsResponseSchema;
+  },
+  /**
+   * GetEffectMenu gives the closed menu of what a table feature may do, as data
+   * (MR-025, ADR-0018, section 4): the effect types and the fields of each, every
+   * closed list a field takes (modifier targets, modes, proficiencies, roll modes
+   * and targets, senses, recharges, granted-action economies, choice kinds, skills,
+   * languages, tools) with Portuguese names, the SRD option sets a choice may
+   * offer (fighting styles and the like), the formula helpers and the classes
+   * `classLevel` takes, and the limits. The class editor builds its pickers from
+   * it and hard-codes none of them; whatever it offers, TableContentService
+   * accepts. Only the master.
+   *
+   * Errors: `permission_denied`, `not_found`.
+   *
+   * @generated from rpc meurpg.rules.v1.TableContentService.GetEffectMenu
+   */
+  getEffectMenu: {
+    methodKind: "unary";
+    input: typeof GetEffectMenuRequestSchema;
+    output: typeof GetEffectMenuResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_rules_v1_table_content, 0);

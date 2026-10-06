@@ -182,6 +182,10 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           $typeName: 'meurpg.characters.v1.CustomBackground',
           name: 'Sábio',
           skillKeys: ['skill:arcana', 'skill:history'],
+          proficiencyKeys: ['proficiency:thieves-tools', 'language:elvish'],
+          featureName: 'Pesquisador',
+          featureText: 'Sabe a quem perguntar.',
+          equipment: 'Um tinteiro.',
         },
       },
     };
@@ -197,7 +201,16 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     // init shape, not the branded message `loaded` carried.
     expect(merged.background).toEqual({
       case: 'customBackground',
-      value: { name: 'Sábio', skillKeys: ['skill:arcana', 'skill:history'] },
+      // What the form does not show survives the save: the tools or languages, the
+      // feature and the equipment the server holds.
+      value: {
+        name: 'Sábio',
+        skillKeys: ['skill:arcana', 'skill:history'],
+        proficiencyKeys: ['proficiency:thieves-tools', 'language:elvish'],
+        featureName: 'Pesquisador',
+        featureText: 'Sabe a quem perguntar.',
+        equipment: 'Um tinteiro.',
+      },
     });
   });
 

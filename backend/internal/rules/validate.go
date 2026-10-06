@@ -93,7 +93,8 @@ func validate(b Build, c *content) error {
 		if _, ok := c.backgrounds[b.Background]; !ok {
 			return fail("full.background_key", "is not a known background")
 		}
-		if b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 {
+		if b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 || len(b.CustomBackgroundProficiencies) > 0 ||
+			b.CustomBackgroundFeatureName != "" || b.CustomBackgroundFeature != "" || b.CustomBackgroundEquipment != "" {
 			return fail("full.custom_background", "cannot be set with background_key")
 		}
 	}
@@ -102,6 +103,20 @@ func validate(b Build, c *content) error {
 	}
 	if err := checkKeys(c, "full.custom_background.skill_keys", b.CustomBackgroundSkills, CustomBackgroundSkillCount, isSkill); err != nil {
 		return err
+	}
+	// Two tools or languages in total, in any mix (SRD 5.1, "Customizing a
+	// Background"); fewer shows an Issue, as for the skills.
+	if err := checkKeys(c, "full.custom_background.proficiency_keys", b.CustomBackgroundProficiencies, CustomBackgroundProficiencyCount, isToolOrLanguage); err != nil {
+		return err
+	}
+	if err := checkName(b.CustomBackgroundFeatureName); err != "" {
+		return fail("full.custom_background.feature_name", "%s", err)
+	}
+	if utf8.RuneCountInString(b.CustomBackgroundFeature) > MaxCustomFeatureTextLength {
+		return fail("full.custom_background.feature_text", "must be at most %d characters", MaxCustomFeatureTextLength)
+	}
+	if utf8.RuneCountInString(b.CustomBackgroundEquipment) > MaxCustomEquipmentLength {
+		return fail("full.custom_background.equipment", "must be at most %d characters", MaxCustomEquipmentLength)
 	}
 	if err := checkKeys(c, "full.skill_proficiency_keys", b.SkillProficiencies, MaxSkillKeys, isSkill); err != nil {
 		return err
@@ -177,6 +192,16 @@ func checkKeys(c *content, field string, keys []string, limit int, valid func(*c
 
 func isSkill(c *content, k string) bool {
 	_, ok := c.skills[k]
+	return ok
+}
+
+// isToolOrLanguage: a tool proficiency (the kind a table background's tools
+// are) or a language of the SRD.
+func isToolOrLanguage(c *content, k string) bool {
+	if p, ok := c.proficiencies[k]; ok {
+		return p.Kind == "tool" || p.Kind == "other"
+	}
+	_, ok := c.languages[k]
 	return ok
 }
 

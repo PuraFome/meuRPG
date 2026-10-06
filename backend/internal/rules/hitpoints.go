@@ -92,12 +92,21 @@ func (x *deriver) speedAndSenses() {
 // chooses (from the background, a subrace or a class) are free text on the
 // sheet.
 func (x *deriver) languages() {
-	if x.race == nil {
-		return
-	}
-	for _, l := range x.race.Languages {
-		if _, ok := x.c.languages[l]; ok {
+	add := func(l string) {
+		if _, ok := x.c.languages[l]; ok && !slices.ContainsFunc(x.d.Languages, func(n NamedKey) bool { return n.Key == l }) {
 			x.d.Languages = append(x.d.Languages, NamedKey{Key: l, NamePT: x.c.namePT(l)})
+		}
+	}
+	if x.race != nil {
+		for _, l := range x.race.Languages {
+			add(l)
+		}
+	}
+	// A custom background's two picks are tools or languages, in any mix: the
+	// languages join the race's (the tools are in proficiencies()).
+	if x.b.Background == "" {
+		for _, l := range x.b.CustomBackgroundProficiencies {
+			add(l)
 		}
 	}
 }

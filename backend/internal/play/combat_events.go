@@ -196,6 +196,9 @@ type actionEvent struct {
 	Total    int32  `json:"total,omitempty"`
 	Physical bool   `json:"physical,omitempty"`
 	Outcome  string `json:"outcome,omitempty"`
+	// CriticalMax says the table's critical rule was "máximo mais uma rolagem" when
+	// the attack was rolled (RN-24): the answer of a retry says the same.
+	CriticalMaxRule bool `json:"critical_max_rule,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
@@ -209,6 +212,10 @@ type actionEvent struct {
 	DamageType string  `json:"damage_type,omitempty"`
 	Critical   bool    `json:"critical,omitempty"`
 	Applied    bool    `json:"applied,omitempty"`
+	// CriticalMax is what a critical hit added to the damage without rolling (the
+	// dice's maximum, under the table's rule "máximo mais uma rolagem"): part of
+	// Modifier, kept apart so the log can say where it came from.
+	CriticalMax int32 `json:"critical_max,omitempty"`
 
 	// Before and After are the target's hit points around a damage or the
 	// master's hand.
@@ -249,6 +256,10 @@ type actionEvent struct {
 	DeathBefore   *deathState `json:"death_before,omitempty"`
 	DeathOutcome  string      `json:"death_outcome,omitempty"`
 	FailuresAdded int32       `json:"failures_added,omitempty"`
+	// DeathHidden says the table hid the death saves when this event was written
+	// (RN-24): the owner and the master read its rolls and failures, nobody else, and
+	// a later change of the rule never rewrites it, as the fog's SeenBy does not.
+	DeathHidden bool `json:"death_hidden,omitempty"`
 	// The master applied another amount than the rolled one (Rolled), and the
 	// damage threatened a concentration (ConcentrationDC).
 	Overridden      bool  `json:"overridden,omitempty"`

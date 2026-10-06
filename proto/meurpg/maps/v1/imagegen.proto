@@ -4,11 +4,14 @@ package meurpg.maps.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/maps/v1/gallery.proto";
+import "meurpg/maps/v1/maps.proto";
 
 // ImageGenerationService makes pictures with an image model (the Gemini API,
 // ADR-0019) for the campaign's master (MR-039, RN-28). Slice 10.8a serves the
-// scene art and the edits; the images made from a map (the isometric view, the
-// map with a texture) come in 10.8b, as new RPCs or new fields here.
+// scene art and the edits; slice 10.8b the images made from a map: the scene art
+// and the isometric view, which start from what the players' characters see now,
+// and the textured map, which starts from the whole map and can become the map's
+// image (GetMapImageReference, GenerateMapImage, UseGeneratedImageAsMapImage).
 //
 // Only the campaign's master may call it. A player, a pending member and
 // anyone outside the campaign get `not_found`, as for a hidden image: the
@@ -31,8 +34,13 @@ import "meurpg/maps/v1/gallery.proto";
 //
 // What goes to Google: the master's text as written, the style, the aspect
 // ratio and the gallery images the master chose (for an edit: the previous
-// picture and the earlier texts). The server never adds a person's name, an
-// e-mail or a sheet. The app tells the master what goes.
+// picture and the earlier texts). For a request made from a map, also the
+// server's own drawing of it (the floors and walls; for the scene art and the
+// isometric view only the squares the players' characters see, and the creatures
+// they see as colored discs; an unrevealed secret door is a wall) and, only for
+// the textured map of a generated dungeon, the list of its rooms ("Sala 3: 7 x 5
+// squares"). The server never adds a person's name, an e-mail or a sheet. The app
+// tells the master what goes.
 //
 // Every failure the master can act on is a `failed_precondition` with an
 // ImageGenerationBlocked detail (generation off, the month's limit, the
@@ -96,6 +104,61 @@ service ImageGenerationService {
   rpc ListImageEdits(ListImageEditsRequest) returns (ListImageEditsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // GetMapImageReference shows what a request made from a map would send, before
+  // the master asks: the drawing (a small PNG) and, for the players' view, the NPCs
+  // the master may choose to appear ("Quem aparece na imagem"). Nothing is
+  // generated and no slot is used. For MAP_SCENE and ISOMETRIC the drawing is what
+  // the players' characters see now (the union of their views, as the fog of war
+  // works it out, without what they remember), never what is behind an unrevealed
+  // secret door; on a map without the fog it is the whole map, without what is
+  // hidden. For TEXTURED_MAP it is the whole map, padded to the model's closest
+  // ratio.
+  //
+  // Errors: `invalid_argument` (a kind that is not made from a map), `not_found`
+  // (a map that is not the campaign's) and `failed_precondition` with
+  // ImageGenerationBlocked (MAP_HAS_NO_GRID).
+  rpc GetMapImageReference(GetMapImageReferenceRequest) returns (GetMapImageReferenceResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GenerateMapImage asks for a picture made from a map: the scene art or the
+  // isometric view of what the players see now, or the textured map of the whole
+  // map. It answers at once with a PENDING request, reserves a slot and follows
+  // GetImageGeneration, the cancel and the idempotency key like GenerateSceneImage.
+  // For MAP_SCENE and ISOMETRIC the master may choose NPCs to appear: only those
+  // the players see now (the others are refused, so the picture does not give away
+  // what is hidden), and their portraits go as character references. The portrait of
+  // an NPC whose token is on this map and whom the players do not see now is also
+  // refused when it comes in character_image_ids; a gallery image that is no NPC's
+  // portrait stays the master's choice. TEXTURED_MAP takes no characters at all
+  // (npc_character_ids and character_image_ids must be empty): the picture can become
+  // the map the players read, and a creature painted in it is no creature of the
+  // map. A textured map is cropped back to the map and resized to the size of its
+  // image, so it can replace it.
+  //
+  // Errors: as GenerateSceneImage, `invalid_argument` (with an
+  // ImageGenerationInvalidField detail) also for a kind that is not made from a map,
+  // for an NPC the players do not see (or too many characters in all), for a
+  // hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+  // `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
+  // PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
+  // the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
+  rpc GenerateMapImage(GenerateMapImageRequest) returns (GenerateMapImageResponse);
+
+  // UseGeneratedImageAsMapImage makes a finished textured map the image of the map
+  // it was made from, keeping the grid, the calibration, the painted layers, the
+  // points, the tokens and what the players remember: the picture has exactly the
+  // size of the old image. The old image stays in the gallery. A fog map's image is
+  // always its own: when the picture is also used another way (shown to the players,
+  // an NPC's portrait...) the map gets a copy of it, as UpdateMap gives. It is idempotent: a repeat of a Use that already happened,
+  // while the image it set (the picture, or the copy a fog map got) is still the map's
+  // image, answers the same, with no new copy and no write. Refused with
+  // ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
+  // are no longer what the request was made from, or its walls (a painted wall, a
+  // revealed secret door: what the drawing showed) changed since; and `not_found`
+  // when the image is not a textured map generated for a map of the campaign.
+  rpc UseGeneratedImageAsMapImage(UseGeneratedImageAsMapImageRequest) returns (UseGeneratedImageAsMapImageResponse);
 }
 
 // ImageStyle is the style the master picks. The server turns it into the
@@ -138,6 +201,13 @@ enum ImageGenerationKind {
   IMAGE_GENERATION_KIND_SCENE = 1;
   // An edit of a generated image.
   IMAGE_GENERATION_KIND_EDIT = 2;
+  // The scene art of a map, from what the players' characters see now.
+  IMAGE_GENERATION_KIND_MAP_SCENE = 3;
+  // The isometric view of a map, from what the players' characters see now.
+  IMAGE_GENERATION_KIND_ISOMETRIC = 4;
+  // The map with a texture: the whole map's floors and walls, painted, in the
+  // size of the map's image.
+  IMAGE_GENERATION_KIND_TEXTURED_MAP = 5;
 }
 
 // ImageGenerationState is where a request is.
@@ -214,6 +284,9 @@ message ImageGeneration {
   google.protobuf.Timestamp finished_at = 16;
   // The gallery images of characters sent as references.
   repeated string character_image_ids = 17;
+  // The map a request of kind MAP_SCENE, ISOMETRIC or TEXTURED_MAP was made from
+  // (a UUID); empty for the others, and after the map is deleted.
+  string map_id = 18;
 }
 
 // ImageGenerationStatus is the campaign's month, and what a request may carry.
@@ -249,6 +322,17 @@ enum ImageGenerationBlockedReason {
   // The request is too big for the service even with the images shrunk to
   // 1024 pixels (about 8 MiB in all): choose fewer references.
   IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE = 4;
+  // The players see nothing of the map: no living character of a player stands
+  // on it, so there is no players' view to start from (MAP_SCENE, ISOMETRIC).
+  IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING = 5;
+  // The map has no grid: the pictures made from a map need one.
+  IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID = 6;
+  // The map's image is over 16 megapixels: a textured map has the size of the
+  // image it replaces, and the server makes none that large.
+  IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE = 7;
+  // The map is no longer what the textured map was made from: another image, a
+  // new grid or another calibration (UseGeneratedImageAsMapImage).
+  IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED = 8;
 }
 
 // ImageGenerationBlocked is the error detail of `failed_precondition` from
@@ -362,4 +446,112 @@ message ImageEdit {
   string prompt = 2;
   // The request's number ("Imagem {number}"), 0 without a request.
   int32 number = 3;
+}
+
+message GetMapImageReferenceRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The map (a UUID).
+  string map_id = 2;
+  // MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+  ImageGenerationKind kind = 3;
+}
+
+message GetMapImageReferenceResponse {
+  // The drawing, a PNG of at most 512 pixels on the longer side: what the model
+  // gets, smaller. Never sent to a player.
+  bytes preview = 1;
+  // "image/png".
+  string preview_content_type = 2;
+  // MAP_SCENE and ISOMETRIC: false when no living character of a player is on the
+  // map, so the drawing is all black and a request would be refused
+  // (PLAYERS_SEE_NOTHING). Always true for TEXTURED_MAP.
+  bool players_see_something = 3;
+  // The squares the drawing shows and the map's squares in all: "12 de 600".
+  int32 seen_squares = 4;
+  int32 total_squares = 5;
+  // The NPCs the master may choose to appear: the creatures of the map the players
+  // see now (not hidden, on a square a character sees, and none while a combat runs
+  // on the map). The same list for MAP_SCENE and ISOMETRIC; empty for TEXTURED_MAP,
+  // which takes no characters. A creature the players do not
+  // see is not here, and GenerateMapImage refuses it.
+  repeated MapImageCreature creatures = 6;
+  // TEXTURED_MAP: the model's ratio the whole map is padded to, and the map's size
+  // in squares.
+  ImageAspectRatio padded_ratio = 7;
+  int32 grid_columns = 8;
+  int32 grid_rows = 9;
+  // TEXTURED_MAP of a generated dungeon: how many rooms go in the text.
+  int32 rooms_listed = 10;
+  // TEXTURED_MAP: true when the map's image has more than max_texture_pixels, so a
+  // textured map would be refused (MAP_IMAGE_TOO_LARGE): the screen disables the
+  // choice and says why. The limit is on the image's pixels (16,000,000, such as
+  // 4,000 x 4,000), whatever the grid.
+  bool texture_too_large = 11;
+  int64 max_texture_pixels = 12;
+}
+
+// MapImageCreature is an NPC a request made from a map may show.
+message MapImageCreature {
+  // The character (a UUID).
+  string character_id = 1;
+  // The NPC's name, for the master's list. It never goes to Google.
+  string name = 2;
+  // The gallery image of its portrait, empty when it has none (then choosing it
+  // sends no reference). It goes as a character reference.
+  string portrait_image_id = 3;
+}
+
+message GenerateMapImageRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The map (a UUID).
+  string map_id = 2;
+  // MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+  ImageGenerationKind kind = 3;
+  // As GenerateSceneImageRequest.idempotency_key.
+  string idempotency_key = 4;
+  // What to draw, in the master's words: 1 to 500 characters. It goes to Google
+  // as written.
+  string prompt = 5;
+  ImageStyle style = 6;
+  // The ratio of MAP_SCENE and ISOMETRIC; empty means 16:9. TEXTURED_MAP ignores
+  // it: the server picks the model's ratio closest to the map's.
+  ImageAspectRatio aspect_ratio = 7;
+  // Gallery images of objects and places, at most 10 (UUIDs).
+  repeated string object_image_ids = 8;
+  // Gallery images of characters, as GenerateSceneImageRequest.
+  repeated string character_image_ids = 9;
+  // NPCs that appear (MAP_SCENE and ISOMETRIC only; character IDs from
+  // GetMapImageReference.creatures): their
+  // portraits go as character references, together with character_image_ids, at
+  // most 4 in all (an image listed twice counts once).
+  repeated string npc_character_ids = 10;
+}
+
+message GenerateMapImageResponse {
+  // The request, PENDING (or what an earlier try with the same key became).
+  ImageGeneration generation = 1;
+  // The month after reserving the slot.
+  ImageGenerationStatus status = 2;
+}
+
+message UseGeneratedImageAsMapImageRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The textured map's gallery image (a UUID).
+  string image_id = 2;
+}
+
+message UseGeneratedImageAsMapImageResponse {
+  // The map as the master reads it, with its new image and the same layers.
+  Map map = 1;
+}
+
+// ImageGenerationInvalidField is the error detail of `invalid_argument` from
+// GenerateMapImage when a request field breaks a rule that is not its shape: it
+// names the field, never the value.
+message ImageGenerationInvalidField {
+  // The request field, such as "npc_character_ids" or "character_image_ids".
+  string field = 1;
 }

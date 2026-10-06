@@ -642,8 +642,9 @@ type CombatServiceClient interface {
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
 	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
 	// RollDamage is the second step of an attack that hit: it rolls the damage
-	// of the pending damage with the attack's dice (doubled on a critical hit;
-	// the modifier is added once) and its damage type. The attacker's player
+	// of the pending damage with the attack's dice (a critical hit follows the
+	// table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+	// with their maximum kept; the modifier is added once) and its damage type. The attacker's player
 	// may roll for their own attack, and the master for any.
 	//
 	// The roll follows the same rules as RollAttack (the player chooses on each
@@ -2026,8 +2027,9 @@ type CombatServiceHandler interface {
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
 	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
 	// RollDamage is the second step of an attack that hit: it rolls the damage
-	// of the pending damage with the attack's dice (doubled on a critical hit;
-	// the modifier is added once) and its damage type. The attacker's player
+	// of the pending damage with the attack's dice (a critical hit follows the
+	// table's rule, PendingDamage.critical_rule: doubled dice, or the dice once
+	// with their maximum kept; the modifier is added once) and its damage type. The attacker's player
 	// may roll for their own attack, and the master for any.
 	//
 	// The roll follows the same rules as RollAttack (the player chooses on each

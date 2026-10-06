@@ -186,6 +186,10 @@ type LevelUpSubclass struct {
 	// that does not cast).
 	SpellList     string
 	MaxSpellLevel int
+	// Prepares says a third caster's subclass prepares its spells, and
+	// PreparedMaxAfter is how many it may prepare at the new level once chosen.
+	Prepares         bool
+	PreparedMaxAfter int
 	// Archived says the table retired this subclass (see RaceEntry.Archived):
 	// the screen does not offer it as a new choice.
 	Archived bool
@@ -238,6 +242,7 @@ func (b Build) clone() Build {
 	b.ExtraAbilityBonuses = maps.Clone(b.ExtraAbilityBonuses)
 	b.Classes = slices.Clone(b.Classes)
 	b.CustomBackgroundSkills = slices.Clone(b.CustomBackgroundSkills)
+	b.CustomBackgroundProficiencies = slices.Clone(b.CustomBackgroundProficiencies)
 	b.SkillProficiencies = slices.Clone(b.SkillProficiencies)
 	b.Expertise = slices.Clone(b.Expertise)
 	b.Weapons = slices.Clone(b.Weapons)
@@ -371,6 +376,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 					ls.Cantrips += max(with.Cantrips-o.Cantrips, 0)
 					ls.Spells, ls.SpellsKind = max(with.Spells-o.Spells, 0), with.SpellsKind
 					ls.SpellList, ls.MaxSpellLevel = with.SpellList, with.MaxSpellLevel
+					ls.Prepares, ls.PreparedMaxAfter = with.Prepares, with.PreparedMaxAfter
 				}
 				o.Subclasses = append(o.Subclasses, ls)
 			}
@@ -844,7 +850,11 @@ func checkLocked(before, after Build) *LevelUpError {
 	case before.Background != after.Background:
 		return locked("full.background_key")
 	case before.CustomBackgroundName != after.CustomBackgroundName,
-		!slices.Equal(before.CustomBackgroundSkills, after.CustomBackgroundSkills):
+		!slices.Equal(before.CustomBackgroundSkills, after.CustomBackgroundSkills),
+		!slices.Equal(before.CustomBackgroundProficiencies, after.CustomBackgroundProficiencies),
+		before.CustomBackgroundFeatureName != after.CustomBackgroundFeatureName,
+		before.CustomBackgroundFeature != after.CustomBackgroundFeature,
+		before.CustomBackgroundEquipment != after.CustomBackgroundEquipment:
 		return locked("full.custom_background")
 	case before.Armor != after.Armor:
 		return locked("full.armor_key")

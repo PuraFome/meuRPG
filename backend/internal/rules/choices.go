@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -136,9 +137,13 @@ func (x *deriver) checkChoices() {
 	if len(x.classes) > 0 {
 		switch n := len(chosen); {
 		case n > allowed:
-			x.issue(IssueSkillCount, "full.skill_proficiency_keys", "Há %d perícias escolhidas; o personagem escolhe %d.", n, allowed)
+			subject, change := x.skillChange(allowed, n)
+			x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
+				fmt.Sprintf("Há %d perícias escolhidas; o personagem escolhe %d.", n, allowed))
 		case n < allowed:
-			x.issue(IssueSkillCount, "full.skill_proficiency_keys", "Faltam %d perícias para escolher.", allowed-n)
+			subject, change := x.skillChange(allowed, n)
+			x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
+				fmt.Sprintf("Faltam %d perícias para escolher.", allowed-n))
 		}
 	}
 
@@ -153,9 +158,32 @@ func (x *deriver) checkChoices() {
 	}
 
 	// A custom background grants two skills, like every SRD background.
-	if x.b.Background == "" && (x.b.CustomBackgroundName != "" || len(x.b.CustomBackgroundSkills) > 0) {
+	if x.customBackground() {
 		if n := len(x.b.CustomBackgroundSkills); n < CustomBackgroundSkillCount {
 			x.issue(IssueSkillCount, "full.custom_background.skill_keys", "O antecedente personalizado concede %d perícias; faltam %d.", CustomBackgroundSkillCount, CustomBackgroundSkillCount-n)
+		}
+		// SRD 5.1 "Customizing a Background": two tools or languages, a feature and
+		// the equipment too (question 82). A sheet written before these fields
+		// existed shows nothing new: the three warnings come only once the sheet has
+		// any of them, that is, once the editor that writes them saved it.
+		if x.customBackgroundStarted() {
+			if n := len(x.b.CustomBackgroundProficiencies); n < CustomBackgroundProficiencyCount {
+				x.issue(IssueMissing, "full.custom_background.proficiency_keys", "O antecedente personalizado concede %d ferramentas ou idiomas; faltam %d.", CustomBackgroundProficiencyCount, CustomBackgroundProficiencyCount-n)
+			}
+			if x.b.CustomBackgroundFeatureName == "" || x.b.CustomBackgroundFeature == "" {
+				x.issue(IssueMissing, "full.custom_background.feature_name", "O antecedente personalizado tem uma característica: falta o nome ou o texto dela.")
+			}
+			if x.b.CustomBackgroundEquipment == "" {
+				x.issue(IssueMissing, "full.custom_background.equipment", "O antecedente personalizado traz equipamento: falta descrevê-lo.")
+			}
+		}
+		// A language the race already gives uses one of the two picks for nothing.
+		if x.race != nil {
+			for i, k := range x.b.CustomBackgroundProficiencies {
+				if slices.Contains(x.race.Languages, k) {
+					x.issue(IssueMissing, fmt.Sprintf("full.custom_background.proficiency_keys[%d]", i), "O idioma %s já vem da raça: ele gasta uma das duas escolhas do antecedente sem acrescentar nada.", x.c.namePT(k))
+				}
+			}
 		}
 	}
 
@@ -164,10 +192,24 @@ func (x *deriver) checkChoices() {
 	if len(x.classes) > 1 {
 		for _, oc := range x.classes {
 			if !x.meetsMulticlass(oc) {
-				x.issue(IssueMulticlass, fmt.Sprintf("full.classes[%d].class_key", oc.index), "Os atributos não cumprem o pré-requisito de multiclasse de %s.", c.namePT(oc.key))
+				x.issueChange(IssueMulticlass, fmt.Sprintf("full.classes[%d].class_key", oc.index), oc.key,
+					"agora pede outros atributos para multiclasse; os desta ficha não cumprem.",
+					fmt.Sprintf("Os atributos não cumprem o pré-requisito de multiclasse de %s.", c.namePT(oc.key)))
 			}
 		}
 	}
+}
+
+// skillChange is the sentence for "A classe mudou" when the number of skills a
+// sheet chose no longer matches what it is entitled to, and the entry it is
+// about. With the starting class the only source it is the class ("agora dá 2
+// perícias no nível 1; esta ficha tem 3."); with other sources (a race's trait)
+// it is only the count, and no entry is named.
+func (x *deriver) skillChange(allowed, chosen int) (subject, change string) {
+	if len(x.classes) > 0 && allowed == x.classes[0].class.SkillChoices.Choose {
+		return x.classes[0].key, fmt.Sprintf("agora dá %s no nível 1; esta ficha tem %d.", countPT(allowed, "perícia", "perícias"), chosen)
+	}
+	return "", fmt.Sprintf("o total de perícias para escolher agora é %d; esta ficha tem %d.", allowed, chosen)
 }
 
 func (x *deriver) meetsMulticlass(oc ownedClass) bool {

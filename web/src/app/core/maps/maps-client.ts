@@ -113,10 +113,12 @@ export class MapsClient {
     return need(res.map, 'SetMapRevealed');
   }
 
-  /** `SetMapGrid` (RN-21): squares of 1,5 m across the image's width, 4 to
-   * 200; 0 clears the grid. The server answers with the rows it worked out. */
-  async setGrid(campaignId: string, mapId: string, columns: number): Promise<MapMessage> {
-    const res = await this.client.setMapGrid({ campaignId, mapId, columns });
+  /** `SetMapGrid` (RN-21, RN-25): the squares of the DRAWING across the image's width, 4 to 200; 0 clears the
+   * grid. `squareFactor` is required: how many squares of 1,5 m each is worth (1 to 20). A caller that changes only the
+   * columns passes the map's own factor, or the server would read 0 as 1 and drop the calibration. The server
+   * answers with the rows it worked out. */
+  async setGrid(campaignId: string, mapId: string, columns: number, squareFactor: number): Promise<MapMessage> {
+    const res = await this.client.setMapGrid({ campaignId, mapId, columns, squareFactor });
     return need(res.map, 'SetMapGrid');
   }
 

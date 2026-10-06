@@ -292,8 +292,14 @@ type Spell struct {
 	// Damage is one entry per damage type (Ice Storm has two).
 	Damage          []SpellDamage     `json:"damage,omitempty"`
 	HealAtSlotLevel map[string]string `json:"heal_at_slot_level,omitempty"`
-	Desc            []string          `json:"desc"`
-	HigherLevel     []string          `json:"higher_level,omitempty"`
+	// AreaType and AreaSizeFt are the 5e-database's structured area_of_effect:
+	// "cone", "cube", "cylinder", "line" or "sphere", and its size in feet (the
+	// cone's and line's length, the cube's side, the cylinder's and sphere's
+	// radius). Empty for a spell that has none (a creature, a point, the caster).
+	AreaType    string   `json:"area_type,omitempty"`
+	AreaSizeFt  int      `json:"area_size_ft,omitempty"`
+	Desc        []string `json:"desc"`
+	HigherLevel []string `json:"higher_level,omitempty"`
 }
 
 // SpellDamage is one damage type of a spell. AtCharacterLevel (cantrips) and

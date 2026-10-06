@@ -254,6 +254,18 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND status = 'active'
 ORDER BY kind <> 'player', created_at, id;
 
+-- name: ListNpcPortraits :many
+-- The gallery image of the portrait of each of the given NPCs of the campaign
+-- (living, active ones), "" for an NPC without one. A full sheet keeps it under
+-- 'full', a basic one under 'basic' (package maps asks, to send an NPC's portrait
+-- to the image model as a character reference, MR-039).
+SELECT id, COALESCE(NULLIF(sheet -> 'full' ->> 'portrait_image_id', ''), NULLIF(sheet -> 'basic' ->> 'portrait_image_id', ''), '')::TEXT AS portrait_image_id
+FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+  AND kind <> 'player'
+  AND status = 'active';
+
 -- name: ListCombatParty :many
 -- The campaign's living, active player characters, oldest first: the party
 -- that fights (package play). The sheet comes along for the numbers a

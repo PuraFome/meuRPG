@@ -133,3 +133,17 @@
 .leave__text {
   margin: 0;
 }
+
+// The calibrated map's two grids in the legend: the drawing's solid line, the rules' dotted one (RN-25).
+.gl {
+  display: inline-block;
+  width: 20px;
+  height: 0;
+  margin-inline-end: 8px;
+  vertical-align: middle;
+  border-top: 2px solid var(--mr-ink-muted);
+
+  &--rules {
+    border-top: 2px dotted var(--mr-ink-muted);
+  }
+}

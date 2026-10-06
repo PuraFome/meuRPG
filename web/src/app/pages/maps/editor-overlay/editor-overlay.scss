@@ -24,6 +24,15 @@
   vector-effect: non-scaling-stroke;
 }
 
+// A calibrated map (RN-25, E10-03 state 5): the rules' grid is dotted, the drawing's own lines solid and darker.
+.grid path.rules {
+  stroke-dasharray: 1 3;
+}
+
+.grid path.drawn {
+  stroke: color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent);
+}
+
 // The light's reach (the radii, in squares): a solid ring for the bright light, a dashed one for the dim.
 .reach {
   z-index: 1;

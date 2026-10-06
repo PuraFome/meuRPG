@@ -575,6 +575,13 @@ INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, charact
 VALUES (sqlc.arg(campaign_id), sqlc.arg(clue_id), sqlc.arg(point_id), sqlc.arg(user_id), sqlc.narg(character_id), sqlc.arg(text), sqlc.arg(now))
 ON CONFLICT (clue_id, user_id) DO NOTHING;
 
+-- name: HasClueReveal :one
+-- Whether the player has this clue (the cipher puzzle shows them where the key is only
+-- once they found it).
+SELECT EXISTS (
+    SELECT 1 FROM scene_clue_reveals WHERE campaign_id = $1 AND clue_id = $2 AND user_id = $3
+) AS found;
+
 -- name: ListClueRevealsOfPoint :many
 -- Who has each clue of a point, oldest reveal first.
 SELECT clue_id, character_id, revealed_at FROM scene_clue_reveals
@@ -801,9 +808,12 @@ WHERE campaign_id = $1;
 -- name: InsertImageRequest :one
 INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
-    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at
+    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
+    map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 RETURNING *;
 
 -- name: MarkImageRequestSent :execrows
@@ -885,3 +895,10 @@ UPDATE generated_dungeons SET image_id = sqlc.arg(image_id) WHERE map_id = sqlc.
 SELECT d.* FROM generated_dungeons AS d
 JOIN maps AS m ON m.id = d.map_id
 WHERE m.campaign_id = $1 AND d.map_id = $2;
+
+-- name: MarkImageRequestUsed :exec
+-- "Usar como imagem do mapa" set this image on the map: a retry answers the same
+-- while it is still the map's image.
+UPDATE image_requests
+SET used_map_image_id = sqlc.arg(used_map_image_id)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id);

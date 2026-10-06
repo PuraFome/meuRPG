@@ -69,7 +69,8 @@ func TestDeriveWithTheSageOverlay(t *testing.T) {
 	t.Parallel()
 	c := withOverlay(t, sageOverlay())
 	b := pensantus()
-	b.Background, b.CustomBackgroundName, b.CustomBackgroundSkills = "background:sabio@mesa", "", nil
+	b.Background = "background:sabio@mesa"
+	b.dropCustomBackground()
 	if err := Validate(b, c); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
@@ -127,7 +128,8 @@ func TestValidate(t *testing.T) {
 			b.Classes[0].Subclass, b.Classes[0].CustomSubclassName = "", "Uma subclasse com um nome longo demais para a ficha"
 		}, "full.classes[0].custom_subclass_name"},
 		{"unknown background", func(b *Build) {
-			b.Background, b.CustomBackgroundName, b.CustomBackgroundSkills = "background:sage", "", nil
+			b.Background = "background:sage"
+			b.dropCustomBackground()
 		}, "full.background_key"},
 		{"background and custom background", func(b *Build) { b.Background = "background:acolyte" }, "full.custom_background"},
 		{"three custom background skills", func(b *Build) {
@@ -173,9 +175,10 @@ func TestValidate(t *testing.T) {
 		for name, edit := range map[string]func(b *Build){
 			"custom subclass": func(b *Build) { b.Classes[0].Subclass, b.Classes[0].CustomSubclassName = "", "Cronurgia" },
 			"SRD background": func(b *Build) {
-				b.Background, b.CustomBackgroundName, b.CustomBackgroundSkills = "background:acolyte", "", nil
+				b.Background = "background:acolyte"
+				b.dropCustomBackground()
 			},
-			"no background yet":       func(b *Build) { b.CustomBackgroundName, b.CustomBackgroundSkills = "", nil },
+			"no background yet":       func(b *Build) { b.dropCustomBackground() },
 			"manual bonus of -10":     func(b *Build) { b.ExtraAbilityBonuses = map[Ability]int{STR: -10} },
 			"a roll above the d6":     func(b *Build) { b.HitPoints = HitPoints{Method: HitPointsRolled, Rolls: []int{12, 1}} },
 			"a fighting style option": func(b *Build) { b.FeatureChoices = []string{"feature:fighter-fighting-style-defense"} },
@@ -217,4 +220,11 @@ func TestDeriveDoesNotShareState(t *testing.T) {
 			t.Error("concurrent Derive differs")
 		}
 	}
+}
+
+// dropCustomBackground clears every part of the custom background, as a sheet
+// that picks an SRD or table background has.
+func (b *Build) dropCustomBackground() {
+	b.CustomBackgroundName, b.CustomBackgroundSkills = "", nil
+	b.CustomBackgroundProficiencies, b.CustomBackgroundFeatureName, b.CustomBackgroundFeature, b.CustomBackgroundEquipment = nil, "", "", ""
 }

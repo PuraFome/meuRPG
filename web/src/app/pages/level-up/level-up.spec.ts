@@ -10,6 +10,7 @@ import {
   CharacterSchema,
   FullSheetSchema,
   LevelUpDiceRule,
+  LevelUpHitPointsRule,
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
   type LevelUpOptions,
@@ -256,6 +257,56 @@ describe('LevelUpPage', () => {
       await click(physical, Array.from(el(physical).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
       expect(button(physical, /Rolar no app/)).toBeUndefined();
       expect(el(physical).querySelector('input.type__field')).not.toBeNull();
+    });
+
+    describe('the table\'s rule for the hit points (RN-24)', () => {
+      async function atVidaWith(rule: LevelUpHitPointsRule, over: object = {}) {
+        const f = await setup(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: rule, ...over }));
+        await click(f, el(f).querySelector('.row__input'));
+        await click(f, button(f, 'Próximo'));
+        return f;
+      }
+
+      it('lets the player choose when the table does not decide: both cards', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.PLAYER_CHOOSES);
+        expect(el(f).querySelectorAll('.dice-choice__card')).toHaveLength(2);
+        expect(text(f)).not.toContain('A mesa');
+      });
+
+      it('with "rolar" shows no choice: it says so and goes straight to the die, and only the die rolls', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY);
+        expect(el(f).querySelectorAll('.dice-choice__card')).toHaveLength(0);
+        expect(text(f)).toContain('A mesa pede que todos rolem o dado de vida. A média não é oferecida.');
+        expect(text(f)).toContain('Falta rolar o dado de vida.');
+        expect(button(f, /Rolar no app/)).toBeDefined();
+        expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBe('true');
+        await click(f, button(f, /Rolar no app/));
+        expect(text(f)).toContain('Rolado no app: 5 no d6');
+        expect(client.preview.mock.calls.some((c) => c[2].hitPoints.value === 5)).toBe(true);
+      });
+
+      it('with "rolar" takes back a roll the server kept, with no click', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY, { keptHitPointRoll: 3 });
+        expect(text(f)).toContain('Rolado no app: 3 no d6');
+        expect(client.rollHitPoints).not.toHaveBeenCalled();
+      });
+
+      it('with "a média" shows no choice and no die: the average, with what the server derives', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.AVERAGE_ONLY);
+        expect(el(f).querySelectorAll('.dice-choice__card')).toHaveLength(0);
+        expect(text(f)).toContain('A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.');
+        expect(text(f)).toContain('Média: 4');
+        expect(text(f)).toContain('4 + Constituição +3 · de 23 para 30');
+        expect(button(f, /Rolar no app/)).toBeUndefined();
+        expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBeNull();
+        expect(client.preview.mock.calls.every((c) => c[2].hitPoints.method === 1)).toBe(true);
+      });
+
+      it('with "rolar" the page counts as untouched until something else is chosen (leaving does not ask)', async () => {
+        const f = await setup(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }));
+        await click(f, button(f, 'Cancelar'));
+        expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'ch-1']);
+      });
     });
 
     it('shows what an increase in Constituição does to the hit points', async () => {

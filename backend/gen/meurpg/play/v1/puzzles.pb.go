@@ -6,11 +6,15 @@
 
 // Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes a puzzle for the
 // campaign, shows it to the players of an open session, and they solve it live in the
-// app. This slice has three kinds: "Apagar as luzes" (a board of lights; pressing one
-// toggles it and its four neighbours), the combination lock (wheels of digits, letters
-// or our own runes) and the turning symbols (pillars of our own glyphs, which may turn
-// together). The riddle, the sequence and the cipher come in slice 10.7b, on top of
-// these messages: each is one more kind in the `oneof`s below, with its own messages.
+// app. It has six kinds: "Apagar as luzes" (a board of lights; pressing one toggles it
+// and its four neighbours), the combination lock (wheels of digits, letters or our own
+// runes), the turning symbols (pillars of our own glyphs, which may turn together), the
+// riddle (the player types an answer), the sequence (the master plays a row of bells
+// and the players repeat it) and the cipher (a message swapped letter by letter, whose
+// key is a clue the group finds in the adventure). Slice 10.7b added the last three, the
+// hints won by a skill check, the split information (each player reads their own part
+// of a clue) and the consequences of a wrong move ("Ao errar"): a trap fires, an attempt
+// is spent, or a limit of moves or of time stops the puzzle.
 //
 // Every move is relative (press a cell, turn a wheel or a pillar by one), so two
 // players' moves made at the same time both count, whichever the server takes first.
@@ -20,8 +24,10 @@
 // What a player never receives (RN-10, RN-27), in any response or stream event: the
 // solution of a lock, the minimum number of moves and a way to make them, a hint the
 // master has not released, the "Ao resolver" action and its target, and any puzzle
-// that is not shown. A puzzle that is unknown or not shown answers `not_found`, as for
-// a puzzle that does not exist. A player reads the state, the master's clue, the
+// that is not shown, a riddle's accepted answers, a sequence before it is played, a
+// cipher's plain message and key, the DC of a hint's skill check, and the parts of the
+// split information that are other players'. A puzzle that is unknown or not shown
+// answers `not_found`, as for a puzzle that does not exist. A player reads the state, the master's clue, the
 // released hints, who moved last (the character's name), whether it is solved and, once
 // it is, what happened ("A porta da Capela se abriu."). The goal is not a secret where
 // the challenge is the moves, so the players of the turning symbols also read the mural
@@ -46,8 +52,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// PuzzleKind is the kind of a puzzle. Slice 10.7b adds RIDDLE = 4, SEQUENCE = 5 and
-// CIPHER = 6.
+// PuzzleKind is the kind of a puzzle.
 type PuzzleKind int32
 
 const (
@@ -58,6 +63,15 @@ const (
 	PuzzleKind_PUZZLE_KIND_LOCK PuzzleKind = 2
 	// The turning symbols: 3 to 6 pillars of 3 to 6 glyphs.
 	PuzzleKind_PUZZLE_KIND_PILLARS PuzzleKind = 3
+	// The riddle: the master writes it and the answers he accepts; a player types an
+	// answer.
+	PuzzleKind_PUZZLE_KIND_RIDDLE PuzzleKind = 4
+	// The sequence: 3 to 8 bells and 3 to 12 steps. The master plays it; the players
+	// repeat it bell by bell.
+	PuzzleKind_PUZZLE_KIND_SEQUENCE PuzzleKind = 5
+	// The cipher: a message the server swaps letter by letter. A player types the
+	// plain message.
+	PuzzleKind_PUZZLE_KIND_CIPHER PuzzleKind = 6
 )
 
 // Enum value maps for PuzzleKind.
@@ -67,12 +81,18 @@ var (
 		1: "PUZZLE_KIND_LIGHTS",
 		2: "PUZZLE_KIND_LOCK",
 		3: "PUZZLE_KIND_PILLARS",
+		4: "PUZZLE_KIND_RIDDLE",
+		5: "PUZZLE_KIND_SEQUENCE",
+		6: "PUZZLE_KIND_CIPHER",
 	}
 	PuzzleKind_value = map[string]int32{
 		"PUZZLE_KIND_UNSPECIFIED": 0,
 		"PUZZLE_KIND_LIGHTS":      1,
 		"PUZZLE_KIND_LOCK":        2,
 		"PUZZLE_KIND_PILLARS":     3,
+		"PUZZLE_KIND_RIDDLE":      4,
+		"PUZZLE_KIND_SEQUENCE":    5,
+		"PUZZLE_KIND_CIPHER":      6,
 	}
 )
 
@@ -365,6 +385,58 @@ func (PuzzleRunStatus) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{4}
 }
 
+// PuzzleStopReason is why a limit stopped a puzzle.
+type PuzzleStopReason int32
+
+const (
+	PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED PuzzleStopReason = 0
+	// The limit of moves was reached.
+	PuzzleStopReason_PUZZLE_STOP_REASON_MOVES PuzzleStopReason = 1
+	// The time limit ran out.
+	PuzzleStopReason_PUZZLE_STOP_REASON_TIME PuzzleStopReason = 2
+)
+
+// Enum value maps for PuzzleStopReason.
+var (
+	PuzzleStopReason_name = map[int32]string{
+		0: "PUZZLE_STOP_REASON_UNSPECIFIED",
+		1: "PUZZLE_STOP_REASON_MOVES",
+		2: "PUZZLE_STOP_REASON_TIME",
+	}
+	PuzzleStopReason_value = map[string]int32{
+		"PUZZLE_STOP_REASON_UNSPECIFIED": 0,
+		"PUZZLE_STOP_REASON_MOVES":       1,
+		"PUZZLE_STOP_REASON_TIME":        2,
+	}
+)
+
+func (x PuzzleStopReason) Enum() *PuzzleStopReason {
+	p := new(PuzzleStopReason)
+	*p = x
+	return p
+}
+
+func (x PuzzleStopReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PuzzleStopReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_play_v1_puzzles_proto_enumTypes[5].Descriptor()
+}
+
+func (PuzzleStopReason) Type() protoreflect.EnumType {
+	return &file_meurpg_play_v1_puzzles_proto_enumTypes[5]
+}
+
+func (x PuzzleStopReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PuzzleStopReason.Descriptor instead.
+func (PuzzleStopReason) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{5}
+}
+
 // PuzzleBlockedReason is why a puzzle call was refused with `failed_precondition`.
 type PuzzleBlockedReason int32
 
@@ -387,31 +459,71 @@ const (
 	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_MORE_HINTS PuzzleBlockedReason = 7
 	// The kind has no generated start (a lock's start is the master's choice).
 	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_GENERATED_START PuzzleBlockedReason = 8
+	// The player has no wrong moves left in this round ("Você não tem mais tentativas").
+	// The master's restart gives them back.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT PuzzleBlockedReason = 9
+	// A limit of moves or of time stopped the puzzle: nothing moves until the master
+	// restarts or closes it.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED PuzzleBlockedReason = 10
+	// The sequence was not played yet: the master plays it first (PlayPuzzleSequence).
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED PuzzleBlockedReason = 11
+	// The sequence is being played: wait for it to end.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING PuzzleBlockedReason = 12
+	// PlayPuzzleSequence on a puzzle that is not a sequence.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE PuzzleBlockedReason = 13
+	// TryPuzzleHint on a puzzle with no skill check for hints.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_HINT_CHECK PuzzleBlockedReason = 14
+	// The player tried for the next hint already: another player may try, or the master
+	// releases it.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED PuzzleBlockedReason = 15
+	// The campaign has the players roll their dice the other way (RN-18): in the app, or
+	// typed from real dice.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE PuzzleBlockedReason = 16
+	// The caller's character has no numbers for the hint's skill.
+	PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL PuzzleBlockedReason = 17
 )
 
 // Enum value maps for PuzzleBlockedReason.
 var (
 	PuzzleBlockedReason_name = map[int32]string{
-		0: "PUZZLE_BLOCKED_REASON_UNSPECIFIED",
-		1: "PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION",
-		2: "PUZZLE_BLOCKED_REASON_SOLVED",
-		3: "PUZZLE_BLOCKED_REASON_ALREADY_SHOWN",
-		4: "PUZZLE_BLOCKED_REASON_ARCHIVED",
-		5: "PUZZLE_BLOCKED_REASON_NOT_SHOWN",
-		6: "PUZZLE_BLOCKED_REASON_NO_CHARACTER",
-		7: "PUZZLE_BLOCKED_REASON_NO_MORE_HINTS",
-		8: "PUZZLE_BLOCKED_REASON_NO_GENERATED_START",
+		0:  "PUZZLE_BLOCKED_REASON_UNSPECIFIED",
+		1:  "PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION",
+		2:  "PUZZLE_BLOCKED_REASON_SOLVED",
+		3:  "PUZZLE_BLOCKED_REASON_ALREADY_SHOWN",
+		4:  "PUZZLE_BLOCKED_REASON_ARCHIVED",
+		5:  "PUZZLE_BLOCKED_REASON_NOT_SHOWN",
+		6:  "PUZZLE_BLOCKED_REASON_NO_CHARACTER",
+		7:  "PUZZLE_BLOCKED_REASON_NO_MORE_HINTS",
+		8:  "PUZZLE_BLOCKED_REASON_NO_GENERATED_START",
+		9:  "PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT",
+		10: "PUZZLE_BLOCKED_REASON_STOPPED",
+		11: "PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED",
+		12: "PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING",
+		13: "PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE",
+		14: "PUZZLE_BLOCKED_REASON_NO_HINT_CHECK",
+		15: "PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED",
+		16: "PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE",
+		17: "PUZZLE_BLOCKED_REASON_NO_SKILL",
 	}
 	PuzzleBlockedReason_value = map[string]int32{
-		"PUZZLE_BLOCKED_REASON_UNSPECIFIED":        0,
-		"PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION":    1,
-		"PUZZLE_BLOCKED_REASON_SOLVED":             2,
-		"PUZZLE_BLOCKED_REASON_ALREADY_SHOWN":      3,
-		"PUZZLE_BLOCKED_REASON_ARCHIVED":           4,
-		"PUZZLE_BLOCKED_REASON_NOT_SHOWN":          5,
-		"PUZZLE_BLOCKED_REASON_NO_CHARACTER":       6,
-		"PUZZLE_BLOCKED_REASON_NO_MORE_HINTS":      7,
-		"PUZZLE_BLOCKED_REASON_NO_GENERATED_START": 8,
+		"PUZZLE_BLOCKED_REASON_UNSPECIFIED":         0,
+		"PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION":     1,
+		"PUZZLE_BLOCKED_REASON_SOLVED":              2,
+		"PUZZLE_BLOCKED_REASON_ALREADY_SHOWN":       3,
+		"PUZZLE_BLOCKED_REASON_ARCHIVED":            4,
+		"PUZZLE_BLOCKED_REASON_NOT_SHOWN":           5,
+		"PUZZLE_BLOCKED_REASON_NO_CHARACTER":        6,
+		"PUZZLE_BLOCKED_REASON_NO_MORE_HINTS":       7,
+		"PUZZLE_BLOCKED_REASON_NO_GENERATED_START":  8,
+		"PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT":    9,
+		"PUZZLE_BLOCKED_REASON_STOPPED":             10,
+		"PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED": 11,
+		"PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING":    12,
+		"PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE":      13,
+		"PUZZLE_BLOCKED_REASON_NO_HINT_CHECK":       14,
+		"PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED":  15,
+		"PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE":     16,
+		"PUZZLE_BLOCKED_REASON_NO_SKILL":            17,
 	}
 )
 
@@ -426,11 +538,11 @@ func (x PuzzleBlockedReason) String() string {
 }
 
 func (PuzzleBlockedReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_puzzles_proto_enumTypes[5].Descriptor()
+	return file_meurpg_play_v1_puzzles_proto_enumTypes[6].Descriptor()
 }
 
 func (PuzzleBlockedReason) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_puzzles_proto_enumTypes[5]
+	return &file_meurpg_play_v1_puzzles_proto_enumTypes[6]
 }
 
 func (x PuzzleBlockedReason) Number() protoreflect.EnumNumber {
@@ -439,7 +551,7 @@ func (x PuzzleBlockedReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PuzzleBlockedReason.Descriptor instead.
 func (PuzzleBlockedReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{6}
 }
 
 // PuzzleInvalidReason is why a puzzle request was refused as invalid.
@@ -469,6 +581,20 @@ const (
 	// The move is not valid for this puzzle (a cell or a wheel that is not there, a turn
 	// that is not +1 or -1).
 	PuzzleInvalidReason_PUZZLE_INVALID_REASON_MOVE PuzzleInvalidReason = 10
+	// The riddle's answers are not valid: none, more than 10, empty, too long, or the same
+	// twice.
+	PuzzleInvalidReason_PUZZLE_INVALID_REASON_ANSWERS PuzzleInvalidReason = 11
+	// The cipher's message or key is not valid, or the key clue is not a clue of the
+	// campaign.
+	PuzzleInvalidReason_PUZZLE_INVALID_REASON_CIPHER PuzzleInvalidReason = 12
+	// The hint check's skill is not one of the 18, or its DC is out of 1 to 30.
+	PuzzleInvalidReason_PUZZLE_INVALID_REASON_HINT_CHECK PuzzleInvalidReason = 13
+	// The split information's parts are not valid: too many, empty or long text, or a
+	// character that is not a living player character of the campaign.
+	PuzzleInvalidReason_PUZZLE_INVALID_REASON_PARTS PuzzleInvalidReason = 14
+	// "Ao errar" is not valid: a limit out of range, a trap that is not a trap point of
+	// the campaign, or a trap or attempts on a kind that judges no moves.
+	PuzzleInvalidReason_PUZZLE_INVALID_REASON_ON_WRONG PuzzleInvalidReason = 15
 )
 
 // Enum value maps for PuzzleInvalidReason.
@@ -485,6 +611,11 @@ var (
 		8:  "PUZZLE_INVALID_REASON_UNSOLVABLE",
 		9:  "PUZZLE_INVALID_REASON_TARGET",
 		10: "PUZZLE_INVALID_REASON_MOVE",
+		11: "PUZZLE_INVALID_REASON_ANSWERS",
+		12: "PUZZLE_INVALID_REASON_CIPHER",
+		13: "PUZZLE_INVALID_REASON_HINT_CHECK",
+		14: "PUZZLE_INVALID_REASON_PARTS",
+		15: "PUZZLE_INVALID_REASON_ON_WRONG",
 	}
 	PuzzleInvalidReason_value = map[string]int32{
 		"PUZZLE_INVALID_REASON_UNSPECIFIED":  0,
@@ -498,6 +629,11 @@ var (
 		"PUZZLE_INVALID_REASON_UNSOLVABLE":   8,
 		"PUZZLE_INVALID_REASON_TARGET":       9,
 		"PUZZLE_INVALID_REASON_MOVE":         10,
+		"PUZZLE_INVALID_REASON_ANSWERS":      11,
+		"PUZZLE_INVALID_REASON_CIPHER":       12,
+		"PUZZLE_INVALID_REASON_HINT_CHECK":   13,
+		"PUZZLE_INVALID_REASON_PARTS":        14,
+		"PUZZLE_INVALID_REASON_ON_WRONG":     15,
 	}
 )
 
@@ -512,11 +648,11 @@ func (x PuzzleInvalidReason) String() string {
 }
 
 func (PuzzleInvalidReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_puzzles_proto_enumTypes[6].Descriptor()
+	return file_meurpg_play_v1_puzzles_proto_enumTypes[7].Descriptor()
 }
 
 func (PuzzleInvalidReason) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_puzzles_proto_enumTypes[6]
+	return &file_meurpg_play_v1_puzzles_proto_enumTypes[7]
 }
 
 func (x PuzzleInvalidReason) Number() protoreflect.EnumNumber {
@@ -525,7 +661,7 @@ func (x PuzzleInvalidReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PuzzleInvalidReason.Descriptor instead.
 func (PuzzleInvalidReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{7}
 }
 
 // PuzzleSymbol is one face of a wheel or a pillar: a stable key the app draws a
@@ -593,6 +729,9 @@ type PuzzleConfig struct {
 	//	*PuzzleConfig_Lights
 	//	*PuzzleConfig_Lock
 	//	*PuzzleConfig_Pillars
+	//	*PuzzleConfig_Riddle
+	//	*PuzzleConfig_Sequence
+	//	*PuzzleConfig_Cipher
 	Kind          isPuzzleConfig_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -662,6 +801,33 @@ func (x *PuzzleConfig) GetPillars() *PillarsConfig {
 	return nil
 }
 
+func (x *PuzzleConfig) GetRiddle() *RiddleConfig {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleConfig_Riddle); ok {
+			return x.Riddle
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleConfig) GetSequence() *SequenceConfig {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleConfig_Sequence); ok {
+			return x.Sequence
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleConfig) GetCipher() *CipherConfig {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleConfig_Cipher); ok {
+			return x.Cipher
+		}
+	}
+	return nil
+}
+
 type isPuzzleConfig_Kind interface {
 	isPuzzleConfig_Kind()
 }
@@ -678,11 +844,29 @@ type PuzzleConfig_Pillars struct {
 	Pillars *PillarsConfig `protobuf:"bytes,3,opt,name=pillars,proto3,oneof"`
 }
 
+type PuzzleConfig_Riddle struct {
+	Riddle *RiddleConfig `protobuf:"bytes,4,opt,name=riddle,proto3,oneof"`
+}
+
+type PuzzleConfig_Sequence struct {
+	Sequence *SequenceConfig `protobuf:"bytes,5,opt,name=sequence,proto3,oneof"`
+}
+
+type PuzzleConfig_Cipher struct {
+	Cipher *CipherConfig `protobuf:"bytes,6,opt,name=cipher,proto3,oneof"`
+}
+
 func (*PuzzleConfig_Lights) isPuzzleConfig_Kind() {}
 
 func (*PuzzleConfig_Lock) isPuzzleConfig_Kind() {}
 
 func (*PuzzleConfig_Pillars) isPuzzleConfig_Kind() {}
+
+func (*PuzzleConfig_Riddle) isPuzzleConfig_Kind() {}
+
+func (*PuzzleConfig_Sequence) isPuzzleConfig_Kind() {}
+
+func (*PuzzleConfig_Cipher) isPuzzleConfig_Kind() {}
 
 // LightsConfig is the board of "Apagar as luzes".
 type LightsConfig struct {
@@ -898,6 +1082,169 @@ func (x *PillarLinks) GetAlsoTurns() []int32 {
 	return nil
 }
 
+// RiddleConfig is the riddle. A player reads it.
+type RiddleConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the players read: the riddle itself, 1 to 500 characters.
+	Text          string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RiddleConfig) Reset() {
+	*x = RiddleConfig{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RiddleConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RiddleConfig) ProtoMessage() {}
+
+func (x *RiddleConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RiddleConfig.ProtoReflect.Descriptor instead.
+func (*RiddleConfig) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RiddleConfig) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+// SequenceConfig is the sequence's shape. The sequence itself is the solution.
+type SequenceConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The number of bells, 3 to 8: the first ones of the table's eight (Sino redondo,
+	// alto, largo, pequeno, rachado, fino, torto, grave), in `symbols`.
+	Bells int32 `protobuf:"varint,1,opt,name=bells,proto3" json:"bells,omitempty"`
+	// The number of steps, 3 to 12. The players read it ("passo 3 de 6"), not which bell
+	// each one is.
+	Steps         int32 `protobuf:"varint,2,opt,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SequenceConfig) Reset() {
+	*x = SequenceConfig{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SequenceConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SequenceConfig) ProtoMessage() {}
+
+func (x *SequenceConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SequenceConfig.ProtoReflect.Descriptor instead.
+func (*SequenceConfig) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SequenceConfig) GetBells() int32 {
+	if x != nil {
+		return x.Bells
+	}
+	return 0
+}
+
+func (x *SequenceConfig) GetSteps() int32 {
+	if x != nil {
+		return x.Steps
+	}
+	return 0
+}
+
+// CipherConfig is the cipher. A player reads the ciphered message.
+type CipherConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ciphered message as the players read it: the letters A to Z swapped, upper
+	// case, with the spaces and the punctuation where they were. Set by the server from
+	// the solution; what the master sends is ignored.
+	Ciphertext string `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	// The scene clue (a UUID of a clue of the campaign) that says how the letters are
+	// swapped: the group finds it in the adventure. Optional. The master's alone: a
+	// player reads PuzzleRun.has_key_clue and, once their character has found the clue,
+	// PuzzleRun.key_clue_id; the clue's text is the notes' (MR-029), never this puzzle's.
+	KeyClueId     string `protobuf:"bytes,2,opt,name=key_clue_id,json=keyClueId,proto3" json:"key_clue_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CipherConfig) Reset() {
+	*x = CipherConfig{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CipherConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CipherConfig) ProtoMessage() {}
+
+func (x *CipherConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CipherConfig.ProtoReflect.Descriptor instead.
+func (*CipherConfig) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CipherConfig) GetCiphertext() string {
+	if x != nil {
+		return x.Ciphertext
+	}
+	return ""
+}
+
+func (x *CipherConfig) GetKeyClueId() string {
+	if x != nil {
+		return x.KeyClueId
+	}
+	return ""
+}
+
 // PuzzleSolution is the answer. It is the master's alone (RN-10). "Apagar as luzes"
 // has none to store: its goal is every light off, and the minimum is worked out.
 type PuzzleSolution struct {
@@ -906,6 +1253,9 @@ type PuzzleSolution struct {
 	//
 	//	*PuzzleSolution_Lock
 	//	*PuzzleSolution_Pillars
+	//	*PuzzleSolution_Riddle
+	//	*PuzzleSolution_Sequence
+	//	*PuzzleSolution_Cipher
 	Kind          isPuzzleSolution_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -913,7 +1263,7 @@ type PuzzleSolution struct {
 
 func (x *PuzzleSolution) Reset() {
 	*x = PuzzleSolution{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +1275,7 @@ func (x *PuzzleSolution) String() string {
 func (*PuzzleSolution) ProtoMessage() {}
 
 func (x *PuzzleSolution) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1288,7 @@ func (x *PuzzleSolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleSolution.ProtoReflect.Descriptor instead.
 func (*PuzzleSolution) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PuzzleSolution) GetKind() isPuzzleSolution_Kind {
@@ -966,6 +1316,33 @@ func (x *PuzzleSolution) GetPillars() *PillarsSolution {
 	return nil
 }
 
+func (x *PuzzleSolution) GetRiddle() *RiddleSolution {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleSolution_Riddle); ok {
+			return x.Riddle
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleSolution) GetSequence() *SequenceSolution {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleSolution_Sequence); ok {
+			return x.Sequence
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleSolution) GetCipher() *CipherSolution {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleSolution_Cipher); ok {
+			return x.Cipher
+		}
+	}
+	return nil
+}
+
 type isPuzzleSolution_Kind interface {
 	isPuzzleSolution_Kind()
 }
@@ -978,9 +1355,218 @@ type PuzzleSolution_Pillars struct {
 	Pillars *PillarsSolution `protobuf:"bytes,3,opt,name=pillars,proto3,oneof"`
 }
 
+type PuzzleSolution_Riddle struct {
+	Riddle *RiddleSolution `protobuf:"bytes,4,opt,name=riddle,proto3,oneof"`
+}
+
+type PuzzleSolution_Sequence struct {
+	Sequence *SequenceSolution `protobuf:"bytes,5,opt,name=sequence,proto3,oneof"`
+}
+
+type PuzzleSolution_Cipher struct {
+	Cipher *CipherSolution `protobuf:"bytes,6,opt,name=cipher,proto3,oneof"`
+}
+
 func (*PuzzleSolution_Lock) isPuzzleSolution_Kind() {}
 
 func (*PuzzleSolution_Pillars) isPuzzleSolution_Kind() {}
+
+func (*PuzzleSolution_Riddle) isPuzzleSolution_Kind() {}
+
+func (*PuzzleSolution_Sequence) isPuzzleSolution_Kind() {}
+
+func (*PuzzleSolution_Cipher) isPuzzleSolution_Kind() {}
+
+// RiddleSolution is the answers a riddle accepts.
+type RiddleSolution struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 1 to 10 answers, each 1 to 80 characters. A typed answer is right when it equals
+	// one of them ignoring case, accents, punctuation and the spaces around and between
+	// the words ("  A Sombra! " is "a sombra").
+	Answers       []string `protobuf:"bytes,1,rep,name=answers,proto3" json:"answers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RiddleSolution) Reset() {
+	*x = RiddleSolution{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RiddleSolution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RiddleSolution) ProtoMessage() {}
+
+func (x *RiddleSolution) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RiddleSolution.ProtoReflect.Descriptor instead.
+func (*RiddleSolution) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RiddleSolution) GetAnswers() []string {
+	if x != nil {
+		return x.Answers
+	}
+	return nil
+}
+
+// SequenceSolution is the sequence, in order.
+type SequenceSolution struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bell of each step, from 0: 3 to 12 steps, at least two different bells.
+	Steps         []int32 `protobuf:"varint,1,rep,packed,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SequenceSolution) Reset() {
+	*x = SequenceSolution{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SequenceSolution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SequenceSolution) ProtoMessage() {}
+
+func (x *SequenceSolution) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SequenceSolution.ProtoReflect.Descriptor instead.
+func (*SequenceSolution) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SequenceSolution) GetSteps() []int32 {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+// CipherSolution is the message and how it is swapped.
+type CipherSolution struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The plain message, 1 to 300 characters, with at least one letter.
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// How the letters are swapped: exactly one of the two.
+	//
+	// Types that are valid to be assigned to Method:
+	//
+	//	*CipherSolution_Shift
+	//	*CipherSolution_Keyword
+	Method        isCipherSolution_Method `protobuf_oneof:"method"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CipherSolution) Reset() {
+	*x = CipherSolution{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CipherSolution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CipherSolution) ProtoMessage() {}
+
+func (x *CipherSolution) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CipherSolution.ProtoReflect.Descriptor instead.
+func (*CipherSolution) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CipherSolution) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *CipherSolution) GetMethod() isCipherSolution_Method {
+	if x != nil {
+		return x.Method
+	}
+	return nil
+}
+
+func (x *CipherSolution) GetShift() int32 {
+	if x != nil {
+		if x, ok := x.Method.(*CipherSolution_Shift); ok {
+			return x.Shift
+		}
+	}
+	return 0
+}
+
+func (x *CipherSolution) GetKeyword() string {
+	if x != nil {
+		if x, ok := x.Method.(*CipherSolution_Keyword); ok {
+			return x.Keyword
+		}
+	}
+	return ""
+}
+
+type isCipherSolution_Method interface {
+	isCipherSolution_Method()
+}
+
+type CipherSolution_Shift struct {
+	// Every letter moves this many places on, 1 to 25 (3: A becomes D).
+	Shift int32 `protobuf:"varint,2,opt,name=shift,proto3,oneof"`
+}
+
+type CipherSolution_Keyword struct {
+	// A keyword of 3 to 26 distinct letters: the cipher alphabet starts with them (once
+	// each, in order) and goes on with the others. "LUA" turns A into L, B into U, C into A.
+	Keyword string `protobuf:"bytes,3,opt,name=keyword,proto3,oneof"`
+}
+
+func (*CipherSolution_Shift) isCipherSolution_Method() {}
+
+func (*CipherSolution_Keyword) isCipherSolution_Method() {}
 
 // LockSolution is what the wheels must show.
 type LockSolution struct {
@@ -993,7 +1579,7 @@ type LockSolution struct {
 
 func (x *LockSolution) Reset() {
 	*x = LockSolution{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1005,7 +1591,7 @@ func (x *LockSolution) String() string {
 func (*LockSolution) ProtoMessage() {}
 
 func (x *LockSolution) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1018,7 +1604,7 @@ func (x *LockSolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LockSolution.ProtoReflect.Descriptor instead.
 func (*LockSolution) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *LockSolution) GetWheels() []int32 {
@@ -1039,7 +1625,7 @@ type PillarsSolution struct {
 
 func (x *PillarsSolution) Reset() {
 	*x = PillarsSolution{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1051,7 +1637,7 @@ func (x *PillarsSolution) String() string {
 func (*PillarsSolution) ProtoMessage() {}
 
 func (x *PillarsSolution) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1064,7 +1650,7 @@ func (x *PillarsSolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PillarsSolution.ProtoReflect.Descriptor instead.
 func (*PillarsSolution) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PillarsSolution) GetPillars() []int32 {
@@ -1082,6 +1668,9 @@ type PuzzleState struct {
 	//	*PuzzleState_Lights
 	//	*PuzzleState_Lock
 	//	*PuzzleState_Pillars
+	//	*PuzzleState_Riddle
+	//	*PuzzleState_Sequence
+	//	*PuzzleState_Cipher
 	Kind          isPuzzleState_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1089,7 +1678,7 @@ type PuzzleState struct {
 
 func (x *PuzzleState) Reset() {
 	*x = PuzzleState{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1101,7 +1690,7 @@ func (x *PuzzleState) String() string {
 func (*PuzzleState) ProtoMessage() {}
 
 func (x *PuzzleState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1114,7 +1703,7 @@ func (x *PuzzleState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleState.ProtoReflect.Descriptor instead.
 func (*PuzzleState) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PuzzleState) GetKind() isPuzzleState_Kind {
@@ -1151,6 +1740,33 @@ func (x *PuzzleState) GetPillars() *PillarsState {
 	return nil
 }
 
+func (x *PuzzleState) GetRiddle() *RiddleState {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleState_Riddle); ok {
+			return x.Riddle
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleState) GetSequence() *SequenceState {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleState_Sequence); ok {
+			return x.Sequence
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleState) GetCipher() *CipherState {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleState_Cipher); ok {
+			return x.Cipher
+		}
+	}
+	return nil
+}
+
 type isPuzzleState_Kind interface {
 	isPuzzleState_Kind()
 }
@@ -1167,11 +1783,29 @@ type PuzzleState_Pillars struct {
 	Pillars *PillarsState `protobuf:"bytes,3,opt,name=pillars,proto3,oneof"`
 }
 
+type PuzzleState_Riddle struct {
+	Riddle *RiddleState `protobuf:"bytes,4,opt,name=riddle,proto3,oneof"`
+}
+
+type PuzzleState_Sequence struct {
+	Sequence *SequenceState `protobuf:"bytes,5,opt,name=sequence,proto3,oneof"`
+}
+
+type PuzzleState_Cipher struct {
+	Cipher *CipherState `protobuf:"bytes,6,opt,name=cipher,proto3,oneof"`
+}
+
 func (*PuzzleState_Lights) isPuzzleState_Kind() {}
 
 func (*PuzzleState_Lock) isPuzzleState_Kind() {}
 
 func (*PuzzleState_Pillars) isPuzzleState_Kind() {}
+
+func (*PuzzleState_Riddle) isPuzzleState_Kind() {}
+
+func (*PuzzleState_Sequence) isPuzzleState_Kind() {}
+
+func (*PuzzleState_Cipher) isPuzzleState_Kind() {}
 
 // LightsState is the board, row by row from the top left.
 type LightsState struct {
@@ -1184,7 +1818,7 @@ type LightsState struct {
 
 func (x *LightsState) Reset() {
 	*x = LightsState{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1196,7 +1830,7 @@ func (x *LightsState) String() string {
 func (*LightsState) ProtoMessage() {}
 
 func (x *LightsState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1843,7 @@ func (x *LightsState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LightsState.ProtoReflect.Descriptor instead.
 func (*LightsState) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *LightsState) GetLit() []bool {
@@ -1230,7 +1864,7 @@ type LockState struct {
 
 func (x *LockState) Reset() {
 	*x = LockState{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1876,7 @@ func (x *LockState) String() string {
 func (*LockState) ProtoMessage() {}
 
 func (x *LockState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1889,7 @@ func (x *LockState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LockState.ProtoReflect.Descriptor instead.
 func (*LockState) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *LockState) GetWheels() []int32 {
@@ -1276,7 +1910,7 @@ type PillarsState struct {
 
 func (x *PillarsState) Reset() {
 	*x = PillarsState{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1288,7 +1922,7 @@ func (x *PillarsState) String() string {
 func (*PillarsState) ProtoMessage() {}
 
 func (x *PillarsState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1301,7 +1935,7 @@ func (x *PillarsState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PillarsState.ProtoReflect.Descriptor instead.
 func (*PillarsState) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PillarsState) GetPillars() []int32 {
@@ -1309,6 +1943,127 @@ func (x *PillarsState) GetPillars() []int32 {
 		return x.Pillars
 	}
 	return nil
+}
+
+// RiddleState is the riddle's state: nothing moves but the answer, so it is empty.
+type RiddleState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RiddleState) Reset() {
+	*x = RiddleState{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RiddleState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RiddleState) ProtoMessage() {}
+
+func (x *RiddleState) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RiddleState.ProtoReflect.Descriptor instead.
+func (*RiddleState) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{19}
+}
+
+// SequenceState is where the players are in the sequence.
+type SequenceState struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many steps the attempt has right so far, from 0. A wrong bell sends it back
+	// to 0. Players read it ("Passos certos 0 de 6").
+	Progress      int32 `protobuf:"varint,1,opt,name=progress,proto3" json:"progress,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SequenceState) Reset() {
+	*x = SequenceState{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SequenceState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SequenceState) ProtoMessage() {}
+
+func (x *SequenceState) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SequenceState.ProtoReflect.Descriptor instead.
+func (*SequenceState) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SequenceState) GetProgress() int32 {
+	if x != nil {
+		return x.Progress
+	}
+	return 0
+}
+
+// CipherState is the cipher's state: nothing moves but the answer, so it is empty.
+type CipherState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CipherState) Reset() {
+	*x = CipherState{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CipherState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CipherState) ProtoMessage() {}
+
+func (x *CipherState) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CipherState.ProtoReflect.Descriptor instead.
+func (*CipherState) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{21}
 }
 
 // PuzzleMove is one move, per kind. It is relative: it says what to do to the state,
@@ -1320,6 +2075,9 @@ type PuzzleMove struct {
 	//	*PuzzleMove_Lights
 	//	*PuzzleMove_Lock
 	//	*PuzzleMove_Pillars
+	//	*PuzzleMove_Riddle
+	//	*PuzzleMove_Sequence
+	//	*PuzzleMove_Cipher
 	Kind          isPuzzleMove_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1327,7 +2085,7 @@ type PuzzleMove struct {
 
 func (x *PuzzleMove) Reset() {
 	*x = PuzzleMove{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1339,7 +2097,7 @@ func (x *PuzzleMove) String() string {
 func (*PuzzleMove) ProtoMessage() {}
 
 func (x *PuzzleMove) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1352,7 +2110,7 @@ func (x *PuzzleMove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleMove.ProtoReflect.Descriptor instead.
 func (*PuzzleMove) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *PuzzleMove) GetKind() isPuzzleMove_Kind {
@@ -1389,6 +2147,33 @@ func (x *PuzzleMove) GetPillars() *PillarsMove {
 	return nil
 }
 
+func (x *PuzzleMove) GetRiddle() *RiddleMove {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleMove_Riddle); ok {
+			return x.Riddle
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleMove) GetSequence() *SequenceMove {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleMove_Sequence); ok {
+			return x.Sequence
+		}
+	}
+	return nil
+}
+
+func (x *PuzzleMove) GetCipher() *CipherMove {
+	if x != nil {
+		if x, ok := x.Kind.(*PuzzleMove_Cipher); ok {
+			return x.Cipher
+		}
+	}
+	return nil
+}
+
 type isPuzzleMove_Kind interface {
 	isPuzzleMove_Kind()
 }
@@ -1405,11 +2190,29 @@ type PuzzleMove_Pillars struct {
 	Pillars *PillarsMove `protobuf:"bytes,3,opt,name=pillars,proto3,oneof"`
 }
 
+type PuzzleMove_Riddle struct {
+	Riddle *RiddleMove `protobuf:"bytes,4,opt,name=riddle,proto3,oneof"`
+}
+
+type PuzzleMove_Sequence struct {
+	Sequence *SequenceMove `protobuf:"bytes,5,opt,name=sequence,proto3,oneof"`
+}
+
+type PuzzleMove_Cipher struct {
+	Cipher *CipherMove `protobuf:"bytes,6,opt,name=cipher,proto3,oneof"`
+}
+
 func (*PuzzleMove_Lights) isPuzzleMove_Kind() {}
 
 func (*PuzzleMove_Lock) isPuzzleMove_Kind() {}
 
 func (*PuzzleMove_Pillars) isPuzzleMove_Kind() {}
+
+func (*PuzzleMove_Riddle) isPuzzleMove_Kind() {}
+
+func (*PuzzleMove_Sequence) isPuzzleMove_Kind() {}
+
+func (*PuzzleMove_Cipher) isPuzzleMove_Kind() {}
 
 // LightsMove presses a light: it and its four neighbours toggle.
 type LightsMove struct {
@@ -1424,7 +2227,7 @@ type LightsMove struct {
 
 func (x *LightsMove) Reset() {
 	*x = LightsMove{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +2239,7 @@ func (x *LightsMove) String() string {
 func (*LightsMove) ProtoMessage() {}
 
 func (x *LightsMove) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +2252,7 @@ func (x *LightsMove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LightsMove.ProtoReflect.Descriptor instead.
 func (*LightsMove) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *LightsMove) GetRow() int32 {
@@ -1479,7 +2282,7 @@ type LockMove struct {
 
 func (x *LockMove) Reset() {
 	*x = LockMove{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +2294,7 @@ func (x *LockMove) String() string {
 func (*LockMove) ProtoMessage() {}
 
 func (x *LockMove) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +2307,7 @@ func (x *LockMove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LockMove.ProtoReflect.Descriptor instead.
 func (*LockMove) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *LockMove) GetWheel() int32 {
@@ -1534,7 +2337,7 @@ type PillarsMove struct {
 
 func (x *PillarsMove) Reset() {
 	*x = PillarsMove{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1546,7 +2349,7 @@ func (x *PillarsMove) String() string {
 func (*PillarsMove) ProtoMessage() {}
 
 func (x *PillarsMove) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1559,7 +2362,7 @@ func (x *PillarsMove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PillarsMove.ProtoReflect.Descriptor instead.
 func (*PillarsMove) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PillarsMove) GetPillar() int32 {
@@ -1574,6 +2377,147 @@ func (x *PillarsMove) GetDelta() int32 {
 		return x.Delta
 	}
 	return 0
+}
+
+// RiddleMove is an answer. It is judged, not applied: a wrong one changes nothing
+// but the consequences ("Ao errar"). The text is the player's own data (typed by them);
+// the other players never read it.
+type RiddleMove struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the player typed, 1 to 600 characters.
+	Answer        string `protobuf:"bytes,1,opt,name=answer,proto3" json:"answer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RiddleMove) Reset() {
+	*x = RiddleMove{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RiddleMove) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RiddleMove) ProtoMessage() {}
+
+func (x *RiddleMove) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RiddleMove.ProtoReflect.Descriptor instead.
+func (*RiddleMove) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *RiddleMove) GetAnswer() string {
+	if x != nil {
+		return x.Answer
+	}
+	return ""
+}
+
+// SequenceMove strikes a bell. The sequence must have been played at least once, and
+// not be playing now.
+type SequenceMove struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bell, from 0.
+	Bell          int32 `protobuf:"varint,1,opt,name=bell,proto3" json:"bell,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SequenceMove) Reset() {
+	*x = SequenceMove{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SequenceMove) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SequenceMove) ProtoMessage() {}
+
+func (x *SequenceMove) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SequenceMove.ProtoReflect.Descriptor instead.
+func (*SequenceMove) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SequenceMove) GetBell() int32 {
+	if x != nil {
+		return x.Bell
+	}
+	return 0
+}
+
+// CipherMove is the message the player typed, deciphered. Judged like a riddle's answer.
+type CipherMove struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the player typed, 1 to 600 characters.
+	Text          string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CipherMove) Reset() {
+	*x = CipherMove{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CipherMove) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CipherMove) ProtoMessage() {}
+
+func (x *CipherMove) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CipherMove.ProtoReflect.Descriptor instead.
+func (*CipherMove) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CipherMove) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
 }
 
 // PuzzleOnSolve is "Ao resolver": an action and what it acts on.
@@ -1599,7 +2543,7 @@ type PuzzleOnSolve struct {
 
 func (x *PuzzleOnSolve) Reset() {
 	*x = PuzzleOnSolve{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1611,7 +2555,7 @@ func (x *PuzzleOnSolve) String() string {
 func (*PuzzleOnSolve) ProtoMessage() {}
 
 func (x *PuzzleOnSolve) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1624,7 +2568,7 @@ func (x *PuzzleOnSolve) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleOnSolve.ProtoReflect.Descriptor instead.
 func (*PuzzleOnSolve) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *PuzzleOnSolve) GetAction() PuzzleSolveAction {
@@ -1711,7 +2655,7 @@ type PuzzleDoorTarget struct {
 
 func (x *PuzzleDoorTarget) Reset() {
 	*x = PuzzleDoorTarget{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1723,7 +2667,7 @@ func (x *PuzzleDoorTarget) String() string {
 func (*PuzzleDoorTarget) ProtoMessage() {}
 
 func (x *PuzzleDoorTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1736,7 +2680,7 @@ func (x *PuzzleDoorTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleDoorTarget.ProtoReflect.Descriptor instead.
 func (*PuzzleDoorTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PuzzleDoorTarget) GetMapId() string {
@@ -1773,7 +2717,7 @@ type PuzzlePointTarget struct {
 
 func (x *PuzzlePointTarget) Reset() {
 	*x = PuzzlePointTarget{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1785,7 +2729,7 @@ func (x *PuzzlePointTarget) String() string {
 func (*PuzzlePointTarget) ProtoMessage() {}
 
 func (x *PuzzlePointTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1798,7 +2742,7 @@ func (x *PuzzlePointTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzlePointTarget.ProtoReflect.Descriptor instead.
 func (*PuzzlePointTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *PuzzlePointTarget) GetMapId() string {
@@ -1826,7 +2770,7 @@ type PuzzleClueTarget struct {
 
 func (x *PuzzleClueTarget) Reset() {
 	*x = PuzzleClueTarget{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1838,7 +2782,7 @@ func (x *PuzzleClueTarget) String() string {
 func (*PuzzleClueTarget) ProtoMessage() {}
 
 func (x *PuzzleClueTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1851,7 +2795,7 @@ func (x *PuzzleClueTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleClueTarget.ProtoReflect.Descriptor instead.
 func (*PuzzleClueTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PuzzleClueTarget) GetClueId() string {
@@ -1870,7 +2814,9 @@ type PuzzleMinimum struct {
 	// The fewest moves. 0 when solved.
 	Moves int32 `protobuf:"varint,2,opt,name=moves,proto3" json:"moves,omitempty"`
 	// One shortest way: the moves in order. For the lights, the cells to press (the
-	// hint ring); for a lock, each wheel's turns the short way round.
+	// hint ring); for a lock, each wheel's turns the short way round; for a sequence,
+	// the bells still to strike. A riddle and a cipher have one move (the answer) and
+	// no path.
 	Path          []*PuzzleMove `protobuf:"bytes,3,rep,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1878,7 +2824,7 @@ type PuzzleMinimum struct {
 
 func (x *PuzzleMinimum) Reset() {
 	*x = PuzzleMinimum{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +2836,7 @@ func (x *PuzzleMinimum) String() string {
 func (*PuzzleMinimum) ProtoMessage() {}
 
 func (x *PuzzleMinimum) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +2849,7 @@ func (x *PuzzleMinimum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleMinimum.ProtoReflect.Descriptor instead.
 func (*PuzzleMinimum) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *PuzzleMinimum) GetSolvable() bool {
@@ -1962,15 +2908,23 @@ type Puzzle struct {
 	// True once it was shown in any session: from then on it cannot be edited.
 	Shown bool `protobuf:"varint,14,opt,name=shown,proto3" json:"shown,omitempty"`
 	// When it was made and last edited.
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The skill check that wins a player the next hint (a skill and a DC). Unset: hints
+	// come only from the master's release. The master's alone: no player reads the DC.
+	HintCheck *PuzzleHintCheck `protobuf:"bytes,17,opt,name=hint_check,json=hintCheck,proto3" json:"hint_check,omitempty"`
+	// The split information: parts of a clue, each given to one player's character, up
+	// to 8. Every player reads only their own (PuzzleRun.my_part).
+	Parts []*PuzzlePart `protobuf:"bytes,18,rep,name=parts,proto3" json:"parts,omitempty"`
+	// "Ao errar": what a wrong answer or bell does. Unset: nothing.
+	OnWrong       *PuzzleOnWrong `protobuf:"bytes,19,opt,name=on_wrong,json=onWrong,proto3" json:"on_wrong,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Puzzle) Reset() {
 	*x = Puzzle{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1982,7 +2936,7 @@ func (x *Puzzle) String() string {
 func (*Puzzle) ProtoMessage() {}
 
 func (x *Puzzle) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1995,7 +2949,7 @@ func (x *Puzzle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Puzzle.ProtoReflect.Descriptor instead.
 func (*Puzzle) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *Puzzle) GetId() string {
@@ -2110,24 +3064,324 @@ func (x *Puzzle) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Puzzle) GetHintCheck() *PuzzleHintCheck {
+	if x != nil {
+		return x.HintCheck
+	}
+	return nil
+}
+
+func (x *Puzzle) GetParts() []*PuzzlePart {
+	if x != nil {
+		return x.Parts
+	}
+	return nil
+}
+
+func (x *Puzzle) GetOnWrong() *PuzzleOnWrong {
+	if x != nil {
+		return x.OnWrong
+	}
+	return nil
+}
+
+// PuzzleHintCheck is the skill check that wins the next hint.
+type PuzzleHintCheck struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The skill, as a scene check's key: "skill:investigation", "skill:arcana"... Any
+	// of the SRD's 18 skills (the Portuguese name is MapService's scene check name).
+	SkillKey string `protobuf:"bytes,1,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
+	// The DC, 1 to 30. The master's alone.
+	Dc            int32 `protobuf:"varint,2,opt,name=dc,proto3" json:"dc,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PuzzleHintCheck) Reset() {
+	*x = PuzzleHintCheck{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleHintCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleHintCheck) ProtoMessage() {}
+
+func (x *PuzzleHintCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleHintCheck.ProtoReflect.Descriptor instead.
+func (*PuzzleHintCheck) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *PuzzleHintCheck) GetSkillKey() string {
+	if x != nil {
+		return x.SkillKey
+	}
+	return ""
+}
+
+func (x *PuzzleHintCheck) GetDc() int32 {
+	if x != nil {
+		return x.Dc
+	}
+	return 0
+}
+
+// PuzzlePart is a part of the clue a player reads in the split information.
+type PuzzlePart struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The player's character that gets it (a UUID of a living player character of the
+	// campaign), or empty for a part with no owner yet ("Sem dono": no player reads it).
+	CharacterId string `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// What that player reads, 1 to 300 characters.
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// Set by the server on the master's reads: the part has an owner who is not a living
+	// player character of the active party any more (it died, or left), so nobody reads
+	// it ("Parte de um personagem morto"). False for a part with no owner.
+	OwnerUnavailable bool `protobuf:"varint,3,opt,name=owner_unavailable,json=ownerUnavailable,proto3" json:"owner_unavailable,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *PuzzlePart) Reset() {
+	*x = PuzzlePart{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzlePart) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzlePart) ProtoMessage() {}
+
+func (x *PuzzlePart) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzlePart.ProtoReflect.Descriptor instead.
+func (*PuzzlePart) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *PuzzlePart) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *PuzzlePart) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *PuzzlePart) GetOwnerUnavailable() bool {
+	if x != nil {
+		return x.OwnerUnavailable
+	}
+	return false
+}
+
+// PuzzleOnWrong is "Ao errar": what a wrong answer or a wrong bell does, and the limits
+// every kind's moves count toward. All of it is optional and they combine; the app's form
+// shows one option at a time. A trap and the attempts apply only to the kinds that judge
+// a move (the riddle, the sequence and the cipher); the limits apply to all six.
+type PuzzleOnWrong struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A trap point of a map of the campaign that fires on a wrong move (MR-035). The
+	// point fires once: the master arms it again (MapService.UpdateMapPoint with
+	// TrapSpec.state = ARMED) to have it fire again. The master decides what the trap does,
+	// as with any trap fired by hand. While a combat without a map runs (RN-25) it fires
+	// nothing, and the wrong move still counts. While a combat runs on the trap's map the
+	// firing is that combat's (a combat change, with its log line), so the master may
+	// extend it to the creatures it catches (PlayService.FireTrap with extend_firing_id).
+	Trap *PuzzleTrapTarget `protobuf:"bytes,1,opt,name=trap,proto3" json:"trap,omitempty"`
+	// How many wrong moves each player may make in a round, 1 to 10. 0: no limit. A
+	// wrong move spends one; with none left, the player's moves are refused
+	// (NO_ATTEMPTS_LEFT). "Recomeçar" gives them back.
+	AttemptsPerPlayer int32 `protobuf:"varint,2,opt,name=attempts_per_player,json=attemptsPerPlayer,proto3" json:"attempts_per_player,omitempty"`
+	// The limit of moves in a round, 1 to 200: every move counts, right or wrong. Reaching
+	// it stops the puzzle, unless that move solved it. 0: no limit.
+	MaxMoves int32 `protobuf:"varint,3,opt,name=max_moves,json=maxMoves,proto3" json:"max_moves,omitempty"`
+	// The time limit of a round in seconds, 10 to 14400 (4 hours), counted from when the
+	// puzzle is shown or restarted; for a sequence, from its first play in the round, so
+	// the clock never runs out before anyone may play. 0: no limit. When it runs out the
+	// puzzle stops.
+	TimeLimitSeconds int32 `protobuf:"varint,4,opt,name=time_limit_seconds,json=timeLimitSeconds,proto3" json:"time_limit_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *PuzzleOnWrong) Reset() {
+	*x = PuzzleOnWrong{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleOnWrong) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleOnWrong) ProtoMessage() {}
+
+func (x *PuzzleOnWrong) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleOnWrong.ProtoReflect.Descriptor instead.
+func (*PuzzleOnWrong) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *PuzzleOnWrong) GetTrap() *PuzzleTrapTarget {
+	if x != nil {
+		return x.Trap
+	}
+	return nil
+}
+
+func (x *PuzzleOnWrong) GetAttemptsPerPlayer() int32 {
+	if x != nil {
+		return x.AttemptsPerPlayer
+	}
+	return 0
+}
+
+func (x *PuzzleOnWrong) GetMaxMoves() int32 {
+	if x != nil {
+		return x.MaxMoves
+	}
+	return 0
+}
+
+func (x *PuzzleOnWrong) GetTimeLimitSeconds() int32 {
+	if x != nil {
+		return x.TimeLimitSeconds
+	}
+	return 0
+}
+
+// PuzzleTrapTarget is a trap point of a map.
+type PuzzleTrapTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The map (a UUID).
+	MapId string `protobuf:"bytes,1,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// The point, which must be a trap (a UUID).
+	PointId       string `protobuf:"bytes,2,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PuzzleTrapTarget) Reset() {
+	*x = PuzzleTrapTarget{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleTrapTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleTrapTarget) ProtoMessage() {}
+
+func (x *PuzzleTrapTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleTrapTarget.ProtoReflect.Descriptor instead.
+func (*PuzzleTrapTarget) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *PuzzleTrapTarget) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *PuzzleTrapTarget) GetPointId() string {
+	if x != nil {
+		return x.PointId
+	}
+	return ""
+}
+
 // PuzzleLastMove is the last move of a run, as a player reads it.
 type PuzzleLastMove struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the character that made it.
 	CharacterName string `protobuf:"bytes,1,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
-	// The move.
+	// The move. For a player it is unset for the riddle, the sequence and the cipher: a
+	// typed answer is its author's, and which bell was struck would give the sequence
+	// away. The master's own read has them (MasterPuzzleRun.last_move).
 	Move *PuzzleMove `protobuf:"bytes,2,opt,name=move,proto3" json:"move,omitempty"`
 	// What changed: the lights (row-major cells), the wheel, or the pillars that turned.
 	Changed []int32 `protobuf:"varint,3,rep,packed,name=changed,proto3" json:"changed,omitempty"`
 	// When it was made.
-	At            *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=at,proto3" json:"at,omitempty"`
+	At *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=at,proto3" json:"at,omitempty"`
+	// True when the move was wrong: a wrong answer, or a wrong bell.
+	Wrong bool `protobuf:"varint,5,opt,name=wrong,proto3" json:"wrong,omitempty"`
+	// For a sequence, the number of the step (from 1) the bell was struck for: "Errou o
+	// passo 4". 0 for the other kinds.
+	Step int32 `protobuf:"varint,6,opt,name=step,proto3" json:"step,omitempty"`
+	// The name the master gave the trap point, when this wrong move fired a trap
+	// ("A armadilha disparou: Dardos envenenados"). Empty otherwise, and for a player who
+	// does not see the trap's point (its map is not on their screen, or a fog map hides
+	// the square from them): they read nothing, not an empty name. A trap that fired is
+	// public to who sees it (MR-035); its DCs and effect never are.
+	TrapName      string `protobuf:"bytes,7,opt,name=trap_name,json=trapName,proto3" json:"trap_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PuzzleLastMove) Reset() {
 	*x = PuzzleLastMove{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2139,7 +3393,7 @@ func (x *PuzzleLastMove) String() string {
 func (*PuzzleLastMove) ProtoMessage() {}
 
 func (x *PuzzleLastMove) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2152,7 +3406,7 @@ func (x *PuzzleLastMove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleLastMove.ProtoReflect.Descriptor instead.
 func (*PuzzleLastMove) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *PuzzleLastMove) GetCharacterName() string {
@@ -2181,6 +3435,27 @@ func (x *PuzzleLastMove) GetAt() *timestamppb.Timestamp {
 		return x.At
 	}
 	return nil
+}
+
+func (x *PuzzleLastMove) GetWrong() bool {
+	if x != nil {
+		return x.Wrong
+	}
+	return false
+}
+
+func (x *PuzzleLastMove) GetStep() int32 {
+	if x != nil {
+		return x.Step
+	}
+	return 0
+}
+
+func (x *PuzzleLastMove) GetTrapName() string {
+	if x != nil {
+		return x.TrapName
+	}
+	return ""
 }
 
 // PuzzleRun is a puzzle in the open session as a player reads it, and nothing more
@@ -2223,13 +3498,49 @@ type PuzzleRun struct {
 	// pista."). Empty until solved, and when the action did nothing and the master wrote
 	// no text.
 	SolvedMessage string `protobuf:"bytes,15,opt,name=solved_message,json=solvedMessage,proto3" json:"solved_message,omitempty"`
+	// The limits of this puzzle: this player's attempts left, the moves and the time.
+	// Unset when the puzzle has none.
+	Limits *PuzzleLimits `protobuf:"bytes,16,opt,name=limits,proto3" json:"limits,omitempty"`
+	// True once a limit stopped the puzzle (moves or time) and it is not solved: nothing
+	// moves until the master restarts or closes it. The players read it neutrally.
+	Stopped bool `protobuf:"varint,17,opt,name=stopped,proto3" json:"stopped,omitempty"`
+	// The neutral line for a stopped puzzle ("O quebra-cabeça parou. Ninguém joga mais
+	// até o mestre recomeçar ou fechar."). Empty when it is not stopped.
+	StoppedMessage string `protobuf:"bytes,18,opt,name=stopped_message,json=stoppedMessage,proto3" json:"stopped_message,omitempty"`
+	// This player's own part of the clue (split information). Empty for a puzzle with no
+	// parts, or when no part is theirs.
+	MyPart string `protobuf:"bytes,19,opt,name=my_part,json=myPart,proto3" json:"my_part,omitempty"`
+	// The names of the other characters that have a part: who to talk to, never what
+	// they read.
+	PartHolders []string `protobuf:"bytes,20,rep,name=part_holders,json=partHolders,proto3" json:"part_holders,omitempty"`
+	// True when a skill check can win hints in this puzzle: the master set one.
+	HintByCheck bool `protobuf:"varint,21,opt,name=hint_by_check,json=hintByCheck,proto3" json:"hint_by_check,omitempty"`
+	// The skill of that check, such as "skill:investigation": "Tentar uma dica ·
+	// Investigação". The DC is never sent.
+	HintSkillKey string `protobuf:"bytes,22,opt,name=hint_skill_key,json=hintSkillKey,proto3" json:"hint_skill_key,omitempty"`
+	// True when this player may try for the next hint now: the puzzle has a check, the
+	// player has a living character, the next hint exists, they did not try for it yet,
+	// and the puzzle is not solved or stopped. A failed try for a hint cannot be repeated
+	// for the same hint: the player waits for the master to release it (another player
+	// passing gives that player their own hint, not this one back).
+	CanTryHint bool `protobuf:"varint,23,opt,name=can_try_hint,json=canTryHint,proto3" json:"can_try_hint,omitempty"`
+	// How many of `hints` the master released (everyone reads them); the ones after are
+	// this player's own, won by a check ("Esta dica é só sua").
+	SharedHints int32 `protobuf:"varint,24,opt,name=shared_hints,json=sharedHints,proto3" json:"shared_hints,omitempty"`
+	// The sequence's playback, for a sequence only: what has been revealed so far.
+	Sequence *SequencePlayback `protobuf:"bytes,25,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	// For a cipher: true when the master linked a scene clue with the key.
+	HasKeyClue bool `protobuf:"varint,26,opt,name=has_key_clue,json=hasKeyClue,proto3" json:"has_key_clue,omitempty"`
+	// The clue with the key (a UUID), only when this player has found it: its text is in
+	// the player's notes (MR-029). Never set before they find it.
+	KeyClueId     string `protobuf:"bytes,27,opt,name=key_clue_id,json=keyClueId,proto3" json:"key_clue_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PuzzleRun) Reset() {
 	*x = PuzzleRun{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2241,7 +3552,7 @@ func (x *PuzzleRun) String() string {
 func (*PuzzleRun) ProtoMessage() {}
 
 func (x *PuzzleRun) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2254,7 +3565,7 @@ func (x *PuzzleRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleRun.ProtoReflect.Descriptor instead.
 func (*PuzzleRun) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *PuzzleRun) GetPuzzleId() string {
@@ -2362,6 +3673,431 @@ func (x *PuzzleRun) GetSolvedMessage() string {
 	return ""
 }
 
+func (x *PuzzleRun) GetLimits() *PuzzleLimits {
+	if x != nil {
+		return x.Limits
+	}
+	return nil
+}
+
+func (x *PuzzleRun) GetStopped() bool {
+	if x != nil {
+		return x.Stopped
+	}
+	return false
+}
+
+func (x *PuzzleRun) GetStoppedMessage() string {
+	if x != nil {
+		return x.StoppedMessage
+	}
+	return ""
+}
+
+func (x *PuzzleRun) GetMyPart() string {
+	if x != nil {
+		return x.MyPart
+	}
+	return ""
+}
+
+func (x *PuzzleRun) GetPartHolders() []string {
+	if x != nil {
+		return x.PartHolders
+	}
+	return nil
+}
+
+func (x *PuzzleRun) GetHintByCheck() bool {
+	if x != nil {
+		return x.HintByCheck
+	}
+	return false
+}
+
+func (x *PuzzleRun) GetHintSkillKey() string {
+	if x != nil {
+		return x.HintSkillKey
+	}
+	return ""
+}
+
+func (x *PuzzleRun) GetCanTryHint() bool {
+	if x != nil {
+		return x.CanTryHint
+	}
+	return false
+}
+
+func (x *PuzzleRun) GetSharedHints() int32 {
+	if x != nil {
+		return x.SharedHints
+	}
+	return 0
+}
+
+func (x *PuzzleRun) GetSequence() *SequencePlayback {
+	if x != nil {
+		return x.Sequence
+	}
+	return nil
+}
+
+func (x *PuzzleRun) GetHasKeyClue() bool {
+	if x != nil {
+		return x.HasKeyClue
+	}
+	return false
+}
+
+func (x *PuzzleRun) GetKeyClueId() string {
+	if x != nil {
+		return x.KeyClueId
+	}
+	return ""
+}
+
+// PuzzleLimits is the limits of "Ao errar" as a player reads them: the counters that
+// stay on screen. A limit that is not set is 0.
+type PuzzleLimits struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The wrong moves this player may make in the round, and how many are left.
+	AttemptsPerPlayer int32 `protobuf:"varint,1,opt,name=attempts_per_player,json=attemptsPerPlayer,proto3" json:"attempts_per_player,omitempty"`
+	AttemptsLeft      int32 `protobuf:"varint,2,opt,name=attempts_left,json=attemptsLeft,proto3" json:"attempts_left,omitempty"`
+	// The limit of moves in the round and how many were made (right or wrong).
+	MaxMoves  int32 `protobuf:"varint,3,opt,name=max_moves,json=maxMoves,proto3" json:"max_moves,omitempty"`
+	MovesMade int32 `protobuf:"varint,4,opt,name=moves_made,json=movesMade,proto3" json:"moves_made,omitempty"`
+	// The time limit in seconds, how many seconds are left (0 when it ran out) and the
+	// moment it runs out. The seconds are worked out when the run is read: tick locally
+	// from `deadline`.
+	TimeLimitSeconds int32                  `protobuf:"varint,5,opt,name=time_limit_seconds,json=timeLimitSeconds,proto3" json:"time_limit_seconds,omitempty"`
+	SecondsLeft      int32                  `protobuf:"varint,6,opt,name=seconds_left,json=secondsLeft,proto3" json:"seconds_left,omitempty"`
+	Deadline         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *PuzzleLimits) Reset() {
+	*x = PuzzleLimits{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleLimits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleLimits) ProtoMessage() {}
+
+func (x *PuzzleLimits) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleLimits.ProtoReflect.Descriptor instead.
+func (*PuzzleLimits) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *PuzzleLimits) GetAttemptsPerPlayer() int32 {
+	if x != nil {
+		return x.AttemptsPerPlayer
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetAttemptsLeft() int32 {
+	if x != nil {
+		return x.AttemptsLeft
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetMaxMoves() int32 {
+	if x != nil {
+		return x.MaxMoves
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetMovesMade() int32 {
+	if x != nil {
+		return x.MovesMade
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetTimeLimitSeconds() int32 {
+	if x != nil {
+		return x.TimeLimitSeconds
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetSecondsLeft() int32 {
+	if x != nil {
+		return x.SecondsLeft
+	}
+	return 0
+}
+
+func (x *PuzzleLimits) GetDeadline() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Deadline
+	}
+	return nil
+}
+
+// SequencePlayback is what a player has seen of a sequence being played, and where the
+// attempt stands. The server reveals the sequence step by step as the play happens (the
+// first step at once, the next one SequencePlayback.step_ms later, and so on) and never
+// sends a step ahead of its time, and never again once the play ends: to see it again
+// the master plays it again. A player that missed it asks the master.
+type SequencePlayback struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The number of steps (3 to 12).
+	TotalSteps int32 `protobuf:"varint,1,opt,name=total_steps,json=totalSteps,proto3" json:"total_steps,omitempty"`
+	// How many times the master has played it. 0: not yet, and moves are refused
+	// (SEQUENCE_NOT_PLAYED).
+	Plays int32 `protobuf:"varint,2,opt,name=plays,proto3" json:"plays,omitempty"`
+	// True while a play runs: moves are refused (SEQUENCE_PLAYING).
+	Playing bool `protobuf:"varint,3,opt,name=playing,proto3" json:"playing,omitempty"`
+	// The bells revealed so far in the play that runs, in order. Empty when no play runs.
+	Shown []int32 `protobuf:"varint,4,rep,packed,name=shown,proto3" json:"shown,omitempty"`
+	// How long each step is shown, in milliseconds.
+	StepMs int32 `protobuf:"varint,5,opt,name=step_ms,json=stepMs,proto3" json:"step_ms,omitempty"`
+	// Milliseconds until the next step is revealed or the play ends; 0 when no play runs.
+	// Read again then: the stream also sends puzzle_changed at each step.
+	NextInMs      int32 `protobuf:"varint,6,opt,name=next_in_ms,json=nextInMs,proto3" json:"next_in_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SequencePlayback) Reset() {
+	*x = SequencePlayback{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SequencePlayback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SequencePlayback) ProtoMessage() {}
+
+func (x *SequencePlayback) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SequencePlayback.ProtoReflect.Descriptor instead.
+func (*SequencePlayback) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *SequencePlayback) GetTotalSteps() int32 {
+	if x != nil {
+		return x.TotalSteps
+	}
+	return 0
+}
+
+func (x *SequencePlayback) GetPlays() int32 {
+	if x != nil {
+		return x.Plays
+	}
+	return 0
+}
+
+func (x *SequencePlayback) GetPlaying() bool {
+	if x != nil {
+		return x.Playing
+	}
+	return false
+}
+
+func (x *SequencePlayback) GetShown() []int32 {
+	if x != nil {
+		return x.Shown
+	}
+	return nil
+}
+
+func (x *SequencePlayback) GetStepMs() int32 {
+	if x != nil {
+		return x.StepMs
+	}
+	return 0
+}
+
+func (x *SequencePlayback) GetNextInMs() int32 {
+	if x != nil {
+		return x.NextInMs
+	}
+	return 0
+}
+
+// PuzzleHintTry is one try for a hint by a skill check, as the master reads it.
+type PuzzleHintTry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the character that rolled.
+	CharacterName string `protobuf:"bytes,1,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// The number of the hint it was for, from 1.
+	Hint int32 `protobuf:"varint,2,opt,name=hint,proto3" json:"hint,omitempty"`
+	// True when the roll reached the DC.
+	Passed bool `protobuf:"varint,3,opt,name=passed,proto3" json:"passed,omitempty"`
+	// The roll: the d20 and the total with the skill's bonus.
+	Roll *DiceRoll `protobuf:"bytes,4,opt,name=roll,proto3" json:"roll,omitempty"`
+	// When.
+	At            *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=at,proto3" json:"at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PuzzleHintTry) Reset() {
+	*x = PuzzleHintTry{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleHintTry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleHintTry) ProtoMessage() {}
+
+func (x *PuzzleHintTry) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleHintTry.ProtoReflect.Descriptor instead.
+func (*PuzzleHintTry) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *PuzzleHintTry) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *PuzzleHintTry) GetHint() int32 {
+	if x != nil {
+		return x.Hint
+	}
+	return 0
+}
+
+func (x *PuzzleHintTry) GetPassed() bool {
+	if x != nil {
+		return x.Passed
+	}
+	return false
+}
+
+func (x *PuzzleHintTry) GetRoll() *DiceRoll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *PuzzleHintTry) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.At
+	}
+	return nil
+}
+
+// PuzzleAttempts is a player's wrong moves in the round, as the master reads them.
+type PuzzleAttempts struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the player's character.
+	CharacterName string `protobuf:"bytes,1,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// The wrong moves made in the round, and how many are left (0 without a limit).
+	Wrong         int32 `protobuf:"varint,2,opt,name=wrong,proto3" json:"wrong,omitempty"`
+	Left          int32 `protobuf:"varint,3,opt,name=left,proto3" json:"left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PuzzleAttempts) Reset() {
+	*x = PuzzleAttempts{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PuzzleAttempts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PuzzleAttempts) ProtoMessage() {}
+
+func (x *PuzzleAttempts) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PuzzleAttempts.ProtoReflect.Descriptor instead.
+func (*PuzzleAttempts) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *PuzzleAttempts) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *PuzzleAttempts) GetWrong() int32 {
+	if x != nil {
+		return x.Wrong
+	}
+	return 0
+}
+
+func (x *PuzzleAttempts) GetLeft() int32 {
+	if x != nil {
+		return x.Left
+	}
+	return 0
+}
+
 // PuzzleSummary is a shown puzzle in the list a player reads.
 type PuzzleSummary struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2372,14 +4108,17 @@ type PuzzleSummary struct {
 	// The kind.
 	Kind PuzzleKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.play.v1.PuzzleKind" json:"kind,omitempty"`
 	// True once solved.
-	Solved        bool `protobuf:"varint,4,opt,name=solved,proto3" json:"solved,omitempty"`
+	Solved bool `protobuf:"varint,4,opt,name=solved,proto3" json:"solved,omitempty"`
+	// True while a limit of moves or of time stopped the puzzle (it is not solved and
+	// nothing moves): it does not look open in the list.
+	Stopped       bool `protobuf:"varint,5,opt,name=stopped,proto3" json:"stopped,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PuzzleSummary) Reset() {
 	*x = PuzzleSummary{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[25]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2391,7 +4130,7 @@ func (x *PuzzleSummary) String() string {
 func (*PuzzleSummary) ProtoMessage() {}
 
 func (x *PuzzleSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[25]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2404,7 +4143,7 @@ func (x *PuzzleSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleSummary.ProtoReflect.Descriptor instead.
 func (*PuzzleSummary) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *PuzzleSummary) GetPuzzleId() string {
@@ -2435,6 +4174,13 @@ func (x *PuzzleSummary) GetSolved() bool {
 	return false
 }
 
+func (x *PuzzleSummary) GetStopped() bool {
+	if x != nil {
+		return x.Stopped
+	}
+	return false
+}
+
 // MasterPuzzleRun is a puzzle in the open session as the master reads it: what the
 // players read, and what only the master may know.
 type MasterPuzzleRun struct {
@@ -2457,14 +4203,26 @@ type MasterPuzzleRun struct {
 	// How many moves were made in this run (a reset does not erase them: the history stays).
 	MovesMade int32 `protobuf:"varint,8,opt,name=moves_made,json=movesMade,proto3" json:"moves_made,omitempty"`
 	// What the server did when it was solved. UNSPECIFIED until then.
-	Outcome       PuzzleSolveOutcome `protobuf:"varint,9,opt,name=outcome,proto3,enum=meurpg.play.v1.PuzzleSolveOutcome" json:"outcome,omitempty"`
+	Outcome PuzzleSolveOutcome `protobuf:"varint,9,opt,name=outcome,proto3,enum=meurpg.play.v1.PuzzleSolveOutcome" json:"outcome,omitempty"`
+	// The last move as the master reads it, with the typed answer or the bell. Unset
+	// before the first move.
+	LastMove *PuzzleLastMove `protobuf:"bytes,10,opt,name=last_move,json=lastMove,proto3" json:"last_move,omitempty"`
+	// Why a limit stopped the puzzle: MOVES or TIME. UNSPECIFIED when it is not stopped.
+	// The players read only `stopped`.
+	StopReason PuzzleStopReason `protobuf:"varint,11,opt,name=stop_reason,json=stopReason,proto3,enum=meurpg.play.v1.PuzzleStopReason" json:"stop_reason,omitempty"`
+	// The tries for a hint by a skill check in this run, oldest first (at most 50, the
+	// newest).
+	HintTries []*PuzzleHintTry `protobuf:"bytes,12,rep,name=hint_tries,json=hintTries,proto3" json:"hint_tries,omitempty"`
+	// Each living player character's wrong moves in the round, in the party's order, for
+	// a puzzle with "Ao errar"; empty otherwise.
+	Attempts      []*PuzzleAttempts `protobuf:"bytes,13,rep,name=attempts,proto3" json:"attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MasterPuzzleRun) Reset() {
 	*x = MasterPuzzleRun{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[26]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2476,7 +4234,7 @@ func (x *MasterPuzzleRun) String() string {
 func (*MasterPuzzleRun) ProtoMessage() {}
 
 func (x *MasterPuzzleRun) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[26]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2489,7 +4247,7 @@ func (x *MasterPuzzleRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MasterPuzzleRun.ProtoReflect.Descriptor instead.
 func (*MasterPuzzleRun) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *MasterPuzzleRun) GetPuzzle() *Puzzle {
@@ -2555,6 +4313,34 @@ func (x *MasterPuzzleRun) GetOutcome() PuzzleSolveOutcome {
 	return PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_UNSPECIFIED
 }
 
+func (x *MasterPuzzleRun) GetLastMove() *PuzzleLastMove {
+	if x != nil {
+		return x.LastMove
+	}
+	return nil
+}
+
+func (x *MasterPuzzleRun) GetStopReason() PuzzleStopReason {
+	if x != nil {
+		return x.StopReason
+	}
+	return PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED
+}
+
+func (x *MasterPuzzleRun) GetHintTries() []*PuzzleHintTry {
+	if x != nil {
+		return x.HintTries
+	}
+	return nil
+}
+
+func (x *MasterPuzzleRun) GetAttempts() []*PuzzleAttempts {
+	if x != nil {
+		return x.Attempts
+	}
+	return nil
+}
+
 // PuzzleBlocked is the detail of a `failed_precondition` of PuzzleService.
 type PuzzleBlocked struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2565,7 +4351,7 @@ type PuzzleBlocked struct {
 
 func (x *PuzzleBlocked) Reset() {
 	*x = PuzzleBlocked{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[27]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2577,7 +4363,7 @@ func (x *PuzzleBlocked) String() string {
 func (*PuzzleBlocked) ProtoMessage() {}
 
 func (x *PuzzleBlocked) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[27]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2590,7 +4376,7 @@ func (x *PuzzleBlocked) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleBlocked.ProtoReflect.Descriptor instead.
 func (*PuzzleBlocked) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *PuzzleBlocked) GetReason() PuzzleBlockedReason {
@@ -2612,7 +4398,7 @@ type PuzzleInvalid struct {
 
 func (x *PuzzleInvalid) Reset() {
 	*x = PuzzleInvalid{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[28]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2624,7 +4410,7 @@ func (x *PuzzleInvalid) String() string {
 func (*PuzzleInvalid) ProtoMessage() {}
 
 func (x *PuzzleInvalid) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[28]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2637,7 +4423,7 @@ func (x *PuzzleInvalid) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleInvalid.ProtoReflect.Descriptor instead.
 func (*PuzzleInvalid) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *PuzzleInvalid) GetReason() PuzzleInvalidReason {
@@ -2675,14 +4461,20 @@ type CreatePuzzleRequest struct {
 	// The hints, in release order: up to 10, 1 to 300 characters each.
 	Hints []string `protobuf:"bytes,8,rep,name=hints,proto3" json:"hints,omitempty"`
 	// "Ao resolver". Unset is NOTIFY.
-	OnSolve       *PuzzleOnSolve `protobuf:"bytes,9,opt,name=on_solve,json=onSolve,proto3" json:"on_solve,omitempty"`
+	OnSolve *PuzzleOnSolve `protobuf:"bytes,9,opt,name=on_solve,json=onSolve,proto3" json:"on_solve,omitempty"`
+	// The skill check that wins the next hint (needs hints). Unset: none.
+	HintCheck *PuzzleHintCheck `protobuf:"bytes,10,opt,name=hint_check,json=hintCheck,proto3" json:"hint_check,omitempty"`
+	// The split information: up to 8 parts, each for a player's character.
+	Parts []*PuzzlePart `protobuf:"bytes,11,rep,name=parts,proto3" json:"parts,omitempty"`
+	// "Ao errar". Unset: nothing.
+	OnWrong       *PuzzleOnWrong `protobuf:"bytes,12,opt,name=on_wrong,json=onWrong,proto3" json:"on_wrong,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreatePuzzleRequest) Reset() {
 	*x = CreatePuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[29]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2694,7 +4486,7 @@ func (x *CreatePuzzleRequest) String() string {
 func (*CreatePuzzleRequest) ProtoMessage() {}
 
 func (x *CreatePuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[29]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2707,7 +4499,7 @@ func (x *CreatePuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePuzzleRequest.ProtoReflect.Descriptor instead.
 func (*CreatePuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{29}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *CreatePuzzleRequest) GetCampaignId() string {
@@ -2773,6 +4565,27 @@ func (x *CreatePuzzleRequest) GetOnSolve() *PuzzleOnSolve {
 	return nil
 }
 
+func (x *CreatePuzzleRequest) GetHintCheck() *PuzzleHintCheck {
+	if x != nil {
+		return x.HintCheck
+	}
+	return nil
+}
+
+func (x *CreatePuzzleRequest) GetParts() []*PuzzlePart {
+	if x != nil {
+		return x.Parts
+	}
+	return nil
+}
+
+func (x *CreatePuzzleRequest) GetOnWrong() *PuzzleOnWrong {
+	if x != nil {
+		return x.OnWrong
+	}
+	return nil
+}
+
 // CreatePuzzleResponse carries the new puzzle.
 type CreatePuzzleResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2783,7 +4596,7 @@ type CreatePuzzleResponse struct {
 
 func (x *CreatePuzzleResponse) Reset() {
 	*x = CreatePuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[30]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2795,7 +4608,7 @@ func (x *CreatePuzzleResponse) String() string {
 func (*CreatePuzzleResponse) ProtoMessage() {}
 
 func (x *CreatePuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[30]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2808,7 +4621,7 @@ func (x *CreatePuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePuzzleResponse.ProtoReflect.Descriptor instead.
 func (*CreatePuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{30}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CreatePuzzleResponse) GetPuzzle() *Puzzle {
@@ -2831,17 +4644,20 @@ type UpdatePuzzleRequest struct {
 	// For the lights and the pillars: the seed of the start; 0 keeps the puzzle's
 	// current start when the config and the answer still fit it, and draws a new one
 	// otherwise.
-	Seed          int64          `protobuf:"varint,7,opt,name=seed,proto3" json:"seed,omitempty"`
-	Clue          string         `protobuf:"bytes,8,opt,name=clue,proto3" json:"clue,omitempty"`
-	Hints         []string       `protobuf:"bytes,9,rep,name=hints,proto3" json:"hints,omitempty"`
-	OnSolve       *PuzzleOnSolve `protobuf:"bytes,10,opt,name=on_solve,json=onSolve,proto3" json:"on_solve,omitempty"`
+	Seed          int64            `protobuf:"varint,7,opt,name=seed,proto3" json:"seed,omitempty"`
+	Clue          string           `protobuf:"bytes,8,opt,name=clue,proto3" json:"clue,omitempty"`
+	Hints         []string         `protobuf:"bytes,9,rep,name=hints,proto3" json:"hints,omitempty"`
+	OnSolve       *PuzzleOnSolve   `protobuf:"bytes,10,opt,name=on_solve,json=onSolve,proto3" json:"on_solve,omitempty"`
+	HintCheck     *PuzzleHintCheck `protobuf:"bytes,11,opt,name=hint_check,json=hintCheck,proto3" json:"hint_check,omitempty"`
+	Parts         []*PuzzlePart    `protobuf:"bytes,12,rep,name=parts,proto3" json:"parts,omitempty"`
+	OnWrong       *PuzzleOnWrong   `protobuf:"bytes,13,opt,name=on_wrong,json=onWrong,proto3" json:"on_wrong,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdatePuzzleRequest) Reset() {
 	*x = UpdatePuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[31]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2853,7 +4669,7 @@ func (x *UpdatePuzzleRequest) String() string {
 func (*UpdatePuzzleRequest) ProtoMessage() {}
 
 func (x *UpdatePuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[31]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2866,7 +4682,7 @@ func (x *UpdatePuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePuzzleRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{31}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *UpdatePuzzleRequest) GetCampaignId() string {
@@ -2939,6 +4755,27 @@ func (x *UpdatePuzzleRequest) GetOnSolve() *PuzzleOnSolve {
 	return nil
 }
 
+func (x *UpdatePuzzleRequest) GetHintCheck() *PuzzleHintCheck {
+	if x != nil {
+		return x.HintCheck
+	}
+	return nil
+}
+
+func (x *UpdatePuzzleRequest) GetParts() []*PuzzlePart {
+	if x != nil {
+		return x.Parts
+	}
+	return nil
+}
+
+func (x *UpdatePuzzleRequest) GetOnWrong() *PuzzleOnWrong {
+	if x != nil {
+		return x.OnWrong
+	}
+	return nil
+}
+
 // UpdatePuzzleResponse carries the edited puzzle.
 type UpdatePuzzleResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2949,7 +4786,7 @@ type UpdatePuzzleResponse struct {
 
 func (x *UpdatePuzzleResponse) Reset() {
 	*x = UpdatePuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2961,7 +4798,7 @@ func (x *UpdatePuzzleResponse) String() string {
 func (*UpdatePuzzleResponse) ProtoMessage() {}
 
 func (x *UpdatePuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2974,7 +4811,7 @@ func (x *UpdatePuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePuzzleResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{32}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *UpdatePuzzleResponse) GetPuzzle() *Puzzle {
@@ -2999,7 +4836,7 @@ type PreviewPuzzleStartRequest struct {
 
 func (x *PreviewPuzzleStartRequest) Reset() {
 	*x = PreviewPuzzleStartRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3011,7 +4848,7 @@ func (x *PreviewPuzzleStartRequest) String() string {
 func (*PreviewPuzzleStartRequest) ProtoMessage() {}
 
 func (x *PreviewPuzzleStartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3024,7 +4861,7 @@ func (x *PreviewPuzzleStartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewPuzzleStartRequest.ProtoReflect.Descriptor instead.
 func (*PreviewPuzzleStartRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{33}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *PreviewPuzzleStartRequest) GetCampaignId() string {
@@ -3070,7 +4907,7 @@ type PreviewPuzzleStartResponse struct {
 
 func (x *PreviewPuzzleStartResponse) Reset() {
 	*x = PreviewPuzzleStartResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3082,7 +4919,7 @@ func (x *PreviewPuzzleStartResponse) String() string {
 func (*PreviewPuzzleStartResponse) ProtoMessage() {}
 
 func (x *PreviewPuzzleStartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3095,7 +4932,7 @@ func (x *PreviewPuzzleStartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewPuzzleStartResponse.ProtoReflect.Descriptor instead.
 func (*PreviewPuzzleStartResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{34}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *PreviewPuzzleStartResponse) GetSeed() int64 {
@@ -3131,7 +4968,7 @@ type ListPuzzlesRequest struct {
 
 func (x *ListPuzzlesRequest) Reset() {
 	*x = ListPuzzlesRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3143,7 +4980,7 @@ func (x *ListPuzzlesRequest) String() string {
 func (*ListPuzzlesRequest) ProtoMessage() {}
 
 func (x *ListPuzzlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3156,7 +4993,7 @@ func (x *ListPuzzlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPuzzlesRequest.ProtoReflect.Descriptor instead.
 func (*ListPuzzlesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{35}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListPuzzlesRequest) GetCampaignId() string {
@@ -3183,7 +5020,7 @@ type ListPuzzlesResponse struct {
 
 func (x *ListPuzzlesResponse) Reset() {
 	*x = ListPuzzlesResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[36]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3195,7 +5032,7 @@ func (x *ListPuzzlesResponse) String() string {
 func (*ListPuzzlesResponse) ProtoMessage() {}
 
 func (x *ListPuzzlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[36]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3208,7 +5045,7 @@ func (x *ListPuzzlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPuzzlesResponse.ProtoReflect.Descriptor instead.
 func (*ListPuzzlesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{36}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ListPuzzlesResponse) GetPuzzles() []*Puzzle {
@@ -3229,7 +5066,7 @@ type GetPuzzleRequest struct {
 
 func (x *GetPuzzleRequest) Reset() {
 	*x = GetPuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[37]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3241,7 +5078,7 @@ func (x *GetPuzzleRequest) String() string {
 func (*GetPuzzleRequest) ProtoMessage() {}
 
 func (x *GetPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[37]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3254,7 +5091,7 @@ func (x *GetPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*GetPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{37}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *GetPuzzleRequest) GetCampaignId() string {
@@ -3281,7 +5118,7 @@ type GetPuzzleResponse struct {
 
 func (x *GetPuzzleResponse) Reset() {
 	*x = GetPuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[38]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3293,7 +5130,7 @@ func (x *GetPuzzleResponse) String() string {
 func (*GetPuzzleResponse) ProtoMessage() {}
 
 func (x *GetPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[38]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3306,7 +5143,7 @@ func (x *GetPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*GetPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{38}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetPuzzleResponse) GetPuzzle() *Puzzle {
@@ -3327,7 +5164,7 @@ type ArchivePuzzleRequest struct {
 
 func (x *ArchivePuzzleRequest) Reset() {
 	*x = ArchivePuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[39]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3339,7 +5176,7 @@ func (x *ArchivePuzzleRequest) String() string {
 func (*ArchivePuzzleRequest) ProtoMessage() {}
 
 func (x *ArchivePuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[39]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3352,7 +5189,7 @@ func (x *ArchivePuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchivePuzzleRequest.ProtoReflect.Descriptor instead.
 func (*ArchivePuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{39}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ArchivePuzzleRequest) GetCampaignId() string {
@@ -3379,7 +5216,7 @@ type ArchivePuzzleResponse struct {
 
 func (x *ArchivePuzzleResponse) Reset() {
 	*x = ArchivePuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[40]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3391,7 +5228,7 @@ func (x *ArchivePuzzleResponse) String() string {
 func (*ArchivePuzzleResponse) ProtoMessage() {}
 
 func (x *ArchivePuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[40]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3404,7 +5241,7 @@ func (x *ArchivePuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchivePuzzleResponse.ProtoReflect.Descriptor instead.
 func (*ArchivePuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{40}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ArchivePuzzleResponse) GetPuzzle() *Puzzle {
@@ -3425,7 +5262,7 @@ type UnarchivePuzzleRequest struct {
 
 func (x *UnarchivePuzzleRequest) Reset() {
 	*x = UnarchivePuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[41]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3437,7 +5274,7 @@ func (x *UnarchivePuzzleRequest) String() string {
 func (*UnarchivePuzzleRequest) ProtoMessage() {}
 
 func (x *UnarchivePuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[41]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3450,7 +5287,7 @@ func (x *UnarchivePuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchivePuzzleRequest.ProtoReflect.Descriptor instead.
 func (*UnarchivePuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{41}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *UnarchivePuzzleRequest) GetCampaignId() string {
@@ -3477,7 +5314,7 @@ type UnarchivePuzzleResponse struct {
 
 func (x *UnarchivePuzzleResponse) Reset() {
 	*x = UnarchivePuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[42]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3489,7 +5326,7 @@ func (x *UnarchivePuzzleResponse) String() string {
 func (*UnarchivePuzzleResponse) ProtoMessage() {}
 
 func (x *UnarchivePuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[42]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3502,7 +5339,7 @@ func (x *UnarchivePuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchivePuzzleResponse.ProtoReflect.Descriptor instead.
 func (*UnarchivePuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{42}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *UnarchivePuzzleResponse) GetPuzzle() *Puzzle {
@@ -3522,7 +5359,7 @@ type ListSessionPuzzlesRequest struct {
 
 func (x *ListSessionPuzzlesRequest) Reset() {
 	*x = ListSessionPuzzlesRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[43]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3534,7 +5371,7 @@ func (x *ListSessionPuzzlesRequest) String() string {
 func (*ListSessionPuzzlesRequest) ProtoMessage() {}
 
 func (x *ListSessionPuzzlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[43]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3547,7 +5384,7 @@ func (x *ListSessionPuzzlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionPuzzlesRequest.ProtoReflect.Descriptor instead.
 func (*ListSessionPuzzlesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{43}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ListSessionPuzzlesRequest) GetCampaignId() string {
@@ -3569,7 +5406,7 @@ type ListSessionPuzzlesResponse struct {
 
 func (x *ListSessionPuzzlesResponse) Reset() {
 	*x = ListSessionPuzzlesResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[44]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3581,7 +5418,7 @@ func (x *ListSessionPuzzlesResponse) String() string {
 func (*ListSessionPuzzlesResponse) ProtoMessage() {}
 
 func (x *ListSessionPuzzlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[44]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3594,7 +5431,7 @@ func (x *ListSessionPuzzlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionPuzzlesResponse.ProtoReflect.Descriptor instead.
 func (*ListSessionPuzzlesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{44}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListSessionPuzzlesResponse) GetPuzzles() []*MasterPuzzleRun {
@@ -3615,7 +5452,7 @@ type ShowPuzzleRequest struct {
 
 func (x *ShowPuzzleRequest) Reset() {
 	*x = ShowPuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[45]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3627,7 +5464,7 @@ func (x *ShowPuzzleRequest) String() string {
 func (*ShowPuzzleRequest) ProtoMessage() {}
 
 func (x *ShowPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[45]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3640,7 +5477,7 @@ func (x *ShowPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*ShowPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{45}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ShowPuzzleRequest) GetCampaignId() string {
@@ -3667,7 +5504,7 @@ type ShowPuzzleResponse struct {
 
 func (x *ShowPuzzleResponse) Reset() {
 	*x = ShowPuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[46]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3679,7 +5516,7 @@ func (x *ShowPuzzleResponse) String() string {
 func (*ShowPuzzleResponse) ProtoMessage() {}
 
 func (x *ShowPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[46]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3692,7 +5529,7 @@ func (x *ShowPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*ShowPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{46}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ShowPuzzleResponse) GetRun() *MasterPuzzleRun {
@@ -3713,7 +5550,7 @@ type ResetPuzzleRequest struct {
 
 func (x *ResetPuzzleRequest) Reset() {
 	*x = ResetPuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[47]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3725,7 +5562,7 @@ func (x *ResetPuzzleRequest) String() string {
 func (*ResetPuzzleRequest) ProtoMessage() {}
 
 func (x *ResetPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[47]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3738,7 +5575,7 @@ func (x *ResetPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*ResetPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{47}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ResetPuzzleRequest) GetCampaignId() string {
@@ -3765,7 +5602,7 @@ type ResetPuzzleResponse struct {
 
 func (x *ResetPuzzleResponse) Reset() {
 	*x = ResetPuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[48]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3777,7 +5614,7 @@ func (x *ResetPuzzleResponse) String() string {
 func (*ResetPuzzleResponse) ProtoMessage() {}
 
 func (x *ResetPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[48]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3790,7 +5627,7 @@ func (x *ResetPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*ResetPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{48}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ResetPuzzleResponse) GetRun() *MasterPuzzleRun {
@@ -3811,7 +5648,7 @@ type ReseedPuzzleRequest struct {
 
 func (x *ReseedPuzzleRequest) Reset() {
 	*x = ReseedPuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[49]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3823,7 +5660,7 @@ func (x *ReseedPuzzleRequest) String() string {
 func (*ReseedPuzzleRequest) ProtoMessage() {}
 
 func (x *ReseedPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[49]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3836,7 +5673,7 @@ func (x *ReseedPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReseedPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*ReseedPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{49}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ReseedPuzzleRequest) GetCampaignId() string {
@@ -3863,7 +5700,7 @@ type ReseedPuzzleResponse struct {
 
 func (x *ReseedPuzzleResponse) Reset() {
 	*x = ReseedPuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[50]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3875,7 +5712,7 @@ func (x *ReseedPuzzleResponse) String() string {
 func (*ReseedPuzzleResponse) ProtoMessage() {}
 
 func (x *ReseedPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[50]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3888,7 +5725,7 @@ func (x *ReseedPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReseedPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*ReseedPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{50}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *ReseedPuzzleResponse) GetRun() *MasterPuzzleRun {
@@ -3909,7 +5746,7 @@ type ClosePuzzleRequest struct {
 
 func (x *ClosePuzzleRequest) Reset() {
 	*x = ClosePuzzleRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[51]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3921,7 +5758,7 @@ func (x *ClosePuzzleRequest) String() string {
 func (*ClosePuzzleRequest) ProtoMessage() {}
 
 func (x *ClosePuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[51]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3934,7 +5771,7 @@ func (x *ClosePuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClosePuzzleRequest.ProtoReflect.Descriptor instead.
 func (*ClosePuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{51}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ClosePuzzleRequest) GetCampaignId() string {
@@ -3961,7 +5798,7 @@ type ClosePuzzleResponse struct {
 
 func (x *ClosePuzzleResponse) Reset() {
 	*x = ClosePuzzleResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[52]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3973,7 +5810,7 @@ func (x *ClosePuzzleResponse) String() string {
 func (*ClosePuzzleResponse) ProtoMessage() {}
 
 func (x *ClosePuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[52]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3986,7 +5823,7 @@ func (x *ClosePuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClosePuzzleResponse.ProtoReflect.Descriptor instead.
 func (*ClosePuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{52}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ClosePuzzleResponse) GetRun() *MasterPuzzleRun {
@@ -4007,7 +5844,7 @@ type ReleaseNextPuzzleHintRequest struct {
 
 func (x *ReleaseNextPuzzleHintRequest) Reset() {
 	*x = ReleaseNextPuzzleHintRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[53]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4019,7 +5856,7 @@ func (x *ReleaseNextPuzzleHintRequest) String() string {
 func (*ReleaseNextPuzzleHintRequest) ProtoMessage() {}
 
 func (x *ReleaseNextPuzzleHintRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[53]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4032,7 +5869,7 @@ func (x *ReleaseNextPuzzleHintRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseNextPuzzleHintRequest.ProtoReflect.Descriptor instead.
 func (*ReleaseNextPuzzleHintRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{53}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ReleaseNextPuzzleHintRequest) GetCampaignId() string {
@@ -4059,7 +5896,7 @@ type ReleaseNextPuzzleHintResponse struct {
 
 func (x *ReleaseNextPuzzleHintResponse) Reset() {
 	*x = ReleaseNextPuzzleHintResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[54]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4071,7 +5908,7 @@ func (x *ReleaseNextPuzzleHintResponse) String() string {
 func (*ReleaseNextPuzzleHintResponse) ProtoMessage() {}
 
 func (x *ReleaseNextPuzzleHintResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[54]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4084,7 +5921,7 @@ func (x *ReleaseNextPuzzleHintResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseNextPuzzleHintResponse.ProtoReflect.Descriptor instead.
 func (*ReleaseNextPuzzleHintResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{54}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ReleaseNextPuzzleHintResponse) GetRun() *MasterPuzzleRun {
@@ -4105,7 +5942,7 @@ type GetMasterPuzzleRunRequest struct {
 
 func (x *GetMasterPuzzleRunRequest) Reset() {
 	*x = GetMasterPuzzleRunRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[55]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4117,7 +5954,7 @@ func (x *GetMasterPuzzleRunRequest) String() string {
 func (*GetMasterPuzzleRunRequest) ProtoMessage() {}
 
 func (x *GetMasterPuzzleRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[55]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4130,7 +5967,7 @@ func (x *GetMasterPuzzleRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMasterPuzzleRunRequest.ProtoReflect.Descriptor instead.
 func (*GetMasterPuzzleRunRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{55}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *GetMasterPuzzleRunRequest) GetCampaignId() string {
@@ -4157,7 +5994,7 @@ type GetMasterPuzzleRunResponse struct {
 
 func (x *GetMasterPuzzleRunResponse) Reset() {
 	*x = GetMasterPuzzleRunResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[56]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4169,7 +6006,7 @@ func (x *GetMasterPuzzleRunResponse) String() string {
 func (*GetMasterPuzzleRunResponse) ProtoMessage() {}
 
 func (x *GetMasterPuzzleRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[56]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4182,7 +6019,7 @@ func (x *GetMasterPuzzleRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMasterPuzzleRunResponse.ProtoReflect.Descriptor instead.
 func (*GetMasterPuzzleRunResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{56}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *GetMasterPuzzleRunResponse) GetRun() *MasterPuzzleRun {
@@ -4202,7 +6039,7 @@ type ListShownPuzzlesRequest struct {
 
 func (x *ListShownPuzzlesRequest) Reset() {
 	*x = ListShownPuzzlesRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[57]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4214,7 +6051,7 @@ func (x *ListShownPuzzlesRequest) String() string {
 func (*ListShownPuzzlesRequest) ProtoMessage() {}
 
 func (x *ListShownPuzzlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[57]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4227,7 +6064,7 @@ func (x *ListShownPuzzlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListShownPuzzlesRequest.ProtoReflect.Descriptor instead.
 func (*ListShownPuzzlesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{57}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListShownPuzzlesRequest) GetCampaignId() string {
@@ -4247,7 +6084,7 @@ type ListShownPuzzlesResponse struct {
 
 func (x *ListShownPuzzlesResponse) Reset() {
 	*x = ListShownPuzzlesResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[58]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4259,7 +6096,7 @@ func (x *ListShownPuzzlesResponse) String() string {
 func (*ListShownPuzzlesResponse) ProtoMessage() {}
 
 func (x *ListShownPuzzlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[58]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4272,7 +6109,7 @@ func (x *ListShownPuzzlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListShownPuzzlesResponse.ProtoReflect.Descriptor instead.
 func (*ListShownPuzzlesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{58}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ListShownPuzzlesResponse) GetPuzzles() []*PuzzleSummary {
@@ -4293,7 +6130,7 @@ type GetPuzzleRunRequest struct {
 
 func (x *GetPuzzleRunRequest) Reset() {
 	*x = GetPuzzleRunRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[59]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4305,7 +6142,7 @@ func (x *GetPuzzleRunRequest) String() string {
 func (*GetPuzzleRunRequest) ProtoMessage() {}
 
 func (x *GetPuzzleRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[59]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4318,7 +6155,7 @@ func (x *GetPuzzleRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPuzzleRunRequest.ProtoReflect.Descriptor instead.
 func (*GetPuzzleRunRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{59}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *GetPuzzleRunRequest) GetCampaignId() string {
@@ -4345,7 +6182,7 @@ type GetPuzzleRunResponse struct {
 
 func (x *GetPuzzleRunResponse) Reset() {
 	*x = GetPuzzleRunResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[60]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4357,7 +6194,7 @@ func (x *GetPuzzleRunResponse) String() string {
 func (*GetPuzzleRunResponse) ProtoMessage() {}
 
 func (x *GetPuzzleRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[60]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4370,7 +6207,7 @@ func (x *GetPuzzleRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPuzzleRunResponse.ProtoReflect.Descriptor instead.
 func (*GetPuzzleRunResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{60}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *GetPuzzleRunResponse) GetRun() *PuzzleRun {
@@ -4396,7 +6233,7 @@ type MakePuzzleMoveRequest struct {
 
 func (x *MakePuzzleMoveRequest) Reset() {
 	*x = MakePuzzleMoveRequest{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[61]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4408,7 +6245,7 @@ func (x *MakePuzzleMoveRequest) String() string {
 func (*MakePuzzleMoveRequest) ProtoMessage() {}
 
 func (x *MakePuzzleMoveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[61]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4421,7 +6258,7 @@ func (x *MakePuzzleMoveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MakePuzzleMoveRequest.ProtoReflect.Descriptor instead.
 func (*MakePuzzleMoveRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{61}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *MakePuzzleMoveRequest) GetCampaignId() string {
@@ -4467,7 +6304,7 @@ type MakePuzzleMoveResponse struct {
 
 func (x *MakePuzzleMoveResponse) Reset() {
 	*x = MakePuzzleMoveResponse{}
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[62]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4479,7 +6316,7 @@ func (x *MakePuzzleMoveResponse) String() string {
 func (*MakePuzzleMoveResponse) ProtoMessage() {}
 
 func (x *MakePuzzleMoveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[62]
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4492,7 +6329,7 @@ func (x *MakePuzzleMoveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MakePuzzleMoveResponse.ProtoReflect.Descriptor instead.
 func (*MakePuzzleMoveResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{62}
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *MakePuzzleMoveResponse) GetRun() *PuzzleRun {
@@ -4516,18 +6353,405 @@ func (x *MakePuzzleMoveResponse) GetSolvedByThisMove() bool {
 	return false
 }
 
+// PreviewPuzzleCipherRequest asks for a message to be ciphered.
+type PreviewPuzzleCipherRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The message and the key (a CipherSolution); the rest of the puzzle is not needed.
+	Solution      *CipherSolution `protobuf:"bytes,2,opt,name=solution,proto3" json:"solution,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewPuzzleCipherRequest) Reset() {
+	*x = PreviewPuzzleCipherRequest{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[83]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewPuzzleCipherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewPuzzleCipherRequest) ProtoMessage() {}
+
+func (x *PreviewPuzzleCipherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[83]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewPuzzleCipherRequest.ProtoReflect.Descriptor instead.
+func (*PreviewPuzzleCipherRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{83}
+}
+
+func (x *PreviewPuzzleCipherRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *PreviewPuzzleCipherRequest) GetSolution() *CipherSolution {
+	if x != nil {
+		return x.Solution
+	}
+	return nil
+}
+
+// PreviewPuzzleCipherResponse is the message as the players will read it.
+type PreviewPuzzleCipherResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ciphertext    string                 `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewPuzzleCipherResponse) Reset() {
+	*x = PreviewPuzzleCipherResponse{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[84]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewPuzzleCipherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewPuzzleCipherResponse) ProtoMessage() {}
+
+func (x *PreviewPuzzleCipherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[84]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewPuzzleCipherResponse.ProtoReflect.Descriptor instead.
+func (*PreviewPuzzleCipherResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{84}
+}
+
+func (x *PreviewPuzzleCipherResponse) GetCiphertext() string {
+	if x != nil {
+		return x.Ciphertext
+	}
+	return ""
+}
+
+// PlayPuzzleSequenceRequest names a puzzle.
+type PlayPuzzleSequenceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	PuzzleId      string                 `protobuf:"bytes,2,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayPuzzleSequenceRequest) Reset() {
+	*x = PlayPuzzleSequenceRequest{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[85]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayPuzzleSequenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayPuzzleSequenceRequest) ProtoMessage() {}
+
+func (x *PlayPuzzleSequenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[85]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayPuzzleSequenceRequest.ProtoReflect.Descriptor instead.
+func (*PlayPuzzleSequenceRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{85}
+}
+
+func (x *PlayPuzzleSequenceRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *PlayPuzzleSequenceRequest) GetPuzzleId() string {
+	if x != nil {
+		return x.PuzzleId
+	}
+	return ""
+}
+
+// PlayPuzzleSequenceResponse carries the puzzle as the master now sees it.
+type PlayPuzzleSequenceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Run           *MasterPuzzleRun       `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayPuzzleSequenceResponse) Reset() {
+	*x = PlayPuzzleSequenceResponse{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[86]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayPuzzleSequenceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayPuzzleSequenceResponse) ProtoMessage() {}
+
+func (x *PlayPuzzleSequenceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[86]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayPuzzleSequenceResponse.ProtoReflect.Descriptor instead.
+func (*PlayPuzzleSequenceResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{86}
+}
+
+func (x *PlayPuzzleSequenceResponse) GetRun() *MasterPuzzleRun {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
+// TryPuzzleHintRequest is a try for a hint by the puzzle's skill check.
+type TryPuzzleHintRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	PuzzleId   string                 `protobuf:"bytes,2,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
+	// How the d20 comes (RN-18): the app rolls it, or the player typed the face of a real
+	// die. Required: one of them.
+	//
+	// Types that are valid to be assigned to Roll:
+	//
+	//	*TryPuzzleHintRequest_RollInApp
+	//	*TryPuzzleHintRequest_D20Face
+	Roll isTryPuzzleHintRequest_Roll `protobuf_oneof:"roll"`
+	// A UUID the app makes for each try. Repeating it returns the first answer and
+	// rolls nothing.
+	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TryPuzzleHintRequest) Reset() {
+	*x = TryPuzzleHintRequest{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[87]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TryPuzzleHintRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TryPuzzleHintRequest) ProtoMessage() {}
+
+func (x *TryPuzzleHintRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[87]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TryPuzzleHintRequest.ProtoReflect.Descriptor instead.
+func (*TryPuzzleHintRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *TryPuzzleHintRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *TryPuzzleHintRequest) GetPuzzleId() string {
+	if x != nil {
+		return x.PuzzleId
+	}
+	return ""
+}
+
+func (x *TryPuzzleHintRequest) GetRoll() isTryPuzzleHintRequest_Roll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *TryPuzzleHintRequest) GetRollInApp() bool {
+	if x != nil {
+		if x, ok := x.Roll.(*TryPuzzleHintRequest_RollInApp); ok {
+			return x.RollInApp
+		}
+	}
+	return false
+}
+
+func (x *TryPuzzleHintRequest) GetD20Face() int32 {
+	if x != nil {
+		if x, ok := x.Roll.(*TryPuzzleHintRequest_D20Face); ok {
+			return x.D20Face
+		}
+	}
+	return 0
+}
+
+func (x *TryPuzzleHintRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type isTryPuzzleHintRequest_Roll interface {
+	isTryPuzzleHintRequest_Roll()
+}
+
+type TryPuzzleHintRequest_RollInApp struct {
+	// True: the server rolls the d20.
+	RollInApp bool `protobuf:"varint,3,opt,name=roll_in_app,json=rollInApp,proto3,oneof"`
+}
+
+type TryPuzzleHintRequest_D20Face struct {
+	// The face of the real d20, 1 to 20. The server adds the character's bonus.
+	D20Face int32 `protobuf:"varint,4,opt,name=d20_face,json=d20Face,proto3,oneof"`
+}
+
+func (*TryPuzzleHintRequest_RollInApp) isTryPuzzleHintRequest_Roll() {}
+
+func (*TryPuzzleHintRequest_D20Face) isTryPuzzleHintRequest_Roll() {}
+
+// TryPuzzleHintResponse is what the try gave.
+type TryPuzzleHintResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The run as the caller reads it now (with the hint, when they passed).
+	Run *PuzzleRun `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	// The caller's roll: the d20 and the total with their bonus. Never the DC.
+	Roll *DiceRoll `protobuf:"bytes,2,opt,name=roll,proto3" json:"roll,omitempty"`
+	// True when the roll reached the DC: the next hint is in `run.hints`, theirs alone.
+	Passed bool `protobuf:"varint,3,opt,name=passed,proto3" json:"passed,omitempty"`
+	// True when the key was used before: nothing was rolled again.
+	Replayed      bool `protobuf:"varint,4,opt,name=replayed,proto3" json:"replayed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TryPuzzleHintResponse) Reset() {
+	*x = TryPuzzleHintResponse{}
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[88]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TryPuzzleHintResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TryPuzzleHintResponse) ProtoMessage() {}
+
+func (x *TryPuzzleHintResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_puzzles_proto_msgTypes[88]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TryPuzzleHintResponse.ProtoReflect.Descriptor instead.
+func (*TryPuzzleHintResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_puzzles_proto_rawDescGZIP(), []int{88}
+}
+
+func (x *TryPuzzleHintResponse) GetRun() *PuzzleRun {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
+func (x *TryPuzzleHintResponse) GetRoll() *DiceRoll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *TryPuzzleHintResponse) GetPassed() bool {
+	if x != nil {
+		return x.Passed
+	}
+	return false
+}
+
+func (x *TryPuzzleHintResponse) GetReplayed() bool {
+	if x != nil {
+		return x.Replayed
+	}
+	return false
+}
+
 var File_meurpg_play_v1_puzzles_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmeurpg/play/v1/puzzles.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"9\n" +
+	"\x1cmeurpg/play/v1/puzzles.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"9\n" +
 	"\fPuzzleSymbol\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
-	"\aname_pt\x18\x02 \x01(\tR\x06namePt\"\xbb\x01\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\"\xe9\x02\n" +
 	"\fPuzzleConfig\x126\n" +
 	"\x06lights\x18\x01 \x01(\v2\x1c.meurpg.play.v1.LightsConfigH\x00R\x06lights\x120\n" +
 	"\x04lock\x18\x02 \x01(\v2\x1a.meurpg.play.v1.LockConfigH\x00R\x04lock\x129\n" +
-	"\apillars\x18\x03 \x01(\v2\x1d.meurpg.play.v1.PillarsConfigH\x00R\apillarsB\x06\n" +
+	"\apillars\x18\x03 \x01(\v2\x1d.meurpg.play.v1.PillarsConfigH\x00R\apillars\x126\n" +
+	"\x06riddle\x18\x04 \x01(\v2\x1c.meurpg.play.v1.RiddleConfigH\x00R\x06riddle\x12<\n" +
+	"\bsequence\x18\x05 \x01(\v2\x1e.meurpg.play.v1.SequenceConfigH\x00R\bsequence\x126\n" +
+	"\x06cipher\x18\x06 \x01(\v2\x1c.meurpg.play.v1.CipherConfigH\x00R\x06cipherB\x06\n" +
 	"\x04kind\"\"\n" +
 	"\fLightsConfig\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"`\n" +
@@ -4541,31 +6765,63 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x05links\x18\x03 \x03(\v2\x1b.meurpg.play.v1.PillarLinksR\x05links\",\n" +
 	"\vPillarLinks\x12\x1d\n" +
 	"\n" +
-	"also_turns\x18\x01 \x03(\x05R\talsoTurns\"\x89\x01\n" +
+	"also_turns\x18\x01 \x03(\x05R\talsoTurns\"\"\n" +
+	"\fRiddleConfig\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"<\n" +
+	"\x0eSequenceConfig\x12\x14\n" +
+	"\x05bells\x18\x01 \x01(\x05R\x05bells\x12\x14\n" +
+	"\x05steps\x18\x02 \x01(\x05R\x05steps\"N\n" +
+	"\fCipherConfig\x12\x1e\n" +
+	"\n" +
+	"ciphertext\x18\x01 \x01(\tR\n" +
+	"ciphertext\x12\x1e\n" +
+	"\vkey_clue_id\x18\x02 \x01(\tR\tkeyClueId\"\xbd\x02\n" +
 	"\x0ePuzzleSolution\x122\n" +
 	"\x04lock\x18\x02 \x01(\v2\x1c.meurpg.play.v1.LockSolutionH\x00R\x04lock\x12;\n" +
-	"\apillars\x18\x03 \x01(\v2\x1f.meurpg.play.v1.PillarsSolutionH\x00R\apillarsB\x06\n" +
-	"\x04kind\"&\n" +
+	"\apillars\x18\x03 \x01(\v2\x1f.meurpg.play.v1.PillarsSolutionH\x00R\apillars\x128\n" +
+	"\x06riddle\x18\x04 \x01(\v2\x1e.meurpg.play.v1.RiddleSolutionH\x00R\x06riddle\x12>\n" +
+	"\bsequence\x18\x05 \x01(\v2 .meurpg.play.v1.SequenceSolutionH\x00R\bsequence\x128\n" +
+	"\x06cipher\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CipherSolutionH\x00R\x06cipherB\x06\n" +
+	"\x04kind\"*\n" +
+	"\x0eRiddleSolution\x12\x18\n" +
+	"\aanswers\x18\x01 \x03(\tR\aanswers\"(\n" +
+	"\x10SequenceSolution\x12\x14\n" +
+	"\x05steps\x18\x01 \x03(\x05R\x05steps\"h\n" +
+	"\x0eCipherSolution\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x16\n" +
+	"\x05shift\x18\x02 \x01(\x05H\x00R\x05shift\x12\x1a\n" +
+	"\akeyword\x18\x03 \x01(\tH\x00R\akeywordB\b\n" +
+	"\x06method\"&\n" +
 	"\fLockSolution\x12\x16\n" +
 	"\x06wheels\x18\x01 \x03(\x05R\x06wheels\"+\n" +
 	"\x0fPillarsSolution\x12\x18\n" +
-	"\apillars\x18\x01 \x03(\x05R\apillars\"\xb7\x01\n" +
+	"\apillars\x18\x01 \x03(\x05R\apillars\"\xe2\x02\n" +
 	"\vPuzzleState\x125\n" +
 	"\x06lights\x18\x01 \x01(\v2\x1b.meurpg.play.v1.LightsStateH\x00R\x06lights\x12/\n" +
 	"\x04lock\x18\x02 \x01(\v2\x19.meurpg.play.v1.LockStateH\x00R\x04lock\x128\n" +
-	"\apillars\x18\x03 \x01(\v2\x1c.meurpg.play.v1.PillarsStateH\x00R\apillarsB\x06\n" +
+	"\apillars\x18\x03 \x01(\v2\x1c.meurpg.play.v1.PillarsStateH\x00R\apillars\x125\n" +
+	"\x06riddle\x18\x04 \x01(\v2\x1b.meurpg.play.v1.RiddleStateH\x00R\x06riddle\x12;\n" +
+	"\bsequence\x18\x05 \x01(\v2\x1d.meurpg.play.v1.SequenceStateH\x00R\bsequence\x125\n" +
+	"\x06cipher\x18\x06 \x01(\v2\x1b.meurpg.play.v1.CipherStateH\x00R\x06cipherB\x06\n" +
 	"\x04kind\"\x1f\n" +
 	"\vLightsState\x12\x10\n" +
 	"\x03lit\x18\x01 \x03(\bR\x03lit\"#\n" +
 	"\tLockState\x12\x16\n" +
 	"\x06wheels\x18\x01 \x03(\x05R\x06wheels\"(\n" +
 	"\fPillarsState\x12\x18\n" +
-	"\apillars\x18\x01 \x03(\x05R\apillars\"\xb3\x01\n" +
+	"\apillars\x18\x01 \x03(\x05R\apillars\"\r\n" +
+	"\vRiddleState\"+\n" +
+	"\rSequenceState\x12\x1a\n" +
+	"\bprogress\x18\x01 \x01(\x05R\bprogress\"\r\n" +
+	"\vCipherState\"\xdb\x02\n" +
 	"\n" +
 	"PuzzleMove\x124\n" +
 	"\x06lights\x18\x01 \x01(\v2\x1a.meurpg.play.v1.LightsMoveH\x00R\x06lights\x12.\n" +
 	"\x04lock\x18\x02 \x01(\v2\x18.meurpg.play.v1.LockMoveH\x00R\x04lock\x127\n" +
-	"\apillars\x18\x03 \x01(\v2\x1b.meurpg.play.v1.PillarsMoveH\x00R\apillarsB\x06\n" +
+	"\apillars\x18\x03 \x01(\v2\x1b.meurpg.play.v1.PillarsMoveH\x00R\apillars\x124\n" +
+	"\x06riddle\x18\x04 \x01(\v2\x1a.meurpg.play.v1.RiddleMoveH\x00R\x06riddle\x12:\n" +
+	"\bsequence\x18\x05 \x01(\v2\x1c.meurpg.play.v1.SequenceMoveH\x00R\bsequence\x124\n" +
+	"\x06cipher\x18\x06 \x01(\v2\x1a.meurpg.play.v1.CipherMoveH\x00R\x06cipherB\x06\n" +
 	"\x04kind\"0\n" +
 	"\n" +
 	"LightsMove\x12\x10\n" +
@@ -4576,7 +6832,15 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x05delta\x18\x02 \x01(\x05R\x05delta\";\n" +
 	"\vPillarsMove\x12\x16\n" +
 	"\x06pillar\x18\x01 \x01(\x05R\x06pillar\x12\x14\n" +
-	"\x05delta\x18\x02 \x01(\x05R\x05delta\"\x99\x02\n" +
+	"\x05delta\x18\x02 \x01(\x05R\x05delta\"$\n" +
+	"\n" +
+	"RiddleMove\x12\x16\n" +
+	"\x06answer\x18\x01 \x01(\tR\x06answer\"\"\n" +
+	"\fSequenceMove\x12\x12\n" +
+	"\x04bell\x18\x01 \x01(\x05R\x04bell\" \n" +
+	"\n" +
+	"CipherMove\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"\x99\x02\n" +
 	"\rPuzzleOnSolve\x129\n" +
 	"\x06action\x18\x01 \x01(\x0e2!.meurpg.play.v1.PuzzleSolveActionR\x06action\x12\x18\n" +
 	"\amessage\x18\x05 \x01(\tR\amessage\x126\n" +
@@ -4596,7 +6860,7 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\rPuzzleMinimum\x12\x1a\n" +
 	"\bsolvable\x18\x01 \x01(\bR\bsolvable\x12\x14\n" +
 	"\x05moves\x18\x02 \x01(\x05R\x05moves\x12.\n" +
-	"\x04path\x18\x03 \x03(\v2\x1a.meurpg.play.v1.PuzzleMoveR\x04path\"\x9f\x05\n" +
+	"\x04path\x18\x03 \x03(\v2\x1a.meurpg.play.v1.PuzzleMoveR\x04path\"\xcb\x06\n" +
 	"\x06Puzzle\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -4617,12 +6881,35 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xad\x01\n" +
+	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12>\n" +
+	"\n" +
+	"hint_check\x18\x11 \x01(\v2\x1f.meurpg.play.v1.PuzzleHintCheckR\thintCheck\x120\n" +
+	"\x05parts\x18\x12 \x03(\v2\x1a.meurpg.play.v1.PuzzlePartR\x05parts\x128\n" +
+	"\bon_wrong\x18\x13 \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\">\n" +
+	"\x0fPuzzleHintCheck\x12\x1b\n" +
+	"\tskill_key\x18\x01 \x01(\tR\bskillKey\x12\x0e\n" +
+	"\x02dc\x18\x02 \x01(\x05R\x02dc\"p\n" +
+	"\n" +
+	"PuzzlePart\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12+\n" +
+	"\x11owner_unavailable\x18\x03 \x01(\bR\x10ownerUnavailable\"\xc0\x01\n" +
+	"\rPuzzleOnWrong\x124\n" +
+	"\x04trap\x18\x01 \x01(\v2 .meurpg.play.v1.PuzzleTrapTargetR\x04trap\x12.\n" +
+	"\x13attempts_per_player\x18\x02 \x01(\x05R\x11attemptsPerPlayer\x12\x1b\n" +
+	"\tmax_moves\x18\x03 \x01(\x05R\bmaxMoves\x12,\n" +
+	"\x12time_limit_seconds\x18\x04 \x01(\x05R\x10timeLimitSeconds\"D\n" +
+	"\x10PuzzleTrapTarget\x12\x15\n" +
+	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12\x19\n" +
+	"\bpoint_id\x18\x02 \x01(\tR\apointId\"\xf4\x01\n" +
 	"\x0ePuzzleLastMove\x12%\n" +
 	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12.\n" +
 	"\x04move\x18\x02 \x01(\v2\x1a.meurpg.play.v1.PuzzleMoveR\x04move\x12\x18\n" +
 	"\achanged\x18\x03 \x03(\x05R\achanged\x12*\n" +
-	"\x02at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\"\xe5\x04\n" +
+	"\x02at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x14\n" +
+	"\x05wrong\x18\x05 \x01(\bR\x05wrong\x12\x12\n" +
+	"\x04step\x18\x06 \x01(\x05R\x04step\x12\x1b\n" +
+	"\ttrap_name\x18\a \x01(\tR\btrapName\"\xa9\b\n" +
 	"\tPuzzleRun\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
@@ -4639,12 +6926,55 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x0esolved_by_name\x18\f \x01(\tR\fsolvedByName\x12;\n" +
 	"\tlast_move\x18\r \x01(\v2\x1e.meurpg.play.v1.PuzzleLastMoveR\blastMove\x125\n" +
 	"\x05mural\x18\x0e \x01(\v2\x1f.meurpg.play.v1.PillarsSolutionR\x05mural\x12%\n" +
-	"\x0esolved_message\x18\x0f \x01(\tR\rsolvedMessage\"\x88\x01\n" +
+	"\x0esolved_message\x18\x0f \x01(\tR\rsolvedMessage\x124\n" +
+	"\x06limits\x18\x10 \x01(\v2\x1c.meurpg.play.v1.PuzzleLimitsR\x06limits\x12\x18\n" +
+	"\astopped\x18\x11 \x01(\bR\astopped\x12'\n" +
+	"\x0fstopped_message\x18\x12 \x01(\tR\x0estoppedMessage\x12\x17\n" +
+	"\amy_part\x18\x13 \x01(\tR\x06myPart\x12!\n" +
+	"\fpart_holders\x18\x14 \x03(\tR\vpartHolders\x12\"\n" +
+	"\rhint_by_check\x18\x15 \x01(\bR\vhintByCheck\x12$\n" +
+	"\x0ehint_skill_key\x18\x16 \x01(\tR\fhintSkillKey\x12 \n" +
+	"\fcan_try_hint\x18\x17 \x01(\bR\n" +
+	"canTryHint\x12!\n" +
+	"\fshared_hints\x18\x18 \x01(\x05R\vsharedHints\x12<\n" +
+	"\bsequence\x18\x19 \x01(\v2 .meurpg.play.v1.SequencePlaybackR\bsequence\x12 \n" +
+	"\fhas_key_clue\x18\x1a \x01(\bR\n" +
+	"hasKeyClue\x12\x1e\n" +
+	"\vkey_clue_id\x18\x1b \x01(\tR\tkeyClueId\"\xa8\x02\n" +
+	"\fPuzzleLimits\x12.\n" +
+	"\x13attempts_per_player\x18\x01 \x01(\x05R\x11attemptsPerPlayer\x12#\n" +
+	"\rattempts_left\x18\x02 \x01(\x05R\fattemptsLeft\x12\x1b\n" +
+	"\tmax_moves\x18\x03 \x01(\x05R\bmaxMoves\x12\x1d\n" +
+	"\n" +
+	"moves_made\x18\x04 \x01(\x05R\tmovesMade\x12,\n" +
+	"\x12time_limit_seconds\x18\x05 \x01(\x05R\x10timeLimitSeconds\x12!\n" +
+	"\fseconds_left\x18\x06 \x01(\x05R\vsecondsLeft\x126\n" +
+	"\bdeadline\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xb0\x01\n" +
+	"\x10SequencePlayback\x12\x1f\n" +
+	"\vtotal_steps\x18\x01 \x01(\x05R\n" +
+	"totalSteps\x12\x14\n" +
+	"\x05plays\x18\x02 \x01(\x05R\x05plays\x12\x18\n" +
+	"\aplaying\x18\x03 \x01(\bR\aplaying\x12\x14\n" +
+	"\x05shown\x18\x04 \x03(\x05R\x05shown\x12\x17\n" +
+	"\astep_ms\x18\x05 \x01(\x05R\x06stepMs\x12\x1c\n" +
+	"\n" +
+	"next_in_ms\x18\x06 \x01(\x05R\bnextInMs\"\xbc\x01\n" +
+	"\rPuzzleHintTry\x12%\n" +
+	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12\x12\n" +
+	"\x04hint\x18\x02 \x01(\x05R\x04hint\x12\x16\n" +
+	"\x06passed\x18\x03 \x01(\bR\x06passed\x12,\n" +
+	"\x04roll\x18\x04 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12*\n" +
+	"\x02at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\"a\n" +
+	"\x0ePuzzleAttempts\x12%\n" +
+	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12\x14\n" +
+	"\x05wrong\x18\x02 \x01(\x05R\x05wrong\x12\x12\n" +
+	"\x04left\x18\x03 \x01(\x05R\x04left\"\xa2\x01\n" +
 	"\rPuzzleSummary\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
 	"\x04kind\x18\x03 \x01(\x0e2\x1a.meurpg.play.v1.PuzzleKindR\x04kind\x12\x16\n" +
-	"\x06solved\x18\x04 \x01(\bR\x06solved\"\xe4\x03\n" +
+	"\x06solved\x18\x04 \x01(\bR\x06solved\x12\x18\n" +
+	"\astopped\x18\x05 \x01(\bR\astopped\"\xde\x05\n" +
 	"\x0fMasterPuzzleRun\x12.\n" +
 	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\x127\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x1f.meurpg.play.v1.PuzzleRunStatusR\x06status\x12+\n" +
@@ -4655,12 +6985,19 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x0ereleased_hints\x18\a \x01(\x05R\rreleasedHints\x12\x1d\n" +
 	"\n" +
 	"moves_made\x18\b \x01(\x05R\tmovesMade\x12<\n" +
-	"\aoutcome\x18\t \x01(\x0e2\".meurpg.play.v1.PuzzleSolveOutcomeR\aoutcome\"L\n" +
+	"\aoutcome\x18\t \x01(\x0e2\".meurpg.play.v1.PuzzleSolveOutcomeR\aoutcome\x12;\n" +
+	"\tlast_move\x18\n" +
+	" \x01(\v2\x1e.meurpg.play.v1.PuzzleLastMoveR\blastMove\x12A\n" +
+	"\vstop_reason\x18\v \x01(\x0e2 .meurpg.play.v1.PuzzleStopReasonR\n" +
+	"stopReason\x12<\n" +
+	"\n" +
+	"hint_tries\x18\f \x03(\v2\x1d.meurpg.play.v1.PuzzleHintTryR\thintTries\x12:\n" +
+	"\battempts\x18\r \x03(\v2\x1e.meurpg.play.v1.PuzzleAttemptsR\battempts\"L\n" +
 	"\rPuzzleBlocked\x12;\n" +
 	"\x06reason\x18\x01 \x01(\x0e2#.meurpg.play.v1.PuzzleBlockedReasonR\x06reason\"b\n" +
 	"\rPuzzleInvalid\x12;\n" +
 	"\x06reason\x18\x01 \x01(\x0e2#.meurpg.play.v1.PuzzleInvalidReasonR\x06reason\x12\x14\n" +
-	"\x05field\x18\x02 \x01(\tR\x05field\"\xe7\x02\n" +
+	"\x05field\x18\x02 \x01(\tR\x05field\"\x93\x04\n" +
 	"\x13CreatePuzzleRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
@@ -4671,9 +7008,14 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x04seed\x18\x06 \x01(\x03R\x04seed\x12\x12\n" +
 	"\x04clue\x18\a \x01(\tR\x04clue\x12\x14\n" +
 	"\x05hints\x18\b \x03(\tR\x05hints\x128\n" +
-	"\bon_solve\x18\t \x01(\v2\x1d.meurpg.play.v1.PuzzleOnSolveR\aonSolve\"F\n" +
+	"\bon_solve\x18\t \x01(\v2\x1d.meurpg.play.v1.PuzzleOnSolveR\aonSolve\x12>\n" +
+	"\n" +
+	"hint_check\x18\n" +
+	" \x01(\v2\x1f.meurpg.play.v1.PuzzleHintCheckR\thintCheck\x120\n" +
+	"\x05parts\x18\v \x03(\v2\x1a.meurpg.play.v1.PuzzlePartR\x05parts\x128\n" +
+	"\bon_wrong\x18\f \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\"F\n" +
 	"\x14CreatePuzzleResponse\x12.\n" +
-	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\"\x84\x03\n" +
+	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\"\xb0\x04\n" +
 	"\x13UpdatePuzzleRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -4686,7 +7028,11 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x04clue\x18\b \x01(\tR\x04clue\x12\x14\n" +
 	"\x05hints\x18\t \x03(\tR\x05hints\x128\n" +
 	"\bon_solve\x18\n" +
-	" \x01(\v2\x1d.meurpg.play.v1.PuzzleOnSolveR\aonSolve\"F\n" +
+	" \x01(\v2\x1d.meurpg.play.v1.PuzzleOnSolveR\aonSolve\x12>\n" +
+	"\n" +
+	"hint_check\x18\v \x01(\v2\x1f.meurpg.play.v1.PuzzleHintCheckR\thintCheck\x120\n" +
+	"\x05parts\x18\f \x03(\v2\x1a.meurpg.play.v1.PuzzlePartR\x05parts\x128\n" +
+	"\bon_wrong\x18\r \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\"F\n" +
 	"\x14UpdatePuzzleResponse\x12.\n" +
 	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\"\xc2\x01\n" +
 	"\x19PreviewPuzzleStartRequest\x12\x1f\n" +
@@ -4784,13 +7130,43 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x16MakePuzzleMoveResponse\x12+\n" +
 	"\x03run\x18\x01 \x01(\v2\x19.meurpg.play.v1.PuzzleRunR\x03run\x12\x1a\n" +
 	"\breplayed\x18\x02 \x01(\bR\breplayed\x12-\n" +
-	"\x13solved_by_this_move\x18\x03 \x01(\bR\x10solvedByThisMove*p\n" +
+	"\x13solved_by_this_move\x18\x03 \x01(\bR\x10solvedByThisMove\"y\n" +
+	"\x1aPreviewPuzzleCipherRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12:\n" +
+	"\bsolution\x18\x02 \x01(\v2\x1e.meurpg.play.v1.CipherSolutionR\bsolution\"=\n" +
+	"\x1bPreviewPuzzleCipherResponse\x12\x1e\n" +
+	"\n" +
+	"ciphertext\x18\x01 \x01(\tR\n" +
+	"ciphertext\"Y\n" +
+	"\x19PlayPuzzleSequenceRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x1b\n" +
+	"\tpuzzle_id\x18\x02 \x01(\tR\bpuzzleId\"O\n" +
+	"\x1aPlayPuzzleSequenceResponse\x121\n" +
+	"\x03run\x18\x01 \x01(\v2\x1f.meurpg.play.v1.MasterPuzzleRunR\x03run\"\xc4\x01\n" +
+	"\x14TryPuzzleHintRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x1b\n" +
+	"\tpuzzle_id\x18\x02 \x01(\tR\bpuzzleId\x12 \n" +
+	"\vroll_in_app\x18\x03 \x01(\bH\x00R\trollInApp\x12\x1b\n" +
+	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKeyB\x06\n" +
+	"\x04roll\"\xa6\x01\n" +
+	"\x15TryPuzzleHintResponse\x12+\n" +
+	"\x03run\x18\x01 \x01(\v2\x19.meurpg.play.v1.PuzzleRunR\x03run\x12,\n" +
+	"\x04roll\x18\x02 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12\x16\n" +
+	"\x06passed\x18\x03 \x01(\bR\x06passed\x12\x1a\n" +
+	"\breplayed\x18\x04 \x01(\bR\breplayed*\xba\x01\n" +
 	"\n" +
 	"PuzzleKind\x12\x1b\n" +
 	"\x17PUZZLE_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PUZZLE_KIND_LIGHTS\x10\x01\x12\x14\n" +
 	"\x10PUZZLE_KIND_LOCK\x10\x02\x12\x17\n" +
-	"\x13PUZZLE_KIND_PILLARS\x10\x03*\x85\x01\n" +
+	"\x13PUZZLE_KIND_PILLARS\x10\x03\x12\x16\n" +
+	"\x12PUZZLE_KIND_RIDDLE\x10\x04\x12\x18\n" +
+	"\x14PUZZLE_KIND_SEQUENCE\x10\x05\x12\x16\n" +
+	"\x12PUZZLE_KIND_CIPHER\x10\x06*\x85\x01\n" +
 	"\x0ePuzzleAlphabet\x12\x1f\n" +
 	"\x1bPUZZLE_ALPHABET_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PUZZLE_ALPHABET_DIGITS\x10\x01\x12\x1b\n" +
@@ -4817,7 +7193,11 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x1bPUZZLE_RUN_STATUS_NOT_SHOWN\x10\x01\x12\x1b\n" +
 	"\x17PUZZLE_RUN_STATUS_SHOWN\x10\x02\x12\x1c\n" +
 	"\x18PUZZLE_RUN_STATUS_SOLVED\x10\x03\x12\x1c\n" +
-	"\x18PUZZLE_RUN_STATUS_CLOSED\x10\x04*\xfa\x02\n" +
+	"\x18PUZZLE_RUN_STATUS_CLOSED\x10\x04*q\n" +
+	"\x10PuzzleStopReason\x12\"\n" +
+	"\x1ePUZZLE_STOP_REASON_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18PUZZLE_STOP_REASON_MOVES\x10\x01\x12\x1b\n" +
+	"\x17PUZZLE_STOP_REASON_TIME\x10\x02*\xf4\x05\n" +
 	"\x13PuzzleBlockedReason\x12%\n" +
 	"!PUZZLE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION\x10\x01\x12 \n" +
@@ -4827,7 +7207,17 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x1fPUZZLE_BLOCKED_REASON_NOT_SHOWN\x10\x05\x12&\n" +
 	"\"PUZZLE_BLOCKED_REASON_NO_CHARACTER\x10\x06\x12'\n" +
 	"#PUZZLE_BLOCKED_REASON_NO_MORE_HINTS\x10\a\x12,\n" +
-	"(PUZZLE_BLOCKED_REASON_NO_GENERATED_START\x10\b*\x90\x03\n" +
+	"(PUZZLE_BLOCKED_REASON_NO_GENERATED_START\x10\b\x12*\n" +
+	"&PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT\x10\t\x12!\n" +
+	"\x1dPUZZLE_BLOCKED_REASON_STOPPED\x10\n" +
+	"\x12-\n" +
+	")PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED\x10\v\x12*\n" +
+	"&PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING\x10\f\x12(\n" +
+	"$PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE\x10\r\x12'\n" +
+	"#PUZZLE_BLOCKED_REASON_NO_HINT_CHECK\x10\x0e\x12,\n" +
+	"(PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED\x10\x0f\x12)\n" +
+	"%PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE\x10\x10\x12\"\n" +
+	"\x1ePUZZLE_BLOCKED_REASON_NO_SKILL\x10\x11*\xc0\x04\n" +
 	"\x13PuzzleInvalidReason\x12%\n" +
 	"!PUZZLE_INVALID_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPUZZLE_INVALID_REASON_NAME\x10\x01\x12\x1e\n" +
@@ -4840,7 +7230,12 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	" PUZZLE_INVALID_REASON_UNSOLVABLE\x10\b\x12 \n" +
 	"\x1cPUZZLE_INVALID_REASON_TARGET\x10\t\x12\x1e\n" +
 	"\x1aPUZZLE_INVALID_REASON_MOVE\x10\n" +
-	"2\x94\r\n" +
+	"\x12!\n" +
+	"\x1dPUZZLE_INVALID_REASON_ANSWERS\x10\v\x12 \n" +
+	"\x1cPUZZLE_INVALID_REASON_CIPHER\x10\f\x12$\n" +
+	" PUZZLE_INVALID_REASON_HINT_CHECK\x10\r\x12\x1f\n" +
+	"\x1bPUZZLE_INVALID_REASON_PARTS\x10\x0e\x12\"\n" +
+	"\x1ePUZZLE_INVALID_REASON_ON_WRONG\x10\x0f2\xd4\x0f\n" +
 	"\rPuzzleService\x12Y\n" +
 	"\fCreatePuzzle\x12#.meurpg.play.v1.CreatePuzzleRequest\x1a$.meurpg.play.v1.CreatePuzzleResponse\x12Y\n" +
 	"\fUpdatePuzzle\x12#.meurpg.play.v1.UpdatePuzzleRequest\x1a$.meurpg.play.v1.UpdatePuzzleResponse\x12p\n" +
@@ -4855,10 +7250,13 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\vResetPuzzle\x12\".meurpg.play.v1.ResetPuzzleRequest\x1a#.meurpg.play.v1.ResetPuzzleResponse\x12Y\n" +
 	"\fReseedPuzzle\x12#.meurpg.play.v1.ReseedPuzzleRequest\x1a$.meurpg.play.v1.ReseedPuzzleResponse\x12V\n" +
 	"\vClosePuzzle\x12\".meurpg.play.v1.ClosePuzzleRequest\x1a#.meurpg.play.v1.ClosePuzzleResponse\x12t\n" +
-	"\x15ReleaseNextPuzzleHint\x12,.meurpg.play.v1.ReleaseNextPuzzleHintRequest\x1a-.meurpg.play.v1.ReleaseNextPuzzleHintResponse\x12p\n" +
+	"\x15ReleaseNextPuzzleHint\x12,.meurpg.play.v1.ReleaseNextPuzzleHintRequest\x1a-.meurpg.play.v1.ReleaseNextPuzzleHintResponse\x12s\n" +
+	"\x13PreviewPuzzleCipher\x12*.meurpg.play.v1.PreviewPuzzleCipherRequest\x1a+.meurpg.play.v1.PreviewPuzzleCipherResponse\"\x03\x90\x02\x02\x12k\n" +
+	"\x12PlayPuzzleSequence\x12).meurpg.play.v1.PlayPuzzleSequenceRequest\x1a*.meurpg.play.v1.PlayPuzzleSequenceResponse\x12p\n" +
 	"\x12GetMasterPuzzleRun\x12).meurpg.play.v1.GetMasterPuzzleRunRequest\x1a*.meurpg.play.v1.GetMasterPuzzleRunResponse\"\x03\x90\x02\x02\x12j\n" +
 	"\x10ListShownPuzzles\x12'.meurpg.play.v1.ListShownPuzzlesRequest\x1a(.meurpg.play.v1.ListShownPuzzlesResponse\"\x03\x90\x02\x02\x12^\n" +
-	"\fGetPuzzleRun\x12#.meurpg.play.v1.GetPuzzleRunRequest\x1a$.meurpg.play.v1.GetPuzzleRunResponse\"\x03\x90\x02\x02\x12_\n" +
+	"\fGetPuzzleRun\x12#.meurpg.play.v1.GetPuzzleRunRequest\x1a$.meurpg.play.v1.GetPuzzleRunResponse\"\x03\x90\x02\x02\x12\\\n" +
+	"\rTryPuzzleHint\x12$.meurpg.play.v1.TryPuzzleHintRequest\x1a%.meurpg.play.v1.TryPuzzleHintResponse\x12_\n" +
 	"\x0eMakePuzzleMove\x12%.meurpg.play.v1.MakePuzzleMoveRequest\x1a&.meurpg.play.v1.MakePuzzleMoveResponseB\xba\x01\n" +
 	"\x12com.meurpg.play.v1B\fPuzzlesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
@@ -4874,196 +7272,265 @@ func file_meurpg_play_v1_puzzles_proto_rawDescGZIP() []byte {
 	return file_meurpg_play_v1_puzzles_proto_rawDescData
 }
 
-var file_meurpg_play_v1_puzzles_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_meurpg_play_v1_puzzles_proto_msgTypes = make([]protoimpl.MessageInfo, 63)
+var file_meurpg_play_v1_puzzles_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_meurpg_play_v1_puzzles_proto_msgTypes = make([]protoimpl.MessageInfo, 89)
 var file_meurpg_play_v1_puzzles_proto_goTypes = []any{
 	(PuzzleKind)(0),                       // 0: meurpg.play.v1.PuzzleKind
 	(PuzzleAlphabet)(0),                   // 1: meurpg.play.v1.PuzzleAlphabet
 	(PuzzleSolveAction)(0),                // 2: meurpg.play.v1.PuzzleSolveAction
 	(PuzzleSolveOutcome)(0),               // 3: meurpg.play.v1.PuzzleSolveOutcome
 	(PuzzleRunStatus)(0),                  // 4: meurpg.play.v1.PuzzleRunStatus
-	(PuzzleBlockedReason)(0),              // 5: meurpg.play.v1.PuzzleBlockedReason
-	(PuzzleInvalidReason)(0),              // 6: meurpg.play.v1.PuzzleInvalidReason
-	(*PuzzleSymbol)(nil),                  // 7: meurpg.play.v1.PuzzleSymbol
-	(*PuzzleConfig)(nil),                  // 8: meurpg.play.v1.PuzzleConfig
-	(*LightsConfig)(nil),                  // 9: meurpg.play.v1.LightsConfig
-	(*LockConfig)(nil),                    // 10: meurpg.play.v1.LockConfig
-	(*PillarsConfig)(nil),                 // 11: meurpg.play.v1.PillarsConfig
-	(*PillarLinks)(nil),                   // 12: meurpg.play.v1.PillarLinks
-	(*PuzzleSolution)(nil),                // 13: meurpg.play.v1.PuzzleSolution
-	(*LockSolution)(nil),                  // 14: meurpg.play.v1.LockSolution
-	(*PillarsSolution)(nil),               // 15: meurpg.play.v1.PillarsSolution
-	(*PuzzleState)(nil),                   // 16: meurpg.play.v1.PuzzleState
-	(*LightsState)(nil),                   // 17: meurpg.play.v1.LightsState
-	(*LockState)(nil),                     // 18: meurpg.play.v1.LockState
-	(*PillarsState)(nil),                  // 19: meurpg.play.v1.PillarsState
-	(*PuzzleMove)(nil),                    // 20: meurpg.play.v1.PuzzleMove
-	(*LightsMove)(nil),                    // 21: meurpg.play.v1.LightsMove
-	(*LockMove)(nil),                      // 22: meurpg.play.v1.LockMove
-	(*PillarsMove)(nil),                   // 23: meurpg.play.v1.PillarsMove
-	(*PuzzleOnSolve)(nil),                 // 24: meurpg.play.v1.PuzzleOnSolve
-	(*PuzzleDoorTarget)(nil),              // 25: meurpg.play.v1.PuzzleDoorTarget
-	(*PuzzlePointTarget)(nil),             // 26: meurpg.play.v1.PuzzlePointTarget
-	(*PuzzleClueTarget)(nil),              // 27: meurpg.play.v1.PuzzleClueTarget
-	(*PuzzleMinimum)(nil),                 // 28: meurpg.play.v1.PuzzleMinimum
-	(*Puzzle)(nil),                        // 29: meurpg.play.v1.Puzzle
-	(*PuzzleLastMove)(nil),                // 30: meurpg.play.v1.PuzzleLastMove
-	(*PuzzleRun)(nil),                     // 31: meurpg.play.v1.PuzzleRun
-	(*PuzzleSummary)(nil),                 // 32: meurpg.play.v1.PuzzleSummary
-	(*MasterPuzzleRun)(nil),               // 33: meurpg.play.v1.MasterPuzzleRun
-	(*PuzzleBlocked)(nil),                 // 34: meurpg.play.v1.PuzzleBlocked
-	(*PuzzleInvalid)(nil),                 // 35: meurpg.play.v1.PuzzleInvalid
-	(*CreatePuzzleRequest)(nil),           // 36: meurpg.play.v1.CreatePuzzleRequest
-	(*CreatePuzzleResponse)(nil),          // 37: meurpg.play.v1.CreatePuzzleResponse
-	(*UpdatePuzzleRequest)(nil),           // 38: meurpg.play.v1.UpdatePuzzleRequest
-	(*UpdatePuzzleResponse)(nil),          // 39: meurpg.play.v1.UpdatePuzzleResponse
-	(*PreviewPuzzleStartRequest)(nil),     // 40: meurpg.play.v1.PreviewPuzzleStartRequest
-	(*PreviewPuzzleStartResponse)(nil),    // 41: meurpg.play.v1.PreviewPuzzleStartResponse
-	(*ListPuzzlesRequest)(nil),            // 42: meurpg.play.v1.ListPuzzlesRequest
-	(*ListPuzzlesResponse)(nil),           // 43: meurpg.play.v1.ListPuzzlesResponse
-	(*GetPuzzleRequest)(nil),              // 44: meurpg.play.v1.GetPuzzleRequest
-	(*GetPuzzleResponse)(nil),             // 45: meurpg.play.v1.GetPuzzleResponse
-	(*ArchivePuzzleRequest)(nil),          // 46: meurpg.play.v1.ArchivePuzzleRequest
-	(*ArchivePuzzleResponse)(nil),         // 47: meurpg.play.v1.ArchivePuzzleResponse
-	(*UnarchivePuzzleRequest)(nil),        // 48: meurpg.play.v1.UnarchivePuzzleRequest
-	(*UnarchivePuzzleResponse)(nil),       // 49: meurpg.play.v1.UnarchivePuzzleResponse
-	(*ListSessionPuzzlesRequest)(nil),     // 50: meurpg.play.v1.ListSessionPuzzlesRequest
-	(*ListSessionPuzzlesResponse)(nil),    // 51: meurpg.play.v1.ListSessionPuzzlesResponse
-	(*ShowPuzzleRequest)(nil),             // 52: meurpg.play.v1.ShowPuzzleRequest
-	(*ShowPuzzleResponse)(nil),            // 53: meurpg.play.v1.ShowPuzzleResponse
-	(*ResetPuzzleRequest)(nil),            // 54: meurpg.play.v1.ResetPuzzleRequest
-	(*ResetPuzzleResponse)(nil),           // 55: meurpg.play.v1.ResetPuzzleResponse
-	(*ReseedPuzzleRequest)(nil),           // 56: meurpg.play.v1.ReseedPuzzleRequest
-	(*ReseedPuzzleResponse)(nil),          // 57: meurpg.play.v1.ReseedPuzzleResponse
-	(*ClosePuzzleRequest)(nil),            // 58: meurpg.play.v1.ClosePuzzleRequest
-	(*ClosePuzzleResponse)(nil),           // 59: meurpg.play.v1.ClosePuzzleResponse
-	(*ReleaseNextPuzzleHintRequest)(nil),  // 60: meurpg.play.v1.ReleaseNextPuzzleHintRequest
-	(*ReleaseNextPuzzleHintResponse)(nil), // 61: meurpg.play.v1.ReleaseNextPuzzleHintResponse
-	(*GetMasterPuzzleRunRequest)(nil),     // 62: meurpg.play.v1.GetMasterPuzzleRunRequest
-	(*GetMasterPuzzleRunResponse)(nil),    // 63: meurpg.play.v1.GetMasterPuzzleRunResponse
-	(*ListShownPuzzlesRequest)(nil),       // 64: meurpg.play.v1.ListShownPuzzlesRequest
-	(*ListShownPuzzlesResponse)(nil),      // 65: meurpg.play.v1.ListShownPuzzlesResponse
-	(*GetPuzzleRunRequest)(nil),           // 66: meurpg.play.v1.GetPuzzleRunRequest
-	(*GetPuzzleRunResponse)(nil),          // 67: meurpg.play.v1.GetPuzzleRunResponse
-	(*MakePuzzleMoveRequest)(nil),         // 68: meurpg.play.v1.MakePuzzleMoveRequest
-	(*MakePuzzleMoveResponse)(nil),        // 69: meurpg.play.v1.MakePuzzleMoveResponse
-	(*timestamppb.Timestamp)(nil),         // 70: google.protobuf.Timestamp
+	(PuzzleStopReason)(0),                 // 5: meurpg.play.v1.PuzzleStopReason
+	(PuzzleBlockedReason)(0),              // 6: meurpg.play.v1.PuzzleBlockedReason
+	(PuzzleInvalidReason)(0),              // 7: meurpg.play.v1.PuzzleInvalidReason
+	(*PuzzleSymbol)(nil),                  // 8: meurpg.play.v1.PuzzleSymbol
+	(*PuzzleConfig)(nil),                  // 9: meurpg.play.v1.PuzzleConfig
+	(*LightsConfig)(nil),                  // 10: meurpg.play.v1.LightsConfig
+	(*LockConfig)(nil),                    // 11: meurpg.play.v1.LockConfig
+	(*PillarsConfig)(nil),                 // 12: meurpg.play.v1.PillarsConfig
+	(*PillarLinks)(nil),                   // 13: meurpg.play.v1.PillarLinks
+	(*RiddleConfig)(nil),                  // 14: meurpg.play.v1.RiddleConfig
+	(*SequenceConfig)(nil),                // 15: meurpg.play.v1.SequenceConfig
+	(*CipherConfig)(nil),                  // 16: meurpg.play.v1.CipherConfig
+	(*PuzzleSolution)(nil),                // 17: meurpg.play.v1.PuzzleSolution
+	(*RiddleSolution)(nil),                // 18: meurpg.play.v1.RiddleSolution
+	(*SequenceSolution)(nil),              // 19: meurpg.play.v1.SequenceSolution
+	(*CipherSolution)(nil),                // 20: meurpg.play.v1.CipherSolution
+	(*LockSolution)(nil),                  // 21: meurpg.play.v1.LockSolution
+	(*PillarsSolution)(nil),               // 22: meurpg.play.v1.PillarsSolution
+	(*PuzzleState)(nil),                   // 23: meurpg.play.v1.PuzzleState
+	(*LightsState)(nil),                   // 24: meurpg.play.v1.LightsState
+	(*LockState)(nil),                     // 25: meurpg.play.v1.LockState
+	(*PillarsState)(nil),                  // 26: meurpg.play.v1.PillarsState
+	(*RiddleState)(nil),                   // 27: meurpg.play.v1.RiddleState
+	(*SequenceState)(nil),                 // 28: meurpg.play.v1.SequenceState
+	(*CipherState)(nil),                   // 29: meurpg.play.v1.CipherState
+	(*PuzzleMove)(nil),                    // 30: meurpg.play.v1.PuzzleMove
+	(*LightsMove)(nil),                    // 31: meurpg.play.v1.LightsMove
+	(*LockMove)(nil),                      // 32: meurpg.play.v1.LockMove
+	(*PillarsMove)(nil),                   // 33: meurpg.play.v1.PillarsMove
+	(*RiddleMove)(nil),                    // 34: meurpg.play.v1.RiddleMove
+	(*SequenceMove)(nil),                  // 35: meurpg.play.v1.SequenceMove
+	(*CipherMove)(nil),                    // 36: meurpg.play.v1.CipherMove
+	(*PuzzleOnSolve)(nil),                 // 37: meurpg.play.v1.PuzzleOnSolve
+	(*PuzzleDoorTarget)(nil),              // 38: meurpg.play.v1.PuzzleDoorTarget
+	(*PuzzlePointTarget)(nil),             // 39: meurpg.play.v1.PuzzlePointTarget
+	(*PuzzleClueTarget)(nil),              // 40: meurpg.play.v1.PuzzleClueTarget
+	(*PuzzleMinimum)(nil),                 // 41: meurpg.play.v1.PuzzleMinimum
+	(*Puzzle)(nil),                        // 42: meurpg.play.v1.Puzzle
+	(*PuzzleHintCheck)(nil),               // 43: meurpg.play.v1.PuzzleHintCheck
+	(*PuzzlePart)(nil),                    // 44: meurpg.play.v1.PuzzlePart
+	(*PuzzleOnWrong)(nil),                 // 45: meurpg.play.v1.PuzzleOnWrong
+	(*PuzzleTrapTarget)(nil),              // 46: meurpg.play.v1.PuzzleTrapTarget
+	(*PuzzleLastMove)(nil),                // 47: meurpg.play.v1.PuzzleLastMove
+	(*PuzzleRun)(nil),                     // 48: meurpg.play.v1.PuzzleRun
+	(*PuzzleLimits)(nil),                  // 49: meurpg.play.v1.PuzzleLimits
+	(*SequencePlayback)(nil),              // 50: meurpg.play.v1.SequencePlayback
+	(*PuzzleHintTry)(nil),                 // 51: meurpg.play.v1.PuzzleHintTry
+	(*PuzzleAttempts)(nil),                // 52: meurpg.play.v1.PuzzleAttempts
+	(*PuzzleSummary)(nil),                 // 53: meurpg.play.v1.PuzzleSummary
+	(*MasterPuzzleRun)(nil),               // 54: meurpg.play.v1.MasterPuzzleRun
+	(*PuzzleBlocked)(nil),                 // 55: meurpg.play.v1.PuzzleBlocked
+	(*PuzzleInvalid)(nil),                 // 56: meurpg.play.v1.PuzzleInvalid
+	(*CreatePuzzleRequest)(nil),           // 57: meurpg.play.v1.CreatePuzzleRequest
+	(*CreatePuzzleResponse)(nil),          // 58: meurpg.play.v1.CreatePuzzleResponse
+	(*UpdatePuzzleRequest)(nil),           // 59: meurpg.play.v1.UpdatePuzzleRequest
+	(*UpdatePuzzleResponse)(nil),          // 60: meurpg.play.v1.UpdatePuzzleResponse
+	(*PreviewPuzzleStartRequest)(nil),     // 61: meurpg.play.v1.PreviewPuzzleStartRequest
+	(*PreviewPuzzleStartResponse)(nil),    // 62: meurpg.play.v1.PreviewPuzzleStartResponse
+	(*ListPuzzlesRequest)(nil),            // 63: meurpg.play.v1.ListPuzzlesRequest
+	(*ListPuzzlesResponse)(nil),           // 64: meurpg.play.v1.ListPuzzlesResponse
+	(*GetPuzzleRequest)(nil),              // 65: meurpg.play.v1.GetPuzzleRequest
+	(*GetPuzzleResponse)(nil),             // 66: meurpg.play.v1.GetPuzzleResponse
+	(*ArchivePuzzleRequest)(nil),          // 67: meurpg.play.v1.ArchivePuzzleRequest
+	(*ArchivePuzzleResponse)(nil),         // 68: meurpg.play.v1.ArchivePuzzleResponse
+	(*UnarchivePuzzleRequest)(nil),        // 69: meurpg.play.v1.UnarchivePuzzleRequest
+	(*UnarchivePuzzleResponse)(nil),       // 70: meurpg.play.v1.UnarchivePuzzleResponse
+	(*ListSessionPuzzlesRequest)(nil),     // 71: meurpg.play.v1.ListSessionPuzzlesRequest
+	(*ListSessionPuzzlesResponse)(nil),    // 72: meurpg.play.v1.ListSessionPuzzlesResponse
+	(*ShowPuzzleRequest)(nil),             // 73: meurpg.play.v1.ShowPuzzleRequest
+	(*ShowPuzzleResponse)(nil),            // 74: meurpg.play.v1.ShowPuzzleResponse
+	(*ResetPuzzleRequest)(nil),            // 75: meurpg.play.v1.ResetPuzzleRequest
+	(*ResetPuzzleResponse)(nil),           // 76: meurpg.play.v1.ResetPuzzleResponse
+	(*ReseedPuzzleRequest)(nil),           // 77: meurpg.play.v1.ReseedPuzzleRequest
+	(*ReseedPuzzleResponse)(nil),          // 78: meurpg.play.v1.ReseedPuzzleResponse
+	(*ClosePuzzleRequest)(nil),            // 79: meurpg.play.v1.ClosePuzzleRequest
+	(*ClosePuzzleResponse)(nil),           // 80: meurpg.play.v1.ClosePuzzleResponse
+	(*ReleaseNextPuzzleHintRequest)(nil),  // 81: meurpg.play.v1.ReleaseNextPuzzleHintRequest
+	(*ReleaseNextPuzzleHintResponse)(nil), // 82: meurpg.play.v1.ReleaseNextPuzzleHintResponse
+	(*GetMasterPuzzleRunRequest)(nil),     // 83: meurpg.play.v1.GetMasterPuzzleRunRequest
+	(*GetMasterPuzzleRunResponse)(nil),    // 84: meurpg.play.v1.GetMasterPuzzleRunResponse
+	(*ListShownPuzzlesRequest)(nil),       // 85: meurpg.play.v1.ListShownPuzzlesRequest
+	(*ListShownPuzzlesResponse)(nil),      // 86: meurpg.play.v1.ListShownPuzzlesResponse
+	(*GetPuzzleRunRequest)(nil),           // 87: meurpg.play.v1.GetPuzzleRunRequest
+	(*GetPuzzleRunResponse)(nil),          // 88: meurpg.play.v1.GetPuzzleRunResponse
+	(*MakePuzzleMoveRequest)(nil),         // 89: meurpg.play.v1.MakePuzzleMoveRequest
+	(*MakePuzzleMoveResponse)(nil),        // 90: meurpg.play.v1.MakePuzzleMoveResponse
+	(*PreviewPuzzleCipherRequest)(nil),    // 91: meurpg.play.v1.PreviewPuzzleCipherRequest
+	(*PreviewPuzzleCipherResponse)(nil),   // 92: meurpg.play.v1.PreviewPuzzleCipherResponse
+	(*PlayPuzzleSequenceRequest)(nil),     // 93: meurpg.play.v1.PlayPuzzleSequenceRequest
+	(*PlayPuzzleSequenceResponse)(nil),    // 94: meurpg.play.v1.PlayPuzzleSequenceResponse
+	(*TryPuzzleHintRequest)(nil),          // 95: meurpg.play.v1.TryPuzzleHintRequest
+	(*TryPuzzleHintResponse)(nil),         // 96: meurpg.play.v1.TryPuzzleHintResponse
+	(*timestamppb.Timestamp)(nil),         // 97: google.protobuf.Timestamp
+	(*DiceRoll)(nil),                      // 98: meurpg.play.v1.DiceRoll
 }
 var file_meurpg_play_v1_puzzles_proto_depIdxs = []int32{
-	9,  // 0: meurpg.play.v1.PuzzleConfig.lights:type_name -> meurpg.play.v1.LightsConfig
-	10, // 1: meurpg.play.v1.PuzzleConfig.lock:type_name -> meurpg.play.v1.LockConfig
-	11, // 2: meurpg.play.v1.PuzzleConfig.pillars:type_name -> meurpg.play.v1.PillarsConfig
-	1,  // 3: meurpg.play.v1.LockConfig.alphabet:type_name -> meurpg.play.v1.PuzzleAlphabet
-	12, // 4: meurpg.play.v1.PillarsConfig.links:type_name -> meurpg.play.v1.PillarLinks
-	14, // 5: meurpg.play.v1.PuzzleSolution.lock:type_name -> meurpg.play.v1.LockSolution
-	15, // 6: meurpg.play.v1.PuzzleSolution.pillars:type_name -> meurpg.play.v1.PillarsSolution
-	17, // 7: meurpg.play.v1.PuzzleState.lights:type_name -> meurpg.play.v1.LightsState
-	18, // 8: meurpg.play.v1.PuzzleState.lock:type_name -> meurpg.play.v1.LockState
-	19, // 9: meurpg.play.v1.PuzzleState.pillars:type_name -> meurpg.play.v1.PillarsState
-	21, // 10: meurpg.play.v1.PuzzleMove.lights:type_name -> meurpg.play.v1.LightsMove
-	22, // 11: meurpg.play.v1.PuzzleMove.lock:type_name -> meurpg.play.v1.LockMove
-	23, // 12: meurpg.play.v1.PuzzleMove.pillars:type_name -> meurpg.play.v1.PillarsMove
-	2,  // 13: meurpg.play.v1.PuzzleOnSolve.action:type_name -> meurpg.play.v1.PuzzleSolveAction
-	25, // 14: meurpg.play.v1.PuzzleOnSolve.door:type_name -> meurpg.play.v1.PuzzleDoorTarget
-	26, // 15: meurpg.play.v1.PuzzleOnSolve.point:type_name -> meurpg.play.v1.PuzzlePointTarget
-	27, // 16: meurpg.play.v1.PuzzleOnSolve.clue:type_name -> meurpg.play.v1.PuzzleClueTarget
-	20, // 17: meurpg.play.v1.PuzzleMinimum.path:type_name -> meurpg.play.v1.PuzzleMove
-	0,  // 18: meurpg.play.v1.Puzzle.kind:type_name -> meurpg.play.v1.PuzzleKind
-	8,  // 19: meurpg.play.v1.Puzzle.config:type_name -> meurpg.play.v1.PuzzleConfig
-	13, // 20: meurpg.play.v1.Puzzle.solution:type_name -> meurpg.play.v1.PuzzleSolution
-	16, // 21: meurpg.play.v1.Puzzle.start:type_name -> meurpg.play.v1.PuzzleState
-	28, // 22: meurpg.play.v1.Puzzle.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
-	7,  // 23: meurpg.play.v1.Puzzle.symbols:type_name -> meurpg.play.v1.PuzzleSymbol
-	24, // 24: meurpg.play.v1.Puzzle.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
-	70, // 25: meurpg.play.v1.Puzzle.created_at:type_name -> google.protobuf.Timestamp
-	70, // 26: meurpg.play.v1.Puzzle.updated_at:type_name -> google.protobuf.Timestamp
-	20, // 27: meurpg.play.v1.PuzzleLastMove.move:type_name -> meurpg.play.v1.PuzzleMove
-	70, // 28: meurpg.play.v1.PuzzleLastMove.at:type_name -> google.protobuf.Timestamp
-	0,  // 29: meurpg.play.v1.PuzzleRun.kind:type_name -> meurpg.play.v1.PuzzleKind
-	8,  // 30: meurpg.play.v1.PuzzleRun.config:type_name -> meurpg.play.v1.PuzzleConfig
-	7,  // 31: meurpg.play.v1.PuzzleRun.symbols:type_name -> meurpg.play.v1.PuzzleSymbol
-	16, // 32: meurpg.play.v1.PuzzleRun.state:type_name -> meurpg.play.v1.PuzzleState
-	70, // 33: meurpg.play.v1.PuzzleRun.solved_at:type_name -> google.protobuf.Timestamp
-	30, // 34: meurpg.play.v1.PuzzleRun.last_move:type_name -> meurpg.play.v1.PuzzleLastMove
-	15, // 35: meurpg.play.v1.PuzzleRun.mural:type_name -> meurpg.play.v1.PillarsSolution
-	0,  // 36: meurpg.play.v1.PuzzleSummary.kind:type_name -> meurpg.play.v1.PuzzleKind
-	29, // 37: meurpg.play.v1.MasterPuzzleRun.puzzle:type_name -> meurpg.play.v1.Puzzle
-	4,  // 38: meurpg.play.v1.MasterPuzzleRun.status:type_name -> meurpg.play.v1.PuzzleRunStatus
-	31, // 39: meurpg.play.v1.MasterPuzzleRun.run:type_name -> meurpg.play.v1.PuzzleRun
-	16, // 40: meurpg.play.v1.MasterPuzzleRun.start:type_name -> meurpg.play.v1.PuzzleState
-	28, // 41: meurpg.play.v1.MasterPuzzleRun.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
-	28, // 42: meurpg.play.v1.MasterPuzzleRun.minimum_from_start:type_name -> meurpg.play.v1.PuzzleMinimum
-	3,  // 43: meurpg.play.v1.MasterPuzzleRun.outcome:type_name -> meurpg.play.v1.PuzzleSolveOutcome
-	5,  // 44: meurpg.play.v1.PuzzleBlocked.reason:type_name -> meurpg.play.v1.PuzzleBlockedReason
-	6,  // 45: meurpg.play.v1.PuzzleInvalid.reason:type_name -> meurpg.play.v1.PuzzleInvalidReason
-	8,  // 46: meurpg.play.v1.CreatePuzzleRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
-	13, // 47: meurpg.play.v1.CreatePuzzleRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
-	16, // 48: meurpg.play.v1.CreatePuzzleRequest.start:type_name -> meurpg.play.v1.PuzzleState
-	24, // 49: meurpg.play.v1.CreatePuzzleRequest.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
-	29, // 50: meurpg.play.v1.CreatePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
-	8,  // 51: meurpg.play.v1.UpdatePuzzleRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
-	13, // 52: meurpg.play.v1.UpdatePuzzleRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
-	16, // 53: meurpg.play.v1.UpdatePuzzleRequest.start:type_name -> meurpg.play.v1.PuzzleState
-	24, // 54: meurpg.play.v1.UpdatePuzzleRequest.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
-	29, // 55: meurpg.play.v1.UpdatePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
-	8,  // 56: meurpg.play.v1.PreviewPuzzleStartRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
-	13, // 57: meurpg.play.v1.PreviewPuzzleStartRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
-	16, // 58: meurpg.play.v1.PreviewPuzzleStartResponse.start:type_name -> meurpg.play.v1.PuzzleState
-	28, // 59: meurpg.play.v1.PreviewPuzzleStartResponse.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
-	29, // 60: meurpg.play.v1.ListPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.Puzzle
-	29, // 61: meurpg.play.v1.GetPuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
-	29, // 62: meurpg.play.v1.ArchivePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
-	29, // 63: meurpg.play.v1.UnarchivePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
-	33, // 64: meurpg.play.v1.ListSessionPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 65: meurpg.play.v1.ShowPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 66: meurpg.play.v1.ResetPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 67: meurpg.play.v1.ReseedPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 68: meurpg.play.v1.ClosePuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 69: meurpg.play.v1.ReleaseNextPuzzleHintResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	33, // 70: meurpg.play.v1.GetMasterPuzzleRunResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
-	32, // 71: meurpg.play.v1.ListShownPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.PuzzleSummary
-	31, // 72: meurpg.play.v1.GetPuzzleRunResponse.run:type_name -> meurpg.play.v1.PuzzleRun
-	20, // 73: meurpg.play.v1.MakePuzzleMoveRequest.move:type_name -> meurpg.play.v1.PuzzleMove
-	31, // 74: meurpg.play.v1.MakePuzzleMoveResponse.run:type_name -> meurpg.play.v1.PuzzleRun
-	36, // 75: meurpg.play.v1.PuzzleService.CreatePuzzle:input_type -> meurpg.play.v1.CreatePuzzleRequest
-	38, // 76: meurpg.play.v1.PuzzleService.UpdatePuzzle:input_type -> meurpg.play.v1.UpdatePuzzleRequest
-	40, // 77: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:input_type -> meurpg.play.v1.PreviewPuzzleStartRequest
-	42, // 78: meurpg.play.v1.PuzzleService.ListPuzzles:input_type -> meurpg.play.v1.ListPuzzlesRequest
-	44, // 79: meurpg.play.v1.PuzzleService.GetPuzzle:input_type -> meurpg.play.v1.GetPuzzleRequest
-	46, // 80: meurpg.play.v1.PuzzleService.ArchivePuzzle:input_type -> meurpg.play.v1.ArchivePuzzleRequest
-	48, // 81: meurpg.play.v1.PuzzleService.UnarchivePuzzle:input_type -> meurpg.play.v1.UnarchivePuzzleRequest
-	50, // 82: meurpg.play.v1.PuzzleService.ListSessionPuzzles:input_type -> meurpg.play.v1.ListSessionPuzzlesRequest
-	52, // 83: meurpg.play.v1.PuzzleService.ShowPuzzle:input_type -> meurpg.play.v1.ShowPuzzleRequest
-	54, // 84: meurpg.play.v1.PuzzleService.ResetPuzzle:input_type -> meurpg.play.v1.ResetPuzzleRequest
-	56, // 85: meurpg.play.v1.PuzzleService.ReseedPuzzle:input_type -> meurpg.play.v1.ReseedPuzzleRequest
-	58, // 86: meurpg.play.v1.PuzzleService.ClosePuzzle:input_type -> meurpg.play.v1.ClosePuzzleRequest
-	60, // 87: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:input_type -> meurpg.play.v1.ReleaseNextPuzzleHintRequest
-	62, // 88: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:input_type -> meurpg.play.v1.GetMasterPuzzleRunRequest
-	64, // 89: meurpg.play.v1.PuzzleService.ListShownPuzzles:input_type -> meurpg.play.v1.ListShownPuzzlesRequest
-	66, // 90: meurpg.play.v1.PuzzleService.GetPuzzleRun:input_type -> meurpg.play.v1.GetPuzzleRunRequest
-	68, // 91: meurpg.play.v1.PuzzleService.MakePuzzleMove:input_type -> meurpg.play.v1.MakePuzzleMoveRequest
-	37, // 92: meurpg.play.v1.PuzzleService.CreatePuzzle:output_type -> meurpg.play.v1.CreatePuzzleResponse
-	39, // 93: meurpg.play.v1.PuzzleService.UpdatePuzzle:output_type -> meurpg.play.v1.UpdatePuzzleResponse
-	41, // 94: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:output_type -> meurpg.play.v1.PreviewPuzzleStartResponse
-	43, // 95: meurpg.play.v1.PuzzleService.ListPuzzles:output_type -> meurpg.play.v1.ListPuzzlesResponse
-	45, // 96: meurpg.play.v1.PuzzleService.GetPuzzle:output_type -> meurpg.play.v1.GetPuzzleResponse
-	47, // 97: meurpg.play.v1.PuzzleService.ArchivePuzzle:output_type -> meurpg.play.v1.ArchivePuzzleResponse
-	49, // 98: meurpg.play.v1.PuzzleService.UnarchivePuzzle:output_type -> meurpg.play.v1.UnarchivePuzzleResponse
-	51, // 99: meurpg.play.v1.PuzzleService.ListSessionPuzzles:output_type -> meurpg.play.v1.ListSessionPuzzlesResponse
-	53, // 100: meurpg.play.v1.PuzzleService.ShowPuzzle:output_type -> meurpg.play.v1.ShowPuzzleResponse
-	55, // 101: meurpg.play.v1.PuzzleService.ResetPuzzle:output_type -> meurpg.play.v1.ResetPuzzleResponse
-	57, // 102: meurpg.play.v1.PuzzleService.ReseedPuzzle:output_type -> meurpg.play.v1.ReseedPuzzleResponse
-	59, // 103: meurpg.play.v1.PuzzleService.ClosePuzzle:output_type -> meurpg.play.v1.ClosePuzzleResponse
-	61, // 104: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:output_type -> meurpg.play.v1.ReleaseNextPuzzleHintResponse
-	63, // 105: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:output_type -> meurpg.play.v1.GetMasterPuzzleRunResponse
-	65, // 106: meurpg.play.v1.PuzzleService.ListShownPuzzles:output_type -> meurpg.play.v1.ListShownPuzzlesResponse
-	67, // 107: meurpg.play.v1.PuzzleService.GetPuzzleRun:output_type -> meurpg.play.v1.GetPuzzleRunResponse
-	69, // 108: meurpg.play.v1.PuzzleService.MakePuzzleMove:output_type -> meurpg.play.v1.MakePuzzleMoveResponse
-	92, // [92:109] is the sub-list for method output_type
-	75, // [75:92] is the sub-list for method input_type
-	75, // [75:75] is the sub-list for extension type_name
-	75, // [75:75] is the sub-list for extension extendee
-	0,  // [0:75] is the sub-list for field type_name
+	10,  // 0: meurpg.play.v1.PuzzleConfig.lights:type_name -> meurpg.play.v1.LightsConfig
+	11,  // 1: meurpg.play.v1.PuzzleConfig.lock:type_name -> meurpg.play.v1.LockConfig
+	12,  // 2: meurpg.play.v1.PuzzleConfig.pillars:type_name -> meurpg.play.v1.PillarsConfig
+	14,  // 3: meurpg.play.v1.PuzzleConfig.riddle:type_name -> meurpg.play.v1.RiddleConfig
+	15,  // 4: meurpg.play.v1.PuzzleConfig.sequence:type_name -> meurpg.play.v1.SequenceConfig
+	16,  // 5: meurpg.play.v1.PuzzleConfig.cipher:type_name -> meurpg.play.v1.CipherConfig
+	1,   // 6: meurpg.play.v1.LockConfig.alphabet:type_name -> meurpg.play.v1.PuzzleAlphabet
+	13,  // 7: meurpg.play.v1.PillarsConfig.links:type_name -> meurpg.play.v1.PillarLinks
+	21,  // 8: meurpg.play.v1.PuzzleSolution.lock:type_name -> meurpg.play.v1.LockSolution
+	22,  // 9: meurpg.play.v1.PuzzleSolution.pillars:type_name -> meurpg.play.v1.PillarsSolution
+	18,  // 10: meurpg.play.v1.PuzzleSolution.riddle:type_name -> meurpg.play.v1.RiddleSolution
+	19,  // 11: meurpg.play.v1.PuzzleSolution.sequence:type_name -> meurpg.play.v1.SequenceSolution
+	20,  // 12: meurpg.play.v1.PuzzleSolution.cipher:type_name -> meurpg.play.v1.CipherSolution
+	24,  // 13: meurpg.play.v1.PuzzleState.lights:type_name -> meurpg.play.v1.LightsState
+	25,  // 14: meurpg.play.v1.PuzzleState.lock:type_name -> meurpg.play.v1.LockState
+	26,  // 15: meurpg.play.v1.PuzzleState.pillars:type_name -> meurpg.play.v1.PillarsState
+	27,  // 16: meurpg.play.v1.PuzzleState.riddle:type_name -> meurpg.play.v1.RiddleState
+	28,  // 17: meurpg.play.v1.PuzzleState.sequence:type_name -> meurpg.play.v1.SequenceState
+	29,  // 18: meurpg.play.v1.PuzzleState.cipher:type_name -> meurpg.play.v1.CipherState
+	31,  // 19: meurpg.play.v1.PuzzleMove.lights:type_name -> meurpg.play.v1.LightsMove
+	32,  // 20: meurpg.play.v1.PuzzleMove.lock:type_name -> meurpg.play.v1.LockMove
+	33,  // 21: meurpg.play.v1.PuzzleMove.pillars:type_name -> meurpg.play.v1.PillarsMove
+	34,  // 22: meurpg.play.v1.PuzzleMove.riddle:type_name -> meurpg.play.v1.RiddleMove
+	35,  // 23: meurpg.play.v1.PuzzleMove.sequence:type_name -> meurpg.play.v1.SequenceMove
+	36,  // 24: meurpg.play.v1.PuzzleMove.cipher:type_name -> meurpg.play.v1.CipherMove
+	2,   // 25: meurpg.play.v1.PuzzleOnSolve.action:type_name -> meurpg.play.v1.PuzzleSolveAction
+	38,  // 26: meurpg.play.v1.PuzzleOnSolve.door:type_name -> meurpg.play.v1.PuzzleDoorTarget
+	39,  // 27: meurpg.play.v1.PuzzleOnSolve.point:type_name -> meurpg.play.v1.PuzzlePointTarget
+	40,  // 28: meurpg.play.v1.PuzzleOnSolve.clue:type_name -> meurpg.play.v1.PuzzleClueTarget
+	30,  // 29: meurpg.play.v1.PuzzleMinimum.path:type_name -> meurpg.play.v1.PuzzleMove
+	0,   // 30: meurpg.play.v1.Puzzle.kind:type_name -> meurpg.play.v1.PuzzleKind
+	9,   // 31: meurpg.play.v1.Puzzle.config:type_name -> meurpg.play.v1.PuzzleConfig
+	17,  // 32: meurpg.play.v1.Puzzle.solution:type_name -> meurpg.play.v1.PuzzleSolution
+	23,  // 33: meurpg.play.v1.Puzzle.start:type_name -> meurpg.play.v1.PuzzleState
+	41,  // 34: meurpg.play.v1.Puzzle.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
+	8,   // 35: meurpg.play.v1.Puzzle.symbols:type_name -> meurpg.play.v1.PuzzleSymbol
+	37,  // 36: meurpg.play.v1.Puzzle.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
+	97,  // 37: meurpg.play.v1.Puzzle.created_at:type_name -> google.protobuf.Timestamp
+	97,  // 38: meurpg.play.v1.Puzzle.updated_at:type_name -> google.protobuf.Timestamp
+	43,  // 39: meurpg.play.v1.Puzzle.hint_check:type_name -> meurpg.play.v1.PuzzleHintCheck
+	44,  // 40: meurpg.play.v1.Puzzle.parts:type_name -> meurpg.play.v1.PuzzlePart
+	45,  // 41: meurpg.play.v1.Puzzle.on_wrong:type_name -> meurpg.play.v1.PuzzleOnWrong
+	46,  // 42: meurpg.play.v1.PuzzleOnWrong.trap:type_name -> meurpg.play.v1.PuzzleTrapTarget
+	30,  // 43: meurpg.play.v1.PuzzleLastMove.move:type_name -> meurpg.play.v1.PuzzleMove
+	97,  // 44: meurpg.play.v1.PuzzleLastMove.at:type_name -> google.protobuf.Timestamp
+	0,   // 45: meurpg.play.v1.PuzzleRun.kind:type_name -> meurpg.play.v1.PuzzleKind
+	9,   // 46: meurpg.play.v1.PuzzleRun.config:type_name -> meurpg.play.v1.PuzzleConfig
+	8,   // 47: meurpg.play.v1.PuzzleRun.symbols:type_name -> meurpg.play.v1.PuzzleSymbol
+	23,  // 48: meurpg.play.v1.PuzzleRun.state:type_name -> meurpg.play.v1.PuzzleState
+	97,  // 49: meurpg.play.v1.PuzzleRun.solved_at:type_name -> google.protobuf.Timestamp
+	47,  // 50: meurpg.play.v1.PuzzleRun.last_move:type_name -> meurpg.play.v1.PuzzleLastMove
+	22,  // 51: meurpg.play.v1.PuzzleRun.mural:type_name -> meurpg.play.v1.PillarsSolution
+	49,  // 52: meurpg.play.v1.PuzzleRun.limits:type_name -> meurpg.play.v1.PuzzleLimits
+	50,  // 53: meurpg.play.v1.PuzzleRun.sequence:type_name -> meurpg.play.v1.SequencePlayback
+	97,  // 54: meurpg.play.v1.PuzzleLimits.deadline:type_name -> google.protobuf.Timestamp
+	98,  // 55: meurpg.play.v1.PuzzleHintTry.roll:type_name -> meurpg.play.v1.DiceRoll
+	97,  // 56: meurpg.play.v1.PuzzleHintTry.at:type_name -> google.protobuf.Timestamp
+	0,   // 57: meurpg.play.v1.PuzzleSummary.kind:type_name -> meurpg.play.v1.PuzzleKind
+	42,  // 58: meurpg.play.v1.MasterPuzzleRun.puzzle:type_name -> meurpg.play.v1.Puzzle
+	4,   // 59: meurpg.play.v1.MasterPuzzleRun.status:type_name -> meurpg.play.v1.PuzzleRunStatus
+	48,  // 60: meurpg.play.v1.MasterPuzzleRun.run:type_name -> meurpg.play.v1.PuzzleRun
+	23,  // 61: meurpg.play.v1.MasterPuzzleRun.start:type_name -> meurpg.play.v1.PuzzleState
+	41,  // 62: meurpg.play.v1.MasterPuzzleRun.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
+	41,  // 63: meurpg.play.v1.MasterPuzzleRun.minimum_from_start:type_name -> meurpg.play.v1.PuzzleMinimum
+	3,   // 64: meurpg.play.v1.MasterPuzzleRun.outcome:type_name -> meurpg.play.v1.PuzzleSolveOutcome
+	47,  // 65: meurpg.play.v1.MasterPuzzleRun.last_move:type_name -> meurpg.play.v1.PuzzleLastMove
+	5,   // 66: meurpg.play.v1.MasterPuzzleRun.stop_reason:type_name -> meurpg.play.v1.PuzzleStopReason
+	51,  // 67: meurpg.play.v1.MasterPuzzleRun.hint_tries:type_name -> meurpg.play.v1.PuzzleHintTry
+	52,  // 68: meurpg.play.v1.MasterPuzzleRun.attempts:type_name -> meurpg.play.v1.PuzzleAttempts
+	6,   // 69: meurpg.play.v1.PuzzleBlocked.reason:type_name -> meurpg.play.v1.PuzzleBlockedReason
+	7,   // 70: meurpg.play.v1.PuzzleInvalid.reason:type_name -> meurpg.play.v1.PuzzleInvalidReason
+	9,   // 71: meurpg.play.v1.CreatePuzzleRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
+	17,  // 72: meurpg.play.v1.CreatePuzzleRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
+	23,  // 73: meurpg.play.v1.CreatePuzzleRequest.start:type_name -> meurpg.play.v1.PuzzleState
+	37,  // 74: meurpg.play.v1.CreatePuzzleRequest.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
+	43,  // 75: meurpg.play.v1.CreatePuzzleRequest.hint_check:type_name -> meurpg.play.v1.PuzzleHintCheck
+	44,  // 76: meurpg.play.v1.CreatePuzzleRequest.parts:type_name -> meurpg.play.v1.PuzzlePart
+	45,  // 77: meurpg.play.v1.CreatePuzzleRequest.on_wrong:type_name -> meurpg.play.v1.PuzzleOnWrong
+	42,  // 78: meurpg.play.v1.CreatePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
+	9,   // 79: meurpg.play.v1.UpdatePuzzleRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
+	17,  // 80: meurpg.play.v1.UpdatePuzzleRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
+	23,  // 81: meurpg.play.v1.UpdatePuzzleRequest.start:type_name -> meurpg.play.v1.PuzzleState
+	37,  // 82: meurpg.play.v1.UpdatePuzzleRequest.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
+	43,  // 83: meurpg.play.v1.UpdatePuzzleRequest.hint_check:type_name -> meurpg.play.v1.PuzzleHintCheck
+	44,  // 84: meurpg.play.v1.UpdatePuzzleRequest.parts:type_name -> meurpg.play.v1.PuzzlePart
+	45,  // 85: meurpg.play.v1.UpdatePuzzleRequest.on_wrong:type_name -> meurpg.play.v1.PuzzleOnWrong
+	42,  // 86: meurpg.play.v1.UpdatePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
+	9,   // 87: meurpg.play.v1.PreviewPuzzleStartRequest.config:type_name -> meurpg.play.v1.PuzzleConfig
+	17,  // 88: meurpg.play.v1.PreviewPuzzleStartRequest.solution:type_name -> meurpg.play.v1.PuzzleSolution
+	23,  // 89: meurpg.play.v1.PreviewPuzzleStartResponse.start:type_name -> meurpg.play.v1.PuzzleState
+	41,  // 90: meurpg.play.v1.PreviewPuzzleStartResponse.minimum:type_name -> meurpg.play.v1.PuzzleMinimum
+	42,  // 91: meurpg.play.v1.ListPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.Puzzle
+	42,  // 92: meurpg.play.v1.GetPuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
+	42,  // 93: meurpg.play.v1.ArchivePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
+	42,  // 94: meurpg.play.v1.UnarchivePuzzleResponse.puzzle:type_name -> meurpg.play.v1.Puzzle
+	54,  // 95: meurpg.play.v1.ListSessionPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 96: meurpg.play.v1.ShowPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 97: meurpg.play.v1.ResetPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 98: meurpg.play.v1.ReseedPuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 99: meurpg.play.v1.ClosePuzzleResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 100: meurpg.play.v1.ReleaseNextPuzzleHintResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	54,  // 101: meurpg.play.v1.GetMasterPuzzleRunResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	53,  // 102: meurpg.play.v1.ListShownPuzzlesResponse.puzzles:type_name -> meurpg.play.v1.PuzzleSummary
+	48,  // 103: meurpg.play.v1.GetPuzzleRunResponse.run:type_name -> meurpg.play.v1.PuzzleRun
+	30,  // 104: meurpg.play.v1.MakePuzzleMoveRequest.move:type_name -> meurpg.play.v1.PuzzleMove
+	48,  // 105: meurpg.play.v1.MakePuzzleMoveResponse.run:type_name -> meurpg.play.v1.PuzzleRun
+	20,  // 106: meurpg.play.v1.PreviewPuzzleCipherRequest.solution:type_name -> meurpg.play.v1.CipherSolution
+	54,  // 107: meurpg.play.v1.PlayPuzzleSequenceResponse.run:type_name -> meurpg.play.v1.MasterPuzzleRun
+	48,  // 108: meurpg.play.v1.TryPuzzleHintResponse.run:type_name -> meurpg.play.v1.PuzzleRun
+	98,  // 109: meurpg.play.v1.TryPuzzleHintResponse.roll:type_name -> meurpg.play.v1.DiceRoll
+	57,  // 110: meurpg.play.v1.PuzzleService.CreatePuzzle:input_type -> meurpg.play.v1.CreatePuzzleRequest
+	59,  // 111: meurpg.play.v1.PuzzleService.UpdatePuzzle:input_type -> meurpg.play.v1.UpdatePuzzleRequest
+	61,  // 112: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:input_type -> meurpg.play.v1.PreviewPuzzleStartRequest
+	63,  // 113: meurpg.play.v1.PuzzleService.ListPuzzles:input_type -> meurpg.play.v1.ListPuzzlesRequest
+	65,  // 114: meurpg.play.v1.PuzzleService.GetPuzzle:input_type -> meurpg.play.v1.GetPuzzleRequest
+	67,  // 115: meurpg.play.v1.PuzzleService.ArchivePuzzle:input_type -> meurpg.play.v1.ArchivePuzzleRequest
+	69,  // 116: meurpg.play.v1.PuzzleService.UnarchivePuzzle:input_type -> meurpg.play.v1.UnarchivePuzzleRequest
+	71,  // 117: meurpg.play.v1.PuzzleService.ListSessionPuzzles:input_type -> meurpg.play.v1.ListSessionPuzzlesRequest
+	73,  // 118: meurpg.play.v1.PuzzleService.ShowPuzzle:input_type -> meurpg.play.v1.ShowPuzzleRequest
+	75,  // 119: meurpg.play.v1.PuzzleService.ResetPuzzle:input_type -> meurpg.play.v1.ResetPuzzleRequest
+	77,  // 120: meurpg.play.v1.PuzzleService.ReseedPuzzle:input_type -> meurpg.play.v1.ReseedPuzzleRequest
+	79,  // 121: meurpg.play.v1.PuzzleService.ClosePuzzle:input_type -> meurpg.play.v1.ClosePuzzleRequest
+	81,  // 122: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:input_type -> meurpg.play.v1.ReleaseNextPuzzleHintRequest
+	91,  // 123: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:input_type -> meurpg.play.v1.PreviewPuzzleCipherRequest
+	93,  // 124: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:input_type -> meurpg.play.v1.PlayPuzzleSequenceRequest
+	83,  // 125: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:input_type -> meurpg.play.v1.GetMasterPuzzleRunRequest
+	85,  // 126: meurpg.play.v1.PuzzleService.ListShownPuzzles:input_type -> meurpg.play.v1.ListShownPuzzlesRequest
+	87,  // 127: meurpg.play.v1.PuzzleService.GetPuzzleRun:input_type -> meurpg.play.v1.GetPuzzleRunRequest
+	95,  // 128: meurpg.play.v1.PuzzleService.TryPuzzleHint:input_type -> meurpg.play.v1.TryPuzzleHintRequest
+	89,  // 129: meurpg.play.v1.PuzzleService.MakePuzzleMove:input_type -> meurpg.play.v1.MakePuzzleMoveRequest
+	58,  // 130: meurpg.play.v1.PuzzleService.CreatePuzzle:output_type -> meurpg.play.v1.CreatePuzzleResponse
+	60,  // 131: meurpg.play.v1.PuzzleService.UpdatePuzzle:output_type -> meurpg.play.v1.UpdatePuzzleResponse
+	62,  // 132: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:output_type -> meurpg.play.v1.PreviewPuzzleStartResponse
+	64,  // 133: meurpg.play.v1.PuzzleService.ListPuzzles:output_type -> meurpg.play.v1.ListPuzzlesResponse
+	66,  // 134: meurpg.play.v1.PuzzleService.GetPuzzle:output_type -> meurpg.play.v1.GetPuzzleResponse
+	68,  // 135: meurpg.play.v1.PuzzleService.ArchivePuzzle:output_type -> meurpg.play.v1.ArchivePuzzleResponse
+	70,  // 136: meurpg.play.v1.PuzzleService.UnarchivePuzzle:output_type -> meurpg.play.v1.UnarchivePuzzleResponse
+	72,  // 137: meurpg.play.v1.PuzzleService.ListSessionPuzzles:output_type -> meurpg.play.v1.ListSessionPuzzlesResponse
+	74,  // 138: meurpg.play.v1.PuzzleService.ShowPuzzle:output_type -> meurpg.play.v1.ShowPuzzleResponse
+	76,  // 139: meurpg.play.v1.PuzzleService.ResetPuzzle:output_type -> meurpg.play.v1.ResetPuzzleResponse
+	78,  // 140: meurpg.play.v1.PuzzleService.ReseedPuzzle:output_type -> meurpg.play.v1.ReseedPuzzleResponse
+	80,  // 141: meurpg.play.v1.PuzzleService.ClosePuzzle:output_type -> meurpg.play.v1.ClosePuzzleResponse
+	82,  // 142: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:output_type -> meurpg.play.v1.ReleaseNextPuzzleHintResponse
+	92,  // 143: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:output_type -> meurpg.play.v1.PreviewPuzzleCipherResponse
+	94,  // 144: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:output_type -> meurpg.play.v1.PlayPuzzleSequenceResponse
+	84,  // 145: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:output_type -> meurpg.play.v1.GetMasterPuzzleRunResponse
+	86,  // 146: meurpg.play.v1.PuzzleService.ListShownPuzzles:output_type -> meurpg.play.v1.ListShownPuzzlesResponse
+	88,  // 147: meurpg.play.v1.PuzzleService.GetPuzzleRun:output_type -> meurpg.play.v1.GetPuzzleRunResponse
+	96,  // 148: meurpg.play.v1.PuzzleService.TryPuzzleHint:output_type -> meurpg.play.v1.TryPuzzleHintResponse
+	90,  // 149: meurpg.play.v1.PuzzleService.MakePuzzleMove:output_type -> meurpg.play.v1.MakePuzzleMoveResponse
+	130, // [130:150] is the sub-list for method output_type
+	110, // [110:130] is the sub-list for method input_type
+	110, // [110:110] is the sub-list for extension type_name
+	110, // [110:110] is the sub-list for extension extendee
+	0,   // [0:110] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_puzzles_proto_init() }
@@ -5071,37 +7538,58 @@ func file_meurpg_play_v1_puzzles_proto_init() {
 	if File_meurpg_play_v1_puzzles_proto != nil {
 		return
 	}
+	file_meurpg_play_v1_combat_proto_init()
 	file_meurpg_play_v1_puzzles_proto_msgTypes[1].OneofWrappers = []any{
 		(*PuzzleConfig_Lights)(nil),
 		(*PuzzleConfig_Lock)(nil),
 		(*PuzzleConfig_Pillars)(nil),
-	}
-	file_meurpg_play_v1_puzzles_proto_msgTypes[6].OneofWrappers = []any{
-		(*PuzzleSolution_Lock)(nil),
-		(*PuzzleSolution_Pillars)(nil),
+		(*PuzzleConfig_Riddle)(nil),
+		(*PuzzleConfig_Sequence)(nil),
+		(*PuzzleConfig_Cipher)(nil),
 	}
 	file_meurpg_play_v1_puzzles_proto_msgTypes[9].OneofWrappers = []any{
+		(*PuzzleSolution_Lock)(nil),
+		(*PuzzleSolution_Pillars)(nil),
+		(*PuzzleSolution_Riddle)(nil),
+		(*PuzzleSolution_Sequence)(nil),
+		(*PuzzleSolution_Cipher)(nil),
+	}
+	file_meurpg_play_v1_puzzles_proto_msgTypes[12].OneofWrappers = []any{
+		(*CipherSolution_Shift)(nil),
+		(*CipherSolution_Keyword)(nil),
+	}
+	file_meurpg_play_v1_puzzles_proto_msgTypes[15].OneofWrappers = []any{
 		(*PuzzleState_Lights)(nil),
 		(*PuzzleState_Lock)(nil),
 		(*PuzzleState_Pillars)(nil),
+		(*PuzzleState_Riddle)(nil),
+		(*PuzzleState_Sequence)(nil),
+		(*PuzzleState_Cipher)(nil),
 	}
-	file_meurpg_play_v1_puzzles_proto_msgTypes[13].OneofWrappers = []any{
+	file_meurpg_play_v1_puzzles_proto_msgTypes[22].OneofWrappers = []any{
 		(*PuzzleMove_Lights)(nil),
 		(*PuzzleMove_Lock)(nil),
 		(*PuzzleMove_Pillars)(nil),
+		(*PuzzleMove_Riddle)(nil),
+		(*PuzzleMove_Sequence)(nil),
+		(*PuzzleMove_Cipher)(nil),
 	}
-	file_meurpg_play_v1_puzzles_proto_msgTypes[17].OneofWrappers = []any{
+	file_meurpg_play_v1_puzzles_proto_msgTypes[29].OneofWrappers = []any{
 		(*PuzzleOnSolve_Door)(nil),
 		(*PuzzleOnSolve_Point)(nil),
 		(*PuzzleOnSolve_Clue)(nil),
+	}
+	file_meurpg_play_v1_puzzles_proto_msgTypes[87].OneofWrappers = []any{
+		(*TryPuzzleHintRequest_RollInApp)(nil),
+		(*TryPuzzleHintRequest_D20Face)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_puzzles_proto_rawDesc), len(file_meurpg_play_v1_puzzles_proto_rawDesc)),
-			NumEnums:      7,
-			NumMessages:   63,
+			NumEnums:      8,
+			NumMessages:   89,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

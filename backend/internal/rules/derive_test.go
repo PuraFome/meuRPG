@@ -16,9 +16,15 @@ func pensantus() Build {
 		Classes:                []ClassLevel{{Class: "class:wizard", Subclass: "subclass:evocation", Level: 3}},
 		CustomBackgroundName:   "Sábio",
 		CustomBackgroundSkills: []string{"skill:arcana", "skill:history"},
-		SkillProficiencies:     []string{"skill:investigation", "skill:insight"},
-		Weapons:                []string{"equipment:quarterstaff"},
-		Cantrips:               []string{"spell:fire-bolt", "spell:ray-of-frost", "spell:minor-illusion"},
+		// SRD 5.1 "Customizing a Background": two languages (tools or languages in
+		// any mix), a feature in the player's words and the equipment.
+		CustomBackgroundProficiencies: []string{"language:draconic", "language:elvish"},
+		CustomBackgroundFeatureName:   "Pesquisador",
+		CustomBackgroundFeature:       "Quando você não sabe uma informação, sabe a quem perguntar: bibliotecas, escribas e outros estudiosos.",
+		CustomBackgroundEquipment:     "Um tinteiro, uma pena, uma faca pequena e roupas comuns.",
+		SkillProficiencies:            []string{"skill:investigation", "skill:insight"},
+		Weapons:                       []string{"equipment:quarterstaff"},
+		Cantrips:                      []string{"spell:fire-bolt", "spell:ray-of-frost", "spell:minor-illusion"},
 		SpellsKnown: []string{
 			"spell:magic-missile", "spell:burning-hands", "spell:shield", "spell:mage-armor", "spell:sleep",
 			"spell:find-familiar", "spell:detect-magic", "spell:comprehend-languages", "spell:scorching-ray", "spell:web",

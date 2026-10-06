@@ -937,9 +937,13 @@ func convertSpells(in *inputs) (output, error) {
 			DCSuccess string `json:"dc_success"`
 		} `json:"dc"`
 		HealAtSlotLevel map[string]string `json:"heal_at_slot_level"`
-		School          ref               `json:"school"`
-		Classes         []ref             `json:"classes"`
-		Subclasses      []ref             `json:"subclasses"`
+		AreaOfEffect    *struct {
+			Type string `json:"type"`
+			Size int    `json:"size"`
+		} `json:"area_of_effect"`
+		School     ref   `json:"school"`
+		Classes    []ref `json:"classes"`
+		Subclasses []ref `json:"subclasses"`
 	}
 	rows, err := decode[src](in, "5e-SRD-Spells.json")
 	if err != nil {
@@ -976,6 +980,14 @@ func convertSpells(in *inputs) (output, error) {
 		if r.DC != nil {
 			s.SaveAbility = r.DC.DCType.Index
 			s.SaveSuccess = r.DC.DCSuccess
+		}
+		if a := r.AreaOfEffect; a != nil {
+			// The shape and the size are the engine's data (the "Alvo" of a spell):
+			// refuse what it does not know instead of guessing.
+			if !slices.Contains([]string{"cone", "cube", "cylinder", "line", "sphere"}, a.Type) || a.Size < 5 || a.Size%5 != 0 {
+				return output{}, fmt.Errorf("spell %q: area_of_effect %q of %d ft is not a cone, cube, cylinder, line or sphere of a multiple of 5 ft", r.Index, a.Type, a.Size)
+			}
+			s.AreaType, s.AreaSizeFt = a.Type, a.Size
 		}
 		out = append(out, s)
 	}

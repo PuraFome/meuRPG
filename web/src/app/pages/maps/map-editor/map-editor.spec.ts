@@ -392,7 +392,7 @@ describe('MapEditor', () => {
       await settle();
       expect(surface()).toBeDefined();
       expect(button('Mudar a grade').getAttribute('aria-disabled')).toBe('true');
-      expect(text()).toContain('Desligado enquanto o combate dura.');
+      expect(text()).toContain('Há um combate neste mapa. Termine-o para mudar a grade.');
     });
 
     it('tells the page when a new grid or image would erase something', async () => {

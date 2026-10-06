@@ -452,6 +452,10 @@ func (noCharacters) PortraitInUse(context.Context, string, string) (bool, error)
 	return false, errors.New("not in this test")
 }
 
+func (noCharacters) NpcPortraits(context.Context, pgx.Tx, string, []string) (map[string]string, error) {
+	return nil, errors.New("not in this test")
+}
+
 func (noCharacters) PartyVision(context.Context, pgx.Tx, string) ([]link.PartyMember, error) {
 	return nil, errors.New("not in this test")
 }

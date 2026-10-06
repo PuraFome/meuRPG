@@ -335,7 +335,7 @@ test('com um combate no mapa, pintar vale e a grade e a imagem ficam desligadas,
     await expect(mp.getByText('Um combate está em andamento neste mapa. Dá para pintar e apagar; a grade e a imagem só mudam depois dele.')).toBeVisible();
     const change = mp.getByRole('button', { name: 'Mudar a grade' });
     await expect(change).toHaveAttribute('aria-disabled', 'true');
-    await expect(mp.getByText('Desligado enquanto o combate dura.')).toBeVisible();
+    await expect(mp.getByText('Há um combate neste mapa. Termine-o para mudar a grade.')).toBeVisible();
     await change.click({ force: true });
     await expect(mp.getByRole('heading', { name: 'Mudar a grade?' })).toHaveCount(0);
     const swap = mp.getByRole('button', { name: 'Trocar imagem' });

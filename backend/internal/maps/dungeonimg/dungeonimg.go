@@ -41,6 +41,18 @@ const (
 	idxInk
 )
 
+// The palette indices of an image Render returns, for a caller that draws more on
+// it (package refimg, MR-039): see Palette.
+const (
+	IndexFloor = idxFloor
+	IndexWall  = idxWall
+	IndexHatch = idxHatch
+	IndexInk   = idxInk
+)
+
+// Palette is a copy of the palette of an image Render returns.
+func Palette() color.Palette { return append(color.Palette(nil), palette...) }
+
 var palette = color.Palette{
 	idxFloor: color.RGBA{R: 0xEC, G: 0xE3, B: 0xCC, A: 0xFF}, // paper
 	idxWall:  color.RGBA{R: 0x3A, G: 0x37, B: 0x40, A: 0xFF}, // dark ink

@@ -305,7 +305,7 @@ enum TableSpellTargetKind {
   // An area: `shape` and `size_ft`. In combat the caster picks the creatures it
   // catches; the map does not draw it.
   TABLE_SPELL_TARGET_KIND_AREA = 3;
-  // Only the caster.
+  // Only the caster ("Só quem conjura"); the range must be SELF.
   TABLE_SPELL_TARGET_KIND_SELF = 4;
 }
 
@@ -328,7 +328,8 @@ enum TableAreaShape {
 message TableSpellTarget {
   TableSpellTargetKind kind = 1;
   // CREATURES: how many at the spell's own circle (2 or more), and how many more
-  // for each circle above it.
+  // for each circle above it. CREATURE: only `per_slot_level`, how many more for
+  // each circle above ("uma criatura, mais uma por círculo", as Hold Person).
   int32 count = 2;
   int32 per_slot_level = 3;
   // AREA: the shape and the size, in feet, in steps of 5 (1,5 m); 5 to 300.
@@ -346,7 +347,10 @@ message TableSpellCastingTime {
   string trigger_pt = 3;
 }
 
-// TableSpellRange is a table spell's range. Special is not allowed.
+// TableSpellRange is a table spell's range: SELF ("Pessoal"), TOUCH ("Toque"), SIGHT,
+// UNLIMITED or RANGED with a distance. Special is not allowed. SELF only goes with a
+// target of SELF or an AREA that comes out of the caster; a spell that picks one or
+// several creatures has a distance or TOUCH.
 message TableSpellRange {
   SpellRangeKind kind = 1;
   // For RANGED: 5 to 5280, in steps of 5.
@@ -425,9 +429,14 @@ message TableSpell {
 // the field in the request's body and a stable reason code. The app writes the
 // Portuguese text from the code; nobody parses `message`.
 message TableContentViolation {
-  // The path, with the body's field names and its own indexes
-  // ("table_class.levels[4].features[0].effects[1].value"). Empty for the content
-  // as a whole.
+  // The path of the field the editor draws, with the body's field names and its
+  // own indexes ("table_class.levels[4].slots[2]",
+  // "table_class.levels[4].features[0].effects[1].value",
+  // "table_subclass.always_prepared[1].spell_key",
+  // "table_class.casting.list_from"): one field per rule, so the editor marks the
+  // input and not the whole entry. Empty for the content as a whole. A formula that
+  // does not compile is at the effect's `value`, `when` or `max`, and a field the
+  // effect's type does not read (GetEffectMenu) is at that field.
   string field = 1;
   // One of: "limit" (a count, a size or a budget is over its limit), "bad_key",
   // "duplicate_key", "reserved_key", "bad_name", "bad_text", "dangling_reference"
@@ -555,6 +564,35 @@ service TableContentService {
   // Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
   // `invalid_argument` (a TableContentRefusal).
   rpc UnarchiveTableEntry(UnarchiveTableEntryRequest) returns (UnarchiveTableEntryResponse) {}
+
+  // GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
+  // ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
+  // Improvement levels, and the 20-row table of each way of casting (none, full,
+  // half, pact and a subclass's third caster, each preparing or knowing its
+  // spells), with the slots, the cantrips and the spells known of the SRD's own
+  // class tables. The browser computes none of it: the master edits from these
+  // rows and the writes come back through CreateTableEntry and UpdateTableEntry,
+  // which check them as they check any edit. Only the master.
+  //
+  // Errors: `permission_denied`, `not_found`.
+  rpc GetClassTableDefaults(GetClassTableDefaultsRequest) returns (GetClassTableDefaultsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetEffectMenu gives the closed menu of what a table feature may do, as data
+  // (MR-025, ADR-0018, section 4): the effect types and the fields of each, every
+  // closed list a field takes (modifier targets, modes, proficiencies, roll modes
+  // and targets, senses, recharges, granted-action economies, choice kinds, skills,
+  // languages, tools) with Portuguese names, the SRD option sets a choice may
+  // offer (fighting styles and the like), the formula helpers and the classes
+  // `classLevel` takes, and the limits. The class editor builds its pickers from
+  // it and hard-codes none of them; whatever it offers, TableContentService
+  // accepts. Only the master.
+  //
+  // Errors: `permission_denied`, `not_found`.
+  rpc GetEffectMenu(GetEffectMenuRequest) returns (GetEffectMenuResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // ListTableEntriesRequest names a campaign.
@@ -644,4 +682,153 @@ message UnarchiveTableEntryRequest {
 message UnarchiveTableEntryResponse {
   TableEntry entry = 1;
   int32 table_revision = 2;
+}
+
+// GetClassTableDefaultsRequest names a campaign.
+message GetClassTableDefaultsRequest {
+  string campaign_id = 1;
+}
+
+// GetClassTableDefaultsResponse carries the defaults of the 20-level table.
+message GetClassTableDefaultsResponse {
+  // The proficiency bonus by level, 20 entries, level 1 first: +2 at levels 1 to 4
+  // up to +6 at 17 to 20. A TableClassLevel with a `prof_bonus` of 0 means this.
+  repeated int32 prof_bonus = 1;
+  // The levels with an Ability Score Improvement (4, 8, 12, 16 and 19): what an
+  // empty TableClass.asi_levels means.
+  repeated int32 asi_levels = 2;
+  // The class level the subclass is chosen at when TableClass.subclass_level is 0 (3).
+  int32 subclass_level = 3;
+  // One table per way of casting, in this order: none, then full, half, pact and
+  // third, each with the ways of preparing it offers.
+  repeated CastingTableDefault tables = 4;
+}
+
+// CastingTableDefault is the default 20-level table of one way of casting.
+message CastingTableDefault {
+  // "" for a class that does not cast, "full", "half" or "pact" for a class, and
+  // "third" for the casting of a subclass (TableCasting.kind).
+  string kind = 1;
+  // "known" or "prepared" (TableCasting.preparation); empty for a class that does
+  // not cast.
+  string preparation = 2;
+  // The class level casting starts at by default: 1 for a full caster and for pact
+  // magic, 2 for a half caster, 3 for a third caster; 0 for a class that does not
+  // cast. The rows before it have the casting columns at zero.
+  int32 start_level = 3;
+  // The SRD class whose table the numbers are ("class:cleric", "class:paladin"...);
+  // empty for the third caster, whose slots are the full table at a third of the
+  // level, rounded up.
+  string reference_class_key = 4;
+  // The 20 rows, level 1 first, ready to be the `levels` of a TableClass (the
+  // features are empty). A subclass takes the rows from `start_level` on.
+  repeated TableClassLevel rows = 5;
+}
+
+// GetEffectMenuRequest names a campaign (its classes are in the menu).
+message GetEffectMenuRequest {
+  string campaign_id = 1;
+}
+
+// GetEffectMenuResponse carries the closed menu of effects.
+message GetEffectMenuResponse {
+  // The effect types, in the picker's order. "Só texto" is a feature with none.
+  repeated EffectMenuType types = 1;
+  // The closed lists the types' fields point at (EffectMenuField.list).
+  repeated EffectMenuList lists = 2;
+  // The SRD features that offer options: what a `choice` effect of kind "feature"
+  // may list in `from`.
+  repeated EffectOptionSet option_sets = 3;
+  // The functions a formula may call.
+  repeated FormulaHelper helpers = 4;
+  // What `classLevel("...")` takes: the SRD's classes and the campaign's, by their
+  // key without "class:".
+  repeated string class_indexes = 5;
+  // The most features one class or subclass has, and the most effects one feature
+  // has, and the most tags one effect has.
+  int32 max_features_per_class = 6;
+  int32 max_effects_per_feature = 7;
+  int32 max_tags_per_effect = 8;
+  // The attacks an extra_attack effect may make, from and to.
+  int32 extra_attack_min = 9;
+  int32 extra_attack_max = 10;
+}
+
+// EffectMenuType is one effect type of the menu.
+message EffectMenuType {
+  // TableEffect.type.
+  string type = 1;
+  // The picker's label and its one-line explanation, in Portuguese.
+  string name_pt = 2;
+  string hint_pt = 3;
+  // The fields the type reads, in the order the editor shows them. Any other field
+  // of TableEffect set on this type is refused when the entry is written (a
+  // TableContentViolation of reason "bad_value" at that field); one that is already
+  // stored is ignored. `when`, `tags` and `text_pt` are accepted on every type, and
+  // are listed only where they are usual. A note's `value` (a number shown in
+  // `text_pt`) needs a `text_pt` to show it in. What `from` takes depends on the
+  // kind of choice: for "feature", the keys of one EffectOptionSet; for "skill" and
+  // "expertise", skill keys (`skills`); for "language", language keys (`languages`);
+  // for "tool", tool keys (`tools`); for "cantrip" and "spell", a spell list: SRD
+  // class keys (`class:wizard`) whose list the player picks from (ClassIndexes
+  // lists them). Empty `from` is any of the kind.
+  repeated EffectMenuField fields = 4;
+}
+
+// EffectMenuField is a field of an effect type.
+message EffectMenuField {
+  // The name of the TableEffect field ("target", "range_ft", "text_pt"...).
+  string name = 1;
+  // The effect is refused without it.
+  bool required = 2;
+  // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
+  // "text", "number", "choice" (one value of `list`), "choices" (several) or "tags".
+  string kind = 3;
+  // The EffectMenuList the value comes from, when it is a closed list; empty for a
+  // free value. For a `choice` effect's `from` the list depends on the kind chosen:
+  // skills (`skills`), languages (`languages`), tools (`tools`) or, for "feature",
+  // the keys of an option set.
+  string list = 4;
+  // The bounds of a number; 0 when there is none.
+  int32 min = 5;
+  int32 max = 6;
+}
+
+// EffectMenuValue is a value of a closed list.
+message EffectMenuValue {
+  // What the effect stores ("add", "skill.stealth", "long_rest"...).
+  string key = 1;
+  string name_pt = 2;
+  // A short explanation where the name alone does not say; often empty.
+  string hint_pt = 3;
+}
+
+// EffectMenuList is a closed list a field takes.
+message EffectMenuList {
+  // "modifier_targets", "modifier_modes", "proficiency_targets",
+  // "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
+  // "economies", "choice_kinds", "skills", "languages", "tools" or "tag_prefixes".
+  string name = 1;
+  repeated EffectMenuValue values = 2;
+}
+
+// EffectOptionSet is an SRD feature that offers options, such as a fighting style.
+message EffectOptionSet {
+  // The offering feature's key and its Portuguese name.
+  string key = 1;
+  string name_pt = 2;
+  // How many the SRD lets the character pick; 0 when it depends on the level (the
+  // eldritch invocations).
+  int32 choose = 3;
+  repeated EffectMenuValue options = 4;
+}
+
+// FormulaHelper is a function a formula may call.
+message FormulaHelper {
+  // How it is written: `mod("<atributo>")`.
+  string call = 1;
+  // What it gives: "number", "text" or "yes/no".
+  string returns = 2;
+  // What it is for, in Portuguese.
+  string hint_pt = 3;
 }

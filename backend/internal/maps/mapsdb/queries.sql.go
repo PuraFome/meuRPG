@@ -752,7 +752,7 @@ func (q *Queries) GetGeneratedDungeon(ctx context.Context, arg GetGeneratedDunge
 }
 
 const getImageRequest = `-- name: GetImageRequest :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -786,13 +786,25 @@ func (q *Queries) GetImageRequest(ctx context.Context, arg GetImageRequestParams
 		&i.CreatedAt,
 		&i.SentAt,
 		&i.FinishedAt,
+		&i.MapID,
+		&i.MapImageID,
+		&i.MapGridColumns,
+		&i.MapGridFactor,
+		&i.MapWidth,
+		&i.MapHeight,
+		&i.MapPlanHash,
+		&i.PadX0,
+		&i.PadY0,
+		&i.PadX1,
+		&i.PadY1,
+		&i.UsedMapImageID,
 	)
 	return i, err
 }
 
 const getImageRequestByKey = `-- name: GetImageRequestByKey :one
 
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
 WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
@@ -830,12 +842,24 @@ func (q *Queries) GetImageRequestByKey(ctx context.Context, arg GetImageRequestB
 		&i.CreatedAt,
 		&i.SentAt,
 		&i.FinishedAt,
+		&i.MapID,
+		&i.MapImageID,
+		&i.MapGridColumns,
+		&i.MapGridFactor,
+		&i.MapWidth,
+		&i.MapHeight,
+		&i.MapPlanHash,
+		&i.PadX0,
+		&i.PadY0,
+		&i.PadX1,
+		&i.PadY1,
+		&i.UsedMapImageID,
 	)
 	return i, err
 }
 
 const getImageRequestForImage = `-- name: GetImageRequestForImage :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
 WHERE campaign_id = $1 AND image_id = $2
 `
 
@@ -870,6 +894,18 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 		&i.CreatedAt,
 		&i.SentAt,
 		&i.FinishedAt,
+		&i.MapID,
+		&i.MapImageID,
+		&i.MapGridColumns,
+		&i.MapGridFactor,
+		&i.MapWidth,
+		&i.MapHeight,
+		&i.MapPlanHash,
+		&i.PadX0,
+		&i.PadY0,
+		&i.PadX1,
+		&i.PadY1,
+		&i.UsedMapImageID,
 	)
 	return i, err
 }
@@ -1376,6 +1412,27 @@ func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (M
 	return i, err
 }
 
+const hasClueReveal = `-- name: HasClueReveal :one
+SELECT EXISTS (
+    SELECT 1 FROM scene_clue_reveals WHERE campaign_id = $1 AND clue_id = $2 AND user_id = $3
+) AS found
+`
+
+type HasClueRevealParams struct {
+	CampaignID string
+	ClueID     *string
+	UserID     string
+}
+
+// Whether the player has this clue (the cipher puzzle shows them where the key is only
+// once they found it).
+func (q *Queries) HasClueReveal(ctx context.Context, arg HasClueRevealParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasClueReveal, arg.CampaignID, arg.ClueID, arg.UserID)
+	var found bool
+	err := row.Scan(&found)
+	return found, err
+}
+
 const imageIsLeft = `-- name: ImageIsLeft :one
 SELECT EXISTS (
     SELECT 1 FROM campaign_left_images
@@ -1601,10 +1658,13 @@ func (q *Queries) InsertGeneratedDungeon(ctx context.Context, arg InsertGenerate
 const insertImageRequest = `-- name: InsertImageRequest :one
 INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
-    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at
+    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
+    map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15)
-RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id
 `
 
 type InsertImageRequestParams struct {
@@ -1623,6 +1683,17 @@ type InsertImageRequestParams struct {
 	Number         int32
 	QuotaMonth     string
 	CreatedAt      time.Time
+	MapID          *string
+	MapImageID     *string
+	MapGridColumns *int32
+	MapGridFactor  *int32
+	MapWidth       *int32
+	MapHeight      *int32
+	MapPlanHash    *string
+	PadX0          *float64
+	PadY0          *float64
+	PadX1          *float64
+	PadY1          *float64
 }
 
 func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequestParams) (ImageRequest, error) {
@@ -1642,6 +1713,17 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		arg.Number,
 		arg.QuotaMonth,
 		arg.CreatedAt,
+		arg.MapID,
+		arg.MapImageID,
+		arg.MapGridColumns,
+		arg.MapGridFactor,
+		arg.MapWidth,
+		arg.MapHeight,
+		arg.MapPlanHash,
+		arg.PadX0,
+		arg.PadY0,
+		arg.PadX1,
+		arg.PadY1,
 	)
 	var i ImageRequest
 	err := row.Scan(
@@ -1666,6 +1748,18 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		&i.CreatedAt,
 		&i.SentAt,
 		&i.FinishedAt,
+		&i.MapID,
+		&i.MapImageID,
+		&i.MapGridColumns,
+		&i.MapGridFactor,
+		&i.MapWidth,
+		&i.MapHeight,
+		&i.MapPlanHash,
+		&i.PadX0,
+		&i.PadY0,
+		&i.PadX1,
+		&i.PadY1,
+		&i.UsedMapImageID,
 	)
 	return i, err
 }
@@ -3067,6 +3161,25 @@ func (q *Queries) MarkImageRequestSent(ctx context.Context, arg MarkImageRequest
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const markImageRequestUsed = `-- name: MarkImageRequestUsed :exec
+UPDATE image_requests
+SET used_map_image_id = $1
+WHERE campaign_id = $2 AND id = $3
+`
+
+type MarkImageRequestUsedParams struct {
+	UsedMapImageID *string
+	CampaignID     string
+	ID             string
+}
+
+// "Usar como imagem do mapa" set this image on the map: a retry answers the same
+// while it is still the map's image.
+func (q *Queries) MarkImageRequestUsed(ctx context.Context, arg MarkImageRequestUsedParams) error {
+	_, err := q.db.Exec(ctx, markImageRequestUsed, arg.UsedMapImageID, arg.CampaignID, arg.ID)
+	return err
 }
 
 const moveMapCreatureToken = `-- name: MoveMapCreatureToken :exec

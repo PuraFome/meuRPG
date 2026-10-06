@@ -48,6 +48,21 @@ const (
 	// CustomBackgroundSkillCount is how many skills a custom background
 	// grants. It mirrors the two skills of every SRD background.
 	CustomBackgroundSkillCount = 2
+	// CustomBackgroundKey and CustomBackgroundFeatureKey are what a custom
+	// background's feature says it comes from and is on the sheet
+	// (Feature.Source and Feature.Key). They are no content: nothing resolves
+	// them, and a table key always ends in "@mesa".
+	CustomBackgroundKey        = "background:custom"
+	CustomBackgroundFeatureKey = "background-feature:custom"
+	// CustomBackgroundProficiencyCount is how many tools or languages a custom
+	// background grants in total, in any mix: SRD 5.1 "Customizing a Background"
+	// (two skills, two tool proficiencies or languages, a feature, equipment;
+	// question 82, 05/10/2026).
+	CustomBackgroundProficiencyCount = 2
+	// MaxCustomFeatureTextLength and MaxCustomEquipmentLength bound the free text
+	// of a custom background's feature and equipment, in characters.
+	MaxCustomFeatureTextLength = 1000
+	MaxCustomEquipmentLength   = 500
 	// MaxListLength bounds the lists of keys that have no limit of their
 	// own (Build.FeatureChoices), so a write can never make Derive do
 	// unbounded work.
@@ -90,6 +105,16 @@ type Build struct {
 	Background             string
 	CustomBackgroundName   string
 	CustomBackgroundSkills []string
+	// The rest of a custom background (SRD 5.1 "Customizing a Background"):
+	// CustomBackgroundProficiencies are two tool proficiency keys
+	// ("proficiency:thieves-tools") or language keys ("language:elvish") in any
+	// mix, CustomBackgroundFeatureName and CustomBackgroundFeature the feature
+	// the player writes (a name and a text), CustomBackgroundEquipment the
+	// equipment as text. Derive applies the first three; the equipment is shown.
+	CustomBackgroundProficiencies []string
+	CustomBackgroundFeatureName   string
+	CustomBackgroundFeature       string
+	CustomBackgroundEquipment     string
 	// SkillProficiencies are the skills the player chose (from the class,
 	// or from anywhere the table allows). Background and race skills are
 	// added by Derive and need not be repeated here.
@@ -495,6 +520,10 @@ type Derived struct {
 	RaceNamePT       string
 	SubraceNamePT    string
 	BackgroundNamePT string
+	// BackgroundEquipmentPT is the background's equipment as text: a table
+	// background's (RN-23) or a custom one's. Empty for an SRD background, which
+	// the SRD data does not carry.
+	BackgroundEquipmentPT string
 	// Classes are the Build's known classes, in Build order, with names.
 	Classes []DerivedClass
 	// Abilities has the six abilities, in AllAbilities order.
@@ -793,6 +822,19 @@ type Issue struct {
 	Field   string
 	Message string
 	Keys    []string `json:",omitempty"`
+	// ChangeMessage is the sentence for "A classe mudou" (RN-23): the same problem
+	// as a change of the table's entry reads, without the entry's name ("agora dá 2
+	// perícias no nível 1; esta ficha tem 3."; see ChangeSubject). Only an issue tied to a table entry
+	// (Keys) has one, and only for the common changes of a class: the skill count,
+	// the cantrips, the known and the prepared spells, the level of the subclass,
+	// the multiclass prerequisite and an option that is no longer offered. The
+	// others tell it with Message.
+	ChangeMessage string `json:",omitempty"`
+	// ChangeSubject is the class or subclass key ChangeMessage is about ("agora dá
+	// 2 perícias..." is what that entry gives). The sentence names it only when it
+	// is the entry that changed; for any other it is told without a name. Empty
+	// when ChangeMessage is not about one entry.
+	ChangeSubject string `json:",omitempty"`
 }
 
 // Issue codes.

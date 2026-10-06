@@ -361,6 +361,12 @@ export async function createCharacterViaUI(
 
   // Passo "Atributos": jump there by clicking its tab (no "next" button).
   await page.getByRole('tab', { name: 'Atributos' }).click();
+  // A player makes the scores by one of the table's ways (RN-24, all four allowed by default): "Digitar" is the one
+  // that takes the six numbers as they are. The master's NPCs have the free fields and no choice of way.
+  const typedWay = page.locator('.seg__item').filter({ hasText: 'Digitar' });
+  if ((await typedWay.count()) > 0) {
+    await typedWay.click();
+  }
   await page.getByLabel('Força', { exact: true }).fill(String(build.scores.for));
   await page.getByLabel('Destreza', { exact: true }).fill(String(build.scores.des));
   await page.getByLabel('Constituição', { exact: true }).fill(String(build.scores.con));
