@@ -568,7 +568,13 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		}
 	}
 	if n.name == "" {
-		p.name = suffixedName(sub.row.Name, " · "+kindNamePT(n.kind))
+		// The map's name only when the players already see the map: a hidden map's name can be a
+		// secret, and they read the name of a picture they are shown (RN-10).
+		if sub.row.RevealedAt != nil {
+			p.name = suffixedName(sub.row.Name, " · "+kindNamePT(n.kind))
+		} else {
+			p.name = datedName(kindTitlePT(n.kind), s.now())
+		}
 	}
 	ref, err := s.referenceOf(n.mapReq.layout, sub, players, refimg.Side)
 	if err != nil {
@@ -587,6 +593,18 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		p.rooms = sub.rooms
 	}
 	return nil
+}
+
+// kindTitlePT is the way a picture of a map was made, at the start of a default name ("Vista isométrica · 06/10").
+func kindTitlePT(kind string) string {
+	switch kind {
+	case kindIsometric:
+		return "Vista isométrica"
+	case kindTexturedMap:
+		return "Mapa com textura"
+	default:
+		return "Arte da cena"
+	}
 }
 
 // kindNamePT is the way a picture of a map was made, as the default name of its gallery image says it.

@@ -50,8 +50,9 @@ export async function statusRPC(page: Page, campaignId: string): Promise<Record<
 }
 
 /** Spends one slot: a scene art made from a text alone, waited for until it is in the gallery (the fake answers at once). */
-export async function generateSceneRPC(page: Page, campaignId: string, prompt: string): Promise<string> {
-  const asked = await callRPC(page, `${SERVICE}/GenerateSceneImage`, { campaignId, idempotencyKey: crypto.randomUUID(), prompt, style: 'IMAGE_STYLE_INK' });
+/** A scene art made through the API; `name` is the master's (left out, the server names it by the way and the day, never by the text). */
+export async function generateSceneRPC(page: Page, campaignId: string, prompt: string, name = ''): Promise<string> {
+  const asked = await callRPC(page, `${SERVICE}/GenerateSceneImage`, { campaignId, idempotencyKey: crypto.randomUUID(), prompt, style: 'IMAGE_STYLE_INK', name });
   expect(asked.ok(), await asked.text()).toBeTruthy();
   const generationId = (await asked.json()).generation.id as string;
   for (let i = 0; i < 40; i++) {

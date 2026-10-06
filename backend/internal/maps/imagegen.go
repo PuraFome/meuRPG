@@ -271,7 +271,7 @@ func (s *Service) GenerateSceneImage(
 	if hasDuplicates(refs) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an image is listed twice as a reference"))
 	}
-	name, err := imageNameOf(req.Msg.GetName(), sceneName(prompt))
+	name, err := imageNameOf(req.Msg.GetName(), datedName("Arte da cena", s.now()))
 	if err != nil {
 		return nil, err
 	}
@@ -959,13 +959,11 @@ func imageNameOf(given, fallback string) (string, error) {
 // without one, which the picture then names "Imagem n").
 func imageNameFor(n newRequest) string { return n.name }
 
-// sceneName is the default name of a scene art made from a text alone: its first words.
-func sceneName(prompt string) string {
-	flat := strings.Join(strings.Fields(prompt), " ")
-	if utf8.RuneCountInString(flat) > maxNameLength {
-		flat = strings.TrimSpace(string([]rune(flat)[:maxNameLength]))
-	}
-	return flat
+// datedName is a default name that says what the picture is and the day it was made, and nothing
+// the master wrote: the text of a request or the name of a hidden map can hold a secret, and the
+// players read the name of an image they are shown (RN-10). "Arte da cena · 06/10".
+func datedName(way string, now time.Time) string {
+	return way + " · " + now.In(brazil).Format("02/01")
 }
 
 // suffixedName is a name with a suffix, cut so that it still fits the name limit.

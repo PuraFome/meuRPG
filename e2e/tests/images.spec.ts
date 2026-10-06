@@ -240,7 +240,7 @@ test('com a geração desligada o botão fica ao lado da razão e nenhum diálog
 
 test('da galeria: uma imagem gerada leva a etiqueta, e "Pedir um ajuste" abre o resultado com a cadeia @MR-039 @RN-28', async ({ browser }) => {
   await atTable(browser, `Galeria ${Date.now()}`, async ({ table, mp }) => {
-    const first = await generateSceneRPC(mp, table.campaignId, 'Uma taverna à noite');
+    const first = await generateSceneRPC(mp, table.campaignId, 'Uma taverna à noite', 'Uma taverna à noite');
     const second = await callRPC(mp, 'meurpg.maps.v1.ImageGenerationService/EditGeneratedImage', {
       campaignId: table.campaignId,
       imageId: first,

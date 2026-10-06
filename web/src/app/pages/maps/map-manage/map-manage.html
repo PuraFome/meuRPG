@@ -44,7 +44,7 @@
     <h2 class="mr-panel__title" id="gen-heading">Imagem do mapa</h2>
     <app-generate-image-button
       [campaignId]="campaignId()"
-      [origin]="{ kind: 'map', mapId: m.id, name: m.name, hasGrid: m.gridColumns > 0 }"
+      [origin]="{ kind: 'map', mapId: m.id, name: m.name, hasGrid: m.gridColumns > 0, revealed: m.revealed }"
       (done)="onImageGenerated($event)"
     />
   </section>

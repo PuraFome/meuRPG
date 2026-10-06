@@ -929,7 +929,8 @@ type GenerateSceneImageRequest struct {
 	CharacterImageIds []string `protobuf:"bytes,7,rep,name=character_image_ids,json=characterImageIds,proto3" json:"character_image_ids,omitempty"`
 	// The name the gallery image gets, 1 to 80 characters: the players read it
 	// when the master shows the image, so it is never "Imagem N". Empty means
-	// the first words of the text.
+	// the way and the day ("Arte da cena · 06/10"): never the text, which can hold
+	// a secret (RN-10).
 	Name          string `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1912,7 +1913,9 @@ type GenerateMapImageRequest struct {
 	// most 4 in all (an image listed twice counts once).
 	NpcCharacterIds []string `protobuf:"bytes,10,rep,name=npc_character_ids,json=npcCharacterIds,proto3" json:"npc_character_ids,omitempty"`
 	// The name of the gallery image, as GenerateSceneImageRequest.name. Empty means
-	// the map's name and the kind ("Masmorra de Mirathel · vista isométrica").
+	// the map's name and the kind ("Masmorra de Mirathel · vista isométrica") when
+	// the players see the map, otherwise the kind and the day ("Vista isométrica ·
+	// 06/10"): a hidden map's name can be a secret (RN-10).
 	Name          string `protobuf:"bytes,11,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

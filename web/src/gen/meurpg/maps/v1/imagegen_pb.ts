@@ -350,7 +350,8 @@ export type GenerateSceneImageRequest = Message<"meurpg.maps.v1.GenerateSceneIma
   /**
    * The name the gallery image gets, 1 to 80 characters: the players read it
    * when the master shows the image, so it is never "Imagem N". Empty means
-   * the first words of the text.
+   * the way and the day ("Arte da cena · 06/10"): never the text, which can hold
+   * a secret (RN-10).
    *
    * @generated from field: string name = 8;
    */
@@ -900,7 +901,9 @@ export type GenerateMapImageRequest = Message<"meurpg.maps.v1.GenerateMapImageRe
 
   /**
    * The name of the gallery image, as GenerateSceneImageRequest.name. Empty means
-   * the map's name and the kind ("Masmorra de Mirathel · vista isométrica").
+   * the map's name and the kind ("Masmorra de Mirathel · vista isométrica") when
+   * the players see the map, otherwise the kind and the day ("Vista isométrica ·
+   * 06/10"): a hidden map's name can be a secret (RN-10).
    *
    * @generated from field: string name = 11;
    */

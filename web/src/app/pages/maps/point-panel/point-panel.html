@@ -92,7 +92,7 @@
       (cluesChange)="cluesChange.emit($event)"
     />
     <app-hooks-field [control]="hooksControl" [length]="hooksLength()" [error]="errors().hooks" />
-    <app-scene-image [campaignId]="campaignId()" [name]="point().name" />
+    <app-scene-image [campaignId]="campaignId()" [name]="point().name" [revealed]="point().revealed" />
   }
 
   <app-reveal-switch

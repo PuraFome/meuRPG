@@ -46,6 +46,8 @@ import { GenerateImageButton } from '../../../shared/image-generate/generate-ima
 export class SceneImage {
   readonly campaignId = input.required<string>();
   readonly name = input.required<string>();
+  /** The scene's point is revealed to the players: only then its name names the picture (RN-10). */
+  readonly revealed = input(false);
 
-  protected readonly origin = computed<GenerateOrigin>(() => ({ kind: 'scene', name: this.name() }));
+  protected readonly origin = computed<GenerateOrigin>(() => ({ kind: 'scene', name: this.name(), revealed: this.revealed() }));
 }

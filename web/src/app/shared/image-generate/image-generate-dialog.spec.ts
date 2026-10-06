@@ -61,7 +61,7 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
   let roster: RosterEntry[];
   let mapTokens: { characterId: string }[];
 
-  const mapOrigin: ImageGenerateData['origin'] = { kind: 'map', mapId: 'map-1', name: 'Masmorra de Mirathel', hasGrid: true };
+  const mapOrigin: ImageGenerateData['origin'] = { kind: 'map', mapId: 'map-1', name: 'Masmorra de Mirathel', hasGrid: true, revealed: true };
 
   async function setup(data: Partial<ImageGenerateData> = {}) {
     closed = [];
@@ -756,7 +756,7 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(api.polled.length).toBe(polled);
     });
 
-    it('the picture is named: the form carries the name the master sees, it follows the way until he writes one, and an empty one is left to the server', async () => {
+    it('the picture is named: the form carries the name the master sees, and it follows the way until he writes one', async () => {
       const { ui: u, el } = await setup();
       const name = () => (Array.from(el.querySelectorAll('mat-form-field')).find((f) => plain(f.querySelector('mat-label')?.textContent) === 'Nome da imagem')?.querySelector('input') as HTMLInputElement);
       expect(name().value).toBe('Masmorra de Mirathel · arte da cena');
@@ -774,11 +774,16 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(api.asks[0]).toMatchObject({ via: 'map', request: { name: 'A cripta vista de cima' } });
     });
 
-    it('from a scene the name starts as the scene\'s, and from the gallery it is empty', async () => {
-      const scene = await setup({ origin: { kind: 'scene', name: 'Taverna do Corvo Branco' } });
-      expect((scene.el.querySelector('mat-form-field input[matinput]:not(textarea)') as HTMLInputElement | null)?.value ?? '').toBe('Taverna do Corvo Branco');
+    it('from a revealed scene the name starts as the scene\'s; a hidden scene, a hidden map and the gallery start with the way and the day, never a secret name (RN-10)', async () => {
+      const nameOf = (el: HTMLElement) => (el.querySelector('mat-form-field input[matinput]:not(textarea)') as HTMLInputElement | null)?.value ?? '';
+      const scene = await setup({ origin: { kind: 'scene', name: 'Taverna do Corvo Branco', revealed: true } });
+      expect(nameOf(scene.el)).toBe('Taverna do Corvo Branco');
+      const hiddenScene = await setup({ origin: { kind: 'scene', name: 'O covil secreto' } });
+      expect(nameOf(hiddenScene.el)).toMatch(/^Arte da cena · \d\d\/\d\d$/);
+      const hiddenMap = await setup({ origin: { ...mapOrigin, revealed: false } });
+      expect(nameOf(hiddenMap.el)).toMatch(/^Arte da cena · \d\d\/\d\d$/);
       const gallery = await setup({ origin: { kind: 'gallery' } });
-      expect((gallery.el.querySelector('mat-form-field input') as HTMLInputElement | null)?.value ?? '').toBe('');
+      expect(nameOf(gallery.el)).toMatch(/^Arte da cena · \d\d\/\d\d$/);
     });
 
     it('a refusal that says the form is out of date reads the list again, drops the NPCs no longer there and points at the field', async () => {

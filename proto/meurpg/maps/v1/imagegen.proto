@@ -373,7 +373,8 @@ message GenerateSceneImageRequest {
   repeated string character_image_ids = 7;
   // The name the gallery image gets, 1 to 80 characters: the players read it
   // when the master shows the image, so it is never "Imagem N". Empty means
-  // the first words of the text.
+  // the way and the day ("Arte da cena · 06/10"): never the text, which can hold
+  // a secret (RN-10).
   string name = 8;
 }
 
@@ -537,7 +538,9 @@ message GenerateMapImageRequest {
   // most 4 in all (an image listed twice counts once).
   repeated string npc_character_ids = 10;
   // The name of the gallery image, as GenerateSceneImageRequest.name. Empty means
-  // the map's name and the kind ("Masmorra de Mirathel · vista isométrica").
+  // the map's name and the kind ("Masmorra de Mirathel · vista isométrica") when
+  // the players see the map, otherwise the kind and the day ("Vista isométrica ·
+  // 06/10"): a hidden map's name can be a secret (RN-10).
   string name = 11;
 }
 

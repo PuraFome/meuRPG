@@ -161,9 +161,10 @@ func TestMR039_TheImageHasAMeaningfulName(t *testing.T) {
 	t.Parallel()
 	c := newCave(t, withFake(&gen.Fake{}, 20))
 	m := c.master
+	// The default never takes the master's text: a player who is shown the picture reads its name (RN-10).
 	text := wantDone(t, "from a text", m.mustGenerate(c.campaign, "Taverna do Corvo Branco à noite"))
-	if text.GetName() != "Taverna do Corvo Branco à noite" {
-		t.Errorf("name from a text = %q", text.GetName())
+	if !strings.HasPrefix(text.GetName(), "Arte da cena · ") || strings.Contains(text.GetName(), "Corvo") {
+		t.Errorf("name from a text = %q, want \"Arte da cena · dd/mm\" without the text", text.GetName())
 	}
 	named, err := m.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(&mapsv1.GenerateSceneImageRequest{
 		CampaignId: c.campaign, IdempotencyKey: nextKey(), Prompt: "Uma taverna", Name: "  A taverna do Javali ",
@@ -191,8 +192,8 @@ func TestMR039_TheImageHasAMeaningfulName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EditGeneratedImage() error = %v", err)
 	}
-	if got := wantDone(t, "edit", edited); got.GetName() != "Taverna do Corvo Branco à noite (ajuste)" {
-		t.Errorf("default name of an edit = %q", got.GetName())
+	if got := wantDone(t, "edit", edited); got.GetName() != text.GetName()+" (ajuste)" {
+		t.Errorf("default name of an edit = %q, want %q", got.GetName(), text.GetName()+" (ajuste)")
 	}
 	renamed, err := m.editImage(c.campaign, text.GetId(), "mais clara", func(r *mapsv1.EditGeneratedImageRequest) { r.Name = "A taverna, clara" })
 	if err != nil {
@@ -201,11 +202,15 @@ func TestMR039_TheImageHasAMeaningfulName(t *testing.T) {
 	if got := wantDone(t, "edit, named", renamed); got.GetName() != "A taverna, clara" {
 		t.Errorf("the master's name of an edit = %q", got.GetName())
 	}
-	// A long text is cut to the name limit; a name with a control character is refused, and no slot moves.
-	long := wantDone(t, "long", m.mustGenerate(c.campaign, strings.Repeat("palavra ", 40)))
-	if len([]rune(long.GetName())) > maxNameLength {
-		t.Errorf("the default name has %d characters", len([]rune(long.GetName())))
+	// A hidden map's name never names its picture either: the textured map of a hidden map (which
+	// the players don't see) is named by its way and day.
+	m.setMapRevealed(c.campaign, c.mapID, false)
+	hidden := wantDone(t, "hidden map", m.mustGenerateFromMap(c.campaign, c.mapID, kindTexturedAPI, "Uma sala"))
+	if !strings.HasPrefix(hidden.GetName(), "Mapa com textura · ") || strings.Contains(hidden.GetName(), "caverna") {
+		t.Errorf("default name of a hidden map's picture = %q, want \"Mapa com textura · dd/mm\"", hidden.GetName())
 	}
+	m.setMapRevealed(c.campaign, c.mapID, true)
+	// A name with a control character is refused, and no slot moves.
 	used := m.imageStatus(c.campaign).GetUsedThisMonth()
 	_, err = m.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(&mapsv1.GenerateSceneImageRequest{
 		CampaignId: c.campaign, IdempotencyKey: nextKey(), Prompt: "Uma taverna", Name: "ruim\x07",

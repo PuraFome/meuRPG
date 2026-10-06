@@ -94,15 +94,19 @@ describe('the lines over a request and under a picture', () => {
 });
 
 describe('the default name of a picture (the players read it)', () => {
-  it('from a map: the map\'s name and the way; from a scene: the scene\'s name; from the gallery: left to the server', () => {
-    const map = { kind: 'map', mapId: 'm', name: 'Masmorra de Mirathel', hasGrid: true } as const;
-    expect(defaultImageName(map, 'scene')).toBe('Masmorra de Mirathel · arte da cena');
-    expect(defaultImageName(map, 'isometric')).toBe('Masmorra de Mirathel · vista isométrica');
-    expect(defaultImageName(map, 'texture')).toBe('Masmorra de Mirathel · mapa com textura');
-    expect(defaultImageName({ kind: 'scene', name: 'Taverna do Corvo Branco' }, 'scene')).toBe('Taverna do Corvo Branco');
-    expect(defaultImageName({ kind: 'gallery' }, 'scene')).toBe('');
+  it('names a picture by a revealed map or scene, otherwise by the way and the day, never by a hidden name (RN-10)', () => {
+    const day = new Date('2026-10-06T15:00:00Z');
+    const map = { kind: 'map', mapId: 'm', name: 'Masmorra de Mirathel', hasGrid: true, revealed: true } as const;
+    expect(defaultImageName(map, 'scene', day)).toBe('Masmorra de Mirathel · arte da cena');
+    expect(defaultImageName(map, 'isometric', day)).toBe('Masmorra de Mirathel · vista isométrica');
+    expect(defaultImageName(map, 'texture', day)).toBe('Masmorra de Mirathel · mapa com textura');
+    expect(defaultImageName({ kind: 'scene', name: 'Taverna do Corvo Branco', revealed: true }, 'scene', day)).toBe('Taverna do Corvo Branco');
     // A map without a grid is made as a scene art from a text: only the map's name.
-    expect(defaultImageName({ ...map, hasGrid: false }, 'scene')).toBe('Masmorra de Mirathel');
+    expect(defaultImageName({ ...map, hasGrid: false }, 'scene', day)).toBe('Masmorra de Mirathel');
+    // Hidden from the players: the name could be a secret, so the way and the day.
+    expect(defaultImageName({ ...map, revealed: false }, 'isometric', day)).toBe('Vista isométrica · 06/10');
+    expect(defaultImageName({ kind: 'scene', name: 'O covil secreto' }, 'scene', day)).toBe('Arte da cena · 06/10');
+    expect(defaultImageName({ kind: 'gallery' }, 'scene', day)).toBe('Arte da cena · 06/10');
   });
 
   it('the dashed ways use a non-breaking hyphen, so "usá-las" never breaks at the hyphen', () => {

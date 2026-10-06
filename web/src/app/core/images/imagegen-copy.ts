@@ -40,6 +40,8 @@ export interface GenerateOrigin {
   readonly name?: string;
   /** A map without a grid cannot be drawn from. */
   readonly hasGrid?: boolean;
+  /** The map or the point is revealed to the players: only then its name may name the picture (RN-10). */
+  readonly revealed?: boolean;
 }
 
 export interface KindChoice {
@@ -187,16 +189,28 @@ export function resultCaption(
   return parts.join(' · ');
 }
 
-/** The default name of a picture made from a map: the map's, and the way ("Masmorra de Mirathel · vista isométrica"). Empty from the gallery, where the server names it. */
-export function defaultImageName(origin: GenerateOrigin, kind: KindKey): string {
-  if (origin.kind === 'scene') {
-    return origin.name ?? '';
+const WAY_NAME: Record<KindKey, string> = { scene: 'arte da cena', isometric: 'vista isométrica', texture: 'mapa com textura' };
+const WAY_TITLE: Record<KindKey, string> = { scene: 'Arte da cena', isometric: 'Vista isométrica', texture: 'Mapa com textura' };
+
+/** The day, as the server writes it in a default name ("06/10", Brasília). */
+function dayOf(now: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }).format(now);
+}
+
+/**
+ * The default name of a picture, the same the server gives one without a name. The players read the name of a picture
+ * they are shown (RN-10), so it never takes what the master wrote in the request, nor the name of a map or point they
+ * don't see: a revealed map's name and the way ("Masmorra de Mirathel · vista isométrica"), a revealed scene's name,
+ * otherwise the way and the day ("Arte da cena · 06/10").
+ */
+export function defaultImageName(origin: GenerateOrigin, kind: KindKey, now: Date = new Date()): string {
+  // A map without a grid is made as a scene art from a text.
+  const drawn = origin.kind === 'map' && origin.hasGrid !== false;
+  const way: KindKey = drawn ? kind : 'scene';
+  if (origin.revealed && origin.name) {
+    return drawn ? `${origin.name} · ${WAY_NAME[way]}` : origin.name;
   }
-  if (origin.kind === 'map' && origin.hasGrid !== false && origin.name) {
-    const way = kind === 'isometric' ? 'vista isométrica' : kind === 'texture' ? 'mapa com textura' : 'arte da cena';
-    return `${origin.name} · ${way}`;
-  }
-  return origin.kind === 'map' ? (origin.name ?? '') : '';
+  return `${WAY_TITLE[way]} · ${dayOf(now)}`;
 }
 
 /** The longest name a gallery image has. */
