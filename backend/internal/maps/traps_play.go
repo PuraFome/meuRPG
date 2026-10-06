@@ -84,7 +84,7 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 		return nil, fmt.Errorf("read the map's grid: %w", err)
 	}
 	ts := &trapScene{
-		row: row, g: gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight),
+		row: row, g: gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight),
 		specs: map[string]*mapsv1.TrapSpec{}, reveals: map[string][]string{}, members: map[string]link.PartyMember{},
 	}
 	if !ts.g.Valid() {
@@ -496,7 +496,7 @@ func (s *Service) TriggerTrap(ctx context.Context, tx pgx.Tx, campaignID, mapID,
 	if err != nil {
 		return link.Trap{}, fmt.Errorf("read the trap's map grid: %w", err)
 	}
-	before := s.linkTrap(gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight), p, nil, true)
+	before := s.linkTrap(gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight), p, nil, true)
 	state := stateTriggered
 	if _, err := q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &state, TrapTriggeredAt: &at, Now: at}); err != nil {
 		return link.Trap{}, fmt.Errorf("trigger the trap: %w", err)
@@ -529,7 +529,7 @@ func (s *Service) gridOfMap(ctx context.Context, q *mapsdb.Queries, campaignID, 
 	if err != nil {
 		return grid.Grid{}
 	}
-	return gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight)
+	return gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
 }
 
 // TrapChanged tells the watching members that a trap's state changed after the

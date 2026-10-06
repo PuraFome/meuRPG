@@ -53,26 +53,9 @@ func (s *Service) prepareFogCopy(ctx context.Context, campaignID, mapID, imageID
 	if s.blobs == nil {
 		return nil, nil
 	}
-	inPortrait, err := s.characters.PortraitInUse(ctx, campaignID, imageID)
+	used, err := s.imageUsedElsewhere(ctx, campaignID, mapID, imageID)
 	if err != nil {
-		return nil, fmt.Errorf("read whether the image is a portrait: %w", err)
-	}
-	used, err := s.queries.ImageIsUsedElsewhere(ctx, mapsdb.ImageIsUsedElsewhereParams{CampaignID: campaignID, ImageID: imageID, MapID: mapID})
-	if err != nil {
-		return nil, fmt.Errorf("read whether the image is used elsewhere: %w", err)
-	}
-	used = used || inPortrait
-	if !used {
-		_, shown, err := s.live.OnScreen(ctx, campaignID)
-		if err != nil {
-			return nil, fmt.Errorf("read the shown image: %w", err)
-		}
-		used = shown == imageID
-	}
-	if !used {
-		if used, err = s.live.ImageOnStage(ctx, campaignID, imageID); err != nil {
-			return nil, fmt.Errorf("read the stage: %w", err)
-		}
+		return nil, err
 	}
 	if !used {
 		return nil, nil
@@ -180,10 +163,13 @@ func (s *Service) ownImage(ctx context.Context, campaignID string, img mapsdb.Ga
 
 // copyName is the name of the copy: the image's, then the suffix, within 80
 // characters.
-func copyName(name string) string {
-	room := maxNameLength - utf8.RuneCountInString(copySuffix)
+func copyName(name string) string { return copyNameWith(name, copySuffix) }
+
+// copyNameWith is name and then suffix, within 80 characters.
+func copyNameWith(name, suffix string) string {
+	room := maxNameLength - utf8.RuneCountInString(suffix)
 	if utf8.RuneCountInString(name) > room {
 		name = strings.TrimSpace(string([]rune(name)[:room]))
 	}
-	return name + copySuffix
+	return name + suffix
 }

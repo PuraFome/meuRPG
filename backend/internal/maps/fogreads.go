@@ -174,12 +174,14 @@ func (s *Service) GetMapVision(
 		FogEnabled: row.FogEnabled, GroupVision: row.GroupVision,
 	}
 	if foggedFor(v, row) {
-		if !v.preview {
-			// The player has read this view: the next write tells them only if it changed.
-			s.seen.swap(mapID, v.userID, pv.revision())
-		}
+		// A read never marks the view as told (s.seen): only refreshVision, which
+		// sends the hint, does. The page reads its view as soon as `token_moved`
+		// arrives, and that read can come before the move's refresh; had it counted,
+		// the refresh would find nothing new and send no `vision_changed`, and the
+		// page, which reads the tokens and points again only on that hint, would keep
+		// showing a token that went out of sight (RN-10).
 		if s.blobs != nil {
-			src := tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.ImageWidth, row.ImageHeight)
+			src := tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 			vt := buildTiles(pv, src)
 			viewer := "u:" + v.userID
 			if v.preview {
@@ -209,7 +211,7 @@ func (s *Service) visionOf(ctx context.Context, m authz.Membership, mapID, asCha
 	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
 		return viewer{}, row, nil, errMapNotFound() // a hidden map is not found to a player (RN-10)
 	}
-	g := gridOf(row.GridColumns, row.ImageWidth, row.ImageHeight)
+	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 	if !g.Valid() {
 		return viewer{}, row, nil, errNoGrid()
 	}

@@ -906,6 +906,18 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens}))
 			return err
 		},
+		"SpendMovement": func(u *user, ctx context.Context) error {
+			_, err := u.combat.SpendMovement(ctx, connect.NewRequest(&playv1.SpendMovementRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey(), DistanceFt: 5}))
+			return err
+		},
+		"OfferOpportunity": func(u *user, ctx context.Context) error {
+			_, err := u.combat.OfferOpportunity(ctx, connect.NewRequest(&playv1.OfferOpportunityRequest{CampaignId: campaign, EncounterId: enc, IdempotencyKey: newKey(), MoverId: gob, ReactorId: pens}))
+			return err
+		},
+		"WithdrawOpportunity": func(u *user, ctx context.Context) error {
+			_, err := u.combat.WithdrawOpportunity(ctx, connect.NewRequest(&playv1.WithdrawOpportunityRequest{CampaignId: campaign, EncounterId: enc, OpportunityOfferId: id, IdempotencyKey: newKey()}))
+			return err
+		},
 		"SetCombatantSide": func(u *user, ctx context.Context) error {
 			_, err := u.combat.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Side: playv1.CombatantSide_COMBATANT_SIDE_PARTY}))
 			return err
@@ -958,6 +970,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
 		"AddCombatants": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
+		"OfferOpportunity": true, "WithdrawOpportunity": true,
 	}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -1091,6 +1104,7 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventTreasureFound, eventTreasureUnfound, eventCoverSet, eventSideSet, eventOpportunityOffered,
 		eventCreatureSummoned, eventCreatureDismissed, eventWildShapeStarted, eventWildShapeEnded,
 		eventFamiliarSight, eventDoorOpened,
+		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
 	}
 	var clause string
 	if err := h.pool.QueryRow(t.Context(),

@@ -98,7 +98,7 @@ func (q *Queries) DeletePendingMemberWithoutCharacter(ctx context.Context, arg D
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, xp_mode, created_by, created_at, dice_mode FROM campaigns WHERE id = $1
+SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at FROM campaigns WHERE id = $1
 `
 
 func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) {
@@ -111,6 +111,7 @@ func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DiceMode,
+		&i.XpModeChangedAt,
 	)
 	return i, err
 }
@@ -130,6 +131,27 @@ func (q *Queries) GetCampaignDocument(ctx context.Context, campaignID string) (C
 		&i.Revision,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const getCampaignForUpdate = `-- name: GetCampaignForUpdate :one
+SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at FROM campaigns WHERE id = $1 FOR UPDATE
+`
+
+// The campaign, locked until the transaction ends: a change of the XP mode reads
+// the awards and writes the mode as one step.
+func (q *Queries) GetCampaignForUpdate(ctx context.Context, id string) (Campaign, error) {
+	row := q.db.QueryRow(ctx, getCampaignForUpdate, id)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.XpMode,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.DiceMode,
+		&i.XpModeChangedAt,
 	)
 	return i, err
 }
@@ -199,6 +221,31 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 	return i, err
 }
 
+const getTableRules = `-- name: GetTableRules :one
+SELECT campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at FROM campaign_table_rules WHERE campaign_id = $1
+`
+
+// The table's rules (RN-24). No row means the defaults.
+func (q *Queries) GetTableRules(ctx context.Context, campaignID string) (CampaignTableRule, error) {
+	row := q.db.QueryRow(ctx, getTableRules, campaignID)
+	var i CampaignTableRule
+	err := row.Scan(
+		&i.CampaignID,
+		&i.HitPointsRule,
+		&i.AbilityStandardArray,
+		&i.AbilityPointBuy,
+		&i.AbilityRoll4d6,
+		&i.AbilityTyped,
+		&i.CriticalRule,
+		&i.DeathSaves,
+		&i.CombatStartsWithMap,
+		&i.FogOnNewMaps,
+		&i.HouseRules,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const incrementInviteUses = `-- name: IncrementInviteUses :execrows
 UPDATE campaign_invites
 SET use_count = use_count + 1
@@ -224,7 +271,7 @@ func (q *Queries) IncrementInviteUses(ctx context.Context, arg IncrementInviteUs
 const insertCampaign = `-- name: InsertCampaign :one
 INSERT INTO campaigns (name, xp_mode, created_by)
 VALUES ($1, $2, $3)
-RETURNING id, name, xp_mode, created_by, created_at, dice_mode
+RETURNING id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at
 `
 
 type InsertCampaignParams struct {
@@ -243,6 +290,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DiceMode,
+		&i.XpModeChangedAt,
 	)
 	return i, err
 }
@@ -363,7 +411,7 @@ func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (Cam
 }
 
 const listCampaignsOfUser = `-- name: ListCampaignsOfUser :many
-SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, c.dice_mode, m.role, m.status
+SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, c.dice_mode, c.xp_mode_changed_at, m.role, m.status
 FROM campaign_members AS m
 JOIN campaigns AS c ON c.id = m.campaign_id
 WHERE m.user_id = $1
@@ -394,6 +442,7 @@ func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]Lis
 			&i.Campaign.CreatedBy,
 			&i.Campaign.CreatedAt,
 			&i.Campaign.DiceMode,
+			&i.Campaign.XpModeChangedAt,
 			&i.Role,
 			&i.Status,
 		); err != nil {
@@ -565,6 +614,29 @@ func (q *Queries) SetCampaignDiceMode(ctx context.Context, arg SetCampaignDiceMo
 	return dice_mode, err
 }
 
+const setCampaignXPMode = `-- name: SetCampaignXPMode :one
+UPDATE campaigns SET xp_mode = $2, xp_mode_changed_at = $3::TIMESTAMPTZ WHERE id = $1 RETURNING xp_mode, xp_mode_changed_at
+`
+
+type SetCampaignXPModeParams struct {
+	ID     string
+	XpMode string
+	Now    time.Time
+}
+
+type SetCampaignXPModeRow struct {
+	XpMode          string
+	XpModeChangedAt *time.Time
+}
+
+// The master changed how the campaign levels (RN-09).
+func (q *Queries) SetCampaignXPMode(ctx context.Context, arg SetCampaignXPModeParams) (SetCampaignXPModeRow, error) {
+	row := q.db.QueryRow(ctx, setCampaignXPMode, arg.ID, arg.XpMode, arg.Now)
+	var i SetCampaignXPModeRow
+	err := row.Scan(&i.XpMode, &i.XpModeChangedAt)
+	return i, err
+}
+
 const setMemberDicePreference = `-- name: SetMemberDicePreference :one
 UPDATE campaign_members SET dice_preference = $3
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'active'
@@ -622,6 +694,80 @@ func (q *Queries) UpdateCampaignDocument(ctx context.Context, arg UpdateCampaign
 		&i.Revision,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const upsertTableRules = `-- name: UpsertTableRules :one
+INSERT INTO campaign_table_rules (
+    campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+)
+VALUES (
+    $1, $2, $3, $4,
+    $5, $6, $7, $8,
+    $9, $10, $11::TEXT[], $12
+)
+ON CONFLICT (campaign_id) DO UPDATE SET
+    hit_points_rule = excluded.hit_points_rule,
+    ability_standard_array = excluded.ability_standard_array,
+    ability_point_buy = excluded.ability_point_buy,
+    ability_roll_4d6 = excluded.ability_roll_4d6,
+    ability_typed = excluded.ability_typed,
+    critical_rule = excluded.critical_rule,
+    death_saves = excluded.death_saves,
+    combat_starts_with_map = excluded.combat_starts_with_map,
+    fog_on_new_maps = excluded.fog_on_new_maps,
+    house_rules = excluded.house_rules,
+    updated_at = excluded.updated_at
+RETURNING campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+`
+
+type UpsertTableRulesParams struct {
+	CampaignID           string
+	HitPointsRule        string
+	AbilityStandardArray bool
+	AbilityPointBuy      bool
+	AbilityRoll4d6       bool
+	AbilityTyped         bool
+	CriticalRule         string
+	DeathSaves           string
+	CombatStartsWithMap  bool
+	FogOnNewMaps         bool
+	HouseRules           []string
+	Now                  time.Time
+}
+
+// The master saved "Regras da mesa": every setting is written.
+func (q *Queries) UpsertTableRules(ctx context.Context, arg UpsertTableRulesParams) (CampaignTableRule, error) {
+	row := q.db.QueryRow(ctx, upsertTableRules,
+		arg.CampaignID,
+		arg.HitPointsRule,
+		arg.AbilityStandardArray,
+		arg.AbilityPointBuy,
+		arg.AbilityRoll4d6,
+		arg.AbilityTyped,
+		arg.CriticalRule,
+		arg.DeathSaves,
+		arg.CombatStartsWithMap,
+		arg.FogOnNewMaps,
+		arg.HouseRules,
+		arg.Now,
+	)
+	var i CampaignTableRule
+	err := row.Scan(
+		&i.CampaignID,
+		&i.HitPointsRule,
+		&i.AbilityStandardArray,
+		&i.AbilityPointBuy,
+		&i.AbilityRoll4d6,
+		&i.AbilityTyped,
+		&i.CriticalRule,
+		&i.DeathSaves,
+		&i.CombatStartsWithMap,
+		&i.FogOnNewMaps,
+		&i.HouseRules,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

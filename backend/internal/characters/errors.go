@@ -37,9 +37,24 @@ func errBlocked(reason charactersv1.CharacterBlockedReason, characterID string) 
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_STORY_LOCKED:            "the story is locked: ask the master to allow editing it",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING:             "the character does not wait for approval: once approved, it stays in the campaign",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL:       "the character waits for your approval: approve or reject it instead",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY: "the table gives everybody the average hit points: there is no roll",
 	}[reason]
 	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
 	if detail, detailErr := connect.NewErrorDetail(&charactersv1.CharacterBlocked{Reason: reason, CharacterId: characterID}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
+}
+
+// errBlockedByContent is errBlocked for a table entry that stops the call
+// (ARCHIVED_CONTENT, TABLE_CONTENT_STAYS): the detail names the key.
+func errBlockedByContent(reason charactersv1.CharacterBlockedReason, characterID, contentKey string) error {
+	msg := map[charactersv1.CharacterBlockedReason]string{
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT:    "the master archived a table entry this sheet picks: it is not a new choice any more",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS: "the sheet uses the table's own content, so it cannot go to another campaign",
+	}[reason]
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
+	if detail, detailErr := connect.NewErrorDetail(&charactersv1.CharacterBlocked{Reason: reason, CharacterId: characterID, ContentKey: contentKey}); detailErr == nil {
 		err.AddDetail(detail)
 	}
 	return err

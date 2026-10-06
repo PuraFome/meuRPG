@@ -20,6 +20,19 @@ type GalleryImage struct {
 	CreatedAt   time.Time
 }
 
+type GeneratedDungeon struct {
+	MapID            string
+	GeneratorVersion int32
+	Seed             int64
+	Width            int32
+	Height           int32
+	Options          []byte
+	Cells            []byte
+	Rooms            []byte
+	CreatedAt        time.Time
+	ImageID          *string
+}
+
 type Map struct {
 	ID             string
 	CampaignID     string
@@ -36,6 +49,8 @@ type Map struct {
 	LayersRevision int32
 	LightRevision  int32
 	VisionEpoch    int32
+	FogOnFirstGrid bool
+	GridFactor     int32
 }
 
 type MapCreatureToken struct {

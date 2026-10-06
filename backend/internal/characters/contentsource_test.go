@@ -30,6 +30,13 @@ type recordingSource struct {
 	asks  []contentAsk
 }
 
+func (r *recordingSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+	r.mu.Lock()
+	r.asks = append(r.asks, contentAsk{campaignID: campaignID, inTx: tx != nil})
+	r.mu.Unlock()
+	return r.inner.ContentFor(ctx, tx, campaignID)
+}
+
 func (r *recordingSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
 	r.mu.Lock()
 	r.asks = append(r.asks, contentAsk{campaignID: campaignID, inTx: tx != nil})
@@ -97,7 +104,9 @@ func TestEveryReadAsksForItsOwnCampaignsContent(t *testing.T) {
 			_, err := owner.content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: campB}))
 			return err
 		}},
-		{"UpdateCharacter validates with its campaign's content", campB, false, false, func() error {
+		// The content is read before the transaction, then its revision again inside it, so
+		// an archive that commits in between is seen (RN-23).
+		{"UpdateCharacter validates with its campaign's content, and checks it again in its transaction", campB, true, false, func() error {
 			_, err := owner.update(t, pcB, "Pensantus B", pensantusSheet())
 			return err
 		}},
@@ -151,8 +160,8 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 	t.Parallel()
 	s := offlineService(t)
 	a := loadRules(t)
-	first := s.catalogFor(a)
-	if again := s.catalogFor(a); first != again { // the same content: one catalog
+	first := s.catalogFor(a, true)
+	if again := s.catalogFor(a, true); first != again { // the same content: one catalog
 		t.Error("catalogFor() built the catalog of one content twice")
 	}
 	if first == nil || len(first.GetRaces()) == 0 {
@@ -162,7 +171,7 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.catalogFor(b) == first {
+	if s.catalogFor(b, true) == first {
 		t.Error("two contents share a catalog")
 	}
 	for range maxCatalogs { // more contents than the cache keeps: the oldest goes
@@ -170,7 +179,7 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		s.catalogFor(c)
+		s.catalogFor(c, true)
 	}
 	s.catalogs.mu.Lock()
 	n, kept := len(s.catalogs.catalog), s.catalogs.catalog[a]

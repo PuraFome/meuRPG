@@ -1,0 +1,466 @@
+syntax = "proto3";
+
+package meurpg.maps.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/maps/v1/maps.proto";
+
+// DungeonService turns a generated dungeon into a campaign map (MR-010, RN-26,
+// Etapa 10, slice 10.6d). The generator itself is a pure function of its options
+// and a seed (backend/internal/rules/dungeon): the same options and seed give
+// the same dungeon.
+//
+// Every method is the master's. A player, and anyone who is not a member of the
+// campaign, gets `not_found` from every method, exactly as for a map that does
+// not exist: the rooms list, the dungeon's options and seed, and a secret door
+// are the master's alone (RN-10), and the maps a player may read come through
+// MapService, filtered by the fog as any other map. Nothing here ever reaches
+// the live session's stream.
+//
+// What the master gets:
+//   - PreviewDungeon: the layout of a dungeon, for the page's live preview.
+//     Nothing is stored.
+//   - CreateDungeonMap: the map. It is hidden from the players (RN-10), has the
+//     fog of war on with the base light "Claro", the grid set to the dungeon's
+//     width, the walls and the doors layers filled in, the stairs as submap
+//     points without a target, and a flat image of floors and walls only (a
+//     secret door is drawn as wall, and no room number is ever drawn). The
+//     dungeon's options, seed, generator version, cells and rooms are kept with
+//     the map.
+//   - GetDungeonRooms: the rooms list beside the map.
+//   - PlaceDungeonScene: "Pôr uma cena nesta sala".
+//   - RedrawDungeonMap: "Redesenhar", a new image from the walls and doors the map
+//     has now, which keeps every layer and what the players remember.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `not_found`: the campaign or the map does not exist, the map is not a
+//     generated dungeon (where the method needs one), or the caller is not the
+//     campaign's master (a player and a non-member are answered alike).
+//   - `unavailable`: the database did not answer, or images are off on this
+//     server (CreateDungeonMap, RedrawDungeonMap); the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction after
+//     the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`.
+service DungeonService {
+  // PreviewDungeon generates a dungeon from the options and the seed and returns
+  // its layout, with no image. It stores nothing, so the page may call it on every
+  // change of an option. An option the request leaves out takes its default
+  // (DungeonOptions). When the request has no seed, the server draws one and
+  // returns it ("Outra semente" is a new call without a seed); the same options
+  // and seed always give the same answer. The server stops generating after 2
+  // seconds.
+  //
+  // Errors:
+  //   - `invalid_argument` (DungeonOptionRefused): an option is out of range, or
+  //     the options leave no room for a single room.
+  //   - `resource_exhausted`: a preview of this campaign is already running.
+  //   - `deadline_exceeded`: the generator took more than 2 seconds.
+  rpc PreviewDungeon(PreviewDungeonRequest) returns (PreviewDungeonResponse);
+
+  // CreateDungeonMap generates the dungeon from the options and the seed and makes
+  // a map of it, in one transaction: a hidden gallery image (rendered on the
+  // server, 8,192 pixels at most on a side), the map, its layers and stairs, and
+  // the dungeon's own record. The page sends the seed it previewed, so the map is
+  // the one it showed. When the request has no seed, the server draws one.
+  //
+  // The map has the grid set to the dungeon's width in squares, the fog of war on
+  // and the base light BRIGHT (the master may change both on the map). Its layers:
+  // the walls layer is every wall of the dungeon; the doors layer has a CLOSED
+  // door for a closed door, LOCKED for a locked one, BARRED for a barred one and
+  // SECRET for a secret one. A passage ("archway") is floor, with no door. A door
+  // with a trap is the same door in the layer (a closed door stays CLOSED, a locked
+  // one LOCKED, a secret one SECRET), and the rooms list says it has a trap
+  // (DungeonExit.trapped): the map has no trap point. Each stair is a SUBMAP point
+  // named "Escada para cima" or "Escada para baixo", with no target map and hidden
+  // like any new point.
+  //
+  // Once the options are validated, the map is created even if the caller goes away
+  // (the page may be closed meanwhile: it is there when they come back).
+  //
+  // A campaign may create or redraw a burst of 4 dungeons, then one every 15
+  // seconds (RedrawDungeonMap shares the limit).
+  //
+  // Errors:
+  //   - `invalid_argument`: the name breaks its rules (as in CreateMap), or
+  //     (DungeonOptionRefused) an option is out of range or leaves no room.
+  //   - `resource_exhausted`: the campaign already has 200 maps, its gallery is
+  //     full, or too many dungeons were created or redrawn a moment ago (the app
+  //     waits and tries again).
+  //   - `deadline_exceeded`: the generator took more than 2 seconds.
+  rpc CreateDungeonMap(CreateDungeonMapRequest) returns (CreateDungeonMapResponse);
+
+  // GetDungeonRooms returns the dungeon's rooms as they were generated, with
+  // their exits and the doors that have a trap, and the options and seed it was
+  // made from, for the panel beside the map. The room numbers are the generator's
+  // (a discarded room leaves a gap). It reads what was stored when the map was
+  // made, never the layers: a door the master changed since still reads as
+  // generated here.
+  //
+  // Errors:
+  //   - `not_found`: also when the map was not made by CreateDungeonMap.
+  rpc GetDungeonRooms(GetDungeonRoomsRequest) returns (GetDungeonRoomsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PlaceDungeonScene puts a role-play scene point (MR-029, Etapa 8) named
+  // "Sala N" on the middle square of room N, the way CreateMapPoint creates one:
+  // hidden, with no hooks. It may be called again for the same room: each call
+  // makes a new point.
+  //
+  // Errors:
+  //   - `not_found`: also when the map was not made by CreateDungeonMap, or has
+  //     no such room.
+  //   - `resource_exhausted`: the map already has 200 points.
+  rpc PlaceDungeonScene(PlaceDungeonSceneRequest) returns (PlaceDungeonSceneResponse);
+
+  // RedrawDungeonMap renders the image of a generated dungeon again, at the same
+  // size in pixels, from the map's walls and doors layers as they are now:
+  // a wall the master painted is wall in the new image, a wall they cleared is
+  // floor, a secret door that is still secret is wall and one they revealed is
+  // floor, and a door of any other kind is floor. It does not clear the layers,
+  // the points, the tokens or what the players remember of the map (the usual
+  // new image does, because a layer is sized by the grid): the new image only
+  // replaces the old one, which is deleted from the gallery unless something else
+  // uses it. Players who see the map get `map_changed`.
+  //
+  // Errors:
+  //   - `not_found`: also when the map was not made by CreateDungeonMap.
+  //   - `failed_precondition` (MapBlocked NO_GRID): the master removed the map's
+  //     grid since.
+  //   - `failed_precondition` (MapBlocked IMAGE_CHANGED): the map's image is not
+  //     the one the generator drew (the master put another image on the map), the
+  //     size or the grid changed, or the layers were cleared since: the map is no
+  //     longer the dungeon's, and nothing is drawn or deleted.
+  //   - `aborted`: the walls or doors changed while the image was drawn; try again.
+  //   - `resource_exhausted`: too many dungeons created or redrawn a moment ago.
+  rpc RedrawDungeonMap(RedrawDungeonMapRequest) returns (RedrawDungeonMapResponse);
+}
+
+// DungeonMask is the silhouette of the whole level: the formato of the page.
+enum DungeonMask {
+  // Not set: the default, NONE.
+  DUNGEON_MASK_UNSPECIFIED = 0;
+  // "Sem forma": the whole grid.
+  DUNGEON_MASK_NONE = 1;
+  // "Anel": a ring around a hole in the middle (DungeonOptions.mask_hole).
+  DUNGEON_MASK_DONUT = 2;
+  // "Cruz".
+  DUNGEON_MASK_PLUS = 3;
+  // "L".
+  DUNGEON_MASK_L_SHAPE = 4;
+  // "Elipse".
+  DUNGEON_MASK_ELLIPSE = 5;
+  // "Losango".
+  DUNGEON_MASK_DIAMOND = 6;
+}
+
+// DungeonPlacement is how the rooms are placed.
+enum DungeonPlacement {
+  // Not set: the default, SPREAD.
+  DUNGEON_PLACEMENT_UNSPECIFIED = 0;
+  // Rooms drawn at random places, apart from each other.
+  DUNGEON_PLACEMENT_SPREAD = 1;
+  // Rooms packed edge to edge.
+  DUNGEON_PLACEMENT_TILED = 2;
+}
+
+// DungeonCorridorStyle is how much the corridors keep their direction.
+enum DungeonCorridorStyle {
+  // Not set: the default, MEANDERING.
+  DUNGEON_CORRIDOR_STYLE_UNSPECIFIED = 0;
+  // "Labirinto": they turn all the time.
+  DUNGEON_CORRIDOR_STYLE_TWISTY = 1;
+  // "Sinuosos".
+  DUNGEON_CORRIDOR_STYLE_MEANDERING = 2;
+  // "Retos": long straight runs.
+  DUNGEON_CORRIDOR_STYLE_LONG_RUNS = 3;
+}
+
+// DungeonDoorMix is the mix of door kinds.
+enum DungeonDoorMix {
+  // Not set: the default, TYPICAL.
+  DUNGEON_DOOR_MIX_UNSPECIFIED = 0;
+  // "Só passagens": almost only passages.
+  DUNGEON_DOOR_MIX_OPEN = 1;
+  // "Comuns": mostly closed doors, some passages, a few locked, barred and
+  // secret ones.
+  DUNGEON_DOOR_MIX_TYPICAL = 2;
+  // "Seguras": more locked, barred and secret doors.
+  DUNGEON_DOOR_MIX_SECURED = 3;
+  // "Paranoicas": even more.
+  DUNGEON_DOOR_MIX_PARANOID = 4;
+}
+
+// DungeonDoorKind is what a door of the generated dungeon is. It is a different
+// vocabulary from DoorState: a passage is no door in the layer, and a door with
+// a trap is a closed (or locked, or secret) door plus a flag.
+enum DungeonDoorKind {
+  DUNGEON_DOOR_KIND_UNSPECIFIED = 0;
+  // "Passagem": a gap in the wall. Floor; nothing in the doors layer.
+  DUNGEON_DOOR_KIND_ARCHWAY = 1;
+  // "Fechada": DOOR_STATE_CLOSED.
+  DUNGEON_DOOR_KIND_CLOSED = 2;
+  // "Grade": DOOR_STATE_BARRED.
+  DUNGEON_DOOR_KIND_BARRED = 3;
+  // "Trancada": DOOR_STATE_LOCKED.
+  DUNGEON_DOOR_KIND_LOCKED = 4;
+  // "Secreta": DOOR_STATE_SECRET.
+  DUNGEON_DOOR_KIND_SECRET = 5;
+}
+
+// DungeonSide is a side of a room, or the direction a stair faces.
+enum DungeonSide {
+  DUNGEON_SIDE_UNSPECIFIED = 0;
+  DUNGEON_SIDE_NORTH = 1;
+  DUNGEON_SIDE_EAST = 2;
+  DUNGEON_SIDE_SOUTH = 3;
+  DUNGEON_SIDE_WEST = 4;
+}
+
+// DungeonAxis is the orientation of a door's wall.
+enum DungeonAxis {
+  DUNGEON_AXIS_UNSPECIFIED = 0;
+  // The wall runs east-west; the door is crossed moving north-south.
+  DUNGEON_AXIS_HORIZONTAL_WALL = 1;
+  // The wall runs north-south; the door is crossed moving east-west.
+  DUNGEON_AXIS_VERTICAL_WALL = 2;
+}
+
+// DungeonOptions are the page's choices. Every field is optional: a field that
+// is not set (a number with no value, an enum UNSPECIFIED) takes the default
+// below, so an empty message is the generator's default dungeon. A field set out
+// of range is `invalid_argument` with the DungeonOptionRefused detail naming it;
+// the server never changes a value silently, except the evening-out of the sizes
+// below (the answers carry the options as used).
+message DungeonOptions {
+  // Width in squares, 15 to 199; default 51. An even number goes down to the odd
+  // one below.
+  optional int32 width = 1;
+  // Height in squares, 15 to 399; default 51. An even number goes down to the odd
+  // one below.
+  optional int32 height = 2;
+  // The silhouette; default NONE.
+  DungeonMask mask = 3;
+  // For DONUT only: the hole's size, 20 to 60 percent of each side; default 40.
+  optional int32 mask_hole = 4;
+  // The room sides, in squares: smallest 3 to 15 (default 3), largest from the
+  // smallest to 31 (default 11). Even numbers are made odd (the smallest goes up,
+  // the largest down).
+  optional int32 room_side_min = 5;
+  optional int32 room_side_max = 6;
+  // The longest side of a room over its shortest, 1.0 to 6.0; default 3.0.
+  optional double aspect_limit = 7;
+  // How many rooms, 10 to 200 percent; default 100.
+  optional int32 room_density = 8;
+  DungeonPlacement placement = 9;
+  DungeonCorridorStyle corridor_style = 10;
+  // How many doors, 25 to 200 percent; default 100.
+  optional int32 door_density = 11;
+  DungeonDoorMix door_mix = 12;
+  // How many dead ends are cut, 0 to 100 percent; default 60.
+  optional int32 deadend_removal = 13;
+  // How many stairs, 0 to 8; default 2. The dungeon may place fewer.
+  optional int32 stairs = 14;
+  // How many extra loops, 0 to 100 percent; default 0.
+  optional int32 extra_loops = 15;
+}
+
+// DungeonOptionRefused is the error detail of an `invalid_argument` about the
+// options, so the page can mark the field.
+message DungeonOptionRefused {
+  // The field, as named in DungeonOptions ("room_side_min"); empty when no single
+  // option is at fault (the silhouette and the size leave no room for a room).
+  string option = 1;
+}
+
+// DungeonRect is a rectangle of floor, in squares: column and row of its
+// north-west square, then its size.
+message DungeonRect {
+  int32 x = 1;
+  int32 y = 2;
+  int32 width = 3;
+  int32 height = 4;
+}
+
+// DungeonDoor is a door of the generated dungeon, with its true kind: the
+// master's alone.
+message DungeonDoor {
+  // The door's square.
+  int32 x = 1;
+  int32 y = 2;
+  DungeonDoorKind kind = 3;
+  // The generator flagged a trap on the door (only a closed, locked or secret
+  // one can have it).
+  bool trapped = 4;
+  DungeonAxis axis = 5;
+}
+
+// DungeonStair is a stair of the generated dungeon.
+message DungeonStair {
+  int32 x = 1;
+  int32 y = 2;
+  // True for "Escada para cima" (the first one is the entrance), false for "para
+  // baixo".
+  bool up = 3;
+  // The direction a creature walks onto the stair.
+  DungeonSide facing = 4;
+}
+
+// DungeonRoomRect is a room of the preview: its number and its floor.
+message DungeonRoomRect {
+  // The generator's number (from 1; a discarded room leaves a gap).
+  int32 id = 1;
+  DungeonRect floor = 2;
+}
+
+// PreviewDungeonRequest carries the options and the seed of a preview.
+message PreviewDungeonRequest {
+  string campaign_id = 1;
+  DungeonOptions options = 2;
+  // The seed. Not set: the server draws one and returns it.
+  optional uint64 seed = 3;
+}
+
+// PreviewDungeonResponse is a dungeon's layout, no image.
+message PreviewDungeonResponse {
+  // The seed used: the one sent, or the one drawn.
+  uint64 seed = 1;
+  // The options as used: the defaults filled in and the sizes made odd.
+  DungeonOptions options = 2;
+  // The generator's algorithm version. A saved dungeon keeps its own.
+  int32 generator_version = 3;
+  // The size in squares (the options' width and height, made odd).
+  int32 width = 4;
+  int32 height = 5;
+  // One bit a square, set where a creature can stand (room, corridor or door
+  // square): the byte layout of the walls layer (GetMapLayersResponse.wall),
+  // row-major, square n is bit n % 8 of byte n / 8, from the low bit. Every other
+  // square is wall or rock.
+  bytes open = 6;
+  // Every door, in the generator's order, with its true kind.
+  repeated DungeonDoor doors = 7;
+  // Every stair, the first one up.
+  repeated DungeonStair stairs = 8;
+  // Every room's floor.
+  repeated DungeonRoomRect rooms = 9;
+}
+
+// CreateDungeonMapRequest carries the new map.
+message CreateDungeonMapRequest {
+  string campaign_id = 1;
+  // The map's name: 1 to 80 characters, one line (as in CreateMap).
+  string name = 2;
+  DungeonOptions options = 3;
+  // The seed. Not set: the server draws one.
+  optional uint64 seed = 4;
+}
+
+// CreateDungeonMapResponse returns the new, hidden map, as the master reads it
+// (MapService.GetMap gives its points and layers).
+message CreateDungeonMapResponse {
+  Map map = 1;
+  // The seed used.
+  uint64 seed = 2;
+  // How many rooms the dungeon has.
+  int32 room_count = 3;
+}
+
+// GetDungeonRoomsRequest names the map.
+message GetDungeonRoomsRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// DungeonExit is a door on a room's wall: its position, its true kind, and what
+// is on the other side.
+message DungeonExit {
+  DungeonSide side = 1;
+  // The door's square.
+  int32 x = 2;
+  int32 y = 3;
+  // As generated: a secret door is SECRET here.
+  DungeonDoorKind kind = 4;
+  // The door has a trap ("Porta com armadilha"): the map shows it as the closed
+  // (or locked, or secret) door it is; only this list says so.
+  bool trapped = 5;
+  // The room on the other side when the door opens straight into another room; 0
+  // when it opens into a corridor.
+  int32 other_room_id = 6;
+}
+
+// DungeonRoom is a room as generated.
+message DungeonRoom {
+  // The generator's number: the map's scene for it is named "Sala N".
+  int32 id = 1;
+  DungeonRect floor = 2;
+  // The middle square, where PlaceDungeonScene puts the scene.
+  int32 center_col = 3;
+  int32 center_row = 4;
+  // The doors on the room's wall, by side (north, east, south, west) and position.
+  repeated DungeonExit exits = 5;
+  // The scene points of the map whose square is on this room's floor (the ones
+  // PlaceDungeonScene made, and any other scene the master put there), oldest first.
+  repeated string scene_point_ids = 6;
+}
+
+// GetDungeonRoomsResponse is the rooms list.
+message GetDungeonRoomsResponse {
+  // The rooms, by number.
+  repeated DungeonRoom rooms = 1;
+  // The options as used, the seed and the algorithm version the dungeon was made
+  // from.
+  DungeonOptions options = 2;
+  uint64 seed = 3;
+  int32 generator_version = 4;
+  // The size in squares.
+  int32 width = 5;
+  int32 height = 6;
+  // When the dungeon was made.
+  google.protobuf.Timestamp created_at = 7;
+  // Whether the map's image is still the one the generator drew ("Gerada pelo app").
+  // False after the master put another image on the map: RedrawDungeonMap then
+  // answers IMAGE_CHANGED.
+  bool image_is_generated = 8;
+  // Every door as generated, passages (ARCHWAY) included, with the true kind: the
+  // page counts "13 portas e 8 passagens" from it.
+  repeated DungeonDoor doors = 9;
+  // Every stair, the first one up.
+  repeated DungeonStair stairs = 10;
+  // The arrival point.
+  DungeonEntrance entrance = 11;
+}
+
+// DungeonEntrance is where the level is entered.
+message DungeonEntrance {
+  int32 x = 1;
+  int32 y = 2;
+  // True when it is the first (up) stair's square.
+  bool on_stairs = 3;
+}
+
+// PlaceDungeonSceneRequest names the room.
+message PlaceDungeonSceneRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // The room's number (DungeonRoom.id).
+  int32 room_id = 3;
+}
+
+// PlaceDungeonSceneResponse returns the new, hidden scene point.
+message PlaceDungeonSceneResponse {
+  MapPoint point = 1;
+}
+
+// RedrawDungeonMapRequest names the map.
+message RedrawDungeonMapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// RedrawDungeonMapResponse returns the map with its new image (a new image ID:
+// the old one is gone from the gallery).
+message RedrawDungeonMapResponse {
+  Map map = 1;
+}

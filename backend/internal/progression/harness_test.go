@@ -142,7 +142,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
-	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.Source{Pool: pool, Content: content}, SRD: content, Logger: logger, Now: clock.Now})
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
@@ -159,6 +159,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("New() error = %v", err)
 	}
 	chars.SetLevelUps(svc)
+	camps.SetXPAwards(svc) // changing the XP mode asks once XP was awarded (RN-09)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	var sessions Sessions = fakeSessions{}

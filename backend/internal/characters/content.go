@@ -20,15 +20,19 @@ func (s *Service) ListContent(
 	req *connect.Request[rulesv1.ListContentRequest],
 ) (*connect.Response[rulesv1.ListContentResponse], error) {
 	// A pending member may read it too (RN-15): the editor needs it to
-	// create their character. The catalog is the same for everyone.
-	if _, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId()); err != nil {
+	// create their character. The catalog is the same for everyone, but the
+	// entries the master archived: only the master receives those (RN-23).
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
+	if err != nil {
 		return nil, err
 	}
-	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
 	// A content's catalog is shared and never modified; marshaling it from
 	// several requests at once is safe.
-	return connect.NewResponse(&rulesv1.ListContentResponse{Content: s.catalogFor(content)}), nil
+	return connect.NewResponse(&rulesv1.ListContentResponse{
+		Content: s.catalogFor(content, isMaster(m)), TableRevision: i32(content.TableRevision()),
+	}), nil
 }

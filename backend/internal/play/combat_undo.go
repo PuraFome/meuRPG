@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -58,13 +59,24 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		}
 		// The offers a move made are written before the move's own event, the same
 		// way: the undo acts on the move.
+		// One the master made by hand (a combat without a grid) is no part of a move:
+		// it closes the chain, and the master withdraws it instead.
 		if e.Kind == eventOpportunityOffered {
+			if ev, err := readEvent(e.Payload); err == nil && ev.ByHand {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
 			continue
 		}
 		// A door a move opened is written before the move's own event too. An undo of
 		// the move leaves the door open (a door opened stays opened), and the line
 		// stays: it never closes the chain either.
 		if e.Kind == eventDoorOpened {
+			continue
+		}
+		// A puzzle shown, solved, reset or closed is no action of the combat (MR-038), and
+		// the clue a solve gave is written just before the solve's own event: neither
+		// closes the chain.
+		if strings.HasPrefix(e.Kind, "puzzle_") || clueOfASolve(recent, e) {
 			continue
 		}
 		// What the traps did that is not this combat's never closes the chain: a trap noticed
@@ -646,4 +658,16 @@ func trapOutsideTheChain(e playdb.ListRecentSessionEventsRow, encounterID string
 		return e.EncounterID == nil // ApplyTrapDamage: a damage with no combat
 	}
 	return false
+}
+
+// clueOfASolve says whether the event is the `clue_revealed` that a solved puzzle's
+// "Ao resolver" wrote: it comes right before the `puzzle_solved` of the same
+// transaction (recent is newest first, so that one has the next number).
+func clueOfASolve(recent []playdb.ListRecentSessionEventsRow, e playdb.ListRecentSessionEventsRow) bool {
+	if e.Kind != eventClueRevealed {
+		return false
+	}
+	return slices.ContainsFunc(recent, func(o playdb.ListRecentSessionEventsRow) bool {
+		return o.Seq == e.Seq+1 && o.Kind == eventPuzzleSolved
+	})
 }
