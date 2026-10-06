@@ -148,7 +148,10 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		CanApprove:           master && state == charactersv1.CharacterState_CHARACTER_STATE_PENDING,
 	}
 	if full := sheet.GetFull(); full != nil {
-		c.Derived = derivedToProto(rules.Derive(buildOf(full), content))
+		build := buildOf(full)
+		der := rules.Derive(build, content)
+		c.Derived = derivedToProto(der)
+		addChangedContent(c.Derived, der.Issues, content, build, full)
 	}
 	return c, nil
 }

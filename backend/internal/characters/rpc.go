@@ -71,6 +71,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
+	if key, _, found := newArchivedChoice(content, nil, sheet.GetFull()); found {
+		return nil, errArchivedChoice("", key)
+	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -96,13 +99,37 @@ func (s *Service) CreateCharacter(
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		// The table's content and rules, read in this transaction: if the content
+		// moved since it was read above (an archive, an edit), the sheet is checked
+		// again with it, so a write is always ordered against a content write
+		// (ADR-0018, section 5).
+		tc, tr, err := s.content.For(ctx, tx, m.CampaignID)
+		if err != nil {
+			return wrap("read the table content and rules", err)
+		}
+		if tc.TableRevision() != content.TableRevision() {
+			again, err := checkSheet(tc, sheet)
+			if err == nil {
+				err = checkSheetKind(kind, again)
+			}
+			if err != nil {
+				return invalidArgument(err)
+			}
+			if again.GetFull() != nil {
+				again.GetFull().AbilityOrigin = nil
+			}
+			if key, _, found := newArchivedChoice(tc, nil, again.GetFull()); found {
+				return errArchivedChoice("", key)
+			}
+			sheet = again
+			if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
+				return wrap("encode a sheet", err)
+			}
+		}
+		content = tc
 		if kind == kindPlayer {
 			// The base scores follow the way the player made them, and the table
-			// allows it (RN-24). The table's rules are read in this transaction.
-			_, tr, err := s.content.For(ctx, tx, m.CampaignID)
-			if err != nil {
-				return wrap("read the table rules", err)
-			}
+			// allows it (RN-24).
 			origin, err := s.checkAbilityScores(ctx, q, m, content, tr, req.Msg.GetAbilityMethod(), sheet.GetFull())
 			if err != nil {
 				return err
@@ -134,7 +161,6 @@ func (s *Service) CreateCharacter(
 				return wrap("find the living character", err)
 			}
 		}
-		var err error
 		row, err = q.InsertCharacter(ctx, params)
 		if err != nil {
 			return wrap("insert character", err)
@@ -342,15 +368,36 @@ func (s *Service) UpdateCharacter(
 		if current.Revision != revision {
 			return errStaleRevision()
 		}
-		// The ability origin is the server's: kept from the stored sheet, and a
-		// player's draft edit of the base scores is checked against it (RN-24).
+		// The table's content, read in this transaction: if it moved since it was
+		// read above (an archive, an edit), the sheet is checked again with it, so a
+		// write is always ordered against a content write (ADR-0018, section 5).
+		tc, err := s.contentFor(ctx, tx, m.CampaignID)
+		if err != nil {
+			return wrap("read rules content", err)
+		}
+		if tc.TableRevision() != content.TableRevision() {
+			if sheet, err = checkSheet(tc, sheet); err != nil {
+				return invalidArgument(err)
+			}
+		}
+		content = tc
 		storedSheet, err := loadSheet(current.ID, current.Sheet)
 		if err != nil {
 			return err
 		}
+		// A table entry the master archived is not a new choice (RN-23); the ones
+		// the stored sheet already has stay.
+		if key, _, found := newArchivedChoice(content, storedSheet.GetFull(), sheet.GetFull()); found {
+			return errArchivedChoice(current.ID, key)
+		}
+		// The ability origin is the server's: kept from the stored sheet, and a
+		// player's draft edit of the base scores is checked against it (RN-24).
 		if err := keepAbilityOrigin(m, content, storedSheet, sheet); err != nil {
 			return err
 		}
+		// A save never clears an issue that a change of the table's content flagged
+		// and that still stands.
+		carryFlags(content, storedSheet.GetFull(), sheet.GetFull())
 		if portraitCopy != nil { // the copy's gallery row, in this transaction
 			if err := portraitCopy.Insert(ctx, tx); err != nil {
 				return err

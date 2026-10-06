@@ -65,6 +65,26 @@ O servidor monta, para cada jogador, as peças da imagem de um mapa com névoa (
 - **Nada disso é guardado no disco nem no banco:** reiniciar o servidor esvazia a cópia de trabalho, as peças e as peças de cada jogador, e elas se refazem sozinhas. A memória do que cada jogador viu (o que decide as peças) é a de `map_vision_memory`.
 - **A imagem de um mapa com névoa continua no blob store, uma vez só;** as peças não ocupam cota da galeria.
 
+## O cache do conteúdo da mesa
+
+O conteúdo que o mestre cadastra (MR-025, RN-23; [Arquitetura](arquitetura.md#o-conteúdo-da-mesa-ao-vivo-etapa-10-fatia-101c), ADR-0018) é montado na memória do servidor, por campanha e por revisão, e guardado num cache pequeno. É memória e CPU num servidor de 1 vCPU e 512 MiB, então tem orçamento:
+
+| Regra | Valor | Onde |
+| --- | --- | --- |
+| Conteúdos no cache | 8, do servidor todo, por (campanha, revisão); o menos usado sai primeiro | `characters/tablesource.go`, `maxLiveContents` |
+| Catálogos do `ListContent` | Até 8 conteúdos, cada um com o catálogo do mestre e o dos jogadores | `characters/contentsource.go`, `maxCatalogs` |
+| Entradas por campanha | 300; 64 KiB de dados por entrada | `rules.MaxOverlayEntries`, `characters.MaxTableEntryBytes` |
+| Um conteúdo montado | Uns **1,4 MB** retidos além do SRD (o SRD é um só, compartilhado), para uma mesa de 300 entradas (10 classes, 30 subclasses, 20 raças, 40 sub-raças, 40 antecedentes e 160 magias, com os dados de 135 KB) | `TestLiveContentMemory` |
+| Os catálogos de um conteúdo | Uns **0,14 MB** (o do mestre e o dos jogadores; 75 KB no fio) | `TestLiveContentMemory` |
+| Os 8 juntos | **Uns 12 MB** (11 MB de conteúdos e 1 MB de catálogos), medidos, no caso em que os dois caches guardam os mesmos 8 conteúdos | `TestLiveContentMemory` |
+| **O pior caso** | **Uns 23 MB** (conta, não medida: 16 conteúdos × 1,37 MB = 22 MB, mais 1,1 MB de catálogos). O cache de catálogos (`maxCatalogs`) usa o conteúdo como chave e o mantém vivo, e tem a própria ordem de saída; quando as campanhas em jogo giram mais depressa que 8 revisões, os dois caches guardam conteúdos diferentes, até 8 + 8. Cabe nos 24 MB que o plano reservou e nos 400 MiB do `GOMEMLIMIT` (some aos 280 MB da conta das peças da névoa, no CONTRIBUTING) | derivado |
+| Montar depois de uma escrita | De **6 a 9 ms** por campanha, uma vez por revisão (ler os dados, montar a sobreposição, o `With`); o pior caso que os orçamentos do motor deixam passar leva uns 31 ms | `TestLiveContentMemory`, `BenchmarkWith` |
+
+- **Nada disso é cache do banco de verdade:** reiniciar o servidor o esvazia e ele se refaz sozinho, na primeira leitura de cada campanha. A revisão da campanha (`campaign_content_state`) é lida em **toda** leitura de conteúdo, dentro da transação de quem lê: é uma consulta pela chave primária, e é ela que faz uma edição do mestre valer na hora.
+- **Com mais de 8 campanhas com conteúdo da mesa em jogo ao mesmo tempo** o cache dá voltas: cada leitura de uma campanha fora dele monta de novo (6 a 9 ms). Com uma instância só e uma mesa por vez, isso não acontece; quando acontecer, o número é `maxLiveContents`, e cada conteúdo a mais custa uns 1,5 MB.
+- **Nenhum dado pessoal:** o conteúdo da mesa são nomes e textos que o mestre escreve para o jogo (ver [Privacidade](privacidade.md)).
+- **Rodar de novo a medida:** `MEURPG_MEASURE=1 go test ./internal/characters -run TestLiveContentMemory -v` (em `backend/`, sem banco).
+
 ## Segredos
 
 Credenciais (client secret do Google OAuth, connection string do banco, e outras) ficam no Secret Manager do Google Cloud, nunca em variável de ambiente solta no repositório ou no deploy. A lista exata de segredos por ambiente está **a definir**.

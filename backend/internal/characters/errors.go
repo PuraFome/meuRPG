@@ -46,6 +46,20 @@ func errBlocked(reason charactersv1.CharacterBlockedReason, characterID string) 
 	return err
 }
 
+// errBlockedByContent is errBlocked for a table entry that stops the call
+// (ARCHIVED_CONTENT, TABLE_CONTENT_STAYS): the detail names the key.
+func errBlockedByContent(reason charactersv1.CharacterBlockedReason, characterID, contentKey string) error {
+	msg := map[charactersv1.CharacterBlockedReason]string{
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT:    "the master archived a table entry this sheet picks: it is not a new choice any more",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS: "the sheet uses the table's own content, so it cannot go to another campaign",
+	}[reason]
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
+	if detail, detailErr := connect.NewErrorDetail(&charactersv1.CharacterBlocked{Reason: reason, CharacterId: characterID, ContentKey: contentKey}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
+}
+
 // errPermission is the answer for a member whose role may not do this.
 func errPermission(msg string) error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New(msg))
