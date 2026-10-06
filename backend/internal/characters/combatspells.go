@@ -100,10 +100,19 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 }
 
 // casterFor picks the Spellcasting of a class that has the spell on its list,
-// or the first one; nil for a character that casts nothing.
+// or the first one; nil for a character that casts nothing. classes are the
+// spell's classes (SpellEntry.Classes), and what a caster has on its list is its
+// SpellList: its own class, or, for a third caster's subclass (a table Fighter
+// that casts from the wizard's list), the class the subclass casts from, so a
+// Fighter 5 / Cleric 3 casts a wizard spell with the Fighter's ability and DC,
+// not with the Cleric's.
 func casterFor(d rules.Derived, classes []string) *rules.Spellcasting {
 	for i := range d.Spellcasting {
-		if slices.Contains(classes, d.Spellcasting[i].Class) {
+		list := d.Spellcasting[i].SpellList
+		if list == "" {
+			list = d.Spellcasting[i].Class
+		}
+		if slices.Contains(classes, list) {
 			return &d.Spellcasting[i]
 		}
 	}

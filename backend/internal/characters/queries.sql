@@ -14,6 +14,24 @@ VALUES (
 )
 RETURNING *;
 
+-- name: InsertNpcFromCreature :one
+-- The NPC of "Criar NPC" (MR-042). create_key is the dialog's idempotency key;
+-- a second call with the same key inserts nothing (the unique index
+-- characters_campaign_id_create_key_idx), and the caller reads the first one
+-- with GetCharacterByCreateKey. kind and master_user_id as for any NPC.
+INSERT INTO characters
+    (campaign_id, kind, master_user_id, status, name, sheet, story, create_key, created_at, updated_at)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.arg(master_user_id), 'active', sqlc.arg(name), sqlc.arg(sheet),
+    sqlc.arg(story), sqlc.arg(create_key)::UUID, sqlc.arg(now), sqlc.arg(now)
+)
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;
+
+-- name: GetCharacterByCreateKey :one
+SELECT * FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key)::UUID;
+
 -- name: GetCharacter :one
 SELECT * FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id);

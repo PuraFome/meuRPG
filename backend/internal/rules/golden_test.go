@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
-
-	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/golden from the current engine")
@@ -47,55 +45,31 @@ func TestDerivePensantusGolden(t *testing.T) {
 	}
 }
 
-// pack is a test content pack: the shape table content (homebrew) will
-// take later, reduced to what the Sage needs.
-type pack struct {
-	Comment     string              `json:"_comment"`
-	Backgrounds []srd51.Background  `json:"backgrounds"`
-	NamesPT     map[string]string   `json:"names_pt"`
-	Effects     map[string][]Effect `json:"effects"`
+// sageOverlay is the Sage, which is not in the SRD 5.1, as a table background
+// written in our own words for the tests (ADR-0008, section 6; ADR-0018): two
+// skills, two languages to choose, and a feature shown as a note. It has only the
+// mechanical fields, so no book text appears here.
+func sageOverlay() Overlay {
+	return Overlay{Revision: 1, Backgrounds: []TableBackground{{
+		TableEntry:      TableEntry{Key: "background:sabio@mesa", NamePT: "Sábio"},
+		Skills:          []string{"skill:arcana", "skill:history"},
+		LanguageChoices: 2,
+		Feature: TableFeature{
+			Key: "background-feature:contatos-na-biblioteca@mesa", NamePT: "Contatos na biblioteca",
+			DescPT:  []string{"Texto de teste escrito para o MeuRPG: anos entre livros ensinaram este personagem onde o saber fica guardado."},
+			Effects: []Effect{{Type: "note", TextPT: "Contatos na biblioteca: quando não sabe algo, costuma saber onde ou com quem descobrir."}},
+		},
+	}}}
 }
 
-// withPack loads the SRD content again and adds a test pack to it, checking
-// the pack's effects with the same code as the SRD's.
-func withPack(t *testing.T, file string) *Content {
-	t.Helper()
-	c, err := load(srd51.Files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var p pack
-	if err := readJSON(os.DirFS("testdata/packs"), file, &p); err != nil {
-		t.Fatal(err)
-	}
-	for i := range p.Backgrounds {
-		b := &p.Backgrounds[i]
-		c.backgrounds[b.Key] = b
-		c.namesEN[b.Key] = b.Name
-		c.namesEN[b.Feature.Key] = b.Feature.Name
-	}
-	for k, v := range p.NamesPT {
-		c.namesPT[k] = v
-	}
-	for key, effects := range p.Effects {
-		for i := range effects {
-			if err := c.compileEffect(key, &effects[i]); err != nil {
-				t.Fatal(err)
-			}
-			c.effects[key] = append(c.effects[key], &effects[i])
-		}
-	}
-	return &Content{c: c}
-}
-
-// TestDeriveWithTheSageTestPack derives Pensantus with the Sage from a test
-// pack instead of a custom background (ADR-0008, section 6): the numbers
-// are the same, and the background's feature shows.
-func TestDeriveWithTheSageTestPack(t *testing.T) {
+// TestDeriveWithTheSageOverlay derives Pensantus with the Sage from the table's
+// overlay instead of a custom background: the numbers are the same, and the
+// background's feature shows.
+func TestDeriveWithTheSageOverlay(t *testing.T) {
 	t.Parallel()
-	c := withPack(t, "sage.json")
+	c := withOverlay(t, sageOverlay())
 	b := pensantus()
-	b.Background, b.CustomBackgroundName, b.CustomBackgroundSkills = "background:sage@test", "", nil
+	b.Background, b.CustomBackgroundName, b.CustomBackgroundSkills = "background:sabio@mesa", "", nil
 	if err := Validate(b, c); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
@@ -105,14 +79,17 @@ func TestDeriveWithTheSageTestPack(t *testing.T) {
 			t.Errorf("%s = %+d, want %+d", key, got, want)
 		}
 	}
-	if d.BackgroundNamePT != "Sábio" || !hasFeature(d, "background-feature:library-contacts@test") {
+	if d.BackgroundNamePT != "Sábio" || !hasFeature(d, "background-feature:contatos-na-biblioteca@mesa") {
 		t.Errorf("background %q, features %+v", d.BackgroundNamePT, d.Features)
 	}
-	if h, ok := hintFrom(d, "background-feature:library-contacts@test"); !ok || h.Mode != "note" {
+	if h, ok := hintFrom(d, "background-feature:contatos-na-biblioteca@mesa"); !ok || h.Mode != "note" {
 		t.Errorf("Library Contacts hint = %+v", h)
 	}
 	if len(d.Issues) != 0 {
 		t.Errorf("issues = %v", issueCodes(d))
+	}
+	if want := loadForTest(t).Version() + "+mesa.1"; d.ContentVersion != want {
+		t.Errorf("content version = %q, want %q", d.ContentVersion, want)
 	}
 }
 

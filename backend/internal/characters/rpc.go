@@ -320,10 +320,6 @@ func (s *Service) UpdateCharacter(
 			}
 		}
 	}
-	sheetDoc, err := storeJSON.Marshal(sheet)
-	if err != nil {
-		return nil, s.dbError(ctx, "encode a sheet", err)
-	}
 
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -363,6 +359,12 @@ func (s *Service) UpdateCharacter(
 			if err := portraitCopy.Insert(ctx, tx); err != nil {
 				return err
 			}
+		}
+		// An NPC made from a creature keeps the link to it (MR-042): the
+		// client never sends it, so it is carried over from the saved sheet.
+		sheetDoc, err := storeJSON.Marshal(keepCreatureLink(current, sheet))
+		if err != nil {
+			return wrap("encode a sheet", err)
 		}
 		row, err = q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
 			CampaignID: m.CampaignID, ID: id, Revision: revision, Name: name, Sheet: sheetDoc, Now: s.now(),

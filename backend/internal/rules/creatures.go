@@ -2,6 +2,7 @@ package rules
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -74,6 +75,9 @@ type CreatureEntry struct {
 	XP              int
 	// CanFly and CanSwim say the stat block has a fly or a swim speed.
 	CanFly, CanSwim bool
+	// ArmorClass and HitPoints are the stat block's armor class and average hit
+	// points, the two numbers a list row shows beside the name (MR-042).
+	ArmorClass, HitPoints int
 }
 
 // checkMonsters refuses a stat block that points at something that does not
@@ -167,10 +171,29 @@ func (c *content) buildCreatures() {
 			Type: m.Type, TypeNamePT: creatureTypeNamePT[m.Type], Subtype: m.Subtype,
 			ChallengeRating: m.ChallengeRating, XP: m.XP,
 			CanFly: m.Speed.Fly > 0, CanSwim: m.Speed.Swim > 0,
+			ArmorClass: m.ArmorClass, HitPoints: m.HitPoints,
 		})
 	}
 	sortPT(c.monsterEntries, func(e CreatureEntry) string { return e.NamePT })
 }
+
+// The reasons ListCreatures refuses a filter that cannot be right. They come
+// inside a *CreatureFilterError, which says which field was wrong.
+var (
+	ErrChallengeRating = errors.New("rules: not a challenge rating")
+	ErrChallengeRange  = errors.New("rules: min_cr is above max_cr")
+	ErrCreatureSize    = errors.New("rules: not a creature size")
+)
+
+// CreatureFilterError is a filter ListCreatures refuses: Field is the request's
+// field ("min_cr", "max_cr" or "size") and Err one of the errors above.
+type CreatureFilterError struct {
+	Field string
+	Err   error
+}
+
+func (e *CreatureFilterError) Error() string { return fmt.Sprintf("%v (%s)", e.Err, e.Field) }
+func (e *CreatureFilterError) Unwrap() error { return e.Err }
 
 // CreatureFilter narrows the creatures a list shows. The zero value matches
 // every creature.
@@ -180,22 +203,40 @@ type CreatureFilter struct {
 	Query string
 	// Type is a creature type ("beast"); "" for any.
 	Type string
-	// MaxCR is the highest challenge rating, such as "1/4"; "" for any.
-	MaxCR string
+	// MinCR and MaxCR are the lowest and the highest challenge rating, such as
+	// "1/4"; "" for no limit. MinCR must not be above MaxCR.
+	MinCR, MaxCR string
+	// Size is an SRD size word ("Large"); "" for any size.
+	Size string
 	// NoFly and NoSwim leave out creatures with a fly or a swim speed.
 	NoFly, NoSwim bool
 }
 
 // ListCreatures returns the creatures that match the filter, sorted by
-// Portuguese name. It refuses a MaxCR that is not one of the SRD's ratings.
+// Portuguese name. It refuses a MinCR or a MaxCR that is not one of the SRD's
+// ratings (ErrChallengeRating), a MinCR above the MaxCR (ErrChallengeRange) and
+// a Size that is not one of the SRD's (ErrCreatureSize).
 func (c *Content) ListCreatures(f CreatureFilter) ([]CreatureEntry, error) {
-	limit := -1
+	limit, floor := -1, -1
 	if f.MaxCR != "" {
 		v, ok := crEighths(f.MaxCR)
 		if !ok {
-			return nil, fmt.Errorf("rules: %q is not a challenge rating", f.MaxCR)
+			return nil, &CreatureFilterError{Field: "max_cr", Err: ErrChallengeRating}
 		}
 		limit = v
+	}
+	if f.MinCR != "" {
+		v, ok := crEighths(f.MinCR)
+		if !ok {
+			return nil, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRating}
+		}
+		floor = v
+	}
+	if limit >= 0 && floor > limit {
+		return nil, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRange}
+	}
+	if _, ok := sizeNamePT[f.Size]; f.Size != "" && !ok {
+		return nil, &CreatureFilterError{Field: "size", Err: ErrCreatureSize}
 	}
 	query := foldPT(strings.TrimSpace(f.Query))
 	var out []CreatureEntry
@@ -203,10 +244,11 @@ func (c *Content) ListCreatures(f CreatureFilter) ([]CreatureEntry, error) {
 		if f.Type != "" && e.Type != f.Type {
 			continue
 		}
-		if limit >= 0 {
-			if v, _ := crEighths(e.ChallengeRating); v > limit {
-				continue
-			}
+		if f.Size != "" && e.Size != f.Size {
+			continue
+		}
+		if v, _ := crEighths(e.ChallengeRating); (limit >= 0 && v > limit) || v < floor {
+			continue
 		}
 		if (f.NoFly && e.CanFly) || (f.NoSwim && e.CanSwim) {
 			continue
@@ -223,16 +265,14 @@ func (c *Content) ListCreatures(f CreatureFilter) ([]CreatureEntry, error) {
 type Creature struct {
 	CreatureEntry
 	Alignment string
-	// ArmorClass is the value, ArmorClassNamePT what it comes from
-	// ("Armadura natural") and ArmorClassNote what it wears and its other
+	// ArmorClassNamePT is what the armor class (CreatureEntry.ArmorClass) comes
+	// from ("Armadura natural") and ArmorClassNote what it wears and its other
 	// values, in Portuguese ("armadura de couro, escudo; 15 com Armadura
 	// Arcana"), or "".
-	ArmorClass       int
 	ArmorClassNamePT string
 	ArmorClassNote   string
-	// HitPoints is the average, HitDice the dice ("2d8") and HitPointsRoll the
-	// dice with the bonus ("2d8+2").
-	HitPoints     int
+	// HitDice is the dice ("2d8") and HitPointsRoll the dice with the bonus
+	// ("2d8+2"); the average is CreatureEntry.HitPoints.
 	HitDice       string
 	HitPointsRoll string
 	// Speeds are in feet.
@@ -336,8 +376,8 @@ func (c *content) creature(m *srd51.Monster) Creature {
 	}
 	out := Creature{
 		CreatureEntry: entry, Alignment: m.Alignment,
-		ArmorClass: m.ArmorClass, ArmorClassNamePT: armorClassNamePT[m.ArmorClassType], ArmorClassNote: c.armorClassNote(m),
-		HitPoints: m.HitPoints, HitDice: m.HitDice, HitPointsRoll: m.HitPointsRoll,
+		ArmorClassNamePT: armorClassNamePT[m.ArmorClassType], ArmorClassNote: c.armorClassNote(m),
+		HitDice: m.HitDice, HitPointsRoll: m.HitPointsRoll,
 		SpeedWalkFt: m.Speed.Walk, SpeedFlyFt: m.Speed.Fly, SpeedSwimFt: m.Speed.Swim,
 		SpeedClimbFt: m.Speed.Climb, SpeedBurrowFt: m.Speed.Burrow, Hover: m.Speed.Hover,
 		PassivePerception: m.PassivePerception, Languages: m.Languages, ProficiencyBonus: m.ProficiencyBonus,
