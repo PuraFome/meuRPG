@@ -50,6 +50,7 @@ type Map struct {
 	LightRevision  int32
 	VisionEpoch    int32
 	FogOnFirstGrid bool
+	GridFactor     int32
 }
 
 type MapCreatureToken struct {

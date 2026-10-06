@@ -229,7 +229,7 @@ func (s *Service) CreateDungeonMap(
 		// "Claro" (MR-010, decided 06/10/2026): a secret room stays dark to a player
 		// until someone sees it, whatever the image shows.
 		cols := int32(d.Width) //nolint:gosec // G115: at most 199
-		if _, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{CampaignID: m.CampaignID, ID: created.ID, GridColumns: &cols, Now: s.now()}); err != nil {
+		if _, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{CampaignID: m.CampaignID, ID: created.ID, GridColumns: &cols, GridFactor: 1, Now: s.now()}); err != nil {
 			return fmt.Errorf("set the grid: %w", err)
 		}
 		fog, light := true, baseLightToDB[mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT]
@@ -404,10 +404,12 @@ func (s *Service) RedrawDungeonMap(
 		return nil, s.dbError(ctx, "read the map's image", err)
 	}
 	// The grid is read the way the map reads it (gridOf), and must still be the dungeon's,
-	// on an image of the size drawn for it.
-	g := gridOf(row.GridColumns, old.Width, old.Height)
+	// on an image of the size drawn for it. A dungeon is drawn one square of the image per
+	// square of the rules (calibration factor 1, RN-25): a map calibrated since is no
+	// longer drawn the dungeon's way.
+	g := gridOf(row.GridColumns, row.GridFactor, old.Width, old.Height)
 	wantW, wantH := dungeonimg.Size(int(rec.Width), int(rec.Height))
-	if g.Columns != int(rec.Width) || g.Rows != int(rec.Height) || int(old.Width) != wantW || int(old.Height) != wantH {
+	if row.GridFactor != 1 || g.Columns != int(rec.Width) || g.Rows != int(rec.Height) || int(old.Width) != wantW || int(old.Height) != wantH {
 		return nil, errImageChanged()
 	}
 	stored, err := s.queries.GetMapLayers(ctx, mapID)
