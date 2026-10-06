@@ -5016,6 +5016,10 @@ type Race struct {
 	// The bonuses the player places on abilities of their choice, such as [2, 1]
 	// for "+2 and +1 to your choice"; empty for the SRD's races.
 	ChoiceBonuses []int32 `protobuf:"varint,7,rep,packed,name=choice_bonuses,json=choiceBonuses,proto3" json:"choice_bonuses,omitempty"`
+	// The master switched it off for the players ("Opções para os jogadores", RN-23):
+	// a master sees it with this mark, a player never receives it. Every `off`
+	// below is the same. A sheet that already has it keeps it.
+	Off           bool `protobuf:"varint,8,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5099,6 +5103,13 @@ func (x *Race) GetChoiceBonuses() []int32 {
 	return nil
 }
 
+func (x *Race) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
+}
+
 // Subrace is a subrace of one race.
 type Subrace struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -5111,7 +5122,10 @@ type Subrace struct {
 	// The subrace's ability score increases, added to the race's.
 	AbilityBonuses *AbilityScores `protobuf:"bytes,5,opt,name=ability_bonuses,json=abilityBonuses,proto3" json:"ability_bonuses,omitempty"`
 	// The table retired it (see Race.archived).
-	Archived      bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
+	Archived bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
+	// Switched off for the players (see Race.off). Its own switch: a subrace of an
+	// off race is hidden from the players too, and keeps this mark false.
+	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5188,6 +5202,13 @@ func (x *Subrace) GetArchived() bool {
 	return false
 }
 
+func (x *Subrace) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
+}
+
 // CharacterClass is a class from the rules content.
 type CharacterClass struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -5207,7 +5228,9 @@ type CharacterClass struct {
 	// How the class casts spells. Unset for a class that never casts.
 	Spellcasting *ClassSpellcasting `protobuf:"bytes,8,opt,name=spellcasting,proto3" json:"spellcasting,omitempty"`
 	// The table retired it (see Race.archived).
-	Archived      bool `protobuf:"varint,9,opt,name=archived,proto3" json:"archived,omitempty"`
+	Archived bool `protobuf:"varint,9,opt,name=archived,proto3" json:"archived,omitempty"`
+	// Switched off for the players (see Race.off): its subclasses are hidden too.
+	Off           bool `protobuf:"varint,10,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5301,6 +5324,13 @@ func (x *CharacterClass) GetSpellcasting() *ClassSpellcasting {
 func (x *CharacterClass) GetArchived() bool {
 	if x != nil {
 		return x.Archived
+	}
+	return false
+}
+
+func (x *CharacterClass) GetOff() bool {
+	if x != nil {
+		return x.Off
 	}
 	return false
 }
@@ -5460,7 +5490,9 @@ type Subclass struct {
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,5,opt,name=archived,proto3" json:"archived,omitempty"`
 	// Set for a subclass that casts on its own (a third caster, the table's only).
-	Spellcasting  *SubclassSpellcasting `protobuf:"bytes,6,opt,name=spellcasting,proto3" json:"spellcasting,omitempty"`
+	Spellcasting *SubclassSpellcasting `protobuf:"bytes,6,opt,name=spellcasting,proto3" json:"spellcasting,omitempty"`
+	// Switched off for the players (see Subrace.off): its own switch.
+	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5535,6 +5567,13 @@ func (x *Subclass) GetSpellcasting() *SubclassSpellcasting {
 		return x.Spellcasting
 	}
 	return nil
+}
+
+func (x *Subclass) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
 }
 
 // SubclassSpellcasting is how a third caster's subclass casts.
@@ -5630,7 +5669,9 @@ type Background struct {
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,5,opt,name=archived,proto3" json:"archived,omitempty"`
 	// A table background's equipment text; empty for the SRD's.
-	EquipmentPt   string `protobuf:"bytes,6,opt,name=equipment_pt,json=equipmentPt,proto3" json:"equipment_pt,omitempty"`
+	EquipmentPt string `protobuf:"bytes,6,opt,name=equipment_pt,json=equipmentPt,proto3" json:"equipment_pt,omitempty"`
+	// Switched off for the players (see Race.off).
+	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5705,6 +5746,13 @@ func (x *Background) GetEquipmentPt() string {
 		return x.EquipmentPt
 	}
 	return ""
+}
+
+func (x *Background) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
 }
 
 // Skill is one of the 18 skills.
@@ -5947,7 +5995,9 @@ type Spell struct {
 	// Whether it needs concentration.
 	Concentration bool `protobuf:"varint,9,opt,name=concentration,proto3" json:"concentration,omitempty"`
 	// The table retired it (see Race.archived).
-	Archived      bool `protobuf:"varint,10,opt,name=archived,proto3" json:"archived,omitempty"`
+	Archived bool `protobuf:"varint,10,opt,name=archived,proto3" json:"archived,omitempty"`
+	// Switched off for the players (see Race.off).
+	Off           bool `protobuf:"varint,11,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6052,6 +6102,13 @@ func (x *Spell) GetArchived() bool {
 	return false
 }
 
+func (x *Spell) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
+}
+
 // ListContentRequest names a campaign.
 type ListContentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -6100,7 +6157,9 @@ func (x *ListContentRequest) GetCampaignId() string {
 // ListContentResponse returns the campaign's rules content.
 type ListContentResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The catalog. For a player, without the archived entries.
+	// The catalog. For a player, without the archived entries and without what the
+	// master switched off (and without the subclasses of an off class and the
+	// subraces of an off race).
 	Content *Content `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
 	// The campaign's content revision (0 while the table has no content of its
 	// own). It is in `content.content_version` too, after "+mesa.". The table's
@@ -9760,7 +9819,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12'\n" +
-	"\x0fabbreviation_pt\x18\x04 \x01(\tR\x0eabbreviationPt\"\xec\x01\n" +
+	"\x0fabbreviation_pt\x18\x04 \x01(\tR\x0eabbreviationPt\"\xfe\x01\n" +
 	"\x04Race\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9768,14 +9827,16 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\bspeed_ft\x18\x04 \x01(\x05R\aspeedFt\x12G\n" +
 	"\x0fability_bonuses\x18\x05 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x0eabilityBonuses\x12\x1a\n" +
 	"\barchived\x18\x06 \x01(\bR\barchived\x12%\n" +
-	"\x0echoice_bonuses\x18\a \x03(\x05R\rchoiceBonuses\"\xc8\x01\n" +
+	"\x0echoice_bonuses\x18\a \x03(\x05R\rchoiceBonuses\x12\x10\n" +
+	"\x03off\x18\b \x01(\bR\x03off\"\xda\x01\n" +
 	"\aSubrace\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12\x19\n" +
 	"\brace_key\x18\x04 \x01(\tR\araceKey\x12G\n" +
 	"\x0fability_bonuses\x18\x05 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x0eabilityBonuses\x12\x1a\n" +
-	"\barchived\x18\x06 \x01(\bR\barchived\"\xf3\x02\n" +
+	"\barchived\x18\x06 \x01(\bR\barchived\x12\x10\n" +
+	"\x03off\x18\a \x01(\bR\x03off\"\x85\x03\n" +
 	"\x0eCharacterClass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9785,7 +9846,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fskill_choice\x18\x06 \x01(\v2\x1c.meurpg.rules.v1.SkillChoiceR\vskillChoice\x12%\n" +
 	"\x0esubclass_level\x18\a \x01(\x05R\rsubclassLevel\x12F\n" +
 	"\fspellcasting\x18\b \x01(\v2\".meurpg.rules.v1.ClassSpellcastingR\fspellcasting\x12\x1a\n" +
-	"\barchived\x18\t \x01(\bR\barchived\"B\n" +
+	"\barchived\x18\t \x01(\bR\barchived\x12\x10\n" +
+	"\x03off\x18\n" +
+	" \x01(\bR\x03off\"B\n" +
 	"\vSkillChoice\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12\x1d\n" +
 	"\n" +
@@ -9796,21 +9859,22 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"firstLevel\x12C\n" +
 	"\vpreparation\x18\x03 \x01(\x0e2!.meurpg.rules.v1.SpellPreparationR\vpreparation\x126\n" +
 	"\x18max_spell_level_by_level\x18\x04 \x03(\x05R\x14maxSpellLevelByLevel\x12$\n" +
-	"\x0elist_class_key\x18\x05 \x01(\tR\flistClassKey\"\xcd\x01\n" +
+	"\x0elist_class_key\x18\x05 \x01(\tR\flistClassKey\"\xdf\x01\n" +
 	"\bSubclass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12\x1b\n" +
 	"\tclass_key\x18\x04 \x01(\tR\bclassKey\x12\x1a\n" +
 	"\barchived\x18\x05 \x01(\bR\barchived\x12I\n" +
-	"\fspellcasting\x18\x06 \x01(\v2%.meurpg.rules.v1.SubclassSpellcastingR\fspellcasting\"\x8e\x02\n" +
+	"\fspellcasting\x18\x06 \x01(\v2%.meurpg.rules.v1.SubclassSpellcastingR\fspellcasting\x12\x10\n" +
+	"\x03off\x18\a \x01(\bR\x03off\"\x8e\x02\n" +
 	"\x14SubclassSpellcasting\x122\n" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12C\n" +
 	"\vpreparation\x18\x02 \x01(\x0e2!.meurpg.rules.v1.SpellPreparationR\vpreparation\x12$\n" +
 	"\x0elist_class_key\x18\x03 \x01(\tR\flistClassKey\x12\x1f\n" +
 	"\vfirst_level\x18\x04 \x01(\x05R\n" +
 	"firstLevel\x126\n" +
-	"\x18max_spell_level_by_level\x18\x05 \x03(\x05R\x14maxSpellLevelByLevel\"\xa9\x01\n" +
+	"\x18max_spell_level_by_level\x18\x05 \x03(\x05R\x14maxSpellLevelByLevel\"\xbb\x01\n" +
 	"\n" +
 	"Background\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
@@ -9819,7 +9883,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"skill_keys\x18\x04 \x03(\tR\tskillKeys\x12\x1a\n" +
 	"\barchived\x18\x05 \x01(\bR\barchived\x12!\n" +
-	"\fequipment_pt\x18\x06 \x01(\tR\vequipmentPt\"z\n" +
+	"\fequipment_pt\x18\x06 \x01(\tR\vequipmentPt\x12\x10\n" +
+	"\x03off\x18\a \x01(\bR\x03off\"z\n" +
 	"\x05Skill\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9835,7 +9900,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12;\n" +
 	"\bcategory\x18\x04 \x01(\x0e2\x1f.meurpg.rules.v1.WeaponCategoryR\bcategory\x12\x16\n" +
-	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\x9a\x02\n" +
+	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xac\x02\n" +
 	"\x05Spell\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9849,7 +9914,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x06ritual\x18\b \x01(\bR\x06ritual\x12$\n" +
 	"\rconcentration\x18\t \x01(\bR\rconcentration\x12\x1a\n" +
 	"\barchived\x18\n" +
-	" \x01(\bR\barchived\"5\n" +
+	" \x01(\bR\barchived\x12\x10\n" +
+	"\x03off\x18\v \x01(\bR\x03off\"5\n" +
 	"\x12ListContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"p\n" +

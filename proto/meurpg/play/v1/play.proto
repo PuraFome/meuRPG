@@ -203,6 +203,10 @@ service PlayService {
   //     or went away; a hint, and the app reads the log again
   //     (CombatService.ListCombatLog). The master gets every one; a player
   //     only those that touch a line they may see;
+  //   - `content_changed` when the table's content changed (an entry written,
+  //     archived or brought back, or an option switched on or off); a hint with
+  //     no content, sent to everyone, and each app reads the content again with
+  //     its own role (ContentService.ListContent);
   //   - `puzzle_changed` when a puzzle of the session was shown, hidden, reset, got a
   //     hint or was played; a hint with no content, sent to everyone, and the app
   //     reads the puzzle again (PuzzleService.GetPuzzleRun);
@@ -1132,7 +1136,20 @@ message WatchGameSessionResponse {
     // no content: the solution, the minimum and the hints never travel on the stream.
     // Everyone gets it, and one that waits in a stream's queue is not queued twice.
     PuzzleChanged puzzle_changed = 22;
+    // The table's content changed (the master wrote an entry, archived or brought
+    // one back, or switched options on or off in "Opções para os jogadores"): read
+    // the content again, each as your own role (ContentService.ListContent, and
+    // TableContentService.ListTableEntries where the screen has the entries in full)
+    // and, on an open sheet, the character again ("A classe mudou"). A hint with no
+    // content (RN-10): the entry, the key and what changed never travel on the
+    // stream. Everyone in the session gets it, and one that waits in a stream's
+    // queue is not queued twice; at most one goes out per campaign every 250 ms, and
+    // the last change is never left unannounced.
+    ContentChanged content_changed = 23;
   }
+
+  // ContentChanged is the content-free hint that the table's content changed.
+  message ContentChanged {}
 
   // PuzzleChanged is the content-free hint that a puzzle of the session changed.
   message PuzzleChanged {

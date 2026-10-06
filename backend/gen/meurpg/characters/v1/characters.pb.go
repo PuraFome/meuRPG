@@ -281,6 +281,15 @@ const (
 	// campaign (ADR-0018, section 10; the copy of MR-021 and the reuse of NPCs in
 	// MR-022): `content_key` is one of the keys.
 	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS CharacterBlockedReason = 14
+	// CreateCharacter or UpdateCharacter by a player picks an option the master
+	// switched off in "Opções para os jogadores" (RN-23), or the subclass of an off
+	// class or the subrace of an off race when the sheet lacks that class or race:
+	// `content_key` says which. A sheet that already has it keeps it, and one that
+	// has an off class or race may still pick its subclass or subrace (the child's
+	// own switch decides); only a new choice is refused. The master is not refused:
+	// the switch hides an option from the players, not from any sheet the master
+	// edits (an NPC, or a player's sheet, which then keeps the option).
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT CharacterBlockedReason = 15
 )
 
 // Enum value maps for CharacterBlockedReason.
@@ -301,6 +310,7 @@ var (
 		12: "CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY",
 		13: "CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT",
 		14: "CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS",
+		15: "CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT",
 	}
 	CharacterBlockedReason_value = map[string]int32{
 		"CHARACTER_BLOCKED_REASON_UNSPECIFIED":             0,
@@ -318,6 +328,7 @@ var (
 		"CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY": 12,
 		"CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT":        13,
 		"CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS":     14,
+		"CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT":    15,
 	}
 )
 
@@ -1015,6 +1026,11 @@ const (
 	// A choice of the level is a table entry the master archived (a subclass, a
 	// spell...): it is not a new choice any more (RN-23). `field` is the sheet field.
 	LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE LevelUpRefusalReason = 20
+	// A choice of the level, made by a player, is an option the master switched off
+	// (RN-23: a subclass, a spell, the class of a multiclass...). `field` is the
+	// sheet field. The master is not refused. PreviewLevelUp answers this and
+	// ARCHIVED_CHOICE with no `after`.
+	LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE LevelUpRefusalReason = 21
 )
 
 // Enum value maps for LevelUpRefusalReason.
@@ -1041,6 +1057,7 @@ var (
 		18: "LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER",
 		19: "LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE",
 		20: "LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE",
+		21: "LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE",
 	}
 	LevelUpRefusalReason_value = map[string]int32{
 		"LEVEL_UP_REFUSAL_REASON_UNSPECIFIED":                0,
@@ -1064,6 +1081,7 @@ var (
 		"LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER":         18,
 		"LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE":            19,
 		"LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE":            20,
+		"LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE":        21,
 	}
 )
 
@@ -1565,7 +1583,7 @@ type CharacterBlocked struct {
 	// LIVING_CHARACTER_EXISTS, the player's living character, so the app can
 	// link to it.
 	CharacterId string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
-	// For ARCHIVED_CONTENT and TABLE_CONTENT_STAYS, the table's content key that
+	// For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
 	// blocks the call; empty otherwise.
 	ContentKey    string `protobuf:"bytes,3,opt,name=content_key,json=contentKey,proto3" json:"content_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -5475,6 +5493,11 @@ type LevelUpSubclass struct {
 	// subclass; the server leaves it out for players, unless their own sheet has it.
 	// Choosing one is refused with ARCHIVED_CHOICE.
 	Archived bool `protobuf:"varint,7,opt,name=archived,proto3" json:"archived,omitempty"`
+	// The master switched this subclass off for the players (RN-23): its own switch;
+	// an off class does not mark its subclasses here, because the offer is for a
+	// character that already has the class. The server leaves it out for players,
+	// unless their own sheet has it, and refuses it with SWITCHED_OFF_CHOICE.
+	Off bool `protobuf:"varint,14,opt,name=off,proto3" json:"off,omitempty"`
 	// What a third caster's subclass (the table's only) adds: how many spells it
 	// knows from this level (the first row of its table, or the rise over the level
 	// before when the subclass is picked later), where they go, the class whose list
@@ -5571,6 +5594,13 @@ func (x *LevelUpSubclass) GetExpertiseChoices() int32 {
 func (x *LevelUpSubclass) GetArchived() bool {
 	if x != nil {
 		return x.Archived
+	}
+	return false
+}
+
+func (x *LevelUpSubclass) GetOff() bool {
+	if x != nil {
+		return x.Off
 	}
 	return false
 }
@@ -6008,6 +6038,8 @@ func (x *PreviewLevelUpRequest) GetChoices() *LevelUpChoices {
 // PreviewLevelUpResponse is the sheet the choices would make.
 type PreviewLevelUpResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unset when the refusal is ARCHIVED_CHOICE or SWITCHED_OFF_CHOICE: a retired or
+	// switched off option is never built into a sheet a player reads.
 	// The derived numbers after the level up, as far as the choices go. The
 	// app compares it with Character.derived: level, abilities, hit points, hit
 	// dice, spell save DC and attack bonus, saves, skills, passive scores,
@@ -8397,7 +8429,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\vmaster_adds\x18! \x03(\v2%.meurpg.characters.v1.LevelUpNamedKeyR\n" +
 	"masterAdds\x12?\n" +
 	"\x1dkept_hit_point_roll_class_key\x18\" \x01(\tR\x18keptHitPointRollClassKey\x12R\n" +
-	"\x0fhit_points_rule\x18# \x01(\x0e2*.meurpg.characters.v1.LevelUpHitPointsRuleR\rhitPointsRule\"\xa0\x04\n" +
+	"\x0fhit_points_rule\x18# \x01(\x0e2*.meurpg.characters.v1.LevelUpHitPointsRuleR\rhitPointsRule\"\xb2\x04\n" +
 	"\x0fLevelUpSubclass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12S\n" +
@@ -8405,7 +8437,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\bcantrips\x18\x04 \x01(\x05R\bcantrips\x12#\n" +
 	"\rskill_choices\x18\x05 \x01(\x05R\fskillChoices\x12+\n" +
 	"\x11expertise_choices\x18\x06 \x01(\x05R\x10expertiseChoices\x12\x1a\n" +
-	"\barchived\x18\a \x01(\bR\barchived\x12\x16\n" +
+	"\barchived\x18\a \x01(\bR\barchived\x12\x10\n" +
+	"\x03off\x18\x0e \x01(\bR\x03off\x12\x16\n" +
 	"\x06spells\x18\b \x01(\x05R\x06spells\x12H\n" +
 	"\vspells_kind\x18\t \x01(\x0e2'.meurpg.characters.v1.LevelUpSpellsKindR\n" +
 	"spellsKind\x12/\n" +
@@ -8623,7 +8656,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\rLevelUpReason\x12\x1f\n" +
 	"\x1bLEVEL_UP_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12LEVEL_UP_REASON_XP\x10\x01\x12\x1d\n" +
-	"\x19LEVEL_UP_REASON_MILESTONE\x10\x02*\xdc\x05\n" +
+	"\x19LEVEL_UP_REASON_MILESTONE\x10\x02*\x8f\x06\n" +
 	"\x16CharacterBlockedReason\x12(\n" +
 	"$CHARACTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%CHARACTER_BLOCKED_REASON_SHEET_LOCKED\x10\x01\x12+\n" +
@@ -8640,7 +8673,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"'CHARACTER_BLOCKED_REASON_CREATURE_LIMIT\x10\v\x124\n" +
 	"0CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY\x10\f\x12-\n" +
 	")CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT\x10\r\x120\n" +
-	",CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS\x10\x0e*q\n" +
+	",CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS\x10\x0e\x121\n" +
+	"-CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT\x10\x0f*q\n" +
 	"\x0fHitPointsMethod\x12!\n" +
 	"\x1dHIT_POINTS_METHOD_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19HIT_POINTS_METHOD_AVERAGE\x10\x01\x12\x1c\n" +
@@ -8710,7 +8744,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"&LEVEL_UP_HIT_POINTS_METHOD_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"LEVEL_UP_HIT_POINTS_METHOD_AVERAGE\x10\x01\x12,\n" +
 	"(LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP\x10\x02\x12.\n" +
-	"*LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL\x10\x03*\x8d\a\n" +
+	"*LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL\x10\x03*\xbe\a\n" +
 	"\x14LevelUpRefusalReason\x12'\n" +
 	"#LEVEL_UP_REFUSAL_REASON_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dLEVEL_UP_REFUSAL_REASON_CLASS\x10\x01\x12%\n" +
@@ -8733,7 +8767,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"2LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_OTHER_CLASS\x10\x11\x12.\n" +
 	"*LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER\x10\x12\x12+\n" +
 	"'LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE\x10\x13\x12+\n" +
-	"'LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE\x10\x14*\xb2\x01\n" +
+	"'LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE\x10\x14\x12/\n" +
+	"+LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE\x10\x15*\xb2\x01\n" +
 	"\x0eCreatureSource\x12\x1f\n" +
 	"\x1bCREATURE_SOURCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18CREATURE_SOURCE_FAMILIAR\x10\x01\x12 \n" +

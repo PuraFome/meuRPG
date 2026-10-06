@@ -282,6 +282,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"ListOptionSwitches", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ListOptionSwitches(ctx, connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"SetOptionSwitches", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.SetOptionSwitches(ctx, connect.NewRequest(switchReq(campaign, false, "class:wizard")))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		{"GetClassTableDefaults", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.table.GetClassTableDefaults(ctx, connect.NewRequest(&rulesv1.GetClassTableDefaultsRequest{CampaignId: campaign}))
 			return err
