@@ -3,7 +3,7 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
-import type { PuzzleMoveSchema, PuzzleRun, TryPuzzleHintResponse } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import { PuzzleBlockedReason, type PuzzleMoveSchema, type PuzzleRun, type TryPuzzleHintResponse } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { newKey } from '../connect/idempotency';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
@@ -73,6 +73,8 @@ export class PuzzlePlay {
   readonly hintBusy = signal(false);
   /** The last try for a hint, until the next one or the next change of the puzzle. */
   readonly hintTry = signal<HintTry | null>(null);
+  /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
+  readonly diceModeStale = signal(0);
 
   constructor(
     private readonly api: PlayApi,
@@ -85,16 +87,28 @@ export class PuzzlePlay {
   ) {}
 
   private cancelReveal: (() => void) | null = null;
+  /** The page left: a read that is still on its way never starts a timer after it. */
+  private disposed = false;
+  /** Bell taps wait for the one before: the server may commit two moves in flight in either order, and a retry swaps them for sure. */
+  private bellQueue: Promise<unknown> = Promise.resolve();
+  /** Counts the wrong bells: taps made before the player knew a bell was wrong are dropped, not judged again. */
+  private bellEpoch = 0;
 
   /** Stops the timer that reads the sequence again (the page is leaving). */
   dispose(): void {
+    this.disposed = true;
+    this.stopReveal();
+  }
+
+  private stopReveal(): void {
     this.cancelReveal?.();
     this.cancelReveal = null;
   }
 
   /** Opens a puzzle: the first read. */
   async open(puzzleId: string): Promise<void> {
-    this.dispose();
+    this.disposed = false;
+    this.stopReveal();
     this.run.set(null);
     this.gone.set(false);
     this.message.set('');
@@ -133,6 +147,11 @@ export class PuzzlePlay {
     if (current && current.puzzleId === next.puzzleId && next.revision <= current.revision && !movedOn(current, next)) {
       return false;
     }
+    // What a player tried for a hint is about the hint they were at: once it moves on (the master released one, the player may try again),
+    // or the puzzle is over, the line goes.
+    if (current && (next.hints.length !== current.hints.length || (next.canTryHint && !current.canTryHint) || next.solved || next.stopped)) {
+      this.hintTry.set(null);
+    }
     this.run.set(next);
     this.watchReveal(next);
     return true;
@@ -140,10 +159,9 @@ export class PuzzlePlay {
 
   /** While a play runs, read again when the server says the next step is shown (the stream's hint says it too; this is the safety net). */
   private watchReveal(run: PuzzleRun): void {
-    this.cancelReveal?.();
-    this.cancelReveal = null;
+    this.stopReveal();
     const playback = run.sequence;
-    if (playback?.playing && playback.nextInMs > 0) {
+    if (!this.disposed && playback?.playing && playback.nextInMs > 0) {
       this.cancelReveal = this.schedule(playback.nextInMs + REVEAL_SLACK_MS, () => void this.refresh());
     }
   }
@@ -151,14 +169,43 @@ export class PuzzlePlay {
   /**
    * Makes one move. Never rejects: a failure becomes `message`. The verdict says whether a typed answer or a bell was judged wrong:
    * the server's answer has the run, and a wrong move of the player's own character is its `last_move` (never the answer itself).
+   *
+   * Bell taps go one at a time, in the order they were made, each after the answer to the one before; `pending` counts the taps still
+   * waiting too, so the screen can say so. A wrong bell drops the taps queued behind it (they were made for a sequence that started over).
    */
-  async move(move: MessageInitShape<typeof PuzzleMoveSchema>): Promise<MoveVerdict> {
+  move(move: MessageInitShape<typeof PuzzleMoveSchema>): Promise<MoveVerdict> {
+    if (move.kind?.case !== 'sequence') {
+      return this.send(move);
+    }
+    const epoch = this.bellEpoch;
+    this.pending.update((n) => n + 1);
+    const turn = this.bellQueue.then(async () => {
+      if (epoch !== this.bellEpoch) {
+        this.pending.update((n) => n - 1);
+        return { sent: false, wrong: false, solved: false } satisfies MoveVerdict;
+      }
+      const verdict = await this.send(move, true);
+      if (verdict.wrong) {
+        this.bellEpoch++;
+      }
+      return verdict;
+    });
+    this.bellQueue = turn;
+    return turn;
+  }
+
+  private async send(move: MessageInitShape<typeof PuzzleMoveSchema>, counted = false): Promise<MoveVerdict> {
     const run = this.run();
     if (!run || run.solved || run.stopped) {
+      if (counted) {
+        this.pending.update((n) => n - 1);
+      }
       return { sent: false, wrong: false, solved: false };
     }
     const key = this.makeKey();
-    this.pending.update((n) => n + 1);
+    if (!counted) {
+      this.pending.update((n) => n + 1);
+    }
     this.message.set('');
     try {
       const before = run.lastMove?.at ? timestampDate(run.lastMove.at).getTime() : 0;
@@ -201,6 +248,10 @@ export class PuzzlePlay {
       this.hintTry.set({ passed: answer.passed, roll: answer.roll });
     } catch (err) {
       this.message.set(puzzleErrorMessage(err, 'tentar a dica', 'player'));
+      if (puzzleBlocked(err)?.reason === PuzzleBlockedReason.WRONG_DICE_MODE) {
+        // The table's dice mode changed under the page: read it again, so the way to roll on screen is the one the server wants.
+        this.diceModeStale.update((n) => n + 1);
+      }
       if (puzzleBlocked(err) || ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {
         await this.refresh();
       }
@@ -261,5 +312,9 @@ function movedOn(current: PuzzleRun, next: PuzzleRun): boolean {
   if (b.plays !== a.plays) {
     return b.plays > a.plays;
   }
-  return b.shown.length > a.shown.length || (a.playing && !b.playing);
+  // The same play: it only goes forward, and once it ended (not playing, nothing shown) a late read from the middle of it never brings it back.
+  if (!a.playing) {
+    return false;
+  }
+  return !b.playing || b.shown.length > a.shown.length;
 }

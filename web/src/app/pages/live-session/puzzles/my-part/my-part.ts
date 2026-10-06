@@ -39,6 +39,14 @@ import { MatIconModule } from '@angular/material/icon';
       display: contents;
     }
 
+    // A narrow phone puts the board first: the player's part comes after the count and the clue.
+    @media (max-width: 374.98px) {
+      .mine,
+      .others {
+        order: 5;
+      }
+    }
+
     .mine__title {
       margin: 0 0 var(--mr-space-2);
       font-size: 16px;

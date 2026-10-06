@@ -169,7 +169,7 @@
 .answers {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px var(--mr-space-3);
+  gap: 4px 0.4em;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -177,7 +177,8 @@
   line-height: 24px;
 
   li:not(:last-child)::after {
-    content: ' ·';
+    content: '·';
+    margin-inline-start: 0.4em;
     color: var(--mr-ink-muted);
   }
 }

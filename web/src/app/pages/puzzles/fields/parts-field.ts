@@ -58,7 +58,7 @@ interface Who {
             <p class="pf__note">Parte de um personagem que não está mais na mesa: ninguém a lê. Dê-a a outro.</p>
           }
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="part__field" [class.field-bad]="err?.text">
-            <mat-label>O que ele lê (parte {{ n }})</mat-label>
+            <mat-label>O que o jogador lê (parte {{ n }})</mat-label>
             <textarea #text matInput rows="2" [value]="part.text" [attr.aria-invalid]="err?.text ? 'true' : null" (input)="edit(at, { text: $any($event.target).value })"></textarea>
             @if (err?.text) {
               <mat-hint class="field-error" role="alert">{{ err?.text }}</mat-hint>
@@ -73,6 +73,9 @@ interface Who {
       </button>
       @if (parts().length >= limit) {
         <p class="pf__help">Máximo de {{ limit }} partes.</p>
+      }
+      @if (error()) {
+        <p class="pf__bad field-error" role="alert">{{ error() }}</p>
       }
       @if (hasNoOwner()) {
         <p class="pf__note">Uma parte “Sem dono” ninguém lê. Dê-a a um personagem antes de mostrar o quebra-cabeça.</p>
@@ -91,6 +94,8 @@ export class PartsField implements OnInit {
   readonly parts = input.required<readonly PartDraft[]>();
   /** What is wrong with each part, by index (the form's, then the server's). */
   readonly errors = input<Readonly<Record<number, { owner?: string; text?: string }>>>({});
+  /** A refusal about the parts as a whole (too many), under the list. */
+  readonly error = input('');
   readonly partsChange = output<PartDraft[]>();
 
   protected readonly characters = signal<readonly Who[]>([]);

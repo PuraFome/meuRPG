@@ -102,7 +102,7 @@
         }
         @if (kind() === Kind.LIGHTS) {
           <p class="facts__line"><strong>{{ lit() }}</strong> {{ lit() === 1 ? 'acesa' : 'acesas' }} · <strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
-        } @else {
+        } @else if (!movesCounted()) {
           <p class="facts__line"><strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
         }
         @if (!frozen() && minimum(); as m) {

@@ -3,22 +3,29 @@
  * every one of these again and its refusal wins. These copies only tell the master what is wrong before the call, in the field.
  */
 
-const ACCENTS: Readonly<Record<string, string>> = { ß: 'ss', æ: 'ae', œ: 'oe', ø: 'o', ı: 'i' };
+/**
+ * The accents the server's `Fold` takes off, and no others (rules/puzzle/answers.go, `accentFolder`): the same list, so the form never says "igual a
+ * outra" about two answers the server keeps apart, nor the other way round.
+ */
+const ACCENTS: Readonly<Record<string, string>> = {
+  á: 'a', à: 'a', â: 'a', ã: 'a', ä: 'a', å: 'a', ā: 'a',
+  é: 'e', è: 'e', ê: 'e', ë: 'e', ē: 'e',
+  í: 'i', ì: 'i', î: 'i', ï: 'i', ī: 'i',
+  ó: 'o', ò: 'o', ô: 'o', õ: 'o', ö: 'o', ø: 'o', ō: 'o',
+  ú: 'u', ù: 'u', û: 'u', ü: 'u', ū: 'u',
+  ç: 'c', ñ: 'n', ý: 'y', ÿ: 'y', ß: 'ss', æ: 'ae', œ: 'oe',
+};
 
 /**
  * The form two texts are compared in: lower case, no accents, only letters and digits, each run of anything else counting as
  * one space ("  A Sombra! " and "a sombra" are the same). The same rule as the server's `Fold`.
  */
 export function fold(text: string): string {
-  const plain = text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[ßæœøı]/g, (c) => ACCENTS[c] ?? c);
   let out = '';
   let space = true;
-  for (const ch of plain) {
-    if (/[\p{L}\p{N}]/u.test(ch)) {
+  for (const raw of text.toLowerCase()) {
+    const ch = ACCENTS[raw] ?? raw;
+    if (/^[\p{L}\p{N}]+$/u.test(ch)) {
       out += ch;
       space = false;
     } else if (!space) {

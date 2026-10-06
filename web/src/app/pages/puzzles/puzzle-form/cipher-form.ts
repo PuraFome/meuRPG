@@ -61,6 +61,9 @@ type Preview = { readonly status: 'idle' | 'loading' | 'ready' | 'error'; readon
       @if (draft().cipherMethod === 'shift') {
         <app-stepper label="Letras adiante" noun="letra" [value]="draft().shift" [min]="shiftMin" [max]="shiftMax" (valueChange)="patch.emit({ shift: $event })" />
         <p class="part__help">Cada letra anda {{ draft().shift }} {{ draft().shift === 1 ? 'casa' : 'casas' }} para a frente no alfabeto, e as do fim voltam ao começo.</p>
+        @if (keyError()) {
+          <p class="part__bad field-error" role="alert">{{ keyError() }}</p>
+        }
       } @else {
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" [class.field-bad]="keyError()">
           <mat-label>Palavra-chave</mat-label>
@@ -76,19 +79,16 @@ type Preview = { readonly status: 'idle' | 'loading' | 'ready' | 'error'; readon
 
     <section class="part" aria-labelledby="seen-title">
       <h3 class="part__title" id="seen-title">Como os jogadores a veem</h3>
-      @switch (preview().status) {
-        @case ('ready') {
-          <p class="cipher" lang="pt">{{ preview().text }}</p>
-        }
-        @case ('loading') {
-          <p class="part__help" role="status">Cifrando a mensagem...</p>
-        }
-        @case ('error') {
-          <p class="part__bad field-error" role="alert">{{ preview().message }}</p>
-        }
-        @default {
-          <p class="part__help">Escreva a mensagem e a chave: a carta aparece aqui, como os jogadores vão lê-la.</p>
-        }
+      <!-- The last result stays on screen while the next one is asked for (no flicker, and nothing announced at each keystroke). -->
+      @if (preview().text) {
+        <p class="cipher" lang="pt" [attr.aria-busy]="preview().status === 'loading' ? 'true' : null">{{ preview().text }}</p>
+      } @else if (preview().status === 'loading') {
+        <p class="part__help">Cifrando a mensagem...</p>
+      } @else if (preview().status !== 'error') {
+        <p class="part__help">Escreva a mensagem e a chave: a carta aparece aqui, como os jogadores vão lê-la.</p>
+      }
+      @if (preview().status === 'error') {
+        <p class="part__bad field-error" role="alert">{{ preview().message }}</p>
       }
       <p class="part__help">Cada letra é trocada por outra, sempre a mesma. Acentos e maiúsculas não contam na resposta.</p>
     </section>
@@ -166,7 +166,7 @@ export class CipherForm implements OnInit {
           this.preview.set({ status: 'idle', text: '', message: '' });
           return;
         }
-        this.preview.update((p) => ({ ...p, status: 'loading' }));
+        this.preview.update((p) => ({ ...p, status: 'loading', message: '' }));
         this.timer = setTimeout(() => void this.run(d), PREVIEW_PAUSE_MS);
       });
     });

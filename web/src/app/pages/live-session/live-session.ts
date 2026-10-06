@@ -703,7 +703,7 @@ export class LiveSession {
   }
 
   /** The campaign again, to pick up the dice choice the player just saved. */
-  private async refreshCampaign(): Promise<void> {
+  protected async refreshCampaign(): Promise<void> {
     const generation = this.generation;
     try {
       const campaign = await this.source.getCampaign(this.campaignId());

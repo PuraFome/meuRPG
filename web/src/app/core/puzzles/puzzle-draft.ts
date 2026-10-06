@@ -588,6 +588,47 @@ function partsErrors(draft: Draft, errors: DraftErrors): void {
   });
 }
 
+/** The field of "Ao errar" a refusal belongs to, from the draft (the client's own check) or from the server's `on_wrong.…` field name. */
+export type WrongTarget = 'trap' | 'attempts' | 'moves' | 'minutes' | 'both' | '';
+
+export function wrongTargetOf(field: string): WrongTarget {
+  switch (field) {
+    case 'on_wrong.trap':
+      return 'trap';
+    case 'on_wrong.attempts_per_player':
+      return 'attempts';
+    case 'on_wrong.max_moves':
+      return 'moves';
+    case 'on_wrong.time_limit_seconds':
+      return 'minutes';
+    default:
+      return '';
+  }
+}
+
+/** Which field of the chosen option is wrong, for the form's own check. */
+export function wrongTarget(draft: Draft): WrongTarget {
+  const wrong = draft.wrong;
+  if (wrong.option === 'trap') {
+    return wrong.mapId === '' || wrong.pointId === '' ? 'trap' : '';
+  }
+  if (wrong.option !== 'limits') {
+    return '';
+  }
+  const moves = wrong.movesText.trim();
+  const minutes = wrong.minutesText.trim();
+  if (moves === '' && minutes === '') {
+    return 'both';
+  }
+  if (moves !== '' && !(/^\d{1,4}$/.test(moves) && Number(moves) >= 1 && Number(moves) <= MOVES_LIMIT_MAX)) {
+    return 'moves';
+  }
+  if (minutes !== '' && !(/^\d{1,4}$/.test(minutes) && Number(minutes) >= 1 && Number(minutes) <= MINUTES_MAX)) {
+    return 'minutes';
+  }
+  return '';
+}
+
 function wrongError(draft: Draft): string | undefined {
   const wrong = draft.wrong;
   if (wrong.option === 'trap' && (wrong.mapId === '' || wrong.pointId === '')) {

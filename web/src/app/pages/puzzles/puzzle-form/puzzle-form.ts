@@ -18,6 +18,8 @@ import {
   draftErrors,
   draftOf,
   isValid,
+  wrongTarget,
+  wrongTargetOf,
   newDraft,
   protoKindOf,
   startRequestOf,
@@ -130,6 +132,8 @@ export class PuzzleForm {
   protected readonly nameServerError = signal('');
   /** What the server refused, by the part of the form it belongs to (`invalidSection`). It clears when the master changes anything. */
   protected readonly serverErrors = signal<Partial<Record<FormSection, string>>>({});
+  /** The request field the server's refusal named (`parts[1].character_id`, `on_wrong.max_moves`...): it picks the field the words stand under. */
+  protected readonly serverField = signal('');
 
   protected readonly errors = computed(() => draftErrors(this.draft()));
   protected readonly nameError = computed(() => (this.submitted() ? (this.errors().name ?? this.nameServerError()) : this.nameServerError()));
@@ -146,15 +150,24 @@ export class PuzzleForm {
   protected readonly answersError = computed(() => this.shown('answers', this.errors().answers));
   protected readonly answerRows = computed(() => (this.submitted() ? this.errors().answerRows : {}));
   protected readonly sequenceError = computed(() => this.shown('sequence', this.errors().sequence));
-  protected readonly cipherMessageError = computed(() => this.shown('cipherMessage', this.errors().cipherMessage));
-  protected readonly cipherKeyError = computed(() => (this.submitted() ? (this.errors().cipherKey ?? '') : ''));
+  // The server says only "solution.cipher" for a message or a key it does not take: the words stand under the key, which the master chooses last.
+  protected readonly cipherMessageError = computed(() => (this.submitted() ? (this.errors().cipherMessage ?? '') : ''));
+  protected readonly cipherKeyError = computed(() => (this.submitted() ? (this.errors().cipherKey ?? '') : '') || this.serverErrors().cipherMessage || '');
   protected readonly checkError = computed(() => this.shown('check', this.errors().check));
   protected readonly wrongError = computed(() => this.shown('wrong', this.errors().wrong));
-  protected readonly partsErrors = computed(() => {
+  protected readonly partsErrors = computed<Readonly<Record<number, { owner?: string; text?: string }>>>(() => {
     const server = this.serverErrors().parts;
     const own = this.submitted() ? this.errors().parts : {};
-    return server && Object.keys(own).length === 0 ? { 0: { text: server } } : own;
+    const found = /^parts\[(\d+)\]\.(character_id|text)$/.exec(this.serverField());
+    if (server && Object.keys(own).length === 0 && found) {
+      // The refusal stands on the part it names: its owner or its text.
+      return { [Number(found[1])]: found[2] === 'text' ? { text: server } : { owner: server } };
+    }
+    return own;
   });
+  /** A refusal about the parts as a whole ("at most 8"), under the list. */
+  protected readonly partsError = computed(() => (/^parts\[\d+\]/.test(this.serverField()) ? '' : (this.serverErrors().parts ?? '')));
+  protected readonly wrongField = computed(() => (this.serverErrors().wrong ? wrongTargetOf(this.serverField()) : this.submitted() && this.errors().wrong ? wrongTarget(this.draft()) : ''));
   protected readonly judged = computed(() => JUDGED_KINDS.includes(this.draft().kind));
   /** The message and the key are good enough to cipher: the form's own checks pass. */
   protected readonly cipherable = computed(() => !this.errors().cipherMessage && !this.errors().cipherKey);
@@ -238,6 +251,7 @@ export class PuzzleForm {
     this.draft.update((d) => ({ ...d, ...partial }));
     this.nameServerError.set('');
     this.serverErrors.set({});
+    this.serverField.set('');
   }
 
   /** Another kind starts that kind's form over; what is common (name, clue, hints, "Ao resolver") stays. */
@@ -302,6 +316,7 @@ export class PuzzleForm {
       } else if (section !== '' && section !== 'hints') {
         // The refusal stands under the field it belongs to, in words, and the focus goes there.
         this.serverErrors.set({ [section]: puzzleErrorMessage(err) });
+        this.serverField.set(invalid?.field ?? '');
         afterNextRender(() => this.focusFirstProblem(), { injector: this.injector });
       } else {
         this.notice.set(puzzleErrorMessage(err, 'salvar o quebra-cabeça'));

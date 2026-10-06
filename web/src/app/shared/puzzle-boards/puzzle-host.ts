@@ -47,7 +47,7 @@ import type { Turn } from './symbol-columns';
       @case ('sequence') {
         @if (run().sequence; as playback) {
           @if (mode() === 'play') {
-            <app-sequence-board [playback]="playback" [faces]="faces()" [progress]="progress()" [disabled]="disabled()" [note]="note()" (strike)="onStrike($event)" />
+            <app-sequence-board [playback]="playback" [faces]="faces()" [progress]="progress()" [disabled]="disabled()" [blocked]="blocked()" [waiting]="busyCount()" [note]="note()" (strike)="onStrike($event)" />
           } @else {
             <p class="count">Passos certos <strong>{{ progress() }} de {{ playback.totalSteps }}</strong></p>
           }
@@ -89,6 +89,8 @@ export class PuzzleHost {
   readonly blocked = input('');
   /** A move is on its way. */
   readonly busy = input(false);
+  /** Moves made and not answered yet (the sequence's bells wait in a line). */
+  readonly busyCount = input(0);
   /** The counters of "Ao errar" the riddle and the cipher draw beside their button. */
   readonly counters = input<readonly CounterRow[]>([]);
   /** The sequence's "Errou o passo 4." line, when the last bell was wrong. */

@@ -338,4 +338,145 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       expect(play.run()?.stopped).toBe(true);
     });
   });
+
+  describe('bell taps go one at a time, in order (slice 10.15b fix round 1)', () => {
+    const seq = sequencePuzzle('p1', 'Os sinos');
+    const ready = (revision: number, progress = 0, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({
+      ...playerRun(seq, { sequence: { totalSteps: 6, plays: 1, playing: false, shown: [], stepMs: 1200, nextInMs: 0 }, state: { kind: { case: 'sequence', value: { progress } } } }),
+      revision,
+      ...partial,
+    });
+    const bell = (n: number) => ({ kind: { case: 'sequence' as const, value: { bell: n } } });
+
+    it('sends the second tap only after the first was answered, and counts the taps still waiting', async () => {
+      const { fake, play } = setup('Toren');
+      fake.playerRunResult = ready(1);
+      await play.open('p1');
+      const release: ((a: { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean }) => void)[] = [];
+      fake.moveResult = () => new Promise((resolve) => release.push(resolve));
+      const first = play.move(bell(0));
+      const second = play.move(bell(1));
+      const third = play.move(bell(3));
+      await Promise.resolve();
+      // Only the first is on its way; the others wait their turn, and all three are pending on screen.
+      expect(fake.calls.filter((c) => c[0] === 'move')).toHaveLength(1);
+      expect(play.pending()).toBe(3);
+      release[0]({ run: ready(2, 1), replayed: false, solvedByThisMove: false });
+      await first;
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 1]);
+      release[1]({ run: ready(3, 2), replayed: false, solvedByThisMove: false });
+      await second;
+      await Promise.resolve();
+      await Promise.resolve();
+      release[2]({ run: ready(4, 3), replayed: false, solvedByThisMove: false });
+      await third;
+      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 1, 3]);
+      expect(play.pending()).toBe(0);
+    });
+
+    it('keeps the order when the first tap has to be sent again: a retry never lets the second pass it', async () => {
+      const { fake, play } = setup('Toren');
+      fake.playerRunResult = ready(1);
+      await play.open('p1');
+      fake.moveResult = (n) => {
+        if (n === 1) {
+          throw new ConnectError('down', Code.Unavailable);
+        }
+        return { run: ready(1 + n, n), replayed: false, solvedByThisMove: false };
+      };
+      await Promise.all([play.move(bell(0)), play.move(bell(1))]);
+      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 0, 1]);
+      expect(fake.moveKeys[0]).toBe(fake.moveKeys[1]);
+    });
+
+    it('drops the taps queued behind a wrong bell (they were made for a sequence that started over)', async () => {
+      const { fake, play } = setup('Toren');
+      fake.playerRunResult = ready(1);
+      await play.open('p1');
+      fake.moveResult = () => ({ run: ready(2, 0, { lastMove: { characterName: 'Toren', wrong: true, step: 1, changed: [], at: at(0) } as never }), replayed: false, solvedByThisMove: false });
+      const [a, b, c] = await Promise.all([play.move(bell(2)), play.move(bell(0)), play.move(bell(1))]);
+      expect(a.wrong).toBe(true);
+      expect([b.sent, c.sent]).toEqual([false, false]);
+      expect(fake.calls.filter((c2) => c2[0] === 'move')).toHaveLength(1);
+      expect(play.pending()).toBe(0);
+      // A tap made after the wrong one is a new tap.
+      fake.moveResult = () => ({ run: ready(3, 1), replayed: false, solvedByThisMove: false });
+      expect((await play.move(bell(0))).sent).toBe(true);
+    });
+
+    it('never sends a bell once the puzzle was solved meanwhile', async () => {
+      const { fake, play } = setup('Toren');
+      fake.playerRunResult = ready(1);
+      await play.open('p1');
+      fake.moveResult = () => ({ run: ready(2, 6, { solved: true }), replayed: false, solvedByThisMove: true });
+      const [a, b] = await Promise.all([play.move(bell(1)), play.move(bell(1))]);
+      expect(a.solved).toBe(true);
+      expect(b.sent).toBe(false);
+      expect(fake.calls.filter((c) => c[0] === 'move')).toHaveLength(1);
+    });
+  });
+
+  describe('what only moves forward never steps back (slice 10.15b fix round 1)', () => {
+    const seq = sequencePuzzle('p1', 'Os sinos');
+    const at3 = (revision: number, playback: object): PuzzleRun => ({ ...playerRun(seq, { sequence: { totalSteps: 6, plays: 1, stepMs: 1200, ...playback } }), revision });
+
+    it('does not bring a play back after it ended: a late read from the middle of it is ignored', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = at3(2, { playing: true, shown: [0, 1], nextInMs: 600 });
+      await play.open('p1');
+      expect(play.apply(at3(2, { playing: false, shown: [], nextInMs: 0 }))).toBe(true);
+      expect(play.apply(at3(2, { playing: true, shown: [0, 1, 3], nextInMs: 600 }))).toBe(false);
+      expect(play.run()?.sequence?.playing).toBe(false);
+    });
+
+    it('still takes a longer mid-play read, and the end of the play', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = at3(2, { playing: true, shown: [0], nextInMs: 1000 });
+      await play.open('p1');
+      expect(play.apply(at3(2, { playing: true, shown: [0, 1], nextInMs: 900 }))).toBe(true);
+      expect(play.apply(at3(2, { playing: true, shown: [0], nextInMs: 1000 }))).toBe(false);
+      expect(play.apply(at3(2, { playing: false, shown: [], nextInMs: 0 }))).toBe(true);
+    });
+  });
+
+  describe('the hint try, the timer and the dice mode (slice 10.15b fix round 1)', () => {
+    const base = playerRun(riddlePuzzle('p1', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true, hints: [], sharedHints: 0 });
+
+    it('clears the line of the last try when the master releases a hint, and when the player may try again', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = () => hintAnswer({ ...base, revision: 2, canTryHint: false }, false, 9);
+      await play.tryHint({ inApp: true });
+      expect(play.hintTry()).toMatchObject({ passed: false });
+      // Another change that is not about the hint leaves it.
+      play.apply({ ...base, revision: 3, canTryHint: false, hints: [] });
+      expect(play.hintTry()).not.toBeNull();
+      // The master released one: the line is about a hint that is gone.
+      play.apply({ ...base, revision: 4, canTryHint: true, hints: ['Pense no meio-dia.'], sharedHints: 1 });
+      expect(play.hintTry()).toBeNull();
+    });
+
+    it('asks the page to read the dice mode again when the server says the table rolls the other way', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = () => {
+        throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.WRONG_DICE_MODE }) }]);
+      };
+      await play.tryHint({ inApp: true });
+      expect(play.diceModeStale()).toBe(1);
+      expect(play.message()).toContain('de outro jeito');
+    });
+
+    it('never starts the reveal timer after the page left', async () => {
+      const { fake, play, timers } = setup();
+      fake.playerRunResult = { ...playerRun(sequencePuzzle('p1', 's'), { sequence: { totalSteps: 6, plays: 1, playing: true, shown: [0], stepMs: 1200, nextInMs: 900 } }), revision: 2 };
+      play.dispose();
+      play.apply(fake.playerRunResult);
+      expect(timers).toHaveLength(0);
+    });
+  });
 });

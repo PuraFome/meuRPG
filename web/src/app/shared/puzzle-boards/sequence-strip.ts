@@ -30,9 +30,10 @@ import { SymbolGlyph } from './symbol-glyph';
       display: block;
     }
 
+    // A grid: six steps stay on one row down to a 320 px phone (each slot shrinks to 38 px, no less), and more wrap evenly.
     .strip {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(38px, 44px));
       gap: 6px;
       margin: 0;
       padding: 0;
@@ -46,7 +47,6 @@ import { SymbolGlyph } from './symbol-glyph';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
       height: 44px;
       border: 1.5px solid var(--mr-control-line);
       border-radius: var(--mr-radius-md);

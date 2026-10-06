@@ -20,7 +20,7 @@ export function bellWord(name: string): string {
   selector: 'app-bells-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, SymbolGlyph],
-  host: { '[class.bb--pick]': "mode() === 'pick'" },
+  host: { '[class.bb--pick]': "mode() === 'pick'", '[class.bb--many]': 'count() > 4' },
   template: `
     <div class="bells" role="group" [attr.aria-label]="label()" [attr.aria-disabled]="disabled() ? 'true' : null">
       @for (face of faces(); track face.key; let i = $index) {
@@ -47,6 +47,17 @@ export function bellWord(name: string): string {
     :host(.bb--pick) .bells {
       grid-template-columns: repeat(auto-fill, 64px);
       max-width: none;
+    }
+
+    // On a phone four bells are two by two, and five to eight three across: never three and one left over.
+    @media (max-width: 480px) {
+      :host(:not(.bb--pick)) .bells {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      :host(.bb--many:not(.bb--pick)) .bells {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
     }
 
     .bell {

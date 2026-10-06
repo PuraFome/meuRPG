@@ -69,7 +69,9 @@ export class PuzzlePlayPage {
   /** How the table rolls its dice (RN-18) and the player's own choice: the try for a hint rolls the same way. */
   readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
   readonly dicePreference = input<DicePreference>(DicePreference.APP);
-  /** "Abrir as notas": the cipher's key, once found, is a clue in the player's notes. */
+  /** The server refused a try for a hint because the table rolls the other way: the session reads the campaign's dice mode again. */
+  readonly diceModeStale = output<void>();
+  /** "Abrir as anotações": the cipher's key, once found, is a clue in the player's notes. */
   readonly openNotes = output<void>();
 
   protected readonly Kind = PuzzleKind;
@@ -182,7 +184,7 @@ export class PuzzlePlayPage {
       return null;
     }
     const own = this.ownName() !== '' && last.characterName === this.ownName();
-    return { lead: `Errou o passo ${last.step}.`, text: `A tentativa recomeçou; ${own ? 'você errou' : `${last.characterName} errou`}. Observem a sequência de novo.` };
+    return { lead: `Errou o passo ${last.step}.`, text: `A tentativa recomeçou; ${own ? 'você errou' : `${last.characterName} errou`}.` };
   });
   /** Whether the counters stand in the "Como está" panel: the riddle and the cipher draw them beside their button. */
   protected readonly countersBelow = computed(() => this.counters().length > 0 && !(this.hostMode() === 'play' && (this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.CIPHER)));
@@ -191,6 +193,15 @@ export class PuzzlePlayPage {
     const kind = this.kind();
     const own = kind === PuzzleKind.LIGHTS || kind === PuzzleKind.LOCK || kind === PuzzleKind.PILLARS;
     return !!this.run()?.solved || own || this.instruction() !== '' || !!this.last() || this.countersBelow();
+  });
+  /** The stopped notice names the limit that was spent, as the artboard's state 10 does ("O limite de jogadas chegou: 10 de 10."). */
+  protected readonly stoppedWhy = computed(() => {
+    const spent = this.counters().filter((c) => c.spent);
+    if (!this.run()?.stopped || spent.length === 0) {
+      return '';
+    }
+    const parts = spent.flatMap((c) => (c.key === 'moves' ? [`O limite de jogadas chegou: ${c.value}.`] : c.key === 'time' ? ['O tempo acabou.'] : []));
+    return parts.join(' ');
   });
   /** "Investigação" in "Tentar uma dica · Investigação". */
   protected readonly hintSkill = computed(() => {
@@ -262,6 +273,17 @@ export class PuzzlePlayPage {
           () => undefined,
         ),
       );
+    });
+    // The table's dice mode changed under the page: the way to roll on screen is the campaign's, read again.
+    let staleSeen = 0;
+    effect(() => {
+      const n = this.play.diceModeStale();
+      untracked(() => {
+        if (n > staleSeen) {
+          this.diceModeStale.emit();
+        }
+        staleSeen = n;
+      });
     });
     const timer = setInterval(() => this.now.set(new Date()), 1000);
     this.destroyRef.onDestroy(() => {

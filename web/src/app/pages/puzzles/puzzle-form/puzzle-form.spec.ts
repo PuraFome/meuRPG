@@ -558,24 +558,109 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
       expect(el.querySelectorAll('app-parts-field .part')).toHaveLength(8);
     });
 
-    it('shows what the server refused under the field it names, in words, and takes the focus there', async () => {
-      const { el, settle } = await open(undefined);
-      document.body.append(el);
+    const refuse = (reason: PuzzleInvalidReason, field: string) =>
+      new ConnectError('x', Code.InvalidArgument, undefined, [{ desc: PuzzleInvalidSchema, value: create(PuzzleInvalidSchema, { reason, field }) }]);
+
+    async function riddleReadyToSave(el: HTMLElement, settle: () => Promise<void>) {
       await pick(el, 'riddle', settle);
       type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
       type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'O que sou?');
       type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, 'sombra');
       el.querySelector('input[name="answer"]')!.dispatchEvent(new Event('blur'));
       await settle();
-      api.failWith = new ConnectError('x', Code.InvalidArgument, undefined, [{ desc: PuzzleInvalidSchema, value: create(PuzzleInvalidSchema, { reason: PuzzleInvalidReason.ON_WRONG, field: 'on_wrong.trap' }) }]);
+    }
+
+    it('shows what the server refused under the trap it names, in words, and takes the focus there', async () => {
+      const { el, settle } = await open(undefined);
+      document.body.append(el);
+      await riddleReadyToSave(el, settle);
+      el.querySelector<HTMLInputElement>('app-wrong-field input[value="trap"]')!.click();
+      await settle();
+      await settle();
+      const select = el.querySelector<HTMLSelectElement>('app-wrong-field select')!;
+      select.value = 'm1|t1';
+      select.dispatchEvent(new Event('change'));
+      await settle();
+      api.failWith = refuse(PuzzleInvalidReason.ON_WRONG, 'on_wrong.trap');
       await submit(el, settle);
       expect(el.querySelector('app-wrong-field .field-error')?.textContent).toContain('O “Ao errar” não vale');
+      expect(select.getAttribute('aria-invalid')).toBe('true');
       expect(el.querySelector('.mr-notice--danger')).toBeNull();
       // The master changes anything and the refusal goes.
       type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'y');
       await settle();
       expect(el.querySelector('app-wrong-field .field-error')).toBeNull();
       el.remove();
+    });
+
+    it('puts the refusal of a limit on its own number field', async () => {
+      const { el, settle } = await open(undefined);
+      await riddleReadyToSave(el, settle);
+      el.querySelector<HTMLInputElement>('app-wrong-field input[value="limits"]')!.click();
+      await settle();
+      const [moves, minutes] = Array.from(el.querySelectorAll<HTMLInputElement>('app-wrong-field input[type="text"]'));
+      type(moves, '10');
+      await settle();
+      type(minutes, '5');
+      await settle();
+      api.failWith = refuse(PuzzleInvalidReason.ON_WRONG, 'on_wrong.max_moves');
+      await submit(el, settle);
+      const [m, t] = Array.from(el.querySelectorAll<HTMLInputElement>('app-wrong-field input[type="text"]'));
+      expect(m.getAttribute('aria-invalid')).toBe('true');
+      expect(t.getAttribute('aria-invalid')).not.toBe('true');
+      // The form's own check names the field too: only the one that is wrong.
+      api.failWith = undefined;
+      type(el.querySelectorAll<HTMLInputElement>('app-wrong-field input[type="text"]')[1], '999');
+      await settle();
+      await submit(el, settle);
+      const [m2, t2] = Array.from(el.querySelectorAll<HTMLInputElement>('app-wrong-field input[type="text"]'));
+      expect(m2.getAttribute('aria-invalid')).not.toBe('true');
+      expect(t2.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('puts the refusal of a part on that part, by the field the server names', async () => {
+      const { el, pause, settle } = await open(undefined, (a) => (a.createResult = lightsPuzzle('new', 'x')));
+      await pause();
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      for (let i = 0; i < 2; i++) {
+        button(el, 'Adicionar parte').click();
+        await settle();
+        type(el.querySelectorAll<HTMLTextAreaElement>('app-parts-field textarea')[i], `Parte ${i + 1}.`);
+        await settle();
+      }
+      api.failWith = refuse(PuzzleInvalidReason.PARTS, 'parts[1].character_id');
+      await submit(el, settle);
+      const parts = Array.from(el.querySelectorAll('app-parts-field .part'));
+      expect(parts[0].querySelector('.field-error')).toBeNull();
+      expect(parts[1].querySelector('.field-error')?.textContent).toContain('informação dividida');
+      expect(parts[1].querySelector('select')?.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('puts what the server says about the cipher on the key', async () => {
+      const { el, settle } = await open(undefined, (a) => (a.createResult = cipherPuzzle('new', 'x')));
+      await pick(el, 'cipher', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="cipher-message"]')!, 'Olá mundo');
+      await settle();
+      api.failWith = refuse(PuzzleInvalidReason.CIPHER, 'solution.cipher');
+      await submit(el, settle);
+      const key = el.querySelectorAll('app-cipher-form section')[1];
+      expect(key.querySelector('.field-error')?.textContent).toContain('A cifra não vale');
+      expect(el.querySelectorAll('app-cipher-form section')[0].querySelector('.field-error')).toBeNull();
+    });
+
+    it('keeps the last ciphered message on screen while the next one is asked for', async () => {
+      const { el, settle, pause } = await open(undefined, (a) => (a.createResult = cipherPuzzle('new', 'x')));
+      await pick(el, 'cipher', settle);
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="cipher-message"]')!, 'Olá');
+      await pause();
+      expect(el.querySelector('.cipher')?.textContent).toBe('R WHVRXUR HVWD VRE R DOWDU');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="cipher-message"]')!, 'Olá mundo');
+      await settle();
+      // Asking again: the old text stays, marked busy, and "Cifrando..." is not shown over it.
+      expect(el.querySelector('.cipher')?.getAttribute('aria-busy')).toBe('true');
+      expect(el.textContent).not.toContain('Cifrando a mensagem...');
+      expect(el.querySelector('app-cipher-form [role="status"]')).toBeNull();
     });
 
     it('opens a riddle in its own form and saves it with the skill check, the parts and "Ao errar" it came with', async () => {

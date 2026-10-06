@@ -277,15 +277,18 @@ describe('RiddleBoard (E10-12 state 6)', () => {
     expect(el.querySelector('.blocked')?.textContent).toContain('Você não tem mais tentativas.');
   });
 
-  it('shows the counters between the field and the button', () => {
+  it('keeps the field and the button together (they are the foot of a short screen) and the counters with the notes, apart', () => {
     const rows: CounterRow[] = [{ key: 'attempts', label: 'Suas tentativas', value: '2 de 3', spent: false }];
-    const { el } = riddle({ mode: 'play', counters: rows });
+    const { el } = riddle({ mode: 'play', counters: rows, verdict: 'wrong' });
     const form = el.querySelector('form')!;
-    const order = Array.from(form.children).map((c) => c.tagName.toLowerCase());
-    expect(order.indexOf('app-limit-counters')).toBeGreaterThan(order.indexOf('mat-form-field'));
-    expect(order.indexOf('app-limit-counters')).toBeLessThan(order.indexOf('button'));
-    expect(form.textContent).toContain('Suas tentativas');
-    expect(form.textContent).toContain('2 de 3');
+    const stick = form.querySelector('.ask__stick')!;
+    expect(stick.querySelector('mat-form-field')).not.toBeNull();
+    expect(stick.querySelector('button[type="submit"]')).not.toBeNull();
+    // The sticky group holds nothing else: the wrong-answer notice and the counters scroll.
+    expect(stick.querySelector('app-limit-counters, .mr-notice')).toBeNull();
+    const notes = form.querySelector('.ask__notes')!;
+    expect(notes.querySelector('app-limit-counters')?.textContent).toContain('Suas tentativas');
+    expect(notes.querySelector('.mr-notice--danger')?.textContent).toContain('Não é isso.');
   });
 
   it('has no field in the master\'s view', () => {
@@ -433,7 +436,7 @@ describe('SequenceBoard (E10-12 state 7)', () => {
   });
 
   it('says which step was wrong and who erred, above the bells', () => {
-    const { el } = board({ plays: 2 }, { note: { lead: 'Errou o passo 4.', text: 'A tentativa recomeçou; Lia errou. Observem a sequência de novo.' } });
+    const { el } = board({ plays: 2 }, { note: { lead: 'Errou o passo 4.', text: 'A tentativa recomeçou; Lia errou.' } });
     const notice = el.querySelector('.mr-notice--danger')!;
     expect(notice.textContent).toContain('Errou o passo 4. A tentativa recomeçou; Lia errou.');
     expect(notice.getAttribute('role')).toBe('alert');

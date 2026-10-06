@@ -3,7 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { PuzzleRun } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
+import { PuzzleBlockedReason, PuzzleBlockedSchema, type PuzzleRun } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
+import { create } from '@bufbuild/protobuf';
 import { textOf } from '../../../../core/format/text-testing';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
@@ -13,12 +14,13 @@ import { PuzzlePlayPage } from './puzzle-play';
 
 @Component({
   imports: [PuzzlePlayPage],
-  template: `<app-puzzle-play campaignId="camp-1" [puzzleId]="id" [session]="session" [state]="state" ownName="Toren" [diceMode]="diceMode" [dicePreference]="preference" [reconnecting]="reconnecting()" (openNotes)="notes = notes + 1" />`,
+  template: `<app-puzzle-play campaignId="camp-1" [puzzleId]="id" [session]="session" [state]="state" ownName="Toren" [diceMode]="diceMode" [dicePreference]="preference" [reconnecting]="reconnecting()" (openNotes)="notes = notes + 1" (diceModeStale)="stale = stale + 1" />`,
 })
 class Host {
   diceMode = 1;
   preference = 1;
   notes = 0;
+  stale = 0;
   id = 'a';
   session = { sessionId: 's7', sessionNumber: 7, startedAt: new Date() };
   state!: PuzzleSessionState;
@@ -342,7 +344,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
     it('says which step was wrong and who erred, until the master plays it again', async () => {
       const wrong = seq({ plays: 2 }, { lastMove: wrongMove('Lia', { step: 4 }) });
       const { el, settle } = await render(wrong);
-      expect(el.querySelector('.board-card .mr-notice--danger')?.textContent).toContain('Errou o passo 4. A tentativa recomeçou; Lia errou. Observem a sequência de novo.');
+      expect(el.querySelector('.board-card .mr-notice--danger')?.textContent).toContain('Errou o passo 4. A tentativa recomeçou; Lia errou.');
       // The master plays it again: the old note goes.
       api.playerRunResult = seq({ plays: 3 }, { revision: 5, lastMove: wrongMove('Lia', { step: 4, at: wrong.lastMove!.at }) });
       await host.state.changed('a');
@@ -394,8 +396,8 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
     it('sends the player to their notes once the key was found', async () => {
       const found = await render(cipher({ hasKeyClue: true, keyClueId: 'k1' }));
       expect(textOf(found.el.querySelector('.key'))).toContain('Pista achada na aventura');
-      expect(textOf(found.el.querySelector('.key'))).toContain('Ela está nas suas notas.');
-      (Array.from(found.el.querySelectorAll('.key button')).find((b) => b.textContent?.includes('Abrir as notas')) as HTMLElement).click();
+      expect(textOf(found.el.querySelector('.key'))).toContain('Ela está nas suas anotações.');
+      (Array.from(found.el.querySelectorAll('.key button')).find((b) => b.textContent?.includes('Abrir as anotações')) as HTMLElement).click();
       expect(host.notes).toBe(1);
     });
 
@@ -491,6 +493,81 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       const { el } = await render(playerRun(riddlePuzzle('a', 'x'), { partHolders: ['Brisa'] }));
       expect(el.querySelector('app-my-part .mine')).toBeNull();
       expect(el.querySelector('app-my-part .others')?.textContent).toContain('Brisa');
+    });
+  });
+
+  describe('slice 10.15b, fix round 1', () => {
+    const seqRun = (partial: Parameters<typeof playerRun>[1] = {}) =>
+      playerRun(sequencePuzzle('a', 'Os sinos'), { sequence: { totalSteps: 6, plays: 1, playing: false, shown: [], stepMs: 1200, nextInMs: 0 }, ...partial });
+
+    const riddleRun = (partial: Parameters<typeof playerRun>[1] = {}) => playerRun(riddlePuzzle('a', 'A porta da Cripta pergunta'), partial);
+
+    it('shows the taps still waiting, and the bells go one at a time', async () => {
+      const { el, settle } = await render(seqRun());
+      const release: (() => void)[] = [];
+      api.moveResult = () => new Promise((resolve) => release.push(() => resolve({ run: seqRun({ revision: 2 }), replayed: false, solvedByThisMove: false })));
+      (el.querySelector('[aria-label="Sino redondo"]') as HTMLElement).click();
+      (el.querySelector('[aria-label="Sino alto"]') as HTMLElement).click();
+      await settle();
+      expect(api.calls.filter((c) => c[0] === 'move')).toHaveLength(1);
+      expect(textOf(el.querySelector('.board-card'))).toContain('2 toques a enviar');
+      release[0]();
+      await settle();
+      expect(api.calls.filter((c) => c[0] === 'move')).toHaveLength(2);
+    });
+
+    it('shows the bells dashed with the reason when the player has no attempts left', async () => {
+      const { el } = await render(seqRun({ limits: { attemptsPerPlayer: 2, attemptsLeft: 0, maxMoves: 0, movesMade: 0, timeLimitSeconds: 0, secondsLeft: 0 } }));
+      expect(el.querySelector('.board-card .blocked')?.textContent).toContain('Você não tem mais tentativas.');
+      expect(el.querySelector('app-bells-board button')?.getAttribute('aria-disabled')).toBe('true');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Suas tentativas 0 de 2 · acabou');
+    });
+
+    it('names the limit that stopped it, as the artboard does', async () => {
+      const { el } = await render(
+        riddleRun({ stopped: true, stoppedMessage: 'O quebra-cabeça parou. O mestre decide o que acontece agora.', limits: { attemptsPerPlayer: 0, attemptsLeft: 0, maxMoves: 10, movesMade: 10, timeLimitSeconds: 300, secondsLeft: 100, deadline: fromNow(100) } }),
+      );
+      const notice = el.querySelector('.mr-notice--neutral')!;
+      expect(notice.textContent).toContain('O limite de jogadas chegou: 10 de 10.');
+      // The clock stands still where the server read it.
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Tempo 1:40 de 5:00');
+      expect(textOf(el.querySelector('app-limit-counters'))).not.toContain('Tempo 1:40 de 5:00 · acabou');
+    });
+
+    it('says the time ran out when that stopped it', async () => {
+      const { el } = await render(riddleRun({ stopped: true, stoppedMessage: 'O quebra-cabeça parou.', limits: { attemptsPerPlayer: 0, attemptsLeft: 0, maxMoves: 0, movesMade: 0, timeLimitSeconds: 300, secondsLeft: 0, deadline: fromNow(-5) } }));
+      expect(el.querySelector('.mr-notice--neutral')?.textContent).toContain('O tempo acabou.');
+    });
+
+    it('tells the player their own total on a failed try, and never the DC', async () => {
+      const { el, settle } = await render(
+        playerRun(riddlePuzzle('a', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true }),
+      );
+      api.hintResult = () => hintAnswer(playerRun(riddlePuzzle('a', 'A porta'), { revision: 2, hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: false }), false, 9);
+      (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar uma dica')) as HTMLElement).click();
+      await settle();
+      const notice = el.querySelector('.hints .mr-notice--neutral')!;
+      expect(textOf(notice)).toContain('Você tirou 9. Não deu desta vez. Outro jogador pode tentar');
+      expect(textOf(notice)).not.toMatch(/\bCD\b/);
+    });
+
+    it('asks the session to read the dice mode again when the server says the table rolls the other way', async () => {
+      const { el, settle } = await render(playerRun(riddlePuzzle('a', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true }));
+      api.hintResult = () => {
+        throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.WRONG_DICE_MODE }) }]);
+      };
+      (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar uma dica')) as HTMLElement).click();
+      await settle();
+      expect(host.stale).toBe(1);
+    });
+
+    it('does not say the typed d20 twice', async () => {
+      const { el, settle } = await render(playerRun(riddlePuzzle('a', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true }), 'a', (h) => (h.diceMode = 3));
+      (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar uma dica')) as HTMLElement).click();
+      await settle();
+      typeInto(el.querySelector('.hints input'), '15');
+      await settle();
+      expect(el.querySelector('.hints .type__sum')?.classList).toContain('mr-visually-hidden');
     });
   });
 });

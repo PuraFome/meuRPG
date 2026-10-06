@@ -42,14 +42,21 @@ import { SymbolGlyph } from './symbol-glyph';
       <app-bells-board [faces]="faces()" [disabled]="true" label="Os sinos, ainda parados" />
     } @else {
       <p class="line"><strong>Agora é com vocês.</strong> Toquem os sinos na mesma ordem. Qualquer um pode tocar.</p>
+      @if (blocked()) {
+        <p class="blocked" role="status">{{ blocked() }}</p>
+      }
+      <app-bells-board [faces]="faces()" [disabled]="disabled() || !!blocked()" (strike)="strike.emit($event)" />
+      <p class="count"><span>Passos certos</span><strong>{{ progress() }} de {{ pb.totalSteps }}</strong></p>
+      @if (waiting() > 0) {
+        <p class="waiting" role="status">{{ waiting() === 1 ? '1 toque a enviar' : waiting() + ' toques a enviar' }}</p>
+      }
+      <!-- Under the bells, never over them: a notice that comes and goes above would move the bells under a finger tapping fast. -->
       @if (note(); as n) {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">close</mat-icon>
           <p><strong>{{ n.lead }}</strong> {{ n.text }}</p>
         </div>
       }
-      <app-bells-board [faces]="faces()" [disabled]="disabled()" (strike)="strike.emit($event)" />
-      <p class="count"><span>Passos certos</span><strong>{{ progress() }} de {{ pb.totalSteps }}</strong></p>
     }
   `,
   styles: `
@@ -83,6 +90,22 @@ import { SymbolGlyph } from './symbol-glyph';
       color: var(--mr-ink-muted);
     }
 
+    .blocked {
+      margin: 0;
+      padding: 14px;
+      border: 1.5px dashed var(--mr-control-line);
+      border-radius: var(--mr-radius-md);
+      color: var(--mr-ink-muted);
+      font-size: 16px;
+      line-height: 22px;
+    }
+
+    .waiting {
+      margin: 0;
+      font-size: 14px;
+      color: var(--mr-ink-muted);
+    }
+
     .count {
       display: flex;
       justify-content: space-between;
@@ -91,9 +114,9 @@ import { SymbolGlyph } from './symbol-glyph';
     }
 
     @keyframes strike {
+      // Only the size pulses: a fade would put the bell's name under the contrast it must keep at every instant.
       from {
         transform: scale(0.9);
-        opacity: 0.4;
       }
     }
 
@@ -111,6 +134,10 @@ export class SequenceBoard {
   readonly progress = input(0);
   /** Solved or stopped. */
   readonly disabled = input(false);
+  /** Why the bells cannot be struck although the sequence was played ("Você não tem mais tentativas."), or `''`. */
+  readonly blocked = input('');
+  /** Bell taps made and not answered yet: they go one at a time, in order. */
+  readonly waiting = input(0);
   /** "Errou o passo 4." and what came of it, above the bells, when the last bell was wrong. */
   readonly note = input<{ readonly lead: string; readonly text: string } | null>(null);
 

@@ -215,9 +215,15 @@
     gap: var(--mr-space-2);
   }
 
-  // The board, then its count (the explanation and "Luzes acesas"), then the clue, the hints.
-  .info {
+  // The board first (the riddle, the sinos, the letter), then its count, the clue, the cipher's key, the player's part and the hints: the notices
+  // of the puzzle itself (solved, stopped, the trap) keep the top.
+  .board-card,
+  .play__msg {
     order: 1;
+  }
+
+  .info {
+    order: 2;
     padding: 4px 2px;
     background: none;
     border: 0;
@@ -239,14 +245,19 @@
   }
 
   .clue {
-    order: 2;
-  }
-
-  .hints {
     order: 3;
   }
 
-  .board-card--panel {
+  .key {
+    order: 4;
+  }
+
+  .hints {
+    order: 6;
+  }
+
+  // The lock and the pillars bleed to the edge to keep 44 px columns; the three kinds that type or tap bells keep their padding.
+  .board-card--bleed {
     padding: 8px 0;
     border-inline: 0;
     border-radius: 0;

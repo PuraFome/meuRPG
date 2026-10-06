@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, sign
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-import { type WrongDraft, type WrongOption, ATTEMPTS_MAX, MINUTES_MAX, MOVES_LIMIT_MAX } from '../../../core/puzzles/puzzle-draft';
+import { type FormKind, type WrongDraft, type WrongOption, type WrongTarget, ATTEMPTS_MAX, MINUTES_MAX, MOVES_LIMIT_MAX } from '../../../core/puzzles/puzzle-draft';
 import { type TrapChoice, SolveTargets } from '../../../core/puzzles/solve-targets';
 import { Stepper } from './stepper';
 
@@ -41,7 +41,7 @@ let nextId = 0;
   template: `
     <fieldset class="wf">
       <legend class="wf__title">Ao errar</legend>
-      <p class="wf__help">O que um erro faz: uma resposta errada, ou um sino errado.</p>
+      <p class="wf__help">{{ help() }}</p>
       @for (o of choices(); track o.value) {
         <div class="opt" [class.opt--on]="o.value === wrong().option">
           <label class="opt__head">
@@ -60,15 +60,18 @@ let nextId = 0;
                   } @else if (traps().length === 0) {
                     <p class="wf__note">Nenhum mapa da campanha tem uma armadilha. Ponha um ponto de armadilha no editor do mapa.</p>
                   } @else {
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__field" [class.field-bad]="error()">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__field" [class.field-bad]="error() && target() === 'trap'">
                       <mat-label>Armadilha do mapa</mat-label>
-                      <select matNativeControl [value]="trapKey()" [attr.aria-invalid]="error() ? 'true' : null" (change)="pickTrap($any($event.target).value)">
+                      <select matNativeControl [value]="trapKey()" [attr.aria-invalid]="error() && target() === 'trap' ? 'true' : null" (change)="pickTrap($any($event.target).value)">
                         <option value="" [selected]="trapKey() === ''">Escolha uma armadilha</option>
                         @for (t of traps(); track t.pointId) {
                           <option [value]="t.mapId + '|' + t.pointId" [selected]="t.mapId + '|' + t.pointId === trapKey()">{{ t.name }} · {{ t.mapName }}</option>
                         }
                       </select>
                     </mat-form-field>
+                    @if (error() && target() === 'trap') {
+                      <p class="wf__note wf__note--bad field-error" role="alert">{{ error() }}</p>
+                    }
                     <p class="wf__note">Quando um jogador errar, ela dispara e você decide o efeito, como em qualquer armadilha. Ela dispara uma vez: arme-a de novo no mapa para disparar outra.</p>
                   }
                 </div>
@@ -76,23 +79,29 @@ let nextId = 0;
               @case ('attempts') {
                 <div class="opt__body">
                   <app-stepper label="Tentativas por jogador" noun="tentativa" [value]="wrong().attempts" [min]="1" [max]="attemptsMax" (valueChange)="patch({ attempts: $event })" />
+                  @if (error() && target() === 'attempts') {
+                    <p class="wf__note wf__note--bad field-error" role="alert">{{ error() }}</p>
+                  }
                   <p class="wf__note">Cada erro gasta uma. Sem tentativas, o jogador não joga mais até você recomeçar.</p>
                 </div>
               }
               @case ('limits') {
                 <div class="opt__body">
                   <div class="limits">
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__num" [class.field-bad]="error()">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__num" [class.field-bad]="error() && (target() === 'moves' || target() === 'both')">
                       <mat-label>Jogadas</mat-label>
-                      <input matInput type="text" inputmode="numeric" autocomplete="off" [value]="wrong().movesText" [attr.aria-invalid]="error() ? 'true' : null" (input)="patch({ movesText: $any($event.target).value })" />
+                      <input matInput type="text" inputmode="numeric" autocomplete="off" [value]="wrong().movesText" [attr.aria-invalid]="error() && (target() === 'moves' || target() === 'both') ? 'true' : null" (input)="patch({ movesText: $any($event.target).value })" />
                       <mat-hint>De 1 a {{ movesMax }}</mat-hint>
                     </mat-form-field>
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__num" [class.field-bad]="error()">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wf__num" [class.field-bad]="error() && (target() === 'minutes' || target() === 'both')">
                       <mat-label>Minutos</mat-label>
-                      <input matInput type="text" inputmode="numeric" autocomplete="off" [value]="wrong().minutesText" [attr.aria-invalid]="error() ? 'true' : null" (input)="patch({ minutesText: $any($event.target).value })" />
+                      <input matInput type="text" inputmode="numeric" autocomplete="off" [value]="wrong().minutesText" [attr.aria-invalid]="error() && (target() === 'minutes' || target() === 'both') ? 'true' : null" (input)="patch({ minutesText: $any($event.target).value })" />
                       <mat-hint>De 1 a {{ minutesMax }}</mat-hint>
                     </mat-form-field>
                   </div>
+                  @if (error() && (target() === 'moves' || target() === 'minutes' || target() === 'both')) {
+                    <p class="wf__note wf__note--bad field-error" role="alert">{{ error() }}</p>
+                  }
                   <p class="wf__note">Chegando ao limite, o quebra-cabeça para e você é avisado. Deixe um em branco para só contar o outro.</p>
                 </div>
               }
@@ -103,7 +112,7 @@ let nextId = 0;
       @if (wrong().combined) {
         <p class="wf__note">Este quebra-cabeça tem mais de uma regra de “Ao errar”. Ao salvar, fica só a escolhida.</p>
       }
-      @if (error()) {
+      @if (error() && !atField()) {
         <p class="wf__note wf__note--bad field-error" role="alert">{{ error() }}</p>
       }
     </fieldset>
@@ -123,10 +132,33 @@ export class WrongField implements OnInit {
   readonly wrong = input.required<WrongDraft>();
   /** What is wrong with the chosen option ("Escolha a armadilha que dispara."), after a try to save. */
   readonly error = input('');
+  /** Which field of the chosen option the error belongs to (its own field says it); `''` puts the words under the whole group. */
+  readonly target = input<WrongTarget>('');
+  /** The kind being made: what a wrong move is differs (an answer, a bell, or none at all). */
+  readonly kind = input<FormKind>('lights');
   readonly wrongChange = output<WrongDraft>();
 
   protected readonly load = signal<Load>('idle');
   protected readonly traps = signal<readonly TrapChoice[]>([]);
+
+  /** The error stands under the field it names, when that field is on screen (the chosen option has it). */
+  protected atField(): boolean {
+    const option = this.wrong().option;
+    const target = this.target();
+    return (target === 'trap' && option === 'trap') || (target === 'attempts' && option === 'attempts') || ((target === 'moves' || target === 'minutes' || target === 'both') && option === 'limits');
+  }
+
+  protected help(): string {
+    switch (this.kind()) {
+      case 'riddle':
+      case 'cipher':
+        return 'O que uma resposta errada faz.';
+      case 'sequence':
+        return 'O que um sino errado faz.';
+      default:
+        return 'O que acontece quando as jogadas ou o tempo acabam.';
+    }
+  }
 
   protected choices(): readonly Choice[] {
     return this.judged() ? [NONE, TRAP, ATTEMPTS, LIMITS] : [NONE, LIMITS];

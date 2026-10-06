@@ -30,7 +30,7 @@ import { RollPicker } from '../../combat/roll-picker/roll-picker';
       } @else {
         <div class="mr-notice mr-notice--neutral" role="status">
           <mat-icon aria-hidden="true">close</mat-icon>
-          <p><strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.</p>
+          <p>@if (total(r)) {<span class="roll">Você tirou {{ total(r) }}. </span>}<strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.</p>
         </div>
       }
     }
@@ -46,6 +46,7 @@ import { RollPicker } from '../../combat/roll-picker/roll-picker';
           [busy]="busy()"
           [outlined]="true"
           [compact]="true"
+          [hideTotal]="true"
           [(typing)]="typing"
           (app)="app()"
           (typed)="onTyped($event)"

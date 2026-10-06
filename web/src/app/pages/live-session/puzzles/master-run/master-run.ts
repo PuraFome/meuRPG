@@ -182,7 +182,7 @@ export class MasterRun {
         const face = t.roll?.faces[0];
         const total = t.roll?.total ?? 0;
         const how = face !== undefined && face !== total ? `${total} (d20: ${face})` : `${total}`;
-        return `${t.characterName} rolou ${how} para a dica ${t.hint}: ${t.passed ? 'passou' : 'não passou'}.`;
+        return `${t.characterName} rolou ${how}${t.roll?.physical ? ' (dado físico)' : ''} para a dica ${t.hint}: ${t.passed ? 'passou' : 'não passou'}.`;
       }),
   );
 
@@ -206,7 +206,7 @@ export class MasterRun {
     const who = this.run().lastMove?.characterName;
     const row = this.run().attempts.find((a) => a.characterName === who);
     const per = this.puzzle()?.onWrong?.attemptsPerPlayer ?? 0;
-    return row && per > 0 ? `Tentativas dele: ${row.left} de ${per}.` : '';
+    return row && per > 0 ? `Tentativas de ${who}: ${row.left} de ${per}.` : '';
   });
   /** Every player's attempts, "Brisa 3 de 3 · Pensantus 3 de 3". */
   protected readonly attemptsLine = computed(() => {
@@ -218,6 +218,8 @@ export class MasterRun {
     const r = this.player();
     return r ? limitRows(r, this.now()).filter((row) => row.key !== 'attempts') : [];
   });
+  /** The moves counter says it already ("Jogadas 7 de 10"): the plain count under it would say the same twice. */
+  protected readonly movesCounted = computed(() => this.counters().some((c) => c.key === 'moves'));
   protected readonly trap = computed(() => trapFired(this.run().lastMove));
   protected readonly trapWho = computed(() => this.run().lastMove?.characterName ?? '');
   protected readonly judged = computed(() => this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.SEQUENCE || this.kind() === PuzzleKind.CIPHER);

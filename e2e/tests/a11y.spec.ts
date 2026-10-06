@@ -4070,14 +4070,15 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
   const stepPasses = async (page: Page, screen: string) => {
     await expectScreenPasses(page, screen);
   };
-  const height = width < 400 ? 640 : 900;
+  // The phone states are scanned at the phones' real heights: 568 px at 320, 667 at 375.
+  const height = width === 320 ? 568 : width < 400 ? (width === 375 ? 667 : 640) : 900;
   const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
   const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
   const master = await masterContext.newPage();
   const player = await playerContext.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   let campaignId = '';
-  let toren: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  let toren: Awaited<ReturnType<typeof puzzlesSecondPlayer>> | undefined;
   try {
     await Promise.all([master.goto('/'), player.goto('/')]);
     const table = await tableForPuzzles(master, player, `Acessibilidade mais quebra-cabeças ${Date.now()}`);
@@ -4126,7 +4127,7 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
       await master.getByLabel('CD', { exact: true }).fill('13');
       await master.getByRole('button', { name: 'Adicionar parte' }).click();
       await master.getByLabel('Para quem (parte 1)').selectOption(table.characterId);
-      await master.getByLabel('O que ele lê (parte 1)').fill('…os tambores ecoam três vezes antes de a porta ceder.');
+      await master.getByLabel('O que o jogador lê (parte 1)').fill('…os tambores ecoam três vezes antes de a porta ceder.');
       await stepPasses(master, `Novo quebra-cabeça: o enigma, com perícia, parte e tentativas ${where}`);
       await master.getByRole('radio', { name: 'Disparar uma armadilha do mapa' }).check();
       await expect(master.getByLabel('Armadilha do mapa', { exact: true })).toBeVisible();
@@ -4250,6 +4251,47 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     await moveRPC(player, campaignId, done, { riddle: { answer: 'sombra' } });
     await expect(player.getByText('O enigma foi respondido.')).toBeVisible({ timeout: 30_000 });
     await stepPasses(player, `O enigma resolvido ${where}`);
+
+    // The master's view of the consequences: the trap that fired, and the puzzle a limit stopped.
+    if (masterToo) {
+      await openSessionPage(master, campaignId);
+      const live = master.getByRole('region', { name: 'Quebra-cabeças' });
+      await live.getByRole('button', { name: 'Ver ao vivo Os sinos do Salão do trono' }).click();
+      const trapped = master.getByRole('article', { name: 'Os sinos do Salão do trono' });
+      await expect(trapped.getByText('A armadilha disparou:')).toBeVisible();
+      await trapped.scrollIntoViewIfNeeded();
+      await stepPasses(master, `A sequência ao vivo, com a armadilha disparada ${where}`);
+      await live.getByRole('button', { name: 'Ver ao vivo A porta selada' }).click();
+      const halted = master.getByRole('article', { name: 'A porta selada' });
+      await expect(halted.getByText('Parou').first()).toBeVisible();
+      await halted.scrollIntoViewIfNeeded();
+      await stepPasses(master, `O enigma parado por um limite, ao vivo ${where}`);
+    }
+
+    // The sequence and the cipher solved: the player's phone and the master's card.
+    for (const bell of SEQUENCE) {
+      await moveRPC(player, campaignId, sequence, { sequence: { bell } });
+    }
+    await moveRPC(player, campaignId, cipher, { cipher: { text: 'o tesouro esta sob o altar' } });
+    await playTo(sequence, 'Os sinos do Salão do trono');
+    await expect(player.getByText('Os sinos tocaram na ordem certa.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A sequência resolvida ${where}`);
+    await playTo(cipher, 'A carta do Capitão');
+    await expect(player.getByText('A mensagem foi decifrada.')).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `A cifra resolvida ${where}`);
+    if (masterToo) {
+      const solvedPanel = master.getByRole('region', { name: 'Quebra-cabeças' });
+      for (const [name, screen] of [
+        ['Os sinos do Salão do trono', 'A sequência resolvida, ao vivo'],
+        ['A carta do Capitão', 'A cifra resolvida, ao vivo'],
+      ] as const) {
+        await solvedPanel.getByRole('button', { name: `Ver ao vivo ${name}` }).click();
+        const done = master.getByRole('article', { name });
+        await expect(done.getByText(/resolveu “/)).toBeVisible({ timeout: 30_000 });
+        await done.scrollIntoViewIfNeeded();
+        await stepPasses(master, `${screen} ${where}`);
+      }
+    }
 
     // Toren's phone: the split information from the other side.
     await openPage(toren.page, `/campanhas/${campaignId}/sessao?quebra-cabeca=${riddle}`);

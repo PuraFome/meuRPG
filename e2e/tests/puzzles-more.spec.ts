@@ -44,6 +44,20 @@ async function twoPeople(browser: Browser, viewport = { width: 1280, height: 100
   return { master, player, close: () => Promise.all([masterContext.close(), playerContext.close()]) };
 }
 
+/**
+ * Everything the player's page is sent in answer to a move or a try for a hint: the same JSON the app reads, kept to look for what must never
+ * be in it (RN-10, RN-27), as `GetPuzzleRun` is.
+ */
+function watchAnswers(page: Page): string[] {
+  const bodies: string[] = [];
+  page.on('response', (res) => {
+    if (/PuzzleService\/(MakePuzzleMove|TryPuzzleHint)$/.test(res.url())) {
+      void res.text().then((t) => bodies.push(t), () => undefined);
+    }
+  });
+  return bodies;
+}
+
 /** The player's page on a puzzle, once its title is there. */
 async function playerOpens(player: Page, campaignId: string, puzzleId: string, name: string): Promise<void> {
   await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${puzzleId}`);
@@ -52,6 +66,7 @@ async function playerOpens(player: Page, campaignId: string, puzzleId: string, n
 
 test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e nenhuma resposta chega a ele @MR-038 @RN-27 @RN-10', async ({ browser }) => {
   const { master, player, close } = await twoPeople(browser);
+  const answers = watchAnswers(player);
   const table = await tableForPuzzles(master, player, `Enigma ${Date.now()}`);
   try {
     // The master's form: the riddle, the accepted answers one by one, and "Ao errar": two attempts for each player.
@@ -109,7 +124,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     expect(after).toContain('"wrong":true');
     // The master reads the answer and the attempts left, by player.
     await expect(card.getByText(/Última jogada: Pensantus tentou “escuridão”: errou/)).toBeVisible();
-    await expect(card.getByText('Tentativas dele: 1 de 2.')).toBeVisible();
+    await expect(card.getByText('Tentativas de Pensantus: 1 de 2.')).toBeVisible();
     await expect(card.getByText('Pensantus 1 de 2')).toBeVisible();
 
     // The right answer, with other capitals and punctuation: solved, for the table.
@@ -122,6 +137,17 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     const solved = await playerRunText(player, table.campaignId, puzzleId);
     for (const answer of RIDDLE.answers) {
       expect(solved).not.toContain(answer);
+    }
+    // The answers to the moves themselves (the wrong one and the right one) carry no answer either.
+    await expect.poll(() => answers.length).toBeGreaterThanOrEqual(2);
+    for (const body of answers) {
+      for (const answer of RIDDLE.answers) {
+        expect(body).not.toContain(answer);
+      }
+      expect(body).not.toContain('escuridão');
+      for (const secret of NEVER) {
+        expect(body, secret).not.toContain(secret);
+      }
     }
   } finally {
     await endTable(master, table.campaignId);
@@ -152,11 +178,19 @@ test('a sequência: o jogador vê tocar passo a passo e repete; um passo errado 
     await expect(player.getByRole('button', { name: 'Sino alto' })).toHaveAttribute('aria-disabled', 'true');
 
     // "Tocar a sequência": each phone shows it step by step, and the server sends only the steps already played.
+    const started = Date.now();
     await card.getByRole('button', { name: 'Tocar a sequência' }).click();
     await expect(player.getByText('O mestre está tocando os sinos.')).toBeVisible({ timeout: 15_000 });
-    const mid = JSON.parse(await playerRunText(player, table.campaignId, puzzleId)).run.sequence as { shown?: number[]; playing?: boolean; totalSteps: number };
-    expect(mid.totalSteps).toBe(6);
-    expect((mid.shown ?? []).length).toBeLessThan(6);
+    // The server sends a step only when its time has come: the first at once, then one every 1,2 s. Read it three times while it plays.
+    for (let i = 0; i < 3; i++) {
+      const read = JSON.parse(await playerRunText(player, table.campaignId, puzzleId)).run.sequence as { shown?: number[]; totalSteps: number };
+      const elapsed = Date.now() - started;
+      expect(read.totalSteps).toBe(6);
+      expect((read.shown ?? []).length).toBeLessThanOrEqual(Math.floor(elapsed / 1200) + 1);
+      // Each bell shown so far is the sequence's own, in order; none of the ones to come.
+      expect(read.shown ?? []).toEqual(SEQUENCE.slice(0, (read.shown ?? []).length));
+      await player.waitForTimeout(700);
+    }
     await expect(player.getByText(/passo [2-6] de 6/)).toBeVisible({ timeout: 15_000 });
     await expect(player.locator('.big__name')).toBeVisible();
     // No bell to tap while it plays; when it ends it is "com vocês".
@@ -182,11 +216,10 @@ test('a sequência: o jogador vê tocar passo a passo e repete; um passo errado 
     await expect(player.getByText('Dardos envenenados.', { exact: false })).toBeVisible();
 
     // Repeat it right, bell by bell: the count of right steps is the server's, and the last one solves it.
-    for (const [i, bell] of SEQUENCE.entries()) {
-      await player.getByRole('button', { name: BELL_NAMES[bell] }).click();
-      if (i < SEQUENCE.length - 1) {
-        await expect(player.locator('.board-card')).toContainText(`${i + 1} de 6`);
-      }
+    // Tapped one after the other without waiting for the screen to say "N de 6": the taps go to the server one at a time, in order, so a fast
+    // right repeat is never judged wrong (and never fires the trap again).
+    for (const bell of SEQUENCE) {
+      await player.getByRole('button', { name: BELL_NAMES[bell] }).click({ noWaitAfter: true });
     }
     await expect(player.getByText('Os sinos tocaram na ordem certa.')).toBeVisible();
     await expect(card.getByText('Pensantus resolveu “Os sinos do Salão do trono”', { exact: false })).toBeVisible();
@@ -199,6 +232,7 @@ test('a sequência: o jogador vê tocar passo a passo e repete; um passo errado 
 
 test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifra à mão @MR-038 @RN-27 @RN-10 @MR-029', async ({ browser }) => {
   const { master, player, close } = await twoPeople(browser);
+  const answers = watchAnswers(player);
   const table = await tableForPuzzles(master, player, `Cifra ${Date.now()}`);
   try {
     const clueText = 'Cada letra anda três para trás.';
@@ -245,7 +279,7 @@ test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifr
     const found = await playerRunText(player, table.campaignId, puzzleId);
     expect(found).toContain('"keyClueId"');
     expect(found).not.toContain(CIPHER.message);
-    await player.locator('.key').getByRole('button', { name: 'Abrir as notas' }).click();
+    await player.locator('.key').getByRole('button', { name: 'Abrir as anotações' }).click();
     await expect(player.getByText(clueText).first()).toBeVisible();
     await player.keyboard.press('Escape');
 
@@ -259,6 +293,17 @@ test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifr
     await player.getByRole('button', { name: 'Conferir' }).click();
     await expect(player.getByText('A mensagem foi decifrada.')).toBeVisible();
     await expect(card.getByText('Pensantus resolveu “A carta do Capitão”', { exact: false })).toBeVisible();
+    // The answers to the two moves: no plain message, no key, no clue text of the master's.
+    await expect.poll(() => answers.length).toBeGreaterThanOrEqual(2);
+    for (const body of answers) {
+      expect(body).not.toContain(CIPHER.message);
+      expect(body).not.toContain('"shift"');
+      expect(body).not.toContain('"keyword"');
+      expect(body).not.toContain('Cada letra anda');
+      for (const secret of NEVER) {
+        expect(body, secret).not.toContain(secret);
+      }
+    }
   } finally {
     await endTable(master, table.campaignId);
     await close();
@@ -267,6 +312,7 @@ test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifr
 
 test('a dica por teste de perícia com dado físico: o jogador digita o d20, falha, e depois ganha uma dica só dele @MR-038 @RN-18 @RN-27 @RN-10', async ({ browser }) => {
   const { master, player, close } = await twoPeople(browser);
+  const answers = watchAnswers(player);
   const table = await tableForPuzzles(master, player, `Dica ${Date.now()}`);
   const toren = await secondPlayer(browser, master, table.campaignId);
   try {
@@ -299,10 +345,12 @@ test('a dica por teste de perícia com dado físico: o jogador digita o d20, fal
     await player.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(player.getByText('Não deu desta vez.')).toBeVisible();
     await expect(player.getByText('Outro jogador pode tentar, ou o mestre solta uma dica.')).toBeVisible();
+    // The player's own total on a fail, as on a pass, and never what it had to reach.
+    await expect(player.getByText(/Você tirou \d+\./)).toBeVisible();
     await expect(player.getByRole('button', { name: /^Tentar uma dica/ })).toHaveCount(0);
     expect(await player.locator('body').innerText()).not.toMatch(/\bCD\b/);
     // The master reads the roll, and who.
-    await expect(card.getByText(/Pensantus rolou \d+( \(d20: 1\))? para a dica 1: não passou\./)).toBeVisible();
+    await expect(card.getByText(/Pensantus rolou \d+( \(d20: 1\))?( \(dado físico\))? para a dica 1: não passou\./)).toBeVisible();
 
     // The master releases hint 1 to everyone; now the next hint can be tried: a 20 passes and the hint is the player's alone.
     await card.getByRole('button', { name: 'Mostrar a próxima dica' }).click();
@@ -313,7 +361,7 @@ test('a dica por teste de perícia com dado físico: o jogador digita o d20, fal
     await expect(player.getByText('Você conseguiu.')).toBeVisible();
     await expect(player.getByText('Esta dica é só sua; se quiser, conte aos outros.')).toBeVisible();
     await expect(player.getByText('Ela some quando a tocha apaga.')).toBeVisible();
-    await expect(card.getByText(/Pensantus rolou \d+( \(d20: 20\))? para a dica 2: passou\./)).toBeVisible();
+    await expect(card.getByText(/Pensantus rolou \d+( \(d20: 20\))?( \(dado físico\))? para a dica 2: passou\./)).toBeVisible();
 
     // The other player reads the hint the master released, never the one Pensantus won (RN-27).
     const torensText = await playerRunText(toren.page, table.campaignId, puzzleId);
@@ -322,6 +370,14 @@ test('a dica por teste de perícia com dado físico: o jogador digita o d20, fal
     const own = JSON.parse(await playerRunText(player, table.campaignId, puzzleId)).run as { hints: string[]; sharedHints: number };
     expect(own.hints).toEqual(['Pense no que acompanha você ao meio-dia.', 'Ela some quando a tocha apaga.']);
     expect(own.sharedHints).toBe(1);
+    // The answers to the two tries carry the player's own roll and the hint won, never the DC or the check.
+    await expect.poll(() => answers.length).toBeGreaterThanOrEqual(2);
+    for (const body of answers) {
+      for (const secret of NEVER) {
+        expect(body, secret).not.toContain(secret);
+      }
+      expect(body).not.toMatch(/"dc"|\bdc\b/i);
+    }
   } finally {
     await toren.close();
     await endTable(master, table.campaignId);
@@ -345,10 +401,10 @@ test('a informação dividida: o mestre dá uma parte a cada jogador e cada um s
     await master.getByRole('button', { name: 'Adicionar', exact: true }).click();
     await master.getByRole('button', { name: 'Adicionar parte' }).click();
     await master.getByLabel('Para quem (parte 1)').selectOption(table.characterId);
-    await master.getByLabel('O que ele lê (parte 1)').fill(mine.replace(/[“”]/g, ''));
+    await master.getByLabel('O que o jogador lê (parte 1)').fill(mine.replace(/[“”]/g, ''));
     await master.getByRole('button', { name: 'Adicionar parte' }).click();
     await master.getByLabel('Para quem (parte 2)').selectOption(toren.characterId);
-    await master.getByLabel('O que ele lê (parte 2)').fill(hers.replace(/[“”]/g, ''));
+    await master.getByLabel('O que o jogador lê (parte 2)').fill(hers.replace(/[“”]/g, ''));
     // A character has one part: Pensantus is no longer offered on the second.
     await expect(master.getByLabel('Para quem (parte 2)').locator('option', { hasText: 'Pensantus' })).toBeDisabled();
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
@@ -441,40 +497,78 @@ test('o limite de jogadas para o quebra-cabeça: o jogador lê "parou", os conta
   }
 });
 
-test('os três quebra-cabeças novos cabem em 320 × 568 e o campo e "Responder" ficam à vista @MR-038', async ({ browser }) => {
+test('os três quebra-cabeças novos cabem em 320 × 568: o enigma vem primeiro e só o campo e "Responder" ficam à vista @MR-038', async ({ browser }) => {
   const { master, player, close } = await twoPeople(browser, { width: 320, height: 568 }, 'dark');
   const table = await tableForPuzzles(master, player, `Cabe ${Date.now()}`);
+  const toren = await secondPlayer(browser, master, table.campaignId);
   try {
-    const riddle = await createRiddleRPC(master, table.campaignId, 'A porta da Cripta pergunta', { clue: 'Procure no chão da Cripta.', onWrong: { attemptsPerPlayer: 3 } });
+    const clueId = await sceneClueRPC(master, table.campaignId, table.map.mapId, 'A biblioteca', 'Cada letra anda três para trás.');
+    // A riddle with a part, a clue and a hint button: everything that used to push it down the page.
+    const riddle = await createRiddleRPC(master, table.campaignId, 'A porta da Cripta pergunta', {
+      clue: 'Procure no chão da Cripta, onde a luz da tocha não alcança, e olhe para trás.',
+      hints: ['Pense no que acompanha você ao meio-dia.'],
+      hintCheck: { skillKey: 'skill:investigation', dc: 13 },
+      parts: [
+        { characterId: table.characterId, text: '…os tambores ecoam três vezes antes de a porta ceder, e só então o chão responde.' },
+        { characterId: toren.characterId, text: 'A porta ouve o que o chão esconde…' },
+      ],
+      onWrong: { attemptsPerPlayer: 3 },
+    });
     const sequence = await createSequenceRPC(master, table.campaignId, 'Os sinos do Salão do trono');
-    const cipher = await createCipherRPC(master, table.campaignId, 'A carta do Capitão', { onWrong: { maxMoves: 10, timeLimitSeconds: 300 } });
+    const cipher = await createCipherRPC(master, table.campaignId, 'A carta do Capitão', { onWrong: { maxMoves: 10, timeLimitSeconds: 300 } }, clueId);
     for (const id of [riddle, sequence, cipher]) {
       await showPuzzleRPC(master, table.campaignId, id);
     }
     const fits = () =>
       player.evaluate(() => ({
         scrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-        small: Array.from(document.querySelectorAll<HTMLElement>('main button, main input, main textarea'))
-          .filter((e) => e.getBoundingClientRect().width > 0)
-          .filter((e) => Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 44 && !(e instanceof HTMLTextAreaElement))
+        small: Array.from(document.querySelectorAll<HTMLElement>('main button, main input, main select'))
+          .filter((e) => e.getBoundingClientRect().width > 0 && !(e instanceof HTMLInputElement && e.type === 'radio'))
+          .filter((e) => !e.closest('.cipher-table, .col, mat-form-field') && Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 44)
           .map((e) => `${e.tagName}:${e.getAttribute('aria-label') ?? e.textContent?.trim()}`),
       }));
 
     await playerOpens(player, table.campaignId, riddle, 'A porta da Cripta pergunta');
-    // The riddle rolls and the field and "Responder" stay stuck at the bottom of the screen.
+    // The riddle comes first, on the first screen, in spite of the part, the clue and the hint button; the field and "Responder" stay at the foot.
+    const riddleText = player.getByText(RIDDLE.text);
+    await expect(riddleText).toBeInViewport();
+    expect((await riddleText.boundingBox())!.y).toBeLessThan(200);
     await expect(player.getByRole('button', { name: 'Responder' })).toBeInViewport();
     await expect(player.getByLabel('Sua resposta')).toBeInViewport();
+    // Only the field and the button are the foot: the counters and the notes scroll with the page.
+    const stick = await player.evaluate(() => {
+      const bar = document.querySelector('.ask__stick')!;
+      const counters = document.querySelector('app-limit-counters')!;
+      return { bar: bar.getBoundingClientRect().height, position: getComputedStyle(bar).position, counters: getComputedStyle(counters.closest('.ask__notes')!).position };
+    });
+    expect(stick.position).toBe('sticky');
+    expect(stick.bar).toBeLessThan(150);
+    expect(stick.counters).toBe('static');
     expect((await fits()).scrolls).toBe(false);
+    // A wrong answer adds a notice and the field still sits at the foot, the riddle still above it.
+    await player.getByLabel('Sua resposta').fill('luz');
+    await player.getByRole('button', { name: 'Responder' }).click();
+    await expect(player.getByRole('alert').filter({ hasText: 'Não é isso.' })).toBeVisible();
+    await expect(player.getByRole('button', { name: 'Responder' })).toBeInViewport();
+    expect(await fits()).toEqual({ scrolls: false, small: [] });
 
     await playerOpens(player, table.campaignId, sequence, 'Os sinos do Salão do trono');
     await playSequenceRPC(master, table.campaignId, sequence);
     await expect(player.getByText('Agora é com vocês.')).toBeVisible({ timeout: 30_000 });
+    // Four bells two by two, and the six steps on one row.
+    const layout = await player.evaluate(() => {
+      const bells = Array.from(document.querySelectorAll<HTMLElement>('app-bells-board button')).map((b) => b.getBoundingClientRect());
+      const slots = Array.from(document.querySelectorAll<HTMLElement>('app-sequence-strip li')).map((b) => b.getBoundingClientRect());
+      return { bellRows: new Set(bells.map((r) => Math.round(r.top))).size, slotRows: new Set(slots.map((r) => Math.round(r.top))).size };
+    });
+    expect(layout.bellRows).toBe(2);
     expect(await fits()).toEqual({ scrolls: false, small: [] });
 
     await playerOpens(player, table.campaignId, cipher, 'A carta do Capitão');
     expect(await fits()).toEqual({ scrolls: false, small: [] });
     await expect(player.getByRole('button', { name: 'Conferir' })).toBeVisible();
   } finally {
+    await toren.close();
     await endTable(master, table.campaignId);
     await close();
   }

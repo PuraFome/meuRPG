@@ -30,20 +30,25 @@ export const TYPED_MAX = 600;
         <app-limit-counters [rows]="counters()" />
       } @else {
         <form class="ask" novalidate (submit)="send($event)">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ask__field">
-            <mat-label>Sua resposta</mat-label>
-            <input matInput type="text" name="answer" autocomplete="off" autocapitalize="off" spellcheck="false" [attr.maxlength]="max" [value]="typed()" (input)="typed.set($any($event.target).value)" />
-          </mat-form-field>
-          @if (verdict() === 'wrong') {
-            <div class="mr-notice mr-notice--danger" role="alert">
-              <mat-icon aria-hidden="true">close</mat-icon>
-              <p><strong>Não é isso.</strong> Tente outra resposta.</p>
-            </div>
-          }
-          <app-limit-counters [rows]="counters()" />
-          <button matButton="filled" type="submit" class="ask__go" [disabled]="!ready() || busy()" disabledInteractive [class.mr-button--off]="!ready()">
-            {{ busy() ? 'Enviando...' : 'Responder' }}
-          </button>
+          <!-- On a short phone only this group sticks to the foot of the screen: the field and "Responder". -->
+          <div class="ask__stick">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ask__field">
+              <mat-label>Sua resposta</mat-label>
+              <input matInput type="text" name="answer" autocomplete="off" autocapitalize="off" spellcheck="false" [attr.maxlength]="max" [value]="typed()" (input)="typed.set($any($event.target).value)" />
+            </mat-form-field>
+            <button matButton="filled" type="submit" class="ask__go" [disabled]="!ready() || busy()" disabledInteractive [class.mr-button--off]="!ready()">
+              {{ busy() ? 'Enviando...' : 'Responder' }}
+            </button>
+          </div>
+          <div class="ask__notes">
+            @if (verdict() === 'wrong') {
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">close</mat-icon>
+                <p><strong>Não é isso.</strong> Tente outra resposta.</p>
+              </div>
+            }
+            <app-limit-counters [rows]="counters()" />
+          </div>
         </form>
       }
     }
@@ -64,30 +69,61 @@ export const TYPED_MAX = 600;
       margin-bottom: var(--mr-space-3);
     }
 
+    // The field, the notes (the wrong answer, the counters) and the button: the artboard's order is the field, the notes, then the button.
     .ask {
       display: flex;
       flex-direction: column;
       gap: var(--mr-space-3);
     }
 
+    .ask__stick {
+      display: contents;
+    }
+
     .ask__field {
+      order: 1;
       width: 100%;
     }
 
+    .ask__notes {
+      order: 2;
+      display: flex;
+      flex-direction: column;
+      gap: var(--mr-space-3);
+    }
+
     .ask__go {
+      order: 3;
       min-height: 48px;
     }
 
-    // A short screen (320 × 568): the riddle or the letter scrolls and the field, the counters and the button stay at the foot of it.
-    @media (max-height: 600px) {
+    // A narrow phone: the riddle comes first and scrolls, the notes scroll with it, and only the field and "Responder" stay at the foot.
+    @media (max-width: 374.98px) {
       .ask {
+        gap: 0;
+      }
+
+      .ask__notes {
+        order: 1;
+        margin-bottom: var(--mr-space-2);
+      }
+
+      .ask__stick {
+        order: 2;
         position: sticky;
         bottom: 0;
         z-index: 1;
-        margin-inline: calc(-1 * var(--mr-space-3));
-        padding: var(--mr-space-2) var(--mr-space-3) var(--mr-space-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--mr-space-2);
+        padding: var(--mr-space-2) 0;
         border-top: 1px solid var(--mr-rule);
         background: var(--mr-surface);
+      }
+
+      .ask__field,
+      .ask__go {
+        order: 0;
       }
     }
 

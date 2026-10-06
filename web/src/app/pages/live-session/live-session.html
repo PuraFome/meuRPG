@@ -72,6 +72,7 @@
           [dicePreference]="campaign()?.dicePreference ?? 1"
           [reconnecting]="connection() === 'reconnecting' || connection() === 'paused'"
           (openNotes)="openNotes()"
+          (diceModeStale)="refreshCampaign()"
         />
       } @else {
       @if (!combat.fullPage()) {

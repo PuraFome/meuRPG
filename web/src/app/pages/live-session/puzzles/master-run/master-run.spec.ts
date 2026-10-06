@@ -353,7 +353,7 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       const answers = el.querySelector('.answers')!;
       expect(Array.from(answers.querySelectorAll('li')).map((l) => l.textContent)).toEqual(['sombra', 'a sombra']);
       expect(textOf(answers.closest('.part'))).toContain('Respostas aceitas visibility_off Só você vê');
-      expect(textOf(el.querySelector('.facts'))).toContain('Última jogada: Toren tentou “escuridão”: errou, há 8 s. Tentativas dele: 2 de 3.');
+      expect(textOf(el.querySelector('.facts'))).toContain('Última jogada: Toren tentou “escuridão”: errou, há 8 s. Tentativas de Toren: 2 de 3.');
       expect(textOf(el.querySelector('.facts'))).toContain('Toren 2 de 3 · Brisa 3 de 3 · Sálvia 3 de 3');
       // The master does not play: no field, no "Responder".
       expect(el.querySelector('input, form')).toBeNull();

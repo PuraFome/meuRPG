@@ -49,7 +49,7 @@ import type { CounterRow } from '../../core/puzzles/puzzle-format';
       margin: 0;
       font-weight: 700;
       text-align: right;
-      font-variant-numeric: tabular-nums;
+      font-variant-numeric: lining-nums tabular-nums;
     }
 
     .spent {

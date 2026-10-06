@@ -258,14 +258,16 @@ export function limitRows(run: PuzzleRun, now: Date): CounterRow[] {
   }
   const rows: CounterRow[] = [];
   if (limits.attemptsPerPlayer > 0) {
-    rows.push({ key: 'attempts', label: 'Suas tentativas', value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`, spent: limits.attemptsLeft <= 0 });
+    rows.push({ key: 'attempts', label: 'Suas tentativas', value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`, spent: limits.attemptsLeft <= 0 && !run.solved });
   }
   if (limits.maxMoves > 0) {
-    rows.push({ key: 'moves', label: 'Jogadas', value: `${limits.movesMade} de ${limits.maxMoves}`, spent: limits.movesMade >= limits.maxMoves });
+    rows.push({ key: 'moves', label: 'Jogadas', value: `${limits.movesMade} de ${limits.maxMoves}`, spent: limits.movesMade >= limits.maxMoves && !run.solved });
   }
   if (limits.timeLimitSeconds > 0) {
-    const left = limits.deadline ? secondsUntil(timestampDate(limits.deadline), now) : limits.secondsLeft;
-    rows.push({ key: 'time', label: 'Tempo', value: `${clockSeconds(left)} de ${clockSeconds(limits.timeLimitSeconds)}`, spent: left <= 0 });
+    // Once the puzzle is over (solved, or a limit stopped it) the clock stands where the server read it: a solved puzzle is not "acabou".
+    const over = run.solved || run.stopped;
+    const left = over || !limits.deadline ? limits.secondsLeft : secondsUntil(timestampDate(limits.deadline), now);
+    rows.push({ key: 'time', label: 'Tempo', value: `${clockSeconds(left)} de ${clockSeconds(limits.timeLimitSeconds)}`, spent: left <= 0 && !run.solved });
   }
   return rows;
 }
