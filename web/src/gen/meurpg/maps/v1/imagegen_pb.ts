@@ -8,13 +8,15 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { GalleryImage } from "./gallery_pb";
 import { file_meurpg_maps_v1_gallery } from "./gallery_pb";
+import type { Map } from "./maps_pb";
+import { file_meurpg_maps_v1_maps } from "./maps_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file meurpg/maps/v1/imagegen.proto.
  */
 export const file_meurpg_maps_v1_imagegen: GenFile = /*@__PURE__*/
-  fileDesc("Ch1tZXVycGcvbWFwcy92MS9pbWFnZWdlbi5wcm90bxIObWV1cnBnLm1hcHMudjEiwwQKD0ltYWdlR2VuZXJhdGlvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIxCgRraW5kGAMgASgOMiMubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uS2luZBIzCgVzdGF0ZRgEIAEoDjIkLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXRlEjcKB2ZhaWx1cmUYBSABKA4yJi5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25GYWlsdXJlEhEKCXJlYXNvbl9wdBgGIAEoCRIOCgZwcm9tcHQYByABKAkSKQoFc3R5bGUYCCABKA4yGi5tZXVycGcubWFwcy52MS5JbWFnZVN0eWxlEjYKDGFzcGVjdF9yYXRpbxgJIAEoDjIgLm1ldXJwZy5tYXBzLnYxLkltYWdlQXNwZWN0UmF0aW8SDgoGbnVtYmVyGAogASgFEhAKCGltYWdlX2lkGAsgASgJEhcKD3NvdXJjZV9pbWFnZV9pZBgMIAEoCRIbChNyZWZlcmVuY2VfaW1hZ2VfaWRzGA0gAygJEhIKCnNsb3Rfc3BlbnQYDiABKAgSLgoKY3JlYXRlZF9hdBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLZmluaXNoZWRfYXQYECABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE2NoYXJhY3Rlcl9pbWFnZV9pZHMYESADKAkiiQIKFUltYWdlR2VuZXJhdGlvblN0YXR1cxIPCgdlbmFibGVkGAEgASgIEhUKDW1vbnRobHlfbGltaXQYAiABKAUSFwoPdXNlZF90aGlzX21vbnRoGAMgASgFEhEKCXJlbWFpbmluZxgEIAEoBRINCgVtb250aBgFIAEoCRItCglyZXNldHNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KFW1heF9wcm9tcHRfY2hhcmFjdGVycxgHIAEoBRIdChVtYXhfb2JqZWN0X3JlZmVyZW5jZXMYCCABKAUSIAoYbWF4X2NoYXJhY3Rlcl9yZWZlcmVuY2VzGAkgASgFIo0BChZJbWFnZUdlbmVyYXRpb25CbG9ja2VkEjwKBnJlYXNvbhgBIAEoDjIsLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvbkJsb2NrZWRSZWFzb24SNQoGc3RhdHVzGAIgASgLMiUubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uU3RhdHVzIjYKH0dldEltYWdlR2VuZXJhdGlvblN0YXR1c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiWQogR2V0SW1hZ2VHZW5lcmF0aW9uU3RhdHVzUmVzcG9uc2USNQoGc3RhdHVzGAEgASgLMiUubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uU3RhdHVzIvMBChlHZW5lcmF0ZVNjZW5lSW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIOCgZwcm9tcHQYAyABKAkSKQoFc3R5bGUYBCABKA4yGi5tZXVycGcubWFwcy52MS5JbWFnZVN0eWxlEjYKDGFzcGVjdF9yYXRpbxgFIAEoDjIgLm1ldXJwZy5tYXBzLnYxLkltYWdlQXNwZWN0UmF0aW8SGAoQb2JqZWN0X2ltYWdlX2lkcxgGIAMoCRIbChNjaGFyYWN0ZXJfaW1hZ2VfaWRzGAcgAygJIogBChpHZW5lcmF0ZVNjZW5lSW1hZ2VSZXNwb25zZRIzCgpnZW5lcmF0aW9uGAEgASgLMh8ubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uEjUKBnN0YXR1cxgCIAEoCzIlLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXR1cyJwChlFZGl0R2VuZXJhdGVkSW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRITCgtpbnN0cnVjdGlvbhgEIAEoCSKIAQoaRWRpdEdlbmVyYXRlZEltYWdlUmVzcG9uc2USMwoKZ2VuZXJhdGlvbhgBIAEoCzIfLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvbhI1CgZzdGF0dXMYAiABKAsyJS5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25TdGF0dXMiXQoZR2V0SW1hZ2VHZW5lcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIVCg1nZW5lcmF0aW9uX2lkGAIgASgJEhQKDHdhaXRfc2Vjb25kcxgDIAEoBSK1AQoaR2V0SW1hZ2VHZW5lcmF0aW9uUmVzcG9uc2USMwoKZ2VuZXJhdGlvbhgBIAEoCzIfLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvbhIrCgVpbWFnZRgCIAEoCzIcLm1ldXJwZy5tYXBzLnYxLkdhbGxlcnlJbWFnZRI1CgZzdGF0dXMYAyABKAsyJS5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25TdGF0dXMiSgocQ2FuY2VsSW1hZ2VHZW5lcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIVCg1nZW5lcmF0aW9uX2lkGAIgASgJIosBCh1DYW5jZWxJbWFnZUdlbmVyYXRpb25SZXNwb25zZRIzCgpnZW5lcmF0aW9uGAEgASgLMh8ubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uEjUKBnN0YXR1cxgCIAEoCzIlLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXR1cyI+ChVMaXN0SW1hZ2VFZGl0c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIaW1hZ2VfaWQYAiABKAkiQgoWTGlzdEltYWdlRWRpdHNSZXNwb25zZRIoCgVlZGl0cxgBIAMoCzIZLm1ldXJwZy5tYXBzLnYxLkltYWdlRWRpdCJYCglJbWFnZUVkaXQSKwoFaW1hZ2UYASABKAsyHC5tZXVycGcubWFwcy52MS5HYWxsZXJ5SW1hZ2USDgoGcHJvbXB0GAIgASgJEg4KBm51bWJlchgDIAEoBSq4AQoKSW1hZ2VTdHlsZRIbChdJTUFHRV9TVFlMRV9VTlNQRUNJRklFRBAAEhwKGElNQUdFX1NUWUxFX09JTF9QQUlOVElORxABEhoKFklNQUdFX1NUWUxFX1dBVEVSQ09MT1IQAhITCg9JTUFHRV9TVFlMRV9JTksQAxIbChdJTUFHRV9TVFlMRV9ESUdJVEFMX0FSVBAEEiEKHUlNQUdFX1NUWUxFX0JPT0tfSUxMVVNUUkFUSU9OEAUq0QIKEEltYWdlQXNwZWN0UmF0aW8SIgoeSU1BR0VfQVNQRUNUX1JBVElPX1VOU1BFQ0lGSUVEEAASGgoWSU1BR0VfQVNQRUNUX1JBVElPXzFfMRABEhoKFklNQUdFX0FTUEVDVF9SQVRJT18zXzIQAhIaChZJTUFHRV9BU1BFQ1RfUkFUSU9fMl8zEAMSGgoWSU1BR0VfQVNQRUNUX1JBVElPXzNfNBAEEhoKFklNQUdFX0FTUEVDVF9SQVRJT180XzMQBRIaChZJTUFHRV9BU1BFQ1RfUkFUSU9fNF81EAYSGgoWSU1BR0VfQVNQRUNUX1JBVElPXzVfNBAHEhsKF0lNQUdFX0FTUEVDVF9SQVRJT185XzE2EAgSGwoXSU1BR0VfQVNQRUNUX1JBVElPXzE2XzkQCRIbChdJTUFHRV9BU1BFQ1RfUkFUSU9fMjFfORAKKn0KE0ltYWdlR2VuZXJhdGlvbktpbmQSJQohSU1BR0VfR0VORVJBVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASHwobSU1BR0VfR0VORVJBVElPTl9LSU5EX1NDRU5FEAESHgoaSU1BR0VfR0VORVJBVElPTl9LSU5EX0VESVQQAirvAQoUSW1hZ2VHZW5lcmF0aW9uU3RhdGUSJgoiSU1BR0VfR0VORVJBVElPTl9TVEFURV9VTlNQRUNJRklFRBAAEiIKHklNQUdFX0dFTkVSQVRJT05fU1RBVEVfUEVORElORxABEh8KG0lNQUdFX0dFTkVSQVRJT05fU1RBVEVfRE9ORRACEiIKHklNQUdFX0dFTkVSQVRJT05fU1RBVEVfUkVGVVNFRBADEiEKHUlNQUdFX0dFTkVSQVRJT05fU1RBVEVfRkFJTEVEEAQSIwofSU1BR0VfR0VORVJBVElPTl9TVEFURV9DQU5DRUxFRBAFKuACChZJbWFnZUdlbmVyYXRpb25GYWlsdXJlEigKJElNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9VTlNQRUNJRklFRBAAEiUKIUlNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9OT19JTUFHRRABEiQKIElNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9SRUZVU0VEEAISKAokSU1BR0VfR0VORVJBVElPTl9GQUlMVVJFX1VOQVZBSUxBQkxFEAMSKQolSU1BR0VfR0VORVJBVElPTl9GQUlMVVJFX0dBTExFUllfRlVMTBAEEioKJklNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9JTUFHRV9NSVNTSU5HEAUSJAogSU1BR0VfR0VORVJBVElPTl9GQUlMVVJFX1RJTUVPVVQQBhIoCiRJTUFHRV9HRU5FUkFUSU9OX0ZBSUxVUkVfU0VSVklDRV9PRkYQByqUAgocSW1hZ2VHZW5lcmF0aW9uQmxvY2tlZFJlYXNvbhIvCitJTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJwojSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9PRkYQARIxCi1JTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX0xJTUlUX1JFQUNIRUQQAhIwCixJTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX0dBTExFUllfRlVMTBADEjUKMUlNQUdFX0dFTkVSQVRJT05fQkxPQ0tFRF9SRUFTT05fUkVRVUVTVF9UT09fTEFSR0UQBDLFBQoWSW1hZ2VHZW5lcmF0aW9uU2VydmljZRKCAQoYR2V0SW1hZ2VHZW5lcmF0aW9uU3RhdHVzEi8ubWV1cnBnLm1hcHMudjEuR2V0SW1hZ2VHZW5lcmF0aW9uU3RhdHVzUmVxdWVzdBowLm1ldXJwZy5tYXBzLnYxLkdldEltYWdlR2VuZXJhdGlvblN0YXR1c1Jlc3BvbnNlIgOQAgISawoSR2VuZXJhdGVTY2VuZUltYWdlEikubWV1cnBnLm1hcHMudjEuR2VuZXJhdGVTY2VuZUltYWdlUmVxdWVzdBoqLm1ldXJwZy5tYXBzLnYxLkdlbmVyYXRlU2NlbmVJbWFnZVJlc3BvbnNlEmsKEkVkaXRHZW5lcmF0ZWRJbWFnZRIpLm1ldXJwZy5tYXBzLnYxLkVkaXRHZW5lcmF0ZWRJbWFnZVJlcXVlc3QaKi5tZXVycGcubWFwcy52MS5FZGl0R2VuZXJhdGVkSW1hZ2VSZXNwb25zZRJwChJHZXRJbWFnZUdlbmVyYXRpb24SKS5tZXVycGcubWFwcy52MS5HZXRJbWFnZUdlbmVyYXRpb25SZXF1ZXN0GioubWV1cnBnLm1hcHMudjEuR2V0SW1hZ2VHZW5lcmF0aW9uUmVzcG9uc2UiA5ACAhJ0ChVDYW5jZWxJbWFnZUdlbmVyYXRpb24SLC5tZXVycGcubWFwcy52MS5DYW5jZWxJbWFnZUdlbmVyYXRpb25SZXF1ZXN0Gi0ubWV1cnBnLm1hcHMudjEuQ2FuY2VsSW1hZ2VHZW5lcmF0aW9uUmVzcG9uc2USZAoOTGlzdEltYWdlRWRpdHMSJS5tZXVycGcubWFwcy52MS5MaXN0SW1hZ2VFZGl0c1JlcXVlc3QaJi5tZXVycGcubWFwcy52MS5MaXN0SW1hZ2VFZGl0c1Jlc3BvbnNlIgOQAgJCuwEKEmNvbS5tZXVycGcubWFwcy52MUINSW1hZ2VnZW5Qcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvbWFwcy92MTttYXBzdjGiAgNNTViqAg5NZXVycGcuTWFwcy5WMcoCDk1ldXJwZ1xNYXBzXFYx4gIaTWV1cnBnXE1hcHNcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6Ok1hcHM6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_maps_v1_gallery]);
+  fileDesc("Ch1tZXVycGcvbWFwcy92MS9pbWFnZWdlbi5wcm90bxIObWV1cnBnLm1hcHMudjEi0wQKD0ltYWdlR2VuZXJhdGlvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIxCgRraW5kGAMgASgOMiMubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uS2luZBIzCgVzdGF0ZRgEIAEoDjIkLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXRlEjcKB2ZhaWx1cmUYBSABKA4yJi5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25GYWlsdXJlEhEKCXJlYXNvbl9wdBgGIAEoCRIOCgZwcm9tcHQYByABKAkSKQoFc3R5bGUYCCABKA4yGi5tZXVycGcubWFwcy52MS5JbWFnZVN0eWxlEjYKDGFzcGVjdF9yYXRpbxgJIAEoDjIgLm1ldXJwZy5tYXBzLnYxLkltYWdlQXNwZWN0UmF0aW8SDgoGbnVtYmVyGAogASgFEhAKCGltYWdlX2lkGAsgASgJEhcKD3NvdXJjZV9pbWFnZV9pZBgMIAEoCRIbChNyZWZlcmVuY2VfaW1hZ2VfaWRzGA0gAygJEhIKCnNsb3Rfc3BlbnQYDiABKAgSLgoKY3JlYXRlZF9hdBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLZmluaXNoZWRfYXQYECABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE2NoYXJhY3Rlcl9pbWFnZV9pZHMYESADKAkSDgoGbWFwX2lkGBIgASgJIokCChVJbWFnZUdlbmVyYXRpb25TdGF0dXMSDwoHZW5hYmxlZBgBIAEoCBIVCg1tb250aGx5X2xpbWl0GAIgASgFEhcKD3VzZWRfdGhpc19tb250aBgDIAEoBRIRCglyZW1haW5pbmcYBCABKAUSDQoFbW9udGgYBSABKAkSLQoJcmVzZXRzX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIdChVtYXhfcHJvbXB0X2NoYXJhY3RlcnMYByABKAUSHQoVbWF4X29iamVjdF9yZWZlcmVuY2VzGAggASgFEiAKGG1heF9jaGFyYWN0ZXJfcmVmZXJlbmNlcxgJIAEoBSKNAQoWSW1hZ2VHZW5lcmF0aW9uQmxvY2tlZBI8CgZyZWFzb24YASABKA4yLC5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25CbG9ja2VkUmVhc29uEjUKBnN0YXR1cxgCIAEoCzIlLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXR1cyI2Ch9HZXRJbWFnZUdlbmVyYXRpb25TdGF0dXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIlkKIEdldEltYWdlR2VuZXJhdGlvblN0YXR1c1Jlc3BvbnNlEjUKBnN0YXR1cxgBIAEoCzIlLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvblN0YXR1cyLzAQoZR2VuZXJhdGVTY2VuZUltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSDgoGcHJvbXB0GAMgASgJEikKBXN0eWxlGAQgASgOMhoubWV1cnBnLm1hcHMudjEuSW1hZ2VTdHlsZRI2Cgxhc3BlY3RfcmF0aW8YBSABKA4yIC5tZXVycGcubWFwcy52MS5JbWFnZUFzcGVjdFJhdGlvEhgKEG9iamVjdF9pbWFnZV9pZHMYBiADKAkSGwoTY2hhcmFjdGVyX2ltYWdlX2lkcxgHIAMoCSKIAQoaR2VuZXJhdGVTY2VuZUltYWdlUmVzcG9uc2USMwoKZ2VuZXJhdGlvbhgBIAEoCzIfLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvbhI1CgZzdGF0dXMYAiABKAsyJS5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25TdGF0dXMicAoZRWRpdEdlbmVyYXRlZEltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEwoLaW5zdHJ1Y3Rpb24YBCABKAkiiAEKGkVkaXRHZW5lcmF0ZWRJbWFnZVJlc3BvbnNlEjMKCmdlbmVyYXRpb24YASABKAsyHy5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb24SNQoGc3RhdHVzGAIgASgLMiUubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uU3RhdHVzIl0KGUdldEltYWdlR2VuZXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFQoNZ2VuZXJhdGlvbl9pZBgCIAEoCRIUCgx3YWl0X3NlY29uZHMYAyABKAUitQEKGkdldEltYWdlR2VuZXJhdGlvblJlc3BvbnNlEjMKCmdlbmVyYXRpb24YASABKAsyHy5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb24SKwoFaW1hZ2UYAiABKAsyHC5tZXVycGcubWFwcy52MS5HYWxsZXJ5SW1hZ2USNQoGc3RhdHVzGAMgASgLMiUubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uU3RhdHVzIkoKHENhbmNlbEltYWdlR2VuZXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFQoNZ2VuZXJhdGlvbl9pZBgCIAEoCSKLAQodQ2FuY2VsSW1hZ2VHZW5lcmF0aW9uUmVzcG9uc2USMwoKZ2VuZXJhdGlvbhgBIAEoCzIfLm1ldXJwZy5tYXBzLnYxLkltYWdlR2VuZXJhdGlvbhI1CgZzdGF0dXMYAiABKAsyJS5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb25TdGF0dXMiPgoVTGlzdEltYWdlRWRpdHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJIkIKFkxpc3RJbWFnZUVkaXRzUmVzcG9uc2USKAoFZWRpdHMYASADKAsyGS5tZXVycGcubWFwcy52MS5JbWFnZUVkaXQiWAoJSW1hZ2VFZGl0EisKBWltYWdlGAEgASgLMhwubWV1cnBnLm1hcHMudjEuR2FsbGVyeUltYWdlEg4KBnByb21wdBgCIAEoCRIOCgZudW1iZXIYAyABKAUidQobR2V0TWFwSW1hZ2VSZWZlcmVuY2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIxCgRraW5kGAMgASgOMiMubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uS2luZCL8AgocR2V0TWFwSW1hZ2VSZWZlcmVuY2VSZXNwb25zZRIPCgdwcmV2aWV3GAEgASgMEhwKFHByZXZpZXdfY29udGVudF90eXBlGAIgASgJEh0KFXBsYXllcnNfc2VlX3NvbWV0aGluZxgDIAEoCBIUCgxzZWVuX3NxdWFyZXMYBCABKAUSFQoNdG90YWxfc3F1YXJlcxgFIAEoBRIzCgljcmVhdHVyZXMYBiADKAsyIC5tZXVycGcubWFwcy52MS5NYXBJbWFnZUNyZWF0dXJlEjYKDHBhZGRlZF9yYXRpbxgHIAEoDjIgLm1ldXJwZy5tYXBzLnYxLkltYWdlQXNwZWN0UmF0aW8SFAoMZ3JpZF9jb2x1bW5zGAggASgFEhEKCWdyaWRfcm93cxgJIAEoBRIUCgxyb29tc19saXN0ZWQYCiABKAUSGQoRdGV4dHVyZV90b29fbGFyZ2UYCyABKAgSGgoSbWF4X3RleHR1cmVfcGl4ZWxzGAwgASgDIlEKEE1hcEltYWdlQ3JlYXR1cmUSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSGQoRcG9ydHJhaXRfaW1hZ2VfaWQYAyABKAkizwIKF0dlbmVyYXRlTWFwSW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIxCgRraW5kGAMgASgOMiMubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uS2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkSDgoGcHJvbXB0GAUgASgJEikKBXN0eWxlGAYgASgOMhoubWV1cnBnLm1hcHMudjEuSW1hZ2VTdHlsZRI2Cgxhc3BlY3RfcmF0aW8YByABKA4yIC5tZXVycGcubWFwcy52MS5JbWFnZUFzcGVjdFJhdGlvEhgKEG9iamVjdF9pbWFnZV9pZHMYCCADKAkSGwoTY2hhcmFjdGVyX2ltYWdlX2lkcxgJIAMoCRIZChFucGNfY2hhcmFjdGVyX2lkcxgKIAMoCSKGAQoYR2VuZXJhdGVNYXBJbWFnZVJlc3BvbnNlEjMKCmdlbmVyYXRpb24YASABKAsyHy5tZXVycGcubWFwcy52MS5JbWFnZUdlbmVyYXRpb24SNQoGc3RhdHVzGAIgASgLMiUubWV1cnBnLm1hcHMudjEuSW1hZ2VHZW5lcmF0aW9uU3RhdHVzIksKIlVzZUdlbmVyYXRlZEltYWdlQXNNYXBJbWFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIaW1hZ2VfaWQYAiABKAkiRwojVXNlR2VuZXJhdGVkSW1hZ2VBc01hcEltYWdlUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIiwKG0ltYWdlR2VuZXJhdGlvbkludmFsaWRGaWVsZBINCgVmaWVsZBgBIAEoCSq4AQoKSW1hZ2VTdHlsZRIbChdJTUFHRV9TVFlMRV9VTlNQRUNJRklFRBAAEhwKGElNQUdFX1NUWUxFX09JTF9QQUlOVElORxABEhoKFklNQUdFX1NUWUxFX1dBVEVSQ09MT1IQAhITCg9JTUFHRV9TVFlMRV9JTksQAxIbChdJTUFHRV9TVFlMRV9ESUdJVEFMX0FSVBAEEiEKHUlNQUdFX1NUWUxFX0JPT0tfSUxMVVNUUkFUSU9OEAUq0QIKEEltYWdlQXNwZWN0UmF0aW8SIgoeSU1BR0VfQVNQRUNUX1JBVElPX1VOU1BFQ0lGSUVEEAASGgoWSU1BR0VfQVNQRUNUX1JBVElPXzFfMRABEhoKFklNQUdFX0FTUEVDVF9SQVRJT18zXzIQAhIaChZJTUFHRV9BU1BFQ1RfUkFUSU9fMl8zEAMSGgoWSU1BR0VfQVNQRUNUX1JBVElPXzNfNBAEEhoKFklNQUdFX0FTUEVDVF9SQVRJT180XzMQBRIaChZJTUFHRV9BU1BFQ1RfUkFUSU9fNF81EAYSGgoWSU1BR0VfQVNQRUNUX1JBVElPXzVfNBAHEhsKF0lNQUdFX0FTUEVDVF9SQVRJT185XzE2EAgSGwoXSU1BR0VfQVNQRUNUX1JBVElPXzE2XzkQCRIbChdJTUFHRV9BU1BFQ1RfUkFUSU9fMjFfORAKKu8BChNJbWFnZUdlbmVyYXRpb25LaW5kEiUKIUlNQUdFX0dFTkVSQVRJT05fS0lORF9VTlNQRUNJRklFRBAAEh8KG0lNQUdFX0dFTkVSQVRJT05fS0lORF9TQ0VORRABEh4KGklNQUdFX0dFTkVSQVRJT05fS0lORF9FRElUEAISIwofSU1BR0VfR0VORVJBVElPTl9LSU5EX01BUF9TQ0VORRADEiMKH0lNQUdFX0dFTkVSQVRJT05fS0lORF9JU09NRVRSSUMQBBImCiJJTUFHRV9HRU5FUkFUSU9OX0tJTkRfVEVYVFVSRURfTUFQEAUq7wEKFEltYWdlR2VuZXJhdGlvblN0YXRlEiYKIklNQUdFX0dFTkVSQVRJT05fU1RBVEVfVU5TUEVDSUZJRUQQABIiCh5JTUFHRV9HRU5FUkFUSU9OX1NUQVRFX1BFTkRJTkcQARIfChtJTUFHRV9HRU5FUkFUSU9OX1NUQVRFX0RPTkUQAhIiCh5JTUFHRV9HRU5FUkFUSU9OX1NUQVRFX1JFRlVTRUQQAxIhCh1JTUFHRV9HRU5FUkFUSU9OX1NUQVRFX0ZBSUxFRBAEEiMKH0lNQUdFX0dFTkVSQVRJT05fU1RBVEVfQ0FOQ0VMRUQQBSrgAgoWSW1hZ2VHZW5lcmF0aW9uRmFpbHVyZRIoCiRJTUFHRV9HRU5FUkFUSU9OX0ZBSUxVUkVfVU5TUEVDSUZJRUQQABIlCiFJTUFHRV9HRU5FUkFUSU9OX0ZBSUxVUkVfTk9fSU1BR0UQARIkCiBJTUFHRV9HRU5FUkFUSU9OX0ZBSUxVUkVfUkVGVVNFRBACEigKJElNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9VTkFWQUlMQUJMRRADEikKJUlNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9HQUxMRVJZX0ZVTEwQBBIqCiZJTUFHRV9HRU5FUkFUSU9OX0ZBSUxVUkVfSU1BR0VfTUlTU0lORxAFEiQKIElNQUdFX0dFTkVSQVRJT05fRkFJTFVSRV9USU1FT1VUEAYSKAokSU1BR0VfR0VORVJBVElPTl9GQUlMVVJFX1NFUlZJQ0VfT0ZGEAcq7AMKHEltYWdlR2VuZXJhdGlvbkJsb2NrZWRSZWFzb24SLworSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEicKI0lNQUdFX0dFTkVSQVRJT05fQkxPQ0tFRF9SRUFTT05fT0ZGEAESMQotSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9MSU1JVF9SRUFDSEVEEAISMAosSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9HQUxMRVJZX0ZVTEwQAxI1CjFJTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX1JFUVVFU1RfVE9PX0xBUkdFEAQSNwozSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9QTEFZRVJTX1NFRV9OT1RISU5HEAUSMwovSU1BR0VfR0VORVJBVElPTl9CTE9DS0VEX1JFQVNPTl9NQVBfSEFTX05PX0dSSUQQBhI3CjNJTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX01BUF9JTUFHRV9UT09fTEFSR0UQBxIvCitJTUFHRV9HRU5FUkFUSU9OX0JMT0NLRURfUkVBU09OX01BUF9DSEFOR0VEEAgyrQgKFkltYWdlR2VuZXJhdGlvblNlcnZpY2USggEKGEdldEltYWdlR2VuZXJhdGlvblN0YXR1cxIvLm1ldXJwZy5tYXBzLnYxLkdldEltYWdlR2VuZXJhdGlvblN0YXR1c1JlcXVlc3QaMC5tZXVycGcubWFwcy52MS5HZXRJbWFnZUdlbmVyYXRpb25TdGF0dXNSZXNwb25zZSIDkAICEmsKEkdlbmVyYXRlU2NlbmVJbWFnZRIpLm1ldXJwZy5tYXBzLnYxLkdlbmVyYXRlU2NlbmVJbWFnZVJlcXVlc3QaKi5tZXVycGcubWFwcy52MS5HZW5lcmF0ZVNjZW5lSW1hZ2VSZXNwb25zZRJrChJFZGl0R2VuZXJhdGVkSW1hZ2USKS5tZXVycGcubWFwcy52MS5FZGl0R2VuZXJhdGVkSW1hZ2VSZXF1ZXN0GioubWV1cnBnLm1hcHMudjEuRWRpdEdlbmVyYXRlZEltYWdlUmVzcG9uc2UScAoSR2V0SW1hZ2VHZW5lcmF0aW9uEikubWV1cnBnLm1hcHMudjEuR2V0SW1hZ2VHZW5lcmF0aW9uUmVxdWVzdBoqLm1ldXJwZy5tYXBzLnYxLkdldEltYWdlR2VuZXJhdGlvblJlc3BvbnNlIgOQAgISdAoVQ2FuY2VsSW1hZ2VHZW5lcmF0aW9uEiwubWV1cnBnLm1hcHMudjEuQ2FuY2VsSW1hZ2VHZW5lcmF0aW9uUmVxdWVzdBotLm1ldXJwZy5tYXBzLnYxLkNhbmNlbEltYWdlR2VuZXJhdGlvblJlc3BvbnNlEmQKDkxpc3RJbWFnZUVkaXRzEiUubWV1cnBnLm1hcHMudjEuTGlzdEltYWdlRWRpdHNSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuTGlzdEltYWdlRWRpdHNSZXNwb25zZSIDkAICEnYKFEdldE1hcEltYWdlUmVmZXJlbmNlEisubWV1cnBnLm1hcHMudjEuR2V0TWFwSW1hZ2VSZWZlcmVuY2VSZXF1ZXN0GiwubWV1cnBnLm1hcHMudjEuR2V0TWFwSW1hZ2VSZWZlcmVuY2VSZXNwb25zZSIDkAICEmUKEEdlbmVyYXRlTWFwSW1hZ2USJy5tZXVycGcubWFwcy52MS5HZW5lcmF0ZU1hcEltYWdlUmVxdWVzdBooLm1ldXJwZy5tYXBzLnYxLkdlbmVyYXRlTWFwSW1hZ2VSZXNwb25zZRKGAQobVXNlR2VuZXJhdGVkSW1hZ2VBc01hcEltYWdlEjIubWV1cnBnLm1hcHMudjEuVXNlR2VuZXJhdGVkSW1hZ2VBc01hcEltYWdlUmVxdWVzdBozLm1ldXJwZy5tYXBzLnYxLlVzZUdlbmVyYXRlZEltYWdlQXNNYXBJbWFnZVJlc3BvbnNlQrsBChJjb20ubWV1cnBnLm1hcHMudjFCDUltYWdlZ2VuUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL21hcHMvdjE7bWFwc3YxogIDTU1YqgIOTWV1cnBnLk1hcHMuVjHKAg5NZXVycGdcTWFwc1xWMeICGk1ldXJwZ1xNYXBzXFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpNYXBzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_maps_v1_gallery, file_meurpg_maps_v1_maps]);
 
 /**
  * ImageGeneration is one request to the model.
@@ -136,6 +138,14 @@ export type ImageGeneration = Message<"meurpg.maps.v1.ImageGeneration"> & {
    * @generated from field: repeated string character_image_ids = 17;
    */
   characterImageIds: string[];
+
+  /**
+   * The map a request of kind MAP_SCENE, ISOMETRIC or TEXTURED_MAP was made from
+   * (a UUID); empty for the others, and after the map is deleted.
+   *
+   * @generated from field: string map_id = 18;
+   */
+  mapId: string;
 };
 
 /**
@@ -627,6 +637,353 @@ export const ImageEditSchema: GenMessage<ImageEdit> = /*@__PURE__*/
   messageDesc(file_meurpg_maps_v1_imagegen, 15);
 
 /**
+ * @generated from message meurpg.maps.v1.GetMapImageReferenceRequest
+ */
+export type GetMapImageReferenceRequest = Message<"meurpg.maps.v1.GetMapImageReferenceRequest"> & {
+  /**
+   * The campaign (a UUID).
+   *
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The map (a UUID).
+   *
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+   *
+   * @generated from field: meurpg.maps.v1.ImageGenerationKind kind = 3;
+   */
+  kind: ImageGenerationKind;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.GetMapImageReferenceRequest.
+ * Use `create(GetMapImageReferenceRequestSchema)` to create a new message.
+ */
+export const GetMapImageReferenceRequestSchema: GenMessage<GetMapImageReferenceRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 16);
+
+/**
+ * @generated from message meurpg.maps.v1.GetMapImageReferenceResponse
+ */
+export type GetMapImageReferenceResponse = Message<"meurpg.maps.v1.GetMapImageReferenceResponse"> & {
+  /**
+   * The drawing, a PNG of at most 512 pixels on the longer side: what the model
+   * gets, smaller. Never sent to a player.
+   *
+   * @generated from field: bytes preview = 1;
+   */
+  preview: Uint8Array;
+
+  /**
+   * "image/png".
+   *
+   * @generated from field: string preview_content_type = 2;
+   */
+  previewContentType: string;
+
+  /**
+   * MAP_SCENE and ISOMETRIC: false when no living character of a player is on the
+   * map, so the drawing is all black and a request would be refused
+   * (PLAYERS_SEE_NOTHING). Always true for TEXTURED_MAP.
+   *
+   * @generated from field: bool players_see_something = 3;
+   */
+  playersSeeSomething: boolean;
+
+  /**
+   * The squares the drawing shows and the map's squares in all: "12 de 600".
+   *
+   * @generated from field: int32 seen_squares = 4;
+   */
+  seenSquares: number;
+
+  /**
+   * @generated from field: int32 total_squares = 5;
+   */
+  totalSquares: number;
+
+  /**
+   * The NPCs the master may choose to appear: the creatures of the map the players
+   * see now (not hidden, on a square a character sees, and none while a combat runs
+   * on the map). The same list for MAP_SCENE and ISOMETRIC; empty for TEXTURED_MAP,
+   * which takes no characters. A creature the players do not
+   * see is not here, and GenerateMapImage refuses it.
+   *
+   * @generated from field: repeated meurpg.maps.v1.MapImageCreature creatures = 6;
+   */
+  creatures: MapImageCreature[];
+
+  /**
+   * TEXTURED_MAP: the model's ratio the whole map is padded to, and the map's size
+   * in squares.
+   *
+   * @generated from field: meurpg.maps.v1.ImageAspectRatio padded_ratio = 7;
+   */
+  paddedRatio: ImageAspectRatio;
+
+  /**
+   * @generated from field: int32 grid_columns = 8;
+   */
+  gridColumns: number;
+
+  /**
+   * @generated from field: int32 grid_rows = 9;
+   */
+  gridRows: number;
+
+  /**
+   * TEXTURED_MAP of a generated dungeon: how many rooms go in the text.
+   *
+   * @generated from field: int32 rooms_listed = 10;
+   */
+  roomsListed: number;
+
+  /**
+   * TEXTURED_MAP: true when the map's image has more than max_texture_pixels, so a
+   * textured map would be refused (MAP_IMAGE_TOO_LARGE): the screen disables the
+   * choice and says why. The limit is on the image's pixels (16,000,000, such as
+   * 4,000 x 4,000), whatever the grid.
+   *
+   * @generated from field: bool texture_too_large = 11;
+   */
+  textureTooLarge: boolean;
+
+  /**
+   * @generated from field: int64 max_texture_pixels = 12;
+   */
+  maxTexturePixels: bigint;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.GetMapImageReferenceResponse.
+ * Use `create(GetMapImageReferenceResponseSchema)` to create a new message.
+ */
+export const GetMapImageReferenceResponseSchema: GenMessage<GetMapImageReferenceResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 17);
+
+/**
+ * MapImageCreature is an NPC a request made from a map may show.
+ *
+ * @generated from message meurpg.maps.v1.MapImageCreature
+ */
+export type MapImageCreature = Message<"meurpg.maps.v1.MapImageCreature"> & {
+  /**
+   * The character (a UUID).
+   *
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * The NPC's name, for the master's list. It never goes to Google.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * The gallery image of its portrait, empty when it has none (then choosing it
+   * sends no reference). It goes as a character reference.
+   *
+   * @generated from field: string portrait_image_id = 3;
+   */
+  portraitImageId: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.MapImageCreature.
+ * Use `create(MapImageCreatureSchema)` to create a new message.
+ */
+export const MapImageCreatureSchema: GenMessage<MapImageCreature> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 18);
+
+/**
+ * @generated from message meurpg.maps.v1.GenerateMapImageRequest
+ */
+export type GenerateMapImageRequest = Message<"meurpg.maps.v1.GenerateMapImageRequest"> & {
+  /**
+   * The campaign (a UUID).
+   *
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The map (a UUID).
+   *
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * MAP_SCENE, ISOMETRIC or TEXTURED_MAP.
+   *
+   * @generated from field: meurpg.maps.v1.ImageGenerationKind kind = 3;
+   */
+  kind: ImageGenerationKind;
+
+  /**
+   * As GenerateSceneImageRequest.idempotency_key.
+   *
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+
+  /**
+   * What to draw, in the master's words: 1 to 500 characters. It goes to Google
+   * as written.
+   *
+   * @generated from field: string prompt = 5;
+   */
+  prompt: string;
+
+  /**
+   * @generated from field: meurpg.maps.v1.ImageStyle style = 6;
+   */
+  style: ImageStyle;
+
+  /**
+   * The ratio of MAP_SCENE and ISOMETRIC; empty means 16:9. TEXTURED_MAP ignores
+   * it: the server picks the model's ratio closest to the map's.
+   *
+   * @generated from field: meurpg.maps.v1.ImageAspectRatio aspect_ratio = 7;
+   */
+  aspectRatio: ImageAspectRatio;
+
+  /**
+   * Gallery images of objects and places, at most 10 (UUIDs).
+   *
+   * @generated from field: repeated string object_image_ids = 8;
+   */
+  objectImageIds: string[];
+
+  /**
+   * Gallery images of characters, as GenerateSceneImageRequest.
+   *
+   * @generated from field: repeated string character_image_ids = 9;
+   */
+  characterImageIds: string[];
+
+  /**
+   * NPCs that appear (MAP_SCENE and ISOMETRIC only; character IDs from
+   * GetMapImageReference.creatures): their
+   * portraits go as character references, together with character_image_ids, at
+   * most 4 in all (an image listed twice counts once).
+   *
+   * @generated from field: repeated string npc_character_ids = 10;
+   */
+  npcCharacterIds: string[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.GenerateMapImageRequest.
+ * Use `create(GenerateMapImageRequestSchema)` to create a new message.
+ */
+export const GenerateMapImageRequestSchema: GenMessage<GenerateMapImageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 19);
+
+/**
+ * @generated from message meurpg.maps.v1.GenerateMapImageResponse
+ */
+export type GenerateMapImageResponse = Message<"meurpg.maps.v1.GenerateMapImageResponse"> & {
+  /**
+   * The request, PENDING (or what an earlier try with the same key became).
+   *
+   * @generated from field: meurpg.maps.v1.ImageGeneration generation = 1;
+   */
+  generation?: ImageGeneration | undefined;
+
+  /**
+   * The month after reserving the slot.
+   *
+   * @generated from field: meurpg.maps.v1.ImageGenerationStatus status = 2;
+   */
+  status?: ImageGenerationStatus | undefined;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.GenerateMapImageResponse.
+ * Use `create(GenerateMapImageResponseSchema)` to create a new message.
+ */
+export const GenerateMapImageResponseSchema: GenMessage<GenerateMapImageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 20);
+
+/**
+ * @generated from message meurpg.maps.v1.UseGeneratedImageAsMapImageRequest
+ */
+export type UseGeneratedImageAsMapImageRequest = Message<"meurpg.maps.v1.UseGeneratedImageAsMapImageRequest"> & {
+  /**
+   * The campaign (a UUID).
+   *
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The textured map's gallery image (a UUID).
+   *
+   * @generated from field: string image_id = 2;
+   */
+  imageId: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.UseGeneratedImageAsMapImageRequest.
+ * Use `create(UseGeneratedImageAsMapImageRequestSchema)` to create a new message.
+ */
+export const UseGeneratedImageAsMapImageRequestSchema: GenMessage<UseGeneratedImageAsMapImageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 21);
+
+/**
+ * @generated from message meurpg.maps.v1.UseGeneratedImageAsMapImageResponse
+ */
+export type UseGeneratedImageAsMapImageResponse = Message<"meurpg.maps.v1.UseGeneratedImageAsMapImageResponse"> & {
+  /**
+   * The map as the master reads it, with its new image and the same layers.
+   *
+   * @generated from field: meurpg.maps.v1.Map map = 1;
+   */
+  map?: Map | undefined;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.UseGeneratedImageAsMapImageResponse.
+ * Use `create(UseGeneratedImageAsMapImageResponseSchema)` to create a new message.
+ */
+export const UseGeneratedImageAsMapImageResponseSchema: GenMessage<UseGeneratedImageAsMapImageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 22);
+
+/**
+ * ImageGenerationInvalidField is the error detail of `invalid_argument` from
+ * GenerateMapImage when a request field breaks a rule that is not its shape: it
+ * names the field, never the value.
+ *
+ * @generated from message meurpg.maps.v1.ImageGenerationInvalidField
+ */
+export type ImageGenerationInvalidField = Message<"meurpg.maps.v1.ImageGenerationInvalidField"> & {
+  /**
+   * The request field, such as "npc_character_ids" or "character_image_ids".
+   *
+   * @generated from field: string field = 1;
+   */
+  field: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.ImageGenerationInvalidField.
+ * Use `create(ImageGenerationInvalidFieldSchema)` to create a new message.
+ */
+export const ImageGenerationInvalidFieldSchema: GenMessage<ImageGenerationInvalidField> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_imagegen, 23);
+
+/**
  * ImageStyle is the style the master picks. The server turns it into the
  * words that go to the model.
  *
@@ -776,6 +1133,28 @@ export enum ImageGenerationKind {
    * @generated from enum value: IMAGE_GENERATION_KIND_EDIT = 2;
    */
   EDIT = 2,
+
+  /**
+   * The scene art of a map, from what the players' characters see now.
+   *
+   * @generated from enum value: IMAGE_GENERATION_KIND_MAP_SCENE = 3;
+   */
+  MAP_SCENE = 3,
+
+  /**
+   * The isometric view of a map, from what the players' characters see now.
+   *
+   * @generated from enum value: IMAGE_GENERATION_KIND_ISOMETRIC = 4;
+   */
+  ISOMETRIC = 4,
+
+  /**
+   * The map with a texture: the whole map's floors and walls, painted, in the
+   * size of the map's image.
+   *
+   * @generated from enum value: IMAGE_GENERATION_KIND_TEXTURED_MAP = 5;
+   */
+  TEXTURED_MAP = 5,
 }
 
 /**
@@ -946,6 +1325,37 @@ export enum ImageGenerationBlockedReason {
    * @generated from enum value: IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE = 4;
    */
   REQUEST_TOO_LARGE = 4,
+
+  /**
+   * The players see nothing of the map: no living character of a player stands
+   * on it, so there is no players' view to start from (MAP_SCENE, ISOMETRIC).
+   *
+   * @generated from enum value: IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING = 5;
+   */
+  PLAYERS_SEE_NOTHING = 5,
+
+  /**
+   * The map has no grid: the pictures made from a map need one.
+   *
+   * @generated from enum value: IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID = 6;
+   */
+  MAP_HAS_NO_GRID = 6,
+
+  /**
+   * The map's image is over 16 megapixels: a textured map has the size of the
+   * image it replaces, and the server makes none that large.
+   *
+   * @generated from enum value: IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE = 7;
+   */
+  MAP_IMAGE_TOO_LARGE = 7,
+
+  /**
+   * The map is no longer what the textured map was made from: another image, a
+   * new grid or another calibration (UseGeneratedImageAsMapImage).
+   *
+   * @generated from enum value: IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED = 8;
+   */
+  MAP_CHANGED = 8,
 }
 
 /**
@@ -957,8 +1367,10 @@ export const ImageGenerationBlockedReasonSchema: GenEnum<ImageGenerationBlockedR
 /**
  * ImageGenerationService makes pictures with an image model (the Gemini API,
  * ADR-0019) for the campaign's master (MR-039, RN-28). Slice 10.8a serves the
- * scene art and the edits; the images made from a map (the isometric view, the
- * map with a texture) come in 10.8b, as new RPCs or new fields here.
+ * scene art and the edits; slice 10.8b the images made from a map: the scene art
+ * and the isometric view, which start from what the players' characters see now,
+ * and the textured map, which starts from the whole map and can become the map's
+ * image (GetMapImageReference, GenerateMapImage, UseGeneratedImageAsMapImage).
  *
  * Only the campaign's master may call it. A player, a pending member and
  * anyone outside the campaign get `not_found`, as for a hidden image: the
@@ -981,8 +1393,13 @@ export const ImageGenerationBlockedReasonSchema: GenEnum<ImageGenerationBlockedR
  *
  * What goes to Google: the master's text as written, the style, the aspect
  * ratio and the gallery images the master chose (for an edit: the previous
- * picture and the earlier texts). The server never adds a person's name, an
- * e-mail or a sheet. The app tells the master what goes.
+ * picture and the earlier texts). For a request made from a map, also the
+ * server's own drawing of it (the floors and walls; for the scene art and the
+ * isometric view only the squares the players' characters see, and the creatures
+ * they see as colored discs; an unrevealed secret door is a wall) and, only for
+ * the textured map of a generated dungeon, the list of its rooms ("Sala 3: 7 x 5
+ * squares"). The server never adds a person's name, an e-mail or a sheet. The app
+ * tells the master what goes.
  *
  * Every failure the master can act on is a `failed_precondition` with an
  * ImageGenerationBlocked detail (generation off, the month's limit, the
@@ -1085,6 +1502,80 @@ export const ImageGenerationService: GenService<{
     methodKind: "unary";
     input: typeof ListImageEditsRequestSchema;
     output: typeof ListImageEditsResponseSchema;
+  },
+  /**
+   * GetMapImageReference shows what a request made from a map would send, before
+   * the master asks: the drawing (a small PNG) and, for the players' view, the NPCs
+   * the master may choose to appear ("Quem aparece na imagem"). Nothing is
+   * generated and no slot is used. For MAP_SCENE and ISOMETRIC the drawing is what
+   * the players' characters see now (the union of their views, as the fog of war
+   * works it out, without what they remember), never what is behind an unrevealed
+   * secret door; on a map without the fog it is the whole map, without what is
+   * hidden. For TEXTURED_MAP it is the whole map, padded to the model's closest
+   * ratio.
+   *
+   * Errors: `invalid_argument` (a kind that is not made from a map), `not_found`
+   * (a map that is not the campaign's) and `failed_precondition` with
+   * ImageGenerationBlocked (MAP_HAS_NO_GRID).
+   *
+   * @generated from rpc meurpg.maps.v1.ImageGenerationService.GetMapImageReference
+   */
+  getMapImageReference: {
+    methodKind: "unary";
+    input: typeof GetMapImageReferenceRequestSchema;
+    output: typeof GetMapImageReferenceResponseSchema;
+  },
+  /**
+   * GenerateMapImage asks for a picture made from a map: the scene art or the
+   * isometric view of what the players see now, or the textured map of the whole
+   * map. It answers at once with a PENDING request, reserves a slot and follows
+   * GetImageGeneration, the cancel and the idempotency key like GenerateSceneImage.
+   * For MAP_SCENE and ISOMETRIC the master may choose NPCs to appear: only those
+   * the players see now (the others are refused, so the picture does not give away
+   * what is hidden), and their portraits go as character references. The portrait of
+   * an NPC whose token is on this map and whom the players do not see now is also
+   * refused when it comes in character_image_ids; a gallery image that is no NPC's
+   * portrait stays the master's choice. TEXTURED_MAP takes no characters at all
+   * (npc_character_ids and character_image_ids must be empty): the picture can become
+   * the map the players read, and a creature painted in it is no creature of the
+   * map. A textured map is cropped back to the map and resized to the size of its
+   * image, so it can replace it.
+   *
+   * Errors: as GenerateSceneImage, `invalid_argument` (with an
+   * ImageGenerationInvalidField detail) also for a kind that is not made from a map,
+   * for an NPC the players do not see (or too many characters in all), for a
+   * hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+   * `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
+   * PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
+   * the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
+   *
+   * @generated from rpc meurpg.maps.v1.ImageGenerationService.GenerateMapImage
+   */
+  generateMapImage: {
+    methodKind: "unary";
+    input: typeof GenerateMapImageRequestSchema;
+    output: typeof GenerateMapImageResponseSchema;
+  },
+  /**
+   * UseGeneratedImageAsMapImage makes a finished textured map the image of the map
+   * it was made from, keeping the grid, the calibration, the painted layers, the
+   * points, the tokens and what the players remember: the picture has exactly the
+   * size of the old image. The old image stays in the gallery. A fog map's image is
+   * always its own: when the picture is also used another way (shown to the players,
+   * an NPC's portrait...) the map gets a copy of it, as UpdateMap gives. It is idempotent: a repeat of a Use that already happened,
+   * while the image it set (the picture, or the copy a fog map got) is still the map's
+   * image, answers the same, with no new copy and no write. Refused with
+   * ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
+   * are no longer what the request was made from, or its walls (a painted wall, a
+   * revealed secret door: what the drawing showed) changed since; and `not_found`
+   * when the image is not a textured map generated for a map of the campaign.
+   *
+   * @generated from rpc meurpg.maps.v1.ImageGenerationService.UseGeneratedImageAsMapImage
+   */
+  useGeneratedImageAsMapImage: {
+    methodKind: "unary";
+    input: typeof UseGeneratedImageAsMapImageRequestSchema;
+    output: typeof UseGeneratedImageAsMapImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_maps_v1_imagegen, 0);

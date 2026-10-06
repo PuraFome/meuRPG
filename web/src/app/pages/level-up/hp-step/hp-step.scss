@@ -135,3 +135,26 @@
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
+
+// A table that fixes the method (RN-24): a line that says so, and for the average a card that is not a choice.
+.fixed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.fixed-line {
+  margin: var(--mr-space-3) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+}

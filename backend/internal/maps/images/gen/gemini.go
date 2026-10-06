@@ -108,6 +108,9 @@ func writeBody(w io.Writer, model string, req Request) error {
 	if req.Edit != nil {
 		image(req.Edit.Previous)
 	}
+	if req.Drawing != nil {
+		image(*req.Drawing)
+	}
 	for _, ref := range req.References {
 		image(ref.Image)
 	}

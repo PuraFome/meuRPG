@@ -366,7 +366,11 @@ func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 		return "", nil
 	}
 	trap := traps[i]
-	c := &combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID, svc: s}
+	// openTx reads the table's rules in this transaction, so the trap's critical follows them (RN-24).
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID, svc: s})
+	if err != nil {
+		return "", err
+	}
 	// A combat running on the trap's map (read in this transaction, never through the pool).
 	enc, err := q.GetLatestEncounter(ctx, session.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {

@@ -94,13 +94,15 @@ var (
 // (halfling) and Sálvia (half-elf, darkvision 18 m); two visible goblins, a
 // third hidden by the master, and the captain, in the guard room; the guard
 // room's torch.
-func newCave(t *testing.T) *cave { return newCaveWith(t, true) }
+func newCave(t *testing.T, configure ...func(*Config)) *cave {
+	return newCaveWith(t, true, configure...)
+}
 
 // newCaveWith is newCave; with visible false the map stays hidden from the
 // players and is not the session's current map (the master is preparing it).
-func newCaveWith(t *testing.T, visible bool) *cave {
+func newCaveWith(t *testing.T, visible bool, configure ...func(*Config)) *cave {
 	t.Helper()
-	h := newHarness(t)
+	h := newHarness(t, configure...)
 	c := &cave{h: h, master: h.newUser("Mestre"), ana: h.newUser("Ana"), caio: h.newUser("Caio"), bia: h.newUser("Bia"), dani: h.newUser("Dani")}
 	m := c.master
 	c.campaign = h.newCampaign(m, c.ana, c.caio, c.bia, c.dani)

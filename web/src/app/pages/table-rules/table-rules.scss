@@ -1,0 +1,246 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+  min-height: 44px;
+}
+
+.top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  // "Estilo da mesa" (2 × 2) with "Dados" beside it (E10-03).
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mr-space-5);
+  }
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mr-space-5);
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.note-list {
+  margin: var(--mr-space-1) 0 0;
+  padding-left: 18px;
+  font-size: 15px;
+  line-height: 20px;
+
+  .muted {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.mr-notice p {
+  margin: 0;
+}
+
+.custom {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.changed {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.reminders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reminder {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .reminder__field {
+    width: 100%;
+  }
+}
+
+.reminder__remove,
+.add,
+.link {
+  min-height: 44px;
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    min-height: 48px;
+  }
+}
+
+.reminder__remove {
+  margin-inline-start: -12px;
+}
+
+.add,
+.link {
+  align-self: flex-start;
+
+  @media (max-width: 767.98px) {
+    align-self: stretch;
+  }
+}
+
+// "Salvar regras": one bar at the foot, stuck to the bottom of the screen.
+.save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-control-line);
+  background: var(--mr-ground);
+}
+
+.save__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-4);
+  }
+}
+
+.save__button {
+  flex: none;
+  min-height: 48px;
+  min-width: 140px;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+    min-width: 176px;
+  }
+}
+
+.save__line,
+.save__problem {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.save__problem {
+  color: var(--mr-danger-ink);
+}
+
+.fog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}

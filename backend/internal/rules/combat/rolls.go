@@ -47,6 +47,32 @@ func DiceToRoll(f rules.DiceFormula, critical bool) int {
 	return f.Count
 }
 
+// CriticalRule is what a critical hit does to the damage dice (RN-24, MR-025):
+// the table's choice. The zero value is the SRD's.
+type CriticalRule int
+
+const (
+	// CriticalDoubledDice rolls every damage die twice (the SRD's).
+	CriticalDoubledDice CriticalRule = iota
+	// CriticalMaxPlusRoll counts the dice as their maximum and adds one normal
+	// roll of them.
+	CriticalMaxPlusRoll
+)
+
+// CriticalDice is how a damage is made: count is how many dice are rolled, and
+// fixed what is added to them without rolling (the maximum of the dice, under
+// CriticalMaxPlusRoll). The bonus is never doubled and never part of fixed. A
+// hit that is not a critical rolls the formula's dice, whatever the rule.
+func CriticalDice(f rules.DiceFormula, critical bool, rule CriticalRule) (count, fixed int) {
+	switch {
+	case !critical:
+		return f.Count, 0
+	case rule == CriticalMaxPlusRoll:
+		return f.Count, f.Count * f.Sides
+	}
+	return f.Count * 2, 0
+}
+
 // DiceRange is the smallest and largest total of the dice alone (without
 // the bonus), for checking a total typed from physical dice.
 func DiceRange(f rules.DiceFormula, critical bool) (lowest, highest int) {

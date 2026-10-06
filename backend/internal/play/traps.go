@@ -209,7 +209,10 @@ func (s *Service) SearchForTraps(
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER, "your character has no numbers for this check")
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, kind: eventTrapSearched, actorUserID: m.UserID}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, kind: eventTrapSearched, actorUserID: m.UserID})
+		if err != nil {
+			return err
+		}
 		if place, err = s.searcherPlace(ctx, c, who); err != nil {
 			return err
 		}

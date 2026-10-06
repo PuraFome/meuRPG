@@ -45,6 +45,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -294,9 +295,15 @@ func (f DiceForce) refuses(inApp bool) bool {
 	return (f == DiceForcedInApp && !inApp) || (f == DiceForcedPhysical && inApp)
 }
 
-// CombatDefaults tells what the table's rules say about starting a combat (RN-24).
-// cmd/api wires it to campaigns.Service.
+// CombatDefaults tells what the table's rules say about a combat (RN-24): how it
+// starts, what a critical hit does and who sees the death saves. cmd/api wires it
+// to campaigns.Service. The rules are read, never cached, in the caller's own
+// transaction (PR #121): a change of the rules applies from the next roll.
 type CombatDefaults interface {
+	// StoredTableRules returns the campaign's table rules: the defaults (the zero
+	// value) when it never saved any. tx is the caller's open transaction, or nil
+	// for a read outside one.
+	StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID string) (tablerules.Rules, error)
 	// CombatWithoutMap says whether a combat started without a chosen mode is a
 	// combat without a map (the table's rule "combate com mapa" is off). tx is the
 	// caller's open transaction, or nil for a read.

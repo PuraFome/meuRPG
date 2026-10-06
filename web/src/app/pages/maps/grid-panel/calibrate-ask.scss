@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+.cal__lead,
+.cal__result,
+.cal__hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.cal__lead {
+  font-weight: 700;
+}
+
+.cal__hint {
+  color: var(--mr-ink-muted);
+}
+
+// The picture of E10-03: one square of the drawing, and the squares of 1,5 m it becomes.
+.cal__picture {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-3);
+}
+
+.cal__drawn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal__cap {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.cal__box {
+  box-sizing: border-box;
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--mr-ink);
+  background: var(--mr-surface);
+
+  &--grid {
+    display: grid;
+    grid-template-columns: repeat(var(--k), 1fr);
+    border-style: solid;
+  }
+}
+
+.cal__cell {
+  border: 1px dotted var(--mr-ink-muted);
+}
+
+.cal__arrow {
+  font-size: 20px;
+  color: var(--mr-ink-muted);
+}

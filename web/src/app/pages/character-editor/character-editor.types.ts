@@ -294,11 +294,55 @@ export interface RulesCatalogVm {
   readonly challengeRatings: readonly ChallengeRatingVm[];
 }
 
+/** How a player made the base scores of a new sheet (`AbilityMethod`, RN-24), as a string key so this file stays gen-free. */
+export type AbilityMethodKey = 'standard_array' | 'point_buy' | 'rolled_4d6' | 'typed';
+
+/** One roll of "4d6, dropping the lowest": four dice and the server's total. */
+export interface AbilityRollSetVm {
+  readonly dice: readonly number[];
+  readonly total: number;
+}
+
+/** The six sets the server stored for the player's next sheet (`GetAbilityRolls`, `RollAbilityScores`). */
+export interface AbilityRollsVm {
+  readonly sets: readonly AbilityRollSetVm[];
+  /** The player typed the dice (physical dice); false when the server rolled them. */
+  readonly typed: boolean;
+  readonly rolledAt: Date | null;
+}
+
+/**
+ * What the "Atributos" step needs from the table's rules (RN-24) when a player makes a new sheet: the ways the master
+ * allows, the numbers they use (the server's, so the browser does no rules math), where the dice are rolled (RN-18)
+ * and the roll the server already stored.
+ */
+export interface AbilityTableVm {
+  readonly standardArray: boolean;
+  readonly pointBuy: boolean;
+  readonly rolled4d6: boolean;
+  readonly typed: boolean;
+  readonly standardValues: readonly number[];
+  readonly pointBuyCosts: readonly number[];
+  readonly pointBuyMinScore: number;
+  readonly pointBuyBudget: number;
+  readonly typedMin: number;
+  readonly typedMax: number;
+  /** How the table makes the hit points of a new sheet above level 1 (RN-24): the player chooses, or only the die, or only the average. */
+  readonly hitPoints: 'player_chooses' | 'roll' | 'average';
+  /** The player rolls with their own dice (the campaign forces it, or they chose it): they type the dice, once. */
+  readonly physicalDice: boolean;
+  /** The campaign makes everybody roll the same way, so the player has no say. */
+  readonly diceForced: boolean;
+  readonly rolls: AbilityRollsVm | null;
+}
+
 export interface CreateCharacterInput {
   readonly campaignId: string;
   readonly kind: CharacterKind;
   readonly full: CharacterFormValue | null;
   readonly basic: BasicCharacterFormValue | null;
+  /** How a player's base scores were made; the server checks them against it (RN-24). */
+  readonly abilityMethod?: AbilityMethodKey;
 }
 
 export interface UpdateCharacterInput {
@@ -323,6 +367,8 @@ export interface CharacterForEdit {
    * character is dead. The master may still edit it; the XP is then read-only
    * here, because only awards change it (MR-016). */
   readonly sheetLocked: boolean;
+  /** How the base scores were made, as the server recorded it at creation (RN-24); `null` for NPCs and sheets made before the rules. */
+  readonly abilityOrigin?: { readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null;
 }
 
 /**
@@ -335,6 +381,13 @@ export abstract class CharacterEditorSource {
   /** One spell in full, for the "?" next to its name. */
   abstract loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm>;
   abstract loadCharacterForEdit(campaignId: string, characterId: string): Promise<CharacterForEdit>;
+  /** The table's ways of making ability scores, for a player (or a pending member) creating a sheet; `null` for the master, whose NPCs are free. */
+  abstract loadAbilityTable(campaignId: string): Promise<AbilityTableVm | null>;
+  /** `RollAbilityScores`: the server rolls the six sets (or stores the typed dice) and keeps them; asking again returns the same. */
+  abstract rollAbilityScores(
+    campaignId: string,
+    typedDice?: readonly (readonly number[])[],
+  ): Promise<AbilityRollsVm>;
   abstract createCharacter(input: CreateCharacterInput): Promise<{ characterId: string }>;
   abstract updateCharacter(input: UpdateCharacterInput): Promise<{ revision: number }>;
 }
