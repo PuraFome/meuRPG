@@ -181,7 +181,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
 	}
-	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.Source{Pool: pool, Content: content}, SRD: content, Logger: logger, Now: clock.Now})
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
@@ -249,6 +249,7 @@ type user struct {
 	gallery    mapsv1connect.GalleryServiceClient
 	imagegen   mapsv1connect.ImageGenerationServiceClient
 	maps       mapsv1connect.MapServiceClient
+	dungeons   mapsv1connect.DungeonServiceClient
 	notes      notesv1connect.NotesServiceClient
 }
 
@@ -282,6 +283,7 @@ func (h *harness) clients(userID string) *user {
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		imagegen:   mapsv1connect.NewImageGenerationServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
+		dungeons:   mapsv1connect.NewDungeonServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}
 }

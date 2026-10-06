@@ -820,6 +820,14 @@ enum CharacterBlockedReason {
   // RollLevelUpHitPoints in a campaign whose rule is that everybody takes the
   // average (RN-24, HIT_POINTS_RULE_AVERAGE).
   CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY = 12;
+  // CreateCharacter or UpdateCharacter picks a table entry the master archived
+  // (RN-23): `content_key` says which. A sheet that already has it keeps it; only
+  // a new choice is refused.
+  CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT = 13;
+  // A sheet that uses the table's own content ("...@mesa") cannot go to another
+  // campaign (ADR-0018, section 10; the copy of MR-021 and the reuse of NPCs in
+  // MR-022): `content_key` is one of the keys.
+  CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS = 14;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -830,6 +838,9 @@ message CharacterBlocked {
   // LIVING_CHARACTER_EXISTS, the player's living character, so the app can
   // link to it.
   string character_id = 2;
+  // For ARCHIVED_CONTENT and TABLE_CONTENT_STAYS, the table's content key that
+  // blocks the call; empty otherwise.
+  string content_key = 3;
 }
 
 // CharacterSheet is a character's game data: a full sheet for PLAYER, ENEMY
@@ -955,6 +966,23 @@ message FullSheet {
   // that changes the base scores is checked against it. Unset for NPCs, for
   // sheets made before the rules and for an unspecified `ability_method`.
   AbilityOrigin ability_origin = 28;
+  // The campaign's content revision (the table's own content, RN-23) of the rules
+  // content this sheet was last saved with. The server sets it on every save and
+  // ignores what the client sends. A table entry that changed after it, and that
+  // gave the sheet a new issue since, shows "A classe mudou"
+  // (DerivedSheet.changed_content). 0 when the table had no content.
+  int32 content_revision = 29;
+  // The issues the sheet had when it was last saved ("code|field|message" of each,
+  // sorted), set by the server and ignored from the client: what "A classe mudou"
+  // compares against, so an issue the sheet already had is never blamed on a change.
+  // An issue that was flagged and still stands is left out, so a save never clears
+  // it; only fixing what it says does.
+  repeated string known_issues = 30;
+  // For each table entry the sheet is still flagged for (a changed entry with an
+  // unresolved issue tied to it), the content revision the sheet was last known to
+  // fit it at. Set by the server and ignored from the client; an entry not here
+  // uses `content_revision`.
+  map<string, int32> content_baselines = 31;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1691,6 +1719,10 @@ message LevelUpSubclass {
   int32 cantrips = 4;
   int32 skill_choices = 5;
   int32 expertise_choices = 6;
+  // The table retired this subclass (RN-23). Only the master receives an archived
+  // subclass; the server leaves it out for players, unless their own sheet has it.
+  // Choosing one is refused with ARCHIVED_CHOICE.
+  bool archived = 7;
 }
 
 // LevelUpFeatureChoice is "choose `choose` of `options`" for a feature the
@@ -1810,6 +1842,9 @@ enum LevelUpRefusalReason {
   // average where everybody rolls, or a roll where everybody takes the average.
   // `field` is "choices.hit_points.method".
   LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE = 19;
+  // A choice of the level is a table entry the master archived (a subclass, a
+  // spell...): it is not a new choice any more (RN-23). `field` is the sheet field.
+  LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE = 20;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a

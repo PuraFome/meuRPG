@@ -154,7 +154,9 @@ service MapService {
   //   - `resource_exhausted`: the image needs a copy and the gallery is full.
   //   - `invalid_argument`: nothing to change, revision less than 1, the
   //     name breaks its rules, or image_id is not an image of the
-  //     campaign's gallery.
+  //     campaign's gallery, or it is another image and, on a map with a grid,
+  //     the grid the rules would use for its proportions (drawn rows times the
+  //     square_factor) is over 400 rows (SetMapGrid's limit).
   //   - `failed_precondition` (MapBlocked COMBAT_RUNNING): image_id is another
   //     image and a combat runs on the map.
   //   - `not_found`: the map is not in this campaign, the campaign does not
@@ -194,22 +196,40 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc SetMapRevealed(SetMapRevealedRequest) returns (SetMapRevealedResponse);
 
-  // SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21).
-  // Only the campaign's master may call it. The grid is made of squares of
-  // 1.5 m (5 ft): columns says how many fit across the image's width, and
-  // the rows follow the image's proportions. A combat can only start on a
-  // map with a grid (PlayService/CombatService.StartEncounter).
+  // SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21), and
+  // calibrates it (MR-025, RN-25). The rules count in squares of 1.5 m (5 ft) on
+  // every map; a drawing made with bigger squares says how many of them each
+  // square of the drawing is worth (square_factor: 1 is 1.5 m, 2 is 3 m, 3 is
+  // 4.5 m...). `columns` counts the squares of the DRAWING across the image's
+  // width and the rows follow the image's proportions; the grid the rules use
+  // (grid_columns and grid_rows on the Map, and the size of every layer) is the
+  // drawing's times the factor. A combat can only start on a map with a grid
+  // (PlayService/CombatService.StartEncounter).
   //
-  // Other columns clear the map's painted layers (PaintMapCells), because a
-  // layer is sized by the grid; the same columns again change nothing. Removing
-  // the grid (0) also turns the fog of war off. A change that clears the layers
-  // is refused while a combat that is not ended runs on the map. A player who
-  // sees the map gets `map_changed`.
+  // What the painted layers do. The same columns and factor change nothing. The
+  // same columns with a factor that is a MULTIPLE of the old one (1 to 2, 1 to 3,
+  // 2 to 4, 2 to 6...) keep everything, scaled: each painted square of the walls,
+  // the difficult terrain, the cover, the light and the doors, and each square
+  // a player remembers seeing, becomes a block of (new/old) x (new/old) squares
+  // (a door is the whole drawn square, so a door becomes a doorway as wide as
+  // the old square). Tokens and points are positions in the image and do not
+  // move; a trap's area_size stays in squares of 1.5 m. Any other change (other
+  // columns, a smaller factor, a factor that is not a multiple, or setting a
+  // grid on a map that has none) clears the layers and what the players
+  // remember, as a grid change always did: the app asks first. Removing the grid
+  // (0) also turns the fog of war off. Both ways the layers' revision goes up
+  // when anything changed, and a player who sees the map gets `map_changed`.
+  // Either is refused while a combat that is not ended runs on the map (the
+  // combatants stand on squares of the old grid).
   //
   // Errors:
-  //   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
-  //   - `failed_precondition` (MapBlocked COMBAT_RUNNING): the columns would
-  //     change while a combat runs on the map.
+  //   - `invalid_argument`: columns is neither 0 nor between 4 and 200;
+  //     square_factor is not between 0 and 20; or the grid the rules would use
+  //     (columns x factor across, rows x factor down) is over 200 x 400
+  //     squares (the message names the limit); or square_factor is above 1
+  //     with no columns (columns 0 with factor 0 or 1 clears the grid).
+  //   - `failed_precondition` (MapBlocked COMBAT_RUNNING): the columns or the
+  //     factor would change while a combat runs on the map.
   //   - `not_found`: the map is not in this campaign, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
@@ -447,6 +467,10 @@ service MapService {
   // squares. Only the campaign's master may call it. The last write wins, with
   // no revision to send: painting is dragged, and a batch that repeats what is
   // there changes nothing (and bumps nothing). Send at most 400 squares a call.
+  // On a calibrated map (square_factor above 1) a DOORS square is the whole
+  // square of the drawing: painting one square paints its factor x factor block
+  // (`changed` counts the squares of the rules' grid that changed). The other
+  // layers are painted square by square.
   //
   // A change bumps Map.layers_revision, sends `map_changed` to the master and,
   // when players may read the layers (a map they see, with no fog), to them,
@@ -771,6 +795,12 @@ enum MapBlockedReason {
   // unmarks it (UnmarkTreasureFound), so a session's summary never loses it
   // silently.
   MAP_BLOCKED_REASON_TREASURE_FOUND = 4;
+  // The map is no longer the generated dungeon's (DungeonService.RedrawDungeonMap):
+  // its image is not the one the generator drew (the master put another image on the
+  // map), its grid or the image's size changed, or its layers were cleared (a new image
+  // or grid does that). A redraw would draw from layers that are not the dungeon's, or
+  // change the size the layers are measured by, so it is refused.
+  MAP_BLOCKED_REASON_IMAGE_CHANGED = 5;
 }
 
 // MapBlocked is the error detail of MapService's `failed_precondition`, so the
@@ -815,10 +845,12 @@ message Map {
   // grid. Points and tokens have their own times.
   google.protobuf.Timestamp updated_at = 11;
   // The battle grid (SetMapGrid): how many squares of 1.5 m (5 ft) fit
-  // across the image's width, 4 to 200. 0 when the map has no grid.
+  // across the image's width, 4 to 200. 0 when the map has no grid. This is
+  // the grid the rules use, calibration included (MR-025): drawn_columns *
+  // square_factor. Every layer is sized by it.
   int32 grid_columns = 12;
-  // How many rows of squares the grid has: round(grid_columns * image
-  // height / image width), 1 to 400. 0 when the map has no grid.
+  // How many rows of squares the grid has: drawn_rows * square_factor, 1 to
+  // 400. 0 when the map has no grid.
   int32 grid_rows = 13;
   // Whether the fog of war is on (SetMapFog, or the table's rule "névoa nos mapas
   // novos", RN-24, which comes on when the map's first grid is set: a map created
@@ -845,6 +877,17 @@ message Map {
   // server sends square by square instead (GetMapVision). Always false for the
   // master.
   bool image_withheld = 18;
+  // The squares of the DRAWING across the image's width (MR-025, RN-25):
+  // grid_columns / square_factor, what SetMapGrid's `columns` set. 4 to 200;
+  // 0 when the map has no grid. The app draws the drawing's own lines on it.
+  int32 drawn_columns = 30;
+  // The squares of the drawing down the image's height: round(drawn_columns *
+  // image height / image width), 1 to 400. grid_rows is this times
+  // square_factor. 0 when the map has no grid.
+  int32 drawn_rows = 31;
+  // How many squares of 1.5 m each square of the drawing is worth: 1 (1.5 m,
+  // the default), 2 (3 m), 3 (4.5 m)... up to 20. 1 when the map has no grid.
+  int32 square_factor = 32;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -1193,14 +1236,20 @@ message SetMapRevealedResponse {
 message SetMapGridRequest {
   string campaign_id = 1;
   string map_id = 2;
-  // How many squares of 1.5 m fit across the image's width: 4 to 200, or 0
-  // to clear the grid.
+  // How many squares of the DRAWING fit across the image's width: 4 to 200, or
+  // 0 to clear the grid. With square_factor 1 (or unset) they are squares of
+  // 1.5 m, as before the calibration existed.
   int32 columns = 3;
+  // How many squares of 1.5 m each square of the drawing is worth (MR-025,
+  // RN-25): 1 (1.5 m), 2 (3 m), 3 (4.5 m)... up to 20. 0 reads as 1, so a
+  // caller that never heard of the calibration keeps its behaviour. The rules'
+  // grid, columns x square_factor across, must stay within 200 x 400 squares.
+  int32 square_factor = 4;
 }
 
 // SetMapGridResponse returns the map as it is now.
 message SetMapGridResponse {
-  // The map, with grid_columns and grid_rows.
+  // The map, with grid_columns, grid_rows, drawn_columns and square_factor.
   Map map = 1;
 }
 

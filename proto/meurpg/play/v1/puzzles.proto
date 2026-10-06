@@ -1,0 +1,882 @@
+syntax = "proto3";
+
+// Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes a puzzle for the
+// campaign, shows it to the players of an open session, and they solve it live in the
+// app. This slice has three kinds: "Apagar as luzes" (a board of lights; pressing one
+// toggles it and its four neighbours), the combination lock (wheels of digits, letters
+// or our own runes) and the turning symbols (pillars of our own glyphs, which may turn
+// together). The riddle, the sequence and the cipher come in slice 10.7b, on top of
+// these messages: each is one more kind in the `oneof`s below, with its own messages.
+//
+// Every move is relative (press a cell, turn a wheel or a pillar by one), so two
+// players' moves made at the same time both count, whichever the server takes first.
+// The server decides when a puzzle is solved, in the same transaction as the winning
+// move, and runs the master's "Ao resolver" action there. A solved run is frozen.
+//
+// What a player never receives (RN-10, RN-27), in any response or stream event: the
+// solution of a lock, the minimum number of moves and a way to make them, a hint the
+// master has not released, the "Ao resolver" action and its target, and any puzzle
+// that is not shown. A puzzle that is unknown or not shown answers `not_found`, as for
+// a puzzle that does not exist. A player reads the state, the master's clue, the
+// released hints, who moved last (the character's name), whether it is solved and, once
+// it is, what happened ("A porta da Capela se abriu."). The goal is not a secret where
+// the challenge is the moves, so the players of the turning symbols also read the mural
+// they must copy and how the pillars turn together (the artboard E10-06, state 7); the
+// lights' goal (every light off) is implicit, and a lock's solution is never sent.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// PuzzleKind is the kind of a puzzle. Slice 10.7b adds RIDDLE = 4, SEQUENCE = 5 and
+// CIPHER = 6.
+enum PuzzleKind {
+  PUZZLE_KIND_UNSPECIFIED = 0;
+  // "Apagar as luzes": a board of 3 to 7 lights a side.
+  PUZZLE_KIND_LIGHTS = 1;
+  // The combination lock: 2 to 6 wheels.
+  PUZZLE_KIND_LOCK = 2;
+  // The turning symbols: 3 to 6 pillars of 3 to 6 glyphs.
+  PUZZLE_KIND_PILLARS = 3;
+}
+
+// PuzzleAlphabet is what the wheels of a lock show.
+enum PuzzleAlphabet {
+  PUZZLE_ALPHABET_UNSPECIFIED = 0;
+  // The digits 0 to 9.
+  PUZZLE_ALPHABET_DIGITS = 1;
+  // The letters A to Z.
+  PUZZLE_ALPHABET_LETTERS = 2;
+  // Our own eight runes (Lua, Chama, Onda, Raiz, Olho, Estrela, Pedra, Folha).
+  PUZZLE_ALPHABET_RUNES = 3;
+}
+
+// PuzzleSolveAction is what happens when the players solve the puzzle ("Ao
+// resolver"). The master is always told, whatever the action. The app rolls no dice.
+enum PuzzleSolveAction {
+  // Same as NOTIFY.
+  PUZZLE_SOLVE_ACTION_UNSPECIFIED = 0;
+  // Only tell the master (the default).
+  PUZZLE_SOLVE_ACTION_NOTIFY = 1;
+  // Open a door of a map (RN-26): whatever its state (closed, locked, barred or
+  // secret). The target is a PuzzleDoorTarget.
+  PUZZLE_SOLVE_ACTION_OPEN_DOOR = 2;
+  // Reveal a point of a map to the players (the same as MapService.
+  // SetMapPointRevealed). The target is a PuzzlePointTarget.
+  PUZZLE_SOLVE_ACTION_REVEAL_POINT = 3;
+  // Reveal a scene clue (MR-029) to the character whose move solved the puzzle,
+  // and to nobody else. The target is a PuzzleClueTarget.
+  PUZZLE_SOLVE_ACTION_REVEAL_CLUE = 4;
+}
+
+// PuzzleSolveOutcome is what the server did when a puzzle was solved, as the master
+// reads it.
+enum PuzzleSolveOutcome {
+  // The puzzle is not solved yet.
+  PUZZLE_SOLVE_OUTCOME_UNSPECIFIED = 0;
+  // Only the master was told.
+  PUZZLE_SOLVE_OUTCOME_NOTIFIED = 1;
+  // The door was opened.
+  PUZZLE_SOLVE_OUTCOME_DOOR_OPENED = 2;
+  // The door was open already, or is gone.
+  PUZZLE_SOLVE_OUTCOME_DOOR_NOT_CLOSED = 3;
+  // The point was revealed.
+  PUZZLE_SOLVE_OUTCOME_POINT_REVEALED = 4;
+  // The point was revealed already.
+  PUZZLE_SOLVE_OUTCOME_POINT_ALREADY_REVEALED = 5;
+  // The clue went to the solver's player.
+  PUZZLE_SOLVE_OUTCOME_CLUE_REVEALED = 6;
+  // The solver's player had the clue already.
+  PUZZLE_SOLVE_OUTCOME_CLUE_ALREADY_HAD = 7;
+  // The action could not run: the point or the clue was deleted since the puzzle was
+  // made, the map is gone, or the solver has no player. The puzzle is solved all the
+  // same. (A door painted away reads DOOR_NOT_CLOSED.)
+  PUZZLE_SOLVE_OUTCOME_TARGET_GONE = 8;
+}
+
+// PuzzleRunStatus is where a puzzle stands in the open session, for the master.
+enum PuzzleRunStatus {
+  PUZZLE_RUN_STATUS_UNSPECIFIED = 0;
+  // Not shown in this session (yet).
+  PUZZLE_RUN_STATUS_NOT_SHOWN = 1;
+  // The players see it and play.
+  PUZZLE_RUN_STATUS_SHOWN = 2;
+  // Solved: the state is frozen and the players see "Resolvido".
+  PUZZLE_RUN_STATUS_SOLVED = 3;
+  // The master closed it: the players no longer see it. Showing it again opens it
+  // at its start.
+  PUZZLE_RUN_STATUS_CLOSED = 4;
+}
+
+// PuzzleSymbol is one face of a wheel or a pillar: a stable key the app draws a
+// picture for, and its Portuguese name, which is always written beside the picture.
+message PuzzleSymbol {
+  // The key, such as "moon" or "owl". For the digits and letters it is the character.
+  string key = 1;
+  // The Portuguese name, such as "Lua" or "Coruja".
+  string name_pt = 2;
+}
+
+// PuzzleConfig is what a puzzle is made of, apart from its answer: one message per
+// kind. A player gets it too.
+message PuzzleConfig {
+  oneof kind {
+    LightsConfig lights = 1;
+    LockConfig lock = 2;
+    PillarsConfig pillars = 3;
+  }
+}
+
+// LightsConfig is the board of "Apagar as luzes".
+message LightsConfig {
+  // Lights a side, 3 to 7. The board is square.
+  int32 size = 1;
+}
+
+// LockConfig is the combination lock.
+message LockConfig {
+  // The number of wheels, 2 to 6.
+  int32 wheels = 1;
+  // What the wheels show. Required.
+  PuzzleAlphabet alphabet = 2;
+}
+
+// PillarsConfig is the turning symbols.
+message PillarsConfig {
+  // The number of pillars, 3 to 6.
+  int32 pillars = 1;
+  // The number of symbols each pillar turns through, 3 to 6: the first ones of the
+  // table's six glyphs (Corvo, Lobo, Serpente, Coruja, Cervo, Peixe).
+  int32 symbols = 2;
+  // Links: links[i] lists the other pillars that turn with pillar i, by the same
+  // step. It may be shorter than the number of pillars. Players read it too: it is
+  // the rule "Girar um pilar gira também o da esquerda e o da direita".
+  repeated PillarLinks links = 3;
+}
+
+// PillarLinks lists the pillars one pillar turns with it.
+message PillarLinks {
+  // Pillar numbers from 0, never the pillar itself and none twice.
+  repeated int32 also_turns = 1;
+}
+
+// PuzzleSolution is the answer. It is the master's alone (RN-10). "Apagar as luzes"
+// has none to store: its goal is every light off, and the minimum is worked out.
+message PuzzleSolution {
+  oneof kind {
+    LockSolution lock = 2;
+    PillarsSolution pillars = 3;
+  }
+}
+
+// LockSolution is what the wheels must show.
+message LockSolution {
+  // The position of each wheel in the alphabet, from 0, one per wheel.
+  repeated int32 wheels = 1;
+}
+
+// PillarsSolution is the mural: what the pillars must show.
+message PillarsSolution {
+  // The position of each pillar among the symbols, from 0, one per pillar.
+  repeated int32 pillars = 1;
+}
+
+// PuzzleState is where the pieces stand now, per kind.
+message PuzzleState {
+  oneof kind {
+    LightsState lights = 1;
+    LockState lock = 2;
+    PillarsState pillars = 3;
+  }
+}
+
+// LightsState is the board, row by row from the top left.
+message LightsState {
+  // True for a lit light. size x size values.
+  repeated bool lit = 1;
+}
+
+// LockState is the wheels.
+message LockState {
+  // The position of each wheel in the alphabet, from 0.
+  repeated int32 wheels = 1;
+}
+
+// PillarsState is the pillars.
+message PillarsState {
+  // The position of each pillar among the symbols, from 0.
+  repeated int32 pillars = 1;
+}
+
+// PuzzleMove is one move, per kind. It is relative: it says what to do to the state,
+// never what the state becomes.
+message PuzzleMove {
+  oneof kind {
+    LightsMove lights = 1;
+    LockMove lock = 2;
+    PillarsMove pillars = 3;
+  }
+}
+
+// LightsMove presses a light: it and its four neighbours toggle.
+message LightsMove {
+  // The row, from 0 at the top.
+  int32 row = 1;
+  // The column, from 0 at the left.
+  int32 col = 2;
+}
+
+// LockMove turns a wheel by one position, wrapping around the alphabet.
+message LockMove {
+  // The wheel, from 0.
+  int32 wheel = 1;
+  // +1 or -1.
+  int32 delta = 2;
+}
+
+// PillarsMove turns a pillar by one symbol, and the pillars linked to it with it.
+message PillarsMove {
+  // The pillar, from 0.
+  int32 pillar = 1;
+  // +1 or -1.
+  int32 delta = 2;
+}
+
+// PuzzleOnSolve is "Ao resolver": an action and what it acts on.
+message PuzzleOnSolve {
+  // The action; UNSPECIFIED is NOTIFY.
+  PuzzleSolveAction action = 1;
+  // Optional text the players read once it is solved ("A porta da Capela se abriu."),
+  // up to 200 characters. Empty: the players read a generic line for the action.
+  string message = 5;
+  // What it acts on: required for OPEN_DOOR, REVEAL_POINT and REVEAL_CLUE, refused
+  // for NOTIFY.
+  oneof target {
+    PuzzleDoorTarget door = 2;
+    PuzzlePointTarget point = 3;
+    PuzzleClueTarget clue = 4;
+  }
+}
+
+// PuzzleDoorTarget is a door: a square of a map of the campaign that has a door.
+message PuzzleDoorTarget {
+  // The map (a UUID).
+  string map_id = 1;
+  // The square, from 0, from the top left of the map's grid.
+  int32 col = 2;
+  int32 row = 3;
+}
+
+// PuzzlePointTarget is a point of a map of the campaign.
+message PuzzlePointTarget {
+  // The map (a UUID).
+  string map_id = 1;
+  // The point (a UUID).
+  string point_id = 2;
+}
+
+// PuzzleClueTarget is a clue of a scene point of the campaign.
+message PuzzleClueTarget {
+  // The clue (a UUID).
+  string clue_id = 1;
+}
+
+// PuzzleMinimum is the fewest moves from the state to the solution, and one way to
+// make them. It is the master's alone (RN-10).
+message PuzzleMinimum {
+  // False when no sequence of moves reaches the solution (the links can make it so).
+  bool solvable = 1;
+  // The fewest moves. 0 when solved.
+  int32 moves = 2;
+  // One shortest way: the moves in order. For the lights, the cells to press (the
+  // hint ring); for a lock, each wheel's turns the short way round.
+  repeated PuzzleMove path = 3;
+}
+
+// Puzzle is a puzzle as the master keeps it: the master's alone, with the answer.
+message Puzzle {
+  // A UUID.
+  string id = 1;
+  // The campaign (a UUID).
+  string campaign_id = 2;
+  // The kind.
+  PuzzleKind kind = 3;
+  // The name, 1 to 80 characters, such as "O selo da Capela".
+  string name = 4;
+  // What it is made of.
+  PuzzleConfig config = 5;
+  // The answer (a lock's, the pillars'). Unset for the lights.
+  PuzzleSolution solution = 6;
+  // Where it starts: the lights and the pillars' start was generated from a seed, the
+  // lock's was chosen by the master.
+  PuzzleState start = 7;
+  // The fewest moves from the start.
+  PuzzleMinimum minimum = 8;
+  // The faces of the lock's alphabet or of the pillars' glyphs, in the order they turn.
+  // Empty for the lights.
+  repeated PuzzleSymbol symbols = 9;
+  // The master's clue for the players, 0 to 500 characters.
+  string clue = 10;
+  // The hints, in the order the master releases them: 0 to 10, each 1 to 300
+  // characters.
+  repeated string hints = 11;
+  // "Ao resolver".
+  PuzzleOnSolve on_solve = 12;
+  // True once the master archived it: it is out of the lists and cannot be shown.
+  bool archived = 13;
+  // True once it was shown in any session: from then on it cannot be edited.
+  bool shown = 14;
+  // When it was made and last edited.
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  // Slice 10.7b adds fields from 17: the split-information parts, the hint skill checks
+  // and the consequences.
+}
+
+// PuzzleLastMove is the last move of a run, as a player reads it.
+message PuzzleLastMove {
+  // The name of the character that made it.
+  string character_name = 1;
+  // The move.
+  PuzzleMove move = 2;
+  // What changed: the lights (row-major cells), the wheel, or the pillars that turned.
+  repeated int32 changed = 3;
+  // When it was made.
+  google.protobuf.Timestamp at = 4;
+}
+
+// PuzzleRun is a puzzle in the open session as a player reads it, and nothing more
+// (RN-10, RN-27): no lock solution, no minimum, only the hints the master released.
+message PuzzleRun {
+  // The puzzle (a UUID).
+  string puzzle_id = 1;
+  // The name.
+  string name = 2;
+  // The kind.
+  PuzzleKind kind = 3;
+  // What it is made of, with the pillars' links (the rule of how they turn together).
+  PuzzleConfig config = 4;
+  // The faces of the wheels or the pillars, in the order they turn. Empty for the lights.
+  repeated PuzzleSymbol symbols = 5;
+  // Where the pieces stand now.
+  PuzzleState state = 6;
+  // The master's clue.
+  string clue = 7;
+  // The hints released so far, in order.
+  repeated string hints = 8;
+  // Counts every change of the run (a move, a reset, a hint, a new start). Apply a read
+  // only if its revision is larger than the one on screen.
+  int32 revision = 9;
+  // True once the puzzle is solved: nothing moves any more.
+  bool solved = 10;
+  // When it was solved, and the name of the character whose move solved it.
+  google.protobuf.Timestamp solved_at = 11;
+  string solved_by_name = 12;
+  // The last move, unset before the first (and after a reset).
+  PuzzleLastMove last_move = 13;
+  // The mural the pillars must show, for the turning symbols only (the artboard
+  // E10-06 shows the players the goal they copy). Unset for the other kinds: the
+  // lights' goal is implicit and a lock's solution is never sent.
+  PillarsSolution mural = 14;
+  // What happened when the puzzle was solved, as the players read it: the master's
+  // own text of "Ao resolver" or, without one, a generic line for what the action
+  // did ("Uma porta se abriu.", "Salão do trono apareceu no mapa.", "Você ganhou uma
+  // pista."). Empty until solved, and when the action did nothing and the master wrote
+  // no text.
+  string solved_message = 15;
+  // Slice 10.7b adds fields from 16: this player's own part of the clue (split
+  // information) and their attempts left.
+}
+
+// PuzzleSummary is a shown puzzle in the list a player reads.
+message PuzzleSummary {
+  // The puzzle (a UUID).
+  string puzzle_id = 1;
+  // The name.
+  string name = 2;
+  // The kind.
+  PuzzleKind kind = 3;
+  // True once solved.
+  bool solved = 4;
+}
+
+// MasterPuzzleRun is a puzzle in the open session as the master reads it: what the
+// players read, and what only the master may know.
+message MasterPuzzleRun {
+  // The puzzle, with its answer and every hint.
+  Puzzle puzzle = 1;
+  // Where it stands in this session.
+  PuzzleRunStatus status = 2;
+  // What the players read. Unset while the status is NOT_SHOWN.
+  PuzzleRun run = 3;
+  // Where this run started (a new start changes it).
+  PuzzleState start = 4;
+  // The fewest moves from where the pieces are now. Unset only while the puzzle has no
+  // run in this session; a run prepared by ReseedPuzzle (NOT_SHOWN) has it.
+  PuzzleMinimum minimum = 5;
+  // The fewest moves from the run's start.
+  PuzzleMinimum minimum_from_start = 6;
+  // How many hints are released, of puzzle.hints.
+  int32 released_hints = 7;
+  // How many moves were made in this run (a reset does not erase them: the history stays).
+  int32 moves_made = 8;
+  // What the server did when it was solved. UNSPECIFIED until then.
+  PuzzleSolveOutcome outcome = 9;
+}
+
+// PuzzleBlocked is the detail of a `failed_precondition` of PuzzleService.
+message PuzzleBlocked {
+  PuzzleBlockedReason reason = 1;
+}
+
+// PuzzleBlockedReason is why a puzzle call was refused with `failed_precondition`.
+enum PuzzleBlockedReason {
+  PUZZLE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The campaign has no open session.
+  PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION = 1;
+  // The puzzle was solved: the state is frozen. Only the master's reset, a new start or
+  // close change it.
+  PUZZLE_BLOCKED_REASON_SOLVED = 2;
+  // The puzzle was shown in a session already, so it cannot be edited.
+  PUZZLE_BLOCKED_REASON_ALREADY_SHOWN = 3;
+  // The puzzle is archived: it cannot be shown.
+  PUZZLE_BLOCKED_REASON_ARCHIVED = 4;
+  // The puzzle is not shown in the open session (the master's calls that need a run).
+  PUZZLE_BLOCKED_REASON_NOT_SHOWN = 5;
+  // The caller has no living character in the campaign to move as.
+  PUZZLE_BLOCKED_REASON_NO_CHARACTER = 6;
+  // Every hint is released already.
+  PUZZLE_BLOCKED_REASON_NO_MORE_HINTS = 7;
+  // The kind has no generated start (a lock's start is the master's choice).
+  PUZZLE_BLOCKED_REASON_NO_GENERATED_START = 8;
+}
+
+// PuzzleInvalid is the detail of an `invalid_argument` of PuzzleService.
+message PuzzleInvalid {
+  PuzzleInvalidReason reason = 1;
+  // The request field that is wrong, such as "config.lights.size". Never the value.
+  string field = 2;
+}
+
+// PuzzleInvalidReason is why a puzzle request was refused as invalid.
+enum PuzzleInvalidReason {
+  PUZZLE_INVALID_REASON_UNSPECIFIED = 0;
+  // The name is empty or longer than 80 characters.
+  PUZZLE_INVALID_REASON_NAME = 1;
+  // The clue or a hint is too long or empty, or there are more than 10 hints.
+  PUZZLE_INVALID_REASON_TEXT = 2;
+  // The kind is missing, or the config, solution, start or move is not of the same kind.
+  PUZZLE_INVALID_REASON_KIND = 3;
+  // The board, the wheels or the pillars are out of their range.
+  PUZZLE_INVALID_REASON_SIZE = 4;
+  // A symbol or position is out of range, or a list has the wrong length.
+  PUZZLE_INVALID_REASON_SYMBOLS = 5;
+  // A pillar's links are not valid.
+  PUZZLE_INVALID_REASON_LINKS = 6;
+  // The lock's start is already its solution.
+  PUZZLE_INVALID_REASON_START_SOLVED = 7;
+  // The pillars' mural cannot be reached from where they start.
+  PUZZLE_INVALID_REASON_UNSOLVABLE = 8;
+  // "Ao resolver" has no target when it needs one, or one it does not use, or the
+  // target is not of this campaign.
+  PUZZLE_INVALID_REASON_TARGET = 9;
+  // The move is not valid for this puzzle (a cell or a wheel that is not there, a turn
+  // that is not +1 or -1).
+  PUZZLE_INVALID_REASON_MOVE = 10;
+}
+
+// PuzzleService makes puzzles in the campaign (the master's), shows them in the open
+// game session, and lets the players solve them live (MR-038, RN-27).
+//
+// Who may call what:
+//   - The master: every method but GetPuzzleRun, ListShownPuzzles and MakePuzzleMove,
+//     which are the players'. GetPuzzleRun and ListShownPuzzles also answer the master,
+//     with exactly what a player reads. MakePuzzleMove is for players only.
+//   - Errors every method can return: `unauthenticated`; `not_found` for a campaign
+//     the caller is not an active member of (a pending member neither) and for a puzzle
+//     that is not the campaign's; `unavailable`; `aborted` (the database kept
+//     reporting a conflict; the app may try again). A failed_precondition carries a
+//     PuzzleBlocked detail, an invalid_argument a PuzzleInvalid one.
+//
+// Responses carry `Cache-Control: no-store`. Every read that takes IDs is IDEMPOTENT
+// and POST-only, so IDs stay out of URLs. The live changes of a puzzle travel on
+// PlayService.WatchGameSession as the content-free `puzzle_changed` hint.
+service PuzzleService {
+  // CreatePuzzle makes a puzzle in the campaign. Master only.
+  //
+  // The server checks the config and the answer, generates the start of the lights
+  // and of the pillars from the seed (a start that is already solved is never given:
+  // it is drawn again from the same seed), and works out the fewest moves. A lock's
+  // start is the one in the request. The "Ao resolver" target must be a door, point
+  // or clue of this campaign.
+  //
+  // Errors: `permission_denied` for a player; `invalid_argument` (PuzzleInvalid).
+  rpc CreatePuzzle(CreatePuzzleRequest) returns (CreatePuzzleResponse);
+
+  // UpdatePuzzle replaces everything the master wrote about a puzzle (the same fields
+  // as CreatePuzzle), as long as the puzzle was never shown in a session. Master only.
+  //
+  // Errors: `permission_denied`; `invalid_argument`; `failed_precondition`
+  // (ALREADY_SHOWN).
+  rpc UpdatePuzzle(UpdatePuzzleRequest) returns (UpdatePuzzleResponse);
+
+  // PreviewPuzzleStart draws a start for the form, with the fewest moves from it,
+  // and stores nothing: "Gerar outro começo" in the create form. The same seed and
+  // config always give the same start, so sending the seed back to CreatePuzzle
+  // creates exactly that start. Master only. Lights and pillars only.
+  //
+  // Errors: `permission_denied`; `invalid_argument`; `failed_precondition`
+  // (NO_GENERATED_START for a lock).
+  rpc PreviewPuzzleStart(PreviewPuzzleStartRequest) returns (PreviewPuzzleStartResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ListPuzzles lists the campaign's puzzles, newest first, with their answers. Master
+  // only. Archived ones only when asked.
+  rpc ListPuzzles(ListPuzzlesRequest) returns (ListPuzzlesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetPuzzle reads one puzzle, archived or not. Master only.
+  rpc GetPuzzle(GetPuzzleRequest) returns (GetPuzzleResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ArchivePuzzle takes a puzzle out of the lists and from the session's menu; what
+  // happened in past sessions stays. Archiving an archived puzzle changes nothing.
+  // Master only.
+  rpc ArchivePuzzle(ArchivePuzzleRequest) returns (ArchivePuzzleResponse);
+
+  // UnarchivePuzzle brings an archived puzzle back. Master only.
+  rpc UnarchivePuzzle(UnarchivePuzzleRequest) returns (UnarchivePuzzleResponse);
+
+  // ListSessionPuzzles lists the campaign's puzzles that are not archived, each with
+  // where it stands in the open session: the master's menu. Master only.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION).
+  rpc ListSessionPuzzles(ListSessionPuzzlesRequest) returns (ListSessionPuzzlesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ShowPuzzle shows the puzzle to every player of the open session ("Mostrar aos
+  // jogadores"): the run is made at the puzzle's start. Showing a shown one changes
+  // nothing; showing a closed one opens it again at its start; showing a solved one
+  // changes nothing. Master only.
+  //
+  // Writes the session event `puzzle_shown` and sends `puzzle_changed` to everyone.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, ARCHIVED).
+  rpc ShowPuzzle(ShowPuzzleRequest) returns (ShowPuzzleResponse);
+
+  // ResetPuzzle ("Recomeçar") puts the run back at the same start it had, for every
+  // player, solved or not: the state, the last move and the solved mark go; the hints
+  // released and the history of moves stay. Master only.
+  //
+  // Writes `puzzle_reset`.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN).
+  rpc ResetPuzzle(ResetPuzzleRequest) returns (ResetPuzzleResponse);
+
+  // ReseedPuzzle ("Gerar outro começo") draws a new seed and a new start for the run,
+  // never already solved, and puts the run at it, as ResetPuzzle does. Lights and
+  // pillars only. The puzzle's own start is not changed: Recomeçar of a later session
+  // starts from it. Master only. Allowed before and after the puzzle is shown (before,
+  // the run is prepared at the new start and the players see nothing until ShowPuzzle).
+  //
+  // Writes `puzzle_reset`.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, NO_GENERATED_START).
+  rpc ReseedPuzzle(ReseedPuzzleRequest) returns (ReseedPuzzleResponse);
+
+  // ClosePuzzle ("Fechar") hides the puzzle from the players. Closing a closed one
+  // changes nothing. Master only.
+  //
+  // Writes `puzzle_closed`.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN).
+  rpc ClosePuzzle(ClosePuzzleRequest) returns (ClosePuzzleResponse);
+
+  // ReleaseNextPuzzleHint ("Mostrar a próxima dica") releases the next hint to the
+  // players. Master only.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NO_MORE_HINTS).
+  rpc ReleaseNextPuzzleHint(ReleaseNextPuzzleHintRequest) returns (ReleaseNextPuzzleHintResponse);
+
+  // GetMasterPuzzleRun is the master's live view of a puzzle of the open session: what
+  // the players read, and the answer, the fewest moves left and the hints. Master only.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION).
+  rpc GetMasterPuzzleRun(GetMasterPuzzleRunRequest) returns (GetMasterPuzzleRunResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ListShownPuzzles lists the puzzles the open session shows: shown, not closed,
+  // solved or not. Any member may call it, and gets what a player gets.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION).
+  rpc ListShownPuzzles(ListShownPuzzlesRequest) returns (ListShownPuzzlesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetPuzzleRun reads a shown puzzle as a player reads it (RN-10, RN-27). Any member
+  // may call it. A puzzle that does not exist, is not shown or was closed answers
+  // `not_found`.
+  //
+  // Errors: `not_found`; `failed_precondition` (NO_OPEN_SESSION).
+  rpc GetPuzzleRun(GetPuzzleRunRequest) returns (GetPuzzleRunResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // MakePuzzleMove makes one move as the caller's living character. Players only.
+  //
+  // The server applies the move to the latest state, so two players moving at once
+  // both count. When the move solves the puzzle, in the same transaction the run is
+  // frozen, `puzzle_solved` is written and the master's "Ao resolver" action runs. A
+  // move with an idempotency_key already used is not applied again: the answer is
+  // the run as it is now (it may carry other players' moves made since, not the
+  // first answer), with replayed = true.
+  //
+  // Writes the move in the puzzle's own history (not in the session's events, which
+  // keep only the shown, solved, reset and closed of a puzzle) and sends
+  // `puzzle_changed` to everyone.
+  //
+  // Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
+  // `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used
+  // for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION, SOLVED, NO_CHARACTER).
+  rpc MakePuzzleMove(MakePuzzleMoveRequest) returns (MakePuzzleMoveResponse);
+}
+
+// CreatePuzzleRequest is the master's puzzle.
+message CreatePuzzleRequest {
+  string campaign_id = 1;
+  // The name, 1 to 80 characters.
+  string name = 2;
+  // What it is made of. Required; its kind is the puzzle's.
+  PuzzleConfig config = 3;
+  // The answer: required for a lock and for the pillars, none for the lights.
+  PuzzleSolution solution = 4;
+  // Where the lock starts (required for a lock, one position per wheel, not the
+  // solution). Ignored for the others, whose start is generated.
+  PuzzleState start = 5;
+  // The seed of the generated start, for the lights and the pillars; 0 asks the server
+  // to draw one. A seed from PreviewPuzzleStart gives that start again.
+  int64 seed = 6;
+  // The clue for the players, up to 500 characters.
+  string clue = 7;
+  // The hints, in release order: up to 10, 1 to 300 characters each.
+  repeated string hints = 8;
+  // "Ao resolver". Unset is NOTIFY.
+  PuzzleOnSolve on_solve = 9;
+}
+
+// CreatePuzzleResponse carries the new puzzle.
+message CreatePuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+// UpdatePuzzleRequest replaces what CreatePuzzleRequest set. The kind cannot change.
+message UpdatePuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+  // As in CreatePuzzleRequest.
+  string name = 3;
+  PuzzleConfig config = 4;
+  PuzzleSolution solution = 5;
+  PuzzleState start = 6;
+  // For the lights and the pillars: the seed of the start; 0 keeps the puzzle's
+  // current start when the config and the answer still fit it, and draws a new one
+  // otherwise.
+  int64 seed = 7;
+  string clue = 8;
+  repeated string hints = 9;
+  PuzzleOnSolve on_solve = 10;
+}
+
+// UpdatePuzzleResponse carries the edited puzzle.
+message UpdatePuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+// PreviewPuzzleStartRequest asks for a start to look at.
+message PreviewPuzzleStartRequest {
+  string campaign_id = 1;
+  // The config (lights or pillars) and, for the pillars, the mural in `solution`.
+  PuzzleConfig config = 2;
+  PuzzleSolution solution = 3;
+  // 0 draws a new seed.
+  int64 seed = 4;
+}
+
+// PreviewPuzzleStartResponse is a start that CreatePuzzle can reproduce.
+message PreviewPuzzleStartResponse {
+  // The seed that gives this start.
+  int64 seed = 1;
+  // The start.
+  PuzzleState start = 2;
+  // The fewest moves from it.
+  PuzzleMinimum minimum = 3;
+}
+
+// ListPuzzlesRequest asks for the campaign's puzzles.
+message ListPuzzlesRequest {
+  string campaign_id = 1;
+  // True to list the archived ones too.
+  bool include_archived = 2;
+}
+
+// ListPuzzlesResponse lists them.
+message ListPuzzlesResponse {
+  repeated Puzzle puzzles = 1;
+}
+
+// GetPuzzleRequest names a puzzle.
+message GetPuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// GetPuzzleResponse carries it.
+message GetPuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+// ArchivePuzzleRequest names a puzzle.
+message ArchivePuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ArchivePuzzleResponse carries the puzzle, archived.
+message ArchivePuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+// UnarchivePuzzleRequest names a puzzle.
+message UnarchivePuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// UnarchivePuzzleResponse carries the puzzle, back.
+message UnarchivePuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+// ListSessionPuzzlesRequest asks for the master's menu.
+message ListSessionPuzzlesRequest {
+  string campaign_id = 1;
+}
+
+// ListSessionPuzzlesResponse is the master's menu of the open session.
+message ListSessionPuzzlesResponse {
+  // The puzzles that are not archived, newest first, each with its status in the open
+  // session (run, minimum and the rest are filled as in GetMasterPuzzleRun).
+  repeated MasterPuzzleRun puzzles = 1;
+}
+
+// ShowPuzzleRequest names a puzzle.
+message ShowPuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ShowPuzzleResponse carries the puzzle as the master now sees it.
+message ShowPuzzleResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// ResetPuzzleRequest names a puzzle.
+message ResetPuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ResetPuzzleResponse carries the puzzle as the master now sees it.
+message ResetPuzzleResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// ReseedPuzzleRequest names a puzzle.
+message ReseedPuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ReseedPuzzleResponse carries the puzzle as the master now sees it.
+message ReseedPuzzleResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// ClosePuzzleRequest names a puzzle.
+message ClosePuzzleRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ClosePuzzleResponse carries the puzzle as the master now sees it.
+message ClosePuzzleResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// ReleaseNextPuzzleHintRequest names a puzzle.
+message ReleaseNextPuzzleHintRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// ReleaseNextPuzzleHintResponse carries the puzzle as the master now sees it.
+message ReleaseNextPuzzleHintResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// GetMasterPuzzleRunRequest names a puzzle.
+message GetMasterPuzzleRunRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// GetMasterPuzzleRunResponse carries the puzzle as the master sees it.
+message GetMasterPuzzleRunResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// ListShownPuzzlesRequest asks what the session shows.
+message ListShownPuzzlesRequest {
+  string campaign_id = 1;
+}
+
+// ListShownPuzzlesResponse lists the shown puzzles, in the order they were shown.
+message ListShownPuzzlesResponse {
+  repeated PuzzleSummary puzzles = 1;
+}
+
+// GetPuzzleRunRequest names a puzzle.
+message GetPuzzleRunRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// GetPuzzleRunResponse carries the puzzle as a player reads it.
+message GetPuzzleRunResponse {
+  PuzzleRun run = 1;
+}
+
+// MakePuzzleMoveRequest is a move.
+message MakePuzzleMoveRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+  // The move, of the puzzle's kind.
+  PuzzleMove move = 3;
+  // A UUID the app makes for each move. Repeating it returns the first answer and
+  // changes nothing.
+  string idempotency_key = 4;
+}
+
+// MakePuzzleMoveResponse is the run after the move.
+message MakePuzzleMoveResponse {
+  // The run as a player reads it now (it may carry another player's move made since).
+  PuzzleRun run = 1;
+  // True when the key was used before: the move was not applied again.
+  bool replayed = 2;
+  // True when this move is the one that solved the puzzle (also on a replay of it).
+  bool solved_by_this_move = 3;
+}

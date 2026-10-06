@@ -247,6 +247,18 @@ func (s *Service) GetLevelUpOptions(
 		return nil, levelUpRulesError(err)
 	}
 	out := levelUpOptionsToProto(offer)
+	if !isMaster(m) {
+		// A subclass the master archived is not offered to a player (RN-23), unless
+		// the character's own sheet already has it.
+		out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
+			return sub.GetArchived() && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
+		})
+		// Nor a reference to an archived class the sheet does not use (a list a table
+		// class reuses).
+		if k := out.GetSpellListClassKey(); k != "" && t.content.Archived(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k }) {
+			out.SpellListClassKey = ""
+		}
+	}
 	if out.DiceRule, err = s.diceRule(ctx, nil, m); err != nil {
 		return nil, s.dbError(ctx, "read the dice setting", err)
 	}
@@ -401,12 +413,9 @@ func (s *Service) LevelUpCharacter(
 		return nil, invalidArgument(fieldErr("choices.hit_points.method", "is required"))
 	}
 
-	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
-	if err != nil {
-		return nil, s.dbError(ctx, "read rules content", err)
-	}
 	var row charactersdb.Character
 	var leveled bool
+	var leveledContent *rules.Content // the content read in the transaction
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		current, err := visibleForUpdate(ctx, q, m, id)
@@ -437,6 +446,9 @@ func (s *Service) LevelUpCharacter(
 		if plan.refusal != nil {
 			return errRefused(plan.refusal)
 		}
+		// A level-up never clears what a change of the table's content flagged.
+		carryFlags(t.content, t.full, plan.sheet)
+		leveledContent = t.content
 		doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
 		if err != nil {
 			return wrap("encode a sheet", err)
@@ -475,7 +487,8 @@ func (s *Service) LevelUpCharacter(
 	if leveled && s.live != nil {
 		s.live.PublishXPChanged(m.CampaignID)
 	}
-	c, err := s.character(ctx, content, row, m)
+	// The response is derived from the content the level-up was checked with.
+	c, err := s.character(ctx, leveledContent, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a leveled up character", err)
 	}
@@ -720,6 +733,12 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 		return levelUpPlan{}, invalidArgument(err)
 	}
 	plan.sheet = checked.GetFull()
+	// A table entry the master archived is not a new choice (RN-23).
+	if _, field, found := newArchivedChoice(t.content, t.full, plan.sheet); found && plan.refusal == nil {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE,
+		}
+	}
 	if plan.refusal == nil {
 		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content); err != nil {
 			le, ok := errors.AsType[*rules.LevelUpError](err)
@@ -855,6 +874,7 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		out.Subclasses = append(out.Subclasses, &charactersv1.LevelUpSubclass{
 			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: choices(sub.FeatureChoices),
 			Cantrips: i32(sub.Cantrips), SkillChoices: i32(sub.SkillChoices), ExpertiseChoices: i32(sub.ExpertiseChoices),
+			Archived: sub.Archived,
 		})
 	}
 	return out

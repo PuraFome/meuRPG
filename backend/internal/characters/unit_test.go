@@ -106,6 +106,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	t.Cleanup(server.Close)
 	c := charactersv1connect.NewCharacterServiceClient(server.Client(), server.URL)
 	content := rulesv1connect.NewContentServiceClient(server.Client(), server.URL)
+	table := rulesv1connect.NewTableContentServiceClient(server.Client(), server.URL)
 	ctx := t.Context()
 	id := "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001"
 
@@ -142,9 +143,15 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["GetCreature"] = content.GetCreature(ctx, connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: id, Key: "monster:wolf"}))
 	_, calls["ListTrapPresets"] = content.ListTrapPresets(ctx, connect.NewRequest(&rulesv1.ListTrapPresetsRequest{CampaignId: id}))
 	_, calls["ListLightPresets"] = content.ListLightPresets(ctx, connect.NewRequest(&rulesv1.ListLightPresetsRequest{CampaignId: id}))
+	_, calls["ListTableEntries"] = table.ListTableEntries(ctx, connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: id}))
+	_, calls["CreateTableEntry"] = table.CreateTableEntry(ctx, connect.NewRequest(&rulesv1.CreateTableEntryRequest{CampaignId: id}))
+	_, calls["UpdateTableEntry"] = table.UpdateTableEntry(ctx, connect.NewRequest(&rulesv1.UpdateTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
+	_, calls["ArchiveTableEntry"] = table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
+	_, calls["UnarchiveTableEntry"] = table.UnarchiveTableEntry(ctx, connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
 
 	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +
-		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService").Methods().Len()
+		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService").Methods().Len() +
+		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService").Methods().Len()
 	if len(calls) != methods {
 		t.Errorf("called %d methods, the services have %d", len(calls), methods)
 	}
@@ -171,6 +178,7 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 	for _, service := range []protoreflect.ServiceDescriptor{
 		charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService"),
 		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService"),
+		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService"),
 	} {
 		for i := range service.Methods().Len() {
 			m := service.Methods().Get(i)
@@ -179,8 +187,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 16 {
-		t.Errorf("found %d reads, want 16 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets)", len(reads))
+	if len(reads) != 17 {
+		t.Errorf("found %d reads, want 17 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

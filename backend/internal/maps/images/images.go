@@ -147,6 +147,24 @@ func Process(data []byte) (*Result, error) {
 	if contentType == PNG {
 		img = to8bit(img)
 	}
+	return finish(contentType, img, thumbnail)
+}
+
+// Encode is Process for an image the server drew itself (a generated dungeon's
+// map): there is nothing to decode or sniff, so it checks the size the way Process
+// does (MaxSide, MaxPixels), writes the pixels as a PNG, which carries no
+// metadata, and makes the thumbnail. The error is ErrDimensions or ErrTooLarge.
+func Encode(img image.Image) (*Result, error) {
+	b := img.Bounds()
+	if b.Dx() < 1 || b.Dy() < 1 || b.Dx() > MaxSide || b.Dy() > MaxSide || b.Dx()*b.Dy() > MaxPixels {
+		return nil, ErrDimensions
+	}
+	return finish(PNG, to8bit(img), thumbnailOfDrawing)
+}
+
+// finish encodes img as contentType, refuses a file over MaxBytes and adds the
+// thumbnail.
+func finish(contentType string, img image.Image, shrink func(image.Image) image.Image) (*Result, error) {
 	out, err := encode(contentType, img)
 	if err != nil {
 		return nil, err
@@ -158,7 +176,7 @@ func Process(data []byte) (*Result, error) {
 	b := img.Bounds()
 	res := &Result{ContentType: contentType, Width: b.Dx(), Height: b.Dy(), Data: out, Thumbnail: out}
 	if b.Dx() > ThumbnailSide || b.Dy() > ThumbnailSide {
-		if res.Thumbnail, err = encode(contentType, thumbnail(img)); err != nil {
+		if res.Thumbnail, err = encode(contentType, shrink(img)); err != nil {
 			return nil, err
 		}
 	}
@@ -444,4 +462,50 @@ func reference(img image.Image, side, quality int) ([]byte, error) {
 		return nil, errors.Join(errors.New("images: encode"), err)
 	}
 	return buf.Bytes(), nil
+
+// thumbnailOfDrawing is thumbnail for what Encode gets, the server's own drawings: a
+// palette image takes the faster box filter below. An uploaded palette PNG keeps
+// using thumbnail (Process), whose Catmull-Rom filter keeps a map's grid lines crisp.
+func thumbnailOfDrawing(img image.Image) image.Image {
+	if p, ok := img.(*image.Paletted); ok {
+		return thumbnailPaletted(p)
+	}
+	return thumbnail(img)
+}
+
+// thumbnailPaletted is thumbnail for an image of a palette, such as a generated
+// dungeon's map (Encode): it averages the source pixels each thumbnail pixel
+// covers (a box filter) in one pass, because the scaler above reads a palette image
+// pixel by pixel through the generic interface, which takes seconds for 30
+// megapixels. A palette image is a flat drawing, so the box filter is as good.
+func thumbnailPaletted(src *image.Paletted) image.Image {
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	tw, th := thumbnailSize(w, h)
+	pal := make([][4]uint32, len(src.Palette))
+	for i, c := range src.Palette {
+		r, g, bl, a := c.RGBA() // premultiplied, 16 bits
+		pal[i] = [4]uint32{r, g, bl, a}
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, tw, th))
+	for dy := range th {
+		y0, y1 := dy*h/th, max((dy+1)*h/th, dy*h/th+1)
+		for dx := range tw {
+			x0, x1 := dx*w/tw, max((dx+1)*w/tw, dx*w/tw+1)
+			var sum [4]uint64
+			for y := y0; y < y1; y++ {
+				row := src.Pix[(b.Min.Y+y-src.Rect.Min.Y)*src.Stride+(b.Min.X+x0-src.Rect.Min.X):][:x1-x0]
+				for _, i := range row {
+					c := pal[i]
+					sum[0], sum[1], sum[2], sum[3] = sum[0]+uint64(c[0]), sum[1]+uint64(c[1]), sum[2]+uint64(c[2]), sum[3]+uint64(c[3])
+				}
+			}
+			n := uint64((y1 - y0) * (x1 - x0)) //nolint:gosec // G115: a positive count of pixels
+			o := dst.PixOffset(dx, dy)
+			for k := range 4 {
+				dst.Pix[o+k] = uint8(sum[k] / n >> 8) //nolint:gosec // G115: the mean of 16-bit values, shifted to 8 bits
+			}
+		}
+	}
+	return dst
 }

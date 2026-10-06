@@ -661,5 +661,39 @@ func TestProcessMakesTheReference(t *testing.T) {
 	small, err := Process(encodePNG(t, twoColors(800, 600)))
 	if err != nil || small.Reference != nil {
 		t.Errorf("a small image's reference = %d bytes, %v; want none", len(small.Reference), err)
+
+// A palette image (a generated dungeon's map) gets its thumbnail by averaging, and
+// Encode checks the size like Process.
+func TestEncodeAPaletteImage(t *testing.T) {
+	t.Parallel()
+	pal := color.Palette{color.RGBA{R: 255, A: 255}, color.RGBA{B: 255, A: 255}}
+	img := image.NewPaletted(image.Rect(0, 0, 960, 480), pal)
+	for y := range 480 {
+		for x := 480; x < 960; x++ {
+			img.SetColorIndex(x, y, 1) // the right half is blue
+		}
+	}
+	res, err := Encode(img)
+	if err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if res.ContentType != PNG || res.Width != 960 || res.Height != 480 {
+		t.Errorf("result = %s %d x %d", res.ContentType, res.Width, res.Height)
+	}
+	thumb, err := png.Decode(bytes.NewReader(res.Thumbnail))
+	if err != nil {
+		t.Fatalf("decode the thumbnail: %v", err)
+	}
+	if b := thumb.Bounds(); b.Dx() != ThumbnailSide || b.Dy() != 240 {
+		t.Errorf("thumbnail = %v, want 480 x 240", b)
+	}
+	if r, _, _, _ := thumb.At(10, 10).RGBA(); r>>8 != 255 {
+		t.Errorf("the left of the thumbnail is not red")
+	}
+	if _, _, b, _ := thumb.At(470, 10).RGBA(); b>>8 != 255 {
+		t.Errorf("the right of the thumbnail is not blue")
+	}
+	if _, err := Encode(image.NewPaletted(image.Rect(0, 0, MaxSide+1, 1), pal)); !errors.Is(err, ErrDimensions) {
+		t.Errorf("Encode(too wide) error = %v, want ErrDimensions", err)
 	}
 }

@@ -13,7 +13,6 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // SessionMaps is what package play needs from this one for what the
@@ -183,8 +182,8 @@ func (sm *SessionMaps) TakeBackImage(ctx context.Context, campaignID, imageID st
 // image's proportions, rounded, and kept between 1 and 400 (the
 // encounters_grid_valid CHECK) for an extremely long image. Package rules/grid
 // has the rule.
-func gridRows(columns, width, height int32) int32 {
-	return int32(grid.RowsFor(int(columns), int(width), int(height))) //nolint:gosec // G115: at most 400
+func gridRows(columns, factor, width, height int32) int32 {
+	return int32(gridOf(&columns, factor, width, height).Rows) //nolint:gosec // G115: at most 400
 }
 
 // MapGrid returns the battle grid of the campaign's map (MR-013), or the
@@ -202,7 +201,7 @@ func (sm *SessionMaps) MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID
 	if row.GridColumns == nil {
 		return link.Grid{}, nil
 	}
-	return link.Grid{Columns: *row.GridColumns, Rows: gridRows(*row.GridColumns, row.ImageWidth, row.ImageHeight)}, nil
+	return link.Grid{Columns: *row.GridColumns, Rows: gridRows(*row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)}, nil
 }
 
 // BattlePoint returns a battle point of the campaign: its map and the map of
