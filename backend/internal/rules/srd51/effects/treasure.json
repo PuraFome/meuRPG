@@ -1,0 +1,93 @@
+{
+ "source": "Tabelas nossas (MR-044, fatia 10.10b), feitas por critérios nossos descritos em docs/arquitetura.md: o ouro médio de cada faixa e modo vem de uma fração do valor de um item da raridade típica da faixa (tabela do SRD 5.2.1 em magic_item_values.json); os valores de gemas e arte seguem duas escalas nossas (razão 3 a partir de 6 PO nas gemas e a mesma escala deslocada meio degrau, a partir de 9 PO, na arte); os nomes são nossos. Nenhuma tabela, valor ou nome de livro ou de outro site.",
+ "gems": [
+  {"value_po": 6, "names_pt": ["Quartzo-fumê", "Quartzo-leitoso", "Calcedônia", "Sodalita", "Jaspe-sanguíneo"]},
+  {"value_po": 18, "names_pt": ["Ágata-de-fogo", "Rodonita", "Olho-de-gato", "Ametista clara", "Citrino pálido"]},
+  {"value_po": 54, "names_pt": ["Ametista", "Citrino", "Granada almandina", "Peridoto", "Água-marinha clara"]},
+  {"value_po": 160, "names_pt": ["Turmalina verde", "Topázio dourado", "Água-marinha", "Opala-de-fogo", "Granada tsavorita"]},
+  {"value_po": 490, "names_pt": ["Topázio imperial", "Crisoberilo", "Turmalina rubelita", "Alexandrita clara"]},
+  {"value_po": 1500, "names_pt": ["Opala nobre", "Safira", "Esmeralda bruta", "Alexandrita"]},
+  {"value_po": 4400, "names_pt": ["Rubi", "Esmeralda lapidada", "Diamante", "Turmalina Paraíba"]}
+ ],
+ "art": [
+  {"value_po": 9, "names_pt": ["Colher de peltre com o brasão de uma estalagem", "Apito de osso de ave entalhado com ondas", "Botão de madrepérola de um casaco de capitão", "Fivela de cobre martelado de um cinto de tropeiro"]},
+  {"value_po": 27, "names_pt": ["Pente de tartaruga entalhado pela ourives Zélia", "Cantil de couro repuxado com folha de prata", "Candeeiro de latão com vidro verde soprado", "Dedal de prata com um pássaro gravado"]},
+  {"value_po": 81, "names_pt": ["Jarra de barro vidrado da oficina dos Camargo", "Broche de prata com um rouxinol esmaltado", "Pulseira de contas de âmbar e fio de prata", "Flauta de buxo com bocal de chifre polido"]},
+  {"value_po": 240, "names_pt": ["Bandeja de prata batida do mestre Tavares", "Colar de pérolas de rio com fecho de ouro", "Tapete de lã tingido de cochonilha", "Relicário de prata com a miniatura de um santo-marinheiro"]},
+  {"value_po": 730, "names_pt": ["Bastão de mando de madeira de lei com ponteira de ouro", "Espelho de bronze polido numa moldura de jacarandá e ouro", "Violão de jacarandá incrustado de madrepérola", "Sino de bronze dourado da capela de um farol"]},
+  {"value_po": 2200, "names_pt": ["Jarro de ouro com uma procissão de peixes em relevo", "Estatueta de ouro de uma onça deitada", "Manto de seda bordado com constelações a fio de ouro", "Astrolábio de latão dourado de um piloto de naus"]},
+  {"value_po": 6600, "names_pt": ["Tiara de filigrana de ouro com sete águas-marinhas", "Mapa-múndi de marfim e ouro de um cartógrafo de Sagres", "Harpa de ouro com cordas de prata e pés de ébano", "Escudo de parada de aço azulado com uma batalha em ouro"]}
+ ],
+ "bands": [
+  {
+   "from": 1, "to": 4,
+   "individual": {"coins": [
+    {"coin": "pc", "dice": "2d20*3", "chance_pct": 100},
+    {"coin": "pp", "dice": "3d8*4", "chance_pct": 100},
+    {"coin": "po", "dice": "1d8+1", "chance_pct": 60}
+   ]},
+   "hoard": {
+    "coins": [
+     {"coin": "pc", "dice": "3d20*7", "chance_pct": 100},
+     {"coin": "pp", "dice": "4d12*9", "chance_pct": 100},
+     {"coin": "po", "dice": "3d10*11", "chance_pct": 100}
+    ],
+    "gems": {"count": "2d4", "chance_pct": 70, "tiers": [{"value_po": 6, "weight": 50}, {"value_po": 18, "weight": 35}, {"value_po": 54, "weight": 15}]},
+    "art": {"count": "1d2", "chance_pct": 40, "tiers": [{"value_po": 9, "weight": 60}, {"value_po": 27, "weight": 40}]},
+    "items": {"count": "1d3", "chance_pct": 100, "rarities": [{"rarity": "common", "weight": 55}, {"rarity": "uncommon", "weight": 40}, {"rarity": "rare", "weight": 5}]}
+   }
+  },
+  {
+   "from": 5, "to": 10,
+   "individual": {"coins": [
+    {"coin": "pp", "dice": "4d10*6", "chance_pct": 100},
+    {"coin": "po", "dice": "2d12*6", "chance_pct": 100},
+    {"coin": "pl", "dice": "1d2", "chance_pct": 25}
+   ]},
+   "hoard": {
+    "coins": [
+     {"coin": "pp", "dice": "5d20*8", "chance_pct": 100},
+     {"coin": "pe", "dice": "4d10*40", "chance_pct": 70},
+     {"coin": "po", "dice": "8d12*28", "chance_pct": 100},
+     {"coin": "pl", "dice": "2d6*5", "chance_pct": 50}
+    ],
+    "gems": {"count": "2d4", "chance_pct": 80, "tiers": [{"value_po": 18, "weight": 25}, {"value_po": 54, "weight": 45}, {"value_po": 160, "weight": 30}]},
+    "art": {"count": "1d4", "chance_pct": 60, "tiers": [{"value_po": 27, "weight": 35}, {"value_po": 81, "weight": 45}, {"value_po": 240, "weight": 20}]},
+    "items": {"count": "1d4+1", "chance_pct": 100, "rarities": [{"rarity": "common", "weight": 20}, {"rarity": "uncommon", "weight": 45}, {"rarity": "rare", "weight": 35}]}
+   }
+  },
+  {
+   "from": 11, "to": 16,
+   "individual": {"coins": [
+    {"coin": "po", "dice": "4d20*12", "chance_pct": 100},
+    {"coin": "pl", "dice": "2d10*4", "chance_pct": 100}
+   ]},
+   "hoard": {
+    "coins": [
+     {"coin": "pe", "dice": "4d10*100", "chance_pct": 50},
+     {"coin": "po", "dice": "7d20*85", "chance_pct": 100},
+     {"coin": "pl", "dice": "5d12*40", "chance_pct": 100}
+    ],
+    "gems": {"count": "2d6", "chance_pct": 85, "tiers": [{"value_po": 54, "weight": 20}, {"value_po": 160, "weight": 40}, {"value_po": 490, "weight": 30}, {"value_po": 1500, "weight": 10}]},
+    "art": {"count": "1d4", "chance_pct": 70, "tiers": [{"value_po": 81, "weight": 20}, {"value_po": 240, "weight": 40}, {"value_po": 730, "weight": 30}, {"value_po": 2200, "weight": 10}]},
+    "items": {"count": "1d4+1", "chance_pct": 100, "rarities": [{"rarity": "uncommon", "weight": 25}, {"rarity": "rare", "weight": 45}, {"rarity": "very_rare", "weight": 30}]}
+   }
+  },
+  {
+   "from": 17, "to": 20,
+   "individual": {"coins": [
+    {"coin": "po", "dice": "5d20*48", "chance_pct": 100},
+    {"coin": "pl", "dice": "3d12*13", "chance_pct": 100}
+   ]},
+   "hoard": {
+    "coins": [
+     {"coin": "po", "dice": "10d20*320", "chance_pct": 100},
+     {"coin": "pl", "dice": "9d20*70", "chance_pct": 100}
+    ],
+    "gems": {"count": "2d6", "chance_pct": 90, "tiers": [{"value_po": 160, "weight": 15}, {"value_po": 490, "weight": 30}, {"value_po": 1500, "weight": 35}, {"value_po": 4400, "weight": 20}]},
+    "art": {"count": "1d4", "chance_pct": 80, "tiers": [{"value_po": 240, "weight": 15}, {"value_po": 730, "weight": 35}, {"value_po": 2200, "weight": 30}, {"value_po": 6600, "weight": 20}]},
+    "items": {"count": "1d3+1", "chance_pct": 100, "rarities": [{"rarity": "rare", "weight": 25}, {"rarity": "very_rare", "weight": 50}, {"rarity": "legendary", "weight": 25}]}
+   }
+  }
+ ]
+}

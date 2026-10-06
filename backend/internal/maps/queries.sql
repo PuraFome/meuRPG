@@ -744,6 +744,26 @@ WHERE p.map_id = $1;
 SELECT * FROM map_points
 WHERE map_id = $1 AND id = $2;
 
+-- name: GetMapPointByCreateKey :one
+-- The point a "Pôr no mapa" with this idempotency key made (MR-044), if any. The key
+-- carries the campaign's ID, so it is unique in the campaign.
+SELECT * FROM map_points
+WHERE create_key = $1;
+
+-- name: InsertTreasurePoint :one
+-- A hidden TREASURE point made by "Pôr no mapa" (MR-044), with the idempotency key
+-- and the hash of the request. Two calls with the same key at once make one point:
+-- the loser gets no row, and reads the winner's (GetMapPointByCreateKey).
+INSERT INTO map_points (
+    map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, treasure_value_po, create_key, create_hash, created_at, updated_at
+)
+VALUES (
+    sqlc.arg(map_id), 'treasure', sqlc.arg(name), sqlc.arg(description), '', FALSE, sqlc.arg(x_bp), sqlc.arg(y_bp),
+    sqlc.arg(treasure_value_po), sqlc.arg(create_key), sqlc.arg(create_hash), sqlc.arg(now), sqlc.arg(now)
+)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;
+
 -- name: ListTrapNamesInCampaign :many
 -- The names of traps by point ID, for the combat log: a trap that fired is
 -- public, so its name may be told (MR-035). A deleted point is simply absent.
