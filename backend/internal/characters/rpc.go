@@ -351,10 +351,6 @@ func (s *Service) UpdateCharacter(
 		if err := keepAbilityOrigin(m, content, storedSheet, sheet); err != nil {
 			return err
 		}
-		sheetDoc, err = storeJSON.Marshal(sheet)
-		if err != nil {
-			return wrap("encode a sheet", err)
-		}
 		if portraitCopy != nil { // the copy's gallery row, in this transaction
 			if err := portraitCopy.Insert(ctx, tx); err != nil {
 				return err
