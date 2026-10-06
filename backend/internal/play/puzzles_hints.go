@@ -19,7 +19,7 @@ import (
 // hint they do not read yet. The DC never goes to a player: the answer carries the roll
 // and whether it passed. A player tries once for each hint (the unique key of
 // puzzle_hint_tries), so a failed try cannot be repeated until the master releases that
-// hint or another player passes; and each try is one revision of the run, so the app
+// hint (another player passing wins that player their own hint, not this one back); and each try is one revision of the run, so the app
 // applies the read that follows.
 
 // hintTryResult is what a try's transaction leaves for after the commit.

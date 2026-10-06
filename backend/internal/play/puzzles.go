@@ -77,6 +77,11 @@ type PuzzleMaps interface {
 	// PuzzleClueFoundBy says whether the player has found the clue: a cipher shows
 	// where its key is only once they have. False, not an error, for a clue that is gone.
 	PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, clueID, userID string) (bool, error)
+	// PuzzleTrapSeenBy says whether the caller sees the trap point as the maps do: its map
+	// is on their screen and, on a fog map, they see or remember its square. A trap that
+	// fired is public to who sees it. It reads through the pool: never call it inside a
+	// transaction.
+	PuzzleTrapSeenBy(ctx context.Context, m authz.Membership, mapID, pointID string) (bool, error)
 }
 
 // puzzleDeps is what the puzzle calls need besides the rest of the Service. The

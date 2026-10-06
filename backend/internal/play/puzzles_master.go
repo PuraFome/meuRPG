@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
@@ -164,7 +165,7 @@ func (s *Service) CreatePuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a puzzle", err)
 	}
-	out, err := s.masterPuzzle(row, false)
+	out, err := s.masterPuzzle(ctx, row, false)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the new puzzle", err)
 	}
@@ -172,12 +173,35 @@ func (s *Service) CreatePuzzle(
 }
 
 // masterPuzzle is the master's message for a row.
-func (s *Service) masterPuzzle(row playdb.Puzzle, shown bool) (*playv1.Puzzle, error) {
+func (s *Service) masterPuzzle(ctx context.Context, row playdb.Puzzle, shown bool) (*playv1.Puzzle, error) {
 	d, err := decodePuzzle(row)
 	if err != nil {
 		return nil, err
 	}
-	return puzzleProto(d, shown)
+	out, err := puzzleProto(d, shown)
+	if err != nil {
+		return nil, err
+	}
+	return out, s.flagParts(ctx, row.CampaignID, out)
+}
+
+// flagParts marks, on the master's copy, the parts whose owner is not a living player
+// character of the active party any more (a character that died or left): nobody reads
+// them, and the master should know. It reads through the pool.
+func (s *Service) flagParts(ctx context.Context, campaignID string, p *playv1.Puzzle) error {
+	if !slices.ContainsFunc(p.GetParts(), func(pt *playv1.PuzzlePart) bool { return pt.GetCharacterId() != "" }) {
+		return nil
+	}
+	party, err := s.roster.CombatParty(ctx, nil, campaignID)
+	if err != nil {
+		return err
+	}
+	for _, pt := range p.GetParts() {
+		if pt.GetCharacterId() != "" {
+			pt.OwnerUnavailable = !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == pt.GetCharacterId() })
+		}
+	}
+	return nil
 }
 
 // UpdatePuzzle implements playv1connect.PuzzleServiceHandler.
@@ -258,7 +282,7 @@ func (s *Service) UpdatePuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a puzzle", err)
 	}
-	out, err := s.masterPuzzle(row, false)
+	out, err := s.masterPuzzle(ctx, row, false)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the edited puzzle", err)
 	}
@@ -353,7 +377,7 @@ func (s *Service) ListPuzzles(
 	}
 	res := &playv1.ListPuzzlesResponse{}
 	for _, row := range rows {
-		p, err := s.masterPuzzle(row, shown[row.ID])
+		p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 		if err != nil {
 			return nil, s.dbError(ctx, "read a puzzle", err)
 		}
@@ -386,7 +410,7 @@ func (s *Service) GetPuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "find a puzzle", err)
 	}
-	p, err := s.masterPuzzle(row, shown[row.ID])
+	p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}
@@ -438,7 +462,7 @@ func (s *Service) setArchived(ctx context.Context, campaignID, rawID string, arc
 	if changed && shown[id] {
 		s.publishPuzzleChanged(campaignID, id) // a shown puzzle leaves, or comes back to, the players' list
 	}
-	p, err := s.masterPuzzle(row, shown[row.ID])
+	p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}

@@ -474,6 +474,10 @@ message PuzzlePart {
   string character_id = 1;
   // What that player reads, 1 to 300 characters.
   string text = 2;
+  // Set by the server on the master's reads: the part has an owner who is not a living
+  // player character of the active party any more (it died, or left), so nobody reads
+  // it ("Parte de um personagem morto"). False for a part with no owner.
+  bool owner_unavailable = 3;
 }
 
 // PuzzleOnWrong is "Ao errar": what a wrong answer or a wrong bell does, and the limits
@@ -482,8 +486,12 @@ message PuzzlePart {
 // a move (the riddle, the sequence and the cipher); the limits apply to all six.
 message PuzzleOnWrong {
   // A trap point of a map of the campaign that fires on a wrong move (MR-035). The
-  // point fires once: the master arms it again (MapService.SetTrapState) to have it
-  // fire again. The master decides what the trap does, as with any trap fired by hand.
+  // point fires once: the master arms it again (MapService.UpdateMapPoint with
+  // TrapSpec.state = ARMED) to have it fire again. The master decides what the trap does,
+  // as with any trap fired by hand. While a combat without a map runs (RN-25) it fires
+  // nothing, and the wrong move still counts. While a combat runs on the trap's map the
+  // firing is that combat's (a combat change, with its log line), so the master may
+  // extend it to the creatures it catches (PlayService.FireTrap with extend_firing_id).
   PuzzleTrapTarget trap = 1;
   // How many wrong moves each player may make in a round, 1 to 10. 0: no limit. A
   // wrong move spends one; with none left, the player's moves are refused
@@ -493,7 +501,9 @@ message PuzzleOnWrong {
   // it stops the puzzle, unless that move solved it. 0: no limit.
   int32 max_moves = 3;
   // The time limit of a round in seconds, 10 to 14400 (4 hours), counted from when the
-  // puzzle is shown or restarted. 0: no limit. When it runs out the puzzle stops.
+  // puzzle is shown or restarted; for a sequence, from its first play in the round, so
+  // the clock never runs out before anyone may play. 0: no limit. When it runs out the
+  // puzzle stops.
   int32 time_limit_seconds = 4;
 }
 
@@ -523,8 +533,10 @@ message PuzzleLastMove {
   // passo 4". 0 for the other kinds.
   int32 step = 6;
   // The name the master gave the trap point, when this wrong move fired a trap
-  // ("A armadilha disparou: Dardos envenenados"). Empty otherwise. A trap that fired is
-  // public (MR-035); its DCs and effect never are.
+  // ("A armadilha disparou: Dardos envenenados"). Empty otherwise, and for a player who
+  // does not see the trap's point (its map is not on their screen, or a fog map hides
+  // the square from them): they read nothing, not an empty name. A trap that fired is
+  // public to who sees it (MR-035); its DCs and effect never are.
   string trap_name = 7;
 }
 
@@ -588,9 +600,10 @@ message PuzzleRun {
   // Investigação". The DC is never sent.
   string hint_skill_key = 22;
   // True when this player may try for the next hint now: the puzzle has a check, the
-  // next hint exists, this player did not try for it yet, and the puzzle is not solved
-  // or stopped. A failed try for a hint cannot be repeated for the same hint: another
-  // player may try, or the master releases it.
+  // player has a living character, the next hint exists, they did not try for it yet,
+  // and the puzzle is not solved or stopped. A failed try for a hint cannot be repeated
+  // for the same hint: the player waits for the master to release it (another player
+  // passing gives that player their own hint, not this one back).
   bool can_try_hint = 23;
   // How many of `hints` the master released (everyone reads them); the ones after are
   // this player's own, won by a check ("Esta dica é só sua").
@@ -685,6 +698,9 @@ message PuzzleSummary {
   PuzzleKind kind = 3;
   // True once solved.
   bool solved = 4;
+  // True while a limit of moves or of time stopped the puzzle (it is not solved and
+  // nothing moves): it does not look open in the list.
+  bool stopped = 5;
 }
 
 // MasterPuzzleRun is a puzzle in the open session as the master reads it: what the
@@ -988,8 +1004,9 @@ service PuzzleService {
   // rolls the d20, or the player types the face of a real one; the campaign may force
   // one way). A pass gives that player, and only them, the next hint they do not read
   // yet (the first one the master did not release, or after the ones they won). A
-  // fail gives nothing, and the same player cannot try again for the same hint: another
-  // player may, or the master releases it. The DC is never sent. The answer is the run
+  // fail gives nothing, and the same player cannot try again for the same hint until the
+  // master releases it. (Another player passing does not free it: a pass gives that
+  // player their own hint.) The DC is never sent. The answer is the run
   // as the player reads it now, and the roll.
   //
   // Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
@@ -1020,8 +1037,10 @@ service PuzzleService {
   // first step), is marked `wrong` in the history, and does what "Ao errar" says, all
   // in the transaction of the move: it spends the player's attempt, counts toward the
   // limits, and fires the trap point (once; the move's key makes a retry fire nothing).
-  // The move that reaches a limit of moves, or the first one after the time ran out,
-  // stops the puzzle (unless it solves it).
+  // The move that reaches a limit of moves stops the puzzle (unless it solves it). A time
+  // limit stops it with no move at all: it is worked out from the clock, so the first
+  // move after the time ran out is refused with STOPPED, and every read says `stopped`
+  // from the moment it ran out.
   //
   // Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
   // `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used

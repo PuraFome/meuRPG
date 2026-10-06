@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -272,4 +273,47 @@ func (s *Service) PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, 
 		return false, fmt.Errorf("find whether the player has the clue: %w", err)
 	}
 	return found, nil
+}
+
+// PuzzleTrapSeenBy says whether the caller sees the trap point as a map read gives it to
+// them (RN-10): the point's map is on their screen (the current one, or revealed), a trap
+// that fired is public, and on a map with the fog of war the player sees or remembers its
+// square. The master sees everything. A point that is gone is not seen. It reads through
+// the pool.
+func (s *Service) PuzzleTrapSeenBy(ctx context.Context, m authz.Membership, mapID, pointID string) (bool, error) {
+	mid, ok1 := parseID(mapID)
+	pid, ok2 := parseID(pointID)
+	if !ok1 || !ok2 {
+		return false, nil
+	}
+	v, err := s.viewerOf(ctx, m)
+	if err != nil {
+		return false, err
+	}
+	if v.master {
+		return true, nil
+	}
+	cm, err := s.loadMaps(ctx, m.CampaignID)
+	if err != nil {
+		return false, s.dbError(ctx, "read the maps", err)
+	}
+	row, found := cm.byID[mid]
+	if !found || !v.seesMap(row.ID, row.RevealedAt) {
+		return false, nil
+	}
+	p, err := s.queries.GetMapPoint(ctx, mapsdb.GetMapPointParams{MapID: mid, ID: pid})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the trap point: %w", err)
+	}
+	if foggedFor(v, row) {
+		pv, _, _, err := s.fogViewOf(ctx, row, v)
+		if err != nil {
+			return false, s.dbError(ctx, "work out what a player sees", err)
+		}
+		return len(s.visiblePoints([]mapsdb.MapPoint{p}, v, pv)) == 1, nil
+	}
+	return v.seesPoint(p), nil
 }

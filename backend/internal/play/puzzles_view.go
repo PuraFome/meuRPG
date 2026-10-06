@@ -89,6 +89,10 @@ type playerView struct {
 	tried bool
 	// keyFound says the reader's character found the clue with the cipher's key.
 	keyFound bool
+	// hasCharacter says the reader has a living character in the party to roll for, and
+	// trapSeen that they see the trap point a wrong move fired (RN-10): without it the
+	// trap's name is not theirs to read.
+	hasCharacter, trapSeen bool
 	// myPart is the reader's part of the split information, and partHolders the names of
 	// the others that have one.
 	myPart      string
@@ -136,6 +140,11 @@ func playerRunProto(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerV
 		if d.kind.judges() {
 			last.Move = nil
 		}
+		// The trap's name goes only to a player who sees its point, and nothing at all to
+		// the others (an empty name would hint that there is a trap).
+		if v.player && !v.trapSeen {
+			last.TrapName = ""
+		}
 		out.LastMove = last
 	}
 	reason := stopOf(d, run, v.now)
@@ -145,7 +154,7 @@ func playerRunProto(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerV
 	out.Limits = limitsProto(d, run, v.now, v.wrongMine)
 	if d.hintCheck != nil {
 		out.HintByCheck, out.HintSkillKey = true, d.hintCheck.GetSkillKey()
-		out.CanTryHint = v.player && !out.Solved && !out.Stopped && visible < len(d.hints) && !v.tried
+		out.CanTryHint = v.player && v.hasCharacter && !out.Solved && !out.Stopped && visible < len(d.hints) && !v.tried
 	}
 	out.MyPart, out.PartHolders = v.myPart, v.partHolders
 	if d.solution.GetSequence() != nil {
@@ -226,11 +235,25 @@ func (s *Service) viewerOf(ctx context.Context, tx pgx.Tx, m authz.Membership, d
 		}
 		v.keyFound = found
 	}
-	if len(d.parts) > 0 {
+	if last := (&playv1.PuzzleLastMove{}); len(run.LastMove) > 0 {
+		if err := fromJSON(run.LastMove, last); err != nil {
+			return v, err
+		}
+		if last.GetTrapName() != "" && d.onWrong.GetTrap() != nil && s.puzzles.maps != nil {
+			t := d.onWrong.GetTrap()
+			seen, err := s.puzzles.maps.PuzzleTrapSeenBy(ctx, m, t.GetMapId(), t.GetPointId())
+			if err != nil {
+				return v, err
+			}
+			v.trapSeen = seen
+		}
+	}
+	if len(d.parts) > 0 || d.hintCheck != nil {
 		party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
 		if err != nil {
 			return v, err
 		}
+		v.hasCharacter = slices.ContainsFunc(party, func(c link.Character) bool { return c.PlayerUserID != "" && c.PlayerUserID == m.UserID })
 		mine := slices.IndexFunc(party, func(c link.Character) bool { return c.PlayerUserID != "" && c.PlayerUserID == m.UserID })
 		for _, p := range d.parts {
 			i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == p.GetCharacterId() })

@@ -1738,21 +1738,23 @@ func (q *Queries) InsertPuzzleMove(ctx context.Context, arg InsertPuzzleMovePara
 
 const insertPuzzleRun = `-- name: InsertPuzzleRun :one
 INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, round_started_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4, $5, $5, $6, $6)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $7)
 RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at
 `
 
 type InsertPuzzleRunParams struct {
-	GameSessionID string
-	PuzzleID      string
-	Seed          int64
-	Start         []byte
-	ShownAt       *time.Time
-	CreatedAt     time.Time
+	GameSessionID  string
+	PuzzleID       string
+	Seed           int64
+	Start          []byte
+	ShownAt        *time.Time
+	RoundStartedAt *time.Time
+	CreatedAt      time.Time
 }
 
-// A run starts with its state at its start, and its first round when it is shown
-// ($5 is NULL for a run that is only prepared).
+// A run starts with its state at its start. $5 is when it was shown (NULL for a run
+// that is only prepared) and $6 when the round's clock starts (NULL too for a sequence,
+// whose clock starts at its first play).
 func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams) (PuzzleRun, error) {
 	row := q.db.QueryRow(ctx, insertPuzzleRun,
 		arg.GameSessionID,
@@ -1760,6 +1762,7 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		arg.Seed,
 		arg.Start,
 		arg.ShownAt,
+		arg.RoundStartedAt,
 		arg.CreatedAt,
 	)
 	var i PuzzleRun
@@ -3245,7 +3248,7 @@ func (q *Queries) ListShownPuzzleIDs(ctx context.Context, campaignID string) ([]
 }
 
 const listShownPuzzleRuns = `-- name: ListShownPuzzleRuns :many
-SELECT r.id, r.game_session_id, r.puzzle_id, r.seed, r.start, r.state, r.released_hints, r.shown_at, r.closed_at, r.solved_at, r.solved_by_character_id, r.solve_outcome, r.last_mover_character_id, r.last_move, r.last_moved_at, r.moves_made, r.revision, r.created_at, r.updated_at, r.solve_message, r.plays, r.play_started_at, r.round_start_seq, r.round_started_at, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+SELECT r.id, r.game_session_id, r.puzzle_id, r.seed, r.start, r.state, r.released_hints, r.shown_at, r.closed_at, r.solved_at, r.solved_by_character_id, r.solve_outcome, r.last_mover_character_id, r.last_move, r.last_moved_at, r.moves_made, r.revision, r.created_at, r.updated_at, r.solve_message, r.plays, r.play_started_at, r.round_start_seq, r.round_started_at, p.name AS puzzle_name, p.kind AS puzzle_kind, p.on_wrong AS puzzle_on_wrong FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
 ORDER BY r.shown_at, r.id
@@ -3278,6 +3281,7 @@ type ListShownPuzzleRunsRow struct {
 	RoundStartedAt       *time.Time
 	PuzzleName           string
 	PuzzleKind           string
+	PuzzleOnWrong        []byte
 }
 
 // What a session shows now: shown and not closed, in the order they were shown.
@@ -3317,6 +3321,7 @@ func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string)
 			&i.RoundStartedAt,
 			&i.PuzzleName,
 			&i.PuzzleKind,
+			&i.PuzzleOnWrong,
 		); err != nil {
 			return nil, err
 		}

@@ -69,13 +69,23 @@ func (c *runTx) save(ctx context.Context, p playdb.SavePuzzleRunParams) error {
 // toStart puts the pieces back where the run started and forgets that it was
 // solved and who moved last; the hints stay released and the moves stay in the
 // history. It begins a new round (what "Ao errar" counts in: the attempts, the limit
-// of moves, the time limit), which is also how a stopped puzzle starts again, and ends
+// of moves, the time limit, which counts from clock), which is also how a stopped puzzle starts again, and ends
 // a sequence's play that is running; the plays already made are still counted.
-func toStart(p *playdb.SavePuzzleRunParams, now time.Time) {
+func toStart(p *playdb.SavePuzzleRunParams, clock *time.Time) {
 	p.State = p.Start
 	p.SolvedAt, p.SolvedByCharacterID, p.SolveOutcome, p.SolveMessage = nil, nil, nil, nil
 	p.LastMoverCharacterID, p.LastMove, p.LastMovedAt = nil, nil, nil
-	p.RoundStartSeq, p.RoundStartedAt, p.PlayStartedAt = p.MovesMade, &now, nil
+	p.RoundStartSeq, p.RoundStartedAt, p.PlayStartedAt = p.MovesMade, clock, nil
+}
+
+// clock is when the round's time limit starts to count if the round begins now: at once,
+// except for a sequence, whose clock starts at its first play in the round (nil here), so
+// the time never runs out before anyone may play.
+func (c *runTx) clock() *time.Time {
+	if _, ok := c.def.kind.(sequenceKind); ok {
+		return nil
+	}
+	return &c.now
 }
 
 // event writes one of the puzzle's session events about the run.
@@ -168,6 +178,9 @@ func (s *Service) masterView(ctx context.Context, tx pgx.Tx, campaignID string, 
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle's run", err)
 	}
+	if err := s.flagParts(ctx, campaignID, out.GetPuzzle()); err != nil {
+		return nil, s.dbError(ctx, "read the puzzle's run", err)
+	}
 	return out, nil
 }
 
@@ -187,7 +200,7 @@ func (s *Service) ShowPuzzle(
 		switch {
 		case c.run == nil:
 			row, err := c.q.InsertPuzzleRun(ctx, playdb.InsertPuzzleRunParams{
-				GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: c.def.row.Seed, Start: c.def.row.Start, ShownAt: &c.now, CreatedAt: c.now,
+				GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: c.def.row.Seed, Start: c.def.row.Start, ShownAt: &c.now, RoundStartedAt: c.clock(), CreatedAt: c.now,
 			})
 			if err != nil {
 				return fmt.Errorf("make the puzzle's run: %w", err)
@@ -201,9 +214,9 @@ func (s *Service) ShowPuzzle(
 			p := c.params()
 			p.ShownAt, p.ClosedAt = &c.now, nil
 			if c.run.ClosedAt != nil {
-				toStart(&p, c.now)
+				toStart(&p, c.clock())
 			} else {
-				p.RoundStartSeq, p.RoundStartedAt = p.MovesMade, &c.now // the first round begins now
+				p.RoundStartSeq, p.RoundStartedAt = p.MovesMade, c.clock() // the first round begins now
 			}
 			c.roundBegan = true
 			if err := c.save(ctx, p); err != nil {
@@ -242,7 +255,7 @@ func (s *Service) ResetPuzzle(
 			return err
 		}
 		p := c.params()
-		toStart(&p, c.now)
+		toStart(&p, c.clock())
 		if err := c.save(ctx, p); err != nil {
 			return err
 		}
@@ -288,7 +301,7 @@ func (s *Service) ReseedPuzzle(
 		}
 		p := c.params()
 		p.Seed, p.Start = seed, startJSON
-		toStart(&p, c.now)
+		toStart(&p, c.clock())
 		if c.run.ShownAt == nil {
 			p.RoundStartedAt = nil // prepared, not shown: the round begins when it is shown
 		}
@@ -395,6 +408,10 @@ func (s *Service) PlayPuzzleSequence(
 		p := c.params()
 		p.Plays++
 		p.PlayStartedAt = &c.now
+		if p.RoundStartedAt == nil {
+			p.RoundStartedAt = &c.now // the time limit of a sequence starts at its first play of the round
+			c.roundBegan = true
+		}
 		if err := c.save(ctx, p); err != nil {
 			return err
 		}
@@ -500,6 +517,9 @@ func (s *Service) ListSessionPuzzles(
 		}
 		out, err := masterRunProto(d, byPuzzle[row.ID], names, shown[row.ID], ex)
 		if err != nil {
+			return nil, s.dbError(ctx, "read a puzzle", err)
+		}
+		if err := s.flagParts(ctx, m.CampaignID, out.GetPuzzle()); err != nil {
 			return nil, s.dbError(ctx, "read a puzzle", err)
 		}
 		res.Puzzles = append(res.Puzzles, out)

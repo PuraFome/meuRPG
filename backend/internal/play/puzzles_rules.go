@@ -35,7 +35,7 @@ const (
 	maxTimeLimit    = 14400 // seconds: four hours
 	minHintDC       = 1
 	maxHintDC       = 30
-	stoppedLine     = "O quebra-cabeça parou. Ninguém joga mais até o mestre recomeçar ou fechar."
+	stoppedLine     = "O quebra-cabeça parou. O mestre decide o que acontece agora."
 	skillKeyPrefix  = "skill:"
 	hintTriesOnView = 50
 )

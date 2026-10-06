@@ -242,8 +242,9 @@ type PuzzleServiceClient interface {
 	// rolls the d20, or the player types the face of a real one; the campaign may force
 	// one way). A pass gives that player, and only them, the next hint they do not read
 	// yet (the first one the master did not release, or after the ones they won). A
-	// fail gives nothing, and the same player cannot try again for the same hint: another
-	// player may, or the master releases it. The DC is never sent. The answer is the run
+	// fail gives nothing, and the same player cannot try again for the same hint until the
+	// master releases it. (Another player passing does not free it: a pass gives that
+	// player their own hint.) The DC is never sent. The answer is the run
 	// as the player reads it now, and the roll.
 	//
 	// Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
@@ -273,8 +274,10 @@ type PuzzleServiceClient interface {
 	// first step), is marked `wrong` in the history, and does what "Ao errar" says, all
 	// in the transaction of the move: it spends the player's attempt, counts toward the
 	// limits, and fires the trap point (once; the move's key makes a retry fire nothing).
-	// The move that reaches a limit of moves, or the first one after the time ran out,
-	// stops the puzzle (unless it solves it).
+	// The move that reaches a limit of moves stops the puzzle (unless it solves it). A time
+	// limit stops it with no move at all: it is worked out from the clock, so the first
+	// move after the time ran out is refused with STOPPED, and every read says `stopped`
+	// from the moment it ran out.
 	//
 	// Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
 	// `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used
@@ -668,8 +671,9 @@ type PuzzleServiceHandler interface {
 	// rolls the d20, or the player types the face of a real one; the campaign may force
 	// one way). A pass gives that player, and only them, the next hint they do not read
 	// yet (the first one the master did not release, or after the ones they won). A
-	// fail gives nothing, and the same player cannot try again for the same hint: another
-	// player may, or the master releases it. The DC is never sent. The answer is the run
+	// fail gives nothing, and the same player cannot try again for the same hint until the
+	// master releases it. (Another player passing does not free it: a pass gives that
+	// player their own hint.) The DC is never sent. The answer is the run
 	// as the player reads it now, and the roll.
 	//
 	// Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
@@ -699,8 +703,10 @@ type PuzzleServiceHandler interface {
 	// first step), is marked `wrong` in the history, and does what "Ao errar" says, all
 	// in the transaction of the move: it spends the player's attempt, counts toward the
 	// limits, and fires the trap point (once; the move's key makes a retry fire nothing).
-	// The move that reaches a limit of moves, or the first one after the time ran out,
-	// stops the puzzle (unless it solves it).
+	// The move that reaches a limit of moves stops the puzzle (unless it solves it). A time
+	// limit stops it with no move at all: it is worked out from the clock, so the first
+	// move after the time ran out is refused with STOPPED, and every read says `stopped`
+	// from the moment it ran out.
 	//
 	// Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
 	// `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used

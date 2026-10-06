@@ -3148,9 +3148,13 @@ type PuzzlePart struct {
 	// campaign), or empty for a part with no owner yet ("Sem dono": no player reads it).
 	CharacterId string `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// What that player reads, 1 to 300 characters.
-	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// Set by the server on the master's reads: the part has an owner who is not a living
+	// player character of the active party any more (it died, or left), so nobody reads
+	// it ("Parte de um personagem morto"). False for a part with no owner.
+	OwnerUnavailable bool `protobuf:"varint,3,opt,name=owner_unavailable,json=ownerUnavailable,proto3" json:"owner_unavailable,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PuzzlePart) Reset() {
@@ -3197,6 +3201,13 @@ func (x *PuzzlePart) GetText() string {
 	return ""
 }
 
+func (x *PuzzlePart) GetOwnerUnavailable() bool {
+	if x != nil {
+		return x.OwnerUnavailable
+	}
+	return false
+}
+
 // PuzzleOnWrong is "Ao errar": what a wrong answer or a wrong bell does, and the limits
 // every kind's moves count toward. All of it is optional and they combine; the app's form
 // shows one option at a time. A trap and the attempts apply only to the kinds that judge
@@ -3204,8 +3215,12 @@ func (x *PuzzlePart) GetText() string {
 type PuzzleOnWrong struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A trap point of a map of the campaign that fires on a wrong move (MR-035). The
-	// point fires once: the master arms it again (MapService.SetTrapState) to have it
-	// fire again. The master decides what the trap does, as with any trap fired by hand.
+	// point fires once: the master arms it again (MapService.UpdateMapPoint with
+	// TrapSpec.state = ARMED) to have it fire again. The master decides what the trap does,
+	// as with any trap fired by hand. While a combat without a map runs (RN-25) it fires
+	// nothing, and the wrong move still counts. While a combat runs on the trap's map the
+	// firing is that combat's (a combat change, with its log line), so the master may
+	// extend it to the creatures it catches (PlayService.FireTrap with extend_firing_id).
 	Trap *PuzzleTrapTarget `protobuf:"bytes,1,opt,name=trap,proto3" json:"trap,omitempty"`
 	// How many wrong moves each player may make in a round, 1 to 10. 0: no limit. A
 	// wrong move spends one; with none left, the player's moves are refused
@@ -3215,7 +3230,9 @@ type PuzzleOnWrong struct {
 	// it stops the puzzle, unless that move solved it. 0: no limit.
 	MaxMoves int32 `protobuf:"varint,3,opt,name=max_moves,json=maxMoves,proto3" json:"max_moves,omitempty"`
 	// The time limit of a round in seconds, 10 to 14400 (4 hours), counted from when the
-	// puzzle is shown or restarted. 0: no limit. When it runs out the puzzle stops.
+	// puzzle is shown or restarted; for a sequence, from its first play in the round, so
+	// the clock never runs out before anyone may play. 0: no limit. When it runs out the
+	// puzzle stops.
 	TimeLimitSeconds int32 `protobuf:"varint,4,opt,name=time_limit_seconds,json=timeLimitSeconds,proto3" json:"time_limit_seconds,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -3353,8 +3370,10 @@ type PuzzleLastMove struct {
 	// passo 4". 0 for the other kinds.
 	Step int32 `protobuf:"varint,6,opt,name=step,proto3" json:"step,omitempty"`
 	// The name the master gave the trap point, when this wrong move fired a trap
-	// ("A armadilha disparou: Dardos envenenados"). Empty otherwise. A trap that fired is
-	// public (MR-035); its DCs and effect never are.
+	// ("A armadilha disparou: Dardos envenenados"). Empty otherwise, and for a player who
+	// does not see the trap's point (its map is not on their screen, or a fog map hides
+	// the square from them): they read nothing, not an empty name. A trap that fired is
+	// public to who sees it (MR-035); its DCs and effect never are.
 	TrapName      string `protobuf:"bytes,7,opt,name=trap_name,json=trapName,proto3" json:"trap_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3500,9 +3519,10 @@ type PuzzleRun struct {
 	// Investigação". The DC is never sent.
 	HintSkillKey string `protobuf:"bytes,22,opt,name=hint_skill_key,json=hintSkillKey,proto3" json:"hint_skill_key,omitempty"`
 	// True when this player may try for the next hint now: the puzzle has a check, the
-	// next hint exists, this player did not try for it yet, and the puzzle is not solved
-	// or stopped. A failed try for a hint cannot be repeated for the same hint: another
-	// player may try, or the master releases it.
+	// player has a living character, the next hint exists, they did not try for it yet,
+	// and the puzzle is not solved or stopped. A failed try for a hint cannot be repeated
+	// for the same hint: the player waits for the master to release it (another player
+	// passing gives that player their own hint, not this one back).
 	CanTryHint bool `protobuf:"varint,23,opt,name=can_try_hint,json=canTryHint,proto3" json:"can_try_hint,omitempty"`
 	// How many of `hints` the master released (everyone reads them); the ones after are
 	// this player's own, won by a check ("Esta dica é só sua").
@@ -4088,7 +4108,10 @@ type PuzzleSummary struct {
 	// The kind.
 	Kind PuzzleKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.play.v1.PuzzleKind" json:"kind,omitempty"`
 	// True once solved.
-	Solved        bool `protobuf:"varint,4,opt,name=solved,proto3" json:"solved,omitempty"`
+	Solved bool `protobuf:"varint,4,opt,name=solved,proto3" json:"solved,omitempty"`
+	// True while a limit of moves or of time stopped the puzzle (it is not solved and
+	// nothing moves): it does not look open in the list.
+	Stopped       bool `protobuf:"varint,5,opt,name=stopped,proto3" json:"stopped,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4147,6 +4170,13 @@ func (x *PuzzleSummary) GetKind() PuzzleKind {
 func (x *PuzzleSummary) GetSolved() bool {
 	if x != nil {
 		return x.Solved
+	}
+	return false
+}
+
+func (x *PuzzleSummary) GetStopped() bool {
+	if x != nil {
+		return x.Stopped
 	}
 	return false
 }
@@ -6858,11 +6888,12 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\bon_wrong\x18\x13 \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\">\n" +
 	"\x0fPuzzleHintCheck\x12\x1b\n" +
 	"\tskill_key\x18\x01 \x01(\tR\bskillKey\x12\x0e\n" +
-	"\x02dc\x18\x02 \x01(\x05R\x02dc\"C\n" +
+	"\x02dc\x18\x02 \x01(\x05R\x02dc\"p\n" +
 	"\n" +
 	"PuzzlePart\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"\xc0\x01\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12+\n" +
+	"\x11owner_unavailable\x18\x03 \x01(\bR\x10ownerUnavailable\"\xc0\x01\n" +
 	"\rPuzzleOnWrong\x124\n" +
 	"\x04trap\x18\x01 \x01(\v2 .meurpg.play.v1.PuzzleTrapTargetR\x04trap\x12.\n" +
 	"\x13attempts_per_player\x18\x02 \x01(\x05R\x11attemptsPerPlayer\x12\x1b\n" +
@@ -6937,12 +6968,13 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x0ePuzzleAttempts\x12%\n" +
 	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12\x14\n" +
 	"\x05wrong\x18\x02 \x01(\x05R\x05wrong\x12\x12\n" +
-	"\x04left\x18\x03 \x01(\x05R\x04left\"\x88\x01\n" +
+	"\x04left\x18\x03 \x01(\x05R\x04left\"\xa2\x01\n" +
 	"\rPuzzleSummary\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
 	"\x04kind\x18\x03 \x01(\x0e2\x1a.meurpg.play.v1.PuzzleKindR\x04kind\x12\x16\n" +
-	"\x06solved\x18\x04 \x01(\bR\x06solved\"\xde\x05\n" +
+	"\x06solved\x18\x04 \x01(\bR\x06solved\x12\x18\n" +
+	"\astopped\x18\x05 \x01(\bR\astopped\"\xde\x05\n" +
 	"\x0fMasterPuzzleRun\x12.\n" +
 	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\x127\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x1f.meurpg.play.v1.PuzzleRunStatusR\x06status\x12+\n" +

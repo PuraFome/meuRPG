@@ -896,8 +896,17 @@ func TestMR038_AWrongMoveFiresTheTrapOnce(t *testing.T) {
 		t.Errorf("a player's run has the trap's ids: %s", j)
 	}
 	// The master arms it again, and it fires again.
-	if _, err := p.h.pool.Exec(t.Context(), `UPDATE map_points SET trap_state = 'armed', trap_triggered_at = NULL WHERE id = $1`, trap.GetId()); err != nil {
-		t.Fatal(err)
+	if _, err := p.mc(p.master).UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, PointId: trap.GetId(), Trap: func() *mapsv1.TrapSpec {
+			spec := aTrap()
+			spec.State = mapsv1.TrapState_TRAP_STATE_ARMED
+			return spec
+		}(),
+	})); err != nil {
+		t.Fatalf("UpdateMapPoint(re-arm) error = %v", err)
+	}
+	if st := p.trapState(t, trap.GetId()); st != "armed" {
+		t.Fatalf("the trap is %q after the master armed it again", st)
 	}
 	if res = p.mustMove(t, p.bia, seq.GetId(), bellMove(1)); res.GetRun().GetLastMove().GetTrapName() == "" {
 		t.Errorf("a re-armed trap did not fire: %v", res.GetRun().GetLastMove())
@@ -1108,7 +1117,7 @@ func TestMR038_AMovesLimitStopsThePuzzle(t *testing.T) {
 		t.Fatalf("two moves in, the player reads %v", r)
 	}
 	res := p.mustMove(t, p.bia, puz.GetId(), cipherMove("três"))
-	if !res.GetRun().GetStopped() || res.GetRun().GetStoppedMessage() == "" || res.GetRun().GetSolved() || res.GetRun().GetLimits().GetMovesMade() != 3 {
+	if !res.GetRun().GetStopped() || res.GetRun().GetStoppedMessage() != "O quebra-cabeça parou. O mestre decide o que acontece agora." || res.GetRun().GetSolved() || res.GetRun().GetLimits().GetMovesMade() != 3 {
 		t.Fatalf("the move that reached the limit left %v", res.GetRun())
 	}
 	// The players read it neutrally (no reason); the master reads which limit, and is told.
@@ -1162,7 +1171,13 @@ func TestMR038_ATimeLimitStopsThePuzzle(t *testing.T) {
 	p.h.svc.puzzles.hints.now, p.h.svc.puzzles.hints.after = gc.now, gc.after
 	puz := p.sequence(t, "Os sinos", onWrong(func(o *playv1.PuzzleOnWrong) { o.TimeLimitSeconds = 300 }))
 	p.show(t, puz.GetId())
-	// Showing it starts the clock, and the apps are told to read again when it runs out.
+	// A sequence's clock starts at its first play, not at "show": nobody may play before it.
+	clock.advance(10 * time.Minute)
+	if r := p.read(t, p.caio, puz.GetId()); r.GetStopped() || r.GetLimits().GetDeadline() != nil || r.GetLimits().GetSecondsLeft() != 0 {
+		t.Fatalf("a sequence not played yet reads %v: its clock must not run", r.GetLimits())
+	}
+	p.playSequence(t, puz.GetId())
+	// The first play starts the clock, and the apps are told to read again when it runs out.
 	foundTimer := false
 	for _, tm := range gc.timers {
 		foundTimer = foundTimer || (tm.at.Sub(gc.t) > 299*time.Second && tm.at.Sub(gc.t) <= 300*time.Second)
@@ -1170,7 +1185,6 @@ func TestMR038_ATimeLimitStopsThePuzzle(t *testing.T) {
 	if !foundTimer {
 		t.Errorf("no hint scheduled for the end of the time limit")
 	}
-	p.playSequence(t, puz.GetId())
 	clock.advance(time.Minute)
 	r := p.read(t, p.caio, puz.GetId())
 	if l := r.GetLimits(); l.GetTimeLimitSeconds() != 300 || l.GetSecondsLeft() < 238 || l.GetSecondsLeft() > 240 || l.GetDeadline() == nil || r.GetStopped() {
@@ -1189,10 +1203,14 @@ func TestMR038_ATimeLimitStopsThePuzzle(t *testing.T) {
 	wantPuzzleBlocked(t, "a bell after the time ran out", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED)
 	_, err = p.pc(p.master).PlayPuzzleSequence(t.Context(), connect.NewRequest(&playv1.PlayPuzzleSequenceRequest{CampaignId: p.campaignID, PuzzleId: puz.GetId()}))
 	wantPuzzleBlocked(t, "playing a stopped sequence", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED)
-	// "Recomeçar" starts the clock again.
+	// "Recomeçar" begins a new round; the sequence's clock starts again at its first play.
 	p.reset(t, puz.GetId())
+	if r := p.read(t, p.caio, puz.GetId()); r.GetStopped() || r.GetLimits().GetDeadline() != nil {
+		t.Errorf("a restarted sequence reads %v", r)
+	}
+	p.playSequence(t, puz.GetId())
 	if r := p.read(t, p.caio, puz.GetId()); r.GetStopped() || r.GetLimits().GetSecondsLeft() < 299 {
-		t.Errorf("a restarted puzzle reads %v", r)
+		t.Errorf("a restarted and played sequence reads %v", r)
 	}
 	// A prepared run (a new start drawn before showing) starts its clock when it is shown.
 	late := p.lights(t, "Luzes", 3, onWrong(func(o *playv1.PuzzleOnWrong) { o.TimeLimitSeconds = 60 }))
@@ -1453,4 +1471,224 @@ func checkPlayerHint(t *testing.T, what string, res *playv1.TryPuzzleHintRespons
 	}
 	checkKeys(t, what+"'s roll", jsonOf(res.GetRoll()), "", map[string][]string{"": {"diceCount", "diceSides", "faces", "modifier", "total", "physical"}})
 	checkPlayerRun(t, what, res.GetRun())
+}
+
+// --- fix round 1 ---
+
+// RN-25: a combat without a map has no traps. A wrong move still counts, and fires nothing.
+func TestMR038_ATheatreCombatFiresNoPuzzleTrap(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	trap := p.trapPoint(t, "Dardos", 12, 4)
+	rid := p.riddle(t, "Enigma", onWrong(func(o *playv1.PuzzleOnWrong) {
+		o.Trap, o.MaxMoves = &playv1.PuzzleTrapTarget{MapId: p.mapID, PointId: trap.GetId()}, 5
+	}))
+	p.show(t, rid.GetId())
+	p.theatreThree(t)
+	res := p.mustMove(t, p.caio, rid.GetId(), riddleMove("luz"))
+	lm := res.GetRun().GetLastMove()
+	if !lm.GetWrong() || lm.GetTrapName() != "" || res.GetRun().GetLimits().GetMovesMade() != 1 {
+		t.Fatalf("a wrong answer in a theatre combat left %v, %v", lm, res.GetRun().GetLimits())
+	}
+	if st := p.trapState(t, trap.GetId()); st != "armed" || p.eventCount(t, "trap_triggered") != 0 {
+		t.Errorf("the trap is %q with %d firings, want armed and none", st, p.eventCount(t, "trap_triggered"))
+	}
+}
+
+// While a combat runs on the trap's map the firing is the combat's, so the master can
+// extend it to the creatures it catches.
+func TestMR038_ACombatOnTheTrapsMapOwnsTheFiring(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	trap := p.trapPoint(t, "Dardos", 20, 12)
+	rid := p.riddle(t, "Enigma", onWrong(func(o *playv1.PuzzleOnWrong) {
+		o.Trap = &playv1.PuzzleTrapTarget{MapId: p.mapID, PointId: trap.GetId()}
+	}))
+	p.show(t, rid.GetId())
+	enc := p.threeAndAGoblin(t)
+	res := p.mustMove(t, p.ana, rid.GetId(), riddleMove("luz"))
+	if res.GetRun().GetLastMove().GetTrapName() == "" {
+		t.Fatalf("the trap did not fire: %v", res.GetRun().GetLastMove())
+	}
+	var firingID string
+	var encID *string
+	if err := p.h.pool.QueryRow(t.Context(), `SELECT id::TEXT, encounter_id::TEXT FROM session_events WHERE kind = 'trap_triggered'`).Scan(&firingID, &encID); err != nil {
+		t.Fatal(err)
+	}
+	if encID == nil || *encID != enc.GetId() {
+		t.Fatalf("the firing belongs to combat %v, want %s", encID, enc.GetId())
+	}
+	// The master extends it to a combatant: it works only because the firing is the combat's.
+	if _, err := p.master.play.FireTrap(t.Context(), connect.NewRequest(&playv1.FireTrapRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, PointId: trap.GetId(), TargetIds: []string{byLabel(t, enc, "Brisa").GetId()},
+		IdempotencyKey: newKey(), ExtendFiringId: firingID,
+	})); err != nil {
+		t.Fatalf("FireTrap(extend) error = %v", err)
+	}
+	if n := p.eventCount(t, "trap_triggered"); n != 2 {
+		t.Errorf("%d firings, want the puzzle's and the extension", n)
+	}
+}
+
+// A player that does not see the trap's point reads nothing of it: no name, not an empty
+// one (RN-10).
+func TestRN10_ATrapThePlayerDoesNotSeeIsNotNamed(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	other := p.h.newMap(p.campaignID, gridColumns)
+	x, y := sq(3, 3)
+	pt, err := p.mc(p.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: p.campaignID, MapId: other, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, Name: "NOME-DA-ARMADILHA-ESCONDIDA", XBp: x, YBp: y, Trap: aTrap(),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rid := p.riddle(t, "Enigma", onWrong(func(o *playv1.PuzzleOnWrong) {
+		o.Trap = &playv1.PuzzleTrapTarget{MapId: other, PointId: pt.Msg.GetPoint().GetId()}
+	}))
+	p.show(t, rid.GetId())
+	res := p.mustMove(t, p.caio, rid.GetId(), riddleMove("luz"))
+	if st := p.trapState(t, pt.Msg.GetPoint().GetId()); st != "triggered" {
+		t.Fatalf("the trap is %q, want triggered", st)
+	}
+	for who, run := range map[string]*playv1.PuzzleRun{"the answer": res.GetRun(), "a read": p.read(t, p.ana, rid.GetId())} {
+		j := jsonOf(run)
+		if strings.Contains(j, "ARMADILHA") || strings.Contains(j, "trapName") {
+			t.Errorf("%s names a trap on a map the player does not see: %s", who, j)
+		}
+	}
+	// The master reads it, and the point is on the screen once the map is.
+	if got := p.masterRun(t, rid.GetId()).GetLastMove().GetTrapName(); got != "NOME-DA-ARMADILHA-ESCONDIDA" {
+		t.Errorf("the master reads %q", got)
+	}
+	if _, err := p.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: p.campaignID, MapId: other})); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.read(t, p.ana, rid.GetId()).GetLastMove().GetTrapName(); got != "NOME-DA-ARMADILHA-ESCONDIDA" {
+		t.Errorf("a player that sees the point reads %q", got)
+	}
+}
+
+// A stopped puzzle does not look open in the list, and a player with no living character
+// cannot try for a hint.
+func TestMR038_TheListShowsAStoppedPuzzleAndNoHintWithoutACharacter(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	puz := p.riddle(t, "Enigma", func(r *playv1.CreatePuzzleRequest) {
+		hintCheck("skill:investigation", 12)(r)
+		onWrong(func(o *playv1.PuzzleOnWrong) { o.MaxMoves = 1 })(r)
+	})
+	p.show(t, puz.GetId())
+	list := func() *playv1.PuzzleSummary {
+		res, err := p.pc(p.caio).ListShownPuzzles(t.Context(), connect.NewRequest(&playv1.ListShownPuzzlesRequest{CampaignId: p.campaignID}))
+		if err != nil || len(res.Msg.GetPuzzles()) != 1 {
+			t.Fatalf("ListShownPuzzles() = %v, %v", res, err)
+		}
+		return res.Msg.GetPuzzles()[0]
+	}
+	if list().GetStopped() {
+		t.Fatal("an open puzzle is listed as stopped")
+	}
+	// Brisa's player has a character; a member with none cannot try.
+	late := p.h.newUser("Lia")
+	p.h.join(p.master, p.campaignID, late)
+	if r := p.read(t, late, puz.GetId()); r.GetCanTryHint() || !r.GetHintByCheck() {
+		t.Errorf("a player with no character reads %v", r)
+	}
+	if r := p.read(t, p.bia, puz.GetId()); !r.GetCanTryHint() {
+		t.Errorf("a player with a character reads %v", r)
+	}
+	p.mustMove(t, p.caio, puz.GetId(), riddleMove("luz"))
+	if !list().GetStopped() {
+		t.Errorf("a stopped puzzle is listed as open")
+	}
+	p.reset(t, puz.GetId())
+	if list().GetStopped() {
+		t.Errorf("a restarted puzzle is listed as stopped")
+	}
+}
+
+// A part whose owner died mid-session has no reader: the master's view flags it.
+func TestMR038_APartOfADeadCharacterIsFlaggedForTheMaster(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	puz := p.riddle(t, "Enigma", func(r *playv1.CreatePuzzleRequest) {
+		r.Parts = []*playv1.PuzzlePart{{CharacterId: p.toren.GetId(), Text: "do Toren"}, {CharacterId: p.pens.GetId(), Text: "da Pensantus"}, {Text: "sem dono"}}
+	})
+	p.show(t, puz.GetId())
+	for _, pt := range p.masterRun(t, puz.GetId()).GetPuzzle().GetParts() {
+		if pt.GetOwnerUnavailable() {
+			t.Fatalf("a part of a living owner is flagged: %v", pt)
+		}
+	}
+	if _, err := p.h.pool.Exec(t.Context(), `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, p.toren.GetId()); err != nil {
+		t.Fatal(err)
+	}
+	flags := map[string]bool{}
+	for _, pt := range p.masterRun(t, puz.GetId()).GetPuzzle().GetParts() {
+		flags[pt.GetText()] = pt.GetOwnerUnavailable()
+	}
+	if !flags["do Toren"] || flags["da Pensantus"] || flags["sem dono"] {
+		t.Errorf("the master's flags are %v, want only the dead character's part", flags)
+	}
+	got, err := p.pc(p.master).GetPuzzle(t.Context(), connect.NewRequest(&playv1.GetPuzzleRequest{CampaignId: p.campaignID, PuzzleId: puz.GetId()}))
+	if err != nil || !got.Msg.GetPuzzle().GetParts()[0].GetOwnerUnavailable() {
+		t.Errorf("GetPuzzle reads %v, %v", got, err)
+	}
+}
+
+// Two tries at once: the same player with two keys makes one real try (the other finds
+// the hint tried), and the same key twice rolls once.
+func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 6)
+	p := newPuzzleTable(t)
+	puz := p.riddle(t, "Enigma", hintCheck("skill:investigation", 12))
+	p.show(t, puz.GetId())
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = p.tryHint(t, p.caio, puz.GetId(), 1) // a fail: the next try is for the same hint
+		}()
+	}
+	wg.Wait()
+	ok, tried := 0, 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case blockedReason(err) == playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED:
+			tried++
+		default:
+			t.Errorf("TryPuzzleHint() error = %v", err)
+		}
+	}
+	if ok != 1 || tried != 1 {
+		t.Fatalf("two keys at once: %d tries made and %d refused, want 1 and 1", ok, tried)
+	}
+	// The same key twice, at once: one roll, and the other answers the same.
+	key := newKey()
+	var replays atomic.Int32
+	for i := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := p.tryHintKey(t, p.ana, puz.GetId(), 20, key)
+			errs[i] = err
+			if err == nil && res.GetReplayed() {
+				replays.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	if errs[0] != nil || errs[1] != nil || replays.Load() != 1 {
+		t.Fatalf("the same key twice: errors %v, %d replays, want none and 1", errs, replays.Load())
+	}
+	var rows int
+	if err := p.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM puzzle_hint_tries`).Scan(&rows); err != nil || rows != 2 {
+		t.Errorf("%d tries are recorded (%v), want 2", rows, err)
+	}
 }

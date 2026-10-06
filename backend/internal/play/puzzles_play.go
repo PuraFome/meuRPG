@@ -70,7 +70,15 @@ func (s *Service) ListShownPuzzles(
 		if kind == nil {
 			continue // a kind this server does not know: nothing to play
 		}
-		res.Puzzles = append(res.Puzzles, &playv1.PuzzleSummary{PuzzleId: r.PuzzleID, Name: r.PuzzleName, Kind: kind.id(), Solved: r.SolvedAt != nil})
+		stopped := false
+		if len(r.PuzzleOnWrong) > 0 {
+			on := &playv1.PuzzleOnWrong{}
+			if err := fromJSON(r.PuzzleOnWrong, on); err != nil {
+				return nil, s.dbError(ctx, "list the shown puzzles", err)
+			}
+			stopped = stopOf(puzzleDef{onWrong: on}, playdb.PuzzleRun{SolvedAt: r.SolvedAt, MovesMade: r.MovesMade, RoundStartSeq: r.RoundStartSeq, RoundStartedAt: r.RoundStartedAt}, s.now()) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED
+		}
+		res.Puzzles = append(res.Puzzles, &playv1.PuzzleSummary{PuzzleId: r.PuzzleID, Name: r.PuzzleName, Kind: kind.id(), Solved: r.SolvedAt != nil, Stopped: stopped})
 	}
 	return connect.NewResponse(res), nil
 }
@@ -129,8 +137,9 @@ type moveResult struct {
 	replayed bool
 	solved   bool // this move solved it
 	after    []func(context.Context)
-	doorMap  string         // a map whose door the solve opened: tell its watchers
-	fired    *trapFireEvent // the trap a wrong move fired: tell the watchers
+	doorMap  string           // a map whose door the solve opened: tell its watchers
+	fired    *trapFireEvent   // the trap a wrong move fired: tell the watchers
+	firedEnc playdb.Encounter // the combat it fired in, zero outside a combat
 }
 
 // MakePuzzleMove implements playv1connect.PuzzleServiceHandler.
@@ -176,7 +185,7 @@ func (s *Service) MakePuzzleMove(
 			s.puzzles.maps.DoorsChanged(ctx, m.CampaignID, res.doorMap)
 		}
 		if res.fired != nil {
-			s.afterFiring(ctx, m.CampaignID, res.fired, playdb.Encounter{})
+			s.afterFiring(ctx, m.CampaignID, res.fired, res.firedEnc)
 		}
 	}
 	view, err := s.viewerOf(ctx, nil, m, res.d, res.run)
@@ -324,17 +333,26 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 }
 
 // fireWrongTrap fires the trap point of "Ao errar" for a wrong move, inside the move's
-// transaction (nothing reads through the pool here): as the master firing a trap by
-// hand does, with nobody caught, because the master decides what the trap does
-// (MR-035). The point fires once: one that already fired, was disarmed or is gone
-// fires nothing, and the move goes on. It returns the name the master gave the point,
-// which the players read once it fired ("A armadilha disparou: ..."), and nothing for
-// a trap that did not fire. res keeps the firing, so the watchers hear of it after the
-// commit.
+// transaction (nothing reads through the pool here), the way the master firing a trap by
+// hand does, with nobody caught: the master decides what the trap does (MR-035).
+//   - While a combat without a map runs (RN-25) nothing fires: that combat has no traps.
+//     The wrong move still counts.
+//   - While a combat runs on the trap's map, the firing is that combat's, as FireTrap's in
+//     a combat: the event carries the combat, the encounter is touched and the log hears
+//     of it, so the master may extend the firing to the creatures it catches.
+//   - Otherwise it is the firing outside a combat.
+//
+// The point fires once: one that already fired, was disarmed or is gone fires nothing, and
+// the move goes on. It returns the name the master gave the point, which the players who
+// see it read once it fired, and nothing for a trap that did not fire. res keeps the firing,
+// so the watchers hear of it after the commit.
 func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, who link.Character, d puzzleDef, now time.Time, res *moveResult) (string, error) {
 	target := d.onWrong.GetTrap()
 	if target == nil || s.traps == nil {
 		return "", nil
+	}
+	if theatre, err := theatreRunning(ctx, q, session.ID); err != nil || theatre {
+		return "", err
 	}
 	traps, err := s.traps.Traps(ctx, tx, m.CampaignID, target.GetMapId())
 	if connect.CodeOf(err) == connect.CodeNotFound {
@@ -347,19 +365,40 @@ func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if i < 0 || traps[i].State == "triggered" || traps[i].State == "disarmed" {
 		return "", nil
 	}
-	c := &combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID}
-	fired, err := s.fireOutside(ctx, c, traps[i], nil, nil, true, "")
+	trap := traps[i]
+	c := &combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID, svc: s}
+	// A combat running on the trap's map (read in this transaction, never through the pool).
+	enc, err := q.GetLatestEncounter(ctx, session.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("find the session's combat: %w", err)
+	}
+	inCombat := err == nil && enc.Status != statusEnded && enc.MapID != nil && *enc.MapID == trap.MapID
+	var fired *trapFireEvent
+	if inCombat {
+		c.enc = enc
+		fired, err = s.fireInCombat(ctx, c, trap, nil, true, "")
+	} else {
+		fired, err = s.fireOutside(ctx, c, trap, nil, nil, true, "")
+	}
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
 		return "", nil
 	}
 	if err != nil {
 		return "", err
 	}
-	if _, err := insertSceneEvent(ctx, c, eventTrapTriggered, &m.UserID, nil, actionEvent{Trap: fired}); err != nil {
+	ev := actionEvent{Trap: fired}
+	if inCombat {
+		if c.enc, err = q.TouchEncounter(ctx, c.enc.ID); err != nil {
+			return "", fmt.Errorf("touch the encounter: %w", err)
+		}
+		ev.Round = c.enc.Round
+		res.firedEnc = c.enc
+	}
+	if err := insertEvent(ctx, c, eventTrapTriggered, &m.UserID, nil, ev); err != nil {
 		return "", err
 	}
 	res.fired = fired
-	return traps[i].Name, nil
+	return trap.Name, nil
 }
 
 // solveLine is what the players read once the puzzle is solved: the master's own

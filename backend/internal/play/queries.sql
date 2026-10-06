@@ -805,10 +805,11 @@ JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE p.campaign_id = $1 AND r.shown_at IS NOT NULL;
 
 -- name: InsertPuzzleRun :one
--- A run starts with its state at its start, and its first round when it is shown
--- ($5 is NULL for a run that is only prepared).
+-- A run starts with its state at its start. $5 is when it was shown (NULL for a run
+-- that is only prepared) and $6 when the round's clock starts (NULL too for a sequence,
+-- whose clock starts at its first play).
 INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, round_started_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4, $5, $5, $6, $6)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $7)
 RETURNING *;
 
 -- name: GetPuzzleRun :one
@@ -828,7 +829,7 @@ WHERE game_session_id = $1;
 
 -- name: ListShownPuzzleRuns :many
 -- What a session shows now: shown and not closed, in the order they were shown.
-SELECT r.*, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+SELECT r.*, p.name AS puzzle_name, p.kind AS puzzle_kind, p.on_wrong AS puzzle_on_wrong FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
 ORDER BY r.shown_at, r.id;
