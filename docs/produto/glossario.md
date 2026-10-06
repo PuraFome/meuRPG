@@ -150,6 +150,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Tesouro individual e de covil | Os dois jeitos do gerador de tesouro: o que uma criatura carrega, ou o acúmulo de um covil, com moedas, gemas, obras de arte e itens mágicos (MR-044). Planejado para a Etapa 10. | — |
 | Masmorra gerada | Um mapa feito pelo gerador de masmorras a partir do tamanho, das opções e de uma semente (o mesmo pedido dá a mesma masmorra), com as paredes e as portas já nas camadas (MR-010). "Redesenhar" faz a imagem de novo a partir das camadas. Planejado para a Etapa 10. | `generated_dungeons`, `rules/dungeon` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
+| Sintonização | A ligação de um personagem com um item mágico que a pede ("requires attunement" no SRD): o item só funciona para quem se sintonizou com ele. Alguns itens limitam quem pode ("por um paladino", "por um conjurador"). Uma sintonização que vale só para uma propriedade fica no texto do item. | `Attunement`, `AttunementBy` |
+| Raridade | O quanto um item mágico é difícil de achar: comum, incomum, rara, muito rara, lendária ou artefato. "Varia" marca a família cujas variantes têm raridades diferentes (a Poção de cura). | `Rarity`, `varies` |
+| Família de itens, variante | Um item mágico que o SRD lista com várias versões: a família (Armadura +1, +2 ou +3; Anel de Resistência) e as variantes (Armadura +1; Anel de resistência a fogo), cada uma com a própria chave e raridade. No sorteio de tesouro, uma família conta como uma unidade por raridade, não uma por variante. | `Variants`, `VariantOf`, `MagicItemUnit` |
 
 ## Ver também
 

@@ -66,6 +66,7 @@ var inputHashes = map[string]string{
 	"5e-SRD-Weapon-Properties.json": "31604f16560b217549c2b629eef1377cde7a8d91a987cbdd4ad19db790b0d765",
 	"5e-SRD-Conditions.json":        "e2c8d211a4f72722c3490217aea948e78c5235c2d51d3c08a4fd3e9d3cd4468f",
 	"5e-SRD-Monsters.json":          "51edf634e1a9abefa259895b0799e22a788606df56f56e03fe24e130c76c2000",
+	"5e-SRD-Magic-Items.json":       "9a6f928cbf36b268b02e09dc116995efce8a74380df0450e197117886b64993d",
 }
 
 func main() {
@@ -144,7 +145,7 @@ func convert(in *inputs) ([]output, error) {
 	steps := []func(*inputs) (output, error){
 		convertAbilities, convertSkills, convertRaces, convertSubraces, convertTraits,
 		convertClasses, convertLevels, convertSubclasses, convertFeatures, convertBackgrounds,
-		convertProficiencies, convertEquipment, convertSpells, convertLanguages, convertMonsters,
+		convertProficiencies, convertEquipment, convertSpells, convertLanguages, convertMonsters, convertMagicItems,
 		named("5e-SRD-Damage-Types.json", "damage-types.json", "damage-type:"),
 		named("5e-SRD-Magic-Schools.json", "magic-schools.json", "school:"),
 		named("5e-SRD-Weapon-Properties.json", "weapon-properties.json", "weapon-property:"),
