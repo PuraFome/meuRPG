@@ -285,7 +285,7 @@ export type Treasure = Message<"meurpg.maps.v1.Treasure"> & {
 
   /**
    * The rules content version the treasure was rolled under (such as
-   * "srd51@a8abc93b235c+fx.16"). A seed gives the same treasure only within one
+   * "srd51@a8abc93b235c+fx.17"). A seed gives the same treasure only within one
    * version: send it back in PlaceTreasure.
    *
    * @generated from field: string content_version = 13;

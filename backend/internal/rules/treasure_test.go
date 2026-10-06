@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io/fs"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -110,8 +109,6 @@ func TestTreasureGolden(t *testing.T) {
 		}
 	}
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }
 
 // What every treasure must satisfy, for many seeds, modes and levels.
 func TestTreasureInvariants(t *testing.T) {

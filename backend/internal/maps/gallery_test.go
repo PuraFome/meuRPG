@@ -456,7 +456,7 @@ func (noCharacters) NpcPortraits(context.Context, pgx.Tx, string, []string) (map
 	return nil, errors.New("not in this test")
 }
 
-func (noCharacters) PartyLevels(context.Context, pgx.Tx, string) ([]int, error) {
+func (noCharacters) PartyTotalLevels(context.Context, pgx.Tx, string) ([]int, error) {
 	return nil, errors.New("not in this test")
 }
 

@@ -1,0 +1,341 @@
+syntax = "proto3";
+
+// The encounter builder (MR-043, RN-29, Etapa 10, slice 10.9c): the master puts SRD
+// creatures and counts together, and the server says what the encounter costs (XP) and how hard
+// it is for the party: low, moderate or high, or above high. It can also draw an encounter from
+// a seed, list the creatures one entry can be swapped for, and keep an encounter on a battle
+// point of a map, to start the combat from it ("Começar este combate").
+//
+// The party is the campaign's living player characters (their total level), plus the NPCs the
+// master adds for the encounter with the level he gives (question 86). A dead or archived
+// character, and one that is waiting for approval, is never in it.
+//
+// The budgets are the "XP Budget per Character" of the SRD 5.2.1 (the 2024 rules, CC BY 4.0), which
+// the app labels "SRD 5.2.1 (regras de 2024)". The XP of a creature is the SRD 5.1's, by its
+// challenge rating. The 2024 guide has no multiplier for the number of creatures: an encounter
+// costs the sum of its creatures' XP. The guide has three bands, so an encounter above the high
+// budget is allowed and reported as ABOVE_HIGH with how far above it is; the app never says
+// "mortal".
+//
+// Everything here is master only. A player, a pending member and someone who is not in the
+// campaign get `not_found`: the builder and a saved encounter are the master's secret (RN-10), and
+// no response, stream event or log line to a player carries them. A saved encounter lives with its
+// battle point, and the point never tells a player about it.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// EncounterBand is how hard an encounter is for the party: the smallest band whose budget holds
+// the encounter's XP.
+enum EncounterBand {
+  ENCOUNTER_BAND_UNSPECIFIED = 0;
+  // Within the low budget, or under it: "Baixa".
+  ENCOUNTER_BAND_LOW = 1;
+  // Above the low budget and within the moderate one: "Moderada".
+  ENCOUNTER_BAND_MODERATE = 2;
+  // Above the moderate budget and within the high one: "Alta".
+  ENCOUNTER_BAND_HIGH = 3;
+  // Above the high budget. Allowed; `over_xp` says by how much. Not a band of the guide, so it is
+  // never a band to generate for.
+  ENCOUNTER_BAND_ABOVE_HIGH = 4;
+}
+
+// EncounterWarning is something the master should know about an encounter. None of them stops him.
+enum EncounterWarning {
+  ENCOUNTER_WARNING_UNSPECIFIED = 0;
+  // The encounter costs more than the high budget ("Passa do orçamento de alta").
+  ENCOUNTER_WARNING_ABOVE_HIGH = 1;
+  // A creature has a challenge rating above the cap (`max_cr`): the party's lowest level plus 3.
+  // The lines say which (`above_cap`).
+  ENCOUNTER_WARNING_ABOVE_CR_CAP = 2;
+  // The party is empty: no living player character and no NPC added, so the budget is 0.
+  ENCOUNTER_WARNING_NO_PARTY = 3;
+  // The creatures and the party's own combatants (its player characters and their live creatures,
+  // such as a familiar) do not fit in one combat of 40. "Começar este combate" would refuse it.
+  ENCOUNTER_WARNING_TOO_MANY = 4;
+  // A creature of a saved encounter is no longer an SRD creature (the content changed): its line is
+  // left out of the measure and its key is in `unknown_creature_keys` of GetBattleEncounterResponse.
+  // Saving that encounter again is refused (UNKNOWN_CREATURE) until the master takes the creature out.
+  ENCOUNTER_WARNING_UNKNOWN_CREATURE = 5;
+}
+
+// PartyNpc is an NPC the master adds to the party for one encounter (question 86): a companion on
+// that stretch of the story. The level counts in the budget and in the lowest level, which sets
+// the cap on a creature's rating.
+message PartyNpc {
+  // An NPC of the campaign (a UUID); empty for one that is only a name and a level. When set, the
+  // NPC must be a living NPC of the campaign (not a player's character, not the app's own NPC of
+  // a creature), and `name` may be left empty: it takes the NPC's.
+  string character_id = 1;
+  // What to call it in the party, 1 to 80 characters; empty only with `character_id`.
+  string name = 2;
+  // The level it counts as, 1 to 20. The master gives it: the NPC's sheet needs none.
+  int32 level = 3;
+}
+
+// EncounterPartyMember is a member of the party an encounter is measured against.
+message EncounterPartyMember {
+  // The character's ID; empty for an extra NPC given by name only.
+  string character_id = 1;
+  string name = 2;
+  // The level it counts as.
+  int32 level = 3;
+  // True for an NPC the master added, false for a player's character.
+  bool npc = 4;
+}
+
+// XpBudget is XP to spend in each band, for the whole party (the sum of each member's).
+message XpBudget {
+  int32 low = 1;
+  int32 moderate = 2;
+  int32 high = 3;
+}
+
+// EncounterLine is one kind of creature of an encounter, with its cost.
+message EncounterLine {
+  // The creature as the bestiary lists it: names, type, challenge rating (`challenge_rating`) and
+  // XP each (`xp`).
+  meurpg.rules.v1.CreatureSummary creature = 1;
+  // How many.
+  int32 count = 2;
+  // `creature.xp` times `count`.
+  int32 subtotal_xp = 3;
+  // The creature's challenge rating is above the cap (`EncounterEvaluation.max_cr`). The master may
+  // keep it.
+  bool above_cap = 4;
+  // The base name saved with the entry, when there is one (a saved encounter).
+  string name = 5;
+}
+
+// EncounterEvaluation is an encounter measured against a party.
+message EncounterEvaluation {
+  // The party, player characters first (oldest first), then the extra NPCs in the order given.
+  repeated EncounterPartyMember party = 1;
+  // What the party can spend in each band: the sum of its members' budgets (SRD 5.2.1).
+  XpBudget budget = 2;
+  // The creatures, in the order of the request; for a generated encounter, the leader first.
+  repeated EncounterLine lines = 3;
+  // The sum of the lines' subtotals, and how many creatures there are.
+  int32 total_xp = 4;
+  int32 creature_count = 5;
+  // The smallest band whose budget holds `total_xp`; ABOVE_HIGH past the high budget, and then
+  // `over_xp` is how many XP it passes by (0 in the other bands).
+  EncounterBand band = 6;
+  int32 over_xp = 7;
+  // The highest challenge rating a creature may have: the party's lowest level plus 3 ("7"), and
+  // that lowest level. 0 and "0" for an empty party.
+  string max_cr = 8;
+  int32 lowest_level = 9;
+  repeated EncounterWarning warnings = 10;
+}
+
+// EvaluateEncounterRequest names an encounter to measure.
+message EvaluateEncounterRequest {
+  string campaign_id = 1;
+  // The creatures (`creature_key`, an SRD creature) and how many (1 to 40, unset means 1). A key
+  // may appear once. `name` is checked (1 to 30 characters, one line) but does not change the measure.
+  repeated MonsterGroup entries = 2;
+  // NPCs added to the party, at most 10.
+  repeated PartyNpc extra_party = 3;
+}
+
+// EvaluateEncounterResponse is the encounter measured.
+message EvaluateEncounterResponse {
+  EncounterEvaluation evaluation = 1;
+}
+
+// GenerateEncounterRequest asks for an encounter ("Gerar encontro").
+message GenerateEncounterRequest {
+  string campaign_id = 1;
+  // The band to fill: LOW, MODERATE or HIGH. UNSPECIFIED means MODERATE.
+  EncounterBand band = 2;
+  // An SRD creature type ("humanoid", "beast"...) to take every creature from; empty for any.
+  string creature_type = 3;
+  // The seed. The same party, band, type and seed give the same encounter. 0 asks the server to
+  // draw one (1 to 10000); the response says which it was, so "Gerar outro" is a new request
+  // with another seed.
+  uint32 seed = 4;
+  repeated PartyNpc extra_party = 5;
+}
+
+// GenerateEncounterResponse is the encounter drawn: a leader and a group of one or two kinds of
+// creature, never over the band's budget and never with a creature above the cap. It spends as
+// much of the budget as it can.
+message GenerateEncounterResponse {
+  EncounterEvaluation evaluation = 1;
+  // The seed used.
+  uint32 seed = 2;
+}
+
+// ListEncounterSwapsRequest asks what an entry can be swapped for ("Trocar criatura").
+message ListEncounterSwapsRequest {
+  string campaign_id = 1;
+  // The creature of the entry.
+  string creature_key = 2;
+  // When the master chose a type for the encounter, the swap keeps it: only creatures of that type.
+  string creature_type = 3;
+}
+
+// ListEncounterSwapsResponse is the creatures with the same XP as the entry's, so the total does not
+// change, sorted by Portuguese name. The entry's count stays. The creature itself is not in it; the
+// app may also leave out the ones the encounter already has.
+message ListEncounterSwapsResponse {
+  repeated meurpg.rules.v1.CreatureSummary creatures = 1;
+}
+
+// BattleEncounter is an encounter kept on a battle point: what "Começar este combate" puts in the
+// combat. The XP and the band are not kept: they are measured again, against the party of the day.
+message BattleEncounter {
+  // The creatures: `creature_key`, `count` (1 to 40) and, optionally, the base name of the monsters
+  // (as in AddMonsters). A creature may appear once. At least 1 and at most 20 entries.
+  repeated MonsterGroup monsters = 1;
+  // How the monsters' hit points are chosen when the combat starts; unset is the average.
+  MonsterHitPoints hit_points = 2;
+  // Whether the monsters start hidden; unset: hidden.
+  optional bool hidden = 3;
+}
+
+// SaveBattleEncounterRequest keeps an encounter on a battle point, in place of the one it had.
+message SaveBattleEncounterRequest {
+  string campaign_id = 1;
+  // A BATTLE point of the campaign (a UUID).
+  string map_point_id = 2;
+  BattleEncounter encounter = 3;
+  // The party to measure the answer against, as in EvaluateEncounter. Not kept.
+  repeated PartyNpc extra_party = 4;
+}
+
+// SaveBattleEncounterResponse is the encounter as kept, measured.
+message SaveBattleEncounterResponse {
+  BattleEncounter encounter = 1;
+  EncounterEvaluation evaluation = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// GetBattleEncounterRequest names a battle point.
+message GetBattleEncounterRequest {
+  string campaign_id = 1;
+  string map_point_id = 2;
+  repeated PartyNpc extra_party = 3;
+}
+
+// GetBattleEncounterResponse is the point's encounter, or nothing.
+message GetBattleEncounterResponse {
+  // Unset when the point has no encounter. It lists every saved creature, even one that is no
+  // longer in the SRD (then it is in `unknown_creature_keys`).
+  BattleEncounter encounter = 1;
+  // The encounter measured against the party of today (and `extra_party`); unset with no encounter.
+  EncounterEvaluation evaluation = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  // The saved creature keys that are no longer SRD creatures, left out of `evaluation`; the warning
+  // UNKNOWN_CREATURE is there too. Empty almost always.
+  repeated string unknown_creature_keys = 4;
+}
+
+// ClearBattleEncounterRequest takes the encounter off a battle point.
+message ClearBattleEncounterRequest {
+  string campaign_id = 1;
+  string map_point_id = 2;
+}
+
+// ClearBattleEncounterResponse is empty: a point with no encounter is not an error.
+message ClearBattleEncounterResponse {}
+
+// ListBattleEncountersRequest names a map.
+message ListBattleEncountersRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// BattleEncounterSummary says a battle point of the map keeps an encounter.
+message BattleEncounterSummary {
+  string map_point_id = 1;
+  // How many creatures it has.
+  int32 creature_count = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// ListBattleEncountersResponse is the points of the map that keep an encounter, oldest first: the
+// "Já guarda um encontro" of the save dialog.
+message ListBattleEncountersResponse {
+  repeated BattleEncounterSummary encounters = 1;
+}
+
+// EncounterBuildBlockedReason is why the builder refused a request.
+enum EncounterBuildBlockedReason {
+  ENCOUNTER_BUILD_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The party is empty: no living player character and no NPC added, so there is no budget.
+  ENCOUNTER_BUILD_BLOCKED_REASON_NO_PARTY = 1;
+  // No creature fits: none has the type asked within the cap and the budget of the band ("Nenhuma
+  // criatura desse tipo cabe nessa dificuldade").
+  ENCOUNTER_BUILD_BLOCKED_REASON_NOTHING_FITS = 2;
+  // A creature key of the request is not an SRD creature (EvaluateEncounter, SaveBattleEncounter):
+  // typically a saved encounter from before a content change. `failed_precondition`, so the app
+  // says to take the creature out. The creature's key is in the message.
+  ENCOUNTER_BUILD_BLOCKED_REASON_UNKNOWN_CREATURE = 3;
+}
+
+// EncounterBuildBlocked is the detail of a `failed_precondition` of the encounter builder.
+message EncounterBuildBlocked {
+  EncounterBuildBlockedReason reason = 1;
+}
+
+// EncounterService is the encounter builder, for the master of a campaign.
+service EncounterService {
+  // EvaluateEncounter measures the creatures against the party: the budgets, the total, the band
+  // and the warnings. Nothing is stored.
+  //
+  // Errors: `not_found` for anyone but the master; `failed_precondition` with an EncounterBuildBlocked detail (UNKNOWN_CREATURE: a key that is not an SRD
+  // creature); `invalid_argument` (a count
+  // outside 1 to 40, a repeated key, a level outside 1 to 20, an NPC that is not one of the
+  // campaign's).
+  rpc EvaluateEncounter(EvaluateEncounterRequest) returns (EvaluateEncounterResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GenerateEncounter draws an encounter of one leader and a group, from the SRD's creatures, for
+  // the band and the type asked. Nothing is stored. Deterministic per seed.
+  //
+  // Errors: `not_found`; `invalid_argument` (a band that is not LOW, MODERATE or HIGH, an unknown
+  // type); `failed_precondition` (an empty party; or no creature of the type fits the cap and the
+  // budget), with an EncounterBuildBlocked detail.
+  rpc GenerateEncounter(GenerateEncounterRequest) returns (GenerateEncounterResponse);
+
+  // ListEncounterSwaps lists the creatures an entry can be swapped for: the same XP, and the same
+  // type when a type is given.
+  //
+  // Errors: `not_found`; `invalid_argument` (unknown creature or type).
+  rpc ListEncounterSwaps(ListEncounterSwapsRequest) returns (ListEncounterSwapsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SaveBattleEncounter keeps the encounter on a battle point, replacing the one it had. Saving
+  // the same encounter again changes nothing.
+  //
+  // Errors: `not_found` for anyone but the master and for a point that is not a battle point of the
+  // campaign; `failed_precondition` (UNKNOWN_CREATURE) and `invalid_argument` as EvaluateEncounter.
+  rpc SaveBattleEncounter(SaveBattleEncounterRequest) returns (SaveBattleEncounterResponse);
+
+  // GetBattleEncounter reads the encounter kept on a battle point, measured against the party of
+  // today.
+  //
+  // Errors: `not_found` as SaveBattleEncounter.
+  rpc GetBattleEncounter(GetBattleEncounterRequest) returns (GetBattleEncounterResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ClearBattleEncounter takes the encounter off the point, also a point that stopped being a
+  // battle point and still keeps one. A point with none is not an error.
+  //
+  // Errors: `not_found` as SaveBattleEncounter (a point that is not a battle point and keeps nothing).
+  rpc ClearBattleEncounter(ClearBattleEncounterRequest) returns (ClearBattleEncounterResponse);
+
+  // ListBattleEncounters says which battle points of a map keep an encounter.
+  //
+  // Errors: `not_found` for anyone but the master and for a map that is not the campaign's.
+  rpc ListBattleEncounters(ListBattleEncountersRequest) returns (ListBattleEncountersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}

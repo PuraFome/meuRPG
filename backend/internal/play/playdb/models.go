@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+type BattleEncounter struct {
+	MapPointID string
+	CampaignID string
+	MapID      string
+	Encounter  []byte
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type Combatant struct {
 	ID                 string
 	EncounterID        string

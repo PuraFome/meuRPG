@@ -106,7 +106,7 @@ func (s *Service) GetTreasureParty(
 	if err != nil {
 		return nil, err
 	}
-	levels, err := s.characters.PartyLevels(ctx, nil, m.CampaignID)
+	levels, err := s.characters.PartyTotalLevels(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the party's levels", err)
 	}
@@ -163,7 +163,7 @@ func (s *Service) partyLevel(ctx context.Context, campaignID string, given *int3
 		}
 		return int(*given), nil
 	}
-	levels, err := s.characters.PartyLevels(ctx, nil, campaignID)
+	levels, err := s.characters.PartyTotalLevels(ctx, nil, campaignID)
 	if err != nil {
 		return 0, s.dbError(ctx, "read the party's levels", err)
 	}

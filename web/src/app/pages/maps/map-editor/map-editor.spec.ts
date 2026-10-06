@@ -70,9 +70,13 @@ describe('MapEditor', () => {
     el = fixture.nativeElement;
     await settle();
   }
+  // Fake `setTimeout`: the paint queue (150 ms) and the counts read (250 ms) are waited for by moving the
+  // clock, not by sleeping. `requestAnimationFrame` stays real (see `frame`).
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
+  afterEach(() => vi.useRealTimers());
   const settle = async () => {
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r));
+    await vi.advanceTimersByTimeAsync(0);
     await fixture.whenStable();
     fixture.detectChanges();
   };
@@ -85,8 +89,11 @@ describe('MapEditor', () => {
   const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
   /** The painted squares are drawn once a frame: let one go by. */
   const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+  // The paint queue and the counts run on the fake clock; the painted squares are drawn on a real animation frame,
+  // so wait for one too (with the clock alone, a fast machine checked the text before any frame was drawn).
   const flush = async () => {
-    await new Promise((r) => setTimeout(r, 400));
+    await vi.advanceTimersByTimeAsync(400);
+    await frame();
     await settle();
   };
 

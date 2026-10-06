@@ -185,6 +185,14 @@ type CombatServiceClient interface {
 	// once by the app, one roll for each copy (RN-19). The players roll
 	// theirs (SubmitInitiative).
 	//
+	// With `monsters` ("Começar este combate", MR-043), the monsters of those SRD
+	// creatures join in the same transaction, through the same code as AddMonsters,
+	// under this request's idempotency key (a retry rolls and adds nothing). The
+	// master's line of their hit points is written as AddMonsters writes it. `participants`
+	// may then be empty. The app reads the encounter a battle point keeps
+	// (EncounterService.GetBattleEncounter), lets the master change it, and sends it
+	// here; a combat without a map (THEATRE) takes the monsters too, with no point.
+	//
 	// Every WatchGameSession stream of the campaign gets `encounter_changed`.
 	//
 	// Errors:
@@ -200,7 +208,9 @@ type CombatServiceClient interface {
 	//     map_point_id (THEATRE_HAS_NO_MAP).
 	//   - `invalid_argument`: no participants, more than 40 combatants, a
 	//     participant listed twice, a count outside 1 to 10 (a player
-	//     character: 1), a name that breaks its rules, or a `mode` that is not one.
+	//     character: 1), a name that breaks its rules, or a `mode` that is not one;
+	//     a monster group that is not an SRD creature, listed twice or with a count
+	//     outside 1 to 40, a `monster_hit_points` that is not a mode, more than 20 groups.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of
@@ -1608,6 +1618,14 @@ type CombatServiceHandler interface {
 	// once by the app, one roll for each copy (RN-19). The players roll
 	// theirs (SubmitInitiative).
 	//
+	// With `monsters` ("Começar este combate", MR-043), the monsters of those SRD
+	// creatures join in the same transaction, through the same code as AddMonsters,
+	// under this request's idempotency key (a retry rolls and adds nothing). The
+	// master's line of their hit points is written as AddMonsters writes it. `participants`
+	// may then be empty. The app reads the encounter a battle point keeps
+	// (EncounterService.GetBattleEncounter), lets the master change it, and sends it
+	// here; a combat without a map (THEATRE) takes the monsters too, with no point.
+	//
 	// Every WatchGameSession stream of the campaign gets `encounter_changed`.
 	//
 	// Errors:
@@ -1623,7 +1641,9 @@ type CombatServiceHandler interface {
 	//     map_point_id (THEATRE_HAS_NO_MAP).
 	//   - `invalid_argument`: no participants, more than 40 combatants, a
 	//     participant listed twice, a count outside 1 to 10 (a player
-	//     character: 1), a name that breaks its rules, or a `mode` that is not one.
+	//     character: 1), a name that breaks its rules, or a `mode` that is not one;
+	//     a monster group that is not an SRD creature, listed twice or with a count
+	//     outside 1 to 40, a `monster_hit_points` that is not a mode, more than 20 groups.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of

@@ -116,10 +116,10 @@ type CharacterDirectory interface {
 	// portraits of the NPCs a picture made from a map shows go to the image model
 	// as character references (MR-039).
 	NpcPortraits(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) (map[string]string, error)
-	// PartyLevels returns the total level of each living, active player character
+	// PartyTotalLevels returns the total level of each living, active player character
 	// of the campaign (1 to 20), oldest first: the treasure generator's party level is
 	// the lowest of them (MR-044).
-	PartyLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]int, error)
+	PartyTotalLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]int, error)
 }
 
 // LiveSession is what this package needs from the live session. The play

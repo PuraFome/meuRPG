@@ -601,7 +601,7 @@ type Treasure struct {
 	// What the magic items are worth, apart. They never become XP.
 	ItemsPo int32 `protobuf:"varint,12,opt,name=items_po,json=itemsPo,proto3" json:"items_po,omitempty"`
 	// The rules content version the treasure was rolled under (such as
-	// "srd51@a8abc93b235c+fx.16"). A seed gives the same treasure only within one
+	// "srd51@a8abc93b235c+fx.17"). A seed gives the same treasure only within one
 	// version: send it back in PlaceTreasure.
 	ContentVersion string `protobuf:"bytes,13,opt,name=content_version,json=contentVersion,proto3" json:"content_version,omitempty"`
 	unknownFields  protoimpl.UnknownFields
