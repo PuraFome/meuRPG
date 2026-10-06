@@ -350,6 +350,9 @@ type RaceEntry struct {
 	// Archived says the table has retired it: sheets that have it keep it,
 	// but it is not offered as a new choice. Every Archived below is the same.
 	Archived bool
+	// Off says the master switched it off for the players (RN-23): they never
+	// receive it, and a sheet that has it keeps it. Every Off below is the same.
+	Off bool
 }
 
 // SubraceEntry is a subrace in the Catalog.
@@ -359,6 +362,7 @@ type SubraceEntry struct {
 	Race           string
 	AbilityBonuses map[Ability]int
 	Archived       bool
+	Off            bool
 }
 
 // ClassEntry is a class in the Catalog.
@@ -393,6 +397,7 @@ type ClassEntry struct {
 	// included.
 	Subclasses []string
 	Archived   bool
+	Off        bool
 	// SpellListFrom is the class whose spell list a table class reuses, or empty
 	// (its own list: the spells that name it).
 	SpellListFrom string
@@ -404,6 +409,7 @@ type SubclassEntry struct {
 	// Class is the key of the parent class.
 	Class    string
 	Archived bool
+	Off      bool
 	// Casting is set for a subclass that casts on its own (a third caster, the
 	// table's only): the web editor and the server read the numbers from it.
 	Casting *SubclassCasting
@@ -432,6 +438,7 @@ type BackgroundEntry struct {
 	// EquipmentPT is a table background's equipment text; empty for the SRD's.
 	EquipmentPT string
 	Archived    bool
+	Off         bool
 }
 
 // SkillEntry is a skill in the Catalog.
@@ -492,6 +499,9 @@ type SpellEntry struct {
 	// Archived says the table retired the spell (see RaceEntry.Archived); the
 	// tag keeps it out of the sheet's JSON, which the golden pins.
 	Archived bool `json:",omitempty"`
+	// Off says the master switched the spell off for the players (see
+	// RaceEntry.Off); kept out of the sheet's JSON the same way.
+	Off bool `json:",omitempty"`
 }
 
 // ProficiencyLevel says how much of the proficiency bonus a roll adds.

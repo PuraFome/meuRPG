@@ -70,6 +70,9 @@ message TableEntry {
   int32 characters_using = 8;
   // When the master archived the entry; unset while it is not archived.
   google.protobuf.Timestamp archived_at = 9;
+  // The master switched the entry off for the players (SetOptionSwitches): the
+  // master reads it with this mark; a player never receives an off entry (RN-23).
+  bool off = 16;
   // The entry itself. Exactly one is set, the one of `kind`.
   oneof body {
     TableClass table_class = 10;
@@ -510,10 +513,12 @@ service TableContentService {
   // Portuguese name, for the editors and for what a player reads of an option
   // (the class numbers and effects, question 83). Any active member of the
   // campaign may call it; a pending member gets `not_found` (they only need the
-  // catalog). The master gets every entry, archived ones included, with
-  // `characters_using`; a player gets the ones that are not archived, and never
-  // sees a count. Until the master's on/off switches (MR-025, "Opções para os
-  // jogadores"), every entry that is not archived is on.
+  // catalog). The master gets every entry, archived and off ones included, with
+  // `characters_using` and the `off` mark; a player gets the ones that are not
+  // archived and not off (nor the subclass of an off or archived class, nor the
+  // subrace of an off or archived race, unless their own sheet uses it), and never
+  // sees a count. A reference inside an entry to something a player may not see (a
+  // class, a granted spell) is left out of what a player receives.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not an active
@@ -564,6 +569,44 @@ service TableContentService {
   // Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
   // `invalid_argument` (a TableContentRefusal).
   rpc UnarchiveTableEntry(UnarchiveTableEntryRequest) returns (UnarchiveTableEntryResponse) {}
+
+  // ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
+  // every class, subclass, race, subrace, background and spell of the campaign, the
+  // SRD's and the table's, each with its on/off state and how many of the
+  // campaign's player characters use it, sorted by kind and Portuguese name. It is
+  // what the screen draws "o que cada jogador vê" from. Only the master; what a
+  // player reads is ContentService.ListContent and ListTableEntries.
+  //
+  // Errors: `permission_denied`, `not_found`.
+  rpc ListOptionSwitches(ListOptionSwitchesRequest) returns (ListOptionSwitchesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SetOptionSwitches turns options off or on for the players, SRD and table
+  // entries alike, in one transaction (up to 700 at once). Everything is on by
+  // default. An off option is treated as an archived one for the players, in every
+  // read (the catalog, ListTableEntries, ListSpells, GetSpellDetails, the level-up
+  // options, the references inside other entries): they never receive it, and the
+  // subclasses of an off class and the subraces of an off race go with it. A sheet
+  // that already has it keeps working, and an unrelated edit is never refused; a
+  // player's new choice of it is refused (CharacterBlocked SWITCHED_OFF_CONTENT,
+  // LevelUpRefusal SWITCHED_OFF_CHOICE). The master sees everything, with `off`.
+  //
+  // A call that changes something raises the campaign's content revision and sends
+  // the live hint `content_changed` to the campaign's session (RN-10). A call that
+  // changes nothing (everything already in the state asked) changes nothing and
+  // sends nothing. Only the master.
+  //
+  // Errors:
+  //   - `permission_denied`, `not_found`;
+  //   - `invalid_argument`: no switch at all, more than 700, a key that is not a
+  //     class, subclass, race, subrace, background or spell of the campaign's
+  //     content, or the same key twice.
+  //
+  // An archived table entry can be switched like any other (it stays hidden from
+  // the players either way); a call whose switches are all in the state asked is
+  // not an error: it answers OK with `changed` 0.
+  rpc SetOptionSwitches(SetOptionSwitchesRequest) returns (SetOptionSwitchesResponse) {}
 
   // GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
   // ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
@@ -682,6 +725,72 @@ message UnarchiveTableEntryRequest {
 message UnarchiveTableEntryResponse {
   TableEntry entry = 1;
   int32 table_revision = 2;
+}
+
+// OptionSwitch is the state asked for one option.
+message OptionSwitch {
+  // The option's content key: "class:wizard", "subclass:evocation",
+  // "race:gnome@..." (a table key ends in "@mesa").
+  string key = 1;
+  // True turns it off for the players, false turns it back on.
+  bool off = 2;
+}
+
+// ListOptionSwitchesRequest names a campaign.
+message ListOptionSwitchesRequest {
+  string campaign_id = 1;
+}
+
+// OptionSwitchEntry is one option in the master's list.
+message OptionSwitchEntry {
+  string key = 1;
+  // The kind of the option (class, subclass, race, subrace, background, spell).
+  TableContentKind kind = 2;
+  string name_pt = 3;
+  // True for the table's own entry ("@mesa"), false for the SRD's.
+  bool table = 4;
+  // The option's own switch. A subclass of an off class is hidden from the players
+  // too and keeps its own switch as it is (see `hidden`).
+  bool off = 5;
+  // The table retired the entry (only the table's entries can be).
+  bool archived = 6;
+  // True when the players do not receive it: archived, off, or its class or race
+  // is off. What "o que cada jogador vê" shows.
+  bool hidden = 7;
+  // The class (for a subclass) or the race (for a subrace) it belongs to; empty for
+  // the other kinds.
+  string parent_key = 8;
+  // The spell's circle, 0 for a cantrip; 0 for the other kinds.
+  int32 level = 9;
+  // How many of the campaign's player characters use it (a race, subrace, class,
+  // subclass, background, or a cantrip, known or prepared spell); a character counts
+  // once.
+  int32 characters_using = 10;
+}
+
+// ListOptionSwitchesResponse carries the master's list.
+message ListOptionSwitchesResponse {
+  repeated OptionSwitchEntry options = 1;
+  // The campaign's content revision, 0 while nothing was written.
+  int32 table_revision = 2;
+}
+
+// SetOptionSwitchesRequest asks for the state of some options.
+message SetOptionSwitchesRequest {
+  string campaign_id = 1;
+  // At least one, at most 700; a key once.
+  repeated OptionSwitch switches = 2;
+}
+
+// SetOptionSwitchesResponse says what changed.
+message SetOptionSwitchesResponse {
+  // The campaign's content revision after the call (the same as before when
+  // nothing changed).
+  int32 table_revision = 1;
+  // How many options changed state.
+  int32 changed = 2;
+  // The options that changed, as ListOptionSwitches gives them.
+  repeated OptionSwitchEntry options = 3;
 }
 
 // GetClassTableDefaultsRequest names a campaign.

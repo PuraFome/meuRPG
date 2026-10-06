@@ -342,7 +342,7 @@ flowchart TD
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
         t_character_ability_rolls["character_ability_rolls"]
         t_character_creatures["character_creatures"]
-        t_campaign_content["campaign_content, campaign_content_state"]
+        t_campaign_content["campaign_content, campaign_content_state, campaign_content_off"]
     end
 
     subgraph play["Módulo play"]
@@ -526,6 +526,7 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00140_create_puzzle_moves_character_index` | `puzzle_moves` | `(character_id)`: o mesmo para o personagem. |
 | `00141_create_campaign_content` | `campaign_content` | O conteúdo da mesa (MR-025, RN-23, ADR-0018, Etapa 10, fatia 10.1c): uma linha por entrada, `(campaign_id, content_key)` de chave primária, o tipo, o nome em português, o `data` (o protojson do proto do tipo, até 64 KiB conferidos pelo servidor e 128 KiB pelo `CHECK`), a revisão da última mudança e `archived_at`. Nada é apagado: arquiva-se. |
 | `00142_create_campaign_content_state` | `campaign_content_state` | A revisão do conteúdo da campanha, uma linha por campanha, que sobe de um a cada escrita no `campaign_content`. Sem linha é a revisão 0. Está no `characters`, e não em `campaigns.content_revision` como a ADR-0018 dizia, para o `characters` não escrever uma coluna de outro módulo. |
+| `00220_create_campaign_content_off` | `campaign_content_off` | As opções que o mestre **desligou** para os jogadores em "Opções para os jogadores" (MR-025, RN-23, Etapa 10, fatia 10.1d): uma linha por opção desligada, `(campaign_id, content_key)` de chave primária, com `created_at`; tudo está ligado por padrão, então **sem linha é ligado** e ligar de novo apaga a linha. A chave é a de uma classe, subclasse, raça, sub-raça, antecedente ou magia do SRD (`class:wizard`) ou da mesa (`race:anao@mesa`); não é chave estrangeira (as chaves do SRD moram no snapshot das regras, não numa tabela), e o servidor confere que a chave existe antes de escrever. Está no `characters`, como o conteúdo. Cada escrita sobe a revisão da campanha (`campaign_content_state`) na mesma transação, então o conteúdo em cache, por (campanha, revisão), sempre é lido com o conjunto que o acompanha. Apagar a campanha apaga as linhas (`CASCADE`); não é dado pessoal. |
 | `00143_add_encounters_mode` | `encounters` | Coluna `mode` (`TEXT`, padrão `grid`): o modo do combate (MR-025, RN-25, ADR-0017, Etapa 10, fatia 10.5b), `grid` (no mapa, como todo combate foi até aqui; o padrão é o preenchimento dos que existem) ou `theatre` (o "teatro da mente", sem mapa). Escolhido ao começar e nunca muda. |
 | `00144_add_encounters_mode_valid` | `encounters` | `CHECK`s do modo: `grid` ou `theatre`, e a grade do combate: no modo `grid` os limites de sempre (4 a 200 colunas, 1 a 400 linhas); no `theatre`, 0 por 0, sem mapa e sem ponto de mapa. |
 | `00145_relax_opportunity_offers_for_theatre` | `opportunity_offers` | `left_col` e `left_row` passam a aceitar `NULL` (a oferta que o mestre faz num combate sem grade não tem quadrado; os dois são `NULL` juntos ou nenhum), e o `state` ganha `withdrawn` (o mestre tirou a oferta antes de alguém responder). |
@@ -582,6 +583,7 @@ No `characters`:
 - **`story_editing_allowed`** é a liberação da história que o mestre dá, personagem por personagem (RN-01). O início de cada sessão desliga todas as liberações da campanha.
 - **`revision`** sobe a cada mudança de nome, ficha ou história. Um salvamento com revisão velha recebe `aborted` na API, então duas pessoas editando ao mesmo tempo não apagam o trabalho uma da outra. Travar, morrer e liberar a história não mexem na revisão. `sheet_schema` marca a versão do documento da ficha, para uma futura v2.
 - **`character_master_notes`** tem a chave primária `(campaign_id, character_id)`: o mesmo NPC em duas campanhas (MR-022) terá notas separadas. Notas vazias apagam a linha. As notas somem com a campanha ou com o personagem, inclusive o personagem pendente recusado; essa exclusão procura as notas por `character_id` sem índice, o que é barato numa tabela pequena, como já era na exclusão de conta.
+- **`campaign_content_off`** (`00220`, MR-025, RN-23, Etapa 10, fatia 10.1d): o conjunto das opções que o mestre desligou para os jogadores, uma linha por chave (SRD ou da mesa), sem linha é ligado. O `TableSource` o lê na mesma transação da revisão e o soma ao conteúdo (`Overlay.Off`); o que está nele nunca chega a um jogador, em leitura nenhuma (ver [Arquitetura](arquitetura.md#as-opções-para-os-jogadores-e-a-dica-ao-vivo-etapa-10-fatia-101d)).
 - **`campaign_content` e `campaign_content_state`** (`00141` e `00142`, MR-025, RN-23, ADR-0018): o conteúdo da mesa. Cada **entrada** (classe, subclasse, raça, sub-raça, antecedente ou magia) é uma linha, com a chave `<tipo>:<nome>@mesa` (que o servidor faz do nome na criação e nunca muda), o nome em português, o `data` (o protojson da mensagem do tipo, em `rules/v1/table_content.proto`, com as chaves das características que o servidor fez), a revisão da campanha na última mudança da entrada e `archived_at`. A chave é única por campanha, as entradas somem com a campanha (`CASCADE`) e **nada se apaga**: o que uma ficha já usa precisa continuar valendo, então a saída é arquivar. Os limites são 300 entradas por campanha e 64 KiB de `data` por entrada (a regra do servidor, que mostra o erro no campo; o `CHECK` de 128 KiB é a última defesa, com folga para o JSONB ser mais comprido que o protojson compacto). **A revisão da campanha** vive em `campaign_content_state` (uma linha por campanha, criada pela primeira escrita; sem linha é 0) e sobe de um **na mesma transação** de toda escrita; toda escrita começa por subi-la, então duas escritas da mesma campanha rodam uma depois da outra, e toda leitura do conteúdo lê essa linha dentro da transação de quem chama (ver [Arquitetura](arquitetura.md#o-conteúdo-da-mesa-ao-vivo-etapa-10-fatia-101c)). **Arquivar e desarquivar não são mudanças da entrada:** só `archived_at` muda (a `revision` e o `updated_at` ficam, e a revisão da campanha sobe, para o cache); o `updated_at` é a data da última mudança de verdade, a que o aviso "A classe mudou" mostra. A revisão com que cada ficha foi salva pela última vez, e os avisos que ela tinha (`known_issues`), ficam **dentro do documento da ficha** (`FullSheet.content_revision` e `known_issues`, escritos pelo servidor a cada salvamento), sem coluna nova: a entrada que mudou depois dela vira o aviso "A classe mudou". (Uma coluna em `characters` foi tentada e abandonada: a tabela tem TTL por linha, e qualquer `ALTER` repetido reescreve a expressão do TTL, o que o `TestMigrationsAreSafeToRerun` vê como mudança de esquema.) Só nomes e textos que o mestre escreve, sem dado pessoal (ver [Privacidade](privacidade.md)).
 - **Personagem recusado** (MR-024): o `RejectCharacter` apaga na hora a linha do personagem pendente, com a história, e a participação pendente do jogador. É a única exclusão de personagem fora da exclusão de conta, e a query só apaga linha com `status = 'pending'`: um personagem aprovado muda de estado, nunca de linha (RN-03).
 - **Retenção**: não há TTL para personagens, com uma exceção: o personagem de jogador órfão, sem jogador (a conta foi excluída) e sem campanha (a campanha foi apagada). Ninguém mais o alcança, e ele ainda guarda o texto livre de quem o escreveu. A `00020` põe um TTL por linha cuja expressão só vale para esse caso (`CASE WHEN kind = 'player' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END`); o job diário do CockroachDB apaga a linha. O teste `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` lê essa configuração da tabela e confere a expressão sobre linhas de verdade.
@@ -784,6 +786,12 @@ erDiagram
         uuid campaign_id PK "e FK para campaigns, CASCADE"
         int4 revision "sobe a cada escrita, na mesma transação"
         timestamptz updated_at
+    }
+
+    campaign_content_off {
+        uuid campaign_id PK "e FK para campaigns, CASCADE"
+        text content_key PK "chave do SRD ou da mesa, desligada para os jogadores"
+        timestamptz created_at
     }
 
     campaign_documents {
@@ -1292,6 +1300,7 @@ erDiagram
     characters ||--o{ character_master_notes : "tem"
     campaigns ||--o{ campaign_content : "tem o conteúdo da mesa"
     campaigns ||--o| campaign_content_state : "conta as escritas do conteúdo"
+    campaigns ||--o{ campaign_content_off : "desliga opções para os jogadores"
     campaigns ||--o{ game_sessions : "realiza"
     characters ||--o| character_vitals : "tem"
     characters ||--o{ character_level_ups : "subiu de nível"

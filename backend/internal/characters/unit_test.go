@@ -147,6 +147,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListTableEntries"] = table.ListTableEntries(ctx, connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: id}))
 	_, calls["GetClassTableDefaults"] = table.GetClassTableDefaults(ctx, connect.NewRequest(&rulesv1.GetClassTableDefaultsRequest{CampaignId: id}))
 	_, calls["GetEffectMenu"] = table.GetEffectMenu(ctx, connect.NewRequest(&rulesv1.GetEffectMenuRequest{CampaignId: id}))
+	_, calls["ListOptionSwitches"] = table.ListOptionSwitches(ctx, connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: id}))
+	_, calls["SetOptionSwitches"] = table.SetOptionSwitches(ctx, connect.NewRequest(&rulesv1.SetOptionSwitchesRequest{CampaignId: id}))
 	_, calls["CreateTableEntry"] = table.CreateTableEntry(ctx, connect.NewRequest(&rulesv1.CreateTableEntryRequest{CampaignId: id}))
 	_, calls["UpdateTableEntry"] = table.UpdateTableEntry(ctx, connect.NewRequest(&rulesv1.UpdateTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
 	_, calls["ArchiveTableEntry"] = table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
@@ -190,8 +192,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 20 {
-		t.Errorf("found %d reads, want 20 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 21 {
+		t.Errorf("found %d reads, want 21 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

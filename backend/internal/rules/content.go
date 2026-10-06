@@ -122,7 +122,10 @@ type content struct {
 	listFrom      map[string]string
 	offeredBy     map[string][]string
 	archived      map[string]bool
-	spellTargets  map[string]SpellTarget
+	// off are the keys (the SRD's and the table's) the master switched off for the
+	// players ("Opções para os jogadores", RN-23); empty without a table layer.
+	off          map[string]bool
+	spellTargets map[string]SpellTarget
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
 	srdTargets  map[string]SpellTarget
@@ -585,13 +588,13 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		cat.Races = append(cat.Races, RaceEntry{
 			Key: k, Name: r.Name, NamePT: c.namePT(k), SpeedFt: r.SpeedFt, Size: r.Size,
 			AbilityBonuses: abilityMap(r.AbilityBonuses), Subraces: r.Subraces,
-			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k],
+			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.subraces) {
 		s := c.subraces[k]
 		cat.Subraces = append(cat.Subraces, SubraceEntry{
-			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k],
+			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.classes) {
@@ -599,7 +602,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		e := ClassEntry{
 			Key: k, Name: cl.Name, NamePT: c.namePT(k), HitDie: cl.HitDie,
 			SkillChoices: cl.SkillChoices.Choose, SkillOptions: cl.SkillChoices.From,
-			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k],
+			SubclassLevel: cl.SubclassLevel, Subclasses: cl.Subclasses, Archived: c.archived[k], Off: c.off[k],
 			SpellListFrom: c.listFrom[k],
 		}
 		for _, s := range cl.SavingThrows {
@@ -624,7 +627,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	}
 	for _, k := range sortedKeys(c.subclasses) {
 		s := c.subclasses[k]
-		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k]}
+		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k], Off: c.off[k]}
 		if cast, ok := c.subCasting[k]; ok {
 			sc := &SubclassCasting{
 				Kind: cast.effect.Progression, Ability: Ability(cast.effect.Ability), Preparation: preparation(cast.effect),
@@ -643,7 +646,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	}
 	for _, k := range sortedKeys(c.backgrounds) {
 		b := c.backgrounds[k]
-		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills, EquipmentPT: c.bgEquipment[k], Archived: c.archived[k]})
+		cat.Backgrounds = append(cat.Backgrounds, BackgroundEntry{Key: k, Name: b.Name, NamePT: c.namePT(k), SkillProficiencies: b.Skills, EquipmentPT: c.bgEquipment[k], Archived: c.archived[k], Off: c.off[k]})
 	}
 	for _, k := range c.skillOrder {
 		s := c.skills[k]
@@ -683,11 +686,11 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 			Key: k, Name: s.Name, NamePT: c.namePT(k), Level: s.Level,
 			School: s.School, SchoolNamePT: c.namePT(s.School),
 			Classes: c.spellClasses(s), Ritual: s.Ritual, Concentration: s.Concentration,
-			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k],
+			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k], Off: c.off[k],
 		}
 		cat.Spells = append(cat.Spells, e)
 		c.spellEntries[k] = e
-		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && slices.Equal(d.Spell.Classes, e.Classes) {
+		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && d.Spell.Off == e.Off && slices.Equal(d.Spell.Classes, e.Classes) {
 			c.spellDetails[k] = d
 			continue
 		}
