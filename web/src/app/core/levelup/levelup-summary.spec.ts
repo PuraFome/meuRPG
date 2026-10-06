@@ -117,3 +117,24 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
     expect(rows.some((r) => r.key === 'prepared')).toBe(false);
   });
 });
+
+describe('changeRows: a row with no gain is not shown', () => {
+  it('has no "Truques" row for a class that has no cantrips: nothing before, 0 after', () => {
+    const before = pensantus(false);
+    before.spellcasting = [];
+    before.spellSlots = [];
+    before.spells = [];
+    const after = pensantus(true);
+    after.spellcasting[0].cantripsKnown = 0;
+    const rows = changeRows(before, after, ctx);
+    expect(rows.some((r) => r.key === 'cantrips')).toBe(false);
+    expect(rows.some((r) => r.key === 'dc')).toBe(true);
+  });
+
+  it('keeps it when the class gets cantrips, and when it already had some', () => {
+    const before = pensantus(false);
+    before.spellcasting = [];
+    expect(changeRows(before, pensantus(true), ctx).find((r) => r.key === 'cantrips')).toMatchObject({ before: '—', after: '4' });
+    expect(changeRows(pensantus(false), pensantus(true), ctx).some((r) => r.key === 'cantrips')).toBe(true);
+  });
+});

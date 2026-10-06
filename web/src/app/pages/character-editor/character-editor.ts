@@ -550,12 +550,13 @@ export class CharacterEditor {
     const query = (section: CasterSection, list: string) => filters[`${section.index}:${list}`] ?? '';
     return this.sections().map((section) => {
       const cantrips = cantripsOf(s.catalog.spells, section, this.selectedCantrips(), this.master());
-      const known = leveledOf(s.catalog.spells, section, this.selectedSpellsKnown(), this.master());
-      const prepared = leveledOf(s.catalog.spells, section, this.selectedSpellsPrepared(), this.master());
+      // An always-prepared spell is never a pick: it is in its locked row, free, and never in these lists.
+      const alwaysKeys = new Set(section.alwaysPrepared);
+      const known = leveledOf(s.catalog.spells, section, this.selectedSpellsKnown(), this.master()).filter((sp) => !alwaysKeys.has(sp.key));
+      const prepared = leveledOf(s.catalog.spells, section, this.selectedSpellsPrepared(), this.master()).filter((sp) => !alwaysKeys.has(sp.key));
       // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
       const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
       const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
-      const alwaysKeys = new Set(section.alwaysPrepared);
       const max = this.preparedMaxByClass()[section.classKey];
       const picked = prepared.filter((sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key)).length;
       const preparation = section.preparation;

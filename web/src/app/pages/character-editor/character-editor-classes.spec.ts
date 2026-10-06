@@ -647,6 +647,31 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     expect(el.querySelector('app-granted-spells[title="Já na ficha"]')).toBeNull();
   });
 
+  it('never offers an always-prepared spell as a pick: not in the lists of its class, at creation or on an edit, in one class or several', async () => {
+    const names = (el: Element) => Array.from(el.querySelectorAll('mat-checkbox')).map((c) => (c.textContent ?? '').replace(/\s+/g, ' ').trim());
+    // Several classes, at creation: the cleric's section lists Bênção but not Detectar Magia (always prepared); the wizard's list still has it.
+    const multi = await render({ id: 'camp-1' }, (f) => (f.catalogOver = withDomain));
+    multi.cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
+    multi.cmp.addClass();
+    multi.cmp.changeBlock(1, { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa' });
+    await settle(multi.fixture);
+    await openStep(multi.fixture, 'Magias');
+    const cleric = multi.el.querySelectorAll('.spell-section')[1];
+    expect(names(cleric).some((n) => n.startsWith('Bênção'))).toBe(true);
+    expect(names(cleric).some((n) => n.startsWith('Detectar Magia'))).toBe(false);
+    expect(names(multi.el.querySelectorAll('.spell-section')[0]).some((n) => n.startsWith('Detectar Magia'))).toBe(true);
+    TestBed.resetTestingModule();
+    // One class, on an edit, even when the sheet already carries it in its prepared list: still not a pick, and never counted.
+    const edit = await render({ id: 'camp-1', characterId: 'ch-1' }, (f) => {
+      f.catalogOver = withDomain;
+      f.forEdit = { ...emptyEdit({ className: 'class:cleric', level: 1, subclassName: 'subclass:path@mesa', spellsPrepared: ['spell:bless', 'spell:detect-magic'] }), preparedMax: { 'class:cleric': 5 } };
+    });
+    await openStep(edit.fixture, 'Magias');
+    const lists = Array.from(edit.el.querySelectorAll('app-spell-picker')).flatMap((p) => names(p));
+    expect(lists.some((n) => n.startsWith('Detectar Magia'))).toBe(false);
+    expect(edit.el.textContent).toContain('Preparadas 1 de 5');
+  });
+
   it('on an edit says how many the class prepares, from the saved sheet, never counting the locked ones', async () => {
     const { fixture, el } = await render({ id: 'camp-1', characterId: 'ch-1' }, (f) => {
       f.catalogOver = withDomain;

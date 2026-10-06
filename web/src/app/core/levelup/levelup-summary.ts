@@ -129,7 +129,10 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
     const none = '—';
     rows.push(row('dc', 'CD das magias', bc ? String(bc.saveDc) : none, String(ac.saveDc)));
     rows.push(row('attack', 'Ataque com magia', bc ? formatModifier(bc.attackBonus) : none, formatModifier(ac.attackBonus)));
-    rows.push(row('cantrips', 'Truques', bc ? String(bc.cantripsKnown) : none, String(ac.cantripsKnown), newNames(ctx.cantrips, 'Novo', 'Novos')));
+    // A class with no cantrips has nothing to gain: no row for "— → 0".
+    if (bc || ac.cantripsKnown > 0) {
+      rows.push(row('cantrips', 'Truques', bc ? String(bc.cantripsKnown) : none, String(ac.cantripsKnown), newNames(ctx.cantrips, 'Novo', 'Novos')));
+    }
     const known = (s: DerivedSheet) => s.spells.filter((x) => (x.spell?.level ?? 0) > 0).length;
     const knownBefore = known(before);
     const knownAfter = known(after);
