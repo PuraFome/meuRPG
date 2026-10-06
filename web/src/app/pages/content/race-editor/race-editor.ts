@@ -33,6 +33,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
+import { PlayersSwitch } from '../players-switch/players-switch';
 import { EntryRead } from '../entry-read/entry-read';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
@@ -47,7 +48,7 @@ export type RaceMode = 'race' | 'subrace';
 @Component({
   selector: 'app-race-editor',
   imports: [
-    EditorAlerts, EditorBar, EntryRead, FeatureEditor, MatButtonModule, MatIconModule, NumberStepper, PickList, RouterLink, SelectField, SwitchField, TextField,
+    EditorAlerts, EditorBar, PlayersSwitch, EntryRead, FeatureEditor, MatButtonModule, MatIconModule, NumberStepper, PickList, RouterLink, SelectField, SwitchField, TextField,
   ],
   templateUrl: './race-editor.html',
   styleUrl: '../editor.scss',
@@ -68,6 +69,8 @@ export class RaceEditor {
   readonly saveBlocked = input('');
 
   readonly saved = output<EditorSaved>();
+  /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
+  readonly switched = output<TableEntry>();
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 

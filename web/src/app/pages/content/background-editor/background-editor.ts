@@ -20,6 +20,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { TextField } from '../../../shared/form-fields/text-field';
 import { previewRead } from '../../../core/content/preview';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
+import { PlayersSwitch } from '../players-switch/players-switch';
 import { EntryRead } from '../entry-read/entry-read';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
@@ -30,7 +31,7 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
  */
 @Component({
   selector: 'app-background-editor',
-  imports: [EditorAlerts, EditorBar, EntryRead, FeatureEditor, MatIconModule, PickList, SelectField, TextField],
+  imports: [EditorAlerts, EditorBar, PlayersSwitch, EntryRead, FeatureEditor, MatIconModule, PickList, SelectField, TextField],
   templateUrl: './background-editor.html',
   styleUrl: '../editor.scss',
 })
@@ -47,6 +48,8 @@ export class BackgroundEditor {
   readonly saveBlocked = input('');
 
   readonly saved = output<EditorSaved>();
+  /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
+  readonly switched = output<TableEntry>();
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 

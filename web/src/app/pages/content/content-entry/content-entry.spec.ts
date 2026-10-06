@@ -8,7 +8,7 @@ import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
-import { entry, menuResponse, mirathel } from '../../../core/content/content-testing';
+import { entry, fakeContentWatcher, menuResponse, mirathel } from '../../../core/content/content-testing';
 import { ContentEntry } from './content-entry';
 
 describe('ContentEntry', () => {
@@ -23,6 +23,8 @@ describe('ContentEntry', () => {
   const archive = vi.fn();
   const unarchive = vi.fn();
   const getCampaign = vi.fn();
+  const setSwitches = vi.fn();
+  let watcher = fakeContentWatcher();
   let params$ = new BehaviorSubject(convertToParamMap({}));
 
   async function setup(role: Role, key: string, entries = mirathel(), opts: { failCatalog?: boolean; failMenu?: boolean } = {}) {
@@ -33,16 +35,19 @@ describe('ContentEntry', () => {
     if (opts.failMenu) effectMenu.mockRejectedValue(new Error('offline'));
     archive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: true }));
     unarchive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: false }));
+    setSwitches.mockReset().mockResolvedValue({ tableRevision: 8, changed: 1, options: [] });
     getCampaign.mockReset().mockResolvedValue({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
     params$ = new BehaviorSubject(convertToParamMap({ id: 'camp-1', key }));
     window.matchMedia = (() => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
     TestBed.resetTestingModule();
+    watcher = fakeContentWatcher();
+    TestBed.overrideComponent(ContentEntry, { set: { providers: [watcher.provider] } });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { paramMap: params$, snapshot: { queryParamMap: convertToParamMap({}) } } },
         { provide: CampaignsService, useValue: { getCampaign } },
-        { provide: TableContentClient, useValue: { list, catalog, effectMenu, archive, unarchive } },
+        { provide: TableContentClient, useValue: { list, catalog, effectMenu, archive, unarchive, setSwitches } },
       ],
     });
     const fixture = TestBed.createComponent(ContentEntry);
@@ -180,5 +185,58 @@ describe('ContentEntry', () => {
     const { el } = await setup(Role.MASTER, 'spell:l-mina-de-nanquim@mesa', mirathel(), { failMenu: true });
     expect(el.querySelector('app-spell-editor')).not.toBeNull();
     expect(text(el)).not.toContain('Tentar de novo');
+  });
+  it('has the entry\'s own switch "Disponível para os jogadores" in the editor, and saves it at once (RN-23)', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    const sw = el.querySelector<HTMLButtonElement>('app-players-switch [role="switch"]')!;
+    expect(text(el.querySelector('app-players-switch')!)).toContain('Disponível para os jogadores');
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    expect(text(el.querySelector('app-players-switch')!)).toContain('Ligado');
+    sw.click();
+    await settle(fixture);
+    expect(setSwitches).toHaveBeenCalledWith('camp-1', [{ key: 'race:corujeiro@mesa', off: true }]);
+    expect(el.querySelector('app-players-switch [role="switch"]')!.getAttribute('aria-checked')).toBe('false');
+    expect(text(el.querySelector('app-players-switch')!)).toContain('Desligado');
+    expect(text(el.querySelector('app-players-switch')!)).toContain('As 2 fichas que a usam continuam funcionando.');
+    // The header says it too, and the form is where it was (no reload of the editor).
+    expect(text(el.querySelector('.tags')!)).toContain('Desligada para os jogadores');
+    expect(el.querySelector('app-race-editor')).not.toBeNull();
+  });
+
+  it('puts the switch back and says why when the server refuses it', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    setSwitches.mockRejectedValue(new Error('offline'));
+    el.querySelector<HTMLButtonElement>('app-players-switch [role="switch"]')!.click();
+    await settle(fixture);
+    expect(el.querySelector('app-players-switch [role="switch"]')!.getAttribute('aria-checked')).toBe('true');
+    expect(text(el.querySelector('app-players-switch [role="alert"]')!)).toContain('O interruptor continua como estava.');
+  });
+
+  it('has no switch for a player, who only reads what is on', async () => {
+    const { el } = await setup(Role.PLAYER, 'race:corujeiro@mesa');
+    expect(el.querySelector('app-players-switch')).toBeNull();
+  });
+
+  it('reads the entries again when the table changed (content_changed): the master sees the switch another tab turned', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    expect(watcher.following()).toBe('camp-1');
+    list.mockResolvedValue({ entries: mirathel().map((e) => (e.key === 'race:corujeiro@mesa' ? ({ ...e, off: true } as typeof e) : e)), tableRevision: 8 });
+    watcher.hint();
+    await settle(fixture);
+    expect(text(el.querySelector('.tags')!)).toContain('Desligada para os jogadores');
+    expect(el.querySelector('app-players-switch [role="switch"]')!.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('keeps the body the master is editing when another write changed the entry, and still shows its switch', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+    const input = el.querySelector<HTMLInputElement>('app-race-editor input')!;
+    input.value = 'Corujeiro dos Vales';
+    input.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    list.mockResolvedValue({ entries: mirathel().map((e) => (e.key === 'race:corujeiro@mesa' ? ({ ...e, revision: 9, off: true } as typeof e) : e)), tableRevision: 9 });
+    watcher.hint();
+    await settle(fixture);
+    expect(el.querySelector<HTMLInputElement>('app-race-editor input')!.value).toBe('Corujeiro dos Vales');
+    expect(text(el.querySelector('.tags')!)).toContain('Desligada para os jogadores');
   });
 });

@@ -30,7 +30,7 @@ let nextId = 0;
       </button>
       <span class="text">
         <span class="label" [id]="labelId">{{ label() }}</span>
-        <span class="state">{{ checked() ? 'Ligado' : 'Desligado' }}</span>
+        <span class="state">{{ checked() ? onWord() : offWord() }}</span>
       </span>
     </div>
   `,
@@ -80,6 +80,13 @@ let nextId = 0;
         background: var(--mr-ink);
       }
 
+      // A 44 px target around the 32 px track.
+      &::before {
+        content: '';
+        position: absolute;
+        inset: -6px -2px;
+      }
+
       &:focus-visible {
         outline: 2px solid var(--mr-focus);
         outline-offset: 2px;
@@ -126,6 +133,9 @@ export class SwitchField {
   readonly label = input.required<string>();
   readonly checked = input.required<boolean>();
   readonly path = input('');
+  /** The words beside the label: "Ligado"/"Desligado", or "Ligada"/"Desligada" where the noun is feminine. */
+  readonly onWord = input('Ligado');
+  readonly offWord = input('Desligado');
   readonly toggled = output<boolean>();
   protected readonly labelId = `sw-${nextId++}`;
 }

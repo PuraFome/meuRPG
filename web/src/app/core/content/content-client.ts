@@ -7,11 +7,13 @@ import {
   type AffectedCharacter,
   type CreateTableEntryRequestSchema,
   type GetEffectMenuResponse,
+  type OptionSwitchEntry,
   type TableContentViolation,
   TableContentBlockedReason,
   TableContentBlockedSchema,
   TableContentRefusalSchema,
   TableContentService,
+  type SetOptionSwitchesResponse,
   type TableEntry,
   type UpdateTableEntryResponse,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -72,6 +74,17 @@ export class TableContentClient {
   async unarchive(campaignId: string, key: string): Promise<TableEntry> {
     const res = await this.client.unarchiveTableEntry({ campaignId, key });
     return res.entry as TableEntry;
+  }
+
+  /** "Opções para os jogadores" (MR-025, RN-23): every class, subclass, race, subrace, background and spell with its switch (master only). */
+  async switches(campaignId: string): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }> {
+    const res = await this.client.listOptionSwitches({ campaignId });
+    return { options: res.options, tableRevision: res.tableRevision };
+  }
+
+  /** Turns options off or on for the players, at once; the answer lists the options whose state changed. */
+  setSwitches(campaignId: string, switches: readonly { key: string; off: boolean }[]): Promise<SetOptionSwitchesResponse> {
+    return this.client.setOptionSwitches({ campaignId, switches: [...switches] });
   }
 
   /** The closed menu of effects, as data (master only). */

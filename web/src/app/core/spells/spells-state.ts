@@ -124,6 +124,31 @@ export class SpellsState {
     }
   }
 
+  /**
+   * The table's content changed (`content_changed`, RN-23): the list that is on screen is asked again from its first page,
+   * with the filter and character it answers, and swapped in when the answer comes. No spinner, no URL change, and a failure
+   * leaves the list as it was. An ask of the person (a new filter) that starts or finishes meanwhile wins.
+   */
+  async refresh(): Promise<void> {
+    const answered = this.answered;
+    if (!answered || this.status() !== 'ready') {
+      return;
+    }
+    const seq = this.seq;
+    try {
+      const res = await this.source.list(toListRequest(this.campaignId, answered.filter, answered.characterId));
+      if (seq !== this.seq || this.answered !== answered) {
+        return;
+      }
+      this.spells.set(res.spells);
+      this.total.set(res.total);
+      this.nextToken.set(res.nextPageToken);
+      this.hooks.onAnswered?.();
+    } catch {
+      // Keep the list on screen: the next change reads again.
+    }
+  }
+
   /** The next page, added under the rows already there. */
   async more(): Promise<void> {
     const token = this.nextToken();

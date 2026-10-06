@@ -250,3 +250,21 @@
 .defeat-note {
   margin-top: var(--mr-space-3);
 }
+
+// An option the master switched off (RN-23): the sentence under the field that holds it; an icon and words, never colour alone.
+.field-off {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  font-size: 15px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

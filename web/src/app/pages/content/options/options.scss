@@ -1,0 +1,250 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+  min-height: 44px;
+}
+
+.head {
+  .mr-page-title:focus {
+    outline: none;
+  }
+
+  .mr-page-lead {
+    margin-bottom: 0;
+  }
+}
+
+.muted {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1100px) {
+    grid-template-columns: 264px minmax(0, 1fr);
+    gap: var(--mr-space-5);
+  }
+}
+
+// The kinds: a column from 1100 px, a strip of tabs on top that scrolls inside itself below it (1024), a select on a phone.
+.menu {
+  padding: 12px;
+
+  &__list {
+    display: flex;
+    gap: var(--mr-space-2);
+    margin: 0;
+    padding: 0 0 4px;
+    list-style: none;
+    overflow-x: auto;
+
+    @media (min-width: 1100px) {
+      flex-direction: column;
+      padding: 0;
+      overflow: visible;
+    }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--mr-radius-sm);
+    color: var(--mr-ink);
+    font-size: 17px;
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--mr-ground);
+    }
+
+    &--on {
+      border: 2px solid var(--mr-accent);
+      background: var(--mr-accent-soft);
+      font-weight: 700;
+    }
+  }
+
+  &__count {
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+
+  &__note {
+    margin: var(--mr-space-3) 0 0;
+    padding-top: var(--mr-space-3);
+    border-top: 1px solid var(--mr-rule);
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-5);
+
+  &__head .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  font-size: 17px;
+}
+
+// "Tudo salvo": a word and an icon, never colour alone.
+.saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &--error {
+    color: var(--mr-danger-ink);
+  }
+}
+
+.filters {
+  max-width: 360px;
+}
+
+.bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  button {
+    min-height: 44px;
+  }
+
+  @media (max-width: 479.98px) {
+    button {
+      flex: 1 1 0;
+      padding-inline: 8px;
+    }
+  }
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--mr-space-3);
+  min-height: 60px;
+  padding: 6px 4px;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-3);
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+
+  &__srd {
+    font-size: 13px;
+  }
+
+  &__note {
+    grid-column: 1 / -1;
+    margin: 0 0 4px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// A phone: the switch and its name on one line, who uses it and the tag under it.
+@media (max-width: 599.98px) {
+  .list {
+    padding: var(--mr-space-4);
+  }
+
+  .orow {
+    grid-template-columns: minmax(0, 1fr);
+
+    &__meta {
+      margin-left: 64px;
+    }
+
+    &__note {
+      margin-left: 64px;
+    }
+  }
+}

@@ -16,6 +16,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { Ability, ContentSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogAbility, type CatalogVm, catalogVm } from './catalog';
+import { ContentWatcher } from './content-watcher';
 import { EffectMenuVm } from './effect-draft';
 
 /** Test builders: an entry as the server sends it, and a small effect menu with the shape of the real one. */
@@ -131,4 +132,28 @@ export function catalog(extra: Parameters<typeof catalogVm>[1] = []): CatalogVm 
     }),
     extra,
   );
+}
+
+/**
+ * A stand-in for the page's `ContentWatcher` (RN-23, the live content hint): `provider` goes in `providers` (or
+ * `TestBed.overrideComponent(Page, { set: { providers: [provider] } })`), and `hint()` plays a `content_changed` that arrived
+ * (what the debounce lets through). `following()` is whether the page asked to follow the campaign's session.
+ */
+export function fakeContentWatcher() {
+  let onChange: (() => void) | null = null;
+  let id: (() => string) | null = null;
+  return {
+    provider: {
+      provide: ContentWatcher,
+      useValue: {
+        whileLive: (campaignId: () => string, cb: () => void) => {
+          id = campaignId;
+          onChange = cb;
+        },
+        follow: () => undefined,
+      },
+    },
+    hint: () => onChange?.(),
+    following: () => id?.() ?? '',
+  };
 }

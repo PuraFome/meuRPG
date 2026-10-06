@@ -23,8 +23,9 @@ export class XpWatcher {
 
   /** Follows `campaignId` (its open session), or stops with `null`. `onChange`
    * runs on every `xp_changed`, and on a reconnection (an event may have been missed);
-   * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too. */
-  follow(campaignId: string | null, onChange: () => void, onCreatures?: () => void): void {
+   * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too; `onContent`, when given, on every
+   * `content_changed` (RN-23: the table's content changed, an open sheet reads itself again) and on a reconnection. */
+  follow(campaignId: string | null, onChange: () => void, onCreatures?: () => void, onContent?: () => void): void {
     if (campaignId === this.campaignId) {
       return;
     }
@@ -46,12 +47,14 @@ export class XpWatcher {
           if (!first) {
             onChange();
             onCreatures?.();
+            onContent?.();
           }
           first = false;
         },
         onVitals: () => undefined,
         onXpChanged: onChange,
         onCreaturesChanged: onCreatures,
+        onContentChanged: onContent,
         onEnded: () => this.stop(stream),
         onFatal: () => this.stop(stream),
       },

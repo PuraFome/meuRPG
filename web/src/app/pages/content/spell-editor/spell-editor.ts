@@ -37,6 +37,7 @@ import { Segmented } from '../../../shared/segmented/segmented';
 import { EntryRead } from '../entry-read/entry-read';
 import { previewRead } from '../../../core/content/preview';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
+import { PlayersSwitch } from '../players-switch/players-switch';
 
 export interface EditorSaved {
   readonly entry: TableEntry;
@@ -52,7 +53,7 @@ export interface EditorSaved {
  */
 @Component({
   selector: 'app-spell-editor',
-  imports: [CheckRow, EditorAlerts, EditorBar, EntryRead, MatButtonModule, MatIconModule, Segmented, SelectField, SwitchField, TextField],
+  imports: [CheckRow, EditorAlerts, EditorBar, PlayersSwitch, EntryRead, MatButtonModule, MatIconModule, Segmented, SelectField, SwitchField, TextField],
   templateUrl: './spell-editor.html',
   styleUrl: './spell-editor.scss',
 })
@@ -71,6 +72,8 @@ export class SpellEditor {
   readonly saveBlocked = input('');
 
   readonly saved = output<EditorSaved>();
+  /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
+  readonly switched = output<TableEntry>();
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 

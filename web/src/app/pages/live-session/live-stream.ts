@@ -56,6 +56,8 @@ export interface LiveStreamHandlers {
   onCreaturesChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
   onPuzzleChanged?(puzzleId: string): void;
+  /** `content_changed` (RN-23, RN-10): the table's content changed; read what the page shows again. */
+  onContentChanged?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -237,6 +239,9 @@ export class LiveStream {
             break;
           case 'puzzleChanged':
             this.options.handlers.onPuzzleChanged?.(event.puzzleId);
+            break;
+          case 'contentChanged':
+            this.options.handlers.onContentChanged?.();
             break;
           case 'ended':
             this.stop();

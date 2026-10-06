@@ -110,6 +110,8 @@ export type LiveEventVm =
   | { readonly kind: 'heartbeat' }
   | { readonly kind: 'vitals'; readonly vitals: VitalsVm }
   | { readonly kind: 'ended' }
+  /** `content_changed` (RN-23, RN-10): the table's content changed; no content travels, each screen reads what it shows again. */
+  | { readonly kind: 'contentChanged' }
   /** `puzzle_changed` (MR-038): a puzzle of the session changed; the hint names only its ID, the apps read it again. */
   | { readonly kind: 'puzzleChanged'; readonly puzzleId: string }
   /** `current_map_changed`; `mapId` is `null` when the map was cleared. */

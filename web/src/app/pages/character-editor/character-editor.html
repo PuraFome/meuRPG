@@ -29,6 +29,12 @@
         <a mat-stroked-button class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
       }
       @case ('ready') {
+        @if (contentNote(); as note) {
+          <div class="mr-notice mr-notice--neutral editor__notice" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>{{ note }}</p>
+          </div>
+        }
         @if (isFullSheetKind(s.kind)) {
           <form [formGroup]="fullForm">
             <app-editor-stepper>
@@ -98,6 +104,11 @@
                     </mat-select>
                     <mat-error>Escolha a classe.</mat-error>
                   </mat-form-field>
+                  @if (offField(); as off) {
+                    @if (off.field === 'class') {
+                      <p class="field-off" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ off.text }}</p>
+                    }
+                  }
 
                   @if (!selectedClass()) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -118,6 +129,11 @@
                         <mat-hint>{{ subclassHint() }}</mat-hint>
                       }
                     </mat-form-field>
+                  @if (offField(); as off) {
+                    @if (off.field === 'subclass') {
+                      <p class="field-off" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ off.text }}</p>
+                    }
+                  }
                   } @else {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
@@ -135,6 +151,11 @@
                     </mat-select>
                     <mat-error>Escolha a raça.</mat-error>
                   </mat-form-field>
+                  @if (offField(); as off) {
+                    @if (off.field === 'race') {
+                      <p class="field-off" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ off.text }}</p>
+                    }
+                  }
 
                   @if (availableSubraces().length > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -145,6 +166,11 @@
                         }
                       </mat-select>
                     </mat-form-field>
+                  @if (offField(); as off) {
+                    @if (off.field === 'subrace') {
+                      <p class="field-off" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ off.text }}</p>
+                    }
+                  }
                   }
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -157,6 +183,11 @@
                     </mat-select>
                     <mat-error>Escolha o antecedente.</mat-error>
                   </mat-form-field>
+                  @if (offField(); as off) {
+                    @if (off.field === 'background') {
+                      <p class="field-off" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ off.text }}</p>
+                    }
+                  }
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Alinhamento</mat-label>

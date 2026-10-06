@@ -28,6 +28,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { setSwitchesRPC } from './content-options-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -4463,4 +4464,79 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
+});
+
+/**
+ * "Opções para os jogadores" (MR-025, RN-23; E10-01 state 3): the master's switches by kind (the races with one off and one
+ * used by a sheet, the subclasses of an off class, the search with nothing found, the bulk buttons), the entry's own switch in
+ * the spell editor, and what a player reads when the master turned something off (the race list on a phone).
+ */
+async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const { campaignId } = await tableForMaps(m, p, `Acessibilidade opções ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
+    const race = await createEntryRPC(m, campaignId, 'tableRace', raceBody());
+    await setSwitchesRPC(m, campaignId, [
+      { key: 'race:tiefling', off: true },
+      { key: 'class:cleric', off: true },
+      { key: spell, off: true },
+      { key: race, off: false },
+    ]);
+
+    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=racas`);
+    await expect(m.getByRole('switch', { name: 'Tiefling' })).toHaveAttribute('aria-checked', 'false');
+    await expectScreenPasses(m, `Opções para os jogadores, as raças ${where}`);
+    await m.getByRole('switch', { name: 'Gnomo', exact: true }).click();
+    await expect(m.getByText('Tudo salvo')).toBeVisible();
+    await expectScreenPasses(m, `Opções para os jogadores, uma ficha usa a raça desligada ${where}`);
+    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=subclasses`);
+    await expect(m.getByText('Some para os jogadores: Clérigo está desligada.').first()).toBeVisible();
+    await expectScreenPasses(m, `Opções para os jogadores, as subclasses de uma classe desligada ${where}`);
+    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=magias`);
+    await m.getByLabel('Buscar pelo nome').fill('zzzz');
+    await expect(m.getByText('Nenhuma opção com esta busca.')).toBeVisible();
+    await expectScreenPasses(m, `Opções para os jogadores, a busca sem resultado ${where}`);
+    await open(m, `/campanhas/${campaignId}/conteudo`);
+    await expectScreenPasses(m, `Conteúdo da mesa, com o caminho para as opções ${where}`);
+    if (width >= 768) {
+      await open(m, entryRoute(campaignId, spell));
+      await expect(m.getByRole('switch', { name: 'Disponível para os jogadores' })).toHaveAttribute('aria-checked', 'false');
+      await expectScreenPasses(m, `Editor de magia, "Disponível para os jogadores" desligado ${where}`);
+    }
+
+    // What a player reads: the race list without the Tiefling, on the screen where the master's phone is small.
+    await open(p, `/campanhas/${campaignId}/conteudo`);
+    await expectScreenPasses(p, `Conteúdo da mesa do jogador, com opções desligadas ${where}`);
+    await open(p, `/campanhas/${campaignId}/magias?q=nanquim`);
+    await expect(p.getByText('Nenhuma magia com “nanquim”.')).toBeVisible();
+    await expectScreenPasses(p, `Magias do jogador, a magia desligada não aparece ${where}`);
+    await open(p, `/campanhas/${campaignId}/conteudo/opcoes`);
+    await expect(p.getByText('Só o mestre escolhe o que os jogadores veem.')).toBeVisible();
+    await expectScreenPasses(p, `Opções para os jogadores, o que um jogador vê ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptions(browser, 'light', 1280);
+});
+
+test('as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptions(browser, 'dark', 1024);
+});
+
+test('as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptions(browser, 'dark', 390);
+});
+
+test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptions(browser, 'light', 320);
 });

@@ -28,7 +28,9 @@ import { RosterClient } from '../../core/maps/roster-client';
 import { type SpellClass, SpellsClient } from '../../core/spells/spells-client';
 import { BASIC_SHEET_SENTENCE, spellsErrorMessage } from '../../core/spells/spells-errors';
 import { NO_FILTER, type SpellFilter, SCHOOLS, activeFilters, filterChips, isFiltered } from '../../core/spells/spells-filter';
+import { ContentWatcher } from '../../core/content/content-watcher';
 import { SpellsState } from '../../core/spells/spells-state';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { mediaQuery } from '../../shared/map-view/media-query';
 import { isTableSpellKey, spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
 import { type SpellCardState, SpellCard } from './spell-card';
@@ -62,6 +64,7 @@ const WIDE_QUERY = '(min-width: 1100px)';
 @Component({
   selector: 'app-spells',
   imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, SpellCard, SpellFilters],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './spells.html',
   styleUrls: ['./spells.scss', './spells-list.scss'],
 })
@@ -77,6 +80,7 @@ export class Spells {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly location = inject(Location);
+  private readonly watcher = inject(ContentWatcher);
 
   protected readonly campaignId = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly access = signal<Access>({ status: 'loading' });
@@ -149,6 +153,19 @@ export class Spells {
     });
     destroyRef.onDestroy(() => sub.unsubscribe());
     void this.start();
+    // The master turned something on or off, or wrote a spell (`content_changed`): the list, the open spell and the class names
+    // are read again with this person's role, so a spell that went off leaves the list and the card says so.
+    this.watcher.whileLive(() => this.campaignId, () => this.contentChanged());
+  }
+
+  private contentChanged(): void {
+    if (this.access().status !== 'ok') {
+      return;
+    }
+    void this.state.refresh();
+    if (this.selected() !== '') {
+      void this.loadCard(this.selected(), true);
+    }
   }
 
   protected async start(): Promise<void> {
@@ -358,10 +375,13 @@ export class Spells {
     }
   }
 
-  protected async loadCard(key = this.selected()): Promise<void> {
+  protected async loadCard(key = this.selected(), quiet = false): Promise<void> {
     const seq = ++this.cardSeq;
     const namePt = this.state.spells().find((s) => s.key === key)?.namePt ?? '';
-    this.card.set({ status: 'loading', namePt });
+    // Read again after a `content_changed`: the card on screen stays until the answer comes.
+    if (!(quiet && this.card()?.status === 'ready')) {
+      this.card.set({ status: 'loading', namePt });
+    }
     try {
       const details = spellDetailsFromGen(await this.client.details(this.campaignId, key));
       if (seq === this.cardSeq) {

@@ -12,7 +12,9 @@ import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { cannotLevelUpMessage, describeLevelUpFailure, refusalMessage, refusalStep, type LevelUpFailure } from '../../core/levelup/levelup-errors';
 import { STEP_LABELS, type LevelUpDone, type SheetKeys, type StepKey } from '../../core/levelup/levelup-flow';
+import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { AbilitiesStep } from './abilities-step/abilities-step';
 import { HpStep } from './hp-step/hp-step';
 import { LevelUpSession } from './level-up-session';
@@ -65,6 +67,7 @@ function sheetKeys(character: Character): SheetKeys {
     StepsBar,
     SummaryStep,
   ],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './level-up.html',
   styleUrl: './level-up.scss',
 })
@@ -76,6 +79,7 @@ export class LevelUpPage {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly watcher = inject(ContentWatcher);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly campaignId = signal('');
@@ -107,7 +111,7 @@ export class LevelUpPage {
       return first.text;
     }
     const p = s?.preview.state();
-    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason) === this.step()) {
+    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason, p.refusal.field) === this.step()) {
       return refusalMessage(p.refusal);
     }
     return '';
@@ -136,6 +140,7 @@ export class LevelUpPage {
         void this.load(campaignId, characterId);
       }
     });
+    this.watcher.whileLive(this.campaignId, () => void this.contentChanged());
     destroyRef.onDestroy(() => {
       this.session()?.stop();
       this.footObserver?.disconnect();
@@ -380,17 +385,42 @@ export class LevelUpPage {
 
   /** After a stale revision: the sheet and what the level gives are read again (the master may have changed
    * either), the session is made anew, and the picks that are still valid are carried over. */
-  protected async rereadSheet(): Promise<void> {
+  /** What the page says after the table's content changed under the person: nothing, or that a choice left the list. */
+  protected readonly contentNote = signal('');
+
+  /** `content_changed` (RN-23): the options and the lists are read again with this person's role; the choices that are still
+   * offered stay (`adopt`), and one that is not any more is said, so the person picks again before confirming. */
+  private async contentChanged(): Promise<void> {
     const old = this.session();
     if (!old) {
       return;
     }
+    const before = pickedCount(old.draft);
+    const changed = await this.rereadSheet(true);
+    const now = this.session();
+    if (changed && now) {
+      this.contentNote.set(
+        pickedCount(now.draft) < before
+          ? 'O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.'
+          : 'O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.',
+      );
+    }
+  }
+
+  /** Reads the character, the options and (after a content change) the lists again, keeping the choices still offered.
+   * Resolves true when the page now shows the new reading. */
+  protected async rereadSheet(afterContent = false): Promise<boolean> {
+    const old = this.session();
+    if (!old) {
+      return false;
+    }
     try {
-      const [character, options] = await Promise.all([
+      const [character, options, catalog] = await Promise.all([
         this.client.character(this.campaignId(), this.characterId()),
         this.client.options(this.campaignId(), this.characterId()),
+        afterContent ? this.client.catalog(this.campaignId()) : Promise.resolve(old.draft.catalog),
       ]);
-      const draft = new LevelUpDraft(options, sheetKeys(character), old.draft.catalog);
+      const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
       const session = new LevelUpSession(this.campaignId(), character, options, draft, this.client, old.preference, (key, name) =>
         this.describeSpell(key, name),
@@ -398,14 +428,16 @@ export class LevelUpPage {
       old.stop();
       this.failure.set(null);
       this.state.set({ status: 'ready', session });
+      return true;
     } catch (err) {
       const failure = describeLevelUpFailure(err);
       if (failure.kind === 'blocked') {
         old.stop();
         this.state.set({ status: 'blocked', message: failure.message });
-      } else {
+      } else if (!afterContent) {
         this.show(failure);
       }
+      return false;
     }
   }
 
@@ -422,4 +454,9 @@ export class LevelUpPage {
     return step ? STEP_LABELS[step] : '';
   }
 
+}
+
+/** How many choices the person has made, to tell whether a re-read dropped one. */
+function pickedCount(d: LevelUpDraft): number {
+  return (d.subclassKey() ? 1 : 0) + d.cantrips().size + d.spells().size + d.prepared().size + d.features().size + d.skills().size + d.expertise().size;
 }

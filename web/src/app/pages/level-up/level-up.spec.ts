@@ -15,6 +15,7 @@ import {
   LevelUpRefusalSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { fakeContentWatcher } from '../../core/content/content-testing';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, pensantus, wizardOptions } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
@@ -56,6 +57,7 @@ describe('LevelUpPage', () => {
     xpMode: vi.fn(),
   };
   let navigate: ReturnType<typeof vi.spyOn>;
+  let watcher = fakeContentWatcher();
 
   beforeEach(() => {
     // jsdom has no layout: scrolling does nothing.
@@ -80,6 +82,8 @@ describe('LevelUpPage', () => {
     client.xpMode.mockReset().mockResolvedValue(XpMode.MILESTONES);
     client.rollHitPoints.mockReset().mockResolvedValue({ die: 6, value: 5, alreadyRolled: false });
     client.levelUp.mockReset().mockResolvedValue(character({ canLevelUp: false }, pensantus(true)));
+    watcher = fakeContentWatcher();
+    TestBed.overrideComponent(LevelUpPage, { set: { providers: [watcher.provider] } });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -477,6 +481,48 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('Ainda não dá para subir de nível');
       expect(text(f)).toContain('Quem sobe o nível é o jogador');
       expect(client.options).not.toHaveBeenCalled();
+    });
+  });
+  describe('the table\'s content changed (content_changed, RN-23)', () => {
+    it('reads the options and the lists again, keeps the choices that are still offered, and says so', async () => {
+      const f = await setup();
+      expect(watcher.following()).toBe('camp-1');
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      expect(client.options).toHaveBeenCalledTimes(1);
+      watcher.hint();
+      await load(f);
+      expect(client.options).toHaveBeenCalledTimes(2);
+      expect(client.catalog).toHaveBeenCalledTimes(2);
+      expect(text(f)).toContain('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
+      // Still on the same step, and the cantrip is still picked.
+      expect(text(f)).toContain('Passo 3 de 4 · Magias');
+      expect((pickRow(f, 'Prestidigitação').querySelector('input') as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('says a choice left the list when the master switched it off, and the row is gone', async () => {
+      const f = await setup();
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      client.catalog.mockResolvedValue({ spells: SPELLS.filter((sp) => sp.key !== 'spell:prestidigitation'), skills: SKILLS });
+      watcher.hint();
+      await load(f);
+      expect(text(f)).toContain('uma das suas escolhas saiu da lista');
+      expect(Array.from(el(f).querySelectorAll('.row__main, .row')).some((r) => r.textContent?.includes('Prestidigitação'))).toBe(false);
+    });
+
+    it('keeps the page as it was when the read fails', async () => {
+      const f = await setup();
+      client.options.mockRejectedValue(new Error('offline'));
+      watcher.hint();
+      await load(f);
+      expect(text(f)).toContain('Passo 1 de 4 · Atributos');
+      expect(el(f).querySelector('.js-failure')).toBeNull();
+      expect(text(f)).not.toContain('O mestre mudou');
     });
   });
 });

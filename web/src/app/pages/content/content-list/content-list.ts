@@ -26,6 +26,8 @@ import {
   KIND_NOUNS,
 } from '../../../core/content/content-kinds';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
+import { ContentWatcher } from '../../../core/content/content-watcher';
+import { LiveSessionSourceLive } from '../../live-session/live-session-source.live';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
@@ -48,6 +50,7 @@ type PageState =
 @Component({
   selector: 'app-content-list',
   imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, SelectField, TextField],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './content-list.html',
   styleUrl: './content-list.scss',
 })
@@ -58,6 +61,7 @@ export class ContentList {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
+  private readonly watcher = inject(ContentWatcher);
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly nav = CONTENT_NAV;
@@ -113,6 +117,27 @@ export class ContentList {
         this.filter.set('all');
       }
     });
+    // The table changed (an entry written, a switch turned): read the list again with this person's role, with no spinner.
+    this.watcher.whileLive(this.campaignId, () => void this.refresh());
+  }
+
+  /** The list again after a `content_changed`: the rows, never the page's state (the search, the kind, an open sheet stay). */
+  protected async refresh(): Promise<void> {
+    if (this.state().status !== 'ready') {
+      return;
+    }
+    try {
+      const res = await loadContext(this.campaigns, this.client, this.campaignId());
+      if (res.status === 'ok' && this.state().status === 'ready') {
+        this.state.set({ status: 'ready', ctx: res.ctx });
+        void this.client.catalog(this.campaignId()).then(
+          (content) => this.catalog.set(catalogVm(content, res.ctx.entries)),
+          () => undefined,
+        );
+      }
+    } catch {
+      // Keep what is on screen: the next change reads again.
+    }
   }
 
   protected async load(): Promise<void> {

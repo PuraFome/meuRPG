@@ -155,15 +155,20 @@ export interface EntryState {
   readonly archived: boolean;
 }
 
-export function entryState(e: Pick<TableEntry, 'archived' | 'charactersUsing' | 'kind'>, master: boolean): EntryState | null {
+export function entryState(e: Pick<TableEntry, 'archived' | 'charactersUsing' | 'kind'> & { readonly off?: boolean }, master: boolean): EntryState | null {
   if (!master) {
     return null;
   }
   const n = e.charactersUsing;
+  const using = n > 0 ? `${n} ${n === 1 ? 'ficha usa' : 'fichas usam'}` : '';
   if (e.archived) {
     const word = KIND_NOUNS[e.kind]?.archived ?? 'arquivada';
     const label = word.charAt(0).toUpperCase() + word.slice(1);
-    return { text: n > 0 ? `${label} · ${n} ${n === 1 ? 'ficha usa' : 'fichas usam'}` : label, archived: true };
+    return { text: using ? `${label} · ${using}` : label, archived: true };
+  }
+  if (e.off) {
+    // "Opções para os jogadores" (RN-23): the master still reads and edits it; the players do not receive it.
+    return { text: using ? `Desligada para os jogadores · ${using}` : 'Desligada para os jogadores', archived: false };
   }
   return n > 0 ? { text: `Em uso por ${n} ${n === 1 ? 'ficha' : 'fichas'}`, archived: false } : null;
 }

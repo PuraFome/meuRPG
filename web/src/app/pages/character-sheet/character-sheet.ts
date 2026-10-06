@@ -168,6 +168,8 @@ export class CharacterSheetPage {
           live ? id : null,
           () => void this.reloadQuietly(),
           () => this.creaturesTick.update((n) => n + 1),
+          // The table's content changed (RN-23, "A classe mudou"): the same stream, one more kind of hint, the sheet read again.
+          () => void this.reloadQuietly(),
         ),
       );
     });

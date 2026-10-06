@@ -149,16 +149,16 @@
         } @else if (catalog() && (menu() || kind() === Kind.SPELL)) {
           @switch (kind()) {
             @case (Kind.SPELL) {
-              <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.RACE) {
-              <app-race-editor mode="race" [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-race-editor mode="race" [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.SUBRACE) {
-              <app-race-editor mode="subrace" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="subraceParent()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-race-editor mode="subrace" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="subraceParent()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.BACKGROUND) {
-              <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
           }
         } @else {

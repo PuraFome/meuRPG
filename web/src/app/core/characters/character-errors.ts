@@ -12,6 +12,25 @@ import { describeConnectError } from '../connect/connect-errors';
 import { CharacterBlockedReason } from './characters.types';
 
 /**
+ * The content key a player's save was refused for because the master switched it off in "Opções para os jogadores" (RN-23):
+ * `failed_precondition` with `CharacterBlocked` `SWITCHED_OFF_CONTENT` and the key ("race:tiefling", "class:wizard"). `null` for
+ * any other error. The editor shows it on the field that holds the key, by the typed reason and never by the message.
+ */
+export function switchedOffKey(err: unknown): string | null {
+  const e = ConnectError.from(err, Code.Unavailable);
+  if (e.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [detail] = e.findDetails(CharacterBlockedSchema);
+  return detail?.reason === GenCharacterBlockedReason.SWITCHED_OFF_CONTENT ? detail.contentKey || '' : null;
+}
+
+/** What a field says when the option it holds was switched off: the sheet keeps what it had; a new choice is what is refused. */
+export function switchedOffMessage(name: string): string {
+  return `${name || 'Esta opção'} não está mais disponível para os jogadores. Escolha outra.`;
+}
+
+/**
  * Turns a `CharacterBlocked.reason` into the message the sheet and the
  * editor show as-is. Kept separate from `describeCharacterError` so both can
  * be unit-tested without a `ConnectError` in hand — this one takes the
@@ -31,6 +50,8 @@ export function characterBlockedMessage(reason: CharacterBlockedReason | undefin
       return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
     case 'awaiting_approval':
       return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
+    case 'switched_off_content':
+      return switchedOffMessage('');
     default:
       return 'Não foi possível concluir a ação agora.';
   }
@@ -55,6 +76,8 @@ function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): Charac
       return 'not_pending';
     case GenCharacterBlockedReason.AWAITING_APPROVAL:
       return 'awaiting_approval';
+    case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:
+      return 'switched_off_content';
     default:
       return undefined;
   }

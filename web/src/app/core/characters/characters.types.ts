@@ -40,4 +40,5 @@ export type CharacterBlockedReason =
   | 'living_character_exists'
   | 'story_locked'
   | 'not_pending'
-  | 'awaiting_approval';
+  | 'awaiting_approval'
+  | 'switched_off_content';

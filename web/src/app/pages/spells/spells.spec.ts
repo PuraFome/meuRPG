@@ -9,6 +9,7 @@ import { CampaignSchema, Role } from '../../../gen/meurpg/campaigns/v1/campaigns
 import { CharacterKind } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ListSpellsResponseSchema, SpellDetailsSchema, SpellSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
+import { fakeContentWatcher } from '../../core/content/content-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { SpellsClient } from '../../core/spells/spells-client';
 import { Spells } from './spells';
@@ -35,6 +36,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   ];
 
   let location: Location;
+  let watcher = fakeContentWatcher();
 
   /** The history answers a step back on its own time: wait for what the page shows. */
   async function untilBack(settle: () => Promise<void>, done: () => boolean): Promise<void> {
@@ -45,6 +47,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   }
 
   async function open(url = '/campanhas/camp-1/magias') {
+    TestBed.overrideComponent(Spells, { set: { providers: [watcher.provider] } });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'campanhas/:id/magias', component: Spells }]),
@@ -97,6 +100,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   }
 
   beforeEach(() => {
+    watcher = fakeContentWatcher();
     requests = [];
     role = Role.PLAYER;
     awaiting = false;
@@ -366,5 +370,43 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     list = async () => create(ListSpellsResponseSchema, { spells: [], total: 0 });
     const withName = await open('/campanhas/camp-1/magias?q=zzz');
     expect(flat(withName.el.querySelector('.empty__s'))).toBe('Confira o nome ou tire um filtro.');
+  });
+  it('reads the list again when the table\'s content changed (content_changed, RN-23): a spell the master switched off leaves it', async () => {
+    const { el, settle } = await open('/campanhas/camp-1/magias?q=ma');
+    expect(watcher.following()).toBe('camp-1');
+    expect(el.querySelectorAll('button.row')).toHaveLength(3);
+    list = async () => create(ListSpellsResponseSchema, { spells: rows().slice(0, 2), total: 2 });
+    watcher.hint();
+    await settle();
+    await settle();
+    expect(Array.from(el.querySelectorAll('button.row')).map((r) => flat(r.querySelector('.row__name')))).toEqual(['Mãos Flamejantes', 'Lâmina de Nanquim']);
+    expect(flat(el.querySelector('.list__n'))).toContain('2 magias');
+    // The same filter as the list on screen, from the first page.
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({ query: 'ma', pageToken: '' });
+  });
+
+  it('reads the open spell again too: one that is off now says it is not available, with nothing to retry', async () => {
+    wide = true;
+    const { el, settle } = await open('/campanhas/camp-1/magias?magia=spell:burning-hands');
+    expect(flat(el.querySelector('#spell-card-title'))).toBe('Mãos Flamejantes');
+    detailsFail = new ConnectError('gone', Code.NotFound);
+    watcher.hint();
+    await settle();
+    await settle();
+    expect(flat(el)).toContain('Esta magia não está disponível.');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b) === 'Tentar de novo')).toBe(false);
+  });
+
+  it('keeps the list on screen when the read after a change fails', async () => {
+    const { el, settle } = await open();
+    list = async () => {
+      throw new ConnectError('offline', Code.Unavailable);
+    };
+    watcher.hint();
+    await settle();
+    await settle();
+    expect(el.querySelectorAll('button.row')).toHaveLength(3);
+    expect(flat(el)).not.toContain('Tentar de novo');
   });
 });

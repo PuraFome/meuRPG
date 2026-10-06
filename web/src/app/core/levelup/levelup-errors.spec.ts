@@ -31,6 +31,18 @@ describe('the failures of the guided level-up', () => {
     expect(describeLevelUpFailure(refused(LevelUpRefusalReason.SUBCLASS))).toMatchObject({ step: 'picks' });
   });
 
+  it('says a choice the master switched off is not available any more, and sends it to the step that holds it (RN-23)', () => {
+    const off = (field: string) =>
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.SWITCHED_OFF_CHOICE, field }) },
+      ]);
+    const subclass = describeLevelUpFailure(off('full.subclass_key'));
+    expect(subclass).toMatchObject({ kind: 'refusal', step: 'picks' });
+    expect(subclass.message).toBe('O mestre desligou uma das opções que você escolheu: ela não está mais disponível para os jogadores. Troque a escolha pela lista de agora.');
+    expect(describeLevelUpFailure(off('full.cantrip_keys'))).toMatchObject({ step: 'spells' });
+    expect(describeLevelUpFailure(off('full.known_spell_keys'))).toMatchObject({ step: 'spells' });
+  });
+
   it('gives every reason words, and the ones no step owns no step', () => {
     for (const reason of Object.values(LevelUpRefusalReason).filter((v): v is LevelUpRefusalReason => typeof v === 'number' && v > 0)) {
       expect(refusalMessage({ reason }).length).toBeGreaterThan(10);

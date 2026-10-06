@@ -16,7 +16,9 @@ import { TableContentClient, contentErrorText } from '../../../core/content/cont
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
 import { readEntry } from '../../../core/content/content-read';
 import { KIND_NOUNS, KIND_WORDS, type ContentNavKind, entryState, navOfKind, savedSentence, usageSentence } from '../../../core/content/content-kinds';
+import { ContentWatcher } from '../../../core/content/content-watcher';
 import { EffectMenuVm } from '../../../core/content/effect-draft';
+import { LiveSessionSourceLive } from '../../live-session/live-session-source.live';
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { openSheet } from '../../../shared/sheet/sheet-host';
 import { ArchiveQuestion } from '../archive/archive-question';
@@ -73,6 +75,7 @@ const EDITABLE = new Set<TableContentKind>([TableContentKind.SPELL, TableContent
     RouterLink,
     SpellEditor,
   ],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './content-entry.html',
   styleUrl: './content-entry.scss',
 })
@@ -84,6 +87,7 @@ export class ContentEntry {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
+  private readonly watcher = inject(ContentWatcher);
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly Kind = TableContentKind;
@@ -208,6 +212,34 @@ export class ContentEntry {
       this.parentKey.set(this.route.snapshot.queryParamMap.get('raca') ?? '');
       void this.load();
     });
+    // The table changed while this entry is open: the entries are read again with this person's role. An editor keeps what is
+    // being typed (it restarts only when the entry's own revision changes), and a player's page learns the entry went away.
+    this.watcher.whileLive(this.campaignId, () => void this.refresh());
+  }
+
+  /** The entries again after a `content_changed`, with no spinner and no change to the page's state. */
+  protected async refresh(): Promise<void> {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return;
+    }
+    try {
+      const res = await loadContext(this.campaigns, this.client, this.campaignId());
+      const now = this.state();
+      if (res.status === 'ok' && now.status === 'ready') {
+        const open = now.ctx.entries.find((e) => e.key === this.key());
+        const entries = res.ctx.entries.map((e) =>
+          // The entry being edited keeps its body and revision when another write changed them: what is typed is not thrown
+          // away, and "Salvar" says the entry changed (stale) as it always did. Only the switches and the counts follow.
+          open && e.key === open.key && e.revision !== open.revision
+            ? ({ ...open, off: e.off, archived: e.archived, archivedAt: e.archivedAt, charactersUsing: e.charactersUsing } as TableEntry)
+            : e,
+        );
+        this.state.set({ status: 'ready', ctx: { ...res.ctx, entries } });
+      }
+    } catch {
+      // Keep what is on screen: the next change reads again.
+    }
   }
 
   protected async load(): Promise<void> {
@@ -354,7 +386,8 @@ export class ContentEntry {
     }
   }
 
-  private replace(entry: TableEntry): void {
+  /** The entry as the server has it now: after a switch, an archive or a read again. */
+  protected replace(entry: TableEntry): void {
     const s = this.state();
     if (s.status === 'ready') {
       this.state.set({ status: 'ready', ctx: { ...s.ctx, entries: s.ctx.entries.map((x) => (x.key === entry.key ? entry : x)) } });

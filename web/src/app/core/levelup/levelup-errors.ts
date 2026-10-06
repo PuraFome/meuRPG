@@ -13,8 +13,11 @@ import { formatInt, tight } from '../format/text';
 import type { StepKey } from './levelup-flow';
 
 /** The step a refused rule belongs to, so the message can send the player there. */
-export function refusalStep(reason: LevelUpRefusalReason): StepKey | null {
+export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey | null {
   switch (reason) {
+    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
+      // The refusal names the sheet field of the choice (a spell, a cantrip, or the subclass/class of the picks).
+      return /spell|cantrip|prepared/.test(field) ? 'spells' : 'picks';
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
@@ -77,6 +80,8 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'Role o dado de vida antes de confirmar.';
     case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
       return 'O dado deste nível já foi rolado para outra classe.';
+    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
+      return 'O mestre desligou uma das opções que você escolheu: ela não está mais disponível para os jogadores. Troque a escolha pela lista de agora.';
     case LevelUpRefusalReason.SHEET_NEEDS_MASTER:
       return 'A ficha tem um problema que nenhuma escolha resolve. Peça ao mestre para corrigir a ficha.';
     default:
@@ -131,7 +136,7 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
   if (e.code === Code.FailedPrecondition) {
     const [refusal] = e.findDetails(LevelUpRefusalSchema);
     if (refusal) {
-      return { kind: 'refusal', message: refusalMessage(refusal), step: refusalStep(refusal.reason) };
+      return { kind: 'refusal', message: refusalMessage(refusal), step: refusalStep(refusal.reason, refusal.field) };
     }
     const [blocked] = e.findDetails(CharacterBlockedSchema);
     return { kind: 'blocked', message: blockedMessage(blocked?.reason), reason: blocked?.reason };

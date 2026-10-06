@@ -14,7 +14,10 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
-import { characterBlockedMessage, describeCharacterError } from '../../core/characters/character-errors';
+import { characterBlockedMessage, describeCharacterError, switchedOffKey, switchedOffMessage } from '../../core/characters/character-errors';
+import { ContentWatcher } from '../../core/content/content-watcher';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import { catalogChanged, offFieldOf } from './catalog-changes';
 import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
@@ -204,6 +207,7 @@ function filterByName<T extends { readonly namePt: string }>(
     SkillPicker,
     SpellPicker,
   ],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './character-editor.html',
   styleUrl: './character-editor.scss',
 })
@@ -215,6 +219,7 @@ export class CharacterEditor {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly watcher = inject(ContentWatcher);
   /** The spell descriptions already fetched, by spell key, for the life of
    * the page (a second "?" on the same spell is instant; nothing is stored
    * in the browser). A failed fetch is dropped so "Tentar de novo" asks again. */
@@ -613,7 +618,26 @@ export class CharacterEditor {
     return this.stepsWithErrors().has(step);
   }
 
+  /** What the page says after the table's content changed under the person ("" when nothing did). */
+  protected readonly contentNote = signal('');
+  /** The content key the server refused as switched off (RN-23), until the person picks something else. */
+  private readonly offKey = signal('');
+  private readonly campaignIdSignal = signal('');
+  /** The field that holds the refused key, with the sentence that goes under it. */
+  protected readonly offField = computed(() => {
+    this.fullFormValue();
+    const key = this.offKey();
+    const field = key ? offFieldOf(key, this.fullForm.getRawValue()) : null;
+    if (!field) {
+      return null;
+    }
+    const s = this.state();
+    const name = s.status === 'ready' ? catalogNameOf(s.catalog, key) : '';
+    return { field, text: switchedOffMessage(name) };
+  });
+
   constructor() {
+    this.watcher.whileLive(this.campaignIdSignal, () => void this.refreshCatalog());
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.resolveAndLoad(params);
     });
@@ -626,6 +650,7 @@ export class CharacterEditor {
     }
     const characterId = params.get('characterId');
     const tipo = params.get('tipo');
+    this.campaignIdSignal.set(campaignId);
 
     if (characterId) {
       this.loadForEdit(campaignId, characterId);
@@ -995,10 +1020,46 @@ export class CharacterEditor {
       }
       this.saveState.set({ status: 'idle' });
     } catch (err) {
+      const refused = switchedOffKey(err);
+      if (refused !== null) {
+        // The master switched an option off after the lists were read: the field that holds it says so (RN-23).
+        this.offKey.set(refused);
+        void this.refreshCatalog();
+      }
       this.saveState.set({
         status: 'error',
         message: describeCharacterError(err),
       });
     }
   }
+
+  /** `content_changed` (RN-23): the lists are read again with this person's role; what was typed stays. Resolves when done. */
+  private async refreshCatalog(): Promise<void> {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return;
+    }
+    try {
+      const catalog = await this.source.loadCatalog(s.campaignId);
+      const now = this.state();
+      if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
+        this.state.set({ ...now, catalog });
+        this.contentNote.set('O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.');
+      }
+    } catch {
+      // Keep the lists on screen: the next change reads again.
+    }
+  }
+}
+
+function catalogNameOf(catalog: RulesCatalogVm, key: string): string {
+  return (
+    catalog.races.find((r) => r.key === key)?.namePt ??
+    catalog.races.flatMap((r) => r.subraces).find((r) => r.key === key)?.namePt ??
+    catalog.classes.find((c) => c.key === key)?.namePt ??
+    catalog.classes.flatMap((c) => c.subclasses).find((c) => c.key === key)?.namePt ??
+    catalog.backgrounds.find((b) => b.key === key)?.namePt ??
+    catalog.spells.find((sp) => sp.key === key)?.namePt ??
+    ''
+  );
 }

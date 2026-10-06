@@ -15,6 +15,7 @@ import {
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { fakeContentWatcher } from '../../core/content/content-testing';
 import { GalleryClient } from '../../core/images/gallery-client';
 import { galleryImage, galleryUsage } from '../../core/images/gallery-testing';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -1767,5 +1768,107 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     const free = await render();
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
     expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
+  });
+});
+
+describe('CharacterEditor, the master\'s switches (RN-23: an option switched off, and the live content hint)', () => {
+  let fake: FakeCharacterEditorSource;
+  let watcher = fakeContentWatcher();
+
+  function configure(params: Record<string, string>): void {
+    watcher = fakeContentWatcher();
+    TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        { provide: ActivatedRoute, useValue: routeParams(params) },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  const withElf = (): RulesCatalogVm => ({
+    ...catalog(),
+    races: [...catalog().races, { key: 'race:elf', namePt: 'Elfo', constitutionBonus: 0, subraces: [] }],
+  });
+
+  function switchedOff(key: string): ConnectError {
+    return new ConnectError('x', Code.FailedPrecondition, undefined, [
+      { desc: CharacterBlockedSchema, value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.SWITCHED_OFF_CONTENT, contentKey: key }) },
+    ]);
+  }
+
+  it('reads the lists again when the table changed, keeps what was typed, and says the lists were updated', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    expect(watcher.following()).toBe('camp-1');
+    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome' });
+    fake.loadCatalogFn = () => Promise.resolve(withElf());
+    watcher.hint();
+    await flush();
+    fixture.detectChanges();
+    expect(cmp.state().catalog.races.map((r: { key: string }) => r.key)).toEqual(['race:gnome', 'race:elf']);
+    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain('O mestre mudou as opções da mesa');
+    expect(cmp.fullForm.value.name).toBe('Ícaro');
+    expect(cmp.fullForm.value.race).toBe('race:gnome');
+  });
+
+  it('says nothing when the lists are the same ones', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    watcher.hint();
+    await flush();
+    fixture.detectChanges();
+    expect(el.textContent).not.toContain('O mestre mudou as opções da mesa');
+  });
+
+  it('shows the refusal of a newly chosen switched-off option on the field that holds it, by the typed reason', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+    fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
+    await cmp.submit();
+    await flush();
+    fixture.detectChanges();
+    expect(fake.createCharacterCalls).toHaveLength(1);
+    expect(cmp.saveState().status).toBe('error');
+    const note = el.querySelector('.field-off');
+    expect(note?.getAttribute('role')).toBe('alert');
+    expect(note?.textContent).toContain('Gnomo não está mais disponível para os jogadores. Escolha outra.');
+    // It sits right under the race field, not under another one.
+    expect(note?.previousElementSibling?.textContent).toContain('Raça');
+    // Picking something else takes it away.
+    cmp.fullForm.patchValue({ race: 'race:elf' });
+    fixture.detectChanges();
+    expect(el.querySelector('.field-off')).toBeNull();
+  });
+
+  it('reads the lists again after the refusal, so the switched-off option leaves the picker', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+    fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
+    fake.loadCatalogFn = () => Promise.resolve({ ...catalog(), races: [] });
+    await cmp.submit();
+    await flush();
+    fixture.detectChanges();
+    expect(cmp.state().catalog.races).toEqual([]);
   });
 });

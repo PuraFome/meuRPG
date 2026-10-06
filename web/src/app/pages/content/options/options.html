@@ -1,0 +1,164 @@
+@let a = access();
+@if (a.status !== 'not-found') {
+  <a class="back" [routerLink]="back()">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para o conteúdo da mesa
+  </a>
+}
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Opções para os jogadores</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando as opções" />
+        Carregando as opções...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('not-master') {
+    <div>
+      <h1 class="mr-page-title">Opções para os jogadores</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre escolhe o que os jogadores veem.</strong> O que está ligado você lê em “Conteúdo da mesa” e em “Magias”.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir as opções</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ok') {
+    <header class="head">
+      <h1 class="mr-page-title" tabindex="-1" #title>Opções para os jogadores</h1>
+      <p class="mr-page-lead">{{ a.campaignName }} · O que está ligado, os jogadores veem por inteiro e podem escolher. O que está desligado nunca aparece para eles.</p>
+    </header>
+
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
+
+    @if (status() === 'loading') {
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando as opções" />
+        Carregando as opções...
+      </p>
+    } @else if (status() === 'error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ loadError() }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+    } @else {
+      <div class="layout">
+        @if (phone()) {
+          <app-select-field label="Tipo" [options]="kindOptions()" [value]="slug()" (valueChange)="pickKind($event)" />
+        } @else {
+          <nav class="menu mr-panel" aria-label="Tipos de opção">
+            <ul class="menu__list">
+              @for (n of nav; track n.slug) {
+                <li>
+                  <a
+                    class="menu__item"
+                    [routerLink]="[]"
+                    [queryParams]="{ tipo: n.slug }"
+                    [attr.aria-current]="slug() === n.slug ? 'page' : null"
+                    [class.menu__item--on]="slug() === n.slug"
+                  >
+                    <span>{{ n.plural }}</span>
+                    <span class="menu__count">{{ menuCounts().get(n.slug) }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+            @if (subraces()) {
+              <p class="menu__note">{{ subraces() }}. Entram em “Raças” quando a raça tem sub-raças.</p>
+            }
+          </nav>
+        }
+
+        <section class="mr-panel list" aria-labelledby="list-t">
+          <div class="list__head">
+            <h2 class="mr-panel__title" id="list-t">{{ current().plural }}</h2>
+          </div>
+          <div class="counter">
+            <strong>{{ counter() }}</strong>
+            <span class="saved" role="status" [class.saved--error]="save().kind === 'error'">
+              @switch (save().kind) {
+                @case ('saving') {
+                  <mat-icon aria-hidden="true">sync</mat-icon>Salvando...
+                }
+                @case ('saved') {
+                  <mat-icon aria-hidden="true">check</mat-icon>Tudo salvo
+                }
+                @case ('error') {
+                  <mat-icon aria-hidden="true">error</mat-icon>Não salvou
+                }
+              }
+            </span>
+          </div>
+          @if (phone() && subraces()) {
+            <p class="muted">{{ subraces() }}.</p>
+          }
+          @if (save(); as sv) {
+            @if (sv.kind === 'error') {
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ sv.message }}</p>
+              </div>
+            }
+          }
+          <div class="filters">
+            <app-text-field label="Buscar pelo nome" [value]="query()" (valueChange)="setQuery($event)" />
+          </div>
+          <div class="bulk">
+            <button matButton="outlined" type="button" [disabled]="bulkDisabled()" (click)="setAll(false)">Ligar todas{{ bulkSuffix() }}</button>
+            <button matButton="outlined" type="button" [disabled]="bulkDisabled()" (click)="setAll(true)">Desligar todas{{ bulkSuffix() }}</button>
+          </div>
+          @if (rows().length === 0) {
+            <p class="muted" role="status">{{ searching() ? 'Nenhuma opção com esta busca.' : 'Nada neste tipo.' }}</p>
+          } @else {
+            <ul class="rows">
+              @for (o of rows(); track o.key) {
+                <li class="orow" [class.orow--off]="o.off">
+                  <app-switch-field class="orow__switch" [label]="o.namePt" [checked]="!o.off" [onWord]="onWord()" [offWord]="offWord()" (toggled)="toggle(o, $event)" />
+                  <div class="orow__meta">
+                    <span class="orow__using">{{ using(o) }}</span>
+                    @if (o.table) {
+                      <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+                    } @else {
+                      <span class="orow__srd">SRD</span>
+                    }
+                  </div>
+                  @if (kindLabel(o) || note(o)) {
+                    <p class="orow__note">
+                      @if (kindLabel(o)) {
+                        <span>{{ kindLabel(o) }}</span>
+                      }
+                      @if (note(o)) {
+                        <span>{{ note(o) }}</span>
+                      }
+                    </p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+    }
+  }
+}
