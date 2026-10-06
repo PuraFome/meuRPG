@@ -93,6 +93,11 @@ func (b *overlayBuilder) addSpell(ts *TableSpell) error {
 	if target.Kind == TargetSelf && ts.Range.Kind != RangeSelf {
 		return ovErr(key, "a spell that only affects the caster has the range Self (Pessoal)").at("", ReasonValue)
 	}
+	if ts.Range.Kind == RangeSelf && (target.Kind == TargetCreature || target.Kind == TargetCreatures) {
+		// Pessoal reaches the caster, or an area that comes out of the caster
+		// (Mãos Flamejantes): a spell that picks creatures has a distance or Toque.
+		return ovErr(key, "a spell with the range Self (Pessoal) reaches only the caster or an area; one that picks creatures has a distance or Touch (Toque)").at("", ReasonValue)
+	}
 	if target.Kind == TargetArea && ts.Attack != "" {
 		return ovErr(key, "a spell attack hits one creature: it cannot have an area target").at("", ReasonValue)
 	}

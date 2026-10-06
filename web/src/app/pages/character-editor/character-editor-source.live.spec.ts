@@ -182,6 +182,10 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           $typeName: 'meurpg.characters.v1.CustomBackground',
           name: 'Sábio',
           skillKeys: ['skill:arcana', 'skill:history'],
+          proficiencyKeys: [],
+          featureName: '',
+          featureText: '',
+          equipment: '',
         },
       },
     };

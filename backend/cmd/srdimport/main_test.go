@@ -266,3 +266,33 @@ func TestTextSaves(t *testing.T) {
 		t.Errorf("two-ability save = %+v", a.Save)
 	}
 }
+
+// TestSpellAreas: the 5e-database's structured area_of_effect is read as the
+// shape and the size in feet, and anything the engine does not know is refused.
+func TestSpellAreas(t *testing.T) {
+	t.Parallel()
+	convert := func(extra string) ([]srd51.Spell, error) {
+		row := `[{"index":"x","name":"X","desc":["d"],"range":"Self","components":["V"],"ritual":false,"duration":"Instantaneous","concentration":false,"casting_time":"1 action","level":1,"school":{"index":"evocation"},"classes":[]` + extra + `}]`
+		out, err := convertSpells(&inputs{raw: map[string][]byte{"5e-SRD-Spells.json": []byte(row)}})
+		if err != nil {
+			return nil, err
+		}
+		return out.data.([]srd51.Spell), nil
+	}
+	got, err := convert(`,"area_of_effect":{"type":"cone","size":15}`)
+	if err != nil || len(got) != 1 || got[0].AreaType != "cone" || got[0].AreaSizeFt != 15 {
+		t.Fatalf("cone of 15 ft = %+v, %v", got, err)
+	}
+	if got, err = convert(``); err != nil || got[0].AreaType != "" || got[0].AreaSizeFt != 0 {
+		t.Errorf("a spell without an area = %+v, %v", got, err)
+	}
+	for name, extra := range map[string]string{
+		"an unknown shape":    `,"area_of_effect":{"type":"square","size":15}`,
+		"a size of 0":         `,"area_of_effect":{"type":"cone","size":0}`,
+		"a size off the grid": `,"area_of_effect":{"type":"sphere","size":12}`,
+	} {
+		if _, err := convert(extra); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}

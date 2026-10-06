@@ -198,6 +198,7 @@ type user struct {
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
 	content    rulesv1connect.ContentServiceClient
+	table      rulesv1connect.TableContentServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -226,6 +227,7 @@ func (h *harness) clients(userID string) *user {
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
 		content:    rulesv1connect.NewContentServiceClient(c, url),
+		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 	}
 }
 

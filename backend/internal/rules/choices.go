@@ -153,9 +153,20 @@ func (x *deriver) checkChoices() {
 	}
 
 	// A custom background grants two skills, like every SRD background.
-	if x.b.Background == "" && (x.b.CustomBackgroundName != "" || len(x.b.CustomBackgroundSkills) > 0) {
+	if x.customBackground() {
 		if n := len(x.b.CustomBackgroundSkills); n < CustomBackgroundSkillCount {
 			x.issue(IssueSkillCount, "full.custom_background.skill_keys", "O antecedente personalizado concede %d perícias; faltam %d.", CustomBackgroundSkillCount, CustomBackgroundSkillCount-n)
+		}
+		// SRD 5.1 "Customizing a Background": two tools or languages, a feature and
+		// the equipment too (question 82).
+		if n := len(x.b.CustomBackgroundProficiencies); n < CustomBackgroundProficiencyCount {
+			x.issue(IssueMissing, "full.custom_background.proficiency_keys", "O antecedente personalizado concede %d ferramentas ou idiomas; faltam %d.", CustomBackgroundProficiencyCount, CustomBackgroundProficiencyCount-n)
+		}
+		if x.b.CustomBackgroundFeatureName == "" || x.b.CustomBackgroundFeature == "" {
+			x.issue(IssueMissing, "full.custom_background.feature_name", "O antecedente personalizado tem uma característica: falta o nome ou o texto dela.")
+		}
+		if x.b.CustomBackgroundEquipment == "" {
+			x.issue(IssueMissing, "full.custom_background.equipment", "O antecedente personalizado traz equipamento: falta descrevê-lo.")
 		}
 	}
 

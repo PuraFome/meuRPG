@@ -431,9 +431,9 @@ func TestSpellDetailsOfTableSpells(t *testing.T) {
 	if cantrip.Spell.Level != 0 {
 		t.Errorf("cantrip level = %d", cantrip.Spell.Level)
 	}
-	// An SRD spell has no target and is read from its text.
+	// An SRD spell's target is worked out from the database's structured area.
 	srdDet, _ := c.SpellDetails("spell:fireball")
-	if srdDet.Target != (SpellTarget{}) {
+	if srdDet.Target != (SpellTarget{Kind: TargetArea, Shape: ShapeSphere, SizeFt: 20}) {
 		t.Errorf("fireball target = %+v", srdDet.Target)
 	}
 }

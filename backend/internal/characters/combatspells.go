@@ -3,9 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
-	"regexp"
 	"slices"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -94,8 +92,16 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
-	out.Area = isArea(det)
-	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
+	// Whom it reaches: the table spell's own target, or the SRD spell's (the
+	// structured area, then the text; see rules.SpellTarget).
+	out.Area = det.Target.AnyNumber()
+	// Magic Missile's darts and Scorching Ray's rays are counted by play itself: how
+	// many targets they take is how many darts and rays there are.
+	if det.Spell.Key != "spell:magic-missile" && det.Spell.Key != "spell:scorching-ray" {
+		out.TargetCount = det.Target.MaxTargets(det.Spell.Level, det.Spell.Level)
+		out.TargetPerLevel = det.Target.PerSlotLevel
+		out.ExtraTargetPerLevel = det.Target.PerSlotLevel > 0
+	}
 	return out, nil
 }
 
@@ -130,38 +136,6 @@ func abilityMod(d rules.Derived, a rules.Ability) int {
 		}
 	}
 	return 0
-}
-
-// The SRD says in prose whether a spell hits an area and how many targets it
-// takes; the engine reads the prose with two patterns, kept here so a wrong
-// guess has one place to fix (the master is never held to the number of
-// targets, so a wrong guess never blocks a table). An area is a shape ("20-foot
-// radius", "15-foot cone", "100-foot-long line"), a point ("within 20 feet of a
-// point") or "up to three creatures"; a spell that gets "one additional
-// creature" at a higher level takes one more target for each level.
-var (
-	areaRE = regexp.MustCompile(`(?i)\b\d+-foot[- ](radius|cone|cube|line|square|sphere|cylinder|long|wide)|within \d+ feet of a point|\bup to (two|three|four|five|six|seven|eight|nine|ten|twelve) (other )?(creatures|humanoids|willing creatures)|\bcreatures of your choice`)
-	// Magic Missile's darts and a spell attack's targets are not areas: they are
-	// counted by the play module.
-	extraTargetRE = regexp.MustCompile(`(?i)additional (creature|target|humanoid)|one additional`)
-)
-
-// isArea says whether a spell takes any number of targets: a spell attack
-// takes one, a healing spell that is not mass or a prayer takes one, and a
-// spell that comes out of the caster and damages (Mãos Flamejantes, Onda
-// Trovejante) is an area; the rest is read from the SRD's text.
-func isArea(det *rules.SpellDetails) bool {
-	switch {
-	case det.AttackType != "":
-		return false
-	case det.Spell.Key == "spell:magic-missile":
-		return false
-	case len(det.HealBySlotLevel) > 0:
-		return strings.HasPrefix(det.Spell.Key, "spell:mass-") || det.Spell.Key == "spell:prayer-of-healing"
-	case det.Range.Kind == rules.RangeSelf && (det.Save != nil || len(det.Damage) > 0):
-		return true
-	}
-	return areaRE.MatchString(strings.Join(det.Description, " "))
 }
 
 // CombatSave implements play.CombatRoster: a creature's saving throw bonus

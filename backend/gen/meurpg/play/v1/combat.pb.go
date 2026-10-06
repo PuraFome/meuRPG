@@ -5527,9 +5527,16 @@ type SpellTargets struct {
 	ExtraTargetPerLevel bool `protobuf:"varint,4,opt,name=extra_target_per_level,json=extraTargetPerLevel,proto3" json:"extra_target_per_level,omitempty"`
 	// Magic Missile: how many darts each slot level makes (3 at the 1st, one more
 	// for each level above). Empty for any other spell.
-	Darts         []*DartsAtSlot `protobuf:"bytes,5,rep,name=darts,proto3" json:"darts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Darts []*DartsAtSlot `protobuf:"bytes,5,rep,name=darts,proto3" json:"darts,omitempty"`
+	// How many more targets the spell takes for each slot level above its own: 1 for
+	// an SRD spell that says "one additional creature", the master's number for a
+	// table spell ("três criaturas, duas a mais por círculo"). 0 when it takes no
+	// more, and for Magic Missile and Scorching Ray, whose darts and rays are
+	// counted apart. `extra_target_per_level` is true when this is above 0, and for
+	// Magic Missile.
+	TargetsPerLevel int32 `protobuf:"varint,6,opt,name=targets_per_level,json=targetsPerLevel,proto3" json:"targets_per_level,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SpellTargets) Reset() {
@@ -5595,6 +5602,13 @@ func (x *SpellTargets) GetDarts() []*DartsAtSlot {
 		return x.Darts
 	}
 	return nil
+}
+
+func (x *SpellTargets) GetTargetsPerLevel() int32 {
+	if x != nil {
+		return x.TargetsPerLevel
+	}
+	return 0
 }
 
 // DartsAtSlot is how many darts a slot level makes.
@@ -11405,14 +11419,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tyour_turn\x18\x02 \x01(\bR\byourTurn\x12D\n" +
 	"\x0eattack_targets\x18\x03 \x03(\v2\x1d.meurpg.play.v1.AttackTargetsR\rattackTargets\x12F\n" +
 	"\x0fpending_damages\x18\x04 \x03(\v2\x1d.meurpg.play.v1.PendingDamageR\x0ependingDamages\x12A\n" +
-	"\rspell_targets\x18\x05 \x03(\v2\x1c.meurpg.play.v1.SpellTargetsR\fspellTargets\"\xed\x01\n" +
+	"\rspell_targets\x18\x05 \x03(\v2\x1c.meurpg.play.v1.SpellTargetsR\fspellTargets\"\x99\x02\n" +
 	"\fSpellTargets\x12\x1b\n" +
 	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x127\n" +
 	"\atargets\x18\x02 \x03(\v2\x1d.meurpg.play.v1.TargetInReachR\atargets\x12\x1f\n" +
 	"\vmax_targets\x18\x03 \x01(\x05R\n" +
 	"maxTargets\x123\n" +
 	"\x16extra_target_per_level\x18\x04 \x01(\bR\x13extraTargetPerLevel\x121\n" +
-	"\x05darts\x18\x05 \x03(\v2\x1b.meurpg.play.v1.DartsAtSlotR\x05darts\"B\n" +
+	"\x05darts\x18\x05 \x03(\v2\x1b.meurpg.play.v1.DartsAtSlotR\x05darts\x12*\n" +
+	"\x11targets_per_level\x18\x06 \x01(\x05R\x0ftargetsPerLevel\"B\n" +
 	"\vDartsAtSlot\x12\x1d\n" +
 	"\n" +
 	"slot_level\x18\x01 \x01(\x05R\tslotLevel\x12\x14\n" +

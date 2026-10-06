@@ -73,6 +73,40 @@ service ContentService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // ListSpells is the players' "Magias" page (MR-045): every spell of the table,
+  // the SRD's and the master's together, found by name and filtered by class,
+  // circle and school, sorted by Portuguese name. ListContent has the whole
+  // catalog but lets a pending member in and leaves the search and the filters to
+  // the app; this is the page's own read: the same list, the same rules, one
+  // place. A row is the light `Spell`; one spell in full is GetSpellDetails.
+  //
+  // A player never receives an archived table spell, nor an archived class's
+  // key in `class_keys`; the master receives the archived ones, with the
+  // `archived` mark (RN-23). The master's switches "Opções para os jogadores"
+  // (a later slice) leave out of a player's list what is off.
+  //
+  // `character_id` is "Só as que posso aprender": the spells on the list of one
+  // of the character's casting classes up to the highest circle that class
+  // casts (cantrips included), the lists of a table class and of a third
+  // caster's subclass too, so a multiclass character gets each class's list by
+  // its own level.
+  //
+  // Only an active member may ask: a pending member (RN-15) gets `not_found`, as
+  // for ListCreatures.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not an active
+  //     member of it, or `character_id` is not a character the caller may see
+  //     in it.
+  //   - `invalid_argument`: query is longer than 100 characters, a level is
+  //     not 0 to 9, a filter list has more than 20 entries, page_size is not 1
+  //     to 400, or page_token is not one this list gave for these same filters.
+  //   - `failed_precondition`: `character_id` is a character with a basic
+  //     sheet (an NPC), which has no casting classes.
+  rpc ListSpells(ListSpellsRequest) returns (ListSpellsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
   // uma criatura", the Wild Shape list, the summon choices. It filters by
   // part of the name (Portuguese or English, ignoring case and accents), by
@@ -528,6 +562,10 @@ message DerivedSheet {
   // the sheet with no new issue tied to the entry shows nothing. Each entry is also an issue with code
   // "table_content_changed", for the banner "A classe mudou".
   repeated ChangedContent changed_content = 41;
+  // The background's equipment as text: a table background's (RN-23) or the one
+  // the player wrote for a custom background (SRD 5.1 "Customizing a
+  // Background"). Empty for an SRD background and for a sheet without one.
+  string background_equipment_pt = 42;
 }
 
 // ChangedContent is a table entry a sheet uses that changed after the sheet was
@@ -1144,6 +1182,41 @@ message GetSpellDetailsRequest {
   string spell_key = 2;
 }
 
+// ListSpellsRequest names a campaign and the filters. Every filter is optional
+// and they add up: a spell passes all of them.
+message ListSpellsRequest {
+  string campaign_id = 1;
+  // Part of the spell's Portuguese or English name, ignoring case and accents
+  // ("maos", "burning"), up to 100 characters. Empty for any.
+  string query = 2;
+  // A class key ("class:wizard", or a table class) to read the spells of its
+  // list, or the key of a third caster's subclass, whose list is the class it
+  // casts from. Empty for any. A key that has no list gives an empty list.
+  string class_key = 3;
+  // The circles to list, 0 (cantrips) to 9. Empty for all.
+  repeated int32 levels = 4;
+  // School keys ("school:evocation"). Empty for all.
+  repeated string school_keys = 5;
+  // "Só as que posso aprender" for this character (see the RPC).
+  string character_id = 6;
+  // How many rows to return, 1 to 400; 0 means 100. The page asks for 400,
+  // which holds all of the SRD's 319 spells and the table's.
+  int32 page_size = 7;
+  // The next_page_token of the previous page; empty for the first.
+  string page_token = 8;
+}
+
+// ListSpellsResponse is one page of spells, sorted by Portuguese name.
+message ListSpellsResponse {
+  repeated Spell spells = 1;
+  // Pass it as page_token to read the next page. Empty on the last page.
+  string next_page_token = 2;
+  // How many spells pass the filters, over all the pages ("73 magias").
+  int32 total = 3;
+  // The campaign's content version, as in ListContentResponse.content.content_version.
+  string content_version = 4;
+}
+
 // GetSpellDetailsResponse returns one spell, in full.
 message GetSpellDetailsResponse {
   SpellDetails spell = 1;
@@ -1180,6 +1253,59 @@ message SpellDetails {
   // These are public spell rules, like the rest of the message: every member
   // gets them, and the app reads them instead of keeping a copy of the table.
   SpellHitPointEffect hit_point_effect = 12;
+  // Whom the spell reaches: one creature, several, an area or only the caster.
+  // A table spell's is the master's; an SRD spell's is worked out from the
+  // 5e-database's structured area (Mãos Flamejantes: a cone of 15 ft) and, for the
+  // rest, from the text of the SRD.
+  SpellTarget target = 13;
+}
+
+// SpellTargetKind says whom a spell reaches.
+enum SpellTargetKind {
+  SPELL_TARGET_KIND_UNSPECIFIED = 0;
+  // One creature ("Uma criatura"). `per_slot_level` more for each circle above
+  // the spell's own, when the text says "an additional creature".
+  SPELL_TARGET_KIND_CREATURE = 1;
+  // Several creatures ("Várias criaturas"): `count` of them at the spell's own
+  // circle and `per_slot_level` more for each circle above it. A `count` of 0 is an
+  // SRD spell whose text says how many ("up to three creatures"): the caster picks
+  // any number and the master judges.
+  SPELL_TARGET_KIND_CREATURES = 2;
+  // Every creature in an area (`shape` and `size_ft`). In combat the caster picks
+  // the creatures it catches; the map does not draw it.
+  SPELL_TARGET_KIND_AREA = 3;
+  // Only the caster ("Só quem conjura").
+  SPELL_TARGET_KIND_SELF = 4;
+}
+
+// SpellAreaShape is the shape of a spell's area.
+enum SpellAreaShape {
+  SPELL_AREA_SHAPE_UNSPECIFIED = 0;
+  // The size is the length.
+  SPELL_AREA_SHAPE_CONE = 1;
+  // The size is the side.
+  SPELL_AREA_SHAPE_CUBE = 2;
+  // The size is the radius.
+  SPELL_AREA_SHAPE_CYLINDER = 3;
+  // The size is the length.
+  SPELL_AREA_SHAPE_LINE = 4;
+  // The size is the radius.
+  SPELL_AREA_SHAPE_SPHERE = 5;
+}
+
+// SpellTarget is whom a spell reaches.
+message SpellTarget {
+  SpellTargetKind kind = 1;
+  // CREATURES: how many at the spell's own circle; 0 when the SRD's text says it.
+  int32 count = 2;
+  // CREATURE and CREATURES: how many more for each circle above the spell's own.
+  int32 per_slot_level = 3;
+  // AREA: the shape and the size in feet (the SRD's 15 ft cone is 4,5 m).
+  SpellAreaShape shape = 4;
+  int32 size_ft = 5;
+  // The target as the "Magias" page writes it, in the table's units: "Uma
+  // criatura", "Várias criaturas", "Só quem conjura" or "Cone de 4,5 m".
+  string label_pt = 6;
 }
 
 // SpellHitPointEffectKind is how a spell that reads hit points works.

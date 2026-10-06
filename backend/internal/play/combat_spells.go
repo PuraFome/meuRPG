@@ -141,9 +141,12 @@ func reachOf(sp link.Spell) (ft int32, limited bool) {
 func selfOnly(sp link.Spell) bool { return sp.RangeKind == rules.RangeSelf && !sp.Area }
 
 // maxTargetsOf is how many targets a spell takes at a slot level for a player:
-// 0 means any number. A spell attack takes one (Raio Ardente a ray for each
-// target); a spell that gets an additional creature per slot level takes one
-// more for each level; an area takes any.
+// 0 means any number. An area takes any; a spell that says how many it takes (a
+// table spell's target, or an SRD spell's worked out by the rules) takes that many
+// and the extra ones of each slot level above its own, one attack roll for each
+// when it is a spell attack (Raio Ardente a ray for each target); one that says
+// nothing takes one, and one more for each level when the text says "an
+// additional creature".
 func maxTargetsOf(sp link.Spell, slotLevel int) int {
 	switch {
 	case selfOnly(sp):
@@ -152,10 +155,15 @@ func maxTargetsOf(sp link.Spell, slotLevel int) int {
 		return dartsOf(sp, slotLevel) // a dart each, at most
 	case sp.Key == scorchingRay:
 		return 3 + max(slotLevel-sp.Level, 0)
-	case sp.AttackType != "":
-		return 1
 	case sp.Area:
 		return 0
+	case sp.TargetCount > 0:
+		// What the spell says itself (a table spell's target, or an SRD spell's
+		// worked out from its text): a spell attack takes that many too, one roll
+		// for each.
+		return sp.TargetCount + sp.TargetPerLevel*max(slotLevel-sp.Level, 0)
+	case sp.AttackType != "":
+		return 1
 	case sp.ExtraTargetPerLevel:
 		return 1 + max(slotLevel-sp.Level, 0)
 	}

@@ -1015,14 +1015,28 @@ message ClassLevel {
   }
 }
 
-// CustomBackground is a background the player describes, for one that is
-// not in the rules content, such as the Sage.
+// CustomBackground is a background the player describes (the editor's "Outro"),
+// for one that is not in the rules content, such as the Sage. It follows the SRD
+// 5.1 rule "Customizing a Background" (question 82): a name, two skills, two
+// tools or languages in any mix, a feature and the equipment. The sheet's numbers
+// use all of it (rules.v1.DerivedSheet): the skills, the tool proficiencies, the
+// languages and the feature. What is missing shows an issue, never an error.
 message CustomBackground {
   // The background's name: 1 to 40 characters, one line.
   string name = 1;
   // Content keys of the skills it grants: at most 2, no repeats. Fewer than
   // 2 shows an issue.
   repeated string skill_keys = 2;
+  // Content keys of the tools ("proficiency:thieves-tools") and languages
+  // ("language:elvish") it grants, in any mix: at most 2 in all, no repeats.
+  // Fewer than 2 shows an issue.
+  repeated string proficiency_keys = 3;
+  // The feature the player writes: a name of at most 40 characters, one line,
+  // and a text of at most 1000 characters. Both empty shows an issue.
+  string feature_name = 4;
+  string feature_text = 5;
+  // The equipment, as a text of at most 500 characters. Empty shows an issue.
+  string equipment = 6;
 }
 
 // HitPointsMethod is how a character's maximum hit points grow after the
