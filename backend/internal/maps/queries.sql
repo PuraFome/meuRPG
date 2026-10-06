@@ -741,3 +741,22 @@ WHERE map_id = $1 AND id = $2;
 SELECT p.id, p.name FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.kind = 'trap' AND p.id = ANY($2::uuid[]);
+
+-- Generated dungeons (MR-010, slice 10.6d): the record DungeonService keeps of a map
+-- it made. The master's alone: nothing here is ever sent to a player (RN-10).
+
+-- name: InsertGeneratedDungeon :exec
+INSERT INTO generated_dungeons (map_id, generator_version, seed, width, height, options, cells, rooms, image_id, created_at)
+VALUES (sqlc.arg(map_id), sqlc.arg(generator_version), sqlc.arg(seed), sqlc.arg(width), sqlc.arg(height),
+        sqlc.arg(options), sqlc.arg(cells), sqlc.arg(rooms), sqlc.arg(image_id), sqlc.arg(created_at));
+
+-- name: SetGeneratedDungeonImage :exec
+-- "Redesenhar" drew a new image for the map: it is the dungeon's own now.
+UPDATE generated_dungeons SET image_id = sqlc.arg(image_id) WHERE map_id = sqlc.arg(map_id);
+
+-- name: GetGeneratedDungeon :one
+-- The map's dungeon record, found through the map so that a map of another campaign
+-- is "not found".
+SELECT d.* FROM generated_dungeons AS d
+JOIN maps AS m ON m.id = d.map_id
+WHERE m.campaign_id = $1 AND d.map_id = $2;

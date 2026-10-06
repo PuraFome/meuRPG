@@ -795,6 +795,12 @@ enum MapBlockedReason {
   // unmarks it (UnmarkTreasureFound), so a session's summary never loses it
   // silently.
   MAP_BLOCKED_REASON_TREASURE_FOUND = 4;
+  // The map is no longer the generated dungeon's (DungeonService.RedrawDungeonMap):
+  // its image is not the one the generator drew (the master put another image on the
+  // map), its grid or the image's size changed, or its layers were cleared (a new image
+  // or grid does that). A redraw would draw from layers that are not the dungeon's, or
+  // change the size the layers are measured by, so it is refused.
+  MAP_BLOCKED_REASON_IMAGE_CHANGED = 5;
 }
 
 // MapBlocked is the error detail of MapService's `failed_precondition`, so the
