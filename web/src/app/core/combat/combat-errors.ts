@@ -160,6 +160,15 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Na forma de fera não dá para conjurar. Volte à forma normal e tente de novo.';
     case EncounterBlockedReason.DOOR_LOCKED:
       return LOCKED_DOOR_FIRST_STEP_TEXT;
+    // Combat without a map (RN-25): what each side of the line refuses.
+    case EncounterBlockedReason.THEATRE_ONLY:
+      return 'Este combate tem mapa: o movimento é no mapa, e o ataque de oportunidade o app acha sozinho. A tela foi atualizada.';
+    case EncounterBlockedReason.NEEDS_A_MAP:
+      return 'Sem mapa, isso não existe: o combate não tem posições. A tela foi atualizada.';
+    case EncounterBlockedReason.THEATRE_HAS_NO_MAP:
+      return 'Um combate sem mapa não leva um mapa. Escolha "Com mapa" ou tire o mapa.';
+    case EncounterBlockedReason.NO_OPPORTUNITY:
+      return 'Esse ataque de oportunidade não pode ser oferecido agora: quem ia reagir não pode atacar, está do mesmo lado, ou a oferta já espera.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

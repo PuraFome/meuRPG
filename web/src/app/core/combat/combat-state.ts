@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 
 import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import { isTheatre } from './theatre';
 
 /** What `turn_changed` carries (play.proto). */
 export interface TurnChange {
@@ -99,6 +100,10 @@ export class CombatState {
   applyMove(move: CombatantMove): boolean {
     const e = this.encounter();
     if (!e || e.id !== move.encounterId) {
+      return false;
+    }
+    // A combat without a map has no squares (RN-25): what changed is the movement spent, which only the combat itself says.
+    if (isTheatre(e)) {
       return false;
     }
     if (!e.combatants.some((c) => c.id === move.combatantId)) {

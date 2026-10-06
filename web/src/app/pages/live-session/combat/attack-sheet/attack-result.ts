@@ -3,7 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { AttackRoll, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
-import { degreeWord } from '../../../../core/combat/cover';
+import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/cover';
 
 /**
  * What the attack sheet has shown so far, as a list of done steps (E6-07,
@@ -76,7 +76,13 @@ export class AttackResult {
   protected readonly coverLine = computed(() => {
     const r = this.roll();
     const word = r ? degreeWord(r.cover).toLowerCase() : '';
-    return word ? `${capitalize(`${article(this.targetLabel())} ${this.targetLabel()}`)} estava com ${word}.` : '';
+    if (!r || !word) {
+      return '';
+    }
+    // "Meia cobertura (marcada pelo mestre): +2 na CA.", the degree, where it came from and what it added, never the armor class (RN-20).
+    const from = sourceWord(r.coverSource);
+    const bonus = coverBonusText(r.cover);
+    return `${capitalize(`${article(this.targetLabel())} ${this.targetLabel()}`)} estava com ${word}${from ? ` (${from})` : ''}${bonus ? `: ${bonus}` : ''}.`;
   });
 }
 

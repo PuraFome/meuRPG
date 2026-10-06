@@ -1,0 +1,131 @@
+:host {
+  display: block;
+}
+
+.amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.amount__cap {
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// What was spent, what will be, and what is left after: the bar is what is left after the amount.
+.sum {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.sum__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+
+  dt {
+    color: var(--mr-ink);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.sum__row--after {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mr-rule);
+
+  dt {
+    font-family: var(--mr-font-display);
+    font-size: 19px;
+    font-weight: 700;
+  }
+
+  dd {
+    font-family: var(--mr-font-display);
+    font-size: 24px;
+    line-height: 28px;
+  }
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-rule);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+.limit {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+  text-align: center;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+// "Cancelar" and "Gastar 6,0 m": the same width and height, side by side, down to 320 px.
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}
+
+.btn--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+}

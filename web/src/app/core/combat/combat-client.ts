@@ -10,6 +10,7 @@ import {
   type CombatantSide,
   type DiceRoll,
   type Encounter,
+  type EncounterMode,
   type GetCombatHighlightsResponse,
   type GetMoveOptionsResponse,
   type GetTurnOptionsResponse,
@@ -61,6 +62,12 @@ export interface MoveResult {
   /** The move stopped before a locked door (RN-26): the page says "A porta está trancada." */
   readonly lockedDoor: boolean;
   readonly provoked: boolean;
+}
+
+/** What "Gastar movimento" answers: the combat, and what the combatant has left (tenths of a foot). */
+export interface SpendResult {
+  readonly encounter: Encounter;
+  readonly movementLeftDft: number;
 }
 
 /** What a damage call answers: the combat and the damage as it is now. For an
@@ -155,12 +162,15 @@ export class CombatClient {
     name: string,
     participants: readonly JoinSpec[],
     idempotencyKey: string,
+    mode?: EncounterMode,
   ): Promise<Encounter> {
     const res = await this.client.startEncounter({
       campaignId,
       idempotencyKey,
       name,
       participants: participants.map(toParticipant),
+      // Left out, the server reads the table's "combate com mapa" rule (RN-24).
+      ...(mode === undefined ? {} : { mode }),
     });
     return need(res.encounter, 'StartEncounter');
   }
@@ -278,6 +288,24 @@ export class CombatClient {
   async skipOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
     const res = await this.client.skipOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
     return need(res.encounter, 'SkipOpportunity');
+  }
+
+  /** "Gastar movimento" (a combat without a map, RN-25): whole feet, never more than what is left. The server says what is left. */
+  async spendMovement(campaignId: string, encounterId: string, combatantId: string, distanceFt: number, idempotencyKey: string): Promise<SpendResult> {
+    const res = await this.client.spendMovement({ campaignId, encounterId, combatantId, distanceFt, idempotencyKey });
+    return { encounter: need(res.encounter, 'SpendMovement'), movementLeftDft: res.movementLeftDft };
+  }
+
+  /** The master's "Oferecer ataque de oportunidade" (a combat without a map): who left whose reach. */
+  async offerOpportunity(campaignId: string, encounterId: string, moverId: string, reactorId: string, idempotencyKey: string): Promise<Encounter> {
+    const res = await this.client.offerOpportunity({ campaignId, encounterId, moverId, reactorId, idempotencyKey });
+    return need(res.encounter, 'OfferOpportunity');
+  }
+
+  /** "Retirar a oferta": an offer nobody answered is taken back; the reactor keeps its reaction. */
+  async withdrawOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
+    const res = await this.client.withdrawOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+    return need(res.encounter, 'WithdrawOpportunity');
   }
 
   async setHidden(

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +31,9 @@ import { type FormEnded, ConcentrationWatch, FormNotices, type LostConcentration
 import { reasonText } from '../../../core/combat/combat-options';
 import { joinDots, tight } from '../../../core/format/text';
 import { MoveOptionsState } from '../../../core/combat/move-options-state';
+import { TableRulesClient } from '../../../core/campaigns/table-rules';
+import { DeathSaveVisibility } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { coverTargets, everyoneStanding, isTheatre, reactorRows } from '../../../core/combat/theatre';
 import { CreatureOptionsState } from '../../../core/combat/creature-options-state';
 import { CHARACTER_TAB, type MineTab, actingTab, membersToEnd, mineTabs, ownCreatures, validTab } from '../../../core/combat/mine';
 import { article } from '../../../core/combat/combat-log';
@@ -112,6 +116,10 @@ import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
 import { OrderColumn } from './turn-panel/order-column';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
+import { CoverPanel } from './theatre/cover-panel';
+import { NoMapPanel, TheatreReaction } from './theatre/no-map-panel';
+import { OfferPanel } from './theatre/offer-panel';
+import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
@@ -142,6 +150,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
     CombatLogPanel,
     CombatMapCard,
     CombatSummary,
+    CoverPanel,
     InitiativeSetup,
     InitiativeSide,
     JointCard,
@@ -149,11 +158,15 @@ import { TurnPanel } from './turn-panel/turn-panel';
     MatIconModule,
     MineTabs,
     MovePage,
+    NgTemplateOutlet,
+    NoMapPanel,
     NpcCard,
+    OfferPanel,
     OpportunityCard,
     OrderColumn,
     OrderList,
     PlayerInitiative,
+    TheatreReaction,
     TurnBar,
     TrapDamages,
     TurnPanel,
@@ -168,6 +181,7 @@ export class CombatView {
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
   private readonly creaturesApi = inject(CreaturesClient);
+  private readonly tableRules = inject(TableRulesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
@@ -233,6 +247,42 @@ export class CombatView {
       : null;
   });
   protected readonly mapName = computed(() => this.mapState().map()?.name ?? '');
+  /** The combat is played without a map (RN-25): a list instead of a map, movement by number, the master's offers (E10-04). */
+  protected readonly theatre = computed(() => isTheatre(this.encounter()));
+  /** The master's "Oferecer ataque de oportunidade" form is open. */
+  protected readonly offering = signal(false);
+  protected readonly offerError = signal('');
+  /** Who the mover can have left the reach of (the other side, standing): the form's rows. */
+  protected readonly offerRows = computed(() => {
+    const e = this.encounter();
+    return e ? reactorRows(e, (c) => (this.info().get(c.characterId)?.classSummary ?? this.info().get(c.characterId)?.kindLabel ?? '')) : [];
+  });
+  /** Why the offer cannot be made now (nobody on the other side can react), or `''`. */
+  protected readonly offerWhy = computed(() => {
+    const rows = this.offerRows();
+    return rows.every((r) => r.spent || r.offered) ? 'Ninguém pode reagir agora.' : '';
+  });
+  /** One idempotency key per form and reactor: a repeated tap never offers twice, a new form is a new offer. */
+  private offerKeys = new Map<string, string>();
+  /** The cover editor asked for from the order's menu (the fallback for a joint or master turn): the panel opens on that combatant. */
+  protected readonly coverRequest = signal<{ id: string; n: number } | null>(null);
+  protected readonly everyone = computed(() => {
+    const e = this.encounter();
+    return e ? everyoneStanding(e) : [];
+  });
+  /** The log says the table hides the death saves, to the other players and only when someone is down. */
+  protected readonly deathNote = computed(() => {
+    const e = this.encounter();
+    return this.deathsHidden() && !this.isMaster() && !!e && e.combatants.some((c) => isDown(c) && !c.mine);
+  });
+  /** Whose cover the master marks (the other side of whoever is on turn). */
+  protected readonly coverTargets = computed(() => {
+    const e = this.encounter();
+    return e ? coverTargets(e) : [];
+  });
+  /** The table hides the death saves from the other players (RN-24); `null` while the rule is not read (then every screen shows them as before). */
+  private readonly deathRule = signal<DeathSaveVisibility | null>(null);
+  protected readonly deathsHidden = computed(() => this.deathRule() === DeathSaveVisibility.OWNER_AND_MASTER);
   protected readonly info = computed<ReadonlyMap<string, CombatantInfo>>(() => {
     const merged = new Map(this.rosterInfo());
     // A player has no roster: their own combatant says what the table needs.
@@ -596,7 +646,7 @@ export class CombatView {
     );
   });
   protected readonly unplaced = computed(() =>
-    (this.encounter()?.combatants ?? []).filter((c) => !c.placed),
+    this.theatre() ? [] : (this.encounter()?.combatants ?? []).filter((c) => !c.placed),
   );
   protected readonly setup = computed(() => this.encounter()?.status === EncounterStatus.SETUP);
   protected readonly active = computed(() => this.encounter()?.status === EncounterStatus.ACTIVE);
@@ -605,7 +655,39 @@ export class CombatView {
   /** The SRD's details of each spell in the list (read once, cached by the catalog): the line under a spell's name. */
   protected readonly spellDetails = signal<ReadonlyMap<string, SpellDetails>>(new Map());
 
+  private ruleKey = '';
+  /** Changes only when the turn passes (or the combat ends): a string, so the effects that read it ignore the combat's other updates. */
+  private readonly turnKey = computed(() => {
+    const e = this.encounter();
+    return e && e.status === EncounterStatus.ACTIVE ? `${e.id}:${e.round}:${e.currentCombatantId}` : '';
+  });
+
+  /** The table's rule on who sees the death saves (RN-24): read when a combat shows and again when someone falls, so a rule changed meanwhile is caught. */
+  private async readDeathRule(campaignId: string): Promise<void> {
+    try {
+      this.deathRule.set((await this.tableRules.get(campaignId)).saved.deathSaves);
+    } catch {
+      // Without the rule the screens show the marks as they always did.
+    }
+  }
+
   constructor() {
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      const key = e ? `${e.id}:${e.combatants.some(isDown)}` : '';
+      untracked(() => {
+        if (key !== '' && key !== this.ruleKey) {
+          this.ruleKey = key;
+          void this.readDeathRule(campaignId);
+        }
+      });
+    });
+    // The offer's form belongs to a turn: when it passes, or the combat ends, it closes.
+    effect(() => {
+      void this.turnKey();
+      untracked(() => this.offering.set(false));
+    });
     // The familiar's name, for the action "Ver pelos olhos do Nanquim" (the owner's list: RN-20).
     effect(() => {
       const mine = this.own();
@@ -1564,6 +1646,45 @@ export class CombatView {
     return this.run((e) => this.api.skipOpportunity(this.campaignId(), e.id, offer.id));
   }
 
+  /** "Oferecer a Toren": the master says the one on turn left that combatant's reach (a combat without a map). */
+  protected async makeOffer(reactorId: string): Promise<void> {
+    const e = this.encounter();
+    const mover = e ? currentCombatant(e) : null;
+    if (!e || !mover) {
+      return;
+    }
+    this.offerError.set('');
+    let key = this.offerKeys.get(reactorId);
+    if (!key) {
+      key = newKey();
+      this.offerKeys.set(reactorId, key);
+    }
+    const ok = await this.run((current) => this.api.offerOpportunity(this.campaignId(), current.id, mover.id, reactorId, key));
+    if (ok) {
+      this.offering.set(false);
+    } else if (this.error()) {
+      // The refusal stays in the form, where the master is looking (the page's notice has it too).
+      this.offerError.set(this.error());
+      this.error.set('');
+      // A refused offer is not a retry: the next try is a new one.
+      this.offerKeys.delete(reactorId);
+    }
+  }
+
+  /** "Oferecer ataque de oportunidade": opens the form under its button (a new form, new keys), or closes it. */
+  protected toggleOffer(): void {
+    if (!this.offering()) {
+      this.offerKeys = new Map();
+      this.offerError.set('');
+    }
+    this.offering.set(!this.offering());
+  }
+
+  /** "Retirar a oferta": the master takes back an offer nobody answered; the reactor keeps its reaction. */
+  protected withdrawOpportunity(offer: OpportunityOffer): Promise<boolean> {
+    return this.run((e) => this.api.withdrawOpportunity(this.campaignId(), e.id, offer.id));
+  }
+
   /** The master's "Marcar como aliado" / "Voltar a ser inimigo". */
   protected setSide(change: { id: string; side: CombatantSide }): Promise<boolean> {
     return this.run((e) => this.api.setSide(this.campaignId(), e.id, change.id, change.side));
@@ -1715,7 +1836,26 @@ export class CombatView {
     this.state().mapOpen.set(false);
   }
 
+  /** "Gastar movimento" (a combat without a map): the sheet that asks how far. For the player's character, or for one of their creatures. */
+  protected openSpend(id?: string): void {
+    const e = this.encounter();
+    const who = id ?? this.own()?.id;
+    if (!e || !who) {
+      return;
+    }
+    const data: SpendSheetData = { campaignId: this.campaignId(), encounterId: e.id, combatantId: who, state: this.state() };
+    openSheet<SpendSheet, SpendSheetData, boolean>(this.dialog, this.bottomSheet, SpendSheet, {
+      data,
+      ariaLabel: 'Gastar movimento',
+      labelledBy: 'sheet-t',
+    }).subscribe(() => this.moveNote.set(''));
+  }
+
   protected openMove(): void {
+    if (this.theatre()) {
+      this.openSpend();
+      return;
+    }
     this.lockedDoor.set(false);
     this.moverId.set('');
     this.dropStart.set(null);
@@ -1725,6 +1865,10 @@ export class CombatView {
 
   /** "Mover o Lobo atroz 1": the same page, for the creature. */
   protected openCreatureMove(id: string): void {
+    if (this.theatre()) {
+      this.openSpend(id);
+      return;
+    }
     this.moverName = this.encounter()?.combatants.find((c) => c.id === id)?.label ?? '';
     this.moverId.set(id);
     this.lockedDoor.set(false);

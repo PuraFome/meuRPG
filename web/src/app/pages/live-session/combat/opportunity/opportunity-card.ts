@@ -57,7 +57,9 @@ export interface MasterAnswer {
     @for (o of offers(); track o.id) {
       <section class="op" role="group" [attr.aria-label]="'Ataque de oportunidade de ' + o.reactorLabel">
         <h2 class="op__title"><mat-icon aria-hidden="true">swords</mat-icon>Ataque de oportunidade</h2>
-        <p class="op__news">{{ mine(o) ? news(o) : leaving(o) }}</p>
+        @if (mine(o) || !o.byHand) {
+          <p class="op__news">{{ mine(o) ? news(o) : leaving(o) }}</p>
+        }
         @if (mine(o)) {
           <p class="op__ask"><b>{{ ask(o) }}</b></p>
           @if (attacks(o)[0]; as first) {
@@ -85,9 +87,30 @@ export interface MasterAnswer {
             <mat-icon aria-hidden="true">info</mat-icon>
             O turno {{ ofMover(o) }} espera a sua resposta. {{ walked(o) }}
           </p>
+          @if (o.byHand) {
+            <!-- A combat without a map: nobody has a square, so nothing goes back anywhere. -->
+            <div class="op__pair">
+              <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
+            </div>
+          } @else {
+            <p class="op__note op__note--plain">
+              O ataque conta como feito logo antes de {{ theMover(o) }} sair do alcance: se levar a 0 PV, o token volta ao último
+              quadrado que ainda estava no alcance.
+            </p>
+          }
+        } @else if (o.byHand) {
+          <!-- The master offered it by hand: the wait is a status, and he can send it on or take it back. -->
+          <div class="op__wait" role="status">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <p><b>Esperando a resposta {{ waitingFor(o) }}.</b> {{ leavingBy(o) }} O turno continua depois da resposta.</p>
+          </div>
+          <div class="op__pair">
+            <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">Seguir sem esperar</button>
+            <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
+          </div>
           <p class="op__note op__note--plain">
-            O ataque conta como feito logo antes de {{ theMover(o) }} sair do alcance: se levar a 0 PV, o token volta ao último
-            quadrado que ainda estava no alcance.
+            “Seguir sem esperar” é para quando o jogador não responde: o turno continua. “Retirar a oferta” é para quando você ofereceu sem querer.
+            Nos dois, {{ theReactor(o) }} não ataca e continua com a reação.
           </p>
         } @else {
           <p class="op__ask"><b>Esperando a reação {{ waitingFor(o) }}</b></p>
@@ -102,8 +125,8 @@ export interface MasterAnswer {
             }
           </div>
           <p class="op__note op__note--plain">
-            Se você seguir sem esperar, {{ theReactor(o) }} perde essa reação. O aviso fica na tela do jogador até a resposta, ou até
-            você seguir sem esperar.
+            Se você seguir sem esperar, {{ theReactor(o) }} não ataca e continua com a reação. O aviso fica na tela do jogador até a
+            resposta, ou até você seguir sem esperar.
           </p>
         }
       </section>
@@ -126,6 +149,8 @@ export class OpportunityCard {
 
   readonly answer = output<MasterAnswer>();
   readonly skip = output<OpportunityOffer>();
+  /** "Retirar a oferta": only the master's own offers (a combat without a map). */
+  readonly withdraw = output<OpportunityOffer>();
   readonly retry = output<OpportunityOffer>();
   readonly undo = output<void>();
 
@@ -183,6 +208,11 @@ export class OpportunityCard {
 
   protected theReactor(o: OpportunityOffer): string {
     return `${article(o.reactorLabel)} ${o.reactorLabel}`;
+  }
+
+  /** "O Goblin 1 saiu do alcance dele.": the master's offer, with the name of the one whose reach it was. */
+  protected leavingBy(o: OpportunityOffer): string {
+    return tieNumbers(`${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} saiu do alcance ${article(o.reactorLabel) === 'a' ? 'dela' : 'dele'}.`);
   }
 
   /** "Ele já andou 4,5 m: o movimento valeu." */
