@@ -40,7 +40,28 @@
         </button>
       </div>
     } @empty {
-      <p class="picker__empty">{{ emptyText() }}</p>
+      @if (outside().length === 0) {
+        <p class="picker__empty">{{ emptyText() }}</p>
+      }
+    }
+    @for (o of outside(); track o.spell.key) {
+      <!-- A spell that no class of the sheet lists: it is read in "Magias", never picked here (the master's say). -->
+      <div class="picker__out">
+        <span class="picker__box" aria-hidden="true"></span>
+        <div class="picker__out-text">
+          <span class="picker__out-name" [id]="titleId() + '-out-' + $index">
+            {{ o.spell.namePt }}
+            <span class="picker__level">({{ spellLevelLabel(o.spell.level) }})</span>
+          </span>
+          <span class="picker__out-why">Fora da lista das suas classes</span>
+          <span class="picker__out-help">
+            Esta magia é de {{ o.classes }}. Você a lê em “Magias”, mas não a escolhe nesta ficha.
+          </span>
+          @if (magiasLink().length > 0) {
+            <a class="picker__out-link" [routerLink]="magiasLink()" [attr.aria-describedby]="titleId() + '-out-' + $index">Ver em Magias</a>
+          }
+        </div>
+      </div>
     }
   </div>
 </section>

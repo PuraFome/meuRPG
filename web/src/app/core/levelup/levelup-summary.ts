@@ -2,6 +2,7 @@ import type { DerivedSheet, DerivedSkill, SavingThrow } from '../../../gen/meurp
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, formatModifier, spellLevelLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
+import { joinDots } from '../format/text';
 
 /** One line of "O que muda": a label, the value before and after, and a small line under it. */
 export interface ChangeRow {
@@ -10,6 +11,8 @@ export interface ChangeRow {
   readonly before: string;
   readonly after: string;
   readonly sub: string;
+  /** The number comes from the table's own class ("Da mesa"), not the SRD's. */
+  readonly table?: boolean;
 }
 
 /** What the summary needs besides the two sheets: how the hit points were decided and what was picked. */
@@ -23,6 +26,10 @@ export interface SummaryContext {
   readonly spellbook: boolean;
   /** How many more spells the level asks for and how many were picked: "(falta 1)". */
   readonly spellsMissing: number;
+  /** The class gaining the level is the table's own (its key ends in "@mesa"): the slots, which come from its table, say so. */
+  readonly table?: boolean;
+  /** The features the level gives by themselves, by name ("Estilo de luta", "Conjuração"). */
+  readonly newFeatures?: readonly string[];
 }
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
@@ -134,18 +141,21 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
     const slots = (s: DerivedSheet, level: number) => s.spellSlots.find((x) => x.level === level)?.count ?? 0;
     const circles = new Set([...before.spellSlots, ...after.spellSlots].map((x) => x.level));
     for (const level of [...circles].sort((a, b) => a - b)) {
-      rows.push(row(`slots-${level}`, `Espaços de ${spellLevelLabel(level)}`, String(slots(before, level)), String(slots(after, level))));
+      const slotRow = row(`slots-${level}`, `Espaços de ${spellLevelLabel(level)}`, String(slots(before, level)), String(slots(after, level)), ctx.table ? 'Da tabela da classe' : '');
+      rows.push(slotRow && ctx.table ? { ...slotRow, table: true } : slotRow);
     }
     if (after.pactMagic) {
       const p = before.pactMagic;
-      rows.push(
-        row('pact', 'Espaços do pacto', p ? `${p.count} de ${spellLevelLabel(p.slotLevel)}` : '0', `${after.pactMagic.count} de ${spellLevelLabel(after.pactMagic.slotLevel)}`),
-      );
+      const pactRow = row('pact', 'Espaços do pacto', p ? `${p.count} de ${spellLevelLabel(p.slotLevel)}` : '0', `${after.pactMagic.count} de ${spellLevelLabel(after.pactMagic.slotLevel)}`, ctx.table ? 'Da tabela da classe' : '');
+      rows.push(pactRow && ctx.table ? { ...pactRow, table: true } : pactRow);
     }
     if (ac.preparedMax > 0) {
       const names = newNames(ctx.prepared, 'Nova', 'Novas');
       rows.push(row('prepared', 'Magias preparadas', String(bc?.preparedMax ?? 0), String(ac.preparedMax), names));
     }
+  }
+  if (ctx.newFeatures && ctx.newFeatures.length > 0) {
+    rows.push({ key: 'features', label: 'Novas características', before: '', after: String(ctx.newFeatures.length), sub: joinDots([...ctx.newFeatures]) });
   }
   rows.push(...savesChanged(before, after));
   rows.push(...skillsChanged(before, after));

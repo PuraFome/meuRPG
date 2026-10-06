@@ -4,8 +4,8 @@ import { SpellOptionVm } from '../character-editor.types';
 import { SpellPicker } from './spell-picker';
 
 const SPELLS: SpellOptionVm[] = [
-  { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'] },
-  { key: 'spell:light', namePt: 'Luz', level: 0, classKeys: ['class:wizard'] },
+  { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false },
+  { key: 'spell:light', namePt: 'Luz', level: 0, classKeys: ['class:wizard'], fromTable: false },
 ];
 
 describe('SpellPicker', () => {

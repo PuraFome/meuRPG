@@ -24,6 +24,8 @@ export type LevelUpChoicesInit = MessageInitShape<typeof LevelUpChoicesSchema>;
 export interface LevelUpCatalog {
   readonly spells: readonly Spell[];
   readonly skills: readonly Skill[];
+  /** The classes' names, for "da lista de Mago" when a table class or a third caster reads another class's list. */
+  readonly classes?: readonly { readonly key: string; readonly namePt: string }[];
 }
 
 /** One page of the master's "O que mudou". */
@@ -99,6 +101,7 @@ export class LevelUpClient {
       pending = this.content.listContent({ campaignId }).then((res) => ({
         spells: res.content?.spells ?? [],
         skills: res.content?.skills ?? [],
+        classes: (res.content?.classes ?? []).map((c) => ({ key: c.key, namePt: c.namePt })),
       }));
       this.catalogs.set(campaignId, pending);
       pending.catch(() => this.catalogs.delete(campaignId));

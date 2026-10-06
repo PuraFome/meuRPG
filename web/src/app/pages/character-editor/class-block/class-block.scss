@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+// A class of the sheet is a quiet box of its own, with its name over the fields.
+.block {
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  margin-bottom: var(--mr-space-2);
+}
+
+.block__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+// The class and the level share a row; the subclass takes the next one, the whole width.
+.block__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: start;
+  gap: var(--mr-space-4);
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  .block__sub {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 2fr) 96px minmax(0, 2fr);
+
+    .block__sub {
+      grid-column: auto;
+    }
+  }
+
+  // At 320px the level goes under the class.
+  @media (max-width: 359.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -43,10 +43,33 @@ export function totalsFor(o: LevelUpOptions, subclassKey: string): Totals {
   const sub = o.subclasses.find((s) => s.key === subclassKey);
   return {
     cantrips: o.cantrips + (sub?.cantrips ?? 0),
-    spells: o.spells,
+    spells: o.spells + (sub?.spells ?? 0),
     skills: o.skillChoices + (sub?.skillChoices ?? 0),
     expertise: o.expertiseChoices + (sub?.expertiseChoices ?? 0),
     featureChoices: [...o.featureChoices, ...(sub?.featureChoices ?? [])],
+  };
+}
+
+/**
+ * The level's options once `subclassKey` is picked: a third caster's subclass (the table's, or a
+ * fighter's or rogue's) brings its own spells, the list they come from, the highest circle and
+ * whether it prepares (slice 10.3's `LevelUpSubclass` fields 8 to 13). Before the pick, or for a
+ * subclass that casts nothing, the options are the server's own, untouched. The browser only picks
+ * which of the server's numbers to read; none is worked out.
+ */
+export function withSubclass(o: LevelUpOptions, subclassKey: string): LevelUpOptions {
+  const sub = o.subclasses.find((s) => s.key === subclassKey);
+  if (!sub || (sub.spells === 0 && !sub.spellListClassKey && !sub.prepares)) {
+    return o;
+  }
+  return {
+    ...o,
+    spells: o.spells + sub.spells,
+    spellsKind: sub.spellsKind || o.spellsKind,
+    spellListClassKey: sub.spellListClassKey || o.spellListClassKey,
+    maxSpellLevel: sub.maxSpellLevel || o.maxSpellLevel,
+    prepares: o.prepares || sub.prepares,
+    preparedMaxAfter: sub.prepares ? sub.preparedMaxAfter : o.preparedMaxAfter,
   };
 }
 

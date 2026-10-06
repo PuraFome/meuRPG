@@ -11,14 +11,14 @@
           floatLabel="always"
           class="hp__field"
         >
-          <mat-label>Nível {{ row.level }} (1d{{ hitDie() }})</mat-label>
+          <mat-label>Nível {{ row.level }} (1d{{ row.die }})</mat-label>
           <input
             matInput
             placeholder="—"
             type="number"
             inputmode="numeric"
             min="1"
-            [max]="hitDie()"
+            [max]="row.die"
             [value]="row.roll ?? ''"
             (input)="typed(row.level, $any($event.target).valueAsNumber)"
           />
@@ -29,7 +29,7 @@
             <span class="mr-visually-hidden"> o nível {{ row.level }}</span>
           </button>
           <span class="hp__hint">
-            Role 1d{{ hitDie() }} ou digite o que saiu no seu dado, de 1 a {{ hitDie() }}.
+            Role 1d{{ row.die }} ou digite o que saiu no seu dado, de 1 a {{ row.die }}.
           </span>
         } @else {
           <button matButton type="button" class="hp__roll" (click)="roll(row.level)">
@@ -37,7 +37,7 @@
             <span class="mr-visually-hidden"> o nível {{ row.level }}</span>
           </button>
           <span class="hp__formula">
-            <strong>1d{{ hitDie() }} ({{ row.roll }})</strong> {{ modifierWords() }} (Constituição)
+            <strong>1d{{ row.die }} ({{ row.roll }})</strong> {{ modifierWords() }} (Constituição)
             =
             <strong>{{ row.gain }} PV</strong>
           </span>
@@ -65,7 +65,7 @@
     @for (row of preview().levels; track row.level) {
       @if (row.gain !== null) {
         <p class="hp__line">
-          Nível {{ row.level }}: 1d{{ hitDie() }} ({{ row.roll }}) {{ modifierWords() }} =
+          Nível {{ row.level }}: 1d{{ row.die }} ({{ row.roll }}) {{ modifierWords() }} =
           {{ row.gain }} PV
         </p>
       }

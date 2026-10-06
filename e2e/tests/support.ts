@@ -326,11 +326,11 @@ export async function createCharacterViaUI(
 ): Promise<string> {
   await page.goto(entryPath);
 
-  // `exact: true` throughout: the editor's stepper renders every step's
-  // content in the DOM at once (only the active one is visible), so a loose
-  // substring match can hit another step's field, e.g. "Raça" also matching
-  // "Sub-raça", and "Força" also matching the manual bonus field
-  // "Força (bônus manual)".
+  // `exact: true` throughout: a loose substring match can hit another field
+  // of the same step, e.g. "Raça" also matching "Sub-raça", and "Força" also
+  // matching the manual bonus field "Força (bônus manual)". (A step's content
+  // is built when the step first opens, so this helper opens each one it
+  // needs by its tab.)
 
   // Passo "Básico" (selected by default).
   await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);

@@ -31,7 +31,7 @@
       @case ('ready') {
         @if (isFullSheetKind(s.kind)) {
           <form [formGroup]="fullForm">
-            <app-editor-stepper>
+            <app-editor-stepper [eager]="abilityTable() ? [stepLabels.atributos] : []">
               <cdk-step [label]="stepLabels.basico" [hasError]="stepHasError('basico')">
                 <p class="step-lead">
                   Quem é o personagem, na ordem do cabeçalho da ficha. Os campos com * são
@@ -52,18 +52,29 @@
                     <mat-error>Escreva o nome do personagem.</mat-error>
                   </mat-form-field>
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <mat-label>Nível</mat-label>
-                    <input
-                      matInput
-                      type="number"
-                      inputmode="numeric"
-                      formControlName="level"
-                      min="1"
-                      max="20"
-                    />
-                    <mat-error>De 1 a 20.</mat-error>
-                  </mat-form-field>
+                  @if (multiclass()) {
+                    <!-- Several classes: the level of each is in its own block, and this is their sum (read, never typed). -->
+                    <div class="xp-read">
+                      <span class="group-label" id="total-level-label">Nível total</span>
+                      <span class="xp-read__value" aria-labelledby="total-level-label">{{ totalLevelValue() }}</span>
+                      @if (totalLevelProblem()) {
+                        <span class="group-hint" role="status">{{ totalLevelProblem() }}</span>
+                      }
+                    </div>
+                  } @else {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Nível</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        inputmode="numeric"
+                        formControlName="level"
+                        min="1"
+                        max="20"
+                      />
+                      <mat-error>De 1 a 20.</mat-error>
+                    </mat-form-field>
+                  }
 
                   @if (s.kind === 'player') {
                     @if (s.xpLocked) {
@@ -89,11 +100,39 @@
                     }
                   }
 
+                  @if (multiclass()) {
+                    <div class="span-all class-blocks">
+                      @for (block of blocks(); track $index) {
+                        <app-class-block
+                          [catalog]="s.catalog"
+                          [block]="block"
+                          [index]="$index"
+                          [removable]="$index > 0"
+                          (changed)="changeBlock($index, $event)"
+                          (removed)="removeClass($index)"
+                        />
+                      }
+                      <p class="group-hint class-blocks__note">
+                        O servidor confere os pré-requisitos de multiclasse, os pontos de vida e os espaços de
+                        magia. O que a ficha não cumprir aparece como aviso nela, depois de criada.
+                      </p>
+                      <button matButton="outlined" type="button" class="class-blocks__add" (click)="addClass()">
+                        <mat-icon aria-hidden="true">add</mat-icon>Adicionar classe
+                      </button>
+                    </div>
+                  } @else {
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Classe</mat-label>
                     <mat-select formControlName="className" (selectionChange)="onClassChange()">
+                      <mat-select-trigger>
+                        {{ selectedClass()?.namePt }}
+                        <app-table-mark [fromTable]="selectedClass()?.fromTable ?? false" [archived]="selectedClass()?.archived ?? false" />
+                      </mat-select-trigger>
                       @for (c of s.catalog.classes; track c.key) {
-                        <mat-option [value]="c.key">{{ c.namePt }}</mat-option>
+                        <mat-option [value]="c.key">
+                          {{ c.namePt }}
+                          <app-table-mark [fromTable]="c.fromTable" [archived]="c.archived" />
+                        </mat-option>
                       }
                     </mat-select>
                     <mat-error>Escolha a classe.</mat-error>
@@ -109,9 +148,16 @@
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <mat-select formControlName="subclassName">
+                        <mat-select-trigger>
+                          {{ selectedSubclass()?.namePt ?? 'Nenhuma' }}
+                          <app-table-mark [fromTable]="selectedSubclass()?.fromTable ?? false" [archived]="selectedSubclass()?.archived ?? false" />
+                        </mat-select-trigger>
                         <mat-option value="">Nenhuma</mat-option>
                         @for (sc of selectedClass()?.subclasses; track sc.key) {
-                          <mat-option [value]="sc.key">{{ sc.namePt }}</mat-option>
+                          <mat-option [value]="sc.key">
+                            {{ sc.namePt }}
+                            <app-table-mark [fromTable]="sc.fromTable" [archived]="sc.archived" />
+                          </mat-option>
                         }
                       </mat-select>
                       @if (subclassHint()) {
@@ -126,13 +172,25 @@
                     </mat-form-field>
                   }
 
+                  }
+
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Raça</mat-label>
                     <mat-select formControlName="race">
+                      <mat-select-trigger>
+                        {{ selectedRace()?.namePt }}
+                        <app-table-mark [fromTable]="selectedRace()?.fromTable ?? false" [archived]="selectedRace()?.archived ?? false" />
+                      </mat-select-trigger>
                       @for (r of s.catalog.races; track r.key) {
-                        <mat-option [value]="r.key">{{ r.namePt }}</mat-option>
+                        <mat-option [value]="r.key">
+                          {{ r.namePt }}
+                          <app-table-mark [fromTable]="r.fromTable" [archived]="r.archived" />
+                        </mat-option>
                       }
                     </mat-select>
+                    @if (choiceBonusesHint()) {
+                      <mat-hint>{{ choiceBonusesHint() }}</mat-hint>
+                    }
                     <mat-error>Escolha a raça.</mat-error>
                   </mat-form-field>
 
@@ -140,8 +198,15 @@
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Sub-raça</mat-label>
                       <mat-select formControlName="subrace">
+                        <mat-select-trigger>
+                          {{ selectedSubrace()?.namePt }}
+                          <app-table-mark [fromTable]="selectedSubrace()?.fromTable ?? false" [archived]="selectedSubrace()?.archived ?? false" />
+                        </mat-select-trigger>
                         @for (sr of availableSubraces(); track sr.key) {
-                          <mat-option [value]="sr.key">{{ sr.namePt }}</mat-option>
+                          <mat-option [value]="sr.key">
+                            {{ sr.namePt }}
+                            <app-table-mark [fromTable]="sr.fromTable" [archived]="sr.archived" />
+                          </mat-option>
                         }
                       </mat-select>
                     </mat-form-field>
@@ -150,11 +215,21 @@
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Antecedente</mat-label>
                     <mat-select formControlName="background">
+                      <mat-select-trigger>
+                        {{ selectedBackgroundVm()?.namePt ?? 'Outro (personalizado)' }}
+                        <app-table-mark [fromTable]="selectedBackgroundVm()?.fromTable ?? false" [archived]="selectedBackgroundVm()?.archived ?? false" />
+                      </mat-select-trigger>
                       @for (bg of s.catalog.backgrounds; track bg.key) {
-                        <mat-option [value]="bg.key">{{ bg.namePt }}</mat-option>
+                        <mat-option [value]="bg.key">
+                          {{ bg.namePt }}
+                          <app-table-mark [fromTable]="bg.fromTable" [archived]="bg.archived" />
+                        </mat-option>
                       }
                       <mat-option value="custom">Outro (personalizado)</mat-option>
                     </mat-select>
+                    @if (backgroundEquipment()) {
+                      <mat-hint>Equipamento: {{ backgroundEquipment() }}</mat-hint>
+                    }
                     <mat-error>Escolha o antecedente.</mat-error>
                   </mat-form-field>
 
@@ -167,6 +242,15 @@
                     </mat-select>
                   </mat-form-field>
                 </div>
+
+                @if (!multiclass() && s.kind !== 'minion' && s.kind !== 'story') {
+                  <div class="add-class">
+                    <button matButton="outlined" type="button" (click)="addClass()">
+                      <mat-icon aria-hidden="true">add</mat-icon>Adicionar classe
+                    </button>
+                    <p class="group-hint">Para uma ficha que já começa com mais de uma classe, como a de quem entra na campanha em nível alto.</p>
+                  </div>
+                }
 
                 @if (s.kind === 'enemy' || s.kind === 'boss') {
                   <section class="subsection" aria-labelledby="defeat-title">
@@ -186,8 +270,12 @@
                 @if (selectedBackground() === 'custom') {
                   <section class="subsection" aria-labelledby="custom-background-title">
                     <h3 class="subsection__title" id="custom-background-title">
-                      Antecedente personalizado
+                      Personalizar um antecedente
                     </h3>
+                    <p class="group-hint">
+                      Regra do SRD 5.1: um nome, duas perícias, duas ferramentas ou idiomas, uma característica e o
+                      equipamento.
+                    </p>
                     <app-fiction-notice />
                     <mat-form-field
                       appearance="outline"
@@ -226,6 +314,50 @@
                         </mat-checkbox>
                       }
                     </div>
+
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-name field-tools">
+                      <mat-label>Ferramentas ou idiomas (escolha 2)</mat-label>
+                      <mat-select
+                        multiple
+                        [value]="customBackgroundProficiencies()"
+                        (selectionChange)="setCustomProficiencies($event.value)"
+                      >
+                        <mat-optgroup label="Ferramentas">
+                          @for (t of toolOptions(); track t.key) {
+                            <mat-option
+                              [value]="t.key"
+                              [disabled]="customBackgroundProficiencies().length >= 2 && !customBackgroundProficiencies().includes(t.key)"
+                            >{{ t.namePt }}</mat-option>
+                          }
+                        </mat-optgroup>
+                        <mat-optgroup label="Idiomas">
+                          @for (t of languageOptions(); track t.key) {
+                            <mat-option
+                              [value]="t.key"
+                              [disabled]="customBackgroundProficiencies().length >= 2 && !customBackgroundProficiencies().includes(t.key)"
+                            >{{ t.namePt }}</mat-option>
+                          }
+                        </mat-optgroup>
+                      </mat-select>
+                      <mat-hint aria-live="polite">
+                        {{ backgroundProficienciesCount() }}. Escolha dois, entre ferramentas e idiomas, em qualquer mistura.
+                      </mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-name field-next">
+                      <mat-label>Nome da característica</mat-label>
+                      <input matInput formControlName="customBackgroundFeatureName" maxlength="40" autocomplete="off" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-wide">
+                      <mat-label>Texto da característica</mat-label>
+                      <textarea matInput formControlName="customBackgroundFeatureText" rows="3" maxlength="1000"></textarea>
+                      <mat-error>Até 1.000 caracteres.</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-wide">
+                      <mat-label>Equipamento do antecedente</mat-label>
+                      <textarea matInput formControlName="customBackgroundEquipment" rows="2" maxlength="500"></textarea>
+                      <mat-error>Até 500 caracteres.</mat-error>
+                    </mat-form-field>
                   </section>
                 }
               </cdk-step>
@@ -344,6 +476,9 @@
                     As duas do antecedente personalizado ficam no passo Básico.
                   }
                 </p>
+                @if (skillNote()) {
+                  <p class="step-lead skill-note">{{ skillNote() }}</p>
+                }
                 <app-skill-picker
                   [skills]="s.catalog.skills"
                   [proficient]="selectedSkills()"
@@ -356,68 +491,91 @@
               @if (isCaster()) {
                 <cdk-step [label]="stepLabels.magias">
                   <p class="step-lead">
-                    As magias da classe que o personagem já conjura neste nível, por círculo e em
-                    ordem alfabética.
+                    @if (sections().length > 1) {
+                      Da lista de cada classe, pelo nível nela. As sempre preparadas vêm da subclasse e não gastam o
+                      limite.
+                    } @else {
+                      As magias da classe que o personagem já conjura neste nível, por círculo e em ordem alfabética.
+                    }
                   </p>
                   <app-fiction-notice />
-                  <div class="spell-grid">
-                    @if (hasCantrips()) {
-                      <app-spell-picker
-                        titleId="cantrips-label"
-                        title="Truques"
-                        searchLabel="Buscar truque"
-                        noun="truque"
-                        [options]="availableCantrips()"
-                        [filtered]="filteredCantrips()"
-                        [selected]="selectedCantrips()"
-                        [filter]="cantripsFilter()"
-                        (toggle)="toggleCantrip($event)"
-                        (describe)="describeSpell($event)"
-                        (filterChange)="cantripsFilter.set($event)"
-                      />
-                    }
-                    @if (noLeveledSpellsYet()) {
-                      <p class="spell-grid__note">{{ castingStartsText() }}</p>
-                    } @else if (
-                      spellPreparation() === 'known' || spellPreparation() === 'spellbook'
-                    ) {
-                      <app-spell-picker
-                        titleId="spells-known-label"
-                        title="Magias conhecidas"
-                        searchLabel="Buscar magia"
-                        noun="magia"
-                        [showLevel]="true"
-                        [maxSpellLevel]="maxSpellLevel()"
-                        [options]="availableSpells()"
-                        [filtered]="filteredSpellsKnown()"
-                        [selected]="selectedSpellsKnown()"
-                        [filter]="spellsKnownFilter()"
-                        (toggle)="toggleSpellKnown($event)"
-                        (describe)="describeSpell($event)"
-                        (filterChange)="spellsKnownFilter.set($event)"
-                      />
-                    }
-                    @if (
-                      !noLeveledSpellsYet() &&
-                      (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook')
-                    ) {
-                      <app-spell-picker
-                        titleId="spells-prepared-label"
-                        title="Magias preparadas"
-                        searchLabel="Buscar magia"
-                        noun="magia"
-                        [showLevel]="true"
-                        [maxSpellLevel]="maxSpellLevel()"
-                        [options]="availableSpells()"
-                        [filtered]="filteredSpellsPrepared()"
-                        [selected]="selectedSpellsPrepared()"
-                        [filter]="spellsPreparedFilter()"
-                        (toggle)="toggleSpellPrepared($event)"
-                        (describe)="describeSpell($event)"
-                        (filterChange)="spellsPreparedFilter.set($event)"
-                      />
-                    }
-                  </div>
+                  @if (grantedSpells().length > 0) {
+                    <app-granted-spells [spells]="grantedSpells()" (describe)="describeSpell($event)" />
+                  }
+                  @for (view of sectionViews(); track view.id) {
+                    <section
+                      class="spell-section"
+                      [class.spell-section--multi]="sections().length > 1"
+                      [attr.aria-labelledby]="sections().length > 1 ? 'spell-section-' + view.id : null"
+                    >
+                      @if (sections().length > 1) {
+                        <h3 class="spell-section__title" [id]="'spell-section-' + view.id">
+                          {{ sectionHeading(view.section) }}
+                        </h3>
+                        <p class="group-hint">{{ view.section.namePt }} {{ view.section.level }}</p>
+                      }
+                      <div class="spell-grid">
+                        @if (view.cantrips.show) {
+                          <app-spell-picker
+                            [titleId]="'cantrips-label-' + view.id"
+                            title="Truques"
+                            searchLabel="Buscar truque"
+                            noun="truque"
+                            [options]="view.cantrips.all"
+                            [filtered]="view.cantrips.shown"
+                            [selected]="selectedCantrips()"
+                            [filter]="view.cantrips.filter"
+                            [outside]="view.cantrips.outside"
+                            [magiasLink]="magiasLink()"
+                            (toggle)="toggleCantrip($event)"
+                            (describe)="describeSpell($event)"
+                            (filterChange)="setSpellFilter(view.section.index, 'cantrips', $event)"
+                          />
+                        }
+                        @if (view.noLeveledYet) {
+                          <p class="spell-grid__note">{{ view.castingStarts }}</p>
+                        }
+                        @if (view.known.show) {
+                          <app-spell-picker
+                            [titleId]="'spells-known-label-' + view.id"
+                            title="Magias conhecidas"
+                            searchLabel="Buscar magia"
+                            noun="magia"
+                            [showLevel]="true"
+                            [maxSpellLevel]="view.section.maxCircle"
+                            [options]="view.known.all"
+                            [filtered]="view.known.shown"
+                            [selected]="selectedSpellsKnown()"
+                            [filter]="view.known.filter"
+                            [outside]="view.known.outside"
+                            [magiasLink]="magiasLink()"
+                            (toggle)="toggleSpellKnown($event)"
+                            (describe)="describeSpell($event)"
+                            (filterChange)="setSpellFilter(view.section.index, 'known', $event)"
+                          />
+                        }
+                        @if (view.prepared.show) {
+                          <app-spell-picker
+                            [titleId]="'spells-prepared-label-' + view.id"
+                            title="Magias preparadas"
+                            searchLabel="Buscar magia"
+                            noun="magia"
+                            [showLevel]="true"
+                            [maxSpellLevel]="view.section.maxCircle"
+                            [options]="view.prepared.all"
+                            [filtered]="view.prepared.shown"
+                            [selected]="selectedSpellsPrepared()"
+                            [filter]="view.prepared.filter"
+                            [outside]="view.prepared.outside"
+                            [magiasLink]="magiasLink()"
+                            (toggle)="toggleSpellPrepared($event)"
+                            (describe)="describeSpell($event)"
+                            (filterChange)="setSpellFilter(view.section.index, 'prepared', $event)"
+                          />
+                        }
+                      </div>
+                    </section>
+                  }
                 </cdk-step>
               }
 

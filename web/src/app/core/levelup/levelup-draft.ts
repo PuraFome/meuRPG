@@ -23,6 +23,7 @@ import {
   spellOptions,
   stepsFor,
   totalsFor,
+  withSubclass,
 } from './levelup-flow';
 
 /** The two cards of "Pontos de vida": the average, or a die. */
@@ -74,21 +75,31 @@ export class LevelUpDraft {
   constructor(
     readonly options: LevelUpOptions,
     readonly have: SheetKeys,
-    readonly catalog: { readonly spells: readonly Spell[]; readonly skills: readonly Skill[] },
+    readonly catalog: {
+      readonly spells: readonly Spell[];
+      readonly skills: readonly Skill[];
+      readonly classes?: readonly { readonly key: string; readonly namePt: string }[];
+    },
   ) {
     this.preparedMaxAfter.set(options.preparedMaxAfter);
     this.startCard = options.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : 'average';
     this.hpCard.set(this.startCard);
   }
 
+  /** The server's options with the picked subclass's casting folded in: what the spell steps read. */
+  readonly effective = computed(() => withSubclass(this.options, this.subclassKey()));
+  /** Whose spell list the new spells come from, by name: the class's own, the one a table class reuses, a third caster's. */
+  readonly listName = computed(
+    () => this.catalog.classes?.find((c) => c.key === this.effective().spellListClassKey)?.namePt ?? this.options.classNamePt,
+  );
   readonly totals = computed(() => totalsFor(this.options, this.subclassKey()));
-  readonly more = computed(() => preparedMore(this.options, this.preparedMaxAfter(), this.have.prepared.length));
+  readonly more = computed(() => preparedMore(this.effective(), this.preparedMaxAfter(), this.have.prepared.length));
   readonly steps = computed<StepKey[]>(() => stepsFor(this.options, this.totals(), this.more()));
 
   readonly cantripItems = computed<PickItem[]>(() =>
-    cantripOptions(this.options, this.catalog.spells, this.have),
+    cantripOptions(this.effective(), this.catalog.spells, this.have),
   );
-  private readonly spellItemsBase = computed<PickItem[]>(() => spellOptions(this.options, this.catalog.spells, this.have));
+  private readonly spellItemsBase = computed<PickItem[]>(() => spellOptions(this.effective(), this.catalog.spells, this.have));
   /** The new spells, with the rows from outside the class list turned off once the cap is reached. */
   readonly spellItems = computed<PickItem[]>(() => {
     const base = this.spellItemsBase();
@@ -100,7 +111,7 @@ export class LevelUpDraft {
       : base;
   });
   readonly preparedItems = computed<PickItem[]>(() =>
-    preparedOptions(this.options, this.catalog.spells, this.have, this.spells()),
+    preparedOptions(this.effective(), this.catalog.spells, this.have, this.spells()),
   );
   readonly skillItems = computed<PickItem[]>(() => skillOptions(this.catalog.skills, this.have));
   readonly expertiseItems = computed<PickItem[]>(() =>
@@ -183,7 +194,7 @@ export class LevelUpDraft {
     if (n > 0) out.push({ step: 'spells', id: 'cantrips', text: lack(this.cantripsAsked(), this.cantripItems(), 'truques') || needText(n, 'truque', 'truques') });
     n = short(this.spells(), this.spellsAsked());
     if (n > 0) {
-      const where = o.spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'para as magias conhecidas';
+      const where = this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'para as magias conhecidas';
       out.push({ step: 'spells', id: 'spells', text: lack(this.spellsAsked(), this.spellItems(), 'magias') || needText(n, 'magia', 'magias').replace(/\.$/, ` ${where}.`) });
     }
     n = short(this.prepared(), this.preparedAsked());
@@ -272,10 +283,22 @@ export class LevelUpDraft {
       ),
     );
     this.subclassKey.set(key);
+    // A subclass that prepares (a third caster) says its own maximum until the preview gives the exact one.
+    this.preparedMaxAfter.set(this.effective().preparedMaxAfter);
     // Only what belonged to the previous subclass goes: its feature options. The cantrips, skills and
     // expertise that the level itself asks for stay, trimmed to what the new subclass's counts allow.
     this.features.set(new Set([...this.features()].filter((k) => !gone.has(k))));
+    // The spells the subclass brought (a third caster's list) go with it: keep only what the lists now offer.
+    const offered = (picked: ReadonlySet<string>, items: readonly PickItem[]) => {
+      const ok = new Set(items.map((i) => i.key));
+      return new Set([...picked].filter((k) => ok.has(k)));
+    };
+    this.cantrips.set(offered(this.cantrips(), this.cantripItems()));
+    this.spells.set(offered(this.spells(), this.spellItems()));
+    this.prepared.set(offered(this.prepared(), this.preparedItems()));
     this.trim(this.cantrips, this.cantripsAsked());
+    this.trim(this.spells, this.spellsAsked());
+    this.trim(this.prepared, this.preparedAsked());
     this.trim(this.skills, this.skillsAsked());
     this.trim(this.expertise, this.expertiseAsked());
   }
@@ -344,7 +367,7 @@ export class LevelUpDraft {
     this.flip(this.spells, key, this.spellsAsked());
     // A spell dropped from the book cannot stay prepared.
     const book = new Set([...this.have.known, ...this.spells()]);
-    if (this.options.spellsKind === LevelUpSpellsKind.SPELLBOOK) {
+    if (this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK) {
       this.prepared.set(new Set([...this.prepared()].filter((k) => book.has(k))));
     }
   }

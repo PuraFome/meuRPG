@@ -161,7 +161,7 @@ export class LevelUpPage {
     effect(() => {
       const s = this.session();
       const after = s?.preview.state().after;
-      if (s && after && s.options.prepares) {
+      if (s && after && s.draft.effective().prepares) {
         const max = after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
         if (max > 0) {
           untracked(() => s.draft.preparedMaxAfter.set(max));

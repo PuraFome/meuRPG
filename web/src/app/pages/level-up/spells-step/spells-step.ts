@@ -37,22 +37,23 @@ export class SpellsStep {
     return {
       n,
       title: n === 1 ? 'Truque novo' : 'Truques novos',
-      lead: `Escolha ${n} dos ${d.cantripItems().length} truques de ${this.s().options.classNamePt} que você ainda não conhece.`,
+      lead: `Escolha ${n} dos ${d.cantripItems().length} truques de ${d.listName()} que você ainda não conhece.`,
     };
   });
 
   protected readonly spells = computed(() => {
     const s = this.s();
     const n = s.draft.spellsAsked();
-    const book = s.options.spellsKind === LevelUpSpellsKind.SPELLBOOK;
+    const o = s.draft.effective();
+    const book = o.spellsKind === LevelUpSpellsKind.SPELLBOOK;
     const where = book ? 'para copiar no livro' : 'para aprender';
-    const secrets = s.options.anyClassSpells;
-    const lead = `Escolha ${n} ${n === 1 ? 'magia' : 'magias'} ${circles(s.options.maxSpellLevel)} ${where}.`;
+    const secrets = o.anyClassSpells;
+    const lead = `Escolha ${n} ${n === 1 ? 'magia' : 'magias'} ${circles(o.maxSpellLevel)} ${where}.`;
     return {
       n,
       title: book ? 'Livro de magias' : 'Magias conhecidas',
       // Magical Secrets: some of them may come from any class's list.
-      lead: secrets > 0 ? `${lead} Até ${secrets} de qualquer classe; as outras, da lista de ${s.options.classNamePt}.` : lead,
+      lead: secrets > 0 ? `${lead} Até ${secrets} de qualquer classe; as outras, da lista de ${s.draft.listName()}.` : lead,
     };
   });
 
@@ -60,7 +61,7 @@ export class SpellsStep {
     const s = this.s();
     const d = s.draft;
     const names = s.draft.have.prepared.map((k) => d.names().get(k) ?? k);
-    const book = s.options.spellsKind === LevelUpSpellsKind.SPELLBOOK;
+    const book = d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK;
     const n = d.preparedAsked();
     return {
       n,

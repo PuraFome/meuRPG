@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import type { ChangeRow } from '../../../core/levelup/levelup-summary';
 
@@ -10,17 +11,23 @@ import type { ChangeRow } from '../../../core/levelup/levelup-summary';
  */
 @Component({
   selector: 'app-change-rows',
+  imports: [MatIconModule],
   template: `
     <ul class="rows">
       @for (r of rows(); track r.key) {
         <li class="row" [class.row--big]="!compact()">
           <span class="row__text">
-            <span class="row__label">{{ r.label }}</span>
+            <span class="row__label">
+              {{ r.label }}
+              @if (r.table) {
+                <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+              }
+            </span>
             @if (r.sub) {
               <span class="row__sub">{{ r.sub }}</span>
             }
           </span>
-          <span class="row__values">
+          <span class="row__values" [class.row__values--long]="(r.before + r.after).length > 24">
             @if (r.before !== '') {
               <span class="row__before">{{ r.before }}</span>
               <span class="mr-visually-hidden"> para </span>

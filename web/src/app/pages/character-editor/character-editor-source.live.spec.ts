@@ -6,12 +6,16 @@ import {
   HitPointsMethod,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
+  CharacterEditorSourceLive,
   mergeFullSheetInit,
   toBasicSheetInit,
   toFormBasicSheet,
   toFormFullSheet,
   toFullSheetInit,
 } from './character-editor-source.live';
+import { TestBed } from '@angular/core/testing';
+
+import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 
 /**
@@ -194,6 +198,11 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     expect(form.background).toBe('custom');
     expect(form.customBackgroundName).toBe('Sábio');
     expect(form.customBackgroundSkills).toEqual(['skill:arcana', 'skill:history']);
+    // The editor shows every field of the "Outro" background now (slice 10.12b).
+    expect(form.customBackgroundProficiencies).toEqual(['proficiency:thieves-tools', 'language:elvish']);
+    expect(form.customBackgroundFeatureName).toBe('Pesquisador');
+    expect(form.customBackgroundFeatureText).toBe('Sabe a quem perguntar.');
+    expect(form.customBackgroundEquipment).toBe('Um tinteiro.');
 
     const merged = mergeFullSheetInit(loaded, form);
     // `background` is always rebuilt from the form (there is no "not shown
@@ -214,6 +223,31 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     });
   });
 
+  it('a sheet of several classes round-trips: the first in the form fields, the others in extraClasses, in order', () => {
+    const loaded: FullSheet = {
+      ...fullyPopulatedFullSheet(),
+      classes: [
+        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:wizard', level: 3, subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' } },
+        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:cleric', level: 1, subclass: { case: 'subclassKey', value: 'subclass:path@mesa' } },
+        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:fighter', level: 2, subclass: { case: 'customSubclassName', value: 'Duelista' } },
+      ],
+    };
+    const form = toFormFullSheet('Corvina', loaded);
+    expect(form).toMatchObject({ className: 'class:wizard', level: 3, subclassName: 'subclass:ink@mesa' });
+    expect(form.extraClasses).toEqual([
+      { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa', customSubclassName: '' },
+      { classKey: 'class:fighter', level: 2, subclassKey: '', customSubclassName: 'Duelista' },
+    ]);
+    // Saving it unchanged sends every class back, never only the first.
+    expect(mergeFullSheetInit(loaded, form).classes).toEqual([
+      { classKey: 'class:wizard', level: 3, subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' } },
+      { classKey: 'class:cleric', level: 1, subclass: { case: 'subclassKey', value: 'subclass:path@mesa' } },
+      { classKey: 'class:fighter', level: 2, subclass: { case: 'customSubclassName', value: 'Duelista' } },
+    ]);
+    // A block with no class chosen never reaches the wire.
+    expect(toFullSheetInit({ ...form, extraClasses: [...form.extraClasses, { classKey: '', level: 1, subclassKey: '', customSubclassName: '' }] }).classes).toHaveLength(3);
+  });
+
   it('CreateCharacter (no loaded message) is exactly toFullSheetInit — nothing to merge yet', () => {
     const form = toFormFullSheet('Pensantus', fullyPopulatedFullSheet());
     expect(mergeFullSheetInit(undefined, form)).toEqual(toFullSheetInit(form));
@@ -228,6 +262,65 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
 
     const switchedToAverage = toFullSheetInit({ ...form, hitPointsMethod: 'average' });
     expect(switchedToAverage.hitPoints.rolls).toEqual([]);
+  });
+});
+
+describe('the catalog the editor reads (slice 10.12b)', () => {
+  const key = (k: string) => k.endsWith('@mesa');
+
+  it('marks an entry of the table by its key, carries the class numbers and a third caster\'s subclass, and a table class reuses another list', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        CharacterEditorSourceLive,
+        { provide: CONNECT_TRANSPORT, useValue: {} },
+      ],
+    });
+    const source = TestBed.inject(CharacterEditorSourceLive);
+    // The generated client is a field of the source: the spec gives it the server's answer.
+    (source as unknown as { contentClient: unknown }).contentClient = {
+      listContent: () =>
+        Promise.resolve({
+          content: {
+            races: [
+              { key: 'race:gnome', namePt: 'Gnomo', abilityBonuses: { constitution: 0 }, choiceBonuses: [], archived: false },
+              { key: 'race:corujeiro@mesa', namePt: 'Corujeiro', abilityBonuses: undefined, choiceBonuses: [2, 1], archived: true },
+            ],
+            subraces: [],
+            classes: [
+              { key: 'class:guardiao@mesa', namePt: 'Guardião do Vale', hitDie: 10, savingThrows: [1, 5], skillChoice: { count: 2 }, subclassLevel: 3, spellcasting: { preparation: 2, firstLevel: 2, maxSpellLevelByLevel: [0, 1], listClassKey: 'class:druid' } },
+              { key: 'class:fighter', namePt: 'Guerreiro', hitDie: 10, savingThrows: [], subclassLevel: 3 },
+            ],
+            subclasses: [
+              { key: 'subclass:ink@mesa', namePt: 'Lâmina de Tinta', classKey: 'class:fighter', spellcasting: { preparation: 1, listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } },
+              { key: 'subclass:champion', namePt: 'Campeão', classKey: 'class:fighter' },
+            ],
+            backgrounds: [{ key: 'background:cartografo@mesa', namePt: 'Cartógrafo do Vale', equipmentPt: 'Uma luneta' }],
+            skills: [],
+            armor: [],
+            weapons: [],
+            spells: [{ key: 'spell:ink-blade@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'] }],
+            challengeRatings: [],
+          },
+        }),
+    };
+    const catalog = await source.loadCatalog('camp-1');
+
+    expect(catalog.races.map((r) => [r.key, r.fromTable, r.archived, r.choiceBonuses])).toEqual([
+      ['race:gnome', false, false, []],
+      ['race:corujeiro@mesa', true, true, [2, 1]],
+    ]);
+    const guardian = catalog.classes[0];
+    expect(guardian).toMatchObject({ fromTable: true, skillChoose: 2, savingThrows: ['str', 'wis'], spellListClassKey: 'class:druid', isCaster: true, spellcastingFirstLevel: 2 });
+    // A class that casts nothing has no list.
+    expect(catalog.classes[1]).toMatchObject({ isCaster: false, spellListClassKey: '', skillChoose: 0 });
+    const [ink, champion] = catalog.classes[1].subclasses;
+    expect(ink).toMatchObject({ fromTable: true, casting: { preparation: 'known', listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } });
+    expect(champion).toMatchObject({ fromTable: false, casting: null });
+    expect(catalog.backgrounds[0]).toMatchObject({ fromTable: true, equipmentPt: 'Uma luneta' });
+    expect(catalog.spells[0].fromTable).toBe(true);
+    expect(key('x@mesa')).toBe(true);
+    // Tools and languages for the "Outro" background: ours, until the catalog lists them.
+    expect(catalog.toolsAndLanguages.length).toBeGreaterThan(40);
   });
 });
 

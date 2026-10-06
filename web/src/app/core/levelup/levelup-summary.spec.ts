@@ -57,3 +57,29 @@ describe('changeRows: the summary of E8-15', () => {
     expect(plain(half.find((r) => r.key === 'spells')?.after ?? '')).toContain('(falta 1)');
   });
 });
+
+describe('changeRows: a table class (E10-02 state 7)', () => {
+  const ctxTable: SummaryContext = { ...ctx, table: true, newFeatures: ['Estilo de luta', 'Conjuração'] };
+  const rows = changeRows(pensantus(false), pensantus(true), ctxTable);
+  const row = (key: string) => rows.find((r) => r.key === key);
+
+  it('tags the slots that come from the class table with "Da mesa", and says where they come from', () => {
+    expect(row('slots-2')).toMatchObject({ table: true, sub: 'Da tabela da classe', before: '2', after: '3' });
+  });
+
+  it('tags only the slots: the hit points and the rest are the same rows as the SRD\'s', () => {
+    expect(rows.filter((r) => r.table).map((r) => r.key)).toEqual(['slots-2']);
+  });
+
+  it('lists the features the level gives, by name, with their count, and no before', () => {
+    expect(row('features')).toMatchObject({ label: 'Novas características', before: '', after: '2', sub: expect.any(String) });
+    expect(plain(row('features')?.sub ?? '')).toBe('Estilo de luta · Conjuração');
+  });
+
+  it('shows only the rows that change: an SRD class has no tag and no feature row unless there are features', () => {
+    const srd = changeRows(pensantus(false), pensantus(true), ctx);
+    expect(srd.some((r) => r.table)).toBe(false);
+    expect(srd.some((r) => r.key === 'features')).toBe(false);
+    expect(srd.find((r) => r.key === 'slots-2')?.sub).toBe('');
+  });
+});

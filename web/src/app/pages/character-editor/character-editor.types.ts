@@ -56,6 +56,14 @@ export const ALIGNMENT_LABELS: Record<AlignmentKey, string> = {
  * always takes the hit die's maximum (`HitPointsMethod`, characters.proto). */
 export type HitPointsMethod = 'average' | 'rolled';
 
+/** One class after the first on the sheet (`ClassLevel`). */
+export interface ExtraClassValue {
+  classKey: string;
+  level: number;
+  subclassKey: string;
+  customSubclassName: string;
+}
+
 /**
  * The form value for a player, enemy or boss (`FullSheet`). Every field
  * that is a content key (`race`, `subrace`, `className`, `subclassName`,
@@ -101,6 +109,15 @@ export interface CharacterFormValue {
   background: string;
   customBackgroundName: string;
   customBackgroundSkills: [string, string] | null;
+  /** The "Outro" background's two tools or languages (content keys), the feature the player
+   * wrote and the equipment (SRD 5.1 "Customizing a Background"). */
+  customBackgroundProficiencies: string[];
+  customBackgroundFeatureName: string;
+  customBackgroundFeatureText: string;
+  customBackgroundEquipment: string;
+  /** The classes after the first (multiclass at creation): each its own level and subclass. The
+   * first class is `className`, `level` and the subclass fields above. */
+  extraClasses: ExtraClassValue[];
   skillProficiencies: string[];
   /** A subset of `skillProficiencies`: expertise doubles the proficiency
    * bonus (Bard, Rogue). */
@@ -195,7 +212,15 @@ export interface ChallengeRatingVm {
   readonly xp: number;
 }
 
-export interface SubraceOptionVm {
+/** What marks an entry of the table's own content: "Da mesa" on screen, "Arquivada" for the master. */
+export interface TableMark {
+  /** The key ends in "@mesa": the master wrote it for this campaign. */
+  readonly fromTable: boolean;
+  /** Retired by the master (only the master receives it, to see it marked). */
+  readonly archived: boolean;
+}
+
+export interface SubraceOptionVm extends TableMark {
   readonly key: string;
   readonly namePt: string;
   /** The subrace's Constitution increase, added to the race's: the HP
@@ -203,17 +228,32 @@ export interface SubraceOptionVm {
   readonly constitutionBonus: number;
 }
 
-export interface RaceOptionVm {
+export interface RaceOptionVm extends TableMark {
   readonly key: string;
   readonly namePt: string;
   /** The race's Constitution increase (see `SubraceOptionVm`). */
   readonly constitutionBonus: number;
+  /** "+2 and +1 to your choice" as [2, 1]: the player places them in the manual bonuses; empty for the SRD's races. */
+  readonly choiceBonuses: readonly number[];
   readonly subraces: readonly SubraceOptionVm[];
 }
 
-export interface SubclassOptionVm {
+/** A third caster's subclass (the table's, or an SRD fighter's or rogue's): it casts on its own. */
+export interface SubclassCastingVm {
+  readonly preparation: SpellPreparation | null;
+  /** The class whose spell list it casts from. */
+  readonly listClassKey: string;
+  /** The class level casting starts at. */
+  readonly firstLevel: number;
+  /** The highest circle at each class level, index 0 = level 1. */
+  readonly maxSpellLevelByLevel: readonly number[];
+}
+
+export interface SubclassOptionVm extends TableMark {
   readonly key: string;
   readonly namePt: string;
+  /** Set only for a subclass that casts. */
+  readonly casting: SubclassCastingVm | null;
 }
 
 /** How a caster class handles its spell list (integrator amendment,
@@ -225,9 +265,16 @@ export interface SubclassOptionVm {
  * meaningful when `isCaster` is true. */
 export type SpellPreparation = 'known' | 'prepared' | 'spellbook';
 
-export interface ClassOptionVm {
+export interface ClassOptionVm extends TableMark {
   readonly key: string;
   readonly namePt: string;
+  /** How many skills the class chooses at level 1 (`skill_choice.count`), from the server's entry. */
+  readonly skillChoose: number;
+  /** The two saving throws the class is proficient in, as the server lists them. */
+  readonly savingThrows: readonly AbilityKey[];
+  /** The class whose spell list this one casts from: its own key, or the one a table class reuses
+   * (`ClassSpellcasting.list_class_key`). Empty for a class that never casts. */
+  readonly spellListClassKey: string;
   /** Faces of the hit die: 6, 8, 10 or 12. */
   readonly hitDie: number;
   readonly isCaster: boolean;
@@ -243,9 +290,11 @@ export interface ClassOptionVm {
   readonly maxSpellLevelByLevel: readonly number[];
 }
 
-export interface BackgroundOptionVm {
+export interface BackgroundOptionVm extends TableMark {
   readonly key: string;
   readonly namePt: string;
+  /** A table background's equipment, as text; empty for the SRD's. */
+  readonly equipmentPt: string;
 }
 
 export interface SkillOptionVm {
@@ -274,6 +323,14 @@ export interface SpellOptionVm {
   readonly level: number;
   /** Content keys of the classes whose spell list has this spell. */
   readonly classKeys: readonly string[];
+  /** The master's own spell ("Da mesa"). */
+  readonly fromTable: boolean;
+}
+
+export interface ToolOrLanguageVm {
+  readonly key: string;
+  readonly namePt: string;
+  readonly kind: 'tool' | 'language';
 }
 
 /** `rules.v1.Content`, trimmed to what the editor's dropdowns need
@@ -289,6 +346,8 @@ export interface RulesCatalogVm {
   readonly armor: readonly ArmorOptionVm[];
   readonly weapons: readonly WeaponOptionVm[];
   readonly spells: readonly SpellOptionVm[];
+  /** The SRD's tools and languages an "Outro" background may grant, with their Portuguese names. */
+  readonly toolsAndLanguages: readonly ToolOrLanguageVm[];
   /** The ND to XP table, in order (0, 1/8, 1/4, 1/2, 1 to 30), for the NPC's
    * "Nível de desafio (ND)" picker. */
   readonly challengeRatings: readonly ChallengeRatingVm[];
@@ -369,6 +428,10 @@ export interface CharacterForEdit {
   readonly sheetLocked: boolean;
   /** How the base scores were made, as the server recorded it at creation (RN-24); `null` for NPCs and sheets made before the rules. */
   readonly abilityOrigin?: { readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null;
+  /** The leveled spells the server's derived sheet has prepared that none of the sheet's own lists holds: the ones a
+   * subclass always prepares (a domain's, an oath's), which never count against the limit. Read from the saved sheet,
+   * so only an edit has them (a new sheet has no derived sheet yet). */
+  readonly grantedSpellKeys?: readonly string[];
 }
 
 /**

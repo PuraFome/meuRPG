@@ -15,10 +15,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
 import { characterBlockedMessage, describeCharacterError } from '../../core/characters/character-errors';
-import { characterKindLabel } from '../../core/characters/character-labels';
+import { abilityLabel, characterKindLabel, spellLevelLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
+import { TableMark } from '../../shared/table-mark/table-mark';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
 import { TableAbilityScores } from './table-ability-scores/table-ability-scores';
@@ -31,10 +32,27 @@ import {
   CharacterEditorSource,
   CharacterForEdit,
   CharacterFormValue,
+  ExtraClassValue,
   HitPointsMethod,
   RulesCatalogVm,
   SpellOptionVm,
 } from './character-editor.types';
+import { ClassBlockFields } from './class-block/class-block';
+import { GrantedSpells } from './granted-spells/granted-spells';
+import {
+  ClassBlock,
+  MAX_TOTAL_LEVEL,
+  type CasterSection,
+  allOfSection,
+  blocksOf,
+  cantripsOf,
+  casterSections,
+  hitDiceAfterFirst,
+  leveledOf,
+  outsideTheLists,
+  sectionName,
+  totalLevel,
+} from './class-blocks';
 import type { SpellDetailsData } from '../../shared/spell-details/spell-details';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -111,10 +129,11 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
 /** The "search box" the catalog-backed pickers use to narrow a long list
  * (cantrips, spells) — a plain case-insensitive substring match on the
  * Portuguese name, no new dependency. */
-/** Circle first, then Portuguese name: the order the player expects to read
- * a spell list in. Returns a new array. */
-function sortSpells(spells: readonly SpellOptionVm[]): SpellOptionVm[] {
-  return [...spells].sort((a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'));
+const BONUS_LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
+
+/** "+2 e +1". */
+function bonusWords(bonuses: readonly number[]): string {
+  return BONUS_LIST.format(bonuses.map((b) => `+${b}`));
 }
 
 function filterByName<T extends { readonly namePt: string }>(
@@ -181,6 +200,9 @@ function filterByName<T extends { readonly namePt: string }>(
 @Component({
   selector: 'app-character-editor',
   imports: [
+    ClassBlockFields,
+    GrantedSpells,
+    TableMark,
     AbilityFields,
     AbilityScores,
     TableAbilityScores,
@@ -229,6 +251,10 @@ export class CharacterEditor {
    * integrator fix, phase 2) — a separate, capped-at-2 selection from
    * `selectedSkills`, only shown when `background === 'custom'`. */
   protected readonly customBackgroundSkills = signal<ReadonlySet<string>>(new Set());
+  /** The "Outro" background's two tools or languages (content keys), capped at 2 like its skills. */
+  protected readonly customBackgroundProficiencies = signal<readonly string[]>([]);
+  /** The classes after the first (multiclass at creation): one block each, see `ClassBlockFields`. */
+  protected readonly extraClasses = signal<readonly ExtraClassValue[]>([]);
   /** Expertise doubles a skill's proficiency bonus — always a subset of
    * `selectedSkills` (integrator fix, phase 2b). */
   protected readonly expertiseSkills = signal<ReadonlySet<string>>(new Set());
@@ -242,9 +268,11 @@ export class CharacterEditor {
   protected readonly selectedCantrips = signal<ReadonlySet<string>>(new Set());
   protected readonly selectedSpellsKnown = signal<ReadonlySet<string>>(new Set());
   protected readonly selectedSpellsPrepared = signal<ReadonlySet<string>>(new Set());
-  protected readonly cantripsFilter = signal('');
-  protected readonly spellsKnownFilter = signal('');
-  protected readonly spellsPreparedFilter = signal('');
+  /** The search of each list, by `<section>:<list>`: "0:cantrips", "1:known", "1:prepared". */
+  private readonly spellFilters = signal<Readonly<Record<string, string>>>({});
+  /** Spells the sheet has that no pick of this form gave it (a subclass's always-prepared spells):
+   * only known on an edit, from the server's own derived sheet. */
+  protected readonly grantedSpells = signal<readonly SpellOptionVm[]>([]);
 
   protected readonly isFullSheetKind = isFullSheetKind;
   protected readonly stepLabels = EDITOR_STEP_LABELS;
@@ -272,6 +300,10 @@ export class CharacterEditor {
     level: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
     background: ['', Validators.required],
     customBackgroundName: ['', Validators.maxLength(40)],
+    // The "Outro" background's feature (a name and a text) and its equipment, in the player's words.
+    customBackgroundFeatureName: ['', Validators.maxLength(40)],
+    customBackgroundFeatureText: ['', Validators.maxLength(1000)],
+    customBackgroundEquipment: ['', Validators.maxLength(500)],
     /** A content key from the catalog, or `''` for "Sem armadura" — never
      * typed (integrator fix). */
     armor: [''],
@@ -346,12 +378,43 @@ export class CharacterEditor {
   private readonly selectedLevel = toSignal(this.fullForm.controls.level.valueChanges, {
     initialValue: 1,
   });
+  private readonly selectedSubclassKey = toSignal(this.fullForm.controls.subclassName.valueChanges, {
+    initialValue: '',
+  });
+  private readonly selectedCustomSubclass = toSignal(
+    this.fullForm.controls.customSubclassName.valueChanges,
+    { initialValue: '' },
+  );
   protected readonly selectedHitPointsMethod = toSignal(
     this.fullForm.controls.hitPointsMethod.valueChanges,
     { initialValue: 'average' as HitPointsMethod },
   );
-  /** How many rolls "Dados de Vida" needs: one per level after the first. */
-  protected readonly rollsNeeded = computed(() => Math.max(0, this.selectedLevel() - 1));
+  /** Every class of the sheet, in the order of the blocks: the first one is the form's own fields. */
+  protected readonly blocks = computed<ClassBlock[]>(() =>
+    blocksOf(
+      {
+        classKey: this.selectedClassKey(),
+        level: this.selectedLevel(),
+        subclassKey: this.selectedSubclassKey(),
+        customSubclassName: this.selectedCustomSubclass(),
+      },
+      this.extraClasses(),
+    ),
+  );
+  /** More than one class: the Básico step shows one block per class and the total level. */
+  protected readonly multiclass = computed(() => this.extraClasses().length > 0);
+  protected readonly totalLevelValue = computed(() => totalLevel(this.blocks()));
+  /** The level the whole sheet has, up to 20, or why it does not fit. */
+  protected readonly totalLevelProblem = computed(() =>
+    this.totalLevelValue() > MAX_TOTAL_LEVEL ? `O nível total vai até ${MAX_TOTAL_LEVEL}.` : '',
+  );
+  /** How many rolls "Dados de Vida" needs: one per level after the first, of all the classes together. */
+  protected readonly rollsNeeded = computed(() => Math.max(0, this.totalLevelValue() - 1));
+  /** The die of each of those levels, which differs between the classes of a multiclass. */
+  protected readonly levelDice = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? hitDiceAfterFirst(s.catalog, this.blocks()) : [];
+  });
   private readonly selectedSubraceKey = toSignal(this.fullForm.controls.subrace.valueChanges, {
     initialValue: '',
   });
@@ -396,89 +459,141 @@ export class CharacterEditor {
     );
   });
 
-  protected readonly isCaster = computed(() => this.selectedClass()?.isCaster ?? false);
-  /** Picks which spell-list fields the Magias step shows (integrator
-   * amendment, 29/09/2026): "known" and "spellbook" classes show "Magias
-   * conhecidas"; "prepared" and "spellbook" classes show "Magias
-   * preparadas". Truques (cantrips) show for every caster whose class list
-   * has any (`hasCantrips`). */
-  protected readonly spellPreparation = computed(() => this.selectedClass()?.preparation ?? null);
-
-  /** The highest spell circle the chosen class reaches at the form's level,
-   * read from the table the server sends (`max_spell_level_by_level`); the
-   * browser only filters by it, the server still validates on save. `null`
-   * when the table is missing (nothing is hidden then). */
-  protected readonly maxSpellLevel = computed<number | null>(() => {
-    const table = this.selectedClass()?.maxSpellLevelByLevel ?? [];
-    if (table.length === 0) {
-      return null;
-    }
-    const level = Math.min(Math.max(Math.trunc(this.selectedLevel()) || 1, 1), table.length);
-    return table[level - 1];
-  });
-
-  /** `RulesCatalogVm.spells` filtered to the chosen class's list — cantrips
-   * (level 0) and leveled spells (1-9) are two different pools. This is the
-   * whole class list, used for the "chosen" line and for what a save may
-   * send; what the player sees to pick is `visibleSpells` below. */
-  protected readonly availableCantrips = computed(() => {
+  /** The spell lists the sheet reads from: one section per class that casts, or per subclass that
+   * casts (a third caster), from its level. Empty for a sheet that casts nothing: no "Magias" step. */
+  protected readonly sections = computed<CasterSection[]>(() => {
     const s = this.state();
-    if (s.status !== 'ready') {
-      return [];
-    }
-    const classKey = this.selectedClassKey();
-    return sortSpells(
-      s.catalog.spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(classKey)),
-    );
+    return s.status === 'ready' ? casterSections(s.catalog, this.blocks()) : [];
   });
-  protected readonly availableSpells = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return [];
-    }
-    const classKey = this.selectedClassKey();
-    return sortSpells(
-      s.catalog.spells.filter((sp) => sp.level >= 1 && sp.classKeys.includes(classKey)),
-    );
-  });
-  /** What a leveled picker lists: the spells up to the current maximum
-   * circle, plus any already-selected spell above it (the level was lowered)
-   * so the player can uncheck it instead of it vanishing. Already sorted by
-   * circle then name, so the above-the-limit ones come last. */
-  private visibleSpells(selected: ReadonlySet<string>): readonly SpellOptionVm[] {
-    const max = this.maxSpellLevel();
-    return max === null
-      ? this.availableSpells()
-      : this.availableSpells().filter((sp) => sp.level <= max || selected.has(sp.key));
+  protected readonly isCaster = computed(() => this.sections().length > 0);
+  /** The heading of a section when there is more than one: "Clérigo · 1º círculo". */
+  protected sectionHeading(section: CasterSection): string {
+    const name = section.subclassNamePt ? `${section.namePt} · ${section.subclassNamePt}` : section.namePt;
+    const max = section.maxCircle;
+    return max === null ? name : max === 0 ? `${name} · só truques` : `${name} · até o ${max}º círculo`;
   }
-  protected readonly filteredCantrips = computed(() =>
-    filterByName(this.availableCantrips(), this.cantripsFilter()),
-  );
-  /** False for a caster whose class list has no cantrips (the Paladin and
-   * the Ranger in the SRD): the "Truques" picker would only be an empty box.
-   * A cantrip already on the sheet keeps it, so it can still be unchecked. */
-  protected readonly hasCantrips = computed(
-    () => this.availableCantrips().length > 0 || this.selectedCantrips().size > 0,
-  );
-  protected readonly filteredSpellsKnown = computed(() =>
-    filterByName(this.visibleSpells(this.selectedSpellsKnown()), this.spellsKnownFilter()),
-  );
-  protected readonly filteredSpellsPrepared = computed(() =>
-    filterByName(this.visibleSpells(this.selectedSpellsPrepared()), this.spellsPreparedFilter()),
-  );
-  /** True when the class has no leveled spells yet (Paladin and Ranger at
-   * level 1) and none is selected, so the leveled pickers give way to one
-   * line saying when casting starts. */
-  protected readonly noLeveledSpellsYet = computed(
-    () =>
-      this.maxSpellLevel() === 0 &&
-      this.selectedSpellsKnown().size === 0 &&
-      this.selectedSpellsPrepared().size === 0,
-  );
-  protected readonly castingStartsText = computed(() => {
-    const c = this.selectedClass();
-    return c ? `O ${c.namePt} conjura magias a partir do nível ${c.spellcastingFirstLevel}.` : '';
+  protected sectionLabel = sectionName;
+
+  /** Every cantrip and spell of the sheet's lists, for "the chosen line" and for what a save may send. */
+  protected readonly availableCantrips = computed(() => this.unionOf((sec, spells) => cantripsOf(spells, sec)));
+  protected readonly availableSpells = computed(() => this.unionOf((sec, spells) => allOfSection(spells, sec).filter((sp) => sp.level >= 1)));
+  private unionOf(
+    pick: (section: CasterSection, spells: readonly SpellOptionVm[]) => SpellOptionVm[],
+  ): SpellOptionVm[] {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return [];
+    }
+    const seen = new Map<string, SpellOptionVm>();
+    for (const section of this.sections()) {
+      for (const spell of pick(section, s.catalog.spells)) {
+        seen.set(spell.key, spell);
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'));
+  }
+
+  /** What each section's pickers list now: the cantrips, the spells up to the circle the class level
+   * reaches (plus any picked above it, so it can be unchecked), each narrowed by its own search. */
+  protected readonly sectionViews = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return [];
+    }
+    const filters = this.spellFilters();
+    const query = (section: CasterSection, list: string) => filters[`${section.index}:${list}`] ?? '';
+    return this.sections().map((section) => {
+      const cantrips = cantripsOf(s.catalog.spells, section);
+      const known = leveledOf(s.catalog.spells, section, this.selectedSpellsKnown());
+      const prepared = leveledOf(s.catalog.spells, section, this.selectedSpellsPrepared());
+      const preparation = section.preparation;
+      const noLeveledYet =
+        section.maxCircle === 0 && this.selectedSpellsKnown().size === 0 && this.selectedSpellsPrepared().size === 0;
+      return {
+        section,
+        id: String(section.index),
+        cantrips: {
+          all: cantrips,
+          shown: filterByName(cantrips, query(section, 'cantrips')),
+          filter: query(section, 'cantrips'),
+          // A cantrip already on the sheet keeps the picker, so it can still be unchecked.
+          show: cantrips.length > 0 || (this.sections().length === 1 && this.selectedCantrips().size > 0),
+          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'cantrips'), true),
+        },
+        known: {
+          all: known,
+          shown: filterByName(known, query(section, 'known')),
+          filter: query(section, 'known'),
+          show: !noLeveledYet && (preparation === 'known' || preparation === 'spellbook'),
+          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'known'), false),
+        },
+        prepared: {
+          all: prepared,
+          shown: filterByName(prepared, query(section, 'prepared')),
+          filter: query(section, 'prepared'),
+          show: !noLeveledYet && (preparation === 'prepared' || preparation === 'spellbook'),
+          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'prepared'), false),
+        },
+        noLeveledYet,
+        castingStarts: `O ${sectionName(section)} conjura magias a partir do nível ${section.firstLevel}.`,
+      };
+    });
   });
+  protected setSpellFilter(section: number, list: 'cantrips' | 'known' | 'prepared', value: string): void {
+    this.spellFilters.update((f) => ({ ...f, [`${section}:${list}`]: value }));
+  }
+
+  /** The entries chosen in the closed selects, for the "Da mesa" tag beside the name (a select shows only text). */
+  protected readonly selectedRace = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? s.catalog.races.find((r) => r.key === this.selectedRaceKey()) : undefined;
+  });
+  protected readonly selectedSubrace = computed(() => this.availableSubraces().find((r) => r.key === this.selectedSubraceKey()));
+  protected readonly selectedSubclass = computed(() => this.selectedClass()?.subclasses.find((c) => c.key === this.selectedSubclassKey()));
+  protected readonly selectedBackgroundVm = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? s.catalog.backgrounds.find((b) => b.key === this.selectedBackground()) : undefined;
+  });
+
+  /** What the first class asks of the skills and the saving throws, from the server's entry for it. */
+  protected readonly skillNote = computed(() => {
+    const c = this.selectedClass();
+    if (!c || c.skillChoose <= 0) {
+      return '';
+    }
+    const saves = c.savingThrows.map((a) => abilityLabel(a));
+    const savesText = saves.length > 0 ? ` e dá proficiência nos testes de resistência de ${BONUS_LIST.format(saves)}` : '';
+    return `O ${c.namePt} escolhe ${c.skillChoose} ${c.skillChoose === 1 ? 'perícia' : 'perícias'} ao começar${savesText}.`;
+  });
+  protected readonly spellCircle = spellLevelLabel;
+  /** "Ver em Magias", for a spell the lists leave out. */
+  protected readonly magiasLink = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? ['/campanhas', s.campaignId, 'magias'] : [];
+  });
+
+  /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
+  protected readonly choiceBonusesHint = computed(() => {
+    const s = this.state();
+    const race = s.status === 'ready' ? s.catalog.races.find((r) => r.key === this.selectedRaceKey()) : undefined;
+    const bonuses = race?.choiceBonuses ?? [];
+    return bonuses.length > 0
+      ? `Dá ${bonusWords(bonuses)} nos atributos que você escolher: ponha em “Bônus manuais”, no passo Atributos.`
+      : '';
+  });
+  /** A table background's equipment, as the master wrote it. */
+  protected readonly backgroundEquipment = computed(() => {
+    const s = this.state();
+    return s.status === 'ready'
+      ? (s.catalog.backgrounds.find((b) => b.key === this.selectedBackground())?.equipmentPt ?? '')
+      : '';
+  });
+  protected readonly toolOptions = computed(() => this.toolsAndLanguages('tool'));
+  protected readonly languageOptions = computed(() => this.toolsAndLanguages('language'));
+  private toolsAndLanguages(kind: 'tool' | 'language') {
+    const s = this.state();
+    return s.status === 'ready' ? s.catalog.toolsAndLanguages.filter((t) => t.kind === kind) : [];
+  }
 
   /** The hint under "Subclasse" while the level is below the one where the
    * class chooses it; empty once the level reaches it. */
@@ -496,6 +611,29 @@ export class CharacterEditor {
    * sets the class and must keep its subclass. */
   protected onClassChange(): void {
     this.fullForm.patchValue({ subclassName: '', customSubclassName: '' });
+  }
+
+  /** A block of the multiclass layout changed: block 0 is the form's own fields, the rest the extra classes. */
+  protected changeBlock(index: number, change: Partial<ClassBlock>): void {
+    if (index === 0) {
+      const f = this.fullForm.controls;
+      if (change.classKey !== undefined) f.className.setValue(change.classKey);
+      if (change.level !== undefined) f.level.setValue(change.level);
+      if (change.subclassKey !== undefined) f.subclassName.setValue(change.subclassKey);
+      if (change.customSubclassName !== undefined) f.customSubclassName.setValue(change.customSubclassName);
+      return;
+    }
+    this.extraClasses.update((list) => list.map((c, i) => (i === index - 1 ? { ...c, ...change } : c)));
+  }
+
+  /** "Adicionar classe": a new block at level 1 with nothing chosen. The server checks the multiclass
+   * prerequisites of every class and shows what the sheet does not meet as issues on the sheet. */
+  protected addClass(): void {
+    this.extraClasses.update((list) => [...list, { classKey: '', level: 1, subclassKey: '', customSubclassName: '' }]);
+  }
+
+  protected removeClass(index: number): void {
+    this.extraClasses.update((list) => list.filter((_, i) => i !== index - 1));
   }
 
   /** Set by a submit with an invalid field: from then on, the notice above
@@ -715,6 +853,8 @@ export class CharacterEditor {
         });
         if (existing.full) {
           this.patchFullForm(existing.full);
+          const granted = new Set(existing.grantedSpellKeys ?? []);
+          this.grantedSpells.set(catalog.spells.filter((sp) => granted.has(sp.key)));
         }
         if (existing.basic) {
           patchBasicForm(this.fb, this.basicForm, existing.basic);
@@ -741,6 +881,9 @@ export class CharacterEditor {
       level: full.level,
       background: full.background,
       customBackgroundName: full.customBackgroundName,
+      customBackgroundFeatureName: full.customBackgroundFeatureName,
+      customBackgroundFeatureText: full.customBackgroundFeatureText,
+      customBackgroundEquipment: full.customBackgroundEquipment,
       armor: full.armor,
       shield: full.shield,
       weaponKeys: full.weapons,
@@ -759,6 +902,8 @@ export class CharacterEditor {
     });
     this.selectedSkills.set(new Set(full.skillProficiencies));
     this.customBackgroundSkills.set(new Set(full.customBackgroundSkills ?? []));
+    this.customBackgroundProficiencies.set(full.customBackgroundProficiencies);
+    this.extraClasses.set(full.extraClasses);
     this.expertiseSkills.set(new Set(full.expertiseSkillKeys));
     this.hitPointsRolls.set(full.hitPointsRolls);
     this.selectedCantrips.set(new Set(full.cantrips));
@@ -868,6 +1013,20 @@ export class CharacterEditor {
     this.customBackgroundSkills.set(next);
   }
 
+  /** Picks or drops one of the "Outro" background's two tools or languages; a third does nothing, like the skills. */
+  protected setCustomProficiencies(keys: readonly string[]): void {
+    this.customBackgroundProficiencies.set(keys.slice(0, 2));
+  }
+
+  protected readonly backgroundProficienciesCount = computed(() =>
+    countLabel(
+      this.customBackgroundProficiencies().length,
+      'de 2 escolhida',
+      'de 2 escolhidas',
+      'Nenhuma escolhida',
+    ),
+  );
+
   private buildFullValue(): CharacterFormValue {
     const v = this.fullForm.getRawValue();
     const bgSkills = Array.from(this.customBackgroundSkills());
@@ -886,6 +1045,15 @@ export class CharacterEditor {
       // or 1, rather than guessing or blocking submission over it.
       customBackgroundSkills:
         v.background === 'custom' && bgSkills.length === 2 ? [bgSkills[0], bgSkills[1]] : null,
+      // The tools or languages, the feature and the equipment the same way: fewer than asked is sent as is,
+      // and the server shows an issue on the sheet, never an error.
+      customBackgroundProficiencies:
+        v.background === 'custom' ? [...this.customBackgroundProficiencies()] : [],
+      customBackgroundFeatureName: v.background === 'custom' ? v.customBackgroundFeatureName : '',
+      customBackgroundFeatureText: v.background === 'custom' ? v.customBackgroundFeatureText : '',
+      customBackgroundEquipment: v.background === 'custom' ? v.customBackgroundEquipment : '',
+      // A blank block never gets here: `classProblems` stops the save first.
+      extraClasses: this.extraClasses().filter((c) => c.classKey !== ''),
       skillProficiencies: Array.from(this.selectedSkills()),
       expertiseSkillKeys: Array.from(this.expertiseSkills()),
       abilities: v.abilities,
@@ -922,8 +1090,23 @@ export class CharacterEditor {
 
   /** The full sheet's invalid fields right now, plus the placing that is
    * not finished (it has no control of its own: see `abilitiesIncomplete`). */
+  /** What the class blocks still lack, in words ("Classe 2", "o nível total vai até 20"): not controls of the
+   * form, so the page adds them to the invalid fields while they stand. */
+  private readonly classProblems = computed<string[]>(() => {
+    const problems: string[] = [];
+    this.extraClasses().forEach((c, i) => {
+      if (c.classKey === '') problems.push(`Classe ${i + 2}`);
+      if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_TOTAL_LEVEL) problems.push(`Nível da classe ${i + 2}`);
+    });
+    if (this.totalLevelProblem()) problems.push('o nível total vai até 20');
+    return problems;
+  });
+
   private currentInvalidFullFields(): EditorField[] {
-    const fields = invalidFields(this.fullForm, FULL_SHEET_FIELDS);
+    const fields: EditorField[] = [
+      ...invalidFields(this.fullForm, FULL_SHEET_FIELDS),
+      ...this.classProblems().map((label) => ({ path: 'classes', label, step: 'basico' as const })),
+    ];
     if (!this.abilitiesIncomplete()) {
       return fields;
     }
@@ -961,7 +1144,7 @@ export class CharacterEditor {
     }
     const isBasic = !isFullSheetKind(s.kind);
     const form = isBasic ? this.basicForm : this.fullForm;
-    if (form.invalid || (!isBasic && this.abilitiesIncomplete())) {
+    if (form.invalid || (!isBasic && (this.abilitiesIncomplete() || this.classProblems().length > 0))) {
       form.markAllAsTouched();
       this.saveState.set({ status: 'idle' });
       this.showErrors.set(true);

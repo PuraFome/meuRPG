@@ -10,6 +10,7 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Ability, type DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { formatModifier, spellLevelLabel } from '../../core/characters/character-labels';
+import { isTableKey } from '../../core/characters/table-content';
 import { newKey } from '../../core/connect/idempotency';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
@@ -109,10 +110,23 @@ export class LevelUpSession {
       cantrips: [...d.cantrips()].map(name),
       spells: [...d.spells()].map(name),
       prepared: [...prepared].map(name),
-      spellbook: this.options.spellsKind === LevelUpSpellsKind.SPELLBOOK,
+      spellbook: d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK,
       spellsMissing: Math.max(0, d.spellsAsked() - d.spells().size),
+      table: isTableKey(this.options.classKey),
+      // A table class's own features are what the master wrote, so the summary names them; the SRD's are on the sheet already.
+      newFeatures: isTableKey(this.options.classKey) ? this.newFeatureNames() : [],
     });
   });
+
+  /** The features the level gives, by name: the ones with a choice too (the choice is its own step), but not the
+   * increase of an ability, the subclass, nor what the master adds in the editor. */
+  private newFeatureNames(): string[] {
+    const o = this.options;
+    const skip = new Set(o.masterAdds.map((m) => m.key));
+    return o.newFeatures
+      .filter((f) => !skip.has(f.key) && !/ability-score-improvement|subclass/.test(f.key))
+      .map((f) => f.namePt);
+  }
 
   /** "4 + Constituição +3", or "4 − 1 de Constituição": the die and what the Constituição adds, as words. */
   withCon(base: number | string): string {
@@ -217,12 +231,12 @@ export class LevelUpSession {
     }
     const bits = [
       t.cantrips > 0 ? (t.cantrips === 1 ? 'Truque novo' : `${t.cantrips} truques novos`) : '',
-      t.spells > 0 ? `${t.spells === 1 ? '1 magia' : `${t.spells} magias`} ${o.spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'conhecidas'}` : '',
+      t.spells > 0 ? `${t.spells === 1 ? '1 magia' : `${t.spells} magias`} ${d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'conhecidas'}` : '',
     ].filter((s) => s !== '');
     if (bits.length > 0) {
       choice(bits.join(' e '), 'spells', !pending('spells', ['cantrips', 'spells']));
     }
-    if (o.prepares && o.preparedMaxAfter > 0) {
+    if (d.effective().prepares && d.preparedMaxAfter() > 0) {
       choice(`Magias preparadas: até ${d.preparedMaxAfter()}`, 'spells', !pending('spells', ['prepared']));
     }
     const auto = (title: string, change: string): void => {
