@@ -51,6 +51,8 @@ export class MapGrid {
   protected readonly campaignName = signal('');
   protected readonly fromSession = signal(false);
   protected readonly typed = signal(String(DEFAULT_COLUMNS));
+  /** How many squares of 1,5 m each square of the drawing is worth: the page changes only the columns and keeps it (RN-25). */
+  private readonly factor = computed(() => Math.max(1, this.map()?.squareFactor ?? 1));
   protected readonly saving = signal(false);
   protected readonly error = signal('');
 
@@ -74,12 +76,13 @@ export class MapGrid {
     const columns = this.columns();
     return image && columns !== null ? gridRows(columns, image.width, image.height) : null;
   });
+  /** The squares of the rules' grid: the drawing's times the factor. */
   protected readonly squares = computed(() =>
-    this.columns() !== null && this.rows() !== null ? `${this.columns()} × ${this.rows()}` : '—',
+    this.columns() !== null && this.rows() !== null ? `${this.columns()! * this.factor()} × ${this.rows()! * this.factor()}` : '—',
   );
   protected readonly meters = computed(() =>
     this.columns() !== null && this.rows() !== null
-      ? `${formatMeters(squaresToMeters(this.columns()!))} × ${formatMeters(squaresToMeters(this.rows()!))}`
+      ? `${formatMeters(squaresToMeters(this.columns()! * this.factor()))} × ${formatMeters(squaresToMeters(this.rows()! * this.factor()))}`
       : '—',
   );
   protected readonly hadGrid = computed(() => (this.map()?.gridColumns ?? 0) > 0);
@@ -122,7 +125,7 @@ export class MapGrid {
         return;
       }
       this.map.set(map.map);
-      this.typed.set(String(map.map.gridColumns > 0 ? map.map.gridColumns : DEFAULT_COLUMNS));
+      this.typed.set(String(map.map.gridColumns > 0 ? map.map.drawnColumns || map.map.gridColumns : DEFAULT_COLUMNS));
       this.phase.set('ready');
     } catch (err) {
       this.phase.set(ConnectError.from(err).code === Code.NotFound ? 'gone' : 'error');
@@ -146,7 +149,7 @@ export class MapGrid {
     this.saving.set(true);
     this.error.set('');
     try {
-      await this.api.setGrid(this.campaignId(), this.mapId(), columns);
+      await this.api.setGrid(this.campaignId(), this.mapId(), columns, this.factor());
       await this.router.navigate(this.backLink().path);
     } catch (err) {
       this.saving.set(false);

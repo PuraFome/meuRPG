@@ -105,6 +105,12 @@ export const routes: Routes = [
       import('./pages/campaign-document/campaign-document').then((m) => m.CampaignDocumentPage),
   },
   {
+    // "Regras da mesa" (MR-025, RN-24, RN-09), master only: the page says so to a player.
+    path: 'campanhas/:id/regras',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/table-rules/table-rules').then((m) => m.TableRulesPage),
+  },
+  {
     // New map (MR-008, E5-31). Before `mapas/:mapId`, so "novo" is not read
     // as a map's ID. Plain `loadComponent`, like the gallery: the clients
     // are root services that only lazy code imports.

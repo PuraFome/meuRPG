@@ -98,6 +98,7 @@
             mapOverlay
             [columns]="paint.columns()"
             [rows]="paint.rows()"
+            [factor]="map()?.squareFactor || 1"
             [layers]="paint.shown()"
             [points]="state().points()"
             [cursor]="paint.cursor()"
@@ -121,6 +122,10 @@
       }
       <div class="legend">
         <app-map-layers-legend [layers]="paint.shown()" [light]="paint.lightLevels()">
+          @if ((map()?.squareFactor ?? 1) > 1) {
+            <li><span class="gl gl--drawn" aria-hidden="true"></span>Quadrado do desenho ({{ factorText() }})</li>
+            <li><span class="gl gl--rules" aria-hidden="true"></span>Quadrado das regras (1,5&nbsp;m)</li>
+          }
           @if (lightReach()) {
             <li><span class="ring ring--bright" aria-hidden="true"></span>Alcance da luz clara</li>
             <li><span class="ring ring--dim" aria-hidden="true"></span>Alcance da penumbra</li>

@@ -27,4 +27,10 @@ export class DiceChoice<T extends number> {
   /** Per-option replacement of the description, e.g. "Indisponível nesta
    * campanha.", keyed by option value. */
   readonly notes = input<Partial<Record<number, string>>>({});
+  /** Options that show what is, but cannot be chosen (the "Personalizado" style): dashed, never the one that takes the click. */
+  readonly inert = input<readonly T[]>([]);
+
+  protected isInert(value: T): boolean {
+    return this.inert().includes(value);
+  }
 }

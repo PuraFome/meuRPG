@@ -249,6 +249,23 @@ describe('CampaignDetail', () => {
     expect((TestBed.inject(GalleryClient) as unknown as FakeGalleryClient).calls).toEqual([]);
   });
 
+  it('gives only the master the "Regras da mesa" panel, with the link to the page (MR-025)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const master = await render();
+    expect(master.textContent).toContain('Regras da mesa');
+    expect(master.querySelector('a[href="/campanhas/camp-1/regras"]')?.textContent).toContain('Abrir as regras');
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const player = await render();
+    expect(player.textContent).not.toContain('Regras da mesa');
+    expect(player.querySelector('a[href="/campanhas/camp-1/regras"]')).toBeNull();
+  });
+
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {
     configure();
     fake.getCampaignResult = Promise.resolve({

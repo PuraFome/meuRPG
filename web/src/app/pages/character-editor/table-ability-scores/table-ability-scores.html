@@ -1,0 +1,152 @@
+<div class="methods" role="radiogroup" aria-labelledby="table-method-label">
+  <p class="methods__label" id="table-method-label">Como definir os valores</p>
+  <div class="seg">
+    @for (m of allowed(); track m) {
+      <label class="seg__item" [class.seg__item--on]="method() === m">
+        <input type="radio" class="mr-visually-hidden" name="ability-method" [value]="m" [checked]="method() === m" (change)="choose(m)" />
+        @if (method() === m) {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        }
+        {{ words[m].tab }}
+      </label>
+    }
+  </div>
+</div>
+
+<section class="way" aria-labelledby="way-title">
+  <h3 class="way__title" id="way-title">{{ words[method()].title }}</h3>
+  @if (words[method()].srd) {
+    <p class="way__srd">{{ label }} · <a routerLink="/creditos">Créditos</a></p>
+  }
+
+  @switch (method()) {
+    @case ('standard_array') {
+      <app-ability-placing
+        [results]="arrayResults()"
+        [placement]="arrayPlacement()"
+        hint="Cada valor vai para um atributo, uma vez só."
+        (place)="placeArray($event.index, $event.ability)"
+      />
+    }
+    @case ('point_buy') {
+      <div class="buy">
+        <p class="buy__left" role="status">
+          <strong>{{ left() === 1 ? 'Resta 1 ponto' : 'Restam ' + left() + ' pontos' }}</strong>
+          <span>{{ spent() }} de {{ table().pointBuyBudget }} gastos</span>
+        </p>
+        <div class="buy__bar" aria-hidden="true">
+          @for (used of cells(); track $index) {
+            <span class="buy__cell" [class.buy__cell--used]="used"></span>
+          }
+        </div>
+        <ul class="buy__rows">
+          @for (key of keys; track key) {
+            <li class="buy__row">
+              <span class="buy__name">
+                {{ abilityLabel(key) }}
+                <span class="buy__cost">custo {{ costText(key) }} {{ costText(key) === 1 ? 'ponto' : 'pontos' }}</span>
+              </span>
+              <span class="buy__step">
+                <button
+                  type="button"
+                  class="buy__btn"
+                  [class.buy__btn--off]="!down(key)"
+                  [attr.aria-disabled]="!down(key)"
+                  [attr.aria-label]="'Diminuir ' + abilityLabel(key)"
+                  (click)="step(key, -1)"
+                >
+                  <mat-icon aria-hidden="true">remove</mat-icon>
+                </button>
+                <span class="buy__value" [attr.aria-label]="abilityLabel(key) + ': ' + bought()[key]">{{ bought()[key] }}</span>
+                <button
+                  type="button"
+                  class="buy__btn"
+                  [class.buy__btn--off]="!up(key)"
+                  [attr.aria-disabled]="!up(key)"
+                  [attr.aria-label]="'Aumentar ' + abilityLabel(key)"
+                  (click)="step(key, 1)"
+                >
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+        <p class="buy__costs">
+          <span class="buy__costs-title">Cada valor vai de {{ table().pointBuyMinScore }} a {{ table().pointBuyMinScore + table().pointBuyCosts.length - 1 }}. O custo de cada valor, em pontos:</span>
+          @for (row of costRows(); track row.score) {
+            <span class="buy__costs-item">{{ row.score }}&nbsp;=&nbsp;{{ row.cost }}</span>
+          }
+        </p>
+      </div>
+    }
+    @case ('rolled_4d6') {
+      @if (rolls(); as r) {
+        <p class="roll__when" role="status">
+          @if (r.typed) {
+            Dados digitados{{ rolledAt() ? ' em ' + rolledAt() : '' }}. Ficam guardados: não dá para digitar de novo.
+          } @else {
+            Rolados{{ rolledAt() ? ' em ' + rolledAt() : '' }}. Rolar de novo mostra os mesmos.
+          }
+        </p>
+        <app-ability-placing
+          [results]="rollResults()"
+          [placement]="rollPlacement()"
+          hint="Seis rolagens de 4d6. O dado menor, riscado, não conta."
+          (place)="placeRoll($event.index, $event.ability)"
+        />
+      } @else if (table().physicalDice) {
+        <div class="roll">
+          <p class="roll__lead">Digite os quatro dados de cada rolagem. O menor sai da conta.</p>
+          <div class="roll__rows">
+            @for (row of dice(); track $index; let i = $index) {
+              <div class="roll__row" role="group" [attr.aria-label]="'Rolagem ' + (i + 1)">
+                <span class="roll__name">Rolagem {{ i + 1 }}</span>
+                <span class="roll__dice">
+                  @for (die of row; track $index; let j = $index) {
+                    <input
+                      class="roll__die"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="1"
+                      autocomplete="off"
+                      [attr.aria-label]="'Rolagem ' + (i + 1) + ', dado ' + (j + 1)"
+                      [value]="die"
+                      (input)="setDie(i, j, $any($event.target).value)"
+                    />
+                  }
+                </span>
+              </div>
+            }
+          </div>
+          @if (diceMissing()) {
+            <p class="roll__missing" role="status">{{ diceMissing() }}</p>
+          }
+          <p class="roll__note">Digite uma vez só: depois de guardar, os dados ficam guardados e não dá para digitar de novo. Cada dado vai de 1 a 6.</p>
+          <button matButton="outlined" type="button" class="roll__button" [class.mr-button--off]="!!diceMissing()" [disabled]="rolling() || !!diceMissing()" disabledInteractive (click)="saveDice()">
+            <mat-icon aria-hidden="true">save</mat-icon>Guardar os dados
+          </button>
+        </div>
+      } @else {
+        <div class="roll">
+          <p class="roll__lead">O app rola seis vezes quatro dados e guarda o resultado: rolar de novo mostra os mesmos.</p>
+          <button matButton="outlined" type="button" class="roll__button" [disabled]="rolling()" (click)="rollInApp()">
+            <mat-icon aria-hidden="true">casino</mat-icon>Rolar os atributos
+          </button>
+        </div>
+      }
+      @if (rollError()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ rollError() }}</p>
+        </div>
+      }
+    }
+    @default {
+      <p class="way__lead">
+        Escreva os seis valores base, de {{ table().typedMin }} a {{ table().typedMax }}, antes do bônus da raça. O mestre liberou este jeito para a mesa.
+      </p>
+      <app-ability-fields [group]="group()" [min]="table().typedMin" [max]="table().typedMax" [rangeError]="'De ' + table().typedMin + ' a ' + table().typedMax + '.'" />
+    }
+  }
+</section>

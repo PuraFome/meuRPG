@@ -1,7 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+
+import { CampaignService, DiceMode, DicePreference, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  AbilityMethod as GenAbilityMethod,
+  type AbilityRolls as GenAbilityRolls,
   Alignment as GenAlignment,
   BasicSheet as GenBasicSheet,
   CharacterKind as GenCharacterKind,
@@ -22,7 +27,11 @@ import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
+import { effectivePreference } from '../../core/campaigns/dice-labels';
 import {
+  AbilityMethodKey,
+  AbilityRollsVm,
+  AbilityTableVm,
   AlignmentKey,
   BasicCharacterFormValue,
   CharacterEditorSource,
@@ -53,6 +62,21 @@ const KIND_TO_GEN: Record<CharacterKind, GenCharacterKind> = {
   minion: GenCharacterKind.MINION,
   story: GenCharacterKind.STORY,
 };
+
+const ABILITY_METHOD_TO_GEN: Record<AbilityMethodKey, GenAbilityMethod> = {
+  standard_array: GenAbilityMethod.STANDARD_ARRAY,
+  point_buy: GenAbilityMethod.POINT_BUY,
+  rolled_4d6: GenAbilityMethod.ROLLED_4D6,
+  typed: GenAbilityMethod.TYPED,
+};
+
+function rollsFromGen(rolls: GenAbilityRolls): AbilityRollsVm {
+  return {
+    sets: rolls.sets.map((s) => ({ dice: [...s.dice], total: s.total })),
+    typed: rolls.typed,
+    rolledAt: rolls.rolledAt ? timestampDate(rolls.rolledAt) : null,
+  };
+}
 
 const ABILITY_FROM_GEN: Record<GenAbility, AbilityKey> = {
   [GenAbility.UNSPECIFIED]: 'str',
@@ -363,6 +387,7 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
 export class CharacterEditorSourceLive implements CharacterEditorSource {
   private readonly characterClient = createClient(CharacterService, inject(CONNECT_TRANSPORT));
   private readonly contentClient = createClient(ContentService, inject(CONNECT_TRANSPORT));
+  private readonly campaignClient = createClient(CampaignService, inject(CONNECT_TRANSPORT));
 
   /** The last `FullSheet` `loadCharacterForEdit` read for a character, kept
    * only so `updateCharacter` can start from it — see
@@ -469,11 +494,57 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     };
   }
 
+  async loadAbilityTable(campaignId: string): Promise<AbilityTableVm | null> {
+    const [campaign, rules] = await Promise.all([
+      this.campaignClient.getCampaign({ campaignId }),
+      this.campaignClient.getTableRules({ campaignId }),
+    ]);
+    // The master's NPCs are free: only a player (or a pending member) makes a sheet the rules check.
+    if (!campaign.campaign || campaign.campaign.myRole === Role.MASTER) {
+      return null;
+    }
+    const methods = rules.rules?.abilityMethods;
+    const diceMode = campaign.campaign.diceMode;
+    const physical =
+      effectivePreference(diceMode, campaign.campaign.myDicePreference) === DicePreference.PHYSICAL;
+    // Only a method that rolls needs the stored sets, and the master's call is refused: ask when it is allowed.
+    const stored = methods?.rolled4d6
+      ? (await this.characterClient.getAbilityRolls({ campaignId })).rolls
+      : undefined;
+    return {
+      standardArray: methods?.standardArray ?? true,
+      pointBuy: methods?.pointBuy ?? true,
+      rolled4d6: methods?.rolled4d6 ?? true,
+      typed: methods?.typed ?? true,
+      standardValues: rules.standardArray,
+      pointBuyCosts: rules.pointBuyCosts,
+      pointBuyMinScore: rules.pointBuyMinScore,
+      pointBuyBudget: rules.pointBuyBudget,
+      typedMin: rules.typedMinScore,
+      typedMax: rules.typedMaxScore,
+      physicalDice: physical,
+      diceForced: diceMode !== DiceMode.PLAYERS_CHOOSE,
+      rolls: stored ? rollsFromGen(stored) : null,
+    };
+  }
+
+  async rollAbilityScores(
+    campaignId: string,
+    typedDice: readonly (readonly number[])[] = [],
+  ): Promise<AbilityRollsVm> {
+    const res = await this.characterClient.rollAbilityScores({
+      campaignId,
+      typedDice: typedDice.map((dice) => ({ dice: [...dice] })),
+    });
+    return rollsFromGen(res.rolls!);
+  }
+
   async createCharacter(input: CreateCharacterInput): Promise<{ characterId: string }> {
     const res = await this.characterClient.createCharacter({
       campaignId: input.campaignId,
       kind: KIND_TO_GEN[input.kind],
       name: input.full?.name ?? input.basic?.name ?? '',
+      ...(input.abilityMethod ? { abilityMethod: ABILITY_METHOD_TO_GEN[input.abilityMethod] } : {}),
       sheet: input.full
         ? { content: { case: 'full', value: toFullSheetInit(input.full) } }
         : { content: { case: 'basic', value: toBasicSheetInit(input.basic!) } },

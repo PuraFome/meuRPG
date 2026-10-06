@@ -1,0 +1,277 @@
+:host {
+  display: block;
+}
+
+.methods {
+  margin-bottom: var(--mr-space-4);
+}
+
+.methods__label {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+// A radio group drawn as one segmented control, 48 px high: the chosen one has a check, the accent border and the soft fill.
+.seg {
+  display: flex;
+  gap: var(--mr-space-2);
+}
+
+.seg__item {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-weight: 700;
+  cursor: pointer;
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.way__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.way__srd,
+.way__lead {
+  margin: 2px 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.way__lead {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// Point buy.
+.buy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.buy__left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+  margin: 0;
+
+  strong {
+    font-size: 20px;
+  }
+
+  span {
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.buy__bar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+}
+
+.buy__cell {
+  height: 8px;
+  border-radius: 2px;
+  background: var(--mr-control-line);
+
+  &--used {
+    background: var(--mr-ink);
+  }
+}
+
+.buy__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.buy__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  min-height: 52px;
+}
+
+.buy__name {
+  display: flex;
+  flex-direction: column;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.buy__cost {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.buy__step {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.buy__value {
+  min-width: 32px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.buy__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  // The app's disabled look: dashed and quiet, still focusable (no colour alone: the dash).
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.buy__costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-3);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.buy__costs-title {
+  flex: 1 1 100%;
+}
+
+.buy__costs-item {
+  white-space: nowrap;
+}
+
+// The 4d6.
+.roll,
+.roll__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.roll__lead,
+.roll__note,
+.roll__missing,
+.roll__when {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.roll__when {
+  margin-bottom: var(--mr-space-3);
+  color: var(--mr-ink-muted);
+}
+
+.roll__note {
+  color: var(--mr-ink-muted);
+}
+
+.roll__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.roll__name {
+  flex: 1 1 100%;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    flex: 0 0 110px;
+  }
+}
+
+.roll__dice {
+  display: flex;
+  gap: var(--mr-space-1);
+}
+
+.roll__die {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.roll__button {
+  align-self: flex-start;
+  min-height: 44px;
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    align-self: stretch;
+    min-height: 48px;
+  }
+}

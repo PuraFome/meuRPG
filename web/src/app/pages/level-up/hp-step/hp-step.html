@@ -7,13 +7,29 @@
   <h2 class="mr-panel__title" id="hp-title">Pontos de vida</h2>
   <p class="lead">{{ intro() }}</p>
 
-  <app-dice-choice
-    name="level-up-hp"
-    label="Como ganhar os pontos de vida do nível"
-    [options]="options()"
-    [value]="card()"
-    (valueChange)="pick($event)"
-  />
+  @if (s().hpFixed === 'average') {
+    <p class="fixed" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.</span>
+    </p>
+    <div class="fixed-card">
+      <span class="fixed-card__title">{{ options()[0].title }}</span>
+      <span class="fixed-card__desc">{{ options()[0].description }}</span>
+    </div>
+  } @else if (s().hpFixed === 'roll') {
+    <p class="fixed" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>A mesa pede que todos rolem o dado de vida. A média não é oferecida.</span>
+    </p>
+  } @else {
+    <app-dice-choice
+      name="level-up-hp"
+      label="Como ganhar os pontos de vida do nível"
+      [options]="options()"
+      [value]="card()"
+      (valueChange)="pick($event)"
+    />
+  }
 
   @if (card() === 1) {
     <div class="roll">
@@ -52,7 +68,7 @@
   }
 </section>
 
-@if (s().constitution(); as c) {
+@if (s().hpFixed !== 'roll' && s().constitution(); as c) {
   <section class="mr-panel con" aria-labelledby="con-title">
     <h2 class="mr-panel__title" id="con-title">{{ c.title }}</h2>
     <dl class="con__rows">

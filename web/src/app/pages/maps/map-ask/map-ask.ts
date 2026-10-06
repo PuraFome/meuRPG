@@ -50,7 +50,9 @@ let nextId = 0;
     }
 
     // Room for the focus ring around the words, so it never touches them.
+    // Room under the title too, for the sticky save bar of "Regras da mesa" on a phone.
     .ask__title {
+      scroll-margin-bottom: 160px;
       margin: 0 -6px;
       padding: 2px 6px;
       font-family: var(--mr-font-display);

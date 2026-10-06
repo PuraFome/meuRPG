@@ -33,7 +33,10 @@ export interface LightReach {
   template: `
     @if (columns() > 0) {
       <svg class="grid" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
-        <path [attr.d]="gridPath()" />
+        <path [class.rules]="factor() > 1" [attr.d]="gridPath()" />
+        @if (factor() > 1) {
+          <path class="drawn" [attr.d]="drawnPath()" />
+        }
       </svg>
       <app-map-layers [layers]="layers()" [lightGlyphs]="true" [cursor]="cursor()" />
     }
@@ -70,6 +73,9 @@ export class EditorOverlay {
   /** Painting: the marks stand back at 40 %. */
   readonly faded = input(false);
   readonly selectedId = input<string | null>(null);
+  /** The calibration (RN-25): how many squares of 1,5 m each square of the drawing is worth. Above 1, the drawing's own
+   * lines are drawn solid, every `factor` squares, over the rules' grid, which turns dotted. */
+  readonly factor = input(1);
 
   protected readonly gridPath = computed(() => {
     const parts: string[] = [];
@@ -77,6 +83,19 @@ export class EditorOverlay {
       parts.push(`M${c} 0V${this.rows()}`);
     }
     for (let r = 0; r <= this.rows(); r++) {
+      parts.push(`M0 ${r}H${this.columns()}`);
+    }
+    return parts.join('');
+  });
+
+  /** The drawing's lines: every `factor` squares of the rules' grid, edges included. */
+  protected readonly drawnPath = computed(() => {
+    const f = Math.max(1, this.factor());
+    const parts: string[] = [];
+    for (let c = 0; c <= this.columns(); c += f) {
+      parts.push(`M${c} 0V${this.rows()}`);
+    }
+    for (let r = 0; r <= this.rows(); r += f) {
       parts.push(`M0 ${r}H${this.columns()}`);
     }
     return parts.join('');

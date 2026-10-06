@@ -21,8 +21,11 @@ import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
+import { TableAbilityScores } from './table-ability-scores/table-ability-scores';
 import {
   ALIGNMENT_LABELS,
+  AbilityMethodKey,
+  AbilityTableVm,
   AlignmentKey,
   CharacterEditorMode,
   CharacterEditorSource,
@@ -179,6 +182,7 @@ function filterByName<T extends { readonly namePt: string }>(
   imports: [
     AbilityFields,
     AbilityScores,
+    TableAbilityScores,
     CdkStep,
     EditorStepper,
     FictionNotice,
@@ -315,6 +319,12 @@ export class CharacterEditor {
   /** "Rolar 4d6" or "Conjunto padrão" with results still to place: saving
    * waits, so a half-placed roll never turns into six default 10s. */
   protected readonly abilitiesIncomplete = signal(false);
+  /** What the table's way of making scores still lacks, in words ("role os atributos"), `''` when it is complete. */
+  protected readonly abilitiesProblem = signal('');
+  /** The table's ways of making scores, when a player makes a new sheet (RN-24); `null` is the free editor of the master's NPCs and of an edit. */
+  protected readonly abilityTable = signal<AbilityTableVm | null>(null);
+  /** The way the player chose; the server checks the scores against it. */
+  protected readonly abilityMethod = signal<AbilityMethodKey>('typed');
 
   private readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
     initialValue: '',
@@ -619,8 +629,11 @@ export class CharacterEditor {
 
   private loadForCreate(campaignId: string, kind: CharacterKind): void {
     this.state.set({ status: 'loading', title: titleFor('create', kind) });
-    this.source.loadCatalog(campaignId).then(
-      (catalog) => {
+    // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs are free.
+    const table = kind === 'player' ? this.source.loadAbilityTable(campaignId) : Promise.resolve(null);
+    Promise.all([this.source.loadCatalog(campaignId), table]).then(
+      ([catalog, abilityTable]) => {
+        this.abilityTable.set(abilityTable);
         this.state.set({
           status: 'ready',
           mode: 'create',
@@ -889,7 +902,11 @@ export class CharacterEditor {
    * not finished (it has no control of its own: see `abilitiesIncomplete`). */
   private currentInvalidFullFields(): EditorField[] {
     const fields = invalidFields(this.fullForm, FULL_SHEET_FIELDS);
-    return this.abilitiesIncomplete() ? [...fields, UNPLACED_RESULTS_FIELD] : fields;
+    if (!this.abilitiesIncomplete()) {
+      return fields;
+    }
+    const problem = this.abilitiesProblem();
+    return [...fields, problem ? { ...UNPLACED_RESULTS_FIELD, label: problem } : UNPLACED_RESULTS_FIELD];
   }
 
   /** After a submit with an invalid field: opens the step of the first one
@@ -940,6 +957,7 @@ export class CharacterEditor {
           kind: s.kind,
           full: isBasic ? null : this.buildFullValue(),
           basic: isBasic ? basicFormToValue(this.basicForm) : null,
+          ...(this.abilityTable() && !isBasic ? { abilityMethod: this.abilityMethod() } : {}),
         });
         await this.router.navigate(['/campanhas', s.campaignId, 'personagens', res.characterId]);
       } else if (s.characterId) {

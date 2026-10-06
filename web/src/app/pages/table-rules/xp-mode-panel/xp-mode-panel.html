@@ -1,0 +1,44 @@
+<section class="mr-panel xp" aria-labelledby="xp-title">
+  <h2 class="mr-panel__title" id="xp-title">Experiência</h2>
+  <div #group>
+    <app-dice-choice
+      name="table-xp-mode"
+      label="Como a campanha dá XP"
+      [options]="options"
+      [value]="shown()"
+      [disabled]="busy()"
+      (valueChange)="choose($event)"
+    />
+  </div>
+
+  @if (asking(); as a) {
+    <div class="xp__ask">
+      <app-map-ask
+        [title]="'Mudar para “' + word(a.target) + '”?'"
+        [confirmLabel]="'Mudar para ' + word(a.target).replace('por ', '')"
+        [busy]="busy()"
+        (cancel)="cancel()"
+        (confirm)="confirm()"
+      >
+        <p class="xp__lead">Já houve XP dado nesta campanha. Mudar vale só daqui para frente.</p>
+        <p class="xp__text">
+          O XP que já foi dado ({{ a.blocked.awards }}&nbsp;{{ a.blocked.awards === 1 ? 'prêmio' : 'prêmios' }}, {{ xp(a.blocked.totalXp) }}) e o histórico ficam como estão.
+          Dá para voltar ao modo anterior depois.
+        </p>
+      </app-map-ask>
+    </div>
+  }
+
+  @if (changedLine()) {
+    <p class="xp__done" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <span>{{ changedLine() }}</span>
+    </p>
+  }
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+</section>

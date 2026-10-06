@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.cal__lead,
+.cal__result,
+.cal__hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.cal__lead {
+  font-weight: 700;
+}
+
+.cal__hint {
+  color: var(--mr-ink-muted);
+}

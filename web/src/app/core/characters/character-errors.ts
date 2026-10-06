@@ -1,6 +1,8 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
+  AbilityScoresRefusalReason,
+  AbilityScoresRefusalSchema,
   CharacterBlockedReason as GenCharacterBlockedReason,
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -56,6 +58,34 @@ function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): Charac
   }
 }
 
+/** What each `AbilityScoresRefusal` says (RN-24): by the typed reason, never by the server's message. */
+export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): string {
+  switch (reason) {
+    case AbilityScoresRefusalReason.METHOD_NOT_ALLOWED:
+      return 'O mestre não liberou esse jeito de fazer os atributos nesta mesa. Escolha outro.';
+    case AbilityScoresRefusalReason.NOT_STANDARD_ARRAY:
+      return 'Os valores não são o conjunto padrão: cada valor do conjunto vai em um atributo, uma vez só.';
+    case AbilityScoresRefusalReason.BAD_POINT_BUY:
+      return 'A compra por pontos passou do total de pontos, ou tem um valor fora do limite. Confira os valores.';
+    case AbilityScoresRefusalReason.NO_ROLLS_STORED:
+      return 'Role os atributos antes de criar o personagem.';
+    case AbilityScoresRefusalReason.NOT_THE_ROLLS:
+      return 'Os valores não são os seis resultados rolados. Use cada resultado uma vez.';
+    case AbilityScoresRefusalReason.TYPED_OUT_OF_RANGE:
+      return 'Um valor digitado está fora do limite da mesa. Confira os seis valores.';
+    case AbilityScoresRefusalReason.DICE_FORCED_IN_APP:
+      return 'Nesta campanha todos rolam no app: peça a rolagem ao servidor, sem digitar dados.';
+    case AbilityScoresRefusalReason.DICE_FORCED_PHYSICAL:
+      return 'Nesta campanha todos usam os próprios dados: digite os dados que você tirou.';
+    case AbilityScoresRefusalReason.ROLLS_ALREADY_STORED:
+      return 'Os dados já foram guardados e não mudam. Use os resultados que aparecem.';
+    case AbilityScoresRefusalReason.EXTRA_BONUSES:
+      return 'Os bônus manuais passam do que a raça e os aumentos de atributo deixam pôr.';
+    default:
+      return 'Os atributos não seguem as regras da mesa. Confira o passo "Atributos".';
+  }
+}
+
 /**
  * Maps any `CharacterService` error to a message a form can show as-is.
  *
@@ -67,6 +97,10 @@ export function describeCharacterError(err: unknown): string {
   const connectErr = ConnectError.from(err, Code.Unavailable);
 
   if (connectErr.code === Code.FailedPrecondition) {
+    const [refusal] = connectErr.findDetails(AbilityScoresRefusalSchema);
+    if (refusal) {
+      return abilityRefusalMessage(refusal.reason);
+    }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
     return characterBlockedMessage(mapBlockedReason(detail?.reason));
   }

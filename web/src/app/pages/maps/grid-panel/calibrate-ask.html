@@ -1,0 +1,73 @@
+@if (stage() === 'confirm') {
+  <app-map-ask
+    title="Mudar a grade?"
+    confirmLabel="Apagar e mudar a grade"
+    [busy]="busy()"
+    (cancel)="back()"
+    (confirm)="save()"
+  >
+    <p class="cal__lead">
+      Cada quadrado do desenho passa de {{ currentLabel() }} para {{ newLabel() }}.
+    </p>
+    <div class="mr-notice mr-notice--warning">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p>Esse valor não é um múltiplo do de agora: mudar a grade apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram.</p>
+    </div>
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+  </app-map-ask>
+} @else {
+  <app-map-ask
+    title="Cada quadrado deste desenho vale"
+    confirmLabel="Salvar a grade"
+    [ready]="ready()"
+    [busy]="busy()"
+    (cancel)="back()"
+    (confirm)="save()"
+  >
+    <app-dice-choice
+      name="cal-factor"
+      label="Quanto vale cada quadrado do desenho"
+      [options]="options()"
+      [value]="pick()"
+      (valueChange)="choose($event)"
+    />
+    @if (pick() === 0) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Quanto vale o quadrado</mat-label>
+        <input matInput type="text" inputmode="decimal" maxlength="4" autocomplete="off" [value]="other()" [attr.aria-invalid]="factor() === null" aria-describedby="cal-result" (input)="onType($event)" />
+        <span matTextSuffix>m</span>
+      </mat-form-field>
+    }
+    <p class="cal__result" id="cal-result" role="status">
+      @if (factor() === null) {
+        Use um múltiplo de 1,5 m, de 1,5&nbsp;m a 30&nbsp;m, em passos de 1,5.
+      } @else if (tooBig()) {
+        Com {{ newLabel() }}, as regras passariam de 200&nbsp;×&nbsp;400 quadrados. Escolha um valor menor.
+      } @else if (effect() === 'same') {
+        O desenho já vale {{ newLabel() }}. Escolha outro valor para mudar.
+      } @else {
+        As regras contam em quadrados de 1,5&nbsp;m: o mapa terá {{ grid()!.columns }}&nbsp;×&nbsp;{{ grid()!.rows }} quadrados.
+      }
+    </p>
+    @if (ready()) {
+      @if (clears()) {
+        @if (erases()) {
+          <p class="cal__hint">Esse valor não é um múltiplo do de agora: o que você pintou e o que os jogadores já viram não passa para ele. Antes de mudar, o app pergunta.</p>
+        }
+      } @else {
+        <p class="cal__hint">O que você pintou continua: cada quadrado pintado vira {{ times() }}&nbsp;×&nbsp;{{ times() }}. O movimento, o alcance e a névoa seguem as regras de sempre.</p>
+      }
+    }
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+  </app-map-ask>
+}

@@ -1,13 +1,13 @@
 <div class="dice-choice" role="radiogroup" [attr.aria-label]="label()">
   @for (o of options(); track o.value) {
-    <label class="dice-choice__card" [class.dice-choice__card--off]="disabled() && value() !== o.value">
+    <label class="dice-choice__card" [class.dice-choice__card--off]="(disabled() && value() !== o.value) || (isInert(o.value) && value() !== o.value)">
       <input
         type="radio"
         class="mr-visually-hidden"
         [name]="name()"
         [value]="o.value"
         [checked]="value() === o.value"
-        [disabled]="disabled()"
+        [disabled]="disabled() || isInert(o.value)"
         (change)="value.set(o.value)"
       />
       <span class="dice-choice__dot" aria-hidden="true"></span>

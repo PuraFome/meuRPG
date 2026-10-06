@@ -156,9 +156,20 @@ export class FakeMapsClient {
     this.record('forgetVision', mapId);
   }
 
-  async setGrid(_c: string, mapId: string, columns: number): Promise<MapMessage> {
-    this.record('setGrid', mapId, columns);
-    return this.mapAfter ?? mapMessage(mapId, 'Mapa', { gridColumns: columns, gridRows: Math.round((columns * 1600) / 2400) });
+  async setGrid(_c: string, mapId: string, columns: number, squareFactor = 1): Promise<MapMessage> {
+    // The factor is only written when it is not 1, so the calls of a map that was never calibrated read as before.
+    this.record('setGrid', mapId, squareFactor === 1 ? columns : `${columns} x${squareFactor}`);
+    const drawnRows = Math.round((columns * 1600) / 2400);
+    return (
+      this.mapAfter ??
+      mapMessage(mapId, 'Mapa', {
+        gridColumns: columns * squareFactor,
+        gridRows: drawnRows * squareFactor,
+        drawnColumns: columns,
+        drawnRows,
+        squareFactor,
+      })
+    );
   }
 
   /** What `GetTrapNoticers` answers. */

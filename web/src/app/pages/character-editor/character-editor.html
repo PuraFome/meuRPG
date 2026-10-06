@@ -231,14 +231,29 @@
               </cdk-step>
 
               <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
-                <p class="step-lead">
-                  Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
-                  ficha, calculados quando você salvar.
-                </p>
-                <app-ability-scores
-                  [group]="fullForm.controls.abilities"
-                  [(incomplete)]="abilitiesIncomplete"
-                />
+                @if (abilityTable(); as table) {
+                  <p class="step-lead">
+                    Escolha como fazer os seis valores, antes dos bônus de raça. Os modificadores aparecem
+                    na ficha, calculados quando você criar.
+                  </p>
+                  <app-table-ability-scores
+                    [campaignId]="s.campaignId"
+                    [group]="fullForm.controls.abilities"
+                    [table]="table"
+                    [(method)]="abilityMethod"
+                    [(incomplete)]="abilitiesIncomplete"
+                    [(problem)]="abilitiesProblem"
+                  />
+                } @else {
+                  <p class="step-lead">
+                    Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
+                    ficha, calculados quando você salvar.
+                  </p>
+                  <app-ability-scores
+                    [group]="fullForm.controls.abilities"
+                    [(incomplete)]="abilitiesIncomplete"
+                  />
+                }
 
                 <details
                   class="bonuses"

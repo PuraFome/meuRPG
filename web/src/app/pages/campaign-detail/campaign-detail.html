@@ -76,6 +76,15 @@
         </div>
 
         <div class="campaign-layout__column">
+          @if (isMaster) {
+            <section class="mr-panel" aria-labelledby="rules-heading">
+              <h2 class="mr-panel__title" id="rules-heading">Regras da mesa</h2>
+              <p class="rules-lead">O estilo da mesa, os pontos de vida, os atributos de uma ficha nova, o crítico, o modo de XP e os lembretes.</p>
+              <div>
+                <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'regras']">Abrir as regras</a>
+              </div>
+            </section>
+          }
           @if (isMaster) { <app-document-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" /> }
           <section class="mr-panel" aria-labelledby="members-heading">
             <h2 class="mr-panel__title" id="members-heading">Membros</h2>

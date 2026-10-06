@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -71,6 +72,7 @@ type PageState =
     GameSessionCard,
     LevelUpNotice,
     PendingMembers,
+    MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
