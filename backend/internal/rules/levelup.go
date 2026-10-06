@@ -177,6 +177,18 @@ type LevelUpSubclass struct {
 	// expertise. The top-level counts of the offer leave them out until the
 	// subclass is chosen.
 	Cantrips, SkillChoices, ExpertiseChoices int
+	// Spells is how many spells a third caster's subclass adds (known ones, with
+	// SpellsKind PreparationKnown); the table's subclass that casts is the only one.
+	Spells     int
+	SpellsKind string
+	// SpellList is the class whose list those spells come from, and
+	// MaxSpellLevel the highest circle they may have (zero values for a subclass
+	// that does not cast).
+	SpellList     string
+	MaxSpellLevel int
+	// Archived says the table retired this subclass (see RaceEntry.Archived):
+	// the screen does not offer it as a new choice.
+	Archived bool
 }
 
 // LevelUpFeatureChoice is "choose Choose of Options" for a feature gained
@@ -293,6 +305,11 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 	// The level with nothing chosen yet: what follows from the level alone.
 	bare := b.clone()
 	bare.Classes[idx].Level = newLevel
+	if sub != nil && bare.Classes[idx].Subclass == "" {
+		// A third caster casts through its subclass: the level with the subclass
+		// chosen has its casting numbers.
+		bare.Classes[idx].Subclass = sub.Key
+	}
 	dBefore, dBare := derive(b, c), derive(bare, c)
 
 	o := LevelUpOffer{
@@ -324,7 +341,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 		if masterAdds[fk] {
 			o.MasterAdds = append(o.MasterAdds, NamedKey{Key: fk, NamePT: c.namePT(fk)})
 		}
-		if strings.HasPrefix(fk, "feature:magical-secrets-") {
+		if strings.HasPrefix(fk, "feature:magical-secrets-") && !isTableKey(fk) {
 			o.AnyClassSpells = 2
 		}
 	}
@@ -343,10 +360,19 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 		for _, key := range class.Subclasses {
 			if s, ok := c.subclasses[key]; ok {
 				g := c.subclassGains(s, newLevel)
-				o.Subclasses = append(o.Subclasses, LevelUpSubclass{
-					Key: key, NamePT: c.namePT(key), FeatureChoices: c.namedChoices(b, g.choices),
+				ls := LevelUpSubclass{
+					Key: key, NamePT: c.namePT(key), Archived: c.archived[key], FeatureChoices: c.namedChoices(b, g.choices),
 					Cantrips: g.cantrips, SkillChoices: g.skills, ExpertiseChoices: g.expertise,
-				})
+				}
+				if _, third := c.subCasting[key]; third && sub == nil {
+					// A third caster's table starts with the subclass: what it adds to
+					// the level's counts is the difference with the class alone.
+					with, _ := levelUpOptionsWith(b, idx, c, s)
+					ls.Cantrips += max(with.Cantrips-o.Cantrips, 0)
+					ls.Spells, ls.SpellsKind = max(with.Spells-o.Spells, 0), with.SpellsKind
+					ls.SpellList, ls.MaxSpellLevel = with.SpellList, with.MaxSpellLevel
+				}
+				o.Subclasses = append(o.Subclasses, ls)
 			}
 		}
 		slices.SortFunc(o.Subclasses, func(a, b LevelUpSubclass) int { return comparePT(a.NamePT, b.NamePT) })
@@ -356,8 +382,8 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 	// two per level).
 	before, after := spellcastingOf(dBefore, classKey), spellcastingOf(dBare, classKey)
 	if after != nil {
-		cast := c.casting[classKey]
-		o.SpellList, o.MaxSpellLevel = classKey, after.MaxSpellLevel
+		cast, _ := c.castingFor(classKey, sub)
+		o.SpellList, o.MaxSpellLevel = cast.list, after.MaxSpellLevel
 		oldCantrips, oldKnown := 0, 0
 		if before != nil {
 			oldCantrips, oldKnown = before.CantripsKnown, before.SpellsKnownMax
@@ -484,6 +510,12 @@ func (c *content) featureGains(keys []string, subclass string) levelGains {
 			case "feature":
 				if choose == 0 {
 					choose = e.Count
+				}
+			case "expertise":
+				// An SRD feature says its expertise in the data (ExpertiseChoices); the
+				// table's say it in a choice effect.
+				if isTableKey(fk) {
+					g.expertise += e.Count
 				}
 			case "skill":
 				g.skills += e.Count
@@ -709,7 +741,7 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	// The same numbers the options give: the class's, and the chosen
 	// subclass's, which are not in the options' top level while it is due.
 	offer, _ := levelUpOptionsWith(before, idx, c, sub)
-	offOwnList, lerr := checkSpells(before, after, offer, classKey, c)
+	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, c)
 	if lerr != nil {
 		return lerr
 	}
@@ -912,7 +944,7 @@ func checkHitPoints(before, after Build, classIdx, die int, c *content) *LevelUp
 // prepared spells against what the level gives. It also returns the sheet
 // fields of the new known spells that are off the class's list, which the
 // Bard's Magical Secrets allow (up to offer.AnyClassSpells of them).
-func checkSpells(before, after Build, offer LevelUpOffer, classKey string, c *content) (map[string]bool, *LevelUpError) {
+func checkSpells(before, after Build, offer LevelUpOffer, list string, c *content) (map[string]bool, *LevelUpError) {
 	newCantrips, removed := added(before.Cantrips, after.Cantrips)
 	if removed || len(newCantrips) != offer.Cantrips {
 		return nil, refuse("full.cantrip_keys", LevelUpReasonCantrips, "the level gives %d new cantrips, none removed", offer.Cantrips)
@@ -930,7 +962,7 @@ func checkSpells(before, after Build, offer LevelUpOffer, classKey string, c *co
 		if !slices.Contains(newKnown, key) {
 			continue
 		}
-		if s := c.spells[key]; s != nil && !slices.Contains(s.Classes, classKey) {
+		if s := c.spells[key]; s != nil && !c.onList(s, list) {
 			offList[fmt.Sprintf("full.known_spell_keys[%d]", i)] = true
 		}
 	}

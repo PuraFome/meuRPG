@@ -175,10 +175,17 @@ func LoadSRD() (*Content, error) {
 	return loadSRD()
 }
 
-// Version identifies the content, "srd51@<commit12>+fx.<n>". It changes
-// whenever the SRD snapshot or the effects change, and the sheet shows it.
+// Version identifies the content, "srd51@<commit12>+fx.<n>", with
+// "+mesa.<revision>" added by With for a campaign's own content. It changes
+// whenever the SRD snapshot, the effects or the table's content change.
 func (c *Content) Version() string {
 	return c.c.version
+}
+
+// Archived says whether the table retired a content key: sheets that have it
+// still resolve, but it is not a new choice (ADR-0018). Always false for the SRD.
+func (c *Content) Archived(key string) bool {
+	return c.c.archived[key]
 }
 
 // Catalog lists what the editor can offer, with Portuguese names. The
@@ -311,6 +318,13 @@ type RaceEntry struct {
 	AbilityBonuses    map[Ability]int
 	// Subraces are the keys of this race's subraces.
 	Subraces []string
+	// ChoiceBonuses are the ability bonuses the player places on abilities of
+	// their choice (a table race's "+2 and +1 to your choice"), largest first;
+	// nil for an SRD race (the half-elf's choice is in the SRD data).
+	ChoiceBonuses []int
+	// Archived says the table has retired it: sheets that have it keep it,
+	// but it is not offered as a new choice. Every Archived below is the same.
+	Archived bool
 }
 
 // SubraceEntry is a subrace in the Catalog.
@@ -319,6 +333,7 @@ type SubraceEntry struct {
 	// Race is the key of the parent race.
 	Race           string
 	AbilityBonuses map[Ability]int
+	Archived       bool
 }
 
 // ClassEntry is a class in the Catalog.
@@ -349,21 +364,46 @@ type ClassEntry struct {
 	// cast at class level n (index 0 is level 1, index 19 is level 20), or 0
 	// when it has no leveled spells yet. Nil for a class that never casts.
 	MaxSpellLevelByLevel []int
-	// Subclasses are the keys of this class's SRD subclasses.
+	// Subclasses are the keys of this class's subclasses, the table's
+	// included.
 	Subclasses []string
+	Archived   bool
 }
 
 // SubclassEntry is a subclass in the Catalog.
 type SubclassEntry struct {
 	Key, Name, NamePT string
 	// Class is the key of the parent class.
-	Class string
+	Class    string
+	Archived bool
+	// Casting is set for a subclass that casts on its own (a third caster, the
+	// table's only): the web editor and the server read the numbers from it.
+	Casting *SubclassCasting
+}
+
+// SubclassCasting is how a third caster's subclass casts.
+type SubclassCasting struct {
+	// Kind is CastingThird.
+	Kind    string
+	Ability Ability
+	// Preparation is PreparationKnown or PreparationPrepared.
+	Preparation string
+	// SpellList is the class whose list it casts from, and StartLevel the class
+	// level casting starts at.
+	SpellList  string
+	StartLevel int
+	// MaxSpellLevelByLevel[n-1] is the highest spell level at class level n (0
+	// before it casts), as ClassEntry's.
+	MaxSpellLevelByLevel []int
 }
 
 // BackgroundEntry is a background in the Catalog.
 type BackgroundEntry struct {
 	Key, Name, NamePT  string
 	SkillProficiencies []string
+	// EquipmentPT is a table background's equipment text; empty for the SRD's.
+	EquipmentPT string
+	Archived    bool
 }
 
 // SkillEntry is a skill in the Catalog.
@@ -421,6 +461,9 @@ type SpellEntry struct {
 	// CastingTime is here, and not only in SpellDetails, because "Sua
 	// vez" groups a character's spells by it (package combat).
 	CastingTime CastingTime
+	// Archived says the table retired the spell (see RaceEntry.Archived); the
+	// tag keeps it out of the sheet's JSON, which the golden pins.
+	Archived bool `json:",omitempty"`
 }
 
 // ProficiencyLevel says how much of the proficiency bonus a roll adds.
@@ -619,6 +662,12 @@ type Spellcasting struct {
 	MaxSpellLevel int
 	// Ritual says whether the class casts rituals.
 	Ritual bool
+	// SpellList is the class whose spell list this caster reads: the class
+	// itself, or the class a third caster's subclass casts from (a table
+	// subclass of the Fighter that casts from the wizard's list says
+	// "class:wizard"). A spell is on it when the spell's classes (SpellEntry.Classes)
+	// name SpellList; combat picks the caster of a spell with it, not with Class.
+	SpellList string
 }
 
 // PactMagic is the warlock's pact slots, apart from the other slots.
@@ -774,4 +823,8 @@ const (
 	IssueMissing = "missing"
 	// IssueLevel: the total level is above 20; Derive computes level 20.
 	IssueLevel = "level"
+	// IssueRaceBonus: a table race lets the player place ability bonuses of
+	// their choice (Catalog's RaceEntry.ChoiceBonuses) and the sheet's manual
+	// bonuses do not cover them.
+	IssueRaceBonus = "race_bonus"
 )

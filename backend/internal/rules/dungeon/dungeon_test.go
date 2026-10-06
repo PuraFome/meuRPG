@@ -812,7 +812,7 @@ func TestLinksFromBothSides(t *testing.T) {
 	if len(d.Rooms) < 100 || len(d.DiscardedRooms) > len(d.Rooms)/10 {
 		t.Fatalf("%d rooms kept, %d discarded", len(d.Rooms), len(d.DiscardedRooms))
 	}
-	if !raceEnabled && el > 250*time.Millisecond {
+	if measuring() && el > 250*time.Millisecond {
 		t.Fatalf("Generate took %v (ceiling 250 ms)", el)
 	}
 	t.Logf("%d rooms kept, %d discarded, %v", len(d.Rooms), len(d.DiscardedRooms), el)

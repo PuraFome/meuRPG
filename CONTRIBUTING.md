@@ -11,9 +11,10 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | Comando | O que faz |
 | --- | --- |
 | `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)) e as imagens da galeria num volume (ver [Imagens da galeria](#imagens-da-galeria)). |
+| `make up LOCAL_STACK=native` | O mesmo ambiente **sem Docker**: o devidp e a API rodam como processos no Mac, contra o CockroachDB nativo, nas mesmas portas e com o mesmo login. `make down`, `make logs` e `make e2e` aceitam o mesmo `LOCAL_STACK=native`. Ver [Tudo nativo](#tudo-nativo-mac-opcional). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
 | `make db-native-start` / `make db-native-stop` | Liga e desliga um CockroachDB rodando direto no Mac, fora do Docker, para o `LOCAL_DB=native`. Ver [CockroachDB nativo](#cockroachdb-nativo-mac-opcional). |
-| `make db-test-start` / `make db-test-stop` | Liga e desliga o CockroachDB **dos testes**, também direto no Mac, na porta 26258, com o banco **na memória** (no máximo 2 GiB, que somem ao desligar). É o melhor lugar para os testes de integração: as mudanças de esquema, de que os bancos de teste são feitos, levam um quarto do tempo, e o banco de desenvolvimento (26257) não se enche de bancos de teste. Ver [Os bancos dos testes de integração](#os-bancos-dos-testes-de-integração). |
+| `make db-test-start` / `make db-test-stop` | Liga e desliga o CockroachDB **dos testes**, também direto no Mac, na porta 26258 (com `TEST_DB_PORT=26259`, um segundo, ao lado), com o banco **na memória** (no máximo 2 GiB, que somem ao desligar). É o melhor lugar para os testes de integração: as mudanças de esquema, de que os bancos de teste são feitos, levam um quarto do tempo, e o banco de desenvolvimento (26257) não se enche de bancos de teste. Ver [Os bancos dos testes de integração](#os-bancos-dos-testes-de-integração). |
 | `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
@@ -50,7 +51,26 @@ No Mac, todo container roda dentro de uma máquina virtual Linux (a do Docker De
 
 O banco do container e o nativo usam a mesma porta: desligue um antes de ligar o outro (`make down` derruba o do container). Os dados deles são separados. Com o banco fora do Docker, dá para diminuir a memória da máquina virtual nas configurações do Docker Desktop ou do Rancher Desktop.
 
+### Tudo nativo (Mac, opcional)
+
+Com `LOCAL_STACK=native`, o ambiente local roda **sem Docker**: o devidp e a API são processos no Mac, contra o CockroachDB nativo (`make db-native-start`), e a máquina virtual do Docker pode ficar desligada. No Mac, essa máquina virtual reserva vários GB de memória; sem ela, sobra memória para os bancos de teste na memória (ver [abaixo](#os-bancos-dos-testes-de-integração)). O CI continua usando o Docker, e o `LOCAL_STACK=docker` continua sendo o padrão.
+
+```bash
+make db-native-start
+make up LOCAL_STACK=native     # compila, migra, sobe o devidp e a API; o app em http://localhost:8080
+make logs LOCAL_STACK=native   # os logs dos dois processos
+make e2e LOCAL_STACK=native    # sobe (se precisar) e roda os testes Playwright
+make down LOCAL_STACK=native   # para os dois processos
+```
+
+- **O que o `make up` faz** (`deploy/local/native.sh`): compila a API, o `migrate` e o devidp, refaz o build do Angular só se algum arquivo de `web/` mudou desde o último, aplica as migrations no banco `meurpg` e sobe o devidp e a API em segundo plano, com as mesmas variáveis do `compose.yaml`. Cada processo grava o PID e o log em `~/.meurpg/run/`, e o `make down` para exatamente esses PIDs. As imagens da galeria ficam em `~/.meurpg/images`, separadas do volume do Docker.
+- **O issuer é o mesmo, `http://idp.localhost:9090`.** O resolvedor do macOS manda qualquer nome `*.localhost` para o próprio computador (RFC 6761), e o Go usa esse resolvedor por padrão no Mac. O resolvedor só do Go (`GODEBUG=netdns=go`) e o Linux não fazem isso; neles, use o Docker.
+- **As portas 8080 e 9090 precisam estar livres.** O Rancher Desktop continua encaminhando as portas de um container mesmo depois do `make down`, até ser fechado: feche-o, ou suba o ambiente nativo em outras portas.
+- **Um segundo ambiente, ao lado do primeiro:** `API_PORT=8180 IDP_PORT=9190 DB_NAME=meurpg_2 deploy/local/native.sh up` sobe outro, com outras portas, outro banco (criado se não existe), outra pasta de PIDs e logs (`~/.meurpg/run-8180`) e outra de imagens. Os testes Playwright vão para ele com `E2E_BASE_URL=http://localhost:8180 E2E_IDP_ORIGIN=http://idp.localhost:9190`; como o banco é outro, as contas de teste dos dois ambientes não se misturam. Para parar: `API_PORT=8180 deploy/local/native.sh down`.
+
 ### Os bancos dos testes de integração
+
+Dá para ter **mais de um banco de teste na memória** ao mesmo tempo, cada um numa porta (`make db-test-start TEST_DB_PORT=26259`; o console fica na porta seguinte à do primeiro, 8083), com a própria memória (até 2 GiB cada). Duas execuções dos testes de integração, cada uma apontando o `MEURPG_TEST_DATABASE_URL` para um, nunca esperam uma pela outra. Cada um custa uns 2,5 GB de memória no Mac; com a máquina virtual do Docker desligada ([Tudo nativo](#tudo-nativo-mac-opcional)), dois cabem num Mac de 16 GB.
 
 Os testes de integração **reaproveitam bancos**: cada pacote cria uns poucos bancos de teste e, entre um teste e outro, só os esvazia (`backend/internal/platform/dbtest`). Criar um banco com todas as tabelas leva uns 5 segundos no CockroachDB (cada tabela é uma mudança de esquema), e apagá-lo mais 1,5; esvaziá-lo com `DELETE` leva uns 10 milissegundos. Medido em 04/10/2026: os testes do `progression` caíram de 88 para 20 segundos.
 
@@ -247,11 +267,14 @@ O módulo `rules` é puro: os testes dele rodam sem banco, sem Docker e sem rede
 | `go test ./internal/rules/formula -run '^$' -fuzz FuzzCompileFormula -fuzztime 30s` | Fuzz das fórmulas: nenhuma entrada pode travar ou derrubar o motor. O CI não roda o fuzz; rode ao mexer em `formula/`. |
 | `go test ./internal/rules -run '^$' -bench Derive -benchmem` | Mede um `Derive`, que roda a cada leitura de ficha. |
 | `go test ./internal/rules/vision -run '^$' -bench . -benchmem` | Mede a névoa de guerra: a caverna do desenho, um mapa de 60 × 40 e o maior (200 × 400), no escuro e iluminado, com borda e pilares e com paredes esparsas. O orçamento: a caverna bem abaixo de 1 ms, o 60 × 40 abaixo de 10 ms e o 200 × 400 abaixo de 300 ms. |
+| `go test ./internal/rules -run 'TestWith\|TestLevelUpSweepTable\|TestDeriveTable\|TestSpellDetailsOfTable\|TestTable\|TestThirdCaster\|TestAlwaysPrepared\|TestRaceBonuses\|TestArchived\|TestMissingTable\|TestRealistic'` | O conteúdo da mesa (`Content.With`, ver [Arquitetura](docs/arquitetura.md#o-conteúdo-da-mesa-contentwith-mr-025-rn-23-adr-0018-fatia-101b)): as recusas (uma linha por regra), o SRD que não muda, dois conteúdos que não se enxergam, o `With` em paralelo (use `-race`), o conjurador de um terço, a varredura de subida de nível sobre classes da mesa de cada tipo de conjuração, em multiclasse também, e o golden de um personagem da mesa. Sem banco. |
+| `go test ./internal/rules -run TableCharacterGolden -update` | Regrava `testdata/golden/table-character.json` (o personagem da mesa nos níveis 1, 5 e 11). Revise o diff antes do commit. |
+| `go test -run '^$' -bench BenchmarkWith -benchmem ./internal/rules` | Mede um `With` com 300 entradas (o orçamento da ADR-0018: uns 25 ms e 4 MB) e um `With` vazio. Rode em `backend/`, sem `-race`. `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithMemory -v` mede a memória que um conteúdo da mesa mantém, e `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithAtTheBudgets -v` confere o tempo de um conteúdo nos limites (abaixo de 50 ms; só com a variável, porque numa máquina ocupada ou no CI um teste de relógio falha à toa). |
 | `go test ./internal/rules/grid ./internal/rules/vision` | A geometria do mapa (grade, camadas, linha reta, custo do movimento, alcance, cobertura) e a visão: puros, conferidos contra os números da caverna dos desenhos da Etapa 9. Rodam sem banco. |
 | `go test ./internal/rules/dungeon` | O gerador de masmorras (MR-010): propriedades sobre muitas opções (todos os invariantes da especificação), os hashes de ouro, o vetor do gerador de números, a independência dos fluxos e os casos de borda. Puro, sem banco, uns 4 segundos (uns 32 com `-race`); `DUNGEON_SWEEP=1` roda ainda uma varredura de 20 000 combinações. |
 | `go test ./internal/rules/dungeon -run Golden -update` | Regrava `testdata/golden.json` (um hash da grade por caso) depois de uma mudança intencional na saída do gerador. Mudar a saída pede subir `Version` em `types.go`; revise o diff antes do commit. |
 | `go test ./internal/rules/dungeon -run '^$' -fuzz FuzzOptions -fuzztime 60s` | Fuzz das opções do gerador: nenhuma entrada pode dar pânico, e toda saída aceita passa em todos os invariantes. O CI não roda o fuzz; rode ao mexer no gerador. |
-| `go test ./internal/rules/dungeon -run '^$' -bench 'Generate|Worst|PromptOf' -benchmem` | Mede o gerador de 31 × 31 até 199 × 399, os piores casos construídos (`Worst`) e o `PromptOf` no pior caso (`PromptOf`). O orçamento: o maior abaixo de 50 ms (teto de 250 ms) e o `PromptOf` abaixo de 20 ms. |
+| `go test ./internal/rules/dungeon -run '^$' -bench 'Generate|Worst|PromptOf' -benchmem` | Mede o gerador de 31 × 31 até 199 × 399, os piores casos construídos (`Worst`) e o `PromptOf` no pior caso (`PromptOf`). O orçamento: o maior abaixo de 50 ms (teto de 250 ms) e o `PromptOf` abaixo de 20 ms. Os testes só conferem esses tempos com `MEURPG_MEASURE=1` e sem `-race`, numa máquina tranquila: numa máquina ocupada, ou no CI, um teste de relógio falha à toa. |
 
 O conteúdo fica em `backend/internal/rules/srd51`:
 
