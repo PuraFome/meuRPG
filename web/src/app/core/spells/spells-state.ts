@@ -135,12 +135,22 @@ export class SpellsState {
       return;
     }
     const seq = this.seq;
+    // The pages the person had opened with "Mostrar mais" stay: as many are read again as were on screen.
+    const wanted = this.spells().length;
     try {
-      const res = await this.source.list(toListRequest(this.campaignId, answered.filter, answered.characterId));
+      let res = await this.source.list(toListRequest(this.campaignId, answered.filter, answered.characterId));
+      let rows = [...res.spells];
+      while (rows.length < wanted && res.nextPageToken) {
+        if (seq !== this.seq || this.answered !== answered) {
+          return;
+        }
+        res = await this.source.list(toListRequest(this.campaignId, answered.filter, answered.characterId, res.nextPageToken));
+        rows = [...rows, ...res.spells];
+      }
       if (seq !== this.seq || this.answered !== answered) {
         return;
       }
-      this.spells.set(res.spells);
+      this.spells.set(rows);
       this.total.set(res.total);
       this.nextToken.set(res.nextPageToken);
       this.hooks.onAnswered?.();

@@ -105,3 +105,23 @@ describe('PickList', () => {
     expect(host.described).toEqual(['Alarme']);
   });
 });
+
+describe('PickList: a spell the master wrote (E10-11 state 4)', () => {
+  it('tags a table spell "Da mesa" beside its name, with the word and the icon', () => {
+    const fixture = TestBed.createComponent(PickList);
+    fixture.componentRef.setInput('pickId', 'spells');
+    fixture.componentRef.setInput('title', 'Magias conhecidas');
+    fixture.componentRef.setInput('noun', 'magia');
+    fixture.componentRef.setInput('nounMany', 'magias');
+    fixture.componentRef.setInput('items', [
+      { key: 'spell:a', name: 'Alarme', sub: '1º círculo' },
+      { key: 'spell:ink@mesa', name: 'Lâmina de Nanquim', sub: '1º círculo', table: true },
+    ]);
+    fixture.componentRef.setInput('picked', new Set<string>());
+    fixture.componentRef.setInput('count', 1);
+    fixture.detectChanges();
+    const names = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row__name'));
+    expect(names[0].querySelector('.mr-tag')).toBeNull();
+    expect(names[1].querySelector('.mr-tag')?.textContent).toContain('Da mesa');
+  });
+});

@@ -1,0 +1,137 @@
+// E10-10: back link, the title, then the options (a column) beside the result; the options sit above the result under 1100 px.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.sub {
+  margin: 2px 0 0;
+  font-size: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1100px) {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.generate {
+  border-radius: var(--mr-radius-sm);
+  --mat-button-filled-container-shape: var(--mr-radius-sm);
+  --mat-button-outlined-container-shape: var(--mr-radius-sm);
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-container-height: 48px;
+  align-self: stretch;
+  font-weight: 700;
+
+  &--ghost {
+    --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    --mat-button-outlined-outline-color: var(--mr-control-line);
+  }
+}
+
+.outcome {
+  min-width: 0;
+}
+
+.result-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.empty__line {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 18px;
+}
+
+.placed {
+  scroll-margin-top: 72px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.placed__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.placed__gold {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+

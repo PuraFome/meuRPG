@@ -1,5 +1,7 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, NavigationCancel, NavigationError, NavigationStart, Router, RouterLink } from '@angular/router';
@@ -11,7 +13,9 @@ import { acAndHp, creatureSlug, typeAndSize } from '../../../core/creatures/best
 import { CHALLENGE_RANGES, CHALLENGE_RATINGS, CREATURE_SIZES, CREATURE_TYPES, challengeBounds } from '../../../core/creatures/creature-types';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { formatInt, joinDots } from '../../../core/format/text';
-import { BestiaryRow } from './bestiary-row';
+import { PutMonstersSheet, type PutMonstersData, type PutMonstersResult } from '../../../shared/monsters/put-sheet/put-sheet';
+import { openSheet } from '../../live-session/combat/sheet-host';
+import { BestiaryRow, type BestiaryRowData } from './bestiary-row';
 
 type ListState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
@@ -42,10 +46,14 @@ export class BestiaryList {
   private readonly client = inject(CreaturesClient);
   private readonly accessCheck = inject(BestiaryAccessCheck);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly campaignId = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly access = signal<BestiaryAccess | { status: 'loading' }>({ status: 'loading' });
   protected readonly state = signal<ListState>({ status: 'loading' });
+  /** The monsters just put in the combat, for the confirmation above the list. */
+  protected readonly put = signal<PutMonstersResult | null>(null);
 
   protected readonly query = signal(this.route.snapshot.queryParamMap.get(PARAMS.query) ?? '');
   protected readonly type = signal(this.route.snapshot.queryParamMap.get(PARAMS.type) ?? '');
@@ -140,6 +148,25 @@ export class BestiaryList {
     // The first search does not wait for the role: both go at once (a player's answer is never drawn).
     void this.search();
     this.access.set(await this.accessCheck.check(this.campaignId));
+  }
+
+  /** "Pôr no combate" on a row: the sheet opens, and what went in is announced above the list. */
+  protected openPut(row: BestiaryRowData): void {
+    const creature = this.found().find((c) => c.key === row.key);
+    if (!creature) {
+      return;
+    }
+    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(this.dialog, this.bottomSheet, PutMonstersSheet, {
+      data: { campaignId: this.campaignId, creature },
+      ariaLabel: 'Pôr no combate',
+      labelledBy: 'put-t',
+      width: '600px',
+      tall: true,
+    }).subscribe((result) => {
+      if (result) {
+        this.put.set(result);
+      }
+    });
   }
 
   protected setQuery(value: string): void {

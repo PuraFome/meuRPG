@@ -12,6 +12,12 @@
   background: var(--mr-ground);
 }
 
+.feature--flat {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .feature__head {
   display: flex;
   align-items: center;
@@ -77,6 +83,13 @@
 
   @media (min-width: 768px) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  // With a lead field (the level) the first row is name | level | effect.
+  @media (min-width: 768px) {
+    &--lead {
+      grid-template-columns: minmax(0, 2fr) minmax(88px, 120px) minmax(0, 2fr);
+    }
   }
 
   &__wide {

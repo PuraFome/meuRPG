@@ -319,7 +319,13 @@ type Catalog struct {
 }
 
 // NamedEntry is a key and its Portuguese name.
-type NamedEntry struct{ Key, NamePT string }
+type NamedEntry struct {
+	Key, NamePT string
+	// Kind is what the key names: "tool", "armor", "weapon", "skill",
+	// "saving-throw", "language" or "other" (the SRD's proficiency kinds, and a
+	// language); empty for a damage type.
+	Kind string
+}
 
 // AbilityEntry names an ability.
 type AbilityEntry struct {
@@ -417,9 +423,18 @@ type SubclassEntry struct {
 	Class    string
 	Archived bool
 	Off      bool
+	// AlwaysPrepared are the spells it always has prepared from a class level
+	// (without the ones that depend on a feature's choice).
+	AlwaysPrepared []SubclassSpellRef
 	// Casting is set for a subclass that casts on its own (a third caster, the
 	// table's only): the web editor and the server read the numbers from it.
 	Casting *SubclassCasting
+}
+
+// SubclassSpellRef is a spell a subclass always prepares from a class level.
+type SubclassSpellRef struct {
+	Spell      string
+	ClassLevel int
 }
 
 // SubclassCasting is how a third caster's subclass casts.

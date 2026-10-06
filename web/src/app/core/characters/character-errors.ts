@@ -5,6 +5,7 @@ import {
   AbilityScoresRefusalSchema,
   CharacterBlockedReason as GenCharacterBlockedReason,
   CharacterBlockedSchema,
+  InvalidFieldSchema,
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -25,19 +26,18 @@ export function switchedOffKey(err: unknown): string | null {
   return detail?.reason === GenCharacterBlockedReason.SWITCHED_OFF_CONTENT ? detail.contentKey || '' : null;
 }
 
-/** What a field says when the option it holds was switched off: the sheet keeps what it had; a new choice is what is refused. */
-export function switchedOffMessage(name: string): string {
-  return `${name || 'Esta opção'} não está mais disponível para os jogadores. Escolha outra.`;
-}
-
 /**
  * Turns a `CharacterBlocked.reason` into the message the sheet and the
  * editor show as-is. Kept separate from `describeCharacterError` so both can
  * be unit-tested without a `ConnectError` in hand — this one takes the
  * already-decoded local reason, not a wire enum.
  */
-export function characterBlockedMessage(reason: CharacterBlockedReason | undefined): string {
+export function characterBlockedMessage(reason: CharacterBlockedReason | undefined, content?: ContentRef): string {
   switch (reason) {
+    case 'archived_content':
+      return `${contentWords(content)} foi arquivad${content?.masculine ? 'o' : 'a'} pelo mestre e não vale mais como escolha nova. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
+    case 'switched_off_content':
+      return `${contentWords(content)} foi desligad${content?.masculine ? 'o' : 'a'} pelo mestre para os jogadores. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
     case 'sheet_locked':
       return 'A ficha está travada porque a campanha já começou a jogar. Só o mestre pode editá-la agora.';
     case 'character_dead':
@@ -50,11 +50,52 @@ export function characterBlockedMessage(reason: CharacterBlockedReason | undefin
       return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
     case 'awaiting_approval':
       return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
-    case 'switched_off_content':
-      return switchedOffMessage('');
     default:
       return 'Não foi possível concluir a ação agora.';
   }
+}
+
+/** What a content key is, in words, for an error that names one: "A classe “Guardião do Vale”". */
+export interface ContentRef {
+  /** The Portuguese name from the catalog; empty when the catalog does not know the key. */
+  readonly name: string;
+  /** The kind of entry, from the key: "a classe", "o antecedente"... */
+  readonly noun: string;
+  readonly masculine: boolean;
+  /** The step of the editor that holds the field. */
+  readonly step: string;
+}
+
+const KEY_KINDS: Record<string, { noun: string; masculine: boolean; step: string }> = {
+  class: { noun: 'classe', masculine: false, step: 'Básico' },
+  subclass: { noun: 'subclasse', masculine: false, step: 'Básico' },
+  race: { noun: 'raça', masculine: false, step: 'Básico' },
+  subrace: { noun: 'sub-raça', masculine: false, step: 'Básico' },
+  background: { noun: 'antecedente', masculine: true, step: 'Básico' },
+  spell: { noun: 'magia', masculine: false, step: 'Magias' },
+};
+
+/** The words for a content key: its kind from the key, its name from `nameOf` (never the key itself). */
+export function contentRef(key: string, nameOf: (key: string) => string | undefined): ContentRef {
+  const kind = KEY_KINDS[key.split(':')[0]] ?? { noun: 'opção', masculine: false, step: '' };
+  return { name: nameOf(key) ?? '', ...kind };
+}
+
+function contentWords(content: ContentRef | undefined): string {
+  if (!content) {
+    return 'Uma das opções';
+  }
+  const article = content.masculine ? 'O' : 'A';
+  return content.name ? `${article} ${content.noun} “${content.name}”` : `${article} ${content.noun} escolhid${content.masculine ? 'o' : 'a'}`;
+}
+
+/** The sheet field an `invalid_argument` points at ("full.classes[1].class_key"), from its typed detail; `null` when it has none. */
+export function invalidFieldPath(err: unknown): string | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.InvalidArgument) {
+    return null;
+  }
+  return connectErr.findDetails(InvalidFieldSchema)[0]?.field ?? null;
 }
 
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the
@@ -76,6 +117,8 @@ function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): Charac
       return 'not_pending';
     case GenCharacterBlockedReason.AWAITING_APPROVAL:
       return 'awaiting_approval';
+    case GenCharacterBlockedReason.ARCHIVED_CONTENT:
+      return 'archived_content';
     case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:
       return 'switched_off_content';
     default:
@@ -118,7 +161,7 @@ export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): strin
  * the error itself (`findDetails(CharacterBlockedSchema)`) — the caller
  * never needs to guess or pass a reason in.
  */
-export function describeCharacterError(err: unknown): string {
+export function describeCharacterError(err: unknown, nameOf?: (key: string) => string | undefined): string {
   const connectErr = ConnectError.from(err, Code.Unavailable);
 
   if (connectErr.code === Code.FailedPrecondition) {
@@ -132,7 +175,8 @@ export function describeCharacterError(err: unknown): string {
       return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Atributos".';
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
-    return characterBlockedMessage(mapBlockedReason(detail?.reason));
+    const content = detail?.contentKey ? contentRef(detail.contentKey, nameOf ?? (() => undefined)) : undefined;
+    return characterBlockedMessage(mapBlockedReason(detail?.reason), content);
   }
   if (connectErr.code === Code.Aborted) {
     // AIP-154-style stale revision: someone else (the player, the master,
@@ -143,6 +187,16 @@ export function describeCharacterError(err: unknown): string {
   return describeConnectError(connectErr, {
     [Code.PermissionDenied]: 'Você não tem permissão para fazer isso.',
     [Code.NotFound]: 'Personagem não encontrado.',
-    [Code.InvalidArgument]: 'Confira os campos da ficha.',
+    [Code.InvalidArgument]: invalidArgumentMessage(connectErr),
   });
+}
+
+/** "Classe 2: ..." when the server points at a class block; the generic line otherwise. */
+function invalidArgumentMessage(err: ConnectError): string {
+  const field = err.findDetails(InvalidFieldSchema)[0]?.field ?? '';
+  const block = /^full\.classes\[(\d+)\]/.exec(field);
+  if (block) {
+    return `Classe ${Number(block[1]) + 1}: essa classe se repete ou não existe. Cada classe entra uma vez só; escolha outra no passo Básico.`;
+  }
+  return 'Confira os campos da ficha.';
 }

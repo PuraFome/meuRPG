@@ -154,7 +154,9 @@ export type LiveEventVm =
   /** `trap_noticed` (MR-035): this player's character noticed a trap by passing near it. Only they get it. */
   | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string }
   /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
-  | { readonly kind: 'creaturesChanged' };
+  | { readonly kind: 'creaturesChanged' }
+  /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
+  | { readonly kind: 'contentChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

@@ -49,3 +49,10 @@ export async function raceOptions(page: Page): Promise<string[]> {
   await expect(page.getByRole('option')).toHaveCount(0);
   return names;
 }
+
+/** `ListContent` as the raw text the player's app receives: the JSON a test greps for what must never be there. */
+export async function catalogText(page: Page, campaignId: string): Promise<string> {
+  const res = await callRPC(page, 'meurpg.rules.v1.ContentService/ListContent', { campaignId });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return JSON.stringify(await res.json());
+}

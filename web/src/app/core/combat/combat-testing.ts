@@ -42,6 +42,8 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     side: CombatantSide.ENEMY,
     coverMark: CoverDegree.NONE,
     disengaged: false,
+    bestiaryCreatureKey: '',
+    challengeRating: '',
     ...over,
   } as unknown as Combatant;
 }

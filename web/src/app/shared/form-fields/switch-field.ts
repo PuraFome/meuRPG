@@ -80,11 +80,11 @@ let nextId = 0;
         background: var(--mr-ink);
       }
 
-      // A 44 px target around the 32 px track.
+      // A 44 px target around the 32 px track (the 28 px padding box plus 8 px each side).
       &::before {
         content: '';
         position: absolute;
-        inset: -6px -2px;
+        inset: -8px -4px;
       }
 
       &:focus-visible {

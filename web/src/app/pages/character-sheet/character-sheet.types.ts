@@ -84,6 +84,17 @@ export interface IssueVm {
   readonly message: string;
 }
 
+/** A table entry the sheet uses that changed after the sheet was last saved, and what no longer fits because of
+ * it (`DerivedSheet.changed_content`, RN-23 question 80): the sentences exactly as the server wrote them. Never who
+ * changed it nor the history of its edits. */
+export interface ChangedContentVm {
+  readonly key: string;
+  readonly namePt: string;
+  /** When the entry last changed. */
+  readonly changedAt: Date | null;
+  readonly messages: readonly string[];
+}
+
 /** A situational reminder the numbers above cannot express, such as
  * advantage on a saving throw against magic (`DerivedSheet.hints`,
  * `rules.proto`'s `Hint`). Shown as a quiet "Lembretes" list in
@@ -148,6 +159,8 @@ export interface FullSheetVm {
   /** Locks with the rest of the sheet, unlike `CharacterStoryVm` (A3). */
   readonly customFeaturesText: string;
   readonly issues: readonly IssueVm[];
+  /** "A classe mudou": the table's entries this sheet uses that changed and left it with a new issue. */
+  readonly changedContent: readonly ChangedContentVm[];
   readonly hints: readonly HintVm[];
   /** A druid with Wild Shape: the "Criaturas" panel exists for it before a first creature (MR-037). Display only. */
   readonly hasWildShape: boolean;

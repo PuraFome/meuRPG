@@ -12,7 +12,8 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--mr-space-3);
+  flex-wrap: wrap;
+  gap: 0 var(--mr-space-3);
   padding: 8px 0;
   border-top: 1px solid var(--mr-rule);
 
@@ -26,12 +27,18 @@
 }
 
 .row__text {
-  min-width: 0;
+  // The label keeps its words: a long "Guardião do Vale 1 → Guardião do Vale 2" wraps on its own side.
+  flex: 1 1 0;
+  min-width: 5.5em;
   display: flex;
   flex-direction: column;
 }
 
 .row__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mr-space-2);
   font-size: 16px;
   line-height: 21px;
   overflow-wrap: anywhere;
@@ -44,13 +51,18 @@
 }
 
 .row__values {
-  flex-shrink: 0;
+  flex: none;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
+  text-align: right;
   font-family: var(--mr-font-display);
   font-size: 19px;
   line-height: 24px;
+}
+
+.row__before,
+.row__after {
   white-space: nowrap;
 }
 
@@ -64,4 +76,21 @@
 
 .row__after {
   font-weight: 800;
+}
+
+// Two long values ("Guardião do Vale 1 → Guardião do Vale 2") take the row and wrap between them.
+.row__values--long {
+  // Next to the label when it fits, under it (right aligned) when it does not.
+  flex: 1 1 14em;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 6px;
+}
+
+.row__from {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
 }

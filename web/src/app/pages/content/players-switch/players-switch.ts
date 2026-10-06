@@ -82,10 +82,12 @@ export class PlayersSwitch {
   protected note(): string {
     const e = this.entry();
     const n = e.charactersUsing;
-    const using = n === 0 ? '' : n === 1 ? ' A ficha que a usa continua funcionando.' : ` As ${n} fichas que a usam continuam funcionando.`;
+    const masculine = KIND_NOUNS[e.kind]?.article === 'O';
+    const pronoun = masculine ? 'o' : 'a';
+    const using = n === 0 ? '' : n === 1 ? ` A ficha que ${pronoun} usa continua funcionando.` : ` As ${n} fichas que ${pronoun} usam continuam funcionando.`;
     return e.off
-      ? `Desligado, ninguém a escolhe numa ficha nova e os jogadores não a leem.${using || ' Quem já a usa continua com ela.'}`
-      : 'Ligado, os jogadores a leem por inteiro e podem escolhê-la.';
+      ? `Desligado, ninguém ${masculine ? 'o' : 'a'} escolhe numa ficha nova e os jogadores não ${pronoun} leem.${using || ' Quem já ' + pronoun + ' usa continua com ' + (masculine ? 'ele' : 'ela') + '.'}`
+      : `Ligado, os jogadores ${pronoun} leem por inteiro e podem escolhê-l${masculine ? 'o' : 'a'}.`;
   }
 
   protected async toggle(on: boolean): Promise<void> {

@@ -383,7 +383,7 @@ func TestMR039_TheSceneArtAndTheIsometricViewOfAMap(t *testing.T) {
 	if g.GetKind() != kindMapSceneAPI || g.GetMapId() != c.mapID || !slices.Equal(g.GetCharacterImageIds(), []string{portrait}) || g.GetAspectRatio() != mapsv1.ImageAspectRatio_IMAGE_ASPECT_RATIO_16_9 {
 		t.Errorf("scene request = %v", g)
 	}
-	if !img.GetGenerated() || img.GetName() != "Imagem 1" {
+	if !img.GetGenerated() || img.GetName() != "A caverna do Vale Seco · arte da cena" {
 		t.Errorf("scene image = %v", img)
 	}
 	iso := m.mustGenerateFromMap(c.campaign, c.mapID, kindIsometricAPI, "A mesma cripta", func(r *mapsv1.GenerateMapImageRequest) {
@@ -901,7 +901,7 @@ func TestRN10_NothingOfTheMapPicturesReachesAPlayer(t *testing.T) {
 		}
 		for name, json := range responses {
 			for _, secret := range []string{
-				sceneImg.GetId(), textureImg.GetId(), scene.GetGeneration().GetId(), texture.GetGeneration().GetId(), "Imagem 1", "Imagem 2",
+				sceneImg.GetId(), textureImg.GetId(), scene.GetGeneration().GetId(), texture.GetGeneration().GetId(), sceneImg.GetName(), textureImg.GetName(),
 				"O segredo da guarita", "O mapa inteiro", "map_scene", "textured", "idempotency", "Goblin 1", c.goblin1.GetId(), "Capitão", c.captain.GetId(), c.hiddenGoblin.GetId(), "Emboscado",
 			} {
 				if strings.Contains(json, secret) {

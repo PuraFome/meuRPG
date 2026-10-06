@@ -89,6 +89,45 @@ describe('ContentWatcher (RN-23, RN-10: the live content hint)', () => {
     watcher.follow(null, onChange);
   });
 
+  it('reads on the first `ready` of a session that opened while the page was up (it may have changed in between)', async () => {
+    const onChange = vi.fn();
+    const watcher = TestBed.inject(ContentWatcher);
+    TestBed.runInInjectionContext(() => watcher.whileLive(() => 'camp-1', onChange));
+    TestBed.tick();
+    await tick();
+    sessions.set([{ campaignId: 'camp-1' }]);
+    TestBed.tick();
+    await tick();
+    calls[0].push({ kind: 'ready' });
+    await pause(CONTENT_DEBOUNCE_MS + 50);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not read on the first `ready` when the session was already open as the page came (its own load did)', async () => {
+    sessions.set([{ campaignId: 'camp-1' }]);
+    const onChange = vi.fn();
+    const watcher = TestBed.inject(ContentWatcher);
+    TestBed.runInInjectionContext(() => watcher.whileLive(() => 'camp-1', onChange));
+    TestBed.tick();
+    await tick();
+    calls[0].push({ kind: 'ready' });
+    await pause(CONTENT_DEBOUNCE_MS + 50);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('clears the waiting read when the page is destroyed', async () => {
+    const onChange = vi.fn();
+    const watcher = TestBed.inject(ContentWatcher);
+    watcher.follow('camp-1', onChange);
+    await tick();
+    calls[0].push({ kind: 'ready' });
+    calls[0].push({ kind: 'contentChanged' });
+    await tick();
+    TestBed.resetTestingModule();
+    await pause(CONTENT_DEBOUNCE_MS + 50);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('closes the stream, and drops a read that was waiting, when the page goes away', async () => {
     const onChange = vi.fn();
     const watcher = TestBed.inject(ContentWatcher);

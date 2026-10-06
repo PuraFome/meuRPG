@@ -1,0 +1,105 @@
+:host {
+  display: block;
+}
+
+.wait {
+  margin: var(--mr-space-6) 0;
+  color: var(--mr-ink-muted);
+  text-align: center;
+}
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: 4px 8px;
+}
+
+.ask__title {
+  align-self: flex-start;
+  margin: 0 -6px;
+  padding: 2px 6px;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.ask__title:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 2px;
+}
+
+.ask-text {
+  margin: 0;
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.why,
+.synth {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+// Two buttons, equal, side by side at any width (they fit 320 px): 44 px on a computer, 48 px on a phone.
+.pair {
+  display: flex;
+  gap: var(--mr-space-3);
+  justify-content: flex-end;
+
+  button {
+    flex: 0 1 180px;
+    min-width: 0;
+    min-height: 44px;
+    white-space: nowrap;
+
+    @media (max-width: 767.98px) {
+      flex: 1 1 0;
+      min-height: 48px;
+    }
+  }
+
+  // One over the other on a phone, the one that goes on on top: a label never runs past its button.
+  &--stack {
+    @media (max-width: 599.98px) {
+      flex-direction: column-reverse;
+
+      button {
+        flex: none;
+        width: 100%;
+      }
+    }
+  }
+
+  &--end button {
+    flex-basis: auto;
+    padding: 0 var(--mr-space-5);
+
+    @media (max-width: 767.98px) {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+// Under 360 px the note leaves the fixed footer and ends the body, so it never pushes the content below the fold (E10-07 10).
+.synth--body {
+  display: none;
+}
+
+@media (max-width: 359.98px) {
+  .synth--body {
+    display: block;
+  }
+
+  .synth--foot {
+    display: none;
+  }
+}

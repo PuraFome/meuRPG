@@ -35,8 +35,11 @@ export function isTransient(err: unknown): boolean {
   return code === Code.Unavailable || code === Code.Aborted || code === Code.DeadlineExceeded || code === Code.Unknown;
 }
 
+/** Who reads a refusal: the master's pages and the player's page say some of them differently. */
+export type Audience = 'master' | 'player';
+
 /** What each refusal says, in words the master or the player can act on. */
-export function puzzleBlockedMessage(reason: PuzzleBlockedReason): string {
+export function puzzleBlockedMessage(reason: PuzzleBlockedReason, audience: Audience = 'master'): string {
   switch (reason) {
     case PuzzleBlockedReason.NO_OPEN_SESSION:
       return 'A sessão acabou: os quebra-cabeças só se jogam durante a sessão.';
@@ -51,7 +54,21 @@ export function puzzleBlockedMessage(reason: PuzzleBlockedReason): string {
     case PuzzleBlockedReason.NO_CHARACTER:
       return 'Você não tem um personagem vivo nesta campanha para jogar.';
     case PuzzleBlockedReason.NO_MORE_HINTS:
-      return 'Não há mais dicas para soltar.';
+      return audience === 'player' ? 'Não há mais dicas para ganhar.' : 'Não há mais dicas para soltar.';
+    case PuzzleBlockedReason.SEQUENCE_NOT_PLAYED:
+      return audience === 'player' ? 'O mestre ainda não tocou a sequência. Esperem ele tocar.' : 'Toque a sequência para os jogadores antes.';
+    case PuzzleBlockedReason.SEQUENCE_PLAYING:
+      return 'A sequência está tocando. Espere ela terminar.';
+    case PuzzleBlockedReason.NOT_A_SEQUENCE:
+      return 'Só uma sequência se toca.';
+    case PuzzleBlockedReason.NO_HINT_CHECK:
+      return 'Este quebra-cabeça não dá dicas por teste de perícia.';
+    case PuzzleBlockedReason.HINT_ALREADY_TRIED:
+      return 'Você já tentou esta dica. Outro jogador pode tentar, ou o mestre solta uma dica.';
+    case PuzzleBlockedReason.WRONG_DICE_MODE:
+      return 'A mesa rola os dados de outro jeito. A tela foi atualizada.';
+    case PuzzleBlockedReason.NO_SKILL:
+      return 'Seu personagem não tem os números desta perícia.';
     case PuzzleBlockedReason.NO_GENERATED_START:
       return 'O começo da fechadura é o que você escolheu: não há outro para gerar.';
     case PuzzleBlockedReason.STOPPED:
@@ -73,7 +90,7 @@ export function puzzleInvalidMessage(invalid: PuzzleInvalid): string {
     case PuzzleInvalidReason.SIZE:
       return 'O painel vai de 3 a 7 de lado, a fechadura de 2 a 6 rodas e os símbolos de 3 a 6 pilares e de 3 a 6 símbolos.';
     case PuzzleInvalidReason.SYMBOLS:
-      return 'Uma roda ou um pilar mostra um símbolo que não existe. Confira o alfabeto e a quantidade.';
+      return 'Um símbolo ou um sino não existe. Confira a quantidade e os passos da sequência.';
     case PuzzleInvalidReason.LINKS:
       return 'As ligações entre os pilares não valem: um pilar não gira junto consigo mesmo.';
     case PuzzleInvalidReason.START_SOLVED:
@@ -83,20 +100,93 @@ export function puzzleInvalidMessage(invalid: PuzzleInvalid): string {
     case PuzzleInvalidReason.TARGET:
       return 'O alvo do “Ao resolver” não é desta campanha, ou não existe mais. Escolha de novo.';
     case PuzzleInvalidReason.HINT_CHECK:
-      return 'O teste de perícia da dica não vale.';
+      return 'O teste de perícia da dica não vale: escolha uma das 18 perícias, uma CD de 1 a 30, e escreva pelo menos uma dica.';
+    case PuzzleInvalidReason.ANSWERS:
+      return 'As respostas aceitas não valem: de 1 a 10, cada uma de 1 a 80 letras, e nenhuma igual a outra.';
+    case PuzzleInvalidReason.CIPHER:
+      return 'A cifra não vale: a mensagem tem de 1 a 300 letras com pelo menos uma de A a Z, e a chave troca letras (a pista da chave tem de ser desta campanha).';
+    case PuzzleInvalidReason.PARTS:
+      return 'A informação dividida não vale: até 8 partes de 1 a 300 letras, cada uma para um personagem vivo, e nenhum personagem com duas.';
+    case PuzzleInvalidReason.ON_WRONG:
+      return 'O “Ao errar” não vale: a armadilha precisa ser de um mapa da campanha, e as tentativas e a armadilha só servem a enigma, sequência e cifra.';
+    case PuzzleInvalidReason.MOVE:
+      return 'Essa jogada não vale: escreva de 1 a 600 letras, ou toque num sino que existe.';
+    case PuzzleInvalidReason.KIND:
+      return 'Algo no quebra-cabeça não é do tipo escolhido. Volte e tente de novo.';
     default:
       return 'Confira os campos e tente de novo.';
   }
+}
+
+/** The part of a form a refusal belongs to, from the field the server names (never the value). `''` when it is none of them. */
+export type FormSection =
+  | 'name'
+  | 'clue'
+  | 'hints'
+  | 'riddle'
+  | 'answers'
+  | 'sequence'
+  | 'cipherMessage'
+  | 'cipherKey'
+  | 'check'
+  | 'parts'
+  | 'wrong'
+  | 'message'
+  | 'target'
+  | '';
+
+export function invalidSection(invalid: PuzzleInvalid): FormSection {
+  const field = invalid.field;
+  if (field === 'name') {
+    return 'name';
+  }
+  if (field === 'clue') {
+    return 'clue';
+  }
+  if (field.startsWith('hint_check')) {
+    return 'check';
+  }
+  if (field.startsWith('hints')) {
+    return 'hints';
+  }
+  if (field === 'on_solve.message') {
+    return 'message';
+  }
+  if (field.startsWith('on_solve')) {
+    return 'target';
+  }
+  if (field.startsWith('config.riddle')) {
+    return 'riddle';
+  }
+  if (field.startsWith('solution.riddle')) {
+    return 'answers';
+  }
+  if (field.startsWith('config.sequence') || field.startsWith('solution.sequence')) {
+    return 'sequence';
+  }
+  if (field.startsWith('config.cipher')) {
+    return 'cipherKey';
+  }
+  if (field.startsWith('solution.cipher')) {
+    return 'cipherMessage';
+  }
+  if (field.startsWith('parts')) {
+    return 'parts';
+  }
+  if (field.startsWith('on_wrong')) {
+    return 'wrong';
+  }
+  return '';
 }
 
 /**
  * The Portuguese message for a failed puzzle call, by code and typed detail (puzzles.proto lists what each call
  * returns). `what` finishes "Não deu para …".
  */
-export function puzzleErrorMessage(err: unknown, what = 'fazer isso'): string {
+export function puzzleErrorMessage(err: unknown, what = 'fazer isso', audience: Audience = 'master'): string {
   const blocked = puzzleBlocked(err);
   if (blocked) {
-    return puzzleBlockedMessage(blocked.reason);
+    return puzzleBlockedMessage(blocked.reason, audience);
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (

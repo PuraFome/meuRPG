@@ -6,6 +6,7 @@ import { ContentService, type Content } from '../../../gen/meurpg/rules/v1/rules
 import {
   type AffectedCharacter,
   type CreateTableEntryRequestSchema,
+  type GetClassTableDefaultsResponse,
   type GetEffectMenuResponse,
   type OptionSwitchEntry,
   type TableContentViolation,
@@ -90,6 +91,11 @@ export class TableContentClient {
   /** The closed menu of effects, as data (master only). */
   effectMenu(campaignId: string): Promise<GetEffectMenuResponse> {
     return this.client.getEffectMenu({ campaignId });
+  }
+
+  /** The numbers the class editor starts from: the SRD's proficiency bonus, the ASI levels and the table of each way of casting (master only). */
+  classDefaults(campaignId: string): Promise<GetClassTableDefaultsResponse> {
+    return this.client.getClassTableDefaults({ campaignId });
   }
 
   /** The campaign's catalog: the SRD's content and the table's, for the pickers. */

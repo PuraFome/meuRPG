@@ -58,13 +58,21 @@ describe('ContentList', () => {
 
   const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
 
-  it('opens on the first kind that has an editor, with "Nova sub-raça" beside "Nova raça"', async () => {
+  it('opens on the first kind, "Classes", with "Nova classe"; "Raças" has "Nova sub-raça" beside "Nova raça"', async () => {
     const { el } = await setup(Role.MASTER);
-    expect(el.querySelector('.menu__item--on')?.textContent).toContain('Raças');
-    const head = text(el.querySelector('.list__head')!);
+    expect(el.querySelector('.menu__item--on')?.textContent).toContain('Classes');
+    expect(text(el.querySelector('.list__head')!)).toContain('Nova classe');
+    expect(text(el)).not.toContain('próxima fatia');
+  });
+
+  it('every kind has its "Nova …" link for the master, the subclass one included', async () => {
+    const { el } = await setup(Role.MASTER, { tipo: 'subclasses' });
+    expect(text(el.querySelector('.list__head')!)).toContain('Nova subclasse');
+    expect(el.querySelector('a[href$="/novo/subclasse"]')).not.toBeNull();
+    const races = (await setup(Role.MASTER, { tipo: 'racas' })).el;
+    const head = text(races.querySelector('.list__head')!);
     expect(head).toContain('Nova raça');
     expect(head).toContain('Nova sub-raça');
-    expect(text(el)).not.toContain('próxima fatia');
   });
 
   it('shows the limit line under the tabs too, below 1100 px (it is not hidden by size)', async () => {
@@ -192,7 +200,7 @@ describe('ContentList', () => {
 
   it('flags an entry the master switched off, in words, and says how many sheets still use it (RN-23)', async () => {
     const entries = [{ ...entry(TableContentKind.RACE, 'Corujeiro', { charactersUsing: 2 }), off: true }] as ReturnType<typeof mirathel>;
-    const { el } = await setup(Role.MASTER, { entries });
+    const { el } = await setup(Role.MASTER, { entries, tipo: 'racas' });
     expect(text(el.querySelector('.row')!)).toContain('Desligada para os jogadores · 2 fichas usam');
   });
 

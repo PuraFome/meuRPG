@@ -32,6 +32,26 @@ export const GLYPHS: readonly SymbolFace[] = [
   { key: 'fish', namePt: 'Peixe' },
 ];
 
+/**
+ * The eight bells of a sequence (E10-12), the first `bells` of them in play. As for the runes, the server owns the list and
+ * sends it in `PuzzleRun.symbols`; these are the form's own copy, to draw the bells before a puzzle exists.
+ */
+export const BELLS: readonly SymbolFace[] = [
+  { key: 'round', namePt: 'Sino redondo' },
+  { key: 'tall', namePt: 'Sino alto' },
+  { key: 'wide', namePt: 'Sino largo' },
+  { key: 'small', namePt: 'Sino pequeno' },
+  { key: 'cracked', namePt: 'Sino rachado' },
+  { key: 'thin', namePt: 'Sino fino' },
+  { key: 'bent', namePt: 'Sino torto' },
+  { key: 'deep', namePt: 'Sino grave' },
+];
+
+/** The first `count` bells: the faces of a sequence of `count` bells. */
+export function bellFaces(count: number): readonly SymbolFace[] {
+  return BELLS.slice(0, Math.max(0, Math.min(count, BELLS.length)));
+}
+
 const DIGITS: readonly SymbolFace[] = [...'0123456789'].map((c) => ({ key: c, namePt: c }));
 const LETTERS: readonly SymbolFace[] = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].map((c) => ({ key: c, namePt: c }));
 
@@ -75,4 +95,13 @@ export const GLYPH_PATHS: Readonly<Record<string, { readonly d: string; readonly
   owl: { d: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM5.6 11a3.1 3.1 0 1 0 6.2 0a3.1 3.1 0 1 0-6.2 0M12.2 11a3.1 3.1 0 1 0 6.2 0a3.1 3.1 0 1 0-6.2 0', fill: 'M7.6 11a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M14.2 11a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M12 14.4l-1.4 2.6h2.8z' },
   deer: { d: 'M9 20l-1-6v-3h8v3l-1 6zM8 11L5 5M5 5L3 6M5 5l1-2M16 11l3-6M19 5l2 1M19 5l-1-2' },
   fish: { d: 'M3 12c4-6 10-6 14 0-4 6-10 6-14 0zM17 12l4-4v8zM8 11h.01' },
+  // The bells: eight shapes that differ by their outline (a width, a height, a crack, a lean), never by color.
+  round: { d: 'M4.5 16c0-6.5 2.8-10 7.5-10s7.5 3.5 7.5 10zM3.5 16h17M12 6V3.5', fill: 'M12 18.3a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
+  tall: { d: 'M9.2 3.5h5.6l2.2 12.5H7zM6 16h12', fill: 'M12 18.3a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
+  wide: { d: 'M2.5 15.5c0-4.5 4-7.5 9.5-7.5s9.5 3 9.5 7.5zM2 15.5h20M12 8V5.5', fill: 'M12 17.8a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
+  small: { d: 'M8 15c0-4.2 1.4-6.8 4-6.8s4 2.6 4 6.8zM7 15h10M12 8.2V6', fill: 'M12 17a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 0 0 0-2.2z' },
+  cracked: { d: 'M4.5 16c0-6.5 2.8-10 7.5-10s7.5 3.5 7.5 10zM3.5 16h17M12 6.5l-2 3.2 3 2.2-2 3.8', fill: 'M12 18.3a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
+  thin: { d: 'M10.2 3.5h3.6l1.2 12.5H9zM7.5 16h9', fill: 'M12 18.3a1.2 1.2 0 1 0 0 2.4a1.2 1.2 0 0 0 0-2.4z' },
+  bent: { d: 'M4 16L8.2 7.5C9.2 5.5 10.6 4.5 12.8 4.5c2.4 0 3.7 1.4 4.4 3.6L20 16zM3 16h18', fill: 'M12.8 18.3a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
+  deep: { d: 'M8.5 3.5h7l1 6.5c0 3 3.5 3.8 3.5 6.5H4c0-2.7 3.5-3.5 3.5-6.5zM3.5 16.5h17', fill: 'M12 18.8a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 0 0 0-2.8z' },
 };

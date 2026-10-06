@@ -83,12 +83,61 @@ export function searchRows(rows: readonly OptionSwitchEntry[], query: string): O
   return q ? rows.filter((o) => fold(o.namePt).includes(q)) : [...rows];
 }
 
-/** "Nenhuma ficha usa", "1 ficha usa", "3 fichas usam" (a non-breaking space keeps the number with its noun). */
-export function usingText(n: number): string {
-  if (n <= 0) {
-    return 'Nenhuma ficha usa';
+/**
+ * Who uses an option: "1 ficha usa", "3 fichas usam" (a non-breaking space keeps the number with its noun); nothing for an
+ * option no sheet uses, except on an off row, where "Nenhuma ficha usa" says that turning it off touches no sheet.
+ */
+export function usingText(n: number, off = false): string {
+  if (n > 0) {
+    return `${n}\u00a0${n === 1 ? 'ficha usa' : 'fichas usam'}`;
   }
-  return `${n} ${n === 1 ? 'ficha usa' : 'fichas usam'}`;
+  return off ? 'Nenhuma\u00a0ficha\u00a0usa' : '';
+}
+
+/** Whether the option's noun is masculine ("o antecedente"): the words that agree with it follow. */
+export function isMasculine(kind: TableContentKind): boolean {
+  return kind === TableContentKind.BACKGROUND;
+}
+
+/** "ligada"/"ligado", "desligada"/"desligado", agreeing with the kind's noun. */
+export function onOffWords(kind: TableContentKind): { on: string; off: string } {
+  return isMasculine(kind) ? { on: 'ligado', off: 'desligado' } : { on: 'ligada', off: 'desligada' };
+}
+
+/** How many children (subclasses, sub-races) the players do not receive because their parent is off or archived, while their own switch is on. */
+export function hiddenByParent(rows: readonly OptionSwitchEntry[]): number {
+  return rows.filter((o) => o.hidden && !o.off && !o.archived).length;
+}
+
+/** "· 3 escondidas pela classe": the counter's second half for the groups that have children. */
+export function hiddenCounterText(nav: ContentNavKind, n: number): string {
+  if (n <= 0) {
+    return '';
+  }
+  const by = nav.slug === 'racas' ? 'pela raça' : 'pela classe';
+  return ` · ${n} ${n === 1 ? 'escondida' : 'escondidas'} ${by}`;
+}
+
+/** The races with their sub-races under them (a sub-race whose race is not in the rows follows at the end). */
+export function nestRows(rows: readonly OptionSwitchEntry[]): { row: OptionSwitchEntry; nested: boolean }[] {
+  const keys = new Set(rows.map((o) => o.key));
+  const children = new Map<string, OptionSwitchEntry[]>();
+  for (const o of rows) {
+    if (o.kind === TableContentKind.SUBRACE && o.parentKey && keys.has(o.parentKey)) {
+      children.set(o.parentKey, [...(children.get(o.parentKey) ?? []), o]);
+    }
+  }
+  const out: { row: OptionSwitchEntry; nested: boolean }[] = [];
+  for (const o of rows) {
+    if (o.kind === TableContentKind.SUBRACE && o.parentKey && keys.has(o.parentKey)) {
+      continue;
+    }
+    out.push({ row: o, nested: false });
+    for (const c of children.get(o.key) ?? []) {
+      out.push({ row: c, nested: true });
+    }
+  }
+  return out;
 }
 
 /** What the row says under the name when the players do not get it for a reason that is not its own switch. */
@@ -100,12 +149,14 @@ export function hiddenNote(o: OptionSwitchEntry, byKey: ReadonlyMap<string, Opti
   if (!parent) {
     return 'Os jogadores não a recebem.';
   }
-  return `Some para os jogadores: ${parent.namePt} ${parent.off ? 'está desligada' : 'está arquivada'}.`;
+  const noun = parent.kind === TableContentKind.RACE ? 'a raça' : 'a classe';
+  return `Some para os jogadores: ${noun} ${parent.namePt} ${parent.off ? 'está desligada' : 'está arquivada'}.`;
 }
 
 /** The sentence a switch leaves for a screen reader and the eye: what happened and what it did not touch. */
 export function changeSentence(o: OptionSwitchEntry, off: boolean): string {
-  const base = off ? `${o.namePt}: desligada para os jogadores.` : `${o.namePt}: ligada para os jogadores.`;
+  const w = onOffWords(o.kind);
+  const base = `${o.namePt}: ${off ? w.off : w.on} para os jogadores.`;
   if (!off) {
     return base;
   }
@@ -163,13 +214,19 @@ export class OptionSwitchesState {
   readonly options = signal<readonly OptionSwitchEntry[]>([]);
   readonly status = signal<'loading' | 'ready' | 'error'>('loading');
   readonly loadError = signal('');
-  readonly save = signal<SaveLine>({ kind: 'idle' });
+  /** "Tudo salvo" at rest: nothing is waiting, nothing failed. */
+  readonly save = signal<SaveLine>({ kind: 'saved' });
   /** The last thing a switch did, said once (a status region reads it). */
   readonly announce = signal('');
 
   private queue: Promise<void> = Promise.resolve();
   private pending = 0;
   private seq = 0;
+  /** Counts the changes started: a read that began before one is older than it and is dropped. */
+  private changes = 0;
+  /** The keys whose last save failed: the error stays until each of them saves or the person dismisses it. */
+  private readonly failed = new Set<string>();
+  private failure = '';
 
   constructor(
     private readonly source: SwitchSource,
@@ -179,13 +236,14 @@ export class OptionSwitchesState {
 
   async load(silent = false): Promise<void> {
     const seq = ++this.seq;
+    const startedAt = this.changes;
     if (!silent) {
       this.status.set('loading');
     }
     try {
       const res = await this.source.switches(this.campaignId);
-      if (seq !== this.seq || this.pending > 0) {
-        // A newer read, or a change on its way (its answer is the newer truth): this one is stale.
+      if (seq !== this.seq || this.pending > 0 || this.changes !== startedAt) {
+        // A newer read, or a change started (or is on its way) after this one began: its answer is the newer truth.
         return;
       }
       this.options.set(res.options);
@@ -195,6 +253,15 @@ export class OptionSwitchesState {
         this.loadError.set(this.errorText(err));
         this.status.set('error');
       }
+    }
+  }
+
+  /** The error under the counter is closed (the switches are already back where the server has them). */
+  dismiss(): void {
+    this.failed.clear();
+    this.failure = '';
+    if (this.pending === 0) {
+      this.save.set({ kind: 'saved' });
     }
   }
 
@@ -214,14 +281,18 @@ export class OptionSwitchesState {
       return Promise.resolve();
     }
     const using = rows.filter((o) => o.off !== off).reduce((n, o) => n + o.charactersUsing, 0);
-    const word = off ? 'desligadas' : 'ligadas';
-    const tail = off && using > 0 ? ' As fichas que as usam continuam funcionando.' : '';
-    return this.change(changes, `${what}: ${changes.length} ${changes.length === 1 ? (off ? 'desligada' : 'ligada') : word}.${tail}`);
+    const masculine = rows.length > 0 && rows.every((o) => isMasculine(o.kind));
+    const w = masculine ? { on: 'ligado', off: 'desligado' } : { on: 'ligada', off: 'desligada' };
+    const word = (off ? w.off : w.on) + (changes.length === 1 ? '' : 's');
+    const tail = off && using > 0 ? ` ${using === 1 ? 'A ficha que a usa continua funcionando' : 'As fichas que as usam continuam funcionando'}.` : '';
+    return this.change(changes, `${what}: ${changes.length} ${word}.${tail}`);
   }
 
   private change(changes: { key: string; off: boolean }[], sentence: string): Promise<void> {
     const before = new Map(this.options().map((o) => [o.key, o.off]));
     const asked = new Map(changes.map((c) => [c.key, c.off]));
+    this.changes++;
+    // The switch moves at once; what is hidden for the players follows the server's answer (this is only the guess).
     this.options.update((list) => withHidden(list.map((o) => (asked.has(o.key) ? ({ ...o, off: asked.get(o.key)! } as OptionSwitchEntry) : o))));
     this.pending++;
     this.save.set({ kind: 'saving' });
@@ -229,21 +300,37 @@ export class OptionSwitchesState {
       try {
         for (let i = 0; i < changes.length; i += SWITCH_BATCH) {
           const res = await this.source.setSwitches(this.campaignId, changes.slice(i, i + SWITCH_BATCH));
-          this.options.update((list) => withHidden(mergeChanged(list, res.options)));
+          this.options.update((list) => mergeChanged(list, res.options));
         }
         this.pending--;
-        if (this.pending === 0) {
-          this.save.set({ kind: 'saved' });
+        for (const c of changes) {
+          this.failed.delete(c.key);
         }
         this.announce.set(sentence);
+        this.settleLine();
       } catch (err) {
         this.pending--;
         // Back to what it was: the switch never says what the server did not accept.
         this.options.update((list) => withHidden(list.map((o) => (before.has(o.key) && asked.has(o.key) ? ({ ...o, off: before.get(o.key)! } as OptionSwitchEntry) : o))));
-        this.save.set({ kind: 'error', message: `${this.errorText(err)} O que você mudou voltou ao que era.` });
+        for (const c of changes) {
+          this.failed.add(c.key);
+        }
+        this.failure = `${this.errorText(err)} O que você mudou voltou ao que era.`;
         this.announce.set('');
+        this.settleLine();
       }
     });
     return this.queue;
+  }
+
+  /** The line at the end of a call: an error stays while a key that failed has not saved; otherwise "Tudo salvo". */
+  private settleLine(): void {
+    if (this.pending > 0) {
+      this.save.set({ kind: 'saving' });
+    } else if (this.failed.size > 0) {
+      this.save.set({ kind: 'error', message: this.failure });
+    } else {
+      this.save.set({ kind: 'saved' });
+    }
   }
 }

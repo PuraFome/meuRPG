@@ -13,6 +13,8 @@ export interface HitPointsLevel {
   readonly roll: number | null;
   /** What the level adds (`roll + CON`, never less than 1), or `null` while empty. */
   readonly gain: number | null;
+  /** The die of this level: the class's, which differs between the classes of a multiclass. */
+  readonly die: number;
 }
 
 export interface HitPointsPreview {
@@ -46,6 +48,8 @@ export function hitPointsPreview(
   level: number,
   constitution: number,
   rolls: readonly (number | null | undefined)[],
+  /** The die of every level after the first, when the classes differ (index 0 = level 2). */
+  levelDice: readonly number[] | null = null,
 ): HitPointsPreview {
   const mod = abilityModifier(constitution);
   const gainOf = (roll: number) => Math.max(roll + mod, 1);
@@ -53,8 +57,9 @@ export function hitPointsPreview(
 
   const levels: HitPointsLevel[] = [];
   for (let l = 2; l <= level; l++) {
-    const roll = validRoll(rolls[l - 2], hitDie);
-    levels.push({ level: l, roll, gain: roll === null ? null : gainOf(roll) });
+    const die = levelDice?.[l - 2] || hitDie;
+    const roll = validRoll(rolls[l - 2], die);
+    levels.push({ level: l, roll, gain: roll === null ? null : gainOf(roll), die });
   }
   const missing = levels.filter((row) => row.roll === null).map((row) => row.level);
   const total = levels.reduce((sum, row) => sum + (row.gain ?? 0), firstLevel);
@@ -65,6 +70,6 @@ export function hitPointsPreview(
     total,
     missing,
     min: total + missing.length * gainOf(1),
-    max: total + missing.length * gainOf(hitDie),
+    max: levels.filter((row) => row.roll === null).reduce((sum, row) => sum + gainOf(row.die), total),
   };
 }

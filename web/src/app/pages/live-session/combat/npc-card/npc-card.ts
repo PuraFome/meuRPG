@@ -1,5 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
+import { creatureSlug } from '../../../../core/creatures/bestiary-format';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -50,7 +52,7 @@ import { PendingDamages } from './pending-damages';
  */
 @Component({
   selector: 'app-npc-card',
-  imports: [AttackChoice, CombatantToken, MasterSpend, MatButtonModule, TheatrePill, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker],
+  imports: [AttackChoice, CombatantToken, MasterSpend, MatButtonModule, TheatrePill, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker, RouterLink],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
 })
@@ -105,6 +107,8 @@ export class NpcCard {
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
+  /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
+  protected readonly creatureSlug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey ?? ''));
   protected readonly isNpc = computed(() => !isPlayer(this.subject()) && !isCreature(this.subject()));
   /** The one on turn is at 0 hit points: nobody spends movement for them. */
   /** "do Goblin", "da Brisa". */

@@ -117,26 +117,42 @@
             @if (sv.kind === 'error') {
               <div class="mr-notice mr-notice--danger" role="alert">
                 <mat-icon aria-hidden="true">error</mat-icon>
-                <p>{{ sv.message }}</p>
+                <div class="notice-body">
+                  <p>{{ sv.message }}</p>
+                  <button matButton="outlined" type="button" (click)="dismissError()">Fechar o aviso</button>
+                </div>
               </div>
             }
           }
-          <div class="filters">
+          <div class="filters" [class.filters--spells]="isSpells()">
             <app-text-field label="Buscar pelo nome" [value]="query()" (valueChange)="setQuery($event)" />
+            @if (isSpells()) {
+              <app-select-field label="Classe" [options]="classOptions()" [value]="classFilter()" (valueChange)="setClass($event)" />
+              <app-select-field label="Círculo" [options]="levelOptions" [value]="levelFilter()" (valueChange)="setLevel($event)" />
+            }
           </div>
           <div class="bulk">
-            <button matButton="outlined" type="button" [disabled]="bulkDisabled()" (click)="setAll(false)">Ligar todas{{ bulkSuffix() }}</button>
-            <button matButton="outlined" type="button" [disabled]="bulkDisabled()" (click)="setAll(true)">Desligar todas{{ bulkSuffix() }}</button>
+            <button matButton="outlined" type="button" [disabled]="turnOnDisabled()" (click)="setAll(false)">Ligar {{ allWord() }}{{ bulkSuffix() }}</button>
+            <button matButton="outlined" type="button" [disabled]="turnOffDisabled()" (click)="setAll(true)">Desligar {{ allWord() }}{{ bulkSuffix() }}</button>
           </div>
+          @if (current().slug === 'racas' && subraceTotal() > 0) {
+            <p class="muted bulk-note">“Desligar todas” também desliga as sub-raças ({{ subraceTotal() }}); “Ligar todas” também as liga.</p>
+          }
           @if (rows().length === 0) {
             <p class="muted" role="status">{{ searching() ? 'Nenhuma opção com esta busca.' : 'Nada neste tipo.' }}</p>
           } @else {
             <ul class="rows">
-              @for (o of rows(); track o.key) {
-                <li class="orow" [class.orow--off]="o.off">
+              @for (item of shown(); track item.row.key) {
+                @let o = item.row;
+                <li class="orow" [class.orow--off]="o.off" [class.orow--hidden]="hidden(o)" [class.orow--nested]="item.nested">
                   <app-switch-field class="orow__switch" [label]="o.namePt" [checked]="!o.off" [onWord]="onWord()" [offWord]="offWord()" (toggled)="toggle(o, $event)" />
                   <div class="orow__meta">
-                    <span class="orow__using">{{ using(o) }}</span>
+                    @if (hidden(o)) {
+                      <span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondida</span>
+                    }
+                    @if (using(o)) {
+                      <span class="orow__using">{{ using(o) }}</span>
+                    }
                     @if (o.table) {
                       <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
                     } @else {

@@ -24,12 +24,15 @@ test(
     await page.getByRole('option', { name: 'Bardo', exact: true }).click();
     await expect(page.getByLabel('Nível', { exact: true })).toHaveValue('1');
 
-    // "Subclasse" can go back to none, and says when the class chooses one.
+    // "Subclasse" waits for the level the class chooses it at (3 for the bard); there it can go back to none.
+    await page.getByLabel('Nível', { exact: true }).fill('3');
     const subclassSelect = page.getByRole('combobox', { name: 'Subclasse', exact: true });
     await subclassSelect.focus();
     await subclassSelect.press('Enter');
     await expect(page.getByRole('option').first()).toHaveText('Nenhuma');
     await page.keyboard.press('Escape');
+    // Back at level 1 the field is shut again, and says when the class chooses one.
+    await page.getByLabel('Nível', { exact: true }).fill('1');
     await expect(page.getByText('O Bardo escolhe a subclasse no nível 3.')).toBeVisible();
 
     // "Magias conhecidas": only 1st-circle spells at level 1, circle then name.

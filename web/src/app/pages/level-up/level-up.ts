@@ -9,12 +9,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterBlockedReason, type Character } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { cannotLevelUpMessage, describeLevelUpFailure, refusalMessage, refusalStep, type LevelUpFailure } from '../../core/levelup/levelup-errors';
 import { STEP_LABELS, type LevelUpDone, type SheetKeys, type StepKey } from '../../core/levelup/levelup-flow';
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
-import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { AbilitiesStep } from './abilities-step/abilities-step';
 import { HpStep } from './hp-step/hp-step';
 import { LevelUpSession } from './level-up-session';
@@ -67,7 +67,9 @@ function sheetKeys(character: Character): SheetKeys {
     StepsBar,
     SummaryStep,
   ],
-  providers: [ContentWatcher, LiveSessionSourceLive],
+  // Its own client: the catalog and the spell descriptions it keeps live as long as the page, never past a reload of the
+  // table's content. The session's stream tells the page when the content changes (`ContentWatcher`: one stream, debounced).
+  providers: [LevelUpClient, LiveSessionSourceLive, ContentWatcher],
   templateUrl: './level-up.html',
   styleUrl: './level-up.scss',
 })
@@ -166,7 +168,7 @@ export class LevelUpPage {
     effect(() => {
       const s = this.session();
       const after = s?.preview.state().after;
-      if (s && after && s.options.prepares) {
+      if (s && after && s.draft.effective().prepares) {
         const max = after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
         if (max > 0) {
           untracked(() => s.draft.preparedMaxAfter.set(max));
@@ -194,7 +196,7 @@ export class LevelUpPage {
       }
       const [options, catalog, preference] = await Promise.all([
         this.client.options(campaignId, characterId),
-        this.client.catalog(campaignId),
+        this.client.catalog(campaignId, characterId),
         this.client.dicePreference(campaignId).catch(() => 0),
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
@@ -383,9 +385,8 @@ export class LevelUpPage {
     );
   }
 
-  /** After a stale revision: the sheet and what the level gives are read again (the master may have changed
-   * either), the session is made anew, and the picks that are still valid are carried over. */
-  /** What the page says after the table's content changed under the person: nothing, or that a choice left the list. */
+  /** What the page says after the table's content changed under the person: that the lists changed, or that a choice left
+   * them. It stays empty while what the page shows (the offers and the lists) is the same. */
   protected readonly contentNote = signal('');
 
   /** `content_changed` (RN-23): the options and the lists are read again with this person's role; the choices that are still
@@ -396,18 +397,21 @@ export class LevelUpPage {
       return;
     }
     const before = pickedCount(old.draft);
+    const offers = offerSignature(old);
     const changed = await this.rereadSheet(true);
     const now = this.session();
-    if (changed && now) {
-      this.contentNote.set(
-        pickedCount(now.draft) < before
-          ? 'O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.'
-          : 'O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.',
-      );
+    if (!changed || !now) {
+      return;
+    }
+    if (pickedCount(now.draft) < before) {
+      this.contentNote.set('O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.');
+    } else if (offerSignature(now) !== offers) {
+      this.contentNote.set('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
     }
   }
 
-  /** Reads the character, the options and (after a content change) the lists again, keeping the choices still offered.
+  /** After a stale revision or a content change: the sheet, what the level gives and the lists (read fresh, never from the
+   * client's memory) are read again, the session is made anew, and the picks that are still offered are carried over.
    * Resolves true when the page now shows the new reading. */
   protected async rereadSheet(afterContent = false): Promise<boolean> {
     const old = this.session();
@@ -415,10 +419,11 @@ export class LevelUpPage {
       return false;
     }
     try {
+      // The table's content is read again too: the master may have retired an option, or written a new one.
       const [character, options, catalog] = await Promise.all([
         this.client.character(this.campaignId(), this.characterId()),
         this.client.options(this.campaignId(), this.characterId()),
-        afterContent ? this.client.catalog(this.campaignId()) : Promise.resolve(old.draft.catalog),
+        this.client.catalog(this.campaignId(), this.characterId(), true),
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
@@ -459,4 +464,14 @@ export class LevelUpPage {
 /** How many choices the person has made, to tell whether a re-read dropped one. */
 function pickedCount(d: LevelUpDraft): number {
   return (d.subclassKey() ? 1 : 0) + d.cantrips().size + d.spells().size + d.prepared().size + d.features().size + d.skills().size + d.expertise().size;
+}
+
+/** What the page offers to choose from (the subclasses, the spells, the classes): a change in it is what the note is about. */
+function offerSignature(s: LevelUpSession): string {
+  const c = s.draft.catalog;
+  return JSON.stringify([
+    s.options.subclasses.map((k) => [k.key, k.off, k.archived]),
+    c.spells.map((x) => x.key),
+    (c.classes ?? []).map((x) => x.key),
+  ]);
 }

@@ -16,14 +16,20 @@ import {
   OptionSwitchesState,
   counterText,
   groupRows,
+  hiddenByParent,
+  hiddenCounterText,
   hiddenNote,
+  isMasculine,
   mainCount,
   menuCount,
+  nestRows,
   searchRows,
   subraceCount,
   subraceCounterText,
   usingText,
 } from '../../../core/content/option-switches';
+import { spellLevelLabel } from '../../../core/characters/character-labels';
+import { SpellsClient } from '../../../core/spells/spells-client';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
@@ -58,6 +64,7 @@ export class ContentOptions {
   private readonly route = inject(ActivatedRoute);
   private readonly injector = inject(Injector);
   private readonly watcher = inject(ContentWatcher);
+  private readonly spellsClient = inject(SpellsClient);
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly nav = CONTENT_NAV;
@@ -82,18 +89,57 @@ export class ContentOptions {
   protected readonly current = computed(() => navBySlug(this.slug()) ?? CONTENT_NAV[0]);
   protected readonly byKey = computed(() => new Map(this.options().map((o) => [o.key, o])));
   protected readonly rowsAll = computed(() => groupRows(this.options(), this.current()));
-  protected readonly rows = computed(() => searchRows(this.rowsAll(), this.query()));
-  protected readonly counter = computed(() => counterText(this.current(), mainCount(this.options(), this.current())));
+  /** The Magias group's filters: the class (its spell list, asked of the server) and the circle. */
+  protected readonly classFilter = signal('');
+  protected readonly levelFilter = signal('');
+  private readonly classSpells = signal<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
+  protected readonly isSpells = computed(() => this.current().slug === 'magias');
+  protected readonly classOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Todas as classes' },
+    ...this.options()
+      .filter((o) => o.kind === TableContentKind.CLASS)
+      .map((o) => ({ value: o.key, label: o.namePt })),
+  ]);
+  protected readonly levelOptions: SelectOption[] = [
+    { value: '', label: 'Todos os círculos' },
+    ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: spellLevelLabel(i) })),
+  ];
+  protected readonly rows = computed(() => {
+    let rows = searchRows(this.rowsAll(), this.query());
+    if (this.isSpells()) {
+      const level = this.levelFilter();
+      if (level !== '') {
+        rows = rows.filter((o) => o.level === Number(level));
+      }
+      const klass = this.classSpells().get(this.classFilter());
+      if (this.classFilter() !== '' && klass) {
+        rows = rows.filter((o) => klass.has(o.key));
+      }
+    }
+    return rows;
+  });
+  /** What the list draws: the races with their sub-races under them, the rest as they come. */
+  protected readonly shown = computed(() =>
+    this.current().slug === 'racas' ? nestRows(this.rows()) : this.rows().map((row) => ({ row, nested: false })),
+  );
+  protected readonly counter = computed(
+    () => counterText(this.current(), mainCount(this.options(), this.current())) + (['subclasses', 'racas'].includes(this.current().slug) ? hiddenCounterText(this.current(), hiddenByParent(this.rowsAll())) : ''),
+  );
   protected readonly subraces = computed(() => {
     const c = subraceCount(this.options());
     return this.current().slug === 'racas' && c.total > 0 ? subraceCounterText(c) : '';
   });
+  protected readonly subraceTotal = computed(() => subraceCount(this.options()).total);
   protected readonly menuCounts = computed(() => new Map(CONTENT_NAV.map((n) => [n.slug, menuCount(this.options(), n)])));
   protected readonly kindOptions = computed<SelectOption[]>(() => CONTENT_NAV.map((n) => ({ value: n.slug, label: `${n.plural} · ${this.menuCounts().get(n.slug)}` })));
   protected readonly searching = computed(() => this.query().trim() !== '');
   /** "Ligar todas" acts on what the list shows: with a search on, only on the rows found, and the buttons say so. */
-  protected readonly bulkSuffix = computed(() => (this.searching() ? ` (${this.rows().length})` : ''));
-  protected readonly bulkDisabled = computed(() => this.rows().length === 0);
+  protected readonly narrowed = computed(() => this.searching() || this.levelFilter() !== '' || this.classFilter() !== '');
+  protected readonly bulkSuffix = computed(() => (this.narrowed() ? ` (${this.rows().length})` : ''));
+  /** "Ligar todas" and "Desligar todas" are off when they would change nothing in the rows in view. */
+  protected readonly turnOnDisabled = computed(() => this.rows().every((o) => !o.off));
+  protected readonly turnOffDisabled = computed(() => this.rows().every((o) => o.off));
+  protected readonly allWord = computed(() => (this.current().slug === 'antecedentes' ? 'todos' : 'todas'));
   protected readonly onWord = computed(() => (this.current().slug === 'antecedentes' ? 'Ligado' : 'Ligada'));
   protected readonly offWord = computed(() => (this.current().slug === 'antecedentes' ? 'Desligado' : 'Desligada'));
 
@@ -164,6 +210,8 @@ export class ContentOptions {
     if (n) {
       this.slug.set(n.slug);
       this.query.set('');
+      this.classFilter.set('');
+      this.levelFilter.set('');
     }
   }
 
@@ -176,7 +224,30 @@ export class ContentOptions {
   }
 
   protected using(o: OptionSwitchEntry): string {
-    return usingText(o.charactersUsing);
+    return usingText(o.charactersUsing, o.off);
+  }
+
+  protected hidden(o: OptionSwitchEntry): boolean {
+    return hiddenNote(o, this.byKey()) !== '';
+  }
+
+  protected setClass(key: string): void {
+    this.classFilter.set(key);
+    if (key && !this.classSpells().has(key)) {
+      // The class's own spell list, as the server serves it to the master (the SRD's and the table's spells alike).
+      void this.spellsClient.list({ campaignId: this.campaignId(), classKey: key, pageSize: 400 }).then(
+        (res) => this.classSpells.update((m) => new Map(m).set(key, new Set(res.spells.map((s) => s.key)))),
+        () => this.classFilter.set(''),
+      );
+    }
+  }
+
+  protected setLevel(value: string): void {
+    this.levelFilter.set(value);
+  }
+
+  protected dismissError(): void {
+    this.state?.dismiss();
   }
 
   protected note(o: OptionSwitchEntry): string {
@@ -185,7 +256,8 @@ export class ContentOptions {
       return hidden;
     }
     if (o.off && o.charactersUsing > 0) {
-      return o.charactersUsing === 1 ? 'A ficha que usa continua funcionando.' : 'As fichas que usam continuam funcionando.';
+      const p = isMasculine(o.kind) ? 'o' : 'a';
+      return o.charactersUsing === 1 ? `A ficha que ${p} usa continua funcionando.` : `As fichas que ${p} usam continuam funcionando.`;
     }
     if (o.archived) {
       return 'Arquivada: os jogadores não a recebem.';
@@ -194,6 +266,9 @@ export class ContentOptions {
   }
 
   protected kindLabel(o: OptionSwitchEntry): string {
+    if (o.kind === TableContentKind.SPELL) {
+      return spellLevelLabel(o.level);
+    }
     return o.kind === TableContentKind.SUBRACE || o.kind === TableContentKind.SUBCLASS ? this.parentName(o) : '';
   }
 

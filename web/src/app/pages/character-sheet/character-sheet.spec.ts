@@ -131,6 +131,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     customFeaturesText: '',
     issues: [],
+    changedContent: [],
     hints: [],
     hasWildShape: false,
     contentVersion: 'srd51@test',
@@ -208,7 +209,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
 
 /** What the XP block listens with: no open session, so no stream. */
 const openSessions = signal<readonly OpenSessionVm[]>([]);
-const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void) => void>() };
+const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void, onContent?: () => void) => void>() };
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
   list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
@@ -878,6 +879,39 @@ describe('CharacterSheetPage', () => {
     expect(features.textContent).toContain('Vantagem em testes de resistência de INT, SAB e CAR contra magia.');
   });
 
+  it('"A classe mudou": the changed entry\'s sentences above the sheet, and the same issue never listed twice (RN-23)', async () => {
+    configure();
+    const sentence = 'Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3.';
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            changedContent: [{ key: 'class:guardiao-do-vale@mesa', namePt: 'Guardião do Vale', changedAt: new Date(2026, 9, 5), messages: [sentence] }],
+            issues: [
+              { code: 'table_content_changed', field: 'full.classes[0].class_key', message: sentence },
+              { code: 'unknown_key', field: 'full.armor_key', message: 'A armadura escolhida não existe no conteúdo srd51@test.' },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const change = el.querySelector('app-changed-content')!;
+    expect(change.textContent).toContain('A classe mudou.');
+    expect(change.textContent).toContain(sentence);
+    // The other issue stays in its own notice; the sentence is not repeated there.
+    const issues = el.querySelector('[aria-label="Pendências de regra"]')!;
+    expect(issues.textContent).toContain('A armadura escolhida não existe');
+    expect(issues.textContent).not.toContain(sentence);
+  });
+
+  it('shows no "A classe mudou" notice for a sheet nothing changed under', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    const el = await render();
+    expect(el.querySelector('app-changed-content')?.textContent?.trim() ?? '').toBe('');
+  });
+
   it('shows no rules notice and no reminders when there are no issues or hints', async () => {
     configure();
     fake.getCharacterSheetFn = () => Promise.resolve(vm());
@@ -1248,14 +1282,14 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     openSessions.set([]);
     const fixture = await render();
     // No open session: it follows nothing.
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function), expect.any(Function));
 
     openSessions.set([
       { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
     ]);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function), expect.any(Function));
 
     fixture.destroy();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
@@ -1290,5 +1324,25 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
     expect(block(el)!.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.716${nbsp}XP`);
     expect(el.textContent).not.toContain('Carregando a ficha');
+  });
+
+  it('reads the character again when the table\'s content changes (content_changed, "A classe mudou"), on the same stream', async () => {
+    let reads = 0;
+    fake.getCharacterSheetFn = () => {
+      reads++;
+      return Promise.resolve(vm());
+    };
+    openSessions.set([
+      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+    ]);
+    const fixture = await render();
+    const before = reads;
+    const onContent = xpWatcher.follow.mock.calls.at(-1)![3]!;
+    onContent();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(reads).toBe(before + 1);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Carregando a ficha');
   });
 });

@@ -15,13 +15,17 @@ import { THEATRE_WHY, THEATRE_WHY_DIALOG } from '../../../../core/combat/theatre
 import { DiceChoice } from '../../../../shared/dice-choice/dice-choice';
 import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
-import { CombatClient, type JoinSpec, newKey } from '../../../../core/combat/combat-client';
+import { CombatClient, type JoinSpec, type MonsterHp, newKey } from '../../../../core/combat/combat-client';
+import { becomesText } from '../../../../core/combat/monsters';
+import { HiddenSwitch } from '../../../../shared/hidden-switch/hidden-switch';
+import { type Segment, Segmented } from '../move-page/segmented';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
 import { formatMeters, squaresToMeters } from '../../../../core/units';
 import { combatantInitial, npcKindLabel } from '../../../../core/combat/combat-view';
 import { type RosterEntry, RosterClient } from '../../../../core/maps/roster-client';
 import { CombatMap } from '../../../../shared/combat-map/combat-map';
 import { NpcRow } from './npc-row';
+import { SavedMonstersList } from './saved-monsters';
 import { PlayerRow } from './player-row';
 
 /** The map the fight is on (the session's current map). */
@@ -34,6 +38,25 @@ export interface CombatMapInfo {
   readonly rows: number;
 }
 
+/** One kind of creature of a saved encounter, as the dialog lists it (read only: the encounter is the page's). */
+export interface SavedMonsters {
+  readonly key: string;
+  readonly namePt: string;
+  readonly count: number;
+  /** The base name the point kept for the group (empty: the creature's Portuguese name). */
+  readonly name?: string;
+}
+
+/** "Começar este combate" (MR-043): what the dialog starts with, from the encounter a battle point keeps. */
+export interface SavedStart {
+  /** The battle point it was kept on: the combat starts from it. */
+  readonly pointId: string;
+  readonly pointName: string;
+  readonly groups: readonly SavedMonsters[];
+  readonly hp: MonsterHp;
+  readonly hidden: boolean;
+}
+
 export interface StartCombatData {
   readonly campaignId: string;
   /** `start`: "Iniciar combate"; `add`: reinforcements for a running combat. */
@@ -43,6 +66,8 @@ export interface StartCombatData {
   readonly encounterId?: string;
   /** How many combatants it already has (the limit is 40 in all). */
   readonly existing?: number;
+  /** "Começar este combate": the monsters of a saved encounter come in with the party. */
+  readonly saved?: SavedStart;
 }
 
 /** The server's limit (combat.proto): 40 combatants in a combat. */
@@ -67,9 +92,12 @@ const MAX_COMBATANTS = 40;
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    HiddenSwitch,
     NpcRow,
     PlayerRow,
     RouterLink,
+    SavedMonstersList,
+    Segmented,
   ],
   templateUrl: './start-combat-dialog.html',
   styleUrl: './start-combat-dialog.scss',
@@ -114,8 +142,18 @@ export class StartCombatDialog {
   protected readonly why = THEATRE_WHY;
   protected readonly whyMore = THEATRE_WHY_DIALOG;
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
+  protected readonly saved = this.data.saved ?? null;
   // Without a map to name it after, the combat starts as "Combate": the master renames it.
-  protected readonly name = signal(this.data.map?.name ?? 'Combate');
+  protected readonly name = signal(this.saved?.pointName ?? this.data.map?.name ?? 'Combate');
+  /** The monsters' hit points and whether they start hidden: the encounter's choice, the master's to change here. */
+  protected readonly monsterHp = signal<MonsterHp>(this.saved?.hp ?? 'average');
+  protected readonly monstersHidden = signal(this.saved?.hidden ?? true);
+  protected readonly hpSegments: readonly Segment<MonsterHp>[] = [
+    { value: 'average', label: 'Média' },
+    { value: 'rolled', label: 'Rolar' },
+  ];
+  protected readonly monsterRows = (this.saved?.groups ?? []).map((g) => ({ ...g, becomes: becomesText(g.name || g.namePt, g.count) }));
+  protected readonly monsterTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** The server said the map has no grid (it may have been cleared meanwhile). */
@@ -134,7 +172,7 @@ export class StartCombatDialog {
   );
   protected readonly npcKinds = computed(() => this.npcs().filter((n) => (this.counts().get(n.id) ?? 0) > 0).length);
   protected readonly total = computed(
-    () => (this.adding ? 0 : this.included().size) + this.npcTotal() + (this.data.existing ?? 0),
+    () => (this.adding ? 0 : this.included().size) + this.npcTotal() + this.monsterTotal + (this.data.existing ?? 0),
   );
   protected readonly hasGrid = computed(() => this.adding || (this.data.map?.columns ?? 0) > 0);
   protected readonly gridMapId = computed(() => this.noGridMap() ?? this.data.map?.id ?? null);
@@ -162,7 +200,7 @@ export class StartCombatDialog {
     if (!this.adding && !this.nameOk()) {
       return 'Dê um nome ao combate.';
     }
-    if (!this.adding && this.included().size === 0) {
+    if (!this.adding && this.included().size === 0 && this.monsterTotal === 0) {
       return 'Escolha quem do grupo entra.';
     }
     if (this.adding && this.npcTotal() === 0) {
@@ -181,7 +219,9 @@ export class StartCombatDialog {
   /** The table's rule is only the default the dialog offers (RN-24): read apart, so a failure leaves the dialog as it is. The dialog
    * waits for it before it is ready, so the radio never flips under the master's hand. */
   private async readRule(): Promise<void> {
-    if (this.adding || !this.mapReady()) {
+    // From a battle point on a map with a grid the combat is a map combat: the table's rule does not flip it (the master can still
+    // choose "Sem mapa").
+    if (this.adding || !this.mapReady() || this.saved) {
       return;
     }
     try {
@@ -301,7 +341,21 @@ export class StartCombatDialog {
     try {
       const encounter = this.adding
         ? await this.combat.add(this.data.campaignId, this.data.encounterId ?? '', specs)
-        : await this.combat.start(this.data.campaignId, this.name().trim(), specs, this.key, this.playMode());
+        : await this.combat.start(
+            this.data.campaignId,
+            this.name().trim(),
+            specs,
+            this.key,
+            this.saved
+              ? {
+                  mode: this.playMode(),
+                  monsters: this.saved.groups.map((g) => ({ creatureKey: g.key, count: g.count, name: g.name })),
+                  monsterHp: this.monsterHp(),
+                  monstersHidden: this.monstersHidden(),
+                  mapPointId: this.saved.pointId,
+                }
+              : { mode: this.playMode() },
+          );
       this.ref.close(encounter);
     } catch (err) {
       this.busy.set(false);

@@ -54,7 +54,7 @@
     @if (!sticky() || inlineError()) {
       <ng-container *ngTemplateOutlet="alertTpl" />
     }
-    <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" [class.mr-visually-hidden]="hideWait() && !total()" role="status">
+    <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" [class.mr-visually-hidden]="(hideWait() && !total()) || hideTotal()" role="status">
       @if (total(); as t) {
         <span class="type__num">{{ t.sum }}</span>
         <span class="type__formula">

@@ -17,6 +17,7 @@ import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { StatBlock } from '../../../shared/creatures/stat-block';
 import { openSheet } from '../../live-session/combat/sheet-host';
 import { CreateNpcSheet, type CreateNpcData, type CreateNpcResult } from '../create-npc-sheet/create-npc-sheet';
+import { PutMonstersSheet, type PutMonstersData, type PutMonstersResult } from '../../../shared/monsters/put-sheet/put-sheet';
 
 type PageState =
   | { status: 'loading' }
@@ -29,7 +30,8 @@ type PageState =
  * master. The numbers and the Portuguese labels come from `GetCreature`; the text of the traits and
  * actions is the SRD's English (`StatBlock`, marked `lang="en"`), and "SRD" is credited under the
  * panel. "Criar NPC" opens the dialog; the NPC it makes is announced here, with a way to its sheet.
- * "Pôr no combate" is slice 10.9b's, and has no button yet.
+ * "Pôr no combate" (MR-042, 10.17b) opens the sheet that puts the creature in the session's combat; the
+ * monsters that went in are announced here, with the way to the session.
  */
 @Component({
   selector: 'app-bestiary-creature',
@@ -52,8 +54,12 @@ export class BestiaryCreature {
   /** The NPC just made, for the confirmation. */
   protected readonly made = signal<CreateNpcResult | null>(null);
 
+  /** The monsters just put in the combat, for the confirmation. */
+  protected readonly put = signal<PutMonstersResult | null>(null);
+
   private readonly madeBox = viewChild<ElementRef<HTMLElement>>('madeBox');
   private readonly createButton = viewChild<ElementRef<HTMLButtonElement>>('createButton');
+  private readonly putButton = viewChild<ElementRef<HTMLButtonElement>>('putButton');
 
   constructor() {
     void this.start();
@@ -92,6 +98,35 @@ export class BestiaryCreature {
     };
   }
 
+  protected openPut(creature: Creature): void {
+    if (!creature.summary) {
+      return;
+    }
+    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(this.dialog, this.bottomSheet, PutMonstersSheet, {
+      data: { campaignId: this.campaignId, creature: creature.summary },
+      ariaLabel: 'Pôr no combate',
+      labelledBy: 'put-t',
+      width: '600px',
+      tall: true,
+      restoreFocus: false,
+    }).subscribe((result) => {
+      if (result) {
+        this.made.set(null);
+        this.put.set(result);
+        afterNextRender(
+          () => {
+            const box = this.madeBox()?.nativeElement;
+            box?.scrollIntoView?.({ block: 'nearest' });
+            focusWithRing(box);
+          },
+          { injector: this.injector },
+        );
+      } else {
+        focusWithRing(this.putButton()?.nativeElement);
+      }
+    });
+  }
+
   protected openCreate(creature: Creature): void {
     openSheet<CreateNpcSheet, CreateNpcData, CreateNpcResult>(this.dialog, this.bottomSheet, CreateNpcSheet, {
       data: { campaignId: this.campaignId, creature },
@@ -103,6 +138,7 @@ export class BestiaryCreature {
       restoreFocus: false,
     }).subscribe((result) => {
       if (result) {
+        this.put.set(null);
         this.made.set(result);
         // The confirmation is where the person looks next: it comes into view and takes the focus.
         afterNextRender(

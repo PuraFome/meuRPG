@@ -4,7 +4,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
+import { RouterLink } from '@angular/router';
+
+import { TableMark } from '../../../shared/table-mark/table-mark';
 import { spellLevelLabel } from '../../../core/characters/character-labels';
+import type { OutsideSpell } from '../class-blocks';
 import { SpellOptionVm } from '../character-editor.types';
 import { countLabel } from '../editor-labels';
 
@@ -17,7 +21,7 @@ import { countLabel } from '../editor-labels';
  */
 @Component({
   selector: 'app-spell-picker',
-  imports: [MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink, TableMark],
   templateUrl: './spell-picker.html',
   styleUrl: './spell-picker.scss',
 })
@@ -39,6 +43,11 @@ export class SpellPicker {
    * listed spell above it is one the player had already picked (the level
    * was lowered): it stays so it can be unchecked, and is marked. */
   readonly maxSpellLevel = input<number | null>(null);
+
+  /** What the search finds that no list of the sheet has: greyed, with the reason. */
+  readonly outside = input<readonly OutsideSpell[]>([]);
+  /** Where "Ver em Magias" goes. */
+  readonly magiasLink = input<readonly string[]>([]);
 
   readonly toggle = output<string>();
   readonly filterChange = output<string>();

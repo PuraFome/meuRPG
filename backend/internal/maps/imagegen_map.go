@@ -500,8 +500,12 @@ func (s *Service) GenerateMapImage(
 			return nil, errField("character_image_ids", "must be empty for a textured map")
 		}
 	}
+	name, err := imageNameOf(req.Msg.GetName(), "")
+	if err != nil {
+		return nil, err
+	}
 	n := newRequest{
-		kind: kind, key: key, prompt: prompt, style: style, ratio: ratio,
+		kind: kind, key: key, prompt: prompt, style: style, ratio: ratio, name: name,
 		references: objects, characters: characters, requestedBy: m.UserID,
 		mapReq: &mapRequest{mapID: mapID, layout: layout, npcs: npcs},
 	}
@@ -563,6 +567,15 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 			return err
 		}
 	}
+	if n.name == "" {
+		// The map's name only when the players already see the map: a hidden map's name can be a
+		// secret, and they read the name of a picture they are shown (RN-10).
+		if sub.row.RevealedAt != nil {
+			p.name = suffixedName(sub.row.Name, " · "+kindNamePT(n.kind))
+		} else {
+			p.name = datedName(kindTitlePT(n.kind), s.now())
+		}
+	}
 	ref, err := s.referenceOf(n.mapReq.layout, sub, players, refimg.Side)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot draw the reference of a map", "error", err)
@@ -580,6 +593,30 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		p.rooms = sub.rooms
 	}
 	return nil
+}
+
+// kindTitlePT is the way a picture of a map was made, at the start of a default name ("Vista isométrica · 06/10").
+func kindTitlePT(kind string) string {
+	switch kind {
+	case kindIsometric:
+		return "Vista isométrica"
+	case kindTexturedMap:
+		return "Mapa com textura"
+	default:
+		return "Arte da cena"
+	}
+}
+
+// kindNamePT is the way a picture of a map was made, as the default name of its gallery image says it.
+func kindNamePT(kind string) string {
+	switch kind {
+	case kindIsometric:
+		return "vista isométrica"
+	case kindTexturedMap:
+		return "mapa com textura"
+	default:
+		return "arte da cena"
+	}
 }
 
 // checkCharacters is what a scene art or isometric request says of characters: the NPCs
@@ -602,14 +639,21 @@ func (s *Service) checkCharacters(ctx context.Context, campaignID string, n *new
 			hidden = append(hidden, id)
 		}
 	}
-	if len(hidden) > 0 && len(n.characters) > 0 {
+	if len(hidden) > 0 && (len(n.characters) > 0 || len(n.references) > 0) {
 		portraits, err := s.characters.NpcPortraits(ctx, nil, campaignID, hidden)
 		if err != nil {
 			return s.dbError(ctx, "read the portraits", err)
 		}
 		for _, img := range portraits {
-			if img != "" && slices.Contains(n.characters, img) {
+			if img == "" {
+				continue
+			}
+			// The portrait is refused wherever it comes: as a character, or chosen as an object.
+			if slices.Contains(n.characters, img) {
 				return errField("character_image_ids", "has the portrait of a creature the players do not see")
+			}
+			if slices.Contains(n.references, img) {
+				return errField("object_image_ids", "has the portrait of a creature the players do not see")
 			}
 		}
 	}
@@ -654,6 +698,20 @@ func (s *Service) cropToMap(ctx context.Context, data []byte, row mapsdb.ImageRe
 	return images.CropFit(data, func(rw, rh int) image.Rectangle { return refimg.CropBy(f, rw, rh) }, w, h)
 }
 
+// fitToMap makes an edit of a textured map the size of the map's image: the middle of what the model
+// returned that has the map's proportions, scaled to the map's size (the edit has no canvas to crop: it
+// starts from the map itself, and was asked for the ratio nearest the map's). It never stretches.
+func (s *Service) fitToMap(ctx context.Context, data []byte, row mapsdb.ImageRequest) (*images.Result, error) {
+	select {
+	case s.processing <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() { <-s.processing }()
+	w, h := int(*row.MapWidth), int(*row.MapHeight)
+	return images.CropFit(data, func(rw, rh int) image.Rectangle { return refimg.CenterCrop(w, h, rw, rh) }, w, h)
+}
+
 // UseGeneratedImageAsMapImage implements mapsv1connect.ImageGenerationServiceHandler.
 func (s *Service) UseGeneratedImageAsMapImage(
 	ctx context.Context,
@@ -674,7 +732,15 @@ func (s *Service) UseGeneratedImageAsMapImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "find the request of a generated image", err)
 	}
-	if request.Kind != kindTexturedMap || request.MapID == nil {
+	// A textured map, or an edit of one (it kept the map's basis): the gallery says which.
+	picture, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errImageNotFound()
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "read the generated image", err)
+	}
+	if picture.GeneratedKind != kindTexturedMap || request.MapID == nil {
 		return nil, errImageNotFound() // not a textured map, or its map is gone
 	}
 	mapID := *request.MapID

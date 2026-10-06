@@ -28,20 +28,29 @@ export class ContentWatcher {
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.follow(null, () => undefined));
+    this.destroyRef.onDestroy(() => {
+      this.follow(null, () => undefined);
+      this.clearTimer();
+    });
   }
 
   /** Follows the campaign while it has an open session (call it in a constructor: it makes an effect). */
   whileLive(campaignId: () => string, onChange: () => void): void {
+    let firstRun = true;
     effect(() => {
       const id = campaignId();
       const live = id !== '' && (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
-      untracked(() => this.follow(live ? id : null, onChange));
+      // A session that was already open when the page came reads once, with the page's own load (the first `ready` asks
+      // nothing). One that opens while the page is up connects up to 30 s later (the poll of open sessions): its first `ready`
+      // reads, because the content may have changed in between.
+      const readOnFirstReady = !firstRun;
+      firstRun = false;
+      untracked(() => this.follow(live ? id : null, onChange, readOnFirstReady));
     });
   }
 
-  /** Follows `campaignId`'s session, or stops with `null`. */
-  follow(campaignId: string | null, onChange: () => void): void {
+  /** Follows `campaignId`'s session, or stops with `null`. The first `ready` is the page's own load, unless `readOnFirstReady`. */
+  follow(campaignId: string | null, onChange: () => void, readOnFirstReady = false): void {
     if (campaignId === this.campaignId) {
       return;
     }
@@ -52,7 +61,7 @@ export class ContentWatcher {
     if (campaignId === null) {
       return;
     }
-    let first = true;
+    let first = !readOnFirstReady;
     const hint = () => {
       this.clearTimer();
       this.timer = setTimeout(() => {

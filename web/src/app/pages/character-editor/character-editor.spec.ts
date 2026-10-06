@@ -119,6 +119,8 @@ function knockDetails(key: string): SpellDetailsVm {
   };
 }
 
+const SRD = { fromTable: false, archived: false, off: false };
+
 function catalog(): RulesCatalogVm {
   return {
     races: [
@@ -126,7 +128,11 @@ function catalog(): RulesCatalogVm {
         key: 'race:gnome',
         namePt: 'Gnomo',
         constitutionBonus: 0,
-        subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1 }],
+        choiceBonuses: [],
+        fromTable: false,
+        archived: false,
+        off: false,
+        subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1, ...SRD }],
       },
     ],
     classes: [
@@ -135,8 +141,12 @@ function catalog(): RulesCatalogVm {
         namePt: 'Mago',
         hitDie: 6,
         isCaster: true,
+        ...SRD,
+        skillChoose: 2,
+        savingThrows: ['int', 'wis'],
+        spellListClassKey: 'class:wizard',
         preparation: 'spellbook',
-        subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação' }],
+        subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação', casting: null, alwaysPrepared: [], ...SRD }],
         subclassLevel: 2,
         spellcastingFirstLevel: 1,
         // Levels 1-5: circles 1, 1, 2, 2, 3.
@@ -147,15 +157,19 @@ function catalog(): RulesCatalogVm {
         namePt: 'Paladino',
         hitDie: 10,
         isCaster: true,
+        ...SRD,
+        skillChoose: 2,
+        savingThrows: ['wis', 'cha'],
+        spellListClassKey: 'class:paladin',
         preparation: 'prepared',
-        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção' }],
+        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção', casting: null, alwaysPrepared: [], ...SRD }],
         subclassLevel: 3,
         spellcastingFirstLevel: 2,
         // No leveled spells at level 1.
         maxSpellLevelByLevel: [0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5],
       },
     ],
-    backgrounds: [{ key: 'background:acolyte', namePt: 'Acólito' }],
+    backgrounds: [{ key: 'background:acolyte', namePt: 'Acólito', equipmentPt: '', ...SRD }],
     skills: [
       { key: 'skill:arcana', namePt: 'Arcanismo', ability: 'int' },
       { key: 'skill:history', namePt: 'História', ability: 'int' },
@@ -166,24 +180,30 @@ function catalog(): RulesCatalogVm {
       { key: 'equipment:dagger', namePt: 'Adaga' },
     ],
     spells: [
-      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'] },
-      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'] },
+      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
       {
         key: 'spell:magic-missile',
         namePt: 'Mísseis Mágicos',
         level: 1,
-        classKeys: ['class:wizard'],
+        classKeys: ['class:wizard'], fromTable: false, archived: false, off: false,
       },
-      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'] },
-      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'] },
-      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'] },
+      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'], fromTable: false, archived: false, off: false },
       // Not on the Wizard's list — proves the picker filters by class.
       {
         key: 'spell:cure-wounds',
         namePt: 'Curar Ferimentos',
         level: 1,
-        classKeys: ['class:cleric'],
+        classKeys: ['class:cleric'], fromTable: false, archived: false, off: false,
       },
+    ],
+    viewerIsMaster: false,
+    toolsAndLanguages: [
+      { key: 'proficiency:thieves-tools', namePt: 'Ferramentas de ladrão', kind: 'tool' },
+      { key: 'language:elvish', namePt: 'Élfico', kind: 'language' },
+      { key: 'language:dwarvish', namePt: 'Anão', kind: 'language' },
     ],
     // The SRD's ND to XP table, in the server's order (first rows are enough).
     challengeRatings: [
@@ -203,6 +223,21 @@ function routeParams(params: Record<string, string>) {
 
 function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** Opens a step by its tab, like a click. A step's content is built the first time it opens (EditorStepper), so a
+ * spec that reads a step other than "Básico" opens it first. */
+async function openStep(fixture: ComponentFixture<CharacterEditor>, label: string): Promise<void> {
+  const tab = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]')).find(
+    (t) => t.textContent?.includes(label),
+  );
+  if (!tab) {
+    throw new Error(`no step "${label}"`);
+  }
+  tab.click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
 }
 
 describe('CharacterEditor', () => {
@@ -231,6 +266,14 @@ describe('CharacterEditor', () => {
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
+
+  // The first render of the editor in a cold test worker (Material, the stepper, the form) costs seconds and would land
+  // on whichever test runs first, on a loaded machine past its timeout: render once here, outside any test.
+  beforeAll(async () => {
+    configure({ id: 'camp-warm-up' });
+    await render();
+    TestBed.resetTestingModule();
+  });
 
   it('builds the create-character request from the form and the selected skills', async () => {
     configure({ id: 'camp-1' });
@@ -293,6 +336,7 @@ describe('CharacterEditor', () => {
     // "Magias conhecidas" and "Magias preparadas" show, alongside "Truques".
     cmp.fullForm.patchValue({ className: 'class:wizard' });
     fixture.detectChanges();
+    await openStep(fixture, 'Magias');
 
     expect(el.textContent).toContain('Truques');
     expect(el.textContent).toContain('Magias conhecidas');
@@ -307,6 +351,7 @@ describe('CharacterEditor', () => {
 
     cmp.fullForm.patchValue({ className: 'class:wizard' });
     fixture.detectChanges();
+    await openStep(fixture, 'Equipamento');
 
     // Every remaining <textarea> is one of the genuinely free-text fields;
     // none carries a content-key control name.
@@ -347,9 +392,9 @@ describe('CharacterEditor', () => {
     const cmp = fixture.componentInstance as any;
 
     cmp.fullForm.patchValue({ className: 'class:wizard' });
-    cmp.cantripsFilter.set('gelo');
+    cmp.setSpellFilter(0, 'cantrips', 'gelo');
 
-    expect(cmp.filteredCantrips().map((s: { key: string }) => s.key)).toEqual([
+    expect(cmp.sectionViews()[0].cantrips.shown.map((s: { key: string }) => s.key)).toEqual([
       'spell:ray-of-frost',
     ]);
   });
@@ -381,7 +426,8 @@ describe('CharacterEditor', () => {
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
-      cmp.fullForm.patchValue({ className: 'class:wizard' });
+      // The wizard chooses the subclass at level 2: below it the field is shut.
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 2 });
       fixture.detectChanges();
 
       const select = el.querySelector<HTMLElement>('mat-select[formcontrolname="subclassName"]');
@@ -438,12 +484,12 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
 
       cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
-      expect(keys(cmp.filteredSpellsKnown())).toEqual(['spell:shield', 'spell:magic-missile']);
+      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual(['spell:shield', 'spell:magic-missile']);
       // Cantrips are not gated by level, and sort by name.
-      expect(keys(cmp.filteredCantrips())).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
+      expect(keys(cmp.sectionViews()[0].cantrips.shown)).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
 
       cmp.fullForm.patchValue({ level: 5 });
-      expect(keys(cmp.filteredSpellsPrepared())).toEqual([
+      expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',
         'spell:fireball',
@@ -462,14 +508,15 @@ describe('CharacterEditor', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
+      await openStep(fixture, 'Magias');
 
-      expect(keys(cmp.filteredSpellsKnown())).toEqual([
+      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',
         'spell:fireball',
       ]);
       // Not selected there, so the prepared list still hides it.
-      expect(keys(cmp.filteredSpellsPrepared())).not.toContain('spell:fireball');
+      expect(keys(cmp.sectionViews()[0].prepared.shown)).not.toContain('spell:fireball');
       expect(el.textContent).toContain('Bola de Fogo (3º círculo, acima do nível)');
     });
 
@@ -481,6 +528,7 @@ describe('CharacterEditor', () => {
 
       cmp.fullForm.patchValue({ className: 'class:paladin', level: 1 });
       fixture.detectChanges();
+      await openStep(fixture, 'Magias');
       expect(el.textContent).toContain('O Paladino conjura magias a partir do nível 2.');
       expect(el.textContent).not.toContain('Magias preparadas');
       // The Paladin's list has no cantrips: no empty "Truques" box.
@@ -560,11 +608,13 @@ describe('CharacterEditor', () => {
       className: 'class:wizard',
       background: 'background:acolyte',
     });
-    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:not-on-any-list']));
+    // A spell the catalog knows that the class's list does not have (Bênção is the paladin's) never goes; a key the
+    // catalog does not know at all is kept for the server to judge, not dropped quietly (RN-23: a retired entry).
+    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:bless', 'spell:not-in-the-catalog']));
 
     await cmp.submit();
 
-    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt']);
+    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt', 'spell:not-in-the-catalog']);
   });
 
   it('shows the fiction notice on every free-text group of a full sheet', async () => {
@@ -575,6 +625,8 @@ describe('CharacterEditor', () => {
 
     cmp.fullForm.patchValue({ className: 'class:wizard', background: 'custom' });
     fixture.detectChanges();
+    await openStep(fixture, 'Magias');
+    await openStep(fixture, 'Equipamento');
 
     // Custom background name, spell lists, and the equipment/languages/tools
     // group — three distinct free-text groups.
@@ -606,7 +658,7 @@ describe('CharacterEditor', () => {
           level: 3,
           background: 'background:acolyte',
           customBackgroundName: '',
-          customBackgroundSkills: null,
+          customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [],
           skillProficiencies: ['skill:arcana'],
           expertiseSkillKeys: [],
           abilities: { str: 8, dex: 14, con: 16, int: 18, wis: 12, cha: 10 },
@@ -941,6 +993,7 @@ describe('CharacterEditor', () => {
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
+      await openStep(fixture, 'Atributos');
 
       const summary = el.querySelector('.bonuses__summary');
       expect(summary?.textContent).toContain('Aumento de atributo, escolhas de raça, item mágico.');
@@ -958,7 +1011,8 @@ describe('CharacterEditor', () => {
 
     it('never shares the exact field name of a score with a manual bonus', async () => {
       configure({ id: 'camp-1' });
-      const { el } = await render();
+      const { fixture, el } = await render();
+      await openStep(fixture, 'Atributos');
 
       const labels = Array.from(el.querySelectorAll('app-ability-fields mat-label')).map((l) =>
         l.textContent?.replace(/\s+/g, ' ').trim(),
@@ -1150,6 +1204,7 @@ describe('CharacterEditor', () => {
         extraAbilityBonuses: { con: 1 },
       });
       fixture.detectChanges();
+      await openStep(fixture, 'Atributos');
       expect(cmp.finalConstitution()).toBe(16);
       expect(cmp.hitDie()).toBe(6);
       const labels = Array.from(el.querySelectorAll('app-hit-points-rolls mat-label')).map((l) =>
@@ -1168,6 +1223,7 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
       cmp.fullForm.patchValue({ level: 3, hitPointsMethod: 'rolled' });
       fixture.detectChanges();
+      await openStep(fixture, 'Atributos');
       expect(el.querySelector('app-hit-points-rolls')).toBeNull();
       expect(el.textContent).toContain('Escolha a classe no passo Básico');
     });
@@ -1177,6 +1233,7 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
       cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
       fixture.detectChanges();
+      await openStep(fixture, 'Magias');
       const help = el.querySelector<HTMLButtonElement>(
         'button[aria-label="Descrição de Mísseis Mágicos"]',
       )!;
@@ -1270,7 +1327,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       level: 3,
       background: 'background:acolyte',
       customBackgroundName: '',
-      customBackgroundSkills: null,
+      customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [],
       skillProficiencies: [],
       expertiseSkillKeys: [],
       abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
@@ -1532,7 +1589,7 @@ describe('CharacterEditor, the NPC portrait', () => {
         basic: null,
         full: {
           name: 'Capitão Goblin', race: 'race:gnome', subrace: '', className: 'class:wizard', subclassName: '', customSubclassName: '', level: 3,
-          background: 'background:acolyte', customBackgroundName: '', customBackgroundSkills: null, skillProficiencies: [], expertiseSkillKeys: [],
+          background: 'background:acolyte', customBackgroundName: '', customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [], skillProficiencies: [], expertiseSkillKeys: [],
           abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
           hitPointsMethod: 'average', hitPointsRolls: [], isCaster: false, cantrips: [], spellsKnown: [], spellsPrepared: [], armor: '', shield: false,
           weapons: [], equipmentText: '', languagesText: '', toolProficienciesText: '', experiencePoints: 0, challengeRating: '1', xpValue: 200, portraitImageId,
@@ -1638,6 +1695,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     TestBed.resetTestingModule();
     configure({ id: 'camp-1' }, null);
     const free = await render();
+    await openStep(free.fixture, 'Atributos');
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
     expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });
@@ -1766,6 +1824,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     fake.loadCharacterForEditFn = () =>
       Promise.resolve({ kind: 'player' as const, revision: 2, blocked: null, sheetLocked: false, full: null, basic: null, abilityOrigin: { method: 'point_buy' as const, rolls: null } });
     const free = await render();
+    await openStep(free.fixture, 'Atributos');
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
     expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });
@@ -1800,7 +1859,7 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
 
   const withElf = (): RulesCatalogVm => ({
     ...catalog(),
-    races: [...catalog().races, { key: 'race:elf', namePt: 'Elfo', constitutionBonus: 0, subraces: [] }],
+    races: [...catalog().races, { key: 'race:elf', namePt: 'Elfo', constitutionBonus: 0, subraces: [], choiceBonuses: [], fromTable: false, archived: false, off: false }],
   });
 
   function switchedOff(key: string): ConnectError {
@@ -1835,40 +1894,56 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
     expect(el.textContent).not.toContain('O mestre mudou as opções da mesa');
   });
 
-  it('shows the refusal of a newly chosen switched-off option on the field that holds it, by the typed reason', async () => {
+  const fill = (cmp: any) => cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+
+  it('shows the refusal of a newly chosen switched-off option as an error of the field that holds it, by the typed reason (E10-01 state 5)', async () => {
     configure({ id: 'camp-1' });
     const { fixture, el } = await render();
+    document.body.appendChild(el);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
-    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+    fill(cmp);
     fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
     await cmp.submit();
     await flush();
     fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
     expect(fake.createCharacterCalls).toHaveLength(1);
-    expect(cmp.saveState().status).toBe('error');
-    const note = el.querySelector('.field-off');
-    expect(note?.getAttribute('role')).toBe('alert');
-    expect(note?.textContent).toContain('Gnomo não está mais disponível para os jogadores. Escolha outra.');
-    // It sits right under the race field, not under another one.
-    expect(note?.previousElementSibling?.textContent).toContain('Raça');
-    // Picking something else takes it away.
+    // The field is invalid with the error's own key, red and aria-invalid, with the sentence in its mat-error.
+    const race = cmp.fullForm.controls.race;
+    expect(race.hasError('switchedOff')).toBe(true);
+    const select = el.querySelector('mat-select[formcontrolname="race"]') as HTMLElement;
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+    const error = select.closest('mat-form-field')!.querySelector('mat-error');
+    expect(error?.textContent).toContain('A raça “Gnomo” foi desligada pelo mestre para os jogadores. Escolha outra opção.');
+    // The step is marked, the notice above the buttons names the field, and the focus is on it.
+    expect(cmp.stepHasError('basico')).toBe(true);
+    expect(cmp.invalidSummary()).toContain('Raça');
+    expect(document.activeElement).toBe(select);
+    // Picking something else takes the error away.
     cmp.fullForm.patchValue({ race: 'race:elf' });
     fixture.detectChanges();
-    expect(el.querySelector('.field-off')).toBeNull();
+    expect(race.hasError('switchedOff')).toBe(false);
+    el.remove();
   });
 
-  it('reads the lists again after the refusal, so the switched-off option leaves the picker', async () => {
+  it('names the entry even when the lists read again no longer have it (the name is taken before)', async () => {
     configure({ id: 'camp-1' });
-    const { fixture } = await render();
+    const { fixture, el } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
-    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+    fill(cmp);
     fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
     fake.loadCatalogFn = () => Promise.resolve({ ...catalog(), races: [] });
     await cmp.submit();
     await flush();
     fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
     expect(cmp.state().catalog.races).toEqual([]);
+    expect(cmp.fullForm.controls.race.getError('switchedOff')).toContain('A raça “Gnomo” foi desligada');
+    expect(el.textContent).not.toContain('Esta opção');
+    expect(el.textContent).not.toContain('Uma das opções');
   });
 });

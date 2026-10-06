@@ -24,15 +24,15 @@ export interface ContentNavKind {
   readonly newLabel: string;
   /** "Já existe uma raça da mesa com este nome." */
   readonly aOne: string;
-  /** Whether this slice has an editor for it (the class and the subclass editors are 10.12). */
+  /** Whether the app has an editor for it. */
   readonly editable: boolean;
   /** The master's way in: the page of "Nova …" (empty when there is no editor yet). */
   readonly createSegment: string;
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
-  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: false, createSegment: 'classe' },
-  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: false, createSegment: 'subclasse' },
+  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: true, createSegment: 'classe' },
+  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: true, createSegment: 'subclasse' },
   { slug: 'racas', plural: 'Raças', singular: 'raça', kinds: [TableContentKind.RACE, TableContentKind.SUBRACE], newLabel: 'Nova raça', aOne: 'uma raça', editable: true, createSegment: 'raca' },
   { slug: 'antecedentes', plural: 'Antecedentes', singular: 'antecedente', kinds: [TableContentKind.BACKGROUND], newLabel: 'Novo antecedente', aOne: 'um antecedente', editable: true, createSegment: 'antecedente' },
   { slug: 'magias', plural: 'Magias', singular: 'magia', kinds: [TableContentKind.SPELL], newLabel: 'Nova magia', aOne: 'uma magia', editable: true, createSegment: 'magia' },
@@ -168,7 +168,8 @@ export function entryState(e: Pick<TableEntry, 'archived' | 'charactersUsing' | 
   }
   if (e.off) {
     // "Opções para os jogadores" (RN-23): the master still reads and edits it; the players do not receive it.
-    return { text: using ? `Desligada para os jogadores · ${using}` : 'Desligada para os jogadores', archived: false };
+    const word = KIND_NOUNS[e.kind]?.article === 'O' ? 'Desligado' : 'Desligada';
+    return { text: using ? `${word} para os jogadores · ${using}` : `${word} para os jogadores`, archived: false };
   }
   return n > 0 ? { text: `Em uso por ${n} ${n === 1 ? 'ficha' : 'fichas'}`, archived: false } : null;
 }

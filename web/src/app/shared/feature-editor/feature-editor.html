@@ -1,4 +1,4 @@
-<div class="feature" role="group" [attr.aria-label]="groupLabel()">
+<div class="feature" [class.feature--flat]="flat()" role="group" [attr.aria-label]="groupLabel()">
   @if (heading() || index() >= 0) {
     <div class="feature__head">
       @if (heading()) {
@@ -19,7 +19,7 @@
     </div>
   }
   <app-field-note [id]="basePath() + '-note'" [issues]="issuesOf()(basePath())" />
-  <div class="grid">
+  <div class="grid" [class.grid--lead]="withLead()">
     <app-text-field
       [label]="nameLabel()"
       [value]="feature().name"
@@ -27,6 +27,7 @@
       [issues]="issuesOf()(path('name_pt'))"
       (valueChange)="patch({ name: $event })"
     />
+    <ng-content select="[lead]" />
     @if (feature().effects.length === 0) {
       <app-effect-picker
         [effect]="firstEffect()"

@@ -134,10 +134,22 @@ func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	}
 	p, ok := cc.players[c]
 	if !ok {
-		p = withoutArchived(v)
+		p = withoutArchived(v, nil)
 		cc.players[c] = p
 	}
 	return p
+}
+
+// catalogKeeping is a player's catalog with the retired or switched-off entries
+// that keep (the keys the player's own sheet uses) left in, still marked
+// `archived` or `off`: the editor shows the sheet's current value, and never
+// offers it as a new choice. Not cached: it depends on the sheet.
+func (s *Service) catalogKeeping(c *rules.Content, keep map[string]bool) *rulesv1.Content {
+	master := s.catalogFor(c, true)
+	if !c.AnyHidden() || len(keep) == 0 {
+		return s.catalogFor(c, false)
+	}
+	return withoutArchived(master, keep)
 }
 
 // withoutArchived is a copy of a catalog without the entries the table retired or
@@ -145,35 +157,22 @@ func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 // so a field a later slice adds to Content is in the players' catalog too and can
 // never silently vanish. (A class's list of subclasses lives in the SRD content,
 // so it needs no change here.)
-func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
+func withoutArchived(c *rulesv1.Content, keep map[string]bool) *rulesv1.Content {
 	out := proto.CloneOf(c)
 	// The archived keys: nothing a player receives may name one (RN-23), not even
 	// through a reference.
 	archived := map[string]bool{}
-	for _, r := range out.Races {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
+	gone := func(key string, retired bool) bool {
+		g := retired && !keep[key] // what a player's own sheet uses stays, marked
+		archived[key] = archived[key] || g
+		return g
 	}
-	for _, r := range out.Classes {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
-	}
-	for _, r := range out.Subclasses {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
-	}
-	for _, r := range out.Subraces {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
-	}
-	for _, r := range out.Backgrounds {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
-	}
-	for _, r := range out.Spells {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
-	}
-	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() || r.GetOff() })
-	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() || r.GetOff() })
-	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() || r.GetOff() })
-	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() || r.GetOff() })
-	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() || r.GetOff() })
-	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() || r.GetOff() })
+	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
 	// An entry whose required parent is archived goes too, and so does a reference
 	// to an archived class or race.
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return archived[r.GetClassKey()] })
@@ -187,6 +186,8 @@ func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
 		}
 	}
 	for _, sub := range out.Subclasses {
+		// Nor does a subclass name a hidden spell it always prepares.
+		sub.AlwaysPrepared = slices.DeleteFunc(sub.AlwaysPrepared, func(ap *rulesv1.SubclassAlwaysPrepared) bool { return archived[ap.GetSpellKey()] })
 		if cs := sub.GetSpellcasting(); cs != nil && archived[cs.GetListClassKey()] {
 			cs.ListClassKey = ""
 		}

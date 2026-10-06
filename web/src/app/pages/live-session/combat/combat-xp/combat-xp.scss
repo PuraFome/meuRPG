@@ -125,3 +125,31 @@
   --mat-button-text-label-text-color: var(--mr-accent-text);
   margin-inline-start: -12px;
 }
+
+// What each kind of monster is worth by its ND (E10-08 state 9), above the total.
+.kinds {
+  margin: 0 0 var(--mr-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.kind {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  min-height: 32px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--mr-rule);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.kind__s {
+  color: var(--mr-ink-muted);
+}
+
+.kind__n {
+  font-weight: 800;
+  white-space: nowrap;
+}

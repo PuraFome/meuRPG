@@ -7,6 +7,7 @@ import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { type OptionSwitchEntry, OptionSwitchEntrySchema, TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
+import { SpellsClient } from '../../../core/spells/spells-client';
 import { fakeContentWatcher } from '../../../core/content/content-testing';
 import { ContentOptions } from './options';
 
@@ -35,11 +36,13 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   const switches = vi.fn();
   const setSwitches = vi.fn();
   const getCampaign = vi.fn();
+  const spellsList = vi.fn();
   let watcher = fakeContentWatcher();
   let query$ = new BehaviorSubject(convertToParamMap({}));
 
   async function setup(role: Role = Role.MASTER, opts: { phone?: boolean; tipo?: string; options?: OptionSwitchEntry[]; stranger?: boolean } = {}) {
     switches.mockReset().mockResolvedValue({ options: opts.options ?? list(), tableRevision: 4 });
+    spellsList.mockReset().mockResolvedValue({ spells: [{ key: 'spell:light' }] });
     setSwitches.mockReset().mockResolvedValue({ tableRevision: 5, changed: 1, options: [] });
     getCampaign.mockReset().mockResolvedValue({ campaign: opts.stranger ? undefined : { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
     query$ = new BehaviorSubject(convertToParamMap(opts.tipo ? { tipo: opts.tipo } : {}));
@@ -53,6 +56,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
         { provide: ActivatedRoute, useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: 'camp-1' })), queryParamMap: query$ } },
         { provide: CampaignsService, useValue: { getCampaign } },
         { provide: TableContentClient, useValue: { switches, setSwitches } },
+        { provide: SpellsClient, useValue: { list: spellsList } },
       ],
     });
     const fixture = TestBed.createComponent(ContentOptions);
@@ -96,7 +100,9 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
     expect(text(el.querySelector('.menu__note')!)).toContain('Sub-raças: 1 de 1 ligada');
     const byName = (n: string) => text(rowOf(el, n));
     expect(byName('Anão')).toContain('Ligada');
-    expect(byName('Anão')).toContain('Nenhuma ficha usa');
+    // Nothing is said of an option no sheet uses; an off one says that turning it off touches no sheet.
+    expect(byName('Anão')).not.toContain('Nenhuma ficha usa');
+    expect(byName('Tiefling')).toContain('Nenhuma ficha usa');
     expect(byName('Anão')).toContain('SRD');
     expect(byName('Gnomo')).toContain('1 ficha usa');
     expect(byName('Corujeiro')).toContain('2 fichas usam');
@@ -104,9 +110,11 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
     expect(byName('Tiefling')).toContain('Desligada');
     expect(sw(el, 'Tiefling').getAttribute('aria-checked')).toBe('false');
     expect(sw(el, 'Anão').getAttribute('aria-checked')).toBe('true');
-    // The sub-race is in the group, after the races, and says which race it belongs to.
-    expect(text(rows(el)[4])).toContain('Anão da Colina');
-    expect(text(rows(el)[4])).toContain('Sub-raça de Anão');
+    // The sub-race sits under its race, nested, and says which race it belongs to.
+    expect(text(rows(el)[1])).toContain('Anão da Colina');
+    expect(text(rows(el)[1])).toContain('Sub-raça de Anão');
+    expect(rows(el)[1].classList).toContain('orow--nested');
+    expect(rows(el)[0].classList).not.toContain('orow--nested');
   });
 
   it('turns an option off at once with one request, and says that the sheet that uses it keeps working', async () => {
@@ -118,8 +126,75 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
     expect(sw(el, 'Gnomo').getAttribute('aria-checked')).toBe('false');
     expect(text(el.querySelector('.counter strong')!)).toBe('Raças: 2 de 4 ligadas');
     expect(text(el.querySelector('.saved')!)).toContain('Tudo salvo');
-    expect(text(rowOf(el, 'Gnomo'))).toContain('A ficha que usa continua funcionando.');
+    expect(text(rowOf(el, 'Gnomo'))).toContain('A ficha que a usa continua funcionando.');
     expect(text(el.querySelector('[role="status"].mr-visually-hidden')!)).toBe('Gnomo: desligada para os jogadores. 1 ficha usa e continua funcionando.');
+  });
+
+  it('turns "Ligar todas" off when it would change nothing, and "Desligar todas" too', async () => {
+    const { el, settle } = await setup(Role.MASTER, { tipo: 'classes' });
+    expect(button(el, 'Ligar todas').disabled).toBe(true);
+    expect(button(el, 'Desligar todas').disabled).toBe(false);
+    button(el, 'Desligar todas').click();
+    await settle();
+    expect(button(el, 'Desligar todas').disabled).toBe(true);
+    expect(button(el, 'Ligar todas').disabled).toBe(false);
+  });
+
+  it('says that "Desligar todas" in Raças also takes the sub-races', async () => {
+    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    expect(text(el.querySelector('.bulk-note')!)).toContain('também desliga as sub-raças (1)');
+  });
+
+  it('agrees the bulk words with the noun: "Ligar todos" for the backgrounds', async () => {
+    const { el } = await setup(Role.MASTER, { tipo: 'antecedentes' });
+    expect(text(el.querySelector('.counter strong')!)).toBe('Antecedentes: 1 de 1 ligado');
+    expect(button(el, 'Desligar todos')).toBeTruthy();
+  });
+
+  it('gives the spells the circle in the support line and the filters by class and circle', async () => {
+    const options = [
+      opt(TableContentKind.CLASS, 'Mago', { key: 'class:wizard' }),
+      opt(TableContentKind.SPELL, 'Luz', { key: 'spell:light', level: 0 }),
+      opt(TableContentKind.SPELL, 'Mísseis Mágicos', { key: 'spell:magic-missile', level: 1 }),
+      opt(TableContentKind.SPELL, 'Bola de Fogo', { key: 'spell:fireball', level: 3 }),
+    ];
+    const { el, settle } = await setup(Role.MASTER, { tipo: 'magias', options });
+    expect(rows(el).map((r) => text(r.querySelector('.orow__note')!))).toEqual(['Truque', '1º círculo', '3º círculo']);
+    const selects = Array.from(el.querySelectorAll<HTMLSelectElement>('app-select-field select'));
+    expect(selects).toHaveLength(2);
+    // The circle: only the 3rd.
+    selects[1].value = '3';
+    selects[1].dispatchEvent(new Event('change'));
+    await settle();
+    expect(rows(el).map((r) => text(r.querySelector('.label')!))).toEqual(['Bola de Fogo']);
+    expect(text(button(el, 'Desligar todas'))).toBe('Desligar todas (1)');
+    selects[1].value = '';
+    selects[1].dispatchEvent(new Event('change'));
+    // The class: the spells of its list, as the server serves them.
+    selects[0].value = 'class:wizard';
+    selects[0].dispatchEvent(new Event('change'));
+    await settle();
+    expect(spellsList).toHaveBeenCalledWith({ campaignId: 'camp-1', classKey: 'class:wizard', pageSize: 400 });
+    expect(rows(el).map((r) => text(r.querySelector('.label')!))).toEqual(['Luz']);
+  });
+
+  it('keeps an error under the counter until it is closed, and a new change does not hide it', async () => {
+    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    setSwitches.mockRejectedValueOnce(new Error('offline'));
+    sw(el, 'Anão').click();
+    await settle();
+    setSwitches.mockResolvedValue({ tableRevision: 6, changed: 1, options: [] });
+    sw(el, 'Gnomo').click();
+    await settle();
+    expect(text(el.querySelector('.saved')!)).toContain('Não salvou');
+    button(el, 'Fechar o aviso').click();
+    await settle();
+    expect(text(el.querySelector('.saved')!)).toContain('Tudo salvo');
+  });
+
+  it('shows "Tudo salvo" at rest', async () => {
+    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    expect(text(el.querySelector('.saved')!)).toContain('Tudo salvo');
   });
 
   it('puts the switch back and says it when the save fails', async () => {
@@ -176,7 +251,11 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
     const { el } = await setup(Role.MASTER, { tipo: 'subclasses', options });
     const row = rows(el)[0];
     expect(text(row)).toContain('Subclasse de Mago');
-    expect(text(row)).toContain('Some para os jogadores: Mago está desligada.');
+    expect(text(row)).toContain('Some para os jogadores: a classe Mago está desligada.');
+    expect(text(row)).toContain('Escondida');
+    expect(row.classList).toContain('orow--hidden');
+    // The group's count says it too: the subclass is on, and the players still do not get it.
+    expect(text(el.querySelector('.counter strong')!)).toBe('Subclasses: 1 de 1 ligada · 1 escondida pela classe');
     expect(row.querySelector('[role="switch"]')!.getAttribute('aria-checked')).toBe('true');
   });
 

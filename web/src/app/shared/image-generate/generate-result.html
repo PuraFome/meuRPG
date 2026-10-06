@@ -1,0 +1,118 @@
+<div class="top">
+  <figure class="shot">
+    <div class="shot__frame" [style.--ar]="ratio()">
+      <img [src]="view().image.url" [alt]="alt()" [width]="view().image.width" [height]="view().image.height" />
+      @if (gridPath(); as d) {
+        <svg class="shot__grid" [attr.viewBox]="'0 0 ' + gridColumns() + ' ' + gridRows()" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path [attr.d]="d" fill="none" vector-effect="non-scaling-stroke" />
+        </svg>
+      }
+    </div>
+  </figure>
+  @if (view().caption) {
+    <p class="caption">{{ view().caption }}</p>
+  }
+
+  @if (useStage() === 'asking' || useStage() === 'busy') {
+    <section class="side ask" role="group" aria-labelledby="gen-ask-t">
+      <h3 class="ask__title" id="gen-ask-t" tabindex="-1">Usar como imagem do mapa?</h3>
+      <div class="mr-notice mr-notice--neutral">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>A grade, as camadas e o que os jogadores já viram continuam. Os jogadores veem a nova imagem.</p>
+      </div>
+      <p class="note">O que está desenhado na imagem, os jogadores veem.</p>
+      @if (useError(); as message) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ message }}</p>
+        </div>
+      }
+    </section>
+  } @else if (showStage() === 'asking') {
+    <section class="side ask" role="group" aria-labelledby="gen-ask-t">
+      <h3 class="ask__title" id="gen-ask-t" tabindex="-1">Mostrar o mapa inteiro?</h3>
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.</p>
+      </div>
+      @if (showError(); as message) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ message }}</p>
+        </div>
+      }
+    </section>
+  } @else {
+    <div class="side">
+      <div class="tags">
+        <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Guardada na galeria</span>
+        @if (shown()) {
+          <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">visibility</mat-icon>Mostrada aos jogadores</span>
+        }
+        @if (useStage() === 'done') {
+          <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">map</mat-icon>Imagem do mapa</span>
+        }
+      </div>
+      <p class="note">
+        @if (useStage() === 'done') {
+          Agora esta é a imagem do mapa. A grade, as camadas e o que os jogadores já viram continuam, e os jogadores veem a nova imagem.
+        } @else if (wholeMap() && canUse()) {
+          Mostra o mapa inteiro, também o que os jogadores ainda não descobriram. Por isso não se mostra com um toque: use-a como imagem do mapa, onde a névoa esconde o que ainda não foi visto. Se ela escorregou de uma parede, gere de novo.
+        } @else if (wholeMap()) {
+          Mostra o mapa inteiro, também o que os jogadores ainda não descobriram. Mostrá-la pergunta antes.
+        } @else if (shown()) {
+          Os jogadores veem esta imagem. É arte da cena, não o mapa da batalha.
+        } @else {
+          Escondida dos jogadores até você mostrar. É arte da cena, não o mapa da batalha.
+        }
+      </p>
+      @if (showError(); as message) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ message }}</p>
+        </div>
+      }
+      @if (!sessionOpen() && !shown() && !(wholeMap() && canUse())) {
+        <p class="note" id="show-why">Não há uma sessão aberta. Abra a sessão para mostrar a imagem aos jogadores.</p>
+      }
+    </div>
+  }
+</div>
+
+@if (!asking()) {
+@if (chain().length > 1) {
+  <nav class="chain" aria-labelledby="chain-title">
+    <h3 class="chain__title" id="chain-title">A cadeia de ajustes</h3>
+    <ol class="chain__list">
+      @for (edit of chain(); track edit.image?.id) {
+        <li>
+          @if (edit.image?.id === view().image.id) {
+            <b class="chain__now" aria-current="true">Imagem {{ edit.number }}</b>
+          } @else {
+            <button type="button" class="chain__link" (click)="pickChain.emit(edit.image?.id ?? '')">Imagem {{ edit.number }}</button>
+          }
+        </li>
+      }
+    </ol>
+  </nav>
+}
+
+<section class="edit" aria-labelledby="edit-title">
+  <h3 class="edit__title mr-visually-hidden" id="edit-title">Pedir um ajuste</h3>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="edit__field">
+    <mat-label>Pedir um ajuste</mat-label>
+    <textarea matInput rows="2" maxlength="500" [value]="instruction()" aria-describedby="edit-privacy edit-cost" (input)="setInstruction($event)"></textarea>
+  </mat-form-field>
+  <div class="mr-notice mr-notice--neutral privacy" id="edit-privacy" role="note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>{{ privacy }}</p>
+  </div>
+  <p class="note" id="edit-cost">{{ cost() }}</p>
+  @if (editError(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+</section>
+}

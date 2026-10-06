@@ -5,7 +5,7 @@ import { callRPC, newSignedInContext } from './support';
 
 // MR-042 (the bestiary and "Criar NPC", slice 10.17a), RN-04 (a player never sees the NPCs) and RN-10
 // (an NPC's token is born hidden). Setup (campaign, player, map) goes through the API; every test makes
-// its own campaign. "Pôr no combate" is slice 10.9b's: there is no such button yet.
+// its own campaign. "Pôr no combate" (slice 10.17b) is in monsters.spec.ts.
 
 /** What the server says `ListCreatures` finds for a search: the count the page must show. */
 async function serverCount(page: Page, campaignId: string, query: string): Promise<{ total: number; names: string[] }> {
@@ -37,7 +37,8 @@ test(
       await expect(master.getByRole('heading', { name: 'Bestiário', level: 1 })).toBeVisible();
       await expect(master.locator('.mr-page-lead')).toContainText('334 criaturas do SRD 5.1 · Mirathel');
       await expect(master.locator('.list__n')).toHaveText('334 de 334 criaturas');
-      await expect(master.getByRole('button', { name: /Pôr no combate/ })).toHaveCount(0);
+      // Every row has "Pôr no combate" beside the link that opens the stat block (slice 10.17b).
+      await expect(master.getByRole('button', { name: /^Pôr no combate/ })).toHaveCount(334);
 
       // "lobo": the count is the server's, the rows say the Portuguese and the SRD's names.
       const lobo = await serverCount(master, campaignId, 'lobo');
@@ -77,7 +78,7 @@ test(
       // typing pause ends is covered by the Vitest spec of the list.)
       const ogro = await serverCount(master, campaignId, 'ogro');
       await expect(master.locator('.list__n')).toHaveText(`${ogro.total} de 334 criaturas`);
-      await master.locator('.row', { hasText: 'Ogre · SRD' }).first().click();
+      await master.locator('.row', { hasText: 'Ogre · SRD' }).first().locator('.row__link').click();
       await expect(master.getByRole('heading', { name: 'Ogro', level: 1 })).toBeVisible();
       // Each number in its own tile, with the note that says where it comes from.
       const tile = (label: string) => master.locator('.tile').filter({ has: master.locator('.tile__l', { hasText: new RegExp(`^${label}$`) }) });
@@ -90,11 +91,11 @@ test(
       await expect(tile('Nível de desafio').locator('.tile__n')).toHaveText('450 XP');
       await expect(master.getByText('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.')).toBeVisible();
       await expect(master.locator('.entry[lang=en]', { hasText: 'Greatclub' })).toBeVisible();
-      await expect(master.getByRole('button', { name: /Pôr no combate/ })).toHaveCount(0);
+      await expect(master.getByRole('button', { name: 'Pôr no combate' })).toHaveCount(1);
       // Back keeps the search.
       await master.getByRole('link', { name: 'Voltar ao Bestiário' }).first().click();
       await expect(master.getByRole('searchbox', { name: 'Nome' })).toHaveValue('ogro');
-      await master.locator('.row', { hasText: 'Ogre · SRD' }).first().click();
+      await master.locator('.row', { hasText: 'Ogre · SRD' }).first().locator('.row__link').click();
 
       // "Criar NPC": the name, Minion, the numbers that come from the creature.
       await master.getByRole('button', { name: 'Criar NPC' }).click();

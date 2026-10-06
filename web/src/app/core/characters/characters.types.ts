@@ -41,4 +41,5 @@ export type CharacterBlockedReason =
   | 'story_locked'
   | 'not_pending'
   | 'awaiting_approval'
+  | 'archived_content'
   | 'switched_off_content';

@@ -48,6 +48,32 @@ describe('SpellsState (MR-045)', () => {
     expect(requests[1]).toMatchObject({ classKey: 'class:wizard', characterId: 'char-1', pageToken: '' });
   });
 
+  it('reads the list again after a content change, keeping the pages "Mostrar mais" had opened, and drops what went away (RN-23)', async () => {
+    const s = make();
+    answer = async (req) => (req['pageToken'] ? page(['c', 'd'], 4) : page(['a', 'b'], 4, 't2'));
+    await s.search();
+    await s.more();
+    expect(s.spells().map((x) => x.key)).toEqual(['a', 'b', 'c', 'd']);
+    // The master switched 'b' off: three spells are left, and they all fit in the first page's worth and the second's.
+    answer = async (req) => (req['pageToken'] ? page(['c', 'd'], 3) : page(['a', 'x'], 3, 't2'));
+    requests.length = 0;
+    await s.refresh();
+    expect(requests.map((r) => r['pageToken'])).toEqual(['', 't2']);
+    expect(s.spells().map((x) => x.key)).toEqual(['a', 'x', 'c', 'd']);
+    expect(s.total()).toBe(3);
+  });
+
+  it('keeps the list when the read after a content change fails', async () => {
+    const s = make();
+    await s.search();
+    answer = async () => {
+      throw new ConnectError('offline', Code.Unavailable);
+    };
+    await s.refresh();
+    expect(s.spells().map((x) => x.key)).toEqual(['a', 'b']);
+    expect(s.status()).toBe('ready');
+  });
+
   it('pages with the server\'s token and adds the rows under the ones already there', async () => {
     answer = async (req) => (req['pageToken'] ? page(['c'], 3) : page(['a', 'b'], 3, 'next-1'));
     const s = make();

@@ -54,9 +54,17 @@ service ContentService {
   // `off` marks. The entries in full, and how many characters use each, are
   // TableContentService.ListTableEntries.
   //
+  // With `character_id` (a player editing or levelling their own sheet), the
+  // entries that sheet uses come back even when the master archived or switched
+  // them off, still marked `archived` or `off`: the editor can show the current
+  // value and keep what the sheet has, and never offers it as a new choice. Only
+  // the caller's own sheet counts, never another player's; the master's catalog
+  // has them all anyway, so for the master it changes nothing.
+  //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
-  //     member of it.
+  //     member of it; with `character_id`, also a pending member, and a
+  //     character that is not the caller's own full sheet in this campaign.
   rpc ListContent(ListContentRequest) returns (ListContentResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -963,6 +971,24 @@ message NamedKey {
   // Content key, such as "language:common" or "proficiency:thieves-tools".
   string key = 1;
   string name_pt = 2;
+  // What the key is, so a screen can offer the tools and the languages apart
+  // without reading the key. Unspecified for a damage type.
+  NamedKeyKind kind = 3;
+}
+
+// NamedKeyKind is what a NamedKey names.
+enum NamedKeyKind {
+  NAMED_KEY_KIND_UNSPECIFIED = 0;
+  // A tool proficiency, such as "proficiency:thieves-tools".
+  NAMED_KEY_KIND_TOOL = 1;
+  NAMED_KEY_KIND_ARMOR = 2;
+  NAMED_KEY_KIND_WEAPON = 3;
+  NAMED_KEY_KIND_SKILL = 4;
+  NAMED_KEY_KIND_SAVING_THROW = 5;
+  // A language, such as "language:elvish".
+  NAMED_KEY_KIND_LANGUAGE = 6;
+  // Anything else the SRD lists as a proficiency (a vehicle, an herbalism kit).
+  NAMED_KEY_KIND_OTHER = 7;
 }
 
 // ChallengeRating is one row of the SRD's "Experience Points by Challenge
@@ -1106,6 +1132,18 @@ message Subclass {
   SubclassSpellcasting spellcasting = 6;
   // Switched off for the players (see Subrace.off): its own switch.
   bool off = 7;
+  // The spells the subclass always has prepared, from a class level (a domain's,
+  // an oath's); they do not count against the prepared limit. Without the ones
+  // that depend on a feature's choice (the Circle of the Land's terrain).
+  repeated SubclassAlwaysPrepared always_prepared = 8;
+}
+
+// SubclassAlwaysPrepared is a spell a subclass always prepares from a class level.
+message SubclassAlwaysPrepared {
+  // Content key of the spell.
+  string spell_key = 1;
+  // The class level the subclass has it from.
+  int32 class_level = 2;
 }
 
 // SubclassSpellcasting is how a third caster's subclass casts.
@@ -1209,6 +1247,10 @@ message Spell {
 // ListContentRequest names a campaign.
 message ListContentRequest {
   string campaign_id = 1;
+  // A character of the caller's own in the campaign: the entries it uses are in
+  // the catalog even when archived or switched off (see the RPC). Empty for the
+  // plain catalog.
+  string character_id = 2;
 }
 
 // ListContentResponse returns the campaign's rules content.

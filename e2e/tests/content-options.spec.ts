@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { catalogJSON, optionSwitchesJSON, raceOptions, setSwitchesRPC } from './content-options-support';
+import { catalogJSON, catalogText, optionSwitchesJSON, raceOptions, setSwitchesRPC } from './content-options-support';
 import { createEntryRPC, entryRoute, spellBody } from './content-support';
 import { startSessionRPC, endOpenSessionRPC } from './live-session-support';
 import { tableForMaps } from './maps-support';
@@ -11,6 +11,14 @@ test.describe.configure({ timeout: 150_000 });
 
 // MR-025 and MR-045 (RN-23, RN-10): "Opções para os jogadores", the master's switches, on screen. Every test makes its own
 // campaign through the API (a player with Pensantus, a gnome Mago of the Escola de Evocação).
+
+/** Clicks a switch and waits for the call to answer: "Tudo salvo" shows at rest too, so the answer is what proves the save. */
+async function turned(page: Page, sw: Locator): Promise<void> {
+  const answered = page.waitForResponse((r) => r.url().includes('SetOptionSwitches'));
+  await sw.click();
+  await answered;
+  await expect(page.getByText('Tudo salvo')).toBeVisible();
+}
 
 const optionsRoute = (campaignId: string, tipo: string) => `/campanhas/${campaignId}/conteudo/opcoes?tipo=${tipo}`;
 
@@ -36,8 +44,7 @@ test(
       await expect(counter).toHaveText(/Raças: 9 de 9 ligadas/);
       const tiefling = m.getByRole('switch', { name: 'Tiefling' });
       await expect(tiefling).toHaveAttribute('aria-checked', 'true');
-      await tiefling.click();
-      await expect(m.getByText('Tudo salvo')).toBeVisible();
+      await turned(m, tiefling);
       await expect(counter).toHaveText(/Raças: 8 de 9 ligadas/);
       await expect(tiefling).toHaveAttribute('aria-checked', 'false');
       await expect(m.locator('.orow', { hasText: 'Tiefling' })).toContainText('Desligada');
@@ -51,7 +58,8 @@ test(
       expect((await catalogJSON(m, campaignId)).races!.map((r) => r.key)).toContain('race:tiefling');
 
       // The player's: not in the JSON, not on the screen.
-      expect((await catalogJSON(p, campaignId)).races!.map((r) => r.key)).not.toContain('race:tiefling');
+      // Nowhere in what the player receives: not as a key, not as a name.
+      expect((await catalogText(p, campaignId)).toLowerCase()).not.toContain('tiefling');
       await p.goto(`/campanhas/${campaignId}/personagens/novo`);
       const names = await raceOptions(p);
       expect(names).not.toContain('Tiefling');
@@ -79,8 +87,7 @@ test(
       expect((await catalogJSON(p, campaignId)).subclasses!.some((s) => s.classKey === 'class:cleric')).toBe(true);
 
       await m.goto(optionsRoute(campaignId, 'classes'));
-      await m.getByRole('switch', { name: 'Clérigo' }).click();
-      await expect(m.getByText('Tudo salvo')).toBeVisible();
+      await turned(m, m.getByRole('switch', { name: 'Clérigo' }));
 
       // The player's catalog has neither the class nor its subclasses.
       const catalog = await catalogJSON(p, campaignId);
@@ -92,13 +99,12 @@ test(
       expect(after.every((o) => !o.off && o.hidden)).toBe(true);
       await m.getByRole('link', { name: /^Subclasses/ }).click();
       const first = m.locator('.orow', { hasText: 'Subclasse de Clérigo' }).first();
-      await expect(first).toContainText('Some para os jogadores: Clérigo está desligada.');
+      await expect(first).toContainText('Some para os jogadores: a classe Clérigo está desligada.');
       await expect(first.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
 
       // Turning the class back on gives the subclasses back as they were.
       await m.getByRole('link', { name: /^Classes/ }).click();
-      await m.getByRole('switch', { name: 'Clérigo' }).click();
-      await expect(m.getByText('Tudo salvo')).toBeVisible();
+      await turned(m, m.getByRole('switch', { name: 'Clérigo' }));
       expect((await catalogJSON(p, campaignId)).subclasses!.some((s) => s.classKey === 'class:cleric')).toBe(true);
     } finally {
       await Promise.all([master.close(), player.close()]);
@@ -121,15 +127,22 @@ test(
       await m.goto(optionsRoute(campaignId, 'racas'));
       const gnome = m.locator('.orow').filter({ has: m.getByRole('switch', { name: 'Gnomo', exact: true }) });
       await expect(gnome).toContainText('1 ficha usa');
-      await m.getByRole('switch', { name: 'Gnomo', exact: true }).click();
-      await expect(m.getByText('Tudo salvo')).toBeVisible();
-      await expect(gnome).toContainText('A ficha que usa continua funcionando.');
+      await turned(m, m.getByRole('switch', { name: 'Gnomo', exact: true }));
+      await expect(gnome).toContainText('A ficha que a usa continua funcionando.');
       await expect(m.getByText('Gnomo: desligada para os jogadores. 1 ficha usa e continua funcionando.')).toBeAttached();
 
       // The player's sheet still opens with the race it has.
       await p.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
       await expect(p.getByRole('heading', { level: 1, name: 'Pensantus' })).toBeVisible();
       await expect(p.getByText('Gnomo').first()).toBeVisible();
+      // An unrelated edit of that sheet saves: the switch never refuses what is not a new choice of the option.
+      await p.goto(`/campanhas/${campaignId}/personagens/${characterId}/editar`);
+      await p.getByRole('tab', { name: /Equipamento/ }).click();
+      await p.getByLabel('Itens de equipamento', { exact: true }).fill('Grimório\nAdaga');
+      await p.getByRole('button', { name: 'Salvar ficha' }).click();
+      await expect(p).toHaveURL(new RegExp(`/personagens/${characterId}$`));
+      await expect(p.getByRole('heading', { level: 1, name: 'Pensantus' })).toBeVisible();
+      await expect(p.getByText('Grimório')).toBeVisible();
       // But a new choice of it is not offered.
       await p.goto(`/campanhas/${campaignId}/personagens/novo`);
       expect(await raceOptions(p)).not.toContain('Gnomo');
@@ -169,6 +182,38 @@ test(
       await expect(m.getByRole('switch', { name: 'Meio-orc' })).toHaveAttribute('aria-checked', 'false');
       await setSwitchesRPC(m, campaignId, [{ key: 'race:half-orc', off: false }]);
       await expect(m.getByRole('switch', { name: 'Meio-orc' })).toHaveAttribute('aria-checked', 'true', { timeout: 15_000 });
+    } finally {
+      if (campaignId) {
+        const m = await master.newPage();
+        await endOpenSessionRPC(m, campaignId);
+      }
+      await Promise.all([master.close(), player.close()]);
+    }
+  },
+);
+
+test(
+  'a página aberta antes da sessão também segue a dica: ela conecta em até 30 s e lê na primeira conexão @MR-025 @RN-23 @RN-10',
+  { tag: ['@MR-025', '@RN-23', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    let campaignId = '';
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      ({ campaignId } = await tableForMaps(m, p, `Opções antes da sessão ${Date.now()}`));
+      // The player's page is up first: no session, so no stream.
+      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      expect(await raceOptions(p)).toContain('Draconato');
+      // The master opens the session and switches a race off before the page's stream has connected.
+      await startSessionRPC(m, campaignId);
+      await setSwitchesRPC(m, campaignId, [{ key: 'race:dragonborn', off: true }]);
+      // Within the 30 s of the poll of open sessions plus the connection, the first `ready` reads the lists.
+      await expect(p.getByText('O mestre mudou as opções da mesa.')).toBeVisible({ timeout: 75_000 });
+      expect(await raceOptions(p)).not.toContain('Draconato');
     } finally {
       if (campaignId) {
         const m = await master.newPage();

@@ -40,6 +40,13 @@
     }
   </mat-form-field>
 
+  @if (point().kind === Battle && draft().kind === Battle && campaignId() && mapId()) {
+    <!-- The encounter a battle point keeps (MR-043): the builder opens "Guardar" on this point. -->
+    <a class="pp__enc" [routerLink]="['/campanhas', campaignId(), 'encontros']" [queryParams]="{ mapa: mapId(), ponto: point().id }">
+      <mat-icon aria-hidden="true">swords</mat-icon>Montar o encontro deste ponto
+    </a>
+  }
+
   @if (draft().kind === Submap) {
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Leva para</mat-label>
@@ -92,6 +99,7 @@
       (cluesChange)="cluesChange.emit($event)"
     />
     <app-hooks-field [control]="hooksControl" [length]="hooksLength()" [error]="errors().hooks" />
+    <app-scene-image [campaignId]="campaignId()" [name]="point().name" [revealed]="point().revealed" />
   }
 
   <app-reveal-switch
