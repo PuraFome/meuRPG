@@ -1,0 +1,38 @@
+<section class="mr-panel img" [attr.aria-labelledby]="asking() ? null : 'img-title'" [attr.aria-label]="asking() ? 'Redesenhar a imagem' : null">
+  @if (asking()) {
+    <app-map-ask title="Redesenhar a imagem?" confirmLabel="Redesenhar" [busy]="busy()" (cancel)="back()" (confirm)="confirm()">
+      <p class="img__text">Faz a imagem de novo a partir das paredes e das portas de agora. O que você pintou continua.</p>
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>Se o mapa já foi mostrado, os jogadores veem a imagem nova na hora.</p>
+      </div>
+      @if (error(); as message) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ message }}</p>
+        </div>
+      }
+    </app-map-ask>
+  } @else {
+    <h2 class="mr-panel__title" id="img-title">Imagem</h2>
+    <p class="img__name">
+      <span>{{ map().name }}</span>
+      @if (info().imageIsGenerated) {
+        <span class="mr-tag">Gerada pelo app</span>
+      } @else {
+        <span class="mr-tag mr-tag--hidden">Imagem trocada</span>
+      }
+    </p>
+    @if (info().imageIsGenerated) {
+      <button #opener matButton="outlined" type="button" class="img__button" (click)="start()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>Redesenhar
+      </button>
+      <p class="img__hint">A imagem leva só chão e paredes. As portas e as escadas são desenhadas por cima e continuam editáveis.</p>
+    } @else {
+      <p class="img__hint">A imagem deste mapa não é mais a que o app desenhou, então não dá para redesenhar. As salas e as portas continuam na lista.</p>
+    }
+    <p class="img__facts">{{ summary().join(' · ') }}</p>
+  }
+  <!-- Always there (a live region must exist before its words do), and hidden while empty. -->
+  <p class="img__done" [class.mr-visually-hidden]="!done()" role="status" aria-live="polite">{{ done() }}</p>
+</section>

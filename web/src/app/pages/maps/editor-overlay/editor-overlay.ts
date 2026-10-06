@@ -40,6 +40,11 @@ export interface LightReach {
       </svg>
       <app-map-layers [layers]="layers()" [lightGlyphs]="true" [cursor]="cursor()" />
     }
+    @if (highlight(); as h) {
+      <svg class="room" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
+        <rect [attr.x]="h.x" [attr.y]="h.y" [attr.width]="h.width" [attr.height]="h.height" />
+      </svg>
+    }
     @if (reach(); as r) {
       @if (r.center) {
         <svg class="reach" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
@@ -76,6 +81,8 @@ export class EditorOverlay {
   /** The calibration (RN-25): how many squares of 1,5 m each square of the drawing is worth. Above 1, the drawing's own
    * lines are drawn solid, every `factor` squares, over the rules' grid, which turns dotted. */
   readonly factor = input(1);
+  /** A room chosen in a generated dungeon's list: its floor, in squares, outlined with the solid 3 px accent (MAP-LANGUAGE-E10.md). */
+  readonly highlight = input<{ x: number; y: number; width: number; height: number } | null>(null);
 
   protected readonly gridPath = computed(() => {
     const parts: string[] = [];

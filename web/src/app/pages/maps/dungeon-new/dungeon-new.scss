@@ -1,0 +1,222 @@
+:host {
+  display: block;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 44px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+// Two columns from 1024px: the options, and the preview with its name and button (the preview shrinks, the page does not scroll sideways).
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  }
+}
+
+.hint {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips__item {
+  padding: 4px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-3);
+  min-height: 260px;
+  padding: var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: 8px;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+
+  &--failed {
+    border-color: var(--mr-danger-ink);
+  }
+}
+
+.box__bad,
+.box__wait {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.box__bad {
+  font-weight: 700;
+  color: var(--mr-danger-ink);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pv__draw--stale {
+  opacity: 0.6;
+}
+
+.make {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-4);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-line);
+
+  .hint {
+    margin: 0;
+  }
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
+
+  > * {
+    flex: 0 1 180px;
+    min-height: 44px;
+  }
+
+  @media (max-width: 599.98px) {
+    flex-direction: column;
+
+    > * {
+      flex: none;
+      min-height: 48px;
+    }
+  }
+}
+
+// The steps of a map being made.
+.work__status {
+  margin: 0 0 var(--mr-space-3);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: var(--mr-space-4) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.step__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.step--done .step__mark {
+  border-color: var(--mr-success-ink);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+}
+
+.step--now .step__mark {
+  border-color: var(--mr-ink);
+}
+
+.step__text {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+
+  strong {
+    font-size: 16px;
+  }
+}
+
+// The creating panel's buttons sit a little way below its note.
+.work .pair {
+  margin-top: var(--mr-space-4);
+}
+
+// The note under the preview sits a little way below the legend.
+.pv .mr-notice {
+  margin-top: var(--mr-space-3);
+}

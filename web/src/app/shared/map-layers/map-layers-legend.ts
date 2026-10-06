@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { type DoorKind, type MapLayers, doorCounts } from '../../core/maps/layers';
 import { DOOR_NAME, DoorMark } from './door-mark';
+import { StairMark } from './stair-mark';
 
 /** The doors' entries in the order of MAP-LANGUAGE-E10.md: fechada, aberta, trancada, grade, secreta. */
 const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
@@ -19,12 +20,12 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
  */
 @Component({
   selector: 'app-map-layers-legend',
-  imports: [DoorMark, MatIconModule],
+  imports: [DoorMark, MatIconModule, StairMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ul class="mr-legend" [class.mr-legend--on-map]="onMap()" [attr.aria-label]="label()">
       <ng-content select="[before]" />
-      @if (layers().walls.length) {
+      @if (wallsShown()) {
         <li><span class="mr-swatch mr-swatch--wall" aria-hidden="true"></span>Parede</li>
       }
       @for (d of doorKinds(); track d) {
@@ -42,6 +43,12 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
       }
       @if (layers().threeQuarters.length) {
         <li><span class="mr-swatch mr-swatch--three" aria-hidden="true"></span>Três quartos</li>
+      }
+      @if (stairs().up) {
+        <li><span class="mr-swatch mr-swatch--stair" aria-hidden="true"><app-stair-mark direction="up" /></span>Escada para cima</li>
+      }
+      @if (stairs().down) {
+        <li><span class="mr-swatch mr-swatch--stair" aria-hidden="true"><app-stair-mark direction="down" /></span>Escada para baixo</li>
       }
       @if (light(); as l) {
         @if (l.bright) {
@@ -116,6 +123,11 @@ export class MapLayersLegend {
     return DOOR_ORDER.filter((k) => counts[k] > 0);
   });
   readonly label = input('Legenda do mapa');
+  /** A drawing with no wall squares of its own (the dungeon preview draws its walls as one shape) still names "Parede". */
+  readonly showWalls = input<boolean | null>(null);
+  protected readonly wallsShown = computed(() => this.showWalls() ?? this.layers().walls.length > 0);
+  /** Which stairs the map has (a generated dungeon's): the legend names those, after the doors. */
+  readonly stairs = input<{ up: boolean; down: boolean }>({ up: false, down: false });
   /** The swatches sit on a sample of the map's floor (a fog map's legend). */
   readonly onMap = input(false);
   /** Which painted light levels the map has (the editor): "Claro", "Penumbra", "Escuro", the names of the toolbar. */

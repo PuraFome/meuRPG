@@ -1,0 +1,138 @@
+:host {
+  display: block;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+}
+
+// One group per option, a rule between them (the artboard's rhythm).
+.opt__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-4) 0;
+  border-top: 1px solid var(--mr-line);
+
+  &:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+.opt__label {
+  margin: 0;
+  font-family: var(--mr-font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.opt__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.opt__value {
+  font-weight: 700;
+}
+
+.opt__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+
+  @media (max-width: 359.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opt__field {
+  width: 100%;
+}
+
+.opt__hint,
+.opt__why {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.opt__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.opt__range {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--mr-accent);
+  cursor: pointer;
+}
+
+.opt__ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.opt__stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+}
+
+.opt__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.opt__count {
+  min-width: 2ch;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.opt__other {
+  align-self: stretch;
+  min-height: 44px;
+
+  @media (max-width: 599.98px) {
+    min-height: 48px;
+  }
+}

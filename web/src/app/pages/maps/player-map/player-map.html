@@ -108,12 +108,12 @@
                     @if (p.kind === Treasure) {
                       <app-chest-icon />
                     } @else {
-                      <mat-icon>{{ icon(p.kind) }}</mat-icon>
+                      <mat-icon>{{ icon(p.kind, p.stairs) }}</mat-icon>
                     }
                   </span>
                   <span class="list__text">
                     <span class="list__name">{{ p.name }}</span>
-                    <span class="list__sub">{{ kind(p.kind) }}</span>
+                    <span class="list__sub">{{ kind(p.kind, p.stairs) }}</span>
                   </span>
                   <mat-icon class="list__go" aria-hidden="true">chevron_right</mat-icon>
                 </button>

@@ -196,6 +196,16 @@ Regras dos mapas:
 - **Estado é linha, ícone e palavra, nunca só cor:** tracejado + selo + "Escondido".
 - **Imagem do jogador só enquanto é mostrada, está deixada com os jogadores ou é de um mapa que ele vê** (RN-10): a tela nunca guarda a imagem para depois.
 
+### O gerador de masmorras (MR-010, E10-05)
+
+| Peça | Como é |
+| --- | --- |
+| Página "Gerar masmorra" | Duas colunas a partir de 1024 px: "Opções" e "Prévia" (a prévia encolhe, a página não rola de lado); no celular, só o aviso "Gerar masmorra é no notebook.". Um grupo por opção, com uma linha entre eles; as escolhas são chips que quebram de linha (a marcada em garnet suave, negrito e com o visto) ou uma faixa só (corredores); alvos de 44 px (48 no celular). |
+| Prévia (`app-dungeon-preview`) | A paleta da imagem gerada: o piso é o papel (`#ECE3CC`) com a grade a 28 %, a parede é o preenchimento escuro liso (`#3A3740`) com, por cima, a marca de parede do mapa (o véu a 28 % e a hachura a 70 % da tinta, na direção do editor, `\`), as portas e as escadas pelas marcas de MAP-LANGUAGE-E10; a moldura tem a proporção da masmorra pedida em todo estado; embaixo, a contagem e a legenda do que está desenhado. Enquanto uma nova prévia carrega, a antiga fica a 60 % com "Atualizando a prévia...". |
+| Recusa | No campo, com ícone e texto (`--mr-danger-ink`), `aria-invalid` e `aria-describedby`; a prévia vira o quadro tracejado com a frase, e "Criar o mapa" fica no estilo desligado com a razão embaixo. |
+| Lista "Salas" | Um painel ao lado do mapa: a pílula "Só você vê", e por sala o círculo com o número, o tamanho, as escadas (selo com seta), a saída por tipo de porta, o aviso de armadilha (`--mr-warning-*`) e "Pôr uma cena nesta sala" (texto, com o recuo de -12 px). A sala escolhida tem a moldura sólida de 3 px no mapa e uma sombra interna de 3 px na linha (a linha não muda de tamanho), e o mapa vai até ela. O painel "Imagem" fica na mesma coluna, e o mapa fica no lugar. |
+| Painel "Imagem" | O nome do mapa com "Gerada pelo app" (ou "Imagem trocada"), "Redesenhar" de largura inteira e a pergunta no lugar (`app-map-ask`, "Voltar" primeiro). |
+
 ### Combate
 
 As telas do combate (MR-013, desenhos E6-01 a E6-16; Etapa 6, fatia 6.5a). Os dois tipos de token se distinguem pela forma, nunca pela cor: o personagem de jogador é um disco `ink`, o NPC é um quadrado arredondado com borda `ink`.

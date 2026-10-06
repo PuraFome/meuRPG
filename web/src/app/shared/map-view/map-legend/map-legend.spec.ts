@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ViewToken } from '../map-geometry';
+import { ViewPoint, ViewToken } from '../map-geometry';
 import { MapLegend } from './map-legend';
 
 describe('MapLegend', () => {
@@ -90,6 +90,29 @@ describe('MapLegend', () => {
       const t = token({ characterId: 'p', name: 'Pensantus' });
       expect(words(render({ states: false, tokens: [t] }))).not.toContain('Tokens');
       expect(words(render({ states: false, tokens: [t], tokensTitle: true }))).toContain('Tokens');
+    });
+  });
+
+  describe('a generated dungeon\'s stairs', () => {
+    function pointsLegend(points: Partial<ViewPoint>[], states = true): string[] {
+      TestBed.resetTestingModule();
+      const fixture = TestBed.createComponent(MapLegend);
+      fixture.componentRef.setInput('points', points.map((p, i) => ({ id: `p${i}`, name: 'x', kind: 2, xBp: 0, yBp: 0, revealed: true, ...p })));
+      fixture.componentRef.setInput('states', states);
+      fixture.detectChanges();
+      return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li')).map((li) => li.textContent!.replace(/\s+/g, ' ').replace(/arrow_(up|down)ward|stairs|swords|chat_bubble/g, '').trim());
+    }
+
+    it('names the stairs the points say they are, by direction, and not as "Submapa"', () => {
+      expect(pointsLegend([{ stairs: 1 }, { stairs: 2 }])).toEqual(['Escada para cima', 'Escada para baixo']);
+    });
+
+    it('keeps "Submapa" for a submap that is not a stair', () => {
+      expect(pointsLegend([{ stairs: 1 }, {}])).toEqual(['Submapa', 'Escada para cima', 'Revelado']);
+    });
+
+    it('has no "Revelado" entry for revealed stairs alone (an empty box that explains nothing)', () => {
+      expect(pointsLegend([{ stairs: 1 }])).not.toContain('Revelado');
     });
   });
 });

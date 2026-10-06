@@ -26,7 +26,7 @@ export function pointSubLine(p: MapPoint, lightName = ''): string {
     case MapPointKind.TREASURE:
       return joinDots(['Tesouro', poText(p.treasureValuePo)]);
     default:
-      return p.targetMap ? `${pointKindLabel(p.kind)}: ${p.targetMap.name}` : pointKindLabel(p.kind);
+      return p.targetMap ? `${pointKindLabel(p.kind, p.stairs)}: ${p.targetMap.name}` : pointKindLabel(p.kind, p.stairs);
   }
 }
 

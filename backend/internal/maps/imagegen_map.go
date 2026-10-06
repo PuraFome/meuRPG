@@ -112,9 +112,9 @@ func planHash(solid []bool) string {
 	return hex.EncodeToString(sum[:16])
 }
 
-// planAt reads a map's floor plan through q (the pool or a transaction): the layers and,
-// for a generated dungeon, its cells. rec is the dungeon's record (zero for a map that
-// is not one).
+// planAt reads a map's floor plan through q (the pool or a transaction) from its
+// layers, and the dungeon's record for a generated dungeon (zero for a map that is
+// not one), whose rooms the textured map sends.
 func (s *Service) planAt(ctx context.Context, q *mapsdb.Queries, campaignID string, row mapsdb.Map, g grid.Grid) (solid []bool, set layerSet, rec mapsdb.GeneratedDungeon, err error) {
 	stored, err := q.GetMapLayers(ctx, row.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -128,7 +128,7 @@ func (s *Service) planAt(ctx context.Context, q *mapsdb.Queries, campaignID stri
 	case err != nil:
 		return nil, layerSet{}, rec, fmt.Errorf("read the map's dungeon: %w", err)
 	}
-	return floorPlan(set, g, rec, int(row.GridFactor)), set, rec, nil
+	return floorPlan(set, g), set, rec, nil
 }
 
 // previewSide is the longer side of the preview GetMapImageReference returns.
@@ -207,20 +207,12 @@ func (s *Service) loadSubject(ctx context.Context, campaignID, rawMapID string) 
 	return sub, nil
 }
 
-// floorPlan says which squares are solid. The layers' walls are, and so is a square
-// with a secret door (drawn as wall: the picture never gives it away). A generated
-// dungeon (its cells still fit the grid) also has solid rock behind its walls, which
-// the layers do not paint (solidOf). Every door but the secret one is floor.
-func floorPlan(set layerSet, g grid.Grid, rec mapsdb.GeneratedDungeon, factor int) []bool {
-	if len(rec.Cells) > 0 && factor == 1 && int(rec.Width) == g.Columns && int(rec.Height) == g.Rows && len(rec.Cells) >= (g.Squares()+3)/4 {
-		return solidOf(unpackCells(rec.Cells, g.Squares()), g.Columns, g.Rows, set.walls, set.doors)
-	}
-	solid := make([]bool, g.Squares())
-	for i := range solid {
-		col, row := i%g.Columns, i/g.Columns
-		solid[i] = set.walls.Get(col, row) || set.doors.Get(col, row) == grid.DoorSecret
-	}
-	return solid
+// floorPlan says which squares are solid: the layers' walls, and a square with a
+// secret door (drawn as wall: the picture never gives it away). Every other door is
+// floor. A generated dungeon needs nothing more, because its walls layer covers all
+// of its rock (solidOf).
+func floorPlan(set layerSet, g grid.Grid) []bool {
+	return solidOf(g.Columns, g.Rows, set.walls, set.doors)
 }
 
 // roomLines is a dungeon's rooms as the text lines the textured map sends ("Sala 3:
