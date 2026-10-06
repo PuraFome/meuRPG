@@ -897,3 +897,30 @@ LIMIT 50;
 -- edit of the puzzle makes their start wrong, so they go (the master draws another).
 DELETE FROM puzzle_runs
 WHERE puzzle_id = $1 AND shown_at IS NULL;
+
+-- The encounter kept on a battle point (MR-043, slice 10.9c; encounters.go): the master's
+-- secret, read by no query that serves a player.
+
+-- name: GetBattleEncounter :one
+SELECT * FROM battle_encounters
+WHERE campaign_id = $1 AND map_point_id = $2;
+
+-- name: UpsertBattleEncounter :one
+-- Keeps the encounter on the point, in place of the one it had.
+INSERT INTO battle_encounters (map_point_id, campaign_id, map_id, encounter, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
+ON CONFLICT (map_point_id) DO UPDATE
+SET encounter = excluded.encounter, map_id = excluded.map_id, updated_at = excluded.updated_at
+RETURNING *;
+
+-- name: DeleteBattleEncounter :execrows
+DELETE FROM battle_encounters
+WHERE campaign_id = $1 AND map_point_id = $2;
+
+-- name: ListBattleEncounters :many
+-- The battle points of a map that keep an encounter, oldest first. A point that stopped being a
+-- battle point is left out (its row stays until cleared).
+SELECT e.* FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id;

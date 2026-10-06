@@ -28,6 +28,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 const allowed connect.Code = 0
@@ -655,6 +656,14 @@ func (noRoster) MonsterHitPoints(context.Context, pgx.Tx, string, string) (link.
 
 func (noRoster) MonsterNpc(context.Context, pgx.Tx, string, string, string, time.Time) (link.Character, bool, error) {
 	return link.Character{}, false, nil
+}
+
+func (noRoster) PartyLevels(context.Context, pgx.Tx, string) ([]link.PartyMember, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) RulesContent(context.Context, pgx.Tx, string) (*rules.Content, error) {
+	return nil, errors.New("not in this test")
 }
 
 type noDice struct{}

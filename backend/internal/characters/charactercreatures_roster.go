@@ -46,7 +46,7 @@ func (s *Service) CharacterCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 	if len(characterIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := s.queries.WithTx(tx).ListLiveCreaturesOfCharacters(ctx, charactersdb.ListLiveCreaturesOfCharactersParams{CampaignID: campaignID, CharacterIds: characterIDs})
+	rows, err := s.queriesIn(tx).ListLiveCreaturesOfCharacters(ctx, charactersdb.ListLiveCreaturesOfCharactersParams{CampaignID: campaignID, CharacterIds: characterIDs})
 	if err != nil {
 		return nil, wrap("list the creatures", err)
 	}

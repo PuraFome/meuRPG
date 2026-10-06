@@ -169,6 +169,24 @@ func (q *Queries) CountWrongPuzzleMoves(ctx context.Context, arg CountWrongPuzzl
 	return items, nil
 }
 
+const deleteBattleEncounter = `-- name: DeleteBattleEncounter :execrows
+DELETE FROM battle_encounters
+WHERE campaign_id = $1 AND map_point_id = $2
+`
+
+type DeleteBattleEncounterParams struct {
+	CampaignID string
+	MapPointID string
+}
+
+func (q *Queries) DeleteBattleEncounter(ctx context.Context, arg DeleteBattleEncounterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteBattleEncounter, arg.CampaignID, arg.MapPointID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -272,6 +290,33 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+	)
+	return i, err
+}
+
+const getBattleEncounter = `-- name: GetBattleEncounter :one
+
+SELECT map_point_id, campaign_id, map_id, encounter, created_at, updated_at FROM battle_encounters
+WHERE campaign_id = $1 AND map_point_id = $2
+`
+
+type GetBattleEncounterParams struct {
+	CampaignID string
+	MapPointID string
+}
+
+// The encounter kept on a battle point (MR-043, slice 10.9c; encounters.go): the master's
+// secret, read by no query that serves a player.
+func (q *Queries) GetBattleEncounter(ctx context.Context, arg GetBattleEncounterParams) (BattleEncounter, error) {
+	row := q.db.QueryRow(ctx, getBattleEncounter, arg.CampaignID, arg.MapPointID)
+	var i BattleEncounter
+	err := row.Scan(
+		&i.MapPointID,
+		&i.CampaignID,
+		&i.MapID,
+		&i.Encounter,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -2039,6 +2084,47 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		&i.CriticalMaxRule,
 	)
 	return i, err
+}
+
+const listBattleEncounters = `-- name: ListBattleEncounters :many
+SELECT e.map_point_id, e.campaign_id, e.map_id, e.encounter, e.created_at, e.updated_at FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id
+`
+
+type ListBattleEncountersParams struct {
+	CampaignID string
+	MapID      string
+}
+
+// The battle points of a map that keep an encounter, oldest first. A point that stopped being a
+// battle point is left out (its row stays until cleared).
+func (q *Queries) ListBattleEncounters(ctx context.Context, arg ListBattleEncountersParams) ([]BattleEncounter, error) {
+	rows, err := q.db.Query(ctx, listBattleEncounters, arg.CampaignID, arg.MapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BattleEncounter
+	for rows.Next() {
+		var i BattleEncounter
+		if err := rows.Scan(
+			&i.MapPointID,
+			&i.CampaignID,
+			&i.MapID,
+			&i.Encounter,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCampaignEncounterNames = `-- name: ListCampaignEncounterNames :many
@@ -4761,6 +4847,43 @@ func (q *Queries) UpdatePuzzle(ctx context.Context, arg UpdatePuzzleParams) (Puz
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+	)
+	return i, err
+}
+
+const upsertBattleEncounter = `-- name: UpsertBattleEncounter :one
+INSERT INTO battle_encounters (map_point_id, campaign_id, map_id, encounter, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
+ON CONFLICT (map_point_id) DO UPDATE
+SET encounter = excluded.encounter, map_id = excluded.map_id, updated_at = excluded.updated_at
+RETURNING map_point_id, campaign_id, map_id, encounter, created_at, updated_at
+`
+
+type UpsertBattleEncounterParams struct {
+	MapPointID string
+	CampaignID string
+	MapID      string
+	Encounter  []byte
+	CreatedAt  time.Time
+}
+
+// Keeps the encounter on the point, in place of the one it had.
+func (q *Queries) UpsertBattleEncounter(ctx context.Context, arg UpsertBattleEncounterParams) (BattleEncounter, error) {
+	row := q.db.QueryRow(ctx, upsertBattleEncounter,
+		arg.MapPointID,
+		arg.CampaignID,
+		arg.MapID,
+		arg.Encounter,
+		arg.CreatedAt,
+	)
+	var i BattleEncounter
+	err := row.Scan(
+		&i.MapPointID,
+		&i.CampaignID,
+		&i.MapID,
+		&i.Encounter,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
