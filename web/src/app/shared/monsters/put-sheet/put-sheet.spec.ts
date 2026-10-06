@@ -139,6 +139,25 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     expect(close).toHaveBeenCalledWith(expect.objectContaining({ names: 'Bandido 4, Bandido 5 e Bandido 6' }));
   });
 
+  it("names them in their numbers' order, not the combat's initiative order", async () => {
+    const { button, more, settle } = await setup(
+      encounter({
+        id: 'enc-1',
+        name: 'Emboscada na ponte',
+        status: EncounterStatus.SETUP,
+        // The combat lists by initiative: Bandido 3 rolled highest.
+        combatants: [3, 1, 2].map((n) => combatant({ id: `m${n}`, label: `Bandido ${n}` })),
+      }),
+    );
+    api.addIds = ['m3', 'm1', 'm2'];
+    more().click();
+    more().click();
+    await settle();
+    button('Pôr 3 no combate').click();
+    await settle();
+    expect(close).toHaveBeenCalledWith(expect.objectContaining({ names: 'Bandido 1, Bandido 2 e Bandido 3' }));
+  });
+
   it('rolls the hit points and starts them revealed when the master says so', async () => {
     const { button, radio, el, settle } = await setup();
     radio('Rolar').click();
