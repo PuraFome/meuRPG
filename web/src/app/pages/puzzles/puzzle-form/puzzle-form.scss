@@ -1,0 +1,116 @@
+// E10-06 state 2: back link, title, "O tipo" (a new puzzle only) and the kind's form in one panel.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.mr-page-title {
+  margin-bottom: 0;
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  align-self: flex-start;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  max-width: 720px;
+}
+
+.form__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.full {
+  width: 100%;
+  // Focusing a field never leaves it (or the sentence under it) behind the sticky app bar.
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+// Cancel and the one filled button, the same height; side by side while both fit, stacked on a narrow phone.
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--mr-space-2);
+
+  > * {
+    min-height: 44px;
+  }
+
+  > * {
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    > * {
+      flex: 1 1 8rem;
+      min-height: 48px;
+    }
+  }
+
+  // Two buttons that do not fit on a row stack, both as wide as the card: a label never wraps.
+  @media (max-width: 479.98px) {
+    flex-direction: column-reverse;
+
+    > * {
+      flex: none;
+    }
+  }
+}
+
+// A field the form says is wrong: the outline and the words under it turn to the danger color (Material draws that only for a
+// form control; these fields are plain inputs, so the form says it).
+.field-bad {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+.field-error {
+  color: var(--mr-danger-ink);
+}
+
+.nw {
+  white-space: nowrap;
+}

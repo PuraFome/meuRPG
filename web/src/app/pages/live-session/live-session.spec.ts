@@ -12,6 +12,9 @@ import { textOf } from '../../core/format/text-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
+import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
+import { FakePuzzlesClient, lightsPuzzle, masterRun, playerRun, summary } from '../../core/puzzles/puzzles-testing';
+import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
@@ -129,6 +132,9 @@ describe('LiveSession', () => {
   /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
+  let puzzles: FakePuzzlesClient;
+  /** The query string of the page's address: `?quebra-cabeca=ID` opens a puzzle for a player. */
+  const query = new BehaviorSubject(convertToParamMap({}));
   /** The summary of the ended session (MR-032); by default it cannot be read, so the page shows the plain notice. */
   const summary = vi.fn();
   const signIn = vi.fn();
@@ -151,6 +157,8 @@ describe('LiveSession', () => {
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
     scenes = new FakeSceneClient();
+    puzzles = new FakePuzzlesClient();
+    query.next(convertToParamMap({}));
     TestBed.configureTestingModule({
       imports: [LiveSession],
       providers: [
@@ -162,12 +170,13 @@ describe('LiveSession', () => {
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
+        { provide: PuzzlesClient, useValue: puzzles },
         { provide: SessionSummaryClient, useValue: { get: summary } },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: 'mirathel' })) },
+          useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: 'mirathel' })), queryParamMap: query },
         },
       ],
     });
@@ -250,6 +259,69 @@ describe('LiveSession', () => {
       // The party panel's "Dar XP" reads the characters again.
       await new Promise((r) => setTimeout(r));
       expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('puzzles (MR-038, E10-06)', () => {
+    const selo = lightsPuzzle('a', 'O selo da Capela');
+
+    it('tells a player the master showed a puzzle, with the way in, above the board', async () => {
+      puzzles.shownResult = [summary(selo)];
+      const el = await render();
+      expect(el.querySelector('app-puzzle-notice')?.textContent).toContain('O mestre mostrou um quebra-cabeça');
+      expect(el.querySelector('app-puzzle-notice a')?.textContent).toContain('Abrir o quebra-cabeça');
+      expect(el.querySelector('app-master-puzzles')).toBeNull();
+    });
+
+    it('says nothing when the master shows nothing', async () => {
+      const el = await render();
+      expect(el.querySelector('app-puzzle-notice section')).toBeNull();
+    });
+
+    it('reads the list again when the stream says a puzzle changed: the notice appears live', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      expect(el.querySelector('app-puzzle-notice section')).toBeNull();
+      puzzles.shownResult = [summary(selo)];
+      source.push({ kind: 'puzzleChanged', puzzleId: 'a' });
+      await settle(fixture);
+      expect(el.querySelector('app-puzzle-notice section')).not.toBeNull();
+    });
+
+    it('opens the puzzle in the board\'s place when the address names it, with the way back to the session', async () => {
+      puzzles.shownResult = [summary(selo)];
+      puzzles.playerRunResult = playerRun(selo, { clue: 'Só o selo apagado abre o caminho.' });
+      query.next(convertToParamMap({ 'quebra-cabeca': 'a' }));
+      const el = await render();
+      expect(el.querySelector('app-puzzle-play h1')?.textContent).toBe('O selo da Capela');
+      expect(el.querySelector('app-puzzle-play a.back')?.textContent).toContain('Voltar para a sessão');
+      // The session's own header and board are not drawn under it.
+      expect(el.querySelector('app-session-header')).toBeNull();
+      expect(el.querySelector('app-puzzle-notice')).toBeNull();
+      // The session's own notices stay above the puzzle.
+      expect(el.querySelector('app-puzzle-play')?.previousElementSibling?.tagName.toLowerCase()).toBeDefined();
+      expect(el.querySelector('app-live-toast')).not.toBeNull();
+      expect(el.querySelector('app-clue-notice')).not.toBeNull();
+    });
+
+    it('gives the master the panel with each puzzle and where it stands, and a live card for the shown one', async () => {
+      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+      puzzles.sessionResult = [masterRun(selo, PuzzleRunStatus.SHOWN), masterRun(lightsPuzzle('b', 'O cofre'), PuzzleRunStatus.NOT_SHOWN)];
+      const el = await render();
+      const panel = el.querySelector('app-master-puzzles')!;
+      expect(panel.textContent).toContain('O selo da Capela');
+      expect(panel.textContent).toContain('Mostrar aos jogadores');
+      // The live card is in the main column, not in the rail: one at a time, the shown one chosen.
+      expect(panel.querySelector('app-master-run')).toBeNull();
+      expect(el.querySelector('.board__left app-master-live app-master-run h3')?.textContent).toBe('O selo da Capela');
+      // A master never gets the player's way in.
+      expect(el.querySelector('app-puzzle-notice')).toBeNull();
+    });
+
+    it('leaves the board without a puzzle panel when the campaign has no puzzles', async () => {
+      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+      const el = await render();
+      expect(el.querySelector('app-master-puzzles')).toBeNull();
     });
   });
 

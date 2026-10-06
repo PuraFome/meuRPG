@@ -1,0 +1,43 @@
+<section class="mr-panel panel" aria-labelledby="mp-title">
+  <h2 class="mr-panel__title" id="mp-title"><span class="nw">Quebra-cabeças</span></h2>
+
+  @if (runs().length === 0) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Não deu para ler os quebra-cabeças. O app tenta de novo quando a conexão voltar.</p>
+    </div>
+  } @else {
+    <ul class="mr-list">
+      @for (r of runs(); track idOf(r)) {
+        @let t = tag(r);
+        <li>
+          <div class="mr-list__row row" [class.row--open]="isOpen(r)">
+            <span class="row__icon" aria-hidden="true"><mat-icon>{{ icon(r.puzzle?.kind ?? 0) }}</mat-icon></span>
+            <span class="mr-list__text">
+              <span class="mr-list__name row__name">{{ r.puzzle?.name }}</span>
+              <span class="mr-list__sub">{{ sub(r) }}</span>
+            </span>
+            <span class="mr-tag" [class.mr-tag--success]="t.tone === 'success'">@if (t.icon) {<mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>}{{ t.word }}</span>
+            @if (r.status === Status.SHOWN || r.status === Status.SOLVED) {
+              <button matButton type="button" class="row__live" [attr.aria-pressed]="isOpen(r)" [attr.aria-label]="'Ver ao vivo ' + r.puzzle?.name" (click)="open(r)">
+                <mat-icon aria-hidden="true">{{ isOpen(r) ? 'radio_button_checked' : 'sensors' }}</mat-icon>Ver ao vivo
+              </button>
+            }
+            @if (r.status === Status.NOT_SHOWN || r.status === Status.CLOSED) {
+              <button matButton="outlined" type="button" class="row__show" [disabled]="showing() !== null" disabledInteractive [attr.aria-label]="(r.status === Status.CLOSED ? 'Mostrar de novo ' : 'Mostrar aos jogadores ') + r.puzzle?.name" (click)="show(r)">
+                <mat-icon aria-hidden="true">visibility</mat-icon>{{ r.status === Status.CLOSED ? 'Mostrar de novo' : 'Mostrar aos jogadores' }}
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+  @if (notice()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ notice() }}</p>
+    </div>
+  }
+</section>
+

@@ -21,7 +21,7 @@ let nextId = 0;
     <section class="ask" role="group" [attr.aria-labelledby]="id" (keydown.escape)="cancel.emit()">
       <h3 #titleEl class="ask__title" [id]="id" tabindex="-1">{{ title() }}</h3>
       <ng-content />
-      <div class="ask__pair" [class.ask__pair--row]="row()">
+      <div class="ask__pair" [class.ask__pair--row]="row()" [class.ask__pair--equal]="equal()">
         <button matButton="outlined" type="button" (click)="cancel.emit()">{{ cancelLabel() }}</button>
         <button
           matButton="filled"
@@ -95,6 +95,19 @@ let nextId = 0;
       flex: 1 1 11rem;
       width: auto;
     }
+
+    /* The puzzles' questions (E10-06 state 5): the two buttons stay side by side and equal at any width, 48 px high, even at 320 px,
+       where 11rem each would stack them. Opt-in: the other screens keep theirs. */
+    .ask__pair--equal {
+      flex-wrap: nowrap;
+    }
+
+    .ask__pair--equal button {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 48px;
+      white-space: nowrap;
+    }
   `,
 })
 export class MapAsk {
@@ -109,6 +122,8 @@ export class MapAsk {
   readonly busy = input(false);
   /** The two buttons side by side instead of one over the other (the header, where a tall question would push the map down). */
   readonly row = input(false);
+  /** With `row`: the buttons share the row equally and never wrap, at any width (the puzzles' questions). */
+  readonly equal = input(false);
   /** The words of the safe button ("Voltar" by default). */
   readonly cancelLabel = input('Voltar');
   readonly cancel = output<void>();

@@ -23,6 +23,7 @@ import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-suppor
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
+import { closePuzzleRPC, createLightsRPC, createLockRPC, createPillarsRPC, endTable, moveRPC, puzzleRoute, showPuzzleRPC, solveByThePathRPC, tableForPuzzles } from './puzzles-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -3828,3 +3829,201 @@ for (const [scheme, width, label] of [
     await scanDungeonScreens(browser, scheme, width);
   });
 }
+
+
+/**
+ * Puzzles (Etapa 10, slice 10.15a: MR-038, RN-27, RN-10; E10-06 states 1 to 9): the master's list and the three forms, his live view of
+ * each kind (the lock's solution asked for, "Recomeçar" and "Fechar" asked in place, a solved puzzle with its door) and the player's
+ * notice and boards (the lights, the lock, the pillars, solved, a 7 × 7 board). `masterToo` is false on the narrowest phone, where only the
+ * player's boards are the screens of the artboards (state 9).
+ */
+async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, masterToo = true): Promise<void> {
+  // Not `open()`: a campaign with a session open keeps a stream going (the XP watcher's), so the network is never idle.
+  const openPage = async (page: Page, route: string) => {
+    await page.goto(route);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  };
+  const stepPasses = async (page: Page, screen: string) => {
+    await expectScreenPasses(page, screen);
+  };
+  const height = width < 400 ? 640 : 900;
+  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const master = await masterContext.newPage();
+  const player = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([master.goto('/'), player.goto('/')]);
+    const table = await tableForPuzzles(master, player, `Acessibilidade quebra-cabeças ${Date.now()}`);
+    campaignId = table.campaignId;
+    const lights = await createLightsRPC(master, campaignId, 'O selo da Capela', 5, { clue: 'Só o selo apagado abre o caminho.', hints: ['A luz do selo responde ao toque.', 'Cada toque troca cinco luzes de uma vez.'] });
+    const lock = await createLockRPC(master, campaignId, 'O cofre do Refeitório', {
+      clue: 'O fogo nasce antes da lua, e a raiz vê tudo.',
+      hints: ['A pista fala de três coisas da natureza.'],
+      onSolve: { action: 'PUZZLE_SOLVE_ACTION_OPEN_DOOR', message: 'A porta da Capela se abriu.', door: { mapId: table.map.mapId, col: table.door.col, row: table.door.row } },
+    });
+    const pillars = await createPillarsRPC(master, campaignId, 'Os pilares da Galeria', { clue: 'Os pilares obedecem ao mural.' });
+    const big = await createLightsRPC(master, campaignId, 'Os candelabros da cripta', 7, { clue: 'Os candelabros guardam a cripta.' });
+    // A puzzle a limit stops after one move, one the master will close under the player, and pillars the table solves.
+    const stopped = await createLightsRPC(master, campaignId, 'A sala dos espelhos', 3, { onWrong: { maxMoves: 1 } });
+    const closing = await createLightsRPC(master, campaignId, 'O salão fechado', 3);
+    const donePillars = await createPillarsRPC(master, campaignId, 'Os pilares resolvidos', { clue: 'Os pilares obedecem ao mural.' });
+
+    if (masterToo) {
+      // The list with no puzzle at all (state 1, empty): another campaign of the master's.
+      const empty = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Sem quebra-cabeças ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+      expect(empty.ok()).toBeTruthy();
+      await openPage(master, puzzleRoute(((await empty.json()).campaign as { id: string }).id));
+      await expect(master.getByText('Nenhum quebra-cabeça ainda.')).toBeVisible();
+      await stepPasses(master, `Lista de quebra-cabeças vazia ${where}`);
+
+      // The list (state 1) and the three forms (state 2), the edit form.
+      await openPage(master, puzzleRoute(campaignId));
+      await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O selo da Capela')).toBeVisible();
+      await stepPasses(master, `Lista de quebra-cabeças ${where}`);
+      await master.getByRole('region', { name: 'Quebra-cabeças' }).getByRole('button', { name: 'Arquivar O selo da Capela' }).click();
+      await expect(master.getByRole('heading', { name: 'Arquivar “O selo da Capela”?' })).toBeFocused();
+      await stepPasses(master, `Arquivar na lista ${where}`);
+      await master.getByRole('button', { name: 'Voltar' }).click();
+
+      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', 'novo'));
+      await expect(master.getByText(/\d+ acesas?, \d+ apagadas?\./)).toBeVisible({ timeout: 30_000 });
+      await stepPasses(master, `Novo quebra-cabeça: as luzes ${where}`);
+      await master.getByRole('radio', { name: /^Fechadura de combinação/ }).check();
+      await master.getByRole('radio', { name: 'Abrir uma porta' }).check();
+      await expect(master.getByLabel('Mapa', { exact: true })).toBeVisible();
+      await stepPasses(master, `Novo quebra-cabeça: a fechadura, abrir uma porta ${where}`);
+      await master.getByRole('radio', { name: /^Símbolos giratórios/ }).check();
+      await expect(master.getByText(/Dá para resolver em \d+ giros?, no mínimo\./)).toBeVisible({ timeout: 30_000 });
+      await stepPasses(master, `Novo quebra-cabeça: os símbolos giratórios ${where}`);
+      await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
+      await expect(master.getByText('Dê um nome ao quebra-cabeça.')).toBeVisible();
+      await stepPasses(master, `Formulário com erro ${where}`);
+      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', lock, 'editar'));
+      await expect(master.getByLabel('Nome')).toHaveValue('O cofre do Refeitório');
+      await stepPasses(master, `Editar a fechadura ${where}`);
+
+      // The live view (states 3 to 5): each kind, the solution asked for, the two questions.
+      await showPuzzleRPC(master, campaignId, lights);
+      await showPuzzleRPC(master, campaignId, lock);
+      await showPuzzleRPC(master, campaignId, pillars);
+      await openSessionPage(master, campaignId);
+      const panel = master.getByRole('region', { name: 'Quebra-cabeças' });
+      await panel.getByRole('button', { name: 'Ver ao vivo O selo da Capela' }).click();
+      await expect(master.getByRole('article', { name: 'O selo da Capela' })).toBeVisible();
+      await stepPasses(master, `Sessão do mestre com quebra-cabeças ${where}`);
+      // One card at a time, in the main column: "Ver ao vivo" on the row chooses it.
+      await panel.getByRole('button', { name: 'Ver ao vivo O cofre do Refeitório' }).click();
+      const lockCard = master.getByRole('article', { name: 'O cofre do Refeitório' });
+      await lockCard.getByRole('button', { name: 'Mostrar a solução só para mim' }).click();
+      await expect(lockCard.locator('.part__label', { hasText: 'A solução' })).toBeVisible();
+      await lockCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `Fechadura ao vivo, com a solução ${where}`);
+      await panel.getByRole('button', { name: 'Ver ao vivo O selo da Capela' }).click();
+      const lightsCard = master.getByRole('article', { name: 'O selo da Capela' });
+      await lightsCard.getByRole('button', { name: 'Recomeçar' }).click();
+      await expect(lightsCard.getByRole('heading', { name: 'Recomeçar “O selo da Capela”?' })).toBeFocused();
+      await stepPasses(master, `Recomeçar perguntado na tela ${where}`);
+      await lightsCard.getByRole('button', { name: 'Voltar' }).click();
+      await lightsCard.getByRole('button', { name: 'Fechar' }).click();
+      await expect(lightsCard.getByRole('heading', { name: 'Fechar “O selo da Capela”?' })).toBeFocused();
+      await stepPasses(master, `Fechar perguntado na tela ${where}`);
+      await lightsCard.getByRole('button', { name: 'Voltar' }).click();
+      void panel;
+    } else {
+      await showPuzzleRPC(master, campaignId, lights);
+      await showPuzzleRPC(master, campaignId, lock);
+      await showPuzzleRPC(master, campaignId, pillars);
+    }
+    await showPuzzleRPC(master, campaignId, big);
+    await showPuzzleRPC(master, campaignId, stopped);
+    await showPuzzleRPC(master, campaignId, closing);
+    await showPuzzleRPC(master, campaignId, donePillars);
+
+    // The player: the notice on the session page (state 6), then each board.
+    await openSessionPage(player, campaignId);
+    await expect(player.getByText('O mestre mostrou um quebra-cabeça').first()).toBeVisible({ timeout: 30_000 });
+    await stepPasses(player, `Aviso do quebra-cabeça mostrado ${where}`);
+    const playTo = async (id: string, name: string) => {
+      await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${id}`);
+      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
+    };
+    await playTo(lights, 'O selo da Capela');
+    await expect(player.getByRole('button', { name: /^Luz na linha 1, coluna 1/ })).toBeVisible();
+    await stepPasses(player, `As luzes (5 × 5) ${where}`);
+    await playTo(big, 'Os candelabros da cripta');
+    await expect(player.getByRole('button', { name: /^Luz na linha 7, coluna 7/ })).toBeVisible();
+    await stepPasses(player, `As luzes (7 × 7) ${where}`);
+    await playTo(pillars, 'Os pilares da Galeria');
+    await expect(player.getByRole('group', { name: 'O mural' })).toBeVisible();
+    await moveRPC(player, campaignId, pillars, { pillars: { pillar: 0, delta: 1 } });
+    await expect(player.getByText('Os pilares 1 e 2 mudaram.')).toBeVisible();
+    await stepPasses(player, `Os pilares ${where}`);
+    await playTo(lock, 'O cofre do Refeitório');
+    await expect(player.getByRole('group', { name: 'Roda 1: Lua' })).toBeVisible();
+    await stepPasses(player, `A fechadura ${where}`);
+
+    // A limit stopped it: the neutral line, the board frozen.
+    await playTo(stopped, 'A sala dos espelhos');
+    await moveRPC(player, campaignId, stopped, { lights: { row: 0, col: 0 } });
+    await expect(player.getByText('O quebra-cabeça parou.')).toBeVisible();
+    await stepPasses(player, `Parou por um limite ${where}`);
+    // The master closed it while the player was reading.
+    await playTo(closing, 'O salão fechado');
+    await closePuzzleRPC(master, campaignId, closing);
+    await expect(player.getByText('O mestre fechou o quebra-cabeça.')).toBeVisible();
+    await stepPasses(player, `Fechado pelo mestre ${where}`);
+    // The pillars, solved by the table.
+    await solveByThePathRPC(master, player, campaignId, donePillars);
+    await playTo(donePillars, 'Os pilares resolvidos');
+    await expect(player.getByText('Resolvido', { exact: true })).toBeVisible();
+    await stepPasses(player, `Os pilares resolvidos ${where}`);
+
+    // Solved: the door opens, the page says what the master wrote.
+    await moveRPC(player, campaignId, lock, { lock: { wheel: 0, delta: 1 } });
+    await moveRPC(player, campaignId, lock, { lock: { wheel: 3, delta: -1 } });
+    await expect(player.getByText('Resolvido', { exact: true })).toBeVisible();
+    await stepPasses(player, `Resolvido ${where}`);
+    if (masterToo) {
+      await openSessionPage(master, campaignId);
+      await master.getByRole('button', { name: 'Ver ao vivo Os pilares resolvidos' }).click();
+      const pillarsCard = master.getByRole('article', { name: 'Os pilares resolvidos' });
+      await expect(pillarsCard.getByText('Resolvido').first()).toBeVisible();
+      await pillarsCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `Pilares resolvidos, na visão do mestre ${where}`);
+      await master.getByRole('button', { name: 'Ver ao vivo O cofre do Refeitório' }).click();
+      const lockCard = master.getByRole('article', { name: 'O cofre do Refeitório' });
+      await expect(lockCard.getByText('Uma porta se abriu.')).toBeVisible();
+      await expect(lockCard.getByRole('img', { name: /A porta aberta no mapa/ })).toBeVisible();
+      await lockCard.scrollIntoViewIfNeeded();
+      await stepPasses(master, `Resolvido, com a porta aberta ${where}`);
+    }
+  } finally {
+    if (campaignId) {
+      await endTable(master, campaignId);
+    }
+    await masterContext.close();
+    await playerContext.close();
+  }
+}
+
+test('os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanPuzzleScreens(browser, 'light', 1280);
+});
+
+test('os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanPuzzleScreens(browser, 'dark', 390);
+});
+
+test('os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanPuzzleScreens(browser, 'light', 320, false);
+});
+
+test('os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanPuzzleScreens(browser, 'dark', 1024);
+});
