@@ -13,7 +13,9 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
 
 // The master's calls on the campaign's puzzles: make, edit, list, archive. None of
@@ -42,12 +44,27 @@ func (s *Service) buildPuzzle(ctx context.Context, tx pgx.Tx, campaignID string,
 	if err != nil {
 		return puzzleBuilt{}, "", nil, err
 	}
+	if err := s.checkCipherKeyClue(ctx, tx, campaignID, built.config); err != nil {
+		return puzzleBuilt{}, "", nil, err
+	}
+	if built.hintCheck, err = s.checkHintCheck(in.hintCheck, in.hints); err != nil {
+		return puzzleBuilt{}, "", nil, err
+	}
+	if built.parts, err = s.checkParts(ctx, tx, campaignID, in.parts); err != nil {
+		return puzzleBuilt{}, "", nil, err
+	}
+	if built.onWrong, err = s.checkOnWrong(ctx, tx, campaignID, kind, in.onWrong); err != nil {
+		return puzzleBuilt{}, "", nil, err
+	}
 	return built, action, target, nil
 }
 
 // fromBuilt is a puzzle row's worth of a checked puzzle, for an insert or an update.
 func fromBuilt(kind puzzleKind, in puzzleInput, b puzzleBuilt, action string, target *playv1.PuzzleOnSolve) (puzzleDef, error) {
-	d := puzzleDef{kind: kind, config: b.config, solution: b.solution, start: b.start, hints: in.hints, onSolve: target}
+	d := puzzleDef{
+		kind: kind, config: b.config, solution: b.solution, start: b.start, hints: in.hints, onSolve: target,
+		hintCheck: b.hintCheck, parts: b.parts, onWrong: b.onWrong,
+	}
 	least, err := kind.minimum(d, b.start)
 	if err != nil {
 		return puzzleDef{}, err
@@ -62,7 +79,9 @@ func fromBuilt(kind puzzleKind, in puzzleInput, b puzzleBuilt, action string, ta
 
 // puzzleColumns is the JSON of the columns of a built puzzle.
 type puzzleColumns struct {
-	config, solution, start, hints, target []byte
+	config, solution, start, hints, target, parts, onWrong []byte
+	hintSkill                                              *string
+	hintDC                                                 *int32
 }
 
 func columnsOf(d puzzleDef) (puzzleColumns, error) {
@@ -74,12 +93,37 @@ func columnsOf(d puzzleDef) (puzzleColumns, error) {
 	if d.row.SolveAction != solveNotify || d.onSolve.GetMessage() != "" {
 		c.target = toJSON(d.onSolve)
 	}
+	parts := make([]storedPart, len(d.parts))
+	for i, p := range d.parts {
+		parts[i] = storedPart{CharacterID: p.GetCharacterId(), Text: p.GetText()}
+	}
+	if c.parts, err = jsonMarshal(parts); err != nil {
+		return puzzleColumns{}, fmt.Errorf("encode the parts: %w", err)
+	}
+	if d.hintCheck != nil {
+		skill, dc := d.hintCheck.GetSkillKey(), d.hintCheck.GetDc()
+		c.hintSkill, c.hintDC = &skill, &dc
+	}
+	if d.onWrong != nil {
+		c.onWrong = toJSON(d.onWrong)
+	}
 	return c, nil
 }
 
 // puzzleInputOf reads a create or update request.
-func puzzleInputOf(name string, cfg *playv1.PuzzleConfig, sol *playv1.PuzzleSolution, start *playv1.PuzzleState, seed int64, clue string, hints []string, on *playv1.PuzzleOnSolve) puzzleInput {
-	return puzzleInput{name: name, config: cfg, solution: sol, start: start, seed: seed, clue: clue, hints: hints, onSolve: on}
+func puzzleInputOf(name string, cfg *playv1.PuzzleConfig, sol *playv1.PuzzleSolution, start *playv1.PuzzleState, seed int64, clue string, hints []string, on *playv1.PuzzleOnSolve, extras puzzleExtras) puzzleInput {
+	return puzzleInput{
+		name: name, config: cfg, solution: sol, start: start, seed: seed, clue: clue, hints: hints, onSolve: on,
+		hintCheck: extras.hintCheck, parts: extras.parts, onWrong: extras.onWrong,
+	}
+}
+
+// puzzleExtras is what a create or an edit carries besides the first ten fields:
+// the hint check, the split information and "Ao errar".
+type puzzleExtras struct {
+	hintCheck *playv1.PuzzleHintCheck
+	parts     []*playv1.PuzzlePart
+	onWrong   *playv1.PuzzleOnWrong
 }
 
 // CreatePuzzle implements playv1connect.PuzzleServiceHandler.
@@ -91,7 +135,8 @@ func (s *Service) CreatePuzzle(
 	if err != nil {
 		return nil, err
 	}
-	in := puzzleInputOf(req.Msg.GetName(), req.Msg.GetConfig(), req.Msg.GetSolution(), req.Msg.GetStart(), req.Msg.GetSeed(), req.Msg.GetClue(), req.Msg.GetHints(), req.Msg.GetOnSolve())
+	in := puzzleInputOf(req.Msg.GetName(), req.Msg.GetConfig(), req.Msg.GetSolution(), req.Msg.GetStart(), req.Msg.GetSeed(), req.Msg.GetClue(), req.Msg.GetHints(), req.Msg.GetOnSolve(),
+		puzzleExtras{hintCheck: req.Msg.GetHintCheck(), parts: req.Msg.GetParts(), onWrong: req.Msg.GetOnWrong()})
 	var row playdb.Puzzle
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		built, action, target, err := s.buildPuzzle(ctx, tx, m.CampaignID, in)
@@ -109,7 +154,8 @@ func (s *Service) CreatePuzzle(
 		row, err = s.queriesIn(tx).InsertPuzzle(ctx, playdb.InsertPuzzleParams{
 			CampaignID: m.CampaignID, Kind: d.row.Kind, Name: d.row.Name, Config: cols.config, Solution: cols.solution,
 			Seed: d.row.Seed, Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
-			SolveAction: action, SolveTarget: cols.target, CreatedAt: s.now(),
+			SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
+			CreatedAt: s.now(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert puzzle: %w", err)
@@ -119,7 +165,7 @@ func (s *Service) CreatePuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a puzzle", err)
 	}
-	out, err := s.masterPuzzle(row, false)
+	out, err := s.masterPuzzle(ctx, row, false)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the new puzzle", err)
 	}
@@ -127,12 +173,35 @@ func (s *Service) CreatePuzzle(
 }
 
 // masterPuzzle is the master's message for a row.
-func (s *Service) masterPuzzle(row playdb.Puzzle, shown bool) (*playv1.Puzzle, error) {
+func (s *Service) masterPuzzle(ctx context.Context, row playdb.Puzzle, shown bool) (*playv1.Puzzle, error) {
 	d, err := decodePuzzle(row)
 	if err != nil {
 		return nil, err
 	}
-	return puzzleProto(d, shown)
+	out, err := puzzleProto(d, shown)
+	if err != nil {
+		return nil, err
+	}
+	return out, s.flagParts(ctx, row.CampaignID, out)
+}
+
+// flagParts marks, on the master's copy, the parts whose owner is not a living player
+// character of the active party any more (a character that died or left): nobody reads
+// them, and the master should know. It reads through the pool.
+func (s *Service) flagParts(ctx context.Context, campaignID string, p *playv1.Puzzle) error {
+	if !slices.ContainsFunc(p.GetParts(), func(pt *playv1.PuzzlePart) bool { return pt.GetCharacterId() != "" }) {
+		return nil
+	}
+	party, err := s.roster.CombatParty(ctx, nil, campaignID)
+	if err != nil {
+		return err
+	}
+	for _, pt := range p.GetParts() {
+		if pt.GetCharacterId() != "" {
+			pt.OwnerUnavailable = !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == pt.GetCharacterId() })
+		}
+	}
+	return nil
 }
 
 // UpdatePuzzle implements playv1connect.PuzzleServiceHandler.
@@ -148,7 +217,8 @@ func (s *Service) UpdatePuzzle(
 	if err != nil {
 		return nil, err
 	}
-	in := puzzleInputOf(req.Msg.GetName(), req.Msg.GetConfig(), req.Msg.GetSolution(), req.Msg.GetStart(), req.Msg.GetSeed(), req.Msg.GetClue(), req.Msg.GetHints(), req.Msg.GetOnSolve())
+	in := puzzleInputOf(req.Msg.GetName(), req.Msg.GetConfig(), req.Msg.GetSolution(), req.Msg.GetStart(), req.Msg.GetSeed(), req.Msg.GetClue(), req.Msg.GetHints(), req.Msg.GetOnSolve(),
+		puzzleExtras{hintCheck: req.Msg.GetHintCheck(), parts: req.Msg.GetParts(), onWrong: req.Msg.GetOnWrong()})
 	var row playdb.Puzzle
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queriesIn(tx)
@@ -201,7 +271,8 @@ func (s *Service) UpdatePuzzle(
 		row, err = q.UpdatePuzzle(ctx, playdb.UpdatePuzzleParams{
 			CampaignID: m.CampaignID, ID: id, Name: d.row.Name, Config: cols.config, Solution: cols.solution, Seed: d.row.Seed,
 			Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
-			SolveAction: action, SolveTarget: cols.target, UpdatedAt: s.now(),
+			SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
+			UpdatedAt: s.now(),
 		})
 		if err != nil {
 			return fmt.Errorf("update puzzle: %w", err)
@@ -211,7 +282,7 @@ func (s *Service) UpdatePuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a puzzle", err)
 	}
-	out, err := s.masterPuzzle(row, false)
+	out, err := s.masterPuzzle(ctx, row, false)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the edited puzzle", err)
 	}
@@ -255,6 +326,25 @@ func (s *Service) PreviewPuzzleStart(
 	return connect.NewResponse(&playv1.PreviewPuzzleStartResponse{Seed: seed, Start: built.start, Minimum: least}), nil
 }
 
+// PreviewPuzzleCipher implements playv1connect.PuzzleServiceHandler.
+func (s *Service) PreviewPuzzleCipher(
+	ctx context.Context,
+	req *connect.Request[playv1.PreviewPuzzleCipherRequest],
+) (*connect.Response[playv1.PreviewPuzzleCipherResponse], error) {
+	if _, err := requireMaster(ctx, req.Msg.GetCampaignId()); err != nil {
+		return nil, err
+	}
+	sol := req.Msg.GetSolution()
+	if sol == nil {
+		return nil, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "solution", "solution must be a cipher's")
+	}
+	text, err := puzzle.Encipher(sol.GetMessage(), cipherKey(sol))
+	if err != nil {
+		return nil, rulesError(err, "solution.cipher")
+	}
+	return connect.NewResponse(&playv1.PreviewPuzzleCipherResponse{Ciphertext: text}), nil
+}
+
 // shownSet is the set of the campaign's puzzle IDs that were shown in any session.
 func (s *Service) shownSet(ctx context.Context, campaignID string) (map[string]bool, error) {
 	ids, err := s.queries.ListShownPuzzleIDs(ctx, campaignID)
@@ -287,7 +377,7 @@ func (s *Service) ListPuzzles(
 	}
 	res := &playv1.ListPuzzlesResponse{}
 	for _, row := range rows {
-		p, err := s.masterPuzzle(row, shown[row.ID])
+		p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 		if err != nil {
 			return nil, s.dbError(ctx, "read a puzzle", err)
 		}
@@ -320,7 +410,7 @@ func (s *Service) GetPuzzle(
 	if err != nil {
 		return nil, s.dbError(ctx, "find a puzzle", err)
 	}
-	p, err := s.masterPuzzle(row, shown[row.ID])
+	p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}
@@ -372,7 +462,7 @@ func (s *Service) setArchived(ctx context.Context, campaignID, rawID string, arc
 	if changed && shown[id] {
 		s.publishPuzzleChanged(campaignID, id) // a shown puzzle leaves, or comes back to, the players' list
 	}
-	p, err := s.masterPuzzle(row, shown[row.ID])
+	p, err := s.masterPuzzle(ctx, row, shown[row.ID])
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}

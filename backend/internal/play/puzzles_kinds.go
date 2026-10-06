@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"math/bits"
 	"slices"
+	"strings"
+	"time"
+	"unicode/utf8"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
 
@@ -14,8 +18,10 @@ import (
 // how to check what the master wrote, how to start it, what a move does, when it is
 // solved and what the fewest moves are. The rest of the service (storage, runs,
 // idempotency, "Ao resolver", the hints, who sees what) never looks inside a kind.
-// Slice 10.7b adds the riddle, the sequence and the cipher: one more type here, and
-// a case in kindOf.
+// The riddle, the sequence and the cipher (slice 10.7b) are three more types here and
+// three more cases in kindOf and kindByStored: what makes them different from the
+// first three is only that a move can be wrong (judges), which the rest of the service
+// handles for all kinds at once ("Ao errar").
 type puzzleKind interface {
 	// id is the kind as the API names it.
 	id() playv1.PuzzleKind
@@ -30,10 +36,16 @@ type puzzleKind interface {
 	// generate draws a start for the seed from a built puzzle (never for a kind that
 	// does not generate).
 	generate(d puzzleDef, seed int64) (*playv1.PuzzleState, error)
-	// move applies a relative move to the state and returns the new state and what
-	// changed (the indices of the cells, wheels or pillars). It is a pure function
-	// of the two: a replay in any order gives the same state.
-	move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (*playv1.PuzzleState, []int32, error)
+	// judges says whether a move of this kind can be wrong (an answer, a bell). The
+	// lights, the lock and the pillars cannot: whatever a player does is a move toward
+	// the solution or away from it, never a mistake. A trap and the attempts of "Ao
+	// errar" only make sense for a kind that judges.
+	judges() bool
+	// move applies a move to the state and returns the new state, what changed (the
+	// indices of the cells, wheels or pillars) and, for a kind that judges, whether the
+	// move was wrong. It is a pure function of the two: for the kinds that move
+	// relatively, a replay in any order gives the same state.
+	move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error)
 	// solved says whether the state is the solution.
 	solved(d puzzleDef, state *playv1.PuzzleState) (bool, error)
 	// minimum is the fewest moves from the state, and one way to make them.
@@ -44,12 +56,38 @@ type puzzleKind interface {
 	symbols(cfg *playv1.PuzzleConfig) []*playv1.PuzzleSymbol
 }
 
+// moveOutcome is what a move did: the state it left, what changed in it, and, for a
+// kind that judges, whether it was wrong and, for the sequence, which step it was for
+// (from 1).
+type moveOutcome struct {
+	state   *playv1.PuzzleState
+	changed []int32
+	wrong   bool
+	step    int32
+	// solved is set by a kind whose answer is judged on the move itself, not left in the
+	// state (the riddle and the cipher: a right answer solves it, and the state has
+	// nowhere to say so). The other kinds are solved when solved(state) says so.
+	solved bool
+}
+
+// gatedKind is a kind whose moves wait for something besides the state: the sequence
+// waits for the master to have played it, and for the play to end. gate says why a move
+// is refused now, or nil.
+type gatedKind interface {
+	gate(d puzzleDef, run playdb.PuzzleRun, now time.Time) error
+}
+
 // puzzleBuilt is a puzzle's stored forms, checked.
 type puzzleBuilt struct {
 	config   *playv1.PuzzleConfig
 	solution *playv1.PuzzleSolution
 	start    *playv1.PuzzleState
 	seed     int64
+	// What every kind has the same (set by buildPuzzle, never by a kind): the hint
+	// check, the split information and "Ao errar", checked.
+	hintCheck *playv1.PuzzleHintCheck
+	parts     []*playv1.PuzzlePart
+	onWrong   *playv1.PuzzleOnWrong
 }
 
 // kindOf finds the kind of a config, nil for a config with none or one this server
@@ -62,9 +100,18 @@ func kindOf(cfg *playv1.PuzzleConfig) puzzleKind {
 		return lockKind{}
 	case *playv1.PuzzleConfig_Pillars:
 		return pillarsKind{}
+	case *playv1.PuzzleConfig_Riddle:
+		return riddleKind{}
+	case *playv1.PuzzleConfig_Sequence:
+		return sequenceKind{}
+	case *playv1.PuzzleConfig_Cipher:
+		return cipherKind{}
 	}
 	return nil
 }
+
+// allKinds is every kind, for finding one by its stored name.
+var allKinds = []puzzleKind{lightsKind{}, lockKind{}, pillarsKind{}, riddleKind{}, sequenceKind{}, cipherKind{}}
 
 // rulesError turns an error of package rules/puzzle into the typed refusal the app
 // reads. field is the request field to blame.
@@ -83,6 +130,12 @@ func rulesError(err error, field string) error {
 		reason = playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_UNSOLVABLE
 	case errors.Is(err, puzzle.ErrMove):
 		reason = playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_MOVE
+	case errors.Is(err, puzzle.ErrAnswers):
+		reason = playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_ANSWERS
+	case errors.Is(err, puzzle.ErrCipher):
+		reason = playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_CIPHER
+	case errors.Is(err, puzzle.ErrSequence):
+		reason = playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_SYMBOLS
 	default:
 		return err
 	}
@@ -172,18 +225,20 @@ func (lightsKind) generate(d puzzleDef, seed int64) (*playv1.PuzzleState, error)
 	return lightsState(n, start), nil
 }
 
-func (lightsKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (*playv1.PuzzleState, []int32, error) {
+func (lightsKind) judges() bool { return false }
+
+func (lightsKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
 	if mv.GetLights() == nil {
-		return nil, nil, wrongKind("move")
+		return moveOutcome{}, wrongKind("move")
 	}
 	n := lightsSize(d.config)
 	cur, err := lightsBits(n, state)
 	if err != nil {
-		return nil, nil, err
+		return moveOutcome{}, err
 	}
 	next, changed, err := puzzle.LightsPress(n, cur, int(mv.GetLights().GetRow()), int(mv.GetLights().GetCol()))
 	if err != nil {
-		return nil, nil, rulesError(err, "move.lights")
+		return moveOutcome{}, rulesError(err, "move.lights")
 	}
 	var cells []int32
 	for i := range n * n {
@@ -191,7 +246,7 @@ func (lightsKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.Puzzle
 			cells = append(cells, clamp32(i, 0, 1<<20))
 		}
 	}
-	return lightsState(n, next), cells, nil
+	return moveOutcome{state: lightsState(n, next), changed: cells}, nil
 }
 
 func (lightsKind) solved(d puzzleDef, state *playv1.PuzzleState) (bool, error) {
@@ -285,18 +340,20 @@ func (lockKind) generate(puzzleDef, int64) (*playv1.PuzzleState, error) {
 	return nil, errors.New("play: a lock has no generated start")
 }
 
-func (lockKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (*playv1.PuzzleState, []int32, error) {
+func (lockKind) judges() bool { return false }
+
+func (lockKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
 	if mv.GetLock() == nil {
-		return nil, nil, wrongKind("move")
+		return moveOutcome{}, wrongKind("move")
 	}
 	if state.GetLock() == nil {
-		return nil, nil, wrongKind("state")
+		return moveOutcome{}, wrongKind("state")
 	}
 	next, err := puzzle.LockTurn(lockAlphabet(d.config), ints(state.GetLock().GetWheels()), int(mv.GetLock().GetWheel()), int(mv.GetLock().GetDelta()))
 	if err != nil {
-		return nil, nil, rulesError(err, "move.lock")
+		return moveOutcome{}, rulesError(err, "move.lock")
 	}
-	return lockState(next), []int32{mv.GetLock().GetWheel()}, nil
+	return moveOutcome{state: lockState(next), changed: []int32{mv.GetLock().GetWheel()}}, nil
 }
 
 func (lockKind) solved(d puzzleDef, state *playv1.PuzzleState) (bool, error) {
@@ -392,18 +449,20 @@ func (pillarsKind) generate(d puzzleDef, seed int64) (*playv1.PuzzleState, error
 	return pillarsState(start), nil
 }
 
-func (pillarsKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (*playv1.PuzzleState, []int32, error) {
+func (pillarsKind) judges() bool { return false }
+
+func (pillarsKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
 	if mv.GetPillars() == nil {
-		return nil, nil, wrongKind("move")
+		return moveOutcome{}, wrongKind("move")
 	}
 	if state.GetPillars() == nil {
-		return nil, nil, wrongKind("state")
+		return moveOutcome{}, wrongKind("state")
 	}
 	next, changed, err := pillarsRules(d.config).Turn(ints(state.GetPillars().GetPillars()), int(mv.GetPillars().GetPillar()), int(mv.GetPillars().GetDelta()))
 	if err != nil {
-		return nil, nil, rulesError(err, "move.pillars")
+		return moveOutcome{}, rulesError(err, "move.pillars")
 	}
-	return pillarsState(next), int32s(changed), nil
+	return moveOutcome{state: pillarsState(next), changed: int32s(changed)}, nil
 }
 
 func (pillarsKind) solved(d puzzleDef, state *playv1.PuzzleState) (bool, error) {
@@ -440,3 +499,278 @@ func (pillarsKind) playerConfig(cfg *playv1.PuzzleConfig) *playv1.PuzzleConfig {
 func (pillarsKind) symbols(cfg *playv1.PuzzleConfig) []*playv1.PuzzleSymbol {
 	return symbolsOf(puzzle.Glyphs(int(cfg.GetPillars().GetSymbols())))
 }
+
+// --- the riddle ---
+
+type riddleKind struct{}
+
+func (riddleKind) id() playv1.PuzzleKind { return playv1.PuzzleKind_PUZZLE_KIND_RIDDLE }
+func (riddleKind) stored() string        { return "riddle" }
+func (riddleKind) generates() bool       { return false }
+func (riddleKind) judges() bool          { return true }
+
+// maxRiddleText is the longest riddle, in characters.
+const maxRiddleText = 500
+
+func riddleState() *playv1.PuzzleState {
+	return &playv1.PuzzleState{Kind: &playv1.PuzzleState_Riddle{Riddle: &playv1.RiddleState{}}}
+}
+
+func (riddleKind) build(in puzzleInput, _ int64) (puzzleBuilt, error) {
+	cfg := in.config.GetRiddle()
+	if cfg == nil {
+		return puzzleBuilt{}, wrongKind("config")
+	}
+	if in.solution.GetRiddle() == nil {
+		return puzzleBuilt{}, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "solution", "a riddle needs its answers")
+	}
+	text, err := checkedText(cfg.GetText(), 1, maxRiddleText, playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_TEXT, "config.riddle.text")
+	if err != nil {
+		return puzzleBuilt{}, err
+	}
+	answers := in.solution.GetRiddle().GetAnswers()
+	if err := puzzle.ValidateAnswers(answers); err != nil {
+		return puzzleBuilt{}, rulesError(err, "solution.riddle.answers")
+	}
+	trimmed := make([]string, len(answers))
+	for i, a := range answers {
+		trimmed[i] = strings.TrimSpace(a)
+	}
+	return puzzleBuilt{
+		config:   &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Riddle{Riddle: &playv1.RiddleConfig{Text: text}}},
+		solution: &playv1.PuzzleSolution{Kind: &playv1.PuzzleSolution_Riddle{Riddle: &playv1.RiddleSolution{Answers: trimmed}}},
+		start:    riddleState(),
+	}, nil
+}
+
+func (riddleKind) generate(puzzleDef, int64) (*playv1.PuzzleState, error) {
+	return nil, errors.New("play: a riddle has no generated start")
+}
+
+// typedText checks what a player typed: 1 to MaxTyped characters. It names the move's
+// field, never the text.
+func typedText(raw, field string) error {
+	if n := utf8.RuneCountInString(strings.TrimSpace(raw)); n < 1 || n > puzzle.MaxTyped {
+		return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_MOVE, field, fmt.Sprintf("%s must have 1 to %d characters", field, puzzle.MaxTyped))
+	}
+	return nil
+}
+
+func (riddleKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
+	if mv.GetRiddle() == nil {
+		return moveOutcome{}, wrongKind("move")
+	}
+	if state.GetRiddle() == nil || d.solution.GetRiddle() == nil {
+		return moveOutcome{}, wrongKind("state")
+	}
+	if err := typedText(mv.GetRiddle().GetAnswer(), "move.riddle.answer"); err != nil {
+		return moveOutcome{}, err
+	}
+	right := puzzle.Matches(d.solution.GetRiddle().GetAnswers(), mv.GetRiddle().GetAnswer())
+	return moveOutcome{state: state, wrong: !right, solved: right}, nil
+}
+
+// solved is always false: the riddle's state is empty, and a right answer says so in
+// the move's outcome.
+func (riddleKind) solved(_ puzzleDef, _ *playv1.PuzzleState) (bool, error) { return false, nil }
+
+func (riddleKind) minimum(_ puzzleDef, _ *playv1.PuzzleState) (*playv1.PuzzleMinimum, error) {
+	return &playv1.PuzzleMinimum{Solvable: true, Moves: 1}, nil
+}
+
+func (riddleKind) playerConfig(cfg *playv1.PuzzleConfig) *playv1.PuzzleConfig { return cfg }
+func (riddleKind) symbols(*playv1.PuzzleConfig) []*playv1.PuzzleSymbol        { return nil }
+
+// --- the sequence ---
+
+type sequenceKind struct{}
+
+func (sequenceKind) id() playv1.PuzzleKind { return playv1.PuzzleKind_PUZZLE_KIND_SEQUENCE }
+func (sequenceKind) stored() string        { return "sequence" }
+func (sequenceKind) generates() bool       { return false }
+func (sequenceKind) judges() bool          { return true }
+
+func sequenceState(progress int) *playv1.PuzzleState {
+	return &playv1.PuzzleState{Kind: &playv1.PuzzleState_Sequence{Sequence: &playv1.SequenceState{Progress: clamp32(progress, 0, puzzle.MaxSteps)}}}
+}
+
+func (sequenceKind) build(in puzzleInput, _ int64) (puzzleBuilt, error) {
+	cfg := in.config.GetSequence()
+	if cfg == nil {
+		return puzzleBuilt{}, wrongKind("config")
+	}
+	if in.solution.GetSequence() == nil {
+		return puzzleBuilt{}, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "solution", "a sequence needs its steps")
+	}
+	steps := ints(in.solution.GetSequence().GetSteps())
+	if err := puzzle.ValidateSequence(int(cfg.GetBells()), steps); err != nil {
+		field := "config.sequence.bells"
+		switch {
+		case errors.Is(err, puzzle.ErrSymbols), errors.Is(err, puzzle.ErrSequence):
+			field = "solution.sequence.steps"
+		case len(steps) < puzzle.MinSteps || len(steps) > puzzle.MaxSteps:
+			field = "solution.sequence.steps"
+		}
+		return puzzleBuilt{}, rulesError(err, field)
+	}
+	return puzzleBuilt{
+		// The number of steps is the solution's: whatever the request said is ignored.
+		config:   &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Sequence{Sequence: &playv1.SequenceConfig{Bells: cfg.GetBells(), Steps: clamp32(len(steps), 0, puzzle.MaxSteps)}}},
+		solution: &playv1.PuzzleSolution{Kind: &playv1.PuzzleSolution_Sequence{Sequence: &playv1.SequenceSolution{Steps: slices.Clone(in.solution.GetSequence().GetSteps())}}},
+		start:    sequenceState(0),
+	}, nil
+}
+
+func (sequenceKind) generate(puzzleDef, int64) (*playv1.PuzzleState, error) {
+	return nil, errors.New("play: a sequence has no generated start")
+}
+
+func (sequenceKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
+	if mv.GetSequence() == nil {
+		return moveOutcome{}, wrongKind("move")
+	}
+	if state.GetSequence() == nil || d.solution.GetSequence() == nil {
+		return moveOutcome{}, wrongKind("state")
+	}
+	steps := ints(d.solution.GetSequence().GetSteps())
+	bell := int(mv.GetSequence().GetBell())
+	if bell < 0 || bell >= int(d.config.GetSequence().GetBells()) {
+		return moveOutcome{}, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_MOVE, "move.sequence.bell", "move.sequence.bell is not one of the bells")
+	}
+	next, wrong, _, step, err := puzzle.SequenceStrike(steps, int(state.GetSequence().GetProgress()), bell)
+	if err != nil {
+		return moveOutcome{}, rulesError(err, "move.sequence")
+	}
+	return moveOutcome{state: sequenceState(next), wrong: wrong, step: clamp32(step, 0, puzzle.MaxSteps)}, nil
+}
+
+func (sequenceKind) solved(d puzzleDef, state *playv1.PuzzleState) (bool, error) {
+	if state.GetSequence() == nil || d.solution.GetSequence() == nil {
+		return false, wrongKind("state")
+	}
+	return int(state.GetSequence().GetProgress()) >= len(d.solution.GetSequence().GetSteps()), nil
+}
+
+func (sequenceKind) minimum(d puzzleDef, state *playv1.PuzzleState) (*playv1.PuzzleMinimum, error) {
+	if state.GetSequence() == nil || d.solution.GetSequence() == nil {
+		return nil, wrongKind("state")
+	}
+	steps := d.solution.GetSequence().GetSteps()
+	done := min(max(int(state.GetSequence().GetProgress()), 0), len(steps))
+	out := &playv1.PuzzleMinimum{Solvable: true, Moves: clamp32(len(steps)-done, 0, puzzle.MaxSteps)}
+	for _, b := range steps[done:] {
+		out.Path = append(out.Path, &playv1.PuzzleMove{Kind: &playv1.PuzzleMove_Sequence{Sequence: &playv1.SequenceMove{Bell: b}}})
+	}
+	return out, nil
+}
+
+func (sequenceKind) playerConfig(cfg *playv1.PuzzleConfig) *playv1.PuzzleConfig { return cfg }
+func (sequenceKind) symbols(cfg *playv1.PuzzleConfig) []*playv1.PuzzleSymbol {
+	return symbolsOf(puzzle.Bells(int(cfg.GetSequence().GetBells())))
+}
+
+// gate: a sequence is struck only after the master has played it, and not while it
+// plays: what the players repeat is what they watched.
+func (sequenceKind) gate(d puzzleDef, run playdb.PuzzleRun, now time.Time) error {
+	if run.Plays == 0 {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED, "the master has not played the sequence yet")
+	}
+	if playing, _ := sequencePlaying(d, run, now); playing {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING, "the sequence is being played")
+	}
+	return nil
+}
+
+// sequencePlaying says whether a play is running at now, and how many steps it has
+// revealed (the first at once) and how long until the next change.
+func sequencePlaying(d puzzleDef, run playdb.PuzzleRun, now time.Time) (bool, sequenceReveal) {
+	n := len(d.solution.GetSequence().GetSteps())
+	if run.PlayStartedAt == nil || n == 0 {
+		return false, sequenceReveal{}
+	}
+	shown, playing, next := puzzle.SequencePlayback(n, now.Sub(*run.PlayStartedAt))
+	return playing, sequenceReveal{shown: shown, next: next}
+}
+
+// sequenceReveal is how far a play has gone.
+type sequenceReveal struct {
+	shown int
+	next  time.Duration
+}
+
+// --- the cipher ---
+
+type cipherKind struct{}
+
+func (cipherKind) id() playv1.PuzzleKind { return playv1.PuzzleKind_PUZZLE_KIND_CIPHER }
+func (cipherKind) stored() string        { return "cipher" }
+func (cipherKind) generates() bool       { return false }
+func (cipherKind) judges() bool          { return true }
+
+func cipherState() *playv1.PuzzleState {
+	return &playv1.PuzzleState{Kind: &playv1.PuzzleState_Cipher{Cipher: &playv1.CipherState{}}}
+}
+
+// cipherKey is the rules package's view of a solution's key.
+func cipherKey(sol *playv1.CipherSolution) puzzle.CipherKey {
+	return puzzle.CipherKey{Shift: int(sol.GetShift()), Keyword: sol.GetKeyword()}
+}
+
+func (cipherKind) build(in puzzleInput, _ int64) (puzzleBuilt, error) {
+	cfg := in.config.GetCipher()
+	if cfg == nil {
+		return puzzleBuilt{}, wrongKind("config")
+	}
+	sol := in.solution.GetCipher()
+	if sol == nil {
+		return puzzleBuilt{}, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "solution", "a cipher needs its message and key")
+	}
+	message := strings.TrimSpace(sol.GetMessage())
+	ciphertext, err := puzzle.Encipher(message, cipherKey(sol))
+	if err != nil {
+		return puzzleBuilt{}, rulesError(err, "solution.cipher")
+	}
+	stored := &playv1.CipherSolution{Message: message}
+	if sol.GetKeyword() != "" {
+		stored.Method = &playv1.CipherSolution_Keyword{Keyword: strings.TrimSpace(sol.GetKeyword())}
+	} else {
+		stored.Method = &playv1.CipherSolution_Shift{Shift: sol.GetShift()}
+	}
+	return puzzleBuilt{
+		config:   &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Cipher{Cipher: &playv1.CipherConfig{Ciphertext: ciphertext, KeyClueId: cfg.GetKeyClueId()}}},
+		solution: &playv1.PuzzleSolution{Kind: &playv1.PuzzleSolution_Cipher{Cipher: stored}},
+		start:    cipherState(),
+	}, nil
+}
+
+func (cipherKind) generate(puzzleDef, int64) (*playv1.PuzzleState, error) {
+	return nil, errors.New("play: a cipher has no generated start")
+}
+
+func (cipherKind) move(d puzzleDef, state *playv1.PuzzleState, mv *playv1.PuzzleMove) (moveOutcome, error) {
+	if mv.GetCipher() == nil {
+		return moveOutcome{}, wrongKind("move")
+	}
+	if state.GetCipher() == nil || d.solution.GetCipher() == nil {
+		return moveOutcome{}, wrongKind("state")
+	}
+	if err := typedText(mv.GetCipher().GetText(), "move.cipher.text"); err != nil {
+		return moveOutcome{}, err
+	}
+	right := puzzle.Matches([]string{d.solution.GetCipher().GetMessage()}, mv.GetCipher().GetText())
+	return moveOutcome{state: state, wrong: !right, solved: right}, nil
+}
+
+// solved is always false: see riddleKind.solved.
+func (cipherKind) solved(_ puzzleDef, _ *playv1.PuzzleState) (bool, error) { return false, nil }
+
+func (cipherKind) minimum(_ puzzleDef, _ *playv1.PuzzleState) (*playv1.PuzzleMinimum, error) {
+	return &playv1.PuzzleMinimum{Solvable: true, Moves: 1}, nil
+}
+
+// playerConfig is the ciphered message and nothing else: which clue holds the key stays
+// with the master (a player reads PuzzleRun.has_key_clue, and key_clue_id once found).
+func (cipherKind) playerConfig(cfg *playv1.PuzzleConfig) *playv1.PuzzleConfig {
+	return &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Cipher{Cipher: &playv1.CipherConfig{Ciphertext: cfg.GetCipher().GetCiphertext()}}}
+}
+func (cipherKind) symbols(*playv1.PuzzleConfig) []*playv1.PuzzleSymbol { return nil }
