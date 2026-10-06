@@ -1,0 +1,2575 @@
+{
+  "level 1": {
+    "ContentVersion": "srd51@a8abc93b235c+fx.12+mesa.7",
+    "RaceNamePT": "Anão das Brumas",
+    "SubraceNamePT": "Da Colina Nevoenta",
+    "BackgroundNamePT": "Guarda de farol",
+    "Classes": [
+      {
+        "ClassKey": "class:gen-full-prepared@mesa",
+        "NamePT": "Classe full-prepared",
+        "Level": 1,
+        "SubclassNamePT": ""
+      }
+    ],
+    "Abilities": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Base": 15,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Base": 14,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 1,
+        "Bonus": 2,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Base": 12,
+        "RaceBonus": 0,
+        "ManualBonus": 1,
+        "Bonus": 1,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Base": 10,
+        "RaceBonus": 1,
+        "ManualBonus": 2,
+        "Bonus": 3,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Base": 8,
+        "RaceBonus": 0,
+        "ManualBonus": 1,
+        "Bonus": 1,
+        "Score": 9,
+        "Modifier": -1
+      }
+    ],
+    "TotalLevel": 1,
+    "ProficiencyBonus": 2,
+    "SavingThrows": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Proficient": true,
+        "Bonus": 4
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Proficient": false,
+        "Bonus": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Proficient": true,
+        "Bonus": 3
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Proficient": false,
+        "Bonus": -1
+      }
+    ],
+    "Skills": [
+      {
+        "Key": "skill:acrobatics",
+        "NamePT": "Acrobacia",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:animal-handling",
+        "NamePT": "Adestrar Animais",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:arcana",
+        "NamePT": "Arcanismo",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:athletics",
+        "NamePT": "Atletismo",
+        "Ability": "str",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:performance",
+        "NamePT": "Atuação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:deception",
+        "NamePT": "Enganação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:stealth",
+        "NamePT": "Furtividade",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:history",
+        "NamePT": "História",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:intimidation",
+        "NamePT": "Intimidação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:insight",
+        "NamePT": "Intuição",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:investigation",
+        "NamePT": "Investigação",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:medicine",
+        "NamePT": "Medicina",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:nature",
+        "NamePT": "Natureza",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:perception",
+        "NamePT": "Percepção",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:persuasion",
+        "NamePT": "Persuasão",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:sleight-of-hand",
+        "NamePT": "Prestidigitação",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:religion",
+        "NamePT": "Religião",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:survival",
+        "NamePT": "Sobrevivência",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      }
+    ],
+    "PassivePerception": 13,
+    "PassiveInvestigation": 11,
+    "PassiveInsight": 13,
+    "Initiative": 3,
+    "ArmorClass": 12,
+    "ArmorClassDescription": "Sem armadura",
+    "HitPointsMax": 10,
+    "HitDice": [
+      {
+        "Die": 8,
+        "Count": 1
+      }
+    ],
+    "SpeedWalkFt": 25,
+    "SpeedFlyFt": 0,
+    "SpeedSwimFt": 0,
+    "SpeedClimbFt": 0,
+    "SpeedBurrowFt": 0,
+    "Hover": false,
+    "Senses": [
+      {
+        "Key": "darkvision",
+        "NamePT": "Visão no escuro",
+        "RangeFt": 60,
+        "Source": "race:anao-das-brumas@mesa"
+      }
+    ],
+    "NextLevelXP": 300,
+    "Spellcasting": [
+      {
+        "Class": "class:gen-full-prepared@mesa",
+        "ClassNamePT": "Classe full-prepared",
+        "Ability": "wis",
+        "SaveDC": 11,
+        "AttackBonus": 3,
+        "CantripsKnown": 3,
+        "PreparesSpells": true,
+        "PreparedMax": 2,
+        "SpellsKnownMax": 0,
+        "MaxSpellLevel": 1,
+        "Ritual": false,
+        "SpellList": "class:gen-full-prepared@mesa"
+      }
+    ],
+    "SpellSlots": [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactMagic": null,
+    "Spells": [
+      {
+        "Spell": {
+          "Key": "spell:faisca-de-teste@mesa",
+          "Name": "Faísca de teste",
+          "NamePT": "Faísca de teste",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:light",
+          "Name": "Light",
+          "NamePT": "Luz",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:guidance",
+          "Name": "Guidance",
+          "NamePT": "Orientação",
+          "Level": 0,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:druid",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bless",
+          "Name": "Bless",
+          "NamePT": "Bênção",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bane",
+          "Name": "Bane",
+          "NamePT": "Perdição",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      }
+    ],
+    "Attacks": [
+      {
+        "Key": "spell:faisca-de-teste@mesa",
+        "Name": "Faísca de teste",
+        "NamePT": "Faísca de teste",
+        "Kind": "spell",
+        "Ability": "wis",
+        "AttackBonus": 3,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "1d8",
+        "DamageType": "damage-type:lightning",
+        "DamageTypeNamePT": "elétrico",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 1,
+          "Sides": 8,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 60,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Notes": ""
+      }
+    ],
+    "Resources": null,
+    "Actions": null,
+    "StandardActions": [
+      {
+        "Key": "standard:attack",
+        "NamePT": "Atacar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "NamePT": "Conjurar uma magia",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dash",
+        "NamePT": "Disparada",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:disengage",
+        "NamePT": "Desengajar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dodge",
+        "NamePT": "Esquivar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:help",
+        "NamePT": "Ajudar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:hide",
+        "NamePT": "Esconder",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:ready",
+        "NamePT": "Preparar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:search",
+        "NamePT": "Procurar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:use-an-object",
+        "NamePT": "Usar um objeto",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      }
+    ],
+    "AttacksPerAction": 1,
+    "SaveActions": null,
+    "Features": [
+      {
+        "Key": "trait:resistente@mesa",
+        "Name": "Resistente",
+        "NamePT": "Resistente",
+        "Source": "race:anao-das-brumas@mesa",
+        "Level": 0,
+        "SourcePT": "Anão das Brumas",
+        "Description": null
+      },
+      {
+        "Key": "trait:olhar-firme@mesa",
+        "Name": "Olhar firme",
+        "NamePT": "Olhar firme",
+        "Source": "subrace:da-colina-nevoenta@mesa",
+        "Level": 0,
+        "SourcePT": "Da Colina Nevoenta",
+        "Description": null
+      },
+      {
+        "Key": "background-feature:luz-guia@mesa",
+        "Name": "Luz-guia",
+        "NamePT": "Luz-guia",
+        "Source": "background:guarda-de-farol@mesa",
+        "Level": 0,
+        "SourcePT": "Guarda de farol",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-spellcasting@mesa",
+        "Name": "Conjuração",
+        "NamePT": "Conjuração",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-vigor@mesa",
+        "Name": "Vigor",
+        "NamePT": "Vigor",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-treino@mesa",
+        "Name": "Treino",
+        "NamePT": "Treino",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      }
+    ],
+    "Languages": [
+      {
+        "Key": "language:common",
+        "NamePT": "Comum"
+      }
+    ],
+    "Proficiencies": [
+      {
+        "Kind": "armor",
+        "Key": "proficiency:light-armor",
+        "NamePT": "Armaduras leves"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:simple-weapons",
+        "NamePT": "Armas simples"
+      },
+      {
+        "Kind": "other",
+        "Key": "proficiency:thieves-tools",
+        "NamePT": "Ferramentas de ladrão"
+      }
+    ],
+    "Hints": [
+      {
+        "Source": "trait:resistente@mesa",
+        "Target": "save.con",
+        "Targets": [
+          "save.con"
+        ],
+        "Mode": "advantage",
+        "Value": 0,
+        "Tags": [
+          "against:poison"
+        ],
+        "TextPT": "Resistente"
+      },
+      {
+        "Source": "background-feature:luz-guia@mesa",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Luz-guia: conhece a rota dos navios."
+      }
+    ],
+    "Issues": null
+  },
+  "level 11": {
+    "ContentVersion": "srd51@a8abc93b235c+fx.12+mesa.7",
+    "RaceNamePT": "Anão das Brumas",
+    "SubraceNamePT": "Da Colina Nevoenta",
+    "BackgroundNamePT": "Guarda de farol",
+    "Classes": [
+      {
+        "ClassKey": "class:gen-full-prepared@mesa",
+        "NamePT": "Classe full-prepared",
+        "Level": 11,
+        "SubclassNamePT": "Caminho B"
+      }
+    ],
+    "Abilities": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Base": 15,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Base": 14,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 1,
+        "Bonus": 2,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Base": 12,
+        "RaceBonus": 0,
+        "ManualBonus": 2,
+        "Bonus": 2,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Base": 10,
+        "RaceBonus": 1,
+        "ManualBonus": 2,
+        "Bonus": 3,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Base": 8,
+        "RaceBonus": 0,
+        "ManualBonus": 2,
+        "Bonus": 2,
+        "Score": 10,
+        "Modifier": 0
+      }
+    ],
+    "TotalLevel": 11,
+    "ProficiencyBonus": 4,
+    "SavingThrows": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Proficient": true,
+        "Bonus": 6
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Proficient": true,
+        "Bonus": 5
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Proficient": false,
+        "Bonus": 0
+      }
+    ],
+    "Skills": [
+      {
+        "Key": "skill:acrobatics",
+        "NamePT": "Acrobacia",
+        "Ability": "dex",
+        "Proficiency": 2,
+        "Bonus": 6
+      },
+      {
+        "Key": "skill:animal-handling",
+        "NamePT": "Adestrar Animais",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:arcana",
+        "NamePT": "Arcanismo",
+        "Ability": "int",
+        "Proficiency": 3,
+        "Bonus": 10
+      },
+      {
+        "Key": "skill:athletics",
+        "NamePT": "Atletismo",
+        "Ability": "str",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:performance",
+        "NamePT": "Atuação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:deception",
+        "NamePT": "Enganação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:stealth",
+        "NamePT": "Furtividade",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:history",
+        "NamePT": "História",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 6
+      },
+      {
+        "Key": "skill:intimidation",
+        "NamePT": "Intimidação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:insight",
+        "NamePT": "Intuição",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 5
+      },
+      {
+        "Key": "skill:investigation",
+        "NamePT": "Investigação",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:medicine",
+        "NamePT": "Medicina",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:nature",
+        "NamePT": "Natureza",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:perception",
+        "NamePT": "Percepção",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 5
+      },
+      {
+        "Key": "skill:persuasion",
+        "NamePT": "Persuasão",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:sleight-of-hand",
+        "NamePT": "Prestidigitação",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:religion",
+        "NamePT": "Religião",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 6
+      },
+      {
+        "Key": "skill:survival",
+        "NamePT": "Sobrevivência",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 5
+      }
+    ],
+    "PassivePerception": 15,
+    "PassiveInvestigation": 12,
+    "PassiveInsight": 15,
+    "Initiative": 3,
+    "ArmorClass": 12,
+    "ArmorClassDescription": "Sem armadura",
+    "HitPointsMax": 80,
+    "HitDice": [
+      {
+        "Die": 8,
+        "Count": 11
+      }
+    ],
+    "SpeedWalkFt": 25,
+    "SpeedFlyFt": 0,
+    "SpeedSwimFt": 0,
+    "SpeedClimbFt": 0,
+    "SpeedBurrowFt": 0,
+    "Hover": false,
+    "Senses": [
+      {
+        "Key": "darkvision",
+        "NamePT": "Visão no escuro",
+        "RangeFt": 60,
+        "Source": "race:anao-das-brumas@mesa"
+      }
+    ],
+    "NextLevelXP": 100000,
+    "Spellcasting": [
+      {
+        "Class": "class:gen-full-prepared@mesa",
+        "ClassNamePT": "Classe full-prepared",
+        "Ability": "wis",
+        "SaveDC": 13,
+        "AttackBonus": 5,
+        "CantripsKnown": 5,
+        "PreparesSpells": true,
+        "PreparedMax": 12,
+        "SpellsKnownMax": 0,
+        "MaxSpellLevel": 6,
+        "Ritual": false,
+        "SpellList": "class:gen-full-prepared@mesa"
+      }
+    ],
+    "SpellSlots": [
+      4,
+      3,
+      3,
+      3,
+      2,
+      1,
+      0,
+      0,
+      0
+    ],
+    "PactMagic": null,
+    "Spells": [
+      {
+        "Spell": {
+          "Key": "spell:faisca-de-teste@mesa",
+          "Name": "Faísca de teste",
+          "NamePT": "Faísca de teste",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:light",
+          "Name": "Light",
+          "NamePT": "Luz",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:guidance",
+          "Name": "Guidance",
+          "NamePT": "Orientação",
+          "Level": 0,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:druid",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:mending",
+          "Name": "Mending",
+          "NamePT": "Remendar",
+          "Level": 0,
+          "School": "school:transmutation",
+          "SchoolNamePT": "Transmutação",
+          "Classes": [
+            "class:cleric",
+            "class:bard",
+            "class:druid",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:resistance",
+          "Name": "Resistance",
+          "NamePT": "Resistência",
+          "Level": 0,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:druid",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bless",
+          "Name": "Bless",
+          "NamePT": "Bênção",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:command",
+          "Name": "Command",
+          "NamePT": "Comando",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bane",
+          "Name": "Bane",
+          "NamePT": "Perdição",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:augury",
+          "Name": "Augury",
+          "NamePT": "Augúrio",
+          "Level": 2,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": true,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:aid",
+          "Name": "Aid",
+          "NamePT": "Auxílio",
+          "Level": 2,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:animate-dead",
+          "Name": "Animate Dead",
+          "NamePT": "Animar os Mortos",
+          "Level": 3,
+          "School": "school:necromancy",
+          "SchoolNamePT": "Necromancia",
+          "Classes": [
+            "class:cleric",
+            "class:wizard",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:fireball",
+          "Name": "Fireball",
+          "NamePT": "Bola de Fogo",
+          "Level": 3,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:cone-de-teste@mesa",
+          "Name": "Cone de teste",
+          "NamePT": "Cone de teste",
+          "Level": 3,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:wizard",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:beacon-of-hope",
+          "Name": "Beacon of Hope",
+          "NamePT": "Farol de Esperança",
+          "Level": 3,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bestow-curse",
+          "Name": "Bestow Curse",
+          "NamePT": "Rogar Maldição",
+          "Level": 3,
+          "School": "school:necromancy",
+          "SchoolNamePT": "Necromancia",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:wizard",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:banishment",
+          "Name": "Banishment",
+          "NamePT": "Banimento",
+          "Level": 4,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:sorcerer",
+            "class:warlock",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa",
+            "class:gen-pact-known@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:arcane-eye",
+          "Name": "Arcane Eye",
+          "NamePT": "Olho Arcano",
+          "Level": 4,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:wizard",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:blade-barrier",
+          "Name": "Blade Barrier",
+          "NamePT": "Barreira de Lâminas",
+          "Level": 6,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      }
+    ],
+    "Attacks": [
+      {
+        "Key": "spell:faisca-de-teste@mesa",
+        "Name": "Faísca de teste",
+        "NamePT": "Faísca de teste",
+        "Kind": "spell",
+        "Ability": "wis",
+        "AttackBonus": 5,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "3d8",
+        "DamageType": "damage-type:lightning",
+        "DamageTypeNamePT": "elétrico",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 3,
+          "Sides": 8,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 60,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Notes": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Key": "gen_full_prepared_surto",
+        "NamePT": "Surto",
+        "Max": 4,
+        "Recharge": "short_rest",
+        "Source": "feature:gen-full-prepared-surto@mesa"
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "feature:gen-full-prepared-surto@mesa",
+        "NamePT": "Surto",
+        "Economy": "bonus_action",
+        "Resource": "gen_full_prepared_surto",
+        "Source": "feature:gen-full-prepared-surto@mesa"
+      }
+    ],
+    "StandardActions": [
+      {
+        "Key": "standard:attack",
+        "NamePT": "Atacar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "NamePT": "Conjurar uma magia",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dash",
+        "NamePT": "Disparada",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:disengage",
+        "NamePT": "Desengajar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dodge",
+        "NamePT": "Esquivar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:help",
+        "NamePT": "Ajudar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:hide",
+        "NamePT": "Esconder",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:ready",
+        "NamePT": "Preparar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:search",
+        "NamePT": "Procurar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:use-an-object",
+        "NamePT": "Usar um objeto",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      }
+    ],
+    "AttacksPerAction": 2,
+    "SaveActions": null,
+    "Features": [
+      {
+        "Key": "trait:resistente@mesa",
+        "Name": "Resistente",
+        "NamePT": "Resistente",
+        "Source": "race:anao-das-brumas@mesa",
+        "Level": 0,
+        "SourcePT": "Anão das Brumas",
+        "Description": null
+      },
+      {
+        "Key": "trait:olhar-firme@mesa",
+        "Name": "Olhar firme",
+        "NamePT": "Olhar firme",
+        "Source": "subrace:da-colina-nevoenta@mesa",
+        "Level": 0,
+        "SourcePT": "Da Colina Nevoenta",
+        "Description": null
+      },
+      {
+        "Key": "background-feature:luz-guia@mesa",
+        "Name": "Luz-guia",
+        "NamePT": "Luz-guia",
+        "Source": "background:guarda-de-farol@mesa",
+        "Level": 0,
+        "SourcePT": "Guarda de farol",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-spellcasting@mesa",
+        "Name": "Conjuração",
+        "NamePT": "Conjuração",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-vigor@mesa",
+        "Name": "Vigor",
+        "NamePT": "Vigor",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-treino@mesa",
+        "Name": "Treino",
+        "NamePT": "Treino",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-surto@mesa",
+        "Name": "Surto",
+        "NamePT": "Surto",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 2,
+        "SourcePT": "Classe full-prepared 2",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-olhos@mesa",
+        "Name": "Olhos",
+        "NamePT": "Olhos",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 3,
+        "SourcePT": "Classe full-prepared 3",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-b3@mesa",
+        "Name": "B3",
+        "NamePT": "B3",
+        "Source": "subclass:gen-full-prepared-b@mesa",
+        "Level": 3,
+        "SourcePT": "Caminho B (Classe full-prepared 3)",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-ability-score-improvement-1@mesa",
+        "Name": "Aumento de Atributo",
+        "NamePT": "Aumento de Atributo",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 4,
+        "SourcePT": "Classe full-prepared 4",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-ataque@mesa",
+        "Name": "Ataque",
+        "NamePT": "Ataque",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 5,
+        "SourcePT": "Classe full-prepared 5",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-estilo@mesa",
+        "Name": "Estilo de luta",
+        "NamePT": "Estilo de luta",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 6,
+        "SourcePT": "Classe full-prepared 6",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-pericia@mesa",
+        "Name": "Perícia extra",
+        "NamePT": "Perícia extra",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 8,
+        "SourcePT": "Classe full-prepared 8",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-ability-score-improvement-2@mesa",
+        "Name": "Aumento de Atributo",
+        "NamePT": "Aumento de Atributo",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 8,
+        "SourcePT": "Classe full-prepared 8",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-mestre@mesa",
+        "Name": "Mestria",
+        "NamePT": "Mestria",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 10,
+        "SourcePT": "Classe full-prepared 10",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-fighting-style-defense",
+        "Name": "Fighting Style: Defense",
+        "NamePT": "Estilo de Luta: Defesa",
+        "Source": "feature:gen-full-prepared-estilo@mesa",
+        "Level": 6,
+        "SourcePT": "Classe full-prepared 6",
+        "Description": null
+      }
+    ],
+    "Languages": [
+      {
+        "Key": "language:common",
+        "NamePT": "Comum"
+      }
+    ],
+    "Proficiencies": [
+      {
+        "Kind": "armor",
+        "Key": "proficiency:light-armor",
+        "NamePT": "Armaduras leves"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:simple-weapons",
+        "NamePT": "Armas simples"
+      },
+      {
+        "Kind": "other",
+        "Key": "proficiency:thieves-tools",
+        "NamePT": "Ferramentas de ladrão"
+      }
+    ],
+    "Hints": [
+      {
+        "Source": "trait:resistente@mesa",
+        "Target": "save.con",
+        "Targets": [
+          "save.con"
+        ],
+        "Mode": "advantage",
+        "Value": 0,
+        "Tags": [
+          "against:poison"
+        ],
+        "TextPT": "Resistente"
+      },
+      {
+        "Source": "background-feature:luz-guia@mesa",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Luz-guia: conhece a rota dos navios."
+      },
+      {
+        "Source": "feature:gen-full-prepared-olhos@mesa",
+        "Target": "save.wis",
+        "Targets": [
+          "save.wis"
+        ],
+        "Mode": "advantage",
+        "Value": 0,
+        "Tags": [
+          "against:charm"
+        ],
+        "TextPT": "Olhos"
+      }
+    ],
+    "Issues": null
+  },
+  "level 5": {
+    "ContentVersion": "srd51@a8abc93b235c+fx.12+mesa.7",
+    "RaceNamePT": "Anão das Brumas",
+    "SubraceNamePT": "Da Colina Nevoenta",
+    "BackgroundNamePT": "Guarda de farol",
+    "Classes": [
+      {
+        "ClassKey": "class:gen-full-prepared@mesa",
+        "NamePT": "Classe full-prepared",
+        "Level": 5,
+        "SubclassNamePT": "Caminho B"
+      }
+    ],
+    "Abilities": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Base": 15,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Base": 14,
+        "RaceBonus": 0,
+        "ManualBonus": 0,
+        "Bonus": 0,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 1,
+        "Bonus": 2,
+        "Score": 15,
+        "Modifier": 2
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Base": 12,
+        "RaceBonus": 0,
+        "ManualBonus": 1,
+        "Bonus": 1,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Base": 10,
+        "RaceBonus": 1,
+        "ManualBonus": 2,
+        "Bonus": 3,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Base": 8,
+        "RaceBonus": 0,
+        "ManualBonus": 1,
+        "Bonus": 1,
+        "Score": 9,
+        "Modifier": -1
+      }
+    ],
+    "TotalLevel": 5,
+    "ProficiencyBonus": 3,
+    "SavingThrows": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Proficient": true,
+        "Bonus": 5
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Proficient": false,
+        "Bonus": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Proficient": true,
+        "Bonus": 4
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Proficient": false,
+        "Bonus": -1
+      }
+    ],
+    "Skills": [
+      {
+        "Key": "skill:acrobatics",
+        "NamePT": "Acrobacia",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:animal-handling",
+        "NamePT": "Adestrar Animais",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:arcana",
+        "NamePT": "Arcanismo",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:athletics",
+        "NamePT": "Atletismo",
+        "Ability": "str",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:performance",
+        "NamePT": "Atuação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:deception",
+        "NamePT": "Enganação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:stealth",
+        "NamePT": "Furtividade",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:history",
+        "NamePT": "História",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:intimidation",
+        "NamePT": "Intimidação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:insight",
+        "NamePT": "Intuição",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:investigation",
+        "NamePT": "Investigação",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:medicine",
+        "NamePT": "Medicina",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:nature",
+        "NamePT": "Natureza",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:perception",
+        "NamePT": "Percepção",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:persuasion",
+        "NamePT": "Persuasão",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:sleight-of-hand",
+        "NamePT": "Prestidigitação",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:religion",
+        "NamePT": "Religião",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:survival",
+        "NamePT": "Sobrevivência",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 4
+      }
+    ],
+    "PassivePerception": 14,
+    "PassiveInvestigation": 11,
+    "PassiveInsight": 14,
+    "Initiative": 3,
+    "ArmorClass": 12,
+    "ArmorClassDescription": "Sem armadura",
+    "HitPointsMax": 38,
+    "HitDice": [
+      {
+        "Die": 8,
+        "Count": 5
+      }
+    ],
+    "SpeedWalkFt": 25,
+    "SpeedFlyFt": 0,
+    "SpeedSwimFt": 0,
+    "SpeedClimbFt": 0,
+    "SpeedBurrowFt": 0,
+    "Hover": false,
+    "Senses": [
+      {
+        "Key": "darkvision",
+        "NamePT": "Visão no escuro",
+        "RangeFt": 60,
+        "Source": "race:anao-das-brumas@mesa"
+      }
+    ],
+    "NextLevelXP": 14000,
+    "Spellcasting": [
+      {
+        "Class": "class:gen-full-prepared@mesa",
+        "ClassNamePT": "Classe full-prepared",
+        "Ability": "wis",
+        "SaveDC": 12,
+        "AttackBonus": 4,
+        "CantripsKnown": 4,
+        "PreparesSpells": true,
+        "PreparedMax": 6,
+        "SpellsKnownMax": 0,
+        "MaxSpellLevel": 3,
+        "Ritual": false,
+        "SpellList": "class:gen-full-prepared@mesa"
+      }
+    ],
+    "SpellSlots": [
+      4,
+      3,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactMagic": null,
+    "Spells": [
+      {
+        "Spell": {
+          "Key": "spell:faisca-de-teste@mesa",
+          "Name": "Faísca de teste",
+          "NamePT": "Faísca de teste",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:light",
+          "Name": "Light",
+          "NamePT": "Luz",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:guidance",
+          "Name": "Guidance",
+          "NamePT": "Orientação",
+          "Level": 0,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:druid",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:mending",
+          "Name": "Mending",
+          "NamePT": "Remendar",
+          "Level": 0,
+          "School": "school:transmutation",
+          "SchoolNamePT": "Transmutação",
+          "Classes": [
+            "class:cleric",
+            "class:bard",
+            "class:druid",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bless",
+          "Name": "Bless",
+          "NamePT": "Bênção",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:command",
+          "Name": "Command",
+          "NamePT": "Comando",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:bane",
+          "Name": "Bane",
+          "NamePT": "Perdição",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:augury",
+          "Name": "Augury",
+          "NamePT": "Augúrio",
+          "Level": 2,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:cleric",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": true,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:aid",
+          "Name": "Aid",
+          "NamePT": "Auxílio",
+          "Level": 2,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:fireball",
+          "Name": "Fireball",
+          "NamePT": "Bola de Fogo",
+          "Level": 3,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:cone-de-teste@mesa",
+          "Name": "Cone de teste",
+          "NamePT": "Cone de teste",
+          "Level": 3,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:wizard",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      }
+    ],
+    "Attacks": [
+      {
+        "Key": "spell:faisca-de-teste@mesa",
+        "Name": "Faísca de teste",
+        "NamePT": "Faísca de teste",
+        "Kind": "spell",
+        "Ability": "wis",
+        "AttackBonus": 4,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "2d8",
+        "DamageType": "damage-type:lightning",
+        "DamageTypeNamePT": "elétrico",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 2,
+          "Sides": 8,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 60,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Notes": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Key": "gen_full_prepared_surto",
+        "NamePT": "Surto",
+        "Max": 3,
+        "Recharge": "short_rest",
+        "Source": "feature:gen-full-prepared-surto@mesa"
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "feature:gen-full-prepared-surto@mesa",
+        "NamePT": "Surto",
+        "Economy": "bonus_action",
+        "Resource": "gen_full_prepared_surto",
+        "Source": "feature:gen-full-prepared-surto@mesa"
+      }
+    ],
+    "StandardActions": [
+      {
+        "Key": "standard:attack",
+        "NamePT": "Atacar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "NamePT": "Conjurar uma magia",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dash",
+        "NamePT": "Disparada",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:disengage",
+        "NamePT": "Desengajar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:dodge",
+        "NamePT": "Esquivar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:help",
+        "NamePT": "Ajudar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:hide",
+        "NamePT": "Esconder",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:ready",
+        "NamePT": "Preparar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:search",
+        "NamePT": "Procurar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      },
+      {
+        "Key": "standard:use-an-object",
+        "NamePT": "Usar um objeto",
+        "Economy": "action",
+        "Resource": "",
+        "Source": ""
+      }
+    ],
+    "AttacksPerAction": 2,
+    "SaveActions": null,
+    "Features": [
+      {
+        "Key": "trait:resistente@mesa",
+        "Name": "Resistente",
+        "NamePT": "Resistente",
+        "Source": "race:anao-das-brumas@mesa",
+        "Level": 0,
+        "SourcePT": "Anão das Brumas",
+        "Description": null
+      },
+      {
+        "Key": "trait:olhar-firme@mesa",
+        "Name": "Olhar firme",
+        "NamePT": "Olhar firme",
+        "Source": "subrace:da-colina-nevoenta@mesa",
+        "Level": 0,
+        "SourcePT": "Da Colina Nevoenta",
+        "Description": null
+      },
+      {
+        "Key": "background-feature:luz-guia@mesa",
+        "Name": "Luz-guia",
+        "NamePT": "Luz-guia",
+        "Source": "background:guarda-de-farol@mesa",
+        "Level": 0,
+        "SourcePT": "Guarda de farol",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-spellcasting@mesa",
+        "Name": "Conjuração",
+        "NamePT": "Conjuração",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-vigor@mesa",
+        "Name": "Vigor",
+        "NamePT": "Vigor",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-treino@mesa",
+        "Name": "Treino",
+        "NamePT": "Treino",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 1,
+        "SourcePT": "Classe full-prepared 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-surto@mesa",
+        "Name": "Surto",
+        "NamePT": "Surto",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 2,
+        "SourcePT": "Classe full-prepared 2",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-olhos@mesa",
+        "Name": "Olhos",
+        "NamePT": "Olhos",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 3,
+        "SourcePT": "Classe full-prepared 3",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-b3@mesa",
+        "Name": "B3",
+        "NamePT": "B3",
+        "Source": "subclass:gen-full-prepared-b@mesa",
+        "Level": 3,
+        "SourcePT": "Caminho B (Classe full-prepared 3)",
+        "Description": null
+      },
+      {
+        "Key": "feature:class-gen-full-prepared-ability-score-improvement-1@mesa",
+        "Name": "Aumento de Atributo",
+        "NamePT": "Aumento de Atributo",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 4,
+        "SourcePT": "Classe full-prepared 4",
+        "Description": null
+      },
+      {
+        "Key": "feature:gen-full-prepared-ataque@mesa",
+        "Name": "Ataque",
+        "NamePT": "Ataque",
+        "Source": "class:gen-full-prepared@mesa",
+        "Level": 5,
+        "SourcePT": "Classe full-prepared 5",
+        "Description": null
+      }
+    ],
+    "Languages": [
+      {
+        "Key": "language:common",
+        "NamePT": "Comum"
+      }
+    ],
+    "Proficiencies": [
+      {
+        "Kind": "armor",
+        "Key": "proficiency:light-armor",
+        "NamePT": "Armaduras leves"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:simple-weapons",
+        "NamePT": "Armas simples"
+      },
+      {
+        "Kind": "other",
+        "Key": "proficiency:thieves-tools",
+        "NamePT": "Ferramentas de ladrão"
+      }
+    ],
+    "Hints": [
+      {
+        "Source": "trait:resistente@mesa",
+        "Target": "save.con",
+        "Targets": [
+          "save.con"
+        ],
+        "Mode": "advantage",
+        "Value": 0,
+        "Tags": [
+          "against:poison"
+        ],
+        "TextPT": "Resistente"
+      },
+      {
+        "Source": "background-feature:luz-guia@mesa",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Luz-guia: conhece a rota dos navios."
+      },
+      {
+        "Source": "feature:gen-full-prepared-olhos@mesa",
+        "Target": "save.wis",
+        "Targets": [
+          "save.wis"
+        ],
+        "Mode": "advantage",
+        "Value": 0,
+        "Tags": [
+          "against:charm"
+        ],
+        "TextPT": "Olhos"
+      }
+    ],
+    "Issues": null
+  }
+}
