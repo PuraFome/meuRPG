@@ -140,7 +140,7 @@ service ImageGenerationService {
   // Errors: as GenerateSceneImage, `invalid_argument` (with an
   // ImageGenerationInvalidField detail) also for a kind that is not made from a map,
   // for an NPC the players do not see (or too many characters in all), for a
-  // hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+  // hidden NPC's portrait (also in object_image_ids: the portrait is refused wherever it comes), and for characters on a TEXTURED_MAP; and
   // `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
   // PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
   // the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
@@ -157,7 +157,9 @@ service ImageGenerationService {
   // ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
   // are no longer what the request was made from, or its walls (a painted wall, a
   // revealed secret door: what the drawing showed) changed since; and `not_found`
-  // when the image is not a textured map generated for a map of the campaign.
+  // when the image is not a textured map generated for a map of the campaign. An
+  // edit of a textured map counts as one: it is made at the map's size and used with the
+  // same checks as the original (the image, the grid, the size and the walls it started from).
   rpc UseGeneratedImageAsMapImage(UseGeneratedImageAsMapImageRequest) returns (UseGeneratedImageAsMapImageResponse);
 }
 
@@ -369,6 +371,10 @@ message GenerateSceneImageRequest {
   // Gallery images of characters (the portraits of NPCs and enemies), at
   // most 4 (UUIDs).
   repeated string character_image_ids = 7;
+  // The name the gallery image gets, 1 to 80 characters: the players read it
+  // when the master shows the image, so it is never "Imagem N". Empty means
+  // the first words of the text.
+  string name = 8;
 }
 
 message GenerateSceneImageResponse {
@@ -387,6 +393,9 @@ message EditGeneratedImageRequest {
   string idempotency_key = 3;
   // The new instruction ("mais escura, com uma ponte"): 1 to 500 characters.
   string instruction = 4;
+  // The name of the new gallery image, as GenerateSceneImageRequest.name. Empty
+  // means the name of the image it adjusts, with " (ajuste)".
+  string name = 5;
 }
 
 message EditGeneratedImageResponse {
@@ -527,6 +536,9 @@ message GenerateMapImageRequest {
   // portraits go as character references, together with character_image_ids, at
   // most 4 in all (an image listed twice counts once).
   repeated string npc_character_ids = 10;
+  // The name of the gallery image, as GenerateSceneImageRequest.name. Empty means
+  // the map's name and the kind ("Masmorra de Mirathel · vista isométrica").
+  string name = 11;
 }
 
 message GenerateMapImageResponse {

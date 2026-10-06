@@ -40,6 +40,17 @@
 </div>
 
 @if (map(); as m) {
+  <section class="mr-panel" aria-labelledby="gen-heading">
+    <h2 class="mr-panel__title" id="gen-heading">Imagem do mapa</h2>
+    <app-generate-image-button
+      [campaignId]="campaignId()"
+      [origin]="{ kind: 'map', mapId: m.id, name: m.name, hasGrid: m.gridColumns > 0 }"
+      (done)="onImageGenerated($event)"
+    />
+  </section>
+}
+
+@if (map(); as m) {
   <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" />
 }
 

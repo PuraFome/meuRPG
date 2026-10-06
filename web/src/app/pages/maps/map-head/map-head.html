@@ -163,6 +163,14 @@
           Trocar imagem
         </button>
       </span>
+      <span class="state__group state__group--gen">
+        <app-generate-image-button
+          variant="text"
+          [campaignId]="campaignId()"
+          [origin]="generateOrigin()"
+          (done)="imageGenerated.emit($event)"
+        />
+      </span>
     }
   </div>
   @if (showImage()) {

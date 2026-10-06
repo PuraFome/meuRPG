@@ -269,7 +269,7 @@ func (q *Queries) CountSceneActions(ctx context.Context, pointID string) (int32,
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind
 `
 
 type DeleteGalleryImageParams struct {
@@ -293,6 +293,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 		&i.CreatedAt,
 		&i.Generated,
 		&i.ParentImageID,
+		&i.GeneratedKind,
 	)
 	return i, err
 }
@@ -637,7 +638,7 @@ func (q *Queries) FinishImageRequestFailed(ctx context.Context, arg FinishImageR
 }
 
 const getGalleryImage = `-- name: GetGalleryImage :one
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind FROM gallery_images
 WHERE id = $1
 `
 
@@ -658,13 +659,14 @@ func (q *Queries) GetGalleryImage(ctx context.Context, id string) (GalleryImage,
 		&i.CreatedAt,
 		&i.Generated,
 		&i.ParentImageID,
+		&i.GeneratedKind,
 	)
 	return i, err
 }
 
 const getGalleryImageInCampaign = `-- name: GetGalleryImageInCampaign :one
 
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -692,6 +694,7 @@ func (q *Queries) GetGalleryImageInCampaign(ctx context.Context, arg GetGalleryI
 		&i.CreatedAt,
 		&i.Generated,
 		&i.ParentImageID,
+		&i.GeneratedKind,
 	)
 	return i, err
 }
@@ -752,7 +755,7 @@ func (q *Queries) GetGeneratedDungeon(ctx context.Context, arg GetGeneratedDunge
 }
 
 const getImageRequest = `-- name: GetImageRequest :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -798,13 +801,14 @@ func (q *Queries) GetImageRequest(ctx context.Context, arg GetImageRequestParams
 		&i.PadX1,
 		&i.PadY1,
 		&i.UsedMapImageID,
+		&i.ImageName,
 	)
 	return i, err
 }
 
 const getImageRequestByKey = `-- name: GetImageRequestByKey :one
 
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
 WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
@@ -854,12 +858,13 @@ func (q *Queries) GetImageRequestByKey(ctx context.Context, arg GetImageRequestB
 		&i.PadX1,
 		&i.PadY1,
 		&i.UsedMapImageID,
+		&i.ImageName,
 	)
 	return i, err
 }
 
 const getImageRequestForImage = `-- name: GetImageRequestForImage :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
 WHERE campaign_id = $1 AND image_id = $2
 `
 
@@ -906,6 +911,7 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 		&i.PadX1,
 		&i.PadY1,
 		&i.UsedMapImageID,
+		&i.ImageName,
 	)
 	return i, err
 }
@@ -1567,9 +1573,9 @@ func (q *Queries) InsertClueReveal(ctx context.Context, arg InsertClueRevealPara
 }
 
 const insertGalleryImage = `-- name: InsertGalleryImage :one
-INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind
 `
 
 type InsertGalleryImageParams struct {
@@ -1584,6 +1590,7 @@ type InsertGalleryImageParams struct {
 	CreatedAt     time.Time
 	Generated     bool
 	ParentImageID *string
+	GeneratedKind string
 }
 
 func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImageParams) (GalleryImage, error) {
@@ -1599,6 +1606,7 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 		arg.CreatedAt,
 		arg.Generated,
 		arg.ParentImageID,
+		arg.GeneratedKind,
 	)
 	var i GalleryImage
 	err := row.Scan(
@@ -1613,6 +1621,7 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 		&i.CreatedAt,
 		&i.Generated,
 		&i.ParentImageID,
+		&i.GeneratedKind,
 	)
 	return i, err
 }
@@ -1660,11 +1669,11 @@ INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
     reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
     map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
-    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
-RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name
 `
 
 type InsertImageRequestParams struct {
@@ -1694,6 +1703,7 @@ type InsertImageRequestParams struct {
 	PadY0          *float64
 	PadX1          *float64
 	PadY1          *float64
+	ImageName      string
 }
 
 func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequestParams) (ImageRequest, error) {
@@ -1724,6 +1734,7 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		arg.PadY0,
 		arg.PadX1,
 		arg.PadY1,
+		arg.ImageName,
 	)
 	var i ImageRequest
 	err := row.Scan(
@@ -1760,6 +1771,7 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		&i.PadX1,
 		&i.PadY1,
 		&i.UsedMapImageID,
+		&i.ImageName,
 	)
 	return i, err
 }
@@ -2185,7 +2197,7 @@ func (q *Queries) ListDiscoveredScenes(ctx context.Context, campaignID string) (
 }
 
 const listGalleryImages = `-- name: ListGalleryImages :many
-SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id FROM gallery_images
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind FROM gallery_images
 WHERE campaign_id = $1
 ORDER BY created_at DESC, id DESC
 `
@@ -2212,6 +2224,7 @@ func (q *Queries) ListGalleryImages(ctx context.Context, campaignID string) ([]G
 			&i.CreatedAt,
 			&i.Generated,
 			&i.ParentImageID,
+			&i.GeneratedKind,
 		); err != nil {
 			return nil, err
 		}
@@ -2236,7 +2249,7 @@ WITH RECURSIVE up AS (
     SELECT c.id, c.parent_image_id FROM gallery_images c JOIN tree t ON c.parent_image_id = t.id
 )
 SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size,
-       g.created_at, g.generated, g.parent_image_id,
+       g.created_at, g.generated, g.parent_image_id, g.generated_kind,
        COALESCE(r.prompt, '')::TEXT AS prompt, COALESCE(r.number, 0)::INT4 AS number
 FROM tree t
 JOIN gallery_images g ON g.id = t.id
@@ -2261,6 +2274,7 @@ type ListImageChainRow struct {
 	CreatedAt     time.Time
 	Generated     bool
 	ParentImageID *string
+	GeneratedKind string
 	Prompt        string
 	Number        int32
 }
@@ -2288,6 +2302,7 @@ func (q *Queries) ListImageChain(ctx context.Context, arg ListImageChainParams) 
 			&i.CreatedAt,
 			&i.Generated,
 			&i.ParentImageID,
+			&i.GeneratedKind,
 			&i.Prompt,
 			&i.Number,
 		); err != nil {
@@ -2302,7 +2317,7 @@ func (q *Queries) ListImageChain(ctx context.Context, arg ListImageChainParams) 
 }
 
 const listLeftImages = `-- name: ListLeftImages :many
-SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at, g.generated, g.parent_image_id FROM campaign_left_images l
+SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at, g.generated, g.parent_image_id, g.generated_kind FROM campaign_left_images l
 JOIN gallery_images g ON g.id = l.image_id
 WHERE l.campaign_id = $1
 ORDER BY l.left_at, g.id
@@ -2331,6 +2346,7 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 			&i.CreatedAt,
 			&i.Generated,
 			&i.ParentImageID,
+			&i.GeneratedKind,
 		); err != nil {
 			return nil, err
 		}
@@ -3261,7 +3277,7 @@ const renameGalleryImage = `-- name: RenameGalleryImage :one
 UPDATE gallery_images
 SET name = $3
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id
+RETURNING id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind
 `
 
 type RenameGalleryImageParams struct {
@@ -3285,6 +3301,7 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 		&i.CreatedAt,
 		&i.Generated,
 		&i.ParentImageID,
+		&i.GeneratedKind,
 	)
 	return i, err
 }

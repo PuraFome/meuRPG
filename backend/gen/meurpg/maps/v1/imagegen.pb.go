@@ -927,8 +927,12 @@ type GenerateSceneImageRequest struct {
 	// Gallery images of characters (the portraits of NPCs and enemies), at
 	// most 4 (UUIDs).
 	CharacterImageIds []string `protobuf:"bytes,7,rep,name=character_image_ids,json=characterImageIds,proto3" json:"character_image_ids,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The name the gallery image gets, 1 to 80 characters: the players read it
+	// when the master shows the image, so it is never "Imagem N". Empty means
+	// the first words of the text.
+	Name          string `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GenerateSceneImageRequest) Reset() {
@@ -1010,6 +1014,13 @@ func (x *GenerateSceneImageRequest) GetCharacterImageIds() []string {
 	return nil
 }
 
+func (x *GenerateSceneImageRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type GenerateSceneImageResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The request, PENDING (or what an earlier try with the same key became).
@@ -1073,7 +1084,10 @@ type EditGeneratedImageRequest struct {
 	// As GenerateSceneImageRequest.idempotency_key.
 	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	// The new instruction ("mais escura, com uma ponte"): 1 to 500 characters.
-	Instruction   string `protobuf:"bytes,4,opt,name=instruction,proto3" json:"instruction,omitempty"`
+	Instruction string `protobuf:"bytes,4,opt,name=instruction,proto3" json:"instruction,omitempty"`
+	// The name of the new gallery image, as GenerateSceneImageRequest.name. Empty
+	// means the name of the image it adjusts, with " (ajuste)".
+	Name          string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1132,6 +1146,13 @@ func (x *EditGeneratedImageRequest) GetIdempotencyKey() string {
 func (x *EditGeneratedImageRequest) GetInstruction() string {
 	if x != nil {
 		return x.Instruction
+	}
+	return ""
+}
+
+func (x *EditGeneratedImageRequest) GetName() string {
+	if x != nil {
+		return x.Name
 	}
 	return ""
 }
@@ -1890,8 +1911,11 @@ type GenerateMapImageRequest struct {
 	// portraits go as character references, together with character_image_ids, at
 	// most 4 in all (an image listed twice counts once).
 	NpcCharacterIds []string `protobuf:"bytes,10,rep,name=npc_character_ids,json=npcCharacterIds,proto3" json:"npc_character_ids,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The name of the gallery image, as GenerateSceneImageRequest.name. Empty means
+	// the map's name and the kind ("Masmorra de Mirathel · vista isométrica").
+	Name          string `protobuf:"bytes,11,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GenerateMapImageRequest) Reset() {
@@ -1992,6 +2016,13 @@ func (x *GenerateMapImageRequest) GetNpcCharacterIds() []string {
 		return x.NpcCharacterIds
 	}
 	return nil
+}
+
+func (x *GenerateMapImageRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
 }
 
 type GenerateMapImageResponse struct {
@@ -2241,7 +2272,7 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"a\n" +
 	" GetImageGenerationStatusResponse\x12=\n" +
-	"\x06status\x18\x01 \x01(\v2%.meurpg.maps.v1.ImageGenerationStatusR\x06status\"\xce\x02\n" +
+	"\x06status\x18\x01 \x01(\v2%.meurpg.maps.v1.ImageGenerationStatusR\x06status\"\xe2\x02\n" +
 	"\x19GenerateSceneImageRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
@@ -2250,18 +2281,20 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x05style\x18\x04 \x01(\x0e2\x1a.meurpg.maps.v1.ImageStyleR\x05style\x12C\n" +
 	"\faspect_ratio\x18\x05 \x01(\x0e2 .meurpg.maps.v1.ImageAspectRatioR\vaspectRatio\x12(\n" +
 	"\x10object_image_ids\x18\x06 \x03(\tR\x0eobjectImageIds\x12.\n" +
-	"\x13character_image_ids\x18\a \x03(\tR\x11characterImageIds\"\x9c\x01\n" +
+	"\x13character_image_ids\x18\a \x03(\tR\x11characterImageIds\x12\x12\n" +
+	"\x04name\x18\b \x01(\tR\x04name\"\x9c\x01\n" +
 	"\x1aGenerateSceneImageResponse\x12?\n" +
 	"\n" +
 	"generation\x18\x01 \x01(\v2\x1f.meurpg.maps.v1.ImageGenerationR\n" +
 	"generation\x12=\n" +
-	"\x06status\x18\x02 \x01(\v2%.meurpg.maps.v1.ImageGenerationStatusR\x06status\"\xa2\x01\n" +
+	"\x06status\x18\x02 \x01(\v2%.meurpg.maps.v1.ImageGenerationStatusR\x06status\"\xb6\x01\n" +
 	"\x19EditGeneratedImageRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x19\n" +
 	"\bimage_id\x18\x02 \x01(\tR\aimageId\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12 \n" +
-	"\vinstruction\x18\x04 \x01(\tR\vinstruction\"\x9c\x01\n" +
+	"\vinstruction\x18\x04 \x01(\tR\vinstruction\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\"\x9c\x01\n" +
 	"\x1aEditGeneratedImageResponse\x12?\n" +
 	"\n" +
 	"generation\x18\x01 \x01(\v2\x1f.meurpg.maps.v1.ImageGenerationR\n" +
@@ -2319,7 +2352,7 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x10MapImageCreature\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
-	"\x11portrait_image_id\x18\x03 \x01(\tR\x0fportraitImageId\"\xc8\x03\n" +
+	"\x11portrait_image_id\x18\x03 \x01(\tR\x0fportraitImageId\"\xdc\x03\n" +
 	"\x17GenerateMapImageRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -2332,7 +2365,8 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x10object_image_ids\x18\b \x03(\tR\x0eobjectImageIds\x12.\n" +
 	"\x13character_image_ids\x18\t \x03(\tR\x11characterImageIds\x12*\n" +
 	"\x11npc_character_ids\x18\n" +
-	" \x03(\tR\x0fnpcCharacterIds\"\x9a\x01\n" +
+	" \x03(\tR\x0fnpcCharacterIds\x12\x12\n" +
+	"\x04name\x18\v \x01(\tR\x04name\"\x9a\x01\n" +
 	"\x18GenerateMapImageResponse\x12?\n" +
 	"\n" +
 	"generation\x18\x01 \x01(\v2\x1f.meurpg.maps.v1.ImageGenerationR\n" +

@@ -17,6 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
+import { type GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
+import { GenerateImageButton } from '../../../shared/image-generate/generate-image-button';
+import type { GenerateOrigin } from '../../../core/images/imagegen-copy';
 import { MapAsk } from '../map-ask/map-ask';
 
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
@@ -42,6 +45,7 @@ type Mode = 'view' | 'rename' | 'delete' | 'image';
 @Component({
   selector: 'app-map-head',
   imports: [
+    GenerateImageButton,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -75,7 +79,10 @@ export class MapHead {
   readonly combatRunning = input(false);
   readonly toggleReveal = output<void>();
   readonly changeImage = output<void>();
+  /** The generate dialog made pictures, or made one the map's image: the page reads the map again. */
+  readonly imageGenerated = output<GenerateOutcome>();
 
+  protected readonly generateOrigin = computed<GenerateOrigin>(() => ({ kind: 'map', mapId: this.map().id, name: this.map().name, hasGrid: this.map().gridColumns > 0 }));
   protected readonly mode = signal<Mode>('view');
   protected readonly working = signal(false);
   protected readonly error = signal<string | null>(null);

@@ -1,0 +1,174 @@
+<app-sheet-frame [focusableBody]="true" [title]="title()" [subtitle]="subtitle()" titleId="gen-t" [phone]="inSheet" (closed)="requestClose()">
+  @switch (stage()) {
+    @case ('loading') {
+      <p class="wait" role="status">Preparando…</p>
+    }
+    @case ('form') {
+      @if (notice(); as note) {
+        <div class="mr-notice mr-notice--neutral" role="status">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ note }}</p>
+        </div>
+      }
+      <app-generate-form
+        [origin]="data.origin"
+        [choices]="choices()"
+        [form]="form()"
+        [reference]="reference()"
+        [referenceState]="referenceState()"
+        [npcs]="npcs()"
+        [references]="references()"
+        [status]="status()"
+        [issue]="issue()"
+        [phone]="inSheet"
+        (formChange)="patch($event)"
+        (pickReference)="pickReference()"
+        (removeReference)="removeReference($event)"
+        (retryReference)="retryReference()"
+      />
+      <p class="synth synth--body">{{ synthid }}</p>
+    }
+    @case ('running') {
+      @if (run(); as r) {
+        <app-generate-running [run]="r" [summary]="summary()" [prompt]="runPrompt()" />
+      }
+      @if (closing()) {
+        <section class="ask" role="group" aria-labelledby="gen-close-t">
+          <h3 class="ask__title" id="gen-close-t" tabindex="-1">Parar de esperar a imagem?</h3>
+          <p class="ask-text">O pedido continua no servidor. Se ele já saiu, a vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.</p>
+        </section>
+      }
+    }
+    @case ('result') {
+      @if (view(); as v) {
+        @if (notice(); as note) {
+          <div class="mr-notice mr-notice--neutral" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>{{ note }}</p>
+          </div>
+        }
+        <app-generate-result
+          [view]="v"
+          [chain]="chain()"
+          [shown]="shown()"
+          [showBusy]="showBusy()"
+          [showError]="showError()"
+          [gridColumns]="v.texture ? (textureGrid()?.columns ?? 0) : 0"
+          [gridRows]="v.texture ? (textureGrid()?.rows ?? 0) : 0"
+          [canUse]="canUse()"
+          [showStage]="showStage()"
+          [sessionOpen]="sessionOpen()"
+          [useStage]="useStage()"
+          [useError]="useError()"
+          [instruction]="instruction()"
+          [editError]="editError()"
+          [status]="status()"
+          (instructionChange)="instruction.set($event); editError.set(null)"
+          (pickChain)="pickChain($event)"
+        />
+      }
+    }
+  }
+
+  <div foot class="foot">
+    @switch (stage()) {
+      @case ('form') {
+        @if (why(); as reason) {
+          <p class="why" id="gen-why">{{ reason }}</p>
+        }
+        <div class="pair">
+          <button matButton="outlined" type="button" (click)="finish()">Cancelar</button>
+          <button
+            matButton="filled"
+            type="button"
+            [class.mr-button--off]="why() !== ''"
+            [disabled]="why() !== ''"
+            disabledInteractive
+            [attr.aria-describedby]="why() !== '' ? 'gen-why' : null"
+            (click)="submit()"
+          >
+            Gerar imagem
+          </button>
+        </div>
+        <p class="synth synth--foot">{{ synthid }}</p>
+      }
+      @case ('running') {
+        @if (closing()) {
+          <div class="pair pair--stack">
+            <button matButton="outlined" type="button" (click)="keepWaiting()">Continuar esperando</button>
+            <button matButton="filled" type="button" (click)="stopAndClose()">Parar de esperar</button>
+          </div>
+        } @else if (run(); as r) {
+          <div class="pair">
+            <button matButton="outlined" type="button" [disabled]="r.phase() === 'canceling'" (click)="cancelRun()">
+              <mat-icon aria-hidden="true">stop</mat-icon>{{ r.phase() === 'sending' ? 'Cancelar' : 'Parar de esperar' }}
+            </button>
+            <button matButton="filled" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="gen-wait">Gerando…</button>
+          </div>
+          <p class="why" id="gen-wait">{{ r.phase() === 'sending' ? wait.sending : r.phase() === 'canceling' ? wait.canceling : wait.waiting }}</p>
+        }
+      }
+      @case ('result') {
+        @if (useStage() === 'asking' || useStage() === 'busy') {
+          <div class="pair pair--stack">
+            <button matButton="outlined" type="button" [disabled]="useStage() === 'busy'" (click)="cancelUse()">Voltar</button>
+            <button matButton="filled" type="button" [disabled]="useStage() === 'busy'" (click)="confirmUse()">Usar como imagem do mapa</button>
+          </div>
+        } @else if (showStage() === 'asking') {
+          <div class="pair pair--stack">
+            <button matButton="outlined" type="button" [disabled]="showBusy()" (click)="cancelShow()">Voltar</button>
+            <button matButton="filled" type="button" [disabled]="showBusy()" (click)="show()">Mostrar mesmo assim</button>
+          </div>
+        } @else {
+          @if (editWhy(); as reason) {
+            <p class="why" id="gen-why">{{ reason }}</p>
+          }
+          <div class="pair pair--end pair--stack">
+            <button
+              [matButton]="main() ? 'outlined' : 'filled'"
+              type="button"
+              [class.mr-button--off]="editWhy() !== ''"
+              [disabled]="editWhy() !== ''"
+              disabledInteractive
+              [attr.aria-describedby]="editWhy() !== '' ? 'gen-why' : null"
+              (click)="submitEdit()"
+            >
+              <mat-icon aria-hidden="true">auto_awesome</mat-icon>Pedir o ajuste
+            </button>
+            @switch (main()) {
+              @case ('use') {
+                <button matButton="filled" type="button" (click)="askUse()"><mat-icon aria-hidden="true">map</mat-icon>Usar como imagem do mapa</button>
+              }
+              @case ('show') {
+                <button
+                  matButton="filled"
+                  type="button"
+                  [class.mr-button--off]="!sessionOpen()"
+                  [disabled]="!sessionOpen() || showBusy()"
+                  disabledInteractive
+                  [attr.aria-describedby]="sessionOpen() ? null : 'show-why'"
+                  (click)="sessionOpen() && !showBusy() && show()"
+                >
+                  <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar aos jogadores
+                </button>
+              }
+              @case ('ask-show') {
+                <button
+                  matButton="filled"
+                  type="button"
+                  [class.mr-button--off]="!sessionOpen()"
+                  [disabled]="!sessionOpen() || showBusy()"
+                  disabledInteractive
+                  [attr.aria-describedby]="sessionOpen() ? null : 'show-why'"
+                  (click)="sessionOpen() && !showBusy() && askShow()"
+                >
+                  <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar aos jogadores
+                </button>
+              }
+            }
+          </div>
+        }
+      }
+    }
+  </div>
+</app-sheet-frame>

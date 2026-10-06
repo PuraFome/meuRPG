@@ -10,8 +10,8 @@ FROM gallery_images
 WHERE campaign_id = $1;
 
 -- name: InsertGalleryImage :one
-INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: ListGalleryImages :many
@@ -810,10 +810,10 @@ INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
     reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
     map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
-    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING *;
 
 -- name: MarkImageRequestSent :execrows
@@ -870,7 +870,7 @@ WITH RECURSIVE up AS (
     SELECT c.id, c.parent_image_id FROM gallery_images c JOIN tree t ON c.parent_image_id = t.id
 )
 SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size,
-       g.created_at, g.generated, g.parent_image_id,
+       g.created_at, g.generated, g.parent_image_id, g.generated_kind,
        COALESCE(r.prompt, '')::TEXT AS prompt, COALESCE(r.number, 0)::INT4 AS number
 FROM tree t
 JOIN gallery_images g ON g.id = t.id

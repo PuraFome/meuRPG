@@ -24,8 +24,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 )
 
 // ImageGenerationService (MR-039, RN-28, ADR-0019): pictures made by an image
@@ -227,6 +229,8 @@ type newRequest struct {
 	characters  []string // gallery image IDs of characters
 	source      *string  // an edit's image
 	requestedBy string
+	// name is the gallery image's name: the master's, or the default the server made (never "Imagem N").
+	name string
 	// mapReq is set for a request made from a map (the three kinds of imagegen_map.go).
 	mapReq *mapRequest
 	// prepared are the shrunk images the call will carry (prepare), made before
@@ -267,9 +271,13 @@ func (s *Service) GenerateSceneImage(
 	if hasDuplicates(refs) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an image is listed twice as a reference"))
 	}
+	name, err := imageNameOf(req.Msg.GetName(), sceneName(prompt))
+	if err != nil {
+		return nil, err
+	}
 	n := newRequest{
 		kind: kindScene, key: key, prompt: prompt, style: style, ratio: ratio,
-		references: objects, characters: characters, requestedBy: m.UserID,
+		references: objects, characters: characters, requestedBy: m.UserID, name: name,
 	}
 	row, status, err := s.begin(ctx, n, m.CampaignID)
 	if err != nil {
@@ -299,9 +307,14 @@ func (s *Service) EditGeneratedImage(
 	if err != nil {
 		return nil, errImageNotFound()
 	}
+	// An empty name is the source's, with " (ajuste)": reserve fills it in, with the source in hand.
+	name, err := imageNameOf(req.Msg.GetName(), "")
+	if err != nil {
+		return nil, err
+	}
 	source := imageID.String()
 	row, status, err := s.begin(ctx, newRequest{
-		kind: kindEdit, key: key, prompt: instruction, source: &source, requestedBy: m.UserID,
+		kind: kindEdit, key: key, prompt: instruction, source: &source, requestedBy: m.UserID, name: name,
 	}, m.CampaignID)
 	if err != nil {
 		return nil, err
@@ -351,6 +364,8 @@ type prepared struct {
 	basis     *mapBasis
 	ratio     string
 	rooms     []string
+	// name is the default name of a picture made from a map (the map's, and the way).
+	name string
 }
 
 // begin checks what can be checked cheaply, prepares the images, and reserves
@@ -388,6 +403,9 @@ func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (m
 	n.characters = append(append([]string{}, n.characters...), prep.npcImages...)
 	if prep.ratio != "" {
 		n.ratio = prep.ratio
+	}
+	if n.name == "" {
+		n.name = prep.name
 	}
 	stub := gen.Request{Prompt: n.prompt, References: prep.references, Edit: editStub(n, prep), Drawing: prep.drawing, Rooms: prep.rooms}
 	if prep.drawing != nil {
@@ -525,6 +543,10 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	)
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		created = false
+		var (
+			inherited    basisParams
+			hasInherited bool
+		)
 		q := s.queries.WithTx(tx)
 		// A retry with the same key: the first request, whatever it became.
 		existing, err := q.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key})
@@ -586,6 +608,25 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 				return fmt.Errorf("find the request of the image to edit: %w", err)
 			}
 			n.style, n.ratio = from.Style, from.AspectRatio
+			if src.GeneratedKind == kindTexturedMap && from.MapWidth != nil && from.MapHeight != nil {
+				// An edit of a textured map comes back at the map's own proportions (the original's ratio is the padded
+				// canvas's, not the map's): the model ratio nearest the map image's, so little is cut and nothing is stretched.
+				n.ratio = refimg.Closest(int(*from.MapWidth), int(*from.MapHeight))
+			}
+			if n.name == "" {
+				n.name = suffixedName(src.Name, " (ajuste)")
+			}
+			if src.GeneratedKind == kindTexturedMap {
+				// An edit of a textured map is a textured map: it keeps the map it fits (the image, the grid, the
+				// size and the walls it started from), so it is made at the map's size and "Usar como imagem do
+				// mapa" checks the same things (RN-10).
+				inherited = basisParams{
+					mapID: from.MapID, imageID: from.MapImageID, gridColumns: from.MapGridColumns, gridFactor: from.MapGridFactor,
+					width: from.MapWidth, height: from.MapHeight, planHash: from.MapPlanHash,
+					pad: [4]*float64{from.PadX0, from.PadY0, from.PadX1, from.PadY1},
+				}
+				hasInherited = true
+			}
 		}
 		number, err := q.NextImageRequestNumber(ctx, campaignID)
 		if err != nil {
@@ -594,12 +635,16 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		month, _ := monthOf(s.now())
 		id := uuid.New().String()
 		basis := n.prepared.basis.params()
+		if hasInherited {
+			basis = inherited
+		}
 		row, err = q.InsertImageRequest(ctx, mapsdb.InsertImageRequestParams{
 			ID: id, CampaignID: campaignID, RequestedBy: &n.requestedBy, IdempotencyKey: n.key,
 			Kind: n.kind, Prompt: n.prompt, Style: n.style, AspectRatio: n.ratio, Model: s.generator.Model(),
 			ReferenceIds: nonNil(n.references), CharacterIds: nonNil(n.characters), SourceImageID: n.source, Number: number, QuotaMonth: month, CreatedAt: s.now(),
 			MapID: basis.mapID, MapImageID: basis.imageID, MapGridColumns: basis.gridColumns, MapGridFactor: basis.gridFactor, MapWidth: basis.width, MapHeight: basis.height,
 			MapPlanHash: basis.planHash, PadX0: basis.pad[0], PadY0: basis.pad[1], PadX1: basis.pad[2], PadY1: basis.pad[3],
+			ImageName: imageNameFor(n),
 		})
 		if err != nil {
 			return fmt.Errorf("insert the request: %w", err)
@@ -787,7 +832,7 @@ func (s *Service) ListImageEdits(
 			Image: imageToProto(mapsdb.GalleryImage{
 				ID: r.ID, CampaignID: r.CampaignID, UploadedBy: r.UploadedBy, Name: r.Name, ContentType: r.ContentType,
 				Width: r.Width, Height: r.Height, ByteSize: r.ByteSize, CreatedAt: r.CreatedAt,
-				Generated: r.Generated, ParentImageID: r.ParentImageID,
+				Generated: r.Generated, ParentImageID: r.ParentImageID, GeneratedKind: r.GeneratedKind,
 			}),
 			Prompt: r.Prompt, Number: r.Number,
 		})
@@ -894,6 +939,42 @@ func cleanPrompt(text, field string) (string, error) {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s must be 1 to %d characters of text", field, maxPromptCharacters))
 	}
 	return text, nil
+}
+
+// imageNameOf is the name the generated image gets: the master's (checked like a rename), or
+// the default when there is none ("" when the caller has none and fills it in later).
+func imageNameOf(given, fallback string) (string, error) {
+	if strings.TrimSpace(given) == "" {
+		return fallback, nil
+	}
+	name, err := names.Clean(given, maxNameLength)
+	if err != nil {
+		// The message says the rule, never the name, which is free text.
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name %w", err))
+	}
+	return name, nil
+}
+
+// imageNameFor is the name the request records for its gallery image ("" only for a request
+// without one, which the picture then names "Imagem n").
+func imageNameFor(n newRequest) string { return n.name }
+
+// sceneName is the default name of a scene art made from a text alone: its first words.
+func sceneName(prompt string) string {
+	flat := strings.Join(strings.Fields(prompt), " ")
+	if utf8.RuneCountInString(flat) > maxNameLength {
+		flat = strings.TrimSpace(string([]rune(flat)[:maxNameLength]))
+	}
+	return flat
+}
+
+// suffixedName is a name with a suffix, cut so that it still fits the name limit.
+func suffixedName(name, suffix string) string {
+	room := maxNameLength - utf8.RuneCountInString(suffix)
+	if utf8.RuneCountInString(name) > room {
+		name = strings.TrimSpace(string([]rune(name)[:room]))
+	}
+	return name + suffix
 }
 
 func styleAndRatio(style mapsv1.ImageStyle, ratio mapsv1.ImageAspectRatio) (styleKey, ratioName string, err error) {
@@ -1079,10 +1160,15 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	fin, cancelFin := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancelFin()
 	var res *images.Result
-	if row.Kind == kindTexturedMap {
+	kind := s.generatedKindOf(fin, row)
+	switch {
+	case row.Kind == kindTexturedMap:
 		// The textured map is the map's rectangle of the padded canvas, in the size of the map's image.
 		res, err = s.cropToMap(fin, picture.Data, row)
-	} else {
+	case row.Kind == kindEdit && kind == kindTexturedMap && row.MapWidth != nil && row.MapHeight != nil:
+		// An edit of a textured map keeps the map's size, so it can be used as the map's image too.
+		res, err = s.fitToMap(fin, picture.Data, row)
+	default:
 		res, err = s.process(fin, picture.Data)
 	}
 	if err != nil {
@@ -1094,9 +1180,12 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	if row.Kind == kindEdit {
 		parent = row.SourceImageID
 	}
-	name := "Imagem " + strconv.Itoa(int(row.Number))
+	name := row.ImageName
+	if name == "" {
+		name = "Imagem " + strconv.Itoa(int(row.Number))
+	}
 	// The gallery row and the request's end go in one transaction, allowed once.
-	stored, err := s.storeImage(fin, campaignID, row.RequestedBy, name, res, true, parent,
+	stored, err := s.storeImage(fin, campaignID, row.RequestedBy, name, res, true, kind, parent,
 		func(ctx context.Context, q *mapsdb.Queries, imageID string) error {
 			n, err := q.FinishImageRequestDone(ctx, mapsdb.FinishImageRequestDoneParams{CampaignID: campaignID, ID: id, ImageID: &imageID, Now: ptr(s.now())})
 			if err != nil {
@@ -1121,6 +1210,24 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 		return
 	}
 	s.logger.InfoContext(fin, "maps: an image was generated", "campaign", campaignID, "request", id, "image", stored.ID)
+}
+
+// generatedKindOf is the way a request's picture was made, as the gallery records it: the
+// request's own kind, and for an edit the way of the image it adjusts (a chain keeps the way
+// of its root). An edit that carries a map basis is a textured map's even if its source is gone.
+func (s *Service) generatedKindOf(ctx context.Context, row mapsdb.ImageRequest) string {
+	if row.Kind != kindEdit {
+		return row.Kind
+	}
+	if row.SourceImageID != nil {
+		if src, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: row.CampaignID, ID: *row.SourceImageID}); err == nil {
+			return src.GeneratedKind
+		}
+	}
+	if row.MapID != nil {
+		return kindTexturedMap
+	}
+	return ""
 }
 
 // endReason says why a request that never left stops: the shutdown, or its
