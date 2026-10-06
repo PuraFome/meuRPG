@@ -64,6 +64,15 @@ const (
 	// CombatServiceGetMoveOptionsProcedure is the fully-qualified name of the CombatService's
 	// GetMoveOptions RPC.
 	CombatServiceGetMoveOptionsProcedure = "/meurpg.play.v1.CombatService/GetMoveOptions"
+	// CombatServiceSpendMovementProcedure is the fully-qualified name of the CombatService's
+	// SpendMovement RPC.
+	CombatServiceSpendMovementProcedure = "/meurpg.play.v1.CombatService/SpendMovement"
+	// CombatServiceOfferOpportunityProcedure is the fully-qualified name of the CombatService's
+	// OfferOpportunity RPC.
+	CombatServiceOfferOpportunityProcedure = "/meurpg.play.v1.CombatService/OfferOpportunity"
+	// CombatServiceWithdrawOpportunityProcedure is the fully-qualified name of the CombatService's
+	// WithdrawOpportunity RPC.
+	CombatServiceWithdrawOpportunityProcedure = "/meurpg.play.v1.CombatService/WithdrawOpportunity"
 	// CombatServiceSetCombatantSideProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantSide RPC.
 	CombatServiceSetCombatantSideProcedure = "/meurpg.play.v1.CombatService/SetCombatantSide"
@@ -146,11 +155,19 @@ type CombatServiceClient interface {
 	// the campaign's master may call it, and only while the campaign has an
 	// open session.
 	//
-	// The fight is on the session's current map, which must have a grid
-	// (MapService.SetMapGrid). When map_point_id names a BATTLE point that
+	// The mode (`mode`, RN-25, ADR-0017) is chosen here and never changes. GRID
+	// is the fight on a map: it is on the session's current map, which must have a
+	// grid (MapService.SetMapGrid). When map_point_id names a BATTLE point that
 	// leads to a map, that map becomes the session's current map (and is
 	// revealed to the players, as PlayService.SetCurrentMap does) and must
-	// have the grid instead.
+	// have the grid instead. THEATRE is the fight without a map, the "teatro da
+	// mente": it needs no map, no combatant ever has a square, the server never
+	// checks a player's reach, range or distance (the master judges), and there is
+	// no fog, no trap, no door and no placement of summoned creatures. Movement is
+	// spent by number (SpendMovement) and the opportunity attack is offered by the
+	// master (OfferOpportunity). Left UNSPECIFIED, the mode is the table's rule
+	// "combate com mapa" (RN-24): GRID when the table starts its combats with a
+	// map (the default), THEATRE otherwise.
 	//
 	// Who fights: the player characters listed in participants, and copies of
 	// the NPCs listed, each NPC with a count: "Goblin" x 3 makes "Goblin 1",
@@ -174,12 +191,13 @@ type CombatServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); the session already has a combat that is not
-	//     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); there is no
-	//     current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
-	//     with its map_id, so the app offers to set one).
+	//     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); in GRID mode, there is
+	//     no current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
+	//     with its map_id, so the app offers to set one); in THEATRE mode, a
+	//     map_point_id (THEATRE_HAS_NO_MAP).
 	//   - `invalid_argument`: no participants, more than 40 combatants, a
 	//     participant listed twice, a count outside 1 to 10 (a player
-	//     character: 1), or a name that breaks its rules.
+	//     character: 1), a name that breaks its rules, or a `mode` that is not one.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of
@@ -364,6 +382,10 @@ type CombatServiceClient interface {
 	// options.jumps) and a running start needs a move of 10 ft or more on foot
 	// right before. A move clears the master's manual cover mark of the combatant
 	// (SetCombatantCover).
+	//
+	// Only in GRID mode: in THEATRE mode there are no squares, so every move, jump
+	// and placement is refused with `failed_precondition` (EncounterBlocked,
+	// NEEDS_A_MAP). Spend the movement with SpendMovement instead.
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
 	// GetMoveOptions says where a combatant can go in one straight move: every
 	// square it reaches with its movement left, with what the move costs, and, for
@@ -385,7 +407,76 @@ type CombatServiceClient interface {
 	//   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
 	//     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
 	//     on the map (NOT_PLACED).
+	//
+	// In THEATRE mode the answer is valid and empty: no square is reachable or
+	// refused, and `movement_left_dft` is what SpendMovement can still spend.
 	GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error)
+	// SpendMovement spends movement by number, for a combat in THEATRE mode (RN-25,
+	// ADR-0017): "Gastar movimento", in whole feet (the app steps by 5 ft, 1.5 m).
+	// It adds to the combatant's movement used this turn (`movement_used_dft`, the
+	// same field MoveCombatant uses, kept in tenths of a foot) and never passes the
+	// movement the turn has: its speed (the better of walking and flying), twice
+	// after the Dash action. The server does not judge the path or the distance:
+	// the master does. The caller's own combatant on its turn, for a player (and for
+	// the creatures of their character); any combatant for the master, who is
+	// held to the same limit. It is the combatant's movement in the combat log
+	// ("gastou 6,0 m de movimento") when it is the combatant's turn, and the
+	// master can undo it (UndoLastAction). It provokes nothing: the master offers
+	// the opportunity attack (OfferOpportunity).
+	//
+	// The answer tells what is left (`movement_left_dft`), so the screen says
+	// "Restam 3,0 m". Every stream gets `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session (a
+	//     hidden NPC is not found for a player).
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     theirs.
+	//   - `invalid_argument`: `distance_ft` is not 1 to 600.
+	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); for a player, it is not
+	//     the combatant's turn (NOT_YOUR_TURN) or an opportunity attack on it waits
+	//     for its answer (OPPORTUNITY_PENDING); the distance is more than the
+	//     movement left (TOO_FAR, with missing_ft and missing_dft).
+	SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error)
+	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
+	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+	// left the reach of another, the reactor, which the master chooses. In THEATRE
+	// mode the server never finds out by itself that anyone left a reach. It makes
+	// the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
+	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
+	// master answers for an NPC's reaction (he attacks by hand) or skips the offer
+	// (SkipOpportunity); and the mover's turn waits for the answer for a player's
+	// character. The reaction rules are the move's: one reaction a round, and a
+	// reactor that cannot react now cannot be offered. Only the master.
+	//
+	// The offer stays pending until it is answered, skipped or taken back
+	// (WithdrawOpportunity). It is a session event, `opportunity_offered`; it
+	// cannot be undone, but it can be withdrawn. The reactor's player, the mover's
+	// player and the master get `encounter_changed`; no other player gets any hint.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the mover or the reactor is not in the open
+	//     session.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
+	//     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
+	//     reactor cannot make the attack now, or is on the mover's side, or has no
+	//     melee attack, or the mover is defeated, hidden or took the Disengage
+	//     action, or the same offer already waits (NO_OPPORTUNITY).
+	OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error)
+	// WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
+	// opportunity offer that nobody answered (he offered it by mistake). The offer
+	// goes away, the reactor keeps its reaction and the mover's turn stops waiting.
+	// The master can undo it (UndoLastAction): the offer waits again. Only the
+	// master.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors: as SkipOpportunity.
+	WithdrawOpportunity(context.Context, *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error)
 	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
 	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
 	// and provokes an opportunity attack; an ally can be passed) and is never
@@ -1048,6 +1139,24 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		spendMovement: connect.NewClient[v1.SpendMovementRequest, v1.SpendMovementResponse](
+			httpClient,
+			baseURL+CombatServiceSpendMovementProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SpendMovement")),
+			connect.WithClientOptions(opts...),
+		),
+		offerOpportunity: connect.NewClient[v1.OfferOpportunityRequest, v1.OfferOpportunityResponse](
+			httpClient,
+			baseURL+CombatServiceOfferOpportunityProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("OfferOpportunity")),
+			connect.WithClientOptions(opts...),
+		),
+		withdrawOpportunity: connect.NewClient[v1.WithdrawOpportunityRequest, v1.WithdrawOpportunityResponse](
+			httpClient,
+			baseURL+CombatServiceWithdrawOpportunityProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("WithdrawOpportunity")),
+			connect.WithClientOptions(opts...),
+		),
 		setCombatantSide: connect.NewClient[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse](
 			httpClient,
 			baseURL+CombatServiceSetCombatantSideProcedure,
@@ -1214,6 +1323,9 @@ type combatServiceClient struct {
 	endTurn                  *connect.Client[v1.EndTurnRequest, v1.EndTurnResponse]
 	moveCombatant            *connect.Client[v1.MoveCombatantRequest, v1.MoveCombatantResponse]
 	getMoveOptions           *connect.Client[v1.GetMoveOptionsRequest, v1.GetMoveOptionsResponse]
+	spendMovement            *connect.Client[v1.SpendMovementRequest, v1.SpendMovementResponse]
+	offerOpportunity         *connect.Client[v1.OfferOpportunityRequest, v1.OfferOpportunityResponse]
+	withdrawOpportunity      *connect.Client[v1.WithdrawOpportunityRequest, v1.WithdrawOpportunityResponse]
 	setCombatantSide         *connect.Client[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse]
 	setCombatantCover        *connect.Client[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse]
 	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
@@ -1279,6 +1391,21 @@ func (c *combatServiceClient) MoveCombatant(ctx context.Context, req *connect.Re
 // GetMoveOptions calls meurpg.play.v1.CombatService.GetMoveOptions.
 func (c *combatServiceClient) GetMoveOptions(ctx context.Context, req *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error) {
 	return c.getMoveOptions.CallUnary(ctx, req)
+}
+
+// SpendMovement calls meurpg.play.v1.CombatService.SpendMovement.
+func (c *combatServiceClient) SpendMovement(ctx context.Context, req *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error) {
+	return c.spendMovement.CallUnary(ctx, req)
+}
+
+// OfferOpportunity calls meurpg.play.v1.CombatService.OfferOpportunity.
+func (c *combatServiceClient) OfferOpportunity(ctx context.Context, req *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error) {
+	return c.offerOpportunity.CallUnary(ctx, req)
+}
+
+// WithdrawOpportunity calls meurpg.play.v1.CombatService.WithdrawOpportunity.
+func (c *combatServiceClient) WithdrawOpportunity(ctx context.Context, req *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error) {
+	return c.withdrawOpportunity.CallUnary(ctx, req)
 }
 
 // SetCombatantSide calls meurpg.play.v1.CombatService.SetCombatantSide.
@@ -1412,11 +1539,19 @@ type CombatServiceHandler interface {
 	// the campaign's master may call it, and only while the campaign has an
 	// open session.
 	//
-	// The fight is on the session's current map, which must have a grid
-	// (MapService.SetMapGrid). When map_point_id names a BATTLE point that
+	// The mode (`mode`, RN-25, ADR-0017) is chosen here and never changes. GRID
+	// is the fight on a map: it is on the session's current map, which must have a
+	// grid (MapService.SetMapGrid). When map_point_id names a BATTLE point that
 	// leads to a map, that map becomes the session's current map (and is
 	// revealed to the players, as PlayService.SetCurrentMap does) and must
-	// have the grid instead.
+	// have the grid instead. THEATRE is the fight without a map, the "teatro da
+	// mente": it needs no map, no combatant ever has a square, the server never
+	// checks a player's reach, range or distance (the master judges), and there is
+	// no fog, no trap, no door and no placement of summoned creatures. Movement is
+	// spent by number (SpendMovement) and the opportunity attack is offered by the
+	// master (OfferOpportunity). Left UNSPECIFIED, the mode is the table's rule
+	// "combate com mapa" (RN-24): GRID when the table starts its combats with a
+	// map (the default), THEATRE otherwise.
 	//
 	// Who fights: the player characters listed in participants, and copies of
 	// the NPCs listed, each NPC with a count: "Goblin" x 3 makes "Goblin 1",
@@ -1440,12 +1575,13 @@ type CombatServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); the session already has a combat that is not
-	//     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); there is no
-	//     current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
-	//     with its map_id, so the app offers to set one).
+	//     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); in GRID mode, there is
+	//     no current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
+	//     with its map_id, so the app offers to set one); in THEATRE mode, a
+	//     map_point_id (THEATRE_HAS_NO_MAP).
 	//   - `invalid_argument`: no participants, more than 40 combatants, a
 	//     participant listed twice, a count outside 1 to 10 (a player
-	//     character: 1), or a name that breaks its rules.
+	//     character: 1), a name that breaks its rules, or a `mode` that is not one.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of
@@ -1630,6 +1766,10 @@ type CombatServiceHandler interface {
 	// options.jumps) and a running start needs a move of 10 ft or more on foot
 	// right before. A move clears the master's manual cover mark of the combatant
 	// (SetCombatantCover).
+	//
+	// Only in GRID mode: in THEATRE mode there are no squares, so every move, jump
+	// and placement is refused with `failed_precondition` (EncounterBlocked,
+	// NEEDS_A_MAP). Spend the movement with SpendMovement instead.
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
 	// GetMoveOptions says where a combatant can go in one straight move: every
 	// square it reaches with its movement left, with what the move costs, and, for
@@ -1651,7 +1791,76 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
 	//     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
 	//     on the map (NOT_PLACED).
+	//
+	// In THEATRE mode the answer is valid and empty: no square is reachable or
+	// refused, and `movement_left_dft` is what SpendMovement can still spend.
 	GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error)
+	// SpendMovement spends movement by number, for a combat in THEATRE mode (RN-25,
+	// ADR-0017): "Gastar movimento", in whole feet (the app steps by 5 ft, 1.5 m).
+	// It adds to the combatant's movement used this turn (`movement_used_dft`, the
+	// same field MoveCombatant uses, kept in tenths of a foot) and never passes the
+	// movement the turn has: its speed (the better of walking and flying), twice
+	// after the Dash action. The server does not judge the path or the distance:
+	// the master does. The caller's own combatant on its turn, for a player (and for
+	// the creatures of their character); any combatant for the master, who is
+	// held to the same limit. It is the combatant's movement in the combat log
+	// ("gastou 6,0 m de movimento") when it is the combatant's turn, and the
+	// master can undo it (UndoLastAction). It provokes nothing: the master offers
+	// the opportunity attack (OfferOpportunity).
+	//
+	// The answer tells what is left (`movement_left_dft`), so the screen says
+	// "Restam 3,0 m". Every stream gets `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session (a
+	//     hidden NPC is not found for a player).
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     theirs.
+	//   - `invalid_argument`: `distance_ft` is not 1 to 600.
+	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); for a player, it is not
+	//     the combatant's turn (NOT_YOUR_TURN) or an opportunity attack on it waits
+	//     for its answer (OPPORTUNITY_PENDING); the distance is more than the
+	//     movement left (TOO_FAR, with missing_ft and missing_dft).
+	SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error)
+	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
+	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+	// left the reach of another, the reactor, which the master chooses. In THEATRE
+	// mode the server never finds out by itself that anyone left a reach. It makes
+	// the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
+	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
+	// master answers for an NPC's reaction (he attacks by hand) or skips the offer
+	// (SkipOpportunity); and the mover's turn waits for the answer for a player's
+	// character. The reaction rules are the move's: one reaction a round, and a
+	// reactor that cannot react now cannot be offered. Only the master.
+	//
+	// The offer stays pending until it is answered, skipped or taken back
+	// (WithdrawOpportunity). It is a session event, `opportunity_offered`; it
+	// cannot be undone, but it can be withdrawn. The reactor's player, the mover's
+	// player and the master get `encounter_changed`; no other player gets any hint.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the mover or the reactor is not in the open
+	//     session.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
+	//     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
+	//     reactor cannot make the attack now, or is on the mover's side, or has no
+	//     melee attack, or the mover is defeated, hidden or took the Disengage
+	//     action, or the same offer already waits (NO_OPPORTUNITY).
+	OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error)
+	// WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
+	// opportunity offer that nobody answered (he offered it by mistake). The offer
+	// goes away, the reactor keeps its reaction and the mover's turn stops waiting.
+	// The master can undo it (UndoLastAction): the offer waits again. Only the
+	// master.
+	//
+	// Every stream gets `encounter_changed`.
+	//
+	// Errors: as SkipOpportunity.
+	WithdrawOpportunity(context.Context, *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error)
 	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
 	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
 	// and provokes an opportunity attack; an ally can be passed) and is never
@@ -2310,6 +2519,24 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceSpendMovementHandler := connect.NewUnaryHandler(
+		CombatServiceSpendMovementProcedure,
+		svc.SpendMovement,
+		connect.WithSchema(combatServiceMethods.ByName("SpendMovement")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceOfferOpportunityHandler := connect.NewUnaryHandler(
+		CombatServiceOfferOpportunityProcedure,
+		svc.OfferOpportunity,
+		connect.WithSchema(combatServiceMethods.ByName("OfferOpportunity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceWithdrawOpportunityHandler := connect.NewUnaryHandler(
+		CombatServiceWithdrawOpportunityProcedure,
+		svc.WithdrawOpportunity,
+		connect.WithSchema(combatServiceMethods.ByName("WithdrawOpportunity")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceSetCombatantSideHandler := connect.NewUnaryHandler(
 		CombatServiceSetCombatantSideProcedure,
 		svc.SetCombatantSide,
@@ -2481,6 +2708,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceMoveCombatantHandler.ServeHTTP(w, r)
 		case CombatServiceGetMoveOptionsProcedure:
 			combatServiceGetMoveOptionsHandler.ServeHTTP(w, r)
+		case CombatServiceSpendMovementProcedure:
+			combatServiceSpendMovementHandler.ServeHTTP(w, r)
+		case CombatServiceOfferOpportunityProcedure:
+			combatServiceOfferOpportunityHandler.ServeHTTP(w, r)
+		case CombatServiceWithdrawOpportunityProcedure:
+			combatServiceWithdrawOpportunityHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantSideProcedure:
 			combatServiceSetCombatantSideHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantCoverProcedure:
@@ -2570,6 +2803,18 @@ func (UnimplementedCombatServiceHandler) MoveCombatant(context.Context, *connect
 
 func (UnimplementedCombatServiceHandler) GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetMoveOptions is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SpendMovement is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.OfferOpportunity is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) WithdrawOpportunity(context.Context, *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.WithdrawOpportunity is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error) {

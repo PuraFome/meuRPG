@@ -84,6 +84,15 @@ func (s *Service) StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID st
 	return rulesFromRow(row), nil
 }
 
+// CombatWithoutMap says whether "Iniciar combate" starts without a map by
+// default (RN-24, RN-25): the table's rule "combate com mapa". Package play asks
+// it, in the transaction that starts the combat (tx; nil: the pool), when the
+// request does not choose a mode.
+func (s *Service) CombatWithoutMap(ctx context.Context, tx pgx.Tx, campaignID string) (bool, error) {
+	r, err := s.StoredTableRules(ctx, tx, campaignID)
+	return r.CombatWithoutMap, err
+}
+
 // FogOnNewMaps says whether a map created now starts with the fog of war on
 // (RN-24). Package maps asks it when the master creates a map, through its own
 // interface.

@@ -333,7 +333,7 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 }
 
 const getEncounterByID = `-- name: GetEncounterByID :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters WHERE id = $1
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters WHERE id = $1
 `
 
 // A combat by its ID alone (the creatures' host publishes the change of the
@@ -356,12 +356,13 @@ func (q *Queries) GetEncounterByID(ctx context.Context, id string) (Encounter, e
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
 
 const getEncounterInSession = `-- name: GetEncounterInSession :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
 WHERE game_session_id = $1 AND id = $2
 `
 
@@ -390,6 +391,7 @@ func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInS
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
@@ -456,7 +458,7 @@ func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessi
 
 const getLatestEncounter = `-- name: GetLatestEncounter :one
 
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
 WHERE game_session_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 1
@@ -485,6 +487,7 @@ func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) 
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
@@ -509,7 +512,7 @@ func (q *Queries) GetOnScreen(ctx context.Context, campaignID string) (GetOnScre
 }
 
 const getOpenEncounter = `-- name: GetOpenEncounter :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
 WHERE game_session_id = $1 AND status <> 'ended'
 `
 
@@ -533,6 +536,7 @@ func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (E
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
@@ -1216,9 +1220,9 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 }
 
 const insertEncounter = `-- name: InsertEncounter :one
-INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at)
-VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7)
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at, mode)
+VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7, $8)
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
 `
 
 type InsertEncounterParams struct {
@@ -1229,9 +1233,11 @@ type InsertEncounterParams struct {
 	GridColumns   int32
 	GridRows      int32
 	CreatedAt     time.Time
+	Mode          string
 }
 
-// A new combat starts in setup, in round 0.
+// A new combat starts in setup, in round 0. The mode ('grid' or 'theatre') never
+// changes afterwards; a combat without a grid has no map and a grid of 0 by 0.
 func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams) (Encounter, error) {
 	row := q.db.QueryRow(ctx, insertEncounter,
 		arg.GameSessionID,
@@ -1241,6 +1247,7 @@ func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams
 		arg.GridColumns,
 		arg.GridRows,
 		arg.CreatedAt,
+		arg.Mode,
 	)
 	var i Encounter
 	err := row.Scan(
@@ -1258,6 +1265,7 @@ func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
@@ -1303,8 +1311,8 @@ type InsertOpportunityOfferParams struct {
 	MoveID      string
 	MoverID     string
 	ReactorID   string
-	LeftCol     int32
-	LeftRow     int32
+	LeftCol     *int32
+	LeftRow     *int32
 	CreatedAt   time.Time
 }
 
@@ -2880,7 +2888,7 @@ func (q *Queries) ListSceneRollEvents(ctx context.Context, arg ListSceneRollEven
 }
 
 const listSessionCombats = `-- name: ListSessionCombats :many
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
 WHERE game_session_id = $1 AND started_at IS NOT NULL
 ORDER BY created_at, id
 `
@@ -2912,6 +2920,7 @@ func (q *Queries) ListSessionCombats(ctx context.Context, gameSessionID string) 
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.Mode,
 		); err != nil {
 			return nil, err
 		}
@@ -3872,7 +3881,7 @@ UPDATE encounters
 SET status = $1, round = $2, current_combatant_id = $3,
     started_at = $4, ended_at = $5, revision = revision + 1
 WHERE id = $6
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
 `
 
 type SetEncounterStateParams struct {
@@ -3912,6 +3921,7 @@ func (q *Queries) SetEncounterState(ctx context.Context, arg SetEncounterStatePa
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }
@@ -3991,7 +4001,7 @@ type SetOpportunityOfferStateParams struct {
 	AnsweredAt      *time.Time
 }
 
-// Answered (attacked, declined or skipped), or back to pending (an undo).
+// Answered (attacked, declined, skipped or withdrawn), or back to pending (an undo).
 func (q *Queries) SetOpportunityOfferState(ctx context.Context, arg SetOpportunityOfferStateParams) (OpportunityOffer, error) {
 	row := q.db.QueryRow(ctx, setOpportunityOfferState,
 		arg.ID,
@@ -4332,7 +4342,7 @@ const touchEncounter = `-- name: TouchEncounter :one
 UPDATE encounters
 SET revision = revision + 1
 WHERE id = $1
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
 `
 
 func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, error) {
@@ -4353,6 +4363,7 @@ func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, err
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.Mode,
 	)
 	return i, err
 }

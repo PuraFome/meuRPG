@@ -2230,7 +2230,8 @@ type TableRules struct {
 	// SetTableRules.
 	DiceMode DiceMode `protobuf:"varint,1,opt,name=dice_mode,json=diceMode,proto3,enum=meurpg.campaigns.v1.DiceMode" json:"dice_mode,omitempty"`
 	// Whether "Iniciar combate" starts with a map by default (the combat slice
-	// 10.5b reads it). Default true.
+	// 10.5b reads it: StartEncounter without a mode starts a combat on a map when
+	// this is true and a combat without a map when it is false). Default true.
 	CombatStartsWithMap bool `protobuf:"varint,2,opt,name=combat_starts_with_map,json=combatStartsWithMap,proto3" json:"combat_starts_with_map,omitempty"`
 	// Whether a map created from now on starts with the fog of war on. Maps that
 	// exist keep theirs. Default false.

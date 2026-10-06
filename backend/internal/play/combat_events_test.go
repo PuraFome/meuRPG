@@ -131,7 +131,7 @@ func TestTargetsAndReach(t *testing.T) {
 		t.Errorf("reachFt(80, 320) = %d, want the long range", got)
 	}
 
-	player := targetsFor(open, cs, attacker, combatViewer{userID: "u"}, reach)
+	player := targetsFor(open, cs, attacker, combatViewer{userID: "u"}, reach, false)
 	var ids []string
 	for _, tg := range player {
 		ids = append(ids, tg.GetCombatantId())
@@ -145,7 +145,7 @@ func TestTargetsAndReach(t *testing.T) {
 	if player[2].DistanceFt != nil || !player[2].GetTooFar() {
 		t.Errorf("a target with no square for a player = %v, want no distance and too far", player[2])
 	}
-	master := targetsFor(open, cs, attacker, combatViewer{master: true}, reach)
+	master := targetsFor(open, cs, attacker, combatViewer{master: true}, reach, false)
 	if len(master) != 4 {
 		t.Fatalf("the master's targets = %v, want the hidden one too", master)
 	}

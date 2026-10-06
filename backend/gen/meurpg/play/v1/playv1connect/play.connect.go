@@ -517,7 +517,9 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
 	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
-	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED, and NEEDS_A_MAP while a
+	//     combat without a map (THEATRE mode, RN-25) is open: traps do not exist
+	//     there.
 	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
 	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
 	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
@@ -537,7 +539,9 @@ type PlayServiceClient interface {
 	//   - `not_found`: the point is not a trap of this map, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED, and
+	//     NEEDS_A_MAP while a combat without a map (THEATRE mode, RN-25) is open:
+	//     traps do not exist there.
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
 	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
 	// RN-10): the firings, with each creature's attack, saving throw and damage (the
@@ -732,7 +736,8 @@ type PlayServiceClient interface {
 	//
 	// The player may call it for their own character, and the master for any
 	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
-	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason` (NO_MAP in a
+	// combat without a map, RN-25).
 	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
 	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
 	// player looks through their own character's eyes again and the conditions go
@@ -1525,7 +1530,9 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
 	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
-	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED, and NEEDS_A_MAP while a
+	//     combat without a map (THEATRE mode, RN-25) is open: traps do not exist
+	//     there.
 	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
 	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
 	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
@@ -1545,7 +1552,9 @@ type PlayServiceHandler interface {
 	//   - `not_found`: the point is not a trap of this map, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED, and
+	//     NEEDS_A_MAP while a combat without a map (THEATRE mode, RN-25) is open:
+	//     traps do not exist there.
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
 	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
 	// RN-10): the firings, with each creature's attack, saving throw and damage (the
@@ -1740,7 +1749,8 @@ type PlayServiceHandler interface {
 	//
 	// The player may call it for their own character, and the master for any
 	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
-	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason` (NO_MAP in a
+	// combat without a map, RN-25).
 	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
 	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
 	// player looks through their own character's eyes again and the conditions go

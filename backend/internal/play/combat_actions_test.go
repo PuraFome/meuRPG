@@ -136,6 +136,9 @@ type plan struct {
 	at       map[string][2]int32
 	// setup leaves the combat in SETUP, for the tests that look at it before.
 	setup bool
+	// theatre starts a combat without a map (RN-25): nobody has a square, so at
+	// must be empty.
+	theatre bool
 }
 
 // setPhysical makes the player roll real dice (RN-18).
@@ -162,8 +165,12 @@ func (a *armed) start(t *testing.T, p plan) *playv1.Encounter {
 	t.Helper()
 	ctx := t.Context()
 	a.h.roller.queue(p.npcRolls...)
+	mode := playv1.EncounterMode_ENCOUNTER_MODE_UNSPECIFIED
+	if p.theatre {
+		mode = playv1.EncounterMode_ENCOUNTER_MODE_THEATRE
+	}
 	res, err := a.master.combat.StartEncounter(ctx, connect.NewRequest(&playv1.StartEncounterRequest{
-		CampaignId: a.campaignID, IdempotencyKey: newKey(), Name: "Emboscada na estrada", Participants: p.npcs,
+		CampaignId: a.campaignID, IdempotencyKey: newKey(), Name: "Emboscada na estrada", Participants: p.npcs, Mode: mode,
 	}))
 	if err != nil {
 		t.Fatalf("StartEncounter() error = %v", err)
