@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.sf__title {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sf app-pick-group,
+.sf__field {
+  display: block;
+  margin-top: var(--mr-space-3);
+}
+
+.sf__field {
+  width: 100%;
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+}
+
+.sf__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.sf__note--bad {
+  color: var(--mr-danger-ink);
+}
+
+.field-bad {
+  --mat-form-field-outlined-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--mr-danger-ink);
+  --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
+}
+
+.field-error {
+  color: var(--mr-danger-ink);
+}

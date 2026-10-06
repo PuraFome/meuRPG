@@ -1,0 +1,140 @@
+<a class="back" [routerLink]="['/campanhas', campaignId]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a campanha
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <h1 class="mr-page-title">{{ editing ? 'Editar' : 'Novo' }} <span class="nw">quebra-cabeça</span></h1>
+    <p class="page-status" role="status">
+      <mat-spinner diameter="24" aria-label="Abrindo o quebra-cabeça" />
+      Abrindo...
+    </p>
+  }
+  @case ('not-found') {
+    <h1 class="mr-page-title">Campanha não encontrada</h1>
+    <div class="mr-notice mr-notice--neutral" role="alert">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+    </div>
+  }
+  @case ('forbidden') {
+    <h1 class="mr-page-title">Quebra-cabeças</h1>
+    <div class="mr-notice mr-notice--neutral" role="status">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p><strong>Só o mestre faz os quebra-cabeças da campanha.</strong></p>
+    </div>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir a página</h1>
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ a.message }}</p>
+    </div>
+    <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+  }
+  @case ('master') {
+    @let l = load();
+    @switch (l.status) {
+      @case ('loading') {
+        <h1 class="mr-page-title">Editar quebra-cabeça</h1>
+        <p class="page-status" role="status">
+          <mat-spinner diameter="24" aria-label="Abrindo o quebra-cabeça" />
+          Abrindo o quebra-cabeça...
+        </p>
+      }
+      @case ('blocked') {
+        <h1 class="mr-page-title">Editar quebra-cabeça</h1>
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          <p>{{ l.message }}</p>
+        </div>
+        <a matButton="outlined" class="retry" [routerLink]="['/campanhas', campaignId]">Voltar para a campanha</a>
+      }
+      @case ('ready') {
+        <h1 class="mr-page-title">{{ editing ? 'Editar' : 'Novo' }} <span class="nw">quebra-cabeça</span></h1>
+
+        <form class="form" novalidate (submit)="submit($event)">
+          @if (!editing) {
+            <section class="mr-panel" aria-labelledby="kind-title">
+              <h2 class="mr-panel__title" id="kind-title">O tipo</h2>
+              <app-pick-group legend="Que tipo de quebra-cabeça?" layout="cards" [options]="kindOptions" [value]="draft().kind" (valueChange)="setKind($event)" />
+            </section>
+          }
+
+          <section class="mr-panel form__panel" [attr.aria-labelledby]="'form-title'">
+            <h2 class="mr-panel__title" id="form-title">{{ kindTitle() }}</h2>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" [class.field-bad]="nameError()">
+              <mat-label>Nome</mat-label>
+              <input #nameField matInput type="text" name="name" autocomplete="off" [value]="draft().name" (input)="patch({ name: $any($event.target).value })" [attr.aria-invalid]="nameError() ? 'true' : null" />
+              @if (nameError()) {
+                <mat-hint class="field-error" role="alert">{{ nameError() }}</mat-hint>
+              }
+              @if (!nameError()) {
+                <mat-hint align="end">{{ length(draft().name) }}&nbsp;de&nbsp;{{ nameMax }}</mat-hint>
+              }
+            </mat-form-field>
+
+            @switch (draft().kind) {
+              @case ('lights') {
+                <app-lights-form [draft]="draft()" [preview]="preview()" (patch)="patch($event)" (again)="again()" />
+              }
+              @case ('lock') {
+                <app-lock-form [draft]="draft()" [error]="lockError()" (patch)="patch($event)" />
+              }
+              @case ('pillars') {
+                <app-pillars-form [draft]="draft()" [preview]="preview()" (patch)="patch($event)" (again)="again()" />
+              }
+            }
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" [class.field-bad]="clueError()">
+              <mat-label>Pista para os jogadores</mat-label>
+              <textarea matInput rows="3" name="clue" [value]="draft().clue" (input)="patch({ clue: $any($event.target).value })" [attr.aria-invalid]="clueError() ? 'true' : null"></textarea>
+              @if (clueError()) {
+                <mat-hint class="field-error" role="alert">{{ clueError() }}</mat-hint>
+              }
+              @if (!clueError()) {
+                <mat-hint>O que eles leem ao abrir o quebra-cabeça. Opcional.</mat-hint>
+              }
+              @if (!clueError()) {
+                <mat-hint align="end">{{ length(draft().clue) }}&nbsp;de&nbsp;{{ clueMax }}</mat-hint>
+              }
+            </mat-form-field>
+
+            <app-hints-field [hints]="draft().hints" [errors]="hintErrors()" (hintsChange)="patch({ hints: $event })" />
+
+            <app-solve-field
+              [campaignId]="campaignId"
+              [solve]="draft().solve"
+              [error]="targetError()"
+              [messageError]="messageError()"
+              (solveChange)="patch({ solve: $event })"
+            />
+
+            @if (notice()) {
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ notice() }}</p>
+              </div>
+            }
+            @if (submitted() && !startReady()) {
+              <div class="mr-notice mr-notice--warning" role="alert">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <p>Espere o começo aparecer, ou toque em “Gerar outro começo”, para salvar.</p>
+              </div>
+            }
+
+            <div class="actions">
+              <a matButton="outlined" [routerLink]="['/campanhas', campaignId]">Cancelar</a>
+              <button matButton="filled" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Salvando...' : editing ? 'Salvar quebra-cabeça' : 'Criar quebra-cabeça' }}
+              </button>
+            </div>
+          </section>
+        </form>
+      }
+    }
+  }
+}

@@ -1,0 +1,149 @@
+@let r = player();
+<article class="rc" [attr.aria-labelledby]="id()">
+  <h3 class="rc__name" [id]="id()" tabindex="-1">{{ name() }}</h3>
+  <p class="rc__tags">
+    <span class="mr-tag"><mat-icon aria-hidden="true">{{ icon() }}</mat-icon>{{ kindWord() }}</span>
+    <span class="mr-tag" [class.mr-tag--success]="status().tone === 'success'" [class.mr-tag--pending]="status().tone === 'pending'"><mat-icon aria-hidden="true">{{ status().icon }}</mat-icon>{{ status().word }}</span>
+  </p>
+
+  @if (solved()) {
+    <div class="mr-notice mr-notice--success" role="status">
+      <mat-icon aria-hidden="true">check</mat-icon>
+      <p>{{ solvedLine() }}</p>
+    </div>
+  } @else if (stopped()) {
+    <div class="mr-notice mr-notice--warning" role="status">
+      <mat-icon aria-hidden="true">pause_circle</mat-icon>
+      <p>{{ stoppedLine() }}</p>
+    </div>
+  }
+
+  @if (r) {
+    <div class="rc__body">
+      @switch (kind()) {
+        @case (Kind.LIGHTS) {
+          <app-puzzle-host class="rc__board" [run]="r" mode="view" [changed]="changed()" [hints]="rings()" />
+        }
+        @case (Kind.LOCK) {
+          <div class="part">
+            <p class="part__label">As rodas agora</p>
+            <app-puzzle-host [run]="r" mode="view" [changed]="changed()" />
+          </div>
+          @if (solutionShown()) {
+            <div class="part">
+              <p class="part__label">A solução <app-secret-pill /></p>
+              <app-lock-board label="Solução da fechadura" [wheels]="solutionWheels()" [faces]="faces()" />
+            </div>
+          }
+        }
+        @case (Kind.PILLARS) {
+          <div class="part">
+            <p class="part__label">Os pilares agora</p>
+            <app-puzzle-host [run]="r" mode="view" [changed]="changed()" />
+          </div>
+          <div class="part">
+            <p class="part__label">O mural</p>
+            <app-pillars-board label="O mural" [pillars]="muralPillars()" [faces]="faces()" />
+          </div>
+        }
+        @default {
+          <app-puzzle-host [run]="r" mode="view" />
+        }
+      }
+
+      <div class="facts">
+        @if (last(); as l) {
+          <p class="facts__line"><strong>Última jogada:</strong> {{ l.who }} {{ l.what }}, {{ lastAgo() }}.</p>
+        }
+        @if (kind() === Kind.LIGHTS) {
+          <p class="facts__line"><strong>{{ lit() }}</strong> {{ lit() === 1 ? 'acesa' : 'acesas' }} · <strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
+        } @else {
+          <p class="facts__line"><strong>{{ moves() }}</strong> {{ movesWord() }} até agora</p>
+        }
+        @if (!frozen() && minimum(); as m) {
+          @if (kind() !== Kind.LOCK) {
+            @if (m.solvable) {
+              <p class="facts__line facts__line--quiet">Faltam, no mínimo, <strong>{{ m.moves }} {{ minWord() }}</strong>{{ ' ' }}<span class="facts__from">({{ fromStart() }} desde o começo)</span>.</p>
+            } @else {
+              <p class="facts__line facts__line--quiet">Desse jeito não dá para chegar lá: gere outro começo.</p>
+            }
+          }
+        }
+        @if (kind() === Kind.LIGHTS && rings().length > 0) {
+          <p class="facts__legend"><span class="facts__swatch" aria-hidden="true"></span>Toque que resolve <app-secret-pill /></p>
+        }
+        @if (solutionShown() && kind() === Kind.PILLARS && turns()) {
+          <p class="facts__line facts__line--quiet">Giros que resolvem: {{ turns() }} <app-secret-pill /></p>
+        }
+        @if (diceLine()) {
+          <p class="facts__line facts__line--quiet">{{ diceLine() }}</p>
+        }
+        <p class="facts__meta">{{ meta() }}</p>
+      </div>
+
+      @if (solved()) {
+        <div class="outcome">
+          @if (outcome()) {
+            <p class="outcome__line">{{ outcome() }}</p>
+          }
+          @if (r.solvedMessage) {
+            <p class="outcome__said">Os jogadores leram: “{{ r.solvedMessage }}”</p>
+          }
+          @if (doorTarget(); as door) {
+            <app-door-crop [campaignId]="campaignId()" [mapId]="door.mapId" [col]="door.col" [row]="door.row" />
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (notice()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ notice() }}</p>
+    </div>
+  }
+
+  @if (ask() === 'reset') {
+    <app-map-ask class="rc__ask" [title]="'Recomeçar “' + name() + '”?'" confirmLabel="Recomeçar" [busy]="busy() === 'reset'" [row]="true" [equal]="true" (cancel)="back('reset')" (confirm)="act('reset')">
+      <p class="ask__text">O painel volta ao mesmo começo que ele tinha, para todos os jogadores. As jogadas feitas ficam no histórico.</p>
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>Quem estiver jogando vê o começo de novo na hora.</p>
+      </div>
+    </app-map-ask>
+  } @else if (ask() === 'close') {
+    <app-map-ask class="rc__ask" [title]="'Fechar “' + name() + '”?'" confirmLabel="Fechar" [busy]="busy() === 'close'" [row]="true" [equal]="true" (cancel)="back('close')" (confirm)="act('close')">
+      <p class="ask__text">Os jogadores deixam de ver o quebra-cabeça. Se você mostrá-lo de novo, ele volta ao começo.</p>
+    </app-map-ask>
+  } @else {
+    <div class="acts">
+      @if ((kind() === Kind.LOCK || kind() === Kind.PILLARS) && !solved()) {
+        <button matButton="outlined" type="button" [attr.aria-pressed]="solutionShown()" (click)="solutionShown.set(!solutionShown())">
+          <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar a solução só para mim
+        </button>
+      }
+      @if (hintCount() > 0) {
+        <button matButton="outlined" type="button" [disabled]="hintsLeft() <= 0 || busy() !== null" disabledInteractive [class.mr-button--off]="hintsLeft() <= 0" (click)="hintsLeft() > 0 && act('hint')">
+          <mat-icon aria-hidden="true">lightbulb</mat-icon>{{ hintsLeft() > 0 ? 'Mostrar a próxima dica' : 'Todas as dicas foram soltas' }}
+        </button>
+      }
+      @if (kind() === Kind.LIGHTS) {
+        <button matButton="outlined" type="button" [attr.aria-pressed]="!ringsHidden()" (click)="ringsHidden.set(!ringsHidden())">
+          <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar os toques
+        </button>
+      }
+      @if (canReseed()) {
+        <button matButton="outlined" type="button" [disabled]="busy() !== null" disabledInteractive (click)="act('reseed')">
+          <mat-icon aria-hidden="true">shuffle</mat-icon>Gerar outro começo
+        </button>
+      }
+      <button matButton="outlined" type="button" data-act="reset" [disabled]="busy() !== null" disabledInteractive (click)="askFor('reset')">
+        <mat-icon aria-hidden="true">restart_alt</mat-icon>Recomeçar
+      </button>
+      <button matButton="outlined" type="button" data-act="close" [disabled]="busy() !== null" disabledInteractive (click)="askFor('close')">
+        <mat-icon aria-hidden="true">close</mat-icon>Fechar
+      </button>
+    </div>
+  }
+</article>

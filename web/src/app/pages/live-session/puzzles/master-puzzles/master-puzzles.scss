@@ -1,0 +1,93 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.panel__text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+.panel__link {
+  align-self: flex-start;
+}
+
+.row {
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+
+.row__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink);
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+}
+
+// The button drops under the words in a narrow column (the master's column is 400 px), as wide as the row on a phone.
+.row__show {
+  flex: 1 1 100%;
+  min-height: 44px;
+
+  @media (max-width: 767.98px) {
+    min-height: 48px;
+  }
+}
+
+.nw {
+  white-space: nowrap;
+}
+
+// The words keep a share of the line next to the icon, so the tag and the button drop under them on a narrow phone.
+.row .mr-list__text {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.row .mr-tag {
+  flex-shrink: 0;
+}
+
+// "Ver ao vivo" is a text button on the row (the card's own actions are the heavy ones); the open row is marked by its ground and a
+// garnet bar on its left edge, and the button by its pressed state.
+.row__live {
+  flex: none;
+  min-height: 44px;
+  margin-inline-start: -12px;
+  color: var(--mr-accent-text);
+  font-weight: 700;
+
+  &[aria-pressed='true'] {
+    color: var(--mr-accent-strong);
+  }
+}
+
+.row--open {
+  background: var(--mr-accent-soft);
+  box-shadow: inset 3px 0 0 var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+  padding-inline: var(--mr-space-3);
+}

@@ -1,0 +1,80 @@
+<section class="mr-panel panel" aria-labelledby="puzzles-heading">
+  <h2 class="mr-panel__title" id="puzzles-heading" tabindex="-1"><span class="nw">Quebra-cabeças</span></h2>
+
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="panel__text" role="status">Carregando os quebra-cabeças...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="panel__new" (click)="reload()">Tentar de novo</button>
+    }
+    @default {
+      @if (visible().length === 0) {
+        <p class="panel__text">
+          {{ archivedCount() > 0 && !withArchived() ? 'Todos os quebra-cabeças estão arquivados. Mostre os arquivados para desarquivar um, ou crie outro.' : 'Nenhum quebra-cabeça ainda. Crie o primeiro para mostrar aos jogadores numa sessão.' }}
+        </p>
+        <a matButton="outlined" class="panel__new" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', 'novo']">
+          <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
+        </a>
+      } @else {
+        <div class="panel__head">
+          <p class="panel__text">Só você vê estes quebra-cabeças. Você mostra um aos jogadores dentro da sessão.</p>
+          <a matButton="outlined" class="panel__new" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', 'novo']">
+            <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
+          </a>
+        </div>
+        <ul class="mr-list">
+          @for (p of visible(); track p.id) {
+            <li class="item" [class.item--archived]="p.archived">
+              @if (asking() === p.id) {
+                <app-map-ask
+                  class="item__ask"
+                  [title]="'Arquivar “' + p.name + '”?'"
+                  confirmLabel="Arquivar"
+                  [busy]="busy()"
+                  [row]="true" [equal]="true"
+                  (cancel)="cancel(p)"
+                  (confirm)="archive(p)"
+                >
+                  <p class="item__ask-text">Ele sai desta lista e do menu da sessão. O que aconteceu em sessões passadas fica, e dá para desarquivar.</p>
+                </app-map-ask>
+              } @else {
+                <div class="mr-list__row row">
+                  <span class="row__icon" aria-hidden="true"><mat-icon>{{ icon(p.kind) }}</mat-icon></span>
+                  <span class="mr-list__text">
+                    <span class="mr-list__name row__name">{{ p.name }}</span>
+                    <span class="mr-list__sub">{{ summary(p) }}</span>
+                  </span>
+                  <span class="mr-tag">{{ p.archived ? 'Arquivado' : p.shown ? 'Já mostrado' : 'Não mostrado' }}</span>
+                  <span class="row__actions">
+                    @if (canEdit(p)) {
+                      <a matButton class="row__link" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', p.id, 'editar']" [attr.aria-label]="'Editar ' + p.name">Editar</a>
+                    }
+                    @if (p.archived) {
+                      <button matButton type="button" class="row__link" [attr.aria-label]="'Desarquivar ' + p.name" (click)="unarchive(p)">Desarquivar</button>
+                    } @else {
+                      <button matButton type="button" class="row__link" [attr.data-archive]="p.id" [attr.aria-label]="'Arquivar ' + p.name" (click)="ask(p)">Arquivar</button>
+                    }
+                  </span>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+      @if (notice()) {
+        <p class="panel__notice" role="status">{{ notice() }}</p>
+      }
+      @if (archivedCount() > 0) {
+        <button matButton type="button" class="panel__toggle" [attr.aria-pressed]="withArchived()" (click)="toggleArchived()">
+          Mostrar os arquivados
+        </button>
+      }
+    }
+  }
+</section>

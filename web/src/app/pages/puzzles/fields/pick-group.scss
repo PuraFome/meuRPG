@@ -1,0 +1,164 @@
+:host {
+  display: block;
+}
+
+.pg {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.pg__legend {
+  padding: 0;
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.pg__options {
+  display: grid;
+  gap: var(--mr-space-2);
+}
+
+.opt {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  // The native radio stays under the card (keys, groups and names), out of sight.
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:has(input:focus-visible) {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:has(input:disabled) {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.opt--on {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.opt__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__title {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.opt__sub {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.opt__icon {
+  flex: none;
+  align-self: flex-start;
+  margin-top: -2px; // the icon's middle on the capitals of the title's first line
+  color: var(--mr-accent-text);
+}
+
+// Cards: three across from a desktop, one over another below.
+.pg--cards .pg__options {
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.pg--cards .opt {
+  align-items: flex-start;
+  min-height: 64px;
+  padding: 12px 14px;
+}
+
+// Rows: a round radio and the words.
+.opt__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: var(--mr-surface);
+}
+
+.opt--on .opt__dot {
+  border-color: var(--mr-accent);
+  background: radial-gradient(circle, var(--mr-accent) 0 5px, var(--mr-surface) 6px);
+}
+
+// Segments: joined boxes, equal widths.
+.pg--segments .pg__options {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.pg--segments .opt {
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 0;
+  margin-left: -1.5px;
+
+  &:first-child {
+    margin-left: 0;
+    border-radius: var(--mr-radius-md) 0 0 var(--mr-radius-md);
+  }
+
+  &:last-child {
+    border-radius: 0 var(--mr-radius-md) var(--mr-radius-md) 0;
+  }
+}
+
+.pg--segments .opt--on {
+  z-index: 1;
+}
+
+.pg--segments .opt__title {
+  font-size: 16px;
+}
+
+.opt__check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: var(--mr-accent-text);
+}
+
+@media (max-width: 767.98px) {
+  .opt {
+    min-height: 48px;
+  }
+}

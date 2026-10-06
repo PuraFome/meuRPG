@@ -1,0 +1,117 @@
+<a class="back" [routerLink]="['/campanhas', campaignId(), 'sessao']">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a sessão
+</a>
+
+@let r = run();
+@if (r) {
+  <header class="head">
+    <h1 class="mr-page-title">{{ r.name }}</h1>
+    <p class="mr-page-lead">Quebra-cabeça da Sessão {{ session().sessionNumber }}</p>
+    @if (reconnecting()) {
+      <p class="head__status"><mat-icon aria-hidden="true">cloud_off</mat-icon><span>Reconectando…</span></p>
+    } @else {
+      <p class="head__status"><app-live-pill /><span>{{ since() }}</span></p>
+    }
+  </header>
+
+  <div class="play" [attr.aria-busy]="play.pending() > 0 ? 'true' : null">
+    @if (play.gone()) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">visibility_off</mat-icon>
+        <p><strong>O mestre fechou o quebra-cabeça.</strong> Ele pode mostrar de novo.</p>
+      </div>
+    }
+
+    @if (r.solved) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <p><strong>Resolvido</strong></p>
+      </div>
+    } @else if (r.stopped) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">pause_circle</mat-icon>
+        <p>{{ r.stoppedMessage }}</p>
+      </div>
+    }
+
+    @if (r.clue) {
+      <section class="mr-panel clue" aria-labelledby="clue-label">
+        <mat-icon aria-hidden="true">lightbulb</mat-icon>
+        <p class="clue__label" id="clue-label">A pista do mestre</p>
+        <blockquote class="clue__text">“{{ r.clue }}”</blockquote>
+      </section>
+    }
+
+    @if (kind() === Kind.PILLARS && mural().length > 0) {
+      <section class="mr-panel mural" aria-labelledby="mural-title">
+        <h2 class="mural__title" id="mural-title">O mural</h2>
+        <app-pillars-board [pillars]="mural()" [faces]="faceList()" label="O mural" />
+        <p class="mural__help">Deixe os pilares como o mural.</p>
+      </section>
+    }
+
+    <section class="board-card" [class.board-card--panel]="kind() !== Kind.LIGHTS" aria-label="O quebra-cabeça">
+      <app-puzzle-host [run]="r" mode="play" [changed]="changed()" [disabled]="frozen() || play.gone()" (move)="onMove($event)" />
+    </section>
+
+    @if (play.message()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ play.message() }}</p>
+      </div>
+    }
+
+    <section class="mr-panel info" aria-label="Como está">
+      @if (r.solved) {
+        <p class="info__main">{{ doneText() }}</p>
+        @if (r.solvedMessage) {
+          <p class="info__solved"><span class="info__time">{{ solvedAt() }}</span>{{ r.solvedMessage }}</p>
+        }
+      } @else {
+        <p class="info__main">{{ instruction() }}</p>
+        @if (kind() === Kind.LOCK && wheelWords()) {
+          <p class="info__main">As rodas agora: <strong>{{ wheelWords() }}</strong>.</p>
+        }
+        @if (kind() === Kind.PILLARS) {
+          <p class="info__muted"><mat-icon aria-hidden="true">sync_alt</mat-icon>{{ linked() ? 'Girar um pilar gira também o da esquerda e o da direita.' : 'Cada pilar gira sozinho.' }}</p>
+        }
+        @if (last(); as l) {
+          <p class="info__last"><mat-icon aria-hidden="true">groups</mat-icon><span><strong>{{ l.who }}</strong> {{ l.what }} {{ lastAgo() }}.@if (changedPillars()) { {{ changedPillars() }} }</span></p>
+        }
+        @if (kind() === Kind.LIGHTS) {
+          <p class="info__count">Luzes acesas: <strong>{{ lights() }}</strong></p>
+        } @else if (kind() === Kind.LOCK) {
+          <p class="info__muted">Quando todas as rodas estiverem certas, o mestre é avisado.</p>
+        }
+      }
+    </section>
+
+    <section class="mr-panel hints" aria-labelledby="hints-title">
+      <h2 class="hints__title" id="hints-title">Dicas soltas pelo mestre</h2>
+      @if (r.hints.length === 0) {
+        <p class="info__muted">O mestre ainda não soltou nenhuma dica.</p>
+      } @else {
+        <ol class="hints__list">
+          @for (h of r.hints; track $index) {
+            <li><span class="hints__n" aria-hidden="true">{{ $index + 1 }}</span><span>{{ h }}@if ($index >= sharedHints()) { <em class="hints__own"> Esta dica é só sua.</em> }</span></li>
+          }
+        </ol>
+      }
+    </section>
+
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
+  </div>
+} @else if (play.gone()) {
+  <h1 class="mr-page-title">Quebra-cabeça</h1>
+  <div class="mr-notice mr-notice--neutral" role="status">
+    <mat-icon aria-hidden="true">visibility_off</mat-icon>
+    <p><strong>O mestre não está mostrando este quebra-cabeça.</strong> Volte para a sessão: ele aparece lá quando for mostrado.</p>
+  </div>
+} @else {
+  <h1 class="mr-page-title">Quebra-cabeça</h1>
+  <p class="page-status" role="status">
+    <mat-spinner diameter="24" aria-label="Abrindo o quebra-cabeça" />
+    Abrindo o quebra-cabeça...
+  </p>
+}
