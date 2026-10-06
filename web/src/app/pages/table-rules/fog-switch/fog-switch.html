@@ -1,0 +1,22 @@
+<div class="fog__row">
+  <span class="fog__text">
+    <span class="fog__label" id="fog-label">Névoa de guerra nos mapas novos</span>
+    <span class="fog__hint" id="fog-hint">Os mapas gerados e os novos nascem com a névoa ligada.</span>
+  </span>
+  <button
+    type="button"
+    role="switch"
+    class="switch"
+    [class.switch--on]="checked()"
+    [attr.aria-checked]="checked()"
+    aria-labelledby="fog-label"
+    aria-describedby="fog-hint"
+    (click)="toggled.emit(!checked())"
+  >
+    <span class="switch__handle">
+      @if (checked()) {
+        <mat-icon aria-hidden="true">check</mat-icon>
+      }
+    </span>
+  </button>
+</div>

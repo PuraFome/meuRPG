@@ -15,6 +15,7 @@ import {
   gridRows,
 } from '../../../core/combat/combat-grid';
 import { formatMeters, squaresToMeters } from '../../../core/units';
+import { factorLabel, maxDrawnColumns } from '../../../core/maps/calibration';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { CombatMap } from '../../../shared/combat-map/combat-map';
@@ -51,18 +52,23 @@ export class MapGrid {
   protected readonly campaignName = signal('');
   protected readonly fromSession = signal(false);
   protected readonly typed = signal(String(DEFAULT_COLUMNS));
+  /** How many squares of 1,5 m each square of the drawing is worth: the page changes only the columns and keeps it (RN-25). */
+  private readonly factor = computed(() => Math.max(1, this.map()?.squareFactor ?? 1));
   protected readonly saving = signal(false);
   protected readonly error = signal('');
 
   protected readonly Math = Math;
   protected readonly min = MIN_COLUMNS;
-  protected readonly max = MAX_COLUMNS;
+  /** The most columns of the drawing: the rules' grid (the drawing's times the factor) stays within 200 columns. */
+  protected readonly max = computed(() => Math.min(MAX_COLUMNS, maxDrawnColumns(this.factor())));
+  /** What a square of the drawing is worth: "1,5 m" for a map never calibrated. */
+  protected readonly squareText = computed(() => factorLabel(this.factor()).replace(/\u00a0/g, ' '));
 
   /** The number in the field, or `null` while it is not a whole 5 to 60. */
   protected readonly columns = computed(() => {
     const text = this.typed().trim();
     const n = /^\d{1,3}$/.test(text) ? Number(text) : NaN;
-    return n >= MIN_COLUMNS && n <= MAX_COLUMNS ? n : null;
+    return n >= MIN_COLUMNS && n <= this.max() ? n : null;
   });
   protected readonly invalid = computed(() => this.columns() === null);
   protected readonly image = computed(() => {
@@ -74,12 +80,13 @@ export class MapGrid {
     const columns = this.columns();
     return image && columns !== null ? gridRows(columns, image.width, image.height) : null;
   });
+  /** The squares of the rules' grid: the drawing's times the factor. */
   protected readonly squares = computed(() =>
-    this.columns() !== null && this.rows() !== null ? `${this.columns()} × ${this.rows()}` : '—',
+    this.columns() !== null && this.rows() !== null ? `${this.columns()! * this.factor()} × ${this.rows()! * this.factor()}` : '—',
   );
   protected readonly meters = computed(() =>
     this.columns() !== null && this.rows() !== null
-      ? `${formatMeters(squaresToMeters(this.columns()!))} × ${formatMeters(squaresToMeters(this.rows()!))}`
+      ? `${formatMeters(squaresToMeters(this.columns()! * this.factor()))} × ${formatMeters(squaresToMeters(this.rows()! * this.factor()))}`
       : '—',
   );
   protected readonly hadGrid = computed(() => (this.map()?.gridColumns ?? 0) > 0);
@@ -122,7 +129,7 @@ export class MapGrid {
         return;
       }
       this.map.set(map.map);
-      this.typed.set(String(map.map.gridColumns > 0 ? map.map.gridColumns : DEFAULT_COLUMNS));
+      this.typed.set(String(map.map.gridColumns > 0 ? map.map.drawnColumns || map.map.gridColumns : DEFAULT_COLUMNS));
       this.phase.set('ready');
     } catch (err) {
       this.phase.set(ConnectError.from(err).code === Code.NotFound ? 'gone' : 'error');
@@ -135,7 +142,7 @@ export class MapGrid {
 
   protected step(delta: number): void {
     const now = this.columns() ?? DEFAULT_COLUMNS;
-    this.typed.set(String(Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, now + delta))));
+    this.typed.set(String(Math.min(this.max(), Math.max(MIN_COLUMNS, now + delta))));
   }
 
   protected async save(): Promise<void> {
@@ -146,7 +153,7 @@ export class MapGrid {
     this.saving.set(true);
     this.error.set('');
     try {
-      await this.api.setGrid(this.campaignId(), this.mapId(), columns);
+      await this.api.setGrid(this.campaignId(), this.mapId(), columns, this.factor());
       await this.router.navigate(this.backLink().path);
     } catch (err) {
       this.saving.set(false);

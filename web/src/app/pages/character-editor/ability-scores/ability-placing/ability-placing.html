@@ -2,7 +2,9 @@
   <div>
     <h4 class="title">Seus resultados</h4>
     <p class="hint" id="results-hint">
-      @if (canReroll()) {
+      @if (hint()) {
+        {{ hint() }}
+      } @else if (canReroll()) {
         Seis rolagens de 4d6. O dado menor, riscado, não conta.
       } @else {
         Os seis valores do conjunto padrão.

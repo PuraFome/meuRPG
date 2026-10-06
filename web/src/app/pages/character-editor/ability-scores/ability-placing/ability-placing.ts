@@ -35,6 +35,8 @@ export class AbilityPlacing {
   readonly placement = input.required<Placement>();
   /** "Rolar de novo" exists only for rolled results (not the standard array). */
   readonly canReroll = input(false);
+  /** The line under "Seus resultados", when the default ("Seis rolagens de 4d6...") is not the right one. */
+  readonly hint = input('');
 
   readonly place = output<{ index: number; ability: AbilityKey }>();
   readonly reroll = output<void>();
