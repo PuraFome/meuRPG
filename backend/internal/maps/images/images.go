@@ -462,6 +462,7 @@ func reference(img image.Image, side, quality int) ([]byte, error) {
 		return nil, errors.Join(errors.New("images: encode"), err)
 	}
 	return buf.Bytes(), nil
+}
 
 // thumbnailOfDrawing is thumbnail for what Encode gets, the server's own drawings: a
 // palette image takes the faster box filter below. An uploaded palette PNG keeps

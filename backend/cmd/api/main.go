@@ -262,6 +262,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
+			Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
 			Logger:    logger,
 		})
 		if err != nil {

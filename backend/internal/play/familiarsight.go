@@ -207,6 +207,9 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 			if !ok {
 				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR, "the character has no familiar")
 			}
+			if inCombat && isTheatre(c.enc) {
+				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_MAP, "a combat without a map has no vision to look through") // the familiar's eyes are the map's vision: without a map there is nothing to see through them (RN-25)
+			}
 			if inCombat && !turns {
 				// In SETUP nobody has a turn: the sight is an action of a turn, and one
 				// that was on is ended when the combat starts or the character joins it.

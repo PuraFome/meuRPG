@@ -417,7 +417,7 @@ func (ev actionEvent) seenByViewer(v combatViewer) bool {
 
 func encounterChangedMessage(e playdb.Encounter) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_EncounterChanged_{
-		EncounterChanged: &playv1.WatchGameSessionResponse_EncounterChanged{EncounterId: e.ID, Revision: e.Revision},
+		EncounterChanged: &playv1.WatchGameSessionResponse_EncounterChanged{EncounterId: e.ID, Revision: e.Revision, Mode: modeProto(e.Mode)},
 	}}
 }
 
@@ -473,7 +473,7 @@ func (s *Service) publishMovedToPlayers(ctx context.Context, campaignID string, 
 	switch {
 	case err != nil:
 		s.logger.ErrorContext(ctx, "play: cannot work out what the players see in a combat", "error", err)
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID})})
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID, Mode: e.Mode})})
 	case f == nil:
 		s.hub.Publish(campaignID, all)
 	default:
@@ -486,7 +486,7 @@ func (s *Service) publishMovedToPlayers(ctx context.Context, campaignID string, 
 			case f.seesNPC(u, c):
 				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: combatantMovedMessage(e, c)})
 			case pre != nil && from != nil && pre.sight.Sees(u, *from):
-				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID})})
+				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID, Mode: e.Mode})})
 			}
 		}
 	}

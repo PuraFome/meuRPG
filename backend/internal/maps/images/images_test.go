@@ -661,6 +661,8 @@ func TestProcessMakesTheReference(t *testing.T) {
 	small, err := Process(encodePNG(t, twoColors(800, 600)))
 	if err != nil || small.Reference != nil {
 		t.Errorf("a small image's reference = %d bytes, %v; want none", len(small.Reference), err)
+	}
+}
 
 // A palette image (a generated dungeon's map) gets its thumbnail by averaging, and
 // Encode checks the size like Process.

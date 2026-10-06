@@ -317,7 +317,7 @@ var (
 	_ mapsv1connect.MapServiceHandler     = (*Service)(nil)
 
 	_ mapsv1connect.ImageGenerationServiceHandler = (*Service)(nil)
-	_ mapsv1connect.DungeonServiceHandler = (*Service)(nil)
+	_ mapsv1connect.DungeonServiceHandler         = (*Service)(nil)
 )
 
 // New returns a Service.
