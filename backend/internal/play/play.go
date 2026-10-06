@@ -294,6 +294,15 @@ func (f DiceForce) refuses(inApp bool) bool {
 	return (f == DiceForcedInApp && !inApp) || (f == DiceForcedPhysical && inApp)
 }
 
+// CombatDefaults tells what the table's rules say about starting a combat (RN-24).
+// cmd/api wires it to campaigns.Service.
+type CombatDefaults interface {
+	// CombatWithoutMap says whether a combat started without a chosen mode is a
+	// combat without a map (the table's rule "combate com mapa" is off). tx is the
+	// caller's open transaction, or nil for a read.
+	CombatWithoutMap(ctx context.Context, tx pgx.Tx, campaignID string) (bool, error)
+}
+
 // DiceModes tells what the campaign's dice setting forces on a player (RN-18).
 // cmd/api wires it to campaigns.Service.CampaignDiceMode.
 type DiceModes interface {
@@ -354,6 +363,9 @@ type Config struct {
 	Roster CombatRoster
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
+	// Defaults gives the mode of a combat started without one (RN-24, RN-25).
+	// Optional: nil means every such combat is on a map, as before the modes.
+	Defaults CombatDefaults
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
 	// exists (the two need each other); nil means open floor.
@@ -380,6 +392,7 @@ type Service struct {
 	maps      MapKeeper
 	roster    CombatRoster
 	dice      DiceModes
+	defaults  CombatDefaults
 	terrain   TerrainSource
 	doors     DoorKeeper // the maps module, when the terrain source is one (SetTerrain)
 	fog       FogSource
@@ -461,6 +474,7 @@ func New(cfg Config) (*Service, error) {
 		maps:      cfg.Maps,
 		roster:    cfg.Roster,
 		dice:      cfg.Dice,
+		defaults:  cfg.Defaults,
 		terrain:   cfg.Terrain,
 		doors:     doorKeeperOf(cfg.Terrain),
 		roller:    cfg.Roller,

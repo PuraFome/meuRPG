@@ -175,3 +175,73 @@ func schema(t *testing.T, db *sql.DB) string {
 	}
 	return b.String()
 }
+
+// TestMigrationsDownWorksOnTheatreRows: the Down of the combat modes (00150 to
+// 00152) runs on a database that holds what they allow: a combat without a grid,
+// and an opportunity offer the master made by hand, one withdrawn and one with a
+// square. The combat without a grid and the offers without a square are deleted,
+// a withdrawn offer becomes a skipped one, and the combat on a grid stays.
+func TestMigrationsDownWorksOnTheatreRows(t *testing.T) {
+	t.Parallel()
+	db := freshDatabase(t)
+	ctx := t.Context()
+	provider, err := NewProvider(db)
+	if err != nil {
+		t.Fatalf("NewProvider() error = %v", err)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+	scan := func(query string, dest ...any) {
+		t.Helper()
+		if err := db.QueryRowContext(ctx, query).Scan(dest...); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+	var user, campaign, session, character string
+	scan(`INSERT INTO users DEFAULT VALUES RETURNING id`, &user)
+	scan(fmt.Sprintf(`INSERT INTO campaigns (name, xp_mode, created_by) VALUES ('Mirathel', 'enemies', '%s') RETURNING id`, user), &campaign)
+	scan(fmt.Sprintf(`INSERT INTO game_sessions (campaign_id, session_number, started_at) VALUES ('%s', 1, now()) RETURNING id`, campaign), &session)
+	scan(fmt.Sprintf(`INSERT INTO characters (campaign_id, kind, name, sheet, master_user_id, created_at, updated_at)
+		VALUES ('%s', 'minion', 'Goblin', '{}', '%s', now(), now()) RETURNING id`, campaign, user), &character)
+	var theatre, grid string
+	scan(fmt.Sprintf(`INSERT INTO encounters (game_session_id, name, status, grid_columns, grid_rows, created_at, mode)
+		VALUES ('%s', 'Sem mapa', 'ended', 0, 0, now(), 'theatre') RETURNING id`, session), &theatre)
+	scan(fmt.Sprintf(`INSERT INTO encounters (game_session_id, name, status, grid_columns, grid_rows, created_at, mode)
+		VALUES ('%s', 'No mapa', 'ended', 20, 10, now(), 'grid') RETURNING id`, session), &grid)
+	combatant := func(encounter, label string) string {
+		var id string
+		scan(fmt.Sprintf(`INSERT INTO combatants (encounter_id, character_id, label, kind, hidden, initiative_bonus, order_index, speed_ft, created_at, hp_current, hp_max, hp_temp)
+			VALUES ('%s', '%s', '%s', 'npc', false, 0, 0, 30, now(), 7, 7, 0) RETURNING id`, encounter, character, label), &id)
+		return id
+	}
+	a, b := combatant(grid, "Goblin 1"), combatant(grid, "Goblin 2")
+	ta, tb := combatant(theatre, "Goblin 1"), combatant(theatre, "Goblin 2")
+	exec(t, db, fmt.Sprintf(`INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, created_at) VALUES
+		('%[1]s', gen_random_uuid(), '%[2]s', '%[3]s', 4, 5, 'pending', now()),
+		('%[1]s', gen_random_uuid(), '%[3]s', '%[2]s', 4, 5, 'withdrawn', now()),
+		('%[4]s', gen_random_uuid(), '%[5]s', '%[6]s', NULL, NULL, 'pending', now()),
+		('%[4]s', gen_random_uuid(), '%[6]s', '%[5]s', NULL, NULL, 'withdrawn', now())`, grid, a, b, theatre, ta, tb))
+
+	if _, err := provider.DownTo(ctx, 149); err != nil {
+		t.Fatalf("DownTo(149) error = %v", err)
+	}
+	var encounters, offers int
+	scan(`SELECT count(*) FROM encounters`, &encounters)
+	scan(`SELECT count(*) FROM opportunity_offers`, &offers)
+	if encounters != 1 || offers != 2 {
+		t.Errorf("after Down: %d encounters and %d offers, want the combat on a grid and its two offers", encounters, offers)
+	}
+	var skipped int
+	scan(`SELECT count(*) FROM opportunity_offers WHERE state = 'skipped'`, &skipped)
+	if skipped != 1 {
+		t.Errorf("after Down: %d skipped offers, want the withdrawn one turned into one", skipped)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("Up() after Down error = %v", err)
+	}
+	scan(`SELECT count(*) FROM encounters WHERE mode = 'grid'`, &encounters)
+	if encounters != 1 {
+		t.Errorf("after Down then Up: %d combats on a grid, want 1", encounters)
+	}
+}

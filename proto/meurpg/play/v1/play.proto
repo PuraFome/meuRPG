@@ -455,7 +455,9 @@ service PlayService {
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
   //     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
-  //     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+  //     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED, and NEEDS_A_MAP while a
+  //     combat without a map (THEATRE mode, RN-25) is open: traps do not exist
+  //     there.
   rpc SearchForTraps(SearchForTrapsRequest) returns (SearchForTrapsResponse);
 
   // FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
@@ -476,7 +478,9 @@ service PlayService {
   //   - `not_found`: the point is not a trap of this map, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
-  //   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+  //   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED, and
+  //     NEEDS_A_MAP while a combat without a map (THEATRE mode, RN-25) is open:
+  //     traps do not exist there.
   rpc FireTrap(FireTrapRequest) returns (FireTrapResponse);
 
   // ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
@@ -687,7 +691,8 @@ service PlayService {
   //
   // The player may call it for their own character, and the master for any
   // player's character. Errors: as AssumeWildShape, with EncounterBlocked
-  // FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+  // FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason` (NO_MAP in a
+  // combat without a map, RN-25).
   rpc StartFamiliarSight(StartFamiliarSightRequest) returns (StartFamiliarSightResponse);
 
   // StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
@@ -1244,6 +1249,10 @@ message WatchGameSessionResponse {
     // it again"): the master's number goes up for everything that happens, and
     // a player who got it could count the moves out of their sight.
     int32 revision = 2;
+    // How the combat is played (RN-25): the same for the whole combat. A screen
+    // that reads the hint of a combat it has not read yet knows at once whether
+    // to draw a map or a list. Never UNSPECIFIED.
+    EncounterMode mode = 3;
   }
 
   // TurnChanged says whose turn it is now. Each member gets their own copy:

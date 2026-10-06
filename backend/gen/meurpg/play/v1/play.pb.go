@@ -3948,7 +3948,11 @@ type WatchGameSessionResponse_EncounterChanged struct {
 	// one on screen. On a map with the fog of war a player's copy says 0 ("read
 	// it again"): the master's number goes up for everything that happens, and
 	// a player who got it could count the moves out of their sight.
-	Revision      int32 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	Revision int32 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	// How the combat is played (RN-25): the same for the whole combat. A screen
+	// that reads the hint of a combat it has not read yet knows at once whether
+	// to draw a map or a list. Never UNSPECIFIED.
+	Mode          EncounterMode `protobuf:"varint,3,opt,name=mode,proto3,enum=meurpg.play.v1.EncounterMode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3995,6 +3999,13 @@ func (x *WatchGameSessionResponse_EncounterChanged) GetRevision() int32 {
 		return x.Revision
 	}
 	return 0
+}
+
+func (x *WatchGameSessionResponse_EncounterChanged) GetMode() EncounterMode {
+	if x != nil {
+		return x.Mode
+	}
+	return EncounterMode_ENCOUNTER_MODE_UNSPECIFIED
 }
 
 // TurnChanged says whose turn it is now. Each member gets their own copy:
@@ -4474,7 +4485,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x03 \x01(\x05R\x04used\":\n" +
 	"\x17WatchGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\xa4\x19\n" +
+	"campaignId\"\xd8\x19\n" +
 	"\x18WatchGameSessionResponse\x12F\n" +
 	"\x05ready\x18\x01 \x01(\v2..meurpg.play.v1.WatchGameSessionResponse.ReadyH\x00R\x05ready\x12R\n" +
 	"\theartbeat\x18\x02 \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.HeartbeatH\x00R\theartbeat\x12_\n" +
@@ -4526,10 +4537,11 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x1aE\n" +
 	"\x11ShownImageChanged\x120\n" +
 	"\x05image\x18\x01 \x01(\v2\x1a.meurpg.play.v1.ShownImageR\x05image\x1a\x13\n" +
-	"\x11LeftImagesChanged\x1aQ\n" +
+	"\x11LeftImagesChanged\x1a\x84\x01\n" +
 	"\x10EncounterChanged\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x1a\n" +
-	"\brevision\x18\x02 \x01(\x05R\brevision\x1a\x99\x01\n" +
+	"\brevision\x18\x02 \x01(\x05R\brevision\x121\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.meurpg.play.v1.EncounterModeR\x04mode\x1a\x99\x01\n" +
 	"\vTurnChanged\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x14\n" +
 	"\x05round\x18\x02 \x01(\x05R\x05round\x120\n" +
@@ -4733,36 +4745,37 @@ var file_meurpg_play_v1_play_proto_goTypes = []any{
 	(v1.Role)(0),                                       // 70: meurpg.campaigns.v1.Role
 	(*v11.HitDice)(nil),                                // 71: meurpg.rules.v1.HitDice
 	(v11.Recharge)(0),                                  // 72: meurpg.rules.v1.Recharge
-	(*GetSessionSummaryRequest)(nil),                   // 73: meurpg.play.v1.GetSessionSummaryRequest
-	(*OpenSceneRequest)(nil),                           // 74: meurpg.play.v1.OpenSceneRequest
-	(*CloseSceneRequest)(nil),                          // 75: meurpg.play.v1.CloseSceneRequest
-	(*GetOpenSceneRequest)(nil),                        // 76: meurpg.play.v1.GetOpenSceneRequest
-	(*RollSceneCheckRequest)(nil),                      // 77: meurpg.play.v1.RollSceneCheckRequest
-	(*SearchForTrapsRequest)(nil),                      // 78: meurpg.play.v1.SearchForTrapsRequest
-	(*FireTrapRequest)(nil),                            // 79: meurpg.play.v1.FireTrapRequest
-	(*ListTrapActivityRequest)(nil),                    // 80: meurpg.play.v1.ListTrapActivityRequest
-	(*ListTrapDamagesRequest)(nil),                     // 81: meurpg.play.v1.ListTrapDamagesRequest
-	(*ApplyTrapDamageRequest)(nil),                     // 82: meurpg.play.v1.ApplyTrapDamageRequest
-	(*DiscardTrapDamageRequest)(nil),                   // 83: meurpg.play.v1.DiscardTrapDamageRequest
-	(*GrantSceneAttemptRequest)(nil),                   // 84: meurpg.play.v1.GrantSceneAttemptRequest
-	(*PutOnStageRequest)(nil),                          // 85: meurpg.play.v1.PutOnStageRequest
-	(*TakeOffStageRequest)(nil),                        // 86: meurpg.play.v1.TakeOffStageRequest
-	(*SetSpeakerRequest)(nil),                          // 87: meurpg.play.v1.SetSpeakerRequest
-	(*GetSessionSummaryResponse)(nil),                  // 88: meurpg.play.v1.GetSessionSummaryResponse
-	(*OpenSceneResponse)(nil),                          // 89: meurpg.play.v1.OpenSceneResponse
-	(*CloseSceneResponse)(nil),                         // 90: meurpg.play.v1.CloseSceneResponse
-	(*GetOpenSceneResponse)(nil),                       // 91: meurpg.play.v1.GetOpenSceneResponse
-	(*RollSceneCheckResponse)(nil),                     // 92: meurpg.play.v1.RollSceneCheckResponse
-	(*SearchForTrapsResponse)(nil),                     // 93: meurpg.play.v1.SearchForTrapsResponse
-	(*FireTrapResponse)(nil),                           // 94: meurpg.play.v1.FireTrapResponse
-	(*ListTrapActivityResponse)(nil),                   // 95: meurpg.play.v1.ListTrapActivityResponse
-	(*ListTrapDamagesResponse)(nil),                    // 96: meurpg.play.v1.ListTrapDamagesResponse
-	(*ApplyTrapDamageResponse)(nil),                    // 97: meurpg.play.v1.ApplyTrapDamageResponse
-	(*DiscardTrapDamageResponse)(nil),                  // 98: meurpg.play.v1.DiscardTrapDamageResponse
-	(*GrantSceneAttemptResponse)(nil),                  // 99: meurpg.play.v1.GrantSceneAttemptResponse
-	(*PutOnStageResponse)(nil),                         // 100: meurpg.play.v1.PutOnStageResponse
-	(*TakeOffStageResponse)(nil),                       // 101: meurpg.play.v1.TakeOffStageResponse
-	(*SetSpeakerResponse)(nil),                         // 102: meurpg.play.v1.SetSpeakerResponse
+	(EncounterMode)(0),                                 // 73: meurpg.play.v1.EncounterMode
+	(*GetSessionSummaryRequest)(nil),                   // 74: meurpg.play.v1.GetSessionSummaryRequest
+	(*OpenSceneRequest)(nil),                           // 75: meurpg.play.v1.OpenSceneRequest
+	(*CloseSceneRequest)(nil),                          // 76: meurpg.play.v1.CloseSceneRequest
+	(*GetOpenSceneRequest)(nil),                        // 77: meurpg.play.v1.GetOpenSceneRequest
+	(*RollSceneCheckRequest)(nil),                      // 78: meurpg.play.v1.RollSceneCheckRequest
+	(*SearchForTrapsRequest)(nil),                      // 79: meurpg.play.v1.SearchForTrapsRequest
+	(*FireTrapRequest)(nil),                            // 80: meurpg.play.v1.FireTrapRequest
+	(*ListTrapActivityRequest)(nil),                    // 81: meurpg.play.v1.ListTrapActivityRequest
+	(*ListTrapDamagesRequest)(nil),                     // 82: meurpg.play.v1.ListTrapDamagesRequest
+	(*ApplyTrapDamageRequest)(nil),                     // 83: meurpg.play.v1.ApplyTrapDamageRequest
+	(*DiscardTrapDamageRequest)(nil),                   // 84: meurpg.play.v1.DiscardTrapDamageRequest
+	(*GrantSceneAttemptRequest)(nil),                   // 85: meurpg.play.v1.GrantSceneAttemptRequest
+	(*PutOnStageRequest)(nil),                          // 86: meurpg.play.v1.PutOnStageRequest
+	(*TakeOffStageRequest)(nil),                        // 87: meurpg.play.v1.TakeOffStageRequest
+	(*SetSpeakerRequest)(nil),                          // 88: meurpg.play.v1.SetSpeakerRequest
+	(*GetSessionSummaryResponse)(nil),                  // 89: meurpg.play.v1.GetSessionSummaryResponse
+	(*OpenSceneResponse)(nil),                          // 90: meurpg.play.v1.OpenSceneResponse
+	(*CloseSceneResponse)(nil),                         // 91: meurpg.play.v1.CloseSceneResponse
+	(*GetOpenSceneResponse)(nil),                       // 92: meurpg.play.v1.GetOpenSceneResponse
+	(*RollSceneCheckResponse)(nil),                     // 93: meurpg.play.v1.RollSceneCheckResponse
+	(*SearchForTrapsResponse)(nil),                     // 94: meurpg.play.v1.SearchForTrapsResponse
+	(*FireTrapResponse)(nil),                           // 95: meurpg.play.v1.FireTrapResponse
+	(*ListTrapActivityResponse)(nil),                   // 96: meurpg.play.v1.ListTrapActivityResponse
+	(*ListTrapDamagesResponse)(nil),                    // 97: meurpg.play.v1.ListTrapDamagesResponse
+	(*ApplyTrapDamageResponse)(nil),                    // 98: meurpg.play.v1.ApplyTrapDamageResponse
+	(*DiscardTrapDamageResponse)(nil),                  // 99: meurpg.play.v1.DiscardTrapDamageResponse
+	(*GrantSceneAttemptResponse)(nil),                  // 100: meurpg.play.v1.GrantSceneAttemptResponse
+	(*PutOnStageResponse)(nil),                         // 101: meurpg.play.v1.PutOnStageResponse
+	(*TakeOffStageResponse)(nil),                       // 102: meurpg.play.v1.TakeOffStageResponse
+	(*SetSpeakerResponse)(nil),                         // 103: meurpg.play.v1.SetSpeakerResponse
 }
 var file_meurpg_play_v1_play_proto_depIdxs = []int32{
 	25,  // 0: meurpg.play.v1.AssumeWildShapeResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
@@ -4826,73 +4839,74 @@ var file_meurpg_play_v1_play_proto_depIdxs = []int32{
 	25,  // 58: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged.vitals:type_name -> meurpg.play.v1.CharacterVitals
 	12,  // 59: meurpg.play.v1.WatchGameSessionResponse.SessionEnded.game_session:type_name -> meurpg.play.v1.GameSession
 	24,  // 60: meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged.image:type_name -> meurpg.play.v1.ShownImage
-	13,  // 61: meurpg.play.v1.PlayService.StartGameSession:input_type -> meurpg.play.v1.StartGameSessionRequest
-	15,  // 62: meurpg.play.v1.PlayService.EndGameSession:input_type -> meurpg.play.v1.EndGameSessionRequest
-	73,  // 63: meurpg.play.v1.PlayService.GetSessionSummary:input_type -> meurpg.play.v1.GetSessionSummaryRequest
-	17,  // 64: meurpg.play.v1.PlayService.ListGameSessions:input_type -> meurpg.play.v1.ListGameSessionsRequest
-	19,  // 65: meurpg.play.v1.PlayService.ListOpenGameSessions:input_type -> meurpg.play.v1.ListOpenGameSessionsRequest
-	22,  // 66: meurpg.play.v1.PlayService.GetLiveSession:input_type -> meurpg.play.v1.GetLiveSessionRequest
-	31,  // 67: meurpg.play.v1.PlayService.WatchGameSession:input_type -> meurpg.play.v1.WatchGameSessionRequest
-	33,  // 68: meurpg.play.v1.PlayService.AdjustCharacterVitals:input_type -> meurpg.play.v1.AdjustCharacterVitalsRequest
-	37,  // 69: meurpg.play.v1.PlayService.SetCurrentMap:input_type -> meurpg.play.v1.SetCurrentMapRequest
-	39,  // 70: meurpg.play.v1.PlayService.SetShownImage:input_type -> meurpg.play.v1.SetShownImageRequest
-	41,  // 71: meurpg.play.v1.PlayService.ListLeftImages:input_type -> meurpg.play.v1.ListLeftImagesRequest
-	43,  // 72: meurpg.play.v1.PlayService.TakeBackLeftImage:input_type -> meurpg.play.v1.TakeBackLeftImageRequest
-	74,  // 73: meurpg.play.v1.PlayService.OpenScene:input_type -> meurpg.play.v1.OpenSceneRequest
-	75,  // 74: meurpg.play.v1.PlayService.CloseScene:input_type -> meurpg.play.v1.CloseSceneRequest
-	76,  // 75: meurpg.play.v1.PlayService.GetOpenScene:input_type -> meurpg.play.v1.GetOpenSceneRequest
-	77,  // 76: meurpg.play.v1.PlayService.RollSceneCheck:input_type -> meurpg.play.v1.RollSceneCheckRequest
-	78,  // 77: meurpg.play.v1.PlayService.SearchForTraps:input_type -> meurpg.play.v1.SearchForTrapsRequest
-	79,  // 78: meurpg.play.v1.PlayService.FireTrap:input_type -> meurpg.play.v1.FireTrapRequest
-	80,  // 79: meurpg.play.v1.PlayService.ListTrapActivity:input_type -> meurpg.play.v1.ListTrapActivityRequest
-	81,  // 80: meurpg.play.v1.PlayService.ListTrapDamages:input_type -> meurpg.play.v1.ListTrapDamagesRequest
-	82,  // 81: meurpg.play.v1.PlayService.ApplyTrapDamage:input_type -> meurpg.play.v1.ApplyTrapDamageRequest
-	83,  // 82: meurpg.play.v1.PlayService.DiscardTrapDamage:input_type -> meurpg.play.v1.DiscardTrapDamageRequest
-	84,  // 83: meurpg.play.v1.PlayService.GrantSceneAttempt:input_type -> meurpg.play.v1.GrantSceneAttemptRequest
-	85,  // 84: meurpg.play.v1.PlayService.PutOnStage:input_type -> meurpg.play.v1.PutOnStageRequest
-	86,  // 85: meurpg.play.v1.PlayService.TakeOffStage:input_type -> meurpg.play.v1.TakeOffStageRequest
-	87,  // 86: meurpg.play.v1.PlayService.SetSpeaker:input_type -> meurpg.play.v1.SetSpeakerRequest
-	9,   // 87: meurpg.play.v1.PlayService.CastSummon:input_type -> meurpg.play.v1.CastSummonRequest
-	1,   // 88: meurpg.play.v1.PlayService.AssumeWildShape:input_type -> meurpg.play.v1.AssumeWildShapeRequest
-	3,   // 89: meurpg.play.v1.PlayService.LeaveWildShape:input_type -> meurpg.play.v1.LeaveWildShapeRequest
-	5,   // 90: meurpg.play.v1.PlayService.StartFamiliarSight:input_type -> meurpg.play.v1.StartFamiliarSightRequest
-	7,   // 91: meurpg.play.v1.PlayService.StopFamiliarSight:input_type -> meurpg.play.v1.StopFamiliarSightRequest
-	14,  // 92: meurpg.play.v1.PlayService.StartGameSession:output_type -> meurpg.play.v1.StartGameSessionResponse
-	16,  // 93: meurpg.play.v1.PlayService.EndGameSession:output_type -> meurpg.play.v1.EndGameSessionResponse
-	88,  // 94: meurpg.play.v1.PlayService.GetSessionSummary:output_type -> meurpg.play.v1.GetSessionSummaryResponse
-	18,  // 95: meurpg.play.v1.PlayService.ListGameSessions:output_type -> meurpg.play.v1.ListGameSessionsResponse
-	20,  // 96: meurpg.play.v1.PlayService.ListOpenGameSessions:output_type -> meurpg.play.v1.ListOpenGameSessionsResponse
-	23,  // 97: meurpg.play.v1.PlayService.GetLiveSession:output_type -> meurpg.play.v1.GetLiveSessionResponse
-	32,  // 98: meurpg.play.v1.PlayService.WatchGameSession:output_type -> meurpg.play.v1.WatchGameSessionResponse
-	36,  // 99: meurpg.play.v1.PlayService.AdjustCharacterVitals:output_type -> meurpg.play.v1.AdjustCharacterVitalsResponse
-	38,  // 100: meurpg.play.v1.PlayService.SetCurrentMap:output_type -> meurpg.play.v1.SetCurrentMapResponse
-	40,  // 101: meurpg.play.v1.PlayService.SetShownImage:output_type -> meurpg.play.v1.SetShownImageResponse
-	42,  // 102: meurpg.play.v1.PlayService.ListLeftImages:output_type -> meurpg.play.v1.ListLeftImagesResponse
-	44,  // 103: meurpg.play.v1.PlayService.TakeBackLeftImage:output_type -> meurpg.play.v1.TakeBackLeftImageResponse
-	89,  // 104: meurpg.play.v1.PlayService.OpenScene:output_type -> meurpg.play.v1.OpenSceneResponse
-	90,  // 105: meurpg.play.v1.PlayService.CloseScene:output_type -> meurpg.play.v1.CloseSceneResponse
-	91,  // 106: meurpg.play.v1.PlayService.GetOpenScene:output_type -> meurpg.play.v1.GetOpenSceneResponse
-	92,  // 107: meurpg.play.v1.PlayService.RollSceneCheck:output_type -> meurpg.play.v1.RollSceneCheckResponse
-	93,  // 108: meurpg.play.v1.PlayService.SearchForTraps:output_type -> meurpg.play.v1.SearchForTrapsResponse
-	94,  // 109: meurpg.play.v1.PlayService.FireTrap:output_type -> meurpg.play.v1.FireTrapResponse
-	95,  // 110: meurpg.play.v1.PlayService.ListTrapActivity:output_type -> meurpg.play.v1.ListTrapActivityResponse
-	96,  // 111: meurpg.play.v1.PlayService.ListTrapDamages:output_type -> meurpg.play.v1.ListTrapDamagesResponse
-	97,  // 112: meurpg.play.v1.PlayService.ApplyTrapDamage:output_type -> meurpg.play.v1.ApplyTrapDamageResponse
-	98,  // 113: meurpg.play.v1.PlayService.DiscardTrapDamage:output_type -> meurpg.play.v1.DiscardTrapDamageResponse
-	99,  // 114: meurpg.play.v1.PlayService.GrantSceneAttempt:output_type -> meurpg.play.v1.GrantSceneAttemptResponse
-	100, // 115: meurpg.play.v1.PlayService.PutOnStage:output_type -> meurpg.play.v1.PutOnStageResponse
-	101, // 116: meurpg.play.v1.PlayService.TakeOffStage:output_type -> meurpg.play.v1.TakeOffStageResponse
-	102, // 117: meurpg.play.v1.PlayService.SetSpeaker:output_type -> meurpg.play.v1.SetSpeakerResponse
-	10,  // 118: meurpg.play.v1.PlayService.CastSummon:output_type -> meurpg.play.v1.CastSummonResponse
-	2,   // 119: meurpg.play.v1.PlayService.AssumeWildShape:output_type -> meurpg.play.v1.AssumeWildShapeResponse
-	4,   // 120: meurpg.play.v1.PlayService.LeaveWildShape:output_type -> meurpg.play.v1.LeaveWildShapeResponse
-	6,   // 121: meurpg.play.v1.PlayService.StartFamiliarSight:output_type -> meurpg.play.v1.StartFamiliarSightResponse
-	8,   // 122: meurpg.play.v1.PlayService.StopFamiliarSight:output_type -> meurpg.play.v1.StopFamiliarSightResponse
-	92,  // [92:123] is the sub-list for method output_type
-	61,  // [61:92] is the sub-list for method input_type
-	61,  // [61:61] is the sub-list for extension type_name
-	61,  // [61:61] is the sub-list for extension extendee
-	0,   // [0:61] is the sub-list for field type_name
+	73,  // 61: meurpg.play.v1.WatchGameSessionResponse.EncounterChanged.mode:type_name -> meurpg.play.v1.EncounterMode
+	13,  // 62: meurpg.play.v1.PlayService.StartGameSession:input_type -> meurpg.play.v1.StartGameSessionRequest
+	15,  // 63: meurpg.play.v1.PlayService.EndGameSession:input_type -> meurpg.play.v1.EndGameSessionRequest
+	74,  // 64: meurpg.play.v1.PlayService.GetSessionSummary:input_type -> meurpg.play.v1.GetSessionSummaryRequest
+	17,  // 65: meurpg.play.v1.PlayService.ListGameSessions:input_type -> meurpg.play.v1.ListGameSessionsRequest
+	19,  // 66: meurpg.play.v1.PlayService.ListOpenGameSessions:input_type -> meurpg.play.v1.ListOpenGameSessionsRequest
+	22,  // 67: meurpg.play.v1.PlayService.GetLiveSession:input_type -> meurpg.play.v1.GetLiveSessionRequest
+	31,  // 68: meurpg.play.v1.PlayService.WatchGameSession:input_type -> meurpg.play.v1.WatchGameSessionRequest
+	33,  // 69: meurpg.play.v1.PlayService.AdjustCharacterVitals:input_type -> meurpg.play.v1.AdjustCharacterVitalsRequest
+	37,  // 70: meurpg.play.v1.PlayService.SetCurrentMap:input_type -> meurpg.play.v1.SetCurrentMapRequest
+	39,  // 71: meurpg.play.v1.PlayService.SetShownImage:input_type -> meurpg.play.v1.SetShownImageRequest
+	41,  // 72: meurpg.play.v1.PlayService.ListLeftImages:input_type -> meurpg.play.v1.ListLeftImagesRequest
+	43,  // 73: meurpg.play.v1.PlayService.TakeBackLeftImage:input_type -> meurpg.play.v1.TakeBackLeftImageRequest
+	75,  // 74: meurpg.play.v1.PlayService.OpenScene:input_type -> meurpg.play.v1.OpenSceneRequest
+	76,  // 75: meurpg.play.v1.PlayService.CloseScene:input_type -> meurpg.play.v1.CloseSceneRequest
+	77,  // 76: meurpg.play.v1.PlayService.GetOpenScene:input_type -> meurpg.play.v1.GetOpenSceneRequest
+	78,  // 77: meurpg.play.v1.PlayService.RollSceneCheck:input_type -> meurpg.play.v1.RollSceneCheckRequest
+	79,  // 78: meurpg.play.v1.PlayService.SearchForTraps:input_type -> meurpg.play.v1.SearchForTrapsRequest
+	80,  // 79: meurpg.play.v1.PlayService.FireTrap:input_type -> meurpg.play.v1.FireTrapRequest
+	81,  // 80: meurpg.play.v1.PlayService.ListTrapActivity:input_type -> meurpg.play.v1.ListTrapActivityRequest
+	82,  // 81: meurpg.play.v1.PlayService.ListTrapDamages:input_type -> meurpg.play.v1.ListTrapDamagesRequest
+	83,  // 82: meurpg.play.v1.PlayService.ApplyTrapDamage:input_type -> meurpg.play.v1.ApplyTrapDamageRequest
+	84,  // 83: meurpg.play.v1.PlayService.DiscardTrapDamage:input_type -> meurpg.play.v1.DiscardTrapDamageRequest
+	85,  // 84: meurpg.play.v1.PlayService.GrantSceneAttempt:input_type -> meurpg.play.v1.GrantSceneAttemptRequest
+	86,  // 85: meurpg.play.v1.PlayService.PutOnStage:input_type -> meurpg.play.v1.PutOnStageRequest
+	87,  // 86: meurpg.play.v1.PlayService.TakeOffStage:input_type -> meurpg.play.v1.TakeOffStageRequest
+	88,  // 87: meurpg.play.v1.PlayService.SetSpeaker:input_type -> meurpg.play.v1.SetSpeakerRequest
+	9,   // 88: meurpg.play.v1.PlayService.CastSummon:input_type -> meurpg.play.v1.CastSummonRequest
+	1,   // 89: meurpg.play.v1.PlayService.AssumeWildShape:input_type -> meurpg.play.v1.AssumeWildShapeRequest
+	3,   // 90: meurpg.play.v1.PlayService.LeaveWildShape:input_type -> meurpg.play.v1.LeaveWildShapeRequest
+	5,   // 91: meurpg.play.v1.PlayService.StartFamiliarSight:input_type -> meurpg.play.v1.StartFamiliarSightRequest
+	7,   // 92: meurpg.play.v1.PlayService.StopFamiliarSight:input_type -> meurpg.play.v1.StopFamiliarSightRequest
+	14,  // 93: meurpg.play.v1.PlayService.StartGameSession:output_type -> meurpg.play.v1.StartGameSessionResponse
+	16,  // 94: meurpg.play.v1.PlayService.EndGameSession:output_type -> meurpg.play.v1.EndGameSessionResponse
+	89,  // 95: meurpg.play.v1.PlayService.GetSessionSummary:output_type -> meurpg.play.v1.GetSessionSummaryResponse
+	18,  // 96: meurpg.play.v1.PlayService.ListGameSessions:output_type -> meurpg.play.v1.ListGameSessionsResponse
+	20,  // 97: meurpg.play.v1.PlayService.ListOpenGameSessions:output_type -> meurpg.play.v1.ListOpenGameSessionsResponse
+	23,  // 98: meurpg.play.v1.PlayService.GetLiveSession:output_type -> meurpg.play.v1.GetLiveSessionResponse
+	32,  // 99: meurpg.play.v1.PlayService.WatchGameSession:output_type -> meurpg.play.v1.WatchGameSessionResponse
+	36,  // 100: meurpg.play.v1.PlayService.AdjustCharacterVitals:output_type -> meurpg.play.v1.AdjustCharacterVitalsResponse
+	38,  // 101: meurpg.play.v1.PlayService.SetCurrentMap:output_type -> meurpg.play.v1.SetCurrentMapResponse
+	40,  // 102: meurpg.play.v1.PlayService.SetShownImage:output_type -> meurpg.play.v1.SetShownImageResponse
+	42,  // 103: meurpg.play.v1.PlayService.ListLeftImages:output_type -> meurpg.play.v1.ListLeftImagesResponse
+	44,  // 104: meurpg.play.v1.PlayService.TakeBackLeftImage:output_type -> meurpg.play.v1.TakeBackLeftImageResponse
+	90,  // 105: meurpg.play.v1.PlayService.OpenScene:output_type -> meurpg.play.v1.OpenSceneResponse
+	91,  // 106: meurpg.play.v1.PlayService.CloseScene:output_type -> meurpg.play.v1.CloseSceneResponse
+	92,  // 107: meurpg.play.v1.PlayService.GetOpenScene:output_type -> meurpg.play.v1.GetOpenSceneResponse
+	93,  // 108: meurpg.play.v1.PlayService.RollSceneCheck:output_type -> meurpg.play.v1.RollSceneCheckResponse
+	94,  // 109: meurpg.play.v1.PlayService.SearchForTraps:output_type -> meurpg.play.v1.SearchForTrapsResponse
+	95,  // 110: meurpg.play.v1.PlayService.FireTrap:output_type -> meurpg.play.v1.FireTrapResponse
+	96,  // 111: meurpg.play.v1.PlayService.ListTrapActivity:output_type -> meurpg.play.v1.ListTrapActivityResponse
+	97,  // 112: meurpg.play.v1.PlayService.ListTrapDamages:output_type -> meurpg.play.v1.ListTrapDamagesResponse
+	98,  // 113: meurpg.play.v1.PlayService.ApplyTrapDamage:output_type -> meurpg.play.v1.ApplyTrapDamageResponse
+	99,  // 114: meurpg.play.v1.PlayService.DiscardTrapDamage:output_type -> meurpg.play.v1.DiscardTrapDamageResponse
+	100, // 115: meurpg.play.v1.PlayService.GrantSceneAttempt:output_type -> meurpg.play.v1.GrantSceneAttemptResponse
+	101, // 116: meurpg.play.v1.PlayService.PutOnStage:output_type -> meurpg.play.v1.PutOnStageResponse
+	102, // 117: meurpg.play.v1.PlayService.TakeOffStage:output_type -> meurpg.play.v1.TakeOffStageResponse
+	103, // 118: meurpg.play.v1.PlayService.SetSpeaker:output_type -> meurpg.play.v1.SetSpeakerResponse
+	10,  // 119: meurpg.play.v1.PlayService.CastSummon:output_type -> meurpg.play.v1.CastSummonResponse
+	2,   // 120: meurpg.play.v1.PlayService.AssumeWildShape:output_type -> meurpg.play.v1.AssumeWildShapeResponse
+	4,   // 121: meurpg.play.v1.PlayService.LeaveWildShape:output_type -> meurpg.play.v1.LeaveWildShapeResponse
+	6,   // 122: meurpg.play.v1.PlayService.StartFamiliarSight:output_type -> meurpg.play.v1.StartFamiliarSightResponse
+	8,   // 123: meurpg.play.v1.PlayService.StopFamiliarSight:output_type -> meurpg.play.v1.StopFamiliarSightResponse
+	93,  // [93:124] is the sub-list for method output_type
+	62,  // [62:93] is the sub-list for method input_type
+	62,  // [62:62] is the sub-list for extension type_name
+	62,  // [62:62] is the sub-list for extension extendee
+	0,   // [0:62] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_play_proto_init() }

@@ -105,11 +105,19 @@ service CombatService {
   // the campaign's master may call it, and only while the campaign has an
   // open session.
   //
-  // The fight is on the session's current map, which must have a grid
-  // (MapService.SetMapGrid). When map_point_id names a BATTLE point that
+  // The mode (`mode`, RN-25, ADR-0017) is chosen here and never changes. GRID
+  // is the fight on a map: it is on the session's current map, which must have a
+  // grid (MapService.SetMapGrid). When map_point_id names a BATTLE point that
   // leads to a map, that map becomes the session's current map (and is
   // revealed to the players, as PlayService.SetCurrentMap does) and must
-  // have the grid instead.
+  // have the grid instead. THEATRE is the fight without a map, the "teatro da
+  // mente": it needs no map, no combatant ever has a square, the server never
+  // checks a player's reach, range or distance (the master judges), and there is
+  // no fog, no trap, no door and no placement of summoned creatures. Movement is
+  // spent by number (SpendMovement) and the opportunity attack is offered by the
+  // master (OfferOpportunity). Left UNSPECIFIED, the mode is the table's rule
+  // "combate com mapa" (RN-24): GRID when the table starts its combats with a
+  // map (the default), THEATRE otherwise.
   //
   // Who fights: the player characters listed in participants, and copies of
   // the NPCs listed, each NPC with a count: "Goblin" x 3 makes "Goblin 1",
@@ -133,12 +141,13 @@ service CombatService {
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); the session already has a combat that is not
-  //     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); there is no
-  //     current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
-  //     with its map_id, so the app offers to set one).
+  //     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); in GRID mode, there is
+  //     no current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
+  //     with its map_id, so the app offers to set one); in THEATRE mode, a
+  //     map_point_id (THEATRE_HAS_NO_MAP).
   //   - `invalid_argument`: no participants, more than 40 combatants, a
   //     participant listed twice, a count outside 1 to 10 (a player
-  //     character: 1), or a name that breaks its rules.
+  //     character: 1), a name that breaks its rules, or a `mode` that is not one.
   rpc StartEncounter(StartEncounterRequest) returns (StartEncounterResponse);
 
   // GetEncounter returns the combat of the campaign's open session as the
@@ -331,6 +340,10 @@ service CombatService {
   // options.jumps) and a running start needs a move of 10 ft or more on foot
   // right before. A move clears the master's manual cover mark of the combatant
   // (SetCombatantCover).
+  //
+  // Only in GRID mode: in THEATRE mode there are no squares, so every move, jump
+  // and placement is refused with `failed_precondition` (EncounterBlocked,
+  // NEEDS_A_MAP). Spend the movement with SpendMovement instead.
   rpc MoveCombatant(MoveCombatantRequest) returns (MoveCombatantResponse);
 
   // GetMoveOptions says where a combatant can go in one straight move: every
@@ -353,9 +366,81 @@ service CombatService {
   //   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
   //     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
   //     on the map (NOT_PLACED).
+  //
+  // In THEATRE mode the answer is valid and empty: no square is reachable or
+  // refused, and `movement_left_dft` is what SpendMovement can still spend.
   rpc GetMoveOptions(GetMoveOptionsRequest) returns (GetMoveOptionsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // SpendMovement spends movement by number, for a combat in THEATRE mode (RN-25,
+  // ADR-0017): "Gastar movimento", in whole feet (the app steps by 5 ft, 1.5 m).
+  // It adds to the combatant's movement used this turn (`movement_used_dft`, the
+  // same field MoveCombatant uses, kept in tenths of a foot) and never passes the
+  // movement the turn has: its speed (the better of walking and flying), twice
+  // after the Dash action. The server does not judge the path or the distance:
+  // the master does. The caller's own combatant on its turn, for a player (and for
+  // the creatures of their character); any combatant for the master, who is
+  // held to the same limit. It is the combatant's movement in the combat log
+  // ("gastou 6,0 m de movimento") when it is the combatant's turn, and the
+  // master can undo it (UndoLastAction). It provokes nothing: the master offers
+  // the opportunity attack (OfferOpportunity).
+  //
+  // The answer tells what is left (`movement_left_dft`), so the screen says
+  // "Restam 3,0 m". Every stream gets `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session (a
+  //     hidden NPC is not found for a player).
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     theirs.
+  //   - `invalid_argument`: `distance_ft` is not 1 to 600.
+  //   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+  //     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); for a player, it is not
+  //     the combatant's turn (NOT_YOUR_TURN) or an opportunity attack on it waits
+  //     for its answer (OPPORTUNITY_PENDING); the distance is more than the
+  //     movement left (TOO_FAR, with missing_ft and missing_dft).
+  rpc SpendMovement(SpendMovementRequest) returns (SpendMovementResponse);
+
+  // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
+  // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+  // left the reach of another, the reactor, which the master chooses. In THEATRE
+  // mode the server never finds out by itself that anyone left a reach. It makes
+  // the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+  // the reactor's player gets the prompt (Encounter.opportunity_offers) and
+  // answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
+  // master answers for an NPC's reaction (he attacks by hand) or skips the offer
+  // (SkipOpportunity); and the mover's turn waits for the answer for a player's
+  // character. The reaction rules are the move's: one reaction a round, and a
+  // reactor that cannot react now cannot be offered. Only the master.
+  //
+  // The offer stays pending until it is answered, skipped or taken back
+  // (WithdrawOpportunity). It is a session event, `opportunity_offered`; it
+  // cannot be undone, but it can be withdrawn. The reactor's player, the mover's
+  // player and the master get `encounter_changed`; no other player gets any hint.
+  //
+  // Errors:
+  //   - `not_found`: the combat, the mover or the reactor is not in the open
+  //     session.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
+  //     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
+  //     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
+  //     reactor cannot make the attack now, or is on the mover's side, or has no
+  //     melee attack, or the mover is defeated, hidden or took the Disengage
+  //     action, or the same offer already waits (NO_OPPORTUNITY).
+  rpc OfferOpportunity(OfferOpportunityRequest) returns (OfferOpportunityResponse);
+
+  // WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
+  // opportunity offer that nobody answered (he offered it by mistake). The offer
+  // goes away, the reactor keeps its reaction and the mover's turn stops waiting.
+  // The master can undo it (UndoLastAction): the offer waits again. Only the
+  // master.
+  //
+  // Every stream gets `encounter_changed`.
+  //
+  // Errors: as SkipOpportunity.
+  rpc WithdrawOpportunity(WithdrawOpportunityRequest) returns (WithdrawOpportunityResponse);
 
   // SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
   // or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
@@ -988,6 +1073,23 @@ service CombatService {
   }
 }
 
+// EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
+// starts, never changed.
+enum EncounterMode {
+  ENCOUNTER_MODE_UNSPECIFIED = 0;
+  // On a map with a grid: positions, reach, range, cover from the map, the fog,
+  // the traps and the doors all count. What every combat was before RN-25.
+  ENCOUNTER_MODE_GRID = 1;
+  // Without a map, the "teatro da mente": no combatant has a square, the server
+  // never checks reach, range or distance (the master judges), movement is spent
+  // by number (SpendMovement), the opportunity attack is offered by the master
+  // (OfferOpportunity), cover is what the master marks (SetCombatantCover), and
+  // there is no fog, no trap and no placement of summoned creatures. Everything
+  // else works the same: initiative, turns, actions, attacks, spells, damage,
+  // reactions, conditions, death saves, the log, the undo and the XP.
+  ENCOUNTER_MODE_THEATRE = 2;
+}
+
 // EncounterStatus is where a combat is.
 enum EncounterStatus {
   ENCOUNTER_STATUS_UNSPECIFIED = 0;
@@ -1286,6 +1388,22 @@ enum EncounterBlockedReason {
   // move that gets some squares before the locked door is no refusal: it ends
   // before the door (MoveCombatantResponse.locked_door).
   ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED = 60;
+  // SpendMovement, OfferOpportunity: the combat is a GRID one, where movement is
+  // a move on the map and the server finds the opportunity attacks itself. Both
+  // are for a THEATRE combat (RN-25).
+  ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY = 61;
+  // MoveCombatant (a move, a jump, a placement), FireTrap, SearchForTraps and
+  // what else needs squares: the combat is a THEATRE one (RN-25), which has no
+  // map, no positions, no traps and no placement. "Sem mapa, isso não existe."
+  ENCOUNTER_BLOCKED_REASON_NEEDS_A_MAP = 62;
+  // StartEncounter: a THEATRE combat takes no map point (it needs no map).
+  ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP = 63;
+  // OfferOpportunity: the opportunity attack cannot be offered now: the reactor
+  // cannot make it (defeated, down, incapacitated, blinded, no melee attack) or is
+  // on the mover's side, the mover is defeated, hidden or took the Disengage
+  // action, or the same offer already waits. (The reactor's reaction being used is
+  // REACTION_USED.)
+  ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY = 64;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1309,6 +1427,10 @@ enum FamiliarSightBlockedReason {
   // (in SETUP). The sight is an action of a turn there, and one that was on is ended
   // when the character joins the combat or the combat begins.
   FAMILIAR_SIGHT_BLOCKED_REASON_COMBAT_NOT_BEGUN = 6;
+  // StartFamiliarSight: the character is a combatant of a combat without a map
+  // (THEATRE mode, RN-25). The familiar's eyes are the map's vision, and there is
+  // no map to see through them.
+  FAMILIAR_SIGHT_BLOCKED_REASON_NO_MAP = 7;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -1348,13 +1470,15 @@ message Encounter {
   // The round, counting from 1; 0 in SETUP.
   int32 round = 4;
   // The map the fight is on (a UUID; MapService.GetMap reads it). Empty if
-  // the master deleted it meanwhile.
+  // the master deleted it meanwhile, and always empty in THEATRE mode.
   string map_id = 5;
-  // The BATTLE point the master started it from. Only the master gets it.
+  // The BATTLE point the master started it from. Only the master gets it. Always
+  // empty in THEATRE mode.
   string map_point_id = 6;
   // The grid the fight uses, copied from the map when it started: squares of
   // 1.5 m (5 ft) across and down. A combatant's square is col 0 to
-  // grid_columns - 1 and row 0 to grid_rows - 1, from the top left.
+  // grid_columns - 1 and row 0 to grid_rows - 1, from the top left. Both are 0 in
+  // THEATRE mode: there is no grid, and no combatant has a square.
   int32 grid_columns = 7;
   int32 grid_rows = 8;
   // Whose turn it is (a combatant ID): the first member of the group on turn
@@ -1410,6 +1534,11 @@ message Encounter {
   // they see it). Nobody else gets any. Empty when nothing waits. The app opens
   // its prompt from this after each `encounter_changed`.
   repeated OpportunityOffer opportunity_offers = 18;
+  // How the combat is played (RN-25): GRID draws the map, THEATRE draws a list
+  // (no map, no positions, movement by number). Chosen when the combat started;
+  // it never changes, so a screen can trust it for the whole combat. Never
+  // UNSPECIFIED.
+  EncounterMode mode = 19;
 }
 
 // OpportunityOffer is the attack a combatant may make on an enemy that left its
@@ -1431,13 +1560,20 @@ message OpportunityOffer {
   // True when the caller may answer: the reactor's controller, and the master.
   bool for_you = 6;
   // The square of the move's line where the mover left the reach: where it goes
-  // back to if the attack drops it to 0 hit points. Only for whoever answers.
+  // back to if the attack drops it to 0 hit points. Only for whoever answers. 0
+  // in THEATRE mode, where the master offered the attack and nobody has a square:
+  // see `by_hand`.
   int32 left_col = 7;
   int32 left_row = 8;
   // The reactor's melee attacks (opportunity attacks are melee), as
   // GetTurnOptions names them, for whoever answers: the screen offers "Atacar com
   // Espada longa". Empty for the mover's player.
   repeated OpportunityAttack attacks = 9;
+  // Sent to whoever receives the offer (the master, the reactor's player and the
+  // mover's player). True when the master offered it (OfferOpportunity, THEATRE mode) instead of
+  // the server finding it on a move: there is no square (`left_col` and `left_row`
+  // are 0 and mean nothing), and a hit never takes the mover back anywhere.
+  bool by_hand = 10;
 }
 
 // OpportunityAttack is one melee attack of an offer's reactor.
@@ -1684,6 +1820,10 @@ message StartEncounterRequest {
   string map_point_id = 4;
   // Who fights. Without a player's character here, the whole party joins.
   repeated Participant participants = 5;
+  // How the combat is played, for good (RN-25). UNSPECIFIED takes the table's
+  // rule "combate com mapa" (RN-24): GRID when it starts with a map, THEATRE
+  // when it starts without. THEATRE refuses `map_point_id`.
+  EncounterMode mode = 6;
 }
 
 // StartEncounterResponse returns the new combat in SETUP.
@@ -1813,6 +1953,60 @@ message MoveCombatantResponse {
   // to where the combatant stopped. A player only gets it for a door they know
   // (see or remember); otherwise the move reads as stopped_early.
   bool locked_door = 4;
+}
+
+// SpendMovementRequest spends movement by number, in a THEATRE combat.
+message SpendMovementRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // How far, in whole feet: 1 to 600 (the app steps by 5 ft, 1.5 m). Never more
+  // than the movement the combatant has left this turn.
+  int32 distance_ft = 5;
+}
+
+// SpendMovementResponse returns the combat and what the combatant has left.
+message SpendMovementResponse {
+  Encounter encounter = 1;
+  // The movement left this turn, in tenths of a foot: "Restam 3,0 m" is 100 (10 ft).
+  // The same number the combatant carries
+  // (Combatant.movement_left_dft), for whoever reads only the answer.
+  int32 movement_left_dft = 2;
+}
+
+// OfferOpportunityRequest offers an opportunity attack, in a THEATRE combat.
+message OfferOpportunityRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The combatant that left someone's reach: the one on turn (a UUID).
+  string mover_id = 4;
+  // The combatant whose reach it left, who may attack (a UUID): the one the
+  // master chose ("Saiu do alcance de: Toren").
+  string reactor_id = 5;
+}
+
+// OfferOpportunityResponse returns the combat with the offer in it
+// (Encounter.opportunity_offers).
+message OfferOpportunityResponse {
+  Encounter encounter = 1;
+  // The offer made (a UUID): what DeclineOpportunity, SkipOpportunity,
+  // WithdrawOpportunity and RollAttack name.
+  string opportunity_offer_id = 2;
+}
+
+// WithdrawOpportunityRequest takes back an offer nobody answered.
+message WithdrawOpportunityRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string opportunity_offer_id = 3;
+  string idempotency_key = 4;
+}
+
+// WithdrawOpportunityResponse returns the combat without the offer.
+message WithdrawOpportunityResponse {
+  Encounter encounter = 1;
 }
 
 // GetMoveOptionsRequest names a combatant.
@@ -2129,11 +2323,13 @@ message TargetInReach {
   CombatantState state = 3;
   // The distance in feet: the squares between the centres, rounded down, times
   // 5 ft (RN-21), so a diagonal neighbour is 5 ft away. Unset when either of them
-  // has no square on the grid.
+  // has no square on the grid, and always unset in THEATRE mode.
   optional int32 distance_ft = 4;
   // True when the attack cannot reach it: the distance is beyond its range,
   // or unknown for a player (RollAttack refuses it). Never true for the
   // master when the distance is unknown: the master is not held to the reach.
+  // Always false in THEATRE mode, where the server never checks the reach: the
+  // master judges, and the list holds every target the rules allow.
   bool too_far = 5;
   // The cover it has against this attacker (D4): the larger of what the map
   // gives along the line (a painted cover square, a creature in between, a wall)
@@ -2808,6 +3004,14 @@ enum CombatLogKind {
   // `door`. On a map without the fog everyone gets the line; with the fog, the players whose character saw or remembers the door when it opened, and the mover's player (RN-10). Any combatant's move can open a door. The
   // master's undo of the move does not close the door, so the line stays.
   COMBAT_LOG_KIND_DOOR_OPENED = 22;
+  // The master offered an opportunity attack in a combat without a map (RN-25,
+  // OfferOpportunity): "Goblin 1 saiu do alcance de Toren", the mover as the actor
+  // and the reactor as the target. Only the master, the reactor's player and the
+  // mover's player get the line, as they get the offer (RN-10: a hidden combatant
+  // in it keeps it from every player). The offer's answer (declined, skipped,
+  // withdrawn) belongs to this line, so the master can undo it from here
+  // (`undoable`); the attack of an answer is its own ATTACK line.
+  COMBAT_LOG_KIND_OPPORTUNITY_OFFERED = 23;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
