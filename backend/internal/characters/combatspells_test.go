@@ -19,7 +19,9 @@ func TestSpellTargetingFollowsTheSRDText(t *testing.T) {
 	s := offlineService(t)
 	for key, want := range map[string]bool{
 		"spell:burning-hands": true, "spell:thunderwave": true, "spell:fireball": true, "spell:sleep": true, "spell:entangle": true,
-		"spell:bless": true, "spell:web": true, "spell:prayer-of-healing": true, "spell:mass-healing-word": true,
+		"spell:web": true,
+		// The SRD says how many (hand-written, effects/spell_targets.json): a number, not any.
+		"spell:bless": false, "spell:prayer-of-healing": false, "spell:mass-healing-word": false,
 		"spell:hold-person": false, "spell:cure-wounds": false, "spell:healing-word": false, "spell:sacred-flame": false,
 		"spell:guiding-bolt": false, "spell:magic-missile": false, "spell:shield": false, "spell:scorching-ray": false,
 	} {
@@ -28,24 +30,16 @@ func TestSpellTargetingFollowsTheSRDText(t *testing.T) {
 			t.Errorf("%s is not in the content", key)
 			continue
 		}
-		if got := isArea(det); got != want {
-			t.Errorf("isArea(%s) = %v, want %v", key, got, want)
+		if got := det.Target.AnyNumber(); got != want {
+			t.Errorf("any number of targets for %s = %v, want %v", key, got, want)
 		}
 	}
 	for key, want := range map[string]bool{"spell:hold-person": true, "spell:charm-person": true, "spell:bless": true, "spell:cure-wounds": false, "spell:shield": false} {
 		det, _ := s.srd.SpellDetails(key)
-		if got := extraTargetRE.MatchString(joinLines(det.HigherLevel)); got != want {
+		if got := det.Target.PerSlotLevel > 0; got != want {
 			t.Errorf("an additional target per level for %s = %v, want %v", key, got, want)
 		}
 	}
-}
-
-func joinLines(lines []string) string {
-	out := ""
-	for _, l := range lines {
-		out += l + " "
-	}
-	return out
 }
 
 // TestResourcesInVitals: the uses spent of each resource are cut to the sheet's

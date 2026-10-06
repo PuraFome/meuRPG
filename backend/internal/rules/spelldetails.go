@@ -121,6 +121,9 @@ const (
 	TargetCreatures = "creatures"
 	// TargetArea: every creature in an area (Shape, SizeFt).
 	TargetArea = "area"
+	// TargetNone: no creature at all, a point, an object or a place (an SRD
+	// spell's only: the table has none). There is nobody to pick.
+	TargetNone = "none"
 )
 
 // Area shapes, as in SpellTarget.Shape.
@@ -132,13 +135,13 @@ const (
 	ShapeSphere   = "sphere"
 )
 
-// SpellTarget says whom a spell reaches. Only the table's spells have one
-// (RN-23): the SRD's spells say it in their text, so for them Kind is empty and
-// the combat code reads the text. The area's shape is data, never drawn by
-// combat: it reads an area as "any number of targets" (MaxTargets 0). The web
-// writes the size ("cone de 4,5 m"), so the engine keeps feet.
+// SpellTarget says whom a spell reaches. A table spell has the master's own
+// (RN-23); an SRD spell's is worked out from the 5e-database's structured area
+// and, for the rest, from its text (spelltarget.go). The area's shape is data,
+// never drawn by combat: it reads an area as "any number of targets" (MaxTargets
+// 0). The engine keeps feet, and LabelPT writes the text ("Cone de 4,5 m").
 type SpellTarget struct {
-	// Kind is one of the Target* constants, or "" for an SRD spell.
+	// Kind is one of the Target* constants; "" only in a zero SpellTarget.
 	Kind string
 	// Count is how many creatures a TargetCreatures spell takes at its own
 	// level, and PerSlotLevel how many more for each slot level above it.
@@ -149,21 +152,31 @@ type SpellTarget struct {
 	// the sphere's radius, the line's length.
 	Shape  string
 	SizeFt int
+	// Label, when set, is the text LabelPT writes instead of the one worked out
+	// (an SRD override's: "Cilindro de 3 m de raio"). A table spell has none.
+	Label string
 }
 
-// IsArea says the spell takes any number of targets: an area.
+// IsArea says the spell hits every creature in an area.
 func (t SpellTarget) IsArea() bool { return t.Kind == TargetArea }
 
+// CasterOnly says the spell has nobody to pick: it reaches the caster alone, or no
+// creature at all.
+func (t SpellTarget) CasterOnly() bool { return t.Kind == TargetSelf || t.Kind == TargetNone }
+
 // MaxTargets is the most creatures the spell takes when cast with a slot of
-// slotLevel (spellLevel is the spell's own level), or 0 for any number (an
-// area, or an SRD spell, whose text says it) and for a spell that only affects
-// the caster: play's maxTargetsOf answers 0 for a self-only spell, because the
-// caster is not a target the player picks.
+// slotLevel (spellLevel is the spell's own level), or 0 for any number (see
+// AnyNumber) and for a spell that only affects the caster: play's maxTargetsOf
+// answers 0 for a self-only spell, because the caster is not a target the player
+// picks.
 func (t SpellTarget) MaxTargets(slotLevel, spellLevel int) int {
 	switch t.Kind {
 	case TargetCreature:
-		return 1
+		return 1 + t.PerSlotLevel*max(slotLevel-spellLevel, 0)
 	case TargetCreatures:
+		if t.Count == 0 {
+			return 0
+		}
 		return t.Count + t.PerSlotLevel*max(slotLevel-spellLevel, 0)
 	}
 	return 0
@@ -190,7 +203,7 @@ type SpellDetails struct {
 	// table's, in Portuguese, for a table spell).
 	Description []string
 	HigherLevel []string
-	// Target is set for a table spell only (see SpellTarget).
+	// Target is whom the spell reaches (see SpellTarget).
 	Target SpellTarget
 }
 

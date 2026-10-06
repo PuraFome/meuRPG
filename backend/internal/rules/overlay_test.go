@@ -431,9 +431,9 @@ func TestSpellDetailsOfTableSpells(t *testing.T) {
 	if cantrip.Spell.Level != 0 {
 		t.Errorf("cantrip level = %d", cantrip.Spell.Level)
 	}
-	// An SRD spell has no target and is read from its text.
+	// An SRD spell's target is worked out from the database's structured area.
 	srdDet, _ := c.SpellDetails("spell:fireball")
-	if srdDet.Target != (SpellTarget{}) {
+	if srdDet.Target != (SpellTarget{Kind: TargetArea, Shape: ShapeSphere, SizeFt: 20}) {
 		t.Errorf("fireball target = %+v", srdDet.Target)
 	}
 }
@@ -998,7 +998,7 @@ func TestWithRefusals(t *testing.T) {
 		{"spell target missing", func(o *Overlay) { o.Spells[0].Target = SpellTarget{} }, []string{"target"}},
 		{"area without a shape", func(o *Overlay) { o.Spells[1].Target.Shape = "" }, []string{"cone, cube"}},
 		{"area size", func(o *Overlay) { o.Spells[1].Target.SizeFt = 12 }, []string{"steps of 5"}},
-		{"one creature with a count", func(o *Overlay) { o.Spells[0].Target.Count = 2 }, []string{"takes nothing else"}},
+		{"one creature with a count", func(o *Overlay) { o.Spells[0].Target.Count = 2 }, []string{"takes only 0 to 10 more"}},
 		{"creatures with a count of 1", func(o *Overlay) { o.Spells[2].Target.Count = 1 }, []string{"several creatures"}},
 		{"attack and save", func(o *Overlay) { o.Spells[0].Save = &SpellSave{Ability: DEX, OnSuccess: "half"} }, []string{"not both"}},
 		{"attack with an area", func(o *Overlay) { o.Spells[1].Attack = "melee"; o.Spells[1].Save = nil }, []string{"area target"}},

@@ -192,6 +192,21 @@ func cleanFullSheet(f *charactersv1.FullSheet) error {
 			return &fieldError{field: "sheet.full.custom_background.name", err: err}
 		}
 		custom.CustomBackground.Name = name
+		// The rest of the "Outro" background (SRD 5.1 "Customizing a Background",
+		// question 82): one-line names and free texts, each cleaned; an empty one
+		// is a draft and shows an issue, never an error.
+		cb := custom.CustomBackground
+		if cb.FeatureName != "" {
+			if cb.FeatureName, err = names.Clean(cb.FeatureName, rules.MaxCustomNameLength); err != nil {
+				return &fieldError{field: "sheet.full.custom_background.feature_name", err: err}
+			}
+		}
+		if cb.FeatureText, err = names.CleanText(cb.FeatureText, rules.MaxCustomFeatureTextLength); err != nil {
+			return &fieldError{field: "sheet.full.custom_background.feature_text", err: err}
+		}
+		if cb.Equipment, err = names.CleanText(cb.Equipment, rules.MaxCustomEquipmentLength); err != nil {
+			return &fieldError{field: "sheet.full.custom_background.equipment", err: err}
+		}
 	}
 
 	if m := f.GetHitPoints().GetMethod(); charactersv1.HitPointsMethod_name[int32(m)] == "" {
@@ -427,6 +442,10 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 	case *charactersv1.FullSheet_CustomBackground:
 		b.CustomBackgroundName = bg.CustomBackground.GetName()
 		b.CustomBackgroundSkills = bg.CustomBackground.GetSkillKeys()
+		b.CustomBackgroundProficiencies = bg.CustomBackground.GetProficiencyKeys()
+		b.CustomBackgroundFeatureName = bg.CustomBackground.GetFeatureName()
+		b.CustomBackgroundFeature = bg.CustomBackground.GetFeatureText()
+		b.CustomBackgroundEquipment = bg.CustomBackground.GetEquipment()
 	}
 	if f.GetHitPoints().GetMethod() == charactersv1.HitPointsMethod_HIT_POINTS_METHOD_ROLLED {
 		b.HitPoints.Method = rules.HitPointsRolled

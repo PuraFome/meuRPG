@@ -2298,6 +2298,14 @@ message SpellTargets {
   // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
   // for each level above). Empty for any other spell.
   repeated DartsAtSlot darts = 5;
+  // How many more targets the spell takes for each slot level above its own: 1 for
+  // an SRD spell that says "one additional creature", the master's number for a
+  // table spell ("três criaturas, duas a mais por círculo"). 1 for Magic Missile
+  // (a dart more) and Scorching Ray (a ray more): with `max_targets`, the targets
+  // at a slot level are `max_targets + targets_per_level * (slot level - the
+  // spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
+  // when this is above 0.
+  int32 targets_per_level = 6;
 }
 
 // DartsAtSlot is how many darts a slot level makes.

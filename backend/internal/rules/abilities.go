@@ -131,6 +131,11 @@ func (x *deriver) proficiencies() {
 		for _, p := range bg.Proficiencies {
 			grant(p)
 		}
+	} else if x.b.Background == "" {
+		// A custom background's tools; its languages are listed by languages().
+		for _, p := range x.b.CustomBackgroundProficiencies {
+			grant(p)
+		}
 	}
 	for _, a := range x.active {
 		e := a.effect

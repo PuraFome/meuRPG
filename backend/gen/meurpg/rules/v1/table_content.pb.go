@@ -126,7 +126,7 @@ const (
 	// An area: `shape` and `size_ft`. In combat the caster picks the creatures it
 	// catches; the map does not draw it.
 	TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_AREA TableSpellTargetKind = 3
-	// Only the caster.
+	// Only the caster ("Só quem conjura"); the range must be SELF.
 	TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF TableSpellTargetKind = 4
 )
 
@@ -1703,7 +1703,8 @@ type TableSpellTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  TableSpellTargetKind   `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.TableSpellTargetKind" json:"kind,omitempty"`
 	// CREATURES: how many at the spell's own circle (2 or more), and how many more
-	// for each circle above it.
+	// for each circle above it. CREATURE: only `per_slot_level`, how many more for
+	// each circle above ("uma criatura, mais uma por círculo", as Hold Person).
 	Count        int32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	PerSlotLevel int32 `protobuf:"varint,3,opt,name=per_slot_level,json=perSlotLevel,proto3" json:"per_slot_level,omitempty"`
 	// AREA: the shape and the size, in feet, in steps of 5 (1,5 m); 5 to 300.
@@ -1842,7 +1843,10 @@ func (x *TableSpellCastingTime) GetTriggerPt() string {
 	return ""
 }
 
-// TableSpellRange is a table spell's range. Special is not allowed.
+// TableSpellRange is a table spell's range: SELF ("Pessoal"), TOUCH ("Toque"), SIGHT,
+// UNLIMITED or RANGED with a distance. Special is not allowed. SELF only goes with a
+// target of SELF or an AREA that comes out of the caster; a spell that picks one or
+// several creatures has a distance or TOUCH.
 type TableSpellRange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  SpellRangeKind         `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.SpellRangeKind" json:"kind,omitempty"`
