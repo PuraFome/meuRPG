@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NO_LAYERS, decodeLayers, hasLayers, hasPainted, lightCount } from './layers';
+import { NO_LAYERS, decodeLayers, doorCounts, hasLayers, hasPainted, lightCount } from './layers';
 
 // The fixtures are the byte layouts rules/grid's tests pin down
 // (TestLayerEncoding, TestLightAndCoverLayerEncoding).
@@ -78,5 +78,55 @@ describe('decodeLayers', () => {
     const lit = decodeLayers({ gridColumns: 3, gridRows: 2, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: Uint8Array.of(0b0000_0011) });
     expect(hasLayers(lit)).toBe(false);
     expect(hasPainted(lit)).toBe(true);
+  });
+});
+
+// The doors layer is four bits a square (rules/grid's DoorLayer): square n is the low nibble of byte n / 2 when n is even and the high nibble when odd.
+describe('decodeLayers: the doors (RN-26)', () => {
+  const empty = { difficultTerrain: new Uint8Array(), cover: new Uint8Array() };
+
+  it('reads a nibble a square: 1 open, 2 closed, 3 locked, 4 barred, 5 secret', () => {
+    // 3 x 2 grid: square 0 closed (2), 1 open (1), 2 locked (3), 3 barred (4), 4 secret (5), 5 nothing.
+    const layers = decodeLayers({ ...empty, gridColumns: 3, gridRows: 2, wall: new Uint8Array(), doors: Uint8Array.of(0x12, 0x43, 0x05) });
+    expect(layers.doors?.map((d) => [d.col, d.row, d.state])).toEqual([
+      [0, 0, 2],
+      [1, 0, 1],
+      [2, 0, 3],
+      [0, 1, 4],
+      [1, 1, 5],
+    ]);
+    expect(doorCounts(layers)).toEqual({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 });
+    expect(hasLayers(layers)).toBe(true);
+  });
+
+  it('has no doors when the layer is empty, and a map with doors only still has layers to name', () => {
+    const none = decodeLayers({ ...empty, gridColumns: 3, gridRows: 2, wall: new Uint8Array(), doors: new Uint8Array() });
+    expect(none.doors).toBeUndefined();
+    expect(hasLayers(none)).toBe(false);
+    expect(doorCounts(none)).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+  });
+
+  it('turns the bar by the floor on both sides, as planDoor does: floor above and below keeps it across (h), floor left and right turns it (v)', () => {
+    // 3 x 3 grid, a closed door in the middle (square 4, the low nibble of byte 2).
+    const door = Uint8Array.of(0, 0, 0x02, 0, 0);
+    // Walls at (0,1) and (2,1), left and right of the door: floor above and below, the passage runs up and down.
+    const sides = decodeLayers({ ...empty, gridColumns: 3, gridRows: 3, wall: Uint8Array.of(0b0010_1000, 0), doors: door });
+    expect(sides.doors).toEqual([{ col: 1, row: 1, state: 2, axis: 'h' }]);
+    // Walls at (1,0) and (1,2), above and below: floor left and right, the bar is turned.
+    const ends = decodeLayers({ ...empty, gridColumns: 3, gridRows: 3, wall: Uint8Array.of(0b1000_0010, 0), doors: door });
+    expect(ends.doors).toEqual([{ col: 1, row: 1, state: 2, axis: 'v' }]);
+    // A corner (a wall on two sides) does not flip it: two doors of one corridor point the same way.
+    const corner = decodeLayers({ ...empty, gridColumns: 3, gridRows: 3, wall: Uint8Array.of(0b0000_1010, 0), doors: door });
+    expect(corner.doors?.[0].axis).toBe('h');
+  });
+
+  it('guards a player\'s view (RN-10): a locked door is drawn closed and a secret one is not drawn, even if the layer carried them', () => {
+    // Squares 0 (locked), 1 (secret) and 2 (open) of a 3 x 1 grid.
+    const packed = { ...empty, gridColumns: 3, gridRows: 1, wall: new Uint8Array(), doors: Uint8Array.of(0x53, 0x01) };
+    expect(decodeLayers(packed).doors?.map((d) => d.state)).toEqual([3, 5, 1]);
+    expect(decodeLayers(packed, true).doors?.map((d) => [d.col, d.state])).toEqual([
+      [0, 2],
+      [2, 1],
+    ]);
   });
 });

@@ -149,6 +149,15 @@ message GalleryImage {
   // arredores"). Empty when no map uses it, and always empty in the upload's
   // answer. An image a map uses cannot be deleted.
   repeated MapRef used_in_maps = 11;
+  // True for an image that ImageGenerationService made (MR-039): the gallery
+  // labels it "Gerada por IA". It is hidden from the players like any image
+  // (RN-10) until the master shows it.
+  bool generated = 12;
+  // The image this one was made from by an edit (ImageGenerationService.
+  // EditGeneratedImage), a UUID, or "" for an uploaded image, a first
+  // generated image, or one whose parent was deleted. The edit chain is the
+  // images linked this way (ListImageEdits).
+  string parent_image_id = 13;
 }
 
 // ImageInUse is the error detail of DeleteGalleryImage's

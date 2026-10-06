@@ -51,6 +51,8 @@ let nextId = 0;
 
     // Room for the focus ring around the words, so it never touches them.
     .ask__title {
+      // The ring hugs the words, never a box across the whole panel (it read as an error frame).
+      align-self: flex-start;
       margin: 0 -6px;
       padding: 2px 6px;
       font-family: var(--mr-font-display);

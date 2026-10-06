@@ -49,6 +49,8 @@
     [offers]="offers()"
     [masterMoves]="isMaster()"
     [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
+    [doorPicks]="doorTaps() && isMaster()"
+    (doorPick)="doorPick.emit($event)"
     (tokenDrop)="tokenDrop.emit($event)"
   />
   }

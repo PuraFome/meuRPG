@@ -203,7 +203,7 @@ func (s *Service) DeleteGalleryImage(
 }
 
 func imageToProto(r mapsdb.GalleryImage) *mapsv1.GalleryImage {
-	return &mapsv1.GalleryImage{
+	img := &mapsv1.GalleryImage{
 		Id:           r.ID,
 		CampaignId:   r.CampaignID,
 		Name:         r.Name,
@@ -214,7 +214,12 @@ func imageToProto(r mapsdb.GalleryImage) *mapsv1.GalleryImage {
 		CreatedAt:    timestamppb.New(r.CreatedAt),
 		Url:          imageURL(r.ID),
 		ThumbnailUrl: thumbnailURL(r.ID),
+		Generated:    r.Generated,
 	}
+	if r.ParentImageID != nil {
+		img.ParentImageId = *r.ParentImageID
+	}
+	return img
 }
 
 func (s *Service) usageToProto(u mapsdb.GetGalleryUsageRow) *mapsv1.GalleryUsage {

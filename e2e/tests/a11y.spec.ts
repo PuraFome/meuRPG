@@ -12,7 +12,7 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
-import { paintRPC, pickRadio } from './move-support';
+import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
@@ -3284,6 +3284,155 @@ test('o editor do mapa passa no axe e nas conferências de layout no tema escuro
 test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanMapEditorScreens(browser, 'light', 320);
+});
+
+// The doors (slice 10.14a, MR-010, RN-26, RN-10; E10-05 7 to 11): the "Porta" tool in "Pintar" with its panel, its refusal and its
+// question; the master's door sheet in the session (a door, a secret door and the question before revealing it); what a player's
+// map says (only "Porta fechada"); and the "Mover" page after a locked door stopped the move. Every state goes through axe and the
+// alignment checks. On a phone the editor is "Pintar só no computador" (the existing scans), so only the session's states run there.
+async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
+  const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  let campaignId = '';
+  const door = (state: string, col: number, row: number) => m.getByRole('button', { name: new RegExp(`^${state}, coluna ${col}, linha ${row}`) });
+  // Opens a door's sheet by keyboard: a phone's map is zoomed on the party, so the door may be off the screen.
+  const openDoor = async (state: string, col: number, row: number) => {
+    await door(state, col, row).focus();
+    await m.keyboard.press('Enter');
+  };
+  try {
+    await Promise.all([m.goto('/'), ap.goto('/'), bp.goto('/')]);
+    const table = await tableForFog(m, ap, bp, `Acessibilidade portas ${Date.now()}`, {});
+    campaignId = table.campaignId;
+    const target = { campaignId, mapId: table.mapId };
+    const paint = async (layer: string, value: number, squares: [number, number][]) => {
+      const res = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { ...target, layer, value, squares: squares.map(([col, row]) => ({ col, row })) });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    // The wall at (7, 9) and (7, 10) has floor on both sides: a closed and a locked door; a grade, an open door and a secret one stand on the floor.
+    await paint('MAP_LAYER_WALL', 0, [[7, 9], [7, 10]]);
+    await paint('MAP_LAYER_DOORS', 2, [[7, 9]]);
+    await paint('MAP_LAYER_DOORS', 3, [[7, 10]]);
+    await paint('MAP_LAYER_DOORS', 4, [[3, 7]]);
+    await paint('MAP_LAYER_DOORS', 1, [[2, 7]]);
+    await paint('MAP_LAYER_DOORS', 5, [[1, 7]]);
+
+    if (!phone) {
+      // The "Porta" tool: its panel, the kinds, a refused tap and the question before a door goes where someone stands.
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await expect(m.getByRole('radio', { name: 'Pontos' })).toBeVisible();
+      await m.getByRole('radio', { name: 'Pintar' }).click();
+      const tools = m.getByRole('group', { name: 'Ferramenta de pintura' });
+      await tools.getByRole('button', { name: 'Porta' }).click();
+      await expect(m.getByText('Toque num quadrado para pôr a porta do tipo escolhido.')).toBeVisible();
+      await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+      await expectScreenPasses(m, `Editor, Pintar, a ferramenta Porta ${where}`);
+      await m.getByRole('group', { name: 'Tipo de porta' }).getByRole('button', { name: 'Trancada' }).click();
+      await expectScreenPasses(m, `Editor, Porta trancada escolhida ${where}`);
+      const map = { columns: 24, rows: 16 };
+      await clickSquare(m, map, 12, 12);
+      await expect(m.getByRole('alert').filter({ hasText: 'uma porta precisa de chão dos dois lados' })).toBeVisible();
+      await expectScreenPasses(m, `Editor, Porta: um toque que não serve ${where}`);
+      // Toren stands on a wall square that has floor on both sides: a closed door there asks first.
+      await moveTo(m, table, table.torenId, 7, 11);
+      await paint('MAP_LAYER_WALL', 1, [[7, 11]]);
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await m.getByRole('radio', { name: 'Pintar' }).click();
+      await m.getByRole('group', { name: 'Ferramenta de pintura' }).getByRole('button', { name: 'Porta' }).click();
+      await m.getByRole('group', { name: 'Tipo de porta' }).getByRole('button', { name: 'Fechada' }).click();
+      await clickSquare(m, map, 7, 11);
+      await expect(m.getByText('Pôr a porta onde há alguém?')).toBeVisible();
+      await expectScreenPasses(m, `Editor, Porta: a pergunta de quem está no quadrado ${where}`);
+      await m.getByRole('button', { name: 'Voltar' }).click();
+    }
+
+    // The session: the master's map names every door and each door has its sheet; the player's names only "Porta fechada".
+    await Promise.all([m.goto(sessionRoute(campaignId)), ap.goto(sessionRoute(campaignId))]);
+    await expect(m.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta secreta (só você vê)')).toBeVisible();
+    await expect(m.getByRole('group', { name: /^Mapa A caverna/ })).toBeVisible();
+    await expectScreenPasses(m, `Sessão, o mestre, o mapa com as portas e a legenda ${where}`);
+    await expect(ap.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta fechada')).toBeVisible();
+    await expect(ap.locator('app-fog-base').first()).toBeVisible();
+    await expectScreenPasses(ap, `Sessão, o jogador, o mapa com "Porta fechada" ${where}`);
+    await openDoor('Porta fechada', 8, 10);
+    await expect(m.getByRole('dialog', { name: 'Porta' }).getByRole('radio', { name: /Fechada/ })).toHaveAttribute('aria-checked', 'true');
+    await expectScreenPasses(m, `Sessão, a folha da porta fechada ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(m.getByRole('dialog', { name: 'Porta' })).toHaveCount(0);
+    await openDoor('Grade', 4, 8);
+    await expect(m.getByRole('dialog', { name: 'Porta' }).getByRole('radio')).toHaveCount(2);
+    await expectScreenPasses(m, `Sessão, a folha de uma grade ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(m.getByRole('dialog', { name: 'Porta' })).toHaveCount(0);
+    await openDoor('Porta secreta', 2, 8);
+    const sheet = m.getByRole('dialog', { name: 'Porta' });
+    await expect(sheet.getByRole('heading', { name: 'Porta secreta' })).toBeVisible();
+    await expectScreenPasses(m, `Sessão, a folha da porta secreta ${where}`);
+    await sheet.getByRole('button', { name: 'Revelar a porta secreta' }).click();
+    await expect(sheet.getByText('Os jogadores vão ver a porta. Revelar?')).toBeVisible();
+    await expectScreenPasses(m, `Sessão, a pergunta antes de revelar a porta secreta ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar' }).click();
+    await m.keyboard.press('Escape');
+    await expect(m.getByRole('dialog', { name: 'Porta' })).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all([master.close(), pensantus.close(), toren.close()]);
+  }
+
+  // The "Mover" page after a locked door stopped the move: the notice with the lock, and the map still "Porta fechada".
+  const mover = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const moverPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const [mm, pp] = [await mover.newPage(), await moverPlayer.newPage()];
+  let moveCampaign = '';
+  try {
+    await Promise.all([mm.goto('/'), pp.goto('/')]);
+    const table = await tableForCombat(mm, pp, `Acessibilidade porta trancada ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    moveCampaign = table.campaignId;
+    await paintRPC(mm, table, 'MAP_LAYER_WALL', 1, [[3, 5], [4, 5], [6, 5], [7, 5]]);
+    const res = await callRPC(mm, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId: table.campaignId, mapId: table.mapId, layer: 'MAP_LAYER_DOORS', value: 3, squares: [{ col: 5, row: 5 }] });
+    expect(res.ok(), await res.text()).toBeTruthy();
+    await beginAttackCombatRPC(mm, table, { Pensantus: 20, 'Goblin 1': 15, 'Capitão Goblin': 10, 'Goblin 2': 4 }, { 'Capitão Goblin': [11, 9], 'Goblin 1': [14, 7], 'Goblin 2': [15, 11] });
+    await openSessionPage(pp, moveCampaign);
+    await expect(pp.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await pp.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(pp.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+    await tapSquare(pp, 5, 4);
+    await pp.getByRole('button', { name: 'Mover para cá' }).click();
+    await expect(pp.getByRole('status').filter({ hasText: 'A porta está trancada.' })).toBeVisible();
+    await expectScreenPasses(pp, `Mover, uma porta trancada parou o movimento ${where}`);
+  } finally {
+    if (moveCampaign) {
+      await endOpenSessionRPC(mm, moveCampaign);
+    }
+    await Promise.all([mover.close(), moverPlayer.close()]);
+  }
+}
+
+test('as portas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanDoorScreens(browser, 'light', 1280);
+});
+
+test('as portas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanDoorScreens(browser, 'dark', 390);
+});
+
+test('as portas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanDoorScreens(browser, 'dark', 1024);
+});
+
+test('as portas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanDoorScreens(browser, 'light', 320);
 });
 
 /**

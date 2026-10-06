@@ -316,4 +316,26 @@ describe('MovePage', () => {
     press('Voltar');
     expect(el.querySelector('.move__ask')).toBeNull();
   });
+
+  describe('a locked door (RN-26, E10-05 9)', () => {
+    it('says why the move stopped, with the lock, and nothing about a lock when none stopped it', () => {
+      const { fixture, choose } = setup();
+      // The live region is on the page before the text arrives (so a screen reader reads it when it does).
+      expect((fixture.nativeElement as HTMLElement).querySelector('.move__live')).not.toBeNull();
+      expect(plain(fixture.nativeElement.textContent)).not.toContain('A porta está trancada.');
+      choose(9, 8);
+      expect(plain(fixture.nativeElement.textContent)).toContain('Mover 2,1 m');
+      fixture.componentRef.setInput('lockedDoor', true);
+      fixture.detectChanges();
+      const live = (fixture.nativeElement as HTMLElement).querySelector('.move__live');
+      expect(live?.getAttribute('role')).toBe('status');
+      const notice = live?.querySelector('.mr-notice--warning');
+      expect(plain(notice?.textContent)).toContain('lock');
+      // The square chosen is cleared, and "Mover para cá" is off.
+      expect(plain(fixture.nativeElement.textContent)).not.toContain('Mover 2,1 m');
+      expect((fixture.nativeElement as HTMLElement).querySelector('.move__go--off')).not.toBeNull();
+      expect(plain(notice?.querySelector('strong')?.textContent)).toBe('A porta está trancada.');
+      expect(plain(notice?.textContent)).toContain('O movimento para antes dela. Só o mestre a destranca.');
+    });
+  });
 });

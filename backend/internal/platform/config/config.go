@@ -66,6 +66,28 @@ type Config struct {
 	// X-Forwarded-For instead of the connection (see
 	// internal/platform/ratelimit.ClientKey).
 	CloudRun bool
+
+	// Images configures the image generator (MR-039, RN-28, ADR-0019).
+	Images Images
+}
+
+// maxImageMonthlyLimit bounds IMAGE_MONTHLY_LIMIT: a typo must not lift the cap.
+const maxImageMonthlyLimit = 500
+
+// Images holds the generated images' settings.
+type Images struct {
+	// GeminiAPIKey is the Gemini API key (GEMINI_API_KEY), a secret. Empty
+	// means generation is off: the RPCs answer with a typed "off" reason.
+	GeminiAPIKey Secret
+	// Model is the image model (GEMINI_IMAGE_MODEL); empty means the generator's default.
+	Model string
+	// Fake (IMAGE_GENERATOR=fake) uses the deterministic fake generator, for
+	// local runs and CI, and turns generation on without a key. It is refused
+	// on Cloud Run.
+	Fake bool
+	// MonthlyLimit is the images per campaign per month (IMAGE_MONTHLY_LIMIT);
+	// zero means the maps module's default (maps.DefaultMonthlyImages).
+	MonthlyLimit int
 }
 
 // OIDC holds the settings of the OpenID Connect provider the game master
@@ -183,6 +205,10 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.BlobDir = strings.TrimSpace(getenv("BLOB_DIR"))
+
+	images, imageErrs := loadImages(getenv, cfg.CloudRun)
+	cfg.Images = images
+	errs = append(errs, imageErrs...)
 
 	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {
 		level, err := parseLogLevel(raw)
@@ -345,4 +371,37 @@ func parseLogLevel(raw string) (slog.Level, error) {
 	default:
 		return 0, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, error; got %q", raw)
 	}
+}
+
+// loadImages reads GEMINI_API_KEY, GEMINI_IMAGE_MODEL, IMAGE_GENERATOR and
+// IMAGE_MONTHLY_LIMIT. None is required: without a key (and without the fake),
+// generation is off and the rest of the app works.
+func loadImages(getenv func(string) string, cloudRun bool) (Images, []error) {
+	img := Images{
+		GeminiAPIKey: Secret(strings.TrimSpace(getenv("GEMINI_API_KEY"))),
+		Model:        strings.TrimSpace(getenv("GEMINI_IMAGE_MODEL")),
+	}
+	var errs []error
+	switch mode := strings.TrimSpace(getenv("IMAGE_GENERATOR")); mode {
+	case "", "gemini":
+	case "fake":
+		if cloudRun {
+			errs = append(errs, errors.New("IMAGE_GENERATOR=fake is not allowed on Cloud Run"))
+		}
+		img.Fake = true
+	default:
+		errs = append(errs, fmt.Errorf("IMAGE_GENERATOR must be gemini or fake, got %q", mode))
+	}
+	if raw := strings.TrimSpace(getenv("IMAGE_MONTHLY_LIMIT")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("IMAGE_MONTHLY_LIMIT must be a number, got %q", raw))
+		case n < 1 || n > maxImageMonthlyLimit:
+			errs = append(errs, fmt.Errorf("IMAGE_MONTHLY_LIMIT must be between 1 and %d, got %d", maxImageMonthlyLimit, n))
+		default:
+			img.MonthlyLimit = n
+		}
+	}
+	return img, errs
 }

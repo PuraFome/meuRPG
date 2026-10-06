@@ -6,7 +6,7 @@ import { CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { metersFixed } from '../../../../core/units';
-import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
+import { type DoorSquare, type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import {
   CombatMap,
   type CombatMapImage,
@@ -62,6 +62,9 @@ export class CombatMapCard {
    * is on turn, and "Abrir mapa" for the whole map (E6-12). */
   readonly cropOnPhone = input(false);
 
+  /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
+  readonly doorPick = output<DoorSquare>();
+  readonly doorTaps = input(false);
   readonly tokenDrop = output<TokenDrop>();
   /** The master turned the reach on or off. */
   readonly reachChange = output<boolean>();

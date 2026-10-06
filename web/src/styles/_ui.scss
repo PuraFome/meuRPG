@@ -266,6 +266,11 @@ a.mr-list__row:hover .mr-list__name {
   // A swatch looks like its mark on the map: paper under it, the map's own colours (same in both themes).
   background-color: var(--mr-map-token-surface);
 
+  // Doors: the mark (`app-door-mark`) the map draws, one per kind, inside the swatch.
+  &--door {
+    overflow: hidden;
+  }
+
   // Parede and Terreno difícil: the same hatches the map draws.
   &--wall {
     background-image:
