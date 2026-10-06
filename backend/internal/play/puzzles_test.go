@@ -1116,6 +1116,38 @@ func TestMR038_SolvingOpensADoor(t *testing.T) {
 	}
 }
 
+// On a calibrated map the door a puzzle opens is the whole square of the drawing,
+// as walking through it opens it (RN-25): every door square of the block opens.
+func TestMR038_SolvingOpensTheWholeDoorOfACalibratedMap(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	m, err := p.mc(p.master).GetMap(t.Context(), connect.NewRequest(&mapsv1.GetMapRequest{CampaignId: p.campaignID, MapId: p.mapID}))
+	if err != nil {
+		t.Fatalf("GetMap() error = %v", err)
+	}
+	if _, err := p.mc(p.master).SetMapGrid(t.Context(), connect.NewRequest(&mapsv1.SetMapGridRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, Columns: m.Msg.GetMap().GetGridColumns(), SquareFactor: 2,
+	})); err != nil {
+		t.Fatalf("SetMapGrid(factor 2) error = %v", err)
+	}
+	p.paintDoor(t, mapsv1.DoorState_DOOR_STATE_LOCKED, 7, 4) // painting one square paints its block
+	block := [][2]int{{6, 4}, {7, 4}, {6, 5}, {7, 5}}
+	for _, sq := range block {
+		if got := p.doorAt(t, sq[0], sq[1]); got != grid.DoorLocked {
+			t.Fatalf("door square %v is %d before the solve, want locked", sq, got)
+		}
+	}
+	puz := p.oneMoveLock(t, doorTarget(p.mapID, 7, 4))
+	if res := p.mustMove(t, p.caio, puz.GetId(), lockMove(0, 1)); !res.GetSolvedByThisMove() {
+		t.Fatalf("the move did not solve it: %v", res)
+	}
+	for _, sq := range block {
+		if got := p.doorAt(t, sq[0], sq[1]); got != grid.DoorOpen {
+			t.Errorf("door square %v is %d after the solve, want open: the whole door opens", sq, got)
+		}
+	}
+}
+
 // The door was opened already: the puzzle is solved all the same, and says so.
 func TestMR038_SolvingADoorThatIsOpenOrGone(t *testing.T) {
 	t.Parallel()

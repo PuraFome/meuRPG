@@ -30,12 +30,12 @@ import (
 // porta". `not_found` for a map that is not the campaign's, a square outside it
 // or a square with no door.
 func (s *Service) PuzzleCheckDoor(ctx context.Context, tx pgx.Tx, campaignID, mapID string, col, row int) error {
-	set, g, _, err := s.puzzleDoors(ctx, tx, campaignID, mapID)
+	dm, err := s.puzzleDoors(ctx, tx, campaignID, mapID)
 	if err != nil {
 		return err
 	}
 	sq := grid.Square{Col: col, Row: row}
-	if !g.Contains(sq) || set.doors.At(sq) == grid.DoorNone {
+	if !dm.grid.Contains(sq) || dm.set.doors.At(sq) == grid.DoorNone {
 		return errors.Join(errPuzzleTarget, connect.NewError(connect.CodeNotFound, errors.New("door not found")))
 	}
 	return nil
@@ -51,12 +51,13 @@ var errPuzzleTarget = errors.New("maps: the puzzle's target is not there")
 // the layers' revision, as a move that opens one does. Call DoorsChanged after the
 // commit when it opened one.
 func (s *Service) PuzzleOpenDoor(ctx context.Context, tx pgx.Tx, campaignID, mapID string, col, row int) (bool, error) {
-	set, g, id, err := s.puzzleDoors(ctx, tx, campaignID, mapID)
+	dm, err := s.puzzleDoors(ctx, tx, campaignID, mapID)
 	if err != nil {
 		return false, err
 	}
+	set, id := dm.set, dm.id
 	sq := grid.Square{Col: col, Row: row}
-	if !g.Contains(sq) {
+	if !dm.grid.Contains(sq) {
 		return false, nil
 	}
 	switch set.doors.At(sq) {
@@ -64,7 +65,17 @@ func (s *Service) PuzzleOpenDoor(ctx context.Context, tx pgx.Tx, campaignID, map
 	default:
 		return false, nil
 	}
-	set.doors.Set(sq.Col, sq.Row, grid.DoorOpen)
+	// The door is the whole square of the drawing (RN-25): on a calibrated map every
+	// door square of the block opens, as walking through it does (OpenDoors).
+	f := dm.factor
+	bc, br := sq.Col/f*f, sq.Row/f*f
+	for r := br; r < br+f; r++ {
+		for c := bc; c < bc+f; c++ {
+			if set.doors.Get(c, r) != grid.DoorNone {
+				set.doors.Set(c, r, grid.DoorOpen)
+			}
+		}
+	}
 	q := queriesIn(s.queries, tx)
 	err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
 		MapID: id, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
@@ -82,33 +93,47 @@ func (s *Service) PuzzleOpenDoor(ctx context.Context, tx pgx.Tx, campaignID, map
 // puzzleDoors locks the campaign's map inside tx (as painting and OpenDoors do, so
 // the three take turns) and returns its decoded layers, its grid and its ID. A map
 // with no grid or no layers painted has no door: the layers are empty.
-func (s *Service) puzzleDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (layerSet, grid.Grid, string, error) {
+func (s *Service) puzzleDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (doorMap, error) {
 	id, ok := parseID(mapID)
 	if !ok {
-		return layerSet{}, grid.Grid{}, "", errors.Join(errPuzzleTarget, errMapNotFound())
+		return doorMap{}, errors.Join(errPuzzleTarget, errMapNotFound())
 	}
 	q := queriesIn(s.queries, tx)
 	if _, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: id}); errors.Is(err, pgx.ErrNoRows) {
-		return layerSet{}, grid.Grid{}, "", errors.Join(errPuzzleTarget, errMapNotFound())
+		return doorMap{}, errors.Join(errPuzzleTarget, errMapNotFound())
 	} else if err != nil {
-		return layerSet{}, grid.Grid{}, "", fmt.Errorf("lock the map: %w", err)
+		return doorMap{}, fmt.Errorf("lock the map: %w", err)
 	}
 	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: id})
 	if err != nil {
-		return layerSet{}, grid.Grid{}, "", fmt.Errorf("read the map's grid: %w", err)
+		return doorMap{}, fmt.Errorf("read the map's grid: %w", err)
 	}
-	g := gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight)
+	g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
+	dm := doorMap{grid: g, factor: max(int(size.GridFactor), 1), id: id}
 	if !g.Valid() {
-		return layerSet{doors: grid.NewDoorLayer(g)}, g, id, nil
+		dm.set = layerSet{doors: grid.NewDoorLayer(g)}
+		return dm, nil
 	}
 	stored, err := q.GetMapLayers(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return loadLayers(mapsdb.MapLayer{}, g), g, id, nil
+		dm.set = loadLayers(mapsdb.MapLayer{}, g)
+		return dm, nil
 	}
 	if err != nil {
-		return layerSet{}, grid.Grid{}, "", fmt.Errorf("read the layers: %w", err)
+		return doorMap{}, fmt.Errorf("read the layers: %w", err)
 	}
-	return loadLayers(stored, g), g, id, nil
+	dm.set = loadLayers(stored, g)
+	return dm, nil
+}
+
+// doorMap is what puzzleDoors reads: the map's decoded layers, its grid, its
+// calibration factor (a door is a whole square of the drawing, factor x factor
+// squares of the rules, RN-25) and its ID.
+type doorMap struct {
+	set    layerSet
+	grid   grid.Grid
+	factor int
+	id     string
 }
 
 // PuzzleCheckPoint says, inside tx, whether the point is on the campaign's map.

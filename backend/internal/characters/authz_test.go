@@ -278,6 +278,17 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.RollLevelUpHitPoints(ctx, connect.NewRequest(&charactersv1.RollLevelUpHitPointsRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: uuid.New().String()}))
 			return err
 		}, [6]connect.Code{connect.CodePermissionDenied, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The ability scores of a new sheet (RN-24): any player may roll and read their
+		// own 4d6, a pending member too (they create their character); the master has
+		// none to make. The roll is idempotent, so it can sit anywhere in the table.
+		{"GetAbilityRolls", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.GetAbilityRolls(ctx, connect.NewRequest(&charactersv1.GetAbilityRollsRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		{"RollAbilityScores", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RollAbilityScores(ctx, connect.NewRequest(&charactersv1.RollAbilityScoresRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 		{"ListLevelUps", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.ListLevelUps(ctx, connect.NewRequest(&charactersv1.ListLevelUpsRequest{CampaignId: campaign}))
 			return err

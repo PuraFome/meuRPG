@@ -166,6 +166,15 @@ type CombatMaps interface {
 	CombatRunsOnMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (bool, error)
 }
 
+// MapDefaults says what a table chose for the maps it creates (RN-24). The
+// campaigns module implements it (campaigns.Service.FogOnNewMaps); cmd/api
+// connects the two, and neither package imports the other.
+type MapDefaults interface {
+	// FogOnNewMaps says whether a map created now starts with the fog of war on.
+	// It reads inside tx when the caller has one (nil: the pool).
+	FogOnNewMaps(ctx context.Context, tx pgx.Tx, campaignID string) (bool, error)
+}
+
 // Rules is what this package needs from the rules content: the scene checks
 // (MR-015), and the names and presets that keep a trap's or a light's keys honest
 // (MR-035, MR-036). *rules.Content implements it, so nothing here repeats the
@@ -198,6 +207,9 @@ type Config struct {
 	Rules Rules
 	// Combats says whether a combat runs on a map: the play service. Required.
 	Combats CombatMaps
+	// Defaults says what the table chose for new maps: the campaigns service.
+	// Optional; nil means a new map has no fog, as before the table's rules.
+	Defaults MapDefaults
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -223,6 +235,7 @@ type Service struct {
 	checks     SceneChecks
 	rules      Rules
 	combats    CombatMaps
+	defaults   MapDefaults
 	firer      TrapFirer
 	layerHints hintGate
 	// layerHintEvery is the gate's interval (defaultLayerHintEvery); a test sets
@@ -293,6 +306,7 @@ func New(cfg Config) (*Service, error) {
 		checks:         cfg.Rules,
 		rules:          cfg.Rules,
 		combats:        cfg.Combats,
+		defaults:       cfg.Defaults,
 		logger:         cfg.Logger,
 		now:            cfg.Now,
 		maxImages:      cfg.MaxImages,
