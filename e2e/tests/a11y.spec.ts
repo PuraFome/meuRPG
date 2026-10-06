@@ -40,7 +40,7 @@ import {
   releaseHintRPC,
   revealClueRPC,
   sceneClueRPC,
-  secondPlayer,
+  secondPlayer as puzzlesSecondPlayer,
   setDiceModeRPC,
   showPuzzleRPC,
   solveByThePathRPC,
@@ -4082,7 +4082,7 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     await Promise.all([master.goto('/'), player.goto('/')]);
     const table = await tableForPuzzles(master, player, `Acessibilidade mais quebra-cabeças ${Date.now()}`);
     campaignId = table.campaignId;
-    toren = await secondPlayer(browser, master, campaignId);
+    toren = await puzzlesSecondPlayer(browser, master, campaignId);
     await setCurrentMapRPC(master, campaignId, table.map.mapId);
     const trap = await trapPointRPC(master, campaignId, table.map.mapId, 'Dardos envenenados');
     const clueId = await sceneClueRPC(master, campaignId, table.map.mapId, 'A biblioteca', 'Cada letra anda três para trás.');
