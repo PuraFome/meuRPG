@@ -882,7 +882,8 @@ export type TableSpellTarget = Message<"meurpg.rules.v1.TableSpellTarget"> & {
 
   /**
    * CREATURES: how many at the spell's own circle (2 or more), and how many more
-   * for each circle above it.
+   * for each circle above it. CREATURE: only `per_slot_level`, how many more for
+   * each circle above ("uma criatura, mais uma por círculo", as Hold Person).
    *
    * @generated from field: int32 count = 2;
    */
@@ -947,7 +948,10 @@ export const TableSpellCastingTimeSchema: GenMessage<TableSpellCastingTime> = /*
   messageDesc(file_meurpg_rules_v1_table_content, 13);
 
 /**
- * TableSpellRange is a table spell's range. Special is not allowed.
+ * TableSpellRange is a table spell's range: SELF ("Pessoal"), TOUCH ("Toque"), SIGHT,
+ * UNLIMITED or RANGED with a distance. Special is not allowed. SELF only goes with a
+ * target of SELF or an AREA that comes out of the caster; a spell that picks one or
+ * several creatures has a distance or TOUCH.
  *
  * @generated from message meurpg.rules.v1.TableSpellRange
  */
@@ -1816,7 +1820,7 @@ export enum TableSpellTargetKind {
   AREA = 3,
 
   /**
-   * Only the caster.
+   * Only the caster ("Só quem conjura"); the range must be SELF.
    *
    * @generated from enum value: TABLE_SPELL_TARGET_KIND_SELF = 4;
    */

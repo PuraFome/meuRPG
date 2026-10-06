@@ -238,6 +238,7 @@ func (b Build) clone() Build {
 	b.ExtraAbilityBonuses = maps.Clone(b.ExtraAbilityBonuses)
 	b.Classes = slices.Clone(b.Classes)
 	b.CustomBackgroundSkills = slices.Clone(b.CustomBackgroundSkills)
+	b.CustomBackgroundProficiencies = slices.Clone(b.CustomBackgroundProficiencies)
 	b.SkillProficiencies = slices.Clone(b.SkillProficiencies)
 	b.Expertise = slices.Clone(b.Expertise)
 	b.Weapons = slices.Clone(b.Weapons)
@@ -844,7 +845,11 @@ func checkLocked(before, after Build) *LevelUpError {
 	case before.Background != after.Background:
 		return locked("full.background_key")
 	case before.CustomBackgroundName != after.CustomBackgroundName,
-		!slices.Equal(before.CustomBackgroundSkills, after.CustomBackgroundSkills):
+		!slices.Equal(before.CustomBackgroundSkills, after.CustomBackgroundSkills),
+		!slices.Equal(before.CustomBackgroundProficiencies, after.CustomBackgroundProficiencies),
+		before.CustomBackgroundFeatureName != after.CustomBackgroundFeatureName,
+		before.CustomBackgroundFeature != after.CustomBackgroundFeature,
+		before.CustomBackgroundEquipment != after.CustomBackgroundEquipment:
 		return locked("full.custom_background")
 	case before.Armor != after.Armor:
 		return locked("full.armor_key")

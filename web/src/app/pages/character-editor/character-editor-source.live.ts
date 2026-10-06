@@ -228,7 +228,18 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
   // MessageInitShape for the RPC call, like `toFullSheetInit`'s own
   // return value, not a re-branded `FullSheet` instance.
   const { $typeName: _typeName, ...rest } = original;
-  return { ...rest, ...toFullSheetInit(v) };
+  const init = toFullSheetInit(v);
+  // The form edits a custom background's name and skills only: the tools or
+  // languages, the feature and the equipment the server holds go back as read
+  // (until the editor shows them), or the save would wipe them.
+  if (init.background.case === 'customBackground' && original.background.case === 'customBackground') {
+    const { $typeName: _bg, ...kept } = original.background.value;
+    init.background = {
+      case: 'customBackground',
+      value: { ...kept, ...init.background.value },
+    };
+  }
+  return { ...rest, ...init };
 }
 
 /** Exported for `character-editor-source.live.spec.ts`. */

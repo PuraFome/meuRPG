@@ -443,6 +443,10 @@ func pensantusSheet() *charactersv1.CharacterSheet {
 		}},
 		Background: &charactersv1.FullSheet_CustomBackground{CustomBackground: &charactersv1.CustomBackground{
 			Name: "Sábio", SkillKeys: []string{"skill:arcana", "skill:history"},
+			// SRD 5.1 "Customizing a Background": two languages, the feature, the equipment.
+			ProficiencyKeys: []string{"language:draconic", "language:elvish"},
+			FeatureName:     "Pesquisador", FeatureText: "Quando você não sabe uma informação, sabe a quem perguntar.",
+			Equipment: "Um tinteiro, uma pena e roupas comuns.",
 		}},
 		SkillProficiencyKeys: []string{"skill:investigation", "skill:insight"},
 		WeaponKeys:           []string{"equipment:quarterstaff"},

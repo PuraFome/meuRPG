@@ -1,0 +1,49 @@
+{
+  "_comment": "Quem uma magia do SRD alcança, onde a área estruturada do 5e-database ou o texto do SRD erram. Escrito à mão, com as nossas palavras; toda chave é uma magia do SRD (o carregamento recusa outra coisa) e os tipos são fechados: creature, creatures (count, per_slot_level), area (shape, size_ft), self e none (nenhuma criatura: um ponto, um objeto, um lugar). label_pt troca só o texto da página Magias. As magias que não estão aqui seguem a área estruturada e, sem ela, o texto.",
+  "spells": {
+    "spell:telekinesis": { "kind": "creature" },
+
+    "spell:detect-evil-and-good": { "kind": "self" },
+    "spell:detect-magic": { "kind": "self" },
+    "spell:detect-poison-and-disease": { "kind": "self" },
+    "spell:speak-with-plants": { "kind": "self" },
+    "spell:branding-smite": { "kind": "self" },
+    "spell:divine-favor": { "kind": "self" },
+    "spell:flame-blade": { "kind": "self" },
+    "spell:contact-other-plane": { "kind": "self" },
+    "spell:magic-jar": { "kind": "self" },
+    "spell:scrying": { "kind": "self" },
+    "spell:wish": { "kind": "self" },
+
+    "spell:arcane-eye": { "kind": "none" },
+    "spell:magnificent-mansion": { "kind": "none" },
+    "spell:dancing-lights": { "kind": "none" },
+    "spell:druidcraft": { "kind": "none" },
+    "spell:fabricate": { "kind": "none" },
+    "spell:light": { "kind": "none" },
+    "spell:major-image": { "kind": "none" },
+    "spell:minor-illusion": { "kind": "none" },
+
+    "spell:flame-strike": { "kind": "area", "shape": "cylinder", "size_ft": 10, "label_pt": "Cilindro de 3 m de raio" },
+    "spell:forbiddance": { "kind": "area", "shape": "cube", "size_ft": 200, "label_pt": "Uma área de cerca de 3.700 m²" },
+    "spell:mirage-arcane": { "kind": "area", "shape": "cube", "size_ft": 5280, "label_pt": "Terreno de até 1,6 km de lado" },
+    "spell:teleportation-circle": { "kind": "area", "shape": "cylinder", "size_ft": 5, "label_pt": "Círculo de 3 m de diâmetro" },
+    "spell:guards-and-wards": { "kind": "area", "shape": "cube", "size_ft": 50, "label_pt": "Uma área de até 230 m²" },
+    "spell:fire-storm": { "kind": "area", "shape": "cube", "size_ft": 10, "label_pt": "Até dez cubos de 3 m de lado" },
+    "spell:hypnotic-pattern": { "kind": "area", "shape": "cube", "size_ft": 30 },
+    "spell:plant-growth": { "kind": "area", "shape": "sphere", "size_ft": 100 },
+    "spell:purify-food-and-drink": { "kind": "area", "shape": "sphere", "size_ft": 5 },
+    "spell:glyph-of-warding": { "kind": "area", "shape": "sphere", "size_ft": 20 },
+
+    "spell:bless": { "kind": "creatures", "count": 3, "per_slot_level": 1 },
+    "spell:bane": { "kind": "creatures", "count": 3, "per_slot_level": 1 },
+    "spell:mass-healing-word": { "kind": "creatures", "count": 6 },
+    "spell:prayer-of-healing": { "kind": "creatures", "count": 6 },
+    "spell:mass-suggestion": { "kind": "creatures", "count": 12 },
+    "spell:telepathic-bond": { "kind": "creatures", "count": 8 },
+    "spell:water-walk": { "kind": "creatures", "count": 10 },
+    "spell:wind-walk": { "kind": "creatures", "count": 11, "label_pt": "Você e até 10 criaturas" },
+    "spell:astral-projection": { "kind": "creatures", "count": 9, "label_pt": "Você e até 8 criaturas" },
+    "spell:heroes-feast": { "kind": "creatures", "count": 12 }
+  }
+}

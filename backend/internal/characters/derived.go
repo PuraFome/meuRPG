@@ -40,6 +40,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		RaceNamePt:            d.RaceNamePT,
 		SubraceNamePt:         d.SubraceNamePT,
 		BackgroundNamePt:      d.BackgroundNamePT,
+		BackgroundEquipmentPt: d.BackgroundEquipmentPT,
 		TotalLevel:            i32(d.TotalLevel),
 		ProficiencyBonus:      i32(d.ProficiencyBonus),
 		PassivePerception:     i32(d.PassivePerception),
@@ -166,9 +167,12 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 			out.Proficiencies.Armor = append(out.Proficiencies.Armor, p.NamePT)
 		case "weapon":
 			out.Proficiencies.Weapons = append(out.Proficiencies.Weapons, p.NamePT)
-		case "tool":
+		case "tool", "other":
+			// The SRD files the thieves' tools, the herbalism kit, the navigator's tools, the
+			// poisoner's kit and the vehicles under "other": they are tools too (saving
+			// throws and skills never get here, and are shown elsewhere on the sheet).
 			out.Proficiencies.Tools = append(out.Proficiencies.Tools, p.NamePT)
-		} // "other" (such as saving throws) is shown elsewhere on the sheet
+		}
 	}
 	for _, h := range d.Hints {
 		out.Hints = append(out.Hints, &rulesv1.Hint{SourceKey: h.Source, Text: h.TextPT})
