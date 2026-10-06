@@ -1,0 +1,65 @@
+<app-sheet-frame
+  [title]="item()?.namePt ?? data.namePt"
+  [phone]="inSheet"
+  titleId="item-t"
+  height="min(640px, calc(92dvh - 48px))"
+  (closed)="close()"
+>
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando o item" />
+        Abrindo a descrição...
+      </p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    }
+    @case ('ready') {
+      @let i = s.item;
+      <div class="stack">
+        <p class="names">
+          <span class="names__en" lang="en">{{ i.name }}</span>
+          <span class="names__src"> · item mágico do SRD 5.1</span>
+        </p>
+        <ul class="tags" aria-label="Raridade e sintonização">
+          @for (t of tags(); track t) {
+            <li class="mr-tag">{{ t }}</li>
+          }
+        </ul>
+        @if (attunement() && i.attunementBy) {
+          <p class="plain">{{ attunement() }} (<span lang="en">{{ i.attunementBy }}</span>).</p>
+        }
+
+        <section class="value" aria-labelledby="item-value-h">
+          <h3 class="cap" id="item-value-h">Valor</h3>
+          <p class="value__num">{{ value() }}</p>
+          <p class="value__src">
+            {{ valueLabel }} ·
+            <a routerLink="/creditos" target="_blank" rel="noopener">Créditos</a>
+          </p>
+          <p class="value__rule">{{ rule() }}</p>
+        </section>
+
+        <section class="text" aria-labelledby="item-text-h">
+          <h3 class="cap" id="item-text-h">Descrição</h3>
+          <p class="text__src">Texto do SRD 5.1, em inglês</p>
+          <div lang="en" class="text__body">
+            @for (p of i.description; track $index) {
+              <p>{{ p }}</p>
+            }
+          </div>
+        </section>
+      </div>
+    }
+  }
+
+  <div foot class="actions">
+    <button type="button" mat-stroked-button class="close" data-initial-focus (click)="close()">Fechar</button>
+  </div>
+</app-sheet-frame>

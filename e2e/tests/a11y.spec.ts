@@ -27,6 +27,7 @@ import { closePuzzleRPC, createLightsRPC, createLockRPC, createPillarsRPC, endTa
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
+import { treasureRoute } from './treasure-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -4464,3 +4465,113 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
 });
+
+
+/**
+ * The treasure generator (Etapa 10, slice 10.17c: MR-044, MR-041, RN-09, RN-10; E10-10 states 1 to 6): nothing generated, a hoard, an
+ * individual treasure, a failing and a busy generator, an item's description, "Pôr no mapa" (on a map with rooms, and on a map without a
+ * grid), the confirmation, a gold campaign's line and the player's notice. On a phone the item and "Pôr no mapa" are sheets.
+ */
+async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const p = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForMaps(m, p, `Acessibilidade tesouro ${Date.now()}`);
+    const campaignId = table.campaignId;
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    expect(made.ok(), await made.text()).toBeTruthy();
+    const route = treasureRoute(campaignId);
+    const generate = m.getByRole('button', { name: 'Gerar tesouro' });
+    const dialogOrSheet = m.locator('mat-dialog-container, mat-bottom-sheet-container').last();
+
+    await open(m, `/campanhas/${campaignId}`);
+    await expect(m.getByRole('link', { name: 'Gerar tesouro' })).toBeVisible();
+    await expectScreenPasses(m, `Campanha, "Gerar tesouro" no painel Mapas ${where}`);
+
+    await open(m, route);
+    await expect(m.getByText('Nada gerado ainda.')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, nada gerado ${where}`);
+
+    // Busy: the server does not answer.
+    await m.route('**/*TreasureService/GenerateTreasure', () => new Promise(() => undefined));
+    await generate.click();
+    await expect(m.getByRole('button', { name: 'Gerando...' })).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, gerando ${where}`);
+    await m.unroute('**/*TreasureService/GenerateTreasure');
+
+    // Failing.
+    await m.route('**/*TreasureService/GenerateTreasure', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+    await open(m, route);
+    await m.getByRole('button', { name: 'Gerar tesouro' }).click();
+    await expect(m.getByRole('alert')).toContainText('o servidor não respondeu');
+    await expectScreenPasses(m, `Tesouro, com falha ${where}`);
+    await m.unroute('**/*TreasureService/GenerateTreasure');
+
+    await m.getByRole('button', { name: 'Tentar de novo' }).first().click();
+    await expect(m.getByTestId('treasure-seed')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, o covil ${where}`);
+
+    // An item's description.
+    await m.locator('.item__desc').first().click();
+    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.keyboard.press('Escape');
+
+    // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.
+    const png = await canvasPng(m, 640, 400, 'Sem grade');
+    const imageId = await uploadImageRPC(m, campaignId, 'Sem grade', png);
+    await createMapRPC(m, campaignId, 'Mapa sem grade', imageId);
+    await m.getByRole('button', { name: 'Pôr no mapa' }).click();
+    await expect(dialogOrSheet.getByRole('heading', { name: 'Pôr no mapa' })).toBeVisible();
+    await expect(dialogOrSheet.getByText(width < 768 ? 'Em que sala?' : /Onde\s+Na Sala/)).toBeVisible();
+    await m.waitForTimeout(800);
+    await expectScreenPasses(m, `Tesouro, "Pôr no mapa" ${where}`);
+    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'Mapa sem grade · sem grade' });
+    await expect(dialogOrSheet.getByTestId('no-grid')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, "Pôr no mapa" num mapa sem grade ${where}`);
+    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'A masmorra do teste' });
+    await expect(dialogOrSheet.getByTestId('no-grid')).toHaveCount(0);
+    await dialogOrSheet.getByRole('button', { name: 'Pôr no mapa' }).click();
+    await expect(m.getByTestId('treasure-placed')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, posto no mapa ${where}`);
+
+    await m.locator('.seg__item', { hasText: 'Individual' }).first().click();
+    await generate.click();
+    await expect(m.getByRole('heading', { name: /Tesouro individual/ })).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, o individual ${where}`);
+
+    // A gold campaign: the line says the gold is converted in "Voltar à cidade".
+    const gold = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Estrada de Ouro ${Date.now()}`, xpMode: 'XP_MODE_GOLD' });
+    expect(gold.ok()).toBeTruthy();
+    await open(m, treasureRoute((await gold.json()).campaign.id as string));
+    await m.getByRole('button', { name: 'Gerar tesouro' }).click();
+    await expect(m.getByTestId('treasure-gold-line')).toContainText('converte isto em XP');
+    await expectScreenPasses(m, `Tesouro, numa campanha por ouro ${where}`);
+
+    // A player: a calm notice.
+    await open(p, route);
+    await expect(p.getByText('Só o mestre gera o tesouro da campanha.')).toBeVisible();
+    await expectScreenPasses(p, `Tesouro, o aviso do jogador ${where}`);
+  } finally {
+    await context.close();
+    await playerContext.close();
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`o gerador de tesouro passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-044'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanTreasureScreens(browser, scheme, width);
+  });
+}

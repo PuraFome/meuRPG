@@ -1,0 +1,148 @@
+<a class="back" [routerLink]="['/campanhas', campaignId]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a campanha
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Tesouro</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando o tesouro" />
+        Abrindo o tesouro...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Tesouro</h1>
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre gera o tesouro da campanha.</strong> Os jogadores só veem um tesouro depois de achar o ponto no mapa.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir o tesouro</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    </div>
+  }
+  @case ('master') {
+    <header>
+      <h1 class="mr-page-title">Tesouro</h1>
+      <p class="sub">{{ subtitle() }}</p>
+    </header>
+
+    <div class="layout">
+      <section class="mr-panel options" aria-labelledby="treasure-options-h">
+        <h2 class="mr-panel__title" id="treasure-options-h">Gerar tesouro</h2>
+        <app-segmented label="Tipo" [segments]="modes" [value]="mode()" (choose)="setMode($event)" />
+        <p class="hint" data-testid="mode-hint">{{ modeHint() }}</p>
+
+        <div class="level" role="group" aria-labelledby="treasure-level-l">
+          <span class="level__label" id="treasure-level-l">Nível do grupo</span>
+          <div class="level__stepper">
+            <button type="button" class="level__btn" aria-label="Menos um nível" [disabled]="level() <= minLevel" (click)="step(-1)">
+              <mat-icon aria-hidden="true">remove</mat-icon>
+            </button>
+            <output class="level__value" data-testid="treasure-level" aria-live="polite">{{ level() }}</output>
+            <button type="button" class="level__btn" aria-label="Mais um nível" [disabled]="level() >= maxLevel" (click)="step(1)">
+              <mat-icon aria-hidden="true">add</mat-icon>
+            </button>
+          </div>
+        </div>
+        <p class="hint" data-testid="party-help">{{ help() }}</p>
+
+        <button
+          type="button"
+          class="generate"
+          [matButton]="generated() ? 'outlined' : 'filled'"
+          [class.generate--ghost]="generated()"
+          [disabled]="generation().status === 'busy'"
+          (click)="generate()"
+        >
+          <mat-icon aria-hidden="true">casino</mat-icon>{{ generation().status === 'busy' ? 'Gerando...' : 'Gerar tesouro' }}
+        </button>
+        <p class="hint">A mesma semente e o mesmo pedido dão o mesmo tesouro.</p>
+      </section>
+
+      <div class="outcome" #resultHost>
+        <p class="mr-visually-hidden" role="status">{{ announce() }}</p>
+        @let g = generation();
+        @switch (g.status) {
+          @case ('idle') {
+            <section class="mr-panel empty" aria-labelledby="treasure-empty-h">
+              <h2 class="mr-panel__title" id="treasure-empty-h">Tesouro</h2>
+              <p class="empty__line"><strong>Nada gerado ainda.</strong></p>
+              <p class="hint">Escolha o tipo e o nível e gere. O resultado, com as moedas, as gemas, a arte e os itens, aparece aqui.</p>
+            </section>
+          }
+          @case ('busy') {
+            <section class="mr-panel empty" aria-busy="true">
+              <h2 class="mr-panel__title">Tesouro</h2>
+              <p class="page-status" role="status">
+                <mat-spinner diameter="24" aria-label="Gerando o tesouro" />
+                Gerando...
+              </p>
+            </section>
+          }
+          @case ('error') {
+            <section class="mr-panel empty">
+              <h2 class="mr-panel__title">Tesouro</h2>
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ g.message }}</p>
+              </div>
+              <button matButton="outlined" type="button" class="retry" (click)="generate()">Tentar de novo</button>
+            </section>
+          }
+          @case ('ready') {
+            <div class="result-wrap">
+              @if (placed(); as p) {
+                <div #placedBox class="mr-notice mr-notice--success placed" role="status" tabindex="-1" data-testid="treasure-placed">
+                  <mat-icon aria-hidden="true">check_circle</mat-icon>
+                  <div class="placed__text">
+                    <p>
+                      <strong>Tesouro posto{{ p.place ? ' na ' + p.place : ' em ' + p.mapName }}.</strong>
+                      {{ placedSummary() }}, escondido: só você vê.
+                    </p>
+                    <p class="placed__gold">{{ placedXpLine() }}</p>
+                    <p class="placed__links">
+                      <a [routerLink]="['/campanhas', campaignId, 'mapas', p.mapId]">Abrir o mapa</a>
+                    </p>
+                  </div>
+                </div>
+              }
+              <app-treasure-result
+                [treasure]="g.treasure"
+                [xpMode]="xpMode()"
+                [campaignName]="campaignName()"
+                (place)="openPlace()"
+                (again)="generate()"
+                (openItem)="openItem($event)"
+              />
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+}

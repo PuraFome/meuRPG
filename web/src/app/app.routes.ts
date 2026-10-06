@@ -122,6 +122,12 @@ export const routes: Routes = [
       import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
   },
   {
+    // "Tesouro" (MR-044, MR-041, E10-10), master only: the generator, an item's description and "Pôr no mapa". The page tells a player so.
+    path: 'campanhas/:id/tesouro',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/treasure/treasure').then((m) => m.TreasurePage),
+  },
+  {
     // "Magias" (MR-045, RN-23): the players' spell reference, for every active member, the master too.
     path: 'campanhas/:id/magias',
     canActivate: [authGuard],
