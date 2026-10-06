@@ -411,9 +411,16 @@ test('uma armadilha nasce de uma predefinição do SRD, e "Quem notaria" mostra 
     expect(needle.trap.effect.save).toMatchObject({ ability: 'ABILITY_CONSTITUTION', dc: 15 });
 
     // A part is removed with its own bin and added with a text action; a bad die is said in the field.
+    // Each step waits for the form to settle: filling `.last()` before the new
+    // part rendered would fill the old field and leave the new one empty (and in
+    // error too).
     await mp.getByRole('button', { name: 'Remover a parte Dano que sempre acontece 2' }).click();
+    await expect(mp.getByRole('button', { name: 'Remover a parte Dano que sempre acontece 2' })).toHaveCount(0);
+    const damage = mp.getByLabel('Dano', { exact: true });
+    const before = await damage.count();
     await mp.getByRole('button', { name: 'Dano que sempre acontece' }).last().click();
-    await mp.getByLabel('Dano', { exact: true }).last().fill('2d20');
+    await expect(damage).toHaveCount(before + 1);
+    await damage.last().fill('2d20');
     await mp.getByRole('button', { name: 'Salvar ponto' }).click();
     await expect(mp.getByText('Use dados como 2d6 (de d4 a d12) ou um número de 1 a 100.')).toBeVisible();
   });
