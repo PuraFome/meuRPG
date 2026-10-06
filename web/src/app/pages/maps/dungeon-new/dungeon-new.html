@@ -1,0 +1,146 @@
+<a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para os mapas
+</a>
+<h1 class="mr-page-title">Gerar masmorra</h1>
+
+@switch (phase()) {
+  @case ('loading') {
+    <p class="status" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando a campanha" />
+      Carregando a campanha...
+    </p>
+  }
+  @case ('gone') {
+    <div class="mr-notice mr-notice--neutral" role="alert">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p>
+        <strong>Só o mestre gera masmorras.</strong>
+        Essa campanha não existe, ou você não é o mestre dela. Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('error') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>
+        <strong>O servidor não respondeu.</strong>
+        Confira a conexão e <button type="button" class="link" (click)="retryLoad()">tente de novo</button>.
+      </p>
+    </div>
+  }
+  @case ('ready') {
+    <p class="mr-page-lead">{{ campaignName() }} · O app desenha salas, corredores, portas e escadas e cria um mapa que você edita depois.</p>
+
+    @if (phone()) {
+      <div class="mr-notice mr-notice--neutral" role="note">
+        <mat-icon aria-hidden="true">laptop</mat-icon>
+        <p>
+          <strong>Gerar masmorra é no notebook.</strong>
+          A tela de opções e a prévia pedem espaço. No celular, você lê os mapas gerados e as salas deles.
+        </p>
+      </div>
+    } @else {
+      <div class="cols">
+        <section class="mr-panel" aria-labelledby="opt-title">
+          <h2 class="mr-panel__title" id="opt-title">Opções</h2>
+          @if (creating()) {
+            <ul class="chips" aria-label="As opções escolhidas">
+              @for (c of chips(); track c) {
+                <li class="chips__item">{{ c }}</li>
+              }
+            </ul>
+            <p class="hint">As opções ficam travadas enquanto o mapa é criado.</p>
+          } @else {
+            <app-dungeon-options
+              [form]="form()"
+              [problems]="problems()"
+              [seedText]="seedText()"
+              [seedProblem]="seedProblem()"
+              (formChange)="onForm($event)"
+              (seedChange)="onSeed($event)"
+              (anotherSeed)="anotherSeed()"
+            />
+          }
+        </section>
+
+        @if (creating()) {
+          <section class="mr-panel work" aria-labelledby="work-title">
+            <h2 class="mr-panel__title" id="work-title">Criando o mapa</h2>
+            <!-- One status line, not scripted steps: the server answers once, so the page cannot say which step it is on. It appears after a moment. -->
+            <p class="work__status" role="status" aria-live="polite">{{ slow() ? 'Criando o mapa. Costuma levar poucos segundos.' : '' }}</p>
+            <mat-progress-bar mode="indeterminate" aria-label="Criando o mapa" />
+            <p class="hint">O mapa nasce escondido dos jogadores e com a névoa ligada. Se você sair desta tela, ele continua sendo criado e aparece na lista de mapas.</p>
+            <div class="pair">
+              <button matButton="outlined" type="button" (click)="cancelCreate()">Parar de esperar</button>
+              <button matButton="outlined" type="button" class="mr-button--off" disabled disabledInteractive>Criando o mapa...</button>
+            </div>
+          </section>
+        } @else {
+          <section class="mr-panel pv" aria-labelledby="pv-title">
+            <h2 class="mr-panel__title" id="pv-title">Prévia</h2>
+            @if (anyProblem()) {
+              <div class="box box--empty" [style.aspect-ratio]="frameRatio()"><p>{{ seedProblem() ? 'Corrija a semente para ver a masmorra.' : refusedText() }}</p></div>
+              <p class="hint">A prévia volta quando as opções forem válidas.</p>
+            } @else if (preview() === 'failed') {
+              <div class="box box--failed" role="alert" [style.aspect-ratio]="frameRatio()">
+                <p class="box__bad"><mat-icon aria-hidden="true">warning</mat-icon>{{ failure() }}</p>
+                <button matButton="outlined" type="button" (click)="retryPreview()"><mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo</button>
+              </div>
+              <p class="hint">As opções continuam as mesmas. “Criar o mapa” volta quando a prévia aparecer.</p>
+            } @else if (layout(); as l) {
+              <div class="pv__draw" [style.aspect-ratio]="frameRatio()" [class.pv__draw--stale]="preview() === 'loading'" [attr.aria-busy]="preview() === 'loading'">
+                <app-dungeon-preview [layout]="l" />
+              </div>
+              @if (preview() === 'loading') {
+                <p class="hint" role="status">Atualizando a prévia...</p>
+              }
+              <div class="mr-notice mr-notice--neutral">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <p>O mapa nasce escondido dos jogadores, com a névoa ligada e a luz de base “Clara” (você muda no mapa).</p>
+              </div>
+            } @else {
+              <div class="box box--empty" role="status" [style.aspect-ratio]="frameRatio()">
+                <p class="box__wait"><mat-icon class="spin" aria-hidden="true">autorenew</mat-icon>Carregando a prévia...</p>
+              </div>
+              <p class="hint">A prévia vem do servidor e muda quando você mexe nas opções.</p>
+            }
+
+            <form class="make" novalidate (submit)="$event.preventDefault(); create()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Nome do mapa</mat-label>
+                <input matInput autocomplete="off" maxlength="80" [formControl]="nameControl" [attr.aria-describedby]="nameError() ? 'name-why' : null" (input)="nameError.set(null)" />
+                @if (nameError(); as message) {
+                  <mat-error id="name-why">{{ message }}</mat-error>
+                }
+              </mat-form-field>
+              @if (createError(); as message) {
+                <div class="mr-notice mr-notice--danger" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <p>{{ message }}</p>
+                </div>
+              }
+              @if (stopped()) {
+                <div class="mr-notice mr-notice--neutral" role="status">
+                  <mat-icon aria-hidden="true">info</mat-icon>
+                  <p>
+                    <strong>Você parou de esperar.</strong>
+                    O servidor termina o mapa mesmo assim: ele aparece na lista de mapas da campanha quando ficar pronto. Apague-o de lá se não quiser.
+                  </p>
+                </div>
+              }
+              <div class="pair">
+                <a matButton="outlined" [routerLink]="['/campanhas', campaignId()]">Cancelar</a>
+                <button matButton="filled" type="submit" [class.mr-button--off]="whyOff() !== null" [disabled]="whyOff() !== null" disabledInteractive [attr.aria-describedby]="whyOff() ? 'make-why' : null">
+                  Criar o mapa
+                </button>
+              </div>
+              @if (whyOff(); as why) {
+                <p class="hint" id="make-why">{{ why }}</p>
+              }
+            </form>
+          </section>
+        }
+      </div>
+    }
+  }
+}

@@ -476,3 +476,81 @@ func TestFake(t *testing.T) {
 		t.Errorf("the fake did not record the body Gemini would send: %d calls", len(calls))
 	}
 }
+
+func mapRequest(layout string) Request {
+	r := sceneRequest()
+	r.Drawing = &Image{MimeType: "image/png", Data: onePixel}
+	r.Layout = layout
+	return r
+}
+
+// A request made from a map carries its drawing as the first image (after an edit's, if
+// any), the layout tells the model how to read it, and the rooms go only with the
+// textured map (MR-039).
+func TestMapRequests(t *testing.T) {
+	t.Parallel()
+	for layout, phrase := range map[string]string{LayoutScene: "Paint a scene", LayoutIsometric: "isometric view", LayoutTexture: "textured top-down battle map"} {
+		r := mapRequest(layout)
+		if err := r.Validate(); err != nil {
+			t.Errorf("%s: Validate() = %v", layout, err)
+		}
+		if text := r.Text(); !strings.Contains(text, phrase) || !strings.Contains(text, r.Prompt) {
+			t.Errorf("%s: text = %q, want the framing %q and the master's words", layout, text, phrase)
+		}
+		body, err := buildBody("m", r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var parsed struct {
+			Input []struct {
+				Type string `json:"type"`
+				Data string `json:"data"`
+			} `json:"input"`
+		}
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		// The text, then the drawing, then the references.
+		if len(parsed.Input) != 2+len(r.References) || parsed.Input[1].Type != "image" || parsed.Input[1].Data != base64.StdEncoding.EncodeToString(onePixel) {
+			t.Errorf("%s: body input = %+v, want the text and then the drawing", layout, parsed.Input)
+		}
+		if r.BodySize() < len(onePixel) {
+			t.Errorf("%s: BodySize() = %d does not count the drawing", layout, r.BodySize())
+		}
+	}
+	// The rooms: only with the texture, one line each.
+	r := mapRequest(LayoutTexture)
+	r.Rooms = []string{"Sala 1: 5 x 4 squares", "Sala 2: 3 x 3 squares"}
+	if err := r.Validate(); err != nil {
+		t.Errorf("rooms with the texture: %v", err)
+	}
+	if text := r.Text(); !strings.Contains(text, "- Sala 1: 5 x 4 squares") || !strings.Contains(text, "- Sala 2: 3 x 3 squares") {
+		t.Errorf("the texture's text lacks the rooms: %q", text)
+	}
+	for _, layout := range []string{LayoutScene, LayoutIsometric} {
+		r := mapRequest(layout)
+		r.Rooms = []string{"Sala 1: 5 x 4 squares"}
+		if err := r.Validate(); err == nil {
+			t.Errorf("rooms were accepted with %s", layout)
+		}
+	}
+	tooMany := mapRequest(LayoutTexture)
+	for range MaxRooms + 1 {
+		tooMany.Rooms = append(tooMany.Rooms, "Sala 1: 5 x 4 squares")
+	}
+	if err := tooMany.Validate(); err == nil {
+		t.Error("more than MaxRooms rooms were accepted")
+	}
+	// A drawing needs a layout and the other way round, and an edit has neither.
+	noLayout := mapRequest("")
+	noDrawing := mapRequest(LayoutScene)
+	noDrawing.Drawing = nil
+	unknown := mapRequest("panorama")
+	edit := mapRequest(LayoutScene)
+	edit.Edit = &Edit{Previous: Image{MimeType: "image/png", Data: onePixel}, Instruction: "mais escura"}
+	for name, r := range map[string]Request{"a drawing with no layout": noLayout, "a layout with no drawing": noDrawing, "an unknown layout": unknown, "an edit with a drawing": edit} {
+		if err := r.Validate(); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+}

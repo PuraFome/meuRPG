@@ -70,6 +70,12 @@ const (
 	// TableContentServiceUnarchiveTableEntryProcedure is the fully-qualified name of the
 	// TableContentService's UnarchiveTableEntry RPC.
 	TableContentServiceUnarchiveTableEntryProcedure = "/meurpg.rules.v1.TableContentService/UnarchiveTableEntry"
+	// TableContentServiceGetClassTableDefaultsProcedure is the fully-qualified name of the
+	// TableContentService's GetClassTableDefaults RPC.
+	TableContentServiceGetClassTableDefaultsProcedure = "/meurpg.rules.v1.TableContentService/GetClassTableDefaults"
+	// TableContentServiceGetEffectMenuProcedure is the fully-qualified name of the
+	// TableContentService's GetEffectMenu RPC.
+	TableContentServiceGetEffectMenuProcedure = "/meurpg.rules.v1.TableContentService/GetEffectMenu"
 )
 
 // TableContentServiceClient is a client for the meurpg.rules.v1.TableContentService service.
@@ -126,6 +132,29 @@ type TableContentServiceClient interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
+	// ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
+	// Improvement levels, and the 20-row table of each way of casting (none, full,
+	// half, pact and a subclass's third caster, each preparing or knowing its
+	// spells), with the slots, the cantrips and the spells known of the SRD's own
+	// class tables. The browser computes none of it: the master edits from these
+	// rows and the writes come back through CreateTableEntry and UpdateTableEntry,
+	// which check them as they check any edit. Only the master.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	GetClassTableDefaults(context.Context, *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error)
+	// GetEffectMenu gives the closed menu of what a table feature may do, as data
+	// (MR-025, ADR-0018, section 4): the effect types and the fields of each, every
+	// closed list a field takes (modifier targets, modes, proficiencies, roll modes
+	// and targets, senses, recharges, granted-action economies, choice kinds, skills,
+	// languages, tools) with Portuguese names, the SRD option sets a choice may
+	// offer (fighting styles and the like), the formula helpers and the classes
+	// `classLevel` takes, and the limits. The class editor builds its pickers from
+	// it and hard-codes none of them; whatever it offers, TableContentService
+	// accepts. Only the master.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	GetEffectMenu(context.Context, *connect.Request[v1.GetEffectMenuRequest]) (*connect.Response[v1.GetEffectMenuResponse], error)
 }
 
 // NewTableContentServiceClient constructs a client for the meurpg.rules.v1.TableContentService
@@ -170,16 +199,32 @@ func NewTableContentServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 			connect.WithClientOptions(opts...),
 		),
+		getClassTableDefaults: connect.NewClient[v1.GetClassTableDefaultsRequest, v1.GetClassTableDefaultsResponse](
+			httpClient,
+			baseURL+TableContentServiceGetClassTableDefaultsProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("GetClassTableDefaults")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		getEffectMenu: connect.NewClient[v1.GetEffectMenuRequest, v1.GetEffectMenuResponse](
+			httpClient,
+			baseURL+TableContentServiceGetEffectMenuProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("GetEffectMenu")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // tableContentServiceClient implements TableContentServiceClient.
 type tableContentServiceClient struct {
-	listTableEntries    *connect.Client[v1.ListTableEntriesRequest, v1.ListTableEntriesResponse]
-	createTableEntry    *connect.Client[v1.CreateTableEntryRequest, v1.CreateTableEntryResponse]
-	updateTableEntry    *connect.Client[v1.UpdateTableEntryRequest, v1.UpdateTableEntryResponse]
-	archiveTableEntry   *connect.Client[v1.ArchiveTableEntryRequest, v1.ArchiveTableEntryResponse]
-	unarchiveTableEntry *connect.Client[v1.UnarchiveTableEntryRequest, v1.UnarchiveTableEntryResponse]
+	listTableEntries      *connect.Client[v1.ListTableEntriesRequest, v1.ListTableEntriesResponse]
+	createTableEntry      *connect.Client[v1.CreateTableEntryRequest, v1.CreateTableEntryResponse]
+	updateTableEntry      *connect.Client[v1.UpdateTableEntryRequest, v1.UpdateTableEntryResponse]
+	archiveTableEntry     *connect.Client[v1.ArchiveTableEntryRequest, v1.ArchiveTableEntryResponse]
+	unarchiveTableEntry   *connect.Client[v1.UnarchiveTableEntryRequest, v1.UnarchiveTableEntryResponse]
+	getClassTableDefaults *connect.Client[v1.GetClassTableDefaultsRequest, v1.GetClassTableDefaultsResponse]
+	getEffectMenu         *connect.Client[v1.GetEffectMenuRequest, v1.GetEffectMenuResponse]
 }
 
 // ListTableEntries calls meurpg.rules.v1.TableContentService.ListTableEntries.
@@ -205,6 +250,16 @@ func (c *tableContentServiceClient) ArchiveTableEntry(ctx context.Context, req *
 // UnarchiveTableEntry calls meurpg.rules.v1.TableContentService.UnarchiveTableEntry.
 func (c *tableContentServiceClient) UnarchiveTableEntry(ctx context.Context, req *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error) {
 	return c.unarchiveTableEntry.CallUnary(ctx, req)
+}
+
+// GetClassTableDefaults calls meurpg.rules.v1.TableContentService.GetClassTableDefaults.
+func (c *tableContentServiceClient) GetClassTableDefaults(ctx context.Context, req *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error) {
+	return c.getClassTableDefaults.CallUnary(ctx, req)
+}
+
+// GetEffectMenu calls meurpg.rules.v1.TableContentService.GetEffectMenu.
+func (c *tableContentServiceClient) GetEffectMenu(ctx context.Context, req *connect.Request[v1.GetEffectMenuRequest]) (*connect.Response[v1.GetEffectMenuResponse], error) {
+	return c.getEffectMenu.CallUnary(ctx, req)
 }
 
 // TableContentServiceHandler is an implementation of the meurpg.rules.v1.TableContentService
@@ -262,6 +317,29 @@ type TableContentServiceHandler interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// GetClassTableDefaults gives the numbers the class editor starts from (MR-025,
+	// ADR-0018, section 8): the SRD's proficiency bonus by level, the Ability Score
+	// Improvement levels, and the 20-row table of each way of casting (none, full,
+	// half, pact and a subclass's third caster, each preparing or knowing its
+	// spells), with the slots, the cantrips and the spells known of the SRD's own
+	// class tables. The browser computes none of it: the master edits from these
+	// rows and the writes come back through CreateTableEntry and UpdateTableEntry,
+	// which check them as they check any edit. Only the master.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	GetClassTableDefaults(context.Context, *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error)
+	// GetEffectMenu gives the closed menu of what a table feature may do, as data
+	// (MR-025, ADR-0018, section 4): the effect types and the fields of each, every
+	// closed list a field takes (modifier targets, modes, proficiencies, roll modes
+	// and targets, senses, recharges, granted-action economies, choice kinds, skills,
+	// languages, tools) with Portuguese names, the SRD option sets a choice may
+	// offer (fighting styles and the like), the formula helpers and the classes
+	// `classLevel` takes, and the limits. The class editor builds its pickers from
+	// it and hard-codes none of them; whatever it offers, TableContentService
+	// accepts. Only the master.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	GetEffectMenu(context.Context, *connect.Request[v1.GetEffectMenuRequest]) (*connect.Response[v1.GetEffectMenuResponse], error)
 }
 
 // NewTableContentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -302,6 +380,20 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 		connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tableContentServiceGetClassTableDefaultsHandler := connect.NewUnaryHandler(
+		TableContentServiceGetClassTableDefaultsProcedure,
+		svc.GetClassTableDefaults,
+		connect.WithSchema(tableContentServiceMethods.ByName("GetClassTableDefaults")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	tableContentServiceGetEffectMenuHandler := connect.NewUnaryHandler(
+		TableContentServiceGetEffectMenuProcedure,
+		svc.GetEffectMenu,
+		connect.WithSchema(tableContentServiceMethods.ByName("GetEffectMenu")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.rules.v1.TableContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TableContentServiceListTableEntriesProcedure:
@@ -314,6 +406,10 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 			tableContentServiceArchiveTableEntryHandler.ServeHTTP(w, r)
 		case TableContentServiceUnarchiveTableEntryProcedure:
 			tableContentServiceUnarchiveTableEntryHandler.ServeHTTP(w, r)
+		case TableContentServiceGetClassTableDefaultsProcedure:
+			tableContentServiceGetClassTableDefaultsHandler.ServeHTTP(w, r)
+		case TableContentServiceGetEffectMenuProcedure:
+			tableContentServiceGetEffectMenuHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -341,4 +437,12 @@ func (UnimplementedTableContentServiceHandler) ArchiveTableEntry(context.Context
 
 func (UnimplementedTableContentServiceHandler) UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.UnarchiveTableEntry is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) GetClassTableDefaults(context.Context, *connect.Request[v1.GetClassTableDefaultsRequest]) (*connect.Response[v1.GetClassTableDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.GetClassTableDefaults is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) GetEffectMenu(context.Context, *connect.Request[v1.GetEffectMenuRequest]) (*connect.Response[v1.GetEffectMenuResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.GetEffectMenu is not implemented"))
 }

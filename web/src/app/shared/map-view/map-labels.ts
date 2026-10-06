@@ -1,7 +1,10 @@
 import { MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 
 /** "Batalha", "Submapa", "Cena de RP": what a kind is called on screen. */
-export function pointKindLabel(kind: number): string {
+export function pointKindLabel(kind: number, stairs = 0): string {
+  if (stairs !== 0) {
+    return 'Escada';
+  }
   switch (kind) {
     case MapPointKind.BATTLE:
       return 'Batalha';
@@ -22,7 +25,10 @@ export function pointKindLabel(kind: number): string {
 
 /** The kind's glyph (Material Symbols): crossed swords, stairs, a speech
  * bubble (README-B, "Map markers"). */
-export function pointKindIcon(kind: number): string {
+export function pointKindIcon(kind: number, stairs = 0): string {
+  if (stairs !== 0) {
+    return stairs === 1 ? 'arrow_upward' : 'arrow_downward';
+  }
   switch (kind) {
     case MapPointKind.BATTLE:
       return 'swords';
@@ -42,6 +48,8 @@ export function pointKindIcon(kind: number): string {
 /** What decides whether the players know a point (the generated `MapPoint` fits it). */
 export interface PointVisibility {
   readonly kind: number;
+  /** A generated dungeon's stair (`StairDirection`: 1 up, 2 down): drawn and named as a stair, never as a submap. 0 for any other point. */
+  readonly stairs?: number;
   readonly revealed: boolean;
   /** A treasure marked found (everyone sees it then, "Todos veem o tesouro"). */
   readonly treasureFoundAt?: unknown;
@@ -72,7 +80,8 @@ export function pointHidden(p: PointVisibility): boolean {
 /** The marker's accessible name: "Taverna do Javali, Cena de RP, escondido"; a Luz says "só você vê". */
 export function pointAriaLabel(point: PointVisibility & { name: string }): string {
   const state = point.kind === MapPointKind.LIGHT ? ', só você vê' : pointHidden(point) ? ', escondido' : '';
-  return `${point.name}, ${pointKindLabel(point.kind)}${state}`;
+  // A stair's name already says what it is ("Escada para cima").
+  return point.stairs ? `${point.name}${state}` : `${point.name}, ${pointKindLabel(point.kind)}${state}`;
 }
 
 /** What a token is, for the lists: "NPC, inimigo" (a player's character

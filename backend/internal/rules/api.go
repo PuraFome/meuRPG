@@ -822,6 +822,19 @@ type Issue struct {
 	Field   string
 	Message string
 	Keys    []string `json:",omitempty"`
+	// ChangeMessage is the sentence for "A classe mudou" (RN-23): the same problem
+	// as a change of the table's entry reads, without the entry's name ("agora dá 2
+	// perícias no nível 1; esta ficha tem 3."; see ChangeSubject). Only an issue tied to a table entry
+	// (Keys) has one, and only for the common changes of a class: the skill count,
+	// the cantrips, the known and the prepared spells, the level of the subclass,
+	// the multiclass prerequisite and an option that is no longer offered. The
+	// others tell it with Message.
+	ChangeMessage string `json:",omitempty"`
+	// ChangeSubject is the class or subclass key ChangeMessage is about ("agora dá
+	// 2 perícias..." is what that entry gives). The sentence names it only when it
+	// is the entry that changed; for any other it is told without a name. Empty
+	// when ChangeMessage is not about one entry.
+	ChangeSubject string `json:",omitempty"`
 }
 
 // Issue codes.

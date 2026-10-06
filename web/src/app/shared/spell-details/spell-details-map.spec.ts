@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   CastingTimeUnit,
+  SpellAttackType,
   SpellDetailsSchema,
   SpellDurationKind,
   SpellDurationUnit,
@@ -34,5 +35,25 @@ describe('spellDetailsFromGen', () => {
     });
     expect(vm.description).toEqual(['This spell sends creatures into a magical slumber.']);
     expect(vm.higherLevel).toHaveLength(1);
+  });
+
+  it('carries the target, the attack, the damage and whether it is the table\'s (E10-11)', () => {
+    const vm = spellDetailsFromGen(
+      create(SpellDetailsSchema, {
+        spell: { key: 'spell:lamina-de-nanquim@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'], archived: true },
+        target: { labelPt: 'Uma criatura' },
+        attackType: SpellAttackType.RANGED,
+        damage: [{ damageTypePt: 'necrótico', bySlotLevel: { 2: '3d8', 1: '2d8' } }],
+      }),
+    );
+    expect(vm).toMatchObject({
+      table: true,
+      archived: true,
+      classKeys: ['class:wizard'],
+      targetLabel: 'Uma criatura',
+      attack: 'ranged',
+      damage: [{ dice: '2d8', typePt: 'necrótico' }],
+    });
+    expect(spellDetailsFromGen(create(SpellDetailsSchema, { spell: { key: 'spell:shield' } })).table).toBe(false);
   });
 });

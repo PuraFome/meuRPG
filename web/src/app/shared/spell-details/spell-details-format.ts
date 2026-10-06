@@ -1,4 +1,5 @@
 import { spellLevelLabel } from '../../core/characters/character-labels';
+import { tight } from '../../core/format/text';
 import { formatMeters, feetToMeters } from '../../core/units';
 import { SpellDetailsVm } from './spell-details.types';
 
@@ -147,6 +148,41 @@ export function spellFields(d: SpellDetailsVm): SpellFields {
     components: formatComponents(d.components),
     duration: formatDuration(d.duration),
   };
+}
+
+export interface SpellRow {
+  readonly label: string;
+  readonly value: SpellFieldValue;
+}
+
+/**
+ * The rows of a spell's facts, in the order the sheet prints them: casting time, range, "Alvo" (when the
+ * server says whom it reaches), components, duration, and, for a spell of the table, "Ataque" and "Dano"
+ * (an SRD spell's text says them). Only the structured values; nothing is worked out here.
+ */
+export function spellRows(d: SpellDetailsVm): SpellRow[] {
+  const f = spellFields(d);
+  const rows: SpellRow[] = [
+    { label: 'Tempo de conjuração', value: f.castingTime },
+    { label: 'Alcance', value: f.range },
+  ];
+  const target = d.targetLabel?.trim();
+  if (target) {
+    rows.push({ label: 'Alvo', value: { text: tight(target) } });
+  }
+  rows.push({ label: 'Componentes', value: f.components }, { label: 'Duração', value: f.duration });
+  if (d.table) {
+    if (d.attack === 'melee' || d.attack === 'ranged') {
+      rows.push({
+        label: 'Ataque',
+        value: { text: d.attack === 'melee' ? 'Ataque de magia corpo a corpo' : 'Ataque de magia à distância' },
+      });
+    }
+    if (d.damage && d.damage.length > 0) {
+      rows.push({ label: 'Dano', value: { text: d.damage.map((x) => `${x.dice} ${x.typePt}`.trim()).join(' e ') } });
+    }
+  }
+  return rows;
 }
 
 /** "2º círculo · Transmutação", or "Truque · Evocação". */

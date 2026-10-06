@@ -1,0 +1,216 @@
+<a class="back" [routerLink]="['/campanhas', campaignId]" [hidden]="detailOpen()">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a campanha
+</a>
+
+@let a = access();
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Magias</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-hidden="true" />
+        Carregando as magias…
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('pending') {
+    <div>
+      <h1 class="mr-page-title">Magias</h1>
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+        <p><strong>As magias abrem quando o mestre aprovar o seu personagem.</strong> Até lá, você pode seguir editando a ficha.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir as magias</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ok') {
+    @if (detailOpen()) {
+      <button type="button" class="back back--btn" (click)="backToList()">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        Voltar para Magias
+      </button>
+    } @else {
+      <header class="head">
+        <h1 class="mr-page-title">Magias</h1>
+        <p class="mr-page-lead">{{ lead() }}</p>
+      </header>
+    }
+
+    <div class="layout" [class.layout--wide]="wide()">
+      @if (wide()) {
+        <aside class="mr-panel filters" aria-labelledby="spell-filters-h">
+          <h2 class="filters__t" id="spell-filters-h">Filtros</h2>
+          <app-spell-filters [state]="state" [classes]="classes()" [mine]="mine()" [showSearch]="true" />
+          <button type="button" class="clear" (click)="clear(false)" [disabled]="!filtered()">Limpar os filtros</button>
+        </aside>
+      } @else if (!detailOpen()) {
+        <div class="narrow-filters">
+          <label class="field">
+            <span class="mr-label">Buscar pelo nome</span>
+            <span class="box">
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <input
+                type="search"
+                name="query"
+                autocomplete="off"
+                placeholder="Nome da magia"
+                [value]="filter().query"
+                (input)="state.typeQuery($any($event.target).value)"
+              />
+            </span>
+          </label>
+          <button type="button" class="filters-btn" (click)="openFilters()">
+            <mat-icon aria-hidden="true">tune</mat-icon>
+            Filtros{{ filtersOn() > 0 ? ' (' + filtersOn() + ')' : '' }}
+          </button>
+          @if (chips().length > 0) {
+            <ul class="chips" aria-label="Filtros ligados">
+              @for (c of chips(); track c.id) {
+                <li class="chip">
+                  <span>{{ c.label }}</span>
+                  <button type="button" class="chip__x" [attr.aria-label]="'Tirar o filtro ' + c.label" (click)="removeChip(c.id)">
+                    <mat-icon aria-hidden="true">close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      @if (!detailOpen()) {
+        <section class="mr-panel list" aria-labelledby="spells-list-h" [attr.aria-busy]="state.searching()">
+          <div class="list__head">
+            <h2 class="mr-visually-hidden" id="spells-list-h">Lista de magias</h2>
+            <p class="list__n" role="status" aria-live="polite">
+              @if (state.status() === 'ready') {
+                <strong>{{ count() }}</strong>
+                <span class="list__order"> · em ordem alfabética</span>
+              }
+            </p>
+          </div>
+
+          @switch (state.status()) {
+            @case ('loading') {
+              <p class="mr-visually-hidden" role="status">Buscando as magias…</p>
+              <ul class="rows rows--skeleton" aria-hidden="true">
+                @for (s of skeleton; track $index) {
+                  <li><span class="row row--ghost"><span class="ghost ghost--name"></span><span class="ghost ghost--sub"></span></span></li>
+                }
+              </ul>
+            }
+            @case ('error') {
+              <div class="list__msg">
+                <div class="mr-notice mr-notice--danger" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <p>{{ state.error() }}</p>
+                </div>
+                <button matButton="outlined" type="button" class="retry" (click)="state.search()">Tentar de novo</button>
+              </div>
+            }
+            @case ('basic-sheet') {
+              <div class="list__msg">
+                <div class="mr-notice mr-notice--neutral" role="status">
+                  <mat-icon aria-hidden="true">info</mat-icon>
+                  <p>{{ basicSheetSentence }}</p>
+                </div>
+                <button matButton="outlined" type="button" class="retry" (click)="removeChip('mine')">Ler todas as magias</button>
+              </div>
+            }
+            @case ('ready') {
+              @if (rows().length === 0) {
+                <div class="empty">
+                  <p class="empty__t"><mat-icon aria-hidden="true">search_off</mat-icon>{{ emptyTitle() }}</p>
+                  <p class="empty__s">{{ emptyHint() }}</p>
+                  <button matButton="outlined" type="button" class="empty__btn" (click)="clear(filter().query.trim() !== '')">
+                    {{ filter().query.trim() !== '' ? 'Limpar a busca' : 'Limpar os filtros' }}
+                  </button>
+                </div>
+              } @else {
+                <ul class="rows" [class.rows--busy]="state.searching()">
+                  @for (r of rows(); track r.spell.key) {
+                    <li>
+                      <button
+                        type="button"
+                        class="row"
+                        [class.row--on]="r.spell.key === selected()"
+                        [attr.aria-current]="r.spell.key === selected() ? 'true' : null"
+                        [attr.data-key]="r.spell.key"
+                        (click)="open(r.spell)"
+                      >
+                        <span class="row__gutter" aria-hidden="true">
+                          @if (r.spell.key === selected()) {
+                            <mat-icon class="row__check">check</mat-icon>
+                          }
+                        </span>
+                        <span class="row__text">
+                          <span class="row__name">{{ r.spell.namePt }}</span>
+                          <span class="row__meta">
+                            <span class="row__sub">{{ r.sub }}</span>
+                            @if (r.table) {
+                              <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+                            }
+                            @if (r.spell.archived) {
+                              <span class="mr-tag"><mat-icon aria-hidden="true">inventory_2</mat-icon>Arquivada</span>
+                            }
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+                @if (state.nextToken()) {
+                  <div class="more">
+                    @if (state.moreError()) {
+                      <div class="mr-notice mr-notice--danger" role="alert">
+                        <mat-icon aria-hidden="true">error</mat-icon>
+                        <p>{{ state.moreError() }}</p>
+                      </div>
+                    }
+                    <button matButton="outlined" type="button" class="more__btn" [attr.aria-disabled]="state.loadingMore() || state.searching()" (click)="more()">
+                      {{ state.loadingMore() ? 'Carregando…' : state.moreError() ? 'Tentar de novo' : 'Mostrar mais' }}
+                    </button>
+                    <p class="more__n">Mostrando {{ rows().length }} de {{ count() }}</p>
+                  </div>
+                }
+              }
+            }
+          }
+        </section>
+      }
+
+      @if (wide() || detailOpen()) {
+        <!-- The wide column scrolls on its own: the keyboard must reach it (as the dialog's body does). -->
+        <section class="detail" role="region" aria-label="Descrição da magia" [attr.tabindex]="wide() ? 0 : null">
+          @if (card(); as c) {
+            <app-spell-card [state]="c" [className]="nameOfClass" (retry)="loadCard()" />
+          } @else {
+            <div class="detail__empty">
+              <mat-icon aria-hidden="true">auto_stories</mat-icon>
+              <p>Escolha uma magia na lista para ler a descrição.</p>
+            </div>
+          }
+        </section>
+      }
+    </div>
+  }
+}

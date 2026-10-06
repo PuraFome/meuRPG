@@ -50,13 +50,14 @@
     }
 
     @if (isMaster()) {
-      <a
-        matButton="outlined"
-        class="maps__new"
-        [routerLink]="['/campanhas', campaignId(), 'mapas', 'novo']"
-      >
-        <mat-icon aria-hidden="true">add</mat-icon>Novo mapa
-      </a>
+      <div class="maps__actions">
+        <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'mapas', 'novo']">
+          <mat-icon aria-hidden="true">add</mat-icon>Novo mapa
+        </a>
+        <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'mapas', 'masmorra']">
+          <mat-icon aria-hidden="true">castle</mat-icon>Gerar masmorra
+        </a>
+      </div>
     }
   </section>
 }

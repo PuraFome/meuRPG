@@ -48,6 +48,29 @@
   }
   @case ('live') {
     @if (session(); as s) {
+      @if (!isMaster() && openPuzzle(); as puzzleId) {
+        <!-- A shown puzzle, open (MR-038, E10-06 states 6 to 9): in the place of the board; the one stream stays here, and so do the
+             session's notices (a trap noticed, a treasure found, a clue that arrived, a combat that needs the player). -->
+        <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
+        <app-clue-notice [clues]="notes.notice() ? notes.fresh() : []" (opened)="openNotes()" (dismissed)="notes.dismissNotice()" />
+        @if (combatRunning()) {
+          <div class="mr-notice mr-notice--warning page-notice puzzle-combat" role="status">
+            <mat-icon aria-hidden="true">swords</mat-icon>
+            <p>
+              <strong>{{ yourTurn() ? 'É a sua vez no combate.' : 'Há um combate em andamento.' }}</strong>
+              <a [routerLink]="['/campanhas', campaignId(), 'sessao']">Voltar para a sessão</a>
+            </p>
+          </div>
+        }
+        <app-puzzle-play
+          [campaignId]="campaignId()"
+          [puzzleId]="puzzleId"
+          [session]="s"
+          [state]="puzzles"
+          [ownName]="ownCharacterName()"
+          [reconnecting]="connection() === 'reconnecting' || connection() === 'paused'"
+        />
+      } @else {
       @if (!combat.fullPage()) {
       <app-session-header
         [campaignId]="campaignId()"
@@ -74,6 +97,11 @@
           [characterName]="ownCharacterName()"
           (closed)="closeHighlights()"
         />
+      }
+
+      @if (!isMaster()) {
+        <!-- The puzzles the master shows (MR-038, E10-06 state 6): above the board, in a combat too. -->
+        <app-puzzle-notice [campaignId]="campaignId()" [puzzles]="puzzles.shown()" />
       }
 
       @if (!isMaster() && ownVitals(); as own) {
@@ -162,6 +190,10 @@
             />
             <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
           </div>
+          @if (puzzlesShown()) {
+            <app-master-puzzles class="board__traps" [campaignId]="campaignId()" [state]="puzzles" />
+            <app-master-live class="board__traps" [campaignId]="campaignId()" [state]="puzzles" />
+          }
         }
       } @else if (isMaster()) {
         <app-combat-launch
@@ -199,6 +231,9 @@
             (leftChanged)="reloadLeftImages()"
             (taken)="leftImages.set(leftWithout($event))"
           />
+          @if (puzzlesShown()) {
+            <app-master-puzzles class="board__puzzles" [campaignId]="campaignId()" [state]="puzzles" />
+          }
           <div class="board__left">
             @if (scene.scene()) {
               <app-scene-open
@@ -209,6 +244,8 @@
                 [players]="cluePlayers()"
               />
             }
+            <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->
+            <app-master-live class="board__live" [campaignId]="campaignId()" [state]="puzzles" />
             <app-session-map
               [isMaster]="true"
               [scene]="scene"
@@ -308,6 +345,7 @@
         </div>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
+      }
       }
     }
   }

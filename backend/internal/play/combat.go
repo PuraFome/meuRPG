@@ -2,6 +2,9 @@ package play
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -10,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -55,9 +59,22 @@ func (s *Service) StartEncounter(
 	if _, known := playv1.EncounterMode_name[int32(asked)]; !known {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("mode must be a mode of combat"))
 	}
-	parts, err := s.participants(ctx, m.CampaignID, req.Msg.GetParticipants(), true)
+	monsters, err := s.startMonsters(ctx, m.CampaignID, req.Msg)
 	if err != nil {
 		return nil, err
+	}
+	// With monsters, an empty list of participants is fine: the whole party joins.
+	parts, err := s.participants(ctx, m.CampaignID, req.Msg.GetParticipants(), true, len(monsters.batches) > 0)
+	if err != nil {
+		return nil, err
+	}
+	// The party's own creatures (a familiar, summoned animals) join with their owners, so they take room too.
+	kept, err := s.partyCreatureCount(ctx, m.CampaignID, parts, monsters)
+	if err != nil {
+		return nil, err
+	}
+	if total := countPlanned(parts) + monsters.count() + kept; total > maxCombatants {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a combat has at most %d combatants", maxCombatants))
 	}
 	var point link.BattlePoint
 	if pointID != nil {
@@ -66,6 +83,7 @@ func (s *Service) StartEncounter(
 		}
 	}
 
+	digest := startDigest(req.Msg)
 	var newMap string // the map the point made current, if it changed
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventEncounterStarted}, func(c *combatTx) (any, error) {
 		newMap = ""
@@ -101,11 +119,11 @@ func (s *Service) StartEncounter(
 				return nil, fmt.Errorf("insert encounter: %w", err)
 			}
 			c.enc = enc
-			_, added, err := s.addParticipants(ctx, c, link.Grid{}, nil, parts)
+			added, err := s.joinStart(ctx, c, m, link.Grid{}, parts, monsters)
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "mode": modeTheatre}, nil
+			return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "mode": modeTheatre, "digest": digest}, nil
 		}
 
 		// The fight is on the session's current map, or on the map the battle
@@ -145,11 +163,11 @@ func (s *Service) StartEncounter(
 			return nil, fmt.Errorf("insert encounter: %w", err)
 		}
 		c.enc = enc
-		_, added, err := s.addParticipants(ctx, c, grid, nil, parts)
+		added, err := s.joinStart(ctx, c, m, grid, parts, monsters)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "map_id": mapID}, nil
+		return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "map_id": mapID, "digest": digest}, nil
 	})
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" && pgErr.ConstraintName == "encounters_one_open_per_session" {
 		// Another start of the same session won the race.
@@ -158,6 +176,10 @@ func (s *Service) StartEncounter(
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "start an encounter", err)
+	}
+	if res.repeated && !sameStart(res.payload, digest) {
+		// A retry answers with the first start only when it asks for the same one.
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 	}
 	if newMap != "" {
 		s.maps.MapShown(ctx, m.CampaignID, newMap)
@@ -176,19 +198,52 @@ func (s *Service) StartEncounter(
 	return connect.NewResponse(&playv1.StartEncounterResponse{Encounter: out}), nil
 }
 
+// startDigest identifies what a StartEncounter asks for (every field but the idempotency key), so a
+// retry with the same key and another request is told apart from a true retry. The event of the
+// start keeps it; the monsters, their modes, the participants, the mode, the point and the name
+// are all in it.
+func startDigest(req *playv1.StartEncounterRequest) string {
+	c := proto.Clone(req).(*playv1.StartEncounterRequest)
+	c.IdempotencyKey = ""
+	b, err := proto.MarshalOptions{Deterministic: true}.Marshal(c)
+	if err != nil {
+		return "" // never: a message of this package
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:12])
+}
+
+// sameStart says whether the stored event of a start was made by a request with this digest. An
+// event written before the digest existed has none and is taken as the same.
+func sameStart(payload []byte, digest string) bool {
+	var ev struct {
+		Digest string `json:"digest"`
+	}
+	if json.Unmarshal(payload, &ev) != nil || ev.Digest == "" {
+		return true
+	}
+	return ev.Digest == digest
+}
+
 // planned is a participant of a combat once checked: the character, how many
 // copies fight, and whether they start hidden.
 type planned struct {
 	char   link.Character
 	count  int
 	hidden bool
+	// A monster of the bestiary (RN-29) is a copy of its creature's NPC with its own
+	// name and hit points: name is the base of the copies' labels (the master's, or
+	// the creature's), and hitPoints each copy's maximum, in order.
+	name      string
+	hitPoints []int
 }
 
 // participants checks who joins a combat and reads their characters. With
 // withParty, a request without any player character brings the whole party:
-// a combat of nothing but NPCs makes no sense.
-func (s *Service) participants(ctx context.Context, campaignID string, in []*playv1.Participant, withParty bool) ([]planned, error) {
-	if len(in) == 0 {
+// a combat of nothing but NPCs makes no sense. emptyOK says an empty list is fine
+// (a start with monsters: the party joins).
+func (s *Service) participants(ctx context.Context, campaignID string, in []*playv1.Participant, withParty, emptyOK bool) ([]planned, error) {
+	if len(in) == 0 && !emptyOK {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("participants must list who fights"))
 	}
 	if len(in) > maxCombatants {
@@ -218,6 +273,10 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 		c, ok := byID[ids[i]]
 		if !ok {
 			return nil, errCharacterNotFound()
+		}
+		if c.CombatOnly {
+			// The NPC the app keeps for a creature's monsters is AddMonsters's.
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("participants[%d] is not a character the master can pick: use AddMonsters", i))
 		}
 		count := int(p.GetCount())
 		if count == 0 {
@@ -294,9 +353,12 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 	all := slices.Clone(existing)
 	for _, p := range parts {
 		var labels []string
-		if p.char.Player {
+		switch {
+		case p.char.Player:
 			labels = copyLabels(p.char.Name, 1, taken)
-		} else {
+		case p.name != "":
+			labels = copyLabels(p.name, p.count, taken)
+		default:
 			labels = copyLabels(p.char.Name, p.count, taken)
 		}
 		for i, label := range labels {
@@ -316,6 +378,9 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				}
 			} else {
 				hp := clamp32(p.char.HitPointsMax, 1, math.MaxInt32)
+				if i < len(p.hitPoints) {
+					hp = clamp32(p.hitPoints[i], 1, math.MaxInt32)
+				}
 				row.HpCurrent, row.HpMax, row.HpTemp = &hp, &hp, ptr(int32(0))
 				row.XpValue = clamp32(p.char.XPValue, 0, 1_000_000) // MR-016: what it gives when defeated
 				// Each copy rolls for itself, in the app (RN-19).
@@ -940,7 +1005,7 @@ func (s *Service) AddCombatants(
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.participants(ctx, m.CampaignID, req.Msg.GetParticipants(), false)
+	parts, err := s.participants(ctx, m.CampaignID, req.Msg.GetParticipants(), false, false)
 	if err != nil {
 		return nil, err
 	}

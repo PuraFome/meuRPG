@@ -1246,7 +1246,7 @@ func TestOverlayErrorFields(t *testing.T) {
 	}{
 		{"a formula deep in a class", func(o *Overlay) {
 			o.Classes[2].Levels[4].Features = []TableFeature{tf("x", "X", Effect{Type: "note"}, Effect{Type: "modifier", Target: "ac", Mode: "add", Value: "rand()"})}
-		}, "classes[2].levels[4].features[0].effects[1].formula", ReasonFormula},
+		}, "classes[2].levels[4].features[0].effects[1].value", ReasonFormula},
 		{"a handler in a trait", func(o *Overlay) {
 			o.Races[0].Traits[0].Effects = []Effect{{Type: "handler", Handler: "monk.martial_arts"}}
 		}, "races[0].traits[0].effects[0].type", ReasonEffect},
@@ -1255,7 +1255,7 @@ func TestOverlayErrorFields(t *testing.T) {
 		{"a duplicate", func(o *Overlay) { o.Spells[1].Key = o.Spells[0].Key }, "spells[1].key", ReasonDuplicateKey},
 		{"a hit die", func(o *Overlay) { o.Classes[1].HitDie = 7 }, "classes[1].hit_die", ReasonValue},
 		{"rows", func(o *Overlay) { o.Classes[3].Levels = o.Classes[3].Levels[:5] }, "classes[3].levels", ReasonTable},
-		{"a dangling parent", func(o *Overlay) { o.Subclasses[2].Class = "class:fantasma@mesa" }, "subclasses[2].class", ReasonReference},
+		{"a dangling parent", func(o *Overlay) { o.Subclasses[2].Class = "class:fantasma@mesa" }, "subclasses[2].class_key", ReasonReference},
 		{"a trait budget", func(o *Overlay) {
 			for n := 0; n < 61; n++ {
 				o.Races[0].Traits = append(o.Races[0].Traits, TableFeature{Key: "trait:t" + strconv.Itoa(n) + tableSuffix, NamePT: "T"})

@@ -6,6 +6,9 @@ import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_p
 import { LightLevel, MapLayer, MapPointKind, MapPointSchema, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { Code, ConnectError } from '@connectrpc/connect';
+import type { GetDungeonRoomsResponse } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
+import { DungeonsClient } from '../../../core/maps/dungeons-client';
+import { FakeDungeonsClient, roomsResponse } from '../../../core/maps/dungeons-testing';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -31,15 +34,20 @@ describe('MapEditor', () => {
   let fixture: ComponentFixture<MapEditor>;
   let el: HTMLElement;
   let api: FakeMapsClient;
+  let dungeons: FakeDungeonsClient;
   let state: MapState;
 
   async function setup(
     mapPartial: Parameters<typeof mapMessage>[2] = { gridColumns: 24, gridRows: 16, fogEnabled: false },
     inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {},
     layers: { wall?: Uint8Array; doors?: Uint8Array } = {},
+    dungeonRooms: GetDungeonRoomsResponse | null = null,
   ) {
     api = new FakeMapsClient();
-    const map = mapMessage('map-1', 'A caverna do Vale Seco', mapPartial);
+    // An ordinary map: the generator did not make it, so `GetDungeonRooms` is `not_found` and the editor shows nothing of a dungeon.
+    dungeons = new FakeDungeonsClient();
+    dungeons.roomsAnswer = dungeonRooms;
+    const map = mapMessage('map-1', 'A caverna do Vale Seco', { ...mapPartial, generatedDungeon: dungeonRooms !== null });
     api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), doors: new Uint8Array(), fogWithheld: false, ...layers };
     state = new MapState(async () => mapResponse(map, [tavern, pit, chest, torch], [mapToken('c-pensantus', 'Pensantus')]));
     await state.open('map-1');
@@ -47,6 +55,7 @@ describe('MapEditor', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: MapsClient, useValue: api },
+        { provide: DungeonsClient, useValue: dungeons },
         { provide: RosterClient, useValue: { list: () => Promise.resolve(roster) } },
         { provide: LightPresets, useValue: { list: () => Promise.resolve([{ key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra', brightFt: 20, dimFt: 20 }]) } },
         { provide: TrapPresets, useValue: { list: () => Promise.resolve({ presets: [], severities: [] }) } },
@@ -61,9 +70,13 @@ describe('MapEditor', () => {
     el = fixture.nativeElement;
     await settle();
   }
+  // Fake `setTimeout`: the paint queue (150 ms) and the counts read (250 ms) are waited for by moving the
+  // clock, not by sleeping. `requestAnimationFrame` stays real (see `frame`).
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
+  afterEach(() => vi.useRealTimers());
   const settle = async () => {
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r));
+    await vi.advanceTimersByTimeAsync(0);
     await fixture.whenStable();
     fixture.detectChanges();
   };
@@ -76,10 +89,113 @@ describe('MapEditor', () => {
   const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
   /** The painted squares are drawn once a frame: let one go by. */
   const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+  // The paint queue and the counts run on the fake clock; the painted squares are drawn on a real animation frame,
+  // so wait for one too (with the clock alone, a fast machine checked the text before any frame was drawn).
   const flush = async () => {
-    await new Promise((r) => setTimeout(r, 400));
+    await vi.advanceTimersByTimeAsync(400);
+    await frame();
     await settle();
   };
+
+  describe('a generated dungeon (MR-010, E10-05 5 and 6)', () => {
+    it('never asks about the rooms of a map the server does not say is a generated dungeon, and shows nothing of one', async () => {
+      await setup();
+      expect(dungeons.calls).toEqual([]);
+      expect(el.querySelector('app-dungeon-rooms')).toBeNull();
+      expect(el.querySelector('app-dungeon-image')).toBeNull();
+    });
+
+    it('lists the rooms beside the map, with the "Imagem" panel under it, on the map the server says is a dungeon', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      expect(dungeons.calls).toEqual(['rooms map-1']);
+      expect(el.querySelector('.layout__side app-dungeon-rooms')).toBeTruthy();
+      expect(el.querySelector('.layout__side app-dungeon-image')).toBeTruthy();
+      expect(text()).toContain('Sala 1');
+      expect(text()).toContain('Porta com armadilha');
+      expect(text()).toContain('Gerada pelo app');
+    });
+
+    it('outlines the chosen room on the map with the solid frame, and lets go', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      expect(el.querySelector('app-editor-overlay svg.room')).toBeNull();
+      el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
+      await settle();
+      const rect = el.querySelector('app-editor-overlay svg.room rect')!;
+      expect([rect.getAttribute('x'), rect.getAttribute('y'), rect.getAttribute('width'), rect.getAttribute('height')]).toEqual(['5', '1', '5', '3']);
+      el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
+      await settle();
+      expect(el.querySelector('app-editor-overlay svg.room')).toBeNull();
+    });
+
+    it('puts a scene on the map at once and reads the rooms again', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      const before = dungeons.calls.length;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms button')).find((b) => b.textContent?.trim() === 'Pôr uma cena nesta sala')!.click();
+      await settle();
+      await settle();
+      expect(state.points().some((p) => p.name === 'Sala 1')).toBe(true);
+      expect(dungeons.calls.slice(before)).toEqual(['placeScene map-1 1', 'rooms map-1']);
+    });
+
+    it('"Pintar" keeps the "Imagem" panel and drops the rooms list (the side column is the layers and the grid)', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      radio('Pintar').click();
+      await settle();
+      expect(el.querySelector('app-dungeon-image')).toBeTruthy();
+      expect(el.querySelector('app-dungeon-rooms')).toBeNull();
+      expect(text()).toContain('Camadas');
+    });
+
+    it('"Redesenhar" puts the map with the new image in the page\'s state, and the layers are not read again', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      const layersBefore = api.calls.filter((c) => c.startsWith('layers')).length;
+      button('Redesenhar').click();
+      await settle();
+      button('Redesenhar', true).click();
+      await settle();
+      await settle();
+      expect(dungeons.calls).toContain('redraw map-1');
+      expect(state.map()?.revision).toBe(2);
+      expect(api.calls.filter((c) => c.startsWith('layers')).length).toBe(layersBefore);
+    });
+
+    it('says so, with a way to try again, when the rooms cannot be read', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      dungeons.failWith.set('rooms', new ConnectError('down', Code.Unavailable));
+      (fixture.componentInstance as unknown as { reloadDungeon(): void }).reloadDungeon();
+      await settle();
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para ler as salas da masmorra.');
+      dungeons.failWith.clear();
+      button('Tentar de novo').click();
+      await settle();
+      expect(el.querySelector('app-dungeon-rooms')).toBeTruthy();
+    });
+
+    it('goes to the chosen room on the map and back to the whole map when it is let go', async () => {
+      await setup(undefined, {}, {}, roomsResponse());
+      const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
+      const focusOn = vi.spyOn(view, 'focusOn');
+      const fit = vi.spyOn(view, 'fit');
+      el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
+      await settle();
+      expect(focusOn).toHaveBeenCalledTimes(1);
+      el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
+      await settle();
+      expect(fit).toHaveBeenCalled();
+    });
+
+    it('names the stairs for themselves in the legend and in the list ("Escada", never "Submapa")', async () => {
+      await setup({ gridColumns: 11, gridRows: 9, fogEnabled: false }, {}, {}, roomsResponse());
+      state.upsertPoint(mapPoint('stair-up', 'Escada para cima', { kind: MapPointKind.SUBMAP, stairs: 1 }));
+      await settle();
+      const legend = (el.querySelector('.legend')?.textContent ?? '').replace(/\s+/g, ' ');
+      expect(legend).toContain('Escada para cima');
+      expect(legend).not.toContain('Submapa');
+      const row = Array.from(el.querySelectorAll('.pl__row')).find((r) => r.textContent?.includes('Escada para cima'))!;
+      expect(row.textContent).toContain('Escada');
+      expect(row.textContent).not.toContain('Submapa');
+    });
+  });
 
   describe('modes', () => {
     it('opens on "Pontos": the list of points, with the three new kinds on the bar', async () => {

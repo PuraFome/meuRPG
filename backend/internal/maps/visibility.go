@@ -179,6 +179,7 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 		out.Image.Name = r.ImageName
 		out.PointCount = r.PointCount
 		out.BaseLight = baseLightFromDB[r.BaseLight]
+		out.GeneratedDungeon = r.GeneratedDungeon
 	} else {
 		// A trap one of their characters knows counts for them, unless everyone
 		// sees it (the revealed count has it already).
@@ -232,6 +233,7 @@ func (s *Service) pointToProto(cm campaignMaps, p mapsdb.MapPoint, v viewer) *ma
 		ShowDc:      p.ShowDc,
 		CreatedAt:   timestamppb.New(p.CreatedAt),
 		UpdatedAt:   timestamppb.New(p.UpdatedAt),
+		Stairs:      stairsFromDB(p.Stairs),
 	}
 	if v.master {
 		out.Hooks = p.Hooks // the master's private text (RN-20): never a player's
@@ -336,4 +338,17 @@ func (s *Service) publishParentsChanged(campaignID, target string, cm campaignMa
 	for _, id := range order {
 		s.publishMapChanged(campaignID, id, players[id])
 	}
+}
+
+// stairsFromDB is a stair point's direction; every other point has none.
+func stairsFromDB(s *string) mapsv1.StairDirection {
+	switch {
+	case s == nil:
+		return mapsv1.StairDirection_STAIR_DIRECTION_UNSPECIFIED
+	case *s == "up":
+		return mapsv1.StairDirection_STAIR_DIRECTION_UP
+	case *s == "down":
+		return mapsv1.StairDirection_STAIR_DIRECTION_DOWN
+	}
+	return mapsv1.StairDirection_STAIR_DIRECTION_UNSPECIFIED
 }

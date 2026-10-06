@@ -3,6 +3,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { PaintedLayers } from '../../../core/maps/paint-layers';
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { DungeonInfo } from '../../../core/maps/dungeon-info';
+import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { MapReveals } from '../../../core/maps/map-reveals';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -18,6 +20,7 @@ import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapView } from '../../../shared/map-view/map-view';
+import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
 import { EditorOverlay } from '../editor-overlay/editor-overlay';
 import { FogPanel } from '../fog-panel/fog-panel';
 
@@ -30,7 +33,7 @@ import { FogPanel } from '../fog-panel/fog-panel';
  */
 @Component({
   selector: 'app-map-manage',
-  imports: [EditorOverlay, FogPanel, MapLayersLegend, MapLegend, MapPinsLegend, MapPointsList, MapTokensList, MapView, MatIconModule],
+  imports: [DungeonRooms, EditorOverlay, FogPanel, MapLayersLegend, MapLegend, MapPinsLegend, MapPointsList, MapTokensList, MapView, MatIconModule],
   templateUrl: './map-manage.html',
   styleUrl: './map-manage.scss',
 })
@@ -47,10 +50,18 @@ export class MapManage {
   /** Class lines and player names for the token rows, best effort. */
   protected readonly info = signal<ReadonlyMap<string, { classSummary: string; playerName: string | null }>>(new Map());
 
+  /** A generated dungeon's rooms (the master reads them on a phone too, `GetDungeonRooms`): the list, with "Pôr uma cena nesta sala". */
+  protected readonly dungeon = new DungeonInfo(inject(DungeonsClient));
+  protected readonly roomOutline = signal<RoomOutline | null>(null);
+
   /** The painted layers, read-only here. */
   protected readonly painted = new PaintedLayers();
   private readonly mapsApi = inject(MapsClient);
   protected readonly map = computed(() => this.state().map());
+  private readonly mapId = computed(() => this.map()?.id ?? '');
+  private readonly imageId = computed(() => this.map()?.image?.id ?? '');
+  private readonly isDungeon = computed(() => this.map()?.generatedDungeon ?? false);
+  private readonly mapView = viewChild(MapView);
   protected readonly initialOf = mapTokenInitial;
   private readonly lights = inject(LightPresets);
   private readonly list = viewChild(MapPointsList);
@@ -83,6 +94,19 @@ export class MapManage {
           (packed) => this.painted.load(packed),
           () => undefined,
         );
+      });
+    });
+    effect(() => {
+      const id = this.mapId();
+      void this.imageId();
+      const dungeon = this.isDungeon();
+      untracked(() => {
+        this.roomOutline.set(null);
+        if (id === '' || !dungeon) {
+          this.dungeon.clear();
+        } else {
+          void this.dungeon.load(this.campaignId(), id);
+        }
       });
     });
     afterNextRender(() => {
@@ -120,6 +144,21 @@ export class MapManage {
     } finally {
       this.markBusy.set(false);
     }
+  }
+
+  protected onRoomOutline(room: RoomOutline | null): void {
+    this.roomOutline.set(room);
+    const m = this.map();
+    if (!room || !m || m.gridColumns <= 0 || m.gridRows <= 0) {
+      this.mapView()?.fit();
+      return;
+    }
+    const scale = Math.min(3, Math.max(1.2, (0.55 * m.gridColumns) / room.width));
+    this.mapView()?.focusOn({ xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000, yBp: ((room.y + room.height / 2) / m.gridRows) * 10000 }, scale);
+  }
+
+  protected reloadDungeon(): void {
+    void this.dungeon.load(this.campaignId(), this.map()?.id ?? '');
   }
 
   protected onMapChanged(map: MapMessage): void {

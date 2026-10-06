@@ -57,6 +57,18 @@ type ImageRequest struct {
 	CreatedAt      time.Time
 	SentAt         *time.Time
 	FinishedAt     *time.Time
+	MapID          *string
+	MapImageID     *string
+	MapGridColumns *int32
+	MapGridFactor  *int32
+	MapWidth       *int32
+	MapHeight      *int32
+	MapPlanHash    *string
+	PadX0          *float64
+	PadY0          *float64
+	PadX1          *float64
+	PadY1          *float64
+	UsedMapImageID *string
 }
 
 type Map struct {
@@ -121,6 +133,7 @@ type MapPoint struct {
 	LightPreset              *string
 	LightBrightFt            *int32
 	LightDimFt               *int32
+	Stairs                   *string
 }
 
 type MapPointReveal struct {

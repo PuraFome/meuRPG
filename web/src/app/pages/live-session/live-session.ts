@@ -16,13 +16,14 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type Encounter, EncounterMode, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
+import { mineTabs } from '../../core/combat/mine';
 import { isTheatre } from '../../core/combat/theatre';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -35,6 +36,8 @@ import { NotesClient } from '../../core/notes/notes-client';
 import { NotesState } from '../../core/notes/notes-state';
 import type { CluePlayer } from '../../core/maps/scene-clues';
 import { XpChanges } from '../../core/progression/xp-changes';
+import { PuzzleSessionState } from '../../core/puzzles/puzzle-session';
+import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { ToastQueue } from '../../core/traps/toast-queue';
 import { TrapBoard } from '../../core/traps/trap-board';
 import { foundToastTitle, TreasureWatch } from '../../core/traps/treasure-text';
@@ -68,6 +71,10 @@ import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
+import { MasterLive } from './puzzles/master-live/master-live';
+import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
+import { PuzzleNotice } from './puzzles/puzzle-notice/puzzle-notice';
+import { PuzzlePlayPage } from './puzzles/puzzle-play/puzzle-play';
 import { SessionBlocked } from './session-blocked/session-blocked';
 import { SessionEnded } from './session-ended/session-ended';
 import { SessionHeader } from './session-header/session-header';
@@ -122,7 +129,12 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FoundTreasures,
     HighlightsCard,
     LiveToast,
+    MasterLive,
+    RouterLink,
+    MasterPuzzles,
     PartyPanel,
+    PuzzleNotice,
+    PuzzlePlayPage,
     PlayerVitals,
     SessionBlocked,
     SessionEnded,
@@ -155,6 +167,7 @@ export class LiveSession {
   private readonly sceneApi = inject(SceneClient);
   private readonly notesApi = inject(NotesClient);
   private readonly trapsApi = inject(TrapsClient);
+  private readonly puzzlesApi = inject(PuzzlesClient);
   private readonly sessionNotes = inject(SessionNotes);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
@@ -238,6 +251,24 @@ export class LiveSession {
     () => this.sceneApi.get(this.campaignId()),
     () => this.isMaster(),
   );
+
+  /** The puzzles of the session (MR-038, E10-06): the master's menu with each one's live state, or what the players are shown.
+   * `puzzle_changed` reads one again; `ready` reads the list. */
+  protected readonly puzzles = new PuzzleSessionState(
+    this.puzzlesApi,
+    () => this.campaignId(),
+    () => this.isMaster(),
+  );
+  /** A combat is running (not ended): the player's open puzzle page keeps a notice for it, and says when it is their turn. */
+  protected readonly combatRunning = computed(() => !this.isMaster() && this.combat.encounter()?.status === EncounterStatus.ACTIVE);
+  protected readonly yourTurn = computed(() => {
+    const e = this.combat.encounter();
+    return !!e && e.status === EncounterStatus.ACTIVE && mineTabs(e).some((tab) => tab.state === 'turn');
+  });
+  /** The master's puzzle panel is on the board when the campaign has puzzles (or when they could not be read). */
+  protected readonly puzzlesShown = computed(() => this.puzzles.runs().length > 0 || this.puzzles.status() === 'error');
+  /** The puzzle a player has open (`?quebra-cabeca=ID`), in the place of the board; the master plays none. */
+  protected readonly openPuzzle = signal<string | null>(null);
 
   /** The player's notes and the clues the master revealed (MR-030): read after
    * each `ready` and each `notes_changed`. The master has none. */
@@ -325,6 +356,9 @@ export class LiveSession {
           this.load(id);
         }
       });
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(takeUntilDestroyed())
+      .subscribe((params) => this.openPuzzle.set(params.get('quebra-cabeca')));
     this.destroyRef.onDestroy(() => {
       this.toasts.clear();
       clearTimeout(this.visionTimer);
@@ -428,6 +462,7 @@ export class LiveSession {
     this.scene.clear();
     this.notes.clear();
     this.trapBoard.clear();
+    this.puzzles.clear();
     this.toasts.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
@@ -490,6 +525,7 @@ export class LiveSession {
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
+        onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
           // A token the page doesn't know (a missed `map_changed`): read again.
@@ -575,6 +611,7 @@ export class LiveSession {
       void this.reloadLeftImages();
       void this.loadCombat(generation);
       void this.scene.refresh();
+      void this.puzzles.refresh();
       if (!this.isMaster()) {
         // A clue that arrived while the stream was down counts as new too.
         void this.notes.refresh(true);

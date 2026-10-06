@@ -86,6 +86,7 @@ RETURNING *;
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns, m.grid_factor,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
+       EXISTS (SELECT 1 FROM generated_dungeons AS gd WHERE gd.map_id = m.id) AS generated_dungeon,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
         WHERE p.map_id = m.id AND p.kind <> 'light'
@@ -251,15 +252,16 @@ SELECT count(*)::INT4 AS point_count FROM map_points
 WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
--- A new point starts hidden (revealed_at NULL).
+-- A new point starts hidden (revealed_at NULL), unless the caller gives revealed_at: a generated
+-- dungeon's stairs are born revealed, like a door (MAP-LANGUAGE-E10).
 INSERT INTO map_points (
     map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
-    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs
 )
 VALUES (
     sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
     sqlc.narg(target_map_id), sqlc.narg(trap), sqlc.narg(trap_state), sqlc.narg(trap_triggered_at), sqlc.narg(treasure_value_po),
-    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now)
+    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now), sqlc.narg(revealed_at), sqlc.narg(stairs)
 )
 RETURNING *;
 
@@ -806,9 +808,12 @@ WHERE campaign_id = $1;
 -- name: InsertImageRequest :one
 INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
-    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at
+    reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
+    map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 RETURNING *;
 
 -- name: MarkImageRequestSent :execrows
@@ -890,3 +895,10 @@ UPDATE generated_dungeons SET image_id = sqlc.arg(image_id) WHERE map_id = sqlc.
 SELECT d.* FROM generated_dungeons AS d
 JOIN maps AS m ON m.id = d.map_id
 WHERE m.campaign_id = $1 AND d.map_id = $2;
+
+-- name: MarkImageRequestUsed :exec
+-- "Usar como imagem do mapa" set this image on the map: a retry answers the same
+-- while it is still the map's image.
+UPDATE image_requests
+SET used_map_image_id = sqlc.arg(used_map_image_id)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id);

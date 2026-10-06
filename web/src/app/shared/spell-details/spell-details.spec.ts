@@ -126,4 +126,21 @@ describe('SpellDetails (E6-22, E6-23)', () => {
       .click();
     expect(close).toHaveBeenCalledTimes(2);
   });
+
+  it('shows "Alvo" after the range when the server names a target (the editor and the combat open this too)', async () => {
+    const { fixture, el } = setup(() => Promise.resolve({ ...KNOCK, targetLabel: 'Uma criatura' }));
+    await settle(fixture);
+    const facts = Array.from(el.querySelectorAll('.spell__fact')).map((f) => text(f));
+    expect(facts).toEqual([
+      'Tempo de conjuração 1 ação',
+      'Alcance 18 m',
+      'Alvo Uma criatura',
+      'Componentes V',
+      'Duração Instantânea',
+    ]);
+    // Five facts in a two by two grid: the last one takes the whole row (the style that does it is `:last-child:nth-child(odd)`).
+    const last = el.querySelector('.spell__fact:last-child')!;
+    expect(last.matches(':nth-child(odd)')).toBe(true);
+    expect(el.querySelector('.spell__facts--rows')).toBeNull();
+  });
 });

@@ -1,5 +1,6 @@
 import {
   CastingTimeUnit as GenCastingTimeUnit,
+  SpellAttackType as GenSpellAttackType,
   SpellDetails as GenSpellDetails,
   SpellDurationKind as GenSpellDurationKind,
   SpellDurationUnit as GenSpellDurationUnit,
@@ -53,6 +54,17 @@ const DURATION_UNIT_FROM_GEN: Record<GenSpellDurationUnit, DurationUnitKey> = {
   [GenSpellDurationUnit.DAY]: 'day',
 };
 
+/** The dice at the lowest level a map names: the spell's own circle (or the character's first level). */
+function firstDice(byLevel: Record<number, string>): string {
+  const levels = Object.keys(byLevel).map(Number);
+  return levels.length > 0 ? byLevel[Math.min(...levels)] : '';
+}
+
+/** A spell of the table's own: its key ends in "@mesa" (the one place that says so). */
+export function isTableSpellKey(key: string): boolean {
+  return key.endsWith('@mesa');
+}
+
 export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
   const spell = d.spell;
   return {
@@ -90,5 +102,18 @@ export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
     },
     description: d.description,
     higherLevel: d.higherLevel,
+    classKeys: spell?.classKeys ?? [],
+    archived: spell?.archived ?? false,
+    table: isTableSpellKey(spell?.key ?? ''),
+    targetLabel: d.target?.labelPt ?? '',
+    attack:
+      d.attackType === GenSpellAttackType.MELEE
+        ? 'melee'
+        : d.attackType === GenSpellAttackType.RANGED
+          ? 'ranged'
+          : 'none',
+    damage: d.damage
+      .map((x) => ({ dice: firstDice(x.bySlotLevel) || firstDice(x.byCharacterLevel), typePt: x.damageTypePt }))
+      .filter((x) => x.dice !== ''),
   };
 }

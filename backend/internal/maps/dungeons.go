@@ -190,7 +190,7 @@ func (s *Service) CreateDungeonMap(
 
 	g := grid.Grid{Columns: d.Width, Rows: d.Height}
 	layers := dungeonLayers(d, g)
-	solid := solidOf(d.Kinds, d.Width, d.Height, layers.walls, layers.doors)
+	solid := solidOf(d.Width, d.Height, layers.walls, layers.doors)
 	res, err := s.drawDungeon(ctx, solid, d.Width, d.Height, 0, 0)
 	if err != nil {
 		return nil, err
@@ -434,9 +434,8 @@ func (s *Service) RedrawDungeonMap(
 		return nil, s.dbError(ctx, "read whether the image is used elsewhere", err)
 	}
 
-	kinds := unpackCells(rec.Cells, g.Squares())
 	set := loadLayers(stored, g)
-	solid := solidOf(kinds, g.Columns, g.Rows, set.walls, set.doors)
+	solid := solidOf(g.Columns, g.Rows, set.walls, set.doors)
 	res, err := s.drawDungeon(ctx, solid, g.Columns, g.Rows, int(old.Width), int(old.Height))
 	if err != nil {
 		return nil, err
@@ -478,7 +477,7 @@ func (s *Service) RedrawDungeonMap(
 		// during play bumps the revision and changes nothing the image shows (an open door
 		// is floor, like a closed one). A wall, or a secret door, that changed would show.
 		nowSet := loadLayers(now, g)
-		if !slices.Equal(solid, solidOf(kinds, g.Columns, g.Rows, nowSet.walls, nowSet.doors)) {
+		if !slices.Equal(solid, solidOf(g.Columns, g.Rows, nowSet.walls, nowSet.doors)) {
 			return errStaleMap()
 		}
 		fresh, err := s.insertGeneratedImage(ctx, q, m, newID, nameWithSuffix(row.Name, dungeonImageSuffix), res)
@@ -681,14 +680,17 @@ func (s *Service) insertGeneratedImage(ctx context.Context, q *mapsdb.Queries, m
 
 // insertStairs adds a stair of the dungeon as a submap point with no target.
 func (s *Service) insertStairs(ctx context.Context, q *mapsdb.Queries, mapID string, g grid.Grid, st dungeon.Stair) error {
-	name := stairsDownName
+	name, dir := stairsDownName, "down"
 	if st.Kind == dungeon.StairUp {
-		name = stairsUpName
+		name, dir = stairsUpName, "up"
 	}
 	x, y := g.CenterOf(grid.Square{Col: st.X, Row: st.Y})
+	// A stair is a visible feature like a door: born revealed. With the fog on, a player
+	// sees it only where they see its square (MAP-LANGUAGE-E10).
+	now := s.now()
 	_, err := q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
 		MapID: mapID, Kind: kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP], Name: name,
-		XBp: int32(x), YBp: int32(y), Now: s.now(), //nolint:gosec // G115: 0 to 10000
+		XBp: int32(x), YBp: int32(y), Now: now, RevealedAt: &now, Stairs: &dir, //nolint:gosec // G115: 0 to 10000
 	})
 	if err != nil {
 		return fmt.Errorf("insert a stair: %w", err)
@@ -777,16 +779,18 @@ func seedOf(given *uint64) (uint64, error) {
 }
 
 // dungeonLayers are the walls and doors layers of a generated dungeon. The walls
-// are WallsMask's: every non-open square next to an open one. The doors follow
+// cover every square that is not open: the walls and all the rock behind them, so
+// one wall mark covers the whole mass, the image's hatch agrees with the editor's, and
+// no token can be dropped on rock. The doors follow
 // the markers: a passage ("archway") is floor and puts nothing in the layer;
 // closed, locked, barred and secret doors put their own state; a door with a trap
 // is the same door (RN-26: the trap is a note in the rooms list). The squares of
 // the layers are the dungeon's own, as the map's grid has the dungeon's width.
 func dungeonLayers(d *dungeon.Dungeon, g grid.Grid) layerSet {
-	_, wall := dungeon.WallsMask(d)
+	open, _ := dungeon.WallsMask(d)
 	set := layerSet{walls: grid.NewLayer(g), doors: grid.NewDoorLayer(g)}
-	for i, w := range wall {
-		if w {
+	for i, o := range open {
+		if !o {
 			set.walls.Set(i%d.Width, i/d.Width, true)
 		}
 	}
@@ -810,28 +814,16 @@ var doorStateOf = map[dungeon.DoorKind]grid.Door{
 	dungeon.DoorSecret: grid.DoorSecret,
 }
 
-// solidOf is the floor plan of the image, from the dungeon's cells and a map's
-// walls and doors layers: a pure function of them, which is why "Redesenhar" shows
-// the master's edits and creation shows the dungeon. A square is wall when the
-// walls layer says so (a wall wins over everything but a clear square) or when it
-// holds a secret door (drawn as wall, RN-10: the image never gives it away). Any
-// other door square is floor. Without a wall or a door, a square is floor when the
-// dungeon opened it or walled it in (a wall the master cleared is a hole), and
-// solid rock when it is the interior of the mass behind the walls.
-func solidOf(kinds []dungeon.Kind, w, h int, walls *grid.Layer, doors *grid.DoorLayer) []bool {
-	open, ring := dungeon.WallsMask(&dungeon.Dungeon{Width: w, Height: h, Kinds: kinds})
+// solidOf is the floor plan of the image, from a map's walls and doors layers: a pure
+// function of them, which is why "Redesenhar" shows the master's edits and creation
+// shows the dungeon. A square is solid when the walls layer says so (it covers every
+// wall and all the rock) or when it holds a secret door (drawn as wall, RN-10: the
+// image never gives it away); any other square, a door's included, is floor.
+func solidOf(w, h int, walls *grid.Layer, doors *grid.DoorLayer) []bool {
 	solid := make([]bool, w*h)
 	for i := range solid {
 		col, row := i%w, i/w
-		door := doors.Get(col, row)
-		switch {
-		case walls.Get(col, row) || door == grid.DoorSecret:
-			solid[i] = true
-		case door != grid.DoorNone || open[i] || ring[i]:
-			solid[i] = false
-		default:
-			solid[i] = true
-		}
+		solid[i] = walls.Get(col, row) || doors.Get(col, row) == grid.DoorSecret
 	}
 	return solid
 }

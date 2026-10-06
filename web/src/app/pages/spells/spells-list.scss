@@ -1,0 +1,245 @@
+// The list of spells (E10-11): rows, loading, empty, paging.
+// ----- The list.
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding-inline: 0;
+}
+
+.list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--mr-space-3);
+  padding-inline: var(--mr-space-4);
+}
+
+.list__n {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  strong {
+    color: var(--mr-ink);
+    font-size: 16px;
+  }
+}
+
+.list__msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-inline: var(--mr-space-4);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li + li {
+    box-shadow: 0 -1px 0 var(--mr-rule);
+  }
+
+  &--busy {
+    opacity: 0.6;
+  }
+}
+
+// 60 px on a computer, 64 px on a phone (E10-11).
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px var(--mr-space-4);
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  @media (min-width: 1100px) {
+    min-height: 60px;
+  }
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+
+  &--on,
+  &--on:hover {
+    background: var(--mr-accent-soft);
+  }
+}
+
+.row__gutter {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 20px;
+  height: 24px;
+}
+
+.row__check {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--mr-accent-text);
+}
+
+.row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--mr-space-2);
+}
+
+.row__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// Loading: grey bars where the rows will be, the same height, so nothing moves when they arrive.
+.row--ghost {
+  cursor: default;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+
+  &:hover {
+    background: none;
+  }
+}
+
+.ghost {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--mr-rule);
+
+  &--name {
+    width: 40%;
+  }
+
+  &--sub {
+    width: 25%;
+    height: 10px;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: var(--mr-space-3) var(--mr-space-4) var(--mr-space-2);
+}
+
+.empty__t {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.empty__s {
+  margin: 0 0 var(--mr-space-2);
+  padding-left: 32px;
+  color: var(--mr-ink-muted);
+}
+
+.empty__btn {
+  margin-left: 32px;
+}
+
+.more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) var(--mr-space-4) 0;
+  border-top: 1px solid var(--mr-rule);
+
+  .mr-notice {
+    align-self: stretch;
+  }
+}
+
+.more__n {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// The description column (wide: the third column; narrow: in place of the list).
+.detail {
+  min-width: 0;
+}
+
+.layout--wide .detail {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
+}
+
+.detail:focus-visible {
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 2px;
+}
+
+.detail__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+  color: var(--mr-ink-muted);
+
+  p {
+    margin: 0;
+  }
+}
+

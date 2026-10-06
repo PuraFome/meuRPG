@@ -371,7 +371,8 @@ func TestMR010_ADungeonBecomesAMap(t *testing.T) {
 	}
 
 	// The layers, cell by cell.
-	_, wantWalls := dungeon.WallsMask(want)
+	// The walls layer covers every square that is not open: the walls and all the rock.
+	wantOpen, _ := dungeon.WallsMask(want)
 	walls, doors, layers := d.layersOf(created.GetId(), g)
 	if layers.GetGridColumns() != 41 || layers.GetGridRows() != 31 || layers.GetLayersRevision() < 1 {
 		t.Errorf("layers = %d x %d, revision %d", layers.GetGridColumns(), layers.GetGridRows(), layers.GetLayersRevision())
@@ -386,8 +387,8 @@ func TestMR010_ADungeonBecomesAMap(t *testing.T) {
 	}
 	for row := range 31 {
 		for col := range 41 {
-			if got := walls.Get(col, row); got != wantWalls[row*41+col] {
-				t.Fatalf("wall (%d, %d) = %v, want %v", col, row, got, !got)
+			if got := walls.Get(col, row); got == wantOpen[row*41+col] {
+				t.Fatalf("wall (%d, %d) = %v, want %v (every square that is not open)", col, row, got, !got)
 			}
 			wantDoor := grid.DoorNone
 			if dr, ok := doorAt[grid.Square{Col: col, Row: row}]; ok {
@@ -412,7 +413,7 @@ func TestMR010_ADungeonBecomesAMap(t *testing.T) {
 		t.Fatal("the fixture has no trapped door")
 	}
 
-	// The stairs: submap points, no target, hidden, named by direction, at the middle of their squares.
+	// The stairs: submap points, no target, revealed like a door, named by direction, at the middle of their squares.
 	points := m.mustGetMap(d.campaign, created.GetId()).GetPoints()
 	if len(points) != 2 || created.GetPointCount() != 2 {
 		t.Fatalf("points = %d (map says %d), want the 2 stairs", len(points), created.GetPointCount())
@@ -424,9 +425,16 @@ func TestMR010_ADungeonBecomesAMap(t *testing.T) {
 			wantName = stairsUpName
 		}
 		x, y = g.CenterOf(grid.Square{Col: st.X, Row: st.Y})
-		if p.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP || p.GetName() != wantName || p.GetTargetMap() != nil || p.GetRevealed() ||
+		wantDir := mapsv1.StairDirection_STAIR_DIRECTION_DOWN
+		if st.Kind == dungeon.StairUp {
+			wantDir = mapsv1.StairDirection_STAIR_DIRECTION_UP
+		}
+		if p.GetStairs() != wantDir {
+			t.Errorf("stair %d has stairs = %v, want %v", i, p.GetStairs(), wantDir)
+		}
+		if p.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP || p.GetName() != wantName || p.GetTargetMap() != nil || !p.GetRevealed() ||
 			p.GetXBp() != int32(x) || p.GetYBp() != int32(y) { //nolint:gosec // G115: 0 to 10000
-			t.Errorf("stair %d = %v, want a hidden submap %q at (%d, %d)", i, p, wantName, x, y)
+			t.Errorf("stair %d = %v, want a revealed submap %q at (%d, %d)", i, p, wantName, x, y)
 		}
 	}
 
@@ -587,6 +595,38 @@ func TestRN10_PlayersReadNothingOfADungeon(t *testing.T) {
 	d.stand(created.GetId(), g, d.pens, entrance)
 	check("revealed")
 
+	// The stairs are born revealed, so with the fog a player sees one only where they see its
+	// square: standing on the entrance (the first, up stair), only that one. The master-only flag
+	// that says the map is a generated dungeon is never true for a player.
+	if !want.Entrance.OnStairs {
+		t.Skip("the fixture's entrance is not on the stairs")
+	}
+	seen, err := d.ana.getMap(d.campaign, created.GetId())
+	if err != nil {
+		t.Fatalf("a player reads the revealed map: %v", err)
+	}
+	var names []string
+	for _, p := range seen.GetPoints() {
+		names = append(names, p.GetName())
+	}
+	if len(seen.GetPoints()) == 1 && seen.GetPoints()[0].GetStairs() != mapsv1.StairDirection_STAIR_DIRECTION_UP {
+		t.Errorf("the stair a player sees has stairs = %v, want UP", seen.GetPoints()[0].GetStairs())
+	}
+	if !slices.Equal(names, []string{stairsUpName}) {
+		t.Errorf("the player sees the points %q, want only %q (the stair on a seen square)", names, stairsUpName)
+	}
+	if seen.GetMap().GetGeneratedDungeon() {
+		t.Error("a player got generated_dungeon = true")
+	}
+	if !m.mustGetMap(d.campaign, created.GetId()).GetMap().GetGeneratedDungeon() {
+		t.Error("the master's generated dungeon has generated_dungeon = false")
+	}
+	for _, mp := range d.ana.listMaps(d.campaign) {
+		if mp.GetGeneratedDungeon() {
+			t.Error("a player's map list says generated_dungeon")
+		}
+	}
+
 	secret := map[grid.Square]bool{}
 	for _, dr := range want.Doors {
 		if dr.Kind == dungeon.DoorSecret {
@@ -609,10 +649,14 @@ func TestRN10_PlayersReadNothingOfADungeon(t *testing.T) {
 	if !got.GetMap().GetImageWithheld() || got.GetMap().GetImage().GetId() != "" || got.GetMap().GetImage().GetUrl() != "" {
 		t.Errorf("a player's map has its image: %v", got.GetMap().GetImage())
 	}
-	if got.GetMap().GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_UNSPECIFIED || len(got.GetPoints()) != 0 {
-		t.Errorf("a player's map shows the master's base light or the hidden stairs: %v", got)
+	if got.GetMap().GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_UNSPECIFIED || len(got.GetPoints()) != 1 {
+		t.Errorf("a player's map shows the master's base light, or not just the one stair on the square they see: %v", got)
 	}
 	joined := strings.Join(all, "\n")
+	// The field goes with the point: the stair on the seen square carries it, and nothing says there is another.
+	if !strings.Contains(joined, "STAIR_DIRECTION_UP") || strings.Contains(joined, "STAIR_DIRECTION_DOWN") {
+		t.Errorf("a player's answers carry the stair direction of other points than the seen stair:\n%s", joined)
+	}
 	for _, secretWord := range []string{"4815162342", "room", "Sala", "seed", "options", "generator", "(masmorra)"} {
 		if strings.Contains(joined, secretWord) {
 			t.Errorf("a player's answers mention %q", secretWord)
@@ -1077,7 +1121,7 @@ func BenchmarkDungeonImage(b *testing.B) {
 			g := grid.Grid{Columns: d.Width, Rows: d.Height}
 			for i := 0; b.Loop(); i++ {
 				layers := dungeonLayers(d, g)
-				solid := solidOf(d.Kinds, d.Width, d.Height, layers.walls, layers.doors)
+				solid := solidOf(d.Width, d.Height, layers.walls, layers.doors)
 				res, err := s.drawDungeon(b.Context(), solid, d.Width, d.Height, 0, 0)
 				if err != nil {
 					b.Fatal(err)
@@ -1248,5 +1292,36 @@ func TestMR010_RedrawToleratesADoorOpenedWhileItDraws(t *testing.T) {
 	wantCode(t, "a redraw with a wall painted meanwhile", err, connect.CodeAborted)
 	if _, err := m.redraw(d.campaign, created.GetId()); err != nil {
 		t.Errorf("the redraw after trying again: %v", err)
+	}
+}
+
+// The walls layer of a generated dungeon covers every square that is not open (the walls
+// and all the rock behind them), so one wall mark covers the mass and no token can be put on
+// rock; the image's plan is solid on exactly those squares, and nowhere else but a secret door.
+func TestMR010_TheWallsLayerCoversAllRock(t *testing.T) {
+	t.Parallel()
+	_, d := testDungeonSeed(t)
+	g := grid.Grid{Columns: d.Width, Rows: d.Height}
+	layers := dungeonLayers(d, g)
+	open, _ := dungeon.WallsMask(d)
+	rock := 0
+	for i, o := range open {
+		col, row := i%d.Width, i/d.Width
+		if layers.walls.Get(col, row) == o {
+			t.Fatalf("square (%d, %d): wall = %v, open = %v: the layer must be every square that is not open", col, row, !o, o)
+		}
+		if !o {
+			rock++
+		}
+	}
+	solid := solidOf(d.Width, d.Height, layers.walls, layers.doors)
+	for i := range solid {
+		col, row := i%d.Width, i/d.Width
+		if want := layers.walls.Get(col, row) || layers.doors.Get(col, row) == grid.DoorSecret; solid[i] != want {
+			t.Fatalf("plan (%d, %d) = %v, want %v", col, row, solid[i], want)
+		}
+	}
+	if rock == 0 {
+		t.Fatal("the fixture has no rock")
 	}
 }

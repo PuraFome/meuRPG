@@ -190,8 +190,10 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		if err != nil {
 			continue // never: this package wrote it
 		}
-		if ev.Round == 0 {
-			continue // the log starts when the combat begins: the setup is not in it
+		// The log starts when the combat begins: the setup is not in it. The master's line of
+		// the monsters he put in (their rolled hit points) is the exception: it is his from the setup.
+		if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {
+			continue
 		}
 		entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}}
 		switch e.Kind {
@@ -209,6 +211,11 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			}
 		case eventDoorOpened:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED
+		case eventCombatantsAdded:
+			if ev.Monsters == nil {
+				continue // reinforcements (AddCombatants) are no line
+			}
+			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED, true
 		case eventCombatantHiddenSet:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
 		case eventActionTaken:
@@ -434,6 +441,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:
+		for _, it := range e.ev.Monsters.Items {
+			out.Monsters = append(out.Monsters, &playv1.CombatLogMonster{
+				CombatantId: it.ID, Label: byID[it.ID].Label, HitPoints: it.HitPoints, Rolled: it.Dice != "", Dice: it.Dice, Faces: it.Faces, Modifier: it.Modifier,
+			})
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
 		if out.DistanceDft == 0 { // an event written before the tenths of a foot

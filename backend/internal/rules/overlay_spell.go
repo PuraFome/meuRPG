@@ -37,7 +37,7 @@ func extraDice(key, field, s string, base DiceFormula) (int, error) {
 // addSpell registers a table spell and its structured details: the SRD's own
 // strings are written from the structured fields and parsed back by the SRD's
 // builder, so the table's spell is exactly as the combat code reads an SRD spell.
-func (b *overlayBuilder) addSpell(ts *TableSpell) error {
+func (b *overlayBuilder) addSpell(ts *TableSpell, path string) error {
 	key := ts.Key
 	if ts.Level < 0 || ts.Level > 9 {
 		return ovErr(key, "the spell level is 0 to 9")
@@ -77,12 +77,12 @@ func (b *overlayBuilder) addSpell(ts *TableSpell) error {
 		return err
 	}
 	var classes []string
-	for _, c := range ts.Classes {
+	for i, c := range ts.Classes {
 		if !b.isClass(c) {
-			return ovErr(key, "the class %q of the spell list does not exist", c)
+			return bad(key, path, fmt.Sprintf(".class_keys[%d]", i), ReasonReference, "the class %q of the spell list does not exist", c)
 		}
 		if slices.Contains(classes, c) {
-			return ovErr(key, "the class %q is listed twice", c)
+			return bad(key, path, fmt.Sprintf(".class_keys[%d]", i), ReasonValue, "the class %q is listed twice", c)
 		}
 		classes = append(classes, c)
 	}

@@ -1,0 +1,114 @@
+:host {
+  display: block;
+}
+
+.hf__title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hf__help {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.hf__empty {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.row {
+  scroll-margin-block: calc(64px + var(--mr-space-4));
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin-bottom: var(--mr-space-2);
+}
+
+.row__box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+
+  &:focus-within {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 42px;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--mr-ink);
+    font: inherit;
+    font-size: 16px;
+  }
+}
+
+.row__box--bad {
+  border-color: var(--mr-danger-ink);
+}
+
+.row__n {
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.row__remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-md);
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mr-accent-text);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 0;
+  }
+}
+
+.hf__error {
+  margin: -4px 0 var(--mr-space-2);
+  font-size: 14px;
+  color: var(--mr-danger-ink);
+}
+
+// A text button that starts a line pulls its padding back, so its words line up with the text above.
+.hf__add {
+  margin-inline-start: -12px;
+  color: var(--mr-accent-text);
+}
+
+@media (max-width: 767.98px) {
+  .row__remove {
+    width: 48px;
+    height: 48px;
+  }
+}

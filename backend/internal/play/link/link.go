@@ -60,6 +60,20 @@ type Character struct {
 	// in tenths of a foot (rules/combat.JumpLimits); 0 for a sheet with no
 	// Strength. Standing, each is half.
 	JumpLongDFt, JumpHighDFt int
+	// CombatOnly marks the NPC the app keeps for a creature's monsters (RN-29):
+	// never a participant, a stage NPC or a token.
+	CombatOnly bool
+	// MonsterKey and ChallengeRating are the SRD creature an NPC was made from
+	// ("monster:bandit") and its ND ("1/8"), "" for an NPC the master typed: the
+	// master's view of a monster.
+	MonsterKey, ChallengeRating string
+}
+
+// PartyMember is a player's character as an encounter's budget reads it (MR-043):
+// its name and its total level.
+type PartyMember struct {
+	ID, Name string
+	Level    int
 }
 
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's
@@ -445,4 +459,12 @@ type CreatureChanges struct {
 	// Dismissed are the creatures that were defeated and are dismissed now;
 	// Revived the ones that were dismissed as defeated and an undo healed.
 	Dismissed, Revived []Creature
+}
+
+// MonsterHitPoints are the hit points of an SRD creature: its average, and the
+// dice it rolls them with ("2d8+2" is 2, 8, 2). DiceCount is 0 when the
+// creature's dice are not known, and then the average is all there is.
+type MonsterHitPoints struct {
+	Average                         int
+	DiceCount, DiceSides, DiceBonus int
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,6 +65,9 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	}
 }
 
+// freshCounter numbers the databases freshDatabase creates.
+var freshCounter atomic.Int64
+
 // freshDatabase creates an empty database on the test server and returns a
 // connection to it. The database is dropped when the test ends.
 func freshDatabase(t *testing.T) *sql.DB {
@@ -75,7 +79,10 @@ func freshDatabase(t *testing.T) *sql.DB {
 	}
 
 	admin := open(t, rawURL)
-	name := fmt.Sprintf("meurpg_migrations_test_%d", time.Now().UnixNano())
+	// The clock alone is not unique: on macOS it ticks in microseconds, and two
+	// parallel tests can read the same value. The counter makes each name
+	// unique in the process, as dbtest does.
+	name := fmt.Sprintf("meurpg_migrations_test_%d_%d", time.Now().UnixNano(), freshCounter.Add(1))
 	exec(t, admin, "CREATE DATABASE "+name)
 	t.Cleanup(func() { exec(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
 
