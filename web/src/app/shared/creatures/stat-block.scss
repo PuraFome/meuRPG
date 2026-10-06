@@ -15,6 +15,21 @@
   gap: var(--mr-space-3);
 }
 
+// The bestiary's page: the tiles take the room there is (four across on a desktop, two on a phone).
+.sb--full .tiles {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+}
+
+.sb--full .line {
+  grid-template-columns: 11rem minmax(0, 1fr);
+
+  // A phone has no room for a wide label column: the label sits over its text.
+  @media (max-width: 479.98px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
 .tile {
   display: flex;
   flex-direction: column;
@@ -45,6 +60,13 @@
     font-weight: 400;
     color: var(--mr-ink-muted);
   }
+}
+
+.tile__n {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
 }
 
 .abilities {

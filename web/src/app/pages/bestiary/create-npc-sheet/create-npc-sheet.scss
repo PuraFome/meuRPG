@@ -1,0 +1,255 @@
+@use '../../../shared/creatures/filter-fields';
+
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+// "Baseado em": read only, with the picture the creature has.
+.based {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.based__art {
+  --art-size: 48px;
+}
+
+.based__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.based__l,
+.based__s {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.based__n {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.box--bad {
+  border-color: var(--mr-danger-ink);
+}
+
+.field__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.field__err {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
+.field__count {
+  margin-left: auto;
+  color: var(--mr-ink-muted);
+}
+
+.role {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+}
+
+// Two segments of the same size; the chosen one has a frame AND a check, never colour alone.
+.seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.seg__opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+    color: var(--mr-accent-text);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.role__hint {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.nums__t {
+  margin: 0 0 var(--mr-space-2);
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.nums__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+  margin: 0;
+}
+
+.num {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+
+  dt {
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--mr-ink-muted);
+    overflow-wrap: anywhere;
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--mr-font-display);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 24px;
+  }
+}
+
+// The narrowest phones (320 px) keep the numbers as one line, so the form fits without scrolling far.
+.nums__line {
+  display: none;
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+@media (max-width: 359.98px) {
+  .nums__grid {
+    display: none;
+  }
+
+  .nums__t {
+    display: none;
+  }
+
+  .nums__line {
+    display: block;
+  }
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+// Cancelar and the one filled button, side by side and the same size on a phone; right-aligned from a tablet up.
+.actions {
+  display: flex;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    justify-content: flex-end;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+}
+
+.no {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+@media (max-width: 559.98px) {
+  .go,
+  .no {
+    flex: 1 1 0;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+
+  .box {
+    --field-h: 48px;
+  }
+}
+
+// A short phone (320×568): the subtitle already says which creature, so the "Baseado em" card gives its room to the form.
+@media (max-height: 600px) {
+  .based {
+    display: none;
+  }
+
+  .stack {
+    gap: var(--mr-space-3);
+  }
+}

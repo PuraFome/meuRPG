@@ -1,0 +1,183 @@
+// E10-08, state 3: back link, the creature's name, then the stat block with the action panel beside it
+// (a desktop), under it (a tablet) or right under the name (a phone).
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+}
+
+.head__art {
+  --art-size: 72px;
+}
+
+.head__text {
+  min-width: 0;
+}
+
+.head__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 38px;
+  overflow-wrap: anywhere;
+
+  @media (min-width: 768px) {
+    font-size: 40px;
+    line-height: 44px;
+  }
+}
+
+.head__sub {
+  margin: 2px 0 0;
+  font-size: 17px;
+  color: var(--mr-ink-muted);
+}
+
+// The confirmation of the NPC just made: a live region that is empty until then.
+.made {
+  scroll-margin-top: 72px;
+
+  &:empty {
+    display: none;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &[data-ring] {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.made__text p {
+  margin: 0;
+
+  & + p {
+    margin-top: 2px;
+  }
+}
+
+.made__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--mr-space-4);
+  margin-top: 2px;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--mr-accent-text);
+    font-weight: 700;
+  }
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+}
+
+// A phone reads the action first; a tablet, the sheet and then the action; a desktop has them side by side.
+.act {
+  order: -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+
+  @media (min-width: 768px) {
+    order: 1;
+  }
+}
+
+.act__text,
+.act__srd {
+  margin: 0;
+}
+
+.act__srd {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.act__go {
+  --mat-button-filled-container-height: 48px;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    --mat-button-filled-container-height: 44px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .act {
+    order: 0;
+    position: sticky;
+    top: 88px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .head__art {
+    --art-size: 56px;
+  }
+
+  .head__name {
+    font-size: 28px;
+    line-height: 32px;
+  }
+}

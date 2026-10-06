@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
+import { CREATURE_TYPES } from '../../../core/creatures/creature-types';
 import { CREATURE_NAME_MAX, challengeText, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
 import { formatInt, joinDots } from '../../../core/format/text';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
@@ -26,25 +27,8 @@ export interface GiveCreatureResult {
   readonly name: string;
 }
 
-/** The SRD's creature types, in Portuguese, for the filter (the rows say their own type). */
-const TYPES: readonly { value: string; label: string }[] = [
-  { value: '', label: 'Qualquer' },
-  { value: 'aberration', label: 'Aberração' },
-  { value: 'beast', label: 'Fera' },
-  { value: 'celestial', label: 'Celestial' },
-  { value: 'construct', label: 'Constructo' },
-  { value: 'dragon', label: 'Dragão' },
-  { value: 'elemental', label: 'Elemental' },
-  { value: 'swarm of Tiny beasts', label: 'Enxame de feras miúdas' },
-  { value: 'fey', label: 'Fada' },
-  { value: 'fiend', label: 'Ínfero' },
-  { value: 'giant', label: 'Gigante' },
-  { value: 'humanoid', label: 'Humanoide' },
-  { value: 'monstrosity', label: 'Monstruosidade' },
-  { value: 'ooze', label: 'Limo' },
-  { value: 'plant', label: 'Planta' },
-  { value: 'undead', label: 'Morto-vivo' },
-];
+/** The type filter: any, then the SRD's creature types (the bestiary's filter uses the same list). */
+const TYPES: readonly { value: string; label: string }[] = [{ value: '', label: 'Qualquer' }, ...CREATURE_TYPES];
 
 /** The challenge ratings the filter offers: "Até 1/8" means that rating or lower. */
 const CRS = ['0', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '8', '10', '15', '20', '30'];

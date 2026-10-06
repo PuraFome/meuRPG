@@ -1,0 +1,196 @@
+@use '../../../shared/creatures/filter-fields';
+
+// E10-08, states 1, 2 and 7: back link, title, four 48 px filters, the count, then the rows.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  --field-h: 48px;
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.head .mr-page-lead {
+  margin-bottom: 0;
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}
+
+// Four fields in a row from a desktop up; two and two at 1024. On a phone the name and the type have a
+// row each (the longest words, "Monstruosidade", need it), size and ND share the next one, and under
+// 360 px every field has its own row, so no word is ever clipped.
+.filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-3);
+
+  .field--name,
+  .field--type {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 359.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 640px) {
+    .field--name,
+    .field--type {
+      grid-column: auto;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  }
+}
+
+// The browser's own "×" in a search field: "Limpar a busca" and "Limpar filtros" are the way out.
+input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
+}
+
+// A text action under the filters, lined up with the text above (the padding is pulled back).
+.clear {
+  align-self: flex-start;
+  min-height: 44px;
+  margin: -8px 0 -8px -12px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding-inline: 0;
+}
+
+.list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--mr-space-3);
+  padding-inline: var(--mr-space-4);
+}
+
+.list__t {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.list__n {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.list__wait {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  color: var(--mr-ink-muted);
+}
+
+.list > .mr-notice,
+.list > .retry {
+  margin-inline: var(--mr-space-4);
+}
+
+.list > .retry {
+  align-self: flex-start;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li + li {
+    box-shadow: 0 -1px 0 var(--mr-rule);
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--mr-space-3) var(--mr-space-4) var(--mr-space-2);
+}
+
+.empty__t {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.empty__s {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.list__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4) 0;
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

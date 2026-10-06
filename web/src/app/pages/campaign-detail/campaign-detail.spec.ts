@@ -230,6 +230,23 @@ describe('CampaignDetail', () => {
     expect(el.textContent).not.toContain('Iniciar sessão');
   });
 
+  it('shows the "Bestiário" panel only for the master (MR-042: the SRD is public, the app shows the bestiary to the master)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const master = await render();
+    const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Abrir o bestiário'));
+    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario');
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const player = await render();
+    expect(player.textContent).not.toContain('Bestiário');
+    expect(player.querySelector('a[href$="/bestiario"]')).toBeNull();
+  });
+
   it('shows the "Galeria" panel only for the master (MR-019)', async () => {
     configure();
     fake.getCampaignResult = Promise.resolve({

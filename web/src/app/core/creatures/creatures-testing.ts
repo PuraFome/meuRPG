@@ -1,8 +1,11 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { vi } from 'vitest';
 import { create } from '@bufbuild/protobuf';
 
 import {
   type CharacterCreature,
+  CharacterSchema,
+  InvalidFieldSchema,
   CharacterCreatureSchema,
   CreatureSource,
   type GetSummonOptionsResponse,
@@ -14,6 +17,7 @@ import { SpellSlotUsageSchema, CharacterVitalsSchema } from '../../../gen/meurpg
 import {
   Ability,
   type Creature,
+  CreatureSize,
   CreatureAbilityScoreSchema,
   CreatureActionSchema,
   type CreatureSummary,
@@ -98,6 +102,12 @@ export function creature(id: string, name: string, over: Init<CharacterCreature>
     hitPointsMax: 1,
     ...over,
   });
+}
+
+/** A challenge rating as a number, to compare: "1/8" is 0.125. */
+function crValue(cr: string): number {
+  const [a, b] = cr.split('/');
+  return b ? Number(a) / Number(b) : Number(a);
 }
 
 /** A catalog row. */
@@ -199,8 +209,32 @@ export class FakeCreaturesClient {
   search = vi.fn(async (_c: string, filter: CreatureFilter) => {
     this.searches.push(filter);
     const q = (filter.query ?? '').toLowerCase();
-    const found = this.catalog.filter((s) => (q === '' || s.namePt.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) && (!filter.type || s.type === filter.type));
+    const found = this.catalog.filter(
+      (s) =>
+        (q === '' || s.namePt.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) &&
+        (!filter.type || s.type === filter.type) &&
+        (!filter.size || s.size.toLowerCase() === (CreatureSize[filter.size] ?? '').toLowerCase()) &&
+        (!filter.minCr || crValue(s.challengeRating) >= crValue(filter.minCr)) &&
+        (!filter.maxCr || crValue(s.challengeRating) <= crValue(filter.maxCr)),
+    );
+    if (this.searchFail) {
+      throw this.searchFail;
+    }
     return { creatures: found, total: found.length };
+  });
+  /** An error every `search` throws, while set. */
+  searchFail: unknown = null;
+  /** What each `createNpc` was asked: the creature, the name, the role and the key. */
+  npcCalls: { creatureKey: string; name: string; role: string; key: string }[] = [];
+  /** Errors for the next `createNpc` calls, one per call, then it works. */
+  npcFailures: unknown[] = [];
+  createNpc = vi.fn(async (_c: string, creatureKey: string, name: string, role: string, key: string) => {
+    this.npcCalls.push({ creatureKey, name, role, key });
+    const failure = this.npcFailures.shift();
+    if (failure) {
+      throw failure;
+    }
+    return create(CharacterSchema, { id: 'npc-1', name, sheet: { content: { case: 'basic', value: { attacks: [{ name: 'Clava grande' }, { name: 'Azagaia' }] } } } });
   });
   statBlock = vi.fn(async (_c: string, key: string) => {
     const b = this.blocks.get(key);
@@ -260,4 +294,53 @@ export function flat(e: Element | null | undefined): string | undefined {
 /** Whether a button is off: a button that stays focusable says it with `aria-disabled`. */
 export function isOff(b: HTMLButtonElement): boolean {
   return b.disabled || b.getAttribute('aria-disabled') === 'true';
+}
+
+/** The Ogre's stat block, with the numbers of the artboard (E10-08, state 3). */
+export function ogre(over: Init<Creature> = {}): Creature {
+  const scores = [19, 8, 16, 5, 7, 7];
+  const names = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
+  return create(CreatureSchema, {
+    summary: summary('monster:ogre', 'Ogro', { name: 'Ogre', size: 'Large', sizePt: 'Grande', type: 'giant', typePt: 'gigante', challengeRating: '2', xp: 450, armorClass: 11, hitPoints: 59 }),
+    alignment: 'chaotic evil',
+    armorClass: 11,
+    armorClassLabelPt: 'Armadura',
+    armorClassNote: 'armadura de peles',
+    hitPoints: 59,
+    hitDice: '7d10',
+    hitPointsRoll: '7d10+21',
+    speedWalkFt: 40,
+    abilities: scores.map((score, i) =>
+      create(CreatureAbilityScoreSchema, { ability: (i + 1) as Ability, namePt: names[i], score, modifier: Math.floor((score - 10) / 2) }),
+    ),
+    senses: [{ namePt: 'Visão no escuro', rangeFt: 60 }],
+    passivePerception: 8,
+    languages: 'Common, Giant',
+    proficiencyBonus: 2,
+    npcAttackNames: ['Clava grande', 'Azagaia'],
+    actions: [
+      create(CreatureActionSchema, {
+        name: 'Greatclub',
+        namePt: 'Clava grande',
+        text: 'Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage.',
+        hasAttack: true,
+        attackBonus: 6,
+        damage: [{ dice: '2d8+4', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'contundente' }],
+      }),
+      create(CreatureActionSchema, {
+        name: 'Javelin',
+        namePt: 'Azagaia',
+        text: 'Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 11 (2d6 + 4) piercing damage.',
+        hasAttack: true,
+        attackBonus: 6,
+        damage: [{ dice: '2d6+4', damageTypeKey: 'damage-type:piercing', damageTypePt: 'perfurante' }],
+      }),
+    ],
+    ...over,
+  });
+}
+
+/** A refused request as the server sends it: `invalid_argument` with the `InvalidField` detail naming the field. */
+export function invalidField(field: string): ConnectError {
+  return new ConnectError('refused', Code.InvalidArgument, undefined, [{ desc: InvalidFieldSchema, value: create(InvalidFieldSchema, { field }) }]);
 }

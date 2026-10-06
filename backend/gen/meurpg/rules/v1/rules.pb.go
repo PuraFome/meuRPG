@@ -8413,8 +8413,14 @@ type Creature struct {
 	Actions          []*CreatureAction `protobuf:"bytes,27,rep,name=actions,proto3" json:"actions,omitempty"`
 	Reactions        []*CreatureTrait  `protobuf:"bytes,28,rep,name=reactions,proto3" json:"reactions,omitempty"`
 	LegendaryActions []*CreatureTrait  `protobuf:"bytes,29,rep,name=legendary_actions,json=legendaryActions,proto3" json:"legendary_actions,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The names, in Portuguese when the content has one, of the attacks the
+	// bestiary's "Criar NPC" copies to the NPC's basic sheet (MR-042): at most
+	// three, in the order the sheet gets them. GetCreature fills it with the same
+	// function CreateNpcFromCreature builds the sheet with, so the dialog and the
+	// NPC can never differ. Empty when no attack fits a basic sheet.
+	NpcAttackNames []string `protobuf:"bytes,30,rep,name=npc_attack_names,json=npcAttackNames,proto3" json:"npc_attack_names,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Creature) Reset() {
@@ -8646,6 +8652,13 @@ func (x *Creature) GetReactions() []*CreatureTrait {
 func (x *Creature) GetLegendaryActions() []*CreatureTrait {
 	if x != nil {
 		return x.LegendaryActions
+	}
+	return nil
+}
+
+func (x *Creature) GetNpcAttackNames() []string {
+	if x != nil {
+		return x.NpcAttackNames
 	}
 	return nil
 }
@@ -9936,7 +9949,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"campaignId\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"L\n" +
 	"\x13GetCreatureResponse\x125\n" +
-	"\bcreature\x18\x01 \x01(\v2\x19.meurpg.rules.v1.CreatureR\bcreature\"\xb7\v\n" +
+	"\bcreature\x18\x01 \x01(\v2\x19.meurpg.rules.v1.CreatureR\bcreature\"\xe1\v\n" +
 	"\bCreature\x12:\n" +
 	"\asummary\x18\x01 \x01(\v2 .meurpg.rules.v1.CreatureSummaryR\asummary\x12\x1c\n" +
 	"\talignment\x18\x02 \x01(\tR\talignment\x12\x1f\n" +
@@ -9972,7 +9985,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x06traits\x18\x1a \x03(\v2\x1e.meurpg.rules.v1.CreatureTraitR\x06traits\x129\n" +
 	"\aactions\x18\x1b \x03(\v2\x1f.meurpg.rules.v1.CreatureActionR\aactions\x12<\n" +
 	"\treactions\x18\x1c \x03(\v2\x1e.meurpg.rules.v1.CreatureTraitR\treactions\x12K\n" +
-	"\x11legendary_actions\x18\x1d \x03(\v2\x1e.meurpg.rules.v1.CreatureTraitR\x10legendaryActions\"\x95\x01\n" +
+	"\x11legendary_actions\x18\x1d \x03(\v2\x1e.meurpg.rules.v1.CreatureTraitR\x10legendaryActions\x12(\n" +
+	"\x10npc_attack_names\x18\x1e \x03(\tR\x0enpcAttackNames\"\x95\x01\n" +
 	"\x14CreatureAbilityScore\x122\n" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
