@@ -104,7 +104,9 @@ func TestEveryReadAsksForItsOwnCampaignsContent(t *testing.T) {
 			_, err := owner.content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: campB}))
 			return err
 		}},
-		{"UpdateCharacter validates with its campaign's content", campB, false, false, func() error {
+		// The content is read before the transaction, then its revision again inside it, so
+		// an archive that commits in between is seen (RN-23).
+		{"UpdateCharacter validates with its campaign's content, and checks it again in its transaction", campB, true, false, func() error {
 			_, err := owner.update(t, pcB, "Pensantus B", pensantusSheet())
 			return err
 		}},

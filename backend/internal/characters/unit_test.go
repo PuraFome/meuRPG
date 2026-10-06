@@ -187,7 +187,7 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 16 {
+	if len(reads) != 17 {
 		t.Errorf("found %d reads, want 17 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries)", len(reads))
 	}
 	for procedure, method := range reads {
