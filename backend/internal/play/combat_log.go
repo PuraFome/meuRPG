@@ -470,7 +470,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED:
 		out.Trap = e.trapEntry(ctx, v, byID, names)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:
-		out.WildShape = &playv1.CombatLogWildShape{BeastKey: e.ev.Beast, BeastNamePt: names.s.nameOf(e.ev.Beast), Started: e.shapeStarted}
+		out.WildShape = &playv1.CombatLogWildShape{BeastKey: e.ev.Beast, BeastNamePt: names.contentName(ctx, e.ev.Beast), Started: e.shapeStarted}
 		if !e.shapeStarted {
 			out.WildShape.EndReason = wildShapeEndReasonProto[e.ev.Reason]
 			if v.master || v.owns(actor) { // the carried damage is the druid's player's and the master's (RN-20)
@@ -668,7 +668,8 @@ type keyNames struct {
 	s           *Service
 	campaignID  string
 	byCharacter map[string]link.Sheet
-	traps       map[string]string // the names of the traps that fired, by point
+	traps       map[string]string       // the names of the traps that fired, by point
+	content     func(key string) string // the names of the content, from the campaign's content
 }
 
 // of returns the name of the key on the combatant's sheet, or "" when the
@@ -706,6 +707,15 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 	}
 	return ""
+}
+
+// contentName is the name of a content key in the campaign's content, "" when it
+// cannot be read (the log line still shows the key).
+func (n *keyNames) contentName(ctx context.Context, key string) string {
+	if n.content == nil { // read once for the whole log
+		n.content = n.s.namesFor(ctx, n.campaignID)
+	}
+	return n.content(key)
 }
 
 // wildShapeEndReasonProto reads the reason a wild_shape_ended event gives.

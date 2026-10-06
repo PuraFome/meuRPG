@@ -26,6 +26,10 @@ func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the party's senses", err)
 	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
 	out := make([]link.PartyMember, 0, len(rows))
 	for _, row := range rows {
 		user := deref(row.PlayerUserID)
@@ -40,12 +44,12 @@ func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string)
 		}
 		if full := sheet.GetFull(); full != nil {
 			// The form's senses and passive Perception, when the druid is a beast (MR-037).
-			derived := s.derive(full, row.WildShapeBeast)
+			derived := derive(content, full, row.WildShapeBeast)
 			member.Senses = sensesOf(derived.Senses)
 			member.PassivePerception = derived.PassivePerception
 		}
 		if row.FamiliarID != nil && row.FamiliarMonsterKey != nil {
-			if d, ok := s.rules.MonsterDerived(*row.FamiliarMonsterKey); ok {
+			if d, ok := content.MonsterDerived(*row.FamiliarMonsterKey); ok {
 				member.Eyes = &link.FamiliarEyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
 			}
 		}

@@ -226,9 +226,10 @@ type CombatRoster interface {
 	// Conditions lists the SRD's conditions (RN-22), with their Portuguese
 	// names, sorted by key.
 	Conditions() []link.Named
-	// NamePT is the Portuguese name of a content key ("spell:shield" is "Escudo
-	// Arcano"), or "" for an unknown key.
-	NamePT(key string) string
+	// ContentNames returns the campaign's naming function: the Portuguese name of a
+	// content key ("spell:shield" is "Escudo Arcano"), or "" for an unknown key. The
+	// content is read once, when it is asked for, not on every name.
+	ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
 
 	// The character's creatures (MR-037, Etapa 9). The ones that write take the
 	// change's transaction.
@@ -264,13 +265,13 @@ type CombatRoster interface {
 	// CombatTurnOptions and CombatSave for a creature, from its stat block and
 	// what its spell lets it attack with ("none", "reaction", "full"); false for
 	// a key that is not an SRD creature.
-	CreatureSheet(monsterKey, attack string) (link.Sheet, bool)
-	CreatureTurnOptions(monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool)
-	CreatureSave(monsterKey, ability string) link.Save
+	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error)
+	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
+	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error)
 	// CreatureEyes is what a creature notices a trap with, from its stat block:
 	// its passive Perception and its senses (MR-035). False for a key that is not an
 	// SRD creature.
-	CreatureEyes(monsterKey string) (maplink.Eyes, bool)
+	CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (maplink.Eyes, bool, error)
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -399,13 +400,32 @@ type Service struct {
 	live LiveConfig
 }
 
-// nameOf is the Portuguese name of a content key the combat shows: an SRD
-// condition's, or any other key's (a spell's) from the rules content.
-func (s *Service) nameOf(key string) string {
-	if n, ok := s.conditionNames[key]; ok {
-		return n
+// namerFor is the Portuguese name of a content key the combat shows, bound to one
+// campaign's content: an SRD condition's, or any other key's (a spell's) from the
+// content, which is read once for all the names.
+func (s *Service) namerFor(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error) {
+	base, err := s.roster.ContentNames(ctx, tx, campaignID)
+	if err != nil {
+		return nil, err
 	}
-	return s.roster.NamePT(key)
+	return func(key string) string {
+		if n, ok := s.conditionNames[key]; ok {
+			return n
+		}
+		return base(key)
+	}, nil
+}
+
+// namesFor is namerFor for the views, which name what they can: when the content
+// cannot be read, the names are only the conditions' (the key is still shown),
+// and the failure is logged once, with the error and no names or IDs.
+func (s *Service) namesFor(ctx context.Context, campaignID string) func(key string) string {
+	namer, err := s.namerFor(ctx, nil, campaignID)
+	if err != nil {
+		s.logger.WarnContext(ctx, "play: cannot read the content names", "error", err)
+		return func(key string) string { return s.conditionNames[key] }
+	}
+	return namer
 }
 
 // The compiler checks that Service implements the handler.

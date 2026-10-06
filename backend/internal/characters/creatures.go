@@ -55,7 +55,11 @@ func (s *Service) ListCreatures(
 			return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
 		}
 	}
-	list, err := s.rules.ListCreatures(rules.CreatureFilter{
+	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	list, err := content.ListCreatures(rules.CreatureFilter{
 		Query: req.Msg.GetQuery(), Type: req.Msg.GetType(), MaxCR: req.Msg.GetMaxCr(),
 		NoFly: req.Msg.GetNoFly(), NoSwim: req.Msg.GetNoSwim(),
 	})
@@ -84,7 +88,11 @@ func (s *Service) GetCreature(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	c, ok := s.rules.CreatureByKey(req.Msg.GetKey())
+	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	c, ok := content.CreatureByKey(req.Msg.GetKey())
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownCreature)
 	}

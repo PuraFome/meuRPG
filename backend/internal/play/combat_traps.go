@@ -441,7 +441,11 @@ func (s *Service) noticeAfterMove(ctx context.Context, campaignID string, enc pl
 	}
 	ob := maplink.Observer{CharacterID: moved.CharacterID, At: squareOfCombatant(moved)}
 	if isCreature(moved) {
-		eyes, ok := s.roster.CreatureEyes(deref(moved.MonsterKey))
+		eyes, ok, err := s.roster.CreatureEyes(ctx, nil, campaignID, deref(moved.MonsterKey))
+		if err != nil {
+			s.logger.ErrorContext(ctx, "play: cannot read a creature's senses after a move", "error", err)
+			return
+		}
 		if !ok {
 			return
 		}

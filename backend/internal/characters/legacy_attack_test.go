@@ -106,10 +106,9 @@ func TestLoadSheetUpgradesALegacyAttack(t *testing.T) {
 // TestCheckSheetClearsTheOldAttack: a write with attacks drops the old
 // fields; one without keeps the old text, so saving never loses it.
 func TestCheckSheetClearsTheOldAttack(t *testing.T) {
-	svc := &Service{}
 	with := basicSheet()
 	with.GetBasic().Damage, with.GetBasic().AttackBonus = "mordida", 3
-	got, err := svc.checkSheet(with)
+	got, err := checkSheet(loadRules(t), with)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +118,7 @@ func TestCheckSheetClearsTheOldAttack(t *testing.T) {
 	without := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: &charactersv1.BasicSheet{
 		HitPointsMax: 5, ArmorClass: 10, Damage: "mordida", AttackBonus: 3,
 	}}}
-	got, err = svc.checkSheet(without)
+	got, err = checkSheet(loadRules(t), without)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,42 +29,46 @@ import (
 // speed) and the standard actions everyone has, and the rules' own
 // combat.Options works for a minion as for a hero. `not_found` for a
 // character that is not one of the campaign's living ones.
-func (s *Service) fighter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (kind string, d rules.Derived, err error) {
+func (s *Service) fighter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (kind string, d rules.Derived, content *rules.Content, err error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
-		return "", rules.Derived{}, errCharacterNotFound()
+		return "", rules.Derived{}, nil, errCharacterNotFound()
 	}
 	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
 	if err != nil {
-		return "", rules.Derived{}, s.dbError(ctx, "read a character for a combat", err)
+		return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
 	}
 	if len(rows) == 0 {
-		return "", rules.Derived{}, errCharacterNotFound()
+		return "", rules.Derived{}, nil, errCharacterNotFound()
 	}
 	sheet, err := loadSheet(rows[0].ID, rows[0].Sheet)
 	if err != nil {
-		return "", rules.Derived{}, s.dbError(ctx, "read a character for a combat", err)
+		return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
+	}
+	content, err = s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return "", rules.Derived{}, nil, s.dbError(ctx, "read rules content", err)
 	}
 	switch {
 	case sheet.GetFull() != nil:
 		// A druid in Wild Shape fights as the beast (MR-037).
-		return rows[0].Kind, s.derive(sheet.GetFull(), rows[0].WildShapeBeast), nil
+		return rows[0].Kind, derive(content, sheet.GetFull(), rows[0].WildShapeBeast), content, nil
 	case sheet.GetBasic() != nil:
-		return rows[0].Kind, s.basicDerived(sheet.GetBasic()), nil
+		return rows[0].Kind, basicDerived(content, sheet.GetBasic()), content, nil
 	}
-	return "", rules.Derived{}, s.dbError(ctx, "read a character for a combat", fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id))
+	return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id))
 }
 
 // basicDerived is the little of rules.Derived that a combat reads, for a
 // basic sheet: the numbers as written, its attacks with a key of their own
 // ("basic:0", "basic:1"...), and the standard actions.
-func (s *Service) basicDerived(b *charactersv1.BasicSheet) rules.Derived {
+func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Derived {
 	d := rules.Derived{
 		ArmorClass:      int(b.GetArmorClass()),
 		HitPointsMax:    int(b.GetHitPointsMax()),
 		SpeedWalkFt:     int(b.GetSpeedFt()),
 		Initiative:      int(b.GetInitiativeBonus()),
-		StandardActions: s.rules.StandardActions(),
+		StandardActions: content.StandardActions(),
 	}
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
@@ -72,7 +76,7 @@ func (s *Service) basicDerived(b *charactersv1.BasicSheet) rules.Derived {
 		d.Attacks = append(d.Attacks, rules.Attack{
 			Key: fmt.Sprintf("basic:%d", i), Name: a.GetName(), NamePT: a.GetName(), Kind: "weapon",
 			AttackBonus: int(a.GetAttackBonus()), DamageDice: dice, Damage: diceText(dice),
-			DamageType: typeKey, DamageTypeNamePT: s.rules.NamePT(typeKey), RangeFt: int(a.GetRangeFt()),
+			DamageType: typeKey, DamageTypeNamePT: content.NamePT(typeKey), RangeFt: int(a.GetRangeFt()),
 			Melee: a.GetRangeFt() <= 5, // a basic sheet's attack that reaches 5 ft or less is a melee one
 		})
 	}
@@ -95,7 +99,7 @@ func diceText(f rules.DiceFormula) string {
 // character's sheet. It takes no caller: it runs after play's authorization
 // check, and its armor class never goes to a player.
 func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error) {
-	_, d, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Sheet{}, err
 	}
@@ -137,13 +141,13 @@ var poolResources = map[string]bool{"lay_on_hands": true}
 // now, from the sheet, what it used this turn and, for a player's character,
 // the spell slots already spent (its vitals).
 func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
-	kind, d, err := s.fighter(ctx, tx, campaignID, characterID)
+	kind, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}
 	var usage combat.Usage
 	if kind == "player" {
-		v, err := s.getVitals(ctx, s.queriesIn(tx), campaignID, characterID)
+		v, err := s.getVitals(ctx, tx, campaignID, characterID)
 		if err != nil {
 			return nil, err
 		}

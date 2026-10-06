@@ -21,12 +21,16 @@ func (s *Service) GetSpellDetails(
 	if _, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	d, ok := s.rules.SpellDetails(req.Msg.GetSpellKey())
+	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, s.dbError(ctx, "read rules content", err)
+	}
+	d, ok := content.SpellDetails(req.Msg.GetSpellKey())
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
 	out := spellDetailsToProto(d)
-	out.HitPointEffect = s.hitPointEffect(req.Msg.GetSpellKey(), d.Spell.Level)
+	out.HitPointEffect = hitPointEffect(content, req.Msg.GetSpellKey(), d.Spell.Level)
 	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil
 }
 
@@ -40,12 +44,12 @@ var hpEffectKindToProto = map[string]rulesv1.SpellHitPointEffectKind{
 // hitPointEffect is the rule of a spell that reads hit points, at its own circle
 // and what one circle more adds (the difference of two reads of the effects).
 // Nil for any other spell.
-func (s *Service) hitPointEffect(key string, level int) *rulesv1.SpellHitPointEffect {
-	base, ok := s.rules.SpellEffect(key, level)
+func hitPointEffect(content *rules.Content, key string, level int) *rulesv1.SpellHitPointEffect {
+	base, ok := content.SpellEffect(key, level)
 	if !ok {
 		return nil
 	}
-	next, _ := s.rules.SpellEffect(key, level+1)
+	next, _ := content.SpellEffect(key, level+1)
 	return &rulesv1.SpellHitPointEffect{
 		Kind:             hpEffectKindToProto[base.Kind],
 		PoolDiceCount:    i32(base.Dice.Count),
