@@ -8,7 +8,8 @@ import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { EncounterEvaluation } from '../../../../gen/meurpg/play/v1/encounters_pb';
 import { EncountersClient, type SavedEncounter } from '../../../core/encounters/encounters-client';
-import { GUIDE_LABEL, GUIDE_CAVEAT, encounterErrorMessage, headline } from '../../../core/encounters/encounter-text';
+import { EncounterWarning } from '../../../../gen/meurpg/play/v1/encounters_pb';
+import { GUIDE_LABEL, GUIDE_CAVEAT, encounterErrorMessage, headline, warningLines } from '../../../core/encounters/encounter-text';
 import { formatInt, tight } from '../../../core/format/text';
 import type { MapState } from '../../../core/maps/map-state';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
@@ -73,6 +74,18 @@ export class BattleEncounters {
     });
   }
 
+  /** The warning the server already sends for a saved encounter that does not fit one combat of 40 with today's party. */
+  protected tooMany(k: Kept): boolean {
+    return k.evaluation?.warnings.includes(EncounterWarning.TOO_MANY) ?? false;
+  }
+
+  protected tooManyText(k: Kept): string {
+    return warningLines(k.evaluation!).find((w) => w.kind === EncounterWarning.TOO_MANY)?.text ?? '';
+  }
+
+  /** The builder on this point's map and point, where the creature that left the SRD is taken out. */
+  protected readonly mapId = computed(() => this.state().map()?.id ?? '');
+
   protected head(k: Kept): string {
     return k.evaluation ? headline(k.evaluation) : '';
   }
@@ -132,7 +145,7 @@ export class BattleEncounters {
         pointName: k.name,
         hp: k.encounter.hp,
         hidden: k.encounter.hidden,
-        groups: k.encounter.monsters.map((m) => ({ key: m.creatureKey, namePt: byKey.get(m.creatureKey) ?? m.creatureKey, count: m.count })),
+        groups: k.encounter.monsters.map((m) => ({ key: m.creatureKey, namePt: byKey.get(m.creatureKey) ?? m.creatureKey, count: m.count, name: m.name })),
       },
     }).subscribe((encounter) => {
       if (encounter) {

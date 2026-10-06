@@ -386,6 +386,8 @@ test(
       await expect(start.getByLabel('Nome do combate')).toHaveValue('Emboscada na ponte');
       await expect(start.locator('.mon__row')).toHaveCount(2);
       await expect(start.getByRole('switch', { name: 'Escondidos no início' })).toHaveAttribute('aria-checked', 'true');
+      // From a battle point on a map with a grid the dialog opens on "Com mapa".
+      await expect(start.getByRole('radio', { name: /^Com mapa/ })).toBeChecked();
       await start.getByRole('button', { name: 'Iniciar combate' }).click();
       await expect(start).toBeHidden();
 
@@ -394,12 +396,15 @@ test(
       const names = (enc.combatants as MonsterRow[]).filter((c) => c.bestiaryCreatureKey).map(label).sort();
       expect(names).toEqual(['Bandido', 'Goblin 1', 'Goblin 2']);
       expect((enc.combatants as MonsterRow[]).filter((c) => c.bestiaryCreatureKey).every((c) => c.hidden)).toBe(true);
+      expect((enc as unknown as { mapPointId?: string }).mapPointId).toBe(pointId);
 
       // A player never gets the builder or the saved encounter (RN-10): not found, and the point carries no trace of it.
       for (const [method, body] of [
         ['GetBattleEncounter', { campaignId, mapPointId: pointId }],
         ['ListBattleEncounters', { campaignId, mapId: table.mapId }],
         ['EvaluateEncounter', { campaignId, entries: [] }],
+        ['ListEncounterSwaps', { campaignId, creatureKey: 'monster:goblin' }],
+        ['ClearBattleEncounter', { campaignId, mapPointId: pointId }],
         ['GenerateEncounter', { campaignId, band: 'ENCOUNTER_BAND_MODERATE' }],
         ['SaveBattleEncounter', { campaignId, mapPointId: pointId, encounter: { monsters: [{ creatureKey: 'monster:goblin', count: 1 }] } }],
       ] as const) {
@@ -415,6 +420,68 @@ test(
       // The page tells a player it is the master's.
       await player.goto(`/campanhas/${campaignId}/encontros`);
       await expect(player.getByText('Só o mestre monta encontros.')).toBeVisible();
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o montador abre o encontro guardado do ponto, tira o encontro do ponto, e "Começar este combate" também vale "Sem mapa"',
+  { tag: ['@MR-043', '@RN-29', '@RN-25'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const master = await masterContext.newPage();
+      const player = await playerContext.newPage();
+      await master.goto('/');
+      await player.goto('/');
+      const table = await tableForCombat(master, player, `Mirathel ${Date.now()}`);
+      const campaignId = table.campaignId;
+      const pointId = await createPointRPC(master, campaignId, table.mapId, { kind: 'BATTLE', name: 'Ruínas do forte', xBp: 7000, yBp: 3000, revealed: true });
+      const saved = await callRPC(master, 'meurpg.play.v1.EncounterService/SaveBattleEncounter', {
+        campaignId,
+        mapPointId: pointId,
+        encounter: { monsters: [{ creatureKey: 'monster:goblin', count: 2 }, { creatureKey: 'monster:bandit', count: 1 }] },
+      });
+      expect(saved.ok(), await saved.text()).toBeTruthy();
+
+      // The editor's link brings the point's encounter into the builder, where it can be taken off the point (asked in place).
+      await master.goto(`/campanhas/${campaignId}/encontros?mapa=${table.mapId}&ponto=${pointId}`);
+      await expect(master.locator('.lines__n')).toHaveText('3 criaturas');
+      await master.getByRole('button', { name: 'Tirar o encontro do ponto' }).click();
+      await expect(master.getByText('Tirar o encontro do ponto?')).toBeVisible();
+      await expect(master.getByRole('button', { name: 'Voltar' })).toBeFocused();
+      await master.getByRole('button', { name: 'Voltar' }).click();
+      const stillThere = await callRPC(master, 'meurpg.play.v1.EncounterService/GetBattleEncounter', { campaignId, mapPointId: pointId });
+      expect(JSON.stringify(await stillThere.json())).toContain('monster:goblin');
+      await master.getByRole('button', { name: 'Tirar o encontro do ponto' }).click();
+      await master.getByRole('button', { name: 'Tirar o encontro' }).click();
+      await expect(master.locator('.mr-notice--success')).toContainText('O ponto não guarda mais um encontro.');
+      const gone = await callRPC(master, 'meurpg.play.v1.EncounterService/GetBattleEncounter', { campaignId, mapPointId: pointId });
+      expect(JSON.stringify(await gone.json())).not.toContain('monster:goblin');
+
+      // Put it back and start it "Sem mapa": the monsters come in with no squares and the combat has no point (RN-25).
+      const again = await callRPC(master, 'meurpg.play.v1.EncounterService/SaveBattleEncounter', {
+        campaignId,
+        mapPointId: pointId,
+        encounter: { monsters: [{ creatureKey: 'monster:goblin', count: 2 }] },
+      });
+      expect(again.ok(), await again.text()).toBeTruthy();
+      await openSessionPage(master, campaignId);
+      await master.locator('.enc', { hasText: 'Ruínas do forte' }).getByRole('button', { name: 'Começar este combate' }).click();
+      const start = master.getByRole('dialog', { name: 'Iniciar combate' });
+      await start.getByText('Sem mapa (teatro da mente)', { exact: true }).click();
+      await start.getByRole('button', { name: 'Iniciar combate' }).click();
+      await expect(start).toBeHidden();
+      const enc = await getEncounterRPC(master, campaignId);
+      expect((enc as unknown as { mode?: string }).mode).toBe('ENCOUNTER_MODE_THEATRE');
+      expect((enc.combatants as MonsterRow[]).filter((c) => c.bestiaryCreatureKey).map(label).sort()).toEqual(['Goblin 1', 'Goblin 2']);
+      expect((enc.combatants as MonsterRow[]).every((c) => !c.placed)).toBe(true);
+      expect((enc as unknown as { mapPointId?: string }).mapPointId ?? '').toBe('');
     } finally {
       await masterContext.close();
       await playerContext.close();

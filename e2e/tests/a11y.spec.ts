@@ -4664,3 +4664,8 @@ test('os monstros e os encontros passam no axe e nas conferências de layout no 
   test.setTimeout(600_000);
   await scanMonsterScreens(browser, 'light', 320);
 });
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 320);
+});

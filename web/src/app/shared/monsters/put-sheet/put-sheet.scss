@@ -66,6 +66,17 @@
   color: var(--mr-ink-muted);
 }
 
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+
+  @media (min-width: 560px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
 .count {
   display: flex;
   flex-wrap: wrap;

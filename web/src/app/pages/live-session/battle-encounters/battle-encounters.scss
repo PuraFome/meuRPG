@@ -11,6 +11,8 @@
 }
 
 .enc {
+  // As drawn (E10-09 state 7): a card about 440 px wide, not the whole page, from a tablet up.
+  max-width: 440px;
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);

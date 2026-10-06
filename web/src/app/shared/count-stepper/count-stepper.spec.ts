@@ -50,4 +50,14 @@ describe('CountStepper', () => {
     buttons()[0].click();
     expect(emitted).toEqual([0]);
   });
+
+  it('takes its own wording for a noun that is not masculine, with the count in the number\'s label', () => {
+    const { fixture, el, buttons } = setup(3);
+    fixture.componentRef.setInput('minusLabel', 'Menos uma peça');
+    fixture.componentRef.setInput('plusLabel', 'Mais uma peça');
+    fixture.componentRef.setInput('valueLabel', '{n} peças');
+    fixture.detectChanges();
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual(['Menos uma peça', 'Mais uma peça']);
+    expect(el.querySelector('output')?.getAttribute('aria-label')).toBe('3 peças');
+  });
 });

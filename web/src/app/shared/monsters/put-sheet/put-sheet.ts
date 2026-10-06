@@ -7,7 +7,7 @@ import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient, type MonsterHp } from '../../../core/combat/combat-client';
 import { sessionClosed } from '../../../core/combat/combat-errors';
 import { ADD_MAX, AddKeys, MONSTER_NAME_MAX, addMonstersErrorMessage, monsterSentence, roomFor } from '../../../core/combat/monsters';
-import { capitalized } from '../../../core/creatures/bestiary-format';
+import { capitalized, listWithE } from '../../../core/creatures/bestiary-format';
 import { nameCounter } from '../../../core/creatures/creature-format';
 import { SheetFrame } from '../../../pages/live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../pages/live-session/combat/sheet-host';
@@ -176,8 +176,11 @@ export class PutMonstersSheet {
     this.error.set('');
     try {
       let encounter: Encounter;
+      let ids: readonly string[] = [];
       if (target) {
-        encounter = (await this.combat.addMonsters(this.data.campaignId, target.id, add, key)).encounter;
+        const made = await this.combat.addMonsters(this.data.campaignId, target.id, add, key);
+        encounter = made.encounter;
+        ids = made.combatantIds;
       } else {
         encounter = await this.combat.start(this.data.campaignId, `Combate: ${this.c.namePt}`, [], key, {
           monsters: [{ creatureKey: add.creatureKey, count: add.count, name: add.name }],
@@ -187,7 +190,8 @@ export class PutMonstersSheet {
       }
       this.sheet.close({
         count: add.count,
-        names: monsterSentence(base, add.count),
+        // What the server made: with Bandidos already in, it numbers on ("Bandido 4, Bandido 5 e Bandido 6"); the client's preview is the fallback.
+        names: this.namesMade(encounter, ids) || monsterSentence(base, add.count),
         combatName: encounter.name,
         started: target === null,
         hidden: add.hidden,
@@ -199,6 +203,12 @@ export class PutMonstersSheet {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The labels of the monsters this add made, as the combat names them. */
+  private namesMade(encounter: Encounter, ids: readonly string[]): string {
+    const made = encounter.combatants.filter((c) => (ids.length > 0 ? ids.includes(c.id) : c.bestiaryCreatureKey === this.c.key && !c.defeated));
+    return listWithE(made.map((c) => c.label));
   }
 
   protected close(): void {

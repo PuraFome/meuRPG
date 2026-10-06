@@ -118,7 +118,8 @@ func (s *Service) AddMonsters(
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
 		if len(cs)+count > maxCombatants {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a combat has at most %d combatants", maxCombatants))
+			// Typed, so the app says it in words instead of guessing from an invalid argument.
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, fmt.Sprintf("a combat has at most %d combatants", maxCombatants))
 		}
 		parts, batchItems, err := s.planMonsters(ctx, c, m, []monsterBatch{{creatureKey: creatureKey, name: name, count: count, hp: hp}}, rolled, hidden)
 		if err != nil {

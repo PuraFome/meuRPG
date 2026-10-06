@@ -1,5 +1,5 @@
 <app-sheet-frame
-  title="Gerar encontro"
+  [title]="swapping() && inSheet ? 'Trocar ' + swapping()!.creature?.namePt : 'Gerar encontro'"
   [subtitle]="lead()"
   [phone]="inSheet"
   height="min(780px, calc(92dvh - 48px))"
@@ -12,6 +12,7 @@
     } @else {
     <div class="opts">
       <div class="opts__band">
+        <span class="mr-label" aria-hidden="true">Dificuldade</span>
         <app-segmented label="Dificuldade" [segments]="bands" [value]="band()" (choose)="setBand($event)" />
         @if (bandHint()) {
           <p class="hint">{{ bandHint() }}</p>

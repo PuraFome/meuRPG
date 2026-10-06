@@ -30,7 +30,9 @@ interface BandMark {
         <div class="bar__figure" role="img" [attr.aria-label]="summary()">
           <div class="bar__top" aria-hidden="true">
             @for (t of ticks(); track t.xp) {
-              <span class="bar__budget" [style.left.%]="t.at">{{ t.label }}</span>
+              @if (!t.hidden) {
+                <span class="bar__budget" [style.left.%]="t.at">{{ t.label }}</span>
+              }
             }
             <span class="bar__marker" [class.bar__marker--end]="geo().over" [style.left.%]="markerAt()">
               {{ geo().over ? '›' : '' }} {{ total() }}
@@ -80,9 +82,10 @@ export class BudgetBar {
     const g = this.geo();
     return ev
       ? [
-          { xp: ev.budget?.low ?? 0, at: g.low, label: formatInt(ev.budget?.low ?? 0) },
-          { xp: ev.budget?.moderate ?? 0, at: g.moderate, label: formatInt(ev.budget?.moderate ?? 0) },
-          { xp: ev.budget?.high ?? 0, at: g.high, label: formatInt(ev.budget?.high ?? 0) },
+          { xp: ev.budget?.low ?? 0, at: g.low, label: formatInt(ev.budget?.low ?? 0), hidden: false },
+          { xp: ev.budget?.moderate ?? 0, at: g.moderate, label: formatInt(ev.budget?.moderate ?? 0), hidden: false },
+          // Past the high budget the marker sits at the tip, close to this label: "400 › 3.050 XP" would read as a comparison, so the label waits.
+          { xp: ev.budget?.high ?? 0, at: g.high, label: formatInt(ev.budget?.high ?? 0), hidden: g.over },
         ]
       : [];
   });

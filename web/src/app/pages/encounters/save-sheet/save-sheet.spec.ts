@@ -103,7 +103,11 @@ describe('SaveSheet: "Guardar no ponto de batalha" (MR-043, E10-09 state 6)', ()
     button('Guardar no ponto de batalha').click();
     await settle();
     expect(api.saves).toHaveLength(0);
-    expect(flat(el.querySelector('.ask'))).toBe('Trocar o encontro guardado? “Ruínas do forte” já guarda um encontro de 7 criaturas. Guardar este põe o novo no lugar dele. Voltar Trocar o encontro');
+    expect(flat(el.querySelector('.ask'))).toBe('Trocar o encontro guardado? “Ruínas do forte” já guarda um encontro de 7 criaturas. Guardar este põe o novo no lugar dele.');
+    // One set of buttons: the footer's, now "Trocar o encontro" and "Voltar".
+    expect(Array.from(el.querySelectorAll('button')).filter((b) => flat(b) === 'Voltar')).toHaveLength(1);
+    expect(Array.from(el.querySelectorAll('button')).filter((b) => flat(b) === 'Trocar o encontro')).toHaveLength(1);
+    expect(el.querySelector('.ask button')).toBeNull();
     expect(document.activeElement?.textContent?.trim()).toBe('Voltar');
     button('Voltar').click();
     await settle();

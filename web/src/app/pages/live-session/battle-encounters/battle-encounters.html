@@ -34,8 +34,15 @@
         <mat-icon aria-hidden="true">warning</mat-icon>
         <p>
           <strong>Uma criatura deste encontro não está mais no SRD.</strong>
-          Abra os <a [routerLink]="['/campanhas', campaignId(), 'encontros']">Encontros</a> e tire-a antes de começar.
+          Abra este encontro <a [routerLink]="['/campanhas', campaignId(), 'encontros']" [queryParams]="{ mapa: mapId(), ponto: k.pointId }">nos Encontros</a> e guarde-o de novo sem ela.
         </p>
+      </div>
+    }
+
+    @if (tooMany(k)) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>Criaturas demais para um combate.</strong> {{ tooManyText(k) }}</p>
       </div>
     }
 

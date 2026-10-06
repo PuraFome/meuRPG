@@ -16,6 +16,7 @@ class FakeCombat {
   open: Encounter | null = encounter({ id: 'enc-1', name: 'Emboscada na ponte', status: EncounterStatus.SETUP, combatants: [] });
   getFail: unknown = null;
   failures: unknown[] = [];
+  addIds: string[] = ['m1', 'm2', 'm3'];
   adds: { encounterId: string; add: { creatureKey: string; count: number; name: string; hp: string; hidden: boolean }; key: string }[] = [];
   starts: { name: string; participants: unknown[]; key: string; extras: Record<string, unknown> }[] = [];
   get = vi.fn(async () => {
@@ -30,7 +31,7 @@ class FakeCombat {
     if (failure) {
       throw failure;
     }
-    return { encounter: this.open!, combatantIds: ['m1', 'm2', 'm3'] };
+    return { encounter: this.open!, combatantIds: this.addIds };
   });
   start = vi.fn(async (_c: string, name: string, participants: unknown[], key: string, extras: Record<string, unknown>) => {
     this.starts.push({ name, participants, key, extras });
@@ -118,6 +119,24 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     expect(close).toHaveBeenCalledWith(
       expect.objectContaining({ count: 3, names: 'Bandido 1, Bandido 2 e Bandido 3', combatName: 'Emboscada na ponte', started: false, hidden: true }),
     );
+  });
+
+  it('names what the server made: with Bandidos already in, it numbers on', async () => {
+    const { button, more, settle } = await setup(
+      encounter({
+        id: 'enc-1',
+        name: 'Emboscada na ponte',
+        status: EncounterStatus.SETUP,
+        combatants: [1, 2, 3, 4, 5, 6].map((n) => combatant({ id: `m${n}`, label: `Bandido ${n}` })),
+      }),
+    );
+    api.addIds = ['m4', 'm5', 'm6'];
+    more().click();
+    more().click();
+    await settle();
+    button('Pôr 3 no combate').click();
+    await settle();
+    expect(close).toHaveBeenCalledWith(expect.objectContaining({ names: 'Bandido 4, Bandido 5 e Bandido 6' }));
   });
 
   it('rolls the hit points and starts them revealed when the master says so', async () => {

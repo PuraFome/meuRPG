@@ -128,18 +128,6 @@
   }
 }
 
-.ask__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-
-  button {
-    min-width: 0;
-    --mat-button-filled-container-height: 44px;
-    --mat-button-outlined-container-height: 44px;
-  }
-}
-
 .why {
   margin: 0 0 var(--mr-space-2);
   font-size: 14px;
@@ -149,10 +137,11 @@
 
 .actions {
   display: flex;
+  flex-direction: row-reverse;
   gap: 10px;
 
   @media (min-width: 560px) {
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 }
 
@@ -193,11 +182,12 @@
 // 320 px: the long label gets a line of its own, under "Cancelar", instead of being cut.
 @media (max-width: 359.98px) {
   .actions {
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   .go,
   .no {
-    flex: 1 1 100%;
+    flex: none;
+    width: 100%;
   }
 }

@@ -7,6 +7,15 @@
   opacity: 0.55;
 }
 
+.bar__marker--end {
+  transform: translateX(-100%);
+  align-items: flex-end;
+
+  svg {
+    margin-right: 4px;
+  }
+}
+
 .bar__top {
   position: relative;
   height: 40px;

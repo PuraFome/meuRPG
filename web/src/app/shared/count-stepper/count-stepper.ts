@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, linkedSignal, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
  * "[−] 3 [+]" (E10-08 state 4, E10-09 state 1): two 44 px buttons around the number in a box. At a limit the button is
  * `aria-disabled` and does nothing (it stays in the tab order, like the other steppers). `noun` finishes the buttons'
- * names ("Menos um Bandido"); `minLabel` names the minus button at the lowest value when it means something else ("Tirar
+ * names ("Menos um Bandido"); `minusLabel`, `plusLabel` and `valueLabel` (`{n}` stands for the count) replace the whole wording
+ * for a noun that is not masculine or a count with another reading ("Menos uma Maça", "{n} peças"); `minLabel` names the minus button at the lowest value when it means something else ("Tirar
  * o Ogro": the builder takes a creature out at 1). The number is a live `output`, so a tap is announced.
  */
 @Component({
@@ -16,17 +17,17 @@ import { MatIconModule } from '@angular/material/icon';
       type="button"
       class="cs__btn"
       [attr.aria-disabled]="shown() <= min() ? 'true' : null"
-      [attr.aria-label]="shown() <= minAt() && minLabel() ? minLabel() : 'Menos um ' + noun()"
+      [attr.aria-label]="shown() <= minAt() && minLabel() ? minLabel() : minusText()"
       (click)="step(-1)"
     >
       <mat-icon aria-hidden="true">remove</mat-icon>
     </button>
-    <output class="cs__value" aria-live="polite" [attr.aria-label]="shown() + ' ' + noun()">{{ shown() }}</output>
+    <output class="cs__value" aria-live="polite" [attr.aria-label]="valueText()">{{ shown() }}</output>
     <button
       type="button"
       class="cs__btn"
       [attr.aria-disabled]="shown() >= max() ? 'true' : null"
-      [attr.aria-label]="'Mais um ' + noun()"
+      [attr.aria-label]="plusText()"
       (click)="step(1)"
     >
       <mat-icon aria-hidden="true">add</mat-icon>
@@ -40,6 +41,7 @@ import { MatIconModule } from '@angular/material/icon';
     }
 
     .cs__btn {
+      flex: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -69,6 +71,7 @@ import { MatIconModule } from '@angular/material/icon';
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
+      flex: none;
       min-width: 56px;
       height: 44px;
       padding: 0 8px;
@@ -90,10 +93,22 @@ export class CountStepper {
   /** The name of the minus button at `minAt`, when it takes the thing out instead of lowering it. */
   readonly minLabel = input('');
   readonly minAt = input(1);
+  /** The wording of the buttons and of the number for a noun that "Menos um … / Mais um … / 3 …" does not suit. */
+  readonly minusLabel = input('');
+  readonly plusLabel = input('');
+  readonly valueLabel = input('');
   readonly valueChange = output<number>();
 
   /** What the stepper shows: the value it was given, moved at once by each tap, so two quick taps add two even before the parent draws again. */
   protected readonly shown = linkedSignal(() => this.value());
+
+  protected readonly minusText = computed(() =>
+    this.shown() <= this.minAt() && this.minLabel() ? this.minLabel() : this.minusLabel() || `Menos um ${this.noun()}`,
+  );
+  protected readonly plusText = computed(() => this.plusLabel() || `Mais um ${this.noun()}`);
+  protected readonly valueText = computed(() =>
+    this.valueLabel() ? this.valueLabel().replace('{n}', String(this.shown())) : `${this.shown()} ${this.noun()}`,
+  );
 
   protected step(delta: number): void {
     const next = this.shown() + delta;

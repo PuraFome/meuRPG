@@ -107,6 +107,7 @@ export class EncounterDraft {
   /** Stops asking: the page is gone. */
   stop(): void {
     this.version++;
+    this.again = false;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;

@@ -28,8 +28,12 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
     seed: null,
   });
 
+  let api0: ((a: FakeEncountersClient) => void) | null = null;
+
   async function open(url = '/campanhas/camp-1/encontros') {
     api = new FakeEncountersClient();
+    api0?.(api);
+    api0 = null;
     creatures = new FakeCreaturesClient();
     creatures.catalog = [OGRE, BUGBEAR, HOBGOBLIN, GOBLIN];
     opened = [];
@@ -222,6 +226,36 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
     await fill();
     button('Guardar no ponto de batalha').click();
     expect(opened.find((o) => o.id === 'save-t')?.data).toMatchObject({ mapId: 'map-1', pointId: 'pt-1' });
+  });
+
+  it('with ?ponto= it brings the point\'s saved encounter in; "Tirar o encontro do ponto" asks in place and clears it', async () => {
+    api0 = (a: FakeEncountersClient) => {
+      a.battle.set('pt-1', {
+        encounter: { monsters: [{ creatureKey: GOBLIN.key, count: 2 }, { creatureKey: 'monster:gone', count: 1 }], hp: 'average', hidden: true },
+        evaluation: evaluation([line(GOBLIN, 2)]),
+        unknownKeys: ['monster:gone'],
+      });
+    };
+    const { el, button, settle } = await open('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+    expect(flat(el.querySelector('.lines__n'))).toBe('2 criaturas');
+    expect(api.getCalls).toEqual(['pt-1']);
+    expect(flat(el.querySelector('.mr-notice--warning'))).toContain('Uma criatura deste ponto não está mais no SRD.');
+    button('Tirar o encontro do ponto').click();
+    await settle();
+    expect(flat(el.querySelector('.act__ask'))).toContain('Tirar o encontro do ponto?');
+    expect(document.activeElement?.textContent?.trim()).toBe('Voltar');
+    button('Voltar').click();
+    await settle();
+    expect(api.clear).not.toHaveBeenCalled();
+    button('Tirar o encontro do ponto').click();
+    await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.act__ask button')).find((b) => flat(b) === 'Tirar o encontro')!.click();
+    await settle();
+    expect(api.clear).toHaveBeenCalledWith('camp-1', 'pt-1');
+    expect(flat(el.querySelector('.mr-notice--success'))).toContain('O ponto não guarda mais um encontro.');
+    // The draft stays on screen, and the button is gone: the point keeps nothing.
+    expect(flat(el.querySelector('.lines__n'))).toBe('2 criaturas');
+    expect(el.textContent).not.toContain('Tirar o encontro do ponto');
   });
 
   it('"Guardar" waits for a creature, and says so', async () => {

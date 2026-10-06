@@ -108,7 +108,7 @@ export class NpcCard {
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
   /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
-  protected readonly creatureSlug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey));
+  protected readonly creatureSlug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey ?? ''));
   protected readonly isNpc = computed(() => !isPlayer(this.subject()) && !isCreature(this.subject()));
   /** The one on turn is at 0 hit points: nobody spends movement for them. */
   /** "do Goblin", "da Brisa". */

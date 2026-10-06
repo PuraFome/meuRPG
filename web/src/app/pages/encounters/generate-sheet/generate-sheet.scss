@@ -239,8 +239,15 @@
     --mat-button-outlined-container-height: 48px;
   }
 
+  // Stacked: a column's flex-basis 0 would collapse the buttons to nothing, so they keep their own 48 px.
   .actions--gen {
     flex-direction: column;
+
+    .go,
+    .no {
+      flex: none;
+      width: 100%;
+    }
   }
 
   .box {

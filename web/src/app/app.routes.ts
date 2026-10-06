@@ -123,7 +123,7 @@ export const routes: Routes = [
   },
   {
     // The encounter builder (MR-043, RN-29, E10-09), master only: the party's budget, the creatures, "Gerar encontro" and "Guardar no
-    // ponto de batalha". `?mapa=&ponto=` (from a battle point of the editor) opens "Guardar" on that point. A lazy route like the bestiary.
+    // ponto de batalha". `?mapa=&ponto=` (from a battle point of the editor) brings that point's saved encounter into the draft and preselects the point in "Guardar". A lazy route like the bestiary.
     path: 'campanhas/:id/encontros',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/encounters/encounter-builder/encounter-builder').then((m) => m.EncounterBuilder),

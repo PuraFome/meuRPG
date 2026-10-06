@@ -78,10 +78,6 @@
         <mat-icon aria-hidden="true">warning</mat-icon>
         <div>
           <p id="save-ask-t"><strong>Trocar o encontro guardado?</strong> “{{ chosen()?.name }}” já guarda um encontro de {{ chosen()?.kept }} criaturas. Guardar este põe o novo no lugar dele.</p>
-          <div class="ask__actions">
-            <button type="button" mat-stroked-button data-initial-focus (click)="back()">Voltar</button>
-            <button type="button" mat-flat-button [disabled]="busy()" (click)="save()">Trocar o encontro</button>
-          </div>
         </div>
       </div>
     }
@@ -91,19 +87,23 @@
     @if (blocked(); as why) {
       <p class="why" id="save-why">{{ why }}</p>
     }
+    <!-- The filled button comes first in the DOM (and on top at 320 px); the dialog draws it at the right. Asking to replace changes
+         the same two buttons: "Voltar" and "Trocar o encontro". -->
     <div class="actions">
-      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
       <button
         type="button"
         mat-flat-button
         class="go"
-        [class.mr-button--off]="busy() || blocked() !== '' || asking()"
-        [disabled]="busy() || blocked() !== '' || asking()"
+        [class.mr-button--off]="busy() || blocked() !== ''"
+        [disabled]="busy() || blocked() !== ''"
         disabledInteractive
         [attr.aria-describedby]="blocked() ? 'save-why' : null"
         (click)="save()"
       >
-        <mat-icon aria-hidden="true">flag</mat-icon>{{ busy() ? 'Guardando...' : 'Guardar no ponto de batalha' }}
+        <mat-icon aria-hidden="true">flag</mat-icon>{{ busy() ? 'Guardando...' : asking() ? 'Trocar o encontro' : 'Guardar no ponto de batalha' }}
+      </button>
+      <button type="button" mat-stroked-button class="no" data-cancel [disabled]="busy()" (click)="asking() ? back() : close()">
+        {{ asking() ? 'Voltar' : 'Cancelar' }}
       </button>
     </div>
   </div>

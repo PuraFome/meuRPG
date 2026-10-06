@@ -74,7 +74,7 @@ func (s *Service) StartEncounter(
 		return nil, err
 	}
 	if total := countPlanned(parts) + monsters.count() + kept; total > maxCombatants {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a combat has at most %d combatants", maxCombatants))
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, fmt.Sprintf("a combat has at most %d combatants", maxCombatants))
 	}
 	var point link.BattlePoint
 	if pointID != nil {

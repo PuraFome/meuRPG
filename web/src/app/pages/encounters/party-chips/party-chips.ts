@@ -54,6 +54,11 @@ export interface PartyChip {
       padding: 0;
       list-style: none;
 
+      // One column under 360 px, so a name never has to break inside a chip.
+      @media (max-width: 359.98px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       @media (min-width: 768px) {
         grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       }
@@ -82,7 +87,6 @@ export interface PartyChip {
       font-size: 19px;
       font-weight: 700;
       line-height: 22px;
-      overflow-wrap: anywhere;
     }
 
     .chip__s {

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -9,16 +9,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creatures/bestiary-access';
-import { creatureSlug } from '../../../core/creatures/bestiary-format';
 import { EncounterDraft, ENTRY_MAX, KINDS_MAX, PARTY_NPC_MAX } from '../../../core/encounters/encounter-draft';
 import { EncountersClient } from '../../../core/encounters/encounters-client';
-import { GUIDE_CAVEAT, GUIDE_LABEL, capLine, headline, warningLines } from '../../../core/encounters/encounter-text';
+import { GUIDE_CAVEAT, GUIDE_LABEL, capLine, encounterErrorMessage, headline, warningLines } from '../../../core/encounters/encounter-text';
 import { formatInt, tight } from '../../../core/format/text';
 import { RosterClient } from '../../../core/maps/roster-client';
-import { CountStepper } from '../../../shared/count-stepper/count-stepper';
-import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { openSheet } from '../../live-session/combat/sheet-host';
 import { BudgetBar } from '../budget-bar/budget-bar';
+import { EncounterRows } from '../encounter-rows/encounter-rows';
 import { PartyChips } from '../party-chips/party-chips';
 import { CreaturePick } from '../creature-pick/creature-pick';
 import { GenerateSheet, type GenerateData, type GenerateResult } from '../generate-sheet/generate-sheet';
@@ -40,7 +38,7 @@ type PageState = { status: 'loading' } | { status: 'error'; message: string } | 
  */
 @Component({
   selector: 'app-encounter-builder',
-  imports: [BudgetBar, CountStepper, CreatureArt, CreaturePick, PartyChips, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
+  imports: [BudgetBar, CreaturePick, EncounterRows, PartyChips, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
   templateUrl: './encounter-builder.html',
   styleUrl: './encounter-builder.scss',
 })
@@ -52,7 +50,16 @@ export class EncounterBuilder {
   private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly campaignId = this.route.snapshot.paramMap.get('id') ?? '';
-  protected readonly draft = new EncounterDraft(inject(EncountersClient), this.campaignId);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly encounters = inject(EncountersClient);
+  protected readonly draft = new EncounterDraft(this.encounters, this.campaignId);
+  /** The battle point whose saved encounter is on screen (`?ponto=`), and the question "Tirar o encontro?" in place. */
+  protected readonly keptAt = signal<{ readonly mapId: string; readonly pointId: string } | null>(null);
+  protected readonly clearing = signal(false);
+  protected readonly clearBusy = signal(false);
+  /** Saved creatures the SRD no longer has: left out of the draft, and gone from the point once it is saved again. */
+  protected readonly lost = signal(0);
   protected readonly access = signal<BestiaryAccess | { status: 'loading' }>({ status: 'loading' });
   protected readonly state = signal<PageState>({ status: 'loading' });
   /** What the last "Guardar" kept, for the line above the page. */
@@ -62,7 +69,6 @@ export class EncounterBuilder {
   protected readonly guide = GUIDE_LABEL;
   protected readonly caveat = GUIDE_CAVEAT;
   protected readonly format = formatInt;
-  protected readonly slug = creatureSlug;
   protected readonly entryMax = ENTRY_MAX;
 
   protected readonly ev = this.draft.evaluation;
@@ -118,9 +124,63 @@ export class EncounterBuilder {
     this.access.set(access);
     if (access.status === 'master') {
       this.state.set({ status: 'ready' });
+      await this.loadPoint();
       this.draft.measureNow();
     }
   }
+
+  /** A link from a battle point (`?mapa=&ponto=`) brings its saved encounter into the draft, so the master changes it, replaces it or takes it off. */
+  private async loadPoint(): Promise<void> {
+    const { mapId, pointId } = this.fromPoint;
+    if (!pointId) {
+      return;
+    }
+    try {
+      const read = await this.encounters.get(this.campaignId, pointId);
+      if (!read.encounter) {
+        return;
+      }
+      this.keptAt.set({ mapId, pointId });
+      this.lost.set(read.unknownKeys.length);
+      const have = new Map((read.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature]));
+      const entries = read.encounter.monsters.flatMap((m) => {
+        const creature = have.get(m.creatureKey);
+        return creature ? [{ creature, count: m.count }] : [];
+      });
+      this.draft.replace(entries);
+    } catch {
+      // The point is not readable (gone, or not a battle point): the builder opens empty, as without the link.
+    }
+  }
+
+  protected askClear(): void {
+    this.clearing.set(true);
+    // The question is drawn on the next render: "Voltar" takes the focus.
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(), { injector: this.injector });
+  }
+
+  /** "Tirar o encontro" (`ClearBattleEncounter`): the point keeps nothing; the draft stays on screen. */
+  protected async clearPoint(): Promise<void> {
+    const at = this.keptAt();
+    if (!at || this.clearBusy()) {
+      return;
+    }
+    this.clearBusy.set(true);
+    try {
+      await this.encounters.clear(this.campaignId, at.pointId);
+      this.keptAt.set(null);
+      this.clearing.set(false);
+      this.lost.set(0);
+      this.saved.set(null);
+      this.npcError.set('');
+      this.cleared.set(true);
+    } catch (err) {
+      this.npcError.set(encounterErrorMessage(err, 'clear'));
+    } finally {
+      this.clearBusy.set(false);
+    }
+  }
+  protected readonly cleared = signal(false);
 
   protected setCount(key: string, count: number): void {
     this.saved.set(null);
@@ -202,6 +262,9 @@ export class EncounterBuilder {
     }).subscribe((result) => {
       if (result) {
         this.saved.set(result);
+        this.cleared.set(false);
+        this.keptAt.set({ mapId: result.mapId, pointId: result.pointId });
+        this.clearing.set(false);
       }
     });
   }

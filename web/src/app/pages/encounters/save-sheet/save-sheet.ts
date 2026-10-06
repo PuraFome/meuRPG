@@ -30,6 +30,7 @@ export interface SaveData {
 /** What closes the sheet when the encounter was kept: where, and how it measures. */
 export interface SaveResult {
   readonly mapId: string;
+  readonly pointId: string;
   readonly pointName: string;
   readonly evaluation: EncounterEvaluation | null;
 }
@@ -163,7 +164,7 @@ export class SaveSheet {
         () => {
           const ask = this.host.nativeElement.querySelector<HTMLElement>('.ask');
           ask?.scrollIntoView?.({ block: 'nearest' });
-          this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus();
+          this.host.nativeElement.querySelector<HTMLElement>('[data-cancel]')?.focus();
         },
         { injector: this.injector },
       );
@@ -178,7 +179,7 @@ export class SaveSheet {
         { monsters: this.data.entries, hp: 'average', hidden: true },
         this.data.party,
       );
-      this.sheet.close({ mapId: this.mapId(), pointName: this.chosen()?.name ?? '', evaluation: saved.evaluation ?? null });
+      this.sheet.close({ mapId: this.mapId(), pointId: this.pointId(), pointName: this.chosen()?.name ?? '', evaluation: saved.evaluation ?? null });
     } catch (err) {
       this.asking.set(false);
       this.error.set(encounterErrorMessage(err, 'save'));

@@ -76,15 +76,17 @@ export class PartyNpcSheet {
     const npc = this.data.npcs.find((n) => n.id === id);
     return npc ? { characterId: npc.id, name: '', level: this.level(), label: npc.name } : null;
   });
+  private readonly measureKey = computed(() => `${this.pick()}|${this.level()}|${this.candidate() !== null}`);
   protected readonly before = computed(() => this.line(this.data.before));
   protected readonly after = computed(() => this.line(this.preview()));
 
   constructor() {
     // Each change of the NPC or the level asks the server what the budget becomes; an answer that is no longer the
     // newest question is dropped.
+    // The name is not part of the budget: only the NPC, the level and whether there is someone to add ask the server again.
     effect(() => {
-      const candidate = this.candidate();
-      untracked(() => void this.measure(candidate));
+      this.measureKey();
+      untracked(() => void this.measure(this.candidate()));
     });
   }
 

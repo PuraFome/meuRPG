@@ -43,6 +43,8 @@ export interface SavedMonsters {
   readonly key: string;
   readonly namePt: string;
   readonly count: number;
+  /** The base name the point kept for the group (empty: the creature's Portuguese name). */
+  readonly name?: string;
 }
 
 /** "Começar este combate" (MR-043): what the dialog starts with, from the encounter a battle point keeps. */
@@ -150,7 +152,7 @@ export class StartCombatDialog {
     { value: 'average', label: 'Média' },
     { value: 'rolled', label: 'Rolar' },
   ];
-  protected readonly monsterRows = (this.saved?.groups ?? []).map((g) => ({ ...g, becomes: becomesText(g.namePt, g.count) }));
+  protected readonly monsterRows = (this.saved?.groups ?? []).map((g) => ({ ...g, becomes: becomesText(g.name || g.namePt, g.count) }));
   protected readonly monsterTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -217,7 +219,9 @@ export class StartCombatDialog {
   /** The table's rule is only the default the dialog offers (RN-24): read apart, so a failure leaves the dialog as it is. The dialog
    * waits for it before it is ready, so the radio never flips under the master's hand. */
   private async readRule(): Promise<void> {
-    if (this.adding || !this.mapReady()) {
+    // From a battle point on a map with a grid the combat is a map combat: the table's rule does not flip it (the master can still
+    // choose "Sem mapa").
+    if (this.adding || !this.mapReady() || this.saved) {
       return;
     }
     try {
@@ -345,7 +349,7 @@ export class StartCombatDialog {
             this.saved
               ? {
                   mode: this.playMode(),
-                  monsters: this.saved.groups.map((g) => ({ creatureKey: g.key, count: g.count })),
+                  monsters: this.saved.groups.map((g) => ({ creatureKey: g.key, count: g.count, name: g.name })),
                   monsterHp: this.monsterHp(),
                   monstersHidden: this.monstersHidden(),
                   mapPointId: this.saved.pointId,

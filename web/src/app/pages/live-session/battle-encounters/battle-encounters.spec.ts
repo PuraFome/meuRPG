@@ -7,7 +7,8 @@ import { of } from 'rxjs';
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
 import { EncountersClient } from '../../../core/encounters/encounters-client';
-import { FakeEncountersClient, artboardEncounter } from '../../../core/encounters/encounters-testing';
+import { EncounterWarning } from '../../../../gen/meurpg/play/v1/encounters_pb';
+import { FakeEncountersClient, GOBLIN, artboardEncounter, evaluation, line } from '../../../core/encounters/encounters-testing';
 import { MapState } from '../../../core/maps/map-state';
 import { mapMessage, mapPoint } from '../../../core/maps/maps-testing';
 import { BattleEncounters } from './battle-encounters';
@@ -128,6 +129,20 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     });
     expect(flat(el.querySelector('.mr-notice--warning'))).toContain('Uma criatura deste encontro não está mais no SRD.');
     expect(isOff(el.querySelector<HTMLButtonElement>('.enc__go')!)).toBe(true);
+  });
+
+  it('a saved encounter that does not fit one combat of 40 shows the warning the server sends, and the lost-creature notice links to the builder on that point', async () => {
+    const { el } = await setup((a) => {
+      const read = a.battle.get('pt-1')!;
+      a.battle.set('pt-1', {
+        ...read,
+        unknownKeys: ['monster:gone'],
+        evaluation: evaluation([line(GOBLIN, 40)], { warnings: [EncounterWarning.TOO_MANY] }),
+      });
+    });
+    const notices = Array.from(el.querySelectorAll('.mr-notice--warning')).map((n) => flat(n));
+    expect(notices.some((n) => n?.startsWith('Criaturas demais para um combate.'))).toBe(true);
+    expect(el.querySelector('.mr-notice--warning a')?.getAttribute('href')).toBe('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
   });
 
   it('says in words when the saved encounters cannot be read', async () => {

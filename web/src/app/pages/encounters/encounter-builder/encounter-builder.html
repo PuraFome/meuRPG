@@ -61,6 +61,18 @@
         </p>
       </div>
     }
+    @if (lost() > 0) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>{{ lost() === 1 ? 'Uma criatura deste ponto não está mais no SRD.' : lost() + ' criaturas deste ponto não estão mais no SRD.' }}</strong> Ficou fora do encontro; guardar de novo tira do ponto.</p>
+      </div>
+    }
+    @if (cleared()) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <p><strong>O ponto não guarda mais um encontro.</strong> O que está na tela continua aqui.</p>
+      </div>
+    }
     @if (npcError()) {
       <div class="mr-notice mr-notice--danger" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>
@@ -125,35 +137,7 @@
           @if (rows().length === 0) {
             <p class="mr-muted">Nenhuma criatura ainda. Procure uma no Bestiário abaixo, ou use “Gerar encontro”.</p>
           } @else {
-            <ul class="rows">
-              @for (r of rows(); track r.creature.key) {
-                <li class="row">
-                  <app-creature-art class="row__art" [monsterKey]="r.creature.key" [type]="r.creature.type" />
-                  <span class="row__name">
-                    <a class="row__pt" [routerLink]="['/campanhas', campaignId, 'bestiario', slug(r.creature.key)]">{{ r.creature.namePt }}</a>
-                    <span class="row__en"><span lang="en">{{ r.creature.name }}</span> · SRD</span>
-                  </span>
-                  <span class="row__nd">
-                    ND {{ r.creature.challengeRating }}
-                    @if (r.aboveCap) {
-                      <span class="row__cap">Acima do ND máximo</span>
-                    }
-                  </span>
-                  <app-count-stepper
-                    class="row__step"
-                    [value]="r.count"
-                    [min]="0"
-                    [max]="entryMax"
-                    [minAt]="1"
-                    [noun]="r.creature.namePt"
-                    [minLabel]="'Tirar ' + r.creature.namePt + ' do encontro'"
-                    (valueChange)="setCount(r.creature.key, $event)"
-                  />
-                  <span class="row__each">{{ r.each }}</span>
-                  <span class="row__sub">{{ r.subtotal }}</span>
-                </li>
-              }
-            </ul>
+            <app-encounter-rows [rows]="rows()" [campaignId]="campaignId" [max]="entryMax" (count)="setCount($event.key, $event.value)" />
           }
 
           <app-creature-pick [campaignId]="campaignId" [disabled]="!canAddKind()" (picked)="add($event)" />
@@ -181,6 +165,21 @@
           </button>
           @if (draft.entries().length === 0) {
             <p class="act__why">Ponha pelo menos uma criatura.</p>
+          }
+          @if (keptAt()) {
+            @if (clearing()) {
+              <div class="act__ask" role="group" aria-labelledby="clear-q">
+                <p id="clear-q"><strong>Tirar o encontro do ponto?</strong> O ponto fica sem encontro guardado. O que está na tela não muda.</p>
+                <div class="act__row">
+                  <button type="button" matButton="outlined" class="act__go" data-initial-focus (click)="clearing.set(false)">Voltar</button>
+                  <button type="button" mat-flat-button class="act__go" [disabled]="clearBusy()" (click)="clearPoint()">Tirar o encontro</button>
+                </div>
+              </div>
+            } @else {
+              <button type="button" matButton="outlined" class="act__go" (click)="askClear()">
+                <mat-icon aria-hidden="true">delete</mat-icon>Tirar o encontro do ponto
+              </button>
+            }
           }
         </section>
       </aside>

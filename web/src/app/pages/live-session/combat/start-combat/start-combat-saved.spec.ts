@@ -4,6 +4,8 @@ import { provideRouter } from '@angular/router';
 
 import { DiceMode, DicePreference, Role } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../../gen/meurpg/characters/v1/characters_pb';
+import { TableRulesClient } from '../../../../core/campaigns/table-rules';
+import { EncounterMode } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { encounter } from '../../../../core/combat/combat-testing';
@@ -17,14 +19,14 @@ describe('StartCombatDialog with a saved encounter', () => {
   let close: ReturnType<typeof vi.fn>;
   let failures: unknown[];
 
-  async function setup(over: Partial<StartCombatData['saved']> = {}) {
+  async function setup(over: Partial<StartCombatData['saved']> = {}, withMap = true) {
     starts = [];
     failures = [];
     close = vi.fn();
     const data: StartCombatData = {
       campaignId: 'camp-1',
       mode: 'start',
-      map: { id: 'map-1', name: 'Estrada do Vale', image: { url: '/i', width: 2400, height: 1600 }, columns: 24, rows: 16 },
+      map: withMap ? { id: 'map-1', name: 'Estrada do Vale', image: { url: '/i', width: 2400, height: 1600 }, columns: 24, rows: 16 } : null,
       saved: {
         pointId: 'pt-1',
         pointName: 'Emboscada na ponte',
@@ -61,6 +63,8 @@ describe('StartCombatDialog with a saved encounter', () => {
             getCampaign: async () => ({ campaign: { diceMode: DiceMode.PLAYERS_CHOOSE } }),
           },
         },
+        // The table's rule says "Sem mapa": from a battle point it must not flip the dialog (item 4 of the fix round).
+        { provide: TableRulesClient, useValue: { get: async () => ({ saved: { combatStartsWithMap: false } }) } },
         {
           provide: CombatClient,
           useValue: {
@@ -120,6 +124,7 @@ describe('StartCombatDialog with a saved encounter', () => {
         { creatureKey: 'monster:hobgoblin', count: 4 },
         { creatureKey: 'monster:goblin', count: 6 },
       ],
+      mode: EncounterMode.GRID,
       monsterHp: 'average',
       monstersHidden: true,
       mapPointId: 'pt-1',
@@ -160,5 +165,23 @@ describe('StartCombatDialog with a saved encounter', () => {
     const { el } = await setup({ groups: [{ key: 'monster:goblin', namePt: 'Goblin', count: 40 }] });
     expect(flat(el.querySelector('.dlg__why'))).toBe('Um combate tem no máximo 40 combatentes.');
     expect(isOff(Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'Iniciar combate')!)).toBe(true);
+  });
+
+  it('from a battle point on a map with a grid the dialog opens on "Com mapa", whatever the table\'s rule says', async () => {
+    const { el } = await setup();
+    const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[name^="dice-"], .mode input[type=radio], app-dice-choice input[type=radio]'));
+    expect(radios.length).toBeGreaterThan(1);
+    expect(radios.find((r) => r.checked)?.parentElement?.textContent).toContain('Com mapa');
+  });
+
+  it('"Sem mapa" sends the monsters with no map point', async () => {
+    const { el, settle } = await setup();
+    const radios = Array.from(el.querySelectorAll<HTMLInputElement>('app-dice-choice input[type=radio]'));
+    radios.find((r) => r.parentElement?.textContent?.includes('Sem mapa'))!.click();
+    await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'Iniciar combate')!.click();
+    await settle();
+    expect(starts[0].extras['mode']).toBe(EncounterMode.THEATRE);
+    expect(starts[0].extras['monsters']).toHaveLength(4);
   });
 });

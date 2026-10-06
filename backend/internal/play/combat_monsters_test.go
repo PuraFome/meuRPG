@@ -196,9 +196,8 @@ func TestMR042_AddMonstersRefusals(t *testing.T) {
 	for _, n := range []int32{9, 9, 9, 8, 1} { // 4 + 36 = 40 in the end
 		a.mustAddMonsters(t, a.get(t, a.master), func(r *playv1.AddMonstersRequest) { r.Count = n })
 	}
-	if _, err := a.addMonsters(t, a.get(t, a.master), newKey(), func(r *playv1.AddMonstersRequest) { r.Count = 1 }); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("AddMonsters(past 40 combatants) = %v, want invalid_argument", err)
-	}
+	_, capErr := a.addMonsters(t, a.get(t, a.master), newKey(), func(r *playv1.AddMonstersRequest) { r.Count = 1 })
+	wantBlockedBy(t, "AddMonsters(past 40 combatants)", capErr, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS)
 	// A combat of another campaign is not found.
 	other := newArmed(t)
 	foreign := other.monsterSetup(t, false)
