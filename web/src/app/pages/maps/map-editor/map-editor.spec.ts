@@ -89,8 +89,11 @@ describe('MapEditor', () => {
   const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
   /** The painted squares are drawn once a frame: let one go by. */
   const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+  // The paint queue and the counts run on the fake clock; the painted squares are drawn on a real animation frame,
+  // so wait for one too (with the clock alone, a fast machine checked the text before any frame was drawn).
   const flush = async () => {
     await vi.advanceTimersByTimeAsync(400);
+    await frame();
     await settle();
   };
 
