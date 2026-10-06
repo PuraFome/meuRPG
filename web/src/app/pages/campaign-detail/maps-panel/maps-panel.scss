@@ -17,9 +17,21 @@
   color: var(--mr-ink-muted);
 }
 
-.maps__new {
-  align-self: flex-start;
+.maps__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2) var(--mr-space-3);
   margin-top: var(--mr-space-2);
+
+  // Two buttons that read as the same size; on a phone each takes the whole row (48 px).
+  > a {
+    min-height: 44px;
+
+    @media (max-width: 599.98px) {
+      flex: 1 1 100%;
+      min-height: 48px;
+    }
+  }
 }
 
 .row {

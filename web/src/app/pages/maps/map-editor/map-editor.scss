@@ -27,7 +27,7 @@
 }
 
 // The map stays on screen while the taller panel scrolls beside it, under the 64px app bar. Painting has short panels and the
-// fog settings under the map: no sticky there.
+// fog settings under the map, and a generated dungeon has its "Imagem" panel under the map: no sticky there.
 .layout__map {
   display: flex;
   flex-direction: column;

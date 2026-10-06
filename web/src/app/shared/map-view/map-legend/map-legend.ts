@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ViewPoint, ViewToken, tokenInitial, tokenKey } from '../map-geometry';
 import { pointHidden } from '../map-labels';
+import { StairMark } from '../../map-layers/stair-mark';
 import { MapToken } from '../map-token/map-token';
 
 /**
@@ -14,9 +15,9 @@ import { MapToken } from '../map-token/map-token';
  */
 @Component({
   selector: 'app-map-legend',
-  imports: [MapToken, MatIconModule],
+  imports: [MapToken, MatIconModule, StairMark],
   template: `
-    @if (shapes() && (showBattle() || showSubmap() || showScene() || showRevealed() || showHidden())) {
+    @if (shapes() && (showBattle() || showSubmap() || showStairUp() || showStairDown() || showScene() || showRevealed() || showHidden())) {
       <ul class="lg" aria-label="Legenda do mapa">
         @if (showBattle()) {
           <li>
@@ -29,6 +30,12 @@ import { MapToken } from '../map-token/map-token';
             <span class="lg__shape lg__shape--submap"><mat-icon>stairs</mat-icon></span
             >Submapa
           </li>
+        }
+        @if (showStairUp()) {
+          <li><span class="lg__stair"><app-stair-mark direction="up" /></span>Escada para cima</li>
+        }
+        @if (showStairDown()) {
+          <li><span class="lg__stair"><app-stair-mark direction="down" /></span>Escada para baixo</li>
         }
         @if (showScene()) {
           <li>
@@ -81,10 +88,13 @@ export class MapLegend {
     return points === null || points.some((p) => p.kind === kind);
   }
   protected readonly showBattle = computed(() => this.has(1));
-  protected readonly showSubmap = computed(() => this.has(2));
+  /** A generated dungeon's stairs (the point says so: `stairs`) are named for themselves, never as "Submapa". */
+  protected readonly showSubmap = computed(() => this.points() === null || this.points()!.some((p) => p.kind === 2 && !p.stairs));
+  protected readonly showStairUp = computed(() => this.points() !== null && this.points()!.some((p) => p.stairs === 1));
+  protected readonly showStairDown = computed(() => this.points() !== null && this.points()!.some((p) => p.stairs === 2));
   protected readonly showScene = computed(() => this.points() === null || this.points()!.some((p) => p.kind === 3 || p.kind === 0));
   /** The two states belong to the three plain kinds: a trap, a treasure and a light have their own marks in the pins' legend. */
-  private readonly plain = computed(() => (this.points() ?? []).filter((p) => p.kind <= 3));
+  private readonly plain = computed(() => (this.points() ?? []).filter((p) => p.kind <= 3 && !p.stairs));
   protected readonly showRevealed = computed(() => this.states() && (this.points() === null || this.plain().some((p) => !pointHidden(p))));
   protected readonly showHidden = computed(() => this.states() && (this.points() === null || this.plain().some((p) => pointHidden(p))));
 

@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+// The drawing is the generated image's: its paper floor and its flat dark wall (`dungeonimg`'s palette), with the wall mark the map draws over
+// the walls layer (a veil and the hatch). The same in both themes (the picture is not a surface of the app).
+.dp {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 8px;
+  background: #ece3cc;
+}
+
+.dp__svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dp__grid {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.dp__rock {
+  fill: #3a3740;
+}
+
+.dp__veil {
+  fill: color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent);
+}
+
+.dp__line {
+  stroke: color-mix(in srgb, var(--mr-map-token-ink) 70%, transparent);
+  stroke-width: 0.08;
+}
+
+// A stair is a badge about as wide as four fifths of a square, centred on it.
+.dp__stair {
+  position: absolute;
+  z-index: 2;
+  width: calc(80% / var(--cols));
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.dp__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-4);
+  margin: var(--mr-space-3) 0 0;
+  font-size: 15px;
+}

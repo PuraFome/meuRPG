@@ -121,6 +121,7 @@ type MapPoint struct {
 	LightPreset              *string
 	LightBrightFt            *int32
 	LightDimFt               *int32
+	Stairs                   *string
 }
 
 type MapPointReveal struct {

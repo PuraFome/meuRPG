@@ -37,6 +37,11 @@ export interface LightReach {
       </svg>
       <app-map-layers [layers]="layers()" [lightGlyphs]="true" [cursor]="cursor()" />
     }
+    @if (highlight(); as h) {
+      <svg class="room" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
+        <rect [attr.x]="h.x" [attr.y]="h.y" [attr.width]="h.width" [attr.height]="h.height" />
+      </svg>
+    }
     @if (reach(); as r) {
       @if (r.center) {
         <svg class="reach" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
@@ -70,6 +75,8 @@ export class EditorOverlay {
   /** Painting: the marks stand back at 40 %. */
   readonly faded = input(false);
   readonly selectedId = input<string | null>(null);
+  /** A room chosen in a generated dungeon's list: its floor, in squares, outlined with the solid 3 px accent (MAP-LANGUAGE-E10.md). */
+  readonly highlight = input<{ x: number; y: number; width: number; height: number } | null>(null);
 
   protected readonly gridPath = computed(() => {
     const parts: string[] = [];

@@ -128,6 +128,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/maps/map-new/map-new').then((m) => m.MapNew),
   },
   {
+    // "Gerar masmorra" (MR-010, E10-05), master only: the options, the server's preview and "Criar o mapa". Before `mapas/:mapId`, so
+    // "masmorra" is not read as a map's ID. Plain `loadComponent`, like "Novo mapa": its client is a root service that only lazy code imports.
+    path: 'campanhas/:id/mapas/masmorra',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/dungeon-new/dungeon-new').then((m) => m.DungeonNew),
+  },
+  {
     // The map's battle grid (MR-013, E6-02), master only: the squares of
     // 1,5 m that a combat measures movement in.
     path: 'campanhas/:id/mapas/:mapId/grade',

@@ -80,3 +80,11 @@
 .lg__you {
   color: var(--mr-ink-muted);
 }
+
+// A stair's mark in the legend: the badge the map draws, as big as the other marks' swatches.
+.lg__stair {
+  display: inline-flex;
+  flex: none;
+  width: 22px;
+  height: 22px;
+}

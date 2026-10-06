@@ -271,6 +271,12 @@ a.mr-list__row:hover .mr-list__name {
     overflow: hidden;
   }
 
+  // A stair: the badge itself (`app-stair-mark`, with its own outline and paper), not a swatch around it.
+  &--stair {
+    border: 0;
+    background: none;
+  }
+
   // Parede and Terreno difícil: the same hatches the map draws.
   &--wall {
     background-image:

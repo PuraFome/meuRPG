@@ -7,7 +7,8 @@
 }
 
 .grid,
-.reach {
+.reach,
+.room {
   position: absolute;
   inset: 0;
   display: block;
@@ -50,4 +51,17 @@
   stroke: var(--mr-map-token-ink);
   stroke-width: 2.5;
   stroke-dasharray: 8 6;
+}
+
+// The room chosen in the rooms list: a solid 3 px accent frame (a dashed red one is a trap's area).
+.room {
+  z-index: 1;
+  overflow: visible;
+
+  rect {
+    fill: none;
+    stroke: var(--mr-map-accent);
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+  }
 }

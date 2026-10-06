@@ -26,6 +26,8 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
+import { DungeonInfo } from '../../../core/maps/dungeon-info';
+import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
@@ -52,6 +54,8 @@ import { GridPanel } from '../grid-panel/grid-panel';
 import { LayersPanel } from '../layers-panel/layers-panel';
 import { PaintSurface } from '../paint-surface/paint-surface';
 import { DoorPanel } from '../door-panel/door-panel';
+import { DungeonImage } from '../dungeon-image/dungeon-image';
+import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
 import { EditorPainting, type Occupant } from './editor-painting';
 import { LightPointPanel } from '../point-kinds/light-point-panel';
 import { TrapPointPanel } from '../point-kinds/trap-point-panel';
@@ -105,6 +109,8 @@ interface PointPanelApi {
   imports: [
     CoverDegrees,
     DoorPanel,
+    DungeonImage,
+    DungeonRooms,
     EditorBar,
     EditorOverlay,
     FogPanel,
@@ -135,6 +141,10 @@ export class MapEditor {
   /** Saves each point's and token's moves one at a time (see `MoveSaves`). */
   private readonly moves = new MoveSaves();
   private readonly roster = inject(RosterClient);
+  /** What the server says of a generated dungeon: its rooms list and whether the image is still the generator's (the master only; `null` on any other map). */
+  protected readonly dungeon = new DungeonInfo(inject(DungeonsClient));
+  /** The room outlined on the map (chosen in the rooms list). */
+  protected readonly roomOutline = signal<RoomOutline | null>(null);
   private readonly lightPresets = inject(LightPresets);
   private readonly trapPresets = inject(TrapPresets);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -204,6 +214,9 @@ export class MapEditor {
   private countsTimer: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly mapId = computed(() => this.map()?.id ?? '');
+  private readonly imageId = computed(() => this.map()?.image?.id ?? '');
+  /** The server says (to the master only) whether the map is a generated dungeon: only then are its rooms asked for. */
+  private readonly isDungeon = computed(() => this.map()?.generatedDungeon ?? false);
   protected readonly image = computed(() => {
     const image = this.state().map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;
@@ -264,6 +277,24 @@ export class MapEditor {
       );
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.countsTimer));
+
+    // A generated dungeon's rooms: read when a map opens and when its image changes ("Gerada pelo app" is about the image).
+    effect(() => {
+      const id = this.mapId();
+      void this.imageId();
+      const dungeon = this.isDungeon();
+      untracked(() => {
+        if (id === '' || !dungeon) {
+          this.dungeon.clear();
+          return;
+        }
+        void this.dungeon.load(this.campaignId(), id);
+      });
+    });
+    effect(() => {
+      void this.mapId();
+      untracked(() => this.roomOutline.set(null));
+    });
 
     // The light's rings go with the selection of a light.
     effect(() => {
@@ -635,6 +666,28 @@ export class MapEditor {
   /** The map after a change of the grid or the fog: the page's state takes it, the layers read again by themselves. */
   protected onMapChanged(map: MapMessage): void {
     this.state().setMap(map);
+  }
+
+  /** "Redesenhar" sends the strokes that still wait first, so the new image has the walls just painted. */
+  protected readonly beforeRedraw = async (): Promise<string | null> => {
+    await this.paint.queue.flush();
+    return this.paint.queue.status() === 'error' ? 'Há traços que o servidor ainda não recebeu. Espere o aviso “Tudo salvo” e tente de novo.' : null;
+  };
+
+  /** A room chosen in the list is outlined, and the map goes to it (and back to the whole map when it is let go). */
+  protected onRoomOutline(room: RoomOutline | null): void {
+    this.roomOutline.set(room);
+    const m = this.map();
+    if (!room || !m || m.gridColumns <= 0 || m.gridRows <= 0) {
+      this.view()?.fit();
+      return;
+    }
+    const scale = Math.min(3, Math.max(1.2, (0.55 * m.gridColumns) / room.width));
+    this.view()?.focusOn({ xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000, yBp: ((room.y + room.height / 2) / m.gridRows) * 10000 }, scale);
+  }
+
+  protected reloadDungeon(): void {
+    void this.dungeon.load(this.campaignId(), this.mapId());
   }
 
   protected onForgotten(): void {

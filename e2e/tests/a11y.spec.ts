@@ -3553,3 +3553,97 @@ test('o bestiário passa no axe e nas conferências de layout no tema claro, no 
   test.setTimeout(300_000);
   await scanBestiaryScreens(browser, 'light', 320);
 });
+
+// The dungeon generator (slice 10.14b, MR-010, RN-26, RN-10; E10-05 1 to 6): the "Gerar masmorra" page (the options and the server's preview,
+// a refused size, the preview loading and failing, a map being created), the generated map with its rooms list (and a room chosen),
+// "Redesenhar" asked in place, and the "Imagem" panel in "Pintar". On a phone the page only says it is for a computer, and the master reads
+// the rooms list under the map. Every state goes through axe and the alignment checks.
+async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  try {
+    await m.goto('/');
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade masmorra ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    expect(made.ok(), await made.text()).toBeTruthy();
+    const mapId = (await made.json()).map.id as string;
+    const route = `/campanhas/${campaignId}/mapas/masmorra`;
+    const preview = m.getByRole('img', { name: /^Prévia da masmorra/ });
+
+    await open(m, `/campanhas/${campaignId}`);
+    await expect(m.getByRole('link', { name: 'Gerar masmorra' })).toBeVisible();
+    await expectScreenPasses(m, `Campanha, "Gerar masmorra" ao lado de "Novo mapa" ${where}`);
+
+    if (phone) {
+      await open(m, route);
+      await expect(m.getByText('Gerar masmorra é no notebook.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra no celular ${where}`);
+    } else {
+      await open(m, route);
+      await expect(preview).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, as opções e a prévia ${where}`);
+      await m.getByRole('radio', { name: 'Outro' }).click();
+      await m.getByRole('textbox', { name: 'Quadrados no lado maior' }).fill('130');
+      await expect(m.getByText('Corrija o tamanho para ver a masmorra.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, um tamanho recusado ${where}`);
+
+      // The preview loading, and failing.
+      await m.route('**/*DungeonService/PreviewDungeon', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+      await m.goto(route);
+      await expect(m.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, a prévia com falha ${where}`);
+      await m.unroute('**/*DungeonService/PreviewDungeon');
+      await m.route('**/*DungeonService/PreviewDungeon', () => new Promise(() => undefined));
+      await m.goto(route);
+      await expect(m.getByRole('status').filter({ hasText: 'Carregando a prévia...' })).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, carregando a prévia ${where}`);
+      await m.unroute('**/*DungeonService/PreviewDungeon');
+
+      // Creating: the server does not answer, so the steps stay on screen.
+      await m.route('**/*DungeonService/CreateDungeonMap', () => new Promise(() => undefined));
+      await m.goto(route);
+      await expect(preview).toBeVisible();
+      await m.getByRole('button', { name: 'Criar o mapa' }).click();
+      await expect(m.getByText('Criando o mapa. Costuma levar poucos segundos.')).toBeVisible();
+      await expectScreenPasses(m, `Gerar masmorra, criando o mapa ${where}`);
+      await m.unroute('**/*DungeonService/CreateDungeonMap');
+    }
+
+    // The generated map: on a computer the editor with the rooms list; on a phone the list under the map.
+    await open(m, `/campanhas/${campaignId}/mapas/${mapId}`);
+    await expect(m.getByRole('heading', { name: 'Salas', exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Mapa gerado, a lista das salas ${where}`);
+    await m.locator('app-dungeon-rooms .room__head').nth(1).click();
+    await expect(m.locator('app-dungeon-rooms .room--on')).toHaveCount(1);
+    await expectScreenPasses(m, `Mapa gerado, uma sala escolhida ${where}`);
+    if (!phone) {
+      await m.getByRole('region', { name: 'Imagem' }).getByRole('button', { name: 'Redesenhar' }).click();
+      await expect(m.getByRole('heading', { name: 'Redesenhar a imagem?' })).toBeVisible();
+      await expectScreenPasses(m, `Mapa gerado, "Redesenhar" perguntado ${where}`);
+      await m.getByRole('button', { name: 'Voltar' }).click();
+      await m.getByRole('radio', { name: 'Pintar' }).click();
+      await expect(m.getByRole('region', { name: 'Imagem' })).toBeVisible();
+      await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+      await expectScreenPasses(m, `Mapa gerado, "Pintar" com o painel Imagem ${where}`);
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+for (const [scheme, width, label] of [
+  ['light', 1280, 'tema claro, no desktop'],
+  ['dark', 390, 'tema escuro, no celular'],
+  ['dark', 1024, 'tema escuro, no desktop de 1024'],
+  ['light', 320, 'tema claro, no celular de 320'],
+] as const) {
+  test(`o gerador de masmorras passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-010'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDungeonScreens(browser, scheme, width);
+  });
+}

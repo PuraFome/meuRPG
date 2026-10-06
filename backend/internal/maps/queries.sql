@@ -86,6 +86,7 @@ RETURNING *;
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns, m.grid_factor,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
+       EXISTS (SELECT 1 FROM generated_dungeons AS gd WHERE gd.map_id = m.id) AS generated_dungeon,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
         WHERE p.map_id = m.id AND p.kind <> 'light'
@@ -251,15 +252,16 @@ SELECT count(*)::INT4 AS point_count FROM map_points
 WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
--- A new point starts hidden (revealed_at NULL).
+-- A new point starts hidden (revealed_at NULL), unless the caller gives revealed_at: a generated
+-- dungeon's stairs are born revealed, like a door (MAP-LANGUAGE-E10).
 INSERT INTO map_points (
     map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
-    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs
 )
 VALUES (
     sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
     sqlc.narg(target_map_id), sqlc.narg(trap), sqlc.narg(trap_state), sqlc.narg(trap_triggered_at), sqlc.narg(treasure_value_po),
-    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now)
+    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now), sqlc.narg(revealed_at), sqlc.narg(stairs)
 )
 RETURNING *;
 
