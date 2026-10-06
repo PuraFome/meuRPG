@@ -613,7 +613,8 @@ message TableRules {
   // SetTableRules.
   DiceMode dice_mode = 1;
   // Whether "Iniciar combate" starts with a map by default (the combat slice
-  // 10.5b reads it). Default true.
+  // 10.5b reads it: StartEncounter without a mode starts a combat on a map when
+  // this is true and a combat without a map when it is false). Default true.
   bool combat_starts_with_map = 2;
   // Whether a map created from now on starts with the fog of war on. Maps that
   // exist keep theirs. Default false.

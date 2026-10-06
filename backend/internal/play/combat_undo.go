@@ -59,7 +59,12 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		}
 		// The offers a move made are written before the move's own event, the same
 		// way: the undo acts on the move.
+		// One the master made by hand (a combat without a grid) is no part of a move:
+		// it closes the chain, and the master withdraws it instead.
 		if e.Kind == eventOpportunityOffered {
+			if ev, err := readEvent(e.Payload); err == nil && ev.ByHand {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
 			continue
 		}
 		// A door a move opened is written before the move's own event too. An undo of

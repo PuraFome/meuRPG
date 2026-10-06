@@ -254,10 +254,10 @@ func (s *Service) GetTurnOptions(
 			continue // a saving throw, not an attack roll: the spells slice
 		}
 		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{
-			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt())),
+			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt()), isTheatre(enc)),
 		})
 	}
-	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts); err != nil {
+	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
@@ -277,7 +277,7 @@ func (s *Service) GetTurnOptions(
 // the spell cannot reach it, how many targets it takes and, for Magic Missile,
 // the darts of each slot level. Spells that cannot be cast now are left out:
 // they carry their reason and need no targets.
-func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrain grid.Terrain, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions) ([]*playv1.SpellTargets, error) {
+func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrain grid.Terrain, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions, theatre bool) ([]*playv1.SpellTargets, error) {
 	type entry struct {
 		key   string
 		level int
@@ -301,7 +301,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 			return nil, err
 		}
 		st := &playv1.SpellTargets{
-			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp),
+			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 		}
@@ -318,8 +318,10 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 // spellTargetList lists who a spell can target as the viewer sees them: the
 // caster itself and every combatant that is not defeated (one at 0 hit points
 // can be healed), in turn order, with the distance and whether the spell's range
-// cannot reach it. A spell that stays on the caster lists only the caster.
-func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
+// cannot reach it. A spell that stays on the caster lists only the caster. In a
+// combat without a grid (theatre) there is no distance and nothing is too far: the
+// master judges the range (RN-25).
+func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell, theatre bool) []*playv1.TargetInReach {
 	reach, limited := reachOf(sp)
 	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
@@ -330,6 +332,10 @@ func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.
 		cover := coverAgainst(terrain, caster, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
+		if theatre {
+			out = append(out, target)
+			continue
+		}
 		if dist, ok := distanceFt(caster, t); ok {
 			target.DistanceFt = &dist
 			target.TooFar = limited && t.ID != caster.ID && dist > reach
@@ -362,8 +368,10 @@ func disableAll(o *rulesv1.TurnOptions, code rulesv1.DisabledReasonCode) {
 // targetsFor lists who the combatant's attack of the given reach can target,
 // as the viewer sees them: not itself, not a defeated one, not a hidden one
 // for a player (RN-10), in turn order, each with the distance and whether it
-// is too far.
-func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32) []*playv1.TargetInReach {
+// is too far. In a combat without a grid (theatre) there is no distance and
+// nothing is too far: every combatant the rules allow is a target, and the master
+// judges the reach (RN-25).
+func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32, theatre bool) []*playv1.TargetInReach {
 	pool := coverPool(cs, v)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
@@ -373,6 +381,10 @@ func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Com
 		cover := coverAgainst(terrain, attacker, t, pool)
 		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
 		target.Untargetable = cover.total() && !v.master
+		if theatre {
+			out = append(out, target)
+			continue
+		}
 		if dist, ok := distanceFt(attacker, t); ok {
 			target.DistanceFt = &dist
 			target.TooFar = dist > reach
@@ -567,7 +579,7 @@ func (s *Service) RollAttack(
 			// the player saw leave is theirs to hit even if it is out of their sight now
 			// (an NPC that retreated into the dark).
 			if o, oerr := pendingOffer(ctx, c, offerID); oerr == nil && o.ReactorID == attacker.ID && o.MoverID == targetID {
-				if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == targetID }); i >= 0 && v.seesAt(cs[i], grid.Square{Col: int(o.LeftCol), Row: int(o.LeftRow)}) {
+				if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == targetID }); i >= 0 && v.seesAtOffer(cs[i], o) {
 					target, err = cs[i], nil
 				}
 			}
@@ -652,15 +664,19 @@ func (s *Service) RollAttack(
 				}
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 			}
-			if !placed(attacker) || !placed(target) { // RN-21: the reach is a player's limit
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
-			}
-			// An opportunity attack comes right before the mover leaves the reach, so
-			// it asks no reach check (the mover has moved already).
-			dist, _ := distanceFt(attacker, target)
-			if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
-					func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
+			// RN-21: the reach is a player's limit on a map. Without one (RN-25) nobody
+			// has a square and the master judges the reach, so nothing is checked.
+			if !isTheatre(c.enc) {
+				if !placed(attacker) || !placed(target) {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
+				}
+				// An opportunity attack comes right before the mover leaves the reach, so
+				// it asks no reach check (the mover has moved already).
+				dist, _ := distanceFt(attacker, target)
+				if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
+						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
+				}
 			}
 		}
 		// D4: the cover the target has against this attacker. Total cover (a wall on
@@ -670,8 +686,8 @@ func (s *Service) RollAttack(
 		// cover is measured with it on the square it left the reach at, not where
 		// it stands now (a door it walked through is not between the two).
 		coverTarget := target
-		if offerID != "" {
-			coverTarget.GridCol, coverTarget.GridRow = &offer.LeftCol, &offer.LeftRow
+		if offerID != "" && offer.LeftCol != nil && offer.LeftRow != nil { // an offer made by hand has no square
+			coverTarget.GridCol, coverTarget.GridRow = offer.LeftCol, offer.LeftRow
 		}
 		known, err := c.sight.knownTerrain(ctx, c.tx, v)
 		if err != nil {
@@ -756,7 +772,9 @@ func (s *Service) RollAttack(
 				return nil, fmt.Errorf("answer the opportunity offer: %w", err)
 			}
 			made.OfferID = offer.ID
-			made.Col, made.Row = offer.LeftCol, offer.LeftRow // where the mover was when it was attacked
+			if offer.LeftCol != nil && offer.LeftRow != nil {
+				made.Col, made.Row = *offer.LeftCol, *offer.LeftRow // where the mover was when it was attacked
+			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

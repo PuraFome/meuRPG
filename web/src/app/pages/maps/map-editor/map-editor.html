@@ -150,6 +150,9 @@
         @if (paint.painting() && paint.settings().tool === 'cover') {
           <app-cover-degrees />
         }
+        @if (paint.painting() && paint.settings().tool === 'door') {
+          <app-door-panel [refusal]="paint.doorRefusal()" [standing]="paint.doorWarning()" [erasing]="paint.doorWarningErase()" (confirm)="paint.confirmDoor(mapId())" (cancel)="paint.cancelDoor()" />
+        }
         <app-layers-panel [layers]="paint.painted.layers()" [visible]="paint.visible()" [status]="paint.queue.status()" [active]="paint.canPaint()" [problem]="paint.saveProblem()" [retryable]="paint.queue.retryable()" (visibleChange)="paint.visible.set($event)" (retry)="paint.retrySave()" />
         @if (map(); as m) {
           <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="paint.erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" (blocked)="refreshFlags()" />

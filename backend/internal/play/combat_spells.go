@@ -332,7 +332,7 @@ func (s *Service) CastSpell(
 			if len(targs) > 0 {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
-		} else if err := s.checkTargets(v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+		} else if err := s.checkTargets(v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
 			return nil, err
 		}
 		var summon *summoning
@@ -476,9 +476,9 @@ func (s *Service) CastSpell(
 // checkTargets checks, for a player, who a spell may touch: how many targets
 // (the master is not held to the number), that Magic Missile's darts add up,
 // and that each target is on the map and in range (the master is never held to
-// the range), and that no target of a single-target spell has total cover (D4).
+// the range, and nobody is without a grid: RN-25), and that no target of a single-target spell has total cover (D4).
 // It does not read the database.
-func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int) error {
+func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int, theatre bool) error {
 	bad := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
 	switch {
 	case selfOnly(sp):
@@ -518,7 +518,7 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, coverPool(cs, v)).total() {
 			return errCoverTotal()
 		}
-		if t.ID == caster.ID || !limited {
+		if t.ID == caster.ID || !limited || theatre { // without a grid the master judges the range (RN-25)
 			continue
 		}
 		if !placed(caster) || !placed(t) {

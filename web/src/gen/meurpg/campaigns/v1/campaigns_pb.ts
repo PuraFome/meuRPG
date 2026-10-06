@@ -884,7 +884,8 @@ export type TableRules = Message<"meurpg.campaigns.v1.TableRules"> & {
 
   /**
    * Whether "Iniciar combate" starts with a map by default (the combat slice
-   * 10.5b reads it). Default true.
+   * 10.5b reads it: StartEncounter without a mode starts a combat on a map when
+   * this is true and a combat without a map when it is false). Default true.
    *
    * @generated from field: bool combat_starts_with_map = 2;
    */

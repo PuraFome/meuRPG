@@ -5,20 +5,21 @@ import { MatIconModule } from '@angular/material/icon';
 import type { MapLayers } from '../../../core/maps/layers';
 import { type PaintSaveStatus } from '../../../core/maps/paint-queue';
 import { LIGHT_LABEL, type PaintTool, layerLines } from '../../../core/maps/paint-tools';
+import { DoorMark } from '../../../shared/map-layers/door-mark';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
 
 /** Which layers the master's map shows (a view setting of his drawing: it changes nothing for anyone). */
 export type LayerVisibility = Readonly<Record<PaintTool, boolean>>;
 
 /**
- * "Camadas" (E9-01 1): the four layers the master paints, each with how many squares it holds and a switch that
+ * "Camadas" (E9-01 1, and "Portas" of Etapa 10): the five layers the master paints, each with how many squares it holds and a switch that
  * shows or hides it on his own map (his view only), the same drawings as the map's legend, and the "Tudo salvo"
  * tag that says whether the strokes reached the server ("Salvando…", or "Não salvou" with "Tentar de novo").
  * The light's three glyphs are named under its row. Presentational: the editor owns the layers and the queue.
  */
 @Component({
   selector: 'app-layers-panel',
-  imports: [MatButtonModule, MatIconModule, RevealSwitch],
+  imports: [DoorMark, MatButtonModule, MatIconModule, RevealSwitch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layers-panel.html',
   styleUrl: './layers-panel.scss',
