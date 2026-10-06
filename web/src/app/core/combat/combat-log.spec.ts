@@ -225,6 +225,11 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(logLine(cleared)?.text).toBe(' ficou sem condições');
   });
 
+  it('writes "Toren abriu a porta." for a door a move opened (RN-26): the actor, then the sentence', () => {
+    const line = logLine(entry({ kind: CombatLogKind.DOOR_OPENED, actorLabel: 'Toren', door: { col: 4, row: 2 } } as never));
+    expect(line).toMatchObject({ actor: 'Toren', icon: 'door_open', text: ' abriu a porta' });
+  });
+
   it('writes the Wild Shape lines: the form, and why it ended, with the number only where the server sent it (RN-20)', () => {
     const ws = (over: { started?: boolean; endReason?: WildShapeEndReason; carriedDamage?: number }) =>
       entry({ kind: CombatLogKind.WILD_SHAPE, actorLabel: 'Sálvia', wildShape: { beastKey: 'monster:wolf', beastNamePt: 'Lobo', started: false, endReason: WildShapeEndReason.LEFT, carriedDamage: 0, ...over } } as never);

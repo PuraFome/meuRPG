@@ -104,6 +104,8 @@ import { CreatureBlock } from './creature-turn/creature-block';
 import { CreatureHero } from './creature-turn/creature-hero';
 import { MineTabs } from './mine-tabs/mine-tabs';
 import { openSheet } from './sheet-host';
+import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
+import type { DoorSquare } from '../../../core/maps/layers';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
@@ -405,7 +407,10 @@ export class CombatView {
     return { usage: v?.spellSlots ?? [], pact: v?.pactSlots ?? null };
   });
   /** The map's painted layers (walls, difficult terrain, cover), read again when the map's `layers_revision` changes. */
-  private readonly layersState = new LayersState(async (mapId) => this.maps.layers(this.campaignId(), mapId));
+  private readonly layersState = new LayersState(
+    async (mapId) => this.maps.layers(this.campaignId(), mapId),
+    () => !this.isMaster(),
+  );
   /** On a fog map the player's layers come with the vision (filtered to what they see); otherwise they are the map's. */
   protected readonly fogVision = computed(() => (this.isMaster() ? null : (this.fog()?.vision() ?? null)));
   protected readonly layers = computed(() => (this.fogVision() ? (this.fog()?.layers() ?? this.layersState.layers()) : this.layersState.layers()));
@@ -415,6 +420,8 @@ export class CombatView {
   protected readonly reachOn = signal(false);
   /** "Você parou antes: algo bloqueou o caminho.": what the last move said when it stopped short. */
   protected readonly moveNote = signal('');
+  /** The last move stopped before a locked door: the "Mover" page stays open and says so (RN-26). */
+  protected readonly lockedDoor = signal(false);
   /** The reach the master's map draws, as the server said it. */
   protected readonly masterReach = computed<Reach | null>(() => {
     const e = this.encounter();
@@ -1129,6 +1136,21 @@ export class CombatView {
     }).subscribe();
   }
 
+  /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
+  protected openDoor(door: DoorSquare): void {
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    const data: DoorSheetData = {
+      campaignId: this.campaignId(),
+      mapId: e.mapId,
+      door,
+      wall: this.layers().walls.some((w) => w.col === door.col && w.row === door.row),
+    };
+    openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
+  }
+
   /** The "?" of a spell: its description (the SRD's, read once through the catalog), a sheet on a phone. */
   protected describeSpell(key: string, name: string): void {
     openSpellDetails(this.dialog, this.bottomSheet, this.spellDetailsData(key, name));
@@ -1585,8 +1607,14 @@ export class CombatView {
       { xBp: drop.col, yBp: drop.row },
       {
         // The server decides every move (reach, walls, creatures): a refusal puts the token back.
-        save: async (to) =>
-          this.state().apply((await this.api.move(this.campaignId(), e.id, c.id, to.xBp, to.yBp)).encounter),
+        save: async (to) => {
+          const res = await this.api.move(this.campaignId(), e.id, c.id, to.xBp, to.yBp);
+          this.state().apply(res.encounter);
+          if (res.lockedDoor) {
+            // The master walks through closed doors but a locked one stops him too (RN-26).
+            this.error.set('Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.');
+          }
+        },
         failed: (saved, err) => {
           this.state().applyMove({ encounterId: e.id, combatantId: c.id, col: saved.xBp, row: saved.yBp });
           this.error.set(combatErrorMessage(err, 'mover o token'));
@@ -1631,6 +1659,10 @@ export class CombatView {
   }
 
   private afterMove(ok: boolean): void {
+    if (ok && this.lockedDoor()) {
+      // A locked door stopped the move: the page stays, with the notice (E10-05 9). The token already stands where it stopped.
+      return;
+    }
     if (ok) {
       this.state().moving.set(false);
     } else {
@@ -1649,10 +1681,13 @@ export class CombatView {
     this.busy.set(true);
     this.error.set('');
     this.moveNote.set('');
+    this.lockedDoor.set(false);
     try {
       const res = await call(e);
       this.state().apply(res.encounter);
-      if (res.stoppedEarly) {
+      if (res.lockedDoor) {
+        this.lockedDoor.set(true);
+      } else if (res.stoppedEarly) {
         // Never what stopped it: the player did not see it.
         this.moveNote.set('Você parou antes: algo bloqueou o caminho.');
       }
@@ -1673,6 +1708,7 @@ export class CombatView {
   }
 
   protected closeFullPage(): void {
+    this.lockedDoor.set(false);
     this.moverId.set('');
     this.dropStart.set(null);
     this.state().moving.set(false);
@@ -1680,6 +1716,7 @@ export class CombatView {
   }
 
   protected openMove(): void {
+    this.lockedDoor.set(false);
     this.moverId.set('');
     this.dropStart.set(null);
     this.moveError.set('');
@@ -1690,6 +1727,7 @@ export class CombatView {
   protected openCreatureMove(id: string): void {
     this.moverName = this.encounter()?.combatants.find((c) => c.id === id)?.label ?? '';
     this.moverId.set(id);
+    this.lockedDoor.set(false);
     this.dropStart.set(null);
     this.moveError.set('');
     this.state().moving.set(true);

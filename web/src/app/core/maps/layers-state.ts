@@ -16,7 +16,11 @@ export class LayersState {
   private key = '';
   private generation = 0;
 
-  constructor(private readonly load: (mapId: string) => Promise<PackedLayers>) {}
+  constructor(
+    private readonly load: (mapId: string) => Promise<PackedLayers>,
+    /** The viewer is a player: the doors are decoded with the guard (RN-10). */
+    private readonly player: () => boolean = () => false,
+  ) {}
 
   /** Shows the layers of `mapId` at `revision`; `null` clears them. A read for
    * the same map and revision is not repeated. */
@@ -34,7 +38,7 @@ export class LayersState {
     try {
       const packed = await this.load(mapId);
       if (generation === this.generation) {
-        this.layers.set(decodeLayers(packed));
+        this.layers.set(decodeLayers(packed, this.player()));
       }
     } catch {
       if (generation === this.generation) {

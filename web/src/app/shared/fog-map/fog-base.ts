@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 
-import type { MapLayers } from '../../core/maps/layers';
+import { type MapLayers, hasLayers } from '../../core/maps/layers';
 import { Sight } from '../../core/maps/vision';
 import {
   type TileProgress,
@@ -98,8 +98,15 @@ export class FogBase {
       return null;
     }
     const on = (s: { col: number; row: number }) => v.states[s.row * v.columns + s.col] === Sight.Remembered;
-    const out = { ...l, walls: l.walls.filter(on), terrain: l.terrain.filter(on), half: l.half.filter(on), threeQuarters: l.threeQuarters.filter(on) };
-    return out.walls.length + out.terrain.length + out.half.length + out.threeQuarters.length > 0 ? out : null;
+    const out = {
+      ...l,
+      walls: l.walls.filter(on),
+      terrain: l.terrain.filter(on),
+      half: l.half.filter(on),
+      threeQuarters: l.threeQuarters.filter(on),
+      doors: (l.doors ?? []).filter(on),
+    };
+    return hasLayers(out) ? out : null;
   });
   protected readonly grey = computed(() => this.blocks().filter((b) => b.shade === 'grey'));
   protected readonly dark = computed(() => this.blocks().filter((b) => b.shade !== 'grey'));

@@ -184,6 +184,7 @@
 // The cost beside the chosen square ("2,1 m"): a label, not a colour. White with garnet
 // words in the light theme, as the artboard draws it; dark with white words in the dark one.
 .cm__cost {
+  pointer-events: none;
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
@@ -242,6 +243,8 @@
 
 // The "Vez" word above the token whose turn it is.
 .cm__turn {
+  // The "Vez" tag never catches a tap: a door under it (the master's sheet) stays reachable.
+  pointer-events: none;
   position: absolute;
   bottom: calc(100% + 7px);
   left: 50%;

@@ -29,6 +29,12 @@ describe('combat errors', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_COVER_TOTAL } as never)).toMatch(/cobertura total/);
   });
 
+  it('says a locked door stopped the very first step: nothing moved, and only the master unlocks it (RN-26)', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.DOOR_LOCKED } as never)).toBe(
+      'A porta está trancada: você não saiu do lugar. Só o mestre a destranca.',
+    );
+  });
+
   it('says the turn waits for an opportunity attack (MR-034)', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.OPPORTUNITY_PENDING } as never)).toMatch(/Esperando a reação do mestre/);
   });

@@ -1925,7 +1925,7 @@ flowchart LR
 
 ### As portas (Etapa 10, fatia 10.6c)
 
-As portas (MR-010, RN-26) são a quinta camada do mapa: o `maps` as guarda e as lê por jogador, o `rules/grid` e o `rules/vision` as usam, e o `play` abre uma porta fechada quando um movimento entra nela. O servidor está pronto; a tela do mestre é da fatia 10.14 e o gerador de masmorras (10.6b a 10.6d) é quem as preenche.
+As portas (MR-010, RN-26) são a quinta camada do mapa: o `maps` as guarda e as lê por jogador, o `rules/grid` e o `rules/vision` as usam, e o `play` abre uma porta fechada quando um movimento entra nela. O servidor está pronto; as telas (editor, sessão e combate) são da fatia 10.14a, descritas [abaixo](#as-portas-no-web-etapa-10-fatia-1014a), e o gerador de masmorras (10.6b a 10.6d) é quem as preenche.
 
 ```mermaid
 flowchart LR
@@ -1953,6 +1953,22 @@ flowchart LR
 - **Quem recebe a linha.** Num mapa com névoa, o `stampDoor` grava `fogged` e `seen_by` em todo `door_opened`, seja quem for que abriu: os jogadores cujo terreno conhecido (visto agora ou lembrado, antes da mudança) tinha a porta, mais o jogador de quem andou. Os outros não recebem a linha nem o quadrado. Num mapa sem névoa, todos, exceto se o combatente está escondido (nunca uma linha com um combatente escondido, RN-20). A porta lembrada mostra o estado de agora: uma porta aberta num corredor que o jogador lembra muda para ele e manda `vision_changed`.
 - **Pintar.** O servidor compara o que o jogador lê (paredes e portas como ele as conhece) antes e depois de pintar portas: se não mudou (trancar uma porta fechada, uma secreta sobre uma parede), a revisão sobe no contador do mestre, como a luz, e só o mestre recebe o `map_changed`. Uma porta pintada sobre uma criatura não é conferida: numa névoa a criatura fica escondida até a porta abrir (o app avisa o mestre antes).
 - **O que o jogador nunca recebe** (RN-10): a porta secreta (a camada das paredes tem uma parede nesse quadrado e a das portas, nada), o fato de uma porta estar trancada antes de tentar (a camada diz fechada) e, num mapa com névoa, qualquer porta de um quadrado que ele não vê nem lembra. `TestRN10_PlayersNeverSeeASecretDoor` lê as respostas como o app (JSON).
+
+### As portas no web (Etapa 10, fatia 10.14a)
+
+As telas das portas (MR-010, RN-26, RN-10; desenhos E10-05, estados 7 a 11) só desenham o que o servidor manda e pintam pelo `PaintMapCells`: nada de regra no navegador.
+
+| Peça | O que faz |
+| --- | --- |
+| `core/maps/layers.ts` | `decodeLayers(packed, player)` lê a camada `doors` (4 bits por quadrado: o quadrado `n` é o nibble baixo do byte `n / 2` quando `n` é par e o alto quando é ímpar) em `DoorSquare` (`col`, `row`, `state` 1 a 5 e `axis`, o sentido do vão, que segue a regra do `planDoor`: chão dos dois lados). Para o jogador (`player`), a trava do cliente (RN-10) desenha uma trancada como fechada e descarta uma secreta, mesmo que viesse. `doorCounts` conta por tipo, para a legenda e para a linha "Portas" de "Camadas". |
+| `shared/map-layers` | `app-door-mark` (uma marca por tipo, também na legenda e nos botões do editor), `app-map-layers` (desenha as portas que chegam, no editor, na névoa e no combate), `app-map-layers-legend` (as portas do mapa logo depois de "Parede") e `app-door-picks` (um botão transparente por porta, só na tela do mestre). |
+| `core/maps/door-paint.ts` | `planDoor` é a regra de um toque da ferramenta "Porta": devolve as escritas, na **ordem segura** (a porta primeiro e depois a parede some; para tirar, a parede volta e depois a porta some, nunca um vão no meio; se a segunda for recusada, o editor lê as camadas de novo e fica uma porta sobre uma parede), ou a recusa. `EditorPainting` as aplica e as manda pela mesma fila das outras camadas (a parede primeiro, depois a porta), e confere os tokens do mapa (`Occupant`) antes de uma porta que esconde quem está nela. |
+| `pages/live-session/door-sheet` | A folha da porta (`openSheet`: folha de baixo no celular, diálogo do tablet para cima): pinta `OPEN`, `CLOSED` ou `LOCKED` na hora, e `CLOSED` para revelar uma secreta (apagando antes a parede pintada embaixo, se houver). O mapa se atualiza pelo stream (`map_changed`), como com qualquer pintura. |
+| Combate | `MoveCombatant` agora devolve `lockedDoor` (`MoveResult`), e a página "Mover" fica aberta com o aviso; a recusa `DOOR_LOCKED` entra pelo `combatErrorMessage`; o registro escreve `COMBAT_LOG_KIND_DOOR_OPENED` como "Toren abriu a porta.". |
+
+- **Só se desenha o que chega.** A camada do jogador não tem a trancada (vem como fechada) nem a secreta (é parede, na camada das paredes), então nenhuma marca do web precisa saber esconder nada: o cadeado e a porta secreta aparecem só onde a camada do mestre os traz. A legenda do jogador nunca diz "trancada" nem "secreta".
+- **Fora do combate o jogador não move o token** (`PlaceMapToken` é do mestre), então "o jogador anda até a porta" é só o combate; na exploração, o mestre abre, fecha e tranca pela folha da porta.
+- **Onde o mestre toca numa porta:** o mapa da sessão com a névoa ligada e o mapa do combate (a página da sessão, não o recorte do celular). O mapa da sessão sem névoa é só a imagem, sem as camadas, e não tem as portas por cima.
 
 ### O editor do mapa (Etapa 9, fatia 9.12)
 

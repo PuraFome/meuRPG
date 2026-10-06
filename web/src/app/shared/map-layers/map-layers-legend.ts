@@ -1,23 +1,38 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
-import type { MapLayers } from '../../core/maps/layers';
+import { type DoorKind, type MapLayers, doorCounts } from '../../core/maps/layers';
+import { DOOR_NAME, DoorMark } from './door-mark';
+
+/** The doors' entries in the order of MAP-LANGUAGE-E10.md: fechada, aberta, trancada, grade, secreta. */
+const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
 
 /**
  * The names of the layer marks on a map (MAP-LANGUAGE.md): "Parede", "Terreno
  * difícil", "Meia cobertura", "Três quartos", each only when the map has one
- * (a legend lists what is drawn). The swatches are `.mr-swatch` (styles/_ui.scss),
+ * (a legend lists what is drawn), and, after "Parede", the doors the map really has (`app-door-mark`: "Porta fechada", "Porta aberta",
+ * "Porta trancada", "Grade", "Porta secreta"); the padlock and the secret door are the master's, and their entries say "(só você vê)" with the
+ * crossed eye. The swatches are `.mr-swatch` (styles/_ui.scss),
  * which draws the overlay's own looks. The screen that shows the map projects
  * its other marks (fog states before, movement marks and tokens after) as `li`s
  * into the same list, so the order of MAP-LANGUAGE.md holds.
  */
 @Component({
   selector: 'app-map-layers-legend',
+  imports: [DoorMark, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ul class="mr-legend" [class.mr-legend--on-map]="onMap()" [attr.aria-label]="label()">
       <ng-content select="[before]" />
       @if (layers().walls.length) {
         <li><span class="mr-swatch mr-swatch--wall" aria-hidden="true"></span>Parede</li>
+      }
+      @for (d of doorKinds(); track d) {
+        <li>
+          <span class="mr-swatch mr-swatch--door" aria-hidden="true"><app-door-mark [state]="d" /></span>
+          <!-- One piece, so the flex gap of the row does not open a second gap before the note. -->
+          <span class="nm">{{ names[d] }}{{ d === 3 || d === 5 ? ' (só você vê)' : '' }}@if (d === 3 || d === 5) {<mat-icon aria-hidden="true">visibility_off</mat-icon>}</span>
+        </li>
       }
       @if (layers().terrain.length) {
         <li><span class="mr-swatch mr-swatch--terrain" aria-hidden="true"></span>Terreno difícil</li>
@@ -66,6 +81,19 @@ import type { MapLayers } from '../../core/maps/layers';
       overflow: hidden;
     }
 
+    // A master-only door says "(só você vê)" with the crossed eye, as the other master-only marks of the legend do.
+    .nm {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nm .mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+
     .lgl--bright::before {
       content: 'light_mode';
     }
@@ -81,6 +109,12 @@ import type { MapLayers } from '../../core/maps/layers';
 })
 export class MapLayersLegend {
   readonly layers = input.required<MapLayers>();
+  protected readonly names = DOOR_NAME;
+  /** The kinds of door the map has, in the legend's order. */
+  protected readonly doorKinds = computed(() => {
+    const counts = doorCounts(this.layers());
+    return DOOR_ORDER.filter((k) => counts[k] > 0);
+  });
   readonly label = input('Legenda do mapa');
   /** The swatches sit on a sample of the map's floor (a fog map's legend). */
   readonly onMap = input(false);

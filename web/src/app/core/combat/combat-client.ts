@@ -58,6 +58,8 @@ export interface AttackResult {
 export interface MoveResult {
   readonly encounter: Encounter;
   readonly stoppedEarly: boolean;
+  /** The move stopped before a locked door (RN-26): the page says "A porta está trancada." */
+  readonly lockedDoor: boolean;
   readonly provoked: boolean;
 }
 
@@ -245,7 +247,7 @@ export class CombatClient {
       jump: jump ? (jump.kind === 'long' ? JumpKind.LONG : JumpKind.HIGH) : JumpKind.UNSPECIFIED,
       jumpHeightDft: jump?.kind === 'high' ? jump.heightDft : 0,
     });
-    return { encounter: need(res.encounter, 'MoveCombatant'), stoppedEarly: res.stoppedEarly, provoked: res.provoked };
+    return { encounter: need(res.encounter, 'MoveCombatant'), stoppedEarly: res.stoppedEarly, lockedDoor: res.lockedDoor, provoked: res.provoked };
   }
 
   /** `GetMoveOptions`: where the combatant can go in one straight move, the
