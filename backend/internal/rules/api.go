@@ -312,7 +312,14 @@ type Catalog struct {
 	Spells      []SpellEntry
 	// ChallengeRatings are the SRD's 34 ratings with their XP, in order.
 	ChallengeRatings []ChallengeRating
+	// Languages, Proficiencies and DamageTypes name the SRD's keys a table entry
+	// points at, sorted by Portuguese name (the master's effect menu carries the
+	// same names; a player has no menu).
+	Languages, Proficiencies, DamageTypes []NamedEntry
 }
+
+// NamedEntry is a key and its Portuguese name.
+type NamedEntry struct{ Key, NamePT string }
 
 // AbilityEntry names an ability.
 type AbilityEntry struct {

@@ -300,6 +300,8 @@ func (s *Service) CreateTableEntry(
 			return wrap("insert a table entry", err)
 		}
 		res = &rulesv1.CreateTableEntryResponse{
+			// No sheet can use an entry that did not exist a moment ago: the count is 0, set
+			// for the master as every write response does.
 			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, 0), TableRevision: rev,
 		}
 		return nil
@@ -393,8 +395,12 @@ func (s *Service) UpdateTableEntry(
 		if affected, err = affectedSheets(sheets, content, key); err != nil {
 			return err
 		}
+		uses, err := characterUses(sheets)
+		if err != nil {
+			return err
+		}
 		res = &rulesv1.UpdateTableEntryResponse{
-			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, 0), TableRevision: rev,
+			Entry: entryToProto(entryRow{row: row, kind: kind, body: st.body}, uses[key]), TableRevision: rev,
 		}
 		return nil
 	})
@@ -572,7 +578,17 @@ func (s *Service) setArchived(ctx context.Context, m authz.Membership, key strin
 		if err != nil {
 			return err
 		}
-		out, revision = entryToProto(e, 0), rev
+		// The master's count: archiving does not change who uses the entry, and the
+		// editor shows it ("Arquivado · 2 fichas usam").
+		sheets, err := q.ListCampaignSheets(ctx, m.CampaignID)
+		if err != nil {
+			return wrap("list the campaign's sheets", err)
+		}
+		uses, err := characterUses(sheets)
+		if err != nil {
+			return err
+		}
+		out, revision = entryToProto(e, uses[key]), rev
 		return nil
 	})
 	return out, revision, err

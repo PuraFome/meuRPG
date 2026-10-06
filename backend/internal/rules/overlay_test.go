@@ -1261,7 +1261,7 @@ func TestOverlayErrorFields(t *testing.T) {
 				o.Races[0].Traits = append(o.Races[0].Traits, TableFeature{Key: "trait:t" + strconv.Itoa(n) + tableSuffix, NamePT: "T"})
 			}
 		}, "races[0].traits", ReasonLimit},
-		{"an area attack", func(o *Overlay) { o.Spells[1].Attack = "ranged"; o.Spells[1].Save = nil }, "spells[1].target", ReasonValue},
+		{"an area attack", func(o *Overlay) { o.Spells[1].Attack = "ranged"; o.Spells[1].Save = nil }, "spells[1].attack", ReasonValue},
 	}
 	for _, tc := range cases {
 		o := fullOverlay(t, srd)

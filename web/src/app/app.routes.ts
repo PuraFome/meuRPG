@@ -126,6 +126,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/table-rules/table-rules').then((m) => m.TableRulesPage),
   },
   {
+    // "Conteúdo da mesa" (MR-025, RN-23, E10-01): the table's own classes, races, backgrounds and spells; the master's list and
+    // editors, and the players' read view. `loadChildren` so the editors stay out of the eager bundle.
+    path: 'campanhas/:id/conteudo',
+    canActivate: [authGuard],
+    loadChildren: () => import('./pages/content/content.routes').then((m) => m.CONTENT_ROUTES),
+  },
+  {
     // New map (MR-008, E5-31). Before `mapas/:mapId`, so "novo" is not read
     // as a map's ID. Plain `loadComponent`, like the gallery: the clients
     // are root services that only lazy code imports.

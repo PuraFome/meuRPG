@@ -708,6 +708,20 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	sortPT(cat.Weapons, func(e WeaponEntry) string { return e.NamePT })
 	sortPT(cat.Spells, func(e SpellEntry) string { return e.NamePT })
 	cat.ChallengeRatings = slices.Clone(c.ratings)
+	for _, k := range sortedKeys(c.languages) {
+		cat.Languages = append(cat.Languages, NamedEntry{Key: k, NamePT: c.namePT(k)})
+	}
+	for _, k := range sortedKeys(c.proficiencies) {
+		cat.Proficiencies = append(cat.Proficiencies, NamedEntry{Key: k, NamePT: c.proficiencyNamePT(k)})
+	}
+	for _, k := range sortedKeys(c.named) {
+		if strings.HasPrefix(k, "damage-type:") {
+			cat.DamageTypes = append(cat.DamageTypes, NamedEntry{Key: k, NamePT: c.namePT(k)})
+		}
+	}
+	sortPT(cat.Languages, func(e NamedEntry) string { return e.NamePT })
+	sortPT(cat.Proficiencies, func(e NamedEntry) string { return e.NamePT })
+	sortPT(cat.DamageTypes, func(e NamedEntry) string { return e.NamePT })
 	c.catalog = cat
 }
 

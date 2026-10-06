@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -410,6 +411,15 @@ type OverlayError struct {
 	Field   string
 	Reason  string
 	Message string
+	// More are the other things wrong with the same entry, found in the same pass
+	// (a spell, a race and a background list every field they get wrong, so the
+	// master sees them at once). Each has its own Field and Reason.
+	More []*OverlayError
+}
+
+// Violations is the error and the ones after it, in the order they were found.
+func (e *OverlayError) Violations() []*OverlayError {
+	return append([]*OverlayError{e}, e.More...)
 }
 
 func (e *OverlayError) Error() string {
@@ -423,6 +433,39 @@ func (e *OverlayError) Error() string {
 // for the entry-level checks, from the message and the entry's path (locate).
 func ovErr(key, format string, args ...any) *OverlayError {
 	return &OverlayError{Key: key, Message: fmt.Sprintf(format, args...)}
+}
+
+// entryErrors collects what is wrong with one entry, so the whole list comes back
+// at once instead of the first only (MR-025: the editor marks every field).
+type entryErrors struct{ list []*OverlayError }
+
+// add records err (an *OverlayError, or any other error as the entry's own).
+func (c *entryErrors) add(err error) {
+	if err == nil {
+		return
+	}
+	var oe *OverlayError
+	if errors.As(err, &oe) {
+		c.list = append(c.list, oe.Violations()...)
+		oe.More = nil
+		return
+	}
+	c.list = append(c.list, &OverlayError{Message: err.Error(), Reason: ReasonValue})
+}
+
+// at records a violation at attr of the entry at path.
+func (c *entryErrors) at(key, path, attr, reason, format string, args ...any) {
+	c.list = append(c.list, bad(key, path, attr, reason, format, args...))
+}
+
+// err is the first violation carrying the rest, or nil when there is none.
+func (c *entryErrors) err() error {
+	if len(c.list) == 0 {
+		return nil
+	}
+	first := *c.list[0]
+	first.More = c.list[1:]
+	return &first
 }
 
 // reason sets the reason only; the field is filled from the entry's path.
@@ -589,7 +632,9 @@ type overlayBuilder struct {
 }
 
 type pendingEffects struct {
-	owner   string
+	owner string
+	// entry is the table entry the owner belongs to (the owner itself for an entry's own effects).
+	entry   string
 	effects []Effect
 	// strict says the entry is being written: see Overlay.Strict.
 	strict bool
@@ -656,40 +701,53 @@ func (b *overlayBuilder) build(o Overlay) error {
 	n.programs = map[programKey]*formula.Program{}
 	defer func() { n.programs = nil }()
 
+	// An entry that fails reports everything wrong with it: its own fields, and the
+	// effects of its features and traits (which are compiled once every entry exists).
+	fail := func(err error, path string) error {
+		err = locate(err, path)
+		var oe *OverlayError
+		if errors.As(err, &oe) && oe.Key != "" {
+			var extra *OverlayError
+			if errors.As(b.compileEffectsOf(oe.Key), &extra) {
+				oe.More = append(oe.More, extra.Violations()...)
+			}
+		}
+		return err
+	}
 	for _, i := range spells {
 		path := fmt.Sprintf("spells[%d]", i)
 		if err := b.addSpell(&o.Spells[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range races {
 		path := fmt.Sprintf("races[%d]", i)
 		if err := b.addRace(&o.Races[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range subraces {
 		path := fmt.Sprintf("subraces[%d]", i)
 		if err := b.addSubrace(&o.Subraces[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range classes {
 		path := fmt.Sprintf("classes[%d]", i)
 		if err := b.addClass(&o.Classes[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range subclasses {
 		path := fmt.Sprintf("subclasses[%d]", i)
 		if err := b.addSubclass(&o.Subclasses[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range backgrounds {
 		path := fmt.Sprintf("backgrounds[%d]", i)
 		if err := b.addBackground(&o.Backgrounds[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	if err := b.compileEffects(); err != nil {
