@@ -105,6 +105,44 @@ service CharacterService {
   //     reason LIVING_CHARACTER_EXISTS and that character's ID.
   rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
 
+  // CreateNpcFromCreature is the bestiary's "Criar NPC" (MR-042, RN-29): it
+  // makes a named NPC with a basic sheet filled in from an SRD creature, for
+  // the master who wants "Grak, o ogro" rather than a typed NPC. The sheet
+  // holds the creature's armor class, average hit points, speed (the walking
+  // speed, or the highest one it has when it does not walk), ability scores,
+  // initiative bonus (the Dexterity modifier), size, challenge rating and XP,
+  // its first three attacks, weapon or spell, with the attack bonus, the reach or
+  // range and the first damage roll (a basic attack holds one damage: the
+  // other damage parts, such as the dragon's extra fire, go into the sheet's
+  // description as "Mordida: +2d6 fogo"; a saving throw or other rider stays in
+  // the SRD stat block; an attack whose die is not a d4, d6, d8, d10 or d12, or
+  // that has no damage, is left out), and `monster_key`, which links the NPC to the creature so the
+  // app can show the stat block (`meurpg.rules.v1.ContentService.GetCreature`).
+  // The creature in the bestiary does not change, and the NPC is a copy: the
+  // master edits it as any NPC (UpdateCharacter) and the numbers do not follow
+  // the creature afterwards.
+  //
+  // Only the campaign's master may call it, and they become the NPC's owner
+  // (RN-04). The NPC is like any other the master creates: a character of the
+  // campaign, never locked, hidden from the players by default (RN-10). The kind
+  // is MINION ("Minion" in the app, the default the app offers) or STORY ("NPC
+  // de história"): a basic sheet cannot be a full sheet's ENEMY ("Inimigo") or
+  // BOSS.
+  //
+  // It is idempotent: idempotency_key is a UUID the app makes for the dialog.
+  // Sending the same key again, for the same creature, name and kind, returns
+  // the NPC the first call made and creates nothing.
+  //
+  // Errors:
+  //   - `invalid_argument`: creature_key is not an SRD creature, kind is not
+  //     MINION or STORY, name is not 1 to 80 characters on one line, the
+  //     idempotency_key is not a UUID, or it was already used for another
+  //     creature, name or kind.
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc CreateNpcFromCreature(CreateNpcFromCreatureRequest) returns (CreateNpcFromCreatureResponse);
+
   // GetCharacter returns one character with its sheet, its story, and the
   // numbers the server derives from the sheet (MR-004). The campaign's
   // master may read every character of the campaign; a player, only their
@@ -997,6 +1035,16 @@ message BasicSheet {
   // is hostile to and share a square with another. Unset (or UNSPECIFIED) means
   // Medium. Shown nowhere new yet: the combat reads it.
   meurpg.rules.v1.CreatureSize size = 12;
+  // The SRD creature the NPC was made from (CreateNpcFromCreature, MR-042), such
+  // as "monster:ogre"; empty for an NPC the master typed. Only the server
+  // writes it: CreateCharacter and UpdateCharacter ignore what they receive
+  // and an update keeps the saved one, so the link survives the master's edits.
+  string monster_key = 13;
+  // The creature's ability scores, each 1 to 30, or unset for an NPC the master
+  // typed. Like monster_key, only CreateNpcFromCreature writes it and an update
+  // keeps the saved one. It is only stored: the combat does not read it, and no
+  // screen shows it yet.
+  meurpg.rules.v1.AbilityScores ability_scores = 14;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
@@ -1104,6 +1152,29 @@ message CreateCharacterRequest {
 // CreateCharacterResponse returns the new character.
 message CreateCharacterResponse {
   // The new character, with revision 1.
+  Character character = 1;
+}
+
+// CreateNpcFromCreatureRequest names the creature, the NPC's own name and
+// role, and carries the idempotency key of the dialog.
+message CreateNpcFromCreatureRequest {
+  string campaign_id = 1;
+  // Content key of the SRD creature, such as "monster:ogre".
+  string creature_key = 2;
+  // The master's name for the NPC, 1 to 80 characters, one line ("Grak, o
+  // ogro").
+  string name = 3;
+  // CHARACTER_KIND_MINION or CHARACTER_KIND_STORY.
+  CharacterKind kind = 4;
+  // A UUID the app makes once per dialog, so a retry does not create a second
+  // NPC.
+  string idempotency_key = 5;
+}
+
+// CreateNpcFromCreatureResponse returns the NPC, new or the one an earlier call
+// with the same key made.
+message CreateNpcFromCreatureResponse {
+  // The NPC, with its derived numbers as for CreateCharacter.
   Character character = 1;
 }
 
