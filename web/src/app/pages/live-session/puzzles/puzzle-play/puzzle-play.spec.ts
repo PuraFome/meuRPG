@@ -7,7 +7,7 @@ import type { PuzzleRun } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { textOf } from '../../../../core/format/text-testing';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
-import { FakePuzzlesClient, asClient, at, lightsPuzzle, lockPuzzle, pillarsPuzzle, playerRun } from '../../../../core/puzzles/puzzles-testing';
+import { FakePuzzlesClient, NOW, asClient, at, lightsPuzzle, lockPuzzle, pillarsPuzzle, playerRun } from '../../../../core/puzzles/puzzles-testing';
 import { PuzzlePlayPage } from './puzzle-play';
 
 @Component({
@@ -26,6 +26,14 @@ const lit = (on: number[]) => Array.from({ length: 25 }, (_, i) => on.includes(i
 describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
   let api: FakePuzzlesClient;
   let host: Host;
+
+  // The page reads the real clock ("agora há pouco", the frame on what just changed) and the runs are dated from the
+  // fixture's NOW: the clock is NOW, or the tests depend on the hour they run at (they failed after 21:12 on 06/10).
+  // Only Date is faked: the page's own timers stay real.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
 
   async function render(run: PuzzleRun, id = 'a') {
     api = new FakePuzzlesClient();

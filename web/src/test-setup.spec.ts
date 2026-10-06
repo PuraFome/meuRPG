@@ -24,6 +24,16 @@ describe('the global test setup', () => {
     expect(() => document.createElement('div').scrollIntoView()).toThrow('changed');
   });
 
+  it('lets a test fake the clock', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2000, 0, 1));
+    expect(new Date().getFullYear()).toBe(2000);
+  });
+
+  it('gives the next test the real clock back', () => {
+    expect(new Date().getFullYear()).toBeGreaterThan(2000);
+  });
+
   it('gives the next test a fresh one', () => {
     expect(vi.mocked(Element.prototype.scrollIntoView).mock.calls).toHaveLength(0);
     expect(() => document.createElement('div').scrollIntoView()).not.toThrow();

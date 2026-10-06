@@ -18,4 +18,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // A fake clock one test turns on (vi.useFakeTimers) never reaches the next file either.
+  vi.useRealTimers();
 });
