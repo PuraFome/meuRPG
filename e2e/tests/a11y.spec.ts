@@ -21,7 +21,8 @@ import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
-import { cavePoints, clickSquare, dragSquares, editorRoute } from './editor-support';
+import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
+import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -3552,4 +3553,184 @@ test('o bestiário passa no axe e nas conferências de layout no tema escuro, no
 test('o bestiário passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanBestiaryScreens(browser, 'light', 320);
+});
+
+/**
+ * "Regras da mesa" (MR-025, RN-24, RN-09; E10-03 states 1 to 3): the page as saved, a style chosen (the notice and
+ * the "Mudou" tags, the save bar lit), the XP mode question open in place, and the rules for a table with a long
+ * list of reminders. The XP question needs XP already given, so the campaign has Pensantus and an award.
+ */
+async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForXp(m, p, `Acessibilidade regras ${Date.now()}`);
+    await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'A porta da torre', characterIds: [table.characterId], amount: 50 });
+    await setTableRulesRPC(m, table.campaignId, { houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'] });
+    const where = `(${colorScheme}, ${width}px)`;
+
+    await m.goto(`/campanhas/${table.campaignId}`);
+    await expect(m.getByRole('heading', { level: 1 })).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Campanha com o painel Regras da mesa ${where}`);
+
+    await open(m, `/campanhas/${table.campaignId}/regras`);
+    await expectScreenPasses(m, `Regras da mesa ${where}`);
+    await pickRadio(m, /Mesa física/);
+    await expect(m.getByText(/o estilo preencheu/)).toBeVisible();
+    await expectScreenPasses(m, `Regras da mesa, um estilo escolhido ${where}`);
+    await pickRadio(m, /Por marcos/);
+    await m.getByRole('button', { name: 'Mudar para marcos' }).click();
+    await expect(m.getByRole('heading', { name: 'Mudar para “por marcos”?' })).toBeVisible();
+    await expectScreenPasses(m, `Regras da mesa, mudar o modo de XP ${where}`);
+
+    // A player is told it is the master's page.
+    await open(p, `/campanhas/${table.campaignId}/regras`);
+    await expect(p.getByText('Só o mestre muda as regras da mesa.')).toBeVisible();
+    await expectScreenPasses(p, `Regras da mesa, visto por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'light', 1280);
+});
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'dark', 390);
+});
+
+test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableRules(browser, 'dark', 320);
+});
+
+/**
+ * The "Atributos" step of a player who makes a new sheet by the table's rules (E10-03 state 4): the four ways, each
+ * with what it shows (the placing of the standard array, the point buy with the points left, the 4d6 the server
+ * rolled and the physical dice to type, and the typed values).
+ */
+async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await newSignedInContext(browser, 'Mestre Teste');
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade atributos ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    await open(p, `/campanhas/${campaignId}/personagens/novo`);
+    await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
+    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
+    await expectScreenPasses(p, `Atributos, conjunto padrão ${where}`);
+
+    await method(p, 'Pontos');
+    for (let i = 0; i < 7; i++) {
+      await p.getByRole('button', { name: 'Aumentar Sabedoria', exact: true }).click();
+    }
+    await expect(p.getByText('Restam 18 pontos')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, compra por pontos ${where}`);
+
+    await method(p, '4d6');
+    await expectScreenPasses(p, `Atributos, 4d6 ainda sem rolar ${where}`);
+    await p.getByRole('button', { name: 'Rolar os atributos' }).click();
+    await expect(p.getByText(/Rolados em/)).toBeVisible();
+    await expectScreenPasses(p, `Atributos, 4d6 rolados pelo servidor ${where}`);
+
+    await method(p, 'Digitar');
+    await p.getByLabel('Força', { exact: true }).fill('19');
+    await expectScreenPasses(p, `Atributos, digitar com um valor fora do limite ${where}`);
+
+    // Physical dice: a second campaign where everybody rolls their own.
+    const physical = await campaignWithEmptyPlayer(m, p, `Acessibilidade dados ${Date.now()}`);
+    await setTableRulesRPC(m, physical, { diceMode: 'DICE_MODE_PHYSICAL' });
+    await open(p, `/campanhas/${physical}/personagens/novo`);
+    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await method(p, '4d6');
+    await expect(p.getByText('Digite os quatro dados de cada rolagem.')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, dados físicos a digitar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'light', 1280);
+});
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'dark', 390);
+});
+
+test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+  await scanTableAbilities(browser, 'light', 320);
+});
+
+/** The grid calibration (E10-03 state 5): the panel of a calibrated map, the question with "Outro", and "Mudar a grade?". */
+async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto('/');
+    const campaignId = await masterCampaign(page, `Acessibilidade calibração ${Date.now()}`);
+    const map = await mapToPaint(page, campaignId, 'A torre em ruínas', 12);
+    const painted = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: map.mapId, layer: 'MAP_LAYER_WALL', value: 1, squares: wallSquares() });
+    expect(painted.ok()).toBeTruthy();
+    const where = `(${colorScheme}, ${width}px)`;
+    await page.goto(editorRoute(campaignId, map.mapId));
+    await expect(page.getByRole('radio', { name: 'Pintar' })).toBeVisible();
+    await page.getByRole('radio', { name: 'Pintar' }).click();
+    const grid = page.getByRole('region', { name: 'Grade' });
+    await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
+    await expect(page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' })).toBeFocused();
+    await expectScreenPasses(page, `Calibração da grade, a pergunta ${where}`);
+    await pickRadio(page.locator('app-calibrate-ask'), /Outro/);
+    await page.getByLabel('Quanto vale o quadrado', { exact: true }).fill('4,5');
+    await expect(page.getByText('o mapa terá 36 × 24 quadrados.')).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, Outro ${where}`);
+    await factor(page, '3 m');
+    await page.getByRole('button', { name: 'Salvar a grade' }).click();
+    await expect(grid.getByText('cada um vale 3 m')).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, o mapa calibrado ${where}`);
+    await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
+    await factor(page, '4,5 m');
+    await page.getByRole('button', { name: 'Salvar a grade' }).click();
+    await expect(page.getByRole('heading', { name: 'Mudar a grade?' })).toBeVisible();
+    await expectScreenPasses(page, `Calibração da grade, Mudar a grade? ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'light', 1280);
+});
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'dark', 1024);
+});
+
+test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
+  await scanCalibration(browser, 'light', 768);
+});
+
+test('a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos dois temas', { tag: ['@a11y', '@licenca'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await open(page, '/creditos');
+      await expect(page.getByText('System Reference Document 5.2.1', { exact: false }).first()).toBeVisible();
+      await expectScreenPasses(page, `Créditos (${scheme}, ${width}px)`);
+    } finally {
+      await context.close();
+    }
+  }
 });

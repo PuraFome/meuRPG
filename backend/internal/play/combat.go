@@ -1192,7 +1192,10 @@ func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Que
 	if err != nil {
 		return nil, nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s})
+	if err != nil {
+		return nil, nil, err
+	}
 	if err := s.endEncounter(ctx, c, cs); err != nil {
 		return nil, nil, err
 	}

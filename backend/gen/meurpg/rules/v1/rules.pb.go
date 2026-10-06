@@ -718,6 +718,140 @@ func (WeaponCategory) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{11}
 }
 
+// SpellTargetKind says whom a spell reaches.
+type SpellTargetKind int32
+
+const (
+	SpellTargetKind_SPELL_TARGET_KIND_UNSPECIFIED SpellTargetKind = 0
+	// One creature ("Uma criatura"). `per_slot_level` more for each circle above
+	// the spell's own, when the text says "an additional creature".
+	SpellTargetKind_SPELL_TARGET_KIND_CREATURE SpellTargetKind = 1
+	// Several creatures ("Várias criaturas"): `count` of them at the spell's own
+	// circle and `per_slot_level` more for each circle above it. A `count` of 0 is an
+	// SRD spell whose text says how many ("up to three creatures"): the caster picks
+	// any number and the master judges.
+	SpellTargetKind_SPELL_TARGET_KIND_CREATURES SpellTargetKind = 2
+	// Every creature in an area (`shape` and `size_ft`). In combat the caster picks
+	// the creatures it catches; the map does not draw it.
+	SpellTargetKind_SPELL_TARGET_KIND_AREA SpellTargetKind = 3
+	// Only the caster ("Só quem conjura").
+	SpellTargetKind_SPELL_TARGET_KIND_SELF SpellTargetKind = 4
+	// No creature at all: a point, an object or a place (Olho Arcano, Luz). An SRD
+	// spell's only. There is nobody to pick.
+	SpellTargetKind_SPELL_TARGET_KIND_NONE SpellTargetKind = 5
+)
+
+// Enum value maps for SpellTargetKind.
+var (
+	SpellTargetKind_name = map[int32]string{
+		0: "SPELL_TARGET_KIND_UNSPECIFIED",
+		1: "SPELL_TARGET_KIND_CREATURE",
+		2: "SPELL_TARGET_KIND_CREATURES",
+		3: "SPELL_TARGET_KIND_AREA",
+		4: "SPELL_TARGET_KIND_SELF",
+		5: "SPELL_TARGET_KIND_NONE",
+	}
+	SpellTargetKind_value = map[string]int32{
+		"SPELL_TARGET_KIND_UNSPECIFIED": 0,
+		"SPELL_TARGET_KIND_CREATURE":    1,
+		"SPELL_TARGET_KIND_CREATURES":   2,
+		"SPELL_TARGET_KIND_AREA":        3,
+		"SPELL_TARGET_KIND_SELF":        4,
+		"SPELL_TARGET_KIND_NONE":        5,
+	}
+)
+
+func (x SpellTargetKind) Enum() *SpellTargetKind {
+	p := new(SpellTargetKind)
+	*p = x
+	return p
+}
+
+func (x SpellTargetKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SpellTargetKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_rules_v1_rules_proto_enumTypes[12].Descriptor()
+}
+
+func (SpellTargetKind) Type() protoreflect.EnumType {
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[12]
+}
+
+func (x SpellTargetKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SpellTargetKind.Descriptor instead.
+func (SpellTargetKind) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{12}
+}
+
+// SpellAreaShape is the shape of a spell's area.
+type SpellAreaShape int32
+
+const (
+	SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED SpellAreaShape = 0
+	// The size is the length.
+	SpellAreaShape_SPELL_AREA_SHAPE_CONE SpellAreaShape = 1
+	// The size is the side.
+	SpellAreaShape_SPELL_AREA_SHAPE_CUBE SpellAreaShape = 2
+	// The size is the radius.
+	SpellAreaShape_SPELL_AREA_SHAPE_CYLINDER SpellAreaShape = 3
+	// The size is the length.
+	SpellAreaShape_SPELL_AREA_SHAPE_LINE SpellAreaShape = 4
+	// The size is the radius.
+	SpellAreaShape_SPELL_AREA_SHAPE_SPHERE SpellAreaShape = 5
+)
+
+// Enum value maps for SpellAreaShape.
+var (
+	SpellAreaShape_name = map[int32]string{
+		0: "SPELL_AREA_SHAPE_UNSPECIFIED",
+		1: "SPELL_AREA_SHAPE_CONE",
+		2: "SPELL_AREA_SHAPE_CUBE",
+		3: "SPELL_AREA_SHAPE_CYLINDER",
+		4: "SPELL_AREA_SHAPE_LINE",
+		5: "SPELL_AREA_SHAPE_SPHERE",
+	}
+	SpellAreaShape_value = map[string]int32{
+		"SPELL_AREA_SHAPE_UNSPECIFIED": 0,
+		"SPELL_AREA_SHAPE_CONE":        1,
+		"SPELL_AREA_SHAPE_CUBE":        2,
+		"SPELL_AREA_SHAPE_CYLINDER":    3,
+		"SPELL_AREA_SHAPE_LINE":        4,
+		"SPELL_AREA_SHAPE_SPHERE":      5,
+	}
+)
+
+func (x SpellAreaShape) Enum() *SpellAreaShape {
+	p := new(SpellAreaShape)
+	*p = x
+	return p
+}
+
+func (x SpellAreaShape) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SpellAreaShape) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_rules_v1_rules_proto_enumTypes[13].Descriptor()
+}
+
+func (SpellAreaShape) Type() protoreflect.EnumType {
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[13]
+}
+
+func (x SpellAreaShape) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SpellAreaShape.Descriptor instead.
+func (SpellAreaShape) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{13}
+}
+
 // SpellHitPointEffectKind is how a spell that reads hit points works.
 type SpellHitPointEffectKind int32
 
@@ -763,11 +897,11 @@ func (x SpellHitPointEffectKind) String() string {
 }
 
 func (SpellHitPointEffectKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[12].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[14].Descriptor()
 }
 
 func (SpellHitPointEffectKind) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[12]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[14]
 }
 
 func (x SpellHitPointEffectKind) Number() protoreflect.EnumNumber {
@@ -776,7 +910,7 @@ func (x SpellHitPointEffectKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellHitPointEffectKind.Descriptor instead.
 func (SpellHitPointEffectKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{14}
 }
 
 type CastingTimeUnit int32
@@ -821,11 +955,11 @@ func (x CastingTimeUnit) String() string {
 }
 
 func (CastingTimeUnit) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[13].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[15].Descriptor()
 }
 
 func (CastingTimeUnit) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[13]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[15]
 }
 
 func (x CastingTimeUnit) Number() protoreflect.EnumNumber {
@@ -834,7 +968,7 @@ func (x CastingTimeUnit) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CastingTimeUnit.Descriptor instead.
 func (CastingTimeUnit) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{15}
 }
 
 type SpellRangeKind int32
@@ -884,11 +1018,11 @@ func (x SpellRangeKind) String() string {
 }
 
 func (SpellRangeKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[14].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[16].Descriptor()
 }
 
 func (SpellRangeKind) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[14]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[16]
 }
 
 func (x SpellRangeKind) Number() protoreflect.EnumNumber {
@@ -897,7 +1031,7 @@ func (x SpellRangeKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellRangeKind.Descriptor instead.
 func (SpellRangeKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{16}
 }
 
 type SpellDurationKind int32
@@ -941,11 +1075,11 @@ func (x SpellDurationKind) String() string {
 }
 
 func (SpellDurationKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[15].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[17].Descriptor()
 }
 
 func (SpellDurationKind) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[15]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[17]
 }
 
 func (x SpellDurationKind) Number() protoreflect.EnumNumber {
@@ -954,7 +1088,7 @@ func (x SpellDurationKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellDurationKind.Descriptor instead.
 func (SpellDurationKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{17}
 }
 
 type SpellDurationUnit int32
@@ -996,11 +1130,11 @@ func (x SpellDurationUnit) String() string {
 }
 
 func (SpellDurationUnit) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[16].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[18].Descriptor()
 }
 
 func (SpellDurationUnit) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[16]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[18]
 }
 
 func (x SpellDurationUnit) Number() protoreflect.EnumNumber {
@@ -1009,7 +1143,7 @@ func (x SpellDurationUnit) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellDurationUnit.Descriptor instead.
 func (SpellDurationUnit) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{18}
 }
 
 // SpellAttackType says whether a spell needs an attack roll.
@@ -1049,11 +1183,11 @@ func (x SpellAttackType) String() string {
 }
 
 func (SpellAttackType) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[17].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[19].Descriptor()
 }
 
 func (SpellAttackType) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[17]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[19]
 }
 
 func (x SpellAttackType) Number() protoreflect.EnumNumber {
@@ -1062,7 +1196,7 @@ func (x SpellAttackType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellAttackType.Descriptor instead.
 func (SpellAttackType) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{19}
 }
 
 // SpellSaveSuccess says what a successful saving throw does.
@@ -1105,11 +1239,11 @@ func (x SpellSaveSuccess) String() string {
 }
 
 func (SpellSaveSuccess) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[18].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[20].Descriptor()
 }
 
 func (SpellSaveSuccess) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[18]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[20]
 }
 
 func (x SpellSaveSuccess) Number() protoreflect.EnumNumber {
@@ -1118,7 +1252,7 @@ func (x SpellSaveSuccess) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellSaveSuccess.Descriptor instead.
 func (SpellSaveSuccess) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{20}
 }
 
 // CreatureSize is a creature's size in the SRD's order. It decides whether a
@@ -1170,11 +1304,11 @@ func (x CreatureSize) String() string {
 }
 
 func (CreatureSize) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[19].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[21].Descriptor()
 }
 
 func (CreatureSize) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[19]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[21]
 }
 
 func (x CreatureSize) Number() protoreflect.EnumNumber {
@@ -1183,7 +1317,7 @@ func (x CreatureSize) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CreatureSize.Descriptor instead.
 func (CreatureSize) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{21}
 }
 
 type DisabledReasonCode int32
@@ -1269,11 +1403,11 @@ func (x DisabledReasonCode) String() string {
 }
 
 func (DisabledReasonCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_rules_v1_rules_proto_enumTypes[20].Descriptor()
+	return file_meurpg_rules_v1_rules_proto_enumTypes[22].Descriptor()
 }
 
 func (DisabledReasonCode) Type() protoreflect.EnumType {
-	return &file_meurpg_rules_v1_rules_proto_enumTypes[20]
+	return &file_meurpg_rules_v1_rules_proto_enumTypes[22]
 }
 
 func (x DisabledReasonCode) Number() protoreflect.EnumNumber {
@@ -1282,7 +1416,7 @@ func (x DisabledReasonCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DisabledReasonCode.Descriptor instead.
 func (DisabledReasonCode) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{22}
 }
 
 // ListTrapPresetsRequest names a campaign.
@@ -2511,8 +2645,12 @@ type DerivedSheet struct {
 	// the sheet with no new issue tied to the entry shows nothing. Each entry is also an issue with code
 	// "table_content_changed", for the banner "A classe mudou".
 	ChangedContent []*ChangedContent `protobuf:"bytes,41,rep,name=changed_content,json=changedContent,proto3" json:"changed_content,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The background's equipment as text: a table background's (RN-23) or the one
+	// the player wrote for a custom background (SRD 5.1 "Customizing a
+	// Background"). Empty for an SRD background and for a sheet without one.
+	BackgroundEquipmentPt string `protobuf:"bytes,42,opt,name=background_equipment_pt,json=backgroundEquipmentPt,proto3" json:"background_equipment_pt,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DerivedSheet) Reset() {
@@ -2830,6 +2968,13 @@ func (x *DerivedSheet) GetChangedContent() []*ChangedContent {
 		return x.ChangedContent
 	}
 	return nil
+}
+
+func (x *DerivedSheet) GetBackgroundEquipmentPt() string {
+	if x != nil {
+		return x.BackgroundEquipmentPt
+	}
+	return ""
 }
 
 // ChangedContent is a table entry a sheet uses that changed after the sheet was
@@ -5968,6 +6113,192 @@ func (x *GetSpellDetailsRequest) GetSpellKey() string {
 	return ""
 }
 
+// ListSpellsRequest names a campaign and the filters. Every filter is optional
+// and they add up: a spell passes all of them.
+type ListSpellsRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// Part of the spell's Portuguese or English name, ignoring case and accents
+	// ("maos", "burning"), up to 100 characters. Empty for any.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	// A class key ("class:wizard", or a table class) to read the spells of its
+	// list, or the key of a third caster's subclass, whose list is the class it
+	// casts from. Empty for any. A key that has no list gives an empty list.
+	ClassKey string `protobuf:"bytes,3,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
+	// The circles to list, 0 (cantrips) to 9. Empty for all.
+	Levels []int32 `protobuf:"varint,4,rep,packed,name=levels,proto3" json:"levels,omitempty"`
+	// School keys ("school:evocation"). Empty for all.
+	SchoolKeys []string `protobuf:"bytes,5,rep,name=school_keys,json=schoolKeys,proto3" json:"school_keys,omitempty"`
+	// "Só as que posso aprender" for this character (see the RPC).
+	CharacterId string `protobuf:"bytes,6,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// How many rows to return, 1 to 400; 0 means 100. The page asks for 400; a
+	// longer list (the SRD's 319 spells and up to 300 of the table's) comes in
+	// pages, with next_page_token.
+	PageSize int32 `protobuf:"varint,7,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// The next_page_token of the previous page; empty for the first.
+	PageToken     string `protobuf:"bytes,8,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSpellsRequest) Reset() {
+	*x = ListSpellsRequest{}
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpellsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpellsRequest) ProtoMessage() {}
+
+func (x *ListSpellsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpellsRequest.ProtoReflect.Descriptor instead.
+func (*ListSpellsRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *ListSpellsRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ListSpellsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListSpellsRequest) GetClassKey() string {
+	if x != nil {
+		return x.ClassKey
+	}
+	return ""
+}
+
+func (x *ListSpellsRequest) GetLevels() []int32 {
+	if x != nil {
+		return x.Levels
+	}
+	return nil
+}
+
+func (x *ListSpellsRequest) GetSchoolKeys() []string {
+	if x != nil {
+		return x.SchoolKeys
+	}
+	return nil
+}
+
+func (x *ListSpellsRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *ListSpellsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListSpellsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+// ListSpellsResponse is one page of spells, sorted by Portuguese name.
+type ListSpellsResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Spells []*Spell               `protobuf:"bytes,1,rep,name=spells,proto3" json:"spells,omitempty"`
+	// Pass it as page_token to read the next page. Empty on the last page.
+	NextPageToken string `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	// How many spells pass the filters, over all the pages ("73 magias").
+	Total int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// The campaign's content version, as in ListContentResponse.content.content_version.
+	ContentVersion string `protobuf:"bytes,4,opt,name=content_version,json=contentVersion,proto3" json:"content_version,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ListSpellsResponse) Reset() {
+	*x = ListSpellsResponse{}
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpellsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpellsResponse) ProtoMessage() {}
+
+func (x *ListSpellsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpellsResponse.ProtoReflect.Descriptor instead.
+func (*ListSpellsResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *ListSpellsResponse) GetSpells() []*Spell {
+	if x != nil {
+		return x.Spells
+	}
+	return nil
+}
+
+func (x *ListSpellsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListSpellsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListSpellsResponse) GetContentVersion() string {
+	if x != nil {
+		return x.ContentVersion
+	}
+	return ""
+}
+
 // GetSpellDetailsResponse returns one spell, in full.
 type GetSpellDetailsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -5978,7 +6309,7 @@ type GetSpellDetailsResponse struct {
 
 func (x *GetSpellDetailsResponse) Reset() {
 	*x = GetSpellDetailsResponse{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[54]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5990,7 +6321,7 @@ func (x *GetSpellDetailsResponse) String() string {
 func (*GetSpellDetailsResponse) ProtoMessage() {}
 
 func (x *GetSpellDetailsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[54]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6003,7 +6334,7 @@ func (x *GetSpellDetailsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSpellDetailsResponse.ProtoReflect.Descriptor instead.
 func (*GetSpellDetailsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{54}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GetSpellDetailsResponse) GetSpell() *SpellDetails {
@@ -6045,13 +6376,18 @@ type SpellDetails struct {
 	// These are public spell rules, like the rest of the message: every member
 	// gets them, and the app reads them instead of keeping a copy of the table.
 	HitPointEffect *SpellHitPointEffect `protobuf:"bytes,12,opt,name=hit_point_effect,json=hitPointEffect,proto3" json:"hit_point_effect,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Whom the spell reaches: one creature, several, an area or only the caster.
+	// A table spell's is the master's; an SRD spell's is worked out from the
+	// 5e-database's structured area (Mãos Flamejantes: a cone of 15 ft) and, for the
+	// rest, from the text of the SRD.
+	Target        *SpellTarget `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SpellDetails) Reset() {
 	*x = SpellDetails{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[55]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6063,7 +6399,7 @@ func (x *SpellDetails) String() string {
 func (*SpellDetails) ProtoMessage() {}
 
 func (x *SpellDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[55]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6076,7 +6412,7 @@ func (x *SpellDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellDetails.ProtoReflect.Descriptor instead.
 func (*SpellDetails) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{55}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SpellDetails) GetSpell() *Spell {
@@ -6163,6 +6499,105 @@ func (x *SpellDetails) GetHitPointEffect() *SpellHitPointEffect {
 	return nil
 }
 
+func (x *SpellDetails) GetTarget() *SpellTarget {
+	if x != nil {
+		return x.Target
+	}
+	return nil
+}
+
+// SpellTarget is whom a spell reaches.
+type SpellTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Kind  SpellTargetKind        `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.SpellTargetKind" json:"kind,omitempty"`
+	// CREATURES: how many at the spell's own circle; 0 when the SRD's text says it.
+	Count int32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	// CREATURE and CREATURES: how many more for each circle above the spell's own.
+	PerSlotLevel int32 `protobuf:"varint,3,opt,name=per_slot_level,json=perSlotLevel,proto3" json:"per_slot_level,omitempty"`
+	// AREA: the shape and the size in feet (the SRD's 15 ft cone is 4,5 m).
+	Shape  SpellAreaShape `protobuf:"varint,4,opt,name=shape,proto3,enum=meurpg.rules.v1.SpellAreaShape" json:"shape,omitempty"`
+	SizeFt int32          `protobuf:"varint,5,opt,name=size_ft,json=sizeFt,proto3" json:"size_ft,omitempty"`
+	// The target as the "Magias" page writes it, in the table's units: "Uma
+	// criatura", "Várias criaturas", "Só quem conjura", "Nenhuma criatura" or
+	// "Cone de 4,5 m". For some SRD spells it is our own words (hand-written, in
+	// effects/spell_targets.json) where the database's area would mislead.
+	LabelPt       string `protobuf:"bytes,6,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpellTarget) Reset() {
+	*x = SpellTarget{}
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpellTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpellTarget) ProtoMessage() {}
+
+func (x *SpellTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpellTarget.ProtoReflect.Descriptor instead.
+func (*SpellTarget) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *SpellTarget) GetKind() SpellTargetKind {
+	if x != nil {
+		return x.Kind
+	}
+	return SpellTargetKind_SPELL_TARGET_KIND_UNSPECIFIED
+}
+
+func (x *SpellTarget) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SpellTarget) GetPerSlotLevel() int32 {
+	if x != nil {
+		return x.PerSlotLevel
+	}
+	return 0
+}
+
+func (x *SpellTarget) GetShape() SpellAreaShape {
+	if x != nil {
+		return x.Shape
+	}
+	return SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED
+}
+
+func (x *SpellTarget) GetSizeFt() int32 {
+	if x != nil {
+		return x.SizeFt
+	}
+	return 0
+}
+
+func (x *SpellTarget) GetLabelPt() string {
+	if x != nil {
+		return x.LabelPt
+	}
+	return ""
+}
+
 // SpellHitPointEffect is the rule of a spell that reads hit points, from
 // effects/spells.json, at the spell's own circle and what each circle above adds.
 type SpellHitPointEffect struct {
@@ -6189,7 +6624,7 @@ type SpellHitPointEffect struct {
 
 func (x *SpellHitPointEffect) Reset() {
 	*x = SpellHitPointEffect{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[56]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6201,7 +6636,7 @@ func (x *SpellHitPointEffect) String() string {
 func (*SpellHitPointEffect) ProtoMessage() {}
 
 func (x *SpellHitPointEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[56]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6214,7 +6649,7 @@ func (x *SpellHitPointEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellHitPointEffect.ProtoReflect.Descriptor instead.
 func (*SpellHitPointEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{56}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SpellHitPointEffect) GetKind() SpellHitPointEffectKind {
@@ -6297,7 +6732,7 @@ type SpellCastingTime struct {
 
 func (x *SpellCastingTime) Reset() {
 	*x = SpellCastingTime{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[57]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6309,7 +6744,7 @@ func (x *SpellCastingTime) String() string {
 func (*SpellCastingTime) ProtoMessage() {}
 
 func (x *SpellCastingTime) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[57]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6322,7 +6757,7 @@ func (x *SpellCastingTime) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellCastingTime.ProtoReflect.Descriptor instead.
 func (*SpellCastingTime) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{57}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *SpellCastingTime) GetAmount() int32 {
@@ -6367,7 +6802,7 @@ type SpellRange struct {
 
 func (x *SpellRange) Reset() {
 	*x = SpellRange{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[58]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6379,7 +6814,7 @@ func (x *SpellRange) String() string {
 func (*SpellRange) ProtoMessage() {}
 
 func (x *SpellRange) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[58]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6392,7 +6827,7 @@ func (x *SpellRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellRange.ProtoReflect.Descriptor instead.
 func (*SpellRange) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{58}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SpellRange) GetKind() SpellRangeKind {
@@ -6430,7 +6865,7 @@ type SpellComponents struct {
 
 func (x *SpellComponents) Reset() {
 	*x = SpellComponents{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[59]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6442,7 +6877,7 @@ func (x *SpellComponents) String() string {
 func (*SpellComponents) ProtoMessage() {}
 
 func (x *SpellComponents) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[59]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6455,7 +6890,7 @@ func (x *SpellComponents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellComponents.ProtoReflect.Descriptor instead.
 func (*SpellComponents) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{59}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *SpellComponents) GetVerbal() bool {
@@ -6505,7 +6940,7 @@ type SpellDuration struct {
 
 func (x *SpellDuration) Reset() {
 	*x = SpellDuration{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[60]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6517,7 +6952,7 @@ func (x *SpellDuration) String() string {
 func (*SpellDuration) ProtoMessage() {}
 
 func (x *SpellDuration) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[60]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6530,7 +6965,7 @@ func (x *SpellDuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellDuration.ProtoReflect.Descriptor instead.
 func (*SpellDuration) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{60}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *SpellDuration) GetKind() SpellDurationKind {
@@ -6587,7 +7022,7 @@ type SpellSave struct {
 
 func (x *SpellSave) Reset() {
 	*x = SpellSave{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[61]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6599,7 +7034,7 @@ func (x *SpellSave) String() string {
 func (*SpellSave) ProtoMessage() {}
 
 func (x *SpellSave) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[61]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6612,7 +7047,7 @@ func (x *SpellSave) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellSave.ProtoReflect.Descriptor instead.
 func (*SpellSave) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{61}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SpellSave) GetAbility() Ability {
@@ -6650,7 +7085,7 @@ type SpellDamage struct {
 
 func (x *SpellDamage) Reset() {
 	*x = SpellDamage{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[62]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6662,7 +7097,7 @@ func (x *SpellDamage) String() string {
 func (*SpellDamage) ProtoMessage() {}
 
 func (x *SpellDamage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[62]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6675,7 +7110,7 @@ func (x *SpellDamage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellDamage.ProtoReflect.Descriptor instead.
 func (*SpellDamage) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{62}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SpellDamage) GetDamageTypeKey() string {
@@ -6732,7 +7167,7 @@ type TurnOptions struct {
 
 func (x *TurnOptions) Reset() {
 	*x = TurnOptions{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[63]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6744,7 +7179,7 @@ func (x *TurnOptions) String() string {
 func (*TurnOptions) ProtoMessage() {}
 
 func (x *TurnOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[63]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6757,7 +7192,7 @@ func (x *TurnOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnOptions.ProtoReflect.Descriptor instead.
 func (*TurnOptions) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{63}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *TurnOptions) GetEconomy() *TurnEconomy {
@@ -6822,7 +7257,7 @@ type TurnEconomy struct {
 
 func (x *TurnEconomy) Reset() {
 	*x = TurnEconomy{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[64]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6834,7 +7269,7 @@ func (x *TurnEconomy) String() string {
 func (*TurnEconomy) ProtoMessage() {}
 
 func (x *TurnEconomy) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[64]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6847,7 +7282,7 @@ func (x *TurnEconomy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnEconomy.ProtoReflect.Descriptor instead.
 func (*TurnEconomy) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{64}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *TurnEconomy) GetAction() *EconomyState {
@@ -6903,7 +7338,7 @@ type EconomyState struct {
 
 func (x *EconomyState) Reset() {
 	*x = EconomyState{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[65]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6915,7 +7350,7 @@ func (x *EconomyState) String() string {
 func (*EconomyState) ProtoMessage() {}
 
 func (x *EconomyState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[65]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6928,7 +7363,7 @@ func (x *EconomyState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EconomyState.ProtoReflect.Descriptor instead.
 func (*EconomyState) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{65}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *EconomyState) GetUsed() bool {
@@ -6966,7 +7401,7 @@ type MovementLeft struct {
 
 func (x *MovementLeft) Reset() {
 	*x = MovementLeft{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[66]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6978,7 +7413,7 @@ func (x *MovementLeft) String() string {
 func (*MovementLeft) ProtoMessage() {}
 
 func (x *MovementLeft) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[66]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6991,7 +7426,7 @@ func (x *MovementLeft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MovementLeft.ProtoReflect.Descriptor instead.
 func (*MovementLeft) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{66}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *MovementLeft) GetSpeedFt() int32 {
@@ -7059,7 +7494,7 @@ type JumpLimits struct {
 
 func (x *JumpLimits) Reset() {
 	*x = JumpLimits{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[67]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7071,7 +7506,7 @@ func (x *JumpLimits) String() string {
 func (*JumpLimits) ProtoMessage() {}
 
 func (x *JumpLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[67]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7084,7 +7519,7 @@ func (x *JumpLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JumpLimits.ProtoReflect.Descriptor instead.
 func (*JumpLimits) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{67}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *JumpLimits) GetLongRunningDft() int32 {
@@ -7136,7 +7571,7 @@ type DisabledReason struct {
 
 func (x *DisabledReason) Reset() {
 	*x = DisabledReason{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[68]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7148,7 +7583,7 @@ func (x *DisabledReason) String() string {
 func (*DisabledReason) ProtoMessage() {}
 
 func (x *DisabledReason) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[68]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7161,7 +7596,7 @@ func (x *DisabledReason) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisabledReason.ProtoReflect.Descriptor instead.
 func (*DisabledReason) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{68}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *DisabledReason) GetCode() DisabledReasonCode {
@@ -7198,7 +7633,7 @@ type AttackOption struct {
 
 func (x *AttackOption) Reset() {
 	*x = AttackOption{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[69]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7210,7 +7645,7 @@ func (x *AttackOption) String() string {
 func (*AttackOption) ProtoMessage() {}
 
 func (x *AttackOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[69]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7223,7 +7658,7 @@ func (x *AttackOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackOption.ProtoReflect.Descriptor instead.
 func (*AttackOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{69}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *AttackOption) GetAttack() *Attack {
@@ -7266,7 +7701,7 @@ type SpellOption struct {
 
 func (x *SpellOption) Reset() {
 	*x = SpellOption{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[70]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7278,7 +7713,7 @@ func (x *SpellOption) String() string {
 func (*SpellOption) ProtoMessage() {}
 
 func (x *SpellOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[70]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7291,7 +7726,7 @@ func (x *SpellOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellOption.ProtoReflect.Descriptor instead.
 func (*SpellOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{70}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *SpellOption) GetSpell() *Spell {
@@ -7345,7 +7780,7 @@ type SlotChoice struct {
 
 func (x *SlotChoice) Reset() {
 	*x = SlotChoice{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[71]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7357,7 +7792,7 @@ func (x *SlotChoice) String() string {
 func (*SlotChoice) ProtoMessage() {}
 
 func (x *SlotChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[71]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7370,7 +7805,7 @@ func (x *SlotChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlotChoice.ProtoReflect.Descriptor instead.
 func (*SlotChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{71}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *SlotChoice) GetLevel() int32 {
@@ -7409,7 +7844,7 @@ type ActionOption struct {
 
 func (x *ActionOption) Reset() {
 	*x = ActionOption{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[72]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7421,7 +7856,7 @@ func (x *ActionOption) String() string {
 func (*ActionOption) ProtoMessage() {}
 
 func (x *ActionOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[72]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7434,7 +7869,7 @@ func (x *ActionOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActionOption.ProtoReflect.Descriptor instead.
 func (*ActionOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{72}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ActionOption) GetAction() *Action {
@@ -7501,7 +7936,7 @@ type ListCreaturesRequest struct {
 
 func (x *ListCreaturesRequest) Reset() {
 	*x = ListCreaturesRequest{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[73]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7513,7 +7948,7 @@ func (x *ListCreaturesRequest) String() string {
 func (*ListCreaturesRequest) ProtoMessage() {}
 
 func (x *ListCreaturesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[73]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7526,7 +7961,7 @@ func (x *ListCreaturesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreaturesRequest.ProtoReflect.Descriptor instead.
 func (*ListCreaturesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{73}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ListCreaturesRequest) GetCampaignId() string {
@@ -7614,7 +8049,7 @@ type ListCreaturesResponse struct {
 
 func (x *ListCreaturesResponse) Reset() {
 	*x = ListCreaturesResponse{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[74]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7626,7 +8061,7 @@ func (x *ListCreaturesResponse) String() string {
 func (*ListCreaturesResponse) ProtoMessage() {}
 
 func (x *ListCreaturesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[74]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7639,7 +8074,7 @@ func (x *ListCreaturesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreaturesResponse.ProtoReflect.Descriptor instead.
 func (*ListCreaturesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{74}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListCreaturesResponse) GetCreatures() []*CreatureSummary {
@@ -7697,7 +8132,7 @@ type CreatureSummary struct {
 
 func (x *CreatureSummary) Reset() {
 	*x = CreatureSummary{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[75]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7709,7 +8144,7 @@ func (x *CreatureSummary) String() string {
 func (*CreatureSummary) ProtoMessage() {}
 
 func (x *CreatureSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[75]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7722,7 +8157,7 @@ func (x *CreatureSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureSummary.ProtoReflect.Descriptor instead.
 func (*CreatureSummary) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{75}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *CreatureSummary) GetKey() string {
@@ -7836,7 +8271,7 @@ type GetCreatureRequest struct {
 
 func (x *GetCreatureRequest) Reset() {
 	*x = GetCreatureRequest{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[76]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7848,7 +8283,7 @@ func (x *GetCreatureRequest) String() string {
 func (*GetCreatureRequest) ProtoMessage() {}
 
 func (x *GetCreatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[76]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7861,7 +8296,7 @@ func (x *GetCreatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreatureRequest.ProtoReflect.Descriptor instead.
 func (*GetCreatureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{76}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *GetCreatureRequest) GetCampaignId() string {
@@ -7889,7 +8324,7 @@ type GetCreatureResponse struct {
 
 func (x *GetCreatureResponse) Reset() {
 	*x = GetCreatureResponse{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[77]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7901,7 +8336,7 @@ func (x *GetCreatureResponse) String() string {
 func (*GetCreatureResponse) ProtoMessage() {}
 
 func (x *GetCreatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[77]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7914,7 +8349,7 @@ func (x *GetCreatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreatureResponse.ProtoReflect.Descriptor instead.
 func (*GetCreatureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{77}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *GetCreatureResponse) GetCreature() *Creature {
@@ -7990,7 +8425,7 @@ type Creature struct {
 
 func (x *Creature) Reset() {
 	*x = Creature{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[78]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8002,7 +8437,7 @@ func (x *Creature) String() string {
 func (*Creature) ProtoMessage() {}
 
 func (x *Creature) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[78]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8015,7 +8450,7 @@ func (x *Creature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Creature.ProtoReflect.Descriptor instead.
 func (*Creature) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{78}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *Creature) GetSummary() *CreatureSummary {
@@ -8245,7 +8680,7 @@ type CreatureAbilityScore struct {
 
 func (x *CreatureAbilityScore) Reset() {
 	*x = CreatureAbilityScore{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[79]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8257,7 +8692,7 @@ func (x *CreatureAbilityScore) String() string {
 func (*CreatureAbilityScore) ProtoMessage() {}
 
 func (x *CreatureAbilityScore) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[79]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8270,7 +8705,7 @@ func (x *CreatureAbilityScore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureAbilityScore.ProtoReflect.Descriptor instead.
 func (*CreatureAbilityScore) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{79}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *CreatureAbilityScore) GetAbility() Ability {
@@ -8319,7 +8754,7 @@ type CreatureBonus struct {
 
 func (x *CreatureBonus) Reset() {
 	*x = CreatureBonus{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[80]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8331,7 +8766,7 @@ func (x *CreatureBonus) String() string {
 func (*CreatureBonus) ProtoMessage() {}
 
 func (x *CreatureBonus) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[80]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8344,7 +8779,7 @@ func (x *CreatureBonus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureBonus.ProtoReflect.Descriptor instead.
 func (*CreatureBonus) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{80}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *CreatureBonus) GetAbility() Ability {
@@ -8388,7 +8823,7 @@ type CreatureNamedKey struct {
 
 func (x *CreatureNamedKey) Reset() {
 	*x = CreatureNamedKey{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[81]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8400,7 +8835,7 @@ func (x *CreatureNamedKey) String() string {
 func (*CreatureNamedKey) ProtoMessage() {}
 
 func (x *CreatureNamedKey) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[81]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8413,7 +8848,7 @@ func (x *CreatureNamedKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureNamedKey.ProtoReflect.Descriptor instead.
 func (*CreatureNamedKey) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{81}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *CreatureNamedKey) GetKey() string {
@@ -8446,7 +8881,7 @@ type CreatureDamageModifier struct {
 
 func (x *CreatureDamageModifier) Reset() {
 	*x = CreatureDamageModifier{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[82]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8458,7 +8893,7 @@ func (x *CreatureDamageModifier) String() string {
 func (*CreatureDamageModifier) ProtoMessage() {}
 
 func (x *CreatureDamageModifier) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[82]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8471,7 +8906,7 @@ func (x *CreatureDamageModifier) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureDamageModifier.ProtoReflect.Descriptor instead.
 func (*CreatureDamageModifier) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{82}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *CreatureDamageModifier) GetTypes() []*CreatureNamedKey {
@@ -8503,7 +8938,7 @@ type CreatureTrait struct {
 
 func (x *CreatureTrait) Reset() {
 	*x = CreatureTrait{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[83]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8515,7 +8950,7 @@ func (x *CreatureTrait) String() string {
 func (*CreatureTrait) ProtoMessage() {}
 
 func (x *CreatureTrait) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[83]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8528,7 +8963,7 @@ func (x *CreatureTrait) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureTrait.ProtoReflect.Descriptor instead.
 func (*CreatureTrait) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{83}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *CreatureTrait) GetName() string {
@@ -8582,7 +9017,7 @@ type CreatureAction struct {
 
 func (x *CreatureAction) Reset() {
 	*x = CreatureAction{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[84]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8594,7 +9029,7 @@ func (x *CreatureAction) String() string {
 func (*CreatureAction) ProtoMessage() {}
 
 func (x *CreatureAction) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[84]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8607,7 +9042,7 @@ func (x *CreatureAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureAction.ProtoReflect.Descriptor instead.
 func (*CreatureAction) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{84}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *CreatureAction) GetName() string {
@@ -8687,7 +9122,7 @@ type CreatureDamagePart struct {
 
 func (x *CreatureDamagePart) Reset() {
 	*x = CreatureDamagePart{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[85]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8699,7 +9134,7 @@ func (x *CreatureDamagePart) String() string {
 func (*CreatureDamagePart) ProtoMessage() {}
 
 func (x *CreatureDamagePart) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[85]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8712,7 +9147,7 @@ func (x *CreatureDamagePart) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureDamagePart.ProtoReflect.Descriptor instead.
 func (*CreatureDamagePart) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{85}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *CreatureDamagePart) GetDice() string {
@@ -8752,7 +9187,7 @@ type CreatureSave struct {
 
 func (x *CreatureSave) Reset() {
 	*x = CreatureSave{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[86]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8764,7 +9199,7 @@ func (x *CreatureSave) String() string {
 func (*CreatureSave) ProtoMessage() {}
 
 func (x *CreatureSave) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[86]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8777,7 +9212,7 @@ func (x *CreatureSave) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureSave.ProtoReflect.Descriptor instead.
 func (*CreatureSave) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{86}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *CreatureSave) GetAbility() Ability {
@@ -8812,7 +9247,7 @@ type CreatureMultiattackRoutine struct {
 
 func (x *CreatureMultiattackRoutine) Reset() {
 	*x = CreatureMultiattackRoutine{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[87]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8824,7 +9259,7 @@ func (x *CreatureMultiattackRoutine) String() string {
 func (*CreatureMultiattackRoutine) ProtoMessage() {}
 
 func (x *CreatureMultiattackRoutine) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[87]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8837,7 +9272,7 @@ func (x *CreatureMultiattackRoutine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureMultiattackRoutine.ProtoReflect.Descriptor instead.
 func (*CreatureMultiattackRoutine) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{87}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *CreatureMultiattackRoutine) GetAttacks() []*CreatureAttackCount {
@@ -8865,7 +9300,7 @@ type CreatureAttackCount struct {
 
 func (x *CreatureAttackCount) Reset() {
 	*x = CreatureAttackCount{}
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[88]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8877,7 +9312,7 @@ func (x *CreatureAttackCount) String() string {
 func (*CreatureAttackCount) ProtoMessage() {}
 
 func (x *CreatureAttackCount) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[88]
+	mi := &file_meurpg_rules_v1_rules_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8890,7 +9325,7 @@ func (x *CreatureAttackCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureAttackCount.ProtoReflect.Descriptor instead.
 func (*CreatureAttackCount) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{88}
+	return file_meurpg_rules_v1_rules_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *CreatureAttackCount) GetName() string {
@@ -9016,7 +9451,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fconstitution\x18\x03 \x01(\x05R\fconstitution\x12\"\n" +
 	"\fintelligence\x18\x04 \x01(\x05R\fintelligence\x12\x16\n" +
 	"\x06wisdom\x18\x05 \x01(\x05R\x06wisdom\x12\x1a\n" +
-	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xcb\x0f\n" +
+	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\x83\x10\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -9067,7 +9502,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0fspeed_burrow_ft\x18& \x01(\x05R\rspeedBurrowFt\x12\x14\n" +
 	"\x05hover\x18' \x01(\bR\x05hover\x12>\n" +
 	"\fsave_actions\x18( \x03(\v2\x1b.meurpg.rules.v1.SaveActionR\vsaveActions\x12H\n" +
-	"\x0fchanged_content\x18) \x03(\v2\x1f.meurpg.rules.v1.ChangedContentR\x0echangedContent\"\xeb\x01\n" +
+	"\x0fchanged_content\x18) \x03(\v2\x1f.meurpg.rules.v1.ChangedContentR\x0echangedContent\x126\n" +
+	"\x17background_equipment_pt\x18* \x01(\tR\x15backgroundEquipmentPt\"\xeb\x01\n" +
 	"\x0eChangedContent\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
@@ -9320,9 +9756,26 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x16GetSpellDetailsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
-	"\tspell_key\x18\x02 \x01(\tR\bspellKey\"N\n" +
+	"\tspell_key\x18\x02 \x01(\tR\bspellKey\"\xff\x01\n" +
+	"\x11ListSpellsRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12\x1b\n" +
+	"\tclass_key\x18\x03 \x01(\tR\bclassKey\x12\x16\n" +
+	"\x06levels\x18\x04 \x03(\x05R\x06levels\x12\x1f\n" +
+	"\vschool_keys\x18\x05 \x03(\tR\n" +
+	"schoolKeys\x12!\n" +
+	"\fcharacter_id\x18\x06 \x01(\tR\vcharacterId\x12\x1b\n" +
+	"\tpage_size\x18\a \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\b \x01(\tR\tpageToken\"\xab\x01\n" +
+	"\x12ListSpellsResponse\x12.\n" +
+	"\x06spells\x18\x01 \x03(\v2\x16.meurpg.rules.v1.SpellR\x06spells\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\x12'\n" +
+	"\x0fcontent_version\x18\x04 \x01(\tR\x0econtentVersion\"N\n" +
 	"\x17GetSpellDetailsResponse\x123\n" +
-	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\x96\x06\n" +
+	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\xcc\x06\n" +
 	"\fSpellDetails\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12D\n" +
 	"\fcasting_time\x18\x02 \x01(\v2!.meurpg.rules.v1.SpellCastingTimeR\vcastingTime\x121\n" +
@@ -9339,10 +9792,18 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\vdescription\x18\n" +
 	" \x03(\tR\vdescription\x12!\n" +
 	"\fhigher_level\x18\v \x03(\tR\vhigherLevel\x12N\n" +
-	"\x10hit_point_effect\x18\f \x01(\v2$.meurpg.rules.v1.SpellHitPointEffectR\x0ehitPointEffect\x1aB\n" +
+	"\x10hit_point_effect\x18\f \x01(\v2$.meurpg.rules.v1.SpellHitPointEffectR\x0ehitPointEffect\x124\n" +
+	"\x06target\x18\r \x01(\v2\x1c.meurpg.rules.v1.SpellTargetR\x06target\x1aB\n" +
 	"\x14HealBySlotLevelEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf0\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xea\x01\n" +
+	"\vSpellTarget\x124\n" +
+	"\x04kind\x18\x01 \x01(\x0e2 .meurpg.rules.v1.SpellTargetKindR\x04kind\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x12$\n" +
+	"\x0eper_slot_level\x18\x03 \x01(\x05R\fperSlotLevel\x125\n" +
+	"\x05shape\x18\x04 \x01(\x0e2\x1f.meurpg.rules.v1.SpellAreaShapeR\x05shape\x12\x17\n" +
+	"\asize_ft\x18\x05 \x01(\x05R\x06sizeFt\x12\x19\n" +
+	"\blabel_pt\x18\x06 \x01(\tR\alabelPt\"\xf0\x02\n" +
 	"\x13SpellHitPointEffect\x12<\n" +
 	"\x04kind\x18\x01 \x01(\x0e2(.meurpg.rules.v1.SpellHitPointEffectKindR\x04kind\x12&\n" +
 	"\x0fpool_dice_count\x18\x02 \x01(\x05R\rpoolDiceCount\x12&\n" +
@@ -9635,7 +10096,21 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0eWeaponCategory\x12\x1f\n" +
 	"\x1bWEAPON_CATEGORY_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WEAPON_CATEGORY_SIMPLE\x10\x01\x12\x1b\n" +
-	"\x17WEAPON_CATEGORY_MARTIAL\x10\x02*\xeb\x01\n" +
+	"\x17WEAPON_CATEGORY_MARTIAL\x10\x02*\xc9\x01\n" +
+	"\x0fSpellTargetKind\x12!\n" +
+	"\x1dSPELL_TARGET_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aSPELL_TARGET_KIND_CREATURE\x10\x01\x12\x1f\n" +
+	"\x1bSPELL_TARGET_KIND_CREATURES\x10\x02\x12\x1a\n" +
+	"\x16SPELL_TARGET_KIND_AREA\x10\x03\x12\x1a\n" +
+	"\x16SPELL_TARGET_KIND_SELF\x10\x04\x12\x1a\n" +
+	"\x16SPELL_TARGET_KIND_NONE\x10\x05*\xbf\x01\n" +
+	"\x0eSpellAreaShape\x12 \n" +
+	"\x1cSPELL_AREA_SHAPE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SPELL_AREA_SHAPE_CONE\x10\x01\x12\x19\n" +
+	"\x15SPELL_AREA_SHAPE_CUBE\x10\x02\x12\x1d\n" +
+	"\x19SPELL_AREA_SHAPE_CYLINDER\x10\x03\x12\x19\n" +
+	"\x15SPELL_AREA_SHAPE_LINE\x10\x04\x12\x1b\n" +
+	"\x17SPELL_AREA_SHAPE_SPHERE\x10\x05*\xeb\x01\n" +
 	"\x17SpellHitPointEffectKind\x12+\n" +
 	"'SPELL_HIT_POINT_EFFECT_KIND_UNSPECIFIED\x10\x00\x12$\n" +
 	" SPELL_HIT_POINT_EFFECT_KIND_POOL\x10\x01\x12)\n" +
@@ -9702,10 +10177,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x12'\n" +
 	"#DISABLED_REASON_CODE_COMBATANT_DOWN\x10\v\x12+\n" +
 	"'DISABLED_REASON_CODE_COMBATANT_DEFEATED\x10\f\x12%\n" +
-	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r2\xf7\x04\n" +
+	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r2\xd3\x05\n" +
 	"\x0eContentService\x12]\n" +
 	"\vListContent\x12#.meurpg.rules.v1.ListContentRequest\x1a$.meurpg.rules.v1.ListContentResponse\"\x03\x90\x02\x02\x12i\n" +
-	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02\x12c\n" +
+	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02\x12Z\n" +
+	"\n" +
+	"ListSpells\x12\".meurpg.rules.v1.ListSpellsRequest\x1a#.meurpg.rules.v1.ListSpellsResponse\"\x03\x90\x02\x02\x12c\n" +
 	"\rListCreatures\x12%.meurpg.rules.v1.ListCreaturesRequest\x1a&.meurpg.rules.v1.ListCreaturesResponse\"\x03\x90\x02\x02\x12]\n" +
 	"\vGetCreature\x12#.meurpg.rules.v1.GetCreatureRequest\x1a$.meurpg.rules.v1.GetCreatureResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x0fListTrapPresets\x12'.meurpg.rules.v1.ListTrapPresetsRequest\x1a(.meurpg.rules.v1.ListTrapPresetsResponse\"\x03\x90\x02\x02\x12l\n" +
@@ -9725,8 +10202,8 @@ func file_meurpg_rules_v1_rules_proto_rawDescGZIP() []byte {
 	return file_meurpg_rules_v1_rules_proto_rawDescData
 }
 
-var file_meurpg_rules_v1_rules_proto_enumTypes = make([]protoimpl.EnumInfo, 21)
-var file_meurpg_rules_v1_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
+var file_meurpg_rules_v1_rules_proto_enumTypes = make([]protoimpl.EnumInfo, 23)
+var file_meurpg_rules_v1_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 95)
 var file_meurpg_rules_v1_rules_proto_goTypes = []any{
 	(TrapTrigger)(0),                   // 0: meurpg.rules.v1.TrapTrigger
 	(TrapTargets)(0),                   // 1: meurpg.rules.v1.TrapTargets
@@ -9740,151 +10217,156 @@ var file_meurpg_rules_v1_rules_proto_goTypes = []any{
 	(SpellPreparation)(0),              // 9: meurpg.rules.v1.SpellPreparation
 	(ArmorCategory)(0),                 // 10: meurpg.rules.v1.ArmorCategory
 	(WeaponCategory)(0),                // 11: meurpg.rules.v1.WeaponCategory
-	(SpellHitPointEffectKind)(0),       // 12: meurpg.rules.v1.SpellHitPointEffectKind
-	(CastingTimeUnit)(0),               // 13: meurpg.rules.v1.CastingTimeUnit
-	(SpellRangeKind)(0),                // 14: meurpg.rules.v1.SpellRangeKind
-	(SpellDurationKind)(0),             // 15: meurpg.rules.v1.SpellDurationKind
-	(SpellDurationUnit)(0),             // 16: meurpg.rules.v1.SpellDurationUnit
-	(SpellAttackType)(0),               // 17: meurpg.rules.v1.SpellAttackType
-	(SpellSaveSuccess)(0),              // 18: meurpg.rules.v1.SpellSaveSuccess
-	(CreatureSize)(0),                  // 19: meurpg.rules.v1.CreatureSize
-	(DisabledReasonCode)(0),            // 20: meurpg.rules.v1.DisabledReasonCode
-	(*ListTrapPresetsRequest)(nil),     // 21: meurpg.rules.v1.ListTrapPresetsRequest
-	(*ListTrapPresetsResponse)(nil),    // 22: meurpg.rules.v1.ListTrapPresetsResponse
-	(*ListLightPresetsRequest)(nil),    // 23: meurpg.rules.v1.ListLightPresetsRequest
-	(*ListLightPresetsResponse)(nil),   // 24: meurpg.rules.v1.ListLightPresetsResponse
-	(*LightPreset)(nil),                // 25: meurpg.rules.v1.LightPreset
-	(*TrapDamage)(nil),                 // 26: meurpg.rules.v1.TrapDamage
-	(*TrapCondition)(nil),              // 27: meurpg.rules.v1.TrapCondition
-	(*TrapAttack)(nil),                 // 28: meurpg.rules.v1.TrapAttack
-	(*TrapOnFail)(nil),                 // 29: meurpg.rules.v1.TrapOnFail
-	(*TrapSaveEffect)(nil),             // 30: meurpg.rules.v1.TrapSaveEffect
-	(*TrapEffect)(nil),                 // 31: meurpg.rules.v1.TrapEffect
-	(*TrapPreset)(nil),                 // 32: meurpg.rules.v1.TrapPreset
-	(*TrapSeverity)(nil),               // 33: meurpg.rules.v1.TrapSeverity
-	(*TrapDamageRow)(nil),              // 34: meurpg.rules.v1.TrapDamageRow
-	(*AbilityScores)(nil),              // 35: meurpg.rules.v1.AbilityScores
-	(*DerivedSheet)(nil),               // 36: meurpg.rules.v1.DerivedSheet
-	(*ChangedContent)(nil),             // 37: meurpg.rules.v1.ChangedContent
-	(*SaveAction)(nil),                 // 38: meurpg.rules.v1.SaveAction
-	(*Resource)(nil),                   // 39: meurpg.rules.v1.Resource
-	(*Action)(nil),                     // 40: meurpg.rules.v1.Action
-	(*DiceFormula)(nil),                // 41: meurpg.rules.v1.DiceFormula
-	(*DerivedClass)(nil),               // 42: meurpg.rules.v1.DerivedClass
-	(*DerivedAbility)(nil),             // 43: meurpg.rules.v1.DerivedAbility
-	(*SavingThrow)(nil),                // 44: meurpg.rules.v1.SavingThrow
-	(*DerivedSkill)(nil),               // 45: meurpg.rules.v1.DerivedSkill
-	(*HitDice)(nil),                    // 46: meurpg.rules.v1.HitDice
-	(*Sense)(nil),                      // 47: meurpg.rules.v1.Sense
-	(*Spellcasting)(nil),               // 48: meurpg.rules.v1.Spellcasting
-	(*SpellSlots)(nil),                 // 49: meurpg.rules.v1.SpellSlots
-	(*PactMagic)(nil),                  // 50: meurpg.rules.v1.PactMagic
-	(*CharacterSpell)(nil),             // 51: meurpg.rules.v1.CharacterSpell
-	(*Attack)(nil),                     // 52: meurpg.rules.v1.Attack
-	(*Feature)(nil),                    // 53: meurpg.rules.v1.Feature
-	(*Proficiencies)(nil),              // 54: meurpg.rules.v1.Proficiencies
-	(*Hint)(nil),                       // 55: meurpg.rules.v1.Hint
-	(*Issue)(nil),                      // 56: meurpg.rules.v1.Issue
-	(*Content)(nil),                    // 57: meurpg.rules.v1.Content
-	(*ChallengeRating)(nil),            // 58: meurpg.rules.v1.ChallengeRating
-	(*AbilityInfo)(nil),                // 59: meurpg.rules.v1.AbilityInfo
-	(*Race)(nil),                       // 60: meurpg.rules.v1.Race
-	(*Subrace)(nil),                    // 61: meurpg.rules.v1.Subrace
-	(*CharacterClass)(nil),             // 62: meurpg.rules.v1.CharacterClass
-	(*SkillChoice)(nil),                // 63: meurpg.rules.v1.SkillChoice
-	(*ClassSpellcasting)(nil),          // 64: meurpg.rules.v1.ClassSpellcasting
-	(*Subclass)(nil),                   // 65: meurpg.rules.v1.Subclass
-	(*SubclassSpellcasting)(nil),       // 66: meurpg.rules.v1.SubclassSpellcasting
-	(*Background)(nil),                 // 67: meurpg.rules.v1.Background
-	(*Skill)(nil),                      // 68: meurpg.rules.v1.Skill
-	(*Armor)(nil),                      // 69: meurpg.rules.v1.Armor
-	(*Weapon)(nil),                     // 70: meurpg.rules.v1.Weapon
-	(*Spell)(nil),                      // 71: meurpg.rules.v1.Spell
-	(*ListContentRequest)(nil),         // 72: meurpg.rules.v1.ListContentRequest
-	(*ListContentResponse)(nil),        // 73: meurpg.rules.v1.ListContentResponse
-	(*GetSpellDetailsRequest)(nil),     // 74: meurpg.rules.v1.GetSpellDetailsRequest
-	(*GetSpellDetailsResponse)(nil),    // 75: meurpg.rules.v1.GetSpellDetailsResponse
-	(*SpellDetails)(nil),               // 76: meurpg.rules.v1.SpellDetails
-	(*SpellHitPointEffect)(nil),        // 77: meurpg.rules.v1.SpellHitPointEffect
-	(*SpellCastingTime)(nil),           // 78: meurpg.rules.v1.SpellCastingTime
-	(*SpellRange)(nil),                 // 79: meurpg.rules.v1.SpellRange
-	(*SpellComponents)(nil),            // 80: meurpg.rules.v1.SpellComponents
-	(*SpellDuration)(nil),              // 81: meurpg.rules.v1.SpellDuration
-	(*SpellSave)(nil),                  // 82: meurpg.rules.v1.SpellSave
-	(*SpellDamage)(nil),                // 83: meurpg.rules.v1.SpellDamage
-	(*TurnOptions)(nil),                // 84: meurpg.rules.v1.TurnOptions
-	(*TurnEconomy)(nil),                // 85: meurpg.rules.v1.TurnEconomy
-	(*EconomyState)(nil),               // 86: meurpg.rules.v1.EconomyState
-	(*MovementLeft)(nil),               // 87: meurpg.rules.v1.MovementLeft
-	(*JumpLimits)(nil),                 // 88: meurpg.rules.v1.JumpLimits
-	(*DisabledReason)(nil),             // 89: meurpg.rules.v1.DisabledReason
-	(*AttackOption)(nil),               // 90: meurpg.rules.v1.AttackOption
-	(*SpellOption)(nil),                // 91: meurpg.rules.v1.SpellOption
-	(*SlotChoice)(nil),                 // 92: meurpg.rules.v1.SlotChoice
-	(*ActionOption)(nil),               // 93: meurpg.rules.v1.ActionOption
-	(*ListCreaturesRequest)(nil),       // 94: meurpg.rules.v1.ListCreaturesRequest
-	(*ListCreaturesResponse)(nil),      // 95: meurpg.rules.v1.ListCreaturesResponse
-	(*CreatureSummary)(nil),            // 96: meurpg.rules.v1.CreatureSummary
-	(*GetCreatureRequest)(nil),         // 97: meurpg.rules.v1.GetCreatureRequest
-	(*GetCreatureResponse)(nil),        // 98: meurpg.rules.v1.GetCreatureResponse
-	(*Creature)(nil),                   // 99: meurpg.rules.v1.Creature
-	(*CreatureAbilityScore)(nil),       // 100: meurpg.rules.v1.CreatureAbilityScore
-	(*CreatureBonus)(nil),              // 101: meurpg.rules.v1.CreatureBonus
-	(*CreatureNamedKey)(nil),           // 102: meurpg.rules.v1.CreatureNamedKey
-	(*CreatureDamageModifier)(nil),     // 103: meurpg.rules.v1.CreatureDamageModifier
-	(*CreatureTrait)(nil),              // 104: meurpg.rules.v1.CreatureTrait
-	(*CreatureAction)(nil),             // 105: meurpg.rules.v1.CreatureAction
-	(*CreatureDamagePart)(nil),         // 106: meurpg.rules.v1.CreatureDamagePart
-	(*CreatureSave)(nil),               // 107: meurpg.rules.v1.CreatureSave
-	(*CreatureMultiattackRoutine)(nil), // 108: meurpg.rules.v1.CreatureMultiattackRoutine
-	(*CreatureAttackCount)(nil),        // 109: meurpg.rules.v1.CreatureAttackCount
-	nil,                                // 110: meurpg.rules.v1.SpellDetails.HealBySlotLevelEntry
-	nil,                                // 111: meurpg.rules.v1.SpellDamage.BySlotLevelEntry
-	nil,                                // 112: meurpg.rules.v1.SpellDamage.ByCharacterLevelEntry
-	(*timestamppb.Timestamp)(nil),      // 113: google.protobuf.Timestamp
+	(SpellTargetKind)(0),               // 12: meurpg.rules.v1.SpellTargetKind
+	(SpellAreaShape)(0),                // 13: meurpg.rules.v1.SpellAreaShape
+	(SpellHitPointEffectKind)(0),       // 14: meurpg.rules.v1.SpellHitPointEffectKind
+	(CastingTimeUnit)(0),               // 15: meurpg.rules.v1.CastingTimeUnit
+	(SpellRangeKind)(0),                // 16: meurpg.rules.v1.SpellRangeKind
+	(SpellDurationKind)(0),             // 17: meurpg.rules.v1.SpellDurationKind
+	(SpellDurationUnit)(0),             // 18: meurpg.rules.v1.SpellDurationUnit
+	(SpellAttackType)(0),               // 19: meurpg.rules.v1.SpellAttackType
+	(SpellSaveSuccess)(0),              // 20: meurpg.rules.v1.SpellSaveSuccess
+	(CreatureSize)(0),                  // 21: meurpg.rules.v1.CreatureSize
+	(DisabledReasonCode)(0),            // 22: meurpg.rules.v1.DisabledReasonCode
+	(*ListTrapPresetsRequest)(nil),     // 23: meurpg.rules.v1.ListTrapPresetsRequest
+	(*ListTrapPresetsResponse)(nil),    // 24: meurpg.rules.v1.ListTrapPresetsResponse
+	(*ListLightPresetsRequest)(nil),    // 25: meurpg.rules.v1.ListLightPresetsRequest
+	(*ListLightPresetsResponse)(nil),   // 26: meurpg.rules.v1.ListLightPresetsResponse
+	(*LightPreset)(nil),                // 27: meurpg.rules.v1.LightPreset
+	(*TrapDamage)(nil),                 // 28: meurpg.rules.v1.TrapDamage
+	(*TrapCondition)(nil),              // 29: meurpg.rules.v1.TrapCondition
+	(*TrapAttack)(nil),                 // 30: meurpg.rules.v1.TrapAttack
+	(*TrapOnFail)(nil),                 // 31: meurpg.rules.v1.TrapOnFail
+	(*TrapSaveEffect)(nil),             // 32: meurpg.rules.v1.TrapSaveEffect
+	(*TrapEffect)(nil),                 // 33: meurpg.rules.v1.TrapEffect
+	(*TrapPreset)(nil),                 // 34: meurpg.rules.v1.TrapPreset
+	(*TrapSeverity)(nil),               // 35: meurpg.rules.v1.TrapSeverity
+	(*TrapDamageRow)(nil),              // 36: meurpg.rules.v1.TrapDamageRow
+	(*AbilityScores)(nil),              // 37: meurpg.rules.v1.AbilityScores
+	(*DerivedSheet)(nil),               // 38: meurpg.rules.v1.DerivedSheet
+	(*ChangedContent)(nil),             // 39: meurpg.rules.v1.ChangedContent
+	(*SaveAction)(nil),                 // 40: meurpg.rules.v1.SaveAction
+	(*Resource)(nil),                   // 41: meurpg.rules.v1.Resource
+	(*Action)(nil),                     // 42: meurpg.rules.v1.Action
+	(*DiceFormula)(nil),                // 43: meurpg.rules.v1.DiceFormula
+	(*DerivedClass)(nil),               // 44: meurpg.rules.v1.DerivedClass
+	(*DerivedAbility)(nil),             // 45: meurpg.rules.v1.DerivedAbility
+	(*SavingThrow)(nil),                // 46: meurpg.rules.v1.SavingThrow
+	(*DerivedSkill)(nil),               // 47: meurpg.rules.v1.DerivedSkill
+	(*HitDice)(nil),                    // 48: meurpg.rules.v1.HitDice
+	(*Sense)(nil),                      // 49: meurpg.rules.v1.Sense
+	(*Spellcasting)(nil),               // 50: meurpg.rules.v1.Spellcasting
+	(*SpellSlots)(nil),                 // 51: meurpg.rules.v1.SpellSlots
+	(*PactMagic)(nil),                  // 52: meurpg.rules.v1.PactMagic
+	(*CharacterSpell)(nil),             // 53: meurpg.rules.v1.CharacterSpell
+	(*Attack)(nil),                     // 54: meurpg.rules.v1.Attack
+	(*Feature)(nil),                    // 55: meurpg.rules.v1.Feature
+	(*Proficiencies)(nil),              // 56: meurpg.rules.v1.Proficiencies
+	(*Hint)(nil),                       // 57: meurpg.rules.v1.Hint
+	(*Issue)(nil),                      // 58: meurpg.rules.v1.Issue
+	(*Content)(nil),                    // 59: meurpg.rules.v1.Content
+	(*ChallengeRating)(nil),            // 60: meurpg.rules.v1.ChallengeRating
+	(*AbilityInfo)(nil),                // 61: meurpg.rules.v1.AbilityInfo
+	(*Race)(nil),                       // 62: meurpg.rules.v1.Race
+	(*Subrace)(nil),                    // 63: meurpg.rules.v1.Subrace
+	(*CharacterClass)(nil),             // 64: meurpg.rules.v1.CharacterClass
+	(*SkillChoice)(nil),                // 65: meurpg.rules.v1.SkillChoice
+	(*ClassSpellcasting)(nil),          // 66: meurpg.rules.v1.ClassSpellcasting
+	(*Subclass)(nil),                   // 67: meurpg.rules.v1.Subclass
+	(*SubclassSpellcasting)(nil),       // 68: meurpg.rules.v1.SubclassSpellcasting
+	(*Background)(nil),                 // 69: meurpg.rules.v1.Background
+	(*Skill)(nil),                      // 70: meurpg.rules.v1.Skill
+	(*Armor)(nil),                      // 71: meurpg.rules.v1.Armor
+	(*Weapon)(nil),                     // 72: meurpg.rules.v1.Weapon
+	(*Spell)(nil),                      // 73: meurpg.rules.v1.Spell
+	(*ListContentRequest)(nil),         // 74: meurpg.rules.v1.ListContentRequest
+	(*ListContentResponse)(nil),        // 75: meurpg.rules.v1.ListContentResponse
+	(*GetSpellDetailsRequest)(nil),     // 76: meurpg.rules.v1.GetSpellDetailsRequest
+	(*ListSpellsRequest)(nil),          // 77: meurpg.rules.v1.ListSpellsRequest
+	(*ListSpellsResponse)(nil),         // 78: meurpg.rules.v1.ListSpellsResponse
+	(*GetSpellDetailsResponse)(nil),    // 79: meurpg.rules.v1.GetSpellDetailsResponse
+	(*SpellDetails)(nil),               // 80: meurpg.rules.v1.SpellDetails
+	(*SpellTarget)(nil),                // 81: meurpg.rules.v1.SpellTarget
+	(*SpellHitPointEffect)(nil),        // 82: meurpg.rules.v1.SpellHitPointEffect
+	(*SpellCastingTime)(nil),           // 83: meurpg.rules.v1.SpellCastingTime
+	(*SpellRange)(nil),                 // 84: meurpg.rules.v1.SpellRange
+	(*SpellComponents)(nil),            // 85: meurpg.rules.v1.SpellComponents
+	(*SpellDuration)(nil),              // 86: meurpg.rules.v1.SpellDuration
+	(*SpellSave)(nil),                  // 87: meurpg.rules.v1.SpellSave
+	(*SpellDamage)(nil),                // 88: meurpg.rules.v1.SpellDamage
+	(*TurnOptions)(nil),                // 89: meurpg.rules.v1.TurnOptions
+	(*TurnEconomy)(nil),                // 90: meurpg.rules.v1.TurnEconomy
+	(*EconomyState)(nil),               // 91: meurpg.rules.v1.EconomyState
+	(*MovementLeft)(nil),               // 92: meurpg.rules.v1.MovementLeft
+	(*JumpLimits)(nil),                 // 93: meurpg.rules.v1.JumpLimits
+	(*DisabledReason)(nil),             // 94: meurpg.rules.v1.DisabledReason
+	(*AttackOption)(nil),               // 95: meurpg.rules.v1.AttackOption
+	(*SpellOption)(nil),                // 96: meurpg.rules.v1.SpellOption
+	(*SlotChoice)(nil),                 // 97: meurpg.rules.v1.SlotChoice
+	(*ActionOption)(nil),               // 98: meurpg.rules.v1.ActionOption
+	(*ListCreaturesRequest)(nil),       // 99: meurpg.rules.v1.ListCreaturesRequest
+	(*ListCreaturesResponse)(nil),      // 100: meurpg.rules.v1.ListCreaturesResponse
+	(*CreatureSummary)(nil),            // 101: meurpg.rules.v1.CreatureSummary
+	(*GetCreatureRequest)(nil),         // 102: meurpg.rules.v1.GetCreatureRequest
+	(*GetCreatureResponse)(nil),        // 103: meurpg.rules.v1.GetCreatureResponse
+	(*Creature)(nil),                   // 104: meurpg.rules.v1.Creature
+	(*CreatureAbilityScore)(nil),       // 105: meurpg.rules.v1.CreatureAbilityScore
+	(*CreatureBonus)(nil),              // 106: meurpg.rules.v1.CreatureBonus
+	(*CreatureNamedKey)(nil),           // 107: meurpg.rules.v1.CreatureNamedKey
+	(*CreatureDamageModifier)(nil),     // 108: meurpg.rules.v1.CreatureDamageModifier
+	(*CreatureTrait)(nil),              // 109: meurpg.rules.v1.CreatureTrait
+	(*CreatureAction)(nil),             // 110: meurpg.rules.v1.CreatureAction
+	(*CreatureDamagePart)(nil),         // 111: meurpg.rules.v1.CreatureDamagePart
+	(*CreatureSave)(nil),               // 112: meurpg.rules.v1.CreatureSave
+	(*CreatureMultiattackRoutine)(nil), // 113: meurpg.rules.v1.CreatureMultiattackRoutine
+	(*CreatureAttackCount)(nil),        // 114: meurpg.rules.v1.CreatureAttackCount
+	nil,                                // 115: meurpg.rules.v1.SpellDetails.HealBySlotLevelEntry
+	nil,                                // 116: meurpg.rules.v1.SpellDamage.BySlotLevelEntry
+	nil,                                // 117: meurpg.rules.v1.SpellDamage.ByCharacterLevelEntry
+	(*timestamppb.Timestamp)(nil),      // 118: google.protobuf.Timestamp
 }
 var file_meurpg_rules_v1_rules_proto_depIdxs = []int32{
-	32,  // 0: meurpg.rules.v1.ListTrapPresetsResponse.presets:type_name -> meurpg.rules.v1.TrapPreset
-	33,  // 1: meurpg.rules.v1.ListTrapPresetsResponse.severities:type_name -> meurpg.rules.v1.TrapSeverity
-	34,  // 2: meurpg.rules.v1.ListTrapPresetsResponse.damage_by_level:type_name -> meurpg.rules.v1.TrapDamageRow
-	25,  // 3: meurpg.rules.v1.ListLightPresetsResponse.presets:type_name -> meurpg.rules.v1.LightPreset
-	26,  // 4: meurpg.rules.v1.TrapAttack.damage:type_name -> meurpg.rules.v1.TrapDamage
-	26,  // 5: meurpg.rules.v1.TrapOnFail.damage:type_name -> meurpg.rules.v1.TrapDamage
-	27,  // 6: meurpg.rules.v1.TrapOnFail.condition:type_name -> meurpg.rules.v1.TrapCondition
+	34,  // 0: meurpg.rules.v1.ListTrapPresetsResponse.presets:type_name -> meurpg.rules.v1.TrapPreset
+	35,  // 1: meurpg.rules.v1.ListTrapPresetsResponse.severities:type_name -> meurpg.rules.v1.TrapSeverity
+	36,  // 2: meurpg.rules.v1.ListTrapPresetsResponse.damage_by_level:type_name -> meurpg.rules.v1.TrapDamageRow
+	27,  // 3: meurpg.rules.v1.ListLightPresetsResponse.presets:type_name -> meurpg.rules.v1.LightPreset
+	28,  // 4: meurpg.rules.v1.TrapAttack.damage:type_name -> meurpg.rules.v1.TrapDamage
+	28,  // 5: meurpg.rules.v1.TrapOnFail.damage:type_name -> meurpg.rules.v1.TrapDamage
+	29,  // 6: meurpg.rules.v1.TrapOnFail.condition:type_name -> meurpg.rules.v1.TrapCondition
 	4,   // 7: meurpg.rules.v1.TrapSaveEffect.ability:type_name -> meurpg.rules.v1.Ability
 	2,   // 8: meurpg.rules.v1.TrapSaveEffect.applies_to:type_name -> meurpg.rules.v1.TrapSaveApplies
-	29,  // 9: meurpg.rules.v1.TrapSaveEffect.on_fail:type_name -> meurpg.rules.v1.TrapOnFail
+	31,  // 9: meurpg.rules.v1.TrapSaveEffect.on_fail:type_name -> meurpg.rules.v1.TrapOnFail
 	3,   // 10: meurpg.rules.v1.TrapSaveEffect.on_pass:type_name -> meurpg.rules.v1.TrapPassOutcome
-	28,  // 11: meurpg.rules.v1.TrapEffect.attack:type_name -> meurpg.rules.v1.TrapAttack
-	26,  // 12: meurpg.rules.v1.TrapEffect.damage:type_name -> meurpg.rules.v1.TrapDamage
-	27,  // 13: meurpg.rules.v1.TrapEffect.conditions:type_name -> meurpg.rules.v1.TrapCondition
-	30,  // 14: meurpg.rules.v1.TrapEffect.save:type_name -> meurpg.rules.v1.TrapSaveEffect
+	30,  // 11: meurpg.rules.v1.TrapEffect.attack:type_name -> meurpg.rules.v1.TrapAttack
+	28,  // 12: meurpg.rules.v1.TrapEffect.damage:type_name -> meurpg.rules.v1.TrapDamage
+	29,  // 13: meurpg.rules.v1.TrapEffect.conditions:type_name -> meurpg.rules.v1.TrapCondition
+	32,  // 14: meurpg.rules.v1.TrapEffect.save:type_name -> meurpg.rules.v1.TrapSaveEffect
 	1,   // 15: meurpg.rules.v1.TrapEffect.targets:type_name -> meurpg.rules.v1.TrapTargets
 	0,   // 16: meurpg.rules.v1.TrapPreset.trigger:type_name -> meurpg.rules.v1.TrapTrigger
-	31,  // 17: meurpg.rules.v1.TrapPreset.effect:type_name -> meurpg.rules.v1.TrapEffect
-	42,  // 18: meurpg.rules.v1.DerivedSheet.classes:type_name -> meurpg.rules.v1.DerivedClass
-	43,  // 19: meurpg.rules.v1.DerivedSheet.abilities:type_name -> meurpg.rules.v1.DerivedAbility
-	44,  // 20: meurpg.rules.v1.DerivedSheet.saving_throws:type_name -> meurpg.rules.v1.SavingThrow
-	45,  // 21: meurpg.rules.v1.DerivedSheet.skills:type_name -> meurpg.rules.v1.DerivedSkill
-	46,  // 22: meurpg.rules.v1.DerivedSheet.hit_dice:type_name -> meurpg.rules.v1.HitDice
-	47,  // 23: meurpg.rules.v1.DerivedSheet.senses:type_name -> meurpg.rules.v1.Sense
-	48,  // 24: meurpg.rules.v1.DerivedSheet.spellcasting:type_name -> meurpg.rules.v1.Spellcasting
-	49,  // 25: meurpg.rules.v1.DerivedSheet.spell_slots:type_name -> meurpg.rules.v1.SpellSlots
-	50,  // 26: meurpg.rules.v1.DerivedSheet.pact_magic:type_name -> meurpg.rules.v1.PactMagic
-	51,  // 27: meurpg.rules.v1.DerivedSheet.spells:type_name -> meurpg.rules.v1.CharacterSpell
-	52,  // 28: meurpg.rules.v1.DerivedSheet.attacks:type_name -> meurpg.rules.v1.Attack
-	53,  // 29: meurpg.rules.v1.DerivedSheet.features:type_name -> meurpg.rules.v1.Feature
-	54,  // 30: meurpg.rules.v1.DerivedSheet.proficiencies:type_name -> meurpg.rules.v1.Proficiencies
-	55,  // 31: meurpg.rules.v1.DerivedSheet.hints:type_name -> meurpg.rules.v1.Hint
-	56,  // 32: meurpg.rules.v1.DerivedSheet.issues:type_name -> meurpg.rules.v1.Issue
-	39,  // 33: meurpg.rules.v1.DerivedSheet.resources:type_name -> meurpg.rules.v1.Resource
-	40,  // 34: meurpg.rules.v1.DerivedSheet.actions:type_name -> meurpg.rules.v1.Action
-	40,  // 35: meurpg.rules.v1.DerivedSheet.standard_actions:type_name -> meurpg.rules.v1.Action
-	38,  // 36: meurpg.rules.v1.DerivedSheet.save_actions:type_name -> meurpg.rules.v1.SaveAction
-	37,  // 37: meurpg.rules.v1.DerivedSheet.changed_content:type_name -> meurpg.rules.v1.ChangedContent
-	113, // 38: meurpg.rules.v1.ChangedContent.changed_at:type_name -> google.protobuf.Timestamp
+	33,  // 17: meurpg.rules.v1.TrapPreset.effect:type_name -> meurpg.rules.v1.TrapEffect
+	44,  // 18: meurpg.rules.v1.DerivedSheet.classes:type_name -> meurpg.rules.v1.DerivedClass
+	45,  // 19: meurpg.rules.v1.DerivedSheet.abilities:type_name -> meurpg.rules.v1.DerivedAbility
+	46,  // 20: meurpg.rules.v1.DerivedSheet.saving_throws:type_name -> meurpg.rules.v1.SavingThrow
+	47,  // 21: meurpg.rules.v1.DerivedSheet.skills:type_name -> meurpg.rules.v1.DerivedSkill
+	48,  // 22: meurpg.rules.v1.DerivedSheet.hit_dice:type_name -> meurpg.rules.v1.HitDice
+	49,  // 23: meurpg.rules.v1.DerivedSheet.senses:type_name -> meurpg.rules.v1.Sense
+	50,  // 24: meurpg.rules.v1.DerivedSheet.spellcasting:type_name -> meurpg.rules.v1.Spellcasting
+	51,  // 25: meurpg.rules.v1.DerivedSheet.spell_slots:type_name -> meurpg.rules.v1.SpellSlots
+	52,  // 26: meurpg.rules.v1.DerivedSheet.pact_magic:type_name -> meurpg.rules.v1.PactMagic
+	53,  // 27: meurpg.rules.v1.DerivedSheet.spells:type_name -> meurpg.rules.v1.CharacterSpell
+	54,  // 28: meurpg.rules.v1.DerivedSheet.attacks:type_name -> meurpg.rules.v1.Attack
+	55,  // 29: meurpg.rules.v1.DerivedSheet.features:type_name -> meurpg.rules.v1.Feature
+	56,  // 30: meurpg.rules.v1.DerivedSheet.proficiencies:type_name -> meurpg.rules.v1.Proficiencies
+	57,  // 31: meurpg.rules.v1.DerivedSheet.hints:type_name -> meurpg.rules.v1.Hint
+	58,  // 32: meurpg.rules.v1.DerivedSheet.issues:type_name -> meurpg.rules.v1.Issue
+	41,  // 33: meurpg.rules.v1.DerivedSheet.resources:type_name -> meurpg.rules.v1.Resource
+	42,  // 34: meurpg.rules.v1.DerivedSheet.actions:type_name -> meurpg.rules.v1.Action
+	42,  // 35: meurpg.rules.v1.DerivedSheet.standard_actions:type_name -> meurpg.rules.v1.Action
+	40,  // 36: meurpg.rules.v1.DerivedSheet.save_actions:type_name -> meurpg.rules.v1.SaveAction
+	39,  // 37: meurpg.rules.v1.DerivedSheet.changed_content:type_name -> meurpg.rules.v1.ChangedContent
+	118, // 38: meurpg.rules.v1.ChangedContent.changed_at:type_name -> google.protobuf.Timestamp
 	4,   // 39: meurpg.rules.v1.SaveAction.ability:type_name -> meurpg.rules.v1.Ability
-	18,  // 40: meurpg.rules.v1.SaveAction.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
+	20,  // 40: meurpg.rules.v1.SaveAction.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
 	6,   // 41: meurpg.rules.v1.Resource.recharge:type_name -> meurpg.rules.v1.Recharge
 	7,   // 42: meurpg.rules.v1.Action.economy:type_name -> meurpg.rules.v1.ActionEconomy
 	4,   // 43: meurpg.rules.v1.DerivedAbility.ability:type_name -> meurpg.rules.v1.Ability
@@ -9892,119 +10374,125 @@ var file_meurpg_rules_v1_rules_proto_depIdxs = []int32{
 	4,   // 45: meurpg.rules.v1.DerivedSkill.ability:type_name -> meurpg.rules.v1.Ability
 	5,   // 46: meurpg.rules.v1.DerivedSkill.proficiency:type_name -> meurpg.rules.v1.ProficiencyLevel
 	4,   // 47: meurpg.rules.v1.Spellcasting.ability:type_name -> meurpg.rules.v1.Ability
-	71,  // 48: meurpg.rules.v1.CharacterSpell.spell:type_name -> meurpg.rules.v1.Spell
+	73,  // 48: meurpg.rules.v1.CharacterSpell.spell:type_name -> meurpg.rules.v1.Spell
 	8,   // 49: meurpg.rules.v1.Attack.kind:type_name -> meurpg.rules.v1.AttackKind
 	4,   // 50: meurpg.rules.v1.Attack.save_ability:type_name -> meurpg.rules.v1.Ability
-	41,  // 51: meurpg.rules.v1.Attack.damage_dice:type_name -> meurpg.rules.v1.DiceFormula
-	41,  // 52: meurpg.rules.v1.Attack.versatile_damage_dice:type_name -> meurpg.rules.v1.DiceFormula
-	59,  // 53: meurpg.rules.v1.Content.abilities:type_name -> meurpg.rules.v1.AbilityInfo
-	60,  // 54: meurpg.rules.v1.Content.races:type_name -> meurpg.rules.v1.Race
-	61,  // 55: meurpg.rules.v1.Content.subraces:type_name -> meurpg.rules.v1.Subrace
-	62,  // 56: meurpg.rules.v1.Content.classes:type_name -> meurpg.rules.v1.CharacterClass
-	65,  // 57: meurpg.rules.v1.Content.subclasses:type_name -> meurpg.rules.v1.Subclass
-	67,  // 58: meurpg.rules.v1.Content.backgrounds:type_name -> meurpg.rules.v1.Background
-	68,  // 59: meurpg.rules.v1.Content.skills:type_name -> meurpg.rules.v1.Skill
-	69,  // 60: meurpg.rules.v1.Content.armor:type_name -> meurpg.rules.v1.Armor
-	70,  // 61: meurpg.rules.v1.Content.weapons:type_name -> meurpg.rules.v1.Weapon
-	71,  // 62: meurpg.rules.v1.Content.spells:type_name -> meurpg.rules.v1.Spell
-	58,  // 63: meurpg.rules.v1.Content.challenge_ratings:type_name -> meurpg.rules.v1.ChallengeRating
+	43,  // 51: meurpg.rules.v1.Attack.damage_dice:type_name -> meurpg.rules.v1.DiceFormula
+	43,  // 52: meurpg.rules.v1.Attack.versatile_damage_dice:type_name -> meurpg.rules.v1.DiceFormula
+	61,  // 53: meurpg.rules.v1.Content.abilities:type_name -> meurpg.rules.v1.AbilityInfo
+	62,  // 54: meurpg.rules.v1.Content.races:type_name -> meurpg.rules.v1.Race
+	63,  // 55: meurpg.rules.v1.Content.subraces:type_name -> meurpg.rules.v1.Subrace
+	64,  // 56: meurpg.rules.v1.Content.classes:type_name -> meurpg.rules.v1.CharacterClass
+	67,  // 57: meurpg.rules.v1.Content.subclasses:type_name -> meurpg.rules.v1.Subclass
+	69,  // 58: meurpg.rules.v1.Content.backgrounds:type_name -> meurpg.rules.v1.Background
+	70,  // 59: meurpg.rules.v1.Content.skills:type_name -> meurpg.rules.v1.Skill
+	71,  // 60: meurpg.rules.v1.Content.armor:type_name -> meurpg.rules.v1.Armor
+	72,  // 61: meurpg.rules.v1.Content.weapons:type_name -> meurpg.rules.v1.Weapon
+	73,  // 62: meurpg.rules.v1.Content.spells:type_name -> meurpg.rules.v1.Spell
+	60,  // 63: meurpg.rules.v1.Content.challenge_ratings:type_name -> meurpg.rules.v1.ChallengeRating
 	4,   // 64: meurpg.rules.v1.AbilityInfo.ability:type_name -> meurpg.rules.v1.Ability
-	35,  // 65: meurpg.rules.v1.Race.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	35,  // 66: meurpg.rules.v1.Subrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	37,  // 65: meurpg.rules.v1.Race.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	37,  // 66: meurpg.rules.v1.Subrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
 	4,   // 67: meurpg.rules.v1.CharacterClass.saving_throws:type_name -> meurpg.rules.v1.Ability
-	63,  // 68: meurpg.rules.v1.CharacterClass.skill_choice:type_name -> meurpg.rules.v1.SkillChoice
-	64,  // 69: meurpg.rules.v1.CharacterClass.spellcasting:type_name -> meurpg.rules.v1.ClassSpellcasting
+	65,  // 68: meurpg.rules.v1.CharacterClass.skill_choice:type_name -> meurpg.rules.v1.SkillChoice
+	66,  // 69: meurpg.rules.v1.CharacterClass.spellcasting:type_name -> meurpg.rules.v1.ClassSpellcasting
 	4,   // 70: meurpg.rules.v1.ClassSpellcasting.ability:type_name -> meurpg.rules.v1.Ability
 	9,   // 71: meurpg.rules.v1.ClassSpellcasting.preparation:type_name -> meurpg.rules.v1.SpellPreparation
-	66,  // 72: meurpg.rules.v1.Subclass.spellcasting:type_name -> meurpg.rules.v1.SubclassSpellcasting
+	68,  // 72: meurpg.rules.v1.Subclass.spellcasting:type_name -> meurpg.rules.v1.SubclassSpellcasting
 	4,   // 73: meurpg.rules.v1.SubclassSpellcasting.ability:type_name -> meurpg.rules.v1.Ability
 	9,   // 74: meurpg.rules.v1.SubclassSpellcasting.preparation:type_name -> meurpg.rules.v1.SpellPreparation
 	4,   // 75: meurpg.rules.v1.Skill.ability:type_name -> meurpg.rules.v1.Ability
 	10,  // 76: meurpg.rules.v1.Armor.category:type_name -> meurpg.rules.v1.ArmorCategory
 	11,  // 77: meurpg.rules.v1.Weapon.category:type_name -> meurpg.rules.v1.WeaponCategory
-	57,  // 78: meurpg.rules.v1.ListContentResponse.content:type_name -> meurpg.rules.v1.Content
-	76,  // 79: meurpg.rules.v1.GetSpellDetailsResponse.spell:type_name -> meurpg.rules.v1.SpellDetails
-	71,  // 80: meurpg.rules.v1.SpellDetails.spell:type_name -> meurpg.rules.v1.Spell
-	78,  // 81: meurpg.rules.v1.SpellDetails.casting_time:type_name -> meurpg.rules.v1.SpellCastingTime
-	79,  // 82: meurpg.rules.v1.SpellDetails.range:type_name -> meurpg.rules.v1.SpellRange
-	80,  // 83: meurpg.rules.v1.SpellDetails.components:type_name -> meurpg.rules.v1.SpellComponents
-	81,  // 84: meurpg.rules.v1.SpellDetails.duration:type_name -> meurpg.rules.v1.SpellDuration
-	17,  // 85: meurpg.rules.v1.SpellDetails.attack_type:type_name -> meurpg.rules.v1.SpellAttackType
-	82,  // 86: meurpg.rules.v1.SpellDetails.save:type_name -> meurpg.rules.v1.SpellSave
-	83,  // 87: meurpg.rules.v1.SpellDetails.damage:type_name -> meurpg.rules.v1.SpellDamage
-	110, // 88: meurpg.rules.v1.SpellDetails.heal_by_slot_level:type_name -> meurpg.rules.v1.SpellDetails.HealBySlotLevelEntry
-	77,  // 89: meurpg.rules.v1.SpellDetails.hit_point_effect:type_name -> meurpg.rules.v1.SpellHitPointEffect
-	12,  // 90: meurpg.rules.v1.SpellHitPointEffect.kind:type_name -> meurpg.rules.v1.SpellHitPointEffectKind
-	13,  // 91: meurpg.rules.v1.SpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
-	14,  // 92: meurpg.rules.v1.SpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
-	15,  // 93: meurpg.rules.v1.SpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
-	16,  // 94: meurpg.rules.v1.SpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
-	4,   // 95: meurpg.rules.v1.SpellSave.ability:type_name -> meurpg.rules.v1.Ability
-	18,  // 96: meurpg.rules.v1.SpellSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
-	111, // 97: meurpg.rules.v1.SpellDamage.by_slot_level:type_name -> meurpg.rules.v1.SpellDamage.BySlotLevelEntry
-	112, // 98: meurpg.rules.v1.SpellDamage.by_character_level:type_name -> meurpg.rules.v1.SpellDamage.ByCharacterLevelEntry
-	85,  // 99: meurpg.rules.v1.TurnOptions.economy:type_name -> meurpg.rules.v1.TurnEconomy
-	90,  // 100: meurpg.rules.v1.TurnOptions.attacks:type_name -> meurpg.rules.v1.AttackOption
-	91,  // 101: meurpg.rules.v1.TurnOptions.spells:type_name -> meurpg.rules.v1.SpellOption
-	93,  // 102: meurpg.rules.v1.TurnOptions.standard_actions:type_name -> meurpg.rules.v1.ActionOption
-	93,  // 103: meurpg.rules.v1.TurnOptions.feature_actions:type_name -> meurpg.rules.v1.ActionOption
-	88,  // 104: meurpg.rules.v1.TurnOptions.jumps:type_name -> meurpg.rules.v1.JumpLimits
-	86,  // 105: meurpg.rules.v1.TurnEconomy.action:type_name -> meurpg.rules.v1.EconomyState
-	86,  // 106: meurpg.rules.v1.TurnEconomy.bonus_action:type_name -> meurpg.rules.v1.EconomyState
-	86,  // 107: meurpg.rules.v1.TurnEconomy.reaction:type_name -> meurpg.rules.v1.EconomyState
-	87,  // 108: meurpg.rules.v1.TurnEconomy.movement:type_name -> meurpg.rules.v1.MovementLeft
-	20,  // 109: meurpg.rules.v1.DisabledReason.code:type_name -> meurpg.rules.v1.DisabledReasonCode
-	6,   // 110: meurpg.rules.v1.DisabledReason.recharge:type_name -> meurpg.rules.v1.Recharge
-	52,  // 111: meurpg.rules.v1.AttackOption.attack:type_name -> meurpg.rules.v1.Attack
-	89,  // 112: meurpg.rules.v1.AttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	71,  // 113: meurpg.rules.v1.SpellOption.spell:type_name -> meurpg.rules.v1.Spell
-	7,   // 114: meurpg.rules.v1.SpellOption.economy:type_name -> meurpg.rules.v1.ActionEconomy
-	89,  // 115: meurpg.rules.v1.SpellOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	92,  // 116: meurpg.rules.v1.SpellOption.slots:type_name -> meurpg.rules.v1.SlotChoice
-	40,  // 117: meurpg.rules.v1.ActionOption.action:type_name -> meurpg.rules.v1.Action
-	89,  // 118: meurpg.rules.v1.ActionOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	19,  // 119: meurpg.rules.v1.ListCreaturesRequest.size:type_name -> meurpg.rules.v1.CreatureSize
-	96,  // 120: meurpg.rules.v1.ListCreaturesResponse.creatures:type_name -> meurpg.rules.v1.CreatureSummary
-	99,  // 121: meurpg.rules.v1.GetCreatureResponse.creature:type_name -> meurpg.rules.v1.Creature
-	96,  // 122: meurpg.rules.v1.Creature.summary:type_name -> meurpg.rules.v1.CreatureSummary
-	100, // 123: meurpg.rules.v1.Creature.abilities:type_name -> meurpg.rules.v1.CreatureAbilityScore
-	101, // 124: meurpg.rules.v1.Creature.saving_throws:type_name -> meurpg.rules.v1.CreatureBonus
-	101, // 125: meurpg.rules.v1.Creature.skills:type_name -> meurpg.rules.v1.CreatureBonus
-	103, // 126: meurpg.rules.v1.Creature.vulnerabilities:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	103, // 127: meurpg.rules.v1.Creature.resistances:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	103, // 128: meurpg.rules.v1.Creature.immunities:type_name -> meurpg.rules.v1.CreatureDamageModifier
-	102, // 129: meurpg.rules.v1.Creature.condition_immunities:type_name -> meurpg.rules.v1.CreatureNamedKey
-	47,  // 130: meurpg.rules.v1.Creature.senses:type_name -> meurpg.rules.v1.Sense
-	104, // 131: meurpg.rules.v1.Creature.traits:type_name -> meurpg.rules.v1.CreatureTrait
-	105, // 132: meurpg.rules.v1.Creature.actions:type_name -> meurpg.rules.v1.CreatureAction
-	104, // 133: meurpg.rules.v1.Creature.reactions:type_name -> meurpg.rules.v1.CreatureTrait
-	104, // 134: meurpg.rules.v1.Creature.legendary_actions:type_name -> meurpg.rules.v1.CreatureTrait
-	4,   // 135: meurpg.rules.v1.CreatureAbilityScore.ability:type_name -> meurpg.rules.v1.Ability
-	4,   // 136: meurpg.rules.v1.CreatureBonus.ability:type_name -> meurpg.rules.v1.Ability
-	102, // 137: meurpg.rules.v1.CreatureDamageModifier.types:type_name -> meurpg.rules.v1.CreatureNamedKey
-	106, // 138: meurpg.rules.v1.CreatureAction.damage:type_name -> meurpg.rules.v1.CreatureDamagePart
-	107, // 139: meurpg.rules.v1.CreatureAction.save:type_name -> meurpg.rules.v1.CreatureSave
-	108, // 140: meurpg.rules.v1.CreatureAction.multiattack:type_name -> meurpg.rules.v1.CreatureMultiattackRoutine
-	4,   // 141: meurpg.rules.v1.CreatureSave.ability:type_name -> meurpg.rules.v1.Ability
-	18,  // 142: meurpg.rules.v1.CreatureSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
-	109, // 143: meurpg.rules.v1.CreatureMultiattackRoutine.attacks:type_name -> meurpg.rules.v1.CreatureAttackCount
-	72,  // 144: meurpg.rules.v1.ContentService.ListContent:input_type -> meurpg.rules.v1.ListContentRequest
-	74,  // 145: meurpg.rules.v1.ContentService.GetSpellDetails:input_type -> meurpg.rules.v1.GetSpellDetailsRequest
-	94,  // 146: meurpg.rules.v1.ContentService.ListCreatures:input_type -> meurpg.rules.v1.ListCreaturesRequest
-	97,  // 147: meurpg.rules.v1.ContentService.GetCreature:input_type -> meurpg.rules.v1.GetCreatureRequest
-	21,  // 148: meurpg.rules.v1.ContentService.ListTrapPresets:input_type -> meurpg.rules.v1.ListTrapPresetsRequest
-	23,  // 149: meurpg.rules.v1.ContentService.ListLightPresets:input_type -> meurpg.rules.v1.ListLightPresetsRequest
-	73,  // 150: meurpg.rules.v1.ContentService.ListContent:output_type -> meurpg.rules.v1.ListContentResponse
-	75,  // 151: meurpg.rules.v1.ContentService.GetSpellDetails:output_type -> meurpg.rules.v1.GetSpellDetailsResponse
-	95,  // 152: meurpg.rules.v1.ContentService.ListCreatures:output_type -> meurpg.rules.v1.ListCreaturesResponse
-	98,  // 153: meurpg.rules.v1.ContentService.GetCreature:output_type -> meurpg.rules.v1.GetCreatureResponse
-	22,  // 154: meurpg.rules.v1.ContentService.ListTrapPresets:output_type -> meurpg.rules.v1.ListTrapPresetsResponse
-	24,  // 155: meurpg.rules.v1.ContentService.ListLightPresets:output_type -> meurpg.rules.v1.ListLightPresetsResponse
-	150, // [150:156] is the sub-list for method output_type
-	144, // [144:150] is the sub-list for method input_type
-	144, // [144:144] is the sub-list for extension type_name
-	144, // [144:144] is the sub-list for extension extendee
-	0,   // [0:144] is the sub-list for field type_name
+	59,  // 78: meurpg.rules.v1.ListContentResponse.content:type_name -> meurpg.rules.v1.Content
+	73,  // 79: meurpg.rules.v1.ListSpellsResponse.spells:type_name -> meurpg.rules.v1.Spell
+	80,  // 80: meurpg.rules.v1.GetSpellDetailsResponse.spell:type_name -> meurpg.rules.v1.SpellDetails
+	73,  // 81: meurpg.rules.v1.SpellDetails.spell:type_name -> meurpg.rules.v1.Spell
+	83,  // 82: meurpg.rules.v1.SpellDetails.casting_time:type_name -> meurpg.rules.v1.SpellCastingTime
+	84,  // 83: meurpg.rules.v1.SpellDetails.range:type_name -> meurpg.rules.v1.SpellRange
+	85,  // 84: meurpg.rules.v1.SpellDetails.components:type_name -> meurpg.rules.v1.SpellComponents
+	86,  // 85: meurpg.rules.v1.SpellDetails.duration:type_name -> meurpg.rules.v1.SpellDuration
+	19,  // 86: meurpg.rules.v1.SpellDetails.attack_type:type_name -> meurpg.rules.v1.SpellAttackType
+	87,  // 87: meurpg.rules.v1.SpellDetails.save:type_name -> meurpg.rules.v1.SpellSave
+	88,  // 88: meurpg.rules.v1.SpellDetails.damage:type_name -> meurpg.rules.v1.SpellDamage
+	115, // 89: meurpg.rules.v1.SpellDetails.heal_by_slot_level:type_name -> meurpg.rules.v1.SpellDetails.HealBySlotLevelEntry
+	82,  // 90: meurpg.rules.v1.SpellDetails.hit_point_effect:type_name -> meurpg.rules.v1.SpellHitPointEffect
+	81,  // 91: meurpg.rules.v1.SpellDetails.target:type_name -> meurpg.rules.v1.SpellTarget
+	12,  // 92: meurpg.rules.v1.SpellTarget.kind:type_name -> meurpg.rules.v1.SpellTargetKind
+	13,  // 93: meurpg.rules.v1.SpellTarget.shape:type_name -> meurpg.rules.v1.SpellAreaShape
+	14,  // 94: meurpg.rules.v1.SpellHitPointEffect.kind:type_name -> meurpg.rules.v1.SpellHitPointEffectKind
+	15,  // 95: meurpg.rules.v1.SpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
+	16,  // 96: meurpg.rules.v1.SpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
+	17,  // 97: meurpg.rules.v1.SpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
+	18,  // 98: meurpg.rules.v1.SpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
+	4,   // 99: meurpg.rules.v1.SpellSave.ability:type_name -> meurpg.rules.v1.Ability
+	20,  // 100: meurpg.rules.v1.SpellSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
+	116, // 101: meurpg.rules.v1.SpellDamage.by_slot_level:type_name -> meurpg.rules.v1.SpellDamage.BySlotLevelEntry
+	117, // 102: meurpg.rules.v1.SpellDamage.by_character_level:type_name -> meurpg.rules.v1.SpellDamage.ByCharacterLevelEntry
+	90,  // 103: meurpg.rules.v1.TurnOptions.economy:type_name -> meurpg.rules.v1.TurnEconomy
+	95,  // 104: meurpg.rules.v1.TurnOptions.attacks:type_name -> meurpg.rules.v1.AttackOption
+	96,  // 105: meurpg.rules.v1.TurnOptions.spells:type_name -> meurpg.rules.v1.SpellOption
+	98,  // 106: meurpg.rules.v1.TurnOptions.standard_actions:type_name -> meurpg.rules.v1.ActionOption
+	98,  // 107: meurpg.rules.v1.TurnOptions.feature_actions:type_name -> meurpg.rules.v1.ActionOption
+	93,  // 108: meurpg.rules.v1.TurnOptions.jumps:type_name -> meurpg.rules.v1.JumpLimits
+	91,  // 109: meurpg.rules.v1.TurnEconomy.action:type_name -> meurpg.rules.v1.EconomyState
+	91,  // 110: meurpg.rules.v1.TurnEconomy.bonus_action:type_name -> meurpg.rules.v1.EconomyState
+	91,  // 111: meurpg.rules.v1.TurnEconomy.reaction:type_name -> meurpg.rules.v1.EconomyState
+	92,  // 112: meurpg.rules.v1.TurnEconomy.movement:type_name -> meurpg.rules.v1.MovementLeft
+	22,  // 113: meurpg.rules.v1.DisabledReason.code:type_name -> meurpg.rules.v1.DisabledReasonCode
+	6,   // 114: meurpg.rules.v1.DisabledReason.recharge:type_name -> meurpg.rules.v1.Recharge
+	54,  // 115: meurpg.rules.v1.AttackOption.attack:type_name -> meurpg.rules.v1.Attack
+	94,  // 116: meurpg.rules.v1.AttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	73,  // 117: meurpg.rules.v1.SpellOption.spell:type_name -> meurpg.rules.v1.Spell
+	7,   // 118: meurpg.rules.v1.SpellOption.economy:type_name -> meurpg.rules.v1.ActionEconomy
+	94,  // 119: meurpg.rules.v1.SpellOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	97,  // 120: meurpg.rules.v1.SpellOption.slots:type_name -> meurpg.rules.v1.SlotChoice
+	42,  // 121: meurpg.rules.v1.ActionOption.action:type_name -> meurpg.rules.v1.Action
+	94,  // 122: meurpg.rules.v1.ActionOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	21,  // 123: meurpg.rules.v1.ListCreaturesRequest.size:type_name -> meurpg.rules.v1.CreatureSize
+	101, // 124: meurpg.rules.v1.ListCreaturesResponse.creatures:type_name -> meurpg.rules.v1.CreatureSummary
+	104, // 125: meurpg.rules.v1.GetCreatureResponse.creature:type_name -> meurpg.rules.v1.Creature
+	101, // 126: meurpg.rules.v1.Creature.summary:type_name -> meurpg.rules.v1.CreatureSummary
+	105, // 127: meurpg.rules.v1.Creature.abilities:type_name -> meurpg.rules.v1.CreatureAbilityScore
+	106, // 128: meurpg.rules.v1.Creature.saving_throws:type_name -> meurpg.rules.v1.CreatureBonus
+	106, // 129: meurpg.rules.v1.Creature.skills:type_name -> meurpg.rules.v1.CreatureBonus
+	108, // 130: meurpg.rules.v1.Creature.vulnerabilities:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	108, // 131: meurpg.rules.v1.Creature.resistances:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	108, // 132: meurpg.rules.v1.Creature.immunities:type_name -> meurpg.rules.v1.CreatureDamageModifier
+	107, // 133: meurpg.rules.v1.Creature.condition_immunities:type_name -> meurpg.rules.v1.CreatureNamedKey
+	49,  // 134: meurpg.rules.v1.Creature.senses:type_name -> meurpg.rules.v1.Sense
+	109, // 135: meurpg.rules.v1.Creature.traits:type_name -> meurpg.rules.v1.CreatureTrait
+	110, // 136: meurpg.rules.v1.Creature.actions:type_name -> meurpg.rules.v1.CreatureAction
+	109, // 137: meurpg.rules.v1.Creature.reactions:type_name -> meurpg.rules.v1.CreatureTrait
+	109, // 138: meurpg.rules.v1.Creature.legendary_actions:type_name -> meurpg.rules.v1.CreatureTrait
+	4,   // 139: meurpg.rules.v1.CreatureAbilityScore.ability:type_name -> meurpg.rules.v1.Ability
+	4,   // 140: meurpg.rules.v1.CreatureBonus.ability:type_name -> meurpg.rules.v1.Ability
+	107, // 141: meurpg.rules.v1.CreatureDamageModifier.types:type_name -> meurpg.rules.v1.CreatureNamedKey
+	111, // 142: meurpg.rules.v1.CreatureAction.damage:type_name -> meurpg.rules.v1.CreatureDamagePart
+	112, // 143: meurpg.rules.v1.CreatureAction.save:type_name -> meurpg.rules.v1.CreatureSave
+	113, // 144: meurpg.rules.v1.CreatureAction.multiattack:type_name -> meurpg.rules.v1.CreatureMultiattackRoutine
+	4,   // 145: meurpg.rules.v1.CreatureSave.ability:type_name -> meurpg.rules.v1.Ability
+	20,  // 146: meurpg.rules.v1.CreatureSave.on_success:type_name -> meurpg.rules.v1.SpellSaveSuccess
+	114, // 147: meurpg.rules.v1.CreatureMultiattackRoutine.attacks:type_name -> meurpg.rules.v1.CreatureAttackCount
+	74,  // 148: meurpg.rules.v1.ContentService.ListContent:input_type -> meurpg.rules.v1.ListContentRequest
+	76,  // 149: meurpg.rules.v1.ContentService.GetSpellDetails:input_type -> meurpg.rules.v1.GetSpellDetailsRequest
+	77,  // 150: meurpg.rules.v1.ContentService.ListSpells:input_type -> meurpg.rules.v1.ListSpellsRequest
+	99,  // 151: meurpg.rules.v1.ContentService.ListCreatures:input_type -> meurpg.rules.v1.ListCreaturesRequest
+	102, // 152: meurpg.rules.v1.ContentService.GetCreature:input_type -> meurpg.rules.v1.GetCreatureRequest
+	23,  // 153: meurpg.rules.v1.ContentService.ListTrapPresets:input_type -> meurpg.rules.v1.ListTrapPresetsRequest
+	25,  // 154: meurpg.rules.v1.ContentService.ListLightPresets:input_type -> meurpg.rules.v1.ListLightPresetsRequest
+	75,  // 155: meurpg.rules.v1.ContentService.ListContent:output_type -> meurpg.rules.v1.ListContentResponse
+	79,  // 156: meurpg.rules.v1.ContentService.GetSpellDetails:output_type -> meurpg.rules.v1.GetSpellDetailsResponse
+	78,  // 157: meurpg.rules.v1.ContentService.ListSpells:output_type -> meurpg.rules.v1.ListSpellsResponse
+	100, // 158: meurpg.rules.v1.ContentService.ListCreatures:output_type -> meurpg.rules.v1.ListCreaturesResponse
+	103, // 159: meurpg.rules.v1.ContentService.GetCreature:output_type -> meurpg.rules.v1.GetCreatureResponse
+	24,  // 160: meurpg.rules.v1.ContentService.ListTrapPresets:output_type -> meurpg.rules.v1.ListTrapPresetsResponse
+	26,  // 161: meurpg.rules.v1.ContentService.ListLightPresets:output_type -> meurpg.rules.v1.ListLightPresetsResponse
+	155, // [155:162] is the sub-list for method output_type
+	148, // [148:155] is the sub-list for method input_type
+	148, // [148:148] is the sub-list for extension type_name
+	148, // [148:148] is the sub-list for extension extendee
+	0,   // [0:148] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_rules_v1_rules_proto_init() }
@@ -10017,8 +10505,8 @@ func file_meurpg_rules_v1_rules_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_rules_v1_rules_proto_rawDesc), len(file_meurpg_rules_v1_rules_proto_rawDesc)),
-			NumEnums:      21,
-			NumMessages:   92,
+			NumEnums:      23,
+			NumMessages:   95,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

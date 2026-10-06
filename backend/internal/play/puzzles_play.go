@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -68,14 +70,22 @@ func (s *Service) ListShownPuzzles(
 		if kind == nil {
 			continue // a kind this server does not know: nothing to play
 		}
-		res.Puzzles = append(res.Puzzles, &playv1.PuzzleSummary{PuzzleId: r.PuzzleID, Name: r.PuzzleName, Kind: kind.id(), Solved: r.SolvedAt != nil})
+		stopped := false
+		if len(r.PuzzleOnWrong) > 0 {
+			on := &playv1.PuzzleOnWrong{}
+			if err := fromJSON(r.PuzzleOnWrong, on); err != nil {
+				return nil, s.dbError(ctx, "list the shown puzzles", err)
+			}
+			stopped = stopOf(puzzleDef{onWrong: on}, playdb.PuzzleRun{SolvedAt: r.SolvedAt, MovesMade: r.MovesMade, RoundStartSeq: r.RoundStartSeq, RoundStartedAt: r.RoundStartedAt}, s.now()) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED
+		}
+		res.Puzzles = append(res.Puzzles, &playv1.PuzzleSummary{PuzzleId: r.PuzzleID, Name: r.PuzzleName, Kind: kind.id(), Solved: r.SolvedAt != nil, Stopped: stopped})
 	}
 	return connect.NewResponse(res), nil
 }
 
 // kindByStored finds a kind by its stored name.
 func kindByStored(stored string) puzzleKind {
-	for _, k := range []puzzleKind{lightsKind{}, lockKind{}, pillarsKind{}} {
+	for _, k := range allKinds {
 		if k.stored() == stored {
 			return k
 		}
@@ -108,7 +118,11 @@ func (s *Service) GetPuzzleRun(
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}
-	out, err := playerRunProto(d, run, names)
+	view, err := s.viewerOf(ctx, nil, m, d, run)
+	if err != nil {
+		return nil, s.dbError(ctx, "read a puzzle", err)
+	}
+	out, err := playerRunProto(d, run, names, view)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}
@@ -123,7 +137,9 @@ type moveResult struct {
 	replayed bool
 	solved   bool // this move solved it
 	after    []func(context.Context)
-	doorMap  string // a map whose door the solve opened: tell its watchers
+	doorMap  string           // a map whose door the solve opened: tell its watchers
+	fired    *trapFireEvent   // the trap a wrong move fired: tell the watchers
+	firedEnc playdb.Encounter // the combat it fired in, zero outside a combat
 }
 
 // MakePuzzleMove implements playv1connect.PuzzleServiceHandler.
@@ -168,8 +184,15 @@ func (s *Service) MakePuzzleMove(
 		if res.doorMap != "" && s.puzzles.maps != nil {
 			s.puzzles.maps.DoorsChanged(ctx, m.CampaignID, res.doorMap)
 		}
+		if res.fired != nil {
+			s.afterFiring(ctx, m.CampaignID, res.fired, res.firedEnc)
+		}
 	}
-	out, err := playerRunProto(res.d, res.run, names)
+	view, err := s.viewerOf(ctx, nil, m, res.d, res.run)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the puzzle after a move", err)
+	}
+	out, err := playerRunProto(res.d, res.run, names, view)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a move", err)
 	}
@@ -214,6 +237,10 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	if run.SolvedAt != nil {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved: nothing moves any more")
 	}
+	now := s.now()
+	if stopOf(d, run, now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
+		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle: the master restarts or closes it")
+	}
 	who, has, err := s.myCharacter(ctx, tx, m)
 	if err != nil {
 		return nil, err
@@ -222,27 +249,54 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to play with")
 	}
 	res.who = who
+	if g, ok := d.kind.(gatedKind); ok {
+		if err := g.gate(d, run, now); err != nil {
+			return nil, err
+		}
+	}
+	// The player's attempts: every wrong move of theirs in this round spent one. The
+	// run is locked, so the count is exact when moves come at once.
+	if limit := int(d.onWrong.GetAttemptsPerPlayer()); limit > 0 {
+		rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
+		if err != nil {
+			return nil, fmt.Errorf("count the player's wrong moves: %w", err)
+		}
+		for _, r := range rows {
+			if r.UserID != nil && *r.UserID == m.UserID && int(r.Wrong) >= limit {
+				return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT, "you have no attempts left in this round")
+			}
+		}
+	}
 
 	state := &playv1.PuzzleState{}
 	if err := fromJSON(run.State, state); err != nil {
 		return nil, err
 	}
-	next, changed, err := d.kind.move(d, state, mv)
+	out, err := d.kind.move(d, state, mv)
 	if err != nil {
 		return nil, err
 	}
-	solved, err := d.kind.solved(d, next)
-	if err != nil {
-		return nil, err
+	solved := out.solved
+	if !solved {
+		if solved, err = d.kind.solved(d, out.state); err != nil {
+			return nil, err
+		}
 	}
 
-	now := s.now()
-	last := &playv1.PuzzleLastMove{Move: mv, Changed: changed}
+	last := &playv1.PuzzleLastMove{Move: mv, Changed: out.changed, Wrong: out.wrong, Step: out.step}
+	if out.wrong {
+		// "Ao errar": the trap fires in this transaction, with the move; the attempt is
+		// the move itself, marked wrong below, and so is its count toward the limits.
+		if last.TrapName, err = s.fireWrongTrap(ctx, tx, q, session, m, who, d, now, res); err != nil {
+			return nil, err
+		}
+	}
 	p := playdb.SavePuzzleRunParams{
-		ID: run.ID, Seed: run.Seed, Start: run.Start, State: toJSON(next), ReleasedHints: run.ReleasedHints, ShownAt: run.ShownAt,
+		ID: run.ID, Seed: run.Seed, Start: run.Start, State: toJSON(out.state), ReleasedHints: run.ReleasedHints, ShownAt: run.ShownAt,
 		ClosedAt: run.ClosedAt, SolvedAt: run.SolvedAt, SolvedByCharacterID: run.SolvedByCharacterID, SolveOutcome: run.SolveOutcome,
 		LastMoverCharacterID: &who.ID, LastMove: toJSON(last), LastMovedAt: &now,
 		MovesMade: run.MovesMade + 1, Revision: run.Revision + 1, UpdatedAt: now,
+		Plays: run.Plays, PlayStartedAt: run.PlayStartedAt, RoundStartSeq: run.RoundStartSeq, RoundStartedAt: run.RoundStartedAt,
 	}
 	// A solved run is never moved, so the message is empty here: it is written only by the solve below.
 	if solved {
@@ -264,7 +318,7 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	}
 	if _, err := q.InsertPuzzleMove(ctx, playdb.InsertPuzzleMoveParams{
 		RunID: run.ID, Seq: saved.MovesMade, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key,
-		Move: toJSON(mv), Revision: saved.Revision, Solved: solved, CreatedAt: now,
+		Move: toJSON(mv), Revision: saved.Revision, Solved: solved, Wrong: out.wrong, CreatedAt: now,
 	}); err != nil {
 		return nil, fmt.Errorf("record the move: %w", err)
 	}
@@ -276,6 +330,79 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	}
 	res.run, res.solved = saved, solved
 	return runNames{who.ID: who.Name}, nil
+}
+
+// fireWrongTrap fires the trap point of "Ao errar" for a wrong move, inside the move's
+// transaction (nothing reads through the pool here), the way the master firing a trap by
+// hand does, with nobody caught: the master decides what the trap does (MR-035).
+//   - While a combat without a map runs (RN-25) nothing fires: that combat has no traps.
+//     The wrong move still counts.
+//   - While a combat runs on the trap's map, the firing is that combat's, as FireTrap's in
+//     a combat: the event carries the combat, the encounter is touched and the log hears
+//     of it, so the master may extend the firing to the creatures it catches.
+//   - Otherwise it is the firing outside a combat.
+//
+// The point fires once: one that already fired, was disarmed or is gone fires nothing, and
+// the move goes on. It returns the name the master gave the point, which the players who
+// see it read once it fired, and nothing for a trap that did not fire. res keeps the firing,
+// so the watchers hear of it after the commit.
+func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, who link.Character, d puzzleDef, now time.Time, res *moveResult) (string, error) {
+	target := d.onWrong.GetTrap()
+	if target == nil || s.traps == nil {
+		return "", nil
+	}
+	if theatre, err := theatreRunning(ctx, q, session.ID); err != nil || theatre {
+		return "", err
+	}
+	traps, err := s.traps.Traps(ctx, tx, m.CampaignID, target.GetMapId())
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return "", nil // the map is gone
+	}
+	if err != nil {
+		return "", err
+	}
+	i := slices.IndexFunc(traps, func(t maplink.Trap) bool { return t.PointID == target.GetPointId() })
+	if i < 0 || traps[i].State == "triggered" || traps[i].State == "disarmed" {
+		return "", nil
+	}
+	trap := traps[i]
+	// openTx reads the table's rules in this transaction, so the trap's critical follows them (RN-24).
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID, svc: s})
+	if err != nil {
+		return "", err
+	}
+	// A combat running on the trap's map (read in this transaction, never through the pool).
+	enc, err := q.GetLatestEncounter(ctx, session.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("find the session's combat: %w", err)
+	}
+	inCombat := err == nil && enc.Status != statusEnded && enc.MapID != nil && *enc.MapID == trap.MapID
+	var fired *trapFireEvent
+	if inCombat {
+		c.enc = enc
+		fired, err = s.fireInCombat(ctx, c, trap, nil, true, "")
+	} else {
+		fired, err = s.fireOutside(ctx, c, trap, nil, nil, true, "")
+	}
+	if errors.Is(err, maplink.ErrTrapNotArmed) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	ev := actionEvent{Trap: fired}
+	if inCombat {
+		if c.enc, err = q.TouchEncounter(ctx, c.enc.ID); err != nil {
+			return "", fmt.Errorf("touch the encounter: %w", err)
+		}
+		ev.Round = c.enc.Round
+		res.firedEnc = c.enc
+	}
+	if err := insertEvent(ctx, c, eventTrapTriggered, &m.UserID, nil, ev); err != nil {
+		return "", err
+	}
+	res.fired = fired
+	return trap.Name, nil
 }
 
 // solveLine is what the players read once the puzzle is solved: the master's own

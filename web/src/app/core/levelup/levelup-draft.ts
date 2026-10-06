@@ -2,6 +2,7 @@ import { computed, signal } from '@angular/core';
 
 import {
   LevelUpHitPointsMethod,
+  LevelUpHitPointsRule,
   LevelUpSpellsKind,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -55,6 +56,8 @@ type PickSet = ReturnType<typeof signal<ReadonlySet<string>>>;
 export class LevelUpDraft {
   readonly abilityMode = signal<'one' | 'two'>('one');
   readonly abilityKeys = signal<readonly AbilityKey[]>([]);
+  /** The card the hit points start on: a table that makes everybody roll starts on the die (RN-24), the rest on the average. */
+  private readonly startCard: HpCard;
   readonly hpCard = signal<HpCard>('average');
   readonly rolled = signal<Rolled | null>(null);
   readonly subclassKey = signal('');
@@ -74,6 +77,8 @@ export class LevelUpDraft {
     readonly catalog: { readonly spells: readonly Spell[]; readonly skills: readonly Skill[] },
   ) {
     this.preparedMaxAfter.set(options.preparedMaxAfter);
+    this.startCard = options.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : 'average';
+    this.hpCard.set(this.startCard);
   }
 
   readonly totals = computed(() => totalsFor(this.options, this.subclassKey()));
@@ -195,7 +200,7 @@ export class LevelUpDraft {
   readonly dirty = computed(
     () =>
       this.abilityKeys().length > 0 ||
-      this.hpCard() !== 'average' ||
+      this.hpCard() !== this.startCard ||
       this.subclassKey() !== '' ||
       [this.cantrips(), this.spells(), this.prepared(), this.features(), this.skills(), this.expertise()].some(
         (s) => s.size > 0,

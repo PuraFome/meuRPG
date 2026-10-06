@@ -20,6 +20,7 @@ export function refusalStep(reason: LevelUpRefusalReason): StepKey | null {
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
       return 'abilities';
     case LevelUpRefusalReason.HIT_POINTS:
+    case LevelUpRefusalReason.HIT_POINTS_RULE:
     case LevelUpRefusalReason.HIT_POINT_ROLL_MISSING:
     case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
       return 'hp';
@@ -54,6 +55,8 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'Nenhum atributo passa de 20. Escolha outro.';
     case LevelUpRefusalReason.HIT_POINTS:
       return 'O resultado do dado de vida está fora do que o dado permite.';
+    case LevelUpRefusalReason.HIT_POINTS_RULE:
+      return 'A mesa decidiu como se ganham os pontos de vida do nível: use o jeito que ela deixa.';
     case LevelUpRefusalReason.SUBCLASS:
       return 'Escolha a subclasse do nível.';
     case LevelUpRefusalReason.CANTRIPS:
@@ -94,6 +97,8 @@ export function blockedMessage(reason: CharacterBlockedReason | undefined): stri
       return 'Neste jogo todos rolam os próprios dados: digite o número que saiu.';
     case CharacterBlockedReason.DICE_FORCED_IN_APP:
       return 'Neste jogo todos rolam no app: use "Rolar no app".';
+    case CharacterBlockedReason.HIT_POINTS_AVERAGE_ONLY:
+      return 'A mesa usa a média nos pontos de vida: o dado não é rolado.';
     default:
       return 'Não foi possível concluir a ação agora.';
   }

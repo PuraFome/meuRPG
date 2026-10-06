@@ -210,6 +210,16 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// TargetCount is how many targets the spell takes at its own level (0 when the
+	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
+	// how many more it takes for each slot level above its own. A table spell
+	// says both itself ("três criaturas, uma a mais por círculo"); an SRD spell's
+	// come from the same fields of rules.SpellTarget.
+	TargetCount    int
+	TargetPerLevel int
+	// CasterOnly says there is nobody to pick: the spell reaches the caster alone,
+	// or no creature at all (a point, an object, a place), whatever its range.
+	CasterOnly bool
 	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
 	// Damage and Heal are nil for it, and the cast applies HP instead.
 	HP *HPEffect

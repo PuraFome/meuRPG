@@ -1,0 +1,254 @@
+@let s = state();
+@if (s.status !== 'not-found') {
+  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para a campanha
+  </a>
+}
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Regras da mesa</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando as regras" />
+        Carregando as regras...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir as regras</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ready') {
+    @if (!s.canEdit) {
+      <header>
+        <h1 class="mr-page-title">Regras da mesa</h1>
+        <p class="mr-page-lead">{{ s.campaignName }} · Estas escolhas valem para cada ficha e cada combate da campanha. Só o mestre muda as regras da mesa.</p>
+      </header>
+      <app-rules-read [style]="styleLabel()" [rows]="readRows()" [reminders]="readReminders()" />
+    } @else if (draft(); as d) {
+      <header>
+        <h1 class="mr-page-title">Regras da mesa</h1>
+        <p class="mr-page-lead">{{ s.campaignName }} · Estas escolhas valem para cada ficha e cada combate da campanha.</p>
+      </header>
+
+      <div class="top">
+      <section class="mr-panel block" aria-labelledby="style-title">
+        <h2 class="mr-panel__title" id="style-title">Estilo da mesa</h2>
+        <p class="hint">Um estilo só preenche as escolhas abaixo; cada uma continua editável.</p>
+        <app-dice-choice
+          name="table-style"
+          label="Estilo da mesa"
+          [options]="styleOptions"
+          [value]="style()"
+          [inert]="inertStyle"
+          [grid]="true"
+          (valueChange)="chooseStyle($event)"
+        />
+        @if (styleNote(); as n) {
+          <div class="mr-notice mr-notice--neutral" role="status">
+            <mat-icon aria-hidden="true">tune</mat-icon>
+            <div>
+              <p>
+                <strong>{{ n.title }}:</strong>
+                @if (n.changed.length > 0) {
+                  o estilo preencheu {{ n.changed.length === 1 ? '1 escolha' : n.changed.length + ' escolhas' }} abaixo; ainda não foi salvo.
+                } @else {
+                  as escolhas abaixo já eram assim.
+                }
+              </p>
+              @if (n.changed.length + n.same.length > 0) {
+                <ul class="note-list">
+                  @for (c of n.changed; track c) {
+                    <li>{{ c }}</li>
+                  }
+                  @for (c of n.same; track c) {
+                    <li class="muted">{{ c }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          </div>
+        }
+        @if (wentCustom()) {
+          <p class="custom" role="status">
+            <mat-icon aria-hidden="true">tune</mat-icon>
+            <span><strong>Personalizado.</strong> Suas escolhas não batem mais com nenhum estilo.</span>
+          </p>
+        }
+      </section>
+
+      <section class="mr-panel block" aria-labelledby="dice-title">
+        <h2 class="mr-panel__title" id="dice-title">Dados</h2>
+        @if (was(); as w) {
+          @if (w.dice) {
+            <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.dice }}</p>
+          }
+        }
+        <app-dice-choice
+          name="table-dice"
+          label="Como os jogadores rolam"
+          [options]="diceOptions"
+          [value]="d.diceMode"
+          (valueChange)="edit({ diceMode: $event })"
+        />
+      </section>
+
+      </div>
+
+      <div class="columns">
+        <div class="column">
+          <section class="mr-panel block" aria-labelledby="hp-title">
+            <h2 class="mr-panel__title" id="hp-title">Pontos de vida ao subir de nível</h2>
+            <app-dice-choice
+              name="table-hp"
+              label="Pontos de vida ao subir de nível"
+              [options]="hitPointOptions"
+              [value]="d.hitPoints"
+              (valueChange)="edit({ hitPoints: $event })"
+            />
+          </section>
+
+          <section class="mr-panel block" aria-labelledby="abilities-title">
+            <h2 class="mr-panel__title" id="abilities-title">Atributos de uma ficha nova</h2>
+            <p class="hint">
+              Marque os jeitos que o jogador pode usar. Pelo menos um.
+              <a routerLink="/creditos">Créditos</a>
+            </p>
+            <app-method-cards [rules]="d" [numbers]="s.vm" (toggled)="edit($event)" />
+          </section>
+
+          <section class="mr-panel block" aria-labelledby="critical-title">
+            <h2 class="mr-panel__title" id="critical-title">Acertos críticos</h2>
+            <app-dice-choice
+              name="table-critical"
+              label="Acertos críticos"
+              [options]="criticalOptions"
+              [value]="d.critical"
+              (valueChange)="edit({ critical: $event })"
+            />
+          </section>
+
+          <section class="mr-panel block" aria-labelledby="death-title">
+            <h2 class="mr-panel__title" id="death-title">Testes contra a morte</h2>
+            <app-dice-choice
+              name="table-death"
+              label="Quem vê os testes contra a morte"
+              [options]="deathSaveOptions"
+              [value]="d.deathSaves"
+              (valueChange)="edit({ deathSaves: $event })"
+            />
+          </section>
+        </div>
+
+        <div class="column">
+          <section class="mr-panel block" aria-labelledby="combat-title">
+            <h2 class="mr-panel__title" id="combat-title">Combate e névoa</h2>
+            @if (was(); as w) {
+              @if (w.combat) {
+                <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.combat }}</p>
+              }
+            }
+            <app-dice-choice
+              name="table-combat"
+              label="Como o combate começa"
+              [options]="combatOptions"
+              [value]="d.combatStartsWithMap ? 1 : 0"
+              (valueChange)="edit({ combatStartsWithMap: $event === 1 })"
+            />
+            <div class="fog">
+              @if (was(); as w) {
+                @if (w.fog) {
+                  <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.fog }}</p>
+                }
+              }
+              <app-fog-switch [checked]="d.fogOnNewMaps" (toggled)="edit({ fogOnNewMaps: $event })" />
+            </div>
+          </section>
+
+          <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />
+
+          <section class="mr-panel block" aria-labelledby="reminders-title">
+            <h2 class="mr-panel__title" id="reminders-title">Lembretes da mesa</h2>
+            <p class="hint">Um lembrete aparece aqui, para a mesa seguir. O app não confere nenhum: quem joga e quem mestra lembram.</p>
+            @if (d.houseRules.length > 0) {
+              <ul class="reminders">
+                @for (r of d.houseRules; track $index) {
+                  <li class="reminder">
+                    <span class="mr-tag">Lembrete</span>
+                    <mat-form-field class="reminder__field" appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Lembrete {{ $index + 1 }}</mat-label>
+                      <input matInput type="text" autocomplete="off" [attr.maxlength]="maxLength" [value]="r" (input)="setHouseRule($index, $any($event.target).value)" />
+                    </mat-form-field>
+                    <button matButton type="button" class="reminder__remove" (click)="removeHouseRule($index)">
+                      <mat-icon aria-hidden="true">delete</mat-icon>Remover o lembrete {{ $index + 1 }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+            @if (d.houseRules.length < maxCount) {
+              <button matButton="outlined" type="button" class="add" (click)="addHouseRule()">
+                <mat-icon aria-hidden="true">add</mat-icon>Adicionar um lembrete
+              </button>
+            } @else {
+              <p class="hint">Chegou ao limite de {{ maxCount }} lembretes.</p>
+            }
+          </section>
+
+          <section class="mr-panel block" aria-labelledby="grid-title">
+            <h2 class="mr-panel__title" id="grid-title">Grade dos mapas</h2>
+            <p class="hint">
+              Cada mapa diz quanto vale um quadrado do desenho (1,5 m, 3 m ou outro). Isso se escolhe no editor do mapa, em “Grade”.
+            </p>
+            <a matButton="outlined" class="link" [routerLink]="['/campanhas', campaignId()]" fragment="mapas">Abrir os mapas</a>
+          </section>
+        </div>
+      </div>
+
+      <div #bar class="save" [class.save--dirty]="changes() > 0">
+        @if (problem() && changes() > 0) {
+          <p class="save__problem" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ problem() }}</p>
+        }
+        @if (error()) {
+          <p class="save__problem" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
+        }
+        <div class="save__row">
+          <button
+            [matButton]="questionOpen() ? 'outlined' : 'filled'"
+            type="button"
+            class="save__button"
+            [class.mr-button--off]="!canSave()"
+            [disabled]="saving() || !canSave()"
+            disabledInteractive
+            (click)="save()"
+          >
+            Salvar regras
+          </button>
+          <p class="save__line" role="status">
+            @if (justSaved() && changes() === 0) {
+              <mat-icon aria-hidden="true">check_circle</mat-icon>Regras salvas. Valem para as fichas novas, as subidas de nível e os mapas novos, daqui para frente.
+            } @else {
+              {{ saveLine() }}
+            }
+          </p>
+        </div>
+      </div>
+    }
+  }
+}

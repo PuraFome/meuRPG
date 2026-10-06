@@ -276,7 +276,20 @@ func (x *deriver) collectEffects() {
 		feature(bg.Feature.Key, bg.Feature.Name, bg.Key, 0, bg.Feature.Desc)
 	} else if x.b.Background != "" {
 		x.issue(IssueUnknownKey, "full.background_key", "O antecedente escolhido não existe no conteúdo %s.", c.version)
-	} else if x.b.CustomBackgroundName == "" && len(x.b.CustomBackgroundSkills) == 0 {
+	} else if x.customBackground() {
+		// The player's own background (SRD 5.1 "Customizing a Background"): its
+		// feature is the player's text, like a table background's text feature.
+		if x.b.CustomBackgroundFeatureName != "" || x.b.CustomBackgroundFeature != "" {
+			var desc []string
+			if x.b.CustomBackgroundFeature != "" {
+				desc = []string{x.b.CustomBackgroundFeature}
+			}
+			x.d.Features = append(x.d.Features, Feature{
+				Key: CustomBackgroundFeatureKey, Name: x.b.CustomBackgroundFeatureName, NamePT: x.b.CustomBackgroundFeatureName,
+				Source: CustomBackgroundKey, SourcePT: x.b.CustomBackgroundName, Description: desc,
+			})
+		}
+	} else if x.b.Background == "" {
 		x.issue(IssueMissing, "full.background_key", "Escolha um antecedente.")
 	}
 
@@ -388,8 +401,10 @@ func (x *deriver) names() {
 	}
 	if _, ok := c.backgrounds[x.b.Background]; ok {
 		x.d.BackgroundNamePT = c.namePT(x.b.Background)
+		x.d.BackgroundEquipmentPT = c.bgEquipment[x.b.Background]
 	} else if x.b.Background == "" {
 		x.d.BackgroundNamePT = x.b.CustomBackgroundName
+		x.d.BackgroundEquipmentPT = x.b.CustomBackgroundEquipment
 	}
 	for _, oc := range x.classes {
 		dc := DerivedClass{ClassKey: oc.key, NamePT: c.namePT(oc.key), Level: oc.level, SubclassNamePT: oc.customSubclass}
@@ -499,4 +514,20 @@ func (x *deriver) hasHandler(name string) bool {
 		}
 	}
 	return false
+}
+
+// customBackground says the sheet has a background of the player's own: no
+// background key, and any of its parts filled in.
+func (x *deriver) customBackground() bool {
+	b := x.b
+	return b.Background == "" && (b.CustomBackgroundName != "" || len(b.CustomBackgroundSkills) > 0 || x.customBackgroundStarted())
+}
+
+// customBackgroundStarted says any of the parts SRD 5.1 "Customizing a
+// Background" adds to the name and the skills (the tools or languages, the
+// feature, the equipment) is filled in: the sheet was written by an editor that
+// knows them.
+func (x *deriver) customBackgroundStarted() bool {
+	b := x.b
+	return len(b.CustomBackgroundProficiencies) > 0 || b.CustomBackgroundFeatureName != "" || b.CustomBackgroundFeature != "" || b.CustomBackgroundEquipment != ""
 }

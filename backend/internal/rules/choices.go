@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -153,9 +154,32 @@ func (x *deriver) checkChoices() {
 	}
 
 	// A custom background grants two skills, like every SRD background.
-	if x.b.Background == "" && (x.b.CustomBackgroundName != "" || len(x.b.CustomBackgroundSkills) > 0) {
+	if x.customBackground() {
 		if n := len(x.b.CustomBackgroundSkills); n < CustomBackgroundSkillCount {
 			x.issue(IssueSkillCount, "full.custom_background.skill_keys", "O antecedente personalizado concede %d perícias; faltam %d.", CustomBackgroundSkillCount, CustomBackgroundSkillCount-n)
+		}
+		// SRD 5.1 "Customizing a Background": two tools or languages, a feature and
+		// the equipment too (question 82). A sheet written before these fields
+		// existed shows nothing new: the three warnings come only once the sheet has
+		// any of them, that is, once the editor that writes them saved it.
+		if x.customBackgroundStarted() {
+			if n := len(x.b.CustomBackgroundProficiencies); n < CustomBackgroundProficiencyCount {
+				x.issue(IssueMissing, "full.custom_background.proficiency_keys", "O antecedente personalizado concede %d ferramentas ou idiomas; faltam %d.", CustomBackgroundProficiencyCount, CustomBackgroundProficiencyCount-n)
+			}
+			if x.b.CustomBackgroundFeatureName == "" || x.b.CustomBackgroundFeature == "" {
+				x.issue(IssueMissing, "full.custom_background.feature_name", "O antecedente personalizado tem uma característica: falta o nome ou o texto dela.")
+			}
+			if x.b.CustomBackgroundEquipment == "" {
+				x.issue(IssueMissing, "full.custom_background.equipment", "O antecedente personalizado traz equipamento: falta descrevê-lo.")
+			}
+		}
+		// A language the race already gives uses one of the two picks for nothing.
+		if x.race != nil {
+			for i, k := range x.b.CustomBackgroundProficiencies {
+				if slices.Contains(x.race.Languages, k) {
+					x.issue(IssueMissing, fmt.Sprintf("full.custom_background.proficiency_keys[%d]", i), "O idioma %s já vem da raça: ele gasta uma das duas escolhas do antecedente sem acrescentar nada.", x.c.namePT(k))
+				}
+			}
 		}
 	}
 

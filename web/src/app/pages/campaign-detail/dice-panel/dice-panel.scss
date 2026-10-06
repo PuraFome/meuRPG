@@ -67,3 +67,19 @@
     font-size: 20px;
   }
 }
+
+.dice__mode {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.dice__mode-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.dice__mode-desc {
+  color: var(--mr-ink-muted);
+}

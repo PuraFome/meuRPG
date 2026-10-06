@@ -27,7 +27,7 @@ const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 // An undo of an applied damage: back to waiting for the master.
@@ -59,6 +59,8 @@ func (q *Queries) ClearPendingDamageApplied(ctx context.Context, id string) (Pen
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -67,7 +69,7 @@ const clearPendingDamageRoll = `-- name: ClearPendingDamageRoll :one
 UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 // An undo of the damage roll: it waits to be rolled again.
@@ -99,6 +101,8 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -125,6 +129,44 @@ WHERE game_session_id = $1 AND speaking
 func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) error {
 	_, err := q.db.Exec(ctx, clearStageSpeakers, gameSessionID)
 	return err
+}
+
+const countWrongPuzzleMoves = `-- name: CountWrongPuzzleMoves :many
+SELECT user_id, count(*)::int4 AS wrong FROM puzzle_moves
+WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
+GROUP BY user_id
+`
+
+type CountWrongPuzzleMovesParams struct {
+	RunID string
+	Seq   int32
+}
+
+type CountWrongPuzzleMovesRow struct {
+	UserID *string
+	Wrong  int32
+}
+
+// The wrong moves of each player in the run's current round: the moves after the
+// seq the round began at. A player whose account was deleted has no user and no row.
+func (q *Queries) CountWrongPuzzleMoves(ctx context.Context, arg CountWrongPuzzleMovesParams) ([]CountWrongPuzzleMovesRow, error) {
+	rows, err := q.db.Query(ctx, countWrongPuzzleMoves, arg.RunID, arg.Seq)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountWrongPuzzleMovesRow
+	for rows.Next() {
+		var i CountWrongPuzzleMovesRow
+		if err := rows.Scan(&i.UserID, &i.Wrong); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteCombatant = `-- name: DeleteCombatant :exec
@@ -269,7 +311,7 @@ func (q *Queries) GetCampaignEncounterXP(ctx context.Context, arg GetCampaignEnc
 }
 
 const getCampaignTrapDamageForUpdate = `-- name: GetCampaignTrapDamageForUpdate :one
-SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
 JOIN game_sessions AS g ON g.id = d.game_session_id
 WHERE g.campaign_id = $1 AND d.id = $2
 FOR UPDATE OF d
@@ -299,6 +341,7 @@ type GetCampaignTrapDamageForUpdateRow struct {
 	AppliedAmount    *int32
 	CreatedAt        time.Time
 	ResolvedAt       *time.Time
+	CriticalMax      int32
 	SessionNumber    int32
 	SessionStartedAt time.Time
 }
@@ -326,6 +369,7 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 		&i.AppliedAmount,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.CriticalMax,
 		&i.SessionNumber,
 		&i.SessionStartedAt,
 	)
@@ -689,7 +733,7 @@ func (q *Queries) GetOpportunityOfferByAttack(ctx context.Context, arg GetOpport
 }
 
 const getPendingDamage = `-- name: GetPendingDamage :one
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule FROM pending_damages
 WHERE encounter_id = $1 AND id = $2
 `
 
@@ -727,12 +771,14 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
 
 const getPuzzle = `-- name: GetPuzzle :one
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -761,12 +807,16 @@ func (q *Queries) GetPuzzle(ctx context.Context, arg GetPuzzleParams) (Puzzle, e
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
 	)
 	return i, err
 }
 
 const getPuzzleForUpdate = `-- name: GetPuzzleForUpdate :one
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -798,12 +848,66 @@ func (q *Queries) GetPuzzleForUpdate(ctx context.Context, arg GetPuzzleForUpdate
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
+	)
+	return i, err
+}
+
+const getPuzzleHintCursor = `-- name: GetPuzzleHintCursor :one
+SELECT COALESCE(max(granted_count), 0)::int4 AS granted FROM puzzle_hint_tries
+WHERE run_id = $1 AND user_id = $2 AND passed
+`
+
+type GetPuzzleHintCursorParams struct {
+	RunID  string
+	UserID *string
+}
+
+// How many hints the player has won in the run: the largest count a pass left.
+func (q *Queries) GetPuzzleHintCursor(ctx context.Context, arg GetPuzzleHintCursorParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getPuzzleHintCursor, arg.RunID, arg.UserID)
+	var granted int32
+	err := row.Scan(&granted)
+	return granted, err
+}
+
+const getPuzzleHintTryByKey = `-- name: GetPuzzleHintTryByKey :one
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at FROM puzzle_hint_tries
+WHERE run_id = $1 AND idempotency_key = $2
+`
+
+type GetPuzzleHintTryByKeyParams struct {
+	RunID          string
+	IdempotencyKey string
+}
+
+// The try a call with this key already made, if any.
+func (q *Queries) GetPuzzleHintTryByKey(ctx context.Context, arg GetPuzzleHintTryByKeyParams) (PuzzleHintTry, error) {
+	row := q.db.QueryRow(ctx, getPuzzleHintTryByKey, arg.RunID, arg.IdempotencyKey)
+	var i PuzzleHintTry
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.UserID,
+		&i.CharacterID,
+		&i.IdempotencyKey,
+		&i.HintIndex,
+		&i.Passed,
+		&i.GrantedCount,
+		&i.D20,
+		&i.Modifier,
+		&i.Total,
+		&i.Physical,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getPuzzleMoveByKey = `-- name: GetPuzzleMoveByKey :one
-SELECT id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at FROM puzzle_moves
+SELECT id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at, wrong FROM puzzle_moves
 WHERE run_id = $1 AND idempotency_key = $2
 `
 
@@ -827,12 +931,13 @@ func (q *Queries) GetPuzzleMoveByKey(ctx context.Context, arg GetPuzzleMoveByKey
 		&i.Revision,
 		&i.Solved,
 		&i.CreatedAt,
+		&i.Wrong,
 	)
 	return i, err
 }
 
 const getPuzzleRun = `-- name: GetPuzzleRun :one
-SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at FROM puzzle_runs
 WHERE game_session_id = $1 AND puzzle_id = $2
 `
 
@@ -865,12 +970,16 @@ func (q *Queries) GetPuzzleRun(ctx context.Context, arg GetPuzzleRunParams) (Puz
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SolveMessage,
+		&i.Plays,
+		&i.PlayStartedAt,
+		&i.RoundStartSeq,
+		&i.RoundStartedAt,
 	)
 	return i, err
 }
 
 const getPuzzleRunForUpdate = `-- name: GetPuzzleRunForUpdate :one
-SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at FROM puzzle_runs
 WHERE game_session_id = $1 AND puzzle_id = $2
 FOR UPDATE
 `
@@ -906,6 +1015,10 @@ func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunFor
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SolveMessage,
+		&i.Plays,
+		&i.PlayStartedAt,
+		&i.RoundStartSeq,
+		&i.RoundStartedAt,
 	)
 	return i, err
 }
@@ -973,6 +1086,26 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const hasTriedPuzzleHint = `-- name: HasTriedPuzzleHint :one
+SELECT EXISTS (
+    SELECT 1 FROM puzzle_hint_tries WHERE run_id = $1 AND user_id = $2 AND hint_index = $3
+) AS tried
+`
+
+type HasTriedPuzzleHintParams struct {
+	RunID     string
+	UserID    *string
+	HintIndex int32
+}
+
+// Whether the player tried for this hint already (a pass or a fail).
+func (q *Queries) HasTriedPuzzleHint(ctx context.Context, arg HasTriedPuzzleHintParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasTriedPuzzleHint, arg.RunID, arg.UserID, arg.HintIndex)
+	var tried bool
+	err := row.Scan(&tried)
+	return tried, err
 }
 
 const insertCombatant = `-- name: InsertCombatant :one
@@ -1350,9 +1483,9 @@ const insertPendingDamage = `-- name: InsertPendingDamage :one
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 type InsertPendingDamageParams struct {
@@ -1372,6 +1505,8 @@ type InsertPendingDamageParams struct {
 	Half             bool
 	AttackTotal      *int32
 	AttackArmorClass *int32
+	CriticalMax      int32
+	CriticalMaxRule  bool
 }
 
 // Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
@@ -1379,7 +1514,8 @@ type InsertPendingDamageParams struct {
 // A hit's damage waits for its roll, or, for a hit on a player's character that
 // may cast Escudo, for the target's reaction (attack_total is then kept for the
 // new comparison). A spell's damages carry their cast_id, and may be a heal or
-// a half damage.
+// a half damage. critical_max is what a critical hit adds without rolling (the
+// table's rule "máximo mais uma rolagem", RN-24).
 func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDamageParams) (PendingDamage, error) {
 	row := q.db.QueryRow(ctx, insertPendingDamage,
 		arg.EncounterID,
@@ -1398,6 +1534,8 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		arg.Half,
 		arg.AttackTotal,
 		arg.AttackArmorClass,
+		arg.CriticalMax,
+		arg.CriticalMaxRule,
 	)
 	var i PendingDamage
 	err := row.Scan(
@@ -1425,6 +1563,8 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -1433,9 +1573,9 @@ const insertPuzzle = `-- name: InsertPuzzle :one
 
 INSERT INTO puzzles (
     campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
-    solve_action, solve_target, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
 `
 
 type InsertPuzzleParams struct {
@@ -1451,6 +1591,10 @@ type InsertPuzzleParams struct {
 	Hints        []byte
 	SolveAction  string
 	SolveTarget  []byte
+	HintSkill    *string
+	HintDc       *int32
+	Parts        []byte
+	OnWrong      []byte
 	CreatedAt    time.Time
 }
 
@@ -1471,6 +1615,10 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 		arg.Hints,
 		arg.SolveAction,
 		arg.SolveTarget,
+		arg.HintSkill,
+		arg.HintDc,
+		arg.Parts,
+		arg.OnWrong,
 		arg.CreatedAt,
 	)
 	var i Puzzle
@@ -1491,14 +1639,73 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
+	)
+	return i, err
+}
+
+const insertPuzzleHintTry = `-- name: InsertPuzzleHintTry :one
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at
+`
+
+type InsertPuzzleHintTryParams struct {
+	RunID          string
+	UserID         *string
+	CharacterID    *string
+	IdempotencyKey string
+	HintIndex      int32
+	Passed         bool
+	GrantedCount   *int32
+	D20            int32
+	Modifier       int32
+	Total          int32
+	Physical       bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintTryParams) (PuzzleHintTry, error) {
+	row := q.db.QueryRow(ctx, insertPuzzleHintTry,
+		arg.RunID,
+		arg.UserID,
+		arg.CharacterID,
+		arg.IdempotencyKey,
+		arg.HintIndex,
+		arg.Passed,
+		arg.GrantedCount,
+		arg.D20,
+		arg.Modifier,
+		arg.Total,
+		arg.Physical,
+		arg.CreatedAt,
+	)
+	var i PuzzleHintTry
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.UserID,
+		&i.CharacterID,
+		&i.IdempotencyKey,
+		&i.HintIndex,
+		&i.Passed,
+		&i.GrantedCount,
+		&i.D20,
+		&i.Modifier,
+		&i.Total,
+		&i.Physical,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const insertPuzzleMove = `-- name: InsertPuzzleMove :one
-INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at
+INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, wrong, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at, wrong
 `
 
 type InsertPuzzleMoveParams struct {
@@ -1510,6 +1717,7 @@ type InsertPuzzleMoveParams struct {
 	Move           []byte
 	Revision       int32
 	Solved         bool
+	Wrong          bool
 	CreatedAt      time.Time
 }
 
@@ -1523,6 +1731,7 @@ func (q *Queries) InsertPuzzleMove(ctx context.Context, arg InsertPuzzleMovePara
 		arg.Move,
 		arg.Revision,
 		arg.Solved,
+		arg.Wrong,
 		arg.CreatedAt,
 	)
 	var i PuzzleMove
@@ -1537,26 +1746,30 @@ func (q *Queries) InsertPuzzleMove(ctx context.Context, arg InsertPuzzleMovePara
 		&i.Revision,
 		&i.Solved,
 		&i.CreatedAt,
+		&i.Wrong,
 	)
 	return i, err
 }
 
 const insertPuzzleRun = `-- name: InsertPuzzleRun :one
-INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4, $5, $6, $6)
-RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message
+INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, round_started_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $7)
+RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at
 `
 
 type InsertPuzzleRunParams struct {
-	GameSessionID string
-	PuzzleID      string
-	Seed          int64
-	Start         []byte
-	ShownAt       *time.Time
-	CreatedAt     time.Time
+	GameSessionID  string
+	PuzzleID       string
+	Seed           int64
+	Start          []byte
+	ShownAt        *time.Time
+	RoundStartedAt *time.Time
+	CreatedAt      time.Time
 }
 
-// A run starts with its state at its start.
+// A run starts with its state at its start. $5 is when it was shown (NULL for a run
+// that is only prepared) and $6 when the round's clock starts (NULL too for a sequence,
+// whose clock starts at its first play).
 func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams) (PuzzleRun, error) {
 	row := q.db.QueryRow(ctx, insertPuzzleRun,
 		arg.GameSessionID,
@@ -1564,6 +1777,7 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		arg.Seed,
 		arg.Start,
 		arg.ShownAt,
+		arg.RoundStartedAt,
 		arg.CreatedAt,
 	)
 	var i PuzzleRun
@@ -1588,6 +1802,10 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SolveMessage,
+		&i.Plays,
+		&i.PlayStartedAt,
+		&i.RoundStartSeq,
+		&i.RoundStartedAt,
 	)
 	return i, err
 }
@@ -1667,9 +1885,9 @@ func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) 
 const insertTrapDamage = `-- name: InsertTrapDamage :one
 INSERT INTO trap_damages (
     game_session_id, trap_point_id, fire_id, character_id, status, critical,
-    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at
-) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at
+    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at, critical_max
+) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max
 `
 
 type InsertTrapDamageParams struct {
@@ -1687,6 +1905,7 @@ type InsertTrapDamageParams struct {
 	Half          bool
 	Amount        int32
 	CreatedAt     time.Time
+	CriticalMax   int32
 }
 
 // A trap's damage to a player's character outside a combat.
@@ -1706,6 +1925,7 @@ func (q *Queries) InsertTrapDamage(ctx context.Context, arg InsertTrapDamagePara
 		arg.Half,
 		arg.Amount,
 		arg.CreatedAt,
+		arg.CriticalMax,
 	)
 	var i TrapDamage
 	err := row.Scan(
@@ -1727,6 +1947,7 @@ func (q *Queries) InsertTrapDamage(ctx context.Context, arg InsertTrapDamagePara
 		&i.AppliedAmount,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.CriticalMax,
 	)
 	return i, err
 }
@@ -1736,29 +1957,31 @@ const insertTrapPendingDamage = `-- name: InsertTrapPendingDamage :one
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
-    created_at, resolved_at, trap_point_id
+    created_at, resolved_at, trap_point_id, critical_max, critical_max_rule
 ) VALUES (
-    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $15, $14
+    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $17, $14, $15, $16
 )
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 type InsertTrapPendingDamageParams struct {
-	EncounterID string
-	TargetID    string
-	Status      string
-	Critical    bool
-	DiceCount   int32
-	DiceSides   int32
-	DiceBonus   int32
-	DamageType  string
-	Faces       []int32
-	Amount      *int32
-	RollTotal   *int32
-	Half        bool
-	CreatedAt   time.Time
-	TrapPointID *string
-	ResolvedAt  *time.Time
+	EncounterID     string
+	TargetID        string
+	Status          string
+	Critical        bool
+	DiceCount       int32
+	DiceSides       int32
+	DiceBonus       int32
+	DamageType      string
+	Faces           []int32
+	Amount          *int32
+	RollTotal       *int32
+	Half            bool
+	CreatedAt       time.Time
+	TrapPointID     *string
+	CriticalMax     int32
+	CriticalMaxRule bool
+	ResolvedAt      *time.Time
 }
 
 // Trap damage (MR-035, Etapa 9, D5): the server rolls it when the trap fires.
@@ -1782,6 +2005,8 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		arg.Half,
 		arg.CreatedAt,
 		arg.TrapPointID,
+		arg.CriticalMax,
+		arg.CriticalMaxRule,
 		arg.ResolvedAt,
 	)
 	var i PendingDamage
@@ -1810,6 +2035,8 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -1852,7 +2079,7 @@ func (q *Queries) ListCampaignEncounterNames(ctx context.Context, arg ListCampai
 }
 
 const listCampaignTrapDamages = `-- name: ListCampaignTrapDamages :many
-SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
 JOIN game_sessions AS g ON g.id = d.game_session_id
 WHERE g.campaign_id = $1 AND d.status = 'rolled'
 ORDER BY d.created_at, d.id
@@ -1877,6 +2104,7 @@ type ListCampaignTrapDamagesRow struct {
 	AppliedAmount    *int32
 	CreatedAt        time.Time
 	ResolvedAt       *time.Time
+	CriticalMax      int32
 	SessionNumber    int32
 	SessionStartedAt time.Time
 }
@@ -1911,6 +2139,7 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 			&i.AppliedAmount,
 			&i.CreatedAt,
 			&i.ResolvedAt,
+			&i.CriticalMax,
 			&i.SessionNumber,
 			&i.SessionStartedAt,
 		); err != nil {
@@ -1925,7 +2154,7 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 }
 
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
 ORDER BY created_at, id
 `
@@ -1970,6 +2199,8 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 			&i.RollTotal,
 			&i.AttackArmorClass,
 			&i.TrapPointID,
+			&i.CriticalMax,
+			&i.CriticalMaxRule,
 		); err != nil {
 			return nil, err
 		}
@@ -2463,7 +2694,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule FROM pending_damages
 WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
 ORDER BY created_at, id
 `
@@ -2504,6 +2735,8 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.RollTotal,
 			&i.AttackArmorClass,
 			&i.TrapPointID,
+			&i.CriticalMax,
+			&i.CriticalMaxRule,
 		); err != nil {
 			return nil, err
 		}
@@ -2516,7 +2749,7 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 }
 
 const listOpenTrapPendingDamages = `-- name: ListOpenTrapPendingDamages :many
-SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id FROM pending_damages AS p
+SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule FROM pending_damages AS p
 JOIN encounters AS e ON e.id = p.encounter_id
 WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
 ORDER BY p.created_at, p.id
@@ -2559,6 +2792,8 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 			&i.RollTotal,
 			&i.AttackArmorClass,
 			&i.TrapPointID,
+			&i.CriticalMax,
+			&i.CriticalMaxRule,
 		); err != nil {
 			return nil, err
 		}
@@ -2571,7 +2806,7 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 }
 
 const listOpenTrapPendingDamagesOfEncounter = `-- name: ListOpenTrapPendingDamagesOfEncounter :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule FROM pending_damages
 WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id
 `
@@ -2612,6 +2847,8 @@ func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, enc
 			&i.RollTotal,
 			&i.AttackArmorClass,
 			&i.TrapPointID,
+			&i.CriticalMax,
+			&i.CriticalMaxRule,
 		); err != nil {
 			return nil, err
 		}
@@ -2663,7 +2900,7 @@ func (q *Queries) ListPendingOpportunityOffers(ctx context.Context, encounterID 
 }
 
 const listPuzzleRuns = `-- name: ListPuzzleRuns :many
-SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message FROM puzzle_runs
+SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at FROM puzzle_runs
 WHERE game_session_id = $1
 `
 
@@ -2697,6 +2934,10 @@ func (q *Queries) ListPuzzleRuns(ctx context.Context, gameSessionID string) ([]P
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SolveMessage,
+			&i.Plays,
+			&i.PlayStartedAt,
+			&i.RoundStartSeq,
+			&i.RoundStartedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2709,7 +2950,7 @@ func (q *Queries) ListPuzzleRuns(ctx context.Context, gameSessionID string) ([]P
 }
 
 const listPuzzles = `-- name: ListPuzzles :many
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
 WHERE campaign_id = $1 AND (archived_at IS NULL OR $2::bool)
 ORDER BY created_at DESC, id
 `
@@ -2746,6 +2987,52 @@ func (q *Queries) ListPuzzles(ctx context.Context, arg ListPuzzlesParams) ([]Puz
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.HintSkill,
+			&i.HintDc,
+			&i.Parts,
+			&i.OnWrong,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentPuzzleHintTries = `-- name: ListRecentPuzzleHintTries :many
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at FROM puzzle_hint_tries
+WHERE run_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 50
+`
+
+// The run's latest tries, newest first (the master's view keeps the last 50).
+func (q *Queries) ListRecentPuzzleHintTries(ctx context.Context, runID string) ([]PuzzleHintTry, error) {
+	rows, err := q.db.Query(ctx, listRecentPuzzleHintTries, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PuzzleHintTry
+	for rows.Next() {
+		var i PuzzleHintTry
+		if err := rows.Scan(
+			&i.ID,
+			&i.RunID,
+			&i.UserID,
+			&i.CharacterID,
+			&i.IdempotencyKey,
+			&i.HintIndex,
+			&i.Passed,
+			&i.GrantedCount,
+			&i.D20,
+			&i.Modifier,
+			&i.Total,
+			&i.Physical,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2995,7 +3282,7 @@ func (q *Queries) ListShownPuzzleIDs(ctx context.Context, campaignID string) ([]
 }
 
 const listShownPuzzleRuns = `-- name: ListShownPuzzleRuns :many
-SELECT r.id, r.game_session_id, r.puzzle_id, r.seed, r.start, r.state, r.released_hints, r.shown_at, r.closed_at, r.solved_at, r.solved_by_character_id, r.solve_outcome, r.last_mover_character_id, r.last_move, r.last_moved_at, r.moves_made, r.revision, r.created_at, r.updated_at, r.solve_message, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+SELECT r.id, r.game_session_id, r.puzzle_id, r.seed, r.start, r.state, r.released_hints, r.shown_at, r.closed_at, r.solved_at, r.solved_by_character_id, r.solve_outcome, r.last_mover_character_id, r.last_move, r.last_moved_at, r.moves_made, r.revision, r.created_at, r.updated_at, r.solve_message, r.plays, r.play_started_at, r.round_start_seq, r.round_started_at, p.name AS puzzle_name, p.kind AS puzzle_kind, p.on_wrong AS puzzle_on_wrong FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
 ORDER BY r.shown_at, r.id
@@ -3022,8 +3309,13 @@ type ListShownPuzzleRunsRow struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	SolveMessage         *string
+	Plays                int32
+	PlayStartedAt        *time.Time
+	RoundStartSeq        int32
+	RoundStartedAt       *time.Time
 	PuzzleName           string
 	PuzzleKind           string
+	PuzzleOnWrong        []byte
 }
 
 // What a session shows now: shown and not closed, in the order they were shown.
@@ -3057,8 +3349,13 @@ func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string)
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SolveMessage,
+			&i.Plays,
+			&i.PlayStartedAt,
+			&i.RoundStartSeq,
+			&i.RoundStartedAt,
 			&i.PuzzleName,
 			&i.PuzzleKind,
+			&i.PuzzleOnWrong,
 		); err != nil {
 			return nil, err
 		}
@@ -3335,9 +3632,10 @@ UPDATE puzzle_runs
 SET seed = $2, start = $3, state = $4, released_hints = $5, shown_at = $6, closed_at = $7,
     solved_at = $8, solved_by_character_id = $9, solve_outcome = $10,
     last_mover_character_id = $11, last_move = $12, last_moved_at = $13,
-    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17
+    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17,
+    plays = $18, play_started_at = $19, round_start_seq = $20, round_started_at = $21
 WHERE id = $1
-RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message
+RETURNING id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at
 `
 
 type SavePuzzleRunParams struct {
@@ -3358,6 +3656,10 @@ type SavePuzzleRunParams struct {
 	Revision             int32
 	UpdatedAt            time.Time
 	SolveMessage         *string
+	Plays                int32
+	PlayStartedAt        *time.Time
+	RoundStartSeq        int32
+	RoundStartedAt       *time.Time
 }
 
 // Writes every field of the run that changes after it is made: the caller holds the
@@ -3381,6 +3683,10 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		arg.Revision,
 		arg.UpdatedAt,
 		arg.SolveMessage,
+		arg.Plays,
+		arg.PlayStartedAt,
+		arg.RoundStartSeq,
+		arg.RoundStartedAt,
 	)
 	var i PuzzleRun
 	err := row.Scan(
@@ -3404,6 +3710,10 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SolveMessage,
+		&i.Plays,
+		&i.PlayStartedAt,
+		&i.RoundStartSeq,
+		&i.RoundStartedAt,
 	)
 	return i, err
 }
@@ -4030,7 +4340,7 @@ const setPendingDamageApplied = `-- name: SetPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'applied', resolved_at = $2, applied_amount = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 type SetPendingDamageAppliedParams struct {
@@ -4068,6 +4378,8 @@ func (q *Queries) SetPendingDamageApplied(ctx context.Context, arg SetPendingDam
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -4076,7 +4388,7 @@ const setPendingDamageRolled = `-- name: SetPendingDamageRolled :one
 UPDATE pending_damages
 SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 type SetPendingDamageRolledParams struct {
@@ -4128,6 +4440,8 @@ func (q *Queries) SetPendingDamageRolled(ctx context.Context, arg SetPendingDama
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -4136,7 +4450,7 @@ const setPendingDamageStatus = `-- name: SetPendingDamageStatus :one
 UPDATE pending_damages
 SET status = $2, resolved_at = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule
 `
 
 type SetPendingDamageStatusParams struct {
@@ -4175,6 +4489,8 @@ func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDama
 		&i.RollTotal,
 		&i.AttackArmorClass,
 		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
 	)
 	return i, err
 }
@@ -4183,7 +4499,7 @@ const setPuzzleArchived = `-- name: SetPuzzleArchived :one
 UPDATE puzzles
 SET archived_at = $3, updated_at = $4
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
 `
 
 type SetPuzzleArchivedParams struct {
@@ -4218,6 +4534,10 @@ func (q *Queries) SetPuzzleArchived(ctx context.Context, arg SetPuzzleArchivedPa
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
 	)
 	return i, err
 }
@@ -4275,7 +4595,7 @@ const setTrapDamageStatus = `-- name: SetTrapDamageStatus :one
 UPDATE trap_damages
 SET status = $2, resolved_at = $3, applied_amount = $4
 WHERE id = $1
-RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at
+RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max
 `
 
 type SetTrapDamageStatusParams struct {
@@ -4313,6 +4633,7 @@ func (q *Queries) SetTrapDamageStatus(ctx context.Context, arg SetTrapDamageStat
 		&i.AppliedAmount,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.CriticalMax,
 	)
 	return i, err
 }
@@ -4371,9 +4692,10 @@ func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, err
 const updatePuzzle = `-- name: UpdatePuzzle :one
 UPDATE puzzles
 SET name = $3, config = $4, solution = $5, seed = $6, start = $7, minimum_moves = $8,
-    clue = $9, hints = $10, solve_action = $11, solve_target = $12, updated_at = $13
+    clue = $9, hints = $10, solve_action = $11, solve_target = $12,
+    hint_skill = $13, hint_dc = $14, parts = $15, on_wrong = $16, updated_at = $17
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
 `
 
 type UpdatePuzzleParams struct {
@@ -4389,6 +4711,10 @@ type UpdatePuzzleParams struct {
 	Hints        []byte
 	SolveAction  string
 	SolveTarget  []byte
+	HintSkill    *string
+	HintDc       *int32
+	Parts        []byte
+	OnWrong      []byte
 	UpdatedAt    time.Time
 }
 
@@ -4407,6 +4733,10 @@ func (q *Queries) UpdatePuzzle(ctx context.Context, arg UpdatePuzzleParams) (Puz
 		arg.Hints,
 		arg.SolveAction,
 		arg.SolveTarget,
+		arg.HintSkill,
+		arg.HintDc,
+		arg.Parts,
+		arg.OnWrong,
 		arg.UpdatedAt,
 	)
 	var i Puzzle
@@ -4427,6 +4757,10 @@ func (q *Queries) UpdatePuzzle(ctx context.Context, arg UpdatePuzzleParams) (Puz
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
 	)
 	return i, err
 }

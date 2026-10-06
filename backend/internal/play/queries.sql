@@ -343,12 +343,13 @@ WHERE character_id = sqlc.arg(character_id)
 -- A hit's damage waits for its roll, or, for a hit on a player's character that
 -- may cast Escudo, for the target's reaction (attack_total is then kept for the
 -- new comparison). A spell's damages carry their cast_id, and may be a heal or
--- a half damage.
+-- a half damage. critical_max is what a critical hit adds without rolling (the
+-- table's rule "máximo mais uma rolagem", RN-24).
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -636,9 +637,9 @@ RETURNING encounter_id;
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
-    created_at, resolved_at, trap_point_id
+    created_at, resolved_at, trap_point_id, critical_max, critical_max_rule
 ) VALUES (
-    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14
+    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14, $15, $16
 )
 RETURNING *;
 
@@ -655,8 +656,8 @@ ORDER BY p.created_at, p.id;
 -- A trap's damage to a player's character outside a combat.
 INSERT INTO trap_damages (
     game_session_id, trap_point_id, fire_id, character_id, status, critical,
-    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at
-) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at, critical_max
+) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 RETURNING *;
 
 -- name: ListCampaignTrapDamages :many
@@ -762,8 +763,8 @@ WHERE id = ANY($1::uuid[]);
 -- name: InsertPuzzle :one
 INSERT INTO puzzles (
     campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
-    solve_action, solve_target, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
+    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
 RETURNING *;
 
 -- name: GetPuzzle :one
@@ -787,7 +788,8 @@ ORDER BY created_at DESC, id;
 -- Everything the master writes about a puzzle.
 UPDATE puzzles
 SET name = $3, config = $4, solution = $5, seed = $6, start = $7, minimum_moves = $8,
-    clue = $9, hints = $10, solve_action = $11, solve_target = $12, updated_at = $13
+    clue = $9, hints = $10, solve_action = $11, solve_target = $12,
+    hint_skill = $13, hint_dc = $14, parts = $15, on_wrong = $16, updated_at = $17
 WHERE campaign_id = $1 AND id = $2
 RETURNING *;
 
@@ -804,9 +806,11 @@ JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE p.campaign_id = $1 AND r.shown_at IS NOT NULL;
 
 -- name: InsertPuzzleRun :one
--- A run starts with its state at its start.
-INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4, $5, $6, $6)
+-- A run starts with its state at its start. $5 is when it was shown (NULL for a run
+-- that is only prepared) and $6 when the round's clock starts (NULL too for a sequence,
+-- whose clock starts at its first play).
+INSERT INTO puzzle_runs (game_session_id, puzzle_id, seed, start, state, shown_at, round_started_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $7)
 RETURNING *;
 
 -- name: GetPuzzleRun :one
@@ -826,7 +830,7 @@ WHERE game_session_id = $1;
 
 -- name: ListShownPuzzleRuns :many
 -- What a session shows now: shown and not closed, in the order they were shown.
-SELECT r.*, p.name AS puzzle_name, p.kind AS puzzle_kind FROM puzzle_runs AS r
+SELECT r.*, p.name AS puzzle_name, p.kind AS puzzle_kind, p.on_wrong AS puzzle_on_wrong FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE r.game_session_id = $1 AND r.shown_at IS NOT NULL AND r.closed_at IS NULL AND p.archived_at IS NULL
 ORDER BY r.shown_at, r.id;
@@ -838,7 +842,8 @@ UPDATE puzzle_runs
 SET seed = $2, start = $3, state = $4, released_hints = $5, shown_at = $6, closed_at = $7,
     solved_at = $8, solved_by_character_id = $9, solve_outcome = $10,
     last_mover_character_id = $11, last_move = $12, last_moved_at = $13,
-    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17
+    moves_made = $14, revision = $15, updated_at = $16, solve_message = $17,
+    plays = $18, play_started_at = $19, round_start_seq = $20, round_started_at = $21
 WHERE id = $1
 RETURNING *;
 
@@ -848,9 +853,44 @@ SELECT * FROM puzzle_moves
 WHERE run_id = $1 AND idempotency_key = $2;
 
 -- name: InsertPuzzleMove :one
-INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO puzzle_moves (run_id, seq, user_id, character_id, idempotency_key, move, revision, solved, wrong, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
+
+-- name: CountWrongPuzzleMoves :many
+-- The wrong moves of each player in the run's current round: the moves after the
+-- seq the round began at. A player whose account was deleted has no user and no row.
+SELECT user_id, count(*)::int4 AS wrong FROM puzzle_moves
+WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
+GROUP BY user_id;
+
+-- name: InsertPuzzleHintTry :one
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING *;
+
+-- name: GetPuzzleHintTryByKey :one
+-- The try a call with this key already made, if any.
+SELECT * FROM puzzle_hint_tries
+WHERE run_id = $1 AND idempotency_key = $2;
+
+-- name: GetPuzzleHintCursor :one
+-- How many hints the player has won in the run: the largest count a pass left.
+SELECT COALESCE(max(granted_count), 0)::int4 AS granted FROM puzzle_hint_tries
+WHERE run_id = $1 AND user_id = $2 AND passed;
+
+-- name: HasTriedPuzzleHint :one
+-- Whether the player tried for this hint already (a pass or a fail).
+SELECT EXISTS (
+    SELECT 1 FROM puzzle_hint_tries WHERE run_id = $1 AND user_id = $2 AND hint_index = $3
+) AS tried;
+
+-- name: ListRecentPuzzleHintTries :many
+-- The run's latest tries, newest first (the master's view keeps the last 50).
+SELECT * FROM puzzle_hint_tries
+WHERE run_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 50;
 
 -- name: DeletePreparedPuzzleRuns :exec
 -- The runs of a puzzle that were prepared ("Gerar outro começo") and never shown: an

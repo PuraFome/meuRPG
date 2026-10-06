@@ -1505,7 +1505,9 @@ export const HitPointsRuleSchema: GenEnum<HitPointsRule> = /*@__PURE__*/
 
 /**
  * CriticalRule is what a critical hit does to the damage (RN-24). Stored here;
- * the combat applies it in slice 10.4b.
+ * the combat applies it to every critical hit (CombatService: RollAttack and
+ * CastSpell, the SRD's attacks, a creature's and an NPC's), reading it in the
+ * transaction of each roll, so a change applies from the next roll on.
  *
  * @generated from enum meurpg.campaigns.v1.CriticalRule
  */
@@ -1539,7 +1541,9 @@ export const CriticalRuleSchema: GenEnum<CriticalRule> = /*@__PURE__*/
 
 /**
  * DeathSaveVisibility is who sees a character's death saves (RN-24). Stored
- * here; the combat applies it in slice 10.4b.
+ * here; the combat applies it (CombatService): with OWNER_AND_MASTER, nobody else
+ * gets the counts, the rolls or the failures a hit at 0 adds, only the state word
+ * "Caído" ("Estável" and "Morto" stay everybody's, they are results).
  *
  * @generated from enum meurpg.campaigns.v1.DeathSaveVisibility
  */

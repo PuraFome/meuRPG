@@ -59,6 +59,7 @@ import { TreasurePointPanel } from '../point-kinds/treasure-point-panel';
 import { PointList } from '../point-list/point-list';
 import { PointPanel } from '../point-panel/point-panel';
 import type { PointChanges } from '../../../core/maps/maps-client';
+import { factorLabel } from '../../../core/maps/calibration';
 
 /** The kinds the editor creates: the three it always had, and the new ones. */
 function defaultName(kind: MapPointKind): string {
@@ -154,6 +155,8 @@ export class MapEditor {
   readonly staleFlags = output<void>();
 
   protected readonly map = computed(() => this.state().map());
+  /** What a square of the drawing is worth, for the legend of a calibrated map: "3 m". */
+  protected readonly factorText = computed(() => factorLabel(this.map()?.squareFactor || 1));
   protected readonly view = viewChild(MapView);
   private readonly pointPanel = viewChild(PointPanel);
   private readonly lightPanel = viewChild(LightPointPanel);

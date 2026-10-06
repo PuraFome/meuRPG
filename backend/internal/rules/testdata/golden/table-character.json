@@ -1,9 +1,10 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.13+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.14+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
+    "BackgroundEquipmentPT": "Uma lanterna, um apito e roupas de viagem.",
     "Classes": [
       {
         "ClassKey": "class:gen-full-prepared@mesa",
@@ -637,10 +638,11 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.13+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.14+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
+    "BackgroundEquipmentPT": "Uma lanterna, um apito e roupas de viagem.",
     "Classes": [
       {
         "ClassKey": "class:gen-full-prepared@mesa",
@@ -1714,10 +1716,11 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.13+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.14+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
+    "BackgroundEquipmentPT": "Uma lanterna, um apito e roupas de viagem.",
     "Classes": [
       {
         "ClassKey": "class:gen-full-prepared@mesa",

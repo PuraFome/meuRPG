@@ -93,6 +93,11 @@ func (b *overlayBuilder) addSpell(ts *TableSpell) error {
 	if target.Kind == TargetSelf && ts.Range.Kind != RangeSelf {
 		return ovErr(key, "a spell that only affects the caster has the range Self (Pessoal)").at("", ReasonValue)
 	}
+	if ts.Range.Kind == RangeSelf && (target.Kind == TargetCreature || target.Kind == TargetCreatures) {
+		// Pessoal reaches the caster, or an area that comes out of the caster
+		// (Mãos Flamejantes): a spell that picks creatures has a distance or Toque.
+		return ovErr(key, "a spell with the range Self (Pessoal) reaches only the caster or an area; one that picks creatures has a distance or Touch (Toque)").at("", ReasonValue)
+	}
 	if target.Kind == TargetArea && ts.Attack != "" {
 		return ovErr(key, "a spell attack hits one creature: it cannot have an area target").at("", ReasonValue)
 	}
@@ -218,10 +223,19 @@ func diceText(count, sides int) string { return fmt.Sprintf("%dd%d", count, side
 // checkTarget checks a spell's target and returns it with only the fields its
 // kind uses.
 func checkTarget(key string, t SpellTarget) (SpellTarget, error) {
+	if t.Label != "" {
+		return t, ovErr(key, "a table spell's target has no text of its own: the server writes it")
+	}
 	switch t.Kind {
-	case TargetSelf, TargetCreature:
+	case TargetSelf:
 		if t.Count != 0 || t.PerSlotLevel != 0 || t.Shape != "" || t.SizeFt != 0 {
 			return t, ovErr(key, "a %s target takes nothing else", t.Kind)
+		}
+	case TargetCreature:
+		// One creature, and, if the master wants, one more for each circle above
+		// ("uma criatura, mais uma por círculo", as Hold Person).
+		if t.Count != 0 || t.PerSlotLevel < 0 || t.PerSlotLevel > 10 || t.Shape != "" || t.SizeFt != 0 {
+			return t, ovErr(key, "one creature takes only 0 to 10 more per slot level")
 		}
 	case TargetCreatures:
 		if t.Count < 2 || t.Count > 20 || t.PerSlotLevel < 0 || t.PerSlotLevel > 10 || t.Shape != "" || t.SizeFt != 0 {

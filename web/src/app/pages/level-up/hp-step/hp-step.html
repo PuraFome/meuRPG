@@ -7,20 +7,40 @@
   <h2 class="mr-panel__title" id="hp-title">Pontos de vida</h2>
   <p class="lead">{{ intro() }}</p>
 
-  <app-dice-choice
-    name="level-up-hp"
-    label="Como ganhar os pontos de vida do nível"
-    [options]="options()"
-    [value]="card()"
-    (valueChange)="pick($event)"
-  />
+  @if (s().hpFixed === 'average') {
+    <p class="fixed" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.</span>
+    </p>
+    <p class="fixed-line">
+      <strong>{{ options()[0].title }}</strong> · {{ options()[0].description }}
+    </p>
+  } @else if (s().hpFixed === 'roll') {
+    <p class="fixed" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>A mesa pede que todos rolem o dado de vida. A média não é oferecida.</span>
+    </p>
+  } @else {
+    <app-dice-choice
+      name="level-up-hp"
+      label="Como ganhar os pontos de vida do nível"
+      [options]="options()"
+      [value]="card()"
+      (valueChange)="pick($event)"
+    />
+  }
 
   @if (card() === 1) {
     <div class="roll">
       @if (rolled(); as r) {
         <p class="roll__done" role="status">
           <mat-icon aria-hidden="true">check_circle</mat-icon>
-          <span>{{ r.kind === 'app' ? 'Rolado no app' : 'Dado físico' }}: {{ r.value }} no d{{ die() }}.</span>
+          <span>
+            {{ r.kind === 'app' ? 'Rolado no app' : 'Dado físico' }}: {{ r.value }} no d{{ die() }}.
+            @if (s().hpFixed === 'roll') {
+              {{ s().withCon(r.value) }} · de {{ s().average().from }} para {{ s().after().hitPointsMax }}.
+            }
+          </span>
           @if (canRetype()) {
             <button type="button" class="roll__again" (click)="retype()">Digitar outro</button>
           }
@@ -52,7 +72,7 @@
   }
 </section>
 
-@if (s().constitution(); as c) {
+@if (s().hpFixed !== 'roll' && s().constitution(); as c) {
   <section class="mr-panel con" aria-labelledby="con-title">
     <h2 class="mr-panel__title" id="con-title">{{ c.title }}</h2>
     <dl class="con__rows">

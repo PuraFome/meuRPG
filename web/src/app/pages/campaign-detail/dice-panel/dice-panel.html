@@ -4,13 +4,10 @@
     Como os jogadores rolam os dados no combate. Os NPCs sempre rolam no app, e você pode digitar o valor.
   </p>
 
-  <app-dice-choice
-    name="campaign-dice-mode"
-    label="Como os jogadores rolam"
-    [options]="options"
-    [value]="selected()"
-    (valueChange)="pick($event)"
-  />
+  <p class="dice__mode">
+    <span class="dice__mode-title">{{ option()?.title }}</span>
+    <span class="dice__mode-desc">{{ option()?.description }}</span>
+  </p>
 
   @if (showChoices()) {
     <div class="dice__choices">
@@ -33,26 +30,7 @@
     </div>
   }
 
-  <p class="dice__note">
-    <mat-icon aria-hidden="true">info</mat-icon>
-    @if (showChoices()) {
-      Com as outras duas opções, estas escolhas ficam guardadas, mas não valem. A mudança vale a partir da próxima rolagem.
-    } @else {
-      A mudança vale a partir da próxima rolagem. As escolhas de cada jogador ficam guardadas, mas não valem.
-    }
-  </p>
-
-  @if (error()) {
-    <div class="mr-notice mr-notice--danger" role="alert">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ error() }}</p>
-    </div>
-  }
-
   <div class="dice__actions">
-    <button matButton="outlined" type="button" [disabled]="!dirty() || saving()" (click)="save()">Salvar dados</button>
-    @if (saved() && !dirty()) {
-      <span class="dice__saved" role="status"><mat-icon aria-hidden="true">check</mat-icon>Salvo.</span>
-    }
+    <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'regras']">Mudar em Regras da mesa</a>
   </div>
 </section>

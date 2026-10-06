@@ -150,7 +150,8 @@ export class LevelUpPage {
       }
       const d = s.draft;
       const choices = d.choices();
-      const average = d.hpCard() === 'roll' && d.rolled() !== null ? d.averageChoices() : null;
+      // A table that makes everybody roll never shows the average, and the server would refuse to preview it.
+      const average = d.hpCard() === 'roll' && d.rolled() !== null && s.hpFixed !== 'roll' ? d.averageChoices() : null;
       untracked(() => {
         s.preview.request(choices, average, first);
         first = false;
