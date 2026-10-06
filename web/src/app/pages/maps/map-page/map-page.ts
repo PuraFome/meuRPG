@@ -16,6 +16,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { OpenSessionLookup } from '../../../core/play/open-session';
 import { openImagePicker } from '../../../shared/gallery-picker/image-picker-dialog/image-picker-dialog';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import type { GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
 import { MapEditor } from '../map-editor/map-editor';
 import { MapHead } from '../map-head/map-head';
 import { MapManage } from '../map-manage/map-manage';
@@ -233,6 +234,14 @@ export class MapPage {
       this.notice.set(mapErrorMessage(err, 'mudar o mapa'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** "Gerar imagem" made the textured map the map's image (the layers stay): show it, and read the map again for the rest. */
+  protected imageGenerated(outcome: GenerateOutcome): void {
+    if (outcome.map) {
+      this.state.setMap(outcome.map);
+      void this.state.refresh();
     }
   }
 

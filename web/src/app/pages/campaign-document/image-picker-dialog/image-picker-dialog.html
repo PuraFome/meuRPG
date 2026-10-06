@@ -11,14 +11,22 @@
     label="Imagem da galeria"
     (picked)="choose($event)"
   />
-  <button dialogFooter matButton type="button" (click)="closed.emit()">Cancelar</button>
+  @if (asking()) {
+    <section class="ask" role="group" aria-labelledby="doc-whole-map-t">
+      <h3 class="ask__title" id="doc-whole-map-t">Inserir o mapa inteiro?</h3>
+      <p class="ask__text">
+        <mat-icon aria-hidden="true">warning</mat-icon>Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram, e os jogadores leem o documento.
+      </p>
+    </section>
+  }
+  <button #firstAnswer dialogFooter matButton type="button" (click)="asking() ? back() : closed.emit()">{{ asking() ? 'Voltar' : 'Cancelar' }}</button>
   <button
     dialogFooter
-    matButton="outlined"
+    [matButton]="asking() ? 'filled' : 'outlined'"
     type="button"
     [disabled]="imageId() === null"
     (click)="insert()"
   >
-    Inserir imagem
+    {{ asking() ? 'Inserir mesmo assim' : 'Inserir imagem' }}
   </button>
 </app-doc-dialog>

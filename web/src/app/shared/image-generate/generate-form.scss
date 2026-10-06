@@ -1,0 +1,138 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.part {
+  display: block;
+}
+
+.hint,
+.count {
+  margin: var(--mr-space-2) 0 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.count {
+  text-align: right;
+}
+
+.label {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prompt {
+  width: 100%;
+}
+
+.privacy {
+  margin-top: var(--mr-space-2);
+  padding: 10px 16px;
+  font-size: 15px;
+  line-height: 21px;
+}
+
+// "O que vai junto": the drawing the server made, and what it leaves out.
+.along {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-4);
+}
+
+.along__shot {
+  flex: none;
+  width: 156px;
+  max-height: 130px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-map-fog);
+  object-fit: contain;
+
+  &--wait {
+    height: 104px;
+    background: var(--mr-ground);
+  }
+}
+
+.along__text {
+  min-width: 0;
+}
+
+.along__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.along__lead {
+  margin: 2px 0 0;
+  line-height: 22px;
+}
+
+.along__body {
+  margin: 4px 0 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.along__warn {
+  display: flex;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  color: var(--mr-warning-ink);
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.along__error {
+  flex: 1;
+}
+
+@media (max-width: 599.98px) {
+  .along__shot {
+    width: 96px;
+  }
+}
+
+.month__text {
+  margin: 0;
+}
+
+.meter {
+  height: 6px;
+  margin-top: var(--mr-space-2);
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.meter__used {
+  display: block;
+  height: 100%;
+  background: var(--mr-ink);
+}

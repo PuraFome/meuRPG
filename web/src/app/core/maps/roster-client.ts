@@ -17,6 +17,8 @@ export interface RosterEntry {
   readonly raceName: string;
   /** The player's display name, or `null`. */
   readonly playerName: string | null;
+  /** An NPC's portrait: the gallery image's ID, or empty. */
+  readonly portraitImageId: string;
 }
 
 /**
@@ -40,6 +42,7 @@ export class RosterClient {
         classSummary: c.classSummary,
         raceName: c.raceNamePt,
         playerName: c.playerDisplayName.trim() || null,
+        portraitImageId: c.portraitUrl.replace(/^\/images\//, '').replace(/\/thumb$/, ''),
       }));
   }
 }

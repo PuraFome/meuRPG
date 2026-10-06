@@ -215,6 +215,8 @@ func imageToProto(r mapsdb.GalleryImage) *mapsv1.GalleryImage {
 		Url:          imageURL(r.ID),
 		ThumbnailUrl: thumbnailURL(r.ID),
 		Generated:    r.Generated,
+		// The whole map is in a textured map and in what was made from one (RN-10).
+		ShowsWholeMap: r.GeneratedKind == kindTexturedMap,
 	}
 	if r.ParentImageID != nil {
 		img.ParentImageId = *r.ParentImageID

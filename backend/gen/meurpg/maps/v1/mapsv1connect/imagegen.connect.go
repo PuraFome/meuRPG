@@ -141,7 +141,7 @@ type ImageGenerationServiceClient interface {
 	// Errors: as GenerateSceneImage, `invalid_argument` (with an
 	// ImageGenerationInvalidField detail) also for a kind that is not made from a map,
 	// for an NPC the players do not see (or too many characters in all), for a
-	// hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+	// hidden NPC's portrait (also in object_image_ids: the portrait is refused wherever it comes), and for characters on a TEXTURED_MAP; and
 	// `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
 	// PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
 	// the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
@@ -157,7 +157,9 @@ type ImageGenerationServiceClient interface {
 	// ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
 	// are no longer what the request was made from, or its walls (a painted wall, a
 	// revealed secret door: what the drawing showed) changed since; and `not_found`
-	// when the image is not a textured map generated for a map of the campaign.
+	// when the image is not a textured map generated for a map of the campaign. An
+	// edit of a textured map counts as one: it is made at the map's size and used with the
+	// same checks as the original (the image, the grid, the size and the walls it started from).
 	UseGeneratedImageAsMapImage(context.Context, *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error)
 }
 
@@ -372,7 +374,7 @@ type ImageGenerationServiceHandler interface {
 	// Errors: as GenerateSceneImage, `invalid_argument` (with an
 	// ImageGenerationInvalidField detail) also for a kind that is not made from a map,
 	// for an NPC the players do not see (or too many characters in all), for a
-	// hidden NPC's portrait, and for characters on a TEXTURED_MAP; and
+	// hidden NPC's portrait (also in object_image_ids: the portrait is refused wherever it comes), and for characters on a TEXTURED_MAP; and
 	// `failed_precondition` with ImageGenerationBlocked also for MAP_HAS_NO_GRID,
 	// PLAYERS_SEE_NOTHING (the players' view is empty: no character of a player is on
 	// the map, or none sees a square) and MAP_IMAGE_TOO_LARGE.
@@ -388,7 +390,9 @@ type ImageGenerationServiceHandler interface {
 	// ImageGenerationBlocked MAP_CHANGED when the map's image, grid or calibration
 	// are no longer what the request was made from, or its walls (a painted wall, a
 	// revealed secret door: what the drawing showed) changed since; and `not_found`
-	// when the image is not a textured map generated for a map of the campaign.
+	// when the image is not a textured map generated for a map of the campaign. An
+	// edit of a textured map counts as one: it is made at the map's size and used with the
+	// same checks as the original (the image, the grid, the size and the walls it started from).
 	UseGeneratedImageAsMapImage(context.Context, *connect.Request[v1.UseGeneratedImageAsMapImageRequest]) (*connect.Response[v1.UseGeneratedImageAsMapImageResponse], error)
 }
 

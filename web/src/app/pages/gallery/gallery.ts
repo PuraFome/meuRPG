@@ -10,7 +10,9 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -23,6 +25,7 @@ import { ImageUploader } from '../../core/images/image-uploader';
 import { quotaNearlyFull, usageLine } from '../../core/images/image-format';
 import { DEFAULT_LIMITS } from '../../core/images/upload-errors';
 import { UploadQueue } from '../../core/images/upload-queue';
+import { GenerateImageButton } from '../../shared/image-generate/generate-image-button';
 import { UploadProgress } from '../../shared/gallery-picker/upload-progress/upload-progress';
 import { GalleryCard } from './gallery-card/gallery-card';
 import { GalleryLightbox } from './gallery-lightbox/gallery-lightbox';
@@ -57,6 +60,7 @@ type AfterLightbox = { kind: 'rename' | 'delete'; imageId: string } | null;
 @Component({
   selector: 'app-gallery',
   imports: [
+    GenerateImageButton,
     GalleryCard,
     GalleryLightbox,
     MatButtonModule,
@@ -78,6 +82,8 @@ export class GalleryPage {
   private readonly gallery = inject(GalleryClient);
   private readonly route = inject(ActivatedRoute);
   private readonly injector = inject(Injector);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly campaignId = signal('');
   protected readonly state = signal<PageState>({ status: 'loading' });
@@ -157,6 +163,17 @@ export class GalleryPage {
     );
   }
 
+  /** Reads the images again without the loading state (a picture was generated: it is in the gallery now). */
+  protected refresh(): void {
+    this.gallery.list(this.campaignId()).then(
+      ({ images, usage }) => {
+        this.images.set(images);
+        this.usage.set(usage);
+      },
+      () => undefined,
+    );
+  }
+
   protected addFiles(files: File[]): void {
     this.queue.add(files);
   }
@@ -206,6 +223,24 @@ export class GalleryPage {
       },
       { injector: this.injector },
     );
+  }
+
+  /** "Editada de Imagem 1": the name of the image an adjustment came from, when it is still in the gallery. */
+  protected parentNameOf(image: GalleryImage): string {
+    return image.parentImageId === '' ? '' : (this.images().find((i) => i.id === image.parentImageId)?.name ?? '');
+  }
+
+  /** "Pedir um ajuste" in the lightbox: it closes, and the generate dialog opens on that image (its chain, "Mostrar aos jogadores", the adjustment). */
+  protected async onLightboxAdjust(image: GalleryImage): Promise<void> {
+    this.afterLightbox = null;
+    this.viewingId.set(null);
+    const { openImageGenerate } = await import('../../shared/image-generate/image-generate-dialog');
+    openImageGenerate(this.dialog, this.bottomSheet, { campaignId: this.campaignId(), origin: { kind: 'gallery' }, image }).subscribe((outcome) => {
+      if (outcome && outcome.generated > 0) {
+        this.refresh();
+      }
+      this.cardFor(image.id)?.focusView();
+    });
   }
 
   protected onLightboxRename(image: GalleryImage): void {
