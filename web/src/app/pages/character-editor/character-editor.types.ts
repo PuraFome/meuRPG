@@ -327,6 +327,8 @@ export interface AbilityTableVm {
   readonly pointBuyBudget: number;
   readonly typedMin: number;
   readonly typedMax: number;
+  /** How the table makes the hit points of a new sheet above level 1 (RN-24): the player chooses, or only the die, or only the average. */
+  readonly hitPoints: 'player_chooses' | 'roll' | 'average';
   /** The player rolls with their own dice (the campaign forces it, or they chose it): they type the dice, once. */
   readonly physicalDice: boolean;
   /** The campaign makes everybody roll the same way, so the player has no say. */
@@ -365,6 +367,8 @@ export interface CharacterForEdit {
    * character is dead. The master may still edit it; the XP is then read-only
    * here, because only awards change it (MR-016). */
   readonly sheetLocked: boolean;
+  /** How the base scores were made, as the server recorded it at creation (RN-24); `null` for NPCs and sheets made before the rules. */
+  readonly abilityOrigin?: { readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null;
 }
 
 /**

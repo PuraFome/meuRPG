@@ -1,4 +1,5 @@
-import type { AbilityResult } from '../dice/dice';
+import type { AbilityResult, Placement } from '../dice/dice';
+import { emptyPlacement } from '../dice/dice';
 import type { AbilityKey } from './characters.types';
 import { ABILITY_KEYS } from './characters.types';
 
@@ -65,4 +66,22 @@ export function missingDie(rows: readonly (readonly string[])[]): string {
     }
   }
   return '';
+}
+
+/**
+ * Where each current score sits among the results of a method: each ability takes the first unused result with its
+ * value, `null` when it has none (the sheet was edited out of the method; the server will say). Used when a player
+ * opens their own draft, which already has scores made by a recorded method.
+ */
+export function placementFromScores(scores: Readonly<Record<AbilityKey, number>>, totals: readonly number[]): Placement {
+  const used = new Set<number>();
+  const placement = emptyPlacement();
+  for (const key of ABILITY_KEYS) {
+    const at = totals.findIndex((t, i) => t === scores[key] && !used.has(i));
+    if (at >= 0) {
+      used.add(at);
+      placement[key] = at;
+    }
+  }
+  return placement;
 }

@@ -12,6 +12,8 @@ import {
   AbilityScoresRefusalSchema,
   CharacterBlockedReason,
   CharacterBlockedSchema,
+  LevelUpRefusalReason,
+  LevelUpRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { GalleryClient } from '../../core/images/gallery-client';
 import { galleryImage, galleryUsage } from '../../core/images/gallery-testing';
@@ -1580,6 +1582,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     pointBuyBudget: 27,
     typedMin: 3,
     typedMax: 18,
+    hitPoints: 'player_chooses',
     physicalDice: false,
     diceForced: false,
     rolls: null,
@@ -1692,5 +1695,78 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
       status: 'error',
       message: 'O mestre não liberou esse jeito de fazer os atributos nesta mesa. Escolha outro.',
     });
+  });
+
+  it('offers only the hit points the table\'s rule allows, and starts on the one it leaves', async () => {
+    configure({ id: 'camp-1' }, { ...table, hitPoints: 'roll' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    expect(cmp.fullForm.controls.hitPointsMethod.value).toBe('rolled');
+    expect(el.querySelector('mat-radio-group.hp-methods')).toBeNull();
+    expect(el.textContent).toContain('A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.');
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1' }, { ...table, hitPoints: 'average' });
+    const avg = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((avg.fixture.componentInstance as any).fullForm.controls.hitPointsMethod.value).toBe('average');
+    expect(avg.el.querySelector('mat-radio-group.hp-methods')).toBeNull();
+    expect(avg.el.textContent).toContain('A mesa usa a média nos pontos de vida: o dado não é oferecido.');
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1' });
+    const both = await render();
+    expect(both.el.querySelectorAll('mat-radio-group.hp-methods mat-radio-button')).toHaveLength(2);
+  });
+
+  it('says the table\'s hit points rule when the server refuses a new sheet for it', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    fillBasics(cmp);
+    fixture.detectChanges();
+    const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
+    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!.click();
+    fixture.detectChanges();
+    await flush();
+    fake.createCharacterFn = () =>
+      Promise.reject(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.HIT_POINTS_RULE }) },
+        ]),
+      );
+    await cmp.submit();
+    expect(cmp.saveState().message).toContain('A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º');
+  });
+
+  it('a player editing their own draft keeps the method its scores were made by, with its limits', async () => {
+    configure({ id: 'camp-1', characterId: 'ch-1' });
+    fake.abilityTable = table;
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({
+        kind: 'player' as const,
+        revision: 2,
+        blocked: null,
+        sheetLocked: false,
+        full: null,
+        basic: null,
+        abilityOrigin: { method: 'point_buy' as const, rolls: null },
+      });
+    const { el } = await render();
+    expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
+    expect(el.querySelector('app-table-ability-scores')).not.toBeNull();
+    expect(el.querySelector('app-ability-scores')).toBeNull();
+    expect(el.textContent).toContain('Os valores desta ficha foram feitos por este jeito');
+
+    // The master (no table), or a sheet without a recorded method, keeps the free editor.
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1', characterId: 'ch-1' }, null);
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({ kind: 'player' as const, revision: 2, blocked: null, sheetLocked: false, full: null, basic: null, abilityOrigin: { method: 'point_buy' as const, rolls: null } });
+    const free = await render();
+    expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
+    expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });
 });

@@ -243,13 +243,18 @@ test(
       await m.goto(`/campanhas/${table.campaignId}/regras`);
       await expect(m.getByRole('radio', { name: /Por inimigos/ })).toBeChecked();
       await pickRadio(m, /Por marcos/);
+      // Picking only picks: the campaign still has the old mode until "Mudar para marcos".
+      await expect(m.getByRole('button', { name: 'Mudar para marcos' })).toBeVisible();
+      expect((await (await callRPC(m, 'meurpg.campaigns.v1.CampaignService/GetCampaign', { campaignId: table.campaignId })).json()).campaign.xpMode).toBe('XP_MODE_ENEMIES');
+      await m.getByRole('button', { name: 'Mudar para marcos' }).click();
       await expect(m.getByRole('heading', { name: 'Mudar para “por marcos”?' })).toBeFocused();
       await expect(m.getByText('Já houve XP dado nesta campanha. Mudar vale só daqui para frente.')).toBeVisible();
       // Going back changes nothing.
-      await m.getByRole('button', { name: 'Voltar' }).click();
+      await m.getByRole('button', { name: 'Voltar', exact: true }).click();
       await expect(m.getByRole('radio', { name: /Por inimigos/ })).toBeChecked();
 
       await pickRadio(m, /Por marcos/);
+      await m.getByRole('button', { name: 'Mudar para marcos' }).click();
       await m.getByRole('button', { name: 'Mudar para marcos' }).click();
       await expect(m.getByText(/Modo de XP mudado para por marcos, em \d\d\/\d\d\/\d{4}/)).toBeVisible();
       await m.reload();
@@ -309,7 +314,7 @@ test(
       await page.getByRole('button', { name: 'Salvar a grade' }).click();
       await expect(page.getByRole('heading', { name: 'Mudar a grade?' })).toBeFocused();
       expect((await layersOf(page, campaignId, map.mapId)).wall).toBe(20);
-      await page.getByRole('button', { name: 'Voltar' }).click();
+      await page.getByRole('button', { name: 'Voltar', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' })).toBeVisible();
       await page.getByRole('button', { name: 'Salvar a grade' }).click();
       await page.getByRole('button', { name: 'Apagar e mudar a grade' }).click();
@@ -363,6 +368,91 @@ test(
       if (m && campaignId) {
         await endOpenSessionRPC(m, campaignId);
       }
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'o jogador lê as regras da mesa, sem controles, e o link das regras de mapas leva aos mapas @RN-24',
+  { tag: '@RN-24' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Leitura ${Date.now()}`);
+      await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_AVERAGE', houseRules: ['Beber uma poção é uma ação bônus'] });
+
+      await p.goto(`/campanhas/${campaignId}`);
+      await p.getByRole('link', { name: 'Ler as regras' }).click();
+      await expect(p).toHaveURL(new RegExp(`/campanhas/${campaignId}/regras$`));
+      await expect(p.getByRole('heading', { level: 1, name: 'Regras da mesa' })).toBeVisible();
+      await expect(p.getByText('Só o mestre muda as regras da mesa.')).toBeVisible();
+      await expect(p.getByText('Pontos de vida ao subir de nível', { exact: true })).toBeVisible();
+      await expect(p.getByText('A média', { exact: true })).toBeVisible();
+      await expect(p.getByText('Beber uma poção é uma ação bônus')).toBeVisible();
+      await expect(p.getByRole('radio')).toHaveCount(0);
+      await expect(p.getByRole('switch')).toHaveCount(0);
+      await expect(p.getByRole('button', { name: 'Salvar regras' })).toHaveCount(0);
+
+      // The master's page: "Abrir os mapas" opens the campaign at its maps.
+      await m.goto(`/campanhas/${campaignId}/regras`);
+      await expect(m.getByRole('link', { name: 'Abrir o conteúdo da mesa' })).toHaveCount(0);
+      await m.getByRole('link', { name: 'Abrir os mapas' }).click();
+      await expect(m).toHaveURL(new RegExp(`/campanhas/${campaignId}#mapas$`));
+      await expect(m.getByRole('region', { name: 'Mapas' })).toBeInViewport();
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'com dados físicos, os dados só são guardados depois da pergunta, e a regra de PV da mesa vale na criação @RN-24',
+  { tag: '@RN-24' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Dados físicos ${Date.now()}`);
+      await setTableRulesRPC(m, campaignId, { diceMode: 'DICE_MODE_PHYSICAL', hitPoints: 'HIT_POINTS_RULE_ROLL' });
+
+      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await fillBasics(p, 'Ícaro');
+      await p.getByRole('tab', { name: 'Atributos' }).click();
+      // The hit points follow the table: only "Rolado", no choice.
+      await expect(p.getByText('A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados')).toBeVisible();
+      await expect(p.getByRole('radio', { name: /Média/ })).toHaveCount(0);
+
+      await method(p, '4d6');
+      const typed = [[6, 5, 5, 2], [5, 5, 4, 1], [5, 4, 4, 3], [4, 4, 4, 2], [4, 3, 3, 2], [3, 3, 2, 1]];
+      for (const [i, row] of typed.entries()) {
+        for (const [j, die] of row.entries()) {
+          await p.getByLabel(`Rolagem ${i + 1}, dado ${j + 1}`, { exact: true }).fill(String(die));
+        }
+      }
+      await p.getByRole('button', { name: 'Guardar os dados' }).click();
+      await expect(p.getByRole('heading', { name: 'Guardar estas rolagens?' })).toBeFocused();
+      await expect(p.getByText('Rolagem 1: 6, 5, 5, 2')).toBeVisible();
+      // Nothing is stored before the confirmation.
+      const before = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetAbilityRolls', { campaignId });
+      expect((await before.json()).rolls).toBeUndefined();
+      await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+      await expect(p.getByLabel('Rolagem 1, dado 1', { exact: true })).toHaveValue('6');
+      await p.getByRole('button', { name: 'Guardar os dados' }).click();
+      await p.getByRole('button', { name: 'Guardar as rolagens' }).click();
+      await expect(p.getByText(/Dados digitados em/)).toBeVisible();
+      const after = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetAbilityRolls', { campaignId });
+      expect((await after.json()).rolls.sets).toHaveLength(6);
+    } finally {
       await master.close();
       await player.close();
     }

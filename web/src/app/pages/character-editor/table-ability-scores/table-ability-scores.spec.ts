@@ -40,6 +40,7 @@ function table(over: Partial<AbilityTableVm> = {}): AbilityTableVm {
     pointBuyBudget: 27,
     typedMin: 3,
     typedMax: 18,
+    hitPoints: 'player_chooses',
     physicalDice: false,
     diceForced: false,
     rolls: null,
@@ -166,6 +167,13 @@ describe('TableAbilityScores', () => {
       expect(incomplete).toBe(false);
     });
 
+    it('starts every score at the lowest of the server\'s table, not at a fixed 8', async () => {
+      await pointBuy(table({ pointBuyMinScore: 6, pointBuyCosts: [0, 1, 2, 3, 4, 5, 7, 9], pointBuyBudget: 20 }));
+      expect(scores()).toEqual([6, 6, 6, 6, 6, 6]);
+      expect(text()).toContain('Restam 20 pontos');
+      expect(text()).toContain('Cada valor vai de 6 a 13');
+    });
+
     it('adds the server\'s costs: 15, 14, 13, 10, 10 and 8 leaves 2 points', async () => {
       await pointBuy();
       const set = (name: string, to: number) => {
@@ -274,6 +282,21 @@ describe('TableAbilityScores', () => {
       roll.mockResolvedValueOnce({ ...STORED, typed: true });
       button('Guardar os dados').click();
       await settle();
+      // Nothing is stored yet: the question lists the 24 dice and says it is for good.
+      expect(roll).not.toHaveBeenCalled();
+      expect(el.querySelector('.ask__title')?.textContent).toContain('Guardar estas rolagens?');
+      expect(text()).toContain('Depois não dá para mudar');
+      expect(text()).toContain('Rolagem 1: 6, 5, 5, 2');
+      expect(text()).toContain('Rolagem 6: 3, 3, 2, 1');
+      // "Voltar" stores nothing and brings the dice back as typed.
+      button('Voltar').click();
+      await settle();
+      expect(roll).not.toHaveBeenCalled();
+      expect(el.querySelectorAll<HTMLInputElement>('.roll__die')[0].value).toBe('6');
+      button('Guardar os dados').click();
+      await settle();
+      button('Guardar as rolagens').click();
+      await settle();
       expect(roll).toHaveBeenCalledWith('camp-1', [[6, 5, 5, 2], [5, 5, 4, 1], [5, 4, 4, 3], [4, 4, 4, 2], [4, 3, 3, 2], [3, 3, 2, 1]]);
       expect(text()).toContain('Dados digitados em 05/10 20:14. Ficam guardados');
       expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
@@ -289,6 +312,49 @@ describe('TableAbilityScores', () => {
       button('Rolar os atributos').click();
       await settle();
       expect(text()).toContain('Nesta campanha todos usam os próprios dados: digite os dados que você tirou.');
+    });
+  });
+
+  describe('a draft that already has a recorded method (RN-24)', () => {
+    async function locked(method: AbilityMethodKey, values: number[], rolls: AbilityRollsVm | null = null) {
+      g = group();
+      (['str', 'dex', 'con', 'int', 'wis', 'cha'] as AbilityKey[]).forEach((k, i) => g.controls[k].setValue(values[i]));
+      roll = vi.fn();
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CharacterEditorSource, useValue: { rollAbilityScores: roll } }] });
+      fixture = TestBed.createComponent(TableAbilityScores);
+      fixture.componentRef.setInput('campaignId', 'camp-1');
+      fixture.componentRef.setInput('group', g);
+      fixture.componentRef.setInput('table', table());
+      fixture.componentRef.setInput('locked', { method, rolls });
+      fixture.componentInstance.problem.subscribe((v) => (problem = v));
+      fixture.componentInstance.incomplete.subscribe((v) => (incomplete = v));
+      el = fixture.nativeElement;
+      await settle();
+    }
+
+    it('shows only that method, with no picker', async () => {
+      await locked('point_buy', [10, 14, 13, 8, 15, 10]);
+      expect(el.querySelector('input[name="ability-method"]')).toBeNull();
+      expect(text()).toContain('Compra por pontos');
+      expect(text()).toContain('Os valores desta ficha foram feitos por este jeito');
+      expect(text()).toContain('Restam 2 pontos');
+      expect(scores()).toEqual([10, 14, 13, 8, 15, 10]);
+    });
+
+    it('keeps the 4d6 the sheet was made with, placed as the scores are, and never rolls again', async () => {
+      await locked('rolled_4d6', [16, 14, 13, 12, 10, 8], STORED);
+      expect(button('Rolar os atributos')).toBeUndefined();
+      expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
+      expect(fixture.componentInstance.incomplete()).toBe(false);
+      expect(scores()).toEqual([16, 14, 13, 12, 10, 8]);
+      expect(roll).not.toHaveBeenCalled();
+    });
+
+    it('the standard array comes back placed', async () => {
+      await locked('standard_array', [12, 15, 13, 14, 10, 8]);
+      expect(fixture.componentInstance.incomplete()).toBe(false);
+      expect(text()).toContain('Os seis resultados estão colocados.');
     });
   });
 

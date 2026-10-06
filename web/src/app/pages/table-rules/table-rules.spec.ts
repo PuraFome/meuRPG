@@ -94,18 +94,30 @@ describe('TableRulesPage', () => {
   const button = (el: HTMLElement, label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.replace(/\s+/g, ' ').trim().includes(label))!;
 
-  it('lets only the master in, and says so to a player', async () => {
+  it('gives a player the rules in words, read-only, with the reminders and no controls', async () => {
     const { el } = await setup(Role.PLAYER);
     expect(text(el)).toContain('Só o mestre muda as regras da mesa.');
     expect(el.querySelector('button[role="switch"]')).toBeNull();
-    expect(get).not.toHaveBeenCalled();
+    expect(el.querySelector('input')).toBeNull();
+    expect(el.querySelector('button')).toBeNull();
+    const rows = Array.from(el.querySelectorAll('.read__row')).map((r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`);
+    expect(rows).toContain('Dados Cada jogador escolhe');
+    expect(rows).toContain('Combate Começa com mapa');
+    expect(rows).toContain('Névoa de guerra nos mapas novos Ligada');
+    expect(rows).toContain('Pontos de vida ao subir de nível O jogador escolhe');
+    expect(rows).toContain('Atributos de uma ficha nova Conjunto padrão, Compra por pontos, 4d6, descartando o menor, Digitar os valores');
+    expect(rows).toContain('Experiência Por inimigos');
+    expect(text(el)).toContain('Personalizado');
+    expect(text(el)).toContain('Beber uma poção é uma ação bônus');
+    expect(text(el)).toContain('Lembretes para a mesa toda');
+    expect(set).not.toHaveBeenCalled();
   });
 
   it('draws the page with the "Estilo da mesa" on top, the choices as they are saved, and "Tudo salvo"', async () => {
     const { el } = await setup();
     const titles = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
     expect(titles[0]).toBe('Estilo da mesa');
-    expect(titles).toEqual(expect.arrayContaining(['Pontos de vida ao subir de nível', 'Atributos de uma ficha nova', 'Acertos críticos', 'Testes contra a morte', 'Dados', 'Combate e névoa', 'Experiência', 'Lembretes da mesa', 'Conteúdo da mesa', 'Grade dos mapas']));
+    expect(titles).toEqual(expect.arrayContaining(['Pontos de vida ao subir de nível', 'Atributos de uma ficha nova', 'Acertos críticos', 'Testes contra a morte', 'Dados', 'Combate e névoa', 'Experiência', 'Lembretes da mesa', 'Grade dos mapas']));
     expect(text(el)).toContain('Mirathel · Estas escolhas valem para cada ficha e cada combate da campanha.');
     // The saved rules do not match any preset: "Personalizado" is the one on, and cannot be chosen.
     expect(radio(el, 'Personalizado').checked).toBe(true);
@@ -146,6 +158,7 @@ describe('TableRulesPage', () => {
     expect(note).toContain('Dados: já era “Cada jogador escolhe”.');
     expect(note).toContain('Mudou Era: com mapa');
     expect(note).toContain('Mudou Era: ligada');
+    expect(el.querySelector('.changed .mr-tag--pending mat-icon')?.textContent).toBe('warning');
     expect(note).toContain('2 mudanças não salvas');
     expect(button(el, 'Salvar regras').classList).not.toContain('mr-button--off');
   });
@@ -225,16 +238,64 @@ describe('TableRulesPage', () => {
     expect(text(el)).toContain('Não deu para salvar as regras');
   });
 
-  it('links to the table content and to the maps', async () => {
+  it('links to the maps, and shows no link to the table content until that page exists', async () => {
     const { el } = await setup();
-    expect(el.querySelector('a[href="/campanhas/camp-1/conteudo"]')?.textContent).toContain('Abrir o conteúdo da mesa');
-    expect(el.querySelector('a[href="/campanhas/camp-1"]:not(.back)')?.textContent).toContain('Abrir os mapas');
+    expect(el.querySelector('a[href="/campanhas/camp-1/conteudo"]')).toBeNull();
+    expect(text(el)).not.toContain('Conteúdo da mesa');
+    expect(el.querySelector('a[href="/campanhas/camp-1#mapas"]')?.textContent).toContain('Abrir os mapas');
+  });
+
+  it('puts "Dados" beside "Estilo da mesa", and the style cards in a grid', async () => {
+    const { el } = await setup();
+    const top = el.querySelector('.top')!;
+    expect(Array.from(top.querySelectorAll('h2')).map((h) => h.textContent?.trim())).toEqual(['Estilo da mesa', 'Dados']);
+    expect(top.querySelector('.dice-choice--grid')).not.toBeNull();
+  });
+
+  it('mutes the filled save button while the XP question is open, so one filled button shows', async () => {
+    const { fixture, el } = await setup(Role.MASTER, {});
+    expect(button(el, 'Salvar regras').classList).toContain('mdc-button--unelevated');
+    setXpMode.mockRejectedValueOnce(
+      new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: XpModeChangeBlockedSchema, value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }) }]),
+    );
+    radio(el, 'Por marcos').click();
+    await settle(fixture);
+    button(el, 'Mudar para marcos').click();
+    await settle(fixture);
+    expect(button(el, 'Salvar regras').classList).toContain('mat-mdc-outlined-button');
+    expect(el.querySelectorAll('button.mat-mdc-unelevated-button, button.mdc-button--unelevated').length).toBe(1);
+  });
+
+  it('keeps the save status as a live region all the time', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('.save__line')?.getAttribute('role')).toBe('status');
   });
 
   describe('the XP mode', () => {
+    it('picking a card changes nothing: only "Mudar para …" does, and it is aria-disabled until a card differs', async () => {
+      const { fixture, el } = await setup();
+      const apply = button(el, 'Mudar o modo de XP');
+      // Not `disabled`: it stays focusable, so the focus never drops to the page.
+      expect(apply.getAttribute('aria-disabled')).toBe('true');
+      expect(apply.hasAttribute('disabled')).toBe(false);
+      radio(el, 'Por marcos').click();
+      await settle(fixture);
+      expect(setXpMode).not.toHaveBeenCalled();
+      expect(button(el, 'Mudar para marcos').getAttribute('aria-disabled')).not.toBe('true');
+      // Picking the mode in force again puts the button back.
+      radio(el, 'Por inimigos').click();
+      await settle(fixture);
+      expect(button(el, 'Mudar o modo de XP').getAttribute('aria-disabled')).toBe('true');
+      button(el, 'Mudar o modo de XP').click();
+      await settle(fixture);
+      expect(setXpMode).not.toHaveBeenCalled();
+    });
+
     it('changes at once when nobody has XP, and says when', async () => {
       const { fixture, el } = await setup();
       radio(el, 'Por marcos').click();
+      await settle(fixture);
+      button(el, 'Mudar para marcos').click();
       await settle(fixture);
       expect(setXpMode).toHaveBeenCalledWith('camp-1', XpMode.MILESTONES, false);
       expect(radio(el, 'Por marcos').checked).toBe(true);
@@ -250,23 +311,24 @@ describe('TableRulesPage', () => {
       setXpMode.mockRejectedValueOnce(blocked);
       radio(el, 'Por marcos').click();
       await settle(fixture);
+      button(el, 'Mudar para marcos').click();
+      await settle(fixture);
       expect(el.querySelector('h3')?.textContent).toContain('Mudar para “por marcos”?');
       expect(document.activeElement).toBe(el.querySelector('h3'));
       const q = text(el);
       expect(q).toContain('Já houve XP dado nesta campanha. Mudar vale só daqui para frente.');
       expect(q).toContain('3 prêmios, 2.716 XP');
-      // Nothing was changed yet: the server was asked once, without the confirmation.
       expect(setXpMode).toHaveBeenCalledTimes(1);
       expect(setXpMode).toHaveBeenCalledWith('camp-1', XpMode.MILESTONES, false);
 
-      button(el, 'Mudar para marcos').click();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button')).find((b) => b.textContent?.includes('Mudar para marcos'))!.click();
       await settle(fixture);
       expect(setXpMode).toHaveBeenLastCalledWith('camp-1', XpMode.MILESTONES, true);
       expect(radio(el, 'Por marcos').checked).toBe(true);
       expect(el.querySelector('h3')).toBeNull();
     });
 
-    it('"Voltar" closes the question and changes nothing', async () => {
+    it('"Voltar" closes the question, changes nothing and puts the card and the focus back', async () => {
       const { fixture, el } = await setup();
       const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
         { desc: XpModeChangeBlockedSchema, value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }) },
@@ -274,13 +336,16 @@ describe('TableRulesPage', () => {
       setXpMode.mockRejectedValueOnce(blocked);
       radio(el, 'Por ouro').click();
       await settle(fixture);
+      button(el, 'Mudar para ouro').click();
+      await settle(fixture);
       expect(text(el)).toContain('1 prêmio, 50 XP');
       expect(radio(el, 'Por ouro').checked).toBe(true);
-      button(el, 'Voltar').click();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button')).find((b) => b.textContent?.trim() === 'Voltar')!.click();
       await settle(fixture);
       expect(el.querySelector('h3')).toBeNull();
       expect(radio(el, 'Por inimigos').checked).toBe(true);
       expect(setXpMode).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(button(el, 'Mudar o modo de XP'));
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,15 +34,16 @@ import {
   tableRulesError,
 } from '../../core/campaigns/table-rules';
 import { DiceChoice } from '../../shared/dice-choice/dice-choice';
+import { FogSwitch } from './fog-switch/fog-switch';
+import { RulesRead } from './rules-read/rules-read';
 import { MethodCards } from './method-cards/method-cards';
 import { XpModePanel } from './xp-mode-panel/xp-mode-panel';
 
 type PageState =
   | { status: 'loading' }
   | { status: 'not-found' }
-  | { status: 'forbidden' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; vm: TableRulesVm; campaignName: string; xpMode: XpMode };
+  | { status: 'ready'; vm: TableRulesVm; campaignName: string; xpMode: XpMode; canEdit: boolean };
 
 const DICE_TITLES: Readonly<Record<number, string>> = {
   [DiceMode.APP]: 'Todos rolam no app',
@@ -56,6 +57,12 @@ interface StyleNote {
   readonly changed: readonly string[];
   readonly same: readonly string[];
 }
+
+const XP_OPTION_TITLES: Readonly<Record<number, string>> = {
+  [XpMode.ENEMIES]: 'Por inimigos',
+  [XpMode.MILESTONES]: 'Por marcos',
+  [XpMode.GOLD]: 'Por ouro',
+};
 
 const STYLE_OPTIONS: readonly DiceOption<TableStyle>[] = [
   { value: TableStyle.TUDO_NO_APP, title: 'Tudo no app', description: 'Dados no app, combate com mapa, névoa ligada nos mapas novos.' },
@@ -104,6 +111,7 @@ const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
   selector: 'app-table-rules',
   imports: [
     DiceChoice,
+    FogSwitch,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -111,6 +119,7 @@ const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
     MatProgressSpinnerModule,
     MethodCards,
     RouterLink,
+    RulesRead,
     XpModePanel,
   ],
   templateUrl: './table-rules.html',
@@ -120,6 +129,7 @@ export class TableRulesPage {
   private readonly campaigns = inject(CampaignsService);
   private readonly client = inject(TableRulesClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
 
   protected readonly campaignId = signal('');
   protected readonly state = signal<PageState>({ status: 'loading' });
@@ -171,7 +181,61 @@ export class TableRulesPage {
   protected readonly wentCustom = signal(false);
   protected readonly diceWord = (m: DiceMode): string => DICE_WORDS[m] ?? '';
 
+  /** The master's question is open (the XP mode): the sticky bar's button is muted, so one filled button shows. */
+  protected readonly questionOpen = signal(false);
+  private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
+
+  /** What a player reads: each rule in words (the page is read-only for them; only the master changes it). */
+  protected readonly readRows = computed<readonly { label: string; value: string }[]>(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return [];
+    }
+    const d = s.vm.saved;
+    const methods = [
+      d.standardArray ? 'Conjunto padrão' : '',
+      d.pointBuy ? 'Compra por pontos' : '',
+      d.rolled4d6 ? '4d6, descartando o menor' : '',
+      d.typed ? 'Digitar os valores' : '',
+    ].filter((m) => m !== '');
+    return [
+      { label: 'Dados', value: DICE_TITLES[d.diceMode] },
+      { label: 'Combate', value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)' },
+      { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
+      { label: 'Pontos de vida ao subir de nível', value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '' },
+      { label: 'Atributos de uma ficha nova', value: methods.join(', ') },
+      { label: 'Acertos críticos', value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '' },
+      { label: 'Testes contra a morte', value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '' },
+      { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
+    ];
+  });
+  protected readonly styleLabel = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? STYLE_LABELS[s.vm.style] : '';
+  });
+  protected readonly readReminders = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? s.vm.saved.houseRules : [];
+  });
+
   constructor() {
+    // The sticky save bar must never cover a focused field or an open question: the page keeps its height in the
+    // viewport's `scroll-padding-bottom` (WCAG 2.4.11), so anything scrolled or focused into view stops above it.
+    effect((onCleanup) => {
+      const el = this.bar()?.nativeElement;
+      if (!el || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const root = document.documentElement;
+      const set = () => (root.style.scrollPaddingBottom = `${el.offsetHeight + 16}px`);
+      set();
+      const observer = new ResizeObserver(set);
+      observer.observe(el);
+      onCleanup(() => {
+        observer.disconnect();
+        root.style.scrollPaddingBottom = '';
+      });
+    });
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
       const id = params.get('id');
       if (id) {
@@ -190,16 +254,13 @@ export class TableRulesPage {
         this.state.set({ status: 'not-found' });
         return;
       }
-      if (campaign.myRole !== Role.MASTER) {
-        this.state.set({ status: 'forbidden' });
-        return;
-      }
+      const canEdit = campaign.myRole === Role.MASTER;
       const vm = await this.client.get(id);
       this.saved.set(vm.saved);
       this.draft.set(vm.saved);
       this.styleNote.set(null);
       this.wentCustom.set(false);
-      this.state.set({ status: 'ready', vm, campaignName: campaign.name, xpMode: campaign.xpMode });
+      this.state.set({ status: 'ready', vm, campaignName: campaign.name, xpMode: campaign.xpMode, canEdit });
     } catch (err) {
       const code = ConnectError.from(err, Code.Unavailable).code;
       this.state.set(
@@ -283,10 +344,13 @@ export class TableRulesPage {
     const d = this.draft();
     if (d && d.houseRules.length < HOUSE_RULE_MAX_COUNT) {
       this.edit({ houseRules: [...d.houseRules, ''] });
-      queueMicrotask(() => {
-        const fields = document.querySelectorAll<HTMLInputElement>('.reminder__field input');
-        fields[fields.length - 1]?.focus();
-      });
+      afterNextRender(
+        () => {
+          const fields = document.querySelectorAll<HTMLInputElement>('.reminder__field input');
+          fields[fields.length - 1]?.focus();
+        },
+        { injector: this.injector },
+      );
     }
   }
 

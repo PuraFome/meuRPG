@@ -3,9 +3,10 @@ import { createClient } from '@connectrpc/connect';
 
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
-import { CampaignService, DiceMode, DicePreference, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CampaignService, DiceMode, DicePreference, HitPointsRule, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   AbilityMethod as GenAbilityMethod,
+  type AbilityOrigin as GenAbilityOrigin,
   type AbilityRolls as GenAbilityRolls,
   Alignment as GenAlignment,
   BasicSheet as GenBasicSheet,
@@ -69,6 +70,27 @@ const ABILITY_METHOD_TO_GEN: Record<AbilityMethodKey, GenAbilityMethod> = {
   rolled_4d6: GenAbilityMethod.ROLLED_4D6,
   typed: GenAbilityMethod.TYPED,
 };
+
+const ABILITY_METHOD_FROM_GEN: Partial<Record<GenAbilityMethod, AbilityMethodKey>> = {
+  [GenAbilityMethod.STANDARD_ARRAY]: 'standard_array',
+  [GenAbilityMethod.POINT_BUY]: 'point_buy',
+  [GenAbilityMethod.ROLLED_4D6]: 'rolled_4d6',
+  [GenAbilityMethod.TYPED]: 'typed',
+};
+
+function abilityOriginFromGen(origin: GenAbilityOrigin | undefined): CharacterForEdit['abilityOrigin'] {
+  const method = origin ? ABILITY_METHOD_FROM_GEN[origin.method] : undefined;
+  if (!origin || !method) {
+    return null;
+  }
+  return {
+    method,
+    rolls:
+      method === 'rolled_4d6'
+        ? { sets: origin.rolls.map((s) => ({ dice: [...s.dice], total: s.total })), typed: origin.typed, rolledAt: null }
+        : null,
+  };
+}
 
 function rollsFromGen(rolls: GenAbilityRolls): AbilityRollsVm {
   return {
@@ -486,6 +508,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
           : 'sheet_locked',
       sheetLocked:
         character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
+      abilityOrigin: abilityOriginFromGen(sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet).abilityOrigin : undefined),
       full,
       basic:
         sheetCase === 'basic'
@@ -522,6 +545,8 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       pointBuyBudget: rules.pointBuyBudget,
       typedMin: rules.typedMinScore,
       typedMax: rules.typedMaxScore,
+      hitPoints:
+        rules.rules?.hitPoints === HitPointsRule.ROLL ? 'roll' : rules.rules?.hitPoints === HitPointsRule.AVERAGE ? 'average' : 'player_chooses',
       physicalDice: physical,
       diceForced: diceMode !== DiceMode.PLAYERS_CHOOSE,
       rolls: stored ? rollsFromGen(stored) : null,

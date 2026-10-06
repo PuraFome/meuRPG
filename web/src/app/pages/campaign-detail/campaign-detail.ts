@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -86,6 +86,7 @@ type PageState =
 export class CampaignDetail {
   private readonly campaigns = inject(CampaignsService);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   protected readonly experience = inject(ExperienceStore);
@@ -134,6 +135,11 @@ export class CampaignDetail {
       (state: PageState) => {
         this.state.set(state);
         if (state.status === 'ready') {
+          // A link with a fragment ("Abrir os mapas", in "Regras da mesa") lands on its section once the page has rendered it.
+          const fragment = this.route.snapshot?.fragment;
+          if (fragment) {
+            afterNextRender(() => document.getElementById(fragment)?.scrollIntoView?.(), { injector: this.injector });
+          }
           // Every member reads the XP; the history comes with it. Only the master
           // reads the treasures waiting to be converted ("Voltar à cidade").
           void this.experience.load(campaignId, true, state.campaign.myRole === Role.MASTER);

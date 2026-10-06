@@ -156,7 +156,7 @@ export class FakeMapsClient {
     this.record('forgetVision', mapId);
   }
 
-  async setGrid(_c: string, mapId: string, columns: number, squareFactor = 1): Promise<MapMessage> {
+  async setGrid(_c: string, mapId: string, columns: number, squareFactor: number): Promise<MapMessage> {
     // The factor is only written when it is not 1, so the calls of a map that was never calibrated read as before.
     this.record('setGrid', mapId, squareFactor === 1 ? columns : `${columns} x${squareFactor}`);
     const drawnRows = Math.round((columns * 1600) / 2400);

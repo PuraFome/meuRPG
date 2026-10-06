@@ -12,10 +12,9 @@
       <mat-icon aria-hidden="true">info</mat-icon>
       <span>A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.</span>
     </p>
-    <div class="fixed-card">
-      <span class="fixed-card__title">{{ options()[0].title }}</span>
-      <span class="fixed-card__desc">{{ options()[0].description }}</span>
-    </div>
+    <p class="fixed-line">
+      <strong>{{ options()[0].title }}</strong> · {{ options()[0].description }}
+    </p>
   } @else if (s().hpFixed === 'roll') {
     <p class="fixed" role="status">
       <mat-icon aria-hidden="true">info</mat-icon>
@@ -36,7 +35,12 @@
       @if (rolled(); as r) {
         <p class="roll__done" role="status">
           <mat-icon aria-hidden="true">check_circle</mat-icon>
-          <span>{{ r.kind === 'app' ? 'Rolado no app' : 'Dado físico' }}: {{ r.value }} no d{{ die() }}.</span>
+          <span>
+            {{ r.kind === 'app' ? 'Rolado no app' : 'Dado físico' }}: {{ r.value }} no d{{ die() }}.
+            @if (s().hpFixed === 'roll') {
+              {{ s().withCon(r.value) }} · de {{ s().average().from }} para {{ s().after().hitPointsMax }}.
+            }
+          </span>
           @if (canRetype()) {
             <button type="button" class="roll__again" (click)="retype()">Digitar outro</button>
           }

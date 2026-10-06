@@ -240,6 +240,7 @@
                     [campaignId]="s.campaignId"
                     [group]="fullForm.controls.abilities"
                     [table]="table"
+                    [locked]="lockedOrigin()"
                     [(method)]="abilityMethod"
                     [(incomplete)]="abilitiesIncomplete"
                     [(problem)]="abilitiesProblem"
@@ -292,19 +293,27 @@
                   <p class="step-lead" id="hit-points-hint">
                     O 1º nível sempre usa o máximo do dado de vida. Nos outros níveis:
                   </p>
-                  <mat-radio-group
-                    class="hp-methods"
-                    formControlName="hitPointsMethod"
-                    aria-labelledby="hit-points-title"
-                    aria-describedby="hit-points-hint"
-                  >
-                    <mat-radio-button value="average">
-                      Média <span class="option-note">(um valor fixo)</span>
-                    </mat-radio-button>
-                    <mat-radio-button value="rolled">
-                      Rolado <span class="option-note">(o que saiu no dado)</span>
-                    </mat-radio-button>
-                  </mat-radio-group>
+                  @if (hpRule() === 'player_chooses') {
+                    <mat-radio-group
+                      class="hp-methods"
+                      formControlName="hitPointsMethod"
+                      aria-labelledby="hit-points-title"
+                      aria-describedby="hit-points-hint"
+                    >
+                      <mat-radio-button value="average">
+                        Média <span class="option-note">(um valor fixo)</span>
+                      </mat-radio-button>
+                      <mat-radio-button value="rolled">
+                        Rolado <span class="option-note">(o que saiu no dado)</span>
+                      </mat-radio-button>
+                    </mat-radio-group>
+                  } @else {
+                    <p class="step-lead" role="status">
+                      {{ hpRule() === 'roll'
+                        ? 'A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.'
+                        : 'A mesa usa a média nos pontos de vida: o dado não é oferecido.' }}
+                    </p>
+                  }
 
                   @if (selectedHitPointsMethod() === 'rolled') {
                     @if (rollsNeeded() === 0) {

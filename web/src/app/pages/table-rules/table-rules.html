@@ -24,15 +24,6 @@
       </div>
     </div>
   }
-  @case ('forbidden') {
-    <div>
-      <h1 class="mr-page-title">Regras da mesa</h1>
-      <div class="mr-notice mr-notice--neutral" role="status">
-        <mat-icon aria-hidden="true">lock</mat-icon>
-        <p><strong>Só o mestre muda as regras da mesa.</strong></p>
-      </div>
-    </div>
-  }
   @case ('error') {
     <div>
       <h1 class="mr-page-title">Não foi possível abrir as regras</h1>
@@ -44,12 +35,19 @@
     </div>
   }
   @case ('ready') {
-    @if (draft(); as d) {
+    @if (!s.canEdit) {
+      <header>
+        <h1 class="mr-page-title">Regras da mesa</h1>
+        <p class="mr-page-lead">{{ s.campaignName }} · Estas escolhas valem para cada ficha e cada combate da campanha. Só o mestre muda as regras da mesa.</p>
+      </header>
+      <app-rules-read [style]="styleLabel()" [rows]="readRows()" [reminders]="readReminders()" />
+    } @else if (draft(); as d) {
       <header>
         <h1 class="mr-page-title">Regras da mesa</h1>
         <p class="mr-page-lead">{{ s.campaignName }} · Estas escolhas valem para cada ficha e cada combate da campanha.</p>
       </header>
 
+      <div class="top">
       <section class="mr-panel block" aria-labelledby="style-title">
         <h2 class="mr-panel__title" id="style-title">Estilo da mesa</h2>
         <p class="hint">Um estilo só preenche as escolhas abaixo; cada uma continua editável.</p>
@@ -59,6 +57,7 @@
           [options]="styleOptions"
           [value]="style()"
           [inert]="inertStyle"
+          [grid]="true"
           (valueChange)="chooseStyle($event)"
         />
         @if (styleNote(); as n) {
@@ -93,6 +92,24 @@
           </p>
         }
       </section>
+
+      <section class="mr-panel block" aria-labelledby="dice-title">
+        <h2 class="mr-panel__title" id="dice-title">Dados</h2>
+        @if (was(); as w) {
+          @if (w.dice) {
+            <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.dice }}</p>
+          }
+        }
+        <app-dice-choice
+          name="table-dice"
+          label="Como os jogadores rolam"
+          [options]="diceOptions"
+          [value]="d.diceMode"
+          (valueChange)="edit({ diceMode: $event })"
+        />
+      </section>
+
+      </div>
 
       <div class="columns">
         <div class="column">
@@ -140,27 +157,11 @@
         </div>
 
         <div class="column">
-          <section class="mr-panel block" aria-labelledby="dice-title">
-            <h2 class="mr-panel__title" id="dice-title">Dados</h2>
-            @if (was(); as w) {
-              @if (w.dice) {
-                <p class="changed"><span class="mr-tag">Mudou</span> Era: {{ w.dice }}</p>
-              }
-            }
-            <app-dice-choice
-              name="table-dice"
-              label="Como os jogadores rolam"
-              [options]="diceOptions"
-              [value]="d.diceMode"
-              (valueChange)="edit({ diceMode: $event })"
-            />
-          </section>
-
           <section class="mr-panel block" aria-labelledby="combat-title">
             <h2 class="mr-panel__title" id="combat-title">Combate e névoa</h2>
             @if (was(); as w) {
               @if (w.combat) {
-                <p class="changed"><span class="mr-tag">Mudou</span> Era: {{ w.combat }}</p>
+                <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.combat }}</p>
               }
             }
             <app-dice-choice
@@ -173,35 +174,14 @@
             <div class="fog">
               @if (was(); as w) {
                 @if (w.fog) {
-                  <p class="changed"><span class="mr-tag">Mudou</span> Era: {{ w.fog }}</p>
+                  <p class="changed"><span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">warning</mat-icon>Mudou</span> Era: {{ w.fog }}</p>
                 }
               }
-              <div class="fog__row">
-                <span class="fog__text">
-                  <span class="fog__label" id="fog-label">Névoa de guerra nos mapas novos</span>
-                  <span class="fog__hint" id="fog-hint">Os mapas gerados e os novos nascem com a névoa ligada.</span>
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  class="switch"
-                  [class.switch--on]="d.fogOnNewMaps"
-                  [attr.aria-checked]="d.fogOnNewMaps"
-                  aria-labelledby="fog-label"
-                  aria-describedby="fog-hint"
-                  (click)="edit({ fogOnNewMaps: !d.fogOnNewMaps })"
-                >
-                  <span class="switch__handle">
-                    @if (d.fogOnNewMaps) {
-                      <mat-icon aria-hidden="true">check</mat-icon>
-                    }
-                  </span>
-                </button>
-              </div>
+              <app-fog-switch [checked]="d.fogOnNewMaps" (toggled)="edit({ fogOnNewMaps: $event })" />
             </div>
           </section>
 
-          <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" />
+          <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />
 
           <section class="mr-panel block" aria-labelledby="reminders-title">
             <h2 class="mr-panel__title" id="reminders-title">Lembretes da mesa</h2>
@@ -231,23 +211,17 @@
             }
           </section>
 
-          <section class="mr-panel block" aria-labelledby="content-title">
-            <h2 class="mr-panel__title" id="content-title">Conteúdo da mesa</h2>
-            <p class="hint">Classes, subclasses, raças, antecedentes e magias que valem só em {{ s.campaignName }}.</p>
-            <a matButton="outlined" class="link" [routerLink]="['/campanhas', campaignId(), 'conteudo']">Abrir o conteúdo da mesa</a>
-          </section>
-
           <section class="mr-panel block" aria-labelledby="grid-title">
             <h2 class="mr-panel__title" id="grid-title">Grade dos mapas</h2>
             <p class="hint">
               Cada mapa diz quanto vale um quadrado do desenho (1,5 m, 3 m ou outro). Isso se escolhe no editor do mapa, em “Grade”.
             </p>
-            <a matButton="outlined" class="link" [routerLink]="['/campanhas', campaignId()]">Abrir os mapas</a>
+            <a matButton="outlined" class="link" [routerLink]="['/campanhas', campaignId()]" fragment="mapas">Abrir os mapas</a>
           </section>
         </div>
       </div>
 
-      <div class="save" [class.save--dirty]="changes() > 0">
+      <div #bar class="save" [class.save--dirty]="changes() > 0">
         @if (problem() && changes() > 0) {
           <p class="save__problem" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ problem() }}</p>
         }
@@ -256,7 +230,7 @@
         }
         <div class="save__row">
           <button
-            matButton="filled"
+            [matButton]="questionOpen() ? 'outlined' : 'filled'"
             type="button"
             class="save__button"
             [class.mr-button--off]="!canSave()"
@@ -266,7 +240,7 @@
           >
             Salvar regras
           </button>
-          <p class="save__line" [attr.role]="justSaved() ? 'status' : null">
+          <p class="save__line" role="status">
             @if (justSaved() && changes() === 0) {
               <mat-icon aria-hidden="true">check_circle</mat-icon>Regras salvas. Valem para as fichas novas, as subidas de nível e os mapas novos, daqui para frente.
             } @else {

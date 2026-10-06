@@ -5,6 +5,8 @@ import {
   AbilityScoresRefusalSchema,
   CharacterBlockedReason as GenCharacterBlockedReason,
   CharacterBlockedSchema,
+  LevelUpRefusalReason,
+  LevelUpRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { CharacterBlockedReason } from './characters.types';
@@ -100,6 +102,11 @@ export function describeCharacterError(err: unknown): string {
     const [refusal] = connectErr.findDetails(AbilityScoresRefusalSchema);
     if (refusal) {
       return abilityRefusalMessage(refusal.reason);
+    }
+    // A new sheet whose hit points above level 1 are not what the table's rule allows (RN-24).
+    const [hp] = connectErr.findDetails(LevelUpRefusalSchema);
+    if (hp?.reason === LevelUpRefusalReason.HIT_POINTS_RULE) {
+      return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Atributos".';
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
     return characterBlockedMessage(mapBlockedReason(detail?.reason));

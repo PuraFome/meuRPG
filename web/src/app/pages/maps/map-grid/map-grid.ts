@@ -15,6 +15,7 @@ import {
   gridRows,
 } from '../../../core/combat/combat-grid';
 import { formatMeters, squaresToMeters } from '../../../core/units';
+import { factorLabel, maxDrawnColumns } from '../../../core/maps/calibration';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { CombatMap } from '../../../shared/combat-map/combat-map';
@@ -58,13 +59,16 @@ export class MapGrid {
 
   protected readonly Math = Math;
   protected readonly min = MIN_COLUMNS;
-  protected readonly max = MAX_COLUMNS;
+  /** The most columns of the drawing: the rules' grid (the drawing's times the factor) stays within 200 columns. */
+  protected readonly max = computed(() => Math.min(MAX_COLUMNS, maxDrawnColumns(this.factor())));
+  /** What a square of the drawing is worth: "1,5 m" for a map never calibrated. */
+  protected readonly squareText = computed(() => factorLabel(this.factor()).replace(/\u00a0/g, ' '));
 
   /** The number in the field, or `null` while it is not a whole 5 to 60. */
   protected readonly columns = computed(() => {
     const text = this.typed().trim();
     const n = /^\d{1,3}$/.test(text) ? Number(text) : NaN;
-    return n >= MIN_COLUMNS && n <= MAX_COLUMNS ? n : null;
+    return n >= MIN_COLUMNS && n <= this.max() ? n : null;
   });
   protected readonly invalid = computed(() => this.columns() === null);
   protected readonly image = computed(() => {
@@ -138,7 +142,7 @@ export class MapGrid {
 
   protected step(delta: number): void {
     const now = this.columns() ?? DEFAULT_COLUMNS;
-    this.typed.set(String(Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, now + delta))));
+    this.typed.set(String(Math.min(this.max(), Math.max(MIN_COLUMNS, now + delta))));
   }
 
   protected async save(): Promise<void> {

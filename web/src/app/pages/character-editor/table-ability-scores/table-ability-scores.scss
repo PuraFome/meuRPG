@@ -16,6 +16,7 @@
 // A radio group drawn as one segmented control, 48 px high: the chosen one has a check, the accent border and the soft fill.
 .seg {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--mr-space-2);
 }
 
@@ -33,6 +34,11 @@
   background: var(--mr-surface);
   font-weight: 700;
   cursor: pointer;
+
+  // Under 360 px four segments do not fit in a row ("Digitar" was cut at 320): a 2 × 2 grid.
+  @media (max-width: 359.98px) {
+    flex: 1 1 calc(50% - var(--mr-space-2));
+  }
 
   &--on {
     border: 2px solid var(--mr-accent);
@@ -237,12 +243,25 @@
 }
 
 .roll__name {
-  flex: 1 1 100%;
+  flex: 0 0 90px;
   font-weight: 700;
+
+  // At 320 px the name goes above the four dice (4 × 44 + 3 × 4 = 188 px do fit).
+  @media (max-width: 359.98px) {
+    flex: 1 1 100%;
+  }
 
   @media (min-width: 768px) {
     flex: 0 0 110px;
   }
+}
+
+.roll__review {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .roll__dice {

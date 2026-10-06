@@ -6,13 +6,27 @@
       label="Como a campanha dá XP"
       [options]="options"
       [value]="shown()"
-      [disabled]="busy()"
-      (valueChange)="choose($event)"
+      (valueChange)="pick($event)"
     />
   </div>
 
+  @if (!asking()) {
+    <button
+      #applyBtn
+      matButton="outlined"
+      type="button"
+      class="xp__apply"
+      [class.mr-button--off]="!changes()"
+      [disabled]="!changes()"
+      disabledInteractive
+      (click)="apply()"
+    >
+      {{ changes() ? 'Mudar para ' + word(shown()).replace('por ', '') : 'Mudar o modo de XP' }}
+    </button>
+  }
+
   @if (asking(); as a) {
-    <div class="xp__ask">
+    <div #box class="xp__ask">
       <app-map-ask
         [title]="'Mudar para “' + word(a.target) + '”?'"
         [confirmLabel]="'Mudar para ' + word(a.target).replace('por ', '')"

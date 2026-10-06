@@ -153,23 +153,8 @@
   }
 }
 
-.fixed-card {
-  display: flex;
-  flex-direction: column;
-  padding: 12px 16px;
-  border: 1px solid var(--mr-control-line);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-surface);
-}
-
-.fixed-card__title {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 22px;
-}
-
-.fixed-card__desc {
+.fixed-line {
+  margin: var(--mr-space-3) 0 0;
   font-size: 15px;
   line-height: 20px;
-  color: var(--mr-ink-muted);
 }

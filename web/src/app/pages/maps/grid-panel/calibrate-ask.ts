@@ -90,6 +90,11 @@ export class CalibrateAsk implements OnInit {
     const f = this.factor();
     return f === null ? 0 : f / this.oldFactor();
   });
+  /** The picture of the question: one square of the drawing, and the squares of 1,5 m it becomes (up to 6 × 6; larger is only said). */
+  protected readonly cells = computed(() => {
+    const f = this.factor();
+    return f !== null && f >= 2 && f <= 6 ? Array.from({ length: f * f }) : [];
+  });
   protected readonly currentLabel = computed(() => factorLabel(this.oldFactor()));
   protected readonly newLabel = computed(() => {
     const f = this.factor();
@@ -110,7 +115,9 @@ export class CalibrateAsk implements OnInit {
     this.pick.set(value);
     this.error.set('');
     if (value === OTHER && this.other() === '') {
-      this.other.set(metersField(Math.min(MAX_FACTOR, this.oldFactor() + 1)));
+      // "Outro" starts at a value the four cards do not already offer (5 × 1,5 m = 7,5 m, or the next one if that is the map's own).
+      const first = PRESET_FACTORS[PRESET_FACTORS.length - 1] + 1;
+      this.other.set(metersField(Math.min(MAX_FACTOR, this.oldFactor() === first ? first + 1 : first)));
     }
   }
 

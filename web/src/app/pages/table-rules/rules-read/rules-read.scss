@@ -1,0 +1,67 @@
+// The page as a player reads it: the rules in words, no controls.
+:host {
+  display: contents;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.read {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.read__style {
+  margin: 0;
+  font-size: 17px;
+}
+
+.read__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--mr-space-2) 0;
+  border-top: 1px solid var(--mr-control-line);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--mr-space-4);
+  }
+
+  dt {
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+
+    @media (min-width: 768px) {
+      text-align: end;
+    }
+  }
+}
+
+.read__list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}

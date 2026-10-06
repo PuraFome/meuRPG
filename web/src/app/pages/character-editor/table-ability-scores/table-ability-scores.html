@@ -1,17 +1,21 @@
-<div class="methods" role="radiogroup" aria-labelledby="table-method-label">
-  <p class="methods__label" id="table-method-label">Como definir os valores</p>
-  <div class="seg">
-    @for (m of allowed(); track m) {
-      <label class="seg__item" [class.seg__item--on]="method() === m">
-        <input type="radio" class="mr-visually-hidden" name="ability-method" [value]="m" [checked]="method() === m" (change)="choose(m)" />
-        @if (method() === m) {
-          <mat-icon aria-hidden="true">check</mat-icon>
-        }
-        {{ words[m].tab }}
-      </label>
-    }
+@if (allowed().length > 1) {
+  <div class="methods" role="radiogroup" aria-labelledby="table-method-label">
+    <p class="methods__label" id="table-method-label">Como definir os valores</p>
+    <div class="seg">
+      @for (m of allowed(); track m) {
+        <label class="seg__item" [class.seg__item--on]="method() === m">
+          <input type="radio" class="mr-visually-hidden" name="ability-method" [value]="m" [checked]="method() === m" (change)="choose(m)" />
+          @if (method() === m) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          }
+          {{ words[m].tab }}
+        </label>
+      }
+    </div>
   </div>
-</div>
+} @else if (locked()) {
+  <p class="methods__label">Os valores desta ficha foram feitos por este jeito e só seguem as regras dele.</p>
+}
 
 <section class="way" aria-labelledby="way-title">
   <h3 class="way__title" id="way-title">{{ words[method()].title }}</h3>
@@ -95,6 +99,15 @@
           hint="Seis rolagens de 4d6. O dado menor, riscado, não conta."
           (place)="placeRoll($event.index, $event.ability)"
         />
+      } @else if (table().physicalDice && confirming()) {
+        <app-map-ask title="Guardar estas rolagens?" confirmLabel="Guardar as rolagens" [busy]="rolling()" (cancel)="confirming.set(false)" (confirm)="saveDice()">
+          <p class="roll__lead">Depois não dá para mudar: os dados ficam guardados para esta ficha.</p>
+          <ul class="roll__review">
+            @for (row of dice(); track $index; let i = $index) {
+              <li>Rolagem {{ i + 1 }}: {{ row.join(', ') }}</li>
+            }
+          </ul>
+        </app-map-ask>
       } @else if (table().physicalDice) {
         <div class="roll">
           <p class="roll__lead">Digite os quatro dados de cada rolagem. O menor sai da conta.</p>
@@ -123,7 +136,7 @@
             <p class="roll__missing" role="status">{{ diceMissing() }}</p>
           }
           <p class="roll__note">Digite uma vez só: depois de guardar, os dados ficam guardados e não dá para digitar de novo. Cada dado vai de 1 a 6.</p>
-          <button matButton="outlined" type="button" class="roll__button" [class.mr-button--off]="!!diceMissing()" [disabled]="rolling() || !!diceMissing()" disabledInteractive (click)="saveDice()">
+          <button matButton="outlined" type="button" class="roll__button" [class.mr-button--off]="!!diceMissing()" [disabled]="rolling() || !!diceMissing()" disabledInteractive (click)="askToStore()">
             <mat-icon aria-hidden="true">save</mat-icon>Guardar os dados
           </button>
         </div>

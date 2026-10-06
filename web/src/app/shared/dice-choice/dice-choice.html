@@ -1,4 +1,4 @@
-<div class="dice-choice" role="radiogroup" [attr.aria-label]="label()">
+<div class="dice-choice" [class.dice-choice--grid]="grid()" role="radiogroup" [attr.aria-label]="label()">
   @for (o of options(); track o.value) {
     <label class="dice-choice__card" [class.dice-choice__card--off]="(disabled() && value() !== o.value) || (isInert(o.value) && value() !== o.value)">
       <input

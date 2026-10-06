@@ -3465,6 +3465,7 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(m.getByText(/o estilo preencheu/)).toBeVisible();
     await expectScreenPasses(m, `Regras da mesa, um estilo escolhido ${where}`);
     await pickRadio(m, /Por marcos/);
+    await m.getByRole('button', { name: 'Mudar para marcos' }).click();
     await expect(m.getByRole('heading', { name: 'Mudar para “por marcos”?' })).toBeVisible();
     await expectScreenPasses(m, `Regras da mesa, mudar o modo de XP ${where}`);
 
@@ -3571,7 +3572,7 @@ async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', 
     await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
     await expect(page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' })).toBeFocused();
     await expectScreenPasses(page, `Calibração da grade, a pergunta ${where}`);
-    await pickRadio(page, /Outro/);
+    await pickRadio(page.locator('app-calibrate-ask'), /Outro/);
     await page.getByLabel('Quanto vale o quadrado', { exact: true }).fill('4,5');
     await expect(page.getByText('o mapa terá 36 × 24 quadrados.')).toBeVisible();
     await expectScreenPasses(page, `Calibração da grade, Outro ${where}`);

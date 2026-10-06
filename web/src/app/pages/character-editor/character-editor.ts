@@ -29,6 +29,7 @@ import {
   AlignmentKey,
   CharacterEditorMode,
   CharacterEditorSource,
+  CharacterForEdit,
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
@@ -325,6 +326,13 @@ export class CharacterEditor {
   protected readonly abilityTable = signal<AbilityTableVm | null>(null);
   /** The way the player chose; the server checks the scores against it. */
   protected readonly abilityMethod = signal<AbilityMethodKey>('typed');
+  /** A player editing their own draft: the way the server recorded the scores were made, which the step keeps (RN-24). */
+  protected readonly lockedOrigin = signal<NonNullable<CharacterForEdit['abilityOrigin']> | null>(null);
+  /** What the table leaves of the hit points of a new sheet: both ways, only "Rolado" or only "Média". */
+  protected readonly hpRule = computed<'player_chooses' | 'roll' | 'average'>(() => {
+    const s = this.state();
+    return s.status === 'ready' && s.mode === 'create' ? (this.abilityTable()?.hitPoints ?? 'player_chooses') : 'player_chooses';
+  });
 
   private readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
     initialValue: '',
@@ -634,6 +642,11 @@ export class CharacterEditor {
     Promise.all([this.source.loadCatalog(campaignId), table]).then(
       ([catalog, abilityTable]) => {
         this.abilityTable.set(abilityTable);
+        if (abilityTable?.hitPoints === 'roll') {
+          this.fullForm.controls.hitPointsMethod.setValue('rolled');
+        } else if (abilityTable?.hitPoints === 'average') {
+          this.fullForm.controls.hitPointsMethod.setValue('average');
+        }
         this.state.set({
           status: 'ready',
           mode: 'create',
@@ -668,6 +681,15 @@ export class CharacterEditor {
       this.source.loadCatalog(campaignId),
       this.source.loadCharacterForEdit(campaignId, characterId),
     ])
+      .then(async ([catalog, existing]) => {
+        // A player's own draft keeps the way its scores were made (RN-24): the step shows that way and its limits.
+        // The master (and an NPC, or a sheet made before the rules) keeps the free editor.
+        const origin = existing.abilityOrigin ?? null;
+        const table = origin && existing.kind === 'player' ? await this.source.loadAbilityTable(campaignId) : null;
+        this.abilityTable.set(table);
+        this.lockedOrigin.set(table ? origin : null);
+        return [catalog, existing] as const;
+      })
       .then(([catalog, existing]) => {
         if (existing.blocked) {
           // Say it before the form: a player who opens the edit URL of a

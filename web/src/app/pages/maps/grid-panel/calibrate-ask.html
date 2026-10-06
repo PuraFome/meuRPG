@@ -11,7 +11,7 @@
     </p>
     <div class="mr-notice mr-notice--warning">
       <mat-icon aria-hidden="true">warning</mat-icon>
-      <p>Esse valor não é um múltiplo do de agora: mudar a grade apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram.</p>
+      <p>Esse valor não é um múltiplo do de agora: mudar a grade apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram.</p>
     </div>
     @if (error()) {
       <div class="mr-notice mr-notice--danger" role="alert">
@@ -42,6 +42,13 @@
         <input matInput type="text" inputmode="decimal" maxlength="4" autocomplete="off" [value]="other()" [attr.aria-invalid]="factor() === null" aria-describedby="cal-result" (input)="onType($event)" />
         <span matTextSuffix>m</span>
       </mat-form-field>
+    }
+    @if (cells().length > 0) {
+      <div class="cal__picture" aria-hidden="true">
+        <span class="cal__drawn"><span class="cal__cap">No desenho</span><span class="cal__box" [style.--k]="1"></span><span class="cal__cap">{{ newLabel() }}</span></span>
+        <span class="cal__arrow">→</span>
+        <span class="cal__drawn"><span class="cal__cap">Nas regras</span><span class="cal__box cal__box--grid" [style.--k]="factor()">@for (c of cells(); track $index) {<span class="cal__cell"></span>}</span><span class="cal__cap">{{ factor() }} × {{ factor() }} de 1,5&nbsp;m</span></span>
+      </div>
     }
     <p class="cal__result" id="cal-result" role="status">
       @if (factor() === null) {

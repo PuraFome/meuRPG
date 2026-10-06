@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
+import { pickRadio } from './move-support';
 import { callRPC } from './support';
 
 // Setup for the table-rules specs (Etapa 10, slice 10.13a, MR-025, RN-24, RN-25, RN-09), through the API: these tests
@@ -60,14 +61,13 @@ export function wallSquares(): { col: number; row: number }[] {
   ];
 }
 
-/** A way of making scores: the segments are labels over hidden radios. */
+/** A way of making scores: the segments are labels over hidden radios, so the label takes the click. */
 export async function method(page: Page, name: string): Promise<void> {
-  await page.locator('.seg__item').filter({ hasText: new RegExp(`^\\s*(check)?\\s*${name}\\s*$`) }).click();
+  await pickRadio(page.locator('app-table-ability-scores'), new RegExp(`^\\s*(check)?\\s*${name}\\s*$`));
 }
 
 /** A value of "Cada quadrado deste desenho vale": a card over a hidden radio, named by its title ("3 m", with a no-break space). */
 export async function factor(page: Page, title: string): Promise<void> {
   const words = title.replace(' ', '\\s');
-  await page.locator('.dice-choice__card').filter({ has: page.locator('.dice-choice__title').filter({ hasText: new RegExp(`^${words}$`) }) }).click();
+  await pickRadio(page.locator('app-calibrate-ask'), new RegExp(`^\\s*${words}`));
 }
-

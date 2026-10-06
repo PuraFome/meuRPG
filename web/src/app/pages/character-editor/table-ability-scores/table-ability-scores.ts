@@ -5,11 +5,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
+import { MapAsk } from '../../maps/map-ask/map-ask';
+
 import {
   canLower,
   canRaise,
   costOf,
   missingDie,
+  placementFromScores,
   pointsSpent,
   resultOfSet,
   resultOfValue,
@@ -56,7 +59,7 @@ const ORDER: readonly AbilityMethodKey[] = ['standard_array', 'point_buy', 'roll
  */
 @Component({
   selector: 'app-table-ability-scores',
-  imports: [AbilityFields, AbilityPlacing, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink],
+  imports: [AbilityFields, AbilityPlacing, MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink],
   templateUrl: './table-ability-scores.html',
   styleUrl: './table-ability-scores.scss',
 })
@@ -67,6 +70,8 @@ export class TableAbilityScores {
   readonly group = input.required<AbilityFormGroup>();
   readonly table = input.required<AbilityTableVm>();
   /** The chosen way, which the page sends with `CreateCharacter`. */
+  /** A player's own draft that already has a recorded method (RN-24): only that method, with its limits, and the dice it used. */
+  readonly locked = input<{ readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null>(null);
   readonly method = model<AbilityMethodKey>('typed');
   readonly incomplete = model(false);
   readonly problem = model('');
@@ -76,11 +81,15 @@ export class TableAbilityScores {
   protected readonly label = SRD_521_LABEL;
 
   /** The ways the master allows, in the order of the screen. */
-  protected readonly allowed = computed(() =>
-    ORDER.filter((k) =>
+  protected readonly allowed = computed(() => {
+    const locked = this.locked();
+    if (locked) {
+      return [locked.method];
+    }
+    return ORDER.filter((k) =>
       k === 'standard_array' ? this.table().standardArray : k === 'point_buy' ? this.table().pointBuy : k === 'rolled_4d6' ? this.table().rolled4d6 : this.table().typed,
-    ),
-  );
+    );
+  });
   protected readonly words = WORDS;
 
   // The standard array.
@@ -88,7 +97,7 @@ export class TableAbilityScores {
   protected readonly arrayResults = computed(() => this.table().standardValues.map(resultOfValue));
 
   // Point buy: every score starts at the lowest.
-  protected readonly bought = signal<Record<AbilityKey, number>>({ str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 });
+  protected readonly bought = signal<Record<AbilityKey, number>>({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   protected readonly spent = computed(() => pointsSpent(this.bought(), this.table().pointBuyCosts, this.table().pointBuyMinScore));
   protected readonly left = computed(() => this.table().pointBuyBudget - this.spent());
   protected readonly costRows = computed(() => {
@@ -110,6 +119,8 @@ export class TableAbilityScores {
   /** Physical dice: six rows of four, as text so an empty die reads as missing. */
   protected readonly dice = signal<string[][]>(Array.from({ length: 6 }, () => ['', '', '', '']));
   protected readonly diceMissing = computed(() => missingDie(this.dice()));
+  /** "Guardar estas rolagens?": the typed dice are listed before the server keeps them (once, for good). */
+  protected readonly confirming = signal(false);
 
   constructor() {
     // The first way the master allows, and the roll the server already kept.
@@ -125,7 +136,7 @@ export class TableAbilityScores {
       if (!seeded) {
         seeded = true;
         this.method.set(this.allowed()[0] ?? 'typed');
-        this.rolls.set(t.rolls);
+        this.seed(t);
         this.apply();
       }
     });
@@ -134,6 +145,23 @@ export class TableAbilityScores {
       const sub = this.group().valueChanges.subscribe(() => this.report());
       onCleanup(() => sub.unsubscribe());
     });
+  }
+
+  /** Every score starts at the table's lowest; a locked draft starts from the scores it has. */
+  private seed(t: AbilityTableVm): void {
+    const have = this.group().getRawValue();
+    const locked = this.locked();
+    this.rolls.set(locked ? locked.rolls : t.rolls);
+    const min = t.pointBuyMinScore;
+    const top = min + t.pointBuyCosts.length - 1;
+    const clamp = (v: number) => Math.min(top, Math.max(min, Number.isFinite(v) ? v : min));
+    if (!locked) {
+      this.bought.set({ str: min, dex: min, con: min, int: min, wis: min, cha: min });
+      return;
+    }
+    this.bought.set({ str: clamp(have.str), dex: clamp(have.dex), con: clamp(have.con), int: clamp(have.int), wis: clamp(have.wis), cha: clamp(have.cha) });
+    this.arrayPlacement.set(placementFromScores(have, t.standardValues));
+    this.rollPlacement.set(placementFromScores(have, (locked.rolls?.sets ?? []).map((x) => x.total)));
   }
 
   protected choose(method: AbilityMethodKey): void {
@@ -240,11 +268,19 @@ export class TableAbilityScores {
     await this.store(undefined);
   }
 
+  /** "Guardar os dados" only opens the question: nothing reaches the server before it is confirmed. */
+  protected askToStore(): void {
+    if (!this.diceMissing()) {
+      this.confirming.set(true);
+    }
+  }
+
   protected async saveDice(): Promise<void> {
     if (this.diceMissing()) {
       return;
     }
     await this.store(this.dice().map((row) => row.map(Number)));
+    this.confirming.set(false);
   }
 
   private async store(typed: readonly (readonly number[])[] | undefined): Promise<void> {

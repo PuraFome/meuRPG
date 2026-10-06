@@ -42,13 +42,25 @@
   min-height: 44px;
 }
 
+.top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  // "Estilo da mesa" (2 × 2) with "Dados" beside it (E10-03).
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mr-space-5);
+  }
+}
+
 .columns {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--mr-space-4);
   align-items: start;
 
-  // 1024 px and up: the table's choices on the left, the rest on the right (below it, one column).
   @media (min-width: 1024px) {
     grid-template-columns: 1fr 1fr;
     gap: var(--mr-space-5);
@@ -124,97 +136,6 @@
   color: var(--mr-ink-muted);
 }
 
-// The fog switch: not filled with the accent (only the one primary button is): ink track, check and the word beside it.
-.fog {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-}
-
-.fog__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mr-space-4);
-  min-height: 52px;
-}
-
-.fog__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.fog__label {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 22px;
-}
-
-.fog__hint {
-  font-size: 15px;
-  line-height: 20px;
-  color: var(--mr-ink-muted);
-}
-
-.switch {
-  flex: none;
-  position: relative;
-  box-sizing: border-box;
-  width: 52px;
-  height: 32px;
-  padding: 0;
-  border: 2px solid var(--mr-control-line);
-  border-radius: 16px;
-  background: var(--mr-surface);
-  cursor: pointer;
-
-  &--on {
-    border-color: var(--mr-ink);
-    background: var(--mr-ink);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--mr-focus);
-    outline-offset: 2px;
-  }
-}
-
-.switch__handle {
-  position: absolute;
-  top: 50%;
-  left: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--mr-control-line);
-  transform: translateY(-50%);
-
-  .mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-    color: var(--mr-ink);
-  }
-
-  .switch--on & {
-    left: 24px;
-    width: 24px;
-    height: 24px;
-    background: var(--mr-surface);
-  }
-
-  .switch--on & .mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
-  }
-}
-
 .reminders {
   display: flex;
   flex-direction: column;
@@ -259,7 +180,7 @@
   }
 }
 
-// "Salvar regras": one bar at the foot of the page, stuck to the bottom of the screen on a phone (E10-03 note 1).
+// "Salvar regras": one bar at the foot, stuck to the bottom of the screen.
 .save {
   display: flex;
   flex-direction: column;
@@ -274,28 +195,30 @@
 
 .save__row {
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--mr-space-3);
 
   @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
     gap: var(--mr-space-4);
   }
 }
 
 .save__button {
+  flex: none;
   min-height: 48px;
-  min-width: 176px;
+  min-width: 140px;
   font-weight: 700;
 
   @media (min-width: 768px) {
     min-height: 44px;
+    min-width: 176px;
   }
 }
 
 .save__line,
 .save__problem {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
@@ -314,4 +237,10 @@
 
 .save__problem {
   color: var(--mr-danger-ink);
+}
+
+.fog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
 }

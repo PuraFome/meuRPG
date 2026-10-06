@@ -206,6 +206,23 @@ describe('GridPanel', () => {
       expect(changed[0].squareFactor).toBe(2);
     });
 
+    it('"Outro" starts at a value the four cards do not offer, and draws the drawing-to-rules picture', async () => {
+      await setup(mapMessage('map-2', 'A torre em ruínas', { gridColumns: 12, gridRows: 8, drawnColumns: 12, drawnRows: 8, squareFactor: 1 }));
+      button('Calibrar o quadrado').click();
+      await settle();
+      radio('Outro').click();
+      await settle();
+      expect(el.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('7,5');
+      radio('3 m').click();
+      await settle();
+      expect(text()).toContain('No desenho');
+      expect(text()).toContain('Nas regras');
+      expect(el.querySelectorAll('.cal__cell')).toHaveLength(4);
+      radio('4,5 m').click();
+      await settle();
+      expect(el.querySelectorAll('.cal__cell')).toHaveLength(9);
+    });
+
     it('"Outro" takes a multiple of 1,5 m and says what the rules\' grid becomes', async () => {
       await setup(mapMessage('map-2', 'A torre em ruínas', { gridColumns: 12, gridRows: 8, drawnColumns: 12, drawnRows: 8, squareFactor: 1 }));
       button('Calibrar o quadrado').click();
@@ -235,7 +252,7 @@ describe('GridPanel', () => {
       await settle();
       expect(api.calls).toEqual([]);
       expect(el.querySelector('h3')?.textContent).toContain('Mudar a grade?');
-      expect(text()).toContain('mudar a grade apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram');
+      expect(text()).toContain('mudar a grade apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram');
       button('Voltar').click();
       await settle();
       expect(el.querySelector('h3')?.textContent).toContain('Cada quadrado deste desenho vale');
