@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/campaigns/v1/campaigns.proto.
  */
 export const file_meurpg_campaigns_v1_campaigns: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSK8AgoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCBIwCglkaWNlX21vZGUYByABKA4yHS5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VNb2RlEj8KEm15X2RpY2VfcHJlZmVyZW5jZRgIIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UilQEKDVBlbmRpbmdNZW1iZXISDwoHdXNlcl9pZBgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSLQoJam9pbmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLFAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8Cg9kaWNlX3ByZWZlcmVuY2UYBSABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlIpUCCgZJbnZpdGUSCgoCaWQYASABKAkSEAoIbWF4X3VzZXMYAiABKAUSEQoJdXNlX2NvdW50GAMgASgFEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldm9rZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KBXN0YXRlGAcgASgOMiAubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGVTdGF0ZRIZChFyZXF1aXJlc19hcHByb3ZhbBgIIAEoCCJBCg5JbnZpdGVVbnVzYWJsZRIvCgVzdGF0ZRgBIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiUwoVQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0EgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlIkkKFkNyZWF0ZUNhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIhgKFkxpc3RNeUNhbXBhaWduc1JlcXVlc3QiSwoXTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2USMAoJY2FtcGFpZ25zGAEgAygLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIpChJHZXRDYW1wYWlnblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRgoTR2V0Q2FtcGFpZ25SZXNwb25zZRIvCghjYW1wYWlnbhgBIAEoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSTGlzdE1lbWJlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RNZW1iZXJzUmVzcG9uc2USLAoHbWVtYmVycxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuTWVtYmVyIjAKGUxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiUQoaTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2USMwoHbWVtYmVycxgBIAMoCzIiLm1ldXJwZy5jYW1wYWlnbnMudjEuUGVuZGluZ01lbWJlciJCChpSZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIh0KG1JlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZSKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCJeChpTZXRDYW1wYWlnbkRpY2VNb2RlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIrCgRtb2RlGAIgASgOMh0ubWV1cnBnLmNhbXBhaWducy52MS5EaWNlTW9kZSJKChtTZXRDYW1wYWlnbkRpY2VNb2RlUmVzcG9uc2USKwoEbW9kZRgBIAEoDjIdLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZU1vZGUiagoaU2V0TXlEaWNlUHJlZmVyZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSNwoKcHJlZmVyZW5jZRgCIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UiVgobU2V0TXlEaWNlUHJlZmVyZW5jZVJlc3BvbnNlEjcKCnByZWZlcmVuY2UYASABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlKj4KBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEg8KC1JPTEVfTUFTVEVSEAESDwoLUk9MRV9QTEFZRVIQAipgCgZYcE1vZGUSFwoTWFBfTU9ERV9VTlNQRUNJRklFRBAAEhMKD1hQX01PREVfRU5FTUlFUxABEhAKDFhQX01PREVfR09MRBACEhYKElhQX01PREVfTUlMRVNUT05FUxADKm4KCERpY2VNb2RlEhkKFURJQ0VfTU9ERV9VTlNQRUNJRklFRBAAEhwKGERJQ0VfTU9ERV9QTEFZRVJTX0NIT09TRRABEhEKDURJQ0VfTU9ERV9BUFAQAhIWChJESUNFX01PREVfUEhZU0lDQUwQAypoCg5EaWNlUHJlZmVyZW5jZRIfChtESUNFX1BSRUZFUkVOQ0VfVU5TUEVDSUZJRUQQABIXChNESUNFX1BSRUZFUkVOQ0VfQVBQEAESHAoYRElDRV9QUkVGRVJFTkNFX1BIWVNJQ0FMEAIqkgEKC0ludml0ZVN0YXRlEhwKGElOVklURV9TVEFURV9VTlNQRUNJRklFRBAAEhcKE0lOVklURV9TVEFURV9BQ1RJVkUQARIYChRJTlZJVEVfU1RBVEVfRVhQSVJFRBACEhgKFElOVklURV9TVEFURV9SRVZPS0VEEAMSGAoUSU5WSVRFX1NUQVRFX1VTRURfVVAQBDK9CgoPQ2FtcGFpZ25TZXJ2aWNlEmkKDkNyZWF0ZUNhbXBhaWduEioubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVDYW1wYWlnblJlcXVlc3QaKy5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVzcG9uc2UScQoPTGlzdE15Q2FtcGFpZ25zEisubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TXlDYW1wYWlnbnNSZXF1ZXN0GiwubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TXlDYW1wYWlnbnNSZXNwb25zZSIDkAIBEmUKC0dldENhbXBhaWduEicubWV1cnBnLmNhbXBhaWducy52MS5HZXRDYW1wYWlnblJlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVzcG9uc2UiA5ACAhJlCgtMaXN0TWVtYmVycxInLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE1lbWJlcnNSZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1Jlc3BvbnNlIgOQAgISegoSTGlzdFBlbmRpbmdNZW1iZXJzEi4ubWV1cnBnLmNhbXBhaWducy52MS5MaXN0UGVuZGluZ01lbWJlcnNSZXF1ZXN0Gi8ubWV1cnBnLmNhbXBhaWducy52MS5MaXN0UGVuZGluZ01lbWJlcnNSZXNwb25zZSIDkAICEngKE1JlbW92ZVBlbmRpbmdNZW1iZXISLy5tZXVycGcuY2FtcGFpZ25zLnYxLlJlbW92ZVBlbmRpbmdNZW1iZXJSZXF1ZXN0GjAubWV1cnBnLmNhbXBhaWducy52MS5SZW1vdmVQZW5kaW5nTWVtYmVyUmVzcG9uc2USYwoMQ3JlYXRlSW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVJbnZpdGVSZXNwb25zZRJlCgtMaXN0SW52aXRlcxInLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdEludml0ZXNSZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1Jlc3BvbnNlIgOQAgISYwoMUmV2b2tlSW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5SZXZva2VJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5SZXZva2VJbnZpdGVSZXNwb25zZRJjCgxBY2NlcHRJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkFjY2VwdEludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkFjY2VwdEludml0ZVJlc3BvbnNlEngKE1NldENhbXBhaWduRGljZU1vZGUSLy5tZXVycGcuY2FtcGFpZ25zLnYxLlNldENhbXBhaWduRGljZU1vZGVSZXF1ZXN0GjAubWV1cnBnLmNhbXBhaWducy52MS5TZXRDYW1wYWlnbkRpY2VNb2RlUmVzcG9uc2USeAoTU2V0TXlEaWNlUHJlZmVyZW5jZRIvLm1ldXJwZy5jYW1wYWlnbnMudjEuU2V0TXlEaWNlUHJlZmVyZW5jZVJlcXVlc3QaMC5tZXVycGcuY2FtcGFpZ25zLnYxLlNldE15RGljZVByZWZlcmVuY2VSZXNwb25zZULfAQoXY29tLm1ldXJwZy5jYW1wYWlnbnMudjFCDkNhbXBhaWduc1Byb3RvUAFaRmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jYW1wYWlnbnMvdjE7Y2FtcGFpZ25zdjGiAgNNQ1iqAhNNZXVycGcuQ2FtcGFpZ25zLlYxygITTWV1cnBnXENhbXBhaWduc1xWMeICH01ldXJwZ1xDYW1wYWlnbnNcVjFcR1BCTWV0YWRhdGHqAhVNZXVycGc6OkNhbXBhaWduczo6VjFiBnByb3RvMw", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSK8AgoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCBIwCglkaWNlX21vZGUYByABKA4yHS5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VNb2RlEj8KEm15X2RpY2VfcHJlZmVyZW5jZRgIIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UilQEKDVBlbmRpbmdNZW1iZXISDwoHdXNlcl9pZBgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSLQoJam9pbmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLFAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8Cg9kaWNlX3ByZWZlcmVuY2UYBSABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlIpUCCgZJbnZpdGUSCgoCaWQYASABKAkSEAoIbWF4X3VzZXMYAiABKAUSEQoJdXNlX2NvdW50GAMgASgFEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldm9rZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KBXN0YXRlGAcgASgOMiAubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGVTdGF0ZRIZChFyZXF1aXJlc19hcHByb3ZhbBgIIAEoCCJBCg5JbnZpdGVVbnVzYWJsZRIvCgVzdGF0ZRgBIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiUwoVQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0EgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlIkkKFkNyZWF0ZUNhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIhgKFkxpc3RNeUNhbXBhaWduc1JlcXVlc3QiSwoXTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2USMAoJY2FtcGFpZ25zGAEgAygLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIpChJHZXRDYW1wYWlnblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRgoTR2V0Q2FtcGFpZ25SZXNwb25zZRIvCghjYW1wYWlnbhgBIAEoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSTGlzdE1lbWJlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RNZW1iZXJzUmVzcG9uc2USLAoHbWVtYmVycxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuTWVtYmVyIjAKGUxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiUQoaTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2USMwoHbWVtYmVycxgBIAMoCzIiLm1ldXJwZy5jYW1wYWlnbnMudjEuUGVuZGluZ01lbWJlciJCChpSZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIh0KG1JlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZSKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCJeChpTZXRDYW1wYWlnbkRpY2VNb2RlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIrCgRtb2RlGAIgASgOMh0ubWV1cnBnLmNhbXBhaWducy52MS5EaWNlTW9kZSJKChtTZXRDYW1wYWlnbkRpY2VNb2RlUmVzcG9uc2USKwoEbW9kZRgBIAEoDjIdLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZU1vZGUiagoaU2V0TXlEaWNlUHJlZmVyZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSNwoKcHJlZmVyZW5jZRgCIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UiVgobU2V0TXlEaWNlUHJlZmVyZW5jZVJlc3BvbnNlEjcKCnByZWZlcmVuY2UYASABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlIl4KDkFiaWxpdHlNZXRob2RzEhYKDnN0YW5kYXJkX2FycmF5GAEgASgIEhEKCXBvaW50X2J1eRgCIAEoCBISCgpyb2xsZWRfNGQ2GAMgASgIEg0KBXR5cGVkGAQgASgIIvYCCgpUYWJsZVJ1bGVzEjAKCWRpY2VfbW9kZRgBIAEoDjIdLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZU1vZGUSHgoWY29tYmF0X3N0YXJ0c193aXRoX21hcBgCIAEoCBIXCg9mb2dfb25fbmV3X21hcHMYAyABKAgSNgoKaGl0X3BvaW50cxgEIAEoDjIiLm1ldXJwZy5jYW1wYWlnbnMudjEuSGl0UG9pbnRzUnVsZRI8Cg9hYmlsaXR5X21ldGhvZHMYBSABKAsyIy5tZXVycGcuY2FtcGFpZ25zLnYxLkFiaWxpdHlNZXRob2RzEjMKCGNyaXRpY2FsGAYgASgOMiEubWV1cnBnLmNhbXBhaWducy52MS5Dcml0aWNhbFJ1bGUSPQoLZGVhdGhfc2F2ZXMYByABKA4yKC5tZXVycGcuY2FtcGFpZ25zLnYxLkRlYXRoU2F2ZVZpc2liaWxpdHkSEwoLaG91c2VfcnVsZXMYCCADKAkirQEKEFRhYmxlU3R5bGVQcmVzZXQSLgoFc3R5bGUYASABKA4yHy5tZXVycGcuY2FtcGFpZ25zLnYxLlRhYmxlU3R5bGUSMAoJZGljZV9tb2RlGAIgASgOMh0ubWV1cnBnLmNhbXBhaWducy52MS5EaWNlTW9kZRIeChZjb21iYXRfc3RhcnRzX3dpdGhfbWFwGAMgASgIEhcKD2ZvZ19vbl9uZXdfbWFwcxgEIAEoCCIrChRHZXRUYWJsZVJ1bGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSLJAgoVR2V0VGFibGVSdWxlc1Jlc3BvbnNlEi4KBXJ1bGVzGAEgASgLMh8ubWV1cnBnLmNhbXBhaWducy52MS5UYWJsZVJ1bGVzEi4KBXN0eWxlGAIgASgOMh8ubWV1cnBnLmNhbXBhaWducy52MS5UYWJsZVN0eWxlEjYKB3ByZXNldHMYAyADKAsyJS5tZXVycGcuY2FtcGFpZ25zLnYxLlRhYmxlU3R5bGVQcmVzZXQSFgoOc3RhbmRhcmRfYXJyYXkYBCADKAUSFwoPcG9pbnRfYnV5X2Nvc3RzGAUgAygFEhsKE3BvaW50X2J1eV9taW5fc2NvcmUYBiABKAUSGAoQcG9pbnRfYnV5X2J1ZGdldBgHIAEoBRIXCg90eXBlZF9taW5fc2NvcmUYCCABKAUSFwoPdHlwZWRfbWF4X3Njb3JlGAkgASgFIlsKFFNldFRhYmxlUnVsZXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEi4KBXJ1bGVzGAIgASgLMh8ubWV1cnBnLmNhbXBhaWducy52MS5UYWJsZVJ1bGVzIncKFVNldFRhYmxlUnVsZXNSZXNwb25zZRIuCgVydWxlcxgBIAEoCzIfLm1ldXJwZy5jYW1wYWlnbnMudjEuVGFibGVSdWxlcxIuCgVzdHlsZRgCIAEoDjIfLm1ldXJwZy5jYW1wYWlnbnMudjEuVGFibGVTdHlsZSJuChhTZXRDYW1wYWlnblhwTW9kZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlEg8KB2NvbmZpcm0YAyABKAgieQoZU2V0Q2FtcGFpZ25YcE1vZGVSZXNwb25zZRIsCgd4cF9tb2RlGAEgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY2hhbmdlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiNwoTWHBNb2RlQ2hhbmdlQmxvY2tlZBIOCgZhd2FyZHMYASABKAUSEAoIdG90YWxfeHAYAiABKAMqPgoEUm9sZRIUChBST0xFX1VOU1BFQ0lGSUVEEAASDwoLUk9MRV9NQVNURVIQARIPCgtST0xFX1BMQVlFUhACKmAKBlhwTW9kZRIXChNYUF9NT0RFX1VOU1BFQ0lGSUVEEAASEwoPWFBfTU9ERV9FTkVNSUVTEAESEAoMWFBfTU9ERV9HT0xEEAISFgoSWFBfTU9ERV9NSUxFU1RPTkVTEAMqbgoIRGljZU1vZGUSGQoVRElDRV9NT0RFX1VOU1BFQ0lGSUVEEAASHAoYRElDRV9NT0RFX1BMQVlFUlNfQ0hPT1NFEAESEQoNRElDRV9NT0RFX0FQUBACEhYKEkRJQ0VfTU9ERV9QSFlTSUNBTBADKmgKDkRpY2VQcmVmZXJlbmNlEh8KG0RJQ0VfUFJFRkVSRU5DRV9VTlNQRUNJRklFRBAAEhcKE0RJQ0VfUFJFRkVSRU5DRV9BUFAQARIcChhESUNFX1BSRUZFUkVOQ0VfUEhZU0lDQUwQAiqSAQoLSW52aXRlU3RhdGUSHAoYSU5WSVRFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTSU5WSVRFX1NUQVRFX0FDVElWRRABEhgKFElOVklURV9TVEFURV9FWFBJUkVEEAISGAoUSU5WSVRFX1NUQVRFX1JFVk9LRUQQAxIYChRJTlZJVEVfU1RBVEVfVVNFRF9VUBAEKqMBCgpUYWJsZVN0eWxlEhsKF1RBQkxFX1NUWUxFX1VOU1BFQ0lGSUVEEAASGwoXVEFCTEVfU1RZTEVfVFVET19OT19BUFAQARIbChdUQUJMRV9TVFlMRV9NRVNBX0ZJU0lDQRACEh8KG1RBQkxFX1NUWUxFX1RFQVRST19EQV9NRU5URRADEh0KGVRBQkxFX1NUWUxFX1BFUlNPTkFMSVpBRE8QBCqLAQoNSGl0UG9pbnRzUnVsZRIfChtISVRfUE9JTlRTX1JVTEVfVU5TUEVDSUZJRUQQABIYChRISVRfUE9JTlRTX1JVTEVfUk9MTBABEhsKF0hJVF9QT0lOVFNfUlVMRV9BVkVSQUdFEAISIgoeSElUX1BPSU5UU19SVUxFX1BMQVlFUl9DSE9PU0VTEAMqbgoMQ3JpdGljYWxSdWxlEh0KGUNSSVRJQ0FMX1JVTEVfVU5TUEVDSUZJRUQQABIeChpDUklUSUNBTF9SVUxFX0RPVUJMRURfRElDRRABEh8KG0NSSVRJQ0FMX1JVTEVfTUFYX1BMVVNfUk9MTBACKpIBChNEZWF0aFNhdmVWaXNpYmlsaXR5EiUKIURFQVRIX1NBVkVfVklTSUJJTElUWV9VTlNQRUNJRklFRBAAEigKJERFQVRIX1NBVkVfVklTSUJJTElUWV9WSVNJQkxFX1RPX0FMTBABEioKJkRFQVRIX1NBVkVfVklTSUJJTElUWV9PV05FUl9BTkRfTUFTVEVSEAIyhg0KD0NhbXBhaWduU2VydmljZRJpCg5DcmVhdGVDYW1wYWlnbhIqLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0GisubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVDYW1wYWlnblJlc3BvbnNlEnEKD0xpc3RNeUNhbXBhaWducxIrLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE15Q2FtcGFpZ25zUmVxdWVzdBosLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2UiA5ACARJlCgtHZXRDYW1wYWlnbhInLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5HZXRDYW1wYWlnblJlc3BvbnNlIgOQAgISZQoLTGlzdE1lbWJlcnMSJy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE1lbWJlcnNSZXNwb25zZSIDkAICEnoKEkxpc3RQZW5kaW5nTWVtYmVycxIuLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdFBlbmRpbmdNZW1iZXJzUmVxdWVzdBovLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2UiA5ACAhJ4ChNSZW1vdmVQZW5kaW5nTWVtYmVyEi8ubWV1cnBnLmNhbXBhaWducy52MS5SZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBowLm1ldXJwZy5jYW1wYWlnbnMudjEuUmVtb3ZlUGVuZGluZ01lbWJlclJlc3BvbnNlEmMKDENyZWF0ZUludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlSW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlSW52aXRlUmVzcG9uc2USZQoLTGlzdEludml0ZXMSJy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdEludml0ZXNSZXNwb25zZSIDkAICEmMKDFJldm9rZUludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuUmV2b2tlSW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuUmV2b2tlSW52aXRlUmVzcG9uc2USYwoMQWNjZXB0SW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5BY2NlcHRJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5BY2NlcHRJbnZpdGVSZXNwb25zZRJ4ChNTZXRDYW1wYWlnbkRpY2VNb2RlEi8ubWV1cnBnLmNhbXBhaWducy52MS5TZXRDYW1wYWlnbkRpY2VNb2RlUmVxdWVzdBowLm1ldXJwZy5jYW1wYWlnbnMudjEuU2V0Q2FtcGFpZ25EaWNlTW9kZVJlc3BvbnNlEngKE1NldE15RGljZVByZWZlcmVuY2USLy5tZXVycGcuY2FtcGFpZ25zLnYxLlNldE15RGljZVByZWZlcmVuY2VSZXF1ZXN0GjAubWV1cnBnLmNhbXBhaWducy52MS5TZXRNeURpY2VQcmVmZXJlbmNlUmVzcG9uc2USawoNR2V0VGFibGVSdWxlcxIpLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0VGFibGVSdWxlc1JlcXVlc3QaKi5tZXVycGcuY2FtcGFpZ25zLnYxLkdldFRhYmxlUnVsZXNSZXNwb25zZSIDkAICEmYKDVNldFRhYmxlUnVsZXMSKS5tZXVycGcuY2FtcGFpZ25zLnYxLlNldFRhYmxlUnVsZXNSZXF1ZXN0GioubWV1cnBnLmNhbXBhaWducy52MS5TZXRUYWJsZVJ1bGVzUmVzcG9uc2UScgoRU2V0Q2FtcGFpZ25YcE1vZGUSLS5tZXVycGcuY2FtcGFpZ25zLnYxLlNldENhbXBhaWduWHBNb2RlUmVxdWVzdBouLm1ldXJwZy5jYW1wYWlnbnMudjEuU2V0Q2FtcGFpZ25YcE1vZGVSZXNwb25zZULfAQoXY29tLm1ldXJwZy5jYW1wYWlnbnMudjFCDkNhbXBhaWduc1Byb3RvUAFaRmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jYW1wYWlnbnMvdjE7Y2FtcGFpZ25zdjGiAgNNQ1iqAhNNZXVycGcuQ2FtcGFpZ25zLlYxygITTWV1cnBnXENhbXBhaWduc1xWMeICH01ldXJwZ1xDYW1wYWlnbnNcVjFcR1BCTWV0YWRhdGHqAhVNZXVycGc6OkNhbXBhaWduczo6VjFiBnByb3RvMw", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * Campaign is a campaign as seen by one of its members.
@@ -821,6 +821,406 @@ export const SetMyDicePreferenceResponseSchema: GenMessage<SetMyDicePreferenceRe
   messageDesc(file_meurpg_campaigns_v1_campaigns, 28);
 
 /**
+ * AbilityMethods are the ways a player may make a new sheet's ability scores
+ * (RN-24). At least one is allowed. The standard array, the point buy and 4d6
+ * come from the SRD 5.2.1 (the 2024 rules, CC BY 4.0, p. 20); typed is ours.
+ *
+ * @generated from message meurpg.campaigns.v1.AbilityMethods
+ */
+export type AbilityMethods = Message<"meurpg.campaigns.v1.AbilityMethods"> & {
+  /**
+   * 15, 14, 13, 12, 10 and 8, each given to one ability.
+   *
+   * @generated from field: bool standard_array = 1;
+   */
+  standardArray: boolean;
+
+  /**
+   * 27 points; each score 8 to 15, at most 27 points spent. The cost of a
+   * score: 8 = 0, 9 = 1, 10 = 2, 11 = 3, 12 = 4, 13 = 5, 14 = 7, 15 = 9.
+   *
+   * @generated from field: bool point_buy = 2;
+   */
+  pointBuy: boolean;
+
+  /**
+   * 4d6, dropping the lowest die of each set; the server rolls and stores the
+   * six sets once (CharacterService.RollAbilityScores).
+   *
+   * @generated from field: bool rolled_4d6 = 3;
+   */
+  rolled4d6: boolean;
+
+  /**
+   * The player types six base scores, 3 to 18, before the race's bonus.
+   *
+   * @generated from field: bool typed = 4;
+   */
+  typed: boolean;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.AbilityMethods.
+ * Use `create(AbilityMethodsSchema)` to create a new message.
+ */
+export const AbilityMethodsSchema: GenMessage<AbilityMethods> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 29);
+
+/**
+ * TableRules are the rules a table chooses (RN-24), the whole content of
+ * "Regras da mesa" except the XP mode (SetCampaignXpMode), the table's content
+ * (RN-23) and the maps' grid. The defaults are the SRD's.
+ *
+ * @generated from message meurpg.campaigns.v1.TableRules
+ */
+export type TableRules = Message<"meurpg.campaigns.v1.TableRules"> & {
+  /**
+   * How the players roll dice (RN-18); campaigns.dice_mode. Required in
+   * SetTableRules.
+   *
+   * @generated from field: meurpg.campaigns.v1.DiceMode dice_mode = 1;
+   */
+  diceMode: DiceMode;
+
+  /**
+   * Whether "Iniciar combate" starts with a map by default (the combat slice
+   * 10.5b reads it: StartEncounter without a mode starts a combat on a map when
+   * this is true and a combat without a map when it is false). Default true.
+   *
+   * @generated from field: bool combat_starts_with_map = 2;
+   */
+  combatStartsWithMap: boolean;
+
+  /**
+   * Whether a map created from now on starts with the fog of war on. Maps that
+   * exist keep theirs. Default false.
+   *
+   * @generated from field: bool fog_on_new_maps = 3;
+   */
+  fogOnNewMaps: boolean;
+
+  /**
+   * Required in SetTableRules.
+   *
+   * @generated from field: meurpg.campaigns.v1.HitPointsRule hit_points = 4;
+   */
+  hitPoints: HitPointsRule;
+
+  /**
+   * At least one method true.
+   *
+   * @generated from field: meurpg.campaigns.v1.AbilityMethods ability_methods = 5;
+   */
+  abilityMethods?: AbilityMethods | undefined;
+
+  /**
+   * Required in SetTableRules.
+   *
+   * @generated from field: meurpg.campaigns.v1.CriticalRule critical = 6;
+   */
+  critical: CriticalRule;
+
+  /**
+   * Required in SetTableRules.
+   *
+   * @generated from field: meurpg.campaigns.v1.DeathSaveVisibility death_saves = 7;
+   */
+  deathSaves: DeathSaveVisibility;
+
+  /**
+   * The table's reminders, shown on "Regras da mesa" and never enforced: for
+   * example "Beber uma poção é uma ação bônus". At most 20, each 1 to 200
+   * characters on one line, in the order the master wrote them.
+   *
+   * @generated from field: repeated string house_rules = 8;
+   */
+  houseRules: string[];
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.TableRules.
+ * Use `create(TableRulesSchema)` to create a new message.
+ */
+export const TableRulesSchema: GenMessage<TableRules> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 30);
+
+/**
+ * TableStylePreset is what one "Estilo da mesa" fills in. The app applies a
+ * preset by copying these three values into the settings it shows, which stay
+ * editable; the server holds the numbers so the app does none of the rules.
+ *
+ * @generated from message meurpg.campaigns.v1.TableStylePreset
+ */
+export type TableStylePreset = Message<"meurpg.campaigns.v1.TableStylePreset"> & {
+  /**
+   * One of the three presets, never PERSONALIZADO.
+   *
+   * @generated from field: meurpg.campaigns.v1.TableStyle style = 1;
+   */
+  style: TableStyle;
+
+  /**
+   * @generated from field: meurpg.campaigns.v1.DiceMode dice_mode = 2;
+   */
+  diceMode: DiceMode;
+
+  /**
+   * @generated from field: bool combat_starts_with_map = 3;
+   */
+  combatStartsWithMap: boolean;
+
+  /**
+   * @generated from field: bool fog_on_new_maps = 4;
+   */
+  fogOnNewMaps: boolean;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.TableStylePreset.
+ * Use `create(TableStylePresetSchema)` to create a new message.
+ */
+export const TableStylePresetSchema: GenMessage<TableStylePreset> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 31);
+
+/**
+ * GetTableRulesRequest names the campaign.
+ *
+ * @generated from message meurpg.campaigns.v1.GetTableRulesRequest
+ */
+export type GetTableRulesRequest = Message<"meurpg.campaigns.v1.GetTableRulesRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.GetTableRulesRequest.
+ * Use `create(GetTableRulesRequestSchema)` to create a new message.
+ */
+export const GetTableRulesRequestSchema: GenMessage<GetTableRulesRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 32);
+
+/**
+ * GetTableRulesResponse is the table's rules and the style they make.
+ *
+ * @generated from message meurpg.campaigns.v1.GetTableRulesResponse
+ */
+export type GetTableRulesResponse = Message<"meurpg.campaigns.v1.GetTableRulesResponse"> & {
+  /**
+   * @generated from field: meurpg.campaigns.v1.TableRules rules = 1;
+   */
+  rules?: TableRules | undefined;
+
+  /**
+   * The style the saved rules match, or PERSONALIZADO.
+   *
+   * @generated from field: meurpg.campaigns.v1.TableStyle style = 2;
+   */
+  style: TableStyle;
+
+  /**
+   * The three presets, always in the same order (Tudo no app, Mesa física,
+   * Teatro da mente).
+   *
+   * @generated from field: repeated meurpg.campaigns.v1.TableStylePreset presets = 3;
+   */
+  presets: TableStylePreset[];
+
+  /**
+   * The numbers of the ways of making ability scores, so the app does no rules
+   * math. They come from the SRD 5.2.1 (the 2024 rules, CC BY 4.0, p. 20; the same
+   * as 2014), except the typed range, which is ours.
+   *
+   * The standard array: 15, 14, 13, 12, 10 and 8, each given to one ability.
+   *
+   * @generated from field: repeated int32 standard_array = 4;
+   */
+  standardArray: number[];
+
+  /**
+   * The point buy's cost of each score from 8 to 15, in order (0, 1, 2, 3, 4, 5, 7,
+   * 9); point_buy_min_score is the first score of the list.
+   *
+   * @generated from field: repeated int32 point_buy_costs = 5;
+   */
+  pointBuyCosts: number[];
+
+  /**
+   * @generated from field: int32 point_buy_min_score = 6;
+   */
+  pointBuyMinScore: number;
+
+  /**
+   * The point buy's budget: 27 points, at most.
+   *
+   * @generated from field: int32 point_buy_budget = 7;
+   */
+  pointBuyBudget: number;
+
+  /**
+   * The typed range of a base score, before the race's bonus: 3 to 18.
+   *
+   * @generated from field: int32 typed_min_score = 8;
+   */
+  typedMinScore: number;
+
+  /**
+   * @generated from field: int32 typed_max_score = 9;
+   */
+  typedMaxScore: number;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.GetTableRulesResponse.
+ * Use `create(GetTableRulesResponseSchema)` to create a new message.
+ */
+export const GetTableRulesResponseSchema: GenMessage<GetTableRulesResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 33);
+
+/**
+ * SetTableRulesRequest is the whole of the table's rules.
+ *
+ * @generated from message meurpg.campaigns.v1.SetTableRulesRequest
+ */
+export type SetTableRulesRequest = Message<"meurpg.campaigns.v1.SetTableRulesRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required. Every field is read as sent (see TableRules).
+   *
+   * @generated from field: meurpg.campaigns.v1.TableRules rules = 2;
+   */
+  rules?: TableRules | undefined;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetTableRulesRequest.
+ * Use `create(SetTableRulesRequestSchema)` to create a new message.
+ */
+export const SetTableRulesRequestSchema: GenMessage<SetTableRulesRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 34);
+
+/**
+ * SetTableRulesResponse returns what is now in force.
+ *
+ * @generated from message meurpg.campaigns.v1.SetTableRulesResponse
+ */
+export type SetTableRulesResponse = Message<"meurpg.campaigns.v1.SetTableRulesResponse"> & {
+  /**
+   * @generated from field: meurpg.campaigns.v1.TableRules rules = 1;
+   */
+  rules?: TableRules | undefined;
+
+  /**
+   * The style the saved rules match, or PERSONALIZADO.
+   *
+   * @generated from field: meurpg.campaigns.v1.TableStyle style = 2;
+   */
+  style: TableStyle;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetTableRulesResponse.
+ * Use `create(SetTableRulesResponseSchema)` to create a new message.
+ */
+export const SetTableRulesResponseSchema: GenMessage<SetTableRulesResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 35);
+
+/**
+ * SetCampaignXpModeRequest names the campaign and the new mode.
+ *
+ * @generated from message meurpg.campaigns.v1.SetCampaignXpModeRequest
+ */
+export type SetCampaignXpModeRequest = Message<"meurpg.campaigns.v1.SetCampaignXpModeRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required.
+   *
+   * @generated from field: meurpg.campaigns.v1.XpMode xp_mode = 2;
+   */
+  xpMode: XpMode;
+
+  /**
+   * True to change the mode although XP was already awarded.
+   *
+   * @generated from field: bool confirm = 3;
+   */
+  confirm: boolean;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetCampaignXpModeRequest.
+ * Use `create(SetCampaignXpModeRequestSchema)` to create a new message.
+ */
+export const SetCampaignXpModeRequestSchema: GenMessage<SetCampaignXpModeRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 36);
+
+/**
+ * SetCampaignXpModeResponse returns the mode now in force.
+ *
+ * @generated from message meurpg.campaigns.v1.SetCampaignXpModeResponse
+ */
+export type SetCampaignXpModeResponse = Message<"meurpg.campaigns.v1.SetCampaignXpModeResponse"> & {
+  /**
+   * @generated from field: meurpg.campaigns.v1.XpMode xp_mode = 1;
+   */
+  xpMode: XpMode;
+
+  /**
+   * When the mode was last changed with this call, stored: a call that changes
+   * nothing returns the time of the real change, so the app can write "mudado
+   * em ..." after a reload. Unset when the mode was never changed.
+   *
+   * @generated from field: google.protobuf.Timestamp changed_at = 2;
+   */
+  changedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetCampaignXpModeResponse.
+ * Use `create(SetCampaignXpModeResponseSchema)` to create a new message.
+ */
+export const SetCampaignXpModeResponseSchema: GenMessage<SetCampaignXpModeResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 37);
+
+/**
+ * XpModeChangeBlocked is the error detail of SetCampaignXpMode's
+ * `failed_precondition`: XP was already awarded, so the change needs `confirm`.
+ *
+ * @generated from message meurpg.campaigns.v1.XpModeChangeBlocked
+ */
+export type XpModeChangeBlocked = Message<"meurpg.campaigns.v1.XpModeChangeBlocked"> & {
+  /**
+   * How many awards stand (not undone), milestones included.
+   *
+   * @generated from field: int32 awards = 1;
+   */
+  awards: number;
+
+  /**
+   * The XP they gave, summed over the characters. Milestone marks give none.
+   *
+   * @generated from field: int64 total_xp = 2;
+   */
+  totalXp: bigint;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.XpModeChangeBlocked.
+ * Use `create(XpModeChangeBlockedSchema)` to create a new message.
+ */
+export const XpModeChangeBlockedSchema: GenMessage<XpModeChangeBlocked> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 38);
+
+/**
  * Role is what a member may do in one campaign (RN-05). The app shows
  * "mestre" and "jogador".
  *
@@ -1010,6 +1410,166 @@ export enum InviteState {
  */
 export const InviteStateSchema: GenEnum<InviteState> = /*@__PURE__*/
   enumDesc(file_meurpg_campaigns_v1_campaigns, 4);
+
+/**
+ * TableStyle is "Estilo da mesa" (RN-24, question 76): a preset that fills the
+ * dice mode, whether a combat starts with a map, and whether new maps have the
+ * fog on. It is never stored: it is worked out from those three settings, and
+ * the campaign is PERSONALIZADO when they match no preset.
+ *
+ * @generated from enum meurpg.campaigns.v1.TableStyle
+ */
+export enum TableStyle {
+  /**
+   * @generated from enum value: TABLE_STYLE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * "Tudo no app": dice in the app, combat with a map, fog on in new maps.
+   *
+   * @generated from enum value: TABLE_STYLE_TUDO_NO_APP = 1;
+   */
+  TUDO_NO_APP = 1,
+
+  /**
+   * "Mesa física": physical dice, combat without a map by default, fog off.
+   *
+   * @generated from enum value: TABLE_STYLE_MESA_FISICA = 2;
+   */
+  MESA_FISICA = 2,
+
+  /**
+   * "Teatro da mente": each player chooses the dice, combat without a map,
+   * fog off.
+   *
+   * @generated from enum value: TABLE_STYLE_TEATRO_DA_MENTE = 3;
+   */
+  TEATRO_DA_MENTE = 3,
+
+  /**
+   * "Personalizado": the settings match no preset. Never a preset to apply.
+   *
+   * @generated from enum value: TABLE_STYLE_PERSONALIZADO = 4;
+   */
+  PERSONALIZADO = 4,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.TableStyle.
+ */
+export const TableStyleSchema: GenEnum<TableStyle> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 5);
+
+/**
+ * HitPointsRule is how the hit points of a level-up are decided on this table
+ * (RN-24). The server refuses the method it does not allow.
+ *
+ * @generated from enum meurpg.campaigns.v1.HitPointsRule
+ */
+export enum HitPointsRule {
+  /**
+   * @generated from enum value: HIT_POINTS_RULE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Everybody rolls the hit die (in the app, or typed from a physical die,
+   * RN-18); the average is refused.
+   *
+   * @generated from enum value: HIT_POINTS_RULE_ROLL = 1;
+   */
+  ROLL = 1,
+
+  /**
+   * Everybody takes the average; a roll is refused.
+   *
+   * @generated from enum value: HIT_POINTS_RULE_AVERAGE = 2;
+   */
+  AVERAGE = 2,
+
+  /**
+   * The player chooses between rolling and the average, at the level-up. The
+   * default, and what the app did before this rule existed.
+   *
+   * @generated from enum value: HIT_POINTS_RULE_PLAYER_CHOOSES = 3;
+   */
+  PLAYER_CHOOSES = 3,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.HitPointsRule.
+ */
+export const HitPointsRuleSchema: GenEnum<HitPointsRule> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 6);
+
+/**
+ * CriticalRule is what a critical hit does to the damage (RN-24). Stored here;
+ * the combat applies it in slice 10.4b.
+ *
+ * @generated from enum meurpg.campaigns.v1.CriticalRule
+ */
+export enum CriticalRule {
+  /**
+   * @generated from enum value: CRITICAL_RULE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Every damage die of the attack or spell is rolled twice (the SRD's, the
+   * default).
+   *
+   * @generated from enum value: CRITICAL_RULE_DOUBLED_DICE = 1;
+   */
+  DOUBLED_DICE = 1,
+
+  /**
+   * The dice count as their maximum, and then a set is rolled.
+   *
+   * @generated from enum value: CRITICAL_RULE_MAX_PLUS_ROLL = 2;
+   */
+  MAX_PLUS_ROLL = 2,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.CriticalRule.
+ */
+export const CriticalRuleSchema: GenEnum<CriticalRule> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 7);
+
+/**
+ * DeathSaveVisibility is who sees a character's death saves (RN-24). Stored
+ * here; the combat applies it in slice 10.4b.
+ *
+ * @generated from enum meurpg.campaigns.v1.DeathSaveVisibility
+ */
+export enum DeathSaveVisibility {
+  /**
+   * @generated from enum value: DEATH_SAVE_VISIBILITY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Every player sees them (the default, as today).
+   *
+   * @generated from enum value: DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL = 1;
+   */
+  VISIBLE_TO_ALL = 1,
+
+  /**
+   * Only the character's owner and the master do: they are left out of the
+   * screen and the log for everybody else.
+   *
+   * @generated from enum value: DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER = 2;
+   */
+  OWNER_AND_MASTER = 2,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.DeathSaveVisibility.
+ */
+export const DeathSaveVisibilitySchema: GenEnum<DeathSaveVisibility> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 8);
 
 /**
  * CampaignService creates campaigns, lists their members and manages
@@ -1268,6 +1828,74 @@ export const CampaignService: GenService<{
     methodKind: "unary";
     input: typeof SetMyDicePreferenceRequestSchema;
     output: typeof SetMyDicePreferenceResponseSchema;
+  },
+  /**
+   * GetTableRules returns the table's rules (MR-025, RN-24): what "Regras da
+   * mesa" shows. Any active member may call it, because the page is shown to
+   * the whole table. A campaign that never saved its rules gets the defaults
+   * (the SRD's: what the app did before the rules existed). A pending member
+   * (RN-15) may call it too, to see which ways of making ability scores the
+   * table allows while they create their character. It only reads, but stays POST-only, because a GET would
+   * put the campaign ID in the URL.
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.GetTableRules
+   */
+  getTableRules: {
+    methodKind: "unary";
+    input: typeof GetTableRulesRequestSchema;
+    output: typeof GetTableRulesResponseSchema;
+  },
+  /**
+   * SetTableRules replaces all of the table's rules (RN-24). Only the
+   * campaign's master may call it. It is one save, as the page has one "Salvar
+   * regras": every field is written, so the app sends the whole TableRules it
+   * shows. It writes the dice mode (campaigns' own setting, RN-18) in the same
+   * transaction, so the page's dice choice and the rest never disagree. It
+   * applies from now on: sheets that already exist keep their scores, and a
+   * level-up, a creation or a new map takes the rules in force when it happens.
+   * Setting what is already saved is not an error.
+   *
+   * Errors:
+   *   - `invalid_argument`: a field is unspecified or unknown; no ability
+   *     method is allowed; more than 20 house rules, or one that is empty,
+   *     longer than 200 characters or has a line break.
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.SetTableRules
+   */
+  setTableRules: {
+    methodKind: "unary";
+    input: typeof SetTableRulesRequestSchema;
+    output: typeof SetTableRulesResponseSchema;
+  },
+  /**
+   * SetCampaignXpMode changes how the campaign levels (RN-09) after it was
+   * created. Only the campaign's master may call it. The new mode applies from
+   * now on; nothing already awarded is converted or changed, the history stays,
+   * and going back to the earlier mode is allowed. When XP was already awarded
+   * (an award that was not undone, a milestone included), the call needs
+   * `confirm`: without it, it answers `failed_precondition` with an
+   * XpModeChangeBlocked detail that says how much was awarded, and changes
+   * nothing. Setting the mode the campaign already has is not an error and
+   * asks for nothing.
+   *
+   * The mode also decides "Pode subir de nível" (RN-12): by enemies or by gold, the
+   * character's XP reaching the next level; by milestones, a mark. So a switch
+   * moves the level-ups that are waiting: a character that was ready by XP is
+   * not ready by milestones until the master marks it, and one marked for a
+   * milestone is not ready by XP until the XP reaches the level. Nothing is
+   * written to the sheets: the flag is read from the mode on every read.
+   *
+   * Errors:
+   *   - `invalid_argument`: the mode is unspecified or unknown.
+   *   - `failed_precondition`: XP was already awarded and `confirm` is false
+   *     (XpModeChangeBlocked).
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.SetCampaignXpMode
+   */
+  setCampaignXpMode: {
+    methodKind: "unary";
+    input: typeof SetCampaignXpModeRequestSchema;
+    output: typeof SetCampaignXpModeResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_campaigns_v1_campaigns, 0);

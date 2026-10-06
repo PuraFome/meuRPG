@@ -102,6 +102,9 @@ function fullyPopulatedFullSheet(): FullSheet {
     challengeRating: '2',
     xpValue: 450,
     portraitImageId: '',
+    contentRevision: 0,
+    knownIssues: [],
+    contentBaselines: {},
   };
 }
 
@@ -164,6 +167,9 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       challengeRating: loaded.challengeRating,
       xpValue: loaded.xpValue,
       portraitImageId: loaded.portraitImageId,
+      contentRevision: loaded.contentRevision,
+      knownIssues: loaded.knownIssues,
+      contentBaselines: loaded.contentBaselines,
     });
   });
 

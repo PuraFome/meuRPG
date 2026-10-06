@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -130,10 +131,21 @@ func moverOf(c playdb.Combatant) grid.Mover {
 	return grid.Mover{Flier: c.SpeedFlyFt > 0, Size: sizeToGrid[sizeKey(c.Size)]}
 }
 
+// noSpeed are the conditions that leave a creature with no speed (SRD 5.1):
+// grappled and restrained set it to 0, and a paralyzed, petrified, stunned or
+// unconscious creature cannot move at all. (Prone, which makes standing up cost
+// half the speed, is not modeled: the app has no action for standing up.)
+var noSpeed = []string{
+	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
+}
+
 // speedDFt is the combatant's best speed for this turn, in tenths of a foot: its
 // walking speed, or its fly speed when it has a better one, twice after the Dash
 // action (RN-21).
 func speedDFt(c playdb.Combatant) int {
+	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
+		return 0
+	}
 	speed := int(max(c.SpeedFt, c.SpeedFlyFt)) * 10
 	if c.Dashed {
 		speed *= 2
@@ -273,6 +285,9 @@ func (s *Service) MoveCombatant(
 		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
+		}
+		if isTheatre(c.enc) {
+			return nil, errNeedsAMap() // no squares: a move, a jump and a placement are the master's word (SpendMovement)
 		}
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -654,6 +669,11 @@ func (s *Service) GetMoveOptions(
 		case !actsNow(enc, who):
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 		}
+	}
+	if isTheatre(enc) {
+		// Without a map there is nowhere to go: a valid, empty answer, with what
+		// SpendMovement can still spend.
+		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: who.SpeedFlyFt > 0}), nil
 	}
 	if !placed(who) {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatant is not on the map yet")

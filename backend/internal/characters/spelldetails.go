@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -18,10 +19,11 @@ func (s *Service) GetSpellDetails(
 	req *connect.Request[rulesv1.GetSpellDetailsRequest],
 ) (*connect.Response[rulesv1.GetSpellDetailsResponse], error) {
 	// The same access as ListContent: a pending member may look too (RN-15).
-	if _, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId()); err != nil {
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
+	if err != nil {
 		return nil, err
 	}
-	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
+	content, err := s.contentFor(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
@@ -29,7 +31,22 @@ func (s *Service) GetSpellDetails(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
+	// A table spell the master archived is not shown to a player (RN-23), unless one
+	// of their own sheets in the campaign uses it: it answers as an unknown spell.
+	if content.Archived(req.Msg.GetSpellKey()) && !isMaster(m) {
+		uses, err := s.callerUses(ctx, m, req.Msg.GetSpellKey())
+		if err != nil {
+			return nil, s.dbError(ctx, "read the caller's sheets", err)
+		}
+		if !uses {
+			return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
+		}
+	}
 	out := spellDetailsToProto(d)
+	if !isMaster(m) {
+		// The classes whose list has the spell: an archived one is not named to a player.
+		out.Spell.ClassKeys = slices.DeleteFunc(slices.Clone(out.GetSpell().GetClassKeys()), content.Archived)
+	}
 	out.HitPointEffect = hitPointEffect(content, req.Msg.GetSpellKey(), d.Spell.Level)
 	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil
 }

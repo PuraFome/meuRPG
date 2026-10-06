@@ -65,6 +65,26 @@ O servidor monta, para cada jogador, as peças da imagem de um mapa com névoa (
 - **Nada disso é guardado no disco nem no banco:** reiniciar o servidor esvazia a cópia de trabalho, as peças e as peças de cada jogador, e elas se refazem sozinhas. A memória do que cada jogador viu (o que decide as peças) é a de `map_vision_memory`.
 - **A imagem de um mapa com névoa continua no blob store, uma vez só;** as peças não ocupam cota da galeria.
 
+## O cache do conteúdo da mesa
+
+O conteúdo que o mestre cadastra (MR-025, RN-23; [Arquitetura](arquitetura.md#o-conteúdo-da-mesa-ao-vivo-etapa-10-fatia-101c), ADR-0018) é montado na memória do servidor, por campanha e por revisão, e guardado num cache pequeno. É memória e CPU num servidor de 1 vCPU e 512 MiB, então tem orçamento:
+
+| Regra | Valor | Onde |
+| --- | --- | --- |
+| Conteúdos no cache | 8, do servidor todo, por (campanha, revisão); o menos usado sai primeiro | `characters/tablesource.go`, `maxLiveContents` |
+| Catálogos do `ListContent` | Até 8 conteúdos, cada um com o catálogo do mestre e o dos jogadores | `characters/contentsource.go`, `maxCatalogs` |
+| Entradas por campanha | 300; 64 KiB de dados por entrada | `rules.MaxOverlayEntries`, `characters.MaxTableEntryBytes` |
+| Um conteúdo montado | Uns **1,4 MB** retidos além do SRD (o SRD é um só, compartilhado), para uma mesa de 300 entradas (10 classes, 30 subclasses, 20 raças, 40 sub-raças, 40 antecedentes e 160 magias, com os dados de 135 KB) | `TestLiveContentMemory` |
+| Os catálogos de um conteúdo | Uns **0,14 MB** (o do mestre e o dos jogadores; 75 KB no fio) | `TestLiveContentMemory` |
+| Os 8 juntos | **Uns 12 MB** (11 MB de conteúdos e 1 MB de catálogos), medidos, no caso em que os dois caches guardam os mesmos 8 conteúdos | `TestLiveContentMemory` |
+| **O pior caso** | **Uns 23 MB** (conta, não medida: 16 conteúdos × 1,37 MB = 22 MB, mais 1,1 MB de catálogos). O cache de catálogos (`maxCatalogs`) usa o conteúdo como chave e o mantém vivo, e tem a própria ordem de saída; quando as campanhas em jogo giram mais depressa que 8 revisões, os dois caches guardam conteúdos diferentes, até 8 + 8. Cabe nos 24 MB que o plano reservou e nos 400 MiB do `GOMEMLIMIT` (some aos 280 MB da conta das peças da névoa, no CONTRIBUTING) | derivado |
+| Montar depois de uma escrita | De **6 a 9 ms** por campanha, uma vez por revisão (ler os dados, montar a sobreposição, o `With`); o pior caso que os orçamentos do motor deixam passar leva uns 31 ms | `TestLiveContentMemory`, `BenchmarkWith` |
+
+- **Nada disso é cache do banco de verdade:** reiniciar o servidor o esvazia e ele se refaz sozinho, na primeira leitura de cada campanha. A revisão da campanha (`campaign_content_state`) é lida em **toda** leitura de conteúdo, dentro da transação de quem lê: é uma consulta pela chave primária, e é ela que faz uma edição do mestre valer na hora.
+- **Com mais de 8 campanhas com conteúdo da mesa em jogo ao mesmo tempo** o cache dá voltas: cada leitura de uma campanha fora dele monta de novo (6 a 9 ms). Com uma instância só e uma mesa por vez, isso não acontece; quando acontecer, o número é `maxLiveContents`, e cada conteúdo a mais custa uns 1,5 MB.
+- **Nenhum dado pessoal:** o conteúdo da mesa são nomes e textos que o mestre escreve para o jogo (ver [Privacidade](privacidade.md)).
+- **Rodar de novo a medida:** `MEURPG_MEASURE=1 go test ./internal/characters -run TestLiveContentMemory -v` (em `backend/`, sem banco).
+
 ## Segredos
 
 Credenciais (client secret do Google OAuth, connection string do banco, e outras) ficam no Secret Manager do Google Cloud, nunca em variável de ambiente solta no repositório ou no deploy. A lista exata de segredos por ambiente está **a definir**.
@@ -119,7 +139,7 @@ As imagens da galeria (MR-019) ficam num blob store (ver [Arquitetura](arquitetu
 
 **No primeiro deploy (a implementação do Cloud Storage ainda não existe, porque não há deploy):** um bucket só para as imagens, em `southamerica-east1`, classe Standard, com acesso uniforme no nível do bucket e prevenção de acesso público; soft delete de 7 dias (o prazo da [Privacidade](privacidade.md)); e só a conta de serviço da API com acesso (`roles/storage.objectUser` no bucket), sem nenhuma URL pública nem URL assinada: quem entrega a imagem é sempre a API, depois de conferir quem pede. A implementação entra no pacote `blob`, atrás da mesma interface.
 
-**Memória.** O envio processa uma imagem por vez em cada instância, e recusa a imagem cuja decodificação passaria de 256 MiB (estimativa do pacote `maps/images`). Com 512 MiB por instância, sobra espaço para o resto, desde que o coletor de lixo do Go saiba o limite: definir `GOMEMLIMIT` (por exemplo, `400MiB`) no primeiro deploy. O pior caso das peças da névoa, somado, é de uns 330 MB (ver [Peças da imagem da névoa](#peças-da-imagem-da-névoa)); os envios de PNG passam a ser guardados com 8 bits por canal, para que decodificá-los depois custe 4 bytes por pixel.
+**Memória.** O envio processa uma imagem por vez em cada instância, e recusa a imagem cuja decodificação passaria de 256 MiB (estimativa do pacote `maps/images`). Com 512 MiB por instância, sobra espaço para o resto, desde que o coletor de lixo do Go saiba o limite: definir `GOMEMLIMIT` (por exemplo, `400MiB`) no primeiro deploy. O pior caso das peças da névoa, somado, é de uns 330 MB (ver [Peças da imagem da névoa](#peças-da-imagem-da-névoa)); os envios de PNG passam a ser guardados com 8 bits por canal, para que decodificá-los depois custe 4 bytes por pixel. A imagem de uma masmorra gerada (MR-010) passa pela mesma vaga de uma imagem por vez e é desenhada com paleta (1 byte por pixel): a maior, de 199 × 399 quadrados, tem 3.980 × 7.980 px e usa uns 32 MB na hora de desenhar e uns 36 MB alocados em tudo (ver [Arquitetura](arquitetura.md#o-mapa-de-uma-masmorra-gerada-etapa-10-fatia-106d)); as peças da névoa decodificam a imagem guardada, que é um PNG de paleta e custa menos que uma foto.
 
 ## Alertas de orçamento
 

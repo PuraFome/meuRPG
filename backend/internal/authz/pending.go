@@ -49,6 +49,9 @@ var pendingMayCall = map[string]string{
 	charactersv1connect.CharacterServiceListCharactersProcedure:       "list their pending character",
 	charactersv1connect.CharacterServiceUpdateCharacterProcedure:      "edit their pending character's sheet",
 	charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure: "edit their pending character's story",
+	campaignsv1connect.CampaignServiceGetTableRulesProcedure:          "read the table's rules, to make the character's ability scores the way the table allows (RN-24)",
+	charactersv1connect.CharacterServiceGetAbilityRollsProcedure:      "read the 4d6 stored for their character's ability scores (RN-24)",
+	charactersv1connect.CharacterServiceRollAbilityScoresProcedure:    "roll or type the 4d6 for their character's ability scores (RN-24)",
 	rulesv1connect.ContentServiceListContentProcedure:                 "read the rules content the character editor offers",
 	rulesv1connect.ContentServiceGetSpellDetailsProcedure:             "read one spell's details, as the editor's spell list shows",
 }

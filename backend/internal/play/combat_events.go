@@ -310,6 +310,11 @@ type actionEvent struct {
 	ReturnedFrom *moveState `json:"returned_from,omitempty"`
 	// ReturnBlocked says the square to go back to was taken, so the mover stayed.
 	ReturnBlocked bool `json:"return_blocked,omitempty"`
+	// ByHand says the master made the offer (OfferOpportunity, a combat without a
+	// grid): it has no square and its undo is a withdrawal. Withdrawn says the
+	// reaction_declined event is the master taking an offer back.
+	ByHand    bool `json:"by_hand,omitempty"`
+	Withdrawn bool `json:"withdrawn,omitempty"`
 
 	// The Disengage action, which an undo of the action takes back.
 	DisengagedBefore bool `json:"disengaged_before,omitempty"`

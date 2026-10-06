@@ -34,7 +34,7 @@ func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID stri
 	if err != nil {
 		return grid.Terrain{}, fmt.Errorf("read the map: %w", err)
 	}
-	g := gridOf(row.GridColumns, row.ImageWidth, row.ImageHeight)
+	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 	if !g.Valid() {
 		return grid.Terrain{}, nil
 	}

@@ -16,7 +16,8 @@
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CampaignDocumentService, CharacterService, ContentService, PlayService,
+// CampaignDocumentService, CharacterService, ContentService,
+// TableContentService, PlayService,
 // ProgressionService,
 // GalleryService and MapService need sign-in too; without it, they are not
 // mounted. Images also need BLOB_DIR: without it, the image routes and
@@ -88,6 +89,7 @@ import (
 var (
 	_ play.TerrainSource = (*maps.Service)(nil)
 	_ play.DoorKeeper    = (*maps.Service)(nil)
+	_ play.PuzzleMaps    = (*maps.Service)(nil) // a solved puzzle opens a door, reveals a point or a clue (MR-038)
 )
 
 // Build information, replaced at build time with:
@@ -206,9 +208,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Pool:     pool,
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			// Every campaign plays with the SRD until the table's own content (MR-025)
-			// arrives; SRD is the base content for what no table changes (the conditions).
-			Content: characters.NewSRDSource(rulesContent),
+			// Every campaign plays with the SRD plus the table's own content (MR-025,
+			// RN-23, ADR-0018) and the table rules its master saved (RN-24). SRD is
+			// the base content for what no table changes (the conditions).
+			Content: characters.NewTableSource(pool, rulesContent, campaignsService),
 			SRD:     rulesContent,
 			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 			Logger:  logger,
@@ -237,6 +240,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
+			Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
 			Logger:    logger,
 		})
 		if err != nil {
@@ -258,14 +262,17 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			// conditions and skills, which no table's content changes (MR-025, ADR-0018).
 			Rules:   rulesContent, // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
 			Combats: playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
-			Logger:  logger,
+			// Whether a new map starts with the fog on is a table rule (RN-24).
+			Defaults: campaignsService,
+			Logger:   logger,
 		})
 		if err != nil {
 			return err
 		}
 		// the combat walks over the layers the master painted (MR-034, RN-21)
 		playService.SetTerrain(mapsService)
-		playService.SetFog(mapsService) // combat per player on a fog map: who sees which NPC (MR-036)
+		playService.SetPuzzleMaps(mapsService) // "Ao resolver" of a puzzle (MR-038, RN-27)
+		playService.SetFog(mapsService)        // combat per player on a fog map: who sees which NPC (MR-036)
 		// traps in play (MR-035): play asks maps for the traps (where, what a character
 		// sees, who knows them) and maps asks play to fire one when a token lands in it
 		playService.SetTraps(mapsService)
@@ -289,6 +296,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// Changing the XP mode asks for a confirmation when XP was already awarded (RN-09).
+		campaignsService.SetXPAwards(progressionService)
 		charactersService.SetLevelUps(progressionService)
 		// The players' private notes (MR-030) read the scenes the group
 		// discovered and the clues revealed to each player from the maps

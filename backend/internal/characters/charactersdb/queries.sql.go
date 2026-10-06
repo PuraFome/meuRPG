@@ -76,6 +76,29 @@ func (q *Queries) ApprovePendingCharacterOfPlayer(ctx context.Context, arg Appro
 	return result.RowsAffected(), nil
 }
 
+const bumpContentRevision = `-- name: BumpContentRevision :one
+INSERT INTO campaign_content_state (campaign_id, revision, updated_at)
+VALUES ($1::UUID, 1, $2)
+ON CONFLICT (campaign_id) DO UPDATE
+SET revision = campaign_content_state.revision + 1, updated_at = EXCLUDED.updated_at
+RETURNING revision
+`
+
+type BumpContentRevisionParams struct {
+	CampaignID string
+	Now        time.Time
+}
+
+// Every content write starts here: the revision goes up by one (the row is made
+// by the first write), and the row is held until the transaction ends, so two
+// writes of one campaign run one after the other.
+func (q *Queries) BumpContentRevision(ctx context.Context, arg BumpContentRevisionParams) (int32, error) {
+	row := q.db.QueryRow(ctx, bumpContentRevision, arg.CampaignID, arg.Now)
+	var revision int32
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const characterIsInCampaign = `-- name: CharacterIsInCampaign :one
 SELECT EXISTS (
     SELECT 1 FROM characters
@@ -146,6 +169,22 @@ func (q *Queries) CountLiveCreaturesOfCharacter(ctx context.Context, arg CountLi
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const deleteAbilityRolls = `-- name: DeleteAbilityRolls :exec
+DELETE FROM character_ability_rolls
+WHERE campaign_id = $1::UUID AND user_id = $2::UUID
+`
+
+type DeleteAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// A sheet used the sets (CreateCharacter): the next character gets new ones.
+func (q *Queries) DeleteAbilityRolls(ctx context.Context, arg DeleteAbilityRollsParams) error {
+	_, err := q.db.Exec(ctx, deleteAbilityRolls, arg.CampaignID, arg.UserID)
+	return err
 }
 
 const deleteCreatures = `-- name: DeleteCreatures :exec
@@ -277,6 +316,58 @@ func (q *Queries) EndStoryEditing(ctx context.Context, campaignID string) (int64
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getAbilityRolls = `-- name: GetAbilityRolls :one
+SELECT sets, source, rolled_at FROM character_ability_rolls
+WHERE campaign_id = $1::UUID AND user_id = $2::UUID
+`
+
+type GetAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+}
+
+type GetAbilityRollsRow struct {
+	Sets     []byte
+	Source   string
+	RolledAt time.Time
+}
+
+// The six sets of 4d6 stored for the player's next new character in the
+// campaign (RN-24): the same sets come back until a sheet uses them.
+func (q *Queries) GetAbilityRolls(ctx context.Context, arg GetAbilityRollsParams) (GetAbilityRollsRow, error) {
+	row := q.db.QueryRow(ctx, getAbilityRolls, arg.CampaignID, arg.UserID)
+	var i GetAbilityRollsRow
+	err := row.Scan(&i.Sets, &i.Source, &i.RolledAt)
+	return i, err
+}
+
+const getCampaignContent = `-- name: GetCampaignContent :one
+SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at FROM campaign_content
+WHERE campaign_id = $1::UUID AND content_key = $2
+`
+
+type GetCampaignContentParams struct {
+	CampaignID string
+	ContentKey string
+}
+
+func (q *Queries) GetCampaignContent(ctx context.Context, arg GetCampaignContentParams) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, getCampaignContent, arg.CampaignID, arg.ContentKey)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getCharacter = `-- name: GetCharacter :one
@@ -471,6 +562,23 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 	return i, err
 }
 
+const getContentRevision = `-- name: GetContentRevision :one
+
+SELECT revision FROM campaign_content_state WHERE campaign_id = $1::UUID
+`
+
+// The table's own content (MR-025, RN-23, ADR-0018): campaign_content, one row
+// per entry, and campaign_content_state, the campaign's content revision.
+// The campaign's content revision. No row is revision 0 (no content of its own).
+// Read in the caller's transaction: it orders a content write against a sheet
+// write, and the cache of the live content is keyed by it.
+func (q *Queries) GetContentRevision(ctx context.Context, campaignID string) (int32, error) {
+	row := q.db.QueryRow(ctx, getContentRevision, campaignID)
+	var revision int32
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const getLevelUpRoll = `-- name: GetLevelUpRoll :one
 SELECT class_key, die, value FROM character_level_up_rolls
 WHERE character_id = $1::UUID AND to_level = $2
@@ -603,6 +711,81 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
+	)
+	return i, err
+}
+
+const insertAbilityRolls = `-- name: InsertAbilityRolls :execrows
+INSERT INTO character_ability_rolls (campaign_id, user_id, sets, source, rolled_at)
+VALUES ($1::UUID, $2::UUID, $3::JSONB, $4, $5)
+ON CONFLICT (campaign_id, user_id) DO NOTHING
+`
+
+type InsertAbilityRollsParams struct {
+	CampaignID string
+	UserID     string
+	Sets       []byte
+	Source     string
+	Now        time.Time
+}
+
+// Stores the sets. A second insert for the same player and campaign does
+// nothing (0 rows), so the first sets stand: asking again never rerolls.
+func (q *Queries) InsertAbilityRolls(ctx context.Context, arg InsertAbilityRollsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertAbilityRolls,
+		arg.CampaignID,
+		arg.UserID,
+		arg.Sets,
+		arg.Source,
+		arg.Now,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const insertCampaignContent = `-- name: InsertCampaignContent :one
+INSERT INTO campaign_content
+    (campaign_id, content_key, kind, name_pt, data, revision, created_at, updated_at)
+VALUES (
+    $1::UUID, $2, $3, $4, $5,
+    $6, $7, $7
+)
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+`
+
+type InsertCampaignContentParams struct {
+	CampaignID string
+	ContentKey string
+	Kind       string
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	Now        time.Time
+}
+
+func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignContentParams) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, insertCampaignContent,
+		arg.CampaignID,
+		arg.ContentKey,
+		arg.Kind,
+		arg.NamePt,
+		arg.Data,
+		arg.Revision,
+		arg.Now,
+	)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -876,6 +1059,86 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 		&i.CreateKey,
 	)
 	return i, err
+}
+
+const listCampaignContent = `-- name: ListCampaignContent :many
+SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at FROM campaign_content
+WHERE campaign_id = $1::UUID
+ORDER BY content_key
+`
+
+// Every entry of the campaign, archived ones included, sorted by key.
+func (q *Queries) ListCampaignContent(ctx context.Context, campaignID string) ([]CampaignContent, error) {
+	rows, err := q.db.Query(ctx, listCampaignContent, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CampaignContent
+	for rows.Next() {
+		var i CampaignContent
+		if err := rows.Scan(
+			&i.CampaignID,
+			&i.ContentKey,
+			&i.Kind,
+			&i.NamePt,
+			&i.Data,
+			&i.Revision,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCampaignSheets = `-- name: ListCampaignSheets :many
+SELECT id, kind, name, player_user_id, sheet
+FROM characters
+WHERE campaign_id = $1::UUID
+ORDER BY kind <> 'player', created_at, id
+`
+
+type ListCampaignSheetsRow struct {
+	ID           string
+	Kind         string
+	Name         string
+	PlayerUserID *string
+	Sheet        []byte
+}
+
+// Every character of the campaign with the sheet: who uses which table entry,
+// and who has issues after a change. Players' characters first, then NPCs.
+func (q *Queries) ListCampaignSheets(ctx context.Context, campaignID string) ([]ListCampaignSheetsRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignSheets, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignSheetsRow
+	for rows.Next() {
+		var i ListCampaignSheetsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCharacterNames = `-- name: ListCharacterNames :many
@@ -1786,6 +2049,45 @@ func (q *Queries) ReviveCreatures(ctx context.Context, arg ReviveCreaturesParams
 	return items, nil
 }
 
+const setCampaignContentArchived = `-- name: SetCampaignContentArchived :one
+UPDATE campaign_content
+SET archived_at = CASE WHEN $1::BOOL THEN $2::TIMESTAMPTZ ELSE NULL END
+WHERE campaign_id = $3::UUID AND content_key = $4
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+`
+
+type SetCampaignContentArchivedParams struct {
+	Archived   bool
+	Now        time.Time
+	CampaignID string
+	ContentKey string
+}
+
+// archived true retires the entry, false brings it back. Neither is a change of
+// the entry: its revision and updated_at stay (a sheet that uses it is not told it
+// changed). The campaign's revision still goes up, for the cache (BumpContentRevision).
+func (q *Queries) SetCampaignContentArchived(ctx context.Context, arg SetCampaignContentArchivedParams) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, setCampaignContentArchived,
+		arg.Archived,
+		arg.Now,
+		arg.CampaignID,
+		arg.ContentKey,
+	)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const setCharacterCreatureHitPoints = `-- name: SetCharacterCreatureHitPoints :exec
 UPDATE character_creatures SET hp_current = $1
 WHERE campaign_id = $2::UUID AND id = $3::UUID
@@ -1954,6 +2256,47 @@ func (q *Queries) TouchVitals(ctx context.Context, arg TouchVitalsParams) (Touch
 	row := q.db.QueryRow(ctx, touchVitals, arg.CharacterID, arg.HitPointsCurrent, arg.Now)
 	var i TouchVitalsRow
 	err := row.Scan(&i.Revision, &i.UpdatedAt)
+	return i, err
+}
+
+const updateCampaignContent = `-- name: UpdateCampaignContent :one
+UPDATE campaign_content
+SET name_pt = $1, data = $2, revision = $3, updated_at = $4
+WHERE campaign_id = $5::UUID AND content_key = $6
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+`
+
+type UpdateCampaignContentParams struct {
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	Now        time.Time
+	CampaignID string
+	ContentKey string
+}
+
+// The body and the name; the key, the kind and the archive mark stay.
+func (q *Queries) UpdateCampaignContent(ctx context.Context, arg UpdateCampaignContentParams) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, updateCampaignContent,
+		arg.NamePt,
+		arg.Data,
+		arg.Revision,
+		arg.Now,
+		arg.CampaignID,
+		arg.ContentKey,
+	)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 

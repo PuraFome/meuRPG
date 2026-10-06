@@ -239,7 +239,17 @@ func spellToProto(s rules.SpellEntry) *rulesv1.Spell {
 		ClassKeys:     s.Classes,
 		Ritual:        s.Ritual,
 		Concentration: s.Concentration,
+		Archived:      s.Archived,
 	}
+}
+
+// int32s converts a list of small numbers for the API (see i32).
+func int32s(in []int) []int32 {
+	var out []int32
+	for _, n := range in {
+		out = append(out, i32(n))
+	}
+	return out
 }
 
 func abilityScores(m map[rules.Ability]int) *rulesv1.AbilityScores {
@@ -281,11 +291,13 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	for _, r := range c.Races {
 		out.Races = append(out.Races, &rulesv1.Race{
 			Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
+			Archived: r.Archived, ChoiceBonuses: int32s(r.ChoiceBonuses),
 		})
 	}
 	for _, s := range c.Subraces {
 		out.Subraces = append(out.Subraces, &rulesv1.Subrace{
 			Key: s.Key, Name: s.Name, NamePt: s.NamePT, RaceKey: s.Race, AbilityBonuses: abilityScores(s.AbilityBonuses),
+			Archived: s.Archived,
 		})
 	}
 	for _, cl := range c.Classes {
@@ -296,15 +308,17 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 			HitDie:        i32(cl.HitDie),
 			SkillChoice:   &rulesv1.SkillChoice{Count: i32(cl.SkillChoices), SkillKeys: cl.SkillOptions},
 			SubclassLevel: i32(cl.SubclassLevel),
+			Archived:      cl.Archived,
 		}
 		for _, a := range cl.SavingThrows {
 			p.SavingThrows = append(p.SavingThrows, abilityToProto[a])
 		}
 		if cl.SpellcastingAbility != "" {
 			p.Spellcasting = &rulesv1.ClassSpellcasting{
-				Ability:     abilityToProto[cl.SpellcastingAbility],
-				FirstLevel:  i32(cl.SpellcastingLevel),
-				Preparation: preparationToProto[cl.SpellPreparation],
+				Ability:      abilityToProto[cl.SpellcastingAbility],
+				FirstLevel:   i32(cl.SpellcastingLevel),
+				Preparation:  preparationToProto[cl.SpellPreparation],
+				ListClassKey: cl.SpellListFrom,
 			}
 			for _, n := range cl.MaxSpellLevelByLevel {
 				p.Spellcasting.MaxSpellLevelByLevel = append(p.Spellcasting.MaxSpellLevelByLevel, i32(n))
@@ -313,10 +327,19 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 		out.Classes = append(out.Classes, p)
 	}
 	for _, s := range c.Subclasses {
-		out.Subclasses = append(out.Subclasses, &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class})
+		p := &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class, Archived: s.Archived}
+		if c := s.Casting; c != nil {
+			p.Spellcasting = &rulesv1.SubclassSpellcasting{
+				Ability: abilityToProto[c.Ability], Preparation: preparationToProto[c.Preparation],
+				ListClassKey: c.SpellList, FirstLevel: i32(c.StartLevel), MaxSpellLevelByLevel: int32s(c.MaxSpellLevelByLevel),
+			}
+		}
+		out.Subclasses = append(out.Subclasses, p)
 	}
 	for _, b := range c.Backgrounds {
-		out.Backgrounds = append(out.Backgrounds, &rulesv1.Background{Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies})
+		out.Backgrounds = append(out.Backgrounds, &rulesv1.Background{
+			Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies, Archived: b.Archived, EquipmentPt: b.EquipmentPT,
+		})
 	}
 	for _, s := range c.Skills {
 		out.Skills = append(out.Skills, &rulesv1.Skill{Key: s.Key, Name: s.Name, NamePt: s.NamePT, Ability: abilityToProto[s.Ability]})

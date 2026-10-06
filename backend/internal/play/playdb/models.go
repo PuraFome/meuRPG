@@ -74,6 +74,7 @@ type Encounter struct {
 	CreatedAt          time.Time
 	StartedAt          *time.Time
 	EndedAt            *time.Time
+	Mode               string
 }
 
 type GameSession struct {
@@ -94,8 +95,8 @@ type OpportunityOffer struct {
 	MoveID          string
 	MoverID         string
 	ReactorID       string
-	LeftCol         int32
-	LeftRow         int32
+	LeftCol         *int32
+	LeftRow         *int32
 	State           string
 	AttackPendingID *string
 	CreatedAt       time.Time
@@ -127,6 +128,61 @@ type PendingDamage struct {
 	RollTotal        *int32
 	AttackArmorClass *int32
 	TrapPointID      *string
+}
+
+type Puzzle struct {
+	ID           string
+	CampaignID   string
+	Kind         string
+	Name         string
+	Config       []byte
+	Solution     []byte
+	Seed         int64
+	Start        []byte
+	MinimumMoves *int32
+	Clue         string
+	Hints        []byte
+	SolveAction  string
+	SolveTarget  []byte
+	ArchivedAt   *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type PuzzleMove struct {
+	ID             string
+	RunID          string
+	Seq            int32
+	UserID         *string
+	CharacterID    *string
+	IdempotencyKey string
+	Move           []byte
+	Revision       int32
+	Solved         bool
+	CreatedAt      time.Time
+}
+
+type PuzzleRun struct {
+	ID                   string
+	GameSessionID        string
+	PuzzleID             string
+	Seed                 int64
+	Start                []byte
+	State                []byte
+	ReleasedHints        int32
+	ShownAt              *time.Time
+	ClosedAt             *time.Time
+	SolvedAt             *time.Time
+	SolvedByCharacterID  *string
+	SolveOutcome         *string
+	LastMoverCharacterID *string
+	LastMove             []byte
+	LastMovedAt          *time.Time
+	MovesMade            int32
+	Revision             int32
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	SolveMessage         *string
 }
 
 type StageNpc struct {

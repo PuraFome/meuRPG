@@ -290,6 +290,16 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 			return fmt.Errorf("find an award by its key: %w", err)
 		}
 
+		// The mode is read again here, in the transaction (RN-09): SetCampaignXpMode
+		// reads the awards and writes the mode in a transaction of its own, so under
+		// serializable isolation the two cannot both pass, and one retries.
+		txMode, err := s.campaigns.CampaignXPMode(ctx, tx, m.CampaignID)
+		if err != nil {
+			return fmt.Errorf("read the campaign's XP mode: %w", err)
+		}
+		if !fits(txMode, g.mode) {
+			return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", txMode)
+		}
 		reason := g.reason
 		if g.milestoneID != "" {
 			if reason, err = s.checkMilestone(ctx, q, m.CampaignID, g); err != nil {

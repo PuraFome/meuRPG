@@ -79,15 +79,22 @@ func decodeTile(t *testing.T, r httpResult) image.Image {
 // squares of each kind the tile has.
 func checkTile(t *testing.T, who string, img image.Image, res *mapsv1.GetMapVisionResponse, tile *mapsv1.MapTile) (shown, black int) {
 	t.Helper()
+	return checkTileAt(t, who, img, res, tile, 10)
+}
+
+// checkTileAt is checkTile for a map whose squares are sq pixels wide (the cave's are
+// 10; calibrated to 2, they are 5).
+func checkTileAt(t *testing.T, who string, img image.Image, res *mapsv1.GetMapVisionResponse, tile *mapsv1.MapTile, sq int) (shown, black int) {
+	t.Helper()
 	g := grid.Grid{Columns: int(res.GetGridColumns()), Rows: int(res.GetGridRows())}
 	pv := codes(t, res)
 	c0, r0 := int(tile.GetTx())*tileSquares, int(tile.GetTy())*tileSquares
-	wantW, wantH := min(g.Columns-c0, tileSquares)*10, min(g.Rows-r0, tileSquares)*10
+	wantW, wantH := min(g.Columns-c0, tileSquares)*sq, min(g.Rows-r0, tileSquares)*sq
 	if b := img.Bounds(); b.Dx() != wantW || b.Dy() != wantH {
 		t.Fatalf("%s: tile (%d,%d) is %dx%d px, want %dx%d", who, tile.GetTx(), tile.GetTy(), b.Dx(), b.Dy(), wantW, wantH)
 	}
 	knownAt := func(px, py int) bool { // a pixel of the whole map; outside it is known
-		col, row := px/10, py/10
+		col, row := px/sq, py/sq
 		if px < 0 || py < 0 || col >= g.Columns || row >= g.Rows {
 			return true
 		}
@@ -95,8 +102,8 @@ func checkTile(t *testing.T, who string, img image.Image, res *mapsv1.GetMapVisi
 	}
 	for y := range wantH {
 		for x := range wantW {
-			px, py := c0*10+x, r0*10+y
-			col, row := px/10, py/10
+			px, py := c0*sq+x, r0*sq+y
+			col, row := px/sq, py/sq
 			got := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
 			if !knownAt(px, py) {
 				if got != (color.NRGBA{A: 255}) {

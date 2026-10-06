@@ -120,6 +120,7 @@ function minimalDerivedSheet(): DerivedSheet {
     speedBurrowFt: 0,
     hover: false,
     saveActions: [],
+    changedContent: [],
   };
 }
 
@@ -151,6 +152,9 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     featureChoiceKeys: [],
     challengeRating: '',
     portraitImageId: '',
+    contentRevision: 0,
+    knownIssues: [],
+    contentBaselines: {},
     xpValue: 0,
     ...overrides,
   };

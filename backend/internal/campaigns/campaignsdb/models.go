@@ -9,12 +9,13 @@ import (
 )
 
 type Campaign struct {
-	ID        string
-	Name      string
-	XpMode    string
-	CreatedBy string
-	CreatedAt time.Time
-	DiceMode  string
+	ID              string
+	Name            string
+	XpMode          string
+	CreatedBy       string
+	CreatedAt       time.Time
+	DiceMode        string
+	XpModeChangedAt *time.Time
 }
 
 type CampaignDocument struct {
@@ -46,4 +47,19 @@ type CampaignMember struct {
 	Status           string
 	PendingExpiresAt *time.Time
 	DicePreference   string
+}
+
+type CampaignTableRule struct {
+	CampaignID           string
+	HitPointsRule        string
+	AbilityStandardArray bool
+	AbilityPointBuy      bool
+	AbilityRoll4d6       bool
+	AbilityTyped         bool
+	CriticalRule         string
+	DeathSaves           string
+	CombatStartsWithMap  bool
+	FogOnNewMaps         bool
+	HouseRules           []string
+	UpdatedAt            time.Time
 }

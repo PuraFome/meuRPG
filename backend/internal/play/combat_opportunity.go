@@ -32,6 +32,9 @@ const (
 	offerAttacked = "attacked"
 	offerDeclined = "declined"
 	offerSkipped  = "skipped"
+	// offerWithdrawn is an offer the master took back before it was answered
+	// (WithdrawOpportunity, in a combat without a grid).
+	offerWithdrawn = "withdrawn"
 )
 
 // cantReact are the conditions that take a creature's reaction away (SRD:
@@ -172,14 +175,14 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		offered = append(offered, p.reactor.ID)
 		offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
 			EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: p.reactor.ID,
-			LeftCol: clamp32(p.left.Col, 0, math.MaxInt32), LeftRow: clamp32(p.left.Row, 0, math.MaxInt32), CreatedAt: c.now,
+			LeftCol: ptr(clamp32(p.left.Col, 0, math.MaxInt32)), LeftRow: ptr(clamp32(p.left.Row, 0, math.MaxInt32)), CreatedAt: c.now,
 		})
 		if err != nil {
 			return "", nil, fmt.Errorf("offer the opportunity attack: %w", err)
 		}
 		if err := insertEvent(ctx, c, eventOpportunityOffered, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: mover.Hidden || p.reactor.Hidden, Actor: mover.ID, Target: p.reactor.ID,
-			OfferID: offer.ID, MoveID: moveID, Col: offer.LeftCol, Row: offer.LeftRow,
+			OfferID: offer.ID, MoveID: moveID, Col: valueOf(offer.LeftCol), Row: valueOf(offer.LeftRow),
 		}); err != nil {
 			return "", nil, err
 		}
@@ -204,7 +207,7 @@ func (s *Service) publishOffersMade(campaignID string, d *encounterData, mover p
 		}
 	}
 	slices.Sort(users)
-	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID})
+	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID, Mode: d.enc.Mode})
 	for _, u := range slices.Compact(users) {
 		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
 	}
@@ -331,7 +334,7 @@ func (s *Service) DeclineOpportunity(
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), req.Msg.GetOpportunityOfferId(), req.Msg.GetIdempotencyKey(), false)
+	out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), req.Msg.GetOpportunityOfferId(), req.Msg.GetIdempotencyKey(), offerDeclined)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +350,7 @@ func (s *Service) SkipOpportunity(
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), req.Msg.GetOpportunityOfferId(), req.Msg.GetIdempotencyKey(), true)
+	out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), req.Msg.GetOpportunityOfferId(), req.Msg.GetIdempotencyKey(), offerSkipped)
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +358,9 @@ func (s *Service) SkipOpportunity(
 }
 
 // answerOffer ends an offer without an attack: declined by its reactor's
-// controller (or the master), or skipped by the master. It writes a
-// reaction_declined event that the undo can take back.
-func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncounter, rawOffer, rawKey string, skip bool) (*playv1.Encounter, error) {
+// controller (or the master), or skipped or withdrawn by the master (state). It
+// writes a reaction_declined event that the undo can take back.
+func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncounter, rawOffer, rawKey, state string) (*playv1.Encounter, error) {
 	key, err := parseKey(rawKey)
 	if err != nil {
 		return nil, err
@@ -397,9 +400,8 @@ func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncoun
 		if o.State != offerPending {
 			return nil, errOfferGone()
 		}
-		state := offerDeclined
-		if skip {
-			state = offerSkipped
+		if state == offerWithdrawn && o.LeftCol != nil {
+			return nil, errTheatreOnly() // only the master's own offers are taken back: a move's offer is answered or skipped
 		}
 		if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: o.ID, State: state, AnsweredAt: &c.now}); err != nil {
 			return nil, fmt.Errorf("answer the opportunity offer: %w", err)
@@ -409,7 +411,7 @@ func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncoun
 		}
 		c.characterID = &reactor.CharacterID
 		mover, _ := findCombatant(cs, o.MoverID, combatViewer{master: true})
-		return actionEvent{Round: c.enc.Round, Secret: secretOf(reactor, mover), Actor: reactor.ID, Target: o.MoverID, OfferID: o.ID, Skipped: skip}, nil
+		return actionEvent{Round: c.enc.Round, Secret: secretOf(reactor, mover), Actor: reactor.ID, Target: o.MoverID, OfferID: o.ID, Skipped: state == offerSkipped, Withdrawn: state == offerWithdrawn}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer an opportunity offer", err)
@@ -442,7 +444,7 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 		reactor, ok2 := find(o.ReactorID)
 		// The mover is judged on the square it left: a retreating NPC the player saw
 		// leave still has the offer for their reactor, though they do not see it now.
-		if !ok1 || !ok2 || !v.seesAt(mover, grid.Square{Col: int(o.LeftCol), Row: int(o.LeftRow)}) {
+		if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
 			continue
 		}
 		answers := v.master || v.owns(reactor)
@@ -454,7 +456,8 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 			offer.ReactorId, offer.ReactorLabel = reactor.ID, reactor.Label
 		}
 		if answers {
-			offer.LeftCol, offer.LeftRow = o.LeftCol, o.LeftRow
+			offer.LeftCol, offer.LeftRow = valueOf(o.LeftCol), valueOf(o.LeftRow)
+			offer.ByHand = o.LeftCol == nil
 			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, reactor); err == nil {
 				for _, a := range sheet.Attacks {
 					if meleeAttack(a) {
@@ -531,7 +534,7 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	if err != nil {
 		return nil, false, fmt.Errorf("find the opportunity offer of the attack: %w", err)
 	}
-	if o.MoverID != mover.ID || !placed(mover) {
+	if o.MoverID != mover.ID || !placed(mover) || o.LeftCol == nil || o.LeftRow == nil { // no square: an offer made by hand
 		return nil, false, nil
 	}
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
@@ -539,13 +542,13 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 		return nil, false, fmt.Errorf("list the combatants: %w", err)
 	}
 	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
-		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == o.LeftCol && *m.GridRow == o.LeftRow
+		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
 	}) {
 		return nil, true, nil
 	}
 	before := moveStateOf(mover)
 	if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
-		ID: mover.ID, GridCol: &o.LeftCol, GridRow: &o.LeftRow,
+		ID: mover.ID, GridCol: o.LeftCol, GridRow: o.LeftRow,
 		MovementUsedFt: mover.MovementUsedFt, MovementUsedDft: mover.MovementUsedDft, LastMoveDft: mover.LastMoveDft, CoverMark: mover.CoverMark,
 	}); err != nil {
 		return nil, false, fmt.Errorf("take the mover back to where it left the reach: %w", err)
