@@ -114,8 +114,10 @@
             <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [compact]="true" />
           }
         </app-combat-view>
-        <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. -->
-        @if (fogMaster()) {
+        <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
+        @if (inTheatre()) {
+          <!-- Nothing that depends on place exists here. -->
+        } @else if (fogMaster()) {
           <app-fog-master-panel
             class="fog-panel"
             [campaignId]="campaignId()"
@@ -146,7 +148,7 @@
             [seeing]="seeingFamiliar()"
           />
         }
-        @if (isMaster()) {
+        @if (isMaster() && !inTheatre()) {
           <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
           <div class="board__traps">
             <app-trap-panel

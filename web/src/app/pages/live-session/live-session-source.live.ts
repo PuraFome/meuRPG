@@ -178,6 +178,8 @@ export class LiveSessionSourceLive implements LiveSessionSource {
             kind: 'encounterChanged',
             encounterId: res.event.value.encounterId,
             revision: res.event.value.revision,
+            // The combat's mode (RN-25): a combat without a map has no fog to read and no trap to refresh.
+            mode: res.event.value.mode,
           };
           break;
         case 'turnChanged':

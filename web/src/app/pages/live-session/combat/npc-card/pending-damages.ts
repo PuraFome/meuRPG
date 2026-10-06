@@ -12,6 +12,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { damageFormula, diceName, sumRange } from '../../../../core/combat/combat-dice';
+import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { hitPointsAfter, hitPointsLine } from '../../../../core/combat/attack-flow';
@@ -52,6 +53,8 @@ export class PendingDamages {
   readonly settledNote = output<void>();
 
   protected readonly busy = signal(false);
+  /** The master types a physical roll: only then the critical's line is said (the app's dice are the server's). */
+  protected readonly typing = signal(false);
   protected readonly error = signal('');
   protected readonly discarding = signal<string | null>(null);
   /** What was just settled, for the live region ("Dano de 5 aplicado…"). */
@@ -97,6 +100,11 @@ export class PendingDamages {
       range,
       label: p.diceCount > 1 ? `Role ${diceName(p.diceCount, p.diceSides)} para o dano: some os dois` : `Role ${diceName(p.diceCount, p.diceSides)} para o dano`,
       line: p.roll ? damageFormula(p.roll, p.damageTypePt) : '',
+      // A critical hit follows the table's rule: what to roll, said the way it asks, and what the typed sum is (RN-24).
+      crit: p.critical ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? '') : '',
+      typedHint: criticalTypedHint(p.criticalRule, diceName(p.diceCount, p.diceSides), range.min, range.max, p.criticalMax),
+      modifier: p.bonus + p.criticalMax,
+      fixedText: fixedParts(p.criticalMax, p.bonus),
       effect:
         rolled && target && target.hitPointsMax !== undefined
           ? hitPointsLine(

@@ -8,6 +8,7 @@ import {
   CombatLogRoundSchema,
   CoverDegree,
   CoverSource,
+  DeathSaveOutcome,
   JumpKind,
   PendingDamageStatus,
   WildShapeEndReason,
@@ -246,5 +247,44 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
   it('names what an undo would take back', () => {
     expect(undoLabel(entry({ kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Sono' } as never))).toBe('a magia Sono do Pensantus');
     expect(undoLabel(entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa' } as never))).toBe('o teste contra a morte da Brisa');
+  });
+});
+
+describe('the log of a combat without a map (RN-25) and of hidden death saves (RN-24)', () => {
+  const theatre = { master: true, players: new Set<string>(), theatre: true };
+
+  it('says movement spent by number, in meters, instead of a walk', () => {
+    expect(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceDft: 200, distanceFt: 20 }), '', theatre)).toMatchObject({
+      icon: 'directions_run',
+      text: ' gastou 6,0\u00a0m de movimento',
+    });
+    // On a map the same entry is still a walk.
+    expect(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceDft: 200, distanceFt: 20 }))?.text).toBe(' anda 6,0\u00a0m');
+  });
+
+  it('says the combat began without a map', () => {
+    expect(logLine(entry({ kind: CombatLogKind.COMBAT_BEGUN }), 'Emboscada na estrada', theatre)?.text).toBe(
+      'Combate iniciado: Emboscada na estrada, sem mapa (teatro da mente)',
+    );
+  });
+
+  it('writes the master\'s offer with the mover as the actor and the reactor as the target, and names it for the undo', () => {
+    const offered = entry({ kind: CombatLogKind.OPPORTUNITY_OFFERED, actorLabel: 'Goblin 1', targetLabel: 'Toren', undoable: true });
+    expect(logLine(offered, '', theatre)).toMatchObject({ actor: 'Goblin 1', icon: 'swords', text: ' saiu do alcance de Toren', undoable: true });
+    expect(undoLabel(offered)).toBe('a oferta de ataque de oportunidade a Toren');
+  });
+
+  it('reads a death-save line that carries only "stable" (no roll, no outcome) as "estabilizou"', () => {
+    const stable = entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa', deathSave: { stable: true, successes: 0, failures: 0 } } as never);
+    expect(logLine(stable)?.text).toBe(' estabilizou');
+  });
+
+  it('keeps the whole sentence when the table shows the saves (a stable save with its outcome and counts)', () => {
+    const stable = entry({
+      kind: CombatLogKind.DEATH_SAVE,
+      actorLabel: 'Brisa',
+      deathSave: { outcome: DeathSaveOutcome.SUCCESS, stable: true, successes: 3, failures: 1 },
+    } as never);
+    expect(logLine(stable)?.text).toBe(' faz um teste contra a morte: sucesso (3 sucessos, 1 falha). Estável: não rola mais');
   });
 });

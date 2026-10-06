@@ -90,14 +90,19 @@
     } @else if (it.waitsForPlayer) {
       <p class="dmg__wait"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ it.attacker }} rolar o dano em {{ it.target }}.</p>
     } @else {
+      @if (it.crit && typing()) {
+        <p class="dmg__crit" data-testid="critical-hint">{{ it.crit }}</p>
+      }
       <app-roll-picker
         [canType]="true"
         [outlined]="true"
         [min]="it.range.min"
         [max]="it.range.max"
-        [modifier]="it.p.bonus"
+        [modifier]="it.modifier"
+        [fixedText]="it.fixedText"
+        [(typing)]="typing"
         [label]="it.label"
-        [hint]="'Digite a soma dos dados, de ' + it.range.min + ' a ' + it.range.max + '.'"
+        [hint]="it.typedHint"
         totalNote="Dano total"
         appLabel="Rolar dano"
         [busy]="busy()"

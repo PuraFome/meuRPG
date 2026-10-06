@@ -29,6 +29,10 @@ import { DeathMarks } from './death-marks';
   template: `
     <section class="card" aria-labelledby="ds-title">
       <h3 class="card__title" id="ds-title">Testes contra a morte</h3>
+      @if (ownerOnly()) {
+        <!-- The table hides the death saves (RN-24): only the owner and the master see these marks. -->
+        <p class="private" data-testid="death-private"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você e o mestre</p>
+      }
       <div class="row">
         <span class="row__name"><b>Sucessos</b><small>{{ count(own().deathSuccesses) }}</small></span>
         <app-death-marks kind="success" [count]="own().deathSuccesses" />
@@ -96,6 +100,8 @@ export class DeathSaves {
   readonly dicePreference = input.required<DicePreference>();
   /** The sentence of the save just rolled this turn ("Teste contra a morte: ..."). */
   readonly result = input('');
+  /** The table hides the death saves from the other players (RN-24): the card says who sees them. */
+  readonly ownerOnly = input(false);
 
   readonly roll = output<AttackDie>();
   readonly endTurn = output<void>();

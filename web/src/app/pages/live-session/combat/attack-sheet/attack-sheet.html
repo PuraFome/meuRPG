@@ -25,7 +25,7 @@
   }
   @switch (stage()) {
     @case ('target') {
-      <p class="sheet__ask" id="target-label">Escolha o alvo (só quem você vê)</p>
+      <p class="sheet__ask" id="target-label">{{ theatre() ? 'Escolha o alvo (quem você vê)' : 'Escolha o alvo (só quem você vê)' }}</p>
       <div class="targets" role="radiogroup" aria-labelledby="target-label">
         @for (t of rows(); track t.id) {
           <label class="target" [class.target--off]="t.blocked">
@@ -58,13 +58,20 @@
             </span>
           </label>
         } @empty {
-          <p class="sheet__note">Não há ninguém ao alcance para atacar.</p>
+          <p class="sheet__note">{{ theatre() ? 'Não há ninguém para atacar.' : 'Não há ninguém ao alcance para atacar.' }}</p>
         }
       </div>
-      <p class="sheet__note">
-        <mat-icon aria-hidden="true">info</mat-icon>
-        Um alvo fora do alcance de {{ rangeText }} aparece desabilitado, com “Longe demais”.
-      </p>
+      @if (theatre()) {
+        <p class="sheet__note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <span><b>O mestre decide quem está ao alcance.</b> Sem mapa, o app não mostra distância.</span>
+        </p>
+      } @else {
+        <p class="sheet__note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          Um alvo fora do alcance de {{ rangeText }} aparece desabilitado, com “Longe demais”.
+        </p>
+      }
       <div class="sheet__foot">
         <button mat-stroked-button type="button" class="sheet__done" (click)="close()">Cancelar</button>
       </div>
@@ -109,7 +116,7 @@
       @if (stage() === 'damage' && dice(); as d) {
         <div class="dmg">
           <p class="dmg__what">
-            {{ outcome()?.crit ? 'Acerto crítico: os dados do dano dobram (' + d.name + ').' : 'Acertou: role o dano.' }}
+            {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
           </p>
           <app-roll-picker
             [canApp]="canApp"
@@ -120,7 +127,8 @@
             totalNote="Dano total"
             [min]="range().min"
             [max]="range().max"
-            [modifier]="d.bonus"
+            [modifier]="damageModifier()"
+            [fixedText]="fixedText()"
             [busy]="busy()"
             [appLabel]="'Rolar ' + d.name + ' no app'"
             [sticky]="true"

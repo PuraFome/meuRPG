@@ -1,0 +1,166 @@
+:host {
+  display: block;
+}
+
+.cover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 18px 20px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.cover__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.cover__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.targets {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.target__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.target__name {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  line-height: 24px;
+}
+
+.target__line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.target__change {
+  flex: none;
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-right: -12px;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.choice--on {
+  padding: 7px 11px;
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.choice__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+}
+
+.choice--on .choice__dot {
+  border: 6px solid var(--mr-accent);
+}
+
+// The pictogram column keeps the words of all four rows on one line.
+.choice__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+}
+
+.choice__words {
+  display: flex;
+  flex-direction: column;
+}
+
+.choice__name {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.choice__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+
+  // Two buttons of one size, from a phone to a desktop.
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 200px);
+  }
+}
+
+.btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  min-width: 0;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}

@@ -79,6 +79,7 @@
               [busy]="busy()"
               [pendingNote]="owed()"
               [waitNote]="waitNote()"
+              [theatre]="theatre()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
             />
@@ -93,6 +94,22 @@
               (settled)="board.settled($event)"
             />
           }
+          @if (theatre()) {
+            <!-- A combat without a map (RN-25, E10-04): no map, no tokens; the card and its movement on the left, the order on the right. -->
+            <div class="theatre">
+              <div class="theatre__top">
+                <ng-container *ngTemplateOutlet="masterCards" />
+              </div>
+              <div class="theatre__order"><ng-container *ngTemplateOutlet="masterOrder" /></div>
+              <div class="theatre__rest">
+                <app-cover-panel [targets]="coverTargets()" [everyone]="everyone()" [request]="coverRequest()" [busy]="busy()" (cover)="setCover($event)" />
+                <app-combat-log-panel [log]="log" [encounter]="e" [campaignId]="campaignId()" [state]="state()" [master]="true" (conditions)="openConditions($event)" />
+              </div>
+              @if (!laptop()) {
+                <app-combat-bar class="theatre__end" [encounter]="e" [theatre]="true" [endOnly]="true" (end)="endCombat()" />
+              }
+            </div>
+          } @else {
           <div class="active">
             <div class="active__map">
               @if (image(); as img) {
@@ -130,62 +147,8 @@
               }
             </div>
             <div class="active__side">
-              <app-opportunity-card
-                [encounter]="e"
-                [attacksByOffer]="masterAttacks()"
-                [info]="info()"
-                [busy]="busy()"
-                [failed]="reactorFailed()"
-                [canUndo]="canUndoMove()"
-                (answer)="answerOpportunity($event)"
-                (skip)="skipOpportunity($event)"
-                (retry)="loadReactor($event)"
-                (undo)="undoMove()"
-              />
-              <app-death-question
-                [dying]="dying()"
-                [dismissed]="deathLater()"
-                [busy]="busy()"
-                (confirm)="confirmDeath($event)"
-                (later)="deathLaterFor($event)"
-              />
-              <app-joint-card [encounter]="e" [info]="info()" [busy]="busy()" (endPart)="endPart($event)" />
-              @if ((!laptop() || cardVisible()) && masterCard(); as who) {
-                <app-npc-card
-                  [campaignId]="campaignId()"
-                  [encounter]="e"
-                  [subject]="who"
-                  [options]="options()"
-                  [state]="state()"
-                  [narrow]="!laptop()"
-                  [joint]="!!joint()"
-                  [pendingNote]="owed()"
-                  [reactionStopped]="reactionStopped()"
-                  [turnBusy]="busy()"
-                  (next)="nextTurn($event)"
-                  (settledNote)="settled()"
-                />
-              }
-              <app-order-list
-                [encounter]="e"
-                [info]="info()"
-                [adjustable]="adjustable()"
-                [busy]="busy()"
-                (adjust)="adjustFor($event)"
-                (adjustNpc)="adjustNpc($event)"
-                (conditions)="openConditions($event)"
-                [deathDismissed]="deathLater()"
-                (askDeath)="deathAskAgain($event)"
-                (reveal)="reveal($event)"
-                (remove)="remove($event)"
-                (endConcentration)="loseConcentration($event)"
-                (add)="addCombatants()"
-                [coverAgainst]="coverAgainst()"
-                [turnLabel]="turnLabel()"
-                [turnSide]="turnSide()"
-                (side)="setSide($event)"
-                (cover)="setCover($event)"
-              />
+              <ng-container *ngTemplateOutlet="masterCards" />
+              <ng-container *ngTemplateOutlet="masterOrder" />
             </div>
             <app-combat-log-panel
               class="active__log"
@@ -200,6 +163,7 @@
               <app-combat-bar class="active__end" [encounter]="e" [endOnly]="true" (end)="endCombat()" />
             }
           </div>
+          }
         </div>
         }
       }
@@ -294,11 +258,12 @@
                   [attacksLeft]="attacksLeft()"
                   [attacksPerAction]="attacksPerAction()"
                   [hitPointsMax]="ownMaxHp()"
-                  [opportunities]="opportunities()"
+                  [opportunities]="theatre() ? [] : opportunities()"
                   [waiting]="waiting()"
                   [moveNote]="moveNote()"
                   [trapNote]="trapNote()"
                   [concentration]="ownConcentration()"
+                  [theatre]="theatre()"
                   (endTurn)="nextTurn()"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
@@ -333,6 +298,7 @@
               @if (ownDown()) {
                 <div class="player__actions">
                   <app-death-saves
+                    [ownerOnly]="deathsHidden()"
                     [own]="me"
                     [busy]="busy()"
                     [diceMode]="diceMode()"
@@ -356,9 +322,10 @@
                       [pendingRoll]="ownPendingRoll()"
                       [locked]="waiting()?.title ?? ''"
                       [busy]="busy()"
-                      [familiar]="familiar()"
+                      [familiar]="theatre() ? null : familiar()"
                       [wild]="wild()"
                       [beast]="me.wildShapeBeastNamePt"
+                      [theatre]="theatre()"
                       (familiarEyes)="askFamiliarEyes()"
                       (attack)="openAttack($event)"
                       (cast)="openCast($event)"
@@ -377,7 +344,9 @@
                 }
               }
             }
-            @if (image(); as img) {
+            @if (theatre()) {
+              <app-no-map-panel class="player__map" />
+            } @else if (image(); as img) {
               <app-combat-map-card
                 class="player__map"
                 [encounter]="e"
@@ -400,8 +369,14 @@
               [encounter]="e"
               [campaignId]="campaignId()"
               [state]="state()"
+              [deathNote]="deathNote()"
             />
-            <div class="player__side"><ng-content /></div>
+            <div class="player__side">
+              <ng-content />
+              @if (theatre() && own() && !ownDown(); as me) {
+                <app-theatre-reaction [used]="own()!.reactionUsed" />
+              }
+            </div>
             @if (creatureTab(); as ct) {
               <app-creature-bar class="player__bar" [tabs]="tabs()" [tab]="ct" [busy]="busy()" [waiting]="creatureLocked()" (select)="tabId.set($event)" (endPart)="endTab(ct)" />
             } @else if (showTabs() || (myTurn() && own() && !ownDown())) {
@@ -413,6 +388,7 @@
                 [attacksLeft]="attacksLeft()"
                 [busy]="busy()"
                 [waiting]="waiting()?.title ?? ''"
+                [theatre]="theatre()"
                 [joint]="jointOthers()"
                 (endTurn)="nextTurn()"
                 (select)="tabId.set($event)"
@@ -434,3 +410,90 @@
     }
   }
 }
+
+<!-- What the master's side of a running combat is made of: the answers and the card of whoever is on turn, then the order. -->
+<ng-template #masterCards>
+  @if (encounter(); as e) {
+    <app-opportunity-card
+      [encounter]="e"
+      [attacksByOffer]="masterAttacks()"
+      [info]="info()"
+      [busy]="busy()"
+      [failed]="reactorFailed()"
+      [canUndo]="canUndoMove()"
+      (answer)="answerOpportunity($event)"
+      (skip)="skipOpportunity($event)"
+      (withdraw)="withdrawOpportunity($event)"
+      (retry)="loadReactor($event)"
+      (undo)="undoMove()"
+    />
+    <app-death-question
+      [dying]="dying()"
+      [dismissed]="deathLater()"
+      [busy]="busy()"
+      (confirm)="confirmDeath($event)"
+      (later)="deathLaterFor($event)"
+    />
+    <app-joint-card [encounter]="e" [info]="info()" [busy]="busy()" (endPart)="endPart($event)" />
+    @if ((!laptop() || cardVisible() || theatre()) && masterCard(); as who) {
+      <app-npc-card
+        [campaignId]="campaignId()"
+        [encounter]="e"
+        [subject]="who"
+        [options]="options()"
+        [state]="state()"
+        [narrow]="!laptop()"
+        [joint]="!!joint()"
+        [pendingNote]="owed()"
+        [reactionStopped]="reactionStopped()"
+        [turnBusy]="busy()"
+        [theatre]="theatre()"
+        [offering]="offering()"
+        [offerWhy]="offerWhy()"
+        (offer)="toggleOffer()"
+        (next)="nextTurn($event)"
+        (settledNote)="settled()"
+      >
+        @if (offering()) {
+          <app-offer-panel
+            offer-slot
+            [moverLabel]="who.label"
+            [rows]="offerRows()"
+            [busy]="busy()"
+            [error]="offerError()"
+            (offer)="makeOffer($event)"
+            (cancel)="offering.set(false)"
+          />
+        }
+      </app-npc-card>
+    }
+  }
+</ng-template>
+
+<ng-template #masterOrder>
+  @if (encounter(); as e) {
+    <app-order-list
+      [encounter]="e"
+      [info]="info()"
+      [adjustable]="adjustable()"
+      [busy]="busy()"
+      [deathsHidden]="deathsHidden()"
+      [theatre]="theatre()"
+      (coverEdit)="coverRequest.set({ id: $event, n: (coverRequest()?.n ?? 0) + 1 })"
+      (adjust)="adjustFor($event)"
+      (adjustNpc)="adjustNpc($event)"
+      (conditions)="openConditions($event)"
+      [deathDismissed]="deathLater()"
+      (askDeath)="deathAskAgain($event)"
+      (reveal)="reveal($event)"
+      (remove)="remove($event)"
+      (endConcentration)="loseConcentration($event)"
+      (add)="addCombatants()"
+      [coverAgainst]="coverAgainst()"
+      [turnLabel]="turnLabel()"
+      [turnSide]="turnSide()"
+      (side)="setSide($event)"
+      (cover)="setCover($event)"
+    />
+  }
+</ng-template>

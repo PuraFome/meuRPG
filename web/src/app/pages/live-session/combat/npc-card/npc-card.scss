@@ -195,3 +195,30 @@
   background: var(--mr-danger-surface);
   color: var(--mr-danger-ink);
 }
+
+// "Oferecer ataque de oportunidade" (a combat without a map): outlined and full width, the page's one filled button stays "Próximo turno".
+.offer {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+// The kicker and the mode's pill share the card's top line.
+.card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.offer__why {
+  margin: -4px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
