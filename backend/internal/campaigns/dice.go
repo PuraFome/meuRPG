@@ -69,11 +69,11 @@ func EffectiveDiceMode(mode DiceMode, preference DicePreference) RollsIn {
 	return RollsInApp
 }
 
-// CampaignDiceMode returns the campaign's dice setting for an active member:
+// CampaignDiceMode returns the campaign's dice setting for a member:
 // only a mode the master forced (app or physical) binds the player; with
 // players_choose each roll is theirs to choose, and their preference is just
 // the default a screen offers (RN-18, decided 03/10/2026). authz.ErrNotMember
-// for anyone who is not an active member. It reads inside tx when the caller
+// for anyone who is not a member (a pending one counts). It reads inside tx when the caller
 // has one (nil: the pool): a request that holds a transaction must not take a
 // second connection.
 func (s *Service) CampaignDiceMode(ctx context.Context, tx pgx.Tx, campaignID, userID string) (DiceMode, error) {
@@ -85,10 +85,12 @@ func (s *Service) CampaignDiceMode(ctx context.Context, tx pgx.Tx, campaignID, u
 	if err != nil {
 		return "", fmt.Errorf("get campaign: %w", err)
 	}
-	if _, err := q.GetMemberDicePreference(ctx, campaignsdb.GetMemberDicePreferenceParams{CampaignID: campaignID, UserID: userID}); errors.Is(err, pgx.ErrNoRows) {
+	// A pending member (RN-15) makes a character too, and rolls its ability scores by
+	// the campaign's dice setting, so any membership counts, not only an active one.
+	if _, err := q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: campaignID, UserID: userID}); errors.Is(err, pgx.ErrNoRows) {
 		return "", authz.ErrNotMember
 	} else if err != nil {
-		return "", fmt.Errorf("get dice preference: %w", err)
+		return "", fmt.Errorf("get membership: %w", err)
 	}
 	return DiceMode(campaign.DiceMode), nil
 }

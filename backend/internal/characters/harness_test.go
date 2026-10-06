@@ -41,9 +41,27 @@ import (
 type probeSource struct {
 	pool    *pgxpool.Pool
 	content *rules.Content
+	// tables reads the rules the table saved, as production does (the campaigns
+	// service): through the caller's transaction when there is one.
+	tables TableRulesReader
+}
+
+// ContentFor is For without the rules: the probe still touches the database, in the
+// caller's transaction when there is one.
+func (p probeSource) ContentFor(ctx context.Context, tx pgx.Tx, _ string) (*rules.Content, error) {
+	var err error
+	if tx != nil {
+		_, err = tx.Exec(ctx, "SELECT 1")
+	} else {
+		_, err = p.pool.Exec(ctx, "SELECT 1")
+	}
+	return p.content, err
 }
 
 func (p probeSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
+	if p.tables != nil {
+		return NewTableSource(p.content, p.tables).For(ctx, tx, campaignID)
+	}
 	var err error
 	if tx != nil {
 		_, err = tx.Exec(ctx, "SELECT 1")
@@ -158,7 +176,7 @@ func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
 	srd := loadRules(t)
-	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: probeSource{pool: pool, content: srd}, SRD: srd, Logger: logger, Now: h.clock.Now}
+	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: probeSource{pool: pool, content: srd, tables: camps}, SRD: srd, Logger: logger, Now: h.clock.Now}
 	if tweak != nil {
 		tweak(&cfg)
 	}

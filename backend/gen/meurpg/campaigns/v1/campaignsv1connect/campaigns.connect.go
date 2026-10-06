@@ -72,6 +72,15 @@ const (
 	// CampaignServiceSetMyDicePreferenceProcedure is the fully-qualified name of the CampaignService's
 	// SetMyDicePreference RPC.
 	CampaignServiceSetMyDicePreferenceProcedure = "/meurpg.campaigns.v1.CampaignService/SetMyDicePreference"
+	// CampaignServiceGetTableRulesProcedure is the fully-qualified name of the CampaignService's
+	// GetTableRules RPC.
+	CampaignServiceGetTableRulesProcedure = "/meurpg.campaigns.v1.CampaignService/GetTableRules"
+	// CampaignServiceSetTableRulesProcedure is the fully-qualified name of the CampaignService's
+	// SetTableRules RPC.
+	CampaignServiceSetTableRulesProcedure = "/meurpg.campaigns.v1.CampaignService/SetTableRules"
+	// CampaignServiceSetCampaignXpModeProcedure is the fully-qualified name of the CampaignService's
+	// SetCampaignXpMode RPC.
+	CampaignServiceSetCampaignXpModeProcedure = "/meurpg.campaigns.v1.CampaignService/SetCampaignXpMode"
 )
 
 // CampaignServiceClient is a client for the meurpg.campaigns.v1.CampaignService service.
@@ -205,6 +214,50 @@ type CampaignServiceClient interface {
 	//
 	// Errors: `invalid_argument` for an unspecified or unknown preference.
 	SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error)
+	// GetTableRules returns the table's rules (MR-025, RN-24): what "Regras da
+	// mesa" shows. Any active member may call it, because the page is shown to
+	// the whole table. A campaign that never saved its rules gets the defaults
+	// (the SRD's: what the app did before the rules existed). A pending member
+	// (RN-15) may call it too, to see which ways of making ability scores the
+	// table allows while they create their character. It only reads, but stays POST-only, because a GET would
+	// put the campaign ID in the URL.
+	GetTableRules(context.Context, *connect.Request[v1.GetTableRulesRequest]) (*connect.Response[v1.GetTableRulesResponse], error)
+	// SetTableRules replaces all of the table's rules (RN-24). Only the
+	// campaign's master may call it. It is one save, as the page has one "Salvar
+	// regras": every field is written, so the app sends the whole TableRules it
+	// shows. It writes the dice mode (campaigns' own setting, RN-18) in the same
+	// transaction, so the page's dice choice and the rest never disagree. It
+	// applies from now on: sheets that already exist keep their scores, and a
+	// level-up, a creation or a new map takes the rules in force when it happens.
+	// Setting what is already saved is not an error.
+	//
+	// Errors:
+	//   - `invalid_argument`: a field is unspecified or unknown; no ability
+	//     method is allowed; more than 20 house rules, or one that is empty,
+	//     longer than 200 characters or has a line break.
+	SetTableRules(context.Context, *connect.Request[v1.SetTableRulesRequest]) (*connect.Response[v1.SetTableRulesResponse], error)
+	// SetCampaignXpMode changes how the campaign levels (RN-09) after it was
+	// created. Only the campaign's master may call it. The new mode applies from
+	// now on; nothing already awarded is converted or changed, the history stays,
+	// and going back to the earlier mode is allowed. When XP was already awarded
+	// (an award that was not undone, a milestone included), the call needs
+	// `confirm`: without it, it answers `failed_precondition` with an
+	// XpModeChangeBlocked detail that says how much was awarded, and changes
+	// nothing. Setting the mode the campaign already has is not an error and
+	// asks for nothing.
+	//
+	// The mode also decides "Pode subir de nível" (RN-12): by enemies or by gold, the
+	// character's XP reaching the next level; by milestones, a mark. So a switch
+	// moves the level-ups that are waiting: a character that was ready by XP is
+	// not ready by milestones until the master marks it, and one marked for a
+	// milestone is not ready by XP until the XP reaches the level. Nothing is
+	// written to the sheets: the flag is read from the mode on every read.
+	//
+	// Errors:
+	//   - `invalid_argument`: the mode is unspecified or unknown.
+	//   - `failed_precondition`: XP was already awarded and `confirm` is false
+	//     (XpModeChangeBlocked).
+	SetCampaignXpMode(context.Context, *connect.Request[v1.SetCampaignXpModeRequest]) (*connect.Response[v1.SetCampaignXpModeResponse], error)
 }
 
 // NewCampaignServiceClient constructs a client for the meurpg.campaigns.v1.CampaignService service.
@@ -295,6 +348,25 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(campaignServiceMethods.ByName("SetMyDicePreference")),
 			connect.WithClientOptions(opts...),
 		),
+		getTableRules: connect.NewClient[v1.GetTableRulesRequest, v1.GetTableRulesResponse](
+			httpClient,
+			baseURL+CampaignServiceGetTableRulesProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("GetTableRules")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		setTableRules: connect.NewClient[v1.SetTableRulesRequest, v1.SetTableRulesResponse](
+			httpClient,
+			baseURL+CampaignServiceSetTableRulesProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("SetTableRules")),
+			connect.WithClientOptions(opts...),
+		),
+		setCampaignXpMode: connect.NewClient[v1.SetCampaignXpModeRequest, v1.SetCampaignXpModeResponse](
+			httpClient,
+			baseURL+CampaignServiceSetCampaignXpModeProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("SetCampaignXpMode")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -312,6 +384,9 @@ type campaignServiceClient struct {
 	acceptInvite        *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
 	setCampaignDiceMode *connect.Client[v1.SetCampaignDiceModeRequest, v1.SetCampaignDiceModeResponse]
 	setMyDicePreference *connect.Client[v1.SetMyDicePreferenceRequest, v1.SetMyDicePreferenceResponse]
+	getTableRules       *connect.Client[v1.GetTableRulesRequest, v1.GetTableRulesResponse]
+	setTableRules       *connect.Client[v1.SetTableRulesRequest, v1.SetTableRulesResponse]
+	setCampaignXpMode   *connect.Client[v1.SetCampaignXpModeRequest, v1.SetCampaignXpModeResponse]
 }
 
 // CreateCampaign calls meurpg.campaigns.v1.CampaignService.CreateCampaign.
@@ -372,6 +447,21 @@ func (c *campaignServiceClient) SetCampaignDiceMode(ctx context.Context, req *co
 // SetMyDicePreference calls meurpg.campaigns.v1.CampaignService.SetMyDicePreference.
 func (c *campaignServiceClient) SetMyDicePreference(ctx context.Context, req *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error) {
 	return c.setMyDicePreference.CallUnary(ctx, req)
+}
+
+// GetTableRules calls meurpg.campaigns.v1.CampaignService.GetTableRules.
+func (c *campaignServiceClient) GetTableRules(ctx context.Context, req *connect.Request[v1.GetTableRulesRequest]) (*connect.Response[v1.GetTableRulesResponse], error) {
+	return c.getTableRules.CallUnary(ctx, req)
+}
+
+// SetTableRules calls meurpg.campaigns.v1.CampaignService.SetTableRules.
+func (c *campaignServiceClient) SetTableRules(ctx context.Context, req *connect.Request[v1.SetTableRulesRequest]) (*connect.Response[v1.SetTableRulesResponse], error) {
+	return c.setTableRules.CallUnary(ctx, req)
+}
+
+// SetCampaignXpMode calls meurpg.campaigns.v1.CampaignService.SetCampaignXpMode.
+func (c *campaignServiceClient) SetCampaignXpMode(ctx context.Context, req *connect.Request[v1.SetCampaignXpModeRequest]) (*connect.Response[v1.SetCampaignXpModeResponse], error) {
+	return c.setCampaignXpMode.CallUnary(ctx, req)
 }
 
 // CampaignServiceHandler is an implementation of the meurpg.campaigns.v1.CampaignService service.
@@ -505,6 +595,50 @@ type CampaignServiceHandler interface {
 	//
 	// Errors: `invalid_argument` for an unspecified or unknown preference.
 	SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error)
+	// GetTableRules returns the table's rules (MR-025, RN-24): what "Regras da
+	// mesa" shows. Any active member may call it, because the page is shown to
+	// the whole table. A campaign that never saved its rules gets the defaults
+	// (the SRD's: what the app did before the rules existed). A pending member
+	// (RN-15) may call it too, to see which ways of making ability scores the
+	// table allows while they create their character. It only reads, but stays POST-only, because a GET would
+	// put the campaign ID in the URL.
+	GetTableRules(context.Context, *connect.Request[v1.GetTableRulesRequest]) (*connect.Response[v1.GetTableRulesResponse], error)
+	// SetTableRules replaces all of the table's rules (RN-24). Only the
+	// campaign's master may call it. It is one save, as the page has one "Salvar
+	// regras": every field is written, so the app sends the whole TableRules it
+	// shows. It writes the dice mode (campaigns' own setting, RN-18) in the same
+	// transaction, so the page's dice choice and the rest never disagree. It
+	// applies from now on: sheets that already exist keep their scores, and a
+	// level-up, a creation or a new map takes the rules in force when it happens.
+	// Setting what is already saved is not an error.
+	//
+	// Errors:
+	//   - `invalid_argument`: a field is unspecified or unknown; no ability
+	//     method is allowed; more than 20 house rules, or one that is empty,
+	//     longer than 200 characters or has a line break.
+	SetTableRules(context.Context, *connect.Request[v1.SetTableRulesRequest]) (*connect.Response[v1.SetTableRulesResponse], error)
+	// SetCampaignXpMode changes how the campaign levels (RN-09) after it was
+	// created. Only the campaign's master may call it. The new mode applies from
+	// now on; nothing already awarded is converted or changed, the history stays,
+	// and going back to the earlier mode is allowed. When XP was already awarded
+	// (an award that was not undone, a milestone included), the call needs
+	// `confirm`: without it, it answers `failed_precondition` with an
+	// XpModeChangeBlocked detail that says how much was awarded, and changes
+	// nothing. Setting the mode the campaign already has is not an error and
+	// asks for nothing.
+	//
+	// The mode also decides "Pode subir de nível" (RN-12): by enemies or by gold, the
+	// character's XP reaching the next level; by milestones, a mark. So a switch
+	// moves the level-ups that are waiting: a character that was ready by XP is
+	// not ready by milestones until the master marks it, and one marked for a
+	// milestone is not ready by XP until the XP reaches the level. Nothing is
+	// written to the sheets: the flag is read from the mode on every read.
+	//
+	// Errors:
+	//   - `invalid_argument`: the mode is unspecified or unknown.
+	//   - `failed_precondition`: XP was already awarded and `confirm` is false
+	//     (XpModeChangeBlocked).
+	SetCampaignXpMode(context.Context, *connect.Request[v1.SetCampaignXpModeRequest]) (*connect.Response[v1.SetCampaignXpModeResponse], error)
 }
 
 // NewCampaignServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -591,6 +725,25 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		connect.WithSchema(campaignServiceMethods.ByName("SetMyDicePreference")),
 		connect.WithHandlerOptions(opts...),
 	)
+	campaignServiceGetTableRulesHandler := connect.NewUnaryHandler(
+		CampaignServiceGetTableRulesProcedure,
+		svc.GetTableRules,
+		connect.WithSchema(campaignServiceMethods.ByName("GetTableRules")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	campaignServiceSetTableRulesHandler := connect.NewUnaryHandler(
+		CampaignServiceSetTableRulesProcedure,
+		svc.SetTableRules,
+		connect.WithSchema(campaignServiceMethods.ByName("SetTableRules")),
+		connect.WithHandlerOptions(opts...),
+	)
+	campaignServiceSetCampaignXpModeHandler := connect.NewUnaryHandler(
+		CampaignServiceSetCampaignXpModeProcedure,
+		svc.SetCampaignXpMode,
+		connect.WithSchema(campaignServiceMethods.ByName("SetCampaignXpMode")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.campaigns.v1.CampaignService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CampaignServiceCreateCampaignProcedure:
@@ -617,6 +770,12 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 			campaignServiceSetCampaignDiceModeHandler.ServeHTTP(w, r)
 		case CampaignServiceSetMyDicePreferenceProcedure:
 			campaignServiceSetMyDicePreferenceHandler.ServeHTTP(w, r)
+		case CampaignServiceGetTableRulesProcedure:
+			campaignServiceGetTableRulesHandler.ServeHTTP(w, r)
+		case CampaignServiceSetTableRulesProcedure:
+			campaignServiceSetTableRulesHandler.ServeHTTP(w, r)
+		case CampaignServiceSetCampaignXpModeProcedure:
+			campaignServiceSetCampaignXpModeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -672,4 +831,16 @@ func (UnimplementedCampaignServiceHandler) SetCampaignDiceMode(context.Context, 
 
 func (UnimplementedCampaignServiceHandler) SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.SetMyDicePreference is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) GetTableRules(context.Context, *connect.Request[v1.GetTableRulesRequest]) (*connect.Response[v1.GetTableRulesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.GetTableRules is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) SetTableRules(context.Context, *connect.Request[v1.SetTableRulesRequest]) (*connect.Response[v1.SetTableRulesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.SetTableRules is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) SetCampaignXpMode(context.Context, *connect.Request[v1.SetCampaignXpModeRequest]) (*connect.Response[v1.SetCampaignXpModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.SetCampaignXpMode is not implemented"))
 }

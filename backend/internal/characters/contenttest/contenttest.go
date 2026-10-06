@@ -22,6 +22,12 @@ type Source struct {
 	Content *rules.Content
 }
 
+// ContentFor implements characters.ContentSource: the same probe, the SRD content.
+func (s Source) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
+	c, _, err := s.For(ctx, tx, campaignID)
+	return c, err
+}
+
 // For implements characters.ContentSource.
 func (s Source) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, characters.TableRules, error) {
 	var err error

@@ -107,6 +107,21 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"GetTableRules", func(ctx context.Context, c client) error {
+			_, err := c.GetTableRules(ctx, connect.NewRequest(&campaignsv1.GetTableRulesRequest{CampaignId: id}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+
+		{"SetTableRules", func(ctx context.Context, c client) error {
+			_, err := c.SetTableRules(ctx, connect.NewRequest(&campaignsv1.SetTableRulesRequest{CampaignId: id, Rules: validRules()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"SetCampaignXpMode", func(ctx context.Context, c client) error {
+			_, err := c.SetCampaignXpMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignXpModeRequest{CampaignId: id, XpMode: campaignsv1.XpMode_XP_MODE_GOLD, Confirm: true}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// Any signed-in user may accept an invite: that is how a non-member
 		// becomes one. This row runs last, because it makes the non-member a
 		// member.

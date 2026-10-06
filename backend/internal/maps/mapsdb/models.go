@@ -49,6 +49,7 @@ type Map struct {
 	LayersRevision int32
 	LightRevision  int32
 	VisionEpoch    int32
+	FogOnFirstGrid bool
 }
 
 type MapCreatureToken struct {

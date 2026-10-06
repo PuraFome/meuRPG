@@ -146,3 +146,41 @@ RETURNING dice_preference;
 -- name: GetMemberDicePreference :one
 SELECT dice_preference FROM campaign_members
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'active';
+
+-- name: GetTableRules :one
+-- The table's rules (RN-24). No row means the defaults.
+SELECT * FROM campaign_table_rules WHERE campaign_id = $1;
+
+-- name: UpsertTableRules :one
+-- The master saved "Regras da mesa": every setting is written.
+INSERT INTO campaign_table_rules (
+    campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+)
+VALUES (
+    sqlc.arg(campaign_id), sqlc.arg(hit_points_rule), sqlc.arg(ability_standard_array), sqlc.arg(ability_point_buy),
+    sqlc.arg(ability_roll_4d6), sqlc.arg(ability_typed), sqlc.arg(critical_rule), sqlc.arg(death_saves),
+    sqlc.arg(combat_starts_with_map), sqlc.arg(fog_on_new_maps), sqlc.arg(house_rules)::TEXT[], sqlc.arg(now)
+)
+ON CONFLICT (campaign_id) DO UPDATE SET
+    hit_points_rule = excluded.hit_points_rule,
+    ability_standard_array = excluded.ability_standard_array,
+    ability_point_buy = excluded.ability_point_buy,
+    ability_roll_4d6 = excluded.ability_roll_4d6,
+    ability_typed = excluded.ability_typed,
+    critical_rule = excluded.critical_rule,
+    death_saves = excluded.death_saves,
+    combat_starts_with_map = excluded.combat_starts_with_map,
+    fog_on_new_maps = excluded.fog_on_new_maps,
+    house_rules = excluded.house_rules,
+    updated_at = excluded.updated_at
+RETURNING *;
+
+-- name: GetCampaignForUpdate :one
+-- The campaign, locked until the transaction ends: a change of the XP mode reads
+-- the awards and writes the mode as one step.
+SELECT * FROM campaigns WHERE id = $1 FOR UPDATE;
+
+-- name: SetCampaignXPMode :one
+-- The master changed how the campaign levels (RN-09).
+UPDATE campaigns SET xp_mode = $2, xp_mode_changed_at = sqlc.arg(now)::TIMESTAMPTZ WHERE id = $1 RETURNING xp_mode, xp_mode_changed_at;

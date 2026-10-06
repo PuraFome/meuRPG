@@ -79,12 +79,15 @@ func (s *Service) AddMilestone(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireMilestonesMode(ctx, m.CampaignID); err != nil {
+	if err := s.requireMilestonesMode(ctx, nil, m.CampaignID); err != nil {
 		return nil, err
 	}
 	var added progressiondb.PlannedMilestone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		if err := s.requireMilestonesMode(ctx, tx, m.CampaignID); err != nil {
+			return err
+		}
 		current, err := q.ListPlannedMilestonesForUpdate(ctx, m.CampaignID)
 		if err != nil {
 			return fmt.Errorf("list the milestones: %w", err)
@@ -337,7 +340,7 @@ func (s *Service) milestoneCall(ctx context.Context, campaignID, milestoneID str
 	if err != nil {
 		return m, "", err
 	}
-	if err := s.requireMilestonesMode(ctx, m.CampaignID); err != nil {
+	if err := s.requireMilestonesMode(ctx, nil, m.CampaignID); err != nil {
 		return m, "", err
 	}
 	id, err := uuid.Parse(milestoneID)
@@ -352,6 +355,9 @@ func (s *Service) milestoneCall(ctx context.Context, campaignID, milestoneID str
 func (s *Service) changePlanned(ctx context.Context, m authz.Membership, id string, change func(q *progressiondb.Queries) error) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		if err := s.requireMilestonesMode(ctx, tx, m.CampaignID); err != nil {
+			return err
+		}
 		if _, err := q.GetPlannedMilestoneForUpdate(ctx, progressiondb.GetPlannedMilestoneForUpdateParams{CampaignID: m.CampaignID, ID: id}); errors.Is(err, pgx.ErrNoRows) {
 			return errMilestoneNotFound()
 		} else if err != nil {
@@ -369,9 +375,10 @@ func (s *Service) changePlanned(ctx context.Context, m authz.Membership, id stri
 }
 
 // requireMilestonesMode refuses, with MODE_NOT_ALLOWED, a campaign that
-// counts XP: it has no milestones.
-func (s *Service) requireMilestonesMode(ctx context.Context, campaignID string) error {
-	mode, err := s.campaigns.CampaignXPMode(ctx, nil, campaignID)
+// counts XP: it has no milestones. A write asks it again inside its transaction
+// (tx), so that a change of the XP mode (RN-09) and the write take turns.
+func (s *Service) requireMilestonesMode(ctx context.Context, tx pgx.Tx, campaignID string) error {
+	mode, err := s.campaigns.CampaignXPMode(ctx, tx, campaignID)
 	if err != nil {
 		return s.dbError(ctx, "read the campaign's XP mode", err)
 	}

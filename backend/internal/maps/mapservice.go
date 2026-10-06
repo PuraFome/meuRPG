@@ -240,7 +240,15 @@ func (s *Service) CreateMap(
 		return nil, errNotAGalleryImage()
 	}
 
-	// A new map has no fog: an image that is a fog map's background is copied.
+	// A new map has no grid, so it cannot have fog yet: when the table's rules want
+	// the fog on new maps (RN-24; none by default), the map is marked, and the fog
+	// comes on with its first grid (SetMapGrid).
+	fogOn := false
+	if s.defaults != nil {
+		if fogOn, err = s.defaults.FogOnNewMaps(ctx, nil, m.CampaignID); err != nil {
+			return nil, s.dbError(ctx, "read the table's rules", err)
+		}
+	}
 	reuse, err := s.prepareReuseCopy(ctx, m.CampaignID, imageID)
 	if err != nil {
 		return nil, s.dbError(ctx, "copy the image of a fog map", err)
@@ -266,7 +274,7 @@ func (s *Service) CreateMap(
 			}
 			imageID, used = reuse.id, true
 		}
-		created, err = q.InsertMap(ctx, mapsdb.InsertMapParams{CampaignID: m.CampaignID, Name: name, ImageID: imageID, Now: s.now()})
+		created, err = q.InsertMap(ctx, mapsdb.InsertMapParams{CampaignID: m.CampaignID, Name: name, ImageID: imageID, FogOnFirstGrid: fogOn, Now: s.now()})
 		if err != nil {
 			return fmt.Errorf("insert map: %w", err)
 		}
@@ -584,11 +592,22 @@ func (s *Service) SetMapGrid(
 	if err != nil {
 		return nil, err
 	}
+	// The table's fog rule meets the map's first grid (RN-24): the fog comes on, and
+	// the raw image never reaches the players (RN-10), so an image that serves
+	// another use is copied first, as SetMapFog does.
+	var imageCopy *fogCopy
+	if gridColumns != nil {
+		if pre, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && pre.FogOnFirstGrid && pre.GridColumns == nil {
+			if imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, pre.ImageID); err != nil {
+				return nil, s.dbError(ctx, "copy the map's image for the fog", err)
+			}
+		}
+	}
 	var updated mapsdb.Map
-	cleared := false
+	cleared, copied := false, false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		cleared = false
+		cleared, copied = false, false
 		before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errMapNotFound()
@@ -616,10 +635,29 @@ func (s *Service) SetMapGrid(
 		}
 		if gridChanges {
 			cleared = true
-			return clearLayers(ctx, q, mapID)
+			if err := clearLayers(ctx, q, mapID); err != nil {
+				return err
+			}
+		}
+		if gridColumns != nil && before.FogOnFirstGrid && before.GridColumns == nil && !before.FogEnabled {
+			if imageCopy != nil && before.ImageID == imageCopy.source.ID {
+				if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+					return err
+				}
+				if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: mapID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
+					return fmt.Errorf("give the map its copy of the image: %w", err)
+				}
+				copied = true
+			}
+			if updated, err = q.ApplyFogRule(ctx, mapsdb.ApplyFogRuleParams{CampaignID: m.CampaignID, ID: mapID, Now: s.now()}); err != nil {
+				return fmt.Errorf("apply the table's fog rule: %w", err)
+			}
 		}
 		return nil
 	})
+	if imageCopy != nil && (err != nil || !copied) {
+		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's grid", err)
 	}
