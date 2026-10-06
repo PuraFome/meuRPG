@@ -1,0 +1,128 @@
+@let r = race();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" [attr.aria-labelledby]="'data-t'">
+      <h2 class="mr-panel__title" id="data-t">{{ isRace() ? 'Dados da raça' : 'Dados da sub-raça' }}</h2>
+      @if (!isRace()) {
+        @if (raceKnown()) {
+          <p class="hint">Sub-raça de <strong>{{ parentName() }}</strong>. A raça não muda depois de criada; a sub-raça soma bônus e traços a ela.</p>
+        } @else {
+          <app-select-field label="Raça da sub-raça" [options]="raceOptions()" [value]="sub().raceKey" placeholder="Escolha…" path="table_subrace.race_key" [issues]="issuesOf('table_subrace.race_key')" hint="Da lista do SRD ou das raças da mesa. Não muda depois de criada." (valueChange)="setParent($event)" />
+        }
+      }
+      @if (isRace()) {
+        <div class="grid grid--4">
+          <app-text-field class="span-2" label="Nome" [value]="r.name" [maxlength]="60" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
+          <app-select-field label="Tamanho" [options]="sizes" [value]="r.size" [path]="prefix() + '.size'" [issues]="issuesOf(prefix() + '.size')" (valueChange)="patchRace({ size: $event })" />
+        </div>
+        <div class="grid grid--4">
+          <app-text-field label="Deslocamento" [value]="r.speedM" suffix="m" inputmode="decimal" [path]="prefix() + '.speed_ft'" [issues]="issuesOf(prefix() + '.speed_ft')" (valueChange)="patchRace({ speedM: $event })" />
+          <app-text-field label="Visão no escuro" [value]="r.darkvisionM" suffix="m" inputmode="decimal" [path]="prefix() + '.darkvision_ft'" [issues]="issuesOf(prefix() + '.darkvision_ft')" (valueChange)="patchRace({ darkvisionM: $event })" />
+        </div>
+        <p class="hint">O deslocamento e a visão vão em passos de 1,5 m. Visão no escuro vazia ou 0 = sem visão no escuro.</p>
+      } @else {
+        <div class="grid grid--4">
+          <app-text-field class="span-2" label="Nome" [value]="name()" [maxlength]="60" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
+        </div>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="bonus-t">
+      <h2 class="mr-panel__title" id="bonus-t">Bônus de atributo</h2>
+      <div class="bonuses">
+        @for (a of abilities(); track a.field) {
+          <app-number-stepper [label]="a.name" [value]="bonuses()[a.field]" [min]="bonusRange.min" [max]="bonusRange.max" [path]="prefix() + '.ability_bonuses.' + a.field" (valueChange)="setBonus(a.field, $event)" />
+        }
+      </div>
+      @for (m of abilityIssues(); track m) {
+        <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+      }
+      @if (isRace()) {
+        <div class="choose">
+          <app-switch-field label="O jogador escolhe onde pôr os bônus" [checked]="r.choosing" (toggled)="patchRace({ choosing: $event })" />
+          <p class="hint">Por exemplo, +2 e +1 à escolha. Desligado: os bônus acima valem sempre.</p>
+          @if (r.choosing) {
+            <app-text-field label="Valores à escolha" [value]="r.choice" [path]="prefix() + '.choice_bonuses'" [issues]="issuesOf(prefix() + '.choice_bonuses')" hint="Separe por vírgula: 2, 1. Cada um vai num atributo diferente." (valueChange)="patchRace({ choice: $event })" />
+          }
+        </div>
+      }
+    </section>
+
+    @if (isRace()) {
+      <section class="mr-panel block" aria-labelledby="lang-t">
+        <h2 class="mr-panel__title" id="lang-t">Idiomas</h2>
+        <app-pick-list label="Idiomas" addLabel="Adicionar idioma" [options]="languageOptions()" [values]="r.languages" [path]="prefix() + '.languages'" [issues]="issuesOf(prefix() + '.languages')" (added)="patchRace({ languages: [...r.languages, $event] })" (removed)="patchRace({ languages: r.languages.filter((k) => k !== $event) })" />
+        <div class="grid grid--3">
+          <app-text-field label="Idiomas à escolha" [value]="r.languageChoices > 0 ? '' + r.languageChoices : ''" inputmode="numeric" [path]="prefix() + '.language_choices'" [issues]="issuesOf(prefix() + '.language_choices')" (valueChange)="setCount($event)" />
+        </div>
+      </section>
+    }
+
+    <section class="mr-panel block" aria-labelledby="traits-t">
+      <h2 class="mr-panel__title" id="traits-t">Traços</h2>
+      <p class="hint">Cada traço tem um efeito escolhido de um menu (modificador, proficiência, sentido...) ou só o texto.</p>
+      @for (t of traits(); track t.id) {
+        <app-feature-editor
+          [feature]="t"
+          [menu]="menu()"
+          [basePath]="prefix() + '.traits[' + $index + ']'"
+          [issuesOf]="issuesOf"
+          [spellOptions]="spellOptions()"
+          nameLabel="Nome do traço"
+          removeLabel="Remover traço"
+          [index]="$index"
+          [count]="traits().length"
+          (featureChange)="setTrait($index, $event)"
+          (removed)="removeTrait($index)"
+          (moved)="moveTrait($index, $event)"
+        />
+      }
+      @for (m of issuesOf(prefix() + '.traits'); track m) {
+        <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+      }
+      <button matButton="outlined" type="button" class="add" (click)="addTrait()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar traço</button>
+    </section>
+
+    @if (isRace()) {
+      <section class="mr-panel block" aria-labelledby="sub-t">
+        <h2 class="mr-panel__title" id="sub-t">Sub-raças</h2>
+        @if (!entry()) {
+          <p class="hint">Salve a raça primeiro; depois dá para acrescentar sub-raças a ela.</p>
+        } @else {
+          @if (subraces().length === 0) {
+            <p class="hint">Nenhuma sub-raça. Uma sub-raça soma bônus e traços à raça.</p>
+          } @else {
+            <ul class="mr-list">
+              @for (s of subraces(); track s.key) {
+                <li>
+                  <a class="subrow" [routerLink]="subraceLink(s)">
+                    <span class="subrow__name">{{ s.namePt }}</span>
+                    @if (s.archived) {
+                      <span class="mr-tag"><mat-icon aria-hidden="true">archive</mat-icon>Arquivada</span>
+                    }
+                    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+          <a matButton="outlined" class="add" [routerLink]="newSubraceLink()" [queryParams]="{ raca: entry()!.key }"><mat-icon aria-hidden="true">add</mat-icon>Adicionar sub-raça</a>
+        }
+      </section>
+    }
+
+    <app-editor-bar [saveLabel]="isRace() ? 'Salvar raça' : 'Salvar sub-raça'" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ name().trim() || (isRace() ? 'Nova raça' : 'Nova sub-raça') }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+  </aside>
+</div>

@@ -14,14 +14,16 @@ func locate(err error, path string) error {
 	if !errors.As(err, &oe) {
 		return err
 	}
-	if oe.Field == "" {
-		oe.Field = path
-		if attr := attrOf(oe.Message); attr != "" {
-			oe.Field += "." + attr
+	for _, o := range oe.Violations() {
+		if o.Field == "" {
+			o.Field = path
+			if attr := attrOf(o.Message); attr != "" {
+				o.Field += "." + attr
+			}
 		}
-	}
-	if oe.Reason == "" {
-		oe.Reason = reasonOf(oe.Message)
+		if o.Reason == "" {
+			o.Reason = reasonOf(o.Message)
+		}
 	}
 	return oe
 }

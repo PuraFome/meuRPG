@@ -502,7 +502,7 @@ func TestTableContentRefusalsAreFieldViolations(t *testing.T) {
 			return c
 		}(), "table_class.levels[1].features[0].effects[0]", rules.ReasonFormula},
 		{"slots", func() proto.Message { c := testClass("Espacos"); c.Levels[2].Slots = []int32{1, 2}; return c }(), "table_class.levels[2].slots", rules.ReasonTable},
-		{"an area", badSpell, "table_spell.target", rules.ReasonValue},
+		{"an area", badSpell, "table_spell.target.size_ft", rules.ReasonLimit},
 		{"a missing class", testSubclass("Sem mae", "class:nao-existe@mesa"), "table_subclass", ""},
 		{"a name", testBackground(" "), "table_background.name_pt", rules.ReasonName},
 	}

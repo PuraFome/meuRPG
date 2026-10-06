@@ -1,0 +1,87 @@
+<div class="feature" role="group" [attr.aria-label]="groupLabel()">
+  @if (heading() || index() >= 0) {
+    <div class="feature__head">
+      @if (heading()) {
+        <h3 class="feature__title">{{ heading() }}</h3>
+      } @else {
+        <span class="feature__title feature__title--n">{{ index() + 1 }}</span>
+      }
+      @if (index() >= 0 && count() > 1) {
+        <span class="feature__move">
+          <button type="button" class="icon" aria-label="Subir {{ feature().name || nameLabel() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
+            <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+          </button>
+          <button type="button" class="icon" aria-label="Descer {{ feature().name || nameLabel() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
+            <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+          </button>
+        </span>
+      }
+    </div>
+  }
+  <app-field-note [id]="basePath() + '-note'" [issues]="issuesOf()(basePath())" />
+  <div class="grid">
+    <app-text-field
+      [label]="nameLabel()"
+      [value]="feature().name"
+      [path]="path('name_pt')"
+      [issues]="issuesOf()(path('name_pt'))"
+      (valueChange)="patch({ name: $event })"
+    />
+    @if (feature().effects.length === 0) {
+      <app-effect-picker
+        [effect]="firstEffect()"
+        [menu]="menu()"
+        [basePath]="path('effects[0]')"
+        [issuesOf]="issuesOf()"
+        [allowTextOnly]="true"
+        [spellOptions]="spellOptions()"
+        (effectChange)="patch({ effects: [$event] })"
+      />
+    } @else {
+      <app-effect-picker
+        [effect]="feature().effects[0]"
+        [menu]="menu()"
+        [basePath]="path('effects[0]')"
+        [issuesOf]="issuesOf()"
+        [allowTextOnly]="true"
+        [spellOptions]="spellOptions()"
+        (effectChange)="setEffect(0, $event)"
+      />
+    }
+    <app-field-note class="grid__wide" [id]="path('effects[0]') + '-note'" [issues]="issuesOf()(path('effects[0]'))" />
+    <app-text-field
+      class="grid__wide"
+      [label]="textLabel()"
+      [value]="feature().text"
+      [rows]="3"
+      [path]="path('desc_pt')"
+      [issues]="issuesOf()(path('desc_pt'))"
+      (valueChange)="patch({ text: $event })"
+    />
+  </div>
+  @for (e of otherEffects(); track e.id) {
+    <div class="effect">
+      <div class="grid">
+        <app-effect-picker
+          [effect]="e.effect"
+          [menu]="menu()"
+          [basePath]="path('effects[' + e.index + ']')"
+          [issuesOf]="issuesOf()"
+          [spellOptions]="spellOptions()"
+          label="Outro efeito"
+          (effectChange)="setEffect(e.index, $event)"
+        />
+        <app-field-note class="grid__wide" [id]="path('effects[' + e.index + ']') + '-note'" [issues]="issuesOf()(path('effects[' + e.index + ']'))" />
+      </div>
+      <button type="button" class="link link--ink" (click)="removeEffect(e.index)">Remover o efeito {{ e.index + 1 }}</button>
+    </div>
+  }
+  <div class="actions">
+    @if (canAddEffect()) {
+      <button type="button" class="link" (click)="addEffect()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar um efeito</button>
+    }
+    @if (removeLabel()) {
+      <button matButton="outlined" type="button" class="remove" (click)="removed.emit()">{{ removeLabel() }}</button>
+    }
+  </div>
+</div>

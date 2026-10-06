@@ -58,7 +58,7 @@ func TestClassRefusalsNameTheirField(t *testing.T) {
 		{"a third caster's prepared formula without parentheses", func(o *Overlay) { o.Subclasses[10].Casting.PreparedMax = "level" }, "subclasses[10].casting.prepared_max", ReasonFormula},
 		{"a spell's class list", func(o *Overlay) { o.Spells[1].Classes = []string{"class:wizard", "class:fantasma"} }, "spells[1].class_keys[1]", ReasonReference},
 		{"a class listed twice", func(o *Overlay) { o.Spells[1].Classes = []string{"class:wizard", "class:wizard"} }, "spells[1].class_keys[1]", ReasonValue},
-		{"a spell's casting time", func(o *Overlay) { o.Spells[1].CastingTime = TableCastingTime{Unit: "fortnight", Amount: 1} }, "spells[1].casting_time", ReasonValue},
+		{"a spell's casting time", func(o *Overlay) { o.Spells[1].CastingTime = TableCastingTime{Unit: "fortnight", Amount: 1} }, "spells[1].casting_time.unit", ReasonValue},
 		// The rows.
 		{"cantrips known", func(o *Overlay) { o.Classes[1].Levels[3].CantripsKnown = 99 }, "classes[1].levels[3].cantrips_known", ReasonTable},
 		{"spells known", func(o *Overlay) { o.Classes[2].Levels[3].SpellsKnown = 999 }, "classes[2].levels[3].spells_known", ReasonTable},

@@ -27,6 +27,7 @@ import { closePuzzleRPC, createLightsRPC, createLockRPC, createPillarsRPC, endTa
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
+import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -4347,3 +4348,119 @@ for (const [scheme, label] of [
     await scanTheatreCritical(browser, scheme, 320, 568);
   });
 }
+
+/**
+ * "Conteúdo da mesa" (MR-025, RN-23; E10-01): the master's list and editors (a spell, a race, a background), the question to
+ * archive, a refusal on its field; the same list on a phone with the sheet that asks to archive; and what a player reads. The
+ * entries come through the API, with one archived so its state shows.
+ */
+async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade conteúdo ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
+    await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Sopro de Nanquim', {
+      range: { kind: 'SPELL_RANGE_KIND_SELF' },
+      target: { kind: 'TABLE_SPELL_TARGET_KIND_AREA', shape: 'TABLE_AREA_SHAPE_CONE', sizeFt: 15 },
+      attack: '',
+      save: { ability: 'ABILITY_DEXTERITY', onSuccess: 'SPELL_SAVE_SUCCESS_HALF' },
+      damage: [{ damageTypeKey: 'damage-type:necrotic', dice: '3d6', perSlotLevel: '1d6' }],
+    }));
+    const archived = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Rascunho de Tinta'));
+    const race = await createEntryRPC(m, campaignId, 'tableRace', raceBody());
+    const background = await createEntryRPC(m, campaignId, 'tableBackground', {
+      namePt: 'Cartógrafo do Vale',
+      skills: ['skill:investigation', 'skill:survival'],
+      tools: ['proficiency:thieves-tools'],
+      equipmentPt: 'Um estojo de mapas, tinta e 10 PO',
+      feature: { namePt: 'Mapas na memória', descPt: ['Você lembra o desenho de qualquer lugar que já mapeou.'], effects: [{ type: 'note', textPt: 'Lembra qualquer lugar mapeado.' }] },
+    });
+    await archiveEntryRPC(m, campaignId, archived);
+
+    await open(m, `/campanhas/${campaignId}/conteudo?tipo=magias`);
+    await expectScreenPasses(m, `Conteúdo da mesa, as magias ${where}`);
+    if (width >= 768) {
+      await open(m, `/campanhas/${campaignId}/conteudo`);
+      await expectScreenPasses(m, `Conteúdo da mesa, a lista inicial ${where}`);
+      await open(m, entryRoute(campaignId, spell));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
+      await expectScreenPasses(m, `Editor de magia ${where}`);
+      await open(m, entryRoute(campaignId, race));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Corujeiro');
+      await expectScreenPasses(m, `Editor de raça ${where}`);
+      await m.getByRole('button', { name: 'Mais opções' }).first().click();
+      await expect(m.getByRole('button', { name: 'Menos opções' }).first()).toBeVisible();
+      await expectScreenPasses(m, `Editor de raça, "Mais opções" aberto ${where}`);
+      await m.getByRole('button', { name: 'Arquivar', exact: true }).click();
+      await expect(m.getByRole('region', { name: 'Arquivar Corujeiro?' })).toBeVisible();
+      await expectScreenPasses(m, `Arquivar a raça, a pergunta no lugar ${where}`);
+      await m.getByRole('button', { name: 'Arquivar Corujeiro' }).click();
+      await expect(m.getByText('A raça Corujeiro está arquivada.')).toBeVisible();
+      await expectScreenPasses(m, `A raça arquivada, com "Desarquivar" ${where}`);
+      // It comes back at once, so the player's screens below still have it.
+      await m.getByRole('button', { name: 'Desarquivar' }).click();
+      await expect(m.getByText('A raça Corujeiro está arquivada.')).toHaveCount(0);
+      await open(m, `/campanhas/${campaignId}/conteudo/novo/subraca`);
+      await expectScreenPasses(m, `Editor de sub-raça, a raça a escolher ${where}`);
+      await open(m, entryRoute(campaignId, background));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Cartógrafo do Vale');
+      await expectScreenPasses(m, `Editor de antecedente ${where}`);
+      await open(m, `/campanhas/${campaignId}/conteudo/novo/magia`);
+      await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
+      await m.getByLabel('Distância').fill('18');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(m.getByText('Já existe uma magia da mesa com este nome. Escolha outro.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, a recusa no campo ${where}`);
+      // Another tab saves first: the stale alert, with "Recarregar".
+      await open(m, entryRoute(campaignId, spell));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
+      await updateEntryRPC(m, campaignId, spell, 'tableSpell', spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }));
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, a entrada mudou enquanto se editava ${where}`);
+    } else {
+      await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();
+      await expect(m.getByRole('heading', { name: 'Arquivar Lâmina de Nanquim?' })).toBeVisible();
+      await expectScreenPasses(m, `Arquivar, a folha de baixo ${where}`);
+      await m.getByRole('button', { name: 'Voltar', exact: true }).click();
+      await open(m, entryRoute(campaignId, race));
+      await expectScreenPasses(m, `Raça lida pelo mestre no celular ${where}`);
+    }
+
+    await open(p, `/campanhas/${campaignId}/conteudo`);
+    await expect(p.getByText('Da mesa').first()).toBeVisible();
+    await expectScreenPasses(p, `Conteúdo da mesa, visto por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, race));
+    await expect(p.getByText('Olhos de caçador.')).toBeVisible();
+    await expectScreenPasses(p, `Raça, vista por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, spell));
+    await expectScreenPasses(p, `Magia, vista por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, background));
+    await expect(p.getByText('Ferramentas de ladrão')).toBeVisible();
+    await expectScreenPasses(p, `Antecedente, visto por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'light', 1280);
+});
+
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'dark', 1024);
+});
+
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'dark', 390);
+});
+
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'light', 320);
+});
