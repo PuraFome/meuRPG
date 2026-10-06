@@ -1012,6 +1012,38 @@ As fórmulas dos efeitos rodam no Expr (`github.com/expr-lang/expr`), pinado em 
 
 O SRD 5.1 é CC-BY-4.0: a atribuição exata fica no `NOTICE`, em `srd51.Attribution` e na página "Créditos"; um teste confere que são o mesmo texto.
 
+### O gerador de masmorras (MR-010, Etapa 10, fatia 10.6b)
+
+O pacote puro `rules/dungeon` gera um nível de masmorra a partir de `(Options, seed)`: uma grade retangular de quadrados de 5 pés (1,5 m) com salas, corredores de 1 quadrado, portas e escadas, mais os metadados. Como o resto do `rules`, não usa banco, rede, relógio, variável global nem goroutine, e não itera mapa sem ordenar as chaves: o mesmo `(version, seed, options)` dá o mesmo `Dungeon`, byte a byte, em qualquer plataforma. A integração com o mapa (a imagem, a camada de paredes e a de portas, o serviço) é a fatia 10.6d; esta fatia entrega só a regra.
+
+```mermaid
+flowchart LR
+    Opt["Options + seed"] --> M["máscara"]
+    M --> R["salas"]
+    R --> D["portas das salas"]
+    D --> C["corredores (labirinto)"]
+    C --> K["conectividade"]
+    K --> S["escadas"]
+    S --> E["poda de becos"]
+    E --> F["limpeza e metadados"]
+    F --> Res["Dungeon"]
+```
+
+| Função | O que faz |
+| --- | --- |
+| `Generate(opts)` | O gerador. Recusa opção fora da faixa com `*OptionError` (que diz qual opção; `errors.Is(err, ErrInvalidOption)`) e devolve `ErrNoSpace` quando a máscara não deixa espaço nem para uma sala do menor tamanho. Tamanho par vira o ímpar de baixo; os lados de sala viram ímpares. As opções efetivas voltam em `Dungeon.Options`. |
+| `DefaultOptions(seed)` | Os valores padrão (51 × 51, `spread`, `meandering`, `typical`, 2 escadas, 60% de poda). |
+| `Check(d)` | Confere os invariantes da especificação que dá para ler no resultado: limites e opções efetivas, paridade e tamanho das salas, sem sobreposição nem quadrado bloqueado, alcançabilidade a partir da entrada, portas (paridade, abertas dos dois lados, 4 quadrados de distância, sem armadilha em porta aberta ou grade), exits em duas salas, corredores sem 2 × 2 e fora de pisos e anéis, escadas, entrada e becos com poda 100. Não confere o determinismo nem a independência dos fluxos (testes à parte). Também roda dentro do `Generate` com `Options.SelfCheck`. |
+| `WallsMask`, `Markers`, `PromptOf` / `PromptJSON` | O que o chamador deriva do resultado: a máscara de abertos e paredes (parede é todo quadrado fechado com um aberto entre os 8 vizinhos), um marcador por porta e por escada, e o JSON estruturado para o prompt de imagem (sem pixels e sem sorteio; as ligações diretas entre salas em `connections[]` e as redes de corredor, com as salas de cada uma, em `networks[]`). A imagem em si (só pisos e paredes) é do 10.6d. |
+
+O `Dungeon` guarda dados, não bits: `Kinds` (rocha, sala, corredor, porta; o quadrado fora da máscara é rocha), `RoomIDs`, `CorridorIDs`, `Mask` (onde a silhueta deixa), `Rooms` (com `Exits`), `Doors` (tipo `archway`, `closed`, `barred`, `locked` ou `secret`, a marca `Trapped`, o eixo e o que a porta liga), `Corridors`, `Stairs`, `Entrance`, `DiscardedRooms` e `StairsPlaced`. Os tipos de porta casam com os estados da camada de portas (RN-26); uma porta secreta está no resultado, e esconder dos jogadores é da integração.
+
+**Determinismo.** O gerador de números é nosso (xoshiro256\*\* com semente expandida por SplitMix64), não o `math/rand`, cujo fluxo não é estável entre versões do Go. Cada fase tem o próprio fluxo (SplitMix64 da semente com uma constante da fase), então mudar `stairs` não muda as salas e mudar `door_mix` não move nenhuma porta: o tipo e a marca de armadilha de toda porta saem de um fluxo só deles ("door kinds"), e não do fluxo da fase. Os sorteios usam inteiros sem viés (Lemire) e embaralhamentos de Fisher-Yates; a ordem dos sorteios, comentada no código (`DRAW:`), é parte do contrato. Mudar qualquer número que altere a saída pede uma `Version` nova e o arquivo `testdata/golden.json` refeito (um hash da grade por caso). Um vetor de teste pina o gerador. A lista de leituras da especificação que o código fez está no comentário do pacote (`doc.go`).
+
+**Custo.** Medido num Apple M1 Pro (máquina compartilhada, então os tempos oscilam), `Generate` leva 0,1 ms em 31 × 31, 0,25 ms em 51 × 51, 1,5 ms em 121 × 121, 4,4 ms em 199 × 199 e uns 8 ms em 199 × 399 (o maior), contra a meta de 50 ms e o teto de 250 ms; aloca uns 4 MB nesse maior (o resultado em si fica perto de 0,6 MB). Os piores casos construídos em 199 × 399 (salas de 3 × 3 em `tiled` com densidade 200, salas pequenas e densas, máscara com laços) levam de 7 a 12 ms; o de laços a 100% aloca uns 17 MB, porque quase todo quadrado vira uma junção e o resultado lista dezenas de milhares de corredores. A conectividade tenta de novo os grupos órfãos e descarta um por passe sem progresso; com os trilhos das portas entrando no labirinto e as ligações dos dois lados, o padrão descarta 0% das salas (1% numa varredura de 20 000 combinações com máscaras e poucas portas) e os piores casos vistos fazem no máximo uns 8 passes. `PromptOf` é linear: 3,5 a 4,7 ms em 199 × 399 (limite 20 ms). O labirinto usa pilha explícita, sem recursão. Os limites: largura de 15 a 199, altura de 15 a 399 e no máximo 500 salas. O serviço que chamar o gerador deve rodar com um prazo (proposto: 2 s) e recusar pedidos acima dos limites antes de gerar.
+
+**Sala limpa (ADR-0015).** O gerador foi escrito só a partir de uma especificação de comportamento, por quem não viu o código de nenhum outro gerador. A especificação e a nota de origem dela ficam com o PR do gerador, como comentários, e não neste documento nem no código; a auditoria (uma terceira pessoa conferiu que a especificação não tem código, dado nem texto do original) fica no ADR privado.
+
 ## Módulo characters: personagens e fichas
 
 O jogador cria o próprio personagem e o mestre cria os NPCs; a ficha volta com os números calculados pelo servidor (MR-003, MR-004, MR-005, MR-006). O personagem de quem entrou por um convite com aprovação espera o mestre aprovar ou recusar (MR-024, RN-15). O código fica em `backend/internal/characters`, e as tabelas estão em [Modelo de dados](dados.md#esquema-implementado).
