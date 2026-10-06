@@ -63,6 +63,30 @@ type Edit struct {
 	Instruction string   // the new one
 }
 
+// The layouts of a request made from a map (MR-039): how the model reads the
+// Drawing.
+const (
+	// LayoutScene: a painting of the place the drawing shows, from what the
+	// players' characters see.
+	LayoutScene = "scene"
+	// LayoutIsometric: the same place seen from an isometric angle.
+	LayoutIsometric = "isometric"
+	// LayoutTexture: the drawing painted over as a top-down battle map.
+	LayoutTexture = "texture"
+)
+
+// ValidLayout reports whether layout is "" or one of the layouts.
+func ValidLayout(layout string) bool {
+	switch layout {
+	case "", LayoutScene, LayoutIsometric, LayoutTexture:
+		return true
+	}
+	return false
+}
+
+// MaxRooms is the most rooms a textured map's request lists.
+const MaxRooms = 60
+
 // Request is everything that goes to the model.
 type Request struct {
 	// Prompt is the master's text, as written. For an edit it is empty.
@@ -76,6 +100,15 @@ type Request struct {
 	References []Reference
 	// Edit, when set, makes this an edit.
 	Edit *Edit
+	// Drawing is the server's own plan of a map (floors and walls, no names): the
+	// first image after an edit's previous one, ahead of the References. Layout
+	// says how to read it. Both are set for a request made from a map, and neither
+	// for any other.
+	Drawing *Image
+	Layout  string
+	// Rooms is the rooms of a generated dungeon, one line each ("Sala 3: 7 x 5
+	// squares"): sent only with LayoutTexture.
+	Rooms []string
 }
 
 // Generator makes one picture from a Request.
@@ -113,6 +146,9 @@ func (r Request) BodySize() int {
 	if r.Edit != nil {
 		add(r.Edit.Previous)
 	}
+	if r.Drawing != nil {
+		add(*r.Drawing)
+	}
 	for _, ref := range r.References {
 		add(ref.Image)
 	}
@@ -136,6 +172,12 @@ func (r Request) Validate() error {
 	}
 	if r.Edit != nil && (strings.TrimSpace(r.Edit.Instruction) == "" || len(r.Edit.Previous.Data) == 0) {
 		return errors.New("gen: an edit needs an instruction and the previous image")
+	}
+	if !ValidLayout(r.Layout) || (r.Layout == "") != (r.Drawing == nil) || (r.Layout != "" && r.Edit != nil) {
+		return errors.New("gen: a drawing goes with a layout, and a layout with a drawing, in a request that is not an edit")
+	}
+	if len(r.Rooms) > 0 && r.Layout != LayoutTexture || len(r.Rooms) > MaxRooms {
+		return errors.New("gen: rooms go only with the textured map, and at most MaxRooms of them")
 	}
 	objects, characters := 0, 0
 	for _, ref := range r.References {
@@ -169,6 +211,22 @@ func (r Request) Text() string {
 		b.WriteString("New instruction: ")
 		b.WriteString(e.Instruction)
 	} else {
+		switch r.Layout {
+		case LayoutScene:
+			b.WriteString("Paint a scene of the place that the first attached image shows. The first image is a plan seen from above: light squares are floor, dark hatched squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+		case LayoutIsometric:
+			b.WriteString("Paint an isometric view of the place that the first attached image shows, seen from above at an angle, like a game board. The first image is a plan seen from above: light squares are floor, dark hatched squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+		case LayoutTexture:
+			b.WriteString("Paint the plan in the first attached image as a textured top-down battle map, in the same proportions. Keep every wall, floor and passage exactly where the plan has them: light areas are floor, dark hatched areas are solid rock and walls. Do not draw a grid, text, numbers, doors or characters.\n")
+			if len(r.Rooms) > 0 {
+				b.WriteString("The rooms of the plan:\n")
+				for _, room := range r.Rooms {
+					b.WriteString("- ")
+					b.WriteString(room)
+					b.WriteString("\n")
+				}
+			}
+		}
 		b.WriteString(r.Prompt)
 	}
 	if r.Style != "" {
