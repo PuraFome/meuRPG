@@ -20,30 +20,39 @@ func TestLevelUpSweep(t *testing.T) {
 			t.Run(classKey+"/"+subKey, func(t *testing.T) {
 				t.Parallel()
 				b := sweepBase(t, c, classKey, subKey)
-				if issues := Derive(b, c).Issues; len(issues) != 0 {
-					t.Fatalf("the level 1 base has issues: %v", issues)
-				}
-				for level := 2; level <= MaxLevel; level++ {
-					at := fmt.Sprintf("%s (%s) %d to %d", classKey, subKey, level-1, level)
-					ch := satisfy(t, c, b, classKey, subKey)
-					after, err := ApplyLevelUp(b, ch, c)
-					if err != nil {
-						t.Fatalf("%s: ApplyLevelUp: %v", at, err)
-					}
-					if err := CheckLevelUp(b, after, c); err != nil {
-						t.Fatalf("%s: CheckLevelUp: %v\nchoices: %+v", at, err, ch)
-					}
-					if err := Validate(after, c); err != nil {
-						t.Fatalf("%s: Validate: %v", at, err)
-					}
-					if issues := Derive(after, c).Issues; len(issues) != 0 {
-						t.Fatalf("%s: the new sheet has issues: %v\nchoices: %+v", at, issues, ch)
-					}
-					b = after
-				}
+				sweepUp(t, c, b, classKey, subKey, MaxLevel)
 			})
 		}
 	}
+}
+
+// sweepUp levels the class of b one level at a time up to total level to,
+// checking every step as TestLevelUpSweep describes, and returns the sheet.
+func sweepUp(t *testing.T, c *Content, b Build, classKey, subKey string, to int) Build {
+	t.Helper()
+	if issues := Derive(b, c).Issues; len(issues) != 0 {
+		t.Fatalf("the base has issues: %v", issues)
+	}
+	for b.totalLevel() < to {
+		level := b.totalLevel() + 1
+		at := fmt.Sprintf("%s (%s) to total level %d", classKey, subKey, level)
+		ch := satisfy(t, c, b, classKey, subKey)
+		after, err := ApplyLevelUp(b, ch, c)
+		if err != nil {
+			t.Fatalf("%s: ApplyLevelUp: %v", at, err)
+		}
+		if err := CheckLevelUp(b, after, c); err != nil {
+			t.Fatalf("%s: CheckLevelUp: %v\nchoices: %+v", at, err, ch)
+		}
+		if err := Validate(after, c); err != nil {
+			t.Fatalf("%s: Validate: %v", at, err)
+		}
+		if issues := Derive(after, c).Issues; len(issues) != 0 {
+			t.Fatalf("%s: the new sheet has issues: %v\nchoices: %+v", at, issues, ch)
+		}
+		b = after
+	}
+	return b
 }
 
 // sweepBase is a level 1 character of the class that has everything its first
@@ -81,17 +90,35 @@ func sweepBase(t *testing.T, c *Content, classKey, subKey string) Build {
 	}
 	b.Expertise = pickExpertise(c, b, gains.expertise)
 
-	if sc := spellcastingOf(Derive(b, c), classKey); sc != nil {
-		b.Cantrips = pickSpells(c, classKey, 0, 0, b.Cantrips, sc.CantripsKnown+gains.cantrips, false)
-		switch preparation(c.c.casting[classKey].effect) {
+	return fillSpells(c, b, classKey, gains.cantrips)
+}
+
+// fillSpells gives a class of b that casts the cantrips and spells its level
+// asks for, from its list.
+func fillSpells(c *Content, b Build, classKey string, extraCantrips int) Build {
+	sub := c.c.subclasses[subclassOf(b, classKey)]
+	cast, casts := c.c.castingFor(classKey, sub)
+	if sc := spellcastingOf(Derive(b, c), classKey); sc != nil && casts {
+		b.Cantrips = pickSpells(c, cast.list, 0, 0, b.Cantrips, sc.CantripsKnown+extraCantrips, false)
+		switch preparation(cast.effect) {
 		case PreparationSpellbook:
-			b.SpellsKnown = pickSpells(c, classKey, 1, sc.MaxSpellLevel, nil, 6, false)
+			b.SpellsKnown = pickSpells(c, cast.list, 1, sc.MaxSpellLevel, b.SpellsKnown, 6, false)
 		case PreparationKnown:
-			b.SpellsKnown = pickSpells(c, classKey, 1, sc.MaxSpellLevel, nil, sc.SpellsKnownMax, false)
+			b.SpellsKnown = pickSpells(c, cast.list, 1, sc.MaxSpellLevel, b.SpellsKnown, sc.SpellsKnownMax, false)
 		}
 		b.SpellsPrepared = pickPrepared(c, b, classKey)
 	}
 	return b
+}
+
+// subclassOf is the subclass key the character has in a class.
+func subclassOf(b Build, classKey string) string {
+	for _, cl := range b.Classes {
+		if cl.Class == classKey {
+			return cl.Subclass
+		}
+	}
+	return ""
 }
 
 // nextSkill is the first skill the character is not proficient in.
@@ -124,7 +151,7 @@ func pickExpertise(c *Content, b Build, n int) []string {
 	return out
 }
 
-// pickSpells adds to have the first spells of the class's list (or, with
+// pickSpells adds to have the first spells of the list of class classKey (or, with
 // anyList, of every other class's list) from minLevel to maxLevel, until it
 // has n new ones.
 func pickSpells(c *Content, classKey string, minLevel, maxLevel int, have []string, n int, anyList bool) []string {
@@ -134,7 +161,7 @@ func pickSpells(c *Content, classKey string, minLevel, maxLevel int, have []stri
 		if n <= 0 {
 			break
 		}
-		if s.Level < minLevel || s.Level > maxLevel || slices.Contains(out, key) || slices.Contains(s.Classes, classKey) == anyList {
+		if s.Level < minLevel || s.Level > maxLevel || slices.Contains(out, key) || c.c.onList(s, classKey) == anyList {
 			continue
 		}
 		out = append(out, key)
@@ -152,7 +179,7 @@ func pickPrepared(c *Content, b Build, classKey string) []string {
 	}
 	out := slices.Clone(b.SpellsPrepared)
 	need := sc.PreparedMax - len(out)
-	if preparation(c.c.casting[classKey].effect) == PreparationSpellbook {
+	if cast, _ := c.c.castingFor(classKey, c.c.subclasses[subclassOf(b, classKey)]); preparation(cast.effect) == PreparationSpellbook {
 		for _, k := range b.SpellsKnown {
 			if need > 0 && !slices.Contains(out, k) {
 				out = append(out, k)
@@ -161,7 +188,8 @@ func pickPrepared(c *Content, b Build, classKey string) []string {
 		}
 		return out
 	}
-	return pickSpells(c, classKey, 1, sc.MaxSpellLevel, out, max(need, 0), false)
+	cast, _ := c.c.castingFor(classKey, c.c.subclasses[subclassOf(b, classKey)])
+	return pickSpells(c, cast.list, 1, sc.MaxSpellLevel, out, max(need, 0), false)
 }
 
 // satisfy makes the choices that LevelUpOptions asks for, the first valid ones.
@@ -173,12 +201,17 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 	}
 	ch := LevelUpChoices{Class: classKey, HitPoints: LevelUpHitPoints{Average: true}}
 	choices, skills, expertise, cantrips := o.FeatureChoices, o.SkillChoices, o.ExpertiseChoices, o.Cantrips
+	spells, spellList, maxSpellLevel := o.Spells, o.SpellList, o.MaxSpellLevel
 	if o.SubclassDue {
 		for _, s := range o.Subclasses {
 			if s.Key == subKey {
 				ch.Subclass = s.Key
 				choices = slices.Concat(choices, s.FeatureChoices)
 				skills, expertise, cantrips = skills+s.SkillChoices, expertise+s.ExpertiseChoices, cantrips+s.Cantrips
+				spells += s.Spells
+				if s.SpellList != "" {
+					spellList, maxSpellLevel = s.SpellList, s.MaxSpellLevel
+				}
 			}
 		}
 		if ch.Subclass == "" {
@@ -204,10 +237,10 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 	}
 	ch.SkillProficiencies = tmp.SkillProficiencies[len(b.SkillProficiencies):]
 	ch.Expertise = pickExpertise(c, b, expertise)[len(b.Expertise):]
-	if o.SpellList != "" {
-		ch.Cantrips = pickSpells(c, classKey, 0, 0, b.Cantrips, cantrips, false)[len(b.Cantrips):]
-		anyList := pickSpells(c, classKey, 1, o.MaxSpellLevel, b.SpellsKnown, o.AnyClassSpells, true)[len(b.SpellsKnown):]
-		ownList := pickSpells(c, classKey, 1, o.MaxSpellLevel, slices.Concat(b.SpellsKnown, anyList), o.Spells-o.AnyClassSpells, false)[len(b.SpellsKnown)+len(anyList):]
+	if spellList != "" {
+		ch.Cantrips = pickSpells(c, spellList, 0, 0, b.Cantrips, cantrips, false)[len(b.Cantrips):]
+		anyList := pickSpells(c, spellList, 1, maxSpellLevel, b.SpellsKnown, o.AnyClassSpells, true)[len(b.SpellsKnown):]
+		ownList := pickSpells(c, spellList, 1, maxSpellLevel, slices.Concat(b.SpellsKnown, anyList), spells-o.AnyClassSpells, false)[len(b.SpellsKnown)+len(anyList):]
 		ch.Spells = slices.Concat(anyList, ownList)
 	}
 	// The prepared spells depend on the maximum with the other choices made.
@@ -215,7 +248,7 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 	if err != nil {
 		t.Fatalf("ApplyLevelUp: %v", err)
 	}
-	if o.Prepares {
+	if o.Prepares || prepares(c, after, classKey) {
 		ch.Prepared = pickPrepared(c, after, classKey)[len(after.SpellsPrepared):]
 	}
 	return ch
@@ -233,4 +266,11 @@ func firstOptions(c *Content, options []string, n int) []string {
 		}
 	}
 	return out
+}
+
+// prepares says whether the class of b prepares spells (for a third caster the
+// offer says it only once the subclass is chosen).
+func prepares(c *Content, b Build, classKey string) bool {
+	sc := spellcastingOf(Derive(b, c), classKey)
+	return sc != nil && sc.PreparesSpells
 }

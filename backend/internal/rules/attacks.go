@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 // attacks computes one line per carried weapon and per attack cantrip.
@@ -77,7 +79,7 @@ func (x *deriver) attacks() {
 		if !ok || s.Level != 0 || len(s.Damage) == 0 || len(s.Damage[0].AtCharacterLevel) == 0 {
 			continue
 		}
-		sc := x.casterFor(s.Classes)
+		sc := x.casterFor(s)
 		if sc == nil {
 			continue
 		}
@@ -102,9 +104,9 @@ func (x *deriver) attacks() {
 
 // casterFor picks the Spellcasting of a class that has the spell on its
 // list, or the first one.
-func (x *deriver) casterFor(classes []string) *Spellcasting {
+func (x *deriver) casterFor(s *srd51.Spell) *Spellcasting {
 	for i := range x.d.Spellcasting {
-		if slices.Contains(classes, x.d.Spellcasting[i].Class) {
+		if x.c.onList(s, x.d.Spellcasting[i].SpellList) {
 			return &x.d.Spellcasting[i]
 		}
 	}

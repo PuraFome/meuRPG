@@ -834,7 +834,7 @@ func solidOf(kinds []dungeon.Kind, w, h int, walls *grid.Layer, doors *grid.Door
 	return solid
 }
 
-// packCells keeps the dungeon's kinds, two bits a square (see migration 00170).
+// packCells keeps the dungeon's kinds, two bits a square (see migration 00130).
 func packCells(kinds []dungeon.Kind) []byte {
 	out := make([]byte, (len(kinds)+3)/4)
 	for i, k := range kinds {

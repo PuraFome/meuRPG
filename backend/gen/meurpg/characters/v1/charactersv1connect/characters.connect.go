@@ -53,6 +53,9 @@ const (
 	// CharacterServiceCreateCharacterProcedure is the fully-qualified name of the CharacterService's
 	// CreateCharacter RPC.
 	CharacterServiceCreateCharacterProcedure = "/meurpg.characters.v1.CharacterService/CreateCharacter"
+	// CharacterServiceCreateNpcFromCreatureProcedure is the fully-qualified name of the
+	// CharacterService's CreateNpcFromCreature RPC.
+	CharacterServiceCreateNpcFromCreatureProcedure = "/meurpg.characters.v1.CharacterService/CreateNpcFromCreature"
 	// CharacterServiceGetCharacterProcedure is the fully-qualified name of the CharacterService's
 	// GetCharacter RPC.
 	CharacterServiceGetCharacterProcedure = "/meurpg.characters.v1.CharacterService/GetCharacter"
@@ -158,6 +161,43 @@ type CharacterServiceClient interface {
 	//     this campaign. The error carries a CharacterBlocked detail with
 	//     reason LIVING_CHARACTER_EXISTS and that character's ID.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
+	// CreateNpcFromCreature is the bestiary's "Criar NPC" (MR-042, RN-29): it
+	// makes a named NPC with a basic sheet filled in from an SRD creature, for
+	// the master who wants "Grak, o ogro" rather than a typed NPC. The sheet
+	// holds the creature's armor class, average hit points, speed (the walking
+	// speed, or the highest one it has when it does not walk), ability scores,
+	// initiative bonus (the Dexterity modifier), size, challenge rating and XP,
+	// its first three attacks, weapon or spell, with the attack bonus, the reach or
+	// range and the first damage roll (a basic attack holds one damage: the
+	// other damage parts, such as the dragon's extra fire, go into the sheet's
+	// description as "Mordida: +2d6 fogo"; a saving throw or other rider stays in
+	// the SRD stat block; an attack whose die is not a d4, d6, d8, d10 or d12, or
+	// that has no damage, is left out), and `monster_key`, which links the NPC to the creature so the
+	// app can show the stat block (`meurpg.rules.v1.ContentService.GetCreature`).
+	// The creature in the bestiary does not change, and the NPC is a copy: the
+	// master edits it as any NPC (UpdateCharacter) and the numbers do not follow
+	// the creature afterwards.
+	//
+	// Only the campaign's master may call it, and they become the NPC's owner
+	// (RN-04). The NPC is like any other the master creates: a character of the
+	// campaign, never locked, hidden from the players by default (RN-10). The kind
+	// is MINION ("Minion" in the app, the default the app offers) or STORY ("NPC
+	// de história"): a basic sheet cannot be a full sheet's ENEMY ("Inimigo") or
+	// BOSS.
+	//
+	// It is idempotent: idempotency_key is a UUID the app makes for the dialog.
+	// Sending the same key again, for the same creature, name and kind, returns
+	// the NPC the first call made and creates nothing.
+	//
+	// Errors:
+	//   - `invalid_argument`: creature_key is not an SRD creature, kind is not
+	//     MINION or STORY, name is not 1 to 80 characters on one line, the
+	//     idempotency_key is not a UUID, or it was already used for another
+	//     creature, name or kind.
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	CreateNpcFromCreature(context.Context, *connect.Request[v1.CreateNpcFromCreatureRequest]) (*connect.Response[v1.CreateNpcFromCreatureResponse], error)
 	// GetCharacter returns one character with its sheet, its story, and the
 	// numbers the server derives from the sheet (MR-004). The campaign's
 	// master may read every character of the campaign; a player, only their
@@ -578,6 +618,12 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("CreateCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		createNpcFromCreature: connect.NewClient[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse](
+			httpClient,
+			baseURL+CharacterServiceCreateNpcFromCreatureProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("CreateNpcFromCreature")),
+			connect.WithClientOptions(opts...),
+		),
 		getCharacter: connect.NewClient[v1.GetCharacterRequest, v1.GetCharacterResponse](
 			httpClient,
 			baseURL+CharacterServiceGetCharacterProcedure,
@@ -725,6 +771,7 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // characterServiceClient implements CharacterServiceClient.
 type characterServiceClient struct {
 	createCharacter         *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
+	createNpcFromCreature   *connect.Client[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse]
 	getCharacter            *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
 	listCharacters          *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
 	updateCharacter         *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
@@ -752,6 +799,11 @@ type characterServiceClient struct {
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
 func (c *characterServiceClient) CreateCharacter(ctx context.Context, req *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error) {
 	return c.createCharacter.CallUnary(ctx, req)
+}
+
+// CreateNpcFromCreature calls meurpg.characters.v1.CharacterService.CreateNpcFromCreature.
+func (c *characterServiceClient) CreateNpcFromCreature(ctx context.Context, req *connect.Request[v1.CreateNpcFromCreatureRequest]) (*connect.Response[v1.CreateNpcFromCreatureResponse], error) {
+	return c.createNpcFromCreature.CallUnary(ctx, req)
 }
 
 // GetCharacter calls meurpg.characters.v1.CharacterService.GetCharacter.
@@ -902,6 +954,43 @@ type CharacterServiceHandler interface {
 	//     this campaign. The error carries a CharacterBlocked detail with
 	//     reason LIVING_CHARACTER_EXISTS and that character's ID.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
+	// CreateNpcFromCreature is the bestiary's "Criar NPC" (MR-042, RN-29): it
+	// makes a named NPC with a basic sheet filled in from an SRD creature, for
+	// the master who wants "Grak, o ogro" rather than a typed NPC. The sheet
+	// holds the creature's armor class, average hit points, speed (the walking
+	// speed, or the highest one it has when it does not walk), ability scores,
+	// initiative bonus (the Dexterity modifier), size, challenge rating and XP,
+	// its first three attacks, weapon or spell, with the attack bonus, the reach or
+	// range and the first damage roll (a basic attack holds one damage: the
+	// other damage parts, such as the dragon's extra fire, go into the sheet's
+	// description as "Mordida: +2d6 fogo"; a saving throw or other rider stays in
+	// the SRD stat block; an attack whose die is not a d4, d6, d8, d10 or d12, or
+	// that has no damage, is left out), and `monster_key`, which links the NPC to the creature so the
+	// app can show the stat block (`meurpg.rules.v1.ContentService.GetCreature`).
+	// The creature in the bestiary does not change, and the NPC is a copy: the
+	// master edits it as any NPC (UpdateCharacter) and the numbers do not follow
+	// the creature afterwards.
+	//
+	// Only the campaign's master may call it, and they become the NPC's owner
+	// (RN-04). The NPC is like any other the master creates: a character of the
+	// campaign, never locked, hidden from the players by default (RN-10). The kind
+	// is MINION ("Minion" in the app, the default the app offers) or STORY ("NPC
+	// de história"): a basic sheet cannot be a full sheet's ENEMY ("Inimigo") or
+	// BOSS.
+	//
+	// It is idempotent: idempotency_key is a UUID the app makes for the dialog.
+	// Sending the same key again, for the same creature, name and kind, returns
+	// the NPC the first call made and creates nothing.
+	//
+	// Errors:
+	//   - `invalid_argument`: creature_key is not an SRD creature, kind is not
+	//     MINION or STORY, name is not 1 to 80 characters on one line, the
+	//     idempotency_key is not a UUID, or it was already used for another
+	//     creature, name or kind.
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	CreateNpcFromCreature(context.Context, *connect.Request[v1.CreateNpcFromCreatureRequest]) (*connect.Response[v1.CreateNpcFromCreatureResponse], error)
 	// GetCharacter returns one character with its sheet, its story, and the
 	// numbers the server derives from the sheet (MR-004). The campaign's
 	// master may read every character of the campaign; a player, only their
@@ -1318,6 +1407,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("CreateCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceCreateNpcFromCreatureHandler := connect.NewUnaryHandler(
+		CharacterServiceCreateNpcFromCreatureProcedure,
+		svc.CreateNpcFromCreature,
+		connect.WithSchema(characterServiceMethods.ByName("CreateNpcFromCreature")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceGetCharacterHandler := connect.NewUnaryHandler(
 		CharacterServiceGetCharacterProcedure,
 		svc.GetCharacter,
@@ -1463,6 +1558,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
 			characterServiceCreateCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceCreateNpcFromCreatureProcedure:
+			characterServiceCreateNpcFromCreatureHandler.ServeHTTP(w, r)
 		case CharacterServiceGetCharacterProcedure:
 			characterServiceGetCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceListCharactersProcedure:
@@ -1518,6 +1615,10 @@ type UnimplementedCharacterServiceHandler struct{}
 
 func (UnimplementedCharacterServiceHandler) CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CreateCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) CreateNpcFromCreature(context.Context, *connect.Request[v1.CreateNpcFromCreatureRequest]) (*connect.Response[v1.CreateNpcFromCreatureResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CreateNpcFromCreature is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) GetCharacter(context.Context, *connect.Request[v1.GetCharacterRequest]) (*connect.Response[v1.GetCharacterResponse], error) {

@@ -230,7 +230,7 @@ func TestPromptOfIsFast(t *testing.T) {
 		d := mustGen(t, o)
 		start := time.Now()
 		PromptOf(d)
-		if el := time.Since(start); el > 20*time.Millisecond && !testing.Short() && !raceEnabled {
+		if el := time.Since(start); measuring() && el > 20*time.Millisecond {
 			t.Errorf("PromptOf took %v (budget 20 ms)", el)
 		}
 	}
