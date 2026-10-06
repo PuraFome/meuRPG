@@ -187,6 +187,22 @@ func (q *Queries) DeleteAbilityRolls(ctx context.Context, arg DeleteAbilityRolls
 	return err
 }
 
+const deleteContentOff = `-- name: DeleteContentOff :exec
+DELETE FROM campaign_content_off
+WHERE campaign_id = $1::UUID AND content_key = ANY($2::TEXT[])
+`
+
+type DeleteContentOffParams struct {
+	CampaignID  string
+	ContentKeys []string
+}
+
+// Switches the options back on.
+func (q *Queries) DeleteContentOff(ctx context.Context, arg DeleteContentOffParams) error {
+	_, err := q.db.Exec(ctx, deleteContentOff, arg.CampaignID, arg.ContentKeys)
+	return err
+}
+
 const deleteCreatures = `-- name: DeleteCreatures :exec
 DELETE FROM character_creatures
 WHERE campaign_id = $1::UUID AND id = ANY($2::UUID[])
@@ -917,6 +933,25 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 	return i, err
 }
 
+const insertContentOff = `-- name: InsertContentOff :exec
+INSERT INTO campaign_content_off (campaign_id, content_key, created_at)
+SELECT $1::UUID, k, $2::TIMESTAMPTZ
+FROM unnest($3::TEXT[]) AS k
+ON CONFLICT (campaign_id, content_key) DO NOTHING
+`
+
+type InsertContentOffParams struct {
+	CampaignID  string
+	Now         time.Time
+	ContentKeys []string
+}
+
+// Switches the options off (the ones already off stay as they are).
+func (q *Queries) InsertContentOff(ctx context.Context, arg InsertContentOffParams) error {
+	_, err := q.db.Exec(ctx, insertContentOff, arg.CampaignID, arg.Now, arg.ContentKeys)
+	return err
+}
+
 const insertLevelUp = `-- name: InsertLevelUp :one
 INSERT INTO character_level_ups
     (campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at)
@@ -1343,6 +1378,34 @@ func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]Lis
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listContentOff = `-- name: ListContentOff :many
+SELECT content_key FROM campaign_content_off
+WHERE campaign_id = $1::UUID
+ORDER BY content_key
+`
+
+// The keys the master switched off for the players ("Opções para os jogadores"),
+// sorted. Read in the caller's transaction, with the revision.
+func (q *Queries) ListContentOff(ctx context.Context, campaignID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listContentOff, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var content_key string
+		if err := rows.Scan(&content_key); err != nil {
+			return nil, err
+		}
+		items = append(items, content_key)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

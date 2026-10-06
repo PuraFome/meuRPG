@@ -1,0 +1,56 @@
+// The picker is two parts a parent may put side by side (the trait card puts "Efeito" beside "Nome do traço"): the type
+// select, and the fields it reads, each with its hint beside it.
+:host {
+  display: contents;
+}
+
+.type {
+  min-width: 0;
+}
+
+.fields {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+.frow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-2) var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  &__field {
+    min-width: 0;
+  }
+
+  &__hint {
+    margin: 0;
+    padding-top: 14px;
+    font-size: 14px;
+    line-height: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.more {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

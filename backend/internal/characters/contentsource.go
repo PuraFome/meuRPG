@@ -140,8 +140,8 @@ func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	return p
 }
 
-// withoutArchived is a copy of a catalog without the entries the table retired,
-// for the players (RN-23). It clones the whole message and filters the six lists,
+// withoutArchived is a copy of a catalog without the entries the table retired or
+// the master switched off, for the players (RN-23). It clones the whole message and filters the six lists,
 // so a field a later slice adds to Content is in the players' catalog too and can
 // never silently vanish. (A class's list of subclasses lives in the SRD content,
 // so it needs no change here.)
@@ -151,29 +151,29 @@ func withoutArchived(c *rulesv1.Content) *rulesv1.Content {
 	// through a reference.
 	archived := map[string]bool{}
 	for _, r := range out.Races {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
 	for _, r := range out.Classes {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
 	for _, r := range out.Subclasses {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
 	for _, r := range out.Subraces {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
 	for _, r := range out.Backgrounds {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
 	for _, r := range out.Spells {
-		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived()
+		archived[r.GetKey()] = archived[r.GetKey()] || r.GetArchived() || r.GetOff()
 	}
-	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() })
-	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() })
-	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() })
-	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() })
-	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() })
-	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() })
+	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return r.GetArchived() || r.GetOff() })
+	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return r.GetArchived() || r.GetOff() })
+	out.Classes = slices.DeleteFunc(out.Classes, func(r *rulesv1.CharacterClass) bool { return r.GetArchived() || r.GetOff() })
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return r.GetArchived() || r.GetOff() })
+	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return r.GetArchived() || r.GetOff() })
+	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return r.GetArchived() || r.GetOff() })
 	// An entry whose required parent is archived goes too, and so does a reference
 	// to an archived class or race.
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return archived[r.GetClassKey()] })

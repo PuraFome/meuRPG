@@ -94,3 +94,25 @@
 .op__pair .mat-mdc-outlined-button {
   background: var(--mr-surface);
 }
+
+// The wait of an offer the master made by hand: a status with the clock, and the two ways out.
+.op__wait {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+// "Retirar a oferta": a text action in the accent, like the page's other quiet links.
+.op__withdraw {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  align-self: flex-start;
+}

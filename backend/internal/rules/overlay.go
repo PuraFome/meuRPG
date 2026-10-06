@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -72,7 +73,12 @@ type Overlay struct {
 	// effect's type does not read is refused in them (a write is checked); in the
 	// others, which come from storage, it is ignored, so a stray field can never
 	// make a campaign unreadable.
-	Strict      []string
+	Strict []string
+	// Off are the keys the master switched off for the players: SRD keys and the
+	// table's own ("Opções para os jogadores", RN-23). A key that is no class,
+	// subclass, race, subrace, background or spell of this content is ignored, so
+	// a stored switch can never make a campaign unreadable.
+	Off         []string
 	Classes     []TableClass
 	Subclasses  []TableSubclass
 	Races       []TableRace
@@ -410,6 +416,15 @@ type OverlayError struct {
 	Field   string
 	Reason  string
 	Message string
+	// More are the other things wrong with the same entry, found in the same pass
+	// (a spell, a race and a background list every field they get wrong, so the
+	// master sees them at once). Each has its own Field and Reason.
+	More []*OverlayError
+}
+
+// Violations is the error and the ones after it, in the order they were found.
+func (e *OverlayError) Violations() []*OverlayError {
+	return append([]*OverlayError{e}, e.More...)
 }
 
 func (e *OverlayError) Error() string {
@@ -423,6 +438,39 @@ func (e *OverlayError) Error() string {
 // for the entry-level checks, from the message and the entry's path (locate).
 func ovErr(key, format string, args ...any) *OverlayError {
 	return &OverlayError{Key: key, Message: fmt.Sprintf(format, args...)}
+}
+
+// entryErrors collects what is wrong with one entry, so the whole list comes back
+// at once instead of the first only (MR-025: the editor marks every field).
+type entryErrors struct{ list []*OverlayError }
+
+// add records err (an *OverlayError, or any other error as the entry's own).
+func (c *entryErrors) add(err error) {
+	if err == nil {
+		return
+	}
+	var oe *OverlayError
+	if errors.As(err, &oe) {
+		c.list = append(c.list, oe.Violations()...)
+		oe.More = nil
+		return
+	}
+	c.list = append(c.list, &OverlayError{Message: err.Error(), Reason: ReasonValue})
+}
+
+// at records a violation at attr of the entry at path.
+func (c *entryErrors) at(key, path, attr, reason, format string, args ...any) {
+	c.list = append(c.list, bad(key, path, attr, reason, format, args...))
+}
+
+// err is the first violation carrying the rest, or nil when there is none.
+func (c *entryErrors) err() error {
+	if len(c.list) == 0 {
+		return nil
+	}
+	first := *c.list[0]
+	first.More = c.list[1:]
+	return &first
 }
 
 // reason sets the reason only; the field is filled from the entry's path.
@@ -465,6 +513,107 @@ func TableKeys(b Build) []string {
 // never a new choice, but old sheets keep it).
 func (c *Content) ArchivedKeys(b Build) []string {
 	return buildKeys(b, func(k string) bool { return c.c.archived[k] })
+}
+
+// Off says whether the master switched the key off for the players (RN-23): the
+// key's own switch, whatever the kind. Always false for the plain SRD content.
+func (c *Content) Off(key string) bool { return c.c.off[key] }
+
+// Hidden says whether the players never receive the key: the table retired it,
+// the master switched it off, or it is a subclass or subrace whose class or race
+// is switched off. A sheet that already has a hidden key keeps it (ADR-0018,
+// section 7); it is only not a choice.
+func (c *Content) Hidden(key string) bool {
+	if c.c.archived[key] || c.c.offOrParent(key) {
+		return true
+	}
+	// The child of a retired class or race is not offered either.
+	if s, ok := c.c.subclasses[key]; ok {
+		return c.c.archived[s.Class]
+	}
+	if s, ok := c.c.subraces[key]; ok {
+		return c.c.archived[s.Race]
+	}
+	return false
+}
+
+// Switchable says whether the key is one the master can switch on or off: a
+// class, subclass, race, subrace, background or spell of this content, the SRD's
+// or the table's.
+func (c *Content) Switchable(key string) bool { return c.c.isSwitchable(key) }
+
+// AnyHidden says whether the table retired or switched off anything at all, so a
+// caller that only filters what a player receives can skip the work when not.
+func (c *Content) AnyHidden() bool { return len(c.c.archived) > 0 || len(c.c.off) > 0 }
+
+// OffKeys are the keys a Build uses that the master switched off for the players,
+// sorted. A subclass or subrace under an off class or race counts too, but only
+// when the Build lacks that class or race: a sheet that already has the off class
+// judges its own subclass by the subclass's own switch, so it can still reach its
+// subclass level (question 80); a new sheet cannot pick the class, so it cannot
+// pick the subclass either. The server compares the ones of the new sheet with the
+// ones of the previous sheet and refuses an off key that is new.
+func (c *Content) OffKeys(b Build) []string {
+	hasClass := map[string]bool{}
+	for _, cl := range b.Classes {
+		hasClass[cl.Class] = true
+	}
+	return buildKeys(b, func(k string) bool {
+		if c.c.off[k] {
+			return true
+		}
+		if s, ok := c.c.subclasses[k]; ok {
+			return c.c.off[s.Class] && !hasClass[s.Class]
+		}
+		if s, ok := c.c.subraces[k]; ok {
+			return c.c.off[s.Race] && b.Race != s.Race
+		}
+		return false
+	})
+}
+
+// offOrParent says whether the key is switched off, or is the subclass of a class
+// or the subrace of a race that is.
+func (c *content) offOrParent(key string) bool {
+	if len(c.off) == 0 {
+		return false
+	}
+	if c.off[key] {
+		return true
+	}
+	if s, ok := c.subclasses[key]; ok {
+		return c.off[s.Class]
+	}
+	if s, ok := c.subraces[key]; ok {
+		return c.off[s.Race]
+	}
+	return false
+}
+
+// isSwitchable says whether the key is a class, subclass, race, subrace,
+// background or spell of the content.
+func (c *content) isSwitchable(key string) bool {
+	switch {
+	case strings.HasPrefix(key, "class:"):
+		_, ok := c.classes[key]
+		return ok
+	case strings.HasPrefix(key, "subclass:"):
+		_, ok := c.subclasses[key]
+		return ok
+	case strings.HasPrefix(key, "race:"):
+		_, ok := c.races[key]
+		return ok
+	case strings.HasPrefix(key, "subrace:"):
+		_, ok := c.subraces[key]
+		return ok
+	case strings.HasPrefix(key, "background:"):
+		_, ok := c.backgrounds[key]
+		return ok
+	case strings.HasPrefix(key, "spell:"):
+		_, ok := c.spells[key]
+		return ok
+	}
+	return false
 }
 
 func buildKeys(b Build, want func(string) bool) []string {
@@ -589,7 +738,9 @@ type overlayBuilder struct {
 }
 
 type pendingEffects struct {
-	owner   string
+	owner string
+	// entry is the table entry the owner belongs to (the owner itself for an entry's own effects).
+	entry   string
 	effects []Effect
 	// strict says the entry is being written: see Overlay.Strict.
 	strict bool
@@ -656,44 +807,62 @@ func (b *overlayBuilder) build(o Overlay) error {
 	n.programs = map[programKey]*formula.Program{}
 	defer func() { n.programs = nil }()
 
+	// An entry that fails reports everything wrong with it: its own fields, and the
+	// effects of its features and traits (which are compiled once every entry exists).
+	fail := func(err error, path string) error {
+		err = locate(err, path)
+		var oe *OverlayError
+		if errors.As(err, &oe) && oe.Key != "" {
+			var extra *OverlayError
+			if errors.As(b.compileEffectsOf(oe.Key), &extra) {
+				oe.More = append(oe.More, extra.Violations()...)
+			}
+		}
+		return err
+	}
 	for _, i := range spells {
 		path := fmt.Sprintf("spells[%d]", i)
 		if err := b.addSpell(&o.Spells[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range races {
 		path := fmt.Sprintf("races[%d]", i)
 		if err := b.addRace(&o.Races[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range subraces {
 		path := fmt.Sprintf("subraces[%d]", i)
 		if err := b.addSubrace(&o.Subraces[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range classes {
 		path := fmt.Sprintf("classes[%d]", i)
 		if err := b.addClass(&o.Classes[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range subclasses {
 		path := fmt.Sprintf("subclasses[%d]", i)
 		if err := b.addSubclass(&o.Subclasses[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	for _, i := range backgrounds {
 		path := fmt.Sprintf("backgrounds[%d]", i)
 		if err := b.addBackground(&o.Backgrounds[i], path); err != nil {
-			return locate(err, path)
+			return fail(err, path)
 		}
 	}
 	if err := b.compileEffects(); err != nil {
 		return err
+	}
+	for _, k := range o.Off {
+		if n.isSwitchable(k) {
+			n.off[k] = true
+		}
 	}
 	for i := range o.Classes {
 		if err := n.indexClassCasting(o.Classes[i].Key); err != nil {
@@ -887,6 +1056,7 @@ func (c *content) cloneForOverlay() *content {
 	n.listFrom = map[string]string{}
 	n.offeredBy = map[string][]string{}
 	n.archived = map[string]bool{}
+	n.off = map[string]bool{}
 	n.entryRevision = map[string]int{}
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}

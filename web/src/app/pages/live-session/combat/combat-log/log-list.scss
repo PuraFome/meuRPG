@@ -77,6 +77,8 @@
 }
 
 .line__text {
+  // Beside its icon, never under it: a long line wraps inside its own column.
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }

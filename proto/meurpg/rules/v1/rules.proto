@@ -48,8 +48,10 @@ service ContentService {
   // the table's classes, subclasses, races, subraces, backgrounds and spells,
   // with `content_version` "srd51@...+fx.N+mesa.<revision>" ("+mesa" only once the
   // table has content). A player never receives an archived entry (the master's
-  // drafts and retired entries); a master receives them, with the `archived`
-  // mark. The entries in full, and how many characters use each, are
+  // drafts and retired entries) nor an option the master switched off in "Opções
+  // para os jogadores" (SRD or table, with the subclasses of an off class and the
+  // subraces of an off race); a master receives them, with the `archived` and
+  // `off` marks. The entries in full, and how many characters use each, are
   // TableContentService.ListTableEntries.
   //
   // Errors:
@@ -83,7 +85,9 @@ service ContentService {
   // A player never receives an archived table spell, nor an archived class's
   // key in `class_keys`; the master receives the archived ones, with the
   // `archived` mark (RN-23). The master's switches "Opções para os jogadores"
-  // (a later slice) leave out of a player's list what is off.
+  // (TableContentService.SetOptionSwitches) leave out of a player's list the
+  // spells that are off, and the off classes from `class_keys`; the master gets
+  // them with the `off` mark.
   //
   // `character_id` is "Só as que posso aprender": the spells on the list of one
   // of the character's casting classes up to the highest circle that class
@@ -944,6 +948,21 @@ message Content {
   // creature gives when defeated (MR-016); the master may type another
   // value.
   repeated ChallengeRating challenge_ratings = 13;
+  // The SRD's languages, with their Portuguese names, so a player reads "Comum" and
+  // never "language:common" (a race's languages, a background's).
+  repeated NamedKey languages = 14;
+  // The SRD's proficiencies a table entry may name: tools, armor, weapons and the
+  // rest (the same values the master's GetEffectMenu lists carry).
+  repeated NamedKey proficiencies = 15;
+  // The SRD's damage types, with their Portuguese names ("damage-type:fire").
+  repeated NamedKey damage_types = 16;
+}
+
+// NamedKey is a content key with its Portuguese name.
+message NamedKey {
+  // Content key, such as "language:common" or "proficiency:thieves-tools".
+  string key = 1;
+  string name_pt = 2;
 }
 
 // ChallengeRating is one row of the SRD's "Experience Points by Challenge
@@ -984,6 +1003,10 @@ message Race {
   // The bonuses the player places on abilities of their choice, such as [2, 1]
   // for "+2 and +1 to your choice"; empty for the SRD's races.
   repeated int32 choice_bonuses = 7;
+  // The master switched it off for the players ("Opções para os jogadores", RN-23):
+  // a master sees it with this mark, a player never receives it. Every `off`
+  // below is the same. A sheet that already has it keeps it.
+  bool off = 8;
 }
 
 // Subrace is a subrace of one race.
@@ -998,6 +1021,9 @@ message Subrace {
   AbilityScores ability_bonuses = 5;
   // The table retired it (see Race.archived).
   bool archived = 6;
+  // Switched off for the players (see Race.off). Its own switch: a subrace of an
+  // off race is hidden from the players too, and keeps this mark false.
+  bool off = 7;
 }
 
 // CharacterClass is a class from the rules content.
@@ -1019,6 +1045,8 @@ message CharacterClass {
   ClassSpellcasting spellcasting = 8;
   // The table retired it (see Race.archived).
   bool archived = 9;
+  // Switched off for the players (see Race.off): its subclasses are hidden too.
+  bool off = 10;
 }
 
 // SkillChoice is "choose `count` skills from this list".
@@ -1076,6 +1104,8 @@ message Subclass {
   bool archived = 5;
   // Set for a subclass that casts on its own (a third caster, the table's only).
   SubclassSpellcasting spellcasting = 6;
+  // Switched off for the players (see Subrace.off): its own switch.
+  bool off = 7;
 }
 
 // SubclassSpellcasting is how a third caster's subclass casts.
@@ -1103,6 +1133,8 @@ message Background {
   bool archived = 5;
   // A table background's equipment text; empty for the SRD's.
   string equipment_pt = 6;
+  // Switched off for the players (see Race.off).
+  bool off = 7;
 }
 
 // Skill is one of the 18 skills.
@@ -1170,6 +1202,8 @@ message Spell {
   bool concentration = 9;
   // The table retired it (see Race.archived).
   bool archived = 10;
+  // Switched off for the players (see Race.off).
+  bool off = 11;
 }
 
 // ListContentRequest names a campaign.
@@ -1179,7 +1213,9 @@ message ListContentRequest {
 
 // ListContentResponse returns the campaign's rules content.
 message ListContentResponse {
-  // The catalog. For a player, without the archived entries.
+  // The catalog. For a player, without the archived entries and without what the
+  // master switched off (and without the subclasses of an off class and the
+  // subraces of an off race).
   Content content = 1;
   // The campaign's content revision (0 while the table has no content of its
   // own). It is in `content.content_version` too, after "+mesa.". The table's

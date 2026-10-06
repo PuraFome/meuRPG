@@ -72,10 +72,55 @@ describe('OpportunityCard', () => {
     const { el, skipped } = setup([toToren]);
     const text = plain(el.textContent);
     expect(text).toContain('Esperando a reação do Caio (Toren)');
-    expect(text).toContain('Se você seguir sem esperar, o Toren perde essa reação.');
+    expect(text).toContain('Se você seguir sem esperar, o Toren não ataca e continua com a reação.');
     expect(el.querySelector('.op__btn[data-safe]')).toBeNull();
     Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent) === 'Seguir sem esperar')!.click();
     expect(skipped).toEqual(['o2']);
+  });
+
+  describe('an offer the master made by hand (a combat without a map, RN-25)', () => {
+    const byHandToToren = create(OpportunityOfferSchema, { ...toToren, id: 'o3', byHand: true });
+    const byHandToGoblin = create(OpportunityOfferSchema, { ...toGoblin, id: 'o4', byHand: true });
+
+    it('waits on the player with a status, "Seguir sem esperar" and "Retirar a oferta", and keeps the reaction', () => {
+      const { fixture, el, skipped } = setup([byHandToToren]);
+      const withdrawn: string[] = [];
+      fixture.componentInstance.withdraw.subscribe((o) => withdrawn.push(o.id));
+      const text = plain(el.textContent);
+      expect(plain(el.querySelector('[role="status"]')?.textContent)).toContain('Esperando a resposta do Caio (Toren).');
+      expect(text).toContain('O Goblin 2 saiu do alcance dele. O turno continua depois da resposta.');
+      expect(text).toContain('o Toren não ataca e continua com a reação');
+      expect(text).not.toContain('perde essa reação');
+      const buttons = Array.from(el.querySelectorAll('button')).filter((b) => ['Seguir sem esperar', 'Retirar a oferta'].includes(plain(b.textContent)));
+      // Both ways out are outlined buttons of one size; the footnote says which to use when.
+      expect(buttons.length).toBe(2);
+      expect(buttons.every((b) => b.classList.contains('mat-mdc-outlined-button') && b.classList.contains('op__btn'))).toBe(true);
+      expect(text).toContain('“Seguir sem esperar” é para quando o jogador não responde');
+      expect(text).toContain('“Retirar a oferta” é para quando você ofereceu sem querer');
+      const press = (name: string) => Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent) === name)!.click();
+      press('Seguir sem esperar');
+      press('Retirar a oferta');
+      expect(skipped).toEqual(['o3']);
+      expect(withdrawn).toEqual(['o3']);
+    });
+
+    it('never talks about a square: nothing goes back anywhere, and the master can take the offer back', () => {
+      const { fixture, el } = setup([byHandToGoblin]);
+      const withdrawn: string[] = [];
+      fixture.componentInstance.withdraw.subscribe((o) => withdrawn.push(o.id));
+      const text = plain(el.textContent);
+      expect(text).toContain('Goblin 2 ataca o Toren?');
+      expect(text).not.toContain('quadrado');
+      expect(text).not.toContain('o token volta');
+      Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent) === 'Retirar a oferta')!.click();
+      expect(withdrawn).toEqual(['o4']);
+    });
+
+    it('keeps the square line and no "Retirar a oferta" for an offer a move made', () => {
+      const { el } = setup([toGoblin]);
+      expect(plain(el.textContent)).toContain('o token volta ao último quadrado');
+      expect(plain(el.textContent)).not.toContain('Retirar a oferta');
+    });
   });
 
   it('draws nothing when no offer waits', () => {

@@ -68,6 +68,8 @@ export class TurnPanel {
   readonly trapNote = input<FallNote | null>(null);
   /** The name of the spell the player is concentrating on, or `''`. */
   readonly concentration = input('');
+  /** The combat is played without a map (RN-25): the movement tile has no squares to count. */
+  readonly theatre = input(false);
 
   readonly endTurn = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */

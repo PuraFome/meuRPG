@@ -61,6 +61,7 @@
   grid-template-areas:
     'token text actions'
     '. cover cover'
+    '. death death'
     '. extra extra';
   column-gap: 10px;
   align-items: center;
@@ -76,6 +77,7 @@
     grid-template-areas:
       'token text init hp actions'
       '. cover cover cover cover'
+      '. death death death death'
       '. extra extra extra extra';
   }
 }
@@ -92,6 +94,16 @@
 
 .row__token {
   grid-area: token;
+}
+
+// A fallen character's marks sit under the whole row (never in the initiative column), and its avatar stays level with the name.
+.row__death {
+  grid-area: death;
+  min-width: 0;
+}
+
+.row--fallen .row__token {
+  align-self: start;
 }
 
 .row__text {

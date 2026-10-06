@@ -51,6 +51,12 @@
     </div>
   }
 
+  @if (deathNote() && showList()) {
+    <p class="note" data-testid="death-hidden-note">
+      <mat-icon aria-hidden="true">info</mat-icon>Esta mesa só deixa o dono e o mestre verem os testes contra a morte.
+    </p>
+  }
+
   @if (more() && !phone()) {
     <button mat-button type="button" class="all" (click)="openSheet()">
       <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver o registro todo

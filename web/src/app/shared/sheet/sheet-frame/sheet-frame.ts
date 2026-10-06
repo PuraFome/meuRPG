@@ -1,0 +1,93 @@
+import { Component, DestroyRef, ElementRef, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+/**
+ * The frame of the combat's sheets and dialogs that scroll inside
+ * themselves (the cast sheet, Escudo, "Condições…", Retomar o Fôlego):
+ * the grab bar on a phone, the title and what it is about, the close
+ * button, a body that scrolls and a footer with the action buttons that
+ * never scrolls away, so a tall list on a 667px phone still leaves
+ * "Conjurar" in reach. The title is the first focus (`tabindex="-1"`,
+ * see `openSheet`) and the name of the dialog (`titleId`).
+ */
+@Component({
+  selector: 'app-sheet-frame',
+  imports: [MatIconModule],
+  template: `
+    <div class="frame" [class.frame--phone]="phone()" [style.height]="height() || null">
+      @if (phone()) {
+        <span class="frame__handle" aria-hidden="true"></span>
+      }
+      <div class="frame__head">
+        @if (icon()) {
+          <mat-icon class="frame__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+        }
+        <div class="frame__titles">
+          <h2 class="frame__title" [id]="titleId()" tabindex="-1">{{ title() }}</h2>
+        </div>
+        <!-- An extra icon button before the close one (the cast sheet's "?"). -->
+        <ng-content select="[head-action]" />
+        @if (closable()) {
+          <button type="button" class="frame__close" aria-label="Fechar" (click)="closed.emit()">
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        }
+      </div>
+      @if (subtitle()) {
+        <p class="frame__sub">{{ subtitle() }}</p>
+      }
+      <div #body class="frame__body" [class.frame__body--scrolls]="scrolls()"><ng-content /></div>
+      <div class="frame__foot"><ng-content select="[foot]" /></div>
+    </div>
+  `,
+  styleUrl: './sheet-frame.scss',
+  host: { style: 'display: block' },
+})
+export class SheetFrame {
+  readonly title = input.required<string>();
+  readonly subtitle = input('');
+  readonly titleId = input('sheet-t');
+  /** A leading icon before the title (Escudo's shield). */
+  readonly icon = input('');
+  /** The phone's bottom sheet: it draws its grab bar. */
+  readonly phone = input(false);
+  /** An alert dialog that must be answered has no close button. */
+  readonly closable = input(true);
+  /** A fixed height (a CSS length) for a dialog whose list filters: it does not jump as the results change. */
+  readonly height = input('');
+
+  readonly closed = output<void>();
+
+  private readonly body = viewChild.required<ElementRef<HTMLElement>>('body');
+  /** The body has more than fits: only then the shadows at its edges are drawn (a body that fits shows no stray line). */
+  protected readonly scrolls = signal(false);
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const el = this.body().nativeElement;
+      const check = () => this.scrolls.set(el.scrollHeight > el.clientHeight + 1);
+      check();
+      if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(check);
+        observer.observe(el);
+        Array.from(el.children).forEach((child) => observer.observe(child));
+        destroyRef.onDestroy(() => observer.disconnect());
+        // Content that shows up later (an `@if` block) is observed too, and the check runs again.
+        if (typeof MutationObserver === 'function') {
+          const mutations = new MutationObserver((records) => {
+            records.forEach((r) => r.addedNodes.forEach((n) => n instanceof Element && observer.observe(n)));
+            check();
+          });
+          mutations.observe(el, { childList: true });
+          destroyRef.onDestroy(() => mutations.disconnect());
+        }
+      }
+    });
+  }
+
+  /** An error opens at the top of the scrolling body, where it is seen. */
+  scrollToTop(): void {
+    this.body().nativeElement.scrollTop = 0;
+  }
+}

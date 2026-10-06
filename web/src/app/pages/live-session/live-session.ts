@@ -19,11 +19,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type Encounter, EncounterMode, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { mineTabs } from '../../core/combat/mine';
+import { isTheatre } from '../../core/combat/theatre';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
 import { FogPlayerTools } from './fog-tools/fog-player-tools';
@@ -241,6 +242,8 @@ export class LiveSession {
   /** The session's combat (MR-013): read on every `ready` and after each
    * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
   protected readonly combat = new CombatState();
+  /** The running combat has no map (RN-25): no fog, no traps, nothing that depends on place. */
+  protected readonly inTheatre = computed(() => isTheatre(this.combat.shown()));
 
   /** The RP scene open in the session (MR-015): read on every `ready` and
    * after each `scene_changed` or `scene_check_rolled`. */
@@ -531,8 +534,12 @@ export class LiveSession {
           }
         },
         onEncounterChanged: (change) => {
+          // A combat without a map has no fog and no traps (RN-25): the hint says the mode, and nothing of the map is read for it.
+          const noMap = change.mode === EncounterMode.THEATRE || (!change.mode && this.inTheatre());
           // Any change of the combat may change who sees whom (revision 0 is a hint with no number): read the vision too.
-          this.scheduleVision();
+          if (!noMap) {
+            this.scheduleVision();
+          }
           // Read again only when the news is newer than the copy on screen. A hint with no revision
           // (0) is the server telling a player "read again" without counting: an opportunity offer
           // made to them, or any change on a fog map, where each player has a revision of their own
@@ -542,7 +549,9 @@ export class LiveSession {
             void this.loadCombat(generation);
           }
           // A trap that fired in the combat leaves damage that waits for the master.
-          void this.trapBoard.refreshDamages();
+          if (!noMap) {
+            void this.trapBoard.refreshDamages();
+          }
         },
         onTurnChanged: (turn) => {
           if (!this.combat.applyTurn(turn)) {
@@ -550,14 +559,18 @@ export class LiveSession {
           }
         },
         onCombatantMoved: (move) => {
-          this.scheduleVision();
+          if (!this.inTheatre()) {
+            this.scheduleVision();
+          }
           if (!this.combat.applyMove(move)) {
             void this.loadCombat(generation);
           }
         },
         onCombatLogChanged: () => {
           this.combat.touchLog();
-          void this.trapBoard.refreshDamages();
+          if (!this.inTheatre()) {
+            void this.trapBoard.refreshDamages();
+          }
         },
         onTrapNoticed: (notice) => void this.trapNoticed(notice.mapId, notice.pointId),
         onXpChanged: () => this.xpChanges.bump(),
