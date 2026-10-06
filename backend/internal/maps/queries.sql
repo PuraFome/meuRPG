@@ -573,6 +573,13 @@ INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, charact
 VALUES (sqlc.arg(campaign_id), sqlc.arg(clue_id), sqlc.arg(point_id), sqlc.arg(user_id), sqlc.narg(character_id), sqlc.arg(text), sqlc.arg(now))
 ON CONFLICT (clue_id, user_id) DO NOTHING;
 
+-- name: HasClueReveal :one
+-- Whether the player has this clue (the cipher puzzle shows them where the key is only
+-- once they found it).
+SELECT EXISTS (
+    SELECT 1 FROM scene_clue_reveals WHERE campaign_id = $1 AND clue_id = $2 AND user_id = $3
+) AS found;
+
 -- name: ListClueRevealsOfPoint :many
 -- Who has each clue of a point, oldest reveal first.
 SELECT clue_id, character_id, revealed_at FROM scene_clue_reveals

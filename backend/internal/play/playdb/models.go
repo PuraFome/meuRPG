@@ -146,6 +146,26 @@ type Puzzle struct {
 	ArchivedAt   *time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	HintSkill    *string
+	HintDc       *int32
+	Parts        []byte
+	OnWrong      []byte
+}
+
+type PuzzleHintTry struct {
+	ID             string
+	RunID          string
+	UserID         *string
+	CharacterID    *string
+	IdempotencyKey string
+	HintIndex      int32
+	Passed         bool
+	GrantedCount   *int32
+	D20            int32
+	Modifier       int32
+	Total          int32
+	Physical       bool
+	CreatedAt      time.Time
 }
 
 type PuzzleMove struct {
@@ -159,6 +179,7 @@ type PuzzleMove struct {
 	Revision       int32
 	Solved         bool
 	CreatedAt      time.Time
+	Wrong          bool
 }
 
 type PuzzleRun struct {
@@ -182,6 +203,10 @@ type PuzzleRun struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	SolveMessage         *string
+	Plays                int32
+	PlayStartedAt        *time.Time
+	RoundStartSeq        int32
+	RoundStartedAt       *time.Time
 }
 
 type StageNpc struct {

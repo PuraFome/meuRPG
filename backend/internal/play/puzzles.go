@@ -30,18 +30,24 @@ import (
 //   - puzzles.go: this file, the pieces every kind and every call share: the
 //     stored forms, the errors, the checks on what the master writes, the stream
 //     hint.
-//   - puzzles_kinds.go: one puzzleKind per kind (lights, lock, pillars), the only
-//     place that knows what a kind is. Slice 10.7b adds the riddle, the sequence
-//     and the cipher there, and a case in kindOf; nothing else changes.
+//   - puzzles_kinds.go: one puzzleKind per kind (lights, lock, pillars, riddle,
+//     sequence, cipher), the only place that knows what a kind is.
+//   - puzzles_rules.go: what is the same for every kind and is the master's to set:
+//     "Ao errar" (a trap, the attempts, the limits), the hints won by a skill check
+//     and the split information; and the limits worked out from the run.
 //   - puzzles_master.go: the campaign's puzzles (create, edit, list, archive).
 //   - puzzles_session.go: the master's session calls (show, reset, new start,
 //     close, hints, the live view).
-//   - puzzles_play.go: what a player reads, and a move (with "Ao resolver").
+//   - puzzles_play.go: what a player reads, and a move (with "Ao resolver" and "Ao
+//     errar").
+//   - puzzles_hints.go: a player's try for a hint by a skill check.
 //
 // The rules are package rules/puzzle (pure); the three tables are puzzles (the
 // master's, never read by a player: RN-10), puzzle_runs (a session's live state)
 // and puzzle_moves (every move, with its idempotency key). The session's events
-// keep only shown, solved, reset and closed (ADR-0007).
+// keep only shown, solved, reset and closed (ADR-0007); a hint won by a skill check
+// has its own table, puzzle_hint_tries, and a trap that a wrong move fires writes the
+// trap's own event (`trap_triggered`).
 
 // PuzzleMaps is what a solved puzzle asks of the maps module ("Ao resolver"): the
 // doors, the points and the clues are its own. maps.Service implements it
@@ -68,6 +74,9 @@ type PuzzleMaps interface {
 	// PuzzleRevealClue gives the clue to the character's player and says whether
 	// they did not have it; the function it returns tells them after the commit.
 	PuzzleRevealClue(ctx context.Context, tx pgx.Tx, campaignID, clueID, characterID, userID string, at time.Time) (bool, func(context.Context), error)
+	// PuzzleClueFoundBy says whether the player has found the clue: a cipher shows
+	// where its key is only once they have. False, not an error, for a clue that is gone.
+	PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, clueID, userID string) (bool, error)
 }
 
 // puzzleDeps is what the puzzle calls need besides the rest of the Service. The
@@ -284,6 +293,18 @@ type puzzleDef struct {
 	start    *playv1.PuzzleState
 	hints    []string
 	onSolve  *playv1.PuzzleOnSolve
+	// The master's other settings (slice 10.7b): the skill check that wins a hint (nil:
+	// none), the split information and "Ao errar" (nil: nothing). None of them reaches a
+	// player but as the counters and the part that are theirs (puzzles_view.go).
+	hintCheck *playv1.PuzzleHintCheck
+	parts     []*playv1.PuzzlePart
+	onWrong   *playv1.PuzzleOnWrong
+}
+
+// storedPart is a part of the split information as puzzles.parts keeps it.
+type storedPart struct {
+	CharacterID string `json:"character_id"`
+	Text        string `json:"text"`
 }
 
 // decodePuzzle reads the stored JSON of a puzzle row.
@@ -311,6 +332,24 @@ func decodePuzzle(row playdb.Puzzle) (puzzleDef, error) {
 		return puzzleDef{}, fmt.Errorf("puzzle %s has a kind this server does not know", row.ID)
 	}
 	d.onSolve.Action = solveActionOf(row.SolveAction)
+	if row.HintSkill != nil && row.HintDc != nil {
+		d.hintCheck = &playv1.PuzzleHintCheck{SkillKey: *row.HintSkill, Dc: *row.HintDc}
+	}
+	if len(row.Parts) > 0 {
+		var parts []storedPart
+		if err := json.Unmarshal(row.Parts, &parts); err != nil {
+			return puzzleDef{}, fmt.Errorf("decode the stored parts: %w", err)
+		}
+		for _, p := range parts {
+			d.parts = append(d.parts, &playv1.PuzzlePart{CharacterId: p.CharacterID, Text: p.Text})
+		}
+	}
+	if len(row.OnWrong) > 0 {
+		d.onWrong = &playv1.PuzzleOnWrong{}
+		if err := fromJSON(row.OnWrong, d.onWrong); err != nil {
+			return puzzleDef{}, err
+		}
+	}
 	return d, nil
 }
 
@@ -350,6 +389,10 @@ type puzzleInput struct {
 	clue     string
 	hints    []string
 	onSolve  *playv1.PuzzleOnSolve
+	// Slice 10.7b: the hint check, the split information and "Ao errar".
+	hintCheck *playv1.PuzzleHintCheck
+	parts     []*playv1.PuzzlePart
+	onWrong   *playv1.PuzzleOnWrong
 }
 
 // checkedText trims the text and checks its length in characters.

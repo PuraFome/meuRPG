@@ -4,11 +4,15 @@
 
 // Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes a puzzle for the
 // campaign, shows it to the players of an open session, and they solve it live in the
-// app. This slice has three kinds: "Apagar as luzes" (a board of lights; pressing one
-// toggles it and its four neighbours), the combination lock (wheels of digits, letters
-// or our own runes) and the turning symbols (pillars of our own glyphs, which may turn
-// together). The riddle, the sequence and the cipher come in slice 10.7b, on top of
-// these messages: each is one more kind in the `oneof`s below, with its own messages.
+// app. It has six kinds: "Apagar as luzes" (a board of lights; pressing one toggles it
+// and its four neighbours), the combination lock (wheels of digits, letters or our own
+// runes), the turning symbols (pillars of our own glyphs, which may turn together), the
+// riddle (the player types an answer), the sequence (the master plays a row of bells
+// and the players repeat it) and the cipher (a message swapped letter by letter, whose
+// key is a clue the group finds in the adventure). Slice 10.7b added the last three, the
+// hints won by a skill check, the split information (each player reads their own part
+// of a clue) and the consequences of a wrong move ("Ao errar"): a trap fires, an attempt
+// is spent, or a limit of moves or of time stops the puzzle.
 //
 // Every move is relative (press a cell, turn a wheel or a pillar by one), so two
 // players' moves made at the same time both count, whichever the server takes first.
@@ -18,8 +22,10 @@
 // What a player never receives (RN-10, RN-27), in any response or stream event: the
 // solution of a lock, the minimum number of moves and a way to make them, a hint the
 // master has not released, the "Ao resolver" action and its target, and any puzzle
-// that is not shown. A puzzle that is unknown or not shown answers `not_found`, as for
-// a puzzle that does not exist. A player reads the state, the master's clue, the
+// that is not shown, a riddle's accepted answers, a sequence before it is played, a
+// cipher's plain message and key, the DC of a hint's skill check, and the parts of the
+// split information that are other players'. A puzzle that is unknown or not shown
+// answers `not_found`, as for a puzzle that does not exist. A player reads the state, the master's clue, the
 // released hints, who moved last (the character's name), whether it is solved and, once
 // it is, what happened ("A porta da Capela se abriu."). The goal is not a secret where
 // the challenge is the moves, so the players of the turning symbols also read the mural
@@ -94,6 +100,12 @@ const (
 	// PuzzleServiceReleaseNextPuzzleHintProcedure is the fully-qualified name of the PuzzleService's
 	// ReleaseNextPuzzleHint RPC.
 	PuzzleServiceReleaseNextPuzzleHintProcedure = "/meurpg.play.v1.PuzzleService/ReleaseNextPuzzleHint"
+	// PuzzleServicePreviewPuzzleCipherProcedure is the fully-qualified name of the PuzzleService's
+	// PreviewPuzzleCipher RPC.
+	PuzzleServicePreviewPuzzleCipherProcedure = "/meurpg.play.v1.PuzzleService/PreviewPuzzleCipher"
+	// PuzzleServicePlayPuzzleSequenceProcedure is the fully-qualified name of the PuzzleService's
+	// PlayPuzzleSequence RPC.
+	PuzzleServicePlayPuzzleSequenceProcedure = "/meurpg.play.v1.PuzzleService/PlayPuzzleSequence"
 	// PuzzleServiceGetMasterPuzzleRunProcedure is the fully-qualified name of the PuzzleService's
 	// GetMasterPuzzleRun RPC.
 	PuzzleServiceGetMasterPuzzleRunProcedure = "/meurpg.play.v1.PuzzleService/GetMasterPuzzleRun"
@@ -103,6 +115,9 @@ const (
 	// PuzzleServiceGetPuzzleRunProcedure is the fully-qualified name of the PuzzleService's
 	// GetPuzzleRun RPC.
 	PuzzleServiceGetPuzzleRunProcedure = "/meurpg.play.v1.PuzzleService/GetPuzzleRun"
+	// PuzzleServiceTryPuzzleHintProcedure is the fully-qualified name of the PuzzleService's
+	// TryPuzzleHint RPC.
+	PuzzleServiceTryPuzzleHintProcedure = "/meurpg.play.v1.PuzzleService/TryPuzzleHint"
 	// PuzzleServiceMakePuzzleMoveProcedure is the fully-qualified name of the PuzzleService's
 	// MakePuzzleMove RPC.
 	PuzzleServiceMakePuzzleMoveProcedure = "/meurpg.play.v1.PuzzleService/MakePuzzleMove"
@@ -189,6 +204,23 @@ type PuzzleServiceClient interface {
 	//
 	// Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NO_MORE_HINTS).
 	ReleaseNextPuzzleHint(context.Context, *connect.Request[v1.ReleaseNextPuzzleHintRequest]) (*connect.Response[v1.ReleaseNextPuzzleHintResponse], error)
+	// PreviewPuzzleCipher ciphers a message for the form, as the players will read it
+	// ("Como os jogadores a veem"), and stores nothing. Master only.
+	//
+	// Errors: `permission_denied`; `invalid_argument` (PuzzleInvalid CIPHER).
+	PreviewPuzzleCipher(context.Context, *connect.Request[v1.PreviewPuzzleCipherRequest]) (*connect.Response[v1.PreviewPuzzleCipherResponse], error)
+	// PlayPuzzleSequence ("Tocar a sequência") plays the sequence for the players. Master
+	// only. The server reveals it step by step, one every SequencePlayback.step_ms, never
+	// a step before its time: each app reads the run again at every puzzle_changed and
+	// when `next_in_ms` runs out. A play that runs when the master plays again starts over.
+	// Counts one more play (SequencePlayback.plays) and does not touch the attempt's
+	// progress or the counters of "Ao errar".
+	//
+	// Sends `puzzle_changed` now and at each step. Writes no session event.
+	//
+	// Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NOT_A_SEQUENCE, SOLVED,
+	// STOPPED).
+	PlayPuzzleSequence(context.Context, *connect.Request[v1.PlayPuzzleSequenceRequest]) (*connect.Response[v1.PlayPuzzleSequenceResponse], error)
 	// GetMasterPuzzleRun is the master's live view of a puzzle of the open session: what
 	// the players read, and the answer, the fewest moves left and the hints. Master only.
 	//
@@ -205,6 +237,24 @@ type PuzzleServiceClient interface {
 	//
 	// Errors: `not_found`; `failed_precondition` (NO_OPEN_SESSION).
 	GetPuzzleRun(context.Context, *connect.Request[v1.GetPuzzleRunRequest]) (*connect.Response[v1.GetPuzzleRunResponse], error)
+	// TryPuzzleHint ("Tentar uma dica · Investigação") rolls the puzzle's skill check for
+	// the next hint, as the caller's living character. Players only (RN-18: the app
+	// rolls the d20, or the player types the face of a real one; the campaign may force
+	// one way). A pass gives that player, and only them, the next hint they do not read
+	// yet (the first one the master did not release, or after the ones they won). A
+	// fail gives nothing, and the same player cannot try again for the same hint: another
+	// player may, or the master releases it. The DC is never sent. The answer is the run
+	// as the player reads it now, and the roll.
+	//
+	// Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
+	// no session event and sends `puzzle_changed`. A try with an idempotency_key already
+	// used is not rolled again.
+	//
+	// Errors: `permission_denied` for the master; `not_found` (unknown or unshown puzzle);
+	// `invalid_argument`; `failed_precondition` (NO_OPEN_SESSION, SOLVED, STOPPED,
+	// NO_CHARACTER, NO_HINT_CHECK, NO_MORE_HINTS, HINT_ALREADY_TRIED, WRONG_DICE_MODE,
+	// NO_SKILL).
+	TryPuzzleHint(context.Context, *connect.Request[v1.TryPuzzleHintRequest]) (*connect.Response[v1.TryPuzzleHintResponse], error)
 	// MakePuzzleMove makes one move as the caller's living character. Players only.
 	//
 	// The server applies the move to the latest state, so two players moving at once
@@ -218,9 +268,18 @@ type PuzzleServiceClient interface {
 	// keep only the shown, solved, reset and closed of a puzzle) and sends
 	// `puzzle_changed` to everyone.
 	//
+	// A riddle's or a cipher's answer and a sequence's bell are judged, not applied: a
+	// wrong one changes nothing in the state (a wrong bell sends the attempt back to the
+	// first step), is marked `wrong` in the history, and does what "Ao errar" says, all
+	// in the transaction of the move: it spends the player's attempt, counts toward the
+	// limits, and fires the trap point (once; the move's key makes a retry fire nothing).
+	// The move that reaches a limit of moves, or the first one after the time ran out,
+	// stops the puzzle (unless it solves it).
+	//
 	// Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
 	// `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used
-	// for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION, SOLVED, NO_CHARACTER).
+	// for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION,
+	// SOLVED, STOPPED, NO_CHARACTER, NO_ATTEMPTS_LEFT, SEQUENCE_NOT_PLAYED, SEQUENCE_PLAYING).
 	MakePuzzleMove(context.Context, *connect.Request[v1.MakePuzzleMoveRequest]) (*connect.Response[v1.MakePuzzleMoveResponse], error)
 }
 
@@ -317,6 +376,19 @@ func NewPuzzleServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(puzzleServiceMethods.ByName("ReleaseNextPuzzleHint")),
 			connect.WithClientOptions(opts...),
 		),
+		previewPuzzleCipher: connect.NewClient[v1.PreviewPuzzleCipherRequest, v1.PreviewPuzzleCipherResponse](
+			httpClient,
+			baseURL+PuzzleServicePreviewPuzzleCipherProcedure,
+			connect.WithSchema(puzzleServiceMethods.ByName("PreviewPuzzleCipher")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		playPuzzleSequence: connect.NewClient[v1.PlayPuzzleSequenceRequest, v1.PlayPuzzleSequenceResponse](
+			httpClient,
+			baseURL+PuzzleServicePlayPuzzleSequenceProcedure,
+			connect.WithSchema(puzzleServiceMethods.ByName("PlayPuzzleSequence")),
+			connect.WithClientOptions(opts...),
+		),
 		getMasterPuzzleRun: connect.NewClient[v1.GetMasterPuzzleRunRequest, v1.GetMasterPuzzleRunResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetMasterPuzzleRunProcedure,
@@ -336,6 +408,12 @@ func NewPuzzleServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			baseURL+PuzzleServiceGetPuzzleRunProcedure,
 			connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleRun")),
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		tryPuzzleHint: connect.NewClient[v1.TryPuzzleHintRequest, v1.TryPuzzleHintResponse](
+			httpClient,
+			baseURL+PuzzleServiceTryPuzzleHintProcedure,
+			connect.WithSchema(puzzleServiceMethods.ByName("TryPuzzleHint")),
 			connect.WithClientOptions(opts...),
 		),
 		makePuzzleMove: connect.NewClient[v1.MakePuzzleMoveRequest, v1.MakePuzzleMoveResponse](
@@ -362,9 +440,12 @@ type puzzleServiceClient struct {
 	reseedPuzzle          *connect.Client[v1.ReseedPuzzleRequest, v1.ReseedPuzzleResponse]
 	closePuzzle           *connect.Client[v1.ClosePuzzleRequest, v1.ClosePuzzleResponse]
 	releaseNextPuzzleHint *connect.Client[v1.ReleaseNextPuzzleHintRequest, v1.ReleaseNextPuzzleHintResponse]
+	previewPuzzleCipher   *connect.Client[v1.PreviewPuzzleCipherRequest, v1.PreviewPuzzleCipherResponse]
+	playPuzzleSequence    *connect.Client[v1.PlayPuzzleSequenceRequest, v1.PlayPuzzleSequenceResponse]
 	getMasterPuzzleRun    *connect.Client[v1.GetMasterPuzzleRunRequest, v1.GetMasterPuzzleRunResponse]
 	listShownPuzzles      *connect.Client[v1.ListShownPuzzlesRequest, v1.ListShownPuzzlesResponse]
 	getPuzzleRun          *connect.Client[v1.GetPuzzleRunRequest, v1.GetPuzzleRunResponse]
+	tryPuzzleHint         *connect.Client[v1.TryPuzzleHintRequest, v1.TryPuzzleHintResponse]
 	makePuzzleMove        *connect.Client[v1.MakePuzzleMoveRequest, v1.MakePuzzleMoveResponse]
 }
 
@@ -433,6 +514,16 @@ func (c *puzzleServiceClient) ReleaseNextPuzzleHint(ctx context.Context, req *co
 	return c.releaseNextPuzzleHint.CallUnary(ctx, req)
 }
 
+// PreviewPuzzleCipher calls meurpg.play.v1.PuzzleService.PreviewPuzzleCipher.
+func (c *puzzleServiceClient) PreviewPuzzleCipher(ctx context.Context, req *connect.Request[v1.PreviewPuzzleCipherRequest]) (*connect.Response[v1.PreviewPuzzleCipherResponse], error) {
+	return c.previewPuzzleCipher.CallUnary(ctx, req)
+}
+
+// PlayPuzzleSequence calls meurpg.play.v1.PuzzleService.PlayPuzzleSequence.
+func (c *puzzleServiceClient) PlayPuzzleSequence(ctx context.Context, req *connect.Request[v1.PlayPuzzleSequenceRequest]) (*connect.Response[v1.PlayPuzzleSequenceResponse], error) {
+	return c.playPuzzleSequence.CallUnary(ctx, req)
+}
+
 // GetMasterPuzzleRun calls meurpg.play.v1.PuzzleService.GetMasterPuzzleRun.
 func (c *puzzleServiceClient) GetMasterPuzzleRun(ctx context.Context, req *connect.Request[v1.GetMasterPuzzleRunRequest]) (*connect.Response[v1.GetMasterPuzzleRunResponse], error) {
 	return c.getMasterPuzzleRun.CallUnary(ctx, req)
@@ -446,6 +537,11 @@ func (c *puzzleServiceClient) ListShownPuzzles(ctx context.Context, req *connect
 // GetPuzzleRun calls meurpg.play.v1.PuzzleService.GetPuzzleRun.
 func (c *puzzleServiceClient) GetPuzzleRun(ctx context.Context, req *connect.Request[v1.GetPuzzleRunRequest]) (*connect.Response[v1.GetPuzzleRunResponse], error) {
 	return c.getPuzzleRun.CallUnary(ctx, req)
+}
+
+// TryPuzzleHint calls meurpg.play.v1.PuzzleService.TryPuzzleHint.
+func (c *puzzleServiceClient) TryPuzzleHint(ctx context.Context, req *connect.Request[v1.TryPuzzleHintRequest]) (*connect.Response[v1.TryPuzzleHintResponse], error) {
+	return c.tryPuzzleHint.CallUnary(ctx, req)
 }
 
 // MakePuzzleMove calls meurpg.play.v1.PuzzleService.MakePuzzleMove.
@@ -534,6 +630,23 @@ type PuzzleServiceHandler interface {
 	//
 	// Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NO_MORE_HINTS).
 	ReleaseNextPuzzleHint(context.Context, *connect.Request[v1.ReleaseNextPuzzleHintRequest]) (*connect.Response[v1.ReleaseNextPuzzleHintResponse], error)
+	// PreviewPuzzleCipher ciphers a message for the form, as the players will read it
+	// ("Como os jogadores a veem"), and stores nothing. Master only.
+	//
+	// Errors: `permission_denied`; `invalid_argument` (PuzzleInvalid CIPHER).
+	PreviewPuzzleCipher(context.Context, *connect.Request[v1.PreviewPuzzleCipherRequest]) (*connect.Response[v1.PreviewPuzzleCipherResponse], error)
+	// PlayPuzzleSequence ("Tocar a sequência") plays the sequence for the players. Master
+	// only. The server reveals it step by step, one every SequencePlayback.step_ms, never
+	// a step before its time: each app reads the run again at every puzzle_changed and
+	// when `next_in_ms` runs out. A play that runs when the master plays again starts over.
+	// Counts one more play (SequencePlayback.plays) and does not touch the attempt's
+	// progress or the counters of "Ao errar".
+	//
+	// Sends `puzzle_changed` now and at each step. Writes no session event.
+	//
+	// Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NOT_A_SEQUENCE, SOLVED,
+	// STOPPED).
+	PlayPuzzleSequence(context.Context, *connect.Request[v1.PlayPuzzleSequenceRequest]) (*connect.Response[v1.PlayPuzzleSequenceResponse], error)
 	// GetMasterPuzzleRun is the master's live view of a puzzle of the open session: what
 	// the players read, and the answer, the fewest moves left and the hints. Master only.
 	//
@@ -550,6 +663,24 @@ type PuzzleServiceHandler interface {
 	//
 	// Errors: `not_found`; `failed_precondition` (NO_OPEN_SESSION).
 	GetPuzzleRun(context.Context, *connect.Request[v1.GetPuzzleRunRequest]) (*connect.Response[v1.GetPuzzleRunResponse], error)
+	// TryPuzzleHint ("Tentar uma dica · Investigação") rolls the puzzle's skill check for
+	// the next hint, as the caller's living character. Players only (RN-18: the app
+	// rolls the d20, or the player types the face of a real one; the campaign may force
+	// one way). A pass gives that player, and only them, the next hint they do not read
+	// yet (the first one the master did not release, or after the ones they won). A
+	// fail gives nothing, and the same player cannot try again for the same hint: another
+	// player may, or the master releases it. The DC is never sent. The answer is the run
+	// as the player reads it now, and the roll.
+	//
+	// Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
+	// no session event and sends `puzzle_changed`. A try with an idempotency_key already
+	// used is not rolled again.
+	//
+	// Errors: `permission_denied` for the master; `not_found` (unknown or unshown puzzle);
+	// `invalid_argument`; `failed_precondition` (NO_OPEN_SESSION, SOLVED, STOPPED,
+	// NO_CHARACTER, NO_HINT_CHECK, NO_MORE_HINTS, HINT_ALREADY_TRIED, WRONG_DICE_MODE,
+	// NO_SKILL).
+	TryPuzzleHint(context.Context, *connect.Request[v1.TryPuzzleHintRequest]) (*connect.Response[v1.TryPuzzleHintResponse], error)
 	// MakePuzzleMove makes one move as the caller's living character. Players only.
 	//
 	// The server applies the move to the latest state, so two players moving at once
@@ -563,9 +694,18 @@ type PuzzleServiceHandler interface {
 	// keep only the shown, solved, reset and closed of a puzzle) and sends
 	// `puzzle_changed` to everyone.
 	//
+	// A riddle's or a cipher's answer and a sequence's bell are judged, not applied: a
+	// wrong one changes nothing in the state (a wrong bell sends the attempt back to the
+	// first step), is marked `wrong` in the history, and does what "Ao errar" says, all
+	// in the transaction of the move: it spends the player's attempt, counts toward the
+	// limits, and fires the trap point (once; the move's key makes a retry fire nothing).
+	// The move that reaches a limit of moves, or the first one after the time ran out,
+	// stops the puzzle (unless it solves it).
+	//
 	// Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
 	// `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used
-	// for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION, SOLVED, NO_CHARACTER).
+	// for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION,
+	// SOLVED, STOPPED, NO_CHARACTER, NO_ATTEMPTS_LEFT, SEQUENCE_NOT_PLAYED, SEQUENCE_PLAYING).
 	MakePuzzleMove(context.Context, *connect.Request[v1.MakePuzzleMoveRequest]) (*connect.Response[v1.MakePuzzleMoveResponse], error)
 }
 
@@ -658,6 +798,19 @@ func NewPuzzleServiceHandler(svc PuzzleServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(puzzleServiceMethods.ByName("ReleaseNextPuzzleHint")),
 		connect.WithHandlerOptions(opts...),
 	)
+	puzzleServicePreviewPuzzleCipherHandler := connect.NewUnaryHandler(
+		PuzzleServicePreviewPuzzleCipherProcedure,
+		svc.PreviewPuzzleCipher,
+		connect.WithSchema(puzzleServiceMethods.ByName("PreviewPuzzleCipher")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	puzzleServicePlayPuzzleSequenceHandler := connect.NewUnaryHandler(
+		PuzzleServicePlayPuzzleSequenceProcedure,
+		svc.PlayPuzzleSequence,
+		connect.WithSchema(puzzleServiceMethods.ByName("PlayPuzzleSequence")),
+		connect.WithHandlerOptions(opts...),
+	)
 	puzzleServiceGetMasterPuzzleRunHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetMasterPuzzleRunProcedure,
 		svc.GetMasterPuzzleRun,
@@ -677,6 +830,12 @@ func NewPuzzleServiceHandler(svc PuzzleServiceHandler, opts ...connect.HandlerOp
 		svc.GetPuzzleRun,
 		connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleRun")),
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	puzzleServiceTryPuzzleHintHandler := connect.NewUnaryHandler(
+		PuzzleServiceTryPuzzleHintProcedure,
+		svc.TryPuzzleHint,
+		connect.WithSchema(puzzleServiceMethods.ByName("TryPuzzleHint")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceMakePuzzleMoveHandler := connect.NewUnaryHandler(
@@ -713,12 +872,18 @@ func NewPuzzleServiceHandler(svc PuzzleServiceHandler, opts ...connect.HandlerOp
 			puzzleServiceClosePuzzleHandler.ServeHTTP(w, r)
 		case PuzzleServiceReleaseNextPuzzleHintProcedure:
 			puzzleServiceReleaseNextPuzzleHintHandler.ServeHTTP(w, r)
+		case PuzzleServicePreviewPuzzleCipherProcedure:
+			puzzleServicePreviewPuzzleCipherHandler.ServeHTTP(w, r)
+		case PuzzleServicePlayPuzzleSequenceProcedure:
+			puzzleServicePlayPuzzleSequenceHandler.ServeHTTP(w, r)
 		case PuzzleServiceGetMasterPuzzleRunProcedure:
 			puzzleServiceGetMasterPuzzleRunHandler.ServeHTTP(w, r)
 		case PuzzleServiceListShownPuzzlesProcedure:
 			puzzleServiceListShownPuzzlesHandler.ServeHTTP(w, r)
 		case PuzzleServiceGetPuzzleRunProcedure:
 			puzzleServiceGetPuzzleRunHandler.ServeHTTP(w, r)
+		case PuzzleServiceTryPuzzleHintProcedure:
+			puzzleServiceTryPuzzleHintHandler.ServeHTTP(w, r)
 		case PuzzleServiceMakePuzzleMoveProcedure:
 			puzzleServiceMakePuzzleMoveHandler.ServeHTTP(w, r)
 		default:
@@ -782,6 +947,14 @@ func (UnimplementedPuzzleServiceHandler) ReleaseNextPuzzleHint(context.Context, 
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint is not implemented"))
 }
 
+func (UnimplementedPuzzleServiceHandler) PreviewPuzzleCipher(context.Context, *connect.Request[v1.PreviewPuzzleCipherRequest]) (*connect.Response[v1.PreviewPuzzleCipherResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.PreviewPuzzleCipher is not implemented"))
+}
+
+func (UnimplementedPuzzleServiceHandler) PlayPuzzleSequence(context.Context, *connect.Request[v1.PlayPuzzleSequenceRequest]) (*connect.Response[v1.PlayPuzzleSequenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.PlayPuzzleSequence is not implemented"))
+}
+
 func (UnimplementedPuzzleServiceHandler) GetMasterPuzzleRun(context.Context, *connect.Request[v1.GetMasterPuzzleRunRequest]) (*connect.Response[v1.GetMasterPuzzleRunResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.GetMasterPuzzleRun is not implemented"))
 }
@@ -792,6 +965,10 @@ func (UnimplementedPuzzleServiceHandler) ListShownPuzzles(context.Context, *conn
 
 func (UnimplementedPuzzleServiceHandler) GetPuzzleRun(context.Context, *connect.Request[v1.GetPuzzleRunRequest]) (*connect.Response[v1.GetPuzzleRunResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.GetPuzzleRun is not implemented"))
+}
+
+func (UnimplementedPuzzleServiceHandler) TryPuzzleHint(context.Context, *connect.Request[v1.TryPuzzleHintRequest]) (*connect.Response[v1.TryPuzzleHintResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PuzzleService.TryPuzzleHint is not implemented"))
 }
 
 func (UnimplementedPuzzleServiceHandler) MakePuzzleMove(context.Context, *connect.Request[v1.MakePuzzleMoveRequest]) (*connect.Response[v1.MakePuzzleMoveResponse], error) {

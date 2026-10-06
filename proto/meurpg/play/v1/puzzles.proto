@@ -2,11 +2,15 @@ syntax = "proto3";
 
 // Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes a puzzle for the
 // campaign, shows it to the players of an open session, and they solve it live in the
-// app. This slice has three kinds: "Apagar as luzes" (a board of lights; pressing one
-// toggles it and its four neighbours), the combination lock (wheels of digits, letters
-// or our own runes) and the turning symbols (pillars of our own glyphs, which may turn
-// together). The riddle, the sequence and the cipher come in slice 10.7b, on top of
-// these messages: each is one more kind in the `oneof`s below, with its own messages.
+// app. It has six kinds: "Apagar as luzes" (a board of lights; pressing one toggles it
+// and its four neighbours), the combination lock (wheels of digits, letters or our own
+// runes), the turning symbols (pillars of our own glyphs, which may turn together), the
+// riddle (the player types an answer), the sequence (the master plays a row of bells
+// and the players repeat it) and the cipher (a message swapped letter by letter, whose
+// key is a clue the group finds in the adventure). Slice 10.7b added the last three, the
+// hints won by a skill check, the split information (each player reads their own part
+// of a clue) and the consequences of a wrong move ("Ao errar"): a trap fires, an attempt
+// is spent, or a limit of moves or of time stops the puzzle.
 //
 // Every move is relative (press a cell, turn a wheel or a pillar by one), so two
 // players' moves made at the same time both count, whichever the server takes first.
@@ -16,8 +20,10 @@ syntax = "proto3";
 // What a player never receives (RN-10, RN-27), in any response or stream event: the
 // solution of a lock, the minimum number of moves and a way to make them, a hint the
 // master has not released, the "Ao resolver" action and its target, and any puzzle
-// that is not shown. A puzzle that is unknown or not shown answers `not_found`, as for
-// a puzzle that does not exist. A player reads the state, the master's clue, the
+// that is not shown, a riddle's accepted answers, a sequence before it is played, a
+// cipher's plain message and key, the DC of a hint's skill check, and the parts of the
+// split information that are other players'. A puzzle that is unknown or not shown
+// answers `not_found`, as for a puzzle that does not exist. A player reads the state, the master's clue, the
 // released hints, who moved last (the character's name), whether it is solved and, once
 // it is, what happened ("A porta da Capela se abriu."). The goal is not a secret where
 // the challenge is the moves, so the players of the turning symbols also read the mural
@@ -26,9 +32,9 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
 
-// PuzzleKind is the kind of a puzzle. Slice 10.7b adds RIDDLE = 4, SEQUENCE = 5 and
-// CIPHER = 6.
+// PuzzleKind is the kind of a puzzle.
 enum PuzzleKind {
   PUZZLE_KIND_UNSPECIFIED = 0;
   // "Apagar as luzes": a board of 3 to 7 lights a side.
@@ -37,6 +43,15 @@ enum PuzzleKind {
   PUZZLE_KIND_LOCK = 2;
   // The turning symbols: 3 to 6 pillars of 3 to 6 glyphs.
   PUZZLE_KIND_PILLARS = 3;
+  // The riddle: the master writes it and the answers he accepts; a player types an
+  // answer.
+  PUZZLE_KIND_RIDDLE = 4;
+  // The sequence: 3 to 8 bells and 3 to 12 steps. The master plays it; the players
+  // repeat it bell by bell.
+  PUZZLE_KIND_SEQUENCE = 5;
+  // The cipher: a message the server swaps letter by letter. A player types the
+  // plain message.
+  PUZZLE_KIND_CIPHER = 6;
 }
 
 // PuzzleAlphabet is what the wheels of a lock show.
@@ -123,6 +138,9 @@ message PuzzleConfig {
     LightsConfig lights = 1;
     LockConfig lock = 2;
     PillarsConfig pillars = 3;
+    RiddleConfig riddle = 4;
+    SequenceConfig sequence = 5;
+    CipherConfig cipher = 6;
   }
 }
 
@@ -159,12 +177,72 @@ message PillarLinks {
   repeated int32 also_turns = 1;
 }
 
+// RiddleConfig is the riddle. A player reads it.
+message RiddleConfig {
+  // What the players read: the riddle itself, 1 to 500 characters.
+  string text = 1;
+}
+
+// SequenceConfig is the sequence's shape. The sequence itself is the solution.
+message SequenceConfig {
+  // The number of bells, 3 to 8: the first ones of the table's eight (Sino redondo,
+  // alto, largo, pequeno, rachado, fino, torto, grave), in `symbols`.
+  int32 bells = 1;
+  // The number of steps, 3 to 12. The players read it ("passo 3 de 6"), not which bell
+  // each one is.
+  int32 steps = 2;
+}
+
+// CipherConfig is the cipher. A player reads the ciphered message.
+message CipherConfig {
+  // The ciphered message as the players read it: the letters A to Z swapped, upper
+  // case, with the spaces and the punctuation where they were. Set by the server from
+  // the solution; what the master sends is ignored.
+  string ciphertext = 1;
+  // The scene clue (a UUID of a clue of the campaign) that says how the letters are
+  // swapped: the group finds it in the adventure. Optional. The master's alone: a
+  // player reads PuzzleRun.has_key_clue and, once their character has found the clue,
+  // PuzzleRun.key_clue_id; the clue's text is the notes' (MR-029), never this puzzle's.
+  string key_clue_id = 2;
+}
+
 // PuzzleSolution is the answer. It is the master's alone (RN-10). "Apagar as luzes"
 // has none to store: its goal is every light off, and the minimum is worked out.
 message PuzzleSolution {
   oneof kind {
     LockSolution lock = 2;
     PillarsSolution pillars = 3;
+    RiddleSolution riddle = 4;
+    SequenceSolution sequence = 5;
+    CipherSolution cipher = 6;
+  }
+}
+
+// RiddleSolution is the answers a riddle accepts.
+message RiddleSolution {
+  // 1 to 10 answers, each 1 to 80 characters. A typed answer is right when it equals
+  // one of them ignoring case, accents, punctuation and the spaces around and between
+  // the words ("  A Sombra! " is "a sombra").
+  repeated string answers = 1;
+}
+
+// SequenceSolution is the sequence, in order.
+message SequenceSolution {
+  // The bell of each step, from 0: 3 to 12 steps, at least two different bells.
+  repeated int32 steps = 1;
+}
+
+// CipherSolution is the message and how it is swapped.
+message CipherSolution {
+  // The plain message, 1 to 300 characters, with at least one letter.
+  string message = 1;
+  // How the letters are swapped: exactly one of the two.
+  oneof method {
+    // Every letter moves this many places on, 1 to 25 (3: A becomes D).
+    int32 shift = 2;
+    // A keyword of 3 to 26 distinct letters: the cipher alphabet starts with them (once
+    // each, in order) and goes on with the others. "LUA" turns A into L, B into U, C into A.
+    string keyword = 3;
   }
 }
 
@@ -186,6 +264,9 @@ message PuzzleState {
     LightsState lights = 1;
     LockState lock = 2;
     PillarsState pillars = 3;
+    RiddleState riddle = 4;
+    SequenceState sequence = 5;
+    CipherState cipher = 6;
   }
 }
 
@@ -207,6 +288,19 @@ message PillarsState {
   repeated int32 pillars = 1;
 }
 
+// RiddleState is the riddle's state: nothing moves but the answer, so it is empty.
+message RiddleState {}
+
+// SequenceState is where the players are in the sequence.
+message SequenceState {
+  // How many steps the attempt has right so far, from 0. A wrong bell sends it back
+  // to 0. Players read it ("Passos certos 0 de 6").
+  int32 progress = 1;
+}
+
+// CipherState is the cipher's state: nothing moves but the answer, so it is empty.
+message CipherState {}
+
 // PuzzleMove is one move, per kind. It is relative: it says what to do to the state,
 // never what the state becomes.
 message PuzzleMove {
@@ -214,6 +308,9 @@ message PuzzleMove {
     LightsMove lights = 1;
     LockMove lock = 2;
     PillarsMove pillars = 3;
+    RiddleMove riddle = 4;
+    SequenceMove sequence = 5;
+    CipherMove cipher = 6;
   }
 }
 
@@ -239,6 +336,27 @@ message PillarsMove {
   int32 pillar = 1;
   // +1 or -1.
   int32 delta = 2;
+}
+
+// RiddleMove is an answer. It is judged, not applied: a wrong one changes nothing
+// but the consequences ("Ao errar"). The text is the player's own data (typed by them);
+// the other players never read it.
+message RiddleMove {
+  // What the player typed, 1 to 600 characters.
+  string answer = 1;
+}
+
+// SequenceMove strikes a bell. The sequence must have been played at least once, and
+// not be playing now.
+message SequenceMove {
+  // The bell, from 0.
+  int32 bell = 1;
+}
+
+// CipherMove is the message the player typed, deciphered. Judged like a riddle's answer.
+message CipherMove {
+  // What the player typed, 1 to 600 characters.
+  string text = 1;
 }
 
 // PuzzleOnSolve is "Ao resolver": an action and what it acts on.
@@ -288,7 +406,9 @@ message PuzzleMinimum {
   // The fewest moves. 0 when solved.
   int32 moves = 2;
   // One shortest way: the moves in order. For the lights, the cells to press (the
-  // hint ring); for a lock, each wheel's turns the short way round.
+  // hint ring); for a lock, each wheel's turns the short way round; for a sequence,
+  // the bells still to strike. A riddle and a cipher have one move (the answer) and
+  // no path.
   repeated PuzzleMove path = 3;
 }
 
@@ -328,20 +448,84 @@ message Puzzle {
   // When it was made and last edited.
   google.protobuf.Timestamp created_at = 15;
   google.protobuf.Timestamp updated_at = 16;
-  // Slice 10.7b adds fields from 17: the split-information parts, the hint skill checks
-  // and the consequences.
+  // The skill check that wins a player the next hint (a skill and a DC). Unset: hints
+  // come only from the master's release. The master's alone: no player reads the DC.
+  PuzzleHintCheck hint_check = 17;
+  // The split information: parts of a clue, each given to one player's character, up
+  // to 8. Every player reads only their own (PuzzleRun.my_part).
+  repeated PuzzlePart parts = 18;
+  // "Ao errar": what a wrong answer or bell does. Unset: nothing.
+  PuzzleOnWrong on_wrong = 19;
+}
+
+// PuzzleHintCheck is the skill check that wins the next hint.
+message PuzzleHintCheck {
+  // The skill, as a scene check's key: "skill:investigation", "skill:arcana"... Any
+  // of the SRD's 18 skills (the Portuguese name is MapService's scene check name).
+  string skill_key = 1;
+  // The DC, 1 to 30. The master's alone.
+  int32 dc = 2;
+}
+
+// PuzzlePart is a part of the clue a player reads in the split information.
+message PuzzlePart {
+  // The player's character that gets it (a UUID of a living player character of the
+  // campaign), or empty for a part with no owner yet ("Sem dono": no player reads it).
+  string character_id = 1;
+  // What that player reads, 1 to 300 characters.
+  string text = 2;
+}
+
+// PuzzleOnWrong is "Ao errar": what a wrong answer or a wrong bell does, and the limits
+// every kind's moves count toward. All of it is optional and they combine; the app's form
+// shows one option at a time. A trap and the attempts apply only to the kinds that judge
+// a move (the riddle, the sequence and the cipher); the limits apply to all six.
+message PuzzleOnWrong {
+  // A trap point of a map of the campaign that fires on a wrong move (MR-035). The
+  // point fires once: the master arms it again (MapService.SetTrapState) to have it
+  // fire again. The master decides what the trap does, as with any trap fired by hand.
+  PuzzleTrapTarget trap = 1;
+  // How many wrong moves each player may make in a round, 1 to 10. 0: no limit. A
+  // wrong move spends one; with none left, the player's moves are refused
+  // (NO_ATTEMPTS_LEFT). "Recomeçar" gives them back.
+  int32 attempts_per_player = 2;
+  // The limit of moves in a round, 1 to 200: every move counts, right or wrong. Reaching
+  // it stops the puzzle, unless that move solved it. 0: no limit.
+  int32 max_moves = 3;
+  // The time limit of a round in seconds, 10 to 14400 (4 hours), counted from when the
+  // puzzle is shown or restarted. 0: no limit. When it runs out the puzzle stops.
+  int32 time_limit_seconds = 4;
+}
+
+// PuzzleTrapTarget is a trap point of a map.
+message PuzzleTrapTarget {
+  // The map (a UUID).
+  string map_id = 1;
+  // The point, which must be a trap (a UUID).
+  string point_id = 2;
 }
 
 // PuzzleLastMove is the last move of a run, as a player reads it.
 message PuzzleLastMove {
   // The name of the character that made it.
   string character_name = 1;
-  // The move.
+  // The move. For a player it is unset for the riddle, the sequence and the cipher: a
+  // typed answer is its author's, and which bell was struck would give the sequence
+  // away. The master's own read has them (MasterPuzzleRun.last_move).
   PuzzleMove move = 2;
   // What changed: the lights (row-major cells), the wheel, or the pillars that turned.
   repeated int32 changed = 3;
   // When it was made.
   google.protobuf.Timestamp at = 4;
+  // True when the move was wrong: a wrong answer, or a wrong bell.
+  bool wrong = 5;
+  // For a sequence, the number of the step (from 1) the bell was struck for: "Errou o
+  // passo 4". 0 for the other kinds.
+  int32 step = 6;
+  // The name the master gave the trap point, when this wrong move fired a trap
+  // ("A armadilha disparou: Dardos envenenados"). Empty otherwise. A trap that fired is
+  // public (MR-035); its DCs and effect never are.
+  string trap_name = 7;
 }
 
 // PuzzleRun is a puzzle in the open session as a player reads it, and nothing more
@@ -383,8 +567,112 @@ message PuzzleRun {
   // pista."). Empty until solved, and when the action did nothing and the master wrote
   // no text.
   string solved_message = 15;
-  // Slice 10.7b adds fields from 16: this player's own part of the clue (split
-  // information) and their attempts left.
+  // The limits of this puzzle: this player's attempts left, the moves and the time.
+  // Unset when the puzzle has none.
+  PuzzleLimits limits = 16;
+  // True once a limit stopped the puzzle (moves or time) and it is not solved: nothing
+  // moves until the master restarts or closes it. The players read it neutrally.
+  bool stopped = 17;
+  // The neutral line for a stopped puzzle ("O quebra-cabeça parou. Ninguém joga mais
+  // até o mestre recomeçar ou fechar."). Empty when it is not stopped.
+  string stopped_message = 18;
+  // This player's own part of the clue (split information). Empty for a puzzle with no
+  // parts, or when no part is theirs.
+  string my_part = 19;
+  // The names of the other characters that have a part: who to talk to, never what
+  // they read.
+  repeated string part_holders = 20;
+  // True when a skill check can win hints in this puzzle: the master set one.
+  bool hint_by_check = 21;
+  // The skill of that check, such as "skill:investigation": "Tentar uma dica ·
+  // Investigação". The DC is never sent.
+  string hint_skill_key = 22;
+  // True when this player may try for the next hint now: the puzzle has a check, the
+  // next hint exists, this player did not try for it yet, and the puzzle is not solved
+  // or stopped. A failed try for a hint cannot be repeated for the same hint: another
+  // player may try, or the master releases it.
+  bool can_try_hint = 23;
+  // How many of `hints` the master released (everyone reads them); the ones after are
+  // this player's own, won by a check ("Esta dica é só sua").
+  int32 shared_hints = 24;
+  // The sequence's playback, for a sequence only: what has been revealed so far.
+  SequencePlayback sequence = 25;
+  // For a cipher: true when the master linked a scene clue with the key.
+  bool has_key_clue = 26;
+  // The clue with the key (a UUID), only when this player has found it: its text is in
+  // the player's notes (MR-029). Never set before they find it.
+  string key_clue_id = 27;
+}
+
+// PuzzleLimits is the limits of "Ao errar" as a player reads them: the counters that
+// stay on screen. A limit that is not set is 0.
+message PuzzleLimits {
+  // The wrong moves this player may make in the round, and how many are left.
+  int32 attempts_per_player = 1;
+  int32 attempts_left = 2;
+  // The limit of moves in the round and how many were made (right or wrong).
+  int32 max_moves = 3;
+  int32 moves_made = 4;
+  // The time limit in seconds, how many seconds are left (0 when it ran out) and the
+  // moment it runs out. The seconds are worked out when the run is read: tick locally
+  // from `deadline`.
+  int32 time_limit_seconds = 5;
+  int32 seconds_left = 6;
+  google.protobuf.Timestamp deadline = 7;
+}
+
+// SequencePlayback is what a player has seen of a sequence being played, and where the
+// attempt stands. The server reveals the sequence step by step as the play happens (the
+// first step at once, the next one SequencePlayback.step_ms later, and so on) and never
+// sends a step ahead of its time, and never again once the play ends: to see it again
+// the master plays it again. A player that missed it asks the master.
+message SequencePlayback {
+  // The number of steps (3 to 12).
+  int32 total_steps = 1;
+  // How many times the master has played it. 0: not yet, and moves are refused
+  // (SEQUENCE_NOT_PLAYED).
+  int32 plays = 2;
+  // True while a play runs: moves are refused (SEQUENCE_PLAYING).
+  bool playing = 3;
+  // The bells revealed so far in the play that runs, in order. Empty when no play runs.
+  repeated int32 shown = 4;
+  // How long each step is shown, in milliseconds.
+  int32 step_ms = 5;
+  // Milliseconds until the next step is revealed or the play ends; 0 when no play runs.
+  // Read again then: the stream also sends puzzle_changed at each step.
+  int32 next_in_ms = 6;
+}
+
+// PuzzleHintTry is one try for a hint by a skill check, as the master reads it.
+message PuzzleHintTry {
+  // The name of the character that rolled.
+  string character_name = 1;
+  // The number of the hint it was for, from 1.
+  int32 hint = 2;
+  // True when the roll reached the DC.
+  bool passed = 3;
+  // The roll: the d20 and the total with the skill's bonus.
+  DiceRoll roll = 4;
+  // When.
+  google.protobuf.Timestamp at = 5;
+}
+
+// PuzzleAttempts is a player's wrong moves in the round, as the master reads them.
+message PuzzleAttempts {
+  // The name of the player's character.
+  string character_name = 1;
+  // The wrong moves made in the round, and how many are left (0 without a limit).
+  int32 wrong = 2;
+  int32 left = 3;
+}
+
+// PuzzleStopReason is why a limit stopped a puzzle.
+enum PuzzleStopReason {
+  PUZZLE_STOP_REASON_UNSPECIFIED = 0;
+  // The limit of moves was reached.
+  PUZZLE_STOP_REASON_MOVES = 1;
+  // The time limit ran out.
+  PUZZLE_STOP_REASON_TIME = 2;
 }
 
 // PuzzleSummary is a shown puzzle in the list a player reads.
@@ -421,6 +709,18 @@ message MasterPuzzleRun {
   int32 moves_made = 8;
   // What the server did when it was solved. UNSPECIFIED until then.
   PuzzleSolveOutcome outcome = 9;
+  // The last move as the master reads it, with the typed answer or the bell. Unset
+  // before the first move.
+  PuzzleLastMove last_move = 10;
+  // Why a limit stopped the puzzle: MOVES or TIME. UNSPECIFIED when it is not stopped.
+  // The players read only `stopped`.
+  PuzzleStopReason stop_reason = 11;
+  // The tries for a hint by a skill check in this run, oldest first (at most 50, the
+  // newest).
+  repeated PuzzleHintTry hint_tries = 12;
+  // Each living player character's wrong moves in the round, in the party's order, for
+  // a puzzle with "Ao errar"; empty otherwise.
+  repeated PuzzleAttempts attempts = 13;
 }
 
 // PuzzleBlocked is the detail of a `failed_precondition` of PuzzleService.
@@ -448,6 +748,28 @@ enum PuzzleBlockedReason {
   PUZZLE_BLOCKED_REASON_NO_MORE_HINTS = 7;
   // The kind has no generated start (a lock's start is the master's choice).
   PUZZLE_BLOCKED_REASON_NO_GENERATED_START = 8;
+  // The player has no wrong moves left in this round ("Você não tem mais tentativas").
+  // The master's restart gives them back.
+  PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT = 9;
+  // A limit of moves or of time stopped the puzzle: nothing moves until the master
+  // restarts or closes it.
+  PUZZLE_BLOCKED_REASON_STOPPED = 10;
+  // The sequence was not played yet: the master plays it first (PlayPuzzleSequence).
+  PUZZLE_BLOCKED_REASON_SEQUENCE_NOT_PLAYED = 11;
+  // The sequence is being played: wait for it to end.
+  PUZZLE_BLOCKED_REASON_SEQUENCE_PLAYING = 12;
+  // PlayPuzzleSequence on a puzzle that is not a sequence.
+  PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE = 13;
+  // TryPuzzleHint on a puzzle with no skill check for hints.
+  PUZZLE_BLOCKED_REASON_NO_HINT_CHECK = 14;
+  // The player tried for the next hint already: another player may try, or the master
+  // releases it.
+  PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED = 15;
+  // The campaign has the players roll their dice the other way (RN-18): in the app, or
+  // typed from real dice.
+  PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE = 16;
+  // The caller's character has no numbers for the hint's skill.
+  PUZZLE_BLOCKED_REASON_NO_SKILL = 17;
 }
 
 // PuzzleInvalid is the detail of an `invalid_argument` of PuzzleService.
@@ -482,6 +804,20 @@ enum PuzzleInvalidReason {
   // The move is not valid for this puzzle (a cell or a wheel that is not there, a turn
   // that is not +1 or -1).
   PUZZLE_INVALID_REASON_MOVE = 10;
+  // The riddle's answers are not valid: none, more than 10, empty, too long, or the same
+  // twice.
+  PUZZLE_INVALID_REASON_ANSWERS = 11;
+  // The cipher's message or key is not valid, or the key clue is not a clue of the
+  // campaign.
+  PUZZLE_INVALID_REASON_CIPHER = 12;
+  // The hint check's skill is not one of the 18, or its DC is out of 1 to 30.
+  PUZZLE_INVALID_REASON_HINT_CHECK = 13;
+  // The split information's parts are not valid: too many, empty or long text, or a
+  // character that is not a living player character of the campaign.
+  PUZZLE_INVALID_REASON_PARTS = 14;
+  // "Ao errar" is not valid: a limit out of range, a trap that is not a trap point of
+  // the campaign, or a trap or attempts on a kind that judges no moves.
+  PUZZLE_INVALID_REASON_ON_WRONG = 15;
 }
 
 // PuzzleService makes puzzles in the campaign (the master's), shows them in the open
@@ -601,6 +937,27 @@ service PuzzleService {
   // Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NO_MORE_HINTS).
   rpc ReleaseNextPuzzleHint(ReleaseNextPuzzleHintRequest) returns (ReleaseNextPuzzleHintResponse);
 
+  // PreviewPuzzleCipher ciphers a message for the form, as the players will read it
+  // ("Como os jogadores a veem"), and stores nothing. Master only.
+  //
+  // Errors: `permission_denied`; `invalid_argument` (PuzzleInvalid CIPHER).
+  rpc PreviewPuzzleCipher(PreviewPuzzleCipherRequest) returns (PreviewPuzzleCipherResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PlayPuzzleSequence ("Tocar a sequência") plays the sequence for the players. Master
+  // only. The server reveals it step by step, one every SequencePlayback.step_ms, never
+  // a step before its time: each app reads the run again at every puzzle_changed and
+  // when `next_in_ms` runs out. A play that runs when the master plays again starts over.
+  // Counts one more play (SequencePlayback.plays) and does not touch the attempt's
+  // progress or the counters of "Ao errar".
+  //
+  // Sends `puzzle_changed` now and at each step. Writes no session event.
+  //
+  // Errors: `failed_precondition` (NO_OPEN_SESSION, NOT_SHOWN, NOT_A_SEQUENCE, SOLVED,
+  // STOPPED).
+  rpc PlayPuzzleSequence(PlayPuzzleSequenceRequest) returns (PlayPuzzleSequenceResponse);
+
   // GetMasterPuzzleRun is the master's live view of a puzzle of the open session: what
   // the players read, and the answer, the fewest moves left and the hints. Master only.
   //
@@ -626,6 +983,25 @@ service PuzzleService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // TryPuzzleHint ("Tentar uma dica · Investigação") rolls the puzzle's skill check for
+  // the next hint, as the caller's living character. Players only (RN-18: the app
+  // rolls the d20, or the player types the face of a real one; the campaign may force
+  // one way). A pass gives that player, and only them, the next hint they do not read
+  // yet (the first one the master did not release, or after the ones they won). A
+  // fail gives nothing, and the same player cannot try again for the same hint: another
+  // player may, or the master releases it. The DC is never sent. The answer is the run
+  // as the player reads it now, and the roll.
+  //
+  // Each try is kept (puzzle_hint_tries) and counts one revision of the run; it writes
+  // no session event and sends `puzzle_changed`. A try with an idempotency_key already
+  // used is not rolled again.
+  //
+  // Errors: `permission_denied` for the master; `not_found` (unknown or unshown puzzle);
+  // `invalid_argument`; `failed_precondition` (NO_OPEN_SESSION, SOLVED, STOPPED,
+  // NO_CHARACTER, NO_HINT_CHECK, NO_MORE_HINTS, HINT_ALREADY_TRIED, WRONG_DICE_MODE,
+  // NO_SKILL).
+  rpc TryPuzzleHint(TryPuzzleHintRequest) returns (TryPuzzleHintResponse);
+
   // MakePuzzleMove makes one move as the caller's living character. Players only.
   //
   // The server applies the move to the latest state, so two players moving at once
@@ -639,9 +1015,18 @@ service PuzzleService {
   // keep only the shown, solved, reset and closed of a puzzle) and sends
   // `puzzle_changed` to everyone.
   //
+  // A riddle's or a cipher's answer and a sequence's bell are judged, not applied: a
+  // wrong one changes nothing in the state (a wrong bell sends the attempt back to the
+  // first step), is marked `wrong` in the history, and does what "Ao errar" says, all
+  // in the transaction of the move: it spends the player's attempt, counts toward the
+  // limits, and fires the trap point (once; the move's key makes a retry fire nothing).
+  // The move that reaches a limit of moves, or the first one after the time ran out,
+  // stops the puzzle (unless it solves it).
+  //
   // Errors: `not_found` (unknown or unshown puzzle); `permission_denied` for the master;
   // `invalid_argument` (PuzzleInvalid MOVE or KIND; a key that is not a UUID or was used
-  // for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION, SOLVED, NO_CHARACTER).
+  // for another change carries no PuzzleInvalid detail); `failed_precondition` (NO_OPEN_SESSION,
+  // SOLVED, STOPPED, NO_CHARACTER, NO_ATTEMPTS_LEFT, SEQUENCE_NOT_PLAYED, SEQUENCE_PLAYING).
   rpc MakePuzzleMove(MakePuzzleMoveRequest) returns (MakePuzzleMoveResponse);
 }
 
@@ -666,6 +1051,12 @@ message CreatePuzzleRequest {
   repeated string hints = 8;
   // "Ao resolver". Unset is NOTIFY.
   PuzzleOnSolve on_solve = 9;
+  // The skill check that wins the next hint (needs hints). Unset: none.
+  PuzzleHintCheck hint_check = 10;
+  // The split information: up to 8 parts, each for a player's character.
+  repeated PuzzlePart parts = 11;
+  // "Ao errar". Unset: nothing.
+  PuzzleOnWrong on_wrong = 12;
 }
 
 // CreatePuzzleResponse carries the new puzzle.
@@ -689,6 +1080,9 @@ message UpdatePuzzleRequest {
   string clue = 8;
   repeated string hints = 9;
   PuzzleOnSolve on_solve = 10;
+  PuzzleHintCheck hint_check = 11;
+  repeated PuzzlePart parts = 12;
+  PuzzleOnWrong on_wrong = 13;
 }
 
 // UpdatePuzzleResponse carries the edited puzzle.
@@ -879,4 +1273,56 @@ message MakePuzzleMoveResponse {
   bool replayed = 2;
   // True when this move is the one that solved the puzzle (also on a replay of it).
   bool solved_by_this_move = 3;
+}
+
+// PreviewPuzzleCipherRequest asks for a message to be ciphered.
+message PreviewPuzzleCipherRequest {
+  string campaign_id = 1;
+  // The message and the key (a CipherSolution); the rest of the puzzle is not needed.
+  CipherSolution solution = 2;
+}
+
+// PreviewPuzzleCipherResponse is the message as the players will read it.
+message PreviewPuzzleCipherResponse {
+  string ciphertext = 1;
+}
+
+// PlayPuzzleSequenceRequest names a puzzle.
+message PlayPuzzleSequenceRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+}
+
+// PlayPuzzleSequenceResponse carries the puzzle as the master now sees it.
+message PlayPuzzleSequenceResponse {
+  MasterPuzzleRun run = 1;
+}
+
+// TryPuzzleHintRequest is a try for a hint by the puzzle's skill check.
+message TryPuzzleHintRequest {
+  string campaign_id = 1;
+  string puzzle_id = 2;
+  // How the d20 comes (RN-18): the app rolls it, or the player typed the face of a real
+  // die. Required: one of them.
+  oneof roll {
+    // True: the server rolls the d20.
+    bool roll_in_app = 3;
+    // The face of the real d20, 1 to 20. The server adds the character's bonus.
+    int32 d20_face = 4;
+  }
+  // A UUID the app makes for each try. Repeating it returns the first answer and
+  // rolls nothing.
+  string idempotency_key = 5;
+}
+
+// TryPuzzleHintResponse is what the try gave.
+message TryPuzzleHintResponse {
+  // The run as the caller reads it now (with the hint, when they passed).
+  PuzzleRun run = 1;
+  // The caller's roll: the d20 and the total with their bonus. Never the DC.
+  DiceRoll roll = 2;
+  // True when the roll reached the DC: the next hint is in `run.hints`, theirs alone.
+  bool passed = 3;
+  // True when the key was used before: nothing was rolled again.
+  bool replayed = 4;
 }

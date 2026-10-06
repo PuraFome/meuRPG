@@ -258,3 +258,18 @@ func (s *Service) PuzzleRevealClue(ctx context.Context, tx pgx.Tx, campaignID, c
 		s.publishSceneChangedToMasterIf(ctx, campaignID, clue.PointID)
 	}, nil
 }
+
+// PuzzleClueFoundBy says whether the player has found the clue (it is in their
+// notes): the cipher puzzle tells a player where its key is only then. A clue that is
+// gone, or not the campaign's, is not found, and not an error: the puzzle still reads.
+func (s *Service) PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, clueID, userID string) (bool, error) {
+	id, ok := parseID(clueID)
+	if !ok {
+		return false, nil
+	}
+	found, err := queriesIn(s.queries, tx).HasClueReveal(ctx, mapsdb.HasClueRevealParams{CampaignID: campaignID, ClueID: &id, UserID: userID})
+	if err != nil {
+		return false, fmt.Errorf("find whether the player has the clue: %w", err)
+	}
+	return found, nil
+}

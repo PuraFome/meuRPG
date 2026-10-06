@@ -1056,6 +1056,27 @@ func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (M
 	return i, err
 }
 
+const hasClueReveal = `-- name: HasClueReveal :one
+SELECT EXISTS (
+    SELECT 1 FROM scene_clue_reveals WHERE campaign_id = $1 AND clue_id = $2 AND user_id = $3
+) AS found
+`
+
+type HasClueRevealParams struct {
+	CampaignID string
+	ClueID     *string
+	UserID     string
+}
+
+// Whether the player has this clue (the cipher puzzle shows them where the key is only
+// once they found it).
+func (q *Queries) HasClueReveal(ctx context.Context, arg HasClueRevealParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasClueReveal, arg.CampaignID, arg.ClueID, arg.UserID)
+	var found bool
+	err := row.Scan(&found)
+	return found, err
+}
+
 const imageIsLeft = `-- name: ImageIsLeft :one
 SELECT EXISTS (
     SELECT 1 FROM campaign_left_images
