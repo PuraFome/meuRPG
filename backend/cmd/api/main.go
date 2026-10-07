@@ -258,22 +258,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	connectOpts := connectOptions(logger)
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService != nil {
-		identityService.Mount(srv.Handle, connectOpts...)
-		// identityService is who is calling: its interceptor finds the
-		// session, and its UserID reads it back (authz.Caller). This mounts
-		// CampaignService and the campaign document's
-		// CampaignDocumentService (MR-018), with the same interceptors.
-		m.campaigns.Mount(srv.Handle, identityService, connectOpts...)
-		// campaignsService says who belongs to each campaign, and with which
-		// role (authz.MembershipSource).
-		m.characters.Mount(srv.Handle, identityService, m.campaigns, connectOpts...)
-		m.play.Mount(srv.Handle, identityService, m.campaigns, connectOpts...)
-		m.progression.Mount(srv.Handle, identityService, m.campaigns, connectOpts...)
-		m.notes.Mount(srv.Handle, identityService, m.campaigns, connectOpts...)
-		// GalleryService and MapService, plus the upload and download
-		// routes, which find the session with
-		// identityService.AuthenticateRequest.
-		m.maps.Mount(srv.Handle, identityService, m.campaigns, connectOpts...)
+		mountModules(srv.Handle, m, identityService, connectOpts)
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
 		srv.OnShutdown(m.play.Close)
@@ -317,6 +302,27 @@ func run(logger *slog.Logger, cfg config.Config) error {
 }
 
 // modules are the services the sign-in needs, wired together.
+// mountModules mounts the signed-in services. It is shared with the test that
+// calls every procedure anonymously, so what that test checks is exactly what
+// the server serves.
+func mountModules(handle func(string, http.Handler), m *modules, identityService *identity.Service, opts []connect.HandlerOption) {
+	identityService.Mount(handle, opts...)
+	// identityService is who is calling: its interceptor finds the session,
+	// and its UserID reads it back (authz.Caller). This mounts CampaignService
+	// and the campaign document's CampaignDocumentService (MR-018), with the
+	// same interceptors.
+	m.campaigns.Mount(handle, identityService, opts...)
+	// campaignsService says who belongs to each campaign, and with which role
+	// (authz.MembershipSource).
+	m.characters.Mount(handle, identityService, m.campaigns, opts...)
+	m.play.Mount(handle, identityService, m.campaigns, opts...)
+	m.progression.Mount(handle, identityService, m.campaigns, opts...)
+	m.notes.Mount(handle, identityService, m.campaigns, opts...)
+	// GalleryService and MapService, plus the upload and download routes,
+	// which find the session with identityService.AuthenticateRequest.
+	m.maps.Mount(handle, identityService, m.campaigns, opts...)
+}
+
 type modules struct {
 	users       *identity.PostgresStore
 	campaigns   *campaigns.Service

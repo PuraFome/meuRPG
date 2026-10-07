@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -881,7 +882,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("Content-Security-Policy", "default-src 'none'")
 	header.Set("Cross-Origin-Resource-Policy", "same-origin")
-	if r.Header.Get("If-None-Match") == etag {
+	if etagMatches(r.Header.Values("If-None-Match"), etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return nil
 	}
@@ -895,4 +896,20 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 	header.Set("Content-Type", "image/png")
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(png))
 	return nil
+}
+
+// etagMatches reports whether an If-None-Match header (RFC 9110, 13.1.2)
+// matches etag. The header is a list of entity tags, each optionally weak
+// ("W/"), or "*", and may be split over several header lines. For
+// If-None-Match the comparison is weak: W/"x" matches "x".
+func etagMatches(values []string, etag string) bool {
+	for _, value := range values {
+		for _, candidate := range strings.Split(value, ",") {
+			candidate = strings.TrimSpace(candidate)
+			if candidate == "*" || strings.TrimPrefix(candidate, "W/") == etag {
+				return true
+			}
+		}
+	}
+	return false
 }

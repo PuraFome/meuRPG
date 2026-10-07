@@ -114,8 +114,11 @@ func New(cfg Config) *Server {
 	csrf := http.NewCrossOriginProtection()
 
 	s.httpServer = &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           logRequests(s.logger, cfg.TraceProject, slowclient.Middleware(csrf.Handler(s.mux))),
+		Addr: cfg.Addr,
+		// Outermost first: the request log, the security headers, the slow-client
+		// deadlines (they need the real ResponseWriter; the others pass it through),
+		// then CSRF.
+		Handler:           logRequests(s.logger, cfg.TraceProject, securityHeaders(slowclient.Middleware(csrf.Handler(s.mux)))),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,
