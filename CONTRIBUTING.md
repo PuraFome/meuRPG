@@ -2,8 +2,6 @@
 
 Todo código entra por PR para `PuraFome/meuRPG`, com o CI verde e a aprovação do Samuel. Nada vai direto para a `main`. Até o MVP, a aprovação fica para depois: com o CI verde, quem abriu o PR faz o squash merge, e o PR continua sendo aberto para registrar o que mudou (decidido em 30/09/2026).
 
-Os comandos e o CI abaixo passam a existir quando a Etapa 1 (ver [roadmap](docs/roadmap.md)) for integrada.
-
 ## Ambiente local
 
 Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. No Mac, todas instalam pelo Homebrew. O sqlc é opcional: o `make sqlc` roda a versão certa sozinho.
@@ -25,7 +23,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make down` | Derruba o ambiente local (`docker compose down`). |
 | `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência (ver [App antigo](docs/app-antigo.md)). |
 | `make web-install` | Instala as dependências do `web/`: `npm ci --ignore-scripts` (nunca roda scripts de instalação de terceiros). Se for adicionar ou atualizar uma dependência, use `npm install` com o Corepack ativado (`corepack enable`, uma vez só): o `web/package.json` fixa `npm@11.20.0` porque o `npm` de série (10.x) trava ao resolver o grafo de peer dependencies do Vitest 4.1; `npm ci` não tem esse problema e funciona com qualquer um dos dois. |
-| `make web-test` | Roda os testes do Angular (`cd web && npm test`). Os arquivos de teste não são isolados uns dos outros (o construtor do Angular roda o Vitest com `isolate: false`), então `web/src/test-setup.ts` desfaz todo `vi.stubGlobal` ao fim de cada teste dá a cada teste um `scrollIntoView` novo (o jsdom não tem, e os componentes chamam) e devolve os timers de verdade (um relógio falso não passa para outro arquivo), e `web/src/test-providers.ts` desliga as animações do Material: nenhum teste depende da ordem dos arquivos nem espera tempo de verdade. |
+| `make web-test` | Roda os testes do Angular (`cd web && npm test`). Os arquivos de teste não são isolados uns dos outros (o construtor do Angular roda o Vitest com `isolate: false`), então `web/src/test-setup.ts` desfaz todo `vi.stubGlobal` ao fim de cada teste, dá a cada teste um `scrollIntoView` novo (o jsdom não tem, e os componentes chamam) e devolve os timers de verdade (um relógio falso não passa para outro arquivo); e `web/src/test-providers.ts` desliga as animações do Material: nenhum teste depende da ordem dos arquivos nem espera tempo de verdade. |
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
 | `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/images`, `/uploads`, `/healthz`, `/readyz`) para `localhost:8080`. |
 | `WEB_DIR=../web/dist/web/browser PORT=8090 go run -C backend ./cmd/api` | Sobe só a API do jeito que ela roda em produção — servindo o build do Angular, com os headers de cache e o CSP de verdade — sem Docker nem banco. Rode `cd web && npm run build` antes. Sem `DATABASE_URL`, o login fica desligado e o `IdentityService` responde `unavailable`, mas a tela pública e o `SystemService.GetServerInfo` funcionam normalmente. Útil para conferir o CSP no navegador sem subir o Docker; a porta 8090 não conflita com o `make up`. |
@@ -370,6 +368,8 @@ feat(characters): lock sheet on first session
 5. O CI precisa ficar verde. Depois o Samuel revisa e faz o squash merge. Até o MVP, quem abriu o PR faz o squash merge assim que o CI fica verde, sem esperar a revisão.
 
 Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde → revisão do Samuel → squash merge.
+
+**Trem de merge.** PRs prontos ao mesmo tempo podem entrar como um trem: cada branch parte da anterior, e os conflitos se resolvem uma vez só. Os PRs do trem entram com merge commit (`gh pr merge N --merge`), não com squash, porque as fatias acrescentam nos mesmos lugares (`e2e/tests/a11y.spec.ts`, `docs/design.md`) e um squash faria o PR seguinte conflitar de novo. Nunca force-push. Decidido pelo Vinicius em 06/10/2026 e usado nos PRs #173 a #177. Um PR sozinho continua entrando com squash.
 
 ## O que o CI confere
 
