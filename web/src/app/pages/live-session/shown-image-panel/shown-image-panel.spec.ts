@@ -44,6 +44,12 @@ describe('showErrorMessage', () => {
     expect(showErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('Só o mestre');
     expect(showErrorMessage(new TypeError('Failed to fetch'))).toContain('Tente de novo');
   });
+
+  it('tells the master a full gallery is why a fog map image cannot be shown', () => {
+    const message = showErrorMessage(new ConnectError('full', Code.ResourceExhausted));
+    expect(message).toContain('galeria da campanha está cheia');
+    expect(message).not.toContain('falar com o servidor');
+  });
 });
 
 describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
