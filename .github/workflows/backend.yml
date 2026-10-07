@@ -14,6 +14,7 @@ on:
       - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
+      - ".node-version"
   push:
     branches: [main]
     paths:
@@ -22,12 +23,14 @@ on:
       - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
+      - ".node-version"
 
-# Cancel a still-running run for the same branch/PR when a new commit lands,
-# so we don't waste runners on outdated code.
+# Cancel a still-running run for the same PR when a new commit lands, so we
+# don't waste runners on outdated code. A push to main never cancels: every
+# merge leaves a complete signal instead of cancelling the previous merge's run.
 concurrency:
   group: backend-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege: this workflow only reads the repo, it never pushes,
 # comments, or touches packages/deployments.
@@ -37,15 +40,13 @@ permissions:
 jobs:
   proto:
     name: proto (lint, breaking, generate)
+    timeout-minutes: 10
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # Full history: needed so we can inspect origin/main's tree below,
-          # to decide whether the breaking check has anything to compare against.
-          fetch-depth: 0
 
       - name: Set up Go (buf generate shells out to Go tool plugins)
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -71,29 +72,9 @@ jobs:
         working-directory: proto
         run: buf format --diff --exit-code
 
-      - name: Check whether origin/main already has a proto/ directory
-        id: base_proto
-        run: |
-          # main doesn't have proto/ yet at the time this workflow was added.
-          # `buf breaking` against a ref with no proto/ directory would just
-          # fail with a confusing error, so we check explicitly and skip the
-          # step (rather than swallowing the error) when there is nothing to
-          # compare against yet.
-          if git cat-file -e origin/main:proto 2>/dev/null; then
-            echo "has_proto=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_proto=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: buf breaking (against origin/main)
-        if: steps.base_proto.outputs.has_proto == 'true'
+      - name: buf breaking (against main)
         working-directory: proto
         run: buf breaking --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=proto'
-
-      - name: Skip buf breaking (main has no proto/ yet)
-        if: steps.base_proto.outputs.has_proto == 'false'
-        run: |
-          echo "Skipping buf breaking check: origin/main has no proto/ directory yet."
 
       - name: Download backend Go module dependencies
         working-directory: backend
@@ -102,7 +83,7 @@ jobs:
       - name: Set up Node (buf generate's TypeScript plugin runs from web/node_modules)
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "22"
+          node-version-file: .node-version
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
@@ -131,6 +112,7 @@ jobs:
 
   go:
     name: go (test, lint, vulncheck, docker build)
+    timeout-minutes: 20
     runs-on: ubuntu-26.04
     defaults:
       run:
@@ -239,6 +221,9 @@ jobs:
         # CockroachDB, so the slowest (play, maps) took 7 to 10 minutes and
         # one more package's tests could push them over; the whole job took
         # 18 minutes on 04/10/2026, so the job now has room for Etapa 9.
+        # MEURPG_REQUIRE_DB=1: a missing URL fails the tests instead of
+        # skipping them (about a thousand would skip and the job stay green).
         env:
           MEURPG_TEST_DATABASE_URL: postgresql://root@localhost:26257/defaultdb?sslmode=disable
+          MEURPG_REQUIRE_DB: "1"
         run: go test -race -timeout 25m ./...

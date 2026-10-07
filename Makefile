@@ -70,6 +70,11 @@ TEST_DATABASE_URL := postgresql://root@localhost:$(TEST_DB_PORT)/defaultdb?sslmo
 # Go's build cache.
 SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
+# golangci-lint is pinned to the version CI runs (golangci-lint-action in
+# .github/workflows/backend.yml), so `make lint` and CI agree. Change both
+# together. The first run compiles it (a minute or two); Go caches it after.
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+
 .PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop
 
 help: ## Show this help message
@@ -95,7 +100,7 @@ proto-lint: ## Lint proto files and check formatting
 	cd proto && buf format --diff --exit-code
 
 lint: proto-lint ## Run all linters (proto + Go)
-	cd backend && golangci-lint run
+	cd backend && $(GOLANGCI_LINT) run
 
 test: ## Run backend Go tests with the race detector
 	cd backend && go test -race ./...
