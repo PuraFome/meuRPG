@@ -1,4 +1,3 @@
-// Finding U16-15 in review/unit-16-web-content-campaigns.md
 import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -30,7 +29,7 @@ function mk(id: string): Invite {
   } as Invite;
 }
 
-describe('Review16 U16-15: failed revoke keeps the invites list', () => {
+describe('CampaignInvites revoking', () => {
   it('keeps both invite rows when RevokeInvite rejects', async () => {
     TestBed.configureTestingModule({
       imports: [CampaignInvites],
