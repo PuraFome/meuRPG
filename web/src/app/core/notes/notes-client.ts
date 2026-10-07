@@ -36,9 +36,9 @@ export class NotesClient {
     return { notes: res.notes, noteCount: res.noteCount, maxNotes: res.maxNotes };
   }
 
-  /** `CreateNote`; an empty `scenePointId` is a note with no scene. */
-  async create(campaignId: string, text: string, scenePointId: string): Promise<Note> {
-    const res = await this.client.createNote({ campaignId, text, scenePointId });
+  /** `CreateNote`; an empty `scenePointId` is a note with no scene. `idempotencyKey`: one per note, sent again on a retry. */
+  async create(campaignId: string, text: string, scenePointId: string, idempotencyKey: string): Promise<Note> {
+    const res = await this.client.createNote({ campaignId, text, scenePointId, idempotencyKey });
     return need(res.note, 'CreateNote');
   }
 

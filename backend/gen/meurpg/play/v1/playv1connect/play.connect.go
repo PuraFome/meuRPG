@@ -154,6 +154,10 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: the campaign already has an open session
 	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is
@@ -1175,6 +1179,10 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: the campaign already has an open session
 	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is

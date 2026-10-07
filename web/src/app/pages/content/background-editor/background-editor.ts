@@ -113,7 +113,7 @@ export class BackgroundEditor {
       return;
     }
     const body: EntryBody = { case: 'tableBackground', value: draftToBackground(this.draft(), this.menu()) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body), this.known);
+    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
     if (res) {
       this.saved.emit(res);
       return;

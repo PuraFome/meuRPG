@@ -9,6 +9,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Code } from '@connectrpc/connect';
 
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { GalleryPicker } from '../../../shared/gallery-picker/gallery-picker';
 
@@ -58,6 +59,7 @@ export class MapNew {
   protected readonly imageId = signal<string | null>(null);
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
+  private readonly createKey = new ActionKey();
   protected readonly failure = signal<string | null>(null);
   protected readonly nameMax = NAME_MAX;
 
@@ -91,7 +93,10 @@ export class MapNew {
     }
     this.saving.set(true);
     try {
-      const map = await this.api.create(this.campaignId(), this.nameControl.value.trim(), imageId);
+      // A retry of the same form (a lost answer, a second tap) sends the same key and makes one map.
+      const name = this.nameControl.value.trim();
+      const map = await this.api.create(this.campaignId(), name, imageId, this.createKey.keyFor([name, imageId]));
+      this.createKey.renew();
       await this.router.navigate(['/campanhas', this.campaignId(), 'mapas', map.id]);
     } catch (err) {
       this.saving.set(false);

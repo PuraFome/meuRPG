@@ -113,6 +113,10 @@ type TableContentServiceClient interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a member.
 	//   - `invalid_argument`: a TableContentRefusal detail lists every violation
 	//     (the 300-entry and 64 KiB limits included).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateTableEntry(context.Context, *connect.Request[v1.CreateTableEntryRequest]) (*connect.Response[v1.CreateTableEntryResponse], error)
 	// UpdateTableEntry replaces an entry's body. The kind, the key and the parent
 	// (a subclass's class, a subrace's race) never change. Only the master.
@@ -359,6 +363,10 @@ type TableContentServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a member.
 	//   - `invalid_argument`: a TableContentRefusal detail lists every violation
 	//     (the 300-entry and 64 KiB limits included).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateTableEntry(context.Context, *connect.Request[v1.CreateTableEntryRequest]) (*connect.Response[v1.CreateTableEntryResponse], error)
 	// UpdateTableEntry replaces an entry's body. The kind, the key and the parent
 	// (a subclass's class, a subrace's race) never change. Only the master.

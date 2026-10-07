@@ -63,6 +63,7 @@ import { PointList } from '../point-list/point-list';
 import { PointPanel } from '../point-panel/point-panel';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { factorLabel } from '../../../core/maps/calibration';
+import { newKey } from '../../../core/connect/idempotency';
 
 /** The kinds the editor creates: the three it always had, and the new ones. */
 function defaultName(kind: MapPointKind): string {
@@ -418,6 +419,7 @@ export class MapEditor {
     }
     this.placing.set(null);
     try {
+      // One key per tap on the map: the point is made once, whatever the network does with the answer.
       const point = await this.api.createPoint(this.campaignId(), mapId, {
         kind,
         name: defaultName(kind),
@@ -427,7 +429,7 @@ export class MapEditor {
         ...(kind === MapPointKind.LIGHT ? { light: await this.newLight() } : {}),
         ...(kind === MapPointKind.TRAP ? { trap: await this.newTrap() } : {}),
         ...(kind === MapPointKind.TREASURE ? { treasureValuePo: 0 } : {}),
-      });
+      }, newKey());
       this.state().upsertPoint(point);
       this.panelError.set(null);
       this.justCreated.set(true);

@@ -47,8 +47,31 @@ func (q *Queries) DeletePlayerNote(ctx context.Context, arg DeletePlayerNotePara
 	return result.RowsAffected(), nil
 }
 
+const getPlayerNoteByCreateKey = `-- name: GetPlayerNoteByCreateKey :one
+SELECT id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at, create_key, create_hash FROM player_notes WHERE create_key = $1
+`
+
+// The note a CreateNote with this idempotency key made, if any. The key carries the campaign's
+// and the author's IDs.
+func (q *Queries) GetPlayerNoteByCreateKey(ctx context.Context, createKey *string) (PlayerNote, error) {
+	row := q.db.QueryRow(ctx, getPlayerNoteByCreateKey, createKey)
+	var i PlayerNote
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.AuthorUserID,
+		&i.Text,
+		&i.ScenePointID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const getPlayerNoteForUpdate = `-- name: GetPlayerNoteForUpdate :one
-SELECT id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at FROM player_notes
+SELECT id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at, create_key, create_hash FROM player_notes
 WHERE campaign_id = $1 AND author_user_id = $2 AND id = $3
 FOR UPDATE
 `
@@ -70,14 +93,17 @@ func (q *Queries) GetPlayerNoteForUpdate(ctx context.Context, arg GetPlayerNoteF
 		&i.ScenePointID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const insertPlayerNote = `-- name: InsertPlayerNote :one
-INSERT INTO player_notes (campaign_id, author_user_id, text, scene_point_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $5)
-RETURNING id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at
+INSERT INTO player_notes (campaign_id, author_user_id, text, scene_point_id, create_key, create_hash, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at, create_key, create_hash
 `
 
 type InsertPlayerNoteParams struct {
@@ -85,15 +111,22 @@ type InsertPlayerNoteParams struct {
 	AuthorUserID string
 	Text         string
 	ScenePointID *string
+	CreateKey    *string
+	CreateHash   *string
 	Now          time.Time
 }
 
+// create_key and create_hash are the idempotency key and the hash of the request (NULL when the
+// call sent no key): two calls with the same key at once make one note, and the loser gets no
+// row and reads the winner's (GetPlayerNoteByCreateKey).
 func (q *Queries) InsertPlayerNote(ctx context.Context, arg InsertPlayerNoteParams) (PlayerNote, error) {
 	row := q.db.QueryRow(ctx, insertPlayerNote,
 		arg.CampaignID,
 		arg.AuthorUserID,
 		arg.Text,
 		arg.ScenePointID,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i PlayerNote
@@ -105,12 +138,14 @@ func (q *Queries) InsertPlayerNote(ctx context.Context, arg InsertPlayerNotePara
 		&i.ScenePointID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const listPlayerNotes = `-- name: ListPlayerNotes :many
-SELECT id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at FROM player_notes
+SELECT id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at, create_key, create_hash FROM player_notes
 WHERE campaign_id = $1 AND author_user_id = $2
 ORDER BY updated_at DESC, id
 `
@@ -139,6 +174,8 @@ func (q *Queries) ListPlayerNotes(ctx context.Context, arg ListPlayerNotesParams
 			&i.ScenePointID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -154,7 +191,7 @@ const updatePlayerNote = `-- name: UpdatePlayerNote :one
 UPDATE player_notes
 SET text = $1, scene_point_id = $2, updated_at = $3
 WHERE campaign_id = $4 AND author_user_id = $5 AND id = $6
-RETURNING id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at
+RETURNING id, campaign_id, author_user_id, text, scene_point_id, created_at, updated_at, create_key, create_hash
 `
 
 type UpdatePlayerNoteParams struct {
@@ -184,6 +221,8 @@ func (q *Queries) UpdatePlayerNote(ctx context.Context, arg UpdatePlayerNotePara
 		&i.ScenePointID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }

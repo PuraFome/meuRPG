@@ -24,8 +24,9 @@ export class CampaignsService {
     return this.client.listMyCampaigns({});
   }
 
-  createCampaign(name: string, xpMode: XpMode) {
-    return this.client.createCampaign({ name, xpMode });
+  /** `idempotencyKey`: one per create action, sent again on a retry (see `ActionKey`). */
+  createCampaign(name: string, xpMode: XpMode, idempotencyKey: string) {
+    return this.client.createCampaign({ name, xpMode, idempotencyKey });
   }
 
   getCampaign(campaignId: string) {

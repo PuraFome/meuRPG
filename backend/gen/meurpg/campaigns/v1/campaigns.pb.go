@@ -985,9 +985,14 @@ type CreateCampaignRequest struct {
 	// characters such as line breaks.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Required.
-	XpMode        XpMode `protobuf:"varint,2,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	XpMode XpMode `protobuf:"varint,2,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique for the user; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateCampaignRequest) Reset() {
@@ -1032,6 +1037,13 @@ func (x *CreateCampaignRequest) GetXpMode() XpMode {
 		return x.XpMode
 	}
 	return XpMode_XP_MODE_UNSPECIFIED
+}
+
+func (x *CreateCampaignRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreateCampaignResponse returns the new campaign.
@@ -2903,10 +2915,11 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x05state\x18\a \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\x12+\n" +
 	"\x11requires_approval\x18\b \x01(\bR\x10requiresApproval\"H\n" +
 	"\x0eInviteUnusable\x126\n" +
-	"\x05state\x18\x01 \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\"a\n" +
+	"\x05state\x18\x01 \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\"\x8a\x01\n" +
 	"\x15CreateCampaignRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x124\n" +
-	"\axp_mode\x18\x02 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\"S\n" +
+	"\axp_mode\x18\x02 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"S\n" +
 	"\x16CreateCampaignResponse\x129\n" +
 	"\bcampaign\x18\x01 \x01(\v2\x1d.meurpg.campaigns.v1.CampaignR\bcampaign\"\x18\n" +
 	"\x16ListMyCampaignsRequest\"V\n" +

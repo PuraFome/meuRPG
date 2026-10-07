@@ -13,9 +13,18 @@ FROM game_sessions
 WHERE campaign_id = $1;
 
 -- name: InsertGameSession :one
-INSERT INTO game_sessions (campaign_id, session_number, started_at)
-VALUES ($1, $2, $3)
+-- create_key and create_hash are the idempotency key of StartGameSession and the hash of its
+-- request (NULL when the call sent no key); the caller reads the first row with
+-- GetGameSessionByCreateKey.
+INSERT INTO game_sessions (campaign_id, session_number, started_at, create_key, create_hash)
+VALUES (sqlc.arg(campaign_id), sqlc.arg(session_number), sqlc.arg(started_at), sqlc.narg(create_key), sqlc.narg(create_hash))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetGameSessionByCreateKey :one
+-- The session a StartGameSession with this idempotency key started, if any (the key carries the
+-- campaign's ID), open or ended.
+SELECT * FROM game_sessions WHERE create_key = $1;
 
 -- name: EndGameSession :one
 -- Ending a session twice keeps the first ended_at, so the call is
@@ -763,9 +772,15 @@ WHERE id = ANY($1::uuid[]);
 -- name: InsertPuzzle :one
 INSERT INTO puzzles (
     campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
-    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
+    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at, create_key, create_hash
+) VALUES (sqlc.arg(campaign_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(config), sqlc.arg(solution), sqlc.arg(seed), sqlc.arg(start), sqlc.arg(minimum_moves), sqlc.arg(clue), sqlc.arg(hints), sqlc.arg(solve_action), sqlc.arg(solve_target), sqlc.arg(hint_skill), sqlc.arg(hint_dc), sqlc.arg(parts), sqlc.arg(on_wrong), sqlc.arg(created_at), sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetPuzzleByCreateKey :one
+-- The puzzle a CreatePuzzle with this idempotency key made, if any (the key carries the
+-- campaign's ID).
+SELECT * FROM puzzles WHERE create_key = $1;
 
 -- name: GetPuzzle :one
 SELECT * FROM puzzles

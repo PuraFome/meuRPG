@@ -170,6 +170,10 @@ type MapServiceClient interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the campaign already has 200 maps.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateMap(context.Context, *connect.Request[v1.CreateMapRequest]) (*connect.Response[v1.CreateMapResponse], error)
 	// UpdateMap renames a map or changes its image. Only the campaign's
 	// master may call it. The points and tokens keep their positions, which
@@ -283,6 +287,10 @@ type MapServiceClient interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the map already has 200 points.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateMapPoint(context.Context, *connect.Request[v1.CreateMapPointRequest]) (*connect.Response[v1.CreateMapPointResponse], error)
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
@@ -345,6 +353,10 @@ type MapServiceClient interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the point already has 20 actions.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddSceneAction(context.Context, *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error)
 	// UpdateSceneAction changes one action of a SCENE point: each field set
 	// in the request replaces the current value. Only the campaign's master
@@ -391,6 +403,10 @@ type MapServiceClient interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the point already has 30 clues.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddSceneClue(context.Context, *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error)
 	// UpdateSceneClue changes the text of one clue of a SCENE point. What
 	// players already received keeps the text they were given. Only the
@@ -1154,6 +1170,10 @@ type MapServiceHandler interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the campaign already has 200 maps.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateMap(context.Context, *connect.Request[v1.CreateMapRequest]) (*connect.Response[v1.CreateMapResponse], error)
 	// UpdateMap renames a map or changes its image. Only the campaign's
 	// master may call it. The points and tokens keep their positions, which
@@ -1267,6 +1287,10 @@ type MapServiceHandler interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the map already has 200 points.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateMapPoint(context.Context, *connect.Request[v1.CreateMapPointRequest]) (*connect.Response[v1.CreateMapPointResponse], error)
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
@@ -1329,6 +1353,10 @@ type MapServiceHandler interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the point already has 20 actions.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddSceneAction(context.Context, *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error)
 	// UpdateSceneAction changes one action of a SCENE point: each field set
 	// in the request replaces the current value. Only the campaign's master
@@ -1375,6 +1403,10 @@ type MapServiceHandler interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `resource_exhausted`: the point already has 30 clues.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddSceneClue(context.Context, *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error)
 	// UpdateSceneClue changes the text of one clue of a SCENE point. What
 	// players already received keeps the text they were given. Only the

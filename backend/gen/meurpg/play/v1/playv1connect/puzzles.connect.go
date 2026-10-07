@@ -134,6 +134,10 @@ type PuzzleServiceClient interface {
 	// or clue of this campaign.
 	//
 	// Errors: `permission_denied` for a player; `invalid_argument` (PuzzleInvalid).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreatePuzzle(context.Context, *connect.Request[v1.CreatePuzzleRequest]) (*connect.Response[v1.CreatePuzzleResponse], error)
 	// UpdatePuzzle replaces everything the master wrote about a puzzle (the same fields
 	// as CreatePuzzle), as long as the puzzle was never shown in a session. Master only.
@@ -563,6 +567,10 @@ type PuzzleServiceHandler interface {
 	// or clue of this campaign.
 	//
 	// Errors: `permission_denied` for a player; `invalid_argument` (PuzzleInvalid).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreatePuzzle(context.Context, *connect.Request[v1.CreatePuzzleRequest]) (*connect.Response[v1.CreatePuzzleResponse], error)
 	// UpdatePuzzle replaces everything the master wrote about a puzzle (the same fields
 	// as CreatePuzzle), as long as the puzzle was never shown in a session. Master only.

@@ -90,6 +90,17 @@ describe('NotesState', () => {
     expect(state.notes().map((n) => n.text)).toContain('Nova');
   });
 
+  it('retries a note that failed with the same idempotency key, and uses a new one for the next note', async () => {
+    await state.refresh();
+    api.failNextCreate = true;
+    await expect(state.create('Nova', 's1')).rejects.toThrow();
+    await state.create('Nova', 's1'); // the retry of the same note
+    await state.create('Nova', 's1'); // the same text again, after it worked: another note
+    const [lost, retry, next] = api.createKeys;
+    expect(retry).toBe(lost);
+    expect(next).not.toBe(retry);
+  });
+
   it('puts a new note first, counts it, and moves an edited one to the top', async () => {
     await state.refresh();
     const created = await state.create('Nova anotação', 's1');

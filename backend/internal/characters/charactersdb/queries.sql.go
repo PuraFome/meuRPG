@@ -14,7 +14,7 @@ const approveCharacter = `-- name: ApproveCharacter :one
 UPDATE characters
 SET status = 'active'
 WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type ApproveCharacterParams struct {
@@ -46,6 +46,7 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -360,7 +361,7 @@ func (q *Queries) GetAbilityRolls(ctx context.Context, arg GetAbilityRollsParams
 }
 
 const getCampaignContent = `-- name: GetCampaignContent :one
-SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at FROM campaign_content
+SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID AND content_key = $2
 `
 
@@ -382,12 +383,38 @@ func (q *Queries) GetCampaignContent(ctx context.Context, arg GetCampaignContent
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getCampaignContentByCreateKey = `-- name: GetCampaignContentByCreateKey :one
+SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content WHERE create_key = $1
+`
+
+// The entry a CreateTableEntry with this idempotency key made, if any (the key carries the campaign's ID).
+func (q *Queries) GetCampaignContentByCreateKey(ctx context.Context, createKey *string) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, getCampaignContentByCreateKey, createKey)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getCharacter = `-- name: GetCharacter :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 `
 
@@ -417,12 +444,13 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getCharacterByCreateKey = `-- name: GetCharacterByCreateKey :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
 WHERE campaign_id = $1::UUID AND create_key = $2::UUID
 `
 
@@ -452,12 +480,13 @@ func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterB
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getCharacterCreature = `-- name: GetCharacterCreature :one
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
@@ -492,13 +521,44 @@ func (q *Queries) GetCharacterCreature(ctx context.Context, arg GetCharacterCrea
 		&i.CharacterCreature.CreatedAt,
 		&i.CharacterCreature.DismissedAt,
 		&i.CharacterCreature.DismissedReason,
+		&i.CharacterCreature.CreateKey,
+		&i.CharacterCreature.CreateHash,
 		&i.PlayerUserID,
 	)
 	return i, err
 }
 
+const getCharacterCreatureByCreateKey = `-- name: GetCharacterCreatureByCreateKey :one
+SELECT id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash FROM character_creatures WHERE create_key = $1
+`
+
+// The creature a GiveCreature with this idempotency key made, if any (the key carries the campaign's ID).
+func (q *Queries) GetCharacterCreatureByCreateKey(ctx context.Context, createKey *string) (CharacterCreature, error) {
+	row := q.db.QueryRow(ctx, getCharacterCreatureByCreateKey, createKey)
+	var i CharacterCreature
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.MonsterKey,
+		&i.Name,
+		&i.Source,
+		&i.Attack,
+		&i.SummonGroupID,
+		&i.ConcentrationCastID,
+		&i.HpCurrent,
+		&i.HpMax,
+		&i.CreatedAt,
+		&i.DismissedAt,
+		&i.DismissedReason,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const getCharacterCreatureForUpdate = `-- name: GetCharacterCreatureForUpdate :one
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
@@ -534,13 +594,15 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 		&i.CharacterCreature.CreatedAt,
 		&i.CharacterCreature.DismissedAt,
 		&i.CharacterCreature.DismissedReason,
+		&i.CharacterCreature.CreateKey,
+		&i.CharacterCreature.CreateHash,
 		&i.PlayerUserID,
 	)
 	return i, err
 }
 
 const getCharacterForUpdate = `-- name: GetCharacterForUpdate :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 FOR UPDATE
 `
@@ -574,6 +636,7 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -768,7 +831,7 @@ VALUES (
     $1::UUID, $2, $3, $4, $5,
     $6, $7, $7
 )
-RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash
 `
 
 type InsertCampaignContentParams struct {
@@ -802,6 +865,63 @@ func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignC
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const insertCampaignContentWithKey = `-- name: InsertCampaignContentWithKey :one
+INSERT INTO campaign_content
+    (campaign_id, content_key, kind, name_pt, data, revision, create_key, create_hash, created_at, updated_at)
+VALUES (
+    $1::UUID, $2, $3, $4, $5,
+    $6, $7, $8, $9, $9
+)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash
+`
+
+type InsertCampaignContentWithKeyParams struct {
+	CampaignID string
+	ContentKey string
+	Kind       string
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	CreateKey  *string
+	CreateHash *string
+	Now        time.Time
+}
+
+// InsertCampaignContent for CreateTableEntry with an idempotency key: create_key and create_hash are
+// kept with the entry. The master's write bumps the content revision first, in the same transaction,
+// so two calls with the same key take turns; ON CONFLICT is the net under that.
+func (q *Queries) InsertCampaignContentWithKey(ctx context.Context, arg InsertCampaignContentWithKeyParams) (CampaignContent, error) {
+	row := q.db.QueryRow(ctx, insertCampaignContentWithKey,
+		arg.CampaignID,
+		arg.ContentKey,
+		arg.Kind,
+		arg.NamePt,
+		arg.Data,
+		arg.Revision,
+		arg.CreateKey,
+		arg.CreateHash,
+		arg.Now,
+	)
+	var i CampaignContent
+	err := row.Scan(
+		&i.CampaignID,
+		&i.ContentKey,
+		&i.Kind,
+		&i.NamePt,
+		&i.Data,
+		&i.Revision,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -809,12 +929,14 @@ func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignC
 const insertCharacter = `-- name: InsertCharacter :one
 
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
 VALUES (
     $1::UUID, $2, $3, $4,
-    $5, $6, $7, $8, $9, $9
+    $5, $6, $7, $8, $9::UUID, $10,
+    $11, $11
 )
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type InsertCharacterParams struct {
@@ -826,6 +948,8 @@ type InsertCharacterParams struct {
 	Name         string
 	Sheet        []byte
 	Story        []byte
+	CreateKey    *string
+	CreateHash   *string
 	Now          time.Time
 }
 
@@ -835,6 +959,9 @@ type InsertCharacterParams struct {
 // so the argument is cast to UUID to make it a plain string in Go.
 // status is 'active', or 'pending' for a character created by a pending
 // member (RN-15, MR-024).
+// create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash
+// are the idempotency key of CreateCharacter and the hash of its request; NULL when the call sent
+// no key. A retry reads the first character with GetCharacterByCreateKey.
 func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams) (Character, error) {
 	row := q.db.QueryRow(ctx, insertCharacter,
 		arg.CampaignID,
@@ -845,6 +972,8 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		arg.Name,
 		arg.Sheet,
 		arg.Story,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i Character
@@ -866,6 +995,7 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -873,13 +1003,13 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 const insertCharacterCreature = `-- name: InsertCharacterCreature :one
 
 INSERT INTO character_creatures
-    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at)
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash)
 VALUES (
     $1::UUID, $2::UUID, $3, $4, $5,
     $6, $7::UUID, $8::UUID, $9, $10,
-    $11
+    $11, $12, $13
 )
-RETURNING id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason
+RETURNING id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash
 `
 
 type InsertCharacterCreatureParams struct {
@@ -894,6 +1024,8 @@ type InsertCharacterCreatureParams struct {
 	HpCurrent           int32
 	HpMax               int32
 	CreatedAt           time.Time
+	CreateKey           *string
+	CreateHash          *string
 }
 
 // A character's creatures (MR-037, Etapa 9). A creature is "live" until it is
@@ -912,6 +1044,8 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 		arg.HpCurrent,
 		arg.HpMax,
 		arg.CreatedAt,
+		arg.CreateKey,
+		arg.CreateHash,
 	)
 	var i CharacterCreature
 	err := row.Scan(
@@ -929,6 +1063,8 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 		&i.CreatedAt,
 		&i.DismissedAt,
 		&i.DismissedReason,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1044,7 +1180,7 @@ VALUES (
     $6, $7::UUID, $8, $8
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type InsertNpcFromCreatureParams struct {
@@ -1092,12 +1228,13 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const listCampaignContent = `-- name: ListCampaignContent :many
-SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at FROM campaign_content
+SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID
 ORDER BY content_key
 `
@@ -1122,6 +1259,8 @@ func (q *Queries) ListCampaignContent(ctx context.Context, campaignID string) ([
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -1414,7 +1553,7 @@ func (q *Queries) ListContentOff(ctx context.Context, campaignID string) ([]stri
 }
 
 const listCreaturesByIDs = `-- name: ListCreaturesByIDs :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = ANY($2::UUID[])
@@ -1456,6 +1595,8 @@ func (q *Queries) ListCreaturesByIDs(ctx context.Context, arg ListCreaturesByIDs
 			&i.CharacterCreature.CreatedAt,
 			&i.CharacterCreature.DismissedAt,
 			&i.CharacterCreature.DismissedReason,
+			&i.CharacterCreature.CreateKey,
+			&i.CharacterCreature.CreateHash,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -1541,7 +1682,7 @@ func (q *Queries) ListLevelUps(ctx context.Context, arg ListLevelUpsParams) ([]L
 }
 
 const listLiveCreaturesOfCharacters = `-- name: ListLiveCreaturesOfCharacters :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -1585,6 +1726,8 @@ func (q *Queries) ListLiveCreaturesOfCharacters(ctx context.Context, arg ListLiv
 			&i.CharacterCreature.CreatedAt,
 			&i.CharacterCreature.DismissedAt,
 			&i.CharacterCreature.DismissedReason,
+			&i.CharacterCreature.CreateKey,
+			&i.CharacterCreature.CreateHash,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -1598,7 +1741,7 @@ func (q *Queries) ListLiveCreaturesOfCharacters(ctx context.Context, arg ListLiv
 }
 
 const listLiveCreaturesOnConcentration = `-- name: ListLiveCreaturesOnConcentration :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -1643,6 +1786,8 @@ func (q *Queries) ListLiveCreaturesOnConcentration(ctx context.Context, arg List
 			&i.CharacterCreature.CreatedAt,
 			&i.CharacterCreature.DismissedAt,
 			&i.CharacterCreature.DismissedReason,
+			&i.CharacterCreature.CreateKey,
+			&i.CharacterCreature.CreateHash,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -1656,7 +1801,7 @@ func (q *Queries) ListLiveCreaturesOnConcentration(ctx context.Context, arg List
 }
 
 const listLiveFamiliars = `-- name: ListLiveFamiliars :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -1702,6 +1847,8 @@ func (q *Queries) ListLiveFamiliars(ctx context.Context, arg ListLiveFamiliarsPa
 			&i.CharacterCreature.CreatedAt,
 			&i.CharacterCreature.DismissedAt,
 			&i.CharacterCreature.DismissedReason,
+			&i.CharacterCreature.CreateKey,
+			&i.CharacterCreature.CreateHash,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -2061,7 +2208,7 @@ const markCharacterDead = `-- name: MarkCharacterDead :one
 UPDATE characters
 SET status = 'dead', died_at = COALESCE(died_at, $1::TIMESTAMPTZ)
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type MarkCharacterDeadParams struct {
@@ -2093,6 +2240,7 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2162,7 +2310,7 @@ const setCampaignContentArchived = `-- name: SetCampaignContentArchived :one
 UPDATE campaign_content
 SET archived_at = CASE WHEN $1::BOOL THEN $2::TIMESTAMPTZ ELSE NULL END
 WHERE campaign_id = $3::UUID AND content_key = $4
-RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash
 `
 
 type SetCampaignContentArchivedParams struct {
@@ -2193,8 +2341,39 @@ func (q *Queries) SetCampaignContentArchived(ctx context.Context, arg SetCampaig
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
+}
+
+const setCharacterCreatureCreateKey = `-- name: SetCharacterCreatureCreateKey :exec
+
+UPDATE character_creatures
+SET create_key = $1, create_hash = $2
+WHERE campaign_id = $3::UUID AND id = $4::UUID
+`
+
+type SetCharacterCreatureCreateKeyParams struct {
+	CreateKey  *string
+	CreateHash *string
+	CampaignID string
+	ID         string
+}
+
+// A creature is made inside the owner's locked transaction (GiveCreature locks the owner first), so a
+// retry reads the first one with GetCharacterCreatureByCreateKey before it inserts, and never races it;
+// the unique index (character_creatures_create_key_idx) is the net under that.
+// The idempotency key of GiveCreature and the hash of its request, set on the creature the summon made
+// (a summon makes the creature the same way whoever asks, so the key is written after it).
+func (q *Queries) SetCharacterCreatureCreateKey(ctx context.Context, arg SetCharacterCreatureCreateKeyParams) error {
+	_, err := q.db.Exec(ctx, setCharacterCreatureCreateKey,
+		arg.CreateKey,
+		arg.CreateHash,
+		arg.CampaignID,
+		arg.ID,
+	)
+	return err
 }
 
 const setCharacterCreatureHitPoints = `-- name: SetCharacterCreatureHitPoints :exec
@@ -2277,7 +2456,7 @@ const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type SetStoryEditingParams struct {
@@ -2309,6 +2488,7 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2372,7 +2552,7 @@ const updateCampaignContent = `-- name: UpdateCampaignContent :one
 UPDATE campaign_content
 SET name_pt = $1, data = $2, revision = $3, updated_at = $4
 WHERE campaign_id = $5::UUID AND content_key = $6
-RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at
+RETURNING campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash
 `
 
 type UpdateCampaignContentParams struct {
@@ -2405,6 +2585,8 @@ func (q *Queries) UpdateCampaignContent(ctx context.Context, arg UpdateCampaignC
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2413,7 +2595,7 @@ const updateCharacterSheet = `-- name: UpdateCharacterSheet :one
 UPDATE characters
 SET name = $1, sheet = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND revision = $6
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type UpdateCharacterSheetParams struct {
@@ -2455,6 +2637,7 @@ func (q *Queries) UpdateCharacterSheet(ctx context.Context, arg UpdateCharacterS
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2463,7 +2646,7 @@ const updateCharacterStory = `-- name: UpdateCharacterStory :one
 UPDATE characters
 SET story = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4 AND revision = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
 `
 
 type UpdateCharacterStoryParams struct {
@@ -2502,6 +2685,7 @@ func (q *Queries) UpdateCharacterStory(ctx context.Context, arg UpdateCharacterS
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
