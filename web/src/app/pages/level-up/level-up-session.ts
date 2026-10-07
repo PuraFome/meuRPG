@@ -52,6 +52,10 @@ export class LevelUpSession {
   readonly rolling = signal(false);
   readonly rollError = signal('');
 
+  /** The session the page made after this one (a content change read everything again): a roll still on its way when
+   * that happened lands there, not on this one, which is no longer on screen. */
+  private next: LevelUpSession | null = null;
+
   constructor(
     readonly campaignId: string,
     readonly character: Character,
@@ -190,12 +194,23 @@ export class LevelUpSession {
         this.options.classKey,
         newKey(),
       );
-      this.draft.rolled.set({ kind: 'app', value: res.value });
+      this.current().draft.rolled.set({ kind: 'app', value: res.value });
     } catch (err) {
-      this.rollError.set(describeLevelUpFailure(err).message);
+      this.current().rollError.set(describeLevelUpFailure(err).message);
     } finally {
       this.rolling.set(false);
     }
+  }
+
+  /** The page replaced this session with `next` (the same level, read again). */
+  handOver(next: LevelUpSession): void {
+    this.next = next;
+    this.stop();
+  }
+
+  /** The session on screen now: this one, or the last one it was handed over to. */
+  private current(): LevelUpSession {
+    return this.next ? this.next.current() : this;
   }
 
   /** The number that came out of a physical die, typed. */

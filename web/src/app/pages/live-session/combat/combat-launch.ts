@@ -61,17 +61,22 @@ export function openStartCombat(
       <div class="launch__text">
         <h2 class="mr-panel__title" id="launch-title">Combate</h2>
         <p class="mr-muted">
-          @if (state().map()) {
+          @if (loading()) {
+            Lendo o mapa atual…
+          } @else if (state().map()) {
             Escolha quem luta e o app pede a iniciativa de todos.
           } @else {
             Sem um mapa atual, o combate é no teatro da mente: só a ordem, o movimento por número e a sua palavra.
           }
         </p>
       </div>
+      <!-- Disabled while the current map is read: the dialog takes the map when it opens, and a click in that moment
+           would offer only the theatre of the mind for a session that has a map. -->
       <button
         mat-stroked-button
         type="button"
         class="launch__button"
+        [disabled]="loading()"
         (click)="open()"
       >
         <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
@@ -119,8 +124,13 @@ export class CombatLaunch {
   readonly started = output<Encounter>();
 
   protected readonly map = computed<CombatMapInfo | null>(() => combatMapInfo(this.state()));
+  /** The session's current map is still being read: "Iniciar combate" waits for it. */
+  protected readonly loading = computed(() => this.state().status() === 'loading');
 
   protected open(): void {
+    if (this.loading()) {
+      return;
+    }
     const map = this.map();
     // Without a map the combat starts without one (the theatre of the mind, RN-25): the dialog offers the choice.
     openStartCombat(this.dialog, this.phone(), {
