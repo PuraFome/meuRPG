@@ -10,6 +10,61 @@ import (
 	"time"
 )
 
+const countOtherSessions = `-- name: CountOtherSessions :one
+SELECT count(*) FROM auth_sessions
+WHERE user_id = $1 AND id <> $2
+  AND expires_at > $3 AND last_used_at > $4
+`
+
+type CountOtherSessionsParams struct {
+	UserID    string
+	KeepID    string
+	Now       time.Time
+	IdleSince time.Time
+}
+
+// The user's other sessions that still work.
+func (q *Queries) CountOtherSessions(ctx context.Context, arg CountOtherSessionsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countOtherSessions,
+		arg.UserID,
+		arg.KeepID,
+		arg.Now,
+		arg.IdleSince,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteOtherUserSessions = `-- name: DeleteOtherUserSessions :execrows
+DELETE FROM auth_sessions
+WHERE user_id = $1 AND id <> $2
+  AND expires_at > $3 AND last_used_at > $4
+`
+
+type DeleteOtherUserSessionsParams struct {
+	UserID    string
+	KeepID    string
+	Now       time.Time
+	IdleSince time.Time
+}
+
+// "Sign out of other devices": every session of the user that still works,
+// but the current one. Expired and idle rows are already unusable (the TTL job
+// removes them), so leaving them out keeps the count honest.
+func (q *Queries) DeleteOtherUserSessions(ctx context.Context, arg DeleteOtherUserSessionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOtherUserSessions,
+		arg.UserID,
+		arg.KeepID,
+		arg.Now,
+		arg.IdleSince,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM auth_sessions WHERE id = $1
 `
@@ -93,8 +148,8 @@ func (q *Queries) InsertLoginState(ctx context.Context, arg InsertLoginStatePara
 }
 
 const insertSession = `-- name: InsertSession :one
-INSERT INTO auth_sessions (token_hash, user_id, created_at, expires_at, auth_time)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO auth_sessions (token_hash, user_id, created_at, expires_at, auth_time, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $3)
 RETURNING id
 `
 
@@ -106,6 +161,7 @@ type InsertSessionParams struct {
 	AuthTime  *time.Time
 }
 
+// A new session counts as used at the moment it starts.
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (string, error) {
 	row := q.db.QueryRow(ctx, insertSession,
 		arg.TokenHash,
@@ -163,50 +219,58 @@ func (q *Queries) ListDisplayNames(ctx context.Context, ids []string) ([]ListDis
 }
 
 const lookupSession = `-- name: LookupSession :one
-SELECT id, user_id, created_at, expires_at
+SELECT id, user_id, created_at, expires_at, last_used_at
 FROM auth_sessions
-WHERE token_hash = $1 AND expires_at > $2
+WHERE token_hash = $1 AND expires_at > $2 AND last_used_at > $3
 `
 
 type LookupSessionParams struct {
 	TokenHash []byte
 	Now       time.Time
+	IdleSince time.Time
 }
 
 type LookupSessionRow struct {
-	ID        string
-	UserID    string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	ID         string
+	UserID     string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+	LastUsedAt time.Time
 }
 
+// A session ends at expires_at (30 days), or when it has not been used since
+// idle_since (now minus the idle timeout). Either way it looks like a missing
+// one. last_used_at is not in the covering index, so this reads the row.
 func (q *Queries) LookupSession(ctx context.Context, arg LookupSessionParams) (LookupSessionRow, error) {
-	row := q.db.QueryRow(ctx, lookupSession, arg.TokenHash, arg.Now)
+	row := q.db.QueryRow(ctx, lookupSession, arg.TokenHash, arg.Now, arg.IdleSince)
 	var i LookupSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
 
 const sessionIsActive = `-- name: SessionIsActive :one
 SELECT EXISTS (
-    SELECT 1 FROM auth_sessions WHERE id = $1 AND expires_at > $2
+    SELECT 1 FROM auth_sessions
+    WHERE id = $1 AND expires_at > $2 AND last_used_at > $3
 )
 `
 
 type SessionIsActiveParams struct {
-	ID  string
-	Now time.Time
+	ID        string
+	Now       time.Time
+	IdleSince time.Time
 }
 
 // A long-lived stream checks its session again by ID (RecheckSession): it
-// is still there (no sign-out, no revocation) and has not expired.
+// is still there (no sign-out, no revocation), has not expired and is not idle.
 func (q *Queries) SessionIsActive(ctx context.Context, arg SessionIsActiveParams) (bool, error) {
-	row := q.db.QueryRow(ctx, sessionIsActive, arg.ID, arg.Now)
+	row := q.db.QueryRow(ctx, sessionIsActive, arg.ID, arg.Now, arg.IdleSince)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -260,6 +324,29 @@ func (q *Queries) TakeLoginState(ctx context.Context, stateHash []byte) (TakeLog
 		&i.IntentData,
 	)
 	return i, err
+}
+
+const touchSession = `-- name: TouchSession :execrows
+UPDATE auth_sessions SET last_used_at = $2
+WHERE id = $1 AND last_used_at < $3
+`
+
+type TouchSessionParams struct {
+	ID          string
+	Now         time.Time
+	StaleBefore time.Time
+}
+
+// One conditional UPDATE: it writes only when the stored time is older than
+// stale_before, so the callers can try on every request and a busy session
+// still costs about one write per throttle window. A race between two
+// instances just writes twice.
+func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, touchSession, arg.ID, arg.Now, arg.StaleBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateIdentityEmail = `-- name: UpdateIdentityEmail :one

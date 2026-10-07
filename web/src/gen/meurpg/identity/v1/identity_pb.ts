@@ -26,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/identity/v1/identity.proto.
  */
 export const file_meurpg_identity_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("CiFtZXVycGcvaWRlbnRpdHkvdjEvaWRlbnRpdHkucHJvdG8SEm1ldXJwZy5pZGVudGl0eS52MSIOCgxHZXRNZVJlcXVlc3QibwoNR2V0TWVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXISNgoSc2Vzc2lvbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoCgRVc2VyEgoKAmlkGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCSIQCg5TaWduT3V0UmVxdWVzdCIRCg9TaWduT3V0UmVzcG9uc2UiLAoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSFAoMZGlzcGxheV9uYW1lGAEgASgJIj8KFVVwZGF0ZVByb2ZpbGVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXIyngIKD0lkZW50aXR5U2VydmljZRJRCgVHZXRNZRIgLm1ldXJwZy5pZGVudGl0eS52MS5HZXRNZVJlcXVlc3QaIS5tZXVycGcuaWRlbnRpdHkudjEuR2V0TWVSZXNwb25zZSIDkAIBElIKB1NpZ25PdXQSIi5tZXVycGcuaWRlbnRpdHkudjEuU2lnbk91dFJlcXVlc3QaIy5tZXVycGcuaWRlbnRpdHkudjEuU2lnbk91dFJlc3BvbnNlEmQKDVVwZGF0ZVByb2ZpbGUSKC5tZXVycGcuaWRlbnRpdHkudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaKS5tZXVycGcuaWRlbnRpdHkudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlQtcBChZjb20ubWV1cnBnLmlkZW50aXR5LnYxQg1JZGVudGl0eVByb3RvUAFaRGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9pZGVudGl0eS92MTtpZGVudGl0eXYxogIDTUlYqgISTWV1cnBnLklkZW50aXR5LlYxygISTWV1cnBnXElkZW50aXR5XFYx4gIeTWV1cnBnXElkZW50aXR5XFYxXEdQQk1ldGFkYXRh6gIUTWV1cnBnOjpJZGVudGl0eTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("CiFtZXVycGcvaWRlbnRpdHkvdjEvaWRlbnRpdHkucHJvdG8SEm1ldXJwZy5pZGVudGl0eS52MSIOCgxHZXRNZVJlcXVlc3QibwoNR2V0TWVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXISNgoSc2Vzc2lvbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoCgRVc2VyEgoKAmlkGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCSIQCg5TaWduT3V0UmVxdWVzdCIRCg9TaWduT3V0UmVzcG9uc2UiHQobU2lnbk91dE90aGVyU2Vzc2lvbnNSZXF1ZXN0IjMKHFNpZ25PdXRPdGhlclNlc3Npb25zUmVzcG9uc2USEwoLZW5kZWRfY291bnQYASABKAUiGwoZQ291bnRPdGhlclNlc3Npb25zUmVxdWVzdCI0ChpDb3VudE90aGVyU2Vzc2lvbnNSZXNwb25zZRIWCg5vdGhlcl9zZXNzaW9ucxgBIAEoBSIsChRVcGRhdGVQcm9maWxlUmVxdWVzdBIUCgxkaXNwbGF5X25hbWUYASABKAkiPwoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiYKBHVzZXIYASABKAsyGC5tZXVycGcuaWRlbnRpdHkudjEuVXNlcjKTBAoPSWRlbnRpdHlTZXJ2aWNlElEKBUdldE1lEiAubWV1cnBnLmlkZW50aXR5LnYxLkdldE1lUmVxdWVzdBohLm1ldXJwZy5pZGVudGl0eS52MS5HZXRNZVJlc3BvbnNlIgOQAgESUgoHU2lnbk91dBIiLm1ldXJwZy5pZGVudGl0eS52MS5TaWduT3V0UmVxdWVzdBojLm1ldXJwZy5pZGVudGl0eS52MS5TaWduT3V0UmVzcG9uc2USeQoUU2lnbk91dE90aGVyU2Vzc2lvbnMSLy5tZXVycGcuaWRlbnRpdHkudjEuU2lnbk91dE90aGVyU2Vzc2lvbnNSZXF1ZXN0GjAubWV1cnBnLmlkZW50aXR5LnYxLlNpZ25PdXRPdGhlclNlc3Npb25zUmVzcG9uc2USeAoSQ291bnRPdGhlclNlc3Npb25zEi0ubWV1cnBnLmlkZW50aXR5LnYxLkNvdW50T3RoZXJTZXNzaW9uc1JlcXVlc3QaLi5tZXVycGcuaWRlbnRpdHkudjEuQ291bnRPdGhlclNlc3Npb25zUmVzcG9uc2UiA5ACARJkCg1VcGRhdGVQcm9maWxlEigubWV1cnBnLmlkZW50aXR5LnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0GikubWV1cnBnLmlkZW50aXR5LnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZULXAQoWY29tLm1ldXJwZy5pZGVudGl0eS52MUINSWRlbnRpdHlQcm90b1ABWkRnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvaWRlbnRpdHkvdjE7aWRlbnRpdHl2MaICA01JWKoCEk1ldXJwZy5JZGVudGl0eS5WMcoCEk1ldXJwZ1xJZGVudGl0eVxWMeICHk1ldXJwZ1xJZGVudGl0eVxWMVxHUEJNZXRhZGF0YeoCFE1ldXJwZzo6SWRlbnRpdHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * GetMeRequest is intentionally empty: the session cookie says who is asking.
@@ -59,7 +59,9 @@ export type GetMeResponse = Message<"meurpg.identity.v1.GetMeResponse"> & {
   /**
    * When the current session stops working. Sessions last at most 30 days
    * and are never extended, so the app can warn the user before this time
-   * and send them through sign-in again.
+   * and send them through sign-in again. A session also ends earlier when it
+   * goes unused for 14 days (the server's idle timeout, which using it
+   * resets); this time is only the upper bound.
    *
    * @generated from field: google.protobuf.Timestamp session_expires_at = 2;
    */
@@ -138,6 +140,82 @@ export const SignOutResponseSchema: GenMessage<SignOutResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_identity_v1_identity, 4);
 
 /**
+ * SignOutOtherSessionsRequest is intentionally empty: the session cookie says
+ * which session to keep.
+ *
+ * @generated from message meurpg.identity.v1.SignOutOtherSessionsRequest
+ */
+export type SignOutOtherSessionsRequest = Message<"meurpg.identity.v1.SignOutOtherSessionsRequest"> & {
+};
+
+/**
+ * Describes the message meurpg.identity.v1.SignOutOtherSessionsRequest.
+ * Use `create(SignOutOtherSessionsRequestSchema)` to create a new message.
+ */
+export const SignOutOtherSessionsRequestSchema: GenMessage<SignOutOtherSessionsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 5);
+
+/**
+ * SignOutOtherSessionsResponse says how much was ended.
+ *
+ * @generated from message meurpg.identity.v1.SignOutOtherSessionsResponse
+ */
+export type SignOutOtherSessionsResponse = Message<"meurpg.identity.v1.SignOutOtherSessionsResponse"> & {
+  /**
+   * How many sessions were ended: the user's other sessions that still
+   * worked. 0 when there were none.
+   *
+   * @generated from field: int32 ended_count = 1;
+   */
+  endedCount: number;
+};
+
+/**
+ * Describes the message meurpg.identity.v1.SignOutOtherSessionsResponse.
+ * Use `create(SignOutOtherSessionsResponseSchema)` to create a new message.
+ */
+export const SignOutOtherSessionsResponseSchema: GenMessage<SignOutOtherSessionsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 6);
+
+/**
+ * CountOtherSessionsRequest is intentionally empty.
+ *
+ * @generated from message meurpg.identity.v1.CountOtherSessionsRequest
+ */
+export type CountOtherSessionsRequest = Message<"meurpg.identity.v1.CountOtherSessionsRequest"> & {
+};
+
+/**
+ * Describes the message meurpg.identity.v1.CountOtherSessionsRequest.
+ * Use `create(CountOtherSessionsRequestSchema)` to create a new message.
+ */
+export const CountOtherSessionsRequestSchema: GenMessage<CountOtherSessionsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 7);
+
+/**
+ * CountOtherSessionsResponse counts the user's other sessions.
+ *
+ * @generated from message meurpg.identity.v1.CountOtherSessionsResponse
+ */
+export type CountOtherSessionsResponse = Message<"meurpg.identity.v1.CountOtherSessionsResponse"> & {
+  /**
+   * How many sessions other than the current one are still valid: not
+   * expired and not idle for 14 days. Each is a device or browser where the
+   * user is signed in (or was, recently).
+   *
+   * @generated from field: int32 other_sessions = 1;
+   */
+  otherSessions: number;
+};
+
+/**
+ * Describes the message meurpg.identity.v1.CountOtherSessionsResponse.
+ * Use `create(CountOtherSessionsResponseSchema)` to create a new message.
+ */
+export const CountOtherSessionsResponseSchema: GenMessage<CountOtherSessionsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 8);
+
+/**
  * UpdateProfileRequest carries the new profile.
  *
  * @generated from message meurpg.identity.v1.UpdateProfileRequest
@@ -158,7 +236,7 @@ export type UpdateProfileRequest = Message<"meurpg.identity.v1.UpdateProfileRequ
  * Use `create(UpdateProfileRequestSchema)` to create a new message.
  */
 export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_identity_v1_identity, 5);
+  messageDesc(file_meurpg_identity_v1_identity, 9);
 
 /**
  * UpdateProfileResponse returns the user as saved.
@@ -177,10 +255,11 @@ export type UpdateProfileResponse = Message<"meurpg.identity.v1.UpdateProfileRes
  * Use `create(UpdateProfileResponseSchema)` to create a new message.
  */
 export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_identity_v1_identity, 6);
+  messageDesc(file_meurpg_identity_v1_identity, 10);
 
 /**
- * IdentityService answers "who am I?" and signs the user out.
+ * IdentityService answers "who am I?", signs the user out, and ends the
+ * user's other sessions.
  *
  * Every method needs a valid session cookie and fails with the
  * `unauthenticated` code without one. Responses carry
@@ -205,7 +284,8 @@ export const IdentityService: GenService<{
   /**
    * SignOut revokes the current session on the server right away and tells
    * the browser to delete the session cookie (Set-Cookie in the response).
-   * It only ends this session; the user's other devices stay signed in.
+   * It only ends this session; the user's other devices stay signed in
+   * (see SignOutOtherSessions for those).
    *
    * @generated from rpc meurpg.identity.v1.IdentityService.SignOut
    */
@@ -213,6 +293,34 @@ export const IdentityService: GenService<{
     methodKind: "unary";
     input: typeof SignOutRequestSchema;
     output: typeof SignOutResponseSchema;
+  },
+  /**
+   * SignOutOtherSessions revokes every other session of the signed-in user
+   * on the server, and keeps the current one (the cookie is untouched).
+   * Anything that was signed in on another device is signed out at once for
+   * new requests; a live stream on one of them ends at its next session
+   * recheck, within about 60 seconds. It never fails because there was
+   * nothing to end: the response then says 0.
+   *
+   * @generated from rpc meurpg.identity.v1.IdentityService.SignOutOtherSessions
+   */
+  signOutOtherSessions: {
+    methodKind: "unary";
+    input: typeof SignOutOtherSessionsRequestSchema;
+    output: typeof SignOutOtherSessionsResponseSchema;
+  },
+  /**
+   * CountOtherSessions says how many other sessions of the signed-in user
+   * still work, so the app can offer "sign out of other devices" only when
+   * there is something to end. It has no side effects and its request is
+   * empty, so clients may call it with HTTP GET.
+   *
+   * @generated from rpc meurpg.identity.v1.IdentityService.CountOtherSessions
+   */
+  countOtherSessions: {
+    methodKind: "unary";
+    input: typeof CountOtherSessionsRequestSchema;
+    output: typeof CountOtherSessionsResponseSchema;
   },
   /**
    * UpdateProfile changes what the signed-in user typed about themselves:

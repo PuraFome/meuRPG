@@ -80,7 +80,9 @@ type GetMeResponse struct {
 	User *User `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	// When the current session stops working. Sessions last at most 30 days
 	// and are never extended, so the app can warn the user before this time
-	// and send them through sign-in again.
+	// and send them through sign-in again. A session also ends earlier when it
+	// goes unused for 14 days (the server's idle timeout, which using it
+	// resets); this time is only the upper bound.
 	SessionExpiresAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=session_expires_at,json=sessionExpiresAt,proto3" json:"session_expires_at,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -265,6 +267,176 @@ func (*SignOutResponse) Descriptor() ([]byte, []int) {
 	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{4}
 }
 
+// SignOutOtherSessionsRequest is intentionally empty: the session cookie says
+// which session to keep.
+type SignOutOtherSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOutOtherSessionsRequest) Reset() {
+	*x = SignOutOtherSessionsRequest{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOutOtherSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOutOtherSessionsRequest) ProtoMessage() {}
+
+func (x *SignOutOtherSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOutOtherSessionsRequest.ProtoReflect.Descriptor instead.
+func (*SignOutOtherSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{5}
+}
+
+// SignOutOtherSessionsResponse says how much was ended.
+type SignOutOtherSessionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many sessions were ended: the user's other sessions that still
+	// worked. 0 when there were none.
+	EndedCount    int32 `protobuf:"varint,1,opt,name=ended_count,json=endedCount,proto3" json:"ended_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOutOtherSessionsResponse) Reset() {
+	*x = SignOutOtherSessionsResponse{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOutOtherSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOutOtherSessionsResponse) ProtoMessage() {}
+
+func (x *SignOutOtherSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOutOtherSessionsResponse.ProtoReflect.Descriptor instead.
+func (*SignOutOtherSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SignOutOtherSessionsResponse) GetEndedCount() int32 {
+	if x != nil {
+		return x.EndedCount
+	}
+	return 0
+}
+
+// CountOtherSessionsRequest is intentionally empty.
+type CountOtherSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountOtherSessionsRequest) Reset() {
+	*x = CountOtherSessionsRequest{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountOtherSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountOtherSessionsRequest) ProtoMessage() {}
+
+func (x *CountOtherSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountOtherSessionsRequest.ProtoReflect.Descriptor instead.
+func (*CountOtherSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{7}
+}
+
+// CountOtherSessionsResponse counts the user's other sessions.
+type CountOtherSessionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many sessions other than the current one are still valid: not
+	// expired and not idle for 14 days. Each is a device or browser where the
+	// user is signed in (or was, recently).
+	OtherSessions int32 `protobuf:"varint,1,opt,name=other_sessions,json=otherSessions,proto3" json:"other_sessions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountOtherSessionsResponse) Reset() {
+	*x = CountOtherSessionsResponse{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountOtherSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountOtherSessionsResponse) ProtoMessage() {}
+
+func (x *CountOtherSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountOtherSessionsResponse.ProtoReflect.Descriptor instead.
+func (*CountOtherSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CountOtherSessionsResponse) GetOtherSessions() int32 {
+	if x != nil {
+		return x.OtherSessions
+	}
+	return 0
+}
+
 // UpdateProfileRequest carries the new profile.
 type UpdateProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -278,7 +450,7 @@ type UpdateProfileRequest struct {
 
 func (x *UpdateProfileRequest) Reset() {
 	*x = UpdateProfileRequest{}
-	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +462,7 @@ func (x *UpdateProfileRequest) String() string {
 func (*UpdateProfileRequest) ProtoMessage() {}
 
 func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +475,7 @@ func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProfileRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateProfileRequest) GetDisplayName() string {
@@ -323,7 +495,7 @@ type UpdateProfileResponse struct {
 
 func (x *UpdateProfileResponse) Reset() {
 	*x = UpdateProfileResponse{}
-	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +507,7 @@ func (x *UpdateProfileResponse) String() string {
 func (*UpdateProfileResponse) ProtoMessage() {}
 
 func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +520,7 @@ func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileResponse.ProtoReflect.Descriptor instead.
 func (*UpdateProfileResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UpdateProfileResponse) GetUser() *User {
@@ -371,14 +543,23 @@ const file_meurpg_identity_v1_identity_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\x10\n" +
 	"\x0eSignOutRequest\"\x11\n" +
-	"\x0fSignOutResponse\"9\n" +
+	"\x0fSignOutResponse\"\x1d\n" +
+	"\x1bSignOutOtherSessionsRequest\"?\n" +
+	"\x1cSignOutOtherSessionsResponse\x12\x1f\n" +
+	"\vended_count\x18\x01 \x01(\x05R\n" +
+	"endedCount\"\x1b\n" +
+	"\x19CountOtherSessionsRequest\"C\n" +
+	"\x1aCountOtherSessionsResponse\x12%\n" +
+	"\x0eother_sessions\x18\x01 \x01(\x05R\rotherSessions\"9\n" +
 	"\x14UpdateProfileRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\"E\n" +
 	"\x15UpdateProfileResponse\x12,\n" +
-	"\x04user\x18\x01 \x01(\v2\x18.meurpg.identity.v1.UserR\x04user2\x9e\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x18.meurpg.identity.v1.UserR\x04user2\x93\x04\n" +
 	"\x0fIdentityService\x12Q\n" +
 	"\x05GetMe\x12 .meurpg.identity.v1.GetMeRequest\x1a!.meurpg.identity.v1.GetMeResponse\"\x03\x90\x02\x01\x12R\n" +
-	"\aSignOut\x12\".meurpg.identity.v1.SignOutRequest\x1a#.meurpg.identity.v1.SignOutResponse\x12d\n" +
+	"\aSignOut\x12\".meurpg.identity.v1.SignOutRequest\x1a#.meurpg.identity.v1.SignOutResponse\x12y\n" +
+	"\x14SignOutOtherSessions\x12/.meurpg.identity.v1.SignOutOtherSessionsRequest\x1a0.meurpg.identity.v1.SignOutOtherSessionsResponse\x12x\n" +
+	"\x12CountOtherSessions\x12-.meurpg.identity.v1.CountOtherSessionsRequest\x1a..meurpg.identity.v1.CountOtherSessionsResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\rUpdateProfile\x12(.meurpg.identity.v1.UpdateProfileRequest\x1a).meurpg.identity.v1.UpdateProfileResponseB\xd7\x01\n" +
 	"\x16com.meurpg.identity.v1B\rIdentityProtoP\x01ZDgithub.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1;identityv1\xa2\x02\x03MIX\xaa\x02\x12Meurpg.Identity.V1\xca\x02\x12Meurpg\\Identity\\V1\xe2\x02\x1eMeurpg\\Identity\\V1\\GPBMetadata\xea\x02\x14Meurpg::Identity::V1b\x06proto3"
 
@@ -394,32 +575,40 @@ func file_meurpg_identity_v1_identity_proto_rawDescGZIP() []byte {
 	return file_meurpg_identity_v1_identity_proto_rawDescData
 }
 
-var file_meurpg_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_meurpg_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_meurpg_identity_v1_identity_proto_goTypes = []any{
-	(*GetMeRequest)(nil),          // 0: meurpg.identity.v1.GetMeRequest
-	(*GetMeResponse)(nil),         // 1: meurpg.identity.v1.GetMeResponse
-	(*User)(nil),                  // 2: meurpg.identity.v1.User
-	(*SignOutRequest)(nil),        // 3: meurpg.identity.v1.SignOutRequest
-	(*SignOutResponse)(nil),       // 4: meurpg.identity.v1.SignOutResponse
-	(*UpdateProfileRequest)(nil),  // 5: meurpg.identity.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil), // 6: meurpg.identity.v1.UpdateProfileResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*GetMeRequest)(nil),                 // 0: meurpg.identity.v1.GetMeRequest
+	(*GetMeResponse)(nil),                // 1: meurpg.identity.v1.GetMeResponse
+	(*User)(nil),                         // 2: meurpg.identity.v1.User
+	(*SignOutRequest)(nil),               // 3: meurpg.identity.v1.SignOutRequest
+	(*SignOutResponse)(nil),              // 4: meurpg.identity.v1.SignOutResponse
+	(*SignOutOtherSessionsRequest)(nil),  // 5: meurpg.identity.v1.SignOutOtherSessionsRequest
+	(*SignOutOtherSessionsResponse)(nil), // 6: meurpg.identity.v1.SignOutOtherSessionsResponse
+	(*CountOtherSessionsRequest)(nil),    // 7: meurpg.identity.v1.CountOtherSessionsRequest
+	(*CountOtherSessionsResponse)(nil),   // 8: meurpg.identity.v1.CountOtherSessionsResponse
+	(*UpdateProfileRequest)(nil),         // 9: meurpg.identity.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),        // 10: meurpg.identity.v1.UpdateProfileResponse
+	(*timestamppb.Timestamp)(nil),        // 11: google.protobuf.Timestamp
 }
 var file_meurpg_identity_v1_identity_proto_depIdxs = []int32{
-	2, // 0: meurpg.identity.v1.GetMeResponse.user:type_name -> meurpg.identity.v1.User
-	7, // 1: meurpg.identity.v1.GetMeResponse.session_expires_at:type_name -> google.protobuf.Timestamp
-	2, // 2: meurpg.identity.v1.UpdateProfileResponse.user:type_name -> meurpg.identity.v1.User
-	0, // 3: meurpg.identity.v1.IdentityService.GetMe:input_type -> meurpg.identity.v1.GetMeRequest
-	3, // 4: meurpg.identity.v1.IdentityService.SignOut:input_type -> meurpg.identity.v1.SignOutRequest
-	5, // 5: meurpg.identity.v1.IdentityService.UpdateProfile:input_type -> meurpg.identity.v1.UpdateProfileRequest
-	1, // 6: meurpg.identity.v1.IdentityService.GetMe:output_type -> meurpg.identity.v1.GetMeResponse
-	4, // 7: meurpg.identity.v1.IdentityService.SignOut:output_type -> meurpg.identity.v1.SignOutResponse
-	6, // 8: meurpg.identity.v1.IdentityService.UpdateProfile:output_type -> meurpg.identity.v1.UpdateProfileResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2,  // 0: meurpg.identity.v1.GetMeResponse.user:type_name -> meurpg.identity.v1.User
+	11, // 1: meurpg.identity.v1.GetMeResponse.session_expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 2: meurpg.identity.v1.UpdateProfileResponse.user:type_name -> meurpg.identity.v1.User
+	0,  // 3: meurpg.identity.v1.IdentityService.GetMe:input_type -> meurpg.identity.v1.GetMeRequest
+	3,  // 4: meurpg.identity.v1.IdentityService.SignOut:input_type -> meurpg.identity.v1.SignOutRequest
+	5,  // 5: meurpg.identity.v1.IdentityService.SignOutOtherSessions:input_type -> meurpg.identity.v1.SignOutOtherSessionsRequest
+	7,  // 6: meurpg.identity.v1.IdentityService.CountOtherSessions:input_type -> meurpg.identity.v1.CountOtherSessionsRequest
+	9,  // 7: meurpg.identity.v1.IdentityService.UpdateProfile:input_type -> meurpg.identity.v1.UpdateProfileRequest
+	1,  // 8: meurpg.identity.v1.IdentityService.GetMe:output_type -> meurpg.identity.v1.GetMeResponse
+	4,  // 9: meurpg.identity.v1.IdentityService.SignOut:output_type -> meurpg.identity.v1.SignOutResponse
+	6,  // 10: meurpg.identity.v1.IdentityService.SignOutOtherSessions:output_type -> meurpg.identity.v1.SignOutOtherSessionsResponse
+	8,  // 11: meurpg.identity.v1.IdentityService.CountOtherSessions:output_type -> meurpg.identity.v1.CountOtherSessionsResponse
+	10, // 12: meurpg.identity.v1.IdentityService.UpdateProfile:output_type -> meurpg.identity.v1.UpdateProfileResponse
+	8,  // [8:13] is the sub-list for method output_type
+	3,  // [3:8] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_identity_v1_identity_proto_init() }
@@ -433,7 +622,7 @@ func file_meurpg_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_identity_v1_identity_proto_rawDesc), len(file_meurpg_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

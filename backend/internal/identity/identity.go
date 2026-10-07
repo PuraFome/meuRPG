@@ -14,8 +14,10 @@
 //
 // A session is opaque: 32 random bytes in the __Host-meurpg_session cookie,
 // stored in the database only as a SHA-256 hash, valid for at most 30 days
-// and never extended. The Connect service IdentityService answers GetMe,
-// UpdateProfile and SignOut. Other modules add Interceptor to their Connect
+// and never extended, and ended early when unused for 14 days (the idle
+// timeout; its last use is written at most every 10 minutes). The Connect
+// service IdentityService answers GetMe, UpdateProfile, SignOut,
+// SignOutOtherSessions and CountOtherSessions. Other modules add Interceptor to their Connect
 // handlers and learn who is calling from UserID, through the authz.Caller
 // interface; nothing outside Interceptor can put a session into a context.
 package identity
@@ -65,6 +67,11 @@ type Config struct {
 	// connect directly: they could then claim any IP they like.
 	BehindCloudRun bool
 
+	// SessionIdleTimeout is how long a session may go unused before it
+	// stops working (SESSION_IDLE_TIMEOUT). Zero means
+	// DefaultSessionIdleTimeout. It cannot lengthen the 30 days.
+	SessionIdleTimeout time.Duration
+
 	// Intents are the sign-in intents that POST /auth/login accepts, by
 	// kind (e.g. "campaign_invite"): what the user may ask to finish right
 	// after signing in. Kinds are lowercase letters, digits and
@@ -87,6 +94,9 @@ type Service struct {
 
 	// intents are the sign-in intents, by kind (see IntentHandler).
 	intents map[string]IntentHandler
+
+	// idleTimeout is how long a session may go unused (see Config).
+	idleTimeout time.Duration
 }
 
 // The compiler checks that Service implements the generated interface.
@@ -120,6 +130,10 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	}
 	if s.now == nil {
 		s.now = time.Now
+	}
+	s.idleTimeout = cfg.SessionIdleTimeout
+	if s.idleTimeout <= 0 {
+		s.idleTimeout = DefaultSessionIdleTimeout
 	}
 	limits := loginRateLimit
 	limits.Now = s.now

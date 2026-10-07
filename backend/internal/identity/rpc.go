@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -68,13 +69,20 @@ func (s *Service) RecheckSession(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	active, err := s.store.sessionActive(ctx, session.ID, s.now())
+	now := s.now()
+	active, err := s.store.sessionActive(ctx, session.ID, now, now.Add(-s.idleTimeout))
 	if err != nil {
 		return err
 	}
 	if !active {
 		return errUnauthenticated()
 	}
+	// An open stream is a use of the session: without this, someone who
+	// watches a live session for days without any other request would hit
+	// the idle timeout. The session in ctx was read when the stream began,
+	// so its LastUsedAt is old; the conditional UPDATE still writes at most
+	// once per interval.
+	s.touchSession(ctx, session)
 	return nil
 }
 
@@ -158,6 +166,7 @@ func (s *Service) authenticate(ctx context.Context, header http.Header) (context
 		// The user id (an account UUID, pseudonymous) joins every log line of
 		// this request.
 		logging.SetUserID(ctx, session.UserID)
+		s.touchSession(ctx, session)
 		return context.WithValue(ctx, sessionKey{}, session), nil
 	case errors.Is(err, errNoSession):
 		return ctx, nil
@@ -259,6 +268,56 @@ func (s *Service) SignOut(
 	return res, nil
 }
 
+// clampInt32 narrows a row count to the response's int32; a user never has
+// billions of sessions, so the clamp only keeps the conversion honest.
+func clampInt32(n int64) int32 {
+	return int32(min(n, math.MaxInt32)) //nolint:gosec // G115: clamped on the left
+}
+
+// SignOutOtherSessions implements identityv1connect.IdentityServiceHandler.
+// It deletes the user's other session rows in one statement, so those tokens
+// stop working at once on every instance. The current session and its cookie
+// are untouched.
+func (s *Service) SignOutOtherSessions(
+	ctx context.Context,
+	_ *connect.Request[identityv1.SignOutOtherSessionsRequest],
+) (*connect.Response[identityv1.SignOutOtherSessionsResponse], error) {
+	session, err := requireSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	ended, err := s.store.revokeOtherSessions(ctx, session.UserID, session.ID, now, now.Add(-s.idleTimeout))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "cannot revoke the other sessions", "error", err)
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("cannot sign out the other devices right now, please try again"))
+	}
+	// Counts in the audit trail, never tokens or hashes.
+	s.logger.InfoContext(ctx, "signed out of other devices", "ended", ended)
+	res := connect.NewResponse(&identityv1.SignOutOtherSessionsResponse{EndedCount: clampInt32(ended)})
+	res.Header().Set("Cache-Control", "no-store")
+	return res, nil
+}
+
+// CountOtherSessions implements identityv1connect.IdentityServiceHandler.
+func (s *Service) CountOtherSessions(
+	ctx context.Context,
+	_ *connect.Request[identityv1.CountOtherSessionsRequest],
+) (*connect.Response[identityv1.CountOtherSessionsResponse], error) {
+	session, err := requireSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	n, err := s.store.countOtherSessions(ctx, session.UserID, session.ID, now, now.Add(-s.idleTimeout))
+	if err != nil {
+		return nil, s.storeError(ctx, "cannot count the other sessions", err)
+	}
+	res := connect.NewResponse(&identityv1.CountOtherSessionsResponse{OtherSessions: clampInt32(n)})
+	res.Header().Set("Cache-Control", "no-store")
+	return res, nil
+}
+
 // disabledService answers every IdentityService RPC with `unavailable`, for
 // a server where sign-in is not configured (see MountDisabled).
 type disabledService struct{}
@@ -284,5 +343,21 @@ func (disabledService) SignOut(
 	context.Context,
 	*connect.Request[identityv1.SignOutRequest],
 ) (*connect.Response[identityv1.SignOutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnavailable, errDisabled)
+}
+
+// SignOutOtherSessions implements identityv1connect.IdentityServiceHandler.
+func (disabledService) SignOutOtherSessions(
+	context.Context,
+	*connect.Request[identityv1.SignOutOtherSessionsRequest],
+) (*connect.Response[identityv1.SignOutOtherSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnavailable, errDisabled)
+}
+
+// CountOtherSessions implements identityv1connect.IdentityServiceHandler.
+func (disabledService) CountOtherSessions(
+	context.Context,
+	*connect.Request[identityv1.CountOtherSessionsRequest],
+) (*connect.Response[identityv1.CountOtherSessionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnavailable, errDisabled)
 }

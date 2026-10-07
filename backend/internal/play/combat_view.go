@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -544,20 +545,32 @@ func (s *Service) GetEncounter(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.openSession(ctx, m.CampaignID)
-	if err != nil {
-		return nil, err
-	}
-	enc, err := s.queries.GetLatestEncounter(ctx, session.ID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return connect.NewResponse(&playv1.GetEncounterResponse{}), nil
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the encounter", err)
-	}
-	d, err := loadEncounter(ctx, s.queries, enc)
+	// The session, the latest encounter and its combatants are one snapshot
+	// (audit D-03): apart, a write between them gave a view of two states. What
+	// the view adds on top (vitals, sheets, the fog) is read after.
+	var d *encounterData
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		session, err := openSessionWith(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		enc, err := q.GetLatestEncounter(ctx, session.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			d = nil // no encounter yet
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("find the encounter: %w", err)
+		}
+		d, err = loadEncounter(ctx, q, enc)
+		return err
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
+	}
+	if d == nil {
+		return connect.NewResponse(&playv1.GetEncounterResponse{}), nil
 	}
 	out, err := s.viewFor(ctx, m, d)
 	if err != nil {

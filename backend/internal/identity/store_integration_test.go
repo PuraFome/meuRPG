@@ -124,6 +124,9 @@ func TestPostgresStoreUpsertUserRace(t *testing.T) {
 	}
 }
 
+// noIdleLimit is an idleSince so old that no session is idle by it.
+var noIdleLimit = time.Unix(0, 0)
+
 func TestPostgresStoreSessions(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
@@ -148,7 +151,7 @@ func TestPostgresStoreSessions(t *testing.T) {
 	hash1, s1 := newSession()
 	hash2, s2 := newSession()
 
-	got, err := store.lookupSession(ctx, hash1, now.Add(time.Minute))
+	got, err := store.lookupSession(ctx, hash1, now.Add(time.Minute), noIdleLimit)
 	if err != nil {
 		t.Fatalf("LookupSession() error = %v", err)
 	}
@@ -167,10 +170,10 @@ func TestPostgresStoreSessions(t *testing.T) {
 	}
 
 	// Expiry: valid until the last instant before expires_at, never after.
-	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime-time.Microsecond)); err != nil {
+	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime-time.Microsecond), noIdleLimit); err != nil {
 		t.Errorf("LookupSession() just before expiry error = %v", err)
 	}
-	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime)); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime), noIdleLimit); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() at expiry error = %v, want ErrNotFound", err)
 	}
 
@@ -181,10 +184,10 @@ func TestPostgresStoreSessions(t *testing.T) {
 	}
 
 	// A stream checks its session again by ID (RecheckSession).
-	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime-time.Microsecond)); err != nil || !active {
+	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime-time.Microsecond), noIdleLimit); err != nil || !active {
 		t.Errorf("sessionActive() just before expiry = %v, %v; want true", active, err)
 	}
-	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime)); err != nil || active {
+	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime), noIdleLimit); err != nil || active {
 		t.Errorf("sessionActive() at expiry = %v, %v; want false", active, err)
 	}
 
@@ -192,19 +195,19 @@ func TestPostgresStoreSessions(t *testing.T) {
 	if err := store.revokeSession(ctx, s1.ID); err != nil {
 		t.Fatalf("RevokeSession() error = %v", err)
 	}
-	if active, err := store.sessionActive(ctx, s1.ID, now); err != nil || active {
+	if active, err := store.sessionActive(ctx, s1.ID, now, noIdleLimit); err != nil || active {
 		t.Errorf("sessionActive() after revoke = %v, %v; want false", active, err)
 	}
-	if _, err := store.lookupSession(ctx, hash1, now); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash1, now, noIdleLimit); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() after revoke error = %v, want ErrNotFound", err)
 	}
-	if _, err := store.lookupSession(ctx, hash2, now); err != nil {
+	if _, err := store.lookupSession(ctx, hash2, now, noIdleLimit); err != nil {
 		t.Errorf("the other session was revoked too: %v", err)
 	}
 	if err := store.revokeUserSessions(ctx, userID); err != nil {
 		t.Fatalf("RevokeUserSessions() error = %v", err)
 	}
-	if _, err := store.lookupSession(ctx, hash2, now); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash2, now, noIdleLimit); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() after revoke-all error = %v, want ErrNotFound (session %s)", err, s2.ID)
 	}
 
@@ -218,6 +221,99 @@ func TestPostgresStoreSessions(t *testing.T) {
 	}
 	if n := count(t, pool, "user_identities"); n != 0 {
 		t.Errorf("user_identities after deleting the user = %d, want 0", n)
+	}
+}
+
+// TestPostgresStoreIdleSessions: the idle cutoff, the throttled touch, and
+// "sign out of other devices" (migration 00173).
+func TestPostgresStoreIdleSessions(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	ctx := t.Context()
+
+	userID, err := store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.example", Subject: "idle"})
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+	now := time.Now().Truncate(time.Microsecond)
+	newSession := func(user string) ([]byte, Session) {
+		_, hash := secret.New()
+		s, err := store.createSession(ctx, NewSession{TokenHash: hash, UserID: user, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime)})
+		if err != nil {
+			t.Fatalf("createSession() error = %v", err)
+		}
+		return hash, s
+	}
+	hash, s := newSession(userID)
+
+	// A new session counts as used when it started.
+	got, err := store.lookupSession(ctx, hash, now, now.Add(-DefaultSessionIdleTimeout))
+	if err != nil || !got.LastUsedAt.Equal(now) {
+		t.Fatalf("lookupSession() = %+v, %v; want LastUsedAt %v", got, err, now)
+	}
+
+	// Idle: the cutoff is exclusive, like expires_at.
+	later := now.Add(DefaultSessionIdleTimeout)
+	if _, err := store.lookupSession(ctx, hash, later, later.Add(-DefaultSessionIdleTimeout)); !errors.Is(err, ErrNotFound) {
+		t.Errorf("lookupSession() idle for exactly the timeout error = %v, want ErrNotFound", err)
+	}
+	just := later.Add(-time.Microsecond)
+	if _, err := store.lookupSession(ctx, hash, just, just.Add(-DefaultSessionIdleTimeout)); err != nil {
+		t.Errorf("lookupSession() just before the timeout error = %v", err)
+	}
+	if active, err := store.sessionActive(ctx, s.ID, later, later.Add(-DefaultSessionIdleTimeout)); err != nil || active {
+		t.Errorf("sessionActive() when idle = %v, %v; want false", active, err)
+	}
+
+	// The touch is one conditional UPDATE: it writes only past staleBefore.
+	if wrote, err := store.touchSession(ctx, s.ID, now.Add(5*time.Minute), now.Add(-5*time.Minute)); err != nil || wrote {
+		t.Errorf("touchSession() inside the window = %v, %v; want no write", wrote, err)
+	}
+	if wrote, err := store.touchSession(ctx, s.ID, later, later.Add(-sessionTouchEvery)); err != nil || !wrote {
+		t.Errorf("touchSession() past the window = %v, %v; want a write", wrote, err)
+	}
+	if _, err := store.lookupSession(ctx, hash, later, later.Add(-DefaultSessionIdleTimeout)); err != nil {
+		t.Errorf("lookupSession() after the touch error = %v, want the session to live", err)
+	}
+	if wrote, err := store.touchSession(ctx, "00000000-0000-0000-0000-000000000000", later, later); err != nil || wrote {
+		t.Errorf("touchSession() of a missing session = %v, %v; want no write", wrote, err)
+	}
+
+	// Sign out of other devices: keeps the current one, and counts only
+	// sessions that still work, of this user.
+	newSession(userID)
+	newSession(userID)
+	_, idle := newSession(userID)
+	if _, err := pool.Exec(ctx, "UPDATE auth_sessions SET last_used_at = $2 WHERE id = $1", idle.ID, now.Add(-time.Hour)); err != nil {
+		t.Fatalf("make a session idle: %v", err)
+	}
+	otherUser, err := store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.example", Subject: "someone-else"})
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+	hashOther, _ := newSession(otherUser)
+	check := now.Add(time.Hour)
+	idleSince := check.Add(-30 * time.Minute) // "idle" here means unused for 30 minutes
+	if n, err := store.countOtherSessions(ctx, userID, s.ID, check, idleSince); err != nil || n != 0 {
+		// Every session but the idle one was last used at now, 1 h ago: all idle under this cutoff.
+		t.Errorf("countOtherSessions() with a 30-minute cutoff = %d, %v; want 0", n, err)
+	}
+	idleSince = now.Add(-30 * time.Minute) // only the one set to now-1h is idle
+	if n, err := store.countOtherSessions(ctx, userID, s.ID, check, idleSince); err != nil || n != 2 {
+		t.Errorf("countOtherSessions() = %d, %v; want 2 (not the current, the idle or another user's)", n, err)
+	}
+	if n, err := store.revokeOtherSessions(ctx, userID, s.ID, check, idleSince); err != nil || n != 2 {
+		t.Errorf("revokeOtherSessions() = %d, %v; want 2", n, err)
+	}
+	if n, _ := store.countOtherSessions(ctx, userID, s.ID, check, idleSince); n != 0 {
+		t.Errorf("countOtherSessions() after = %d, want 0", n)
+	}
+	if _, err := store.lookupSession(ctx, hash, check, noIdleLimit); err != nil {
+		t.Errorf("the current session was revoked too: %v", err)
+	}
+	if _, err := store.lookupSession(ctx, hashOther, check, noIdleLimit); err != nil {
+		t.Errorf("another user's session was revoked: %v", err)
 	}
 }
 
