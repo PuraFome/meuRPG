@@ -491,8 +491,8 @@ func FuzzGenerateTreasure(f *testing.F) {
 func BenchmarkGenerateTreasure(b *testing.B) {
 	c := loadForTest(b)
 	b.ReportAllocs()
-	for i := range b.N {
-		if _, err := c.GenerateTreasure(TreasureHoard, 17, uint64(i)); err != nil { //nolint:gosec // G115: a counter
+	for i := 0; b.Loop(); i++ {
+		if _, err := c.GenerateTreasure(TreasureHoard, 17, uint64(i)); err != nil {
 			b.Fatal(err)
 		}
 	}

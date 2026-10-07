@@ -15,8 +15,6 @@ func cb(id string, initiative *int32, bonus, order int32) playdb.Combatant {
 	return playdb.Combatant{ID: id, Initiative: initiative, InitiativeBonus: bonus, OrderIndex: order}
 }
 
-func i32p(n int32) *int32 { return &n }
-
 func ids(cs []playdb.Combatant) []string {
 	out := make([]string, 0, len(cs))
 	for _, c := range cs {
@@ -29,11 +27,11 @@ func TestRN19_OrderByInitiativeThenBonusThenTheMastersPlaces(t *testing.T) {
 	t.Parallel()
 	cs := []playdb.Combatant{
 		cb("none", nil, 0, 0),
-		cb("low", i32p(9), 0, 1),
-		cb("tieB", i32p(12), 0, 2),
-		cb("tieA", i32p(12), 0, 3),
-		cb("highBonus", i32p(12), 3, 4),
-		cb("top", i32p(19), 1, 5),
+		cb("low", new(int32(9)), 0, 1),
+		cb("tieB", new(int32(12)), 0, 2),
+		cb("tieA", new(int32(12)), 0, 3),
+		cb("highBonus", new(int32(12)), 3, 4),
+		cb("top", new(int32(19)), 1, 5),
 	}
 	got := ids(orderCombatants(cs))
 	want := []string{"top", "highBonus", "tieB", "tieA", "low", "none"}
@@ -69,7 +67,7 @@ func TestRN19_OrderByInitiativeThenBonusThenTheMastersPlaces(t *testing.T) {
 
 func TestMR013_NextTurnSkipsTheDefeatedAndCountsRounds(t *testing.T) {
 	t.Parallel()
-	cs := []playdb.Combatant{cb("a", i32p(3), 0, 0), cb("b", i32p(2), 0, 1), cb("c", i32p(1), 0, 2)}
+	cs := []playdb.Combatant{cb("a", new(int32(3)), 0, 0), cb("b", new(int32(2)), 0, 1), cb("c", new(int32(1)), 0, 2)}
 	cs[1].Defeated = true
 	next := func(current, skip string) (string, bool, bool) {
 		ids, newRound, ok := nextTurnGroup(cs, current, skip)
@@ -115,8 +113,8 @@ func TestMR013_NextTurnSkipsTheDefeatedAndCountsRounds(t *testing.T) {
 func TestMR013_GroupsAreTheRunsWithTheSameTotal(t *testing.T) {
 	t.Parallel()
 	cs := []playdb.Combatant{
-		cb("brisa", i32p(19), 3, 0), cb("toren", i32p(19), 1, 1), cb("capitao", i32p(16), 0, 2),
-		cb("g1", i32p(12), 0, 3), cb("g2", i32p(12), 0, 4), cb("g3", i32p(9), 0, 5),
+		cb("brisa", new(int32(19)), 3, 0), cb("toren", new(int32(19)), 1, 1), cb("capitao", new(int32(16)), 0, 2),
+		cb("g1", new(int32(12)), 0, 3), cb("g2", new(int32(12)), 0, 4), cb("g3", new(int32(9)), 0, 5),
 	}
 	var shape []int
 	for _, g := range groupRuns(cs) {

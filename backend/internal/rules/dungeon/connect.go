@@ -24,7 +24,7 @@ func (g *gen) labelComponents() *components {
 	for i := range c.comp {
 		c.comp[i] = -1
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if g.kind[i] == KindRock || c.comp[i] >= 0 {
 			continue
 		}
@@ -35,7 +35,7 @@ func (g *gen) labelComponents() *components {
 		for head := c.starts[id]; head < len(c.order); head++ {
 			u := int(c.order[head])
 			x, y := u%g.w, u/g.w
-			for d := 0; d < 4; d++ {
+			for d := range 4 {
 				nx, ny := x+dx[d], y+dy[d]
 				if !g.inside(nx, ny) {
 					continue
@@ -75,7 +75,7 @@ func (g *gen) connect() {
 		roomsOf[id] = append(roomsOf[id], rm)
 	}
 	// 3.6.2: a component with no room is a sealed corridor tree: erase it.
-	for id := int32(0); id < int32(ncomp); id++ { //nolint:gosec // G115: at most one component per square
+	for id := range int32(ncomp) { //nolint:gosec // G115: at most one component per square
 		if len(roomsOf[id]) == 0 {
 			for _, sq := range c.squares(id) {
 				g.kind[sq] = KindRock
@@ -228,7 +228,7 @@ func (g *gen) shortestPath(start int, c *components, main int32) ([]int, bool) {
 	for head := 0; head < len(g.queue); head++ {
 		u := int(g.queue[head])
 		x, y := u%g.w, u/g.w
-		for d := 0; d < 4; d++ {
+		for d := range 4 {
 			mi := g.idx(x+dx[d], y+dy[d])
 			if !g.inside(x+2*dx[d], y+2*dy[d]) || g.kind[mi] != KindRock || g.blocked[mi] {
 				continue

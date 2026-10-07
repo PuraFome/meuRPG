@@ -644,7 +644,7 @@ func TestRPCLogLineCarriesTheRequestsFields(t *testing.T) {
 	}
 
 	var line map[string]any
-	for _, raw := range strings.Split(st.logs.String(), "\n") {
+	for raw := range strings.SplitSeq(st.logs.String(), "\n") {
 		var m map[string]any
 		if json.Unmarshal([]byte(raw), &m) == nil && m["message"] == "rpc" && strings.HasSuffix(fmt.Sprint(m["procedure"]), "/GetCampaign") {
 			line = m

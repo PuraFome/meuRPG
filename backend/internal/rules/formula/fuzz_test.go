@@ -8,7 +8,9 @@ import (
 // compiles. Homebrew content will be untrusted input (ADR-0008), so no
 // formula may panic, hang or return a number out of range.
 //
-// Run it with: cd backend && go test ./internal/rules/formula -run '^$' -fuzz FuzzCompileFormula -fuzztime 30s
+// Run it with:
+//
+//	cd backend && go test ./internal/rules/formula -run '^$' -fuzz FuzzCompileFormula -fuzztime 30s
 func FuzzCompileFormula(f *testing.F) {
 	for _, seed := range []string{
 		`8 + prof() + mod("int")`,

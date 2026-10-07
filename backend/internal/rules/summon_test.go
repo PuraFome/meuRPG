@@ -33,6 +33,7 @@ func TestSummonOptions(t *testing.T) {
 	c := loadForTest(t)
 
 	t.Run("Find Familiar: 15 forms, none attacks; 19 with the Pact of the Chain", func(t *testing.T) {
+		t.Parallel()
 		got, err := c.SummonOptions("spell:find-familiar", 1, pensantus())
 		if err != nil {
 			t.Fatal(err)
@@ -78,6 +79,7 @@ func TestSummonOptions(t *testing.T) {
 	})
 
 	t.Run("Animate Dead: 1 creature, 2 more for each circle above the 3rd", func(t *testing.T) {
+		t.Parallel()
 		for circle, want := range map[int]int{3: 1, 4: 3, 5: 5, 9: 13} {
 			got, err := c.SummonOptions("spell:animate-dead", circle, Build{})
 			if err != nil {
@@ -94,6 +96,7 @@ func TestSummonOptions(t *testing.T) {
 	})
 
 	t.Run("Conjure Animals: four options, times 2, 3 and 4 at the 5th, 7th and 9th circle", func(t *testing.T) {
+		t.Parallel()
 		for circle, times := range map[int]int{3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 4} {
 			got, err := c.SummonOptions("spell:conjure-animals", circle, Build{})
 			if err != nil {

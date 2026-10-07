@@ -201,7 +201,7 @@ func (s *Service) MoveMilestone(
 		}
 		list[i], list[j] = list[j], list[i]
 		for p := range list {
-			want := int32(p) //nolint:gosec // G115: at most 100 milestones
+			want := int32(p)
 			if list[p].Position == want {
 				continue
 			}

@@ -33,9 +33,10 @@ import (
 //     to /auth/login, which the server answers with a 303 to the provider,
 //     is blocked unless the provider's origin is listed.
 func cspHeader(formActionOrigins []string) string {
-	formAction := "'self'"
+	var formAction strings.Builder
+	formAction.WriteString("'self'")
 	for _, origin := range formActionOrigins {
-		formAction += " " + origin
+		formAction.WriteString(" " + origin)
 	}
 	return "default-src 'self'; " +
 		"script-src 'self'; " +
@@ -44,7 +45,7 @@ func cspHeader(formActionOrigins []string) string {
 		"font-src 'self'; " +
 		"connect-src 'self'; " +
 		"base-uri 'self'; " +
-		"form-action " + formAction + "; " +
+		"form-action " + formAction.String() + "; " +
 		"frame-ancestors 'none'; " +
 		"object-src 'none'"
 }

@@ -38,6 +38,7 @@ func testStores(t *testing.T) []namedStore {
 // database, which is dropped when the test ends.
 func testPostgresStore(t *testing.T) *PostgresStore {
 	t.Helper()
+	t.Helper()
 	return NewPostgresStore(testPool(t))
 }
 

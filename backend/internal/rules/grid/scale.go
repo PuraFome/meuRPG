@@ -60,8 +60,8 @@ func (l *Layer) Scaled(k int) *Layer {
 		return nil
 	}
 	out := NewLayer(l.g.scaled(k))
-	for row := 0; row < l.g.Rows; row++ {
-		for col := 0; col < l.g.Columns; col++ {
+	for row := range l.g.Rows {
+		for col := range l.g.Columns {
 			if l.Get(col, row) {
 				fill(col, row, k, func(c, r int) { out.Set(c, r, true) })
 			}
@@ -78,8 +78,8 @@ func (l *LightLayer) Scaled(k int) *LightLayer {
 		return nil
 	}
 	out := NewLightLayer(l.c.g.scaled(k))
-	for row := 0; row < l.c.g.Rows; row++ {
-		for col := 0; col < l.c.g.Columns; col++ {
+	for row := range l.c.g.Rows {
+		for col := range l.c.g.Columns {
 			if v := l.Get(col, row); v != Unpainted {
 				fill(col, row, k, func(c, r int) { out.Set(c, r, v) })
 			}
@@ -96,8 +96,8 @@ func (l *CoverLayer) Scaled(k int) *CoverLayer {
 		return nil
 	}
 	out := NewCoverLayer(l.c.g.scaled(k))
-	for row := 0; row < l.c.g.Rows; row++ {
-		for col := 0; col < l.c.g.Columns; col++ {
+	for row := range l.c.g.Rows {
+		for col := range l.c.g.Columns {
 			if v := l.Get(col, row); v != CoverNone {
 				fill(col, row, k, func(c, r int) { out.Set(c, r, v) })
 			}
@@ -118,8 +118,8 @@ func (l *DoorLayer) Scaled(k int) *DoorLayer {
 		return nil
 	}
 	out := NewDoorLayer(l.g.scaled(k))
-	for row := 0; row < l.g.Rows; row++ {
-		for col := 0; col < l.g.Columns; col++ {
+	for row := range l.g.Rows {
+		for col := range l.g.Columns {
 			if v := l.Get(col, row); v != DoorNone {
 				fill(col, row, k, func(c, r int) { out.Set(c, r, v) })
 			}
@@ -131,8 +131,8 @@ func (l *DoorLayer) Scaled(k int) *DoorLayer {
 // fill calls set for every square of the k x k block a square of the old grid
 // becomes.
 func fill(col, row, k int, set func(c, r int)) {
-	for dr := 0; dr < k; dr++ {
-		for dc := 0; dc < k; dc++ {
+	for dr := range k {
+		for dc := range k {
 			set(col*k+dc, row*k+dr)
 		}
 	}

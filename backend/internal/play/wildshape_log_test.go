@@ -110,9 +110,9 @@ func TestMR037_WildShapeLineByEachEndReason(t *testing.T) {
 			e := s.mustAssume(t, s.bia, s.bri, wolfKey).GetEncounter()
 			switch name {
 			case "master":
-				s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(0)) })
+				s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(0)) })
 			case "zero_hp":
-				s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = ptrTo(int32(0)) })
+				s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = new(int32(0)) })
 			case "unconscious":
 				a.setConditions(t, e, "Sálvia", unconscious)
 			}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -166,8 +165,8 @@ func paintEverything(m *user, campaign, mapID string) {
 func sameAsScaled(t *testing.T, name string, old, now layersOn, k int) {
 	t.Helper()
 	g := now.walls.Grid()
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			oc, or := col/k, row/k
 			if now.walls.Get(col, row) != old.walls.Get(oc, or) || now.terrain.Get(col, row) != old.terrain.Get(oc, or) ||
 				now.cover.Get(col, row) != old.cover.Get(oc, or) || now.light.Get(col, row) != old.light.Get(oc, or) ||
@@ -330,13 +329,13 @@ func TestMR025_TheFogKeepsWhatWasSeen(t *testing.T) {
 		}
 		after := codes(t, res)
 		// Memory only grows: whatever the player knew of an old square, they know of its whole block.
-		for row := 0; row < 16; row++ {
-			for col := 0; col < 24; col++ {
+		for row := range 16 {
+			for col := range 24 {
 				if !known(before[name][row*24+col]) {
 					continue
 				}
-				for dr := 0; dr < 2; dr++ {
-					for dc := 0; dc < 2; dc++ {
+				for dr := range 2 {
+					for dc := range 2 {
 						if !known(after[(2*row+dr)*48+2*col+dc]) {
 							t.Fatalf("%s: square (%d, %d) was known and its block's (%d, %d) is not", name, col, row, 2*col+dc, 2*row+dr)
 						}
@@ -347,8 +346,8 @@ func TestMR025_TheFogKeepsWhatWasSeen(t *testing.T) {
 		// RN-10: the walls, the doors and the tokens they receive are inside what they know.
 		layers := asApp(t, u.mustLayers(c.campaign, c.mapID))
 		d := doorsOf(t, big, layers)
-		for row := 0; row < big.Rows; row++ {
-			for col := 0; col < big.Columns; col++ {
+		for row := range big.Rows {
+			for col := range big.Columns {
 				if (bitOf(layers.GetWall(), big, col, row) || d.Get(col, row) != grid.DoorNone) && !known(after[row*48+col]) {
 					t.Fatalf("%s receives a wall or a door at (%d, %d), which they neither see nor remember", name, col, row)
 				}
@@ -485,7 +484,7 @@ func TestMR025_TheRowsAreTheDrawnRowsTimesTheFactor(t *testing.T) {
 	if seen := s.ana.mustGetMap(s.campaign, id).GetMap(); seen.GetGridRows() != 18 || seen.GetDrawnRows() != 9 {
 		t.Errorf("a player reads %d rows, %d drawn", seen.GetGridRows(), seen.GetDrawnRows())
 	}
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: id, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: id, FogEnabled: new(true)})); err != nil {
 		t.Fatalf("SetMapFog(on) error = %v", err)
 	}
 	if v := m.mustVision(s.campaign, id); v.GetGridColumns() != 24 || v.GetGridRows() != 18 {

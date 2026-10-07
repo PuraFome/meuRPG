@@ -46,6 +46,7 @@ func TestStyleOf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := StyleOf(tt.dice, tt.withMap, tt.fog); got != tt.want {
 				t.Errorf("StyleOf() = %v, want %v", got, tt.want)
 			}
@@ -96,6 +97,7 @@ func TestTableRulesParamsRefuseWhatBreaksTheLimits(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			r := validRules()
 			tt.change(r)
 			_, _, err := tableRulesParams(r)

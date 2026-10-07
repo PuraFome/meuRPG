@@ -14,7 +14,7 @@ import (
 func doorScene(door grid.Door) vision.Scene {
 	g := grid.Grid{Columns: 12, Rows: 5}
 	walls := grid.NewLayer(g)
-	for row := 0; row < g.Rows; row++ {
+	for row := range g.Rows {
 		walls.Set(5, row, true)
 	}
 	walls.Set(5, 2, false) // the doorway

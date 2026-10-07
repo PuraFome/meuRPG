@@ -22,8 +22,6 @@ func wizard3() vitalsMax {
 	return m
 }
 
-func ptr[T any](v T) *T { return &v }
-
 // TestFreshVitals: a character nobody has adjusted has full hit points and
 // nothing used.
 func TestFreshVitals(t *testing.T) {
@@ -50,12 +48,12 @@ func TestVitalsAreClampedToTheSheet(t *testing.T) {
 	now := time.Now()
 	row := vitalsRow{
 		ID:                 "c1",
-		HitPointsCurrent:   ptr[int32](35),
-		HitPointsTemporary: ptr[int32](4),
+		HitPointsCurrent:   new(int32(35)),
+		HitPointsTemporary: new(int32(4)),
 		SpellSlotsUsed:     []int32{3, 3, 2}, // level 3 slots are gone
-		PactSlotsUsed:      ptr[int32](2),    // no pact magic now
-		HitDiceUsed:        ptr[int32](5),
-		Revision:           ptr[int32](7),
+		PactSlotsUsed:      new(int32(2)),    // no pact magic now
+		HitDiceUsed:        new(int32(5)),
+		Revision:           new(int32(7)),
 		UpdatedAt:          &now,
 	}
 	v := vitalsToProto(row, wizard3())
@@ -78,19 +76,19 @@ func TestApplyVitalsChange(t *testing.T) {
 		wantField string // "" means accepted
 	}{
 		{"nothing to change", &playv1.AdjustCharacterVitalsRequest{}, "request"},
-		{"hit points at 0", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: ptr[int32](0)}, ""},
-		{"hit points at the maximum", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: ptr[int32](20)}, ""},
-		{"hit points above the maximum", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: ptr[int32](21)}, "hit_points_current"},
-		{"negative hit points", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: ptr[int32](-1)}, "hit_points_current"},
-		{"temporary hit points at the limit", &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: ptr[int32](MaxTemporaryHitPoints)}, ""},
-		{"too many temporary hit points", &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: ptr[int32](MaxTemporaryHitPoints + 1)}, "hit_points_temporary"},
+		{"hit points at 0", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(0))}, ""},
+		{"hit points at the maximum", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(20))}, ""},
+		{"hit points above the maximum", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(21))}, "hit_points_current"},
+		{"negative hit points", &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(-1))}, "hit_points_current"},
+		{"temporary hit points at the limit", &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: new(int32(MaxTemporaryHitPoints))}, ""},
+		{"too many temporary hit points", &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: new(int32(MaxTemporaryHitPoints + 1))}, "hit_points_temporary"},
 		{"slots of two levels", &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: 2, Used: 2}, {Level: 1, Used: 0}}}, ""},
 		{"too many slots used", &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: 1, Used: 1}, {Level: 2, Used: 3}}}, "spell_slots_used[1].used"},
 		{"a level without slots", &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: 3, Used: 0}}}, "spell_slots_used[0].level"},
 		{"a level twice", &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: 1, Used: 1}, {Level: 1, Used: 2}}}, "spell_slots_used[1].level"},
-		{"pact slots without pact magic", &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: ptr[int32](0)}, "pact_slots_used"},
-		{"every hit die", &playv1.AdjustCharacterVitalsRequest{HitDiceUsed: ptr[int32](3)}, ""},
-		{"more hit dice than the level", &playv1.AdjustCharacterVitalsRequest{HitDiceUsed: ptr[int32](4)}, "hit_dice_used"},
+		{"pact slots without pact magic", &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: new(int32(0))}, "pact_slots_used"},
+		{"every hit die", &playv1.AdjustCharacterVitalsRequest{HitDiceUsed: new(int32(3))}, ""},
+		{"more hit dice than the level", &playv1.AdjustCharacterVitalsRequest{HitDiceUsed: new(int32(4))}, "hit_dice_used"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,9 +106,9 @@ func TestApplyVitalsChange(t *testing.T) {
 	}
 
 	// The accepted values land where they belong; the rest stay.
-	v := vitalsToProto(vitalsRow{ID: "c1", HitPointsTemporary: ptr[int32](2)}, wizard3())
+	v := vitalsToProto(vitalsRow{ID: "c1", HitPointsTemporary: new(int32(2))}, wizard3())
 	if err := applyVitalsChange(v, &playv1.AdjustCharacterVitalsRequest{
-		HitPointsCurrent: ptr[int32](7),
+		HitPointsCurrent: new(int32(7)),
 		SpellSlotsUsed:   []*playv1.SpellSlotsUsed{{Level: 2, Used: 1}},
 	}); err != nil {
 		t.Fatalf("applyVitalsChange() error = %v", err)
@@ -122,10 +120,10 @@ func TestApplyVitalsChange(t *testing.T) {
 	// A warlock's pact slots.
 	warlock := vitalsMax{hitPoints: 10, pactLevel: 1, pactSlots: 1, hitDiceTotal: 1}
 	v = vitalsToProto(vitalsRow{ID: "c2"}, warlock)
-	if err := applyVitalsChange(v, &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: ptr[int32](1)}); err != nil || v.GetPactSlots().GetUsed() != 1 {
+	if err := applyVitalsChange(v, &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: new(int32(1))}); err != nil || v.GetPactSlots().GetUsed() != 1 {
 		t.Errorf("pact slots = %v, %v; want 1 used", v.GetPactSlots(), err)
 	}
-	if err := applyVitalsChange(v, &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: ptr[int32](2)}); err == nil {
+	if err := applyVitalsChange(v, &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: new(int32(2))}); err == nil {
 		t.Error("2 pact slots of 1 were accepted")
 	}
 }

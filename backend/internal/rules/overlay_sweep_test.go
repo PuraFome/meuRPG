@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"maps"
 	"testing"
 )
 
@@ -97,9 +98,7 @@ func TestLevelUpSweepTableMulticlass(t *testing.T) {
 
 func copyScores(m map[Ability]int) map[Ability]int {
 	out := make(map[Ability]int, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
+	maps.Copy(out, m)
 	return out
 }
 

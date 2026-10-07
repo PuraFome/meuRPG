@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -383,7 +382,7 @@ func TestRN10_AFogMapsImageIsNeverReusedRaw(t *testing.T) {
 	fog := master.createMap(campaign, "Com névoa", x)
 	master.mustSetGrid(campaign, fog.GetId(), 12)
 	master.setMapRevealed(campaign, fog.GetId(), true)
-	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: fog.GetId(), FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: fog.GetId(), FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	if got := master.getMapImage(campaign, fog.GetId()); got != x {
@@ -425,7 +424,7 @@ func TestRN10_AFogMapsImageIsNeverReusedRaw(t *testing.T) {
 	third := master.createMap(campaign, "Terceiro", master.newImage(campaign))
 	master.setMapRevealed(campaign, third.GetId(), true)
 	if _, err := master.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{
-		CampaignId: campaign, MapId: third.GetId(), Revision: third.GetRevision(), ImageId: proto.String(x),
+		CampaignId: campaign, MapId: third.GetId(), Revision: third.GetRevision(), ImageId: new(x),
 	})); err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +452,7 @@ func TestRN10_AFogMapsImageCopyNeedsRoom(t *testing.T) {
 	x := master.newImage(campaign)
 	fog := master.createMap(campaign, "Com névoa", x)
 	master.mustSetGrid(campaign, fog.GetId(), 12)
-	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: fog.GetId(), FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: fog.GetId(), FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	master.start(campaign)

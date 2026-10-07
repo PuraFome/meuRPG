@@ -90,7 +90,7 @@ func TestPropertiesOverManyOptions(t *testing.T) {
 		n = 300
 	}
 	noSpace, discarded, withLoops, multiRoom := 0, 0, 0, 0
-	for k := 0; k < n; k++ {
+	for k := range n {
 		o := comboFor(uint64(k))
 		o.SelfCheck = true
 		d, err := Generate(o)
@@ -314,7 +314,7 @@ func TestStreamIndependence(t *testing.T) {
 		base := opts(seed, 51, 41)
 		base.ExtraLoops = int(seed%2) * 30
 		ref := mustGen(t, base)
-		for st := 0; st <= 8; st++ {
+		for st := range 9 {
 			o := base
 			o.Stairs = st
 			if got := roomBounds(mustGen(t, o)); got != roomBounds(ref) {
@@ -369,7 +369,7 @@ func TestDoorMixChangesKinds(t *testing.T) {
 func TestSmallestGridNeverPanics(t *testing.T) {
 	for _, mask := range allMasks {
 		for _, pl := range []Placement{PlacementSpread, PlacementTiled} {
-			for seed := uint64(0); seed < 12; seed++ {
+			for seed := range uint64(12) {
 				o := opts(seed, 15, 15)
 				o.Mask, o.Placement, o.CustomMask = mask, pl, customMask(seed)
 				o.Stairs, o.ExtraLoops, o.DoorDensity = 8, 100, 200
@@ -381,7 +381,7 @@ func TestSmallestGridNeverPanics(t *testing.T) {
 		}
 	}
 	// With no mask the smallest grid always gets a room.
-	for seed := uint64(0); seed < 50; seed++ {
+	for seed := range uint64(50) {
 		d := mustGen(t, opts(seed, 15, 15))
 		if len(d.Rooms) == 0 {
 			t.Fatal("no room")
@@ -692,7 +692,7 @@ func BenchmarkGenerate(b *testing.B) {
 	for _, s := range [][2]int{{31, 31}, {51, 51}, {121, 121}, {199, 199}, {199, 399}} {
 		b.Run(fmt.Sprintf("%dx%d", s[0], s[1]), func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for i := 0; b.Loop(); i++ {
 				if _, err := Generate(opts(uint64(i), s[0], s[1])); err != nil {
 					b.Fatal(err)
 				}
@@ -746,8 +746,8 @@ func TestGroupLinksAfterAnotherIsDiscarded(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := newGen(o)
-	for y := 0; y < g.h; y++ {
-		for x := 0; x < g.w; x++ {
+	for y := range g.h {
+		for x := range g.w {
 			g.blocked[g.idx(x, y)] = y <= 3 || y >= 9 || x >= 17
 		}
 	}
@@ -855,7 +855,7 @@ func TestSweep(t *testing.T) {
 		t.Skip("set DUNGEON_SWEEP=1")
 	}
 	noSpace, disc, rooms := 0, 0, 0
-	for k := uint64(0); k < 20000; k++ {
+	for k := range uint64(20000) {
 		o := comboFor(k + 100000)
 		switch k % 200 {
 		case 0:

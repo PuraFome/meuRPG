@@ -3,6 +3,7 @@ package leaktest
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -21,6 +22,7 @@ func (w *world) anonymous() *person {
 // positive controls are the pictures the master showed, left or put on the stage, and the
 // tiles of what each character sees.
 func checkImagesAndTiles(t *testing.T, w *world) {
+	t.Helper()
 	players := w.players()
 	anon := w.anonymous()
 
@@ -125,12 +127,7 @@ func checkImagesAndTiles(t *testing.T, w *world) {
 }
 
 func slicesContains(ps []*person, p *person) bool {
-	for _, x := range ps {
-		if x == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ps, p)
 }
 
 func sameTiles(a, b *mapsv1.GetMapVisionResponse) bool {

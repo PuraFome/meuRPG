@@ -235,7 +235,7 @@ func (s *Service) storeError(ctx context.Context, msg string, err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return errUnauthenticated()
 	}
-	s.logger.ErrorContext(ctx, msg, "error", err)
+	s.logger.ErrorContext(ctx, msg, "error", err) //nolint:sloglint // each call site passes a fixed message
 	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
 }
 

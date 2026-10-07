@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"maps"
 	"sort"
 	"strings"
 	"testing"
@@ -80,12 +81,11 @@ func (w *world) creatureNotOf(p *person) string {
 // in the rest, so a call that is a player's own usually fails its validation: that is why
 // the player's own actions are also scripted (actions_test.go), where the answers are real.
 func checkNotReads(t *testing.T, w *world, got *answers) {
+	t.Helper()
 	anon := w.anonymous()
 	people := append(w.players(), anon)
 	all := map[string]classified{}
-	for p, c := range notReads {
-		all[p] = c
-	}
+	maps.Copy(all, notReads)
 	for _, a := range actions { // the scripted actions are the player's own calls too: probe them at what is hidden
 		all[a.procedure] = classified{playerAction, a.why}
 	}

@@ -79,8 +79,8 @@ func TestScaledLayers(t *testing.T) {
 		if w.Grid() != big || tr.Grid() != big || li.Grid() != big || co.Grid() != big || d.Grid() != big {
 			t.Fatalf("k=%d: a scaled layer is not on %v", k, big)
 		}
-		for row := 0; row < big.Rows; row++ {
-			for col := 0; col < big.Columns; col++ {
+		for row := range big.Rows {
+			for col := range big.Columns {
 				oc, or := col/k, row/k
 				if w.Get(col, row) != walls.Get(oc, or) || tr.Get(col, row) != terrain.Get(oc, or) ||
 					li.Get(col, row) != light.Get(oc, or) || co.Get(col, row) != cover.Get(oc, or) || d.Get(col, row) != doors.Get(oc, or) {

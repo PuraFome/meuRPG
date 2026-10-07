@@ -92,7 +92,7 @@ func AcquireLock(ctx context.Context, db *sql.DB, opt LockOptions) (context.Cont
 			return nil, nil, fmt.Errorf("%w (waited %s); if no run is going, the lease ends on its own within %s",
 				ErrLockTimeout, opt.Wait, opt.TTL)
 		}
-		opt.Logger.Info("another migrate run holds the lock; waiting", "poll", opt.Poll.String())
+		opt.Logger.InfoContext(ctx, "another migrate run holds the lock; waiting", "poll", opt.Poll.String())
 		select {
 		case <-ctx.Done():
 			return nil, nil, fmt.Errorf("wait for the migration lock: %w", ctx.Err())
@@ -117,7 +117,7 @@ func AcquireLock(ctx context.Context, db *sql.DB, opt LockOptions) (context.Cont
 		defer rcancel()
 		if _, err := db.ExecContext(rctx, `DELETE FROM migration_lock WHERE id = 1 AND holder = $1`, holder); err != nil {
 			// Not fatal: the lease expires on its own.
-			opt.Logger.Warn("cannot release the migration lock; it expires on its own", "ttl", opt.TTL.String(), "error", err)
+			opt.Logger.WarnContext(ctx, "cannot release the migration lock; it expires on its own", "ttl", opt.TTL.String(), "error", err)
 		}
 	}
 	return runCtx, release, nil
@@ -208,7 +208,7 @@ func heartbeat(ctx context.Context, cancel context.CancelCauseFunc, db *sql.DB, 
 			cancel(errors.New("the migration lock was lost: another run took it over"))
 			return
 		}
-		opt.Logger.Warn("cannot renew the migration lock", "error", err)
+		opt.Logger.WarnContext(ctx, "cannot renew the migration lock", "error", err)
 		if time.Since(lastOK) > opt.TTL {
 			cancel(fmt.Errorf("the migration lock could not be renewed for %s: %w", opt.TTL, err))
 			return

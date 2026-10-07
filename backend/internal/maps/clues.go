@@ -203,7 +203,7 @@ func (s *Service) MoveSceneClue(
 		clues[i], clues[j] = clues[j], clues[i]
 		// Renumber the whole list from 0, as the actions do.
 		for p := range clues {
-			want := int32(p) //nolint:gosec // G115: at most 30 clues
+			want := int32(p)
 			if clues[p].Position == want {
 				continue
 			}

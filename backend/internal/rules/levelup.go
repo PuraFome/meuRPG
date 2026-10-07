@@ -597,7 +597,7 @@ func rollDice(b Build, c *content) []int {
 	first := true
 	for _, cl := range b.Classes {
 		class := c.classes[cl.Class]
-		for l := 0; l < cl.Level; l++ {
+		for range cl.Level {
 			if first {
 				first = false
 				continue

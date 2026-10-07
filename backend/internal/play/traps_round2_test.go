@@ -67,7 +67,7 @@ func (r *trapRig) activity(t *testing.T, u *user) []*playv1.TrapActivity {
 func (r *trapRig) fog(t *testing.T, light mapsv1.LightLevel) {
 	t.Helper()
 	if _, err := r.mc(r.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{
-		CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: proto.Bool(true), BaseLight: &light,
+		CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: new(true), BaseLight: &light,
 	})); err != nil {
 		t.Fatalf("SetMapFog() error = %v", err)
 	}
@@ -408,7 +408,7 @@ func TestMR035_APerceptionSearchInDimLightHasDisadvantage(t *testing.T) {
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE)
 	two := func(a, b int32) (*playv1.SearchForTrapsResponse, error) {
 		res, err := r.caio.play.SearchForTraps(t.Context(), connect.NewRequest(&playv1.SearchForTrapsRequest{
-			CampaignId: r.campaignID, IdempotencyKey: newKey(), Skill: perception, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: a}, D20Face_2: proto.Int32(b),
+			CampaignId: r.campaignID, IdempotencyKey: newKey(), Skill: perception, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: a}, D20Face_2: new(b),
 		}))
 		if err != nil {
 			return nil, err

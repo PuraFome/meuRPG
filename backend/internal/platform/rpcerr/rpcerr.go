@@ -51,7 +51,7 @@ func FromDB(ctx context.Context, logger *slog.Logger, module, action string, err
 	if logger == nil {
 		logger = slog.Default()
 	}
-	logger.Log(ctx, level, module+": cannot "+action, "error", err, "code", code.String())
+	logger.Log(ctx, level, module+": cannot "+action, "error", err, "code", code.String()) //nolint:sloglint // each call site passes a fixed module and action
 	return connect.NewError(code, errors.New(message))
 }
 

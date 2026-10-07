@@ -151,7 +151,7 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	discoverCtx, cancel := context.WithTimeout(ctx, discoveryTimeout)
 	defer cancel()
 	if _, err := s.providers.get(discoverCtx); err != nil {
-		s.logger.Warn("OIDC discovery failed; retrying on the next sign-in", "issuer", cfg.OIDC.IssuerURL, "error", err)
+		s.logger.WarnContext(ctx, "OIDC discovery failed; retrying on the next sign-in", "issuer", cfg.OIDC.IssuerURL, "error", err)
 	}
 	return s, nil
 }

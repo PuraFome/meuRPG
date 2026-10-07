@@ -713,7 +713,7 @@ func TestRN02_DamageToAPlayerWaitsForTheMaster(t *testing.T) {
 	a := newArmed(t)
 	// The Capitão Goblin plays first.
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: new(false)}},
 		npcRolls: []int{19},
 		players:  map[string]int32{"Toren": 12, "Pensantus": 8, "Brisa": 1},
 		at:       map[string][2]int32{"Capitão Goblin": {6, 3}, "Toren": {5, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
@@ -848,7 +848,7 @@ func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
 	// plays first, then Toren, Pensantus, the Capitão, Brisa and Goblin 2.
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)},
 			{CharacterId: a.goblin.GetId(), Count: 2}, // hidden, the default
 		},
 		npcRolls: []int{5, 20, 4}, // Capitão, Goblin 1, Goblin 2
@@ -994,7 +994,7 @@ func TestRN18_PhysicalRollsAreTypedSums(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: new(false)}},
 		npcRolls: []int{11},
 		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
 		at:       map[string][2]int32{"Toren": {3, 3}, "Capitão Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
@@ -1314,7 +1314,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)},
 			{CharacterId: a.goblin.GetId(), Count: 3}, // hidden until the master shows them
 		},
 		// The order: Brisa 19, Capitão 16, Pensantus 14, Goblin 1 12, Goblin 2 12, Goblin 3 9, Toren 7.
@@ -1850,7 +1850,7 @@ func TestEndTurnDiscardShowsTheDroppedAttackInTheLog(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: new(false)}},
 		npcRolls: []int{19},
 		players:  map[string]int32{"Toren": 12, "Pensantus": 8, "Brisa": 1},
 		at:       map[string][2]int32{"Capitão Goblin": {6, 3}, "Toren": {5, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},

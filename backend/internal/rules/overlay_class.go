@@ -17,6 +17,10 @@ var defaultASILevels = []int{4, 8, 12, 16, 19}
 // it does not say.
 const defaultSubclassLevel = 3
 
+// castingFeatureName is the name of the feature that tells a table class or
+// subclass casts spells (the same for both, and for the English name too).
+const castingFeatureName = "Conjuração"
+
 // bad is an OverlayError at an exact field of the entry at path: attr is the
 // proto field's name with its leading dot (".hit_die", ".levels[4].slots[2]"),
 // and reason a Reason* code. The editors point at the field it names.
@@ -285,8 +289,8 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 			if err := b.claim(castKey); err != nil {
 				c.add(err)
 			} else {
-				n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: key, Level: lvl, Desc: []string{"Esta classe conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
-				n.namesEN[castKey], n.namesPT[castKey] = "Conjuração", "Conjuração"
+				n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: key, Level: lvl, Desc: []string{"Esta classe conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
+				n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
 				if castingOK {
 					if err := b.compileOwn(castKey, path, castingEffect(&tc.Casting, key)); err != nil {
 						c.add(err)
@@ -467,8 +471,8 @@ func (b *overlayBuilder) addSubclass(ts *TableSubclass, path string) error {
 		if err := b.claim(castKey); err != nil {
 			c.add(err)
 		} else if castingOK && rows[start] != nil {
-			n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: parent, Subclass: key, Level: start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
-			n.namesEN[castKey], n.namesPT[castKey] = "Conjuração", "Conjuração"
+			n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: parent, Subclass: key, Level: start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
+			n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
 			eff := castingEffect(ts.Casting, parent)
 			if err := b.compileOwn(castKey, path, eff); err != nil {
 				c.add(err)

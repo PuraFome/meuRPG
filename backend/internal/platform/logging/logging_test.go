@@ -45,7 +45,7 @@ type otherKey struct{}
 func decodeLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 	t.Helper()
 	var out []map[string]any
-	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+	for line := range bytes.SplitSeq(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
 		if len(line) == 0 {
 			continue
 		}
@@ -135,10 +135,10 @@ func TestDenyListDropsKeysAtAnyDepth(t *testing.T) {
 	logger := New(&buf, slog.LevelDebug)
 
 	logger.Info("x",
-		"email", "a@b.c", "Token", "t", "password", "p", "secret", "s", "cookie", "c",
+		"email", "a@b.c", "Token", "t", "password", "p", "secret", "s", "cookie", "c", //nolint:sloglint // "Token" is capitalised on purpose: the deny list ignores case
 		"authorization", "a", "prompt", "pr", "body", "b", "text", "tx", "name", "n", "display_name", "d",
 		slog.Group("g", slog.String("name", "inner"), slog.Group("h", slog.String("email", "deep"), slog.Int("ok", 1))),
-		slog.Any("m", map[string]any{"token": "in-a-map", "list": []any{map[string]any{"text": "in-a-list"}}, "id": "kept"}),
+		slog.Any("m", map[string]any{"token": "in-a-map", "list": []any{map[string]any{"text": "in-a-list"}}, "id": "kept"}), //nolint:sloglint // mixing a group and key-value pairs is the case under test
 		"character_id", "kept-id",
 	)
 	logger.With("name", "bound").WithGroup("grp").Info("y", "email", "e")

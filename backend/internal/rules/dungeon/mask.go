@@ -4,8 +4,8 @@ package dungeon
 // All the arithmetic is integer: a mask never depends on floating point.
 func (g *gen) buildMask() {
 	w, h := g.w, g.h
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			b := !g.insideMask(x, y)
 			g.blocked[g.idx(x, y)] = b
 			g.anyBlocked = g.anyBlocked || b

@@ -49,7 +49,7 @@ func (f *fields) snapshot() values {
 // middleware calls it once per request. trace is the full
 // `logging.googleapis.com/trace` value, or empty.
 func WithRequest(ctx context.Context, requestID, trace string) context.Context {
-	return context.WithValue(ctx, fieldsKey{}, &fields{values: values{requestID: requestID, trace: trace}})
+	return context.WithValue(ctx, fieldsKey{}, &fields{requestID: requestID, trace: trace})
 }
 
 // NewRequestID returns 32 lowercase hex characters from crypto/rand. It is

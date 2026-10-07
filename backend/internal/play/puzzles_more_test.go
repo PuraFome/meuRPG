@@ -948,6 +948,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 		make func(t *testing.T) error
 	}{
 		{"a scene point is not a trap", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{Trap: &playv1.PuzzleTrapTarget{MapId: p.mapID, PointId: scene.Msg.GetPoint().GetId()}},
@@ -955,6 +956,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"a point that is not there", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{Trap: &playv1.PuzzleTrapTarget{MapId: p.mapID, PointId: newKey()}},
@@ -962,6 +964,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"a map that is not there", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{Trap: &playv1.PuzzleTrapTarget{MapId: newKey(), PointId: trap.GetId()}},
@@ -969,6 +972,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"a trap without ids", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{Trap: &playv1.PuzzleTrapTarget{}},
@@ -976,6 +980,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"a trap on a lock", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: lockConfig(2, playv1.PuzzleAlphabet_PUZZLE_ALPHABET_DIGITS),
 				Solution: lockSolution(1, 1), Start: lockStart(0, 0), OnWrong: &playv1.PuzzleOnWrong{Trap: good},
@@ -983,6 +988,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"attempts on the lights", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: lightsConfig(3),
 				OnWrong: &playv1.PuzzleOnWrong{AttemptsPerPlayer: 3},
@@ -990,6 +996,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"11 attempts", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{AttemptsPerPlayer: 11},
@@ -997,6 +1004,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"negative attempts", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{AttemptsPerPlayer: -1},
@@ -1004,6 +1012,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"201 moves", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{MaxMoves: 201},
@@ -1011,6 +1020,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"9 seconds", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{TimeLimitSeconds: 9},
@@ -1018,6 +1028,7 @@ func TestMR038_OnWrongChecksWhatTheMasterWrote(t *testing.T) {
 			return err
 		}},
 		{"four hours and a second", func(t *testing.T) error {
+			t.Helper()
 			_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 				CampaignId: p.campaignID, Name: "x", Config: riddleConfig(), Solution: riddleSolution("a"),
 				OnWrong: &playv1.PuzzleOnWrong{TimeLimitSeconds: 14401},
@@ -1253,12 +1264,10 @@ func TestMR038_ConcurrentWrongAnswersAreCountedExactly(t *testing.T) {
 	}
 	for _, u := range []*user{p.caio, p.ana, p.bia} {
 		for range 6 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				_, err := p.move(t, u, attempts.GetId(), riddleMove("luz"))
 				count(err)
-			}()
+			})
 		}
 	}
 	wg.Wait()
@@ -1273,12 +1282,10 @@ func TestMR038_ConcurrentWrongAnswersAreCountedExactly(t *testing.T) {
 	accepted.Store(0)
 	for _, u := range []*user{p.caio, p.ana, p.bia} {
 		for range 6 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				_, err := p.move(t, u, limit.GetId(), riddleMove("luz"))
 				count(err)
-			}()
+			})
 		}
 	}
 	wg.Wait()
@@ -1649,11 +1656,9 @@ func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = p.tryHint(t, p.caio, puz.GetId(), 1) // a fail: the next try is for the same hint
-		}()
+		})
 	}
 	wg.Wait()
 	ok, tried := 0, 0
@@ -1674,15 +1679,13 @@ func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
 	key := newKey()
 	var replays atomic.Int32
 	for i := range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := p.tryHintKey(t, p.ana, puz.GetId(), 20, key)
 			errs[i] = err
 			if err == nil && res.GetReplayed() {
 				replays.Add(1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if errs[0] != nil || errs[1] != nil || replays.Load() != 1 {

@@ -46,7 +46,7 @@ func TestDoorLayerByteLayout(t *testing.T) {
 	}
 	// Every state survives the round trip, in every position of a byte.
 	all := grid.NewDoorLayer(grid.Grid{Columns: 6, Rows: 1})
-	for col := 0; col < 6; col++ {
+	for col := range 6 {
 		all.Set(col, 0, grid.Door(col))
 	}
 	again, err := grid.DecodeDoorLayer(grid.Grid{Columns: 6, Rows: 1}, all.Encode())
@@ -85,7 +85,7 @@ func TestDecodeDoorLayerRefusesBadBytes(t *testing.T) {
 func corridor(door grid.Door) grid.Terrain {
 	g := grid.Grid{Columns: 9, Rows: 3}
 	t := grid.Terrain{Grid: g, Walls: grid.NewLayer(g), Doors: grid.NewDoorLayer(g)}
-	for col := 0; col < 9; col++ {
+	for col := range 9 {
 		t.Walls.Set(col, 0, true)
 		t.Walls.Set(col, 2, true)
 	}

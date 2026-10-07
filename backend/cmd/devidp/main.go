@@ -82,8 +82,9 @@ func main() {
 	fmt.Fprint(os.Stderr, banner)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx, s, logger); err != nil {
+	err = run(ctx, s, logger)
+	stop() // not deferred: os.Exit below would skip a deferred call
+	if err != nil {
 		logger.Error("devidp stopped with an error", "error", err)
 		os.Exit(1)
 	}
@@ -166,7 +167,7 @@ func run(ctx context.Context, s settings, logger *slog.Logger) error {
 	}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
-	logger.Warn("devidp is running: a development-only OpenID Connect provider; never deploy it",
+	logger.WarnContext(ctx, "devidp is running: a development-only OpenID Connect provider; never deploy it",
 		"issuer", s.issuer, "listen", s.listen, "client_id", s.clientID, "redirect_uris", s.redirectURIs)
 
 	select {

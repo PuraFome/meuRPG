@@ -245,7 +245,7 @@ func BenchmarkPromptOf(b *testing.B) {
 		}
 		b.Run(fmt.Sprint("case", i), func(b *testing.B) {
 			b.ReportAllocs()
-			for n := 0; n < b.N; n++ {
+			for b.Loop() {
 				PromptOf(d)
 			}
 		})

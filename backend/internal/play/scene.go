@@ -183,7 +183,7 @@ func (s *Service) OpenScene(
 		} else if err != nil {
 			return fmt.Errorf("lock the open session: %w", err)
 		}
-		if equal(session.OpenScenePointID, ptr(pointID.String())) {
+		if equal(session.OpenScenePointID, new(pointID.String())) {
 			return nil // already open: the rolls so far stay
 		}
 		point := pointID.String()
@@ -383,9 +383,9 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 			v.Dc = clamp32(a.DC, 0, 30)
 		}
 		if !master && i < len(options) && options[i].Known {
-			v.Bonus = ptr(clamp32(options[i].Bonus, math.MinInt32, math.MaxInt32))
+			v.Bonus = new(clamp32(options[i].Bonus, math.MinInt32, math.MaxInt32))
 			if options[i].HasPassive {
-				v.Passive = ptr(clamp32(options[i].Passive, math.MinInt32, math.MaxInt32))
+				v.Passive = new(clamp32(options[i].Passive, math.MinInt32, math.MaxInt32))
 			}
 		}
 		if hasMine {
@@ -559,7 +559,7 @@ func (t attemptTally) left(a link.SceneAction, characterID string) *int32 {
 		return nil
 	}
 	k := attemptKey{characterID, a.ID}
-	return ptr(clamp32(max(a.MaxAttempts-t.rolled[k]+t.granted[k], 0), 0, math.MaxInt32))
+	return new(clamp32(max(a.MaxAttempts-t.rolled[k]+t.granted[k], 0), 0, math.MaxInt32))
 }
 
 // RollSceneCheck implements playv1connect.PlayServiceHandler.
@@ -705,7 +705,7 @@ func (s *Service) RollSceneCheck(
 			Physical: roll.Physical, DCShown: scene.ShowDC,
 		}
 		if action.DC > 0 {
-			ev.Passed = ptr(roll.Total >= action.DC)
+			ev.Passed = new(roll.Total >= action.DC)
 		}
 		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID})
 		if err != nil {
@@ -817,7 +817,7 @@ func (s *Service) GrantSceneAttempt(
 		if scene.Actions[i].MaxAttempts == 0 {
 			return nil // unlimited: there is nothing to add
 		}
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: ptr(characterID.String())})
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: new(characterID.String())})
 		if err != nil {
 			return err
 		}

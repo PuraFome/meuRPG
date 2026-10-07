@@ -27,8 +27,8 @@ func realisticOverlay(t testing.TB, c *Content) Overlay {
 		o.Classes = append(o.Classes, tc)
 		for k := range 3 {
 			o.Subclasses = append(o.Subclasses, TableSubclass{
-				TableEntry: TableEntry{Key: "subclass:" + slug + "-" + strconv.Itoa(k) + tableSuffix, NamePT: "Caminho " + strconv.Itoa(k)},
-				Class:      tc.Key,
+				Key: "subclass:" + slug + "-" + strconv.Itoa(k) + tableSuffix, NamePT: "Caminho " + strconv.Itoa(k),
+				Class: tc.Key,
 				Levels: []TableSubclassLevel{
 					{Level: 3, Features: []TableFeature{tf(slug+"-s"+strconv.Itoa(k)+"-3", "A", Effect{Type: "note", TextPT: "Nota."})}},
 					{Level: 6, Features: []TableFeature{tf(slug+"-s"+strconv.Itoa(k)+"-6", "B", Effect{Type: "modifier", Target: "speed.walk", Mode: "add", Value: "5"})}},
@@ -40,8 +40,8 @@ func realisticOverlay(t testing.TB, c *Content) Overlay {
 	for i := range 20 {
 		slug := "raca-" + strconv.Itoa(i)
 		o.Races = append(o.Races, TableRace{
-			TableEntry: TableEntry{Key: "race:" + slug + tableSuffix, NamePT: "Raça " + strconv.Itoa(i)},
-			Size:       "Medium", SpeedFt: 30, AbilityBonuses: map[Ability]int{CON: 1}, DarkvisionFt: 60,
+			Key: "race:" + slug + tableSuffix, NamePT: "Raça " + strconv.Itoa(i),
+			Size: "Medium", SpeedFt: 30, AbilityBonuses: map[Ability]int{CON: 1}, DarkvisionFt: 60,
 			Languages: []string{"language:common"}, LanguageChoices: 1,
 			Traits: []TableFeature{
 				{Key: "trait:" + slug + "-a" + tableSuffix, NamePT: "A", DescPT: []string{"Texto."}, Effects: []Effect{{Type: "roll_mode", Roll: "advantage", Targets: []string{"save.con"}, Tags: []string{"against:poison"}}}},
@@ -50,8 +50,8 @@ func realisticOverlay(t testing.TB, c *Content) Overlay {
 		})
 		for k := range 2 {
 			o.Subraces = append(o.Subraces, TableSubrace{
-				TableEntry: TableEntry{Key: "subrace:" + slug + "-" + strconv.Itoa(k) + tableSuffix, NamePT: "Sub-raça " + strconv.Itoa(k)},
-				Race:       "race:" + slug + tableSuffix, AbilityBonuses: map[Ability]int{WIS: 1},
+				Key: "subrace:" + slug + "-" + strconv.Itoa(k) + tableSuffix, NamePT: "Sub-raça " + strconv.Itoa(k),
+				Race: "race:" + slug + tableSuffix, AbilityBonuses: map[Ability]int{WIS: 1},
 				Traits: []TableFeature{{Key: "trait:" + slug + "-" + strconv.Itoa(k) + tableSuffix, NamePT: "T", DescPT: []string{"Texto."}}},
 			})
 		}

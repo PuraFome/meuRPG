@@ -74,16 +74,14 @@ func TestStartGameSessionWithTheSameKeyAtOnceStartsOne(t *testing.T) {
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
 	for i := range ids {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := master.startWithKey(t, campaign, "racing")
 			if err != nil {
 				t.Errorf("StartGameSession() error = %v", err)
 				return
 			}
 			ids[i] = res.GetGameSession().GetId()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {

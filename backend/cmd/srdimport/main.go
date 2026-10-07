@@ -109,7 +109,7 @@ func readInputs(dir string) (*inputs, error) {
 	}
 	slices.Sort(names)
 	for _, name := range names {
-		b, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // dir is a flag of a developer tool
+		b, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			return nil, err
 		}
@@ -1474,7 +1474,7 @@ func expandMonsterAction(a monsterActionSource) []srd51.MonsterAction {
 	}
 	for _, sub := range subs {
 		text := ""
-		for _, line := range strings.Split(a.Desc, "\n") {
+		for line := range strings.SplitSeq(a.Desc, "\n") {
 			if strings.HasPrefix(strings.TrimSpace(line), sub.Name+".") {
 				text = strings.TrimSpace(line)
 			}

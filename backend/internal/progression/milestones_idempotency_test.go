@@ -72,16 +72,14 @@ func TestAddMilestoneWithTheSameKeyAtOnceAddsOne(t *testing.T) {
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
 	for i := range ids {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := tb.master.planWithKey(tb.campaign, "Chegar ao Vale Seco", "racing")
 			if err != nil {
 				t.Errorf("AddMilestone() error = %v", err)
 				return
 			}
 			ids[i] = res.GetMilestone().GetId()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {

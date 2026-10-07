@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -236,9 +237,7 @@ func withOIDC(overrides map[string]string) map[string]string {
 		"OIDC_CLIENT_SECRET": "s3cret",
 		"OIDC_REDIRECT_URL":  "https://meurpg.example.com/auth/callback",
 	}
-	for k, v := range overrides {
-		vars[k] = v
-	}
+	maps.Copy(vars, overrides)
 	return vars
 }
 

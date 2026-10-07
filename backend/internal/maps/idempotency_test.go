@@ -107,16 +107,14 @@ func TestCreateMapPointIsIdempotent(t *testing.T) {
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
 	for i := range ids {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			p, err := call(racing)
 			if err != nil {
 				t.Errorf("CreateMapPoint() racing error = %v", err)
 				return
 			}
 			ids[i] = p.GetId()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {
@@ -255,16 +253,14 @@ func TestCreateDungeonMapAndPlaceSceneAreIdempotent(t *testing.T) {
 	ids := make([]string, 3)
 	var wg sync.WaitGroup
 	for i := range ids {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := call("Corrida", "racing", &seed)
 			if err != nil {
 				t.Errorf("CreateDungeonMap() racing error = %v", err)
 				return
 			}
 			ids[i] = res.GetMap().GetId()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {

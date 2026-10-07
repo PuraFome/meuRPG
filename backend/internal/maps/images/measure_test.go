@@ -21,9 +21,7 @@ func peakHeap(f func()) (peak, total uint64) {
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 	var top uint64
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		var m runtime.MemStats
 		for {
 			runtime.ReadMemStats(&m)
@@ -34,7 +32,7 @@ func peakHeap(f func()) (peak, total uint64) {
 			case <-time.After(2 * time.Millisecond):
 			}
 		}
-	}()
+	})
 	f()
 	close(done)
 	wg.Wait()

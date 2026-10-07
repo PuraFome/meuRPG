@@ -135,8 +135,8 @@ func (s *Service) fogViewOf(ctx context.Context, r mapsdb.ListMapDetailsRow, v v
 // light is never theirs.
 func filterLayers(set layerSet, pv *playerView) layerSet {
 	out := layerSet{terrain: grid.NewLayer(pv.g), walls: grid.NewLayer(pv.g), cover: grid.NewCoverLayer(pv.g), doors: grid.NewDoorLayer(pv.g)}
-	for row := 0; row < pv.g.Rows; row++ {
-		for col := 0; col < pv.g.Columns; col++ {
+	for row := range pv.g.Rows {
+		for col := range pv.g.Columns {
 			if !pv.known(grid.Square{Col: col, Row: row}) {
 				continue
 			}

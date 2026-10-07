@@ -682,16 +682,14 @@ func TestMR038_TwoPlayersMovingAtOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	var failed atomic.Int32
 	for u, list := range moves {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for _, mv := range list {
 				if _, err := p.move(t, u, lock.GetId(), mv); err != nil {
 					t.Errorf("MakePuzzleMove() error = %v", err)
 					failed.Add(1)
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if failed.Load() != 0 {
@@ -725,13 +723,11 @@ func TestMR038_TwoMovesThatSolveAtOnce(t *testing.T) {
 	results := make([]error, 2)
 	solvers := make([]bool, 2)
 	for i, u := range []*user{p.caio, p.ana} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := p.move(t, u, lock.GetId(), lockMove(0, 1))
 			results[i] = err
 			solvers[i] = err == nil && res.GetSolvedByThisMove()
-		}()
+		})
 	}
 	wg.Wait()
 	wins := 0

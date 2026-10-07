@@ -273,7 +273,7 @@ func (h *harness) fakeCalls(t *testing.T) []gen.Call {
 func TestMR039_AMapWithoutFogIsShownWhole(t *testing.T) {
 	t.Parallel()
 	c := newCave(t, withFake(&gen.Fake{}, 20))
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: proto.Bool(false)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(false)})); err != nil {
 		t.Fatal(err)
 	}
 	sub, err := c.h.svc.loadSubject(t.Context(), c.campaign, c.mapID)
@@ -331,7 +331,7 @@ func TestMR039_NobodyOnTheMap(t *testing.T) {
 	m := c.master
 	empty := m.createMap(c.campaign, "Salão vazio", m.newImage(c.campaign)).GetId()
 	m.mustSetGrid(c.campaign, empty, 8)
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: empty, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: empty, FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	res := m.mustMapReference(c.campaign, empty, kindMapSceneAPI)
@@ -795,7 +795,7 @@ func TestMR039_UseIsRefusedWhenTheMapChanged(t *testing.T) {
 	first := texture()
 	current := m.mustGetMap(c.campaign, c.mapID).GetMap()
 	other := m.mustUpload(c.campaign, "outra.png", patternImage(t, 240, 160)).GetId()
-	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: c.mapID, Revision: current.GetRevision(), ImageId: proto.String(other)})); err != nil {
+	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: c.mapID, Revision: current.GetRevision(), ImageId: new(other)})); err != nil {
 		t.Fatalf("UpdateMap(image) error = %v", err)
 	}
 	_, err := m.useAsMapImage(c.campaign, first)

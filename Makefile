@@ -78,7 +78,7 @@ SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 # together. The first run compiles it (a minute or two); Go caches it after.
 GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
-.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop elk-up elk-down elk-logs
+.PHONY: help proto sqlc proto-lint lint lint-all test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop elk-up elk-down elk-logs
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -102,7 +102,16 @@ proto-lint: ## Lint proto files and check formatting
 	cd proto && buf lint
 	cd proto && buf format --diff --exit-code
 
-lint: proto-lint ## Run all linters (proto + Go)
+# The Go linters run as a ratchet: `lint` reports only what your branch added
+# since LINT_BASE (the merge base with it), exactly like CI on a pull request;
+# `lint-all` reports the whole backlog. Make sure the base is up to date first
+# (`git fetch origin main`).
+LINT_BASE ?= origin/main
+
+lint: proto-lint ## Run all linters (proto + Go); Go only for what changed since origin/main, like CI
+	cd backend && $(GOLANGCI_LINT) run --new-from-merge-base=$(LINT_BASE)
+
+lint-all: proto-lint ## Run all linters on the whole code, including the backlog the ratchet lets through
 	cd backend && $(GOLANGCI_LINT) run
 
 test: ## Run backend Go tests with the race detector

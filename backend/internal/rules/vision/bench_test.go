@@ -14,8 +14,8 @@ import (
 func benchScene(g grid.Grid, wallsPerMille, lights, viewers int, base grid.Light) (vision.Scene, []vision.Viewer) {
 	rng := &xorshift{state: 0x9E3779B97F4A7C15}
 	walls := grid.NewLayer(g)
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			if rng.intn(1000) < wallsPerMille {
 				walls.Set(col, row, true)
 			}
@@ -117,11 +117,11 @@ func (r *xorshift) intn(n int) int {
 func BenchmarkLargestInDaylightBorderAndPillars(b *testing.B) {
 	g := grid.Grid{Columns: 200, Rows: 400}
 	scene, vs := benchScene(g, 0, 20, 6, grid.Bright)
-	for col := 0; col < g.Columns; col++ {
+	for col := range g.Columns {
 		scene.Walls.Set(col, 0, true)
 		scene.Walls.Set(col, g.Rows-1, true)
 	}
-	for row := 0; row < g.Rows; row++ {
+	for row := range g.Rows {
 		scene.Walls.Set(0, row, true)
 		scene.Walls.Set(g.Columns-1, row, true)
 	}

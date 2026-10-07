@@ -39,7 +39,7 @@ var genKinds = []genKind{
 func genClass(c *Content, gk genKind) TableClass {
 	slug := "gen-" + gk.name
 	tc := TableClass{
-		TableEntry:    TableEntry{Key: "class:" + slug + tableSuffix, NamePT: "Classe " + gk.name},
+		Key: "class:" + slug + tableSuffix, NamePT: "Classe " + gk.name,
 		HitDie:        8,
 		SavingThrows:  []Ability{CON, WIS},
 		SkillChoose:   2,
@@ -122,8 +122,8 @@ func genFeatures(slug string, lvl int) []TableFeature {
 func genSubclasses(tc TableClass) []TableSubclass {
 	slug := slugOfKey(tc.Key)
 	plain := TableSubclass{
-		TableEntry: TableEntry{Key: "subclass:" + slug + "-a" + tableSuffix, NamePT: "Caminho A"},
-		Class:      tc.Key,
+		Key: "subclass:" + slug + "-a" + tableSuffix, NamePT: "Caminho A",
+		Class: tc.Key,
 		Levels: []TableSubclassLevel{
 			{Level: 3, Features: []TableFeature{tf(slug+"-a3", "A3", Effect{Type: "modifier", Target: "speed.walk", Mode: "add", Value: "5"})}},
 			{Level: 9, Features: []TableFeature{tf(slug+"-a9", "A9", Effect{Type: "note", TextPT: "Nota do caminho."})}},
@@ -132,7 +132,7 @@ func genSubclasses(tc TableClass) []TableSubclass {
 	out := []TableSubclass{plain}
 	if tc.Casting.Kind != CastingNone {
 		out = append(out, TableSubclass{
-			TableEntry:     TableEntry{Key: "subclass:" + slug + "-b" + tableSuffix, NamePT: "Caminho B"},
+			Key: "subclass:" + slug + "-b" + tableSuffix, NamePT: "Caminho B",
 			Class:          tc.Key,
 			Levels:         []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf(slug+"-b3", "B3")}}},
 			AlwaysPrepared: []TableAlwaysPrepared{{ClassLevel: 3, Spell: "spell:bless"}, {ClassLevel: 5, Spell: "spell:fireball"}},
@@ -146,9 +146,9 @@ func genSubclasses(tc TableClass) []TableSubclass {
 // third of the level, rounded up).
 func thirdCaster(c *Content, slug, class, list, preparation string) TableSubclass {
 	ts := TableSubclass{
-		TableEntry: TableEntry{Key: "subclass:" + slug + tableSuffix, NamePT: "Terço " + slug},
-		Class:      class,
-		Casting:    &TableCasting{Kind: CastingThird, Ability: INT, Preparation: preparation, ListFrom: list},
+		Key: "subclass:" + slug + tableSuffix, NamePT: "Terço " + slug,
+		Class:   class,
+		Casting: &TableCasting{Kind: CastingThird, Ability: INT, Preparation: preparation, ListFrom: list},
 	}
 	for lvl := 3; lvl <= MaxLevel; lvl++ {
 		src := c.c.classLevels["class:wizard"][(lvl+2)/3-1].Spellcasting
@@ -156,7 +156,7 @@ func thirdCaster(c *Content, slug, class, list, preparation string) TableSubclas
 		if lvl >= 10 {
 			cantrips = 3
 		}
-		row := TableSubclassLevel{Level: lvl, TableLevel: TableLevel{CantripsKnown: cantrips, SpellsKnown: min(3+(lvl-3)/2, 13), Slots: src.Slots}}
+		row := TableSubclassLevel{Level: lvl, CantripsKnown: cantrips, SpellsKnown: min(3+(lvl-3)/2, 13), Slots: src.Slots}
 		if lvl == 3 || lvl == 7 {
 			row.Features = []TableFeature{tf(slug+"-l"+strconv.Itoa(lvl), "Passo "+strconv.Itoa(lvl))}
 		}
@@ -203,7 +203,7 @@ func withOverlayOn(t testing.TB, base *Content, o Overlay) *Content {
 func tableTestSpells() []TableSpell {
 	base := func(slug, name string, level int) TableSpell {
 		return TableSpell{
-			TableEntry: TableEntry{Key: "spell:" + slug + tableSuffix, NamePT: name}, Level: level, School: "school:evocation",
+			Key: "spell:" + slug + tableSuffix, NamePT: name, Level: level, School: "school:evocation",
 			CastingTime: TableCastingTime{Amount: 1, Unit: CastAction}, Range: TableRange{Kind: RangeRanged, DistanceFt: 60},
 			Duration: TableDuration{Kind: DurationInstantaneous}, Components: TableComponents{Verbal: true, Somatic: true},
 			Classes: []string{"class:wizard"}, DescPT: []string{"Texto de teste."}, Target: SpellTarget{Kind: TargetCreature},
@@ -242,8 +242,8 @@ func tableTestSpells() []TableSpell {
 // tableMisc are a race with a subrace, and a background, of the table.
 func tableMisc() (TableRace, TableSubrace, TableBackground) {
 	race := TableRace{
-		TableEntry: TableEntry{Key: "race:anao-das-brumas" + tableSuffix, NamePT: "Anão das Brumas"},
-		Size:       "Medium", SpeedFt: 25, AbilityBonuses: map[Ability]int{CON: 1}, ChoiceBonuses: []int{1, 2},
+		Key: "race:anao-das-brumas" + tableSuffix, NamePT: "Anão das Brumas",
+		Size: "Medium", SpeedFt: 25, AbilityBonuses: map[Ability]int{CON: 1}, ChoiceBonuses: []int{1, 2},
 		DarkvisionFt: 60, Languages: []string{"language:common"}, LanguageChoices: 1,
 		Traits: []TableFeature{{
 			Key: "trait:resistente" + tableSuffix, NamePT: "Resistente", DescPT: []string{"Texto de teste."},
@@ -251,13 +251,13 @@ func tableMisc() (TableRace, TableSubrace, TableBackground) {
 		}},
 	}
 	sub := TableSubrace{
-		TableEntry: TableEntry{Key: "subrace:da-colina-nevoenta" + tableSuffix, NamePT: "Da Colina Nevoenta"},
-		Race:       race.Key, AbilityBonuses: map[Ability]int{WIS: 1},
+		Key: "subrace:da-colina-nevoenta" + tableSuffix, NamePT: "Da Colina Nevoenta",
+		Race: race.Key, AbilityBonuses: map[Ability]int{WIS: 1},
 		Traits: []TableFeature{{Key: "trait:olhar-firme" + tableSuffix, NamePT: "Olhar firme", Effects: []Effect{{Type: "proficiency", Proficiency: "skill:perception"}}}},
 	}
 	bg := TableBackground{
-		TableEntry: TableEntry{Key: "background:guarda-de-farol" + tableSuffix, NamePT: "Guarda de farol"},
-		Skills:     []string{"skill:insight", "skill:religion"}, Tools: []string{"proficiency:thieves-tools"}, LanguageChoices: 1,
+		Key: "background:guarda-de-farol" + tableSuffix, NamePT: "Guarda de farol",
+		Skills: []string{"skill:insight", "skill:religion"}, Tools: []string{"proficiency:thieves-tools"}, LanguageChoices: 1,
 		EquipmentPT: "Uma lanterna, um apito e roupas de viagem.",
 		Feature:     TableFeature{Key: "background-feature:luz-guia" + tableSuffix, NamePT: "Luz-guia", Effects: []Effect{{Type: "note", TextPT: "Luz-guia: conhece a rota dos navios."}}},
 	}

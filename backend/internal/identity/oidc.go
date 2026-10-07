@@ -279,7 +279,7 @@ func newHTTPClient(caFile string) (*http.Client, error) {
 
 	if caFile != "" {
 		// The path comes from the operator's configuration, not a request.
-		pem, err := os.ReadFile(caFile) //nolint:gosec // G304: trusted, operator-provided path
+		pem, err := os.ReadFile(caFile)
 		if err != nil {
 			return nil, fmt.Errorf("read OIDC_CA_FILE: %w", err)
 		}

@@ -449,8 +449,7 @@ func (c *entryErrors) add(err error) {
 	if err == nil {
 		return
 	}
-	var oe *OverlayError
-	if errors.As(err, &oe) {
+	if oe, ok := errors.AsType[*OverlayError](err); ok {
 		c.list = append(c.list, oe.Violations()...)
 		oe.More = nil
 		return
@@ -813,8 +812,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 		err = locate(err, path)
 		var oe *OverlayError
 		if errors.As(err, &oe) && oe.Key != "" {
-			var extra *OverlayError
-			if errors.As(b.compileEffectsOf(oe.Key), &extra) {
+			if extra, ok := errors.AsType[*OverlayError](b.compileEffectsOf(oe.Key)); ok {
 				oe.More = append(oe.More, extra.Violations()...)
 			}
 		}

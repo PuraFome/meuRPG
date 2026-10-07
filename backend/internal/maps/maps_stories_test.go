@@ -93,7 +93,7 @@ func TestMR008_MasterCreatesPointsOfEachKind(t *testing.T) {
 	} {
 		_, err := master.maps.CreateMapPoint(t.Context(), connect.NewRequest(point(mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP, "Porta", "", target, 1, 1)))
 		wantCode(t, "a submap leading to "+name, err, connect.CodeInvalidArgument)
-		_, err = master.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: region.GetId(), PointId: submap.GetId(), TargetMapId: proto.String(target)}))
+		_, err = master.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: region.GetId(), PointId: submap.GetId(), TargetMapId: new(target)}))
 		wantCode(t, "moving a submap's target to "+name, err, connect.CodeInvalidArgument)
 	}
 
@@ -152,7 +152,7 @@ func TestMR009_PlayersNeverReceiveHiddenPoints(t *testing.T) {
 		t.Errorf("the player's points = %v (count %d), want only the revealed one", pointIDs(got), got.GetMap().GetPointCount())
 	}
 	noHiddenBits("the player's ListMaps", &mapsv1.ListMapsResponse{Maps: player.listMaps(campaign)})
-	_, err := player.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: hidden.GetId(), Name: proto.String("X")}))
+	_, err := player.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: hidden.GetId(), Name: new("X")}))
 	wantCode(t, "a player changing the hidden point", err, connect.CodePermissionDenied)
 
 	// The stream, during a session. The player's character stands on the
@@ -169,7 +169,7 @@ func TestMR009_PlayersNeverReceiveHiddenPoints(t *testing.T) {
 
 	// Changes to hidden things: the master hears about each one...
 	ctx := t.Context()
-	if _, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: hidden.GetId(), Description: proto.String("O lich acordou.")})); err != nil {
+	if _, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: hidden.GetId(), Description: new("O lich acordou.")})); err != nil {
 		t.Fatalf("UpdateMapPoint() error = %v", err)
 	}
 	mw.mapChanged(m.GetId())

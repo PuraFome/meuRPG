@@ -119,6 +119,7 @@ func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
 // level-up tests set the dice setting and the die).
 func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 	t.Helper()
+	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_characters_test")
 	h := &harness{
 		t:     t,

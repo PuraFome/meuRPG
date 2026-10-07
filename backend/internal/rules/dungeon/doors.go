@@ -146,7 +146,7 @@ func (g *gen) drawKind(di int) {
 	wts := mixWeights[g.o.DoorMix]
 	v := r.intn(100) // DRAW: door kind
 	kind, acc := DoorSecret, 0
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		acc += wts[k]
 		if v < acc {
 			kind = DoorKind(k)

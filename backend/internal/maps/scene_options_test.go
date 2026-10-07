@@ -53,7 +53,7 @@ func (s *scenes) mustSetShowDC(on bool) {
 func (s *scenes) addActionWith(key string, dc, attempts int32) *mapsv1.SceneAction {
 	s.h.t.Helper()
 	res, err := s.master.maps.AddSceneAction(s.h.t.Context(), connect.NewRequest(&mapsv1.AddSceneActionRequest{
-		CampaignId: s.campaign, MapId: s.mapID, PointId: s.point.GetId(), Key: key, Dc: dc, MaxAttempts: proto.Int32(attempts),
+		CampaignId: s.campaign, MapId: s.mapID, PointId: s.point.GetId(), Key: key, Dc: dc, MaxAttempts: new(attempts),
 	}))
 	if err != nil {
 		s.h.t.Fatalf("AddSceneAction(%s, attempts %d) error = %v", key, attempts, err)
@@ -62,7 +62,7 @@ func (s *scenes) addActionWith(key string, dc, attempts int32) *mapsv1.SceneActi
 }
 
 func (s *scenes) setAttempts(a *mapsv1.SceneAction, attempts int32) error {
-	_, err := s.update(s.master, a, func(r *mapsv1.UpdateSceneActionRequest) { r.MaxAttempts = proto.Int32(attempts) })
+	_, err := s.update(s.master, a, func(r *mapsv1.UpdateSceneActionRequest) { r.MaxAttempts = new(attempts) })
 	return err
 }
 
@@ -254,7 +254,7 @@ func TestMR015_AttemptsPerAction(t *testing.T) {
 	}
 	for _, bad := range []int32{-1, 6} {
 		_, err := s.master.maps.AddSceneAction(t.Context(), connect.NewRequest(&mapsv1.AddSceneActionRequest{
-			CampaignId: s.campaign, MapId: s.mapID, PointId: s.point.GetId(), Key: "ability:dex", MaxAttempts: proto.Int32(bad),
+			CampaignId: s.campaign, MapId: s.mapID, PointId: s.point.GetId(), Key: "ability:dex", MaxAttempts: new(bad),
 		}))
 		wantCode(t, "AddSceneAction with max_attempts out of range", err, connect.CodeInvalidArgument)
 		wantCode(t, "UpdateSceneAction with max_attempts out of range", s.setAttempts(one, bad), connect.CodeInvalidArgument)

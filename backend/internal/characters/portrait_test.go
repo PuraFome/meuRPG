@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -23,10 +24,8 @@ import (
 type fakeGallery map[string][]string
 
 func (g fakeGallery) PortraitImage(_ context.Context, campaignID, imageID string) (string, bool, error) {
-	for _, id := range g[campaignID] {
-		if id == imageID {
-			return imageID, true, nil
-		}
+	if slices.Contains(g[campaignID], imageID) {
+		return imageID, true, nil
 	}
 	return "", false, nil
 }

@@ -110,6 +110,7 @@ func TestEntryViolationPaths(t *testing.T) {
 	srd := loadForTest(t)
 	for _, tc := range entryViolationRows {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			o := fullOverlay(t, srd)
 			tc.edit(&o)
 			_, err := srd.With(o)

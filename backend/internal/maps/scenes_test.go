@@ -338,7 +338,7 @@ func TestMR015_NothingCombatOnlyInAScene(t *testing.T) {
 	} {
 		_, err := s.master.tryAddAction(s.campaign, s.mapID, s.point.GetId(), key, "", 0)
 		wantCode(t, "adding "+key, err, connect.CodeInvalidArgument)
-		_, err = s.update(s.master, good, func(r *mapsv1.UpdateSceneActionRequest) { r.Key = proto.String(key) })
+		_, err = s.update(s.master, good, func(r *mapsv1.UpdateSceneActionRequest) { r.Key = new(key) })
 		wantCode(t, "changing an action to "+key, err, connect.CodeInvalidArgument)
 	}
 	if got := s.master.mustGetMap(s.campaign, s.mapID).GetPoints()[0].GetSceneActions(); len(got) != 1 || got[0].GetKey() != "skill:perception" {
@@ -413,8 +413,8 @@ func TestRN20_APlayerNeverGetsADCOrAnotherPlayersRoll(t *testing.T) {
 	}
 	want := []row{
 		{"Toren", force.GetId(), 20, nil}, // Força 10: +0; the check has no DC: no pass or fail
-		{"Toren", invest.GetId(), 7, proto.Bool(false)},
-		{"Pensantus", invest.GetId(), 17, proto.Bool(true)},
+		{"Toren", invest.GetId(), 7, new(false)},
+		{"Pensantus", invest.GetId(), 17, new(true)},
 	}
 	for i := range want {
 		if i >= len(got) || got[i].name != want[i].name || got[i].action != want[i].action || got[i].total != want[i].total || !sameBool(got[i].passed, want[i].passed) {
@@ -685,7 +685,7 @@ func TestMR015_OpeningAndClosingAScene(t *testing.T) {
 		}
 	}
 	if _, err := s.master.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{
-		CampaignId: s.campaign, MapId: s.mapID, PointId: second.GetId(), Description: proto.String("A ponte caiu."),
+		CampaignId: s.campaign, MapId: s.mapID, PointId: second.GetId(), Description: new("A ponte caiu."),
 	})); err != nil {
 		t.Fatalf("UpdateMapPoint() error = %v", err)
 	}
@@ -772,11 +772,11 @@ func TestMR015_SceneActionRules(t *testing.T) {
 	}
 
 	// Update: one field at a time; "" and 0 remove the name and the DC.
-	res, err := s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Dc = proto.Int32(0); r.Name = proto.String("") })
+	res, err := s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Dc = proto.Int32(0); r.Name = new("") })
 	if err != nil || res.GetAction().GetDc() != 0 || res.GetAction().GetName() != "" || res.GetAction().GetKey() != "skill:arcana" {
 		t.Errorf("clearing the name and the DC = %v, %v", res, err)
 	}
-	res, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Key = proto.String("save:con"); r.Dc = proto.Int32(14) })
+	res, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Key = new("save:con"); r.Dc = proto.Int32(14) })
 	if err != nil || res.GetAction().GetKey() != "save:con" || res.GetAction().GetCheckName() != "Teste de resistência de Constituição" || res.GetAction().GetDc() != 14 {
 		t.Errorf("changing the key and the DC = %v, %v", res, err)
 	}
@@ -784,7 +784,7 @@ func TestMR015_SceneActionRules(t *testing.T) {
 	wantCode(t, "an update with nothing to change", err, connect.CodeInvalidArgument)
 	_, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Dc = proto.Int32(31) })
 	wantCode(t, "an update to DC 31", err, connect.CodeInvalidArgument)
-	_, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Name = proto.String(strings.Repeat("a", 61)) })
+	_, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Name = new(strings.Repeat("a", 61)) })
 	wantCode(t, "an update to a 61-character name", err, connect.CodeInvalidArgument)
 	_, err = s.update(s.master, &mapsv1.SceneAction{Id: newKey()}, func(r *mapsv1.UpdateSceneActionRequest) { r.Dc = proto.Int32(5) })
 	wantCode(t, "updating an action that does not exist", err, connect.CodeNotFound)

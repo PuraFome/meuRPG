@@ -102,6 +102,7 @@ func TestDerive(t *testing.T) {
 	d := Derive(pensantus(), c)
 
 	t.Run("Pensantus: abilities", func(t *testing.T) {
+		t.Parallel()
 		// CON 15+1 = 16 and INT 16+2 = 18; modifiers +1, +3, +3, +4, +1, +1.
 		want := map[Ability][2]int{STR: {12, 1}, DEX: {16, 3}, CON: {16, 3}, INT: {18, 4}, WIS: {13, 1}, CHA: {12, 1}}
 		for a, w := range want {
@@ -111,6 +112,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: wizard 3", func(t *testing.T) {
+		t.Parallel()
 		if d.TotalLevel != 3 || d.ProficiencyBonus != 2 {
 			t.Errorf("level %d, proficiency %+d; want 3, +2", d.TotalLevel, d.ProficiencyBonus)
 		}
@@ -129,6 +131,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: hit points, AC, speed, senses", func(t *testing.T) {
+		t.Parallel()
 		// 6 + 3 at level 1, then 4 + 3 twice.
 		if d.HitPointsMax != 23 {
 			t.Errorf("HP = %d, want 23", d.HitPointsMax)
@@ -152,6 +155,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: saves, skills and passives", func(t *testing.T) {
+		t.Parallel()
 		if s := saveOf(d, INT); !s.Proficient || s.Bonus != 6 {
 			t.Errorf("INT save = %+v, want proficient +6", s)
 		}
@@ -170,6 +174,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: hints", func(t *testing.T) {
+		t.Parallel()
 		// Artificer's Lore: History about magic items with twice the
 		// proficiency bonus, +8, as a hint.
 		h, ok := hintFrom(d, "trait:artificers-lore")
@@ -187,6 +192,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: attacks", func(t *testing.T) {
+		t.Parallel()
 		for key, want := range map[string][2]any{
 			"equipment:quarterstaff": {3, "1d6+1"},
 			"spell:fire-bolt":        {6, "1d10"},
@@ -202,6 +208,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: multiclass prerequisites", func(t *testing.T) {
+		t.Parallel()
 		// ADR-0008: Fighter allowed (DEX 16 and INT 18, both at least 13);
 		// Paladin refused (STR 12 below 13).
 		b := pensantus()
@@ -215,6 +222,7 @@ func TestDerive(t *testing.T) {
 		}
 	})
 	t.Run("Pensantus: names, features, spells, no issues", func(t *testing.T) {
+		t.Parallel()
 		if d.RaceNamePT != "Gnomo" || d.SubraceNamePT != "Gnomo das Rochas" || d.BackgroundNamePT != "Sábio" {
 			t.Errorf("names = %q / %q / %q", d.RaceNamePT, d.SubraceNamePT, d.BackgroundNamePT)
 		}
@@ -333,6 +341,7 @@ func TestDeriveEachRace(t *testing.T) {
 	}{
 		{"race:dwarf", "subrace:hill-dwarf", 25, true, map[Ability]int{CON: 2, WIS: 1}, 8, nil}, // 6 + CON 1 + Dwarven Toughness 1
 		{"race:elf", "subrace:high-elf", 30, true, map[Ability]int{DEX: 2, INT: 1}, 6, func(t *testing.T, d Derived) {
+			t.Helper()
 			if s := skillOf(d, "skill:perception"); s.Proficiency != ProficiencyFull || s.Bonus != 2 {
 				t.Errorf("Keen Senses: perception = %+v, want proficient +2", s)
 			}
@@ -340,6 +349,7 @@ func TestDeriveEachRace(t *testing.T) {
 		{"race:halfling", "subrace:lightfoot-halfling", 25, false, map[Ability]int{DEX: 2, CHA: 1}, 6, nil},
 		{"race:human", "", 30, false, map[Ability]int{STR: 1, DEX: 1, CON: 1, INT: 1, WIS: 1, CHA: 1}, 6, nil},
 		{"race:dragonborn", "", 30, false, map[Ability]int{STR: 2, CHA: 1}, 6, func(t *testing.T, d Derived) {
+			t.Helper()
 			// Breath weapon DC: 8 + CON 0 + proficiency 2.
 			if h, ok := hintFrom(d, "trait:breath-weapon"); !ok || !strings.Contains(h.TextPT, "CD 10") {
 				t.Errorf("breath weapon hint = %+v, want CD 10", h)
@@ -347,12 +357,14 @@ func TestDeriveEachRace(t *testing.T) {
 		}},
 		{"race:gnome", "subrace:rock-gnome", 25, true, map[Ability]int{INT: 2, CON: 1}, 6, nil},
 		{"race:half-elf", "", 30, true, map[Ability]int{CHA: 2}, 6, func(t *testing.T, d Derived) {
+			t.Helper()
 			// The two +1 are the player's choice: a reminder, not a number.
 			if h, ok := hintFrom(d, "race:half-elf"); !ok || !strings.Contains(h.TextPT, "+1 em 2 habilidades") {
 				t.Errorf("half-elf hint = %+v", h)
 			}
 		}},
 		{"race:half-orc", "", 30, true, map[Ability]int{STR: 2, CON: 1}, 6, func(t *testing.T, d Derived) {
+			t.Helper()
 			if s := skillOf(d, "skill:intimidation"); s.Proficiency != ProficiencyFull {
 				t.Errorf("Menacing: intimidation = %+v, want proficient", s)
 			}
@@ -398,6 +410,7 @@ func TestDeriveRules(t *testing.T) {
 	c := loadForTest(t)
 
 	t.Run("fighter with chain mail, shield and the Defense style", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:fighter", 1)
 		b.Armor, b.Shield = "equipment:chain-mail", true
 		b.FeatureChoices = []string{"feature:fighter-fighting-style-defense"}
@@ -414,6 +427,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("medium armor caps DEX at +2", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:fighter", 1)
 		b.BaseScores[DEX] = 17 // 18 with the human bonus, +4
 		b.Armor = "equipment:scale-mail"
@@ -422,6 +436,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("an option without its feature does nothing", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:wizard", 1)
 		b.FeatureChoices = []string{"feature:fighter-fighting-style-defense"}
 		d := Derive(b, c)
@@ -433,6 +448,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("monk 3: unarmored defense and movement", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:monk", 3)
 		b.BaseScores[DEX], b.BaseScores[WIS] = 15, 13 // DEX 16 (+3), WIS 14 (+2)
 		d := Derive(b, c)
@@ -447,6 +463,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("monk 5: a dagger uses DEX and the martial arts die", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:monk", 5)
 		b.BaseScores[STR], b.BaseScores[DEX] = 8, 15 // STR 9 (-1), DEX 16 (+3)
 		b.Weapons = []string{"equipment:dagger"}
@@ -456,6 +473,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("barbarian 5: fast movement, unless in heavy armor", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:barbarian", 5)
 		if d := Derive(b, c); d.SpeedWalkFt != 40 || d.ProficiencyBonus != 3 {
 			t.Errorf("speed %d, prof %d; want 40 and 3", d.SpeedWalkFt, d.ProficiencyBonus)
@@ -470,6 +488,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("bard 2: Jack of All Trades", func(t *testing.T) {
+		t.Parallel()
 		d := Derive(standard("class:bard", 2), c)
 		if s := skillOf(d, "skill:arcana"); s.Proficiency != ProficiencyHalf || s.Bonus != 2 {
 			t.Errorf("arcana = %+v, want half: INT +1 + 1", s)
@@ -479,6 +498,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("rogue 1: expertise", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:rogue", 1)
 		b.SkillProficiencies = []string{"skill:stealth", "skill:acrobatics", "skill:perception", "skill:investigation"}
 		b.Expertise = []string{"skill:stealth", "skill:perception"}
@@ -495,6 +515,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("draconic sorcerer 1", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:sorcerer", 1)
 		b.Classes[0].Subclass = "subclass:draconic"
 		d := Derive(b, c)
@@ -504,6 +525,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("warlock 2 with Agonizing Blast", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:warlock", 2)
 		b.BaseScores[CHA] = 15 // 16, +3
 		b.Cantrips = []string{"spell:eldritch-blast"}
@@ -518,6 +540,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("cleric: save cantrip and domain spells", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:cleric", 3)
 		b.Classes[0].Subclass = "subclass:life"
 		b.BaseScores[WIS] = 15 // 16, +3
@@ -544,6 +567,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("multiclass slots: wizard 3 / cleric 2", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:wizard", 3)
 		b.BaseScores[WIS] = 13
 		b.Classes = append(b.Classes, ClassLevel{Class: "class:cleric", Level: 2})
@@ -561,6 +585,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("multiclass slots: paladin 2 / ranger 2 and warlock pact apart", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:paladin", 2)
 		b.BaseScores[WIS], b.BaseScores[CHA] = 13, 13
 		b.Classes = append(b.Classes, ClassLevel{Class: "class:ranger", Level: 2}, ClassLevel{Class: "class:warlock", Level: 1})
@@ -574,6 +599,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("multiclass prerequisites", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:wizard", 1)
 		b.Classes = append(b.Classes, ClassLevel{Class: "class:paladin", Level: 1})
 		// CHA 9 is below the paladin's 13; INT 13 meets the wizard's.
@@ -583,6 +609,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("rolled hit points", func(t *testing.T) {
+		t.Parallel()
 		b := standard("class:fighter", 3)
 		b.HitPoints = HitPoints{Method: HitPointsRolled, Rolls: []int{10, 1}}
 		// 10 + 2, 10 + 2, 1 + 2.
@@ -601,6 +628,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("skill counts", func(t *testing.T) {
+		t.Parallel()
 		b := pensantus()
 		b.SkillProficiencies = append(b.SkillProficiencies, "skill:arcana", "skill:history") // the background's: harmless
 		if d := Derive(b, c); len(d.Issues) != 0 {
@@ -616,6 +644,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("spell issues", func(t *testing.T) {
+		t.Parallel()
 		b := pensantus()
 		b.Cantrips = append(b.Cantrips, "spell:sacred-flame")                  // not a wizard cantrip, and a 4th one
 		b.SpellsKnown = append(b.SpellsKnown, "spell:fireball", "spell:bless") // 3rd level, and a cleric spell
@@ -634,6 +663,7 @@ func TestDeriveRules(t *testing.T) {
 		}
 	})
 	t.Run("unknown keys become issues, never panics", func(t *testing.T) {
+		t.Parallel()
 		b := Build{
 			BaseScores: map[Ability]int{STR: 10},
 			Race:       "race:elf", Subrace: "subrace:rock-gnome",

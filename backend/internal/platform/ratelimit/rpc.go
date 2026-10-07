@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 )
@@ -77,22 +78,22 @@ func Chain(interceptors ...connect.Interceptor) connect.Interceptor {
 type chain []connect.Interceptor
 
 func (c chain) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	for i := len(c) - 1; i >= 0; i-- {
-		next = c[i].WrapUnary(next)
+	for _, v := range slices.Backward(c) {
+		next = v.WrapUnary(next)
 	}
 	return next
 }
 
 func (c chain) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	for i := len(c) - 1; i >= 0; i-- {
-		next = c[i].WrapStreamingClient(next)
+	for _, v := range slices.Backward(c) {
+		next = v.WrapStreamingClient(next)
 	}
 	return next
 }
 
 func (c chain) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	for i := len(c) - 1; i >= 0; i-- {
-		next = c[i].WrapStreamingHandler(next)
+	for _, v := range slices.Backward(c) {
+		next = v.WrapStreamingHandler(next)
 	}
 	return next
 }

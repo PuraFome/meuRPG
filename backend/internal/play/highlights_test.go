@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -101,7 +100,7 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 	}
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)},
 			{CharacterId: a.goblin.GetId(), Count: 3}, // hidden until the master shows them
 		},
 		npcRolls: []int{16, 12, 12, 9},
@@ -278,7 +277,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.goblin.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.goblin.GetId(), Hidden: new(false)},
 			{CharacterId: a.capitao.GetId()}, // hidden: a new NPC starts hidden
 		},
 		npcRolls: []int{1, 2},
@@ -574,7 +573,7 @@ func TestMR031_TheMastersNPCCardHasThePortrait(t *testing.T) {
 		t.Fatalf("CreateCharacter(Aldo with a portrait) error = %v", err)
 	}
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: res.Msg.GetCharacter().GetId(), Hidden: proto.Bool(false)}, {CharacterId: a.goblin.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: res.Msg.GetCharacter().GetId(), Hidden: new(false)}, {CharacterId: a.goblin.GetId(), Hidden: new(false)}},
 		npcRolls: []int{5, 4},
 		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
 	})

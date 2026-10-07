@@ -63,8 +63,8 @@ func TestBasisPoints(t *testing.T) {
 	}
 	// A token placed on the middle of a square is in that square, on every grid.
 	for _, g := range []grid.Grid{{Columns: 4, Rows: 3}, {Columns: 24, Rows: 16}, {Columns: 37, Rows: 91}, {Columns: 200, Rows: 400}} {
-		for row := 0; row < g.Rows; row++ {
-			for col := 0; col < g.Columns; col++ {
+		for row := range g.Rows {
+			for col := range g.Columns {
 				sq := grid.Square{Col: col, Row: row}
 				x, y := g.CenterOf(sq)
 				if got := g.SquareOf(x, y); got != sq {
@@ -89,8 +89,8 @@ func TestLayerEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			if back.Get(col, row) != l.Get(col, row) {
 				t.Errorf("square (%d, %d) did not survive the round trip", col, row)
 			}
@@ -136,8 +136,8 @@ func TestLightAndCoverLayerEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			if back.Get(col, row) != l.Get(col, row) {
 				t.Errorf("light at (%d, %d) did not survive the round trip", col, row)
 			}
@@ -391,8 +391,8 @@ func TestSightOnLongLines(t *testing.T) {
 	for _, perMille := range []int{0, 2, 10, 40} {
 		rng := newRNG(3)
 		walls := grid.NewLayer(g)
-		for row := 0; row < g.Rows; row++ {
-			for col := 0; col < g.Columns; col++ {
+		for row := range g.Rows {
+			for col := range g.Columns {
 				if rng.intn(1000) < perMille {
 					walls.Set(col, row, true)
 				}

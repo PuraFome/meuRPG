@@ -128,8 +128,8 @@ func NewSight(g Grid, walls *Layer) (*Sight, error) {
 	}
 	stride := g.Columns + 1
 	s.walls = make([]int32, stride*(g.Rows+1))
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			n := s.walls[row*stride+col+1] + s.walls[(row+1)*stride+col] - s.walls[row*stride+col]
 			if walls.Get(col, row) {
 				n++

@@ -22,6 +22,7 @@ const (
 func TestShieldPromptNamesTheAttackerOnlyWhenSeen(t *testing.T) {
 	t.Parallel()
 	t.Run("a visible attacker", func(t *testing.T) {
+		t.Parallel()
 		a := newCasters(t)
 		e := a.castersFightNPCFirst(t)
 		a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
@@ -33,6 +34,7 @@ func TestShieldPromptNamesTheAttackerOnlyWhenSeen(t *testing.T) {
 		}
 	})
 	t.Run("a hidden attacker", func(t *testing.T) {
+		t.Parallel()
 		a := newCasters(t)
 		e := a.castersFightNPCFirst(t)
 		if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{

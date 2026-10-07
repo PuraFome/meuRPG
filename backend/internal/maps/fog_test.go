@@ -95,6 +95,7 @@ var (
 // third hidden by the master, and the captain, in the guard room; the guard
 // room's torch.
 func newCave(t *testing.T, configure ...func(*Config)) *cave {
+	t.Helper()
 	return newCaveWith(t, true, configure...)
 }
 
@@ -150,7 +151,7 @@ func newCaveWith(t *testing.T, visible bool, configure ...func(*Config)) *cave {
 		r.Light = &mapsv1.LightSpec{PresetKey: "light:torch"}
 	})
 
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(true)})); err != nil {
 		t.Fatalf("SetMapFog(on) error = %v", err)
 	}
 	m.start(c.campaign)
@@ -236,9 +237,9 @@ func picture(t *testing.T, res *mapsv1.GetMapVisionResponse, own grid.Square) []
 	t.Helper()
 	cs := codes(t, res)
 	var rows []string
-	for row := 0; row < int(res.GetGridRows()); row++ {
+	for row := range int(res.GetGridRows()) {
 		var b strings.Builder
-		for col := 0; col < int(res.GetGridColumns()); col++ {
+		for col := range int(res.GetGridColumns()) {
 			ch := byte(' ')
 			switch cs[row*int(res.GetGridColumns())+col] {
 			case 4:
@@ -450,7 +451,7 @@ func TestMR036_GroupVisionIsTheUnion(t *testing.T) {
 		states = append(states, codes(t, v.who.mustVision(c.campaign, c.mapID)))
 	}
 	// "Visão do grupo": everyone sees the union of the four.
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: proto.Bool(true)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	for _, v := range viewers {
@@ -469,7 +470,7 @@ func TestMR036_GroupVisionIsTheUnion(t *testing.T) {
 			t.Errorf("%s: group_vision = false with the switch on", v.key)
 		}
 	}
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: proto.Bool(false)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: new(false)})); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -718,7 +719,7 @@ func TestMR036_VisionChangedReachesTheRightPlayers(t *testing.T) {
 	// A change to a point on a square nobody sees reaches nobody; one on the
 	// entrance reaches the player who sees it (Ana, with darkvision).
 	if _, err := m.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{
-		CampaignId: c.campaign, MapId: c.mapID, PointId: c.guardhouse.GetId(), Description: proto.String("outra"),
+		CampaignId: c.campaign, MapId: c.mapID, PointId: c.guardhouse.GetId(), Description: new("outra"),
 	})); err != nil {
 		t.Fatal(err)
 	}
@@ -728,7 +729,7 @@ func TestMR036_VisionChangedReachesTheRightPlayers(t *testing.T) {
 		}
 	}
 	if _, err := m.maps.UpdateMapPoint(t.Context(), connect.NewRequest(&mapsv1.UpdateMapPointRequest{
-		CampaignId: c.campaign, MapId: c.mapID, PointId: c.entrance.GetId(), Description: proto.String("outra"),
+		CampaignId: c.campaign, MapId: c.mapID, PointId: c.entrance.GetId(), Description: new("outra"),
 	})); err != nil {
 		t.Fatal(err)
 	}
@@ -789,7 +790,7 @@ func TestRN10_FogMapImageIsCopiedWhenShared(t *testing.T) {
 	}
 	before := len(master.list(campaign).GetImages())
 
-	res, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: a.GetId(), FogEnabled: proto.Bool(true)}))
+	res, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: a.GetId(), FogEnabled: new(true)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -827,7 +828,7 @@ func TestRN10_FogMapImageIsCopiedWhenShared(t *testing.T) {
 	master.setMapRevealed(campaign, solo.GetId(), true)
 	master.mustSetGrid(campaign, solo.GetId(), 12)
 	soloImage := master.getMapImage(campaign, solo.GetId())
-	res, err = master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: solo.GetId(), FogEnabled: proto.Bool(true)}))
+	res, err = master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: solo.GetId(), FogEnabled: new(true)}))
 	if err != nil || res.Msg.GetMap().GetImage().GetId() != soloImage {
 		t.Errorf("a fog map with its own image: image %q, error %v; want %q kept", res.Msg.GetMap().GetImage().GetId(), err, soloImage)
 	}
@@ -909,7 +910,7 @@ func TestFogGetMapTiming(t *testing.T) {
 			Light: &mapsv1.LightSpec{PresetKey: "light:torch"}, XBp: int32(x), YBp: int32(y), //nolint:gosec // G115: at most 10000
 		})
 	}
-	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: big.GetId(), FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: big.GetId(), FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 

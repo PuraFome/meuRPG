@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -111,12 +112,7 @@ func (a *armed) setConditions(t *testing.T, e *playv1.Encounter, label string, k
 
 func hasCondition(e *playv1.Encounter, t *testing.T, label, key string) bool {
 	t.Helper()
-	for _, c := range byLabel(t, e, label).GetConditions() {
-		if c == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(byLabel(t, e, label).GetConditions(), key)
 }
 
 func TestMR014_SleepUsesTheRealHitPoints(t *testing.T) {

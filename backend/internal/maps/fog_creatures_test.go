@@ -7,7 +7,6 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -252,7 +251,7 @@ func TestMR036_TheFamiliarsEyesGiveItsView(t *testing.T) {
 	}
 	// With "Visão do grupo" the other characters' views still count for the party, but not
 	// his own eyes. (Last: the group's view adds to everyone's memory.)
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: proto.Bool(true)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: new(true)})); err != nil {
 		t.Fatalf("SetMapFog(group) error = %v", err)
 	}
 	group := gus.mustVision(c.campaign, c.mapID)
