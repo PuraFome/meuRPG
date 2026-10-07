@@ -82,9 +82,9 @@
               }
               <a
                 class="map__link"
-                [routerLink]="['/campanhas', data.campaignId, 'mapas', gridMapId() ?? map.id, 'grade']"
+                [routerLink]="['/campaigns', data.campaignId, 'maps', gridMapId() ?? map.id, 'grid']"
                 (click)="close()"
-                [queryParams]="{ de: 'sessao' }"
+                [queryParams]="{ from: 'session' }"
               >
                 <mat-icon aria-hidden="true">grid_on</mat-icon>{{ size() && !noGridMap() ? 'Mudar a grade' : 'Definir a grade' }}
               </a>
@@ -101,9 +101,9 @@
                 O combate com mapa precisa dela.
                 <a
                   class="map__link"
-                  [routerLink]="['/campanhas', data.campaignId, 'mapas', data.map.id, 'grade']"
+                  [routerLink]="['/campaigns', data.campaignId, 'maps', data.map.id, 'grid']"
                   (click)="close()"
-                  [queryParams]="{ de: 'sessao' }"
+                  [queryParams]="{ from: 'session' }"
                 >
                   <mat-icon aria-hidden="true">grid_on</mat-icon>Definir a grade
                 </a>
@@ -208,7 +208,7 @@
           iniciativa.
         </p>
         <!-- A monster of the bestiary goes in through "Pôr no combate" there (MR-042). -->
-        <a class="bestiary-link" [routerLink]="['/campanhas', data.campaignId, 'bestiario']" (click)="close()">
+        <a class="bestiary-link" [routerLink]="['/campaigns', data.campaignId, 'bestiary']" (click)="close()">
           <mat-icon aria-hidden="true">pets</mat-icon>Pôr um monstro do bestiário
         </a>
       </section>

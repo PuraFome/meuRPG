@@ -11,15 +11,20 @@ on:
     paths:
       - "web/**"
       - ".github/workflows/web.yml"
+      - ".node-version"
   push:
     branches: [main]
     paths:
       - "web/**"
       - ".github/workflows/web.yml"
+      - ".node-version"
 
+# Only a pull request's runs cancel each other (a newer push makes the older
+# run pointless). A push to main always runs to the end, so every merge
+# leaves a complete signal instead of cancelling the previous merge's run.
 concurrency:
   group: web-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -27,6 +32,7 @@ permissions:
 jobs:
   web:
     name: test and build
+    timeout-minutes: 15
     runs-on: ubuntu-26.04
     defaults:
       run:
@@ -40,7 +46,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "22"
+          node-version-file: .node-version
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 

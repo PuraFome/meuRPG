@@ -33,7 +33,7 @@ test(
       campaignId = table.campaignId;
       const usedBefore = await slotsUsed(master, campaignId);
 
-      await player.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+      await player.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       const panel = player.locator('app-creatures-panel');
       await expect(panel.getByRole('heading', { name: 'Criaturas', level: 2 })).toBeVisible();
       await expect(panel.getByText('Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar uma.')).toBeVisible();
@@ -88,7 +88,7 @@ test(
       await expect(player.getByRole('button', { name: 'Dispensar' })).toBeFocused();
       await player.getByRole('button', { name: 'Dispensar' }).click();
       await player.getByRole('button', { name: 'Dispensar Tinta' }).click();
-      await expect(player).toHaveURL(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+      await expect(player).toHaveURL(`/campaigns/${campaignId}/characters/${table.characterId}`);
       await expect(player.locator('app-creatures-panel').getByText('Nenhuma criatura ainda.')).toBeVisible();
       expect(await listCreaturesRPC(player, campaignId, table.characterId)).toEqual([]);
 
@@ -122,7 +122,7 @@ test(
       await master.goto('/');
       await player.goto('/');
       const table = await tableForCreatures(master, player, `Sem sessão ${Date.now()}`, false);
-      await player.goto(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await player.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
       const button = player.locator('app-creatures-panel').getByRole('button', { name: 'Convocar Familiar' });
       await expect(button).toHaveAttribute('aria-disabled', 'true');
       await expect(player.getByText('Agora não há sessão aberta.')).toBeVisible();
@@ -165,12 +165,12 @@ test(
       const table = await tableForCreatures(master, player, `Mastim ${Date.now()}`);
       campaignId = table.campaignId;
       // The player is looking at the sheet while the master gives the creature.
-      await player.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+      await player.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       await expect(player.getByRole('heading', { name: 'Pensantus', level: 1 })).toBeVisible();
       // The session is known to the page (the cast button is on) before the master acts.
       await expect(player.locator('app-creatures-panel .cast__btn')).not.toHaveAttribute('aria-disabled', 'true');
 
-      await master.goto(`/campanhas/${campaignId}`);
+      await master.goto(`/campaigns/${campaignId}`);
       const row = master.locator('app-character-creatures');
       await expect(row.getByText('Nenhuma criatura')).toBeVisible();
       await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
@@ -199,7 +199,7 @@ test(
       await expect(card.getByRole('button', { name: 'Dispensar' })).toHaveCount(1);
 
       // The master corrects the hit points outside a combat (RN-02); the player sees the new number.
-      await master.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+      await master.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       const masterCard = master.locator('app-creatures-panel app-creature-card');
       await masterCard.getByRole('button', { name: 'Corrigir PV' }).click();
       await masterCard.getByLabel('PV de Mastim').fill('3');
@@ -208,7 +208,7 @@ test(
       await expect(card.locator('.tile', { hasText: 'PV' })).toContainText('3 de 5');
 
       // The master dismisses what he gave, in the list, asking in place first.
-      await master.goto(`/campanhas/${campaignId}`);
+      await master.goto(`/campaigns/${campaignId}`);
       await row.getByRole('button', { name: 'Dispensar Mastim' }).click();
       await expect(row.getByRole('alertdialog', { name: 'Dispensar Mastim?' })).toBeVisible();
       await row.getByRole('button', { name: 'Dispensar Mastim' }).click();
@@ -259,7 +259,7 @@ test(
         expect(res.status(), method).toBe(404);
         expect(await res.text(), method).not.toContain('hitPoints');
       }
-      await third.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+      await third.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       await expect(third.getByText('Esse personagem não existe, ou você não pode vê-lo.')).toBeVisible();
       await expect(third.locator('app-creatures-panel')).toHaveCount(0);
     } finally {

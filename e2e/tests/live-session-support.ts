@@ -78,7 +78,7 @@ export async function endSessionRPC(masterPage: Page, campaignId: string, gameSe
  * `ready`, the snapshot), and on a busy shared stack each can take seconds.
  */
 export async function openSessionPage(page: Page, campaignId: string): Promise<void> {
-  await page.goto(`/campanhas/${campaignId}/sessao`);
+  await page.goto(`/campaigns/${campaignId}/session`);
   await expect(page.getByText('Ao vivo', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
 }
 

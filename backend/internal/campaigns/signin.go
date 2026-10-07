@@ -15,7 +15,7 @@ import (
 // signed-out player open an invite link and join the campaign in one go,
 // with nothing stored in the browser (ADR-0009):
 //
-//  1. The invite page (/convite#t=<token>) posts a form to POST /auth/login
+//  1. The invite page (/invite#t=<token>) posts a form to POST /auth/login
 //     with intent=campaign_invite and intent_payload=<token>.
 //  2. Prepare checks the token's format and returns its SHA-256, which the
 //     identity module keeps in the login state (10 minutes, single use).
@@ -26,16 +26,16 @@ import (
 //     exactly as the AcceptInvite RPC would (acceptInvite), and says where
 //     to go.
 //
-// The browser then lands on /campanhas/<campaign_id>, or on
-// /convite/erro?motivo=<reason> if the invite did not work. The reasons are
+// The browser then lands on /campaigns/<campaign_id>, or on
+// /invite/error?reason=<reason> if the invite did not work. The reasons are
 // the InviteFailure* constants. Someone who has just become a pending member
 // (an invite with approval, RN-15) lands on
-// /campanhas/<campaign_id>/personagens/novo instead: the character they
+// /campaigns/<campaign_id>/characters/new instead: the character they
 // create there is what the master approves.
 const InviteIntentKind = "campaign_invite"
 
-// Why accepting an invite at sign-in failed: the motivo in
-// /convite/erro?motivo=<reason>.
+// Why accepting an invite at sign-in failed: the reason in
+// /invite/error?reason=<reason>.
 const (
 	// InviteFailureExpired: the invite's time ran out.
 	InviteFailureExpired = "expired"
@@ -119,9 +119,9 @@ func (i inviteIntent) complete(ctx context.Context, userID string, tokenHash []b
 // page, which shows the character they already created.
 func joinedPath(joined joinResult) string {
 	if joined.pending && !joined.alreadyMember {
-		return "/campanhas/" + joined.campaign.ID + "/personagens/novo"
+		return "/campaigns/" + joined.campaign.ID + "/characters/new"
 	}
-	return "/campanhas/" + joined.campaign.ID
+	return "/campaigns/" + joined.campaign.ID
 }
 
 // inviteFailure turns an error from acceptInvite into the reason for the
@@ -148,5 +148,5 @@ func inviteFailure(err error) string {
 // work. The reason is one of the InviteFailure* constants, never a value
 // from the request, so the URL holds nothing secret or personal.
 func failedInvitePath(reason string) string {
-	return "/convite/erro?motivo=" + reason
+	return "/invite/error?reason=" + reason
 }

@@ -34,7 +34,7 @@ const races = (): OptionSwitchEntry[] => [
 ];
 
 describe('option switches: counts and words (E10-01 state 3)', () => {
-  const racas = navBySlug('racas')!;
+  const racas = navBySlug('races')!;
 
   it('counts the races apart from the sub-races: "Raças: 2 de 3 ligadas"', () => {
     expect(counterText(racas, mainCount(races(), racas))).toBe('Raças: 2 de 3 ligadas');
@@ -43,14 +43,14 @@ describe('option switches: counts and words (E10-01 state 3)', () => {
   });
 
   it('agrees the noun: backgrounds are "ligados"', () => {
-    const bg = navBySlug('antecedentes')!;
+    const bg = navBySlug('backgrounds')!;
     const list = [opt(TableContentKind.BACKGROUND, 'Acólito'), opt(TableContentKind.BACKGROUND, 'Nobre', { off: true })];
     expect(counterText(bg, mainCount(list, bg))).toBe('Antecedentes: 1 de 2 ligados');
   });
 
   it('keeps each kind in its own group', () => {
     const mixed = [...races(), opt(TableContentKind.CLASS, 'Mago'), opt(TableContentKind.SPELL, 'Luz')];
-    expect(groupRows(mixed, navBySlug('racas')!).map((o) => o.namePt)).toEqual(['Anão', 'Corujeiro', 'Tiefling', 'Anão da Colina']);
+    expect(groupRows(mixed, navBySlug('races')!).map((o) => o.namePt)).toEqual(['Anão', 'Corujeiro', 'Tiefling', 'Anão da Colina']);
     expect(CONTENT_NAV.map((n) => groupRows(mixed, n).length)).toEqual([1, 0, 4, 0, 1]);
   });
 
@@ -73,7 +73,7 @@ describe('option switches: counts and words (E10-01 state 3)', () => {
     const nav = navBySlug('subclasses')!;
     expect(counterText(nav, mainCount(list, nav)) + hiddenCounterText(nav, hiddenByParent(subs))).toBe('Subclasses: 2 de 3 ligadas · 2 escondidas pela classe');
     expect(hiddenCounterText(nav, 0)).toBe('');
-    expect(hiddenCounterText(navBySlug('racas')!, 1)).toBe(' · 1 escondida pela raça');
+    expect(hiddenCounterText(navBySlug('races')!, 1)).toBe(' · 1 escondida pela raça');
   });
 
   it('puts each sub-race under its race, and a lone sub-race (its race filtered out) at the end', () => {

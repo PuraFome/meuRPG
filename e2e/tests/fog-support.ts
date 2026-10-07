@@ -255,7 +255,7 @@ export async function moveTo(master: Page, table: FogTable, characterId: string,
 
 /** The session page's route. */
 export function sessionRoute(campaignId: string): string {
-  return `/campanhas/${campaignId}/sessao`;
+  return `/campaigns/${campaignId}/session`;
 }
 
 /** A combat of the party and the three goblins in the guard room, on Pensantus's turn. */

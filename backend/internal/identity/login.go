@@ -170,7 +170,7 @@ func (s *Service) startLogin(w http.ResponseWriter, r *http.Request, req loginRe
 
 	returnTo, ok := safeReturnTo(req.returnTo)
 	if !ok {
-		s.rejectLogin(w, r, badLogin("unsafe_return_to", nil), "return_to must be a path on this site, like /campanhas")
+		s.rejectLogin(w, r, badLogin("unsafe_return_to", nil), "return_to must be a path on this site, like /campaigns")
 		return
 	}
 
@@ -432,7 +432,7 @@ func oauthErrorCode(code string) string {
 // before parsing ("/\t/host" becomes "//host").
 //
 // A fragment (#...) is dropped: this app keeps secrets there, such as an
-// invite token (/convite#t=...), and the login state must not store one.
+// invite token (/invite#t=...), and the login state must not store one.
 func safeReturnTo(raw string) (string, bool) {
 	if raw == "" {
 		return "/", true

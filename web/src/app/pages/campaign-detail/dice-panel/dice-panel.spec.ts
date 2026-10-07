@@ -46,6 +46,6 @@ describe('DicePanel', () => {
     expect(el.textContent).toContain('Todos rolam os próprios dados');
     expect(el.querySelector('input[type=radio]')).toBeNull();
     expect(el.querySelector('button')).toBeNull();
-    expect(el.querySelector('a[href="/campanhas/camp-1/regras"]')?.textContent).toContain('Mudar em Regras da mesa');
+    expect(el.querySelector('a[href="/campaigns/camp-1/rules"]')?.textContent).toContain('Mudar em Regras da mesa');
   });
 });

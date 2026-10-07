@@ -20,10 +20,10 @@ import { BestiaryRow, type BestiaryRowData } from './bestiary-row';
 type ListState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
 /** The query parameters that keep the search when the master opens a stat block and comes back. */
-const PARAMS = { query: 'q', type: 'tipo', size: 'tamanho', cr: 'nd' } as const;
+const PARAMS = { query: 'q', type: 'type', size: 'size', cr: 'cr' } as const;
 
 /**
- * "/campanhas/:id/bestiario" (MR-042, E10-08, states 1, 2 and 7): the master's list of the SRD's
+ * "/campaigns/:id/bestiary" (MR-042, E10-08, states 1, 2 and 7): the master's list of the SRD's
  * 334 creatures. Four filters (name in Portuguese or the SRD's English, type, size and challenge
  * rating) ask the server, which answers the whole bestiary in one page (`page_size` 400): a row
  * says the Portuguese name, the SRD's name in small type, the type and size, the ND, and the
@@ -127,7 +127,7 @@ export class BestiaryList {
     });
     // The list stays on screen while the next page's chunk loads, so the pending typing pause could still fire
     // and its URL write would win over the row's navigation. Leaving the list cancels the pause and the write.
-    const listPath = `/campanhas/${this.campaignId}/bestiario`;
+    const listPath = `/campaigns/${this.campaignId}/bestiary`;
     const sub = this.router.events.subscribe((event) => {
       if (event instanceof NavigationStart && event.url.split('?')[0] !== listPath) {
         this.leaving = true;

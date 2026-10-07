@@ -29,7 +29,7 @@ test(
     // The file really carries the metadata the server must drop.
     expect(photo.includes(Buffer.from('Exif\0\0'))).toBe(true);
 
-    await page.goto(`/campanhas/${campaignId}/galeria`);
+    await page.goto(`/campaigns/${campaignId}/gallery`);
     await expect(page.getByRole('heading', { name: 'Nenhuma imagem ainda' })).toBeVisible();
     await expect(page.getByText('Use imagens do jogo. Não envie fotos de pessoas sem a autorização delas.')).toBeVisible();
 
@@ -62,7 +62,7 @@ test(
   async ({ page }) => {
     await page.goto('/');
     const campaignId = await newCampaign(page, `Galeria recusa ${Date.now()}`);
-    await page.goto(`/campanhas/${campaignId}/galeria`);
+    await page.goto(`/campaigns/${campaignId}/gallery`);
     await expect(page.getByRole('heading', { name: 'Nenhuma imagem ainda' })).toBeVisible();
 
     // A text file named .png: the browser calls it image/png, so only the
@@ -104,20 +104,20 @@ test(
     const token = (await invite.json()).token as string;
 
     // The master sees the panel on the campaign page.
-    await page.goto(`/campanhas/${campaignId}`);
+    await page.goto(`/campaigns/${campaignId}`);
     await expect(page.getByRole('heading', { name: 'Galeria', exact: true, level: 2 })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
 
     const playerContext = await newSignedInContext(browser, 'Jogador Teste');
     try {
-      const link = new URL(`/convite#t=${token}`, page.url()).toString();
+      const link = new URL(`/invite#t=${token}`, page.url()).toString();
       const { page: player } = await acceptInvite(playerContext, link);
       await expect(player.getByRole('heading', { level: 1 })).toBeVisible();
       await expect(player.getByRole('heading', { name: 'Membros' })).toBeVisible();
       await expect(player.getByRole('heading', { name: 'Galeria', exact: true })).toHaveCount(0);
       await expect(player.getByRole('link', { name: 'Abrir galeria' })).toHaveCount(0);
 
-      await player.goto(`/campanhas/${campaignId}/galeria`);
+      await player.goto(`/campaigns/${campaignId}/gallery`);
       await expect(player.getByText('Só o mestre vê a galeria da campanha.')).toBeVisible();
       await expect(player.getByRole('button', { name: 'Enviar imagem' })).toHaveCount(0);
 
@@ -138,7 +138,7 @@ test(
     await page.goto('/');
     const campaignId = await newCampaign(page, `Galeria renomear ${Date.now()}`);
     const jpeg = await canvasJpeg(page);
-    await page.goto(`/campanhas/${campaignId}/galeria`);
+    await page.goto(`/campaigns/${campaignId}/gallery`);
     await uploadThroughPicker(page, [{ name: 'IMG_2031.jpg', mimeType: 'image/jpeg', buffer: jpeg }]);
     await expect(galleryCard(page, 'IMG_2031')).toBeVisible();
 
@@ -178,7 +178,7 @@ test(
     const campaignId = await newCampaign(page, `Galeria ver ${Date.now()}`);
     const first = await canvasJpeg(page, '#5b4834');
     const second = await canvasJpeg(page, '#9e2b3b');
-    await page.goto(`/campanhas/${campaignId}/galeria`);
+    await page.goto(`/campaigns/${campaignId}/gallery`);
     await uploadThroughPicker(page, [
       { name: 'Planta da torre.jpg', mimeType: 'image/jpeg', buffer: first },
       { name: 'Capitão Goblin.jpg', mimeType: 'image/jpeg', buffer: second },

@@ -170,7 +170,7 @@ describe('PointPanel: a battle point and its encounter (MR-043)', () => {
     const el = panel(MapPointKind.BATTLE);
     const link = el.querySelector<HTMLAnchorElement>('.pp__enc')!;
     expect(link.textContent?.replace('swords', '').trim()).toBe('Montar o encontro deste ponto');
-    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/encounters?map=map-1&point=pt-1');
   });
 
   it('another kind of point has no such link', () => {

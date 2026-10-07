@@ -19,8 +19,8 @@ test(
       await masterPage.goto('/');
       await playerPage.goto('/');
       const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Dados ${Date.now()}`);
-      await masterPage.goto(`/campanhas/${campaignId}`);
-      await playerPage.goto(`/campanhas/${campaignId}`);
+      await masterPage.goto(`/campaigns/${campaignId}`);
+      await playerPage.goto(`/campaigns/${campaignId}`);
 
       // The default: players choose, and the player may pick. The master's panel only says it: the mode is edited in
       // "Regras da mesa" (one place, saved with the rest of the rules).
@@ -36,7 +36,7 @@ test(
       await masterPage.getByRole('radiogroup', { name: 'Como os jogadores rolam' }).locator('label', { hasText: 'Todos rolam no app' }).click();
       await masterPage.getByRole('button', { name: 'Salvar regras' }).click();
       await expect(masterPage.getByText(/Regras salvas\./)).toBeVisible();
-      await masterPage.goto(`/campanhas/${campaignId}`);
+      await masterPage.goto(`/campaigns/${campaignId}`);
       await expect(dados.getByText('Todos rolam no app')).toBeVisible();
       await playerPage.reload();
       await expect(como.getByText('O mestre decidiu: todos rolam no app.')).toBeVisible();
@@ -45,7 +45,7 @@ test(
 
       // Back to "Cada jogador escolhe": the player picks their own dice and
       // the master sees it in the list.
-      await masterPage.goto(`/campanhas/${campaignId}/regras`);
+      await masterPage.goto(`/campaigns/${campaignId}/rules`);
       await masterPage.getByRole('radiogroup', { name: 'Como os jogadores rolam' }).locator('label', { hasText: 'Cada jogador escolhe' }).click();
       await masterPage.getByRole('button', { name: 'Salvar regras' }).click();
       await expect(masterPage.getByText(/Regras salvas\./)).toBeVisible();
@@ -54,7 +54,7 @@ test(
       await como.getByRole('button', { name: 'Salvar escolha' }).click();
       await expect(como.getByText('Salvo.')).toBeVisible();
 
-      await masterPage.goto(`/campanhas/${campaignId}`);
+      await masterPage.goto(`/campaigns/${campaignId}`);
       await expect(dados.getByRole('listitem').filter({ hasText: 'Jogador sem nome' })).toContainText('Meus próprios dados');
     } finally {
       await master.close();

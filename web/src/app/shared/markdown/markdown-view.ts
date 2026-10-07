@@ -13,7 +13,7 @@ export interface MarkdownRefs {
   readonly images: ReadonlyMap<string, { readonly width: number; readonly height: number }> | null;
 }
 
-/** A click on a `mapa:` or `ficha:` link. */
+/** A click on a `map:` or `character:` link. */
 export interface RefOpen {
   readonly kind: RefKind;
   readonly id: string;
@@ -28,7 +28,7 @@ export interface RefOpen {
  * each token with text interpolation and property bindings, never
  * `innerHTML`, so nothing the text says can run. Images come from
  * `/images/<id>` with their caption (`<figure>`); one that fails to load
- * shows "Imagem apagada". `mapa:` and `ficha:` links are buttons that ask
+ * shows "Imagem apagada". `map:` and `character:` links are buttons that ask
  * the page to open a dialog (`openRef`); one whose target is gone (`refs`
  * says so) is plain text followed by "(mapa apagado)" or "(ficha apagada)".
  *
@@ -57,7 +57,7 @@ export class MarkdownView {
   readonly parsed = this.blocks;
 
   protected isMissing(kind: RefKind, id: string): boolean {
-    const known = kind === 'mapa' ? this.refs()?.maps : this.refs()?.characters;
+    const known = kind === 'map' ? this.refs()?.maps : this.refs()?.characters;
     return known != null && !known.has(id);
   }
 

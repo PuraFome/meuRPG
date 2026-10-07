@@ -112,7 +112,7 @@ func TestSignInWithAnIntent(t *testing.T) {
 
 			// POST /auth/login answers like GET: a redirect to the
 			// provider, with a login cookie, and the /auth headers.
-			rec := h.postLogin(h.mux, intentForm("/convite", testIntent, token), nil)
+			rec := h.postLogin(h.mux, intentForm("/invite", testIntent, token), nil)
 			if rec.Code != http.StatusSeeOther {
 				t.Fatalf("POST /auth/login status = %d, want 303; body: %s", rec.Code, rec.Body)
 			}
@@ -130,8 +130,8 @@ func TestSignInWithAnIntent(t *testing.T) {
 				if len(states) != 1 || states[0].IntentKind != testIntent || string(states[0].IntentData) != string(hash) {
 					t.Fatalf("login states = %+v, want one with the payload's hash", states)
 				}
-				if states[0].ReturnTo != "/convite" {
-					t.Errorf("return_to = %q, want /convite", states[0].ReturnTo)
+				if states[0].ReturnTo != "/invite" {
+					t.Errorf("return_to = %q, want /invite", states[0].ReturnTo)
 				}
 			}
 
@@ -159,9 +159,9 @@ func TestSignInWithAnIntent(t *testing.T) {
 func TestSignInWithoutAnIntentByPOST(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t, withIntents(map[string]IntentHandler{testIntent: newFakeIntent()}))
-	rec := h.signInWithIntent(url.Values{"return_to": {"/campanhas"}})
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campanhas" {
-		t.Errorf("callback = %d to %q, want 303 to /campanhas", rec.Code, rec.Header().Get("Location"))
+	rec := h.signInWithIntent(url.Values{"return_to": {"/campaigns"}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campaigns" {
+		t.Errorf("callback = %d to %q, want 303 to /campaigns", rec.Code, rec.Header().Get("Location"))
 	}
 	findCookie(t, rec, SessionCookieName)
 }
@@ -178,36 +178,36 @@ func TestFailedIntentKeepsTheSignIn(t *testing.T) {
 	}{
 		{
 			name:     "an error with a path goes to that path",
-			complete: func(string, []byte) (string, error) { return "/convite/erro?motivo=expired", errors.New("expired") },
-			want:     "/convite/erro?motivo=expired",
+			complete: func(string, []byte) (string, error) { return "/invite/error?reason=expired", errors.New("expired") },
+			want:     "/invite/error?reason=expired",
 			wantLog:  `"msg":"sign-in intent failed","intent":"test_intent","error":"expired"`,
 		},
 		{
 			name:     "an error without a path goes to return_to",
 			complete: func(string, []byte) (string, error) { return "", errors.New("database is down") },
-			want:     "/convite",
+			want:     "/invite",
 			wantLog:  `"msg":"sign-in intent failed"`,
 		},
 		{
 			name:     "no path and no error goes to return_to",
 			complete: func(string, []byte) (string, error) { return "", nil },
-			want:     "/convite",
+			want:     "/invite",
 		},
 		{
 			name:     "a path on another site goes to return_to",
 			complete: func(string, []byte) (string, error) { return "https://evil.example/", nil },
-			want:     "/convite",
+			want:     "/invite",
 			wantLog:  `"msg":"sign-in intent returned a path outside this site; using return_to"`,
 		},
 		{
 			name:     "a protocol-relative path goes to return_to",
 			complete: func(string, []byte) (string, error) { return "//evil.example", errors.New("x") },
-			want:     "/convite",
+			want:     "/invite",
 		},
 		{
 			name:     "a fragment is dropped",
-			complete: func(string, []byte) (string, error) { return "/campanhas/1#t=segredo", nil },
-			want:     "/campanhas/1",
+			complete: func(string, []byte) (string, error) { return "/campaigns/1#t=segredo", nil },
+			want:     "/campaigns/1",
 		},
 	}
 	for _, tt := range tests {
@@ -218,7 +218,7 @@ func TestFailedIntentKeepsTheSignIn(t *testing.T) {
 			h := newHarness(t, withIntents(map[string]IntentHandler{testIntent: intent}))
 			token, _ := secret.New()
 
-			rec := h.signInWithIntent(intentForm("/convite", testIntent, token))
+			rec := h.signInWithIntent(intentForm("/invite", testIntent, token))
 			if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != tt.want {
 				t.Errorf("callback = %d to %q, want 303 to %q", rec.Code, rec.Header().Get("Location"), tt.want)
 			}
@@ -238,12 +238,12 @@ func TestIntentUnknownAtTheCallback(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t, withIntents(map[string]IntentHandler{testIntent: newFakeIntent()}))
 	token, _ := secret.New()
-	rec := h.postLogin(h.mux, intentForm("/convite", testIntent, token), nil)
+	rec := h.postLogin(h.mux, intentForm("/invite", testIntent, token), nil)
 	loginCookie := findCookie(t, rec, loginCookieName)
 	h.mem.tamperLoginStates(func(st *LoginState) { st.IntentKind = "removed_intent" })
 
 	rec = h.finishLogin(h.authorize(rec.Header().Get("Location")), loginCookie)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/convite" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/invite" {
 		t.Errorf("callback = %d to %q, want 303 to return_to", rec.Code, rec.Header().Get("Location"))
 	}
 	findCookie(t, rec, SessionCookieName)
@@ -257,7 +257,7 @@ func TestIntentUnknownAtTheCallback(t *testing.T) {
 func TestLoginFormRejects(t *testing.T) {
 	t.Parallel()
 	token, _ := secret.New()
-	valid := intentForm("/convite", testIntent, token)
+	valid := intentForm("/invite", testIntent, token)
 
 	tests := []struct {
 		name       string
@@ -379,7 +379,7 @@ func TestLoginFormCrossOrigin(t *testing.T) {
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
 	h.svc.Mount(srv.Handle)
 	token, _ := secret.New()
-	form := intentForm("/convite", testIntent, token)
+	form := intentForm("/invite", testIntent, token)
 
 	tests := []struct {
 		name    string
@@ -410,7 +410,7 @@ func TestLoginFormSharesTheRateLimit(t *testing.T) {
 	h := newHarness(t, withIntents(map[string]IntentHandler{testIntent: newFakeIntent()}))
 	burst := loginRateLimit.PerClient.Burst
 	token, _ := secret.New()
-	form := intentForm("/convite", testIntent, token)
+	form := intentForm("/invite", testIntent, token)
 
 	for i := range burst {
 		var code int
@@ -440,13 +440,13 @@ func TestLoginFormSharesTheRateLimit(t *testing.T) {
 func TestIntentLogsHaveNoSecrets(t *testing.T) {
 	t.Parallel()
 	intent := newFakeIntent()
-	intent.complete = func(string, []byte) (string, error) { return "/convite/erro?motivo=expired", errors.New("expired") }
+	intent.complete = func(string, []byte) (string, error) { return "/invite/error?reason=expired", errors.New("expired") }
 	h := newHarness(t, withIntents(map[string]IntentHandler{testIntent: intent}))
 	token, hash := secret.New()
 
-	h.signInWithIntent(intentForm("/convite", testIntent, token))
-	h.postLogin(h.mux, intentForm("/convite", "unknown_kind", token), nil)
-	h.postLogin(h.mux, intentForm("/convite", testIntent, token+"x"), nil)
+	h.signInWithIntent(intentForm("/invite", testIntent, token))
+	h.postLogin(h.mux, intentForm("/invite", "unknown_kind", token), nil)
+	h.postLogin(h.mux, intentForm("/invite", testIntent, token+"x"), nil)
 
 	logs := h.logs.String()
 	for what, value := range map[string]string{

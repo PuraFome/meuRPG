@@ -73,7 +73,7 @@
               <ul class="mr-list">
                 @for (c of s.campaigns; track c.id) {
                   <li>
-                    <a class="mr-list__row" [routerLink]="['/campanhas', c.id]">
+                    <a class="mr-list__row" [routerLink]="['/campaigns', c.id]">
                       @if (c.awaitingApproval) {
                         <span class="pending-dot" aria-hidden="true"></span>
                       }

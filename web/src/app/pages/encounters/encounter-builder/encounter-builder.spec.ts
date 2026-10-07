@@ -30,7 +30,7 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
 
   let api0: ((a: FakeEncountersClient) => void) | null = null;
 
-  async function open(url = '/campanhas/camp-1/encontros') {
+  async function open(url = '/campaigns/camp-1/encounters') {
     api = new FakeEncountersClient();
     api0?.(api);
     api0 = null;
@@ -39,7 +39,7 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
     opened = [];
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/encontros', component: EncounterBuilder }]),
+        provideRouter([{ path: 'campaigns/:id/encounters', component: EncounterBuilder }]),
         { provide: EncountersClient, useValue: api },
         { provide: CreaturesClient, useValue: creatures },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
@@ -102,7 +102,7 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
     expect(flat(el.querySelector('.head-xp'))).toBe('Baixa · 0 de 1.250 XP');
     expect(Array.from(el.querySelectorAll('.bar__budget')).map((b) => flat(b))).toEqual(['1.250', '1.875', '2.600']);
     expect(flat(el.querySelector('.guide'))).toBe('Guia de dificuldade do SRD 5.2.1 (regras de 2024) · Créditos');
-    expect(el.querySelector('.guide a')?.getAttribute('href')).toBe('/creditos');
+    expect(el.querySelector('.guide a')?.getAttribute('href')).toBe('/credits');
     expect(flat(el.querySelector('.guide--c'))).toBe('Com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.');
     expect(flat(el.querySelector('.cap'))).toBe('A criatura mais forte pode ter ND 7: o menor nível do grupo (4) mais 3.');
     expect(flat(el.querySelector('.lines .mr-muted'))).toContain('Nenhuma criatura ainda');
@@ -218,17 +218,17 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
     const saved = opened.find((o) => o.id === 'save-t')!.data as { entries: unknown[]; mapId: string };
     expect(saved.entries).toHaveLength(4);
     expect(flat(el.querySelector('.mr-notice--success'))).toBe('Encontro guardado em “Emboscada na ponte”. Moderada · 1.550 de 1.875 XP · 13 criaturas. Abrir o mapa');
-    expect(el.querySelector('.mr-notice--success a')?.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1');
+    expect(el.querySelector('.mr-notice--success a')?.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1');
   });
 
   it('opens "Guardar" on the point a link from the editor named', async () => {
-    const { button, fill } = await open('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+    const { button, fill } = await open('/campaigns/camp-1/encounters?map=map-1&point=pt-1');
     await fill();
     button('Guardar no ponto de batalha').click();
     expect(opened.find((o) => o.id === 'save-t')?.data).toMatchObject({ mapId: 'map-1', pointId: 'pt-1' });
   });
 
-  it('with ?ponto= it brings the point\'s saved encounter in; "Tirar o encontro do ponto" asks in place and clears it', async () => {
+  it('with ?point= it brings the point\'s saved encounter in; "Tirar o encontro do ponto" asks in place and clears it', async () => {
     api0 = (a: FakeEncountersClient) => {
       a.battle.set('pt-1', {
         encounter: { monsters: [{ creatureKey: GOBLIN.key, count: 2 }, { creatureKey: 'monster:gone', count: 1 }], hp: 'average', hidden: true },
@@ -236,7 +236,7 @@ describe('EncounterBuilder (MR-043, RN-29, E10-09)', () => {
         unknownKeys: ['monster:gone'],
       });
     };
-    const { el, button, settle } = await open('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+    const { el, button, settle } = await open('/campaigns/camp-1/encounters?map=map-1&point=pt-1');
     expect(flat(el.querySelector('.lines__n'))).toBe('2 criaturas');
     expect(api.getCalls).toEqual(['pt-1']);
     expect(flat(el.querySelector('.mr-notice--warning'))).toContain('Uma criatura deste ponto não está mais no SRD.');

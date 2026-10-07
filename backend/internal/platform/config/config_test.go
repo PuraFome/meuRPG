@@ -335,3 +335,16 @@ func TestTraceProjectOnlyOnCloudRun(t *testing.T) {
 		t.Errorf("on Cloud Run: project %q, err %v; want my-proj", run.TraceProject, err)
 	}
 }
+
+func TestListenHost(t *testing.T) {
+	t.Parallel()
+
+	all, err := Load(env(map[string]string{}))
+	if err != nil || all.ListenHost != "" {
+		t.Errorf("without LISTEN_HOST: %q, err %v; want empty (every interface, for Cloud Run)", all.ListenHost, err)
+	}
+	local, err := Load(env(map[string]string{"LISTEN_HOST": " 127.0.0.1 "}))
+	if err != nil || local.ListenHost != "127.0.0.1" {
+		t.Errorf("LISTEN_HOST=127.0.0.1: %q, err %v; want 127.0.0.1", local.ListenHost, err)
+	}
+}

@@ -3,7 +3,6 @@ package dbtest
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 )
 
 // recorder is a testing.TB that keeps what the guard reports instead of
@@ -43,10 +43,7 @@ func (r *recorder) found() []string {
 // the one-connection deadlock (the second line of defense, which takes
 // nestedAcquireTimeout). The nested read fails at once, canceled.
 func TestGuardCatchesANestedAcquisition(t *testing.T) {
-	rawURL := os.Getenv(EnvVar)
-	if rawURL == "" {
-		t.Skip(EnvVar + " is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 	ctx := t.Context()
 
 	rec := &recorder{TB: t}
@@ -100,10 +97,7 @@ func TestGuardCatchesANestedAcquisition(t *testing.T) {
 
 // TestPoolsHaveOneConnection pins the default size of a test pool.
 func TestPoolsHaveOneConnection(t *testing.T) {
-	rawURL := os.Getenv(EnvVar)
-	if rawURL == "" {
-		t.Skip(EnvVar + " is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 	pool, err := db.NewPoolWith(t.Context(), rawURL, guardPool(&recorder{TB: t}, 1))
 	if err != nil {
 		t.Fatalf("NewPoolWith() error = %v", err)

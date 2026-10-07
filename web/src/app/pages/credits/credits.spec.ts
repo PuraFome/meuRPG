@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 
-import { Creditos, SRD_521_ATTRIBUTION, SRD_ATTRIBUTION } from './creditos';
+import { Credits, SRD_521_ATTRIBUTION, SRD_ATTRIBUTION } from './credits';
 
-describe('Creditos', () => {
+describe('Credits', () => {
   it('shows the exact CC-BY-4.0 attribution text for the SRD 5.1', () => {
-    TestBed.configureTestingModule({ imports: [Creditos] });
-    const fixture = TestBed.createComponent(Creditos);
+    TestBed.configureTestingModule({ imports: [Credits] });
+    const fixture = TestBed.createComponent(Credits);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
@@ -14,8 +14,8 @@ describe('Creditos', () => {
   });
 
   it('shows the SRD 5.2.1 attribution of the NOTICE, with the label of the 2024 tables', () => {
-    TestBed.configureTestingModule({ imports: [Creditos] });
-    const fixture = TestBed.createComponent(Creditos);
+    TestBed.configureTestingModule({ imports: [Credits] });
+    const fixture = TestBed.createComponent(Credits);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
@@ -31,8 +31,8 @@ describe('Creditos', () => {
   });
 
   it('never mentions the "D&D" or "Dungeons & Dragons" trademark', () => {
-    TestBed.configureTestingModule({ imports: [Creditos] });
-    const fixture = TestBed.createComponent(Creditos);
+    TestBed.configureTestingModule({ imports: [Credits] });
+    const fixture = TestBed.createComponent(Credits);
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
 

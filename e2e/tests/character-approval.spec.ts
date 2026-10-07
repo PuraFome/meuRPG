@@ -41,10 +41,10 @@ async function campaignWithApprovalInvite(page: Page, name: string): Promise<{ c
 /** Opens the master's "Esperando aprovação" list and the sheet of the
  * character named `name` from it. */
 async function openPendingCharacter(page: Page, campaignId: string, name: string): Promise<void> {
-  await page.goto(`/campanhas/${campaignId}`);
+  await page.goto(`/campaigns/${campaignId}`);
   await expect(page.getByRole('heading', { name: 'Esperando aprovação' })).toBeVisible();
   await page.getByRole('list', { name: 'Esperando aprovação' }).getByRole('link', { name }).click();
-  await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/[^/]+$`));
   await expect(page.getByRole('heading', { level: 1 })).toContainText(name);
 }
 
@@ -61,7 +61,7 @@ test(
       // Accepting takes the new pending member straight to creating the
       // character (RN-15: "pelo convite, o jogador já cria o personagem").
       await playerPage.goto(link);
-      await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+      await expect(playerPage).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/new$`));
 
       const characterId = await createCharacterViaUI(playerPage, campaignId, pensantus);
       // The state tag is one word; the notice under the header spells it out.
@@ -71,7 +71,7 @@ test(
       await expect(playerPage.getByRole('link', { name: 'Editar ficha' })).toBeVisible();
 
       // The campaign page shows only the name and the wait, never the members.
-      await playerPage.goto(`/campanhas/${campaignId}`);
+      await playerPage.goto(`/campaigns/${campaignId}`);
       await expect(playerPage.getByRole('heading', { level: 1 })).toHaveText(campaignName);
       await expect(playerPage.getByText('Esperando a aprovação do mestre.')).toBeVisible();
       await expect(playerPage.getByRole('heading', { name: 'Membros' })).toHaveCount(0);
@@ -114,7 +114,7 @@ test(
     try {
       const playerPage = await playerContext.newPage();
       await playerPage.goto(link);
-      await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+      await expect(playerPage).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/new$`));
 
       // Created through the API: the editor is the first test's story.
       const created = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', pensantus));
@@ -126,7 +126,7 @@ test(
       await openPendingCharacter(page, campaignId, pensantus.name);
       await page.getByRole('button', { name: 'Recusar personagem' }).click();
       await page.getByRole('button', { name: 'Confirmar recusa' }).click();
-      await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}$`));
+      await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
       await expect(page.getByRole('heading', { name: 'Esperando aprovação' })).toHaveCount(0);
 
       // The player never became a member: the same not_found as anyone who
@@ -139,7 +139,7 @@ test(
         characterId: character.id,
       });
       expect(getCharacterRes.status()).toBe(404);
-      await playerPage.goto(`/campanhas/${campaignId}`);
+      await playerPage.goto(`/campaigns/${campaignId}`);
       await expect(playerPage.getByRole('heading', { level: 1 })).toHaveText('Campanha não encontrada');
 
       // The link was single use: trying again needs a new invite.
@@ -163,10 +163,10 @@ test(
       const playerPage = await playerContext.newPage();
       // Accepting takes them to "Criar personagem"; they leave without creating one.
       await playerPage.goto(link);
-      await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+      await expect(playerPage).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/new$`));
 
       // Only the master sees them, under "Membros", with the tag and the dates.
-      await page.goto(`/campanhas/${campaignId}`);
+      await page.goto(`/campaigns/${campaignId}`);
       const members = page.getByRole('region', { name: 'Membros' });
       const waiting = page.getByRole('list', { name: 'Esperando para criar o personagem' });
       await expect(waiting).toContainText('Jogador sem nome');
@@ -189,7 +189,7 @@ test(
       await expect(waiting).toHaveCount(0);
 
       // They are no longer in the campaign: the same not_found screen as anyone else.
-      await playerPage.goto(`/campanhas/${campaignId}`);
+      await playerPage.goto(`/campaigns/${campaignId}`);
       await expect(playerPage.getByRole('heading', { level: 1 })).toHaveText('Campanha não encontrada');
     } finally {
       await playerContext.close();

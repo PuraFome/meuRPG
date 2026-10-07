@@ -54,7 +54,7 @@ type PageState =
 type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
 /**
- * "/campanhas/:id/personagens/:characterId" (MR-004): the sheet as the paper
+ * "/campaigns/:id/characters/:characterId" (MR-004): the sheet as the paper
  * sheet (docs/design.md, direction A). The header (name, state, identity
  * fields and the viewer's actions), then the notices (approval, rules
  * issues), then the sheet: four columns from 1200px (ability medallions;
@@ -308,7 +308,7 @@ export class CharacterSheetPage {
     try {
       await this.source.rejectCharacter(campaignId, characterId);
       this.approvalState.set({ status: 'idle' });
-      await this.router.navigate(['/campanhas', campaignId]);
+      await this.router.navigate(['/campaigns', campaignId]);
     } catch (err) {
       this.confirmingReject.set(false);
       this.approvalState.set({ status: 'error', message: describeCharacterError(err) });

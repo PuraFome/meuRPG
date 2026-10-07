@@ -7,7 +7,7 @@ import { callRPC } from './support';
 
 /** The "Tesouro" page of a campaign. */
 export function treasureRoute(campaignId: string): string {
-  return `/campanhas/${campaignId}/tesouro`;
+  return `/campaigns/${campaignId}/treasure`;
 }
 
 /** `GenerateTreasure` through the API, as the master (the same call the page makes). */

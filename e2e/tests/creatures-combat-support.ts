@@ -169,7 +169,7 @@ export async function trapAt(master: Page, campaignId: string, mapId: string, na
 
 /** The session page's route. */
 export function sessionRoute(campaignId: string): string {
-  return `/campanhas/${campaignId}/sessao`;
+  return `/campaigns/${campaignId}/session`;
 }
 
 /**

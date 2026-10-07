@@ -358,7 +358,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
 /**
  * `CharacterSheetSource` over the generated `CharacterService` client
  * (`meurpg.characters.v1`, phase 2). Provided at the route level for
- * `/campanhas/:id/personagens/:characterId` — see
+ * `/campaigns/:id/characters/:characterId` — see
  * `character-sheet.routes.ts` — so this client, and the two generated
  * `_pb.ts` files it pulls in, stay out of the app's eager bundle.
  */

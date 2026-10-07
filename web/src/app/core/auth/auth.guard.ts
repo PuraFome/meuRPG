@@ -34,7 +34,7 @@ export const authGuard: CanActivateFn = (_route, routerState) => {
         return true;
       }
       if (state.status === 'unavailable') {
-        return router.createUrlTree(['/indisponivel'], {
+        return router.createUrlTree(['/unavailable'], {
           queryParams: { return_to: routerState.url },
         });
       }

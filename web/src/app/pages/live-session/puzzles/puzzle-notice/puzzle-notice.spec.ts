@@ -37,7 +37,7 @@ describe('PuzzleNotice (MR-038, E10-06 state 6)', () => {
     expect(textOf(el.querySelector('section'))).toContain('O selo da Capela Apagar as luzes · todos jogam juntos');
     const open = el.querySelector('a')!;
     expect(open.textContent?.trim()).toBe('Abrir o quebra-cabeça');
-    expect(open.getAttribute('href')).toBe('/campanhas/camp-1/sessao?quebra-cabeca=a');
+    expect(open.getAttribute('href')).toBe('/campaigns/camp-1/session?puzzle=a');
   });
 
   it('fills only the first unsolved card, so the page never has two filled buttons', async () => {

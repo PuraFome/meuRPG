@@ -44,7 +44,7 @@ test(
       campaignId = table.campaignId;
 
       // A map without a grid: "Iniciar combate" sends the master to the grid page.
-      await m.goto(`/campanhas/${campaignId}/sessao`);
+      await m.goto(`/campaigns/${campaignId}/session`);
       await m.getByRole('button', { name: 'Iniciar combate' }).click();
       await expect(m.getByText('Esse mapa ainda não tem grade.')).toBeVisible();
       // A map without a grid is no map for "Com mapa" (RN-25): that choice waits with its reason, and "Sem mapa" is the one chosen.
@@ -60,7 +60,7 @@ test(
       await expect(m.getByText('20 × 14')).toBeVisible();
       await expect(m.getByText('30 m × 21 m')).toBeVisible();
       await m.getByRole('button', { name: 'Salvar grade' }).click();
-      await expect(m).toHaveURL(/\/sessao$/);
+      await expect(m).toHaveURL(/\/session$/);
 
       // Start with the party and three hidden goblins (and the captain).
       await m.getByRole('button', { name: 'Iniciar combate' }).click();
@@ -1075,7 +1075,7 @@ test('a distância sai em metros e em quadrados: o quadro Movimento, a barra do 
     await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('7,5 m · 5 quadrados');
 
     // The sheet: one line, in a box of its own, with the feet in parentheses.
-    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     await expect(p.getByText('7,5 m · 5 quadrados (25 pés)')).toBeVisible();
   } finally {
     await done();

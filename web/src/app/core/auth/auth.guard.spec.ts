@@ -45,27 +45,27 @@ describe('authGuard', () => {
       sessionExpiresAt: null,
     });
 
-    await expect(firstValueFrom(runGuard('/campanhas'))).resolves.toBe(true);
+    await expect(firstValueFrom(runGuard('/campaigns'))).resolves.toBe(true);
   });
 
   it('sends the browser through sign-in when signed out, and cancels the navigation', async () => {
     auth.set({ status: 'signed-out' });
 
-    await expect(firstValueFrom(runGuard('/campanhas'))).resolves.toBe(false);
-    expect(auth.signIn).toHaveBeenCalledWith('/campanhas');
+    await expect(firstValueFrom(runGuard('/campaigns'))).resolves.toBe(false);
+    expect(auth.signIn).toHaveBeenCalledWith('/campaigns');
   });
 
-  it('redirects to /indisponivel, keeping return_to, when the server is unavailable', async () => {
+  it('redirects to /unavailable, keeping return_to, when the server is unavailable', async () => {
     auth.set({ status: 'unavailable' });
 
-    const decision = await firstValueFrom(runGuard('/campanhas'));
+    const decision = await firstValueFrom(runGuard('/campaigns'));
     expect(decision).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(decision as UrlTree)).toBe('/indisponivel?return_to=%2Fcampanhas');
+    expect(router.serializeUrl(decision as UrlTree)).toBe('/unavailable?return_to=%2Fcampaigns');
     expect(auth.signIn).not.toHaveBeenCalled();
   });
 
   it('waits for a resolved state instead of guessing while unknown', async () => {
-    const decision = firstValueFrom(runGuard('/campanhas'));
+    const decision = firstValueFrom(runGuard('/campaigns'));
     let settled = false;
     void decision.then(() => (settled = true));
 

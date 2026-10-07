@@ -33,7 +33,7 @@ export async function tableForImages(master: Page, pensantusPlayer: Page, torenP
   return { ...table, hiddenId: table.goblin2Id };
 }
 
-export const mapRoute = (table: { campaignId: string; mapId: string }) => `/campanhas/${table.campaignId}/mapas/${table.mapId}`;
+export const mapRoute = (table: { campaignId: string; mapId: string }) => `/campaigns/${table.campaignId}/maps/${table.mapId}`;
 
 /** `GetMapImageReference` as the master calls it: the NPCs the players see now, and what the drawing says. */
 export async function referenceRPC(page: Page, table: { campaignId: string; mapId: string }, kind: 'IMAGE_GENERATION_KIND_MAP_SCENE' | 'IMAGE_GENERATION_KIND_TEXTURED_MAP' | 'IMAGE_GENERATION_KIND_ISOMETRIC'): Promise<Record<string, any>> {

@@ -1111,7 +1111,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fixture.detectChanges();
 
     expect(fake.rejectCharacterCalls).toEqual(['char-1']);
-    expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+    expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
   it('shows the server\'s reason when the rejection fails', async () => {
