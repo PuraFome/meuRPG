@@ -203,7 +203,8 @@ func TestReadTxSeesOneSnapshot(t *testing.T) {
 
 	read := func(q interface {
 		QueryRow(context.Context, string, ...any) pgx.Row
-	}) int {
+	},
+	) int {
 		var n int
 		if err := q.QueryRow(ctx, "SELECT n FROM "+table+" WHERE id = 1").Scan(&n); err != nil {
 			t.Fatalf("read n: %v", err)

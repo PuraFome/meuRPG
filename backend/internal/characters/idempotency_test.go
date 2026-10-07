@@ -3,10 +3,10 @@ package characters
 import (
 	"sync"
 	"testing"
+	"uuid"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
-	"uuid"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
