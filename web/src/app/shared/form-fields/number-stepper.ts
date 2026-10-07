@@ -8,11 +8,11 @@ import { MatIconModule } from '@angular/material/icon';
   template: `
     <div class="step" role="group" [attr.aria-label]="label()" [attr.data-field]="path() || null">
       <span class="step__label" aria-hidden="true">{{ label() }}</span>
-      <button type="button" class="step__btn" [attr.aria-label]="'Menos ' + label()" [disabled]="value() <= min()" (click)="valueChange.emit(value() - 1)">
+      <button type="button" class="step__btn" [attr.aria-label]="'Menos ' + label()" [disabled]="!softDisable() && value() <= min()" [attr.aria-disabled]="softDisable() && value() <= min() ? 'true' : null" [class.step__btn--soft]="softDisable() && value() <= min()" (click)="bump(-1)">
         <mat-icon aria-hidden="true">remove</mat-icon>
       </button>
       <output class="step__value" [attr.aria-label]="label() + ' ' + text()">{{ text() }}</output>
-      <button type="button" class="step__btn" [attr.aria-label]="'Mais ' + label()" [disabled]="value() >= max()" (click)="valueChange.emit(value() + 1)">
+      <button type="button" class="step__btn" [attr.aria-label]="'Mais ' + label()" [disabled]="!softDisable() && value() >= max()" [attr.aria-disabled]="softDisable() && value() >= max() ? 'true' : null" [class.step__btn--soft]="softDisable() && value() >= max()" (click)="bump(1)">
         <mat-icon aria-hidden="true">add</mat-icon>
       </button>
     </div>
@@ -49,7 +49,8 @@ import { MatIconModule } from '@angular/material/icon';
       color: var(--mr-ink);
       cursor: pointer;
 
-      &:disabled {
+      &:disabled,
+      &--soft {
         opacity: 0.4;
         cursor: default;
       }
@@ -77,5 +78,17 @@ export class NumberStepper {
   readonly max = input(9);
   readonly path = input('');
   readonly valueChange = output<number>();
-  protected readonly text = computed(() => (this.value() > 0 ? `+${this.value()}` : this.value() < 0 ? `−${Math.abs(this.value())}` : '0'));
+  /** Plain numbers ("4") instead of the signed ones of a modifier ("+4"): a level, a count. */
+  readonly signed = input(true);
+  /** At a limit the button says `aria-disabled` and stays focusable, so the focus never drops when the last step is taken. */
+  readonly softDisable = input(false);
+
+  protected bump(by: number): void {
+    const next = this.value() + by;
+    if (next >= this.min() && next <= this.max()) {
+      this.valueChange.emit(next);
+    }
+  }
+
+  protected readonly text = computed(() => (!this.signed() ? String(this.value()) : this.value() > 0 ? `+${this.value()}` : this.value() < 0 ? `−${Math.abs(this.value())}` : '0'));
 }
