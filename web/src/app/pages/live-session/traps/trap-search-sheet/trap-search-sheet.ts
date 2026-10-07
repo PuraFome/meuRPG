@@ -115,7 +115,9 @@ export class TrapSearchSheet {
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
-  protected readonly message = computed(() => resultMessage(this.result()?.names ?? [], this.result()?.res.foundPointIds.length ?? 0));
+  protected readonly message = computed(() =>
+    resultMessage(this.result()?.names ?? [], this.result()?.res.foundPointIds.length ?? 0),
+  );
   /** What the server rolled, written as it counts: "1d20 (13) + 4 (Investigação) = 17". */
   protected readonly rolls = computed(() => {
     const r = this.result();

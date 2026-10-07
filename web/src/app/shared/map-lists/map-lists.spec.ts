@@ -268,7 +268,9 @@ describe('MapTokensList', () => {
 
     it("offers no Esconder on the creature's row, which would hide its owner", () => {
       const rows = mount().querySelectorAll('li');
-      expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe('Esconder Pensantus');
+      expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe(
+        'Esconder Pensantus',
+      );
       expect(rows[1].textContent).toContain('Corvo');
       expect(rows[1].textContent).toContain('Visível');
       expect(rows[1].querySelector('button')).toBeNull();

@@ -182,7 +182,10 @@ export class TrapFireSheet {
         const left = [...this.picked()].filter((id) => !listed.has(id));
         if (left.length > 0) {
           this.picked.update((set) => new Set([...set].filter((id) => listed.has(id))));
-          this.gone.update((names) => [...names, ...left.map((id) => this.seen.get(id) ?? 'Alguém')]);
+          this.gone.update((names) => [
+            ...names,
+            ...left.map((id) => this.seen.get(id) ?? 'Alguém'),
+          ]);
         }
       });
     });

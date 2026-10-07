@@ -113,7 +113,9 @@ export class MilestoneSheet {
       return;
     }
     const reason = this.reason.value.trim();
-    const ids = this.rows().filter((r) => this.checked().has(r.id)).map((r) => r.id);
+    const ids = this.rows()
+      .filter((r) => this.checked().has(r.id))
+      .map((r) => r.id);
     // New values are a new milestone; the same values again are a retry.
     const signature = JSON.stringify([reason, ids]);
     if (signature !== this.keyFor) {

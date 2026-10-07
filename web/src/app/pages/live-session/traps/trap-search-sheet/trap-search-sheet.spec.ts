@@ -28,7 +28,10 @@ function blockedBy(reason: EncounterBlockedReason): ConnectError {
 const twoDiceError = () => blockedBy(EncounterBlockedReason.SEARCH_NEEDS_TWO_DICE);
 
 describe('TrapSearchSheet', () => {
-  function setup(responses: (unknown | Error)[], listed?: ReturnType<typeof create<typeof MapPointSchema>>[]) {
+  function setup(
+    responses: (unknown | Error)[],
+    listed?: ReturnType<typeof create<typeof MapPointSchema>>[],
+  ) {
     const sent: unknown[] = [];
     const keys: string[] = [];
     const api = {
