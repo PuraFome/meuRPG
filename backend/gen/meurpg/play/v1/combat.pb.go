@@ -11841,7 +11841,9 @@ type TrapCaught struct {
 	// creature's, with `character_id` the owner's.
 	TargetId    string `protobuf:"bytes,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	TargetLabel string `protobuf:"bytes,2,opt,name=target_label,json=targetLabel,proto3" json:"target_label,omitempty"`
-	// The player's character, or the NPC's character, the target stands for (a UUID).
+	// The character the target stands for (a UUID): the player's character, for the
+	// master and for the players; an NPC's only for the master (an NPC's character is
+	// the master's secret).
 	CharacterId string `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// The trap's attacks that were made against it, in order.
 	Attacks []*TrapAttackRoll `protobuf:"bytes,4,rep,name=attacks,proto3" json:"attacks,omitempty"`
