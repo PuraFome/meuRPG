@@ -91,7 +91,7 @@ describe('zoom and pan', () => {
   });
 
   it('says the zoom as a percentage', () => {
-    expect(scaleLabel(1.25).replace(' ', ' ')).toBe('125 %');
+    expect(scaleLabel(1.25).replace('\u00a0', ' ')).toBe('125 %');
   });
 
   it('puts a centre in the middle of the viewport', () => {

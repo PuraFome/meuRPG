@@ -21,7 +21,7 @@ import {
   summaryTiles,
 } from './session-summary';
 
-const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
+const plain = (s: string | undefined) => s?.replace(/\u00a0/g, ' ');
 
 function category(kind: HighlightKind, value: number, ...winners: [string, string][]) {
   return create(HighlightCategorySchema, {

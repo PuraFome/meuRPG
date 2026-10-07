@@ -1,7 +1,7 @@
 import { SpellHitPointEffectKind, SpellRangeKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { spellSummary } from './spell-summary';
 
-const plain = (s: string) => s.replace(/ /g, ' ');
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 describe('spellSummary (the line under a spell in the list, E8-02)', () => {
   it('says the reach and the pool of Sono from its own details', () => {

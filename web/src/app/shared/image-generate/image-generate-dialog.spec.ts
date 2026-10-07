@@ -189,9 +189,7 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(u.text()).toContain('Quem aparece na imagem');
       expect(u.text()).toContain('0 de 3 marcados');
       expect(u.text()).toContain('Capitão Goblin');
-      expect(u.text()).toContain(
-        'Uma criatura que eles não veem não está na lista'.toLowerCase().replace('uma', 'uma'),
-      );
+      expect(u.text()).toContain('uma criatura que eles não veem não está na lista');
       expect(u.text()).toContain('Referências da galeria');
       expect(u.text()).toContain('Objetos: 0 de 10 · Personagens: 0 de 4.');
       expect(u.text()).toContain('Descreva o lugar');

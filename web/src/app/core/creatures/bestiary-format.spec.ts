@@ -20,7 +20,7 @@ describe("the bestiary's words (MR-042)", () => {
       hitPoints: 11,
     });
     expect(typeAndSize(wolf).replace(/\u00a0/g, ' ')).toBe('Fera · Médio');
-    expect(acAndHp(wolf).replace(/ /g, ' ')).toBe('CA 13 · PV 11');
+    expect(acAndHp(wolf).replace(/\u00a0/g, ' ')).toBe('CA 13 · PV 11');
     expect(capitalized('')).toBe('');
   });
 

@@ -48,8 +48,8 @@ describe('scene view', () => {
   });
 
   it('says passed or not with the DC the action has, and nothing without one', () => {
-    expect(passLabel(scene, pensantus)?.replace(/ /g, ' ')).toBe('Passou · CD 12');
-    expect(passLabel(scene, toren)?.replace(/ /g, ' ')).toBe('Não passou · CD 13');
+    expect(passLabel(scene, pensantus)?.replace(/\u00a0/g, ' ')).toBe('Passou · CD 12');
+    expect(passLabel(scene, toren)?.replace(/\u00a0/g, ' ')).toBe('Não passou · CD 13');
     // No DC on the action: the server sends no `passed`, and the pill is not drawn.
     expect(passLabel(scene, brisa)).toBeNull();
     // The action was removed since: the word stays, the DC is gone.

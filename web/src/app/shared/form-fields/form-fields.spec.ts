@@ -39,7 +39,7 @@ describe('form fields', () => {
   let fixture: ReturnType<typeof TestBed.createComponent<Host>>;
   let el: HTMLElement;
   const host = () => fixture.componentInstance;
-  const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
   beforeEach(() => {
     TestBed.resetTestingModule();

@@ -5,7 +5,7 @@ import { ArchiveQuestion } from './archive-question';
 import { ArchiveSheet } from './archive-sheet';
 
 describe('the archive question (E10-01 states 8 and 10)', () => {
-  const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
   describe('in place (a laptop)', () => {
     function setup(name = 'Corujeiro', using = '2 fichas usam Corujeiro agora.') {

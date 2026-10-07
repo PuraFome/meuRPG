@@ -575,7 +575,7 @@ export function isGridPath(
   if (path === prefix) return true;
   const m = new RegExp(
     '^' +
-      prefix.replace(/\./g, '\\.') +
+      prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
       '\\[(\\d+)\\](?:\\.(prof_bonus|cantrips_known|spells_known|slots)|\\.slots\\[(\\d)\\])?$',
   ).exec(path);
   if (!m) return false;

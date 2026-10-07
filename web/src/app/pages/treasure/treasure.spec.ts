@@ -26,7 +26,7 @@ import {
 } from '../../core/treasure/treasure-testing';
 import { TreasurePage } from './treasure';
 
-const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
+const plain = (s: string | undefined) => s?.replace(/\u00a0/g, ' ');
 
 describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 5)', () => {
   let api: FakeTreasureClient;

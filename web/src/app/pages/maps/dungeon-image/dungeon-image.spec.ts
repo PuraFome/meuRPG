@@ -48,7 +48,7 @@ describe('DungeonImage ("Imagem" and "Redesenhar", E10-05 5 and 6)', () => {
     await fixture.whenStable();
   }
 
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const button = (label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       b.textContent?.trim().endsWith(label),

@@ -98,7 +98,7 @@ describe('TableAbilityScores', () => {
     fixture.detectChanges();
   }
 
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const tab = (label: string) =>
     Array.from(el.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find(
       (i) => i.closest('label')?.textContent?.replace('check', '').trim() === label,

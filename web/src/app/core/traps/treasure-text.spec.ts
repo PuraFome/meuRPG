@@ -15,7 +15,7 @@ const found = (id: string, who: string[] = ['Brisa']) =>
   });
 const hidden = (id: string) =>
   create(MapPointSchema, { id, kind: MapPointKind.TREASURE, name: 'Baú com agulha' });
-const plain = (t: string) => t.replace(/ /g, ' ');
+const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 
 describe('treasure text', () => {
   it('writes PO with the unit tied to the number', () => {

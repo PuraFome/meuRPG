@@ -23,7 +23,7 @@ import {
   trapVisibility,
 } from './trap-text';
 
-const plain = (t: string) => t.replace(/ /g, ' ');
+const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 
 describe('trap text', () => {
   it('names the state, with the time of a firing', () => {

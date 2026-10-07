@@ -54,8 +54,8 @@ describe('DungeonRooms (E10-05 5)', () => {
     await setup();
     expect(rooms()).toHaveLength(3);
     expect(text(rooms()[0]!)).toContain('Sala 1');
-    expect(text(rooms()[0]!).replace(/ /g, ' ')).toContain('4,5 × 4,5 m');
-    expect(text(rooms()[1]!).replace(/ /g, ' ')).toContain('7,5 × 4,5 m');
+    expect(text(rooms()[0]!).replace(/\u00a0/g, ' ')).toContain('4,5 × 4,5 m');
+    expect(text(rooms()[1]!).replace(/\u00a0/g, ' ')).toContain('7,5 × 4,5 m');
   });
 
   it('keeps its live region in the page, hidden while empty (not display: none)', async () => {

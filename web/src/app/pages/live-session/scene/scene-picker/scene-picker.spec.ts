@@ -74,7 +74,11 @@ describe('ScenePicker', () => {
     const { el } = setup();
     const rows = Array.from(el.querySelectorAll('.pk__row'));
     expect(rows).toHaveLength(3); // the battle point is not a scene
-    const text = (i: number) => rows[i].textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    const text = (i: number) =>
+      rows[i].textContent
+        ?.replace(/\u00a0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     expect(text(0)).toContain('A carroça tombada');
     expect(text(0)).toContain('Revelado no mapa · 5 ações');
     expect(text(1)).toContain('Escondido no mapa · 3 ações');

@@ -69,7 +69,10 @@ describe("the master's card under Sono in the log (E8-03)", () => {
     const rows = [...card.querySelectorAll('.row')].map((r) => [
       r.querySelector('.row__name')!.textContent!.trim(),
       r.querySelector('.row__hp')!.textContent!.trim(),
-      r.querySelector('.row__math')!.textContent!.replace(/ /g, ' ').trim(),
+      r
+        .querySelector('.row__math')!
+        .textContent!.replace(/\u00a0/g, ' ')
+        .trim(),
       r.querySelector('.row__word mat-icon')!.textContent!.trim(),
       r
         .querySelector('.row__word')!

@@ -64,7 +64,7 @@ function sleep(master: boolean) {
 const players = new Set(['Pensantus', 'Brisa', 'Toren']);
 const master = { master: true, players };
 const player = { master: false, players };
-const plain = (text: string) => text.replace(/ /g, ' ');
+const plain = (text: string) => text.replace(/\u00a0/g, ' ');
 
 describe('Sono in the log (E8-03)', () => {
   it('gives the master the whole account: the dice, each creature from the lowest hit points up, what is left', () => {

@@ -255,7 +255,7 @@ describe("a Bard's Magical Secrets (level 10)", () => {
   it('marks the rows from another class and says where they come from', () => {
     const items = spellOptions(bard10(), BARD_SPELLS, have);
     expect(items.find((i) => i.key === 'spell:bless')).toMatchObject({ outside: true });
-    expect(items.find((i) => i.key === 'spell:bless')?.sub.replace(/ /g, ' ')).toContain(
+    expect(items.find((i) => i.key === 'spell:bless')?.sub.replace(/\u00a0/g, ' ')).toContain(
       'de outra classe',
     );
     expect(items.find((i) => i.key === 'spell:thunderwave')?.outside).toBe(false);

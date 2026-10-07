@@ -28,7 +28,10 @@ describe('ScenePlayer', () => {
 
   const rows = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('.sc__row'));
   const flat = (e: Element | null | undefined) =>
-    e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    e?.textContent
+      ?.replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   /** The words of an element, without its icons' ligature names. */
   const words = (e: Element | null | undefined) => {
     if (!e) {

@@ -25,7 +25,10 @@ const words = (e: Element | null | undefined) => {
   }
   const copy = e.cloneNode(true) as Element;
   copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
-  return copy.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  return copy.textContent
+    ?.replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 function category(kind: HighlightKind, value: number, ...winners: [string, string][]) {

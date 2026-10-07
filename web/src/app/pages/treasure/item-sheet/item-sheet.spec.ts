@@ -62,7 +62,7 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
 
   it('gives the value with the 2024 label, the credits link and the rule in words', async () => {
     const { el } = await setup();
-    expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('4.000 PO');
+    expect(flat(el.querySelector('.value__num'))?.replace(/\u00a0/g, ' ')).toBe('4.000 PO');
     expect(flat(el.querySelector('.value__src'))).toBe(
       'Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba)',
     );
@@ -85,8 +85,8 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
 
   it('a potion says the halving: "Comum vale 100 PO; um item que se gasta vale a metade."', async () => {
     const { el } = await setup('item:potion-of-healing-1', 'Poção de Cura');
-    expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('50 PO');
-    expect(flat(el.querySelector('.value__rule'))?.replace(/ /g, ' ')).toBe(
+    expect(flat(el.querySelector('.value__num'))?.replace(/\u00a0/g, ' ')).toBe('50 PO');
+    expect(flat(el.querySelector('.value__rule'))?.replace(/\u00a0/g, ' ')).toBe(
       'Comum vale 100 PO; um item que se gasta vale a metade.',
     );
     expect(Array.from(el.querySelectorAll('.tags li')).map((l) => flat(l))).toEqual([

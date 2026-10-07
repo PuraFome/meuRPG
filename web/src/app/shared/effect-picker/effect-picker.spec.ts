@@ -26,7 +26,7 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     el = fixture.nativeElement as HTMLElement;
   }
 
-  const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const field = (path: string) =>
     el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
   const change = (select: HTMLSelectElement, label: string) => {
