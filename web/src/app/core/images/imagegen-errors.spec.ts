@@ -10,6 +10,7 @@ describe('every refusal, by its typed detail (never by the message)', () => {
   const cases: [ImageGenerationBlockedReason, string][] = [
     [ImageGenerationBlockedReason.OFF, 'A geração de imagens não está ligada neste servidor.'],
     [ImageGenerationBlockedReason.GALLERY_FULL, 'A galeria está cheia. Apague as imagens que você não usa e tente de novo.'],
+    [ImageGenerationBlockedReason.DAILY_LIMIT_REACHED, 'O servidor já fez todas as imagens de hoje. Tente de novo amanhã.'],
     [ImageGenerationBlockedReason.REQUEST_TOO_LARGE, 'O pedido ficou grande demais para o serviço. Escolha menos imagens de referência.'],
     [ImageGenerationBlockedReason.MAP_HAS_NO_GRID, 'Este mapa não tem grade. Defina a grade do mapa para gerar a imagem a partir dele.'],
     [ImageGenerationBlockedReason.MAP_IMAGE_TOO_LARGE, 'A imagem deste mapa tem mais de 16 megapixels (4.000 × 4.000 px). Troque por uma menor para usar o mapa com textura.'],

@@ -124,6 +124,17 @@ services:
       # Generated images (MR-039) come from the deterministic fake generator, with
       # no key and no network. The API refuses this value on Cloud Run.
       IMAGE_GENERATOR: fake
+      # The e2e suite sends every account's requests from one address and shares
+      # a few accounts across its workers, so it would sit near the per-address
+      # and per-user request limits. Ten times the production numbers keep it
+      # clear of them; the limits themselves are tested in Go (docs/operacao.md).
+      RATE_LIMIT_MULTIPLIER: "10"
+      # No cap on campaigns per master here: the e2e suite makes hundreds of
+      # campaigns as one test master. The API refuses "off" on Cloud Run.
+      MAX_CAMPAIGNS_PER_USER: "off"
+      # The images here come from the free fake generator: the server's daily
+      # cap only gets in the way of repeated e2e runs on one database.
+      IMAGE_DAILY_LIMIT: "10000"
     volumes:
       # A named volume, so images survive `make down` and `make up`. The
       # image creates this folder owned by nonroot, the user the API runs

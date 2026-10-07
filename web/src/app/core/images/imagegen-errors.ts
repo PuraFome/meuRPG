@@ -41,6 +41,8 @@ export function blockedText(reason: ImageGenerationBlockedReason, status: ImageG
       return status
         ? `Você usou as ${status.monthlyLimit} imagens de ${monthName(status.month)}. Volta em ${resetText(status)}.`
         : 'A campanha usou as imagens deste mês. O limite volta no mês que vem.';
+    case ImageGenerationBlockedReason.DAILY_LIMIT_REACHED:
+      return 'O servidor já fez todas as imagens de hoje. Tente de novo amanhã.';
     case ImageGenerationBlockedReason.GALLERY_FULL:
       return 'A galeria está cheia. Apague as imagens que você não usa e tente de novo.';
     case ImageGenerationBlockedReason.REQUEST_TOO_LARGE:

@@ -29,7 +29,7 @@ func TestTheRealWiringIsComplete(t *testing.T) {
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	m, err := wireModules(logger, pool, content, nil, &gen.Fake{}, 20)
+	m, err := wireModules(logger, pool, content, nil, &gen.Fake{}, wireOptions{MonthlyImages: 20})
 	if err != nil {
 		t.Fatalf("wireModules() error = %v", err)
 	}

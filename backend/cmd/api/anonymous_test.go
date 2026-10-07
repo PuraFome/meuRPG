@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
@@ -52,7 +53,7 @@ func buildHandlerSet(t *testing.T) http.Handler {
 
 	// No image store and no image generator: like a server without BLOB_DIR
 	// or GEMINI_API_KEY, whose image RPCs still refuse an anonymous caller.
-	m, err := wireModules(logger, pool, content, nil, nil, 20)
+	m, err := wireModules(logger, pool, content, nil, nil, wireOptions{MonthlyImages: 20})
 	must(t, err)
 	t.Cleanup(m.play.Close)
 
@@ -70,7 +71,7 @@ func buildHandlerSet(t *testing.T) http.Handler {
 	mux := http.NewServeMux()
 	opts := connectOptions(logger)
 	mux.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), opts...))
-	mountModules(mux.Handle, m, identityService, opts)
+	mountModules(mux.Handle, m, identityService, opts, ratelimit.NewPolicy(1).RPC, logger)
 	return mux
 }
 

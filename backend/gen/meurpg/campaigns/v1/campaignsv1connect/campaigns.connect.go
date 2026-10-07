@@ -86,7 +86,10 @@ const (
 // CampaignServiceClient is a client for the meurpg.campaigns.v1.CampaignService service.
 type CampaignServiceClient interface {
 	// CreateCampaign creates a campaign; the caller becomes its master
-	// (MR-001).
+	// (MR-001). It can be refused with a CampaignCreationRefused detail
+	// (RN-30): `resource_exhausted` when the caller is already master of the
+	// most campaigns the server allows, `permission_denied` when the server
+	// only lets some people create campaigns and the caller is not one.
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another
@@ -471,7 +474,10 @@ func (c *campaignServiceClient) SetCampaignXpMode(ctx context.Context, req *conn
 // CampaignServiceHandler is an implementation of the meurpg.campaigns.v1.CampaignService service.
 type CampaignServiceHandler interface {
 	// CreateCampaign creates a campaign; the caller becomes its master
-	// (MR-001).
+	// (MR-001). It can be refused with a CampaignCreationRefused detail
+	// (RN-30): `resource_exhausted` when the caller is already master of the
+	// most campaigns the server allows, `permission_denied` when the server
+	// only lets some people create campaigns and the caller is not one.
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another

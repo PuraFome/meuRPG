@@ -50,6 +50,12 @@ import (
 // (a proposal; docs/operacao.md has the cost behind it).
 const DefaultMonthlyImages = 20
 
+// DefaultDailyImages is how many images the whole server may generate per day
+// (Brazil's day), on top of each campaign's monthly limit: with one table and
+// 20 a month, a day is never close, so the cap only bites when someone is
+// abusing it, and it bounds the Gemini bill (docs/operacao.md).
+const DefaultDailyImages = 100
+
 const (
 	// maxPromptCharacters is the longest master text, in characters. The
 	// image_requests_prompt_length CHECK says the same.
@@ -100,6 +106,13 @@ func monthOf(t time.Time) (key string, resets time.Time) {
 	t = t.In(brazil)
 	start := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, brazil)
 	return start.Format("2006-01"), start.AddDate(0, 1, 0)
+}
+
+// dayStart is the first instant of t's day in Brazil's time, where the daily
+// cap on the whole server's images starts over.
+func dayStart(t time.Time) time.Time {
+	t = t.In(brazil)
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, brazil)
 }
 
 // stylePhrases and ratios turn the API's enums into what goes to the model.
@@ -193,10 +206,11 @@ func (s *Service) statusIn(ctx context.Context, q *mapsdb.Queries, campaignID st
 // errBlocked is the failed_precondition with the ImageGenerationBlocked detail.
 func errBlocked(reason mapsv1.ImageGenerationBlockedReason, status *mapsv1.ImageGenerationStatus) error {
 	message := map[mapsv1.ImageGenerationBlockedReason]string{
-		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_OFF:               "image generation is not on in this server",
-		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED:     "the campaign used its images of the month",
-		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL:      "the campaign's gallery is full",
-		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE: "the references are too big to send together",
+		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_OFF:                 "image generation is not on in this server",
+		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED:       "the campaign used its images of the month",
+		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_GALLERY_FULL:        "the campaign's gallery is full",
+		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED: "the server made all its images of the day, try again tomorrow",
+		mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE:   "the references are too big to send together",
 	}[reason]
 	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(message))
 	if detail, detailErr := connect.NewErrorDetail(&mapsv1.ImageGenerationBlocked{Reason: reason, Status: status}); detailErr == nil {
@@ -397,6 +411,13 @@ func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (m
 	case status.GetRemaining() <= 0:
 		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED, status)
 	}
+	// The server's cap of the day, before any image is read and shrunk. reserve
+	// checks it again in its transaction, which is the one that counts.
+	if made, err := s.queries.CountImageRequestsSince(ctx, dayStart(s.now())); err != nil {
+		return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "count the day's generated images", err)
+	} else if made >= s.dailyImages {
+		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED, status)
+	}
 	prep, err := s.prepare(ctx, campaignID, n, status)
 	if err != nil {
 		return mapsdb.ImageRequest{}, nil, err
@@ -572,6 +593,15 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_OFF, status)
 		case status.GetRemaining() <= 0:
 			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_LIMIT_REACHED, status)
+		}
+		// The server's cap of the day, counted in the transaction that inserts, so
+		// two requests for the last slot cannot both get it.
+		made, err := q.CountImageRequestsSince(ctx, dayStart(s.now()))
+		if err != nil {
+			return fmt.Errorf("count the day's generated images: %w", err)
+		}
+		if made >= s.dailyImages {
+			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED, status)
 		}
 		usage, err := q.GetGalleryUsage(ctx, campaignID)
 		if err != nil {

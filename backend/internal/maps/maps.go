@@ -251,6 +251,14 @@ type Config struct {
 	// MonthlyImages is how many images a campaign may generate per month. Zero
 	// means DefaultMonthlyImages.
 	MonthlyImages int32
+	// DailyImages is how many images the whole server may generate per day,
+	// whichever the campaign: a ceiling on the Gemini bill on top of the monthly
+	// limit. Zero means DefaultDailyImages.
+	DailyImages int32
+	// DownloadLimit and UploadLimit limit, per user, the image, thumbnail and
+	// tile downloads and the uploads (platform/ratelimit.Policy). Nil means no
+	// limit (tests).
+	DownloadLimit, UploadLimit *ratelimit.Limiter
 }
 
 // Service implements GalleryService, MapService, DungeonService, TreasureService and the image routes.
@@ -301,11 +309,15 @@ type Service struct {
 	// tiles is the image of a fog map as tiles per player (tiles.go).
 	tiles *tileRenderer
 
+	// routeLimits are the per-user limits of the image routes (ratelimit.go).
+	routeLimits routeLimits
+
 	// The generated images (imagegen.go): the model behind them (nil: off), the
 	// month's cap per campaign, the calls in flight at once, and the goroutines
 	// to wait for at shutdown and at the end of a test.
 	generator     gen.Generator
 	monthlyImages int32
+	dailyImages   int32
 	generating    chan struct{}
 	generations   sync.WaitGroup
 	// baseCtx is what the generation goroutines derive from; CancelGenerations
@@ -375,10 +387,15 @@ func New(cfg Config) (*Service, error) {
 		tiles:          newTileRenderer(),
 		generator:      cfg.Generator,
 		monthlyImages:  cfg.MonthlyImages,
+		dailyImages:    cfg.DailyImages,
+		routeLimits:    newRouteLimits(cfg.DownloadLimit, cfg.UploadLimit, cfg.Logger),
 		generating:     make(chan struct{}, maxGenerating),
 	}
 	if s.monthlyImages <= 0 {
 		s.monthlyImages = DefaultMonthlyImages
+	}
+	if s.dailyImages <= 0 {
+		s.dailyImages = DefaultDailyImages
 	}
 	s.baseCtx, s.cancelBase = context.WithCancel(context.Background())
 	if s.logger == nil {
@@ -440,13 +457,15 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(mapsv1connect.NewTreasureServiceHandler(s, opts...))
 
 	withAuthz := authz.Middleware(sessions, members, s.logger)
-	route := func(h http.HandlerFunc) http.Handler {
-		return s.imagesOn(s.withSession(sessions, withAuthz(h)))
+	// limit is the per-user rate limit: after the session, which tells the user,
+	// and before the authorization, which reads the database.
+	route := func(limit *routeLimit, h http.HandlerFunc) http.Handler {
+		return s.imagesOn(s.withSession(sessions, s.limitUser(sessions, limit, withAuthz(h))))
 	}
-	handle("POST "+UploadPath, route(s.handleUpload))
-	handle("GET "+ImagesPath+"{id}", route(s.handleImage))
-	handle("GET "+ImagesPath+"{id}/thumb", route(s.handleThumbnail))
-	handle("GET "+TilesPath+"{map}/tiles/{tx}/{ty}", route(s.handleTile))
+	handle("POST "+UploadPath, route(s.routeLimits.upload, s.handleUpload))
+	handle("GET "+ImagesPath+"{id}", route(s.routeLimits.download, s.handleImage))
+	handle("GET "+ImagesPath+"{id}/thumb", route(s.routeLimits.download, s.handleThumbnail))
+	handle("GET "+TilesPath+"{map}/tiles/{tx}/{ty}", route(s.routeLimits.download, s.handleTile))
 }
 
 // imagesOn answers 503 while images are off (no blob store), before

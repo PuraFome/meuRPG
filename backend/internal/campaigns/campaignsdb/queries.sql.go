@@ -54,6 +54,20 @@ func (q *Queries) ClearPendingExpiry(ctx context.Context, arg ClearPendingExpiry
 	return result.RowsAffected(), nil
 }
 
+const countMasteredCampaigns = `-- name: CountMasteredCampaigns :one
+SELECT count(*)::INT4 FROM campaign_members
+WHERE user_id = $1 AND role = 'master'
+`
+
+// How many campaigns the user is master of, for the cap on creating (RN-30).
+// The index on campaign_members (user_id) finds the user's few rows.
+func (q *Queries) CountMasteredCampaigns(ctx context.Context, userID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countMasteredCampaigns, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const deletePendingMember = `-- name: DeletePendingMember :execrows
 DELETE FROM campaign_members
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'

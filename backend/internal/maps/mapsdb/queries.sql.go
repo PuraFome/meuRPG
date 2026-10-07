@@ -189,6 +189,22 @@ func (q *Queries) ClearTreasureFound(ctx context.Context, arg ClearTreasureFound
 	return i, err
 }
 
+const countImageRequestsSince = `-- name: CountImageRequestsSince :one
+SELECT count(*)::INT4 FROM image_requests
+WHERE created_at >= $1 AND NOT refunded
+`
+
+// The slots the whole server spent since a moment (the start of Brazil's day):
+// the requests that were not refunded, in any campaign. The server's daily cap
+// on the Gemini bill reads it; image_requests_created_at_idx (migration 00176)
+// finds the day's rows.
+func (q *Queries) CountImageRequestsSince(ctx context.Context, createdAt time.Time) (int32, error) {
+	row := q.db.QueryRow(ctx, countImageRequestsSince, createdAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countImageSlots = `-- name: CountImageSlots :one
 SELECT count(*)::INT4 FROM image_requests
 WHERE campaign_id = $1 AND quota_month = $2 AND NOT refunded

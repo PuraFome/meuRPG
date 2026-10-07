@@ -1,4 +1,12 @@
-import { Campaign, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { Code, ConnectError } from '@connectrpc/connect';
+
+import {
+  Campaign,
+  CampaignCreationRefusedReason,
+  CampaignCreationRefusedSchema,
+  Role,
+  XpMode,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { roleLabel } from '../../core/campaigns/campaign-labels';
 
 /**
@@ -35,4 +43,23 @@ export function campaignLead(campaign: Pick<Campaign, 'myRole' | 'xpMode'>): str
   const role = `Você é ${roleLabel(campaign.myRole)} nesta campanha.`;
   const xp = xpModeSentence(campaign.xpMode);
   return xp ? `${role} ${xp}.` : role;
+}
+
+/**
+ * Why "Criar campanha" was refused (RN-30), in words, or `null` for any other
+ * error. It reads the typed reason of the error, never its message: the
+ * account is already master of the most campaigns the server allows, or the
+ * server only lets some people create them.
+ */
+export function creationRefusalText(err: unknown): string | null {
+  const e = ConnectError.from(err, Code.Unavailable);
+  const refusal = e.findDetails(CampaignCreationRefusedSchema)[0];
+  switch (refusal?.reason) {
+    case CampaignCreationRefusedReason.LIMIT_REACHED:
+      return `Você já é mestre de ${refusal.maxCampaigns} campanhas, o máximo por conta neste servidor. Use uma das que você já tem.`;
+    case CampaignCreationRefusedReason.NOT_ALLOWED:
+      return 'Este servidor só deixa algumas pessoas criarem campanhas. Peça ao mestre da sua mesa um convite para jogar.';
+    default:
+      return null;
+  }
 }

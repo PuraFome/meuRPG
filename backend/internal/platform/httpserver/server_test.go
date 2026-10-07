@@ -241,3 +241,35 @@ func TestCrossOriginProtection(t *testing.T) {
 		})
 	}
 }
+
+// The Limit option wraps the routes inside the request log and the security
+// headers, so a refused request is logged like any other and carries them.
+func TestLimitRunsInsideTheLogAndHeaders(t *testing.T) {
+	t.Parallel()
+	var limited int
+	srv := New(Config{Logger: discardLogger(), Limit: func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/limited" {
+				limited++
+				http.Error(w, "slow down", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}})
+	h := srv.Handler()
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/limited", nil))
+	if rec.Code != http.StatusTooManyRequests || limited != 1 {
+		t.Fatalf("status %d, limited %d", rec.Code, limited)
+	}
+	if rec.Header().Get(RequestIDHeader) == "" || rec.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("the refusal lacks the request id or the security headers: %v", rec.Header())
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/healthz status %d", rec.Code)
+	}
+}

@@ -78,6 +78,13 @@ SELECT display_name FROM users WHERE id = $1;
 -- name: SetDisplayName :execrows
 UPDATE users SET display_name = $2 WHERE id = $1;
 
+-- name: ListVerifiedEmails :many
+-- The e-mails the provider vouched for (an unverified one is never stored).
+-- campaigns reads them for the allow-list of who may create campaigns (RN-30).
+SELECT email::TEXT AS email
+FROM user_identities
+WHERE user_id = $1 AND email IS NOT NULL;
+
 -- name: ListDisplayNames :many
 -- Users without a display name are left out.
 SELECT id, display_name::TEXT AS display_name

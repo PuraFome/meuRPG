@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -219,7 +221,7 @@ func TestLoad(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Load() unexpected error: %v", err)
 			}
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Load() = %+v, want %+v", got, tt.want)
 			}
 		})
@@ -428,6 +430,44 @@ func TestDatabaseTLSErrorDoesNotEchoABrokenURL(t *testing.T) {
 	}
 }
 
+func TestLoadLimits(t *testing.T) {
+	t.Parallel()
+	def, err := Load(env(nil))
+	if err != nil || def.Limits.RateMultiplier != 0 || def.Limits.MaxCampaignsPerUser != 0 || len(def.Limits.CampaignCreators) != 0 || def.Images.DailyLimit != 0 {
+		t.Errorf("defaults: %#v, %v", def.Limits, err)
+	}
+	cfg, err := Load(env(map[string]string{
+		"RATE_LIMIT_MULTIPLIER": "10", "MAX_CAMPAIGNS_PER_USER": "3", "IMAGE_DAILY_LIMIT": "40",
+		"CAMPAIGN_CREATORS": " Mestre@Example.com, ana@example.com,mestre@example.com, ",
+	}))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	want := []string{"mestre@example.com", "ana@example.com"}
+	if cfg.Limits.RateMultiplier != 10 || cfg.Limits.MaxCampaignsPerUser != 3 || cfg.Images.DailyLimit != 40 || !slices.Equal(cfg.Limits.CampaignCreators, want) {
+		t.Errorf("Limits = %#v, daily %d", cfg.Limits, cfg.Images.DailyLimit)
+	}
+	for name, vars := range map[string]map[string]string{
+		"a zero multiplier":  {"RATE_LIMIT_MULTIPLIER": "0"},
+		"a huge multiplier":  {"RATE_LIMIT_MULTIPLIER": "5000"},
+		"a text multiplier":  {"RATE_LIMIT_MULTIPLIER": "fast"},
+		"zero campaigns":     {"MAX_CAMPAIGNS_PER_USER": "0"},
+		"a huge cap":         {"MAX_CAMPAIGNS_PER_USER": "100000"},
+		"a text cap":         {"MAX_CAMPAIGNS_PER_USER": "many"},
+		"a bad daily limit":  {"IMAGE_DAILY_LIMIT": "0"},
+		"a huge daily limit": {"IMAGE_DAILY_LIMIT": "999999"},
+		"a name, not e-mail": {"CAMPAIGN_CREATORS": "mestre"},
+	} {
+		if _, err := Load(env(vars)); err == nil {
+			t.Errorf("%s: Load() error = nil", name)
+		}
+	}
+	// A bad entry is reported by position, never by its text.
+	if _, err := Load(env(map[string]string{"CAMPAIGN_CREATORS": "secret-person"})); err == nil || strings.Contains(err.Error(), "secret-person") {
+		t.Errorf("error = %v, want no echo of the entry", err)
+	}
+}
+
 func TestListenHost(t *testing.T) {
 	t.Parallel()
 
@@ -438,5 +478,18 @@ func TestListenHost(t *testing.T) {
 	local, err := Load(env(map[string]string{"LISTEN_HOST": " 127.0.0.1 "}))
 	if err != nil || local.ListenHost != "127.0.0.1" {
 		t.Errorf("LISTEN_HOST=127.0.0.1: %q, err %v; want 127.0.0.1", local.ListenHost, err)
+	}
+}
+
+// MAX_CAMPAIGNS_PER_USER=off lifts the cap for the local and CI stacks, and is
+// refused on Cloud Run.
+func TestCampaignCapOff(t *testing.T) {
+	t.Parallel()
+	local, err := Load(env(map[string]string{"MAX_CAMPAIGNS_PER_USER": "off"}))
+	if err != nil || local.Limits.MaxCampaignsPerUser != CampaignCapOff {
+		t.Errorf("off locally: %d, err %v; want CampaignCapOff", local.Limits.MaxCampaignsPerUser, err)
+	}
+	if _, err := Load(env(map[string]string{"MAX_CAMPAIGNS_PER_USER": "off", "K_SERVICE": "meurpg-api"})); err == nil {
+		t.Error("off on Cloud Run was accepted")
 	}
 }

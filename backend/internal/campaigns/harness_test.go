@@ -116,6 +116,12 @@ func (f *fakeCharacters) approvedUsers() []string {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
+	return newHarnessWith(t, nil)
+}
+
+// newHarnessWith is newHarness with the chance to change the service's Config.
+func newHarnessWith(t *testing.T, change func(*Config)) *harness {
+	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_campaigns_test")
 	h := &harness{
 		t:     t,
@@ -125,12 +131,16 @@ func newHarness(t *testing.T) *harness {
 		// timestamps equal after a round trip.
 		clock: &fakeClock{now: time.Now().Truncate(time.Microsecond)},
 	}
-	svc, err := New(Config{
+	cfg := Config{
 		Pool:     pool,
 		Profiles: h.users,
 		Logger:   slog.New(slog.DiscardHandler),
 		Now:      h.clock.Now,
-	})
+	}
+	if change != nil {
+		change(&cfg)
+	}
+	svc, err := New(cfg)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

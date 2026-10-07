@@ -67,14 +67,16 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 **Como** mestre, **quero** criar uma campanha que reúna as sessões, os personagens e os mapas, **para** organizar cada mesa separadamente.
 
 - Prioridade: MVP
-- Regras: RN-05
+- Regras: RN-05, RN-30
 - Módulos: campaigns
 
 #### Critérios de aceite
 - **Dado** que estou logado, **quando** crio a campanha "Mirathel", **então** viro mestre dela **e** só os membros a veem na lista.
+- **Dado** que já sou mestre do máximo de campanhas da conta (10, por padrão), **quando** crio outra, **então** nada é criado **e** a tela diz, no lugar do formulário, que o máximo é aquele (RN-30).
+- **Dado** que o servidor só deixa alguns e-mails criarem campanhas, **quando** uma conta de outro e-mail tenta criar, **então** é recusada com o motivo e a tela explica; quem entra por convite continua jogando (RN-30).
 
 #### Implementado
-- Backend pronto em 29/09/2026 (módulo `campaigns`, ver [Arquitetura](../arquitetura.md#módulo-campaigns-e-autorização)). Teste: `TestMR001_CreatorBecomesMasterAndOnlyMembersSeeTheCampaign`.
+- Backend pronto em 29/09/2026 (módulo `campaigns`, ver [Arquitetura](../arquitetura.md#módulo-campaigns-e-autorização)). Teste: `TestMR001_CreatorBecomesMasterAndOnlyMembersSeeTheCampaign`. O teto e a lista de quem cria (RN-30, 07/10/2026): `TestRN30_TheCampaignCapPerAccount`, `TestRN30_TheCapHoldsUnderConcurrentCreations` e `TestRN30_TheCreatorsAllowList`; a frase na tela, em `campaigns.spec.ts` (Vitest).
 - Tela pronta em 29/09/2026: `/campaigns` (`web/src/app/pages/campaigns/`), lista com o papel de cada campanha (Mestre ou Jogador) e o formulário "Criar campanha"; no visual novo de 29/09/2026 ([Design](../design.md)), cada campanha é uma linha, e a lista vazia explica como criar uma ou entrar por convite. Teste Playwright: `o mestre cria uma campanha pela tela e a vê como mestre na lista` (`@MR-001`, `e2e/tests/campaigns.spec.ts`).
 
 ### MR-003: Entrar pelo convite

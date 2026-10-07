@@ -392,6 +392,10 @@ const (
 	// The map is no longer what the textured map was made from: another image, a
 	// new grid or another calibration (UseGeneratedImageAsMapImage).
 	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED ImageGenerationBlockedReason = 8
+	// The whole server made its images of the day (a ceiling on the cost, on top
+	// of each campaign's monthly limit): try again tomorrow (the day is
+	// Brazil's, UTC-3). The status in the detail is the campaign's own month.
+	ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED ImageGenerationBlockedReason = 9
 )
 
 // Enum value maps for ImageGenerationBlockedReason.
@@ -406,6 +410,7 @@ var (
 		6: "IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID",
 		7: "IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE",
 		8: "IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED",
+		9: "IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED",
 	}
 	ImageGenerationBlockedReason_value = map[string]int32{
 		"IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED":         0,
@@ -417,6 +422,7 @@ var (
 		"IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID":     6,
 		"IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE": 7,
 		"IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED":         8,
+		"IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED": 9,
 	}
 )
 
@@ -2426,7 +2432,7 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"%IMAGE_GENERATION_FAILURE_GALLERY_FULL\x10\x04\x12*\n" +
 	"&IMAGE_GENERATION_FAILURE_IMAGE_MISSING\x10\x05\x12$\n" +
 	" IMAGE_GENERATION_FAILURE_TIMEOUT\x10\x06\x12(\n" +
-	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a*\xec\x03\n" +
+	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a*\xa5\x04\n" +
 	"\x1cImageGenerationBlockedReason\x12/\n" +
 	"+IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#IMAGE_GENERATION_BLOCKED_REASON_OFF\x10\x01\x121\n" +
@@ -2436,7 +2442,8 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"3IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING\x10\x05\x123\n" +
 	"/IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID\x10\x06\x127\n" +
 	"3IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE\x10\a\x12/\n" +
-	"+IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED\x10\b2\xad\b\n" +
+	"+IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED\x10\b\x127\n" +
+	"3IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED\x10\t2\xad\b\n" +
 	"\x16ImageGenerationService\x12\x82\x01\n" +
 	"\x18GetImageGenerationStatus\x12/.meurpg.maps.v1.GetImageGenerationStatusRequest\x1a0.meurpg.maps.v1.GetImageGenerationStatusResponse\"\x03\x90\x02\x02\x12k\n" +
 	"\x12GenerateSceneImage\x12).meurpg.maps.v1.GenerateSceneImageRequest\x1a*.meurpg.maps.v1.GenerateSceneImageResponse\x12k\n" +

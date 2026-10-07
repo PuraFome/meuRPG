@@ -17,9 +17,38 @@ export function describeConnectError(
   messages: Partial<Record<Code, string>>,
 ): string {
   const connectErr = ConnectError.from(err, Code.Unavailable);
+  // "Slow down" is the same for every call: no screen's own wording applies.
+  if (isRateLimited(connectErr)) {
+    return rateLimitedMessage(connectErr);
+  }
   return (
     messages[connectErr.code] ??
     messages[Code.Unavailable] ??
     'Não foi possível falar com o servidor agora. Tente de novo em instantes.'
   );
+}
+
+/**
+ * Whether the server turned the call away for asking too often (the per-user
+ * and per-address limits, docs/arquitetura.md, "Limites de abuso"). It tells
+ * by the `Retry-After` header, which no other refusal carries: a full gallery
+ * or a campaign at its limit is also `resource_exhausted`, and waiting does
+ * not fix those.
+ */
+export function isRateLimited(err: unknown): boolean {
+  const e = ConnectError.from(err, Code.Unavailable);
+  return (
+    (e.code === Code.ResourceExhausted || e.code === Code.Unavailable) &&
+    e.metadata.has('Retry-After')
+  );
+}
+
+/** "Muitas ações em pouco tempo. Espere 3 segundos e tente de novo." */
+export function rateLimitedMessage(err: unknown): string {
+  const secs = Number(ConnectError.from(err, Code.Unavailable).metadata.get('Retry-After'));
+  const wait =
+    Number.isFinite(secs) && secs >= 1
+      ? `Espere ${Math.ceil(secs)} ${Math.ceil(secs) === 1 ? 'segundo' : 'segundos'}`
+      : 'Espere alguns segundos';
+  return `Muitas ações em pouco tempo. ${wait} e tente de novo.`;
 }

@@ -47,6 +47,15 @@ func (s *Service) CreateCampaign(
 		return nil, invalidArgument("xp_mode", errors.New("must be enemies, gold or milestones"))
 	}
 
+	// Who may create campaigns at all (RN-30): a read through the pool, so it
+	// comes before the transaction.
+	allowed, err := s.canCreate(ctx, userID)
+	if err != nil {
+		return nil, s.dbError(ctx, "check who may create campaigns", err)
+	}
+	if !allowed {
+		return nil, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_NOT_ALLOWED, 0)
+	}
 	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -64,6 +73,20 @@ func (s *Service) CreateCampaign(
 		campaign, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetCampaignByCreateKey,
 			func(c campaignsdb.Campaign) *string { return c.CreateHash },
 			func() (campaignsdb.Campaign, error) {
+				// The cap is counted only for a new campaign (a retry of one already
+				// made returns it, even at the cap), in the transaction that inserts:
+				// two creations at the same time cannot both slip under it
+				// (SERIALIZABLE makes one retry and count again) (RN-30).
+				// A negative cap is MAX_CAMPAIGNS_PER_USER=off (local and CI stacks only).
+				if s.maxCampaigns > 0 {
+					mastered, err := q.CountMasteredCampaigns(ctx, userID)
+					if err != nil {
+						return campaignsdb.Campaign{}, fmt.Errorf("count the campaigns the caller is master of: %w", err)
+					}
+					if int(mastered) >= s.maxCampaigns {
+						return campaignsdb.Campaign{}, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
+					}
+				}
 				c, err := q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
 					Name:       name,
 					XpMode:     xpMode,

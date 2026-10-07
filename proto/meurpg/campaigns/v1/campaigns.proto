@@ -38,7 +38,10 @@ import "google/protobuf/timestamp.proto";
 // documented as reads, and POST-only.
 service CampaignService {
   // CreateCampaign creates a campaign; the caller becomes its master
-  // (MR-001).
+  // (MR-001). It can be refused with a CampaignCreationRefused detail
+  // (RN-30): `resource_exhausted` when the caller is already master of the
+  // most campaigns the server allows, `permission_denied` when the server
+  // only lets some people create campaigns and the caller is not one.
   //
   // Safe to retry when the request carries an idempotency_key: a second call with the same key and
   // the same request returns what the first one made and makes nothing; the same key with another
@@ -386,6 +389,24 @@ message Invite {
 message InviteUnusable {
   // Why the invite cannot be used: expired, revoked or used up.
   InviteState state = 1;
+}
+
+// CampaignCreationRefusedReason says why CreateCampaign refused (RN-30).
+enum CampaignCreationRefusedReason {
+  CAMPAIGN_CREATION_REFUSED_REASON_UNSPECIFIED = 0;
+  // The caller is already master of max_campaigns campaigns
+  // (`resource_exhausted`).
+  CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED = 1;
+  // The server lets only some people create campaigns, and the caller is
+  // not one (`permission_denied`).
+  CAMPAIGN_CREATION_REFUSED_REASON_NOT_ALLOWED = 2;
+}
+
+// CampaignCreationRefused is the error detail of CreateCampaign's refusals.
+message CampaignCreationRefused {
+  CampaignCreationRefusedReason reason = 1;
+  // The most campaigns one account may be master of; set for LIMIT_REACHED.
+  int32 max_campaigns = 2;
 }
 
 // CreateCampaignRequest describes the new campaign.
