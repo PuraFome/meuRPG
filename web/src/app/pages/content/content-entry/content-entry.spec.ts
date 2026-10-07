@@ -8,7 +8,7 @@ import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
-import { entry, menuResponse, mirathel } from '../../../core/content/content-testing';
+import { classDefaults, entry, menuResponse, mirathel } from '../../../core/content/content-testing';
 import { ContentEntry } from './content-entry';
 
 describe('ContentEntry', () => {
@@ -20,29 +20,32 @@ describe('ContentEntry', () => {
   const list = vi.fn();
   const catalog = vi.fn();
   const effectMenu = vi.fn();
+  const classDefaultsCall = vi.fn();
   const archive = vi.fn();
   const unarchive = vi.fn();
   const getCampaign = vi.fn();
   let params$ = new BehaviorSubject(convertToParamMap({}));
 
-  async function setup(role: Role, key: string, entries = mirathel(), opts: { failCatalog?: boolean; failMenu?: boolean } = {}) {
+  async function setup(role: Role, key: string, entries = mirathel(), opts: { failCatalog?: boolean; failMenu?: boolean; failDefaults?: boolean; phone?: boolean } = {}) {
     list.mockReset().mockResolvedValue({ entries, tableRevision: 7 });
     catalog.mockReset().mockResolvedValue(create(ContentSchema, {}));
     effectMenu.mockReset().mockResolvedValue(menuResponse());
+    classDefaultsCall.mockReset().mockResolvedValue(classDefaults());
     if (opts.failCatalog) catalog.mockRejectedValue(new Error('offline'));
     if (opts.failMenu) effectMenu.mockRejectedValue(new Error('offline'));
+    if (opts.failDefaults) classDefaultsCall.mockRejectedValue(new Error('offline'));
     archive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: true }));
     unarchive.mockReset().mockImplementation(async (_c: string, k: string) => ({ ...entries.find((e) => e.key === k)!, archived: false }));
     getCampaign.mockReset().mockResolvedValue({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
     params$ = new BehaviorSubject(convertToParamMap({ id: 'camp-1', key }));
-    window.matchMedia = (() => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
+    window.matchMedia = (() => ({ matches: opts.phone === true, addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { paramMap: params$, snapshot: { queryParamMap: convertToParamMap({}) } } },
         { provide: CampaignsService, useValue: { getCampaign } },
-        { provide: TableContentClient, useValue: { list, catalog, effectMenu, archive, unarchive } },
+        { provide: TableContentClient, useValue: { list, catalog, effectMenu, archive, unarchive, classDefaults: classDefaultsCall } },
       ],
     });
     const fixture = TestBed.createComponent(ContentEntry);
@@ -117,11 +120,47 @@ describe('ContentEntry', () => {
     expect(effectMenu).not.toHaveBeenCalled();
   });
 
-  it('reads a class for the master, since its editor is the next slice', async () => {
+  it('opens a class for the master in the class editor, fed by the server\'s defaults', async () => {
     const { el } = await setup(Role.MASTER, 'class:guardi-o-do-vale@mesa');
+    expect(el.querySelector('app-class-editor')).not.toBeNull();
+    expect(el.querySelector('app-entry-read')).toBeNull();
+    expect(classDefaultsCall).toHaveBeenCalledWith('camp-1');
+    expect(text(el.querySelector('.tags')!)).toContain('Classe da mesa');
+    expect(text(el)).toContain('Voltar para Classes');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar'))).toBe(true);
+  });
+
+  it('opens a subclass for the master in the subclass editor, and a new one for the class named in the link', async () => {
+    const { el } = await setup(Role.MASTER, 'subclass:tradi-o-da-tinta@mesa');
+    expect(el.querySelector('app-subclass-editor')).not.toBeNull();
+    expect(text(el.querySelector('.tags')!)).toContain('Subclasse da mesa');
+  });
+
+  it('reads a class for a player in full, and never asks the server for the master\'s defaults or menu', async () => {
+    const { el } = await setup(Role.PLAYER, 'class:guardi-o-do-vale@mesa', mirathel().map((e) => ({ ...e, charactersUsing: 0 })));
     expect(el.querySelector('app-entry-read')).not.toBeNull();
+    expect(el.querySelector('app-class-editor')).toBeNull();
+    expect(text(el)).toContain('Testes de resistência');
+    expect(classDefaultsCall).not.toHaveBeenCalled();
+    expect(effectMenu).not.toHaveBeenCalled();
+  });
+
+  it('on a phone the master reads a class and archives it, with no editor and no defaults asked', async () => {
+    const { el } = await setup(Role.MASTER, 'class:guardi-o-do-vale@mesa', mirathel(), { phone: true });
+    expect(el.querySelector('app-class-editor')).toBeNull();
+    expect(classDefaultsCall).not.toHaveBeenCalled();
     expect(text(el)).toContain('Testes de resistência');
     expect(Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar'))).toBe(true);
+  });
+
+  it('says when the defaults of the class table did not come, with "Tentar de novo"', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'class:guardi-o-do-vale@mesa', mirathel(), { failDefaults: true });
+    expect(el.querySelector('app-class-editor')).toBeNull();
+    expect(text(el)).toContain('Tentar de novo');
+    classDefaultsCall.mockResolvedValue(classDefaults());
+    click(el, 'Tentar de novo');
+    await settle(fixture);
+    expect(el.querySelector('app-class-editor')).not.toBeNull();
   });
 
   it('says so when the entry is not in the list (a player never gets an archived one)', async () => {

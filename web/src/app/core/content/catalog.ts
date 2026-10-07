@@ -27,6 +27,8 @@ export interface CatalogVm {
   readonly schools: readonly SelectOption[];
   /** The classes a spell can be on the list of: every casting class, the table's marked. */
   readonly castingClasses: readonly { readonly key: string; readonly name: string; readonly table: boolean }[];
+  /** The classes a subclass can belong to: the SRD's and the table's, not the archived. */
+  readonly classes: readonly SelectOption[];
   readonly skills: readonly SelectOption[];
   readonly spells: readonly SelectOption[];
   /** The Portuguese name of any key of the catalog and of the table's entries (the key itself when unknown). */
@@ -76,6 +78,7 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
       .filter((c) => !c.archived && (c.spellcasting !== undefined || c.key.endsWith('@mesa')))
       .map((c) => ({ key: c.key, name: c.namePt, table: isTableKey(c.key) }))
       .sort((a, b) => Number(a.table) - Number(b.table) || a.name.localeCompare(b.name, 'pt-BR')),
+    classes: content.classes.filter((c) => !c.archived).map((c) => ({ value: c.key, label: isTableKey(c.key) ? `${c.namePt} (da mesa)` : c.namePt })).sort(byName),
     skills: content.skills.map((s) => ({ value: s.key, label: s.namePt })).sort(byName),
     spells: content.spells.filter((s) => !s.archived).map((s) => ({ value: s.key, label: s.namePt })).sort(byName),
     nameOf: (key) => names.get(key) ?? key,

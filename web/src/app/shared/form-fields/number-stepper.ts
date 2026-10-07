@@ -77,9 +77,9 @@ export class NumberStepper {
   readonly min = input(-9);
   readonly max = input(9);
   readonly path = input('');
-  readonly valueChange = output<number>();
-  /** Plain numbers ("4") instead of the signed ones of a modifier ("+4"): a level, a count. */
+  /** Shown with its sign ("+2", for a bonus); off for a count ("2"). */
   readonly signed = input(true);
+  readonly valueChange = output<number>();
   /** At a limit the button says `aria-disabled` and stays focusable, so the focus never drops when the last step is taken. */
   readonly softDisable = input(false);
 
@@ -90,5 +90,11 @@ export class NumberStepper {
     }
   }
 
-  protected readonly text = computed(() => (!this.signed() ? String(this.value()) : this.value() > 0 ? `+${this.value()}` : this.value() < 0 ? `−${Math.abs(this.value())}` : '0'));
+  protected readonly text = computed(() => {
+    const v = this.value();
+    if (!this.signed()) {
+      return String(v);
+    }
+    return v > 0 ? `+${v}` : v < 0 ? `−${Math.abs(v)}` : '0';
+  });
 }

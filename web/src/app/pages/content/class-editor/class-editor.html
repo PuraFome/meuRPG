@@ -1,0 +1,219 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+<div class="page">
+  <aside class="side">
+    <app-section-nav [sections]="sections()" label="Seções da classe" />
+    <!-- Seam for slice 10.11c: the "Para os jogadores" panel with the switch "Disponível para os jogadores" (TableEntry.off) goes here,
+         under the section list, as in E10-02 state 1. The class body never carries it: the switch is the entry's, not the class's. -->
+  </aside>
+
+  <div class="main">
+    <section class="mr-panel block" id="sec-basics" tabindex="-1" aria-labelledby="basics-t">
+      <h2 class="mr-panel__title" id="basics-t">Básico</h2>
+      <div class="grid grid--4">
+        <app-text-field label="Nome" [value]="d.name" [maxlength]="60" path="table_class.name_pt" [issues]="issuesOf('table_class.name_pt')" (valueChange)="patch({ name: $event })" />
+        <app-select-field label="Dado de vida" [options]="hitDice" [value]="d.hitDie" path="table_class.hit_die" [issues]="issuesOf('table_class.hit_die')" (valueChange)="patch({ hitDie: $event })" />
+        <app-select-field label="Teste de resistência 1" [options]="abilityOptions()" [value]="d.saves[0] === 0 ? '' : d.saves[0]" placeholder="Escolha…" path="table_class.saving_throws[0]" [issues]="issuesOf('table_class.saving_throws[0]')" (valueChange)="setSave(0, $event)" />
+        <app-select-field label="Teste de resistência 2" [options]="abilityOptions()" [value]="d.saves[1] === 0 ? '' : d.saves[1]" placeholder="Escolha…" path="table_class.saving_throws[1]" [issues]="issuesOf('table_class.saving_throws[1]')" (valueChange)="setSave(1, $event)" />
+      </div>
+      <app-field-note [issues]="issuesOf('table_class.saving_throws')" />
+      <div class="stepper" [attr.data-field]="'table_class.skill_choose'">
+        <app-number-stepper label="Quantas perícias o jogador escolhe" [signed]="false" [value]="d.skillChoose" [min]="0" [max]="d.skillFrom.length" (valueChange)="setSkillChoose($event)" />
+      </div>
+      <app-field-note [issues]="issuesOf('table_class.skill_choose')" />
+      <div class="skills" role="group" [attr.aria-labelledby]="'skills-l'" data-field="table_class.skill_from">
+        <p class="group__label" id="skills-l">Perícias que ele pode escolher ({{ d.skillFrom.length }} de {{ skills().length }})</p>
+        <div class="chips">
+          @for (s of skills(); track s.value) {
+            <button type="button" class="chip" [class.chip--on]="d.skillFrom.includes(s.value)" [attr.aria-pressed]="d.skillFrom.includes(s.value)" (click)="toggleSkill(s.value)">
+              @if (d.skillFrom.includes(s.value)) {
+                <mat-icon aria-hidden="true">check</mat-icon>
+              }{{ s.label }}
+            </button>
+          }
+        </div>
+      </div>
+      <app-field-note [issues]="issuesOf('table_class.skill_from')" />
+    </section>
+
+    <section class="mr-panel block" id="sec-profs" tabindex="-1" aria-labelledby="profs-t">
+      <h2 class="mr-panel__title" id="profs-t">Proficiências</h2>
+      <div class="profs">
+        <fieldset class="check-group">
+          <legend class="group__label">Armaduras</legend>
+          @for (o of armor(); track o.value) {
+            <app-check-row [label]="o.label" [checked]="has(o.value)" (toggled)="toggleProficiency(o.value, $event)" />
+          }
+        </fieldset>
+        <fieldset class="check-group">
+          <legend class="group__label">Armas</legend>
+          @for (o of weapons(); track o.value) {
+            <app-check-row [label]="o.label" [checked]="has(o.value)" (toggled)="toggleProficiency(o.value, $event)" />
+          }
+        </fieldset>
+        <div class="profs__other">
+          <p class="group__label">Outras armas, armaduras e ferramentas</p>
+          <app-pick-list
+            label="Outras armas, armaduras e ferramentas"
+            addLabel="Adicionar proficiência"
+            [options]="otherProficiencies()"
+            [values]="othersOf(d.proficiencies)"
+            path="table_class.proficiencies"
+            [issues]="issuesOf('table_class.proficiencies')"
+            (added)="addOther($event)"
+            (removed)="removeOther($event)"
+          />
+        </div>
+      </div>
+      <h3 class="sub">Para quem entra na classe depois (multiclasse)</h3>
+      @for (g of requirementGroups; track g.field) {
+        <div class="req" role="group" [attr.aria-label]="g.label" [attr.data-field]="requirementPath(g.field)">
+          <p class="group__label">{{ g.label }}</p>
+          @for (a of requirementValues(g.field); track a) {
+            <div class="req__row">
+              <app-select-field label="Habilidade" [options]="requirementOptions(g.field)" [value]="a" (valueChange)="moveRequirement(g.field, a, $event)" />
+              <app-text-field label="Valor mínimo" inputmode="numeric" [value]="'' + d[g.field][a]" [path]="requirementPath(g.field, a)" [issues]="issuesOf(requirementPath(g.field, a))" (valueChange)="setRequirement(g.field, a, $event)" />
+              <button matButton="outlined" type="button" class="req__remove" (click)="removeRequirement(g.field, a)">Tirar {{ abilityName(a) }}</button>
+            </div>
+          }
+          <app-field-note [issues]="issuesOf(requirementPath(g.field))" />
+          @if (freeRequirementOptions(g.field).length > 0) {
+            <div class="req__add">
+              <app-select-field [label]="g.add" [options]="freeRequirementOptions(g.field)" value="" placeholder="Escolha…" (valueChange)="addRequirement(g.field, $event)" />
+            </div>
+          }
+        </div>
+      }
+      <p class="hint">Quem já tem outra classe precisa deste valor para tomar esta. Sem nenhuma habilidade, não se exige nada.</p>
+      <p class="group__label">O que a classe dá a quem entra nela depois</p>
+      <app-pick-list
+        label="O que a classe dá a quem entra nela depois"
+        addLabel="Adicionar proficiência"
+        [options]="otherProficiencies()"
+        [values]="d.multiclassProficiencies"
+        path="table_class.multiclass_proficiencies"
+        [issues]="issuesOf('table_class.multiclass_proficiencies')"
+        (added)="addMulticlassProficiency($event)"
+        (removed)="removeMulticlassProficiency($event)"
+      />
+      <div class="stepper" data-field="table_class.multiclass_skill_choose">
+        <app-number-stepper label="Perícias a mais para quem entra depois" [signed]="false" [value]="d.multiclassSkillChoose" [min]="0" [max]="d.skillFrom.length" (valueChange)="patch({ multiclassSkillChoose: $event })" />
+      </div>
+      <app-field-note [issues]="issuesOf('table_class.multiclass_skill_choose')" />
+    </section>
+
+    <section class="mr-panel block" id="sec-casting" tabindex="-1" aria-labelledby="casting-t">
+      <h2 class="mr-panel__title" id="casting-t">Conjuração</h2>
+      <app-casting-fields
+        [casting]="d.casting"
+        [catalog]="catalog()"
+        basePath="table_class.casting"
+        [selfKey]="selfKey()"
+        [issuesOf]="issuesOf"
+        (kindChange)="setKind($event)"
+        (preparationChange)="setPreparation($event)"
+        (patch)="patchCasting($event)"
+      >
+        @if (question(); as q) {
+          @if (q.kind === 'casting') {
+            <app-table-question
+              heading="Refazer a tabela dos 20 níveis?"
+              [text]="questionText()"
+              (answer)="answerQuestion($event)"
+            />
+          }
+        }
+      </app-casting-fields>
+      <p class="hint">A conjuração de um terço é de uma subclasse: ligue “Esta subclasse conjura” nela. “Metade”, “Completa” e “Pacto” preenchem a tabela dos 20 níveis, logo abaixo, com a progressão do SRD.</p>
+    </section>
+
+    <section class="mr-panel block" id="sec-table" tabindex="-1" aria-labelledby="table-t">
+      <div class="head">
+        <h2 class="mr-panel__title" id="table-t">Tabela dos 20 níveis</h2>
+        <button matButton="outlined" type="button" (click)="restore()"><mat-icon aria-hidden="true">restart_alt</mat-icon>Restaurar o padrão</button>
+      </div>
+      @if (question(); as q) {
+        @if (q.kind === 'restore') {
+          <app-table-question heading="Restaurar o padrão?" [text]="questionText()" confirm="Restaurar o padrão" (answer)="answerQuestion($event)" />
+        }
+      }
+      <p class="mr-notice mr-notice--neutral">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>{{ tableNote() }}</span>
+      </p>
+      <app-level-grid
+        [rows]="gridRows()"
+        [columns]="columns()"
+        path="table_class.levels"
+        [issuesOf]="issuesOf"
+        (edited)="editCell($event)"
+        (chipOpened)="openFromGrid($event)"
+        (featureAdded)="addFromGrid($event)"
+      />
+      @if (canAllCircles()) {
+        <button type="button" class="link" (click)="allCircles.set(true)">Mostrar os 9 círculos</button>
+      }
+      <p class="legend"><span class="chip chip--locked"><mat-icon aria-hidden="true">lock</mat-icon>Aumento de atributo</span> Os chips tracejados com cadeado são postos pelo app: você muda só os níveis, na linha de baixo.</p>
+      <p class="group__label">Aumento de atributo nos níveis</p>
+      <app-pick-list
+        label="Aumento de atributo nos níveis"
+        addLabel="Adicionar nível"
+        [options]="asiOptions"
+        [values]="asiValues()"
+        path="table_class.asi_levels"
+        [issues]="issuesOf('table_class.asi_levels')"
+        (added)="setAsi([...asiValues(), $event])"
+        (removed)="setAsi(asiValues().filter((x) => x !== $event))"
+      />
+    </section>
+
+    <section class="mr-panel block" id="sec-features" tabindex="-1" aria-labelledby="features-t">
+      <app-class-features
+        path="table_class.features"
+        [issues]="issuesOf('table_class.features')"
+        [features]="d.features"
+        [menu]="menu()"
+        [levels]="levelNumbers"
+        [max]="menu().maxFeatures"
+        [baseOf]="featureBase"
+        [issuesOf]="issuesOf"
+        [spellOptions]="spellOptions()"
+        [openId]="openFeature()"
+        (openIdChange)="openFeature.set($event)"
+        (featuresChange)="setFeatures($event)"
+      />
+    </section>
+
+    <section class="mr-panel block" id="sec-subclasses" tabindex="-1" aria-labelledby="sub-t">
+      <h2 class="mr-panel__title" id="sub-t">Subclasse</h2>
+      <div class="grid grid--4">
+        <app-select-field label="A subclasse se escolhe no nível" [options]="levelOptions" [value]="d.subclassLevel" path="table_class.subclass_level" [issues]="issuesOf('table_class.subclass_level')" (valueChange)="patch({ subclassLevel: $event })" />
+      </div>
+      @if (isNew()) {
+        <p class="hint">Salve a classe primeiro; depois dá para cadastrar as subclasses dela.</p>
+      } @else {
+        @if (subclasses().length === 0) {
+          <p class="hint">Nenhuma subclasse cadastrada para esta classe ainda.</p>
+        } @else {
+          <ul class="mr-list">
+            @for (s of subclasses(); track s.key) {
+              <li>
+                <a class="subrow" [routerLink]="subclassLink(s)">
+                  <span class="subrow__name">{{ s.namePt }}</span>
+                  @if (s.archived) {
+                    <span class="mr-tag"><mat-icon aria-hidden="true">archive</mat-icon>Arquivada</span>
+                  }
+                  <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+        <a matButton="outlined" class="add" [routerLink]="newSubclassLink()" [queryParams]="{ classe: selfKey() }"><mat-icon aria-hidden="true">add</mat-icon>Adicionar subclasse</a>
+      }
+    </section>
+
+  </div>
+</div>
+<app-editor-bar [sticky]="true" saveLabel="Salvar classe" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />

@@ -586,6 +586,18 @@ As telas do desenho E10-10 (estados 1 a 6; Etapa 10). Só o mestre as vê; a ent
 
 O que difere do desenho: o nome da sala é "Sala N" (o gerador numera, não dá nomes); a linha do ouro começa pelo nome da campanha ("{campanha} dá XP por ouro: …"), porque o nome é livre e "Na Mirathel" erraria; no celular, um mapa sem salas põe o ponto no meio do mapa (não há lista de quadrados: 11 px de alvo); "Abrir o mapa" abre o mapa, não o ponto (o editor ainda não abre um ponto por endereço); os valores das gemas e da arte são sempre os das tabelas do servidor, nunca os números do desenho.
 
+### Classe e subclasse (MR-025, fatia 10.12)
+
+Desenho E10-02, estados 1 a 4. Mesmas peças e mesma barra do editor de raça, com estas diferenças.
+
+| Peça | Como é |
+| --- | --- |
+| Página da classe (`class-editor`) | Do notebook (1100 px) para cima, a lista das seções (Básico, Proficiências, Conjuração, Tabela dos 20 níveis, Características, Subclasse) fica ao lado, presa ao rolar, com o contorno `accent` na atual (`aria-current="location"`) e, em cada link, o ✓ ou o alerta "Com erro". Abaixo disso é uma faixa de links que rola de lado e fica presa sob a barra do app ao rolar ("presa ao rolar", como no desenho). A seção à vista leva `aria-current="location"` (o app a descobre ao rolar); não há ✓ de "completa": só "Com erro" onde uma recusa está Um painel por seção; o "Salvar classe" fica numa barra presa no pé. As perícias são fichas de 44 px com `aria-pressed` e o ✓ antes do nome; "Teste de resistência 1" e "2" |
+| Conjuração | A escolha "Nenhuma, Completa, Metade, Pacto" (`shared/segmented`), a habilidade, a lista de magias, dois cartões de rádio (Preparadas, Conhecidas) e "Mais opções" (nível em que começa, a fórmula das preparadas, rituais). Mudar o jeito de conjurar pergunta no lugar (contorno de aviso, "Refazer a tabela" e "Manter a minha tabela") só quando a tabela foi editada |
+| Grade dos 20 níveis (`shared/level-grid`) | Altura fixa de uns 7 níveis, rola por dentro (título preso no alto, nível preso à esquerda), células de 44 px, `—` no zero, `+3` no bônus. A célula recusada leva contorno de perigo de 2 px, `aria-invalid` e o motivo, com o nível e a coluna, embaixo da grade. Chips de característica abrem a característica; os tracejados com cadeado (aumento de atributo, escolha da subclasse) são do app |
+| Características | Linhas fechadas (nível, nome, etiqueta do efeito, seta) e uma aberta por vez, com um só contorno `accent` e o `feature-editor` sem cartão próprio, com "Nível" na linha do nome e do efeito. O contador "5 de 60 características" vira cor de perigo com o ícone ao passar do limite |
+| Subclasse (`subclass-editor`) | Uma coluna de painéis: dados, características, "Esta subclasse conjura" (a conjuração e a grade a partir do nível em que começa) e "Magias sempre preparadas", por nível da classe, com fichas por magia. Onde o desenho põe "O que o jogador escolhe se chama Juramento" não há campo no servidor, e a tela não o tem |
+
 ### Imprimir o mapa
 
 A tela "Imprimir o mapa" (MR-033, desenho E8-12; Etapa 8, fatia 8.7), só do mestre, em `pages/maps/map-print`. A entrada é o botão contornado "Imprimir com a grade" (ícone de impressora, 44 px) na linha do título da página do mapa; sem grade ele fica tracejado e desabilitado (`aria-disabled`, ainda focável), com o motivo ao lado e ligado a ele por `aria-describedby`; no celular o botão e o motivo ficam numa linha própria, de 48 px.

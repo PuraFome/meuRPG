@@ -67,7 +67,7 @@ export class ContentList {
 
   protected readonly campaignId = signal('');
   protected readonly state = signal<PageState>({ status: 'loading' });
-  /** The list opens on the first kind that has an editor: the kinds without one yet are only read. */
+  /** The list opens on the first kind of the menu (every kind has an editor now). */
   protected readonly slug = signal<ContentNavKind['slug']>(CONTENT_NAV.find((n) => n.editable)?.slug ?? 'classes');
   protected readonly query = signal('');
   protected readonly filter = signal<ContentFilter>('all');

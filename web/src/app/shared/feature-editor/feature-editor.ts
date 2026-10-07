@@ -37,6 +37,10 @@ export class FeatureEditor {
   readonly count = input(0);
   /** The heading above the fields, when the feature has one of its own ("Característica"). */
   readonly heading = input('');
+  /** No card of its own (no border, fill or padding): the page already frames it, as the open feature of a class does. */
+  readonly flat = input(false);
+  /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
+  readonly withLead = input(false);
 
   readonly featureChange = output<FeatureDraft>();
   readonly removed = output<void>();

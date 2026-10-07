@@ -53,6 +53,7 @@ import { brisa, brisaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
+import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -5193,3 +5194,94 @@ for (const [scheme, width, label] of [
     await scanTreasureScreens(browser, scheme, width);
   });
 }
+
+/**
+ * The class and subclass editors (MR-025, RN-23; E10-02 states 1 to 4): the class page with its sections, the 20-level grid, a
+ * feature open, the question before the table is replaced, a refused cell, the subclass of a third caster and the always-prepared
+ * spells; on a phone the master only reads (the table as a list of levels). The entries come through the API.
+ */
+async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade classes ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const half = halfCasterBody();
+    (half.levels as Record<string, unknown>[])[0].features = [
+      { namePt: 'Vigília', descPt: ['Você marca um lugar e o vigia.'], effects: [{ type: 'resource', resource: 'vigilia', max: '3', recharge: 'long_rest' }] },
+    ];
+    const guardiao = await createClassRPC(m, campaignId, half);
+    await createClassRPC(m, campaignId, classBody('Bardo das Cinzas'));
+    const tinta = await createSubclassRPC(m, campaignId, {
+      namePt: 'Tradição da Tinta',
+      classKey: 'class:fighter',
+      casting: { kind: 'third', ability: 'ABILITY_INTELLIGENCE', preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
+      levels: Array.from({ length: 18 }, (_, i) => ({ level: i + 3, cantripsKnown: 2, spellsKnown: 3, slots: [i < 4 ? 2 : 3, 0, 0, 0, 0, 0, 0, 0, 0] })),
+      alwaysPrepared: [{ classLevel: 3, spellKey: 'spell:detect-magic' }],
+    });
+
+    if (width >= 1024) {
+      await open(m, entryRoute(campaignId, guardiao));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Guardião do Vale');
+      await expectScreenPasses(m, `Editor de classe ${where}`);
+      await m.getByRole('button', { name: 'Vigília' }).first().click();
+      await expect(m.getByLabel('Nome da característica')).toHaveValue('Vigília');
+      await expectScreenPasses(m, `Editor de classe, uma característica aberta ${where}`);
+      await m.getByRole('button', { name: 'Mostrar os 9 círculos' }).click();
+      await expectScreenPasses(m, `Editor de classe, os 9 círculos ${where}`);
+      // A refused cell: a half caster has no cantrips at level 1.
+      await m.getByLabel('Nível 1, truques').fill('5');
+      await m.getByRole('button', { name: 'Salvar classe' }).click();
+      await expect(m.getByLabel('Nível 1, truques')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de classe, a célula recusada ${where}`);
+      await m.getByLabel('Nível 1, truques').fill('');
+      // The question before an edited table is replaced.
+      await m.getByLabel('Nível 5, espaços de 1º círculo').fill('9');
+      await m.locator('label', { hasText: 'Completa' }).first().click();
+      await expect(m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' })).toBeVisible();
+      await expectScreenPasses(m, `Editor de classe, a pergunta antes de refazer a tabela ${where}`);
+      await m.getByRole('button', { name: 'Manter a minha tabela' }).click();
+      await open(m, `/campanhas/${campaignId}/conteudo/novo/classe`);
+      await expectScreenPasses(m, `Editor de classe, uma classe nova ${where}`);
+      await open(m, entryRoute(campaignId, tinta));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Tradição da Tinta');
+      await expectScreenPasses(m, `Editor de subclasse de um terço ${where}`);
+      await open(m, `/campanhas/${campaignId}/conteudo/novo/subclasse`);
+      await expectScreenPasses(m, `Editor de subclasse, uma nova ${where}`);
+    } else {
+      await open(m, entryRoute(campaignId, guardiao));
+      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expectScreenPasses(m, `Classe lida pelo mestre no celular ${where}`);
+      await open(m, entryRoute(campaignId, tinta));
+      await expectScreenPasses(m, `Subclasse lida pelo mestre no celular ${where}`);
+    }
+
+    await open(p, `/campanhas/${campaignId}/conteudo?tipo=classes`);
+    await expectScreenPasses(p, `Classes, vistas por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, guardiao));
+    await expect(p.getByText('Testes de resistência', { exact: true })).toBeVisible();
+    await expectScreenPasses(p, `Classe, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as classes da mesa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableClasses(browser, 'light', 1280);
+});
+
+test('as classes da mesa passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanTableClasses(browser, 'dark', 1024);
+});
+
+test('as classes da mesa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableClasses(browser, 'dark', 390);
+});
+
+test('as classes da mesa passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanTableClasses(browser, 'light', 320);
+});

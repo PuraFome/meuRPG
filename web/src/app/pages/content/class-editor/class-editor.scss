@@ -1,0 +1,241 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1100px) {
+    grid-template-columns: 236px minmax(0, 1fr);
+    gap: var(--mr-space-5);
+  }
+}
+
+// The list of sections stays in view while the page scrolls: at the side from 1100 px, and as a strip across the top (under the
+// app bar) below it ("presa ao rolar").
+.side {
+  position: sticky;
+  top: 64px;
+  z-index: 4;
+  min-width: 0;
+
+  @media (min-width: 1100px) {
+    top: 88px;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-5);
+  scroll-margin-top: 136px;
+
+  @media (min-width: 1100px) {
+    scroll-margin-top: 88px;
+  }
+
+  .mr-panel__title {
+    margin: 0;
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  button {
+    min-height: 44px;
+  }
+}
+
+.sub {
+  margin: var(--mr-space-3) 0 0;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-3);
+  align-items: start;
+
+  @media (min-width: 768px) {
+    &--4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
+
+.group__label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.stepper {
+  max-width: 460px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  cursor: pointer;
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+    padding: 0 15px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.profs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-3) var(--mr-space-5);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.check-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+
+  .chip {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 15px;
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.link {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.add {
+  align-self: flex-start;
+  min-height: 44px;
+}
+
+.subrow {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 52px;
+  color: var(--mr-ink);
+  text-decoration: none;
+
+  &__name {
+    flex: 1 1 auto;
+    font-family: var(--mr-font-display);
+    font-size: 19px;
+    font-weight: 700;
+  }
+}
+
+.req {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mr-space-3);
+    align-items: start;
+
+    @media (min-width: 768px) {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+    }
+  }
+
+  &__remove {
+    min-height: 56px;
+  }
+
+  &__add {
+    max-width: 320px;
+  }
+}
