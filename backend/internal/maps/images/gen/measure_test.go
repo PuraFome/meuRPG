@@ -43,7 +43,7 @@ func peakHeap(f func()) (peak, total uint64) {
 // TestMeasureMemory measures the two sides of a call at their worst: the body
 // of a request with 14 references that fill the 8 MiB cap, written as a stream,
 // and an answer of the largest size parseAnswer reads (8 MiB). Run it with
-// MEURPG_MEASURE=1 -v; docs/operacao.md has the numbers.
+// MEURPG_MEASURE=1 -v; docs/operations.md has the numbers.
 func TestMeasureMemory(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

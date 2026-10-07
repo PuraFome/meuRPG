@@ -193,7 +193,7 @@ func TestUniqueViolationIsRecognized(t *testing.T) {
 
 // TestOrphanedPlayerCharactersAreDeletedByTheDatabase: a player character
 // with neither a player nor a campaign is expired for CockroachDB's
-// row-level TTL job (migration 00020, docs/privacidade.md), and no other
+// row-level TTL job (migration 00020, docs/privacy.md), and no other
 // row is. The job itself runs once a day, so the test reads the table's TTL
 // setting and evaluates that same expression over real rows.
 func TestOrphanedPlayerCharactersAreDeletedByTheDatabase(t *testing.T) {

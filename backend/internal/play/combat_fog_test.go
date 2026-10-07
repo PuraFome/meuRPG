@@ -1114,7 +1114,7 @@ func TestRN10_FogCombatAShieldPromptNeverNamesAnUnseenAttacker(t *testing.T) {
 
 // TestFogCombatMoveCost measures what a combat move costs on a map with the fog, on
 // the cave of the fight and on a 60 x 40 map with six players and four NPCs (the
-// numbers in docs/arquitetura.md), and keeps a generous budget so a slip to seconds
+// numbers in docs/architecture.md), and keeps a generous budget so a slip to seconds
 // shows. It logs the numbers: go test -run TestFogCombatMoveCost -v.
 func TestFogCombatMoveCost(t *testing.T) {
 	t.Parallel()

@@ -58,7 +58,7 @@ func realisticRows(t testing.TB) []charactersdb.CampaignContent {
 // 300-entry limit: the contents (minus the shared SRD), the catalogs ListContent
 // serves for each (the master's and the players') and the time of a miss (the
 // stored data decoded into an overlay, With). Run with MEURPG_MEASURE=1 and -v
-// (docs/operacao.md).
+// (docs/operations.md).
 func TestLiveContentMemory(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

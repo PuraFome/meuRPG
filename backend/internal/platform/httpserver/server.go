@@ -20,7 +20,7 @@ import (
 // the whole request/response, which would cut Connect streaming RPCs short.
 // Cloud Run already enforces a per-request timeout (5 minutes by default;
 // the live session's stream lasts up to 30, so the service needs 35, see
-// docs/operacao.md), and unary RPCs can be bounded per handler. What a slow
+// docs/operations.md), and unary RPCs can be bounded per handler. What a slow
 // client could stall is bounded where it happens, with a deadline per operation
 // (platform/slowclient): each Send on a stream, the body of an upload.
 const (

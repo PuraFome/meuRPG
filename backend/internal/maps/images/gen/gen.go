@@ -6,7 +6,7 @@
 // people or the database: a Request holds only what may go to the model (the
 // master's text, a style, a ratio and gallery images), so there is no field a
 // name or an e-mail could travel in. What the module adds to a request is
-// listed in docs/arquitetura.md.
+// listed in docs/architecture.md.
 package gen
 
 import (

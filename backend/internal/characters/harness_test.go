@@ -309,7 +309,7 @@ func (h *harness) lockSheets(campaignID string) int64 {
 }
 
 // deleteUser deletes an account straight in the database, as account
-// deletion will (docs/privacidade.md).
+// deletion will (docs/privacy.md).
 func (h *harness) deleteUser(id string) {
 	h.t.Helper()
 	if _, err := h.pool.Exec(h.t.Context(), "DELETE FROM users WHERE id = $1", id); err != nil {

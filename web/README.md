@@ -1,6 +1,6 @@
 # Web
 
-MeuRPG's Angular frontend. See the repo root's [README.md](../README.md), [CONTRIBUTING.md](../CONTRIBUTING.md) and [docs/arquitetura.md](../docs/arquitetura.md#frontend-web) for the project-level picture (how this is served, generated code, CSP). This file is the generic Angular CLI one, kept for the day-to-day `ng` commands below.
+MeuRPG's Angular frontend. See the repo root's [README.md](../README.md), [CONTRIBUTING.md](../CONTRIBUTING.md) and [docs/architecture.md](docs/architecture.md#web-app-web) for the project-level picture (how this is served, generated code, CSP). This file is the generic Angular CLI one, kept for the day-to-day `ng` commands below.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.24.
 

@@ -6,7 +6,7 @@
 --
 -- intent_kind names the handler (today only campaign_invite). intent_data is
 -- what that handler prepared from the payload at login start: for an invite,
--- the token's SHA-256, never the token itself (docs/privacidade.md). Like the
+-- the token's SHA-256, never the token itself (docs/privacy.md). Like the
 -- rest of the row, it lives at most 10 minutes and the callback deletes it.
 --
 -- One statement with several parts, so re-running it is safe: ADD COLUMN IF

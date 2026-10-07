@@ -10,7 +10,7 @@
 // memory, and are never logged. A client that stops sending requests is
 // forgotten once its bucket is full again, within two refill periods
 // (about two minutes for the sign-in limit), even if no other request ever
-// comes (see docs/privacidade.md).
+// comes (see docs/privacy.md).
 package ratelimit
 
 import (

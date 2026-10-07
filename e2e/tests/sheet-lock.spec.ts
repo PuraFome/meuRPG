@@ -137,7 +137,7 @@ test('depois da primeira sessão, o jogador só edita a história quando o mestr
 }) => {
   // Amendment A3, corrected by the integrator (Vinicius, 29/09/2026):
   // RN-01's lock is for game data; the story is personal data
-  // (docs/privacidade.md: it keeps the right to rectification), but after
+  // (docs/privacy.md: it keeps the right to rectification), but after
   // the lock the player no longer edits it freely — the master grants
   // editing per character (SetStoryEditing). The master can always edit the
   // story, through the same UpdateCharacterStory RPC used in the test

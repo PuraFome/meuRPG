@@ -70,7 +70,7 @@ type Config struct {
 	// internal/platform/blob), such as a Docker volume in the local stack.
 	// Empty means "images are off": the API still starts, and the image
 	// routes answer 503. Production will store images in Cloud Storage
-	// instead (docs/operacao.md).
+	// instead (docs/operations.md).
 	BlobDir string
 
 	// CloudRun is true when the process runs on Cloud Run, which sets
@@ -105,7 +105,7 @@ const (
 	maxRateMultiplier        = 1000
 )
 
-// Limits holds the abuse limits' settings (docs/operacao.md, "Limites de abuso").
+// Limits holds the abuse limits' settings (docs/operations.md#abuse-limits).
 type Limits struct {
 	// RateMultiplier (RATE_LIMIT_MULTIPLIER) scales every request-rate limit
 	// (platform/ratelimit.NewPolicy); zero means 1. Raise it only where many

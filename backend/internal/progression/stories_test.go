@@ -17,7 +17,7 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 )
 
-// The acceptance criteria of MR-016 (docs/produto/historias.md): the master
+// The acceptance criteria of MR-016 (docs/product/stories.md): the master
 // gives XP by defeated enemies, by gold or by hand, marks milestones, and
 // everybody reads the history. Each test starts its own database.
 
@@ -675,7 +675,7 @@ func TestHistoryPages(t *testing.T) {
 }
 
 // TestSessionEventsHaveNoNamesNorReasons: the event of an award is IDs and
-// numbers only (docs/privacidade.md).
+// numbers only (docs/privacy.md).
 func TestSessionEventsHaveNoNamesNorReasons(t *testing.T) {
 	t.Parallel()
 	tb := newTable(t, milestones, 1)

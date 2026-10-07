@@ -4,7 +4,7 @@
 // which parses each JSON line into a structured entry, so fields such as
 // "status" or "duration" become searchable without any extra agent. The
 // field contract (names, types, what is never logged) is in
-// docs/arquitetura.md, "Os logs".
+// docs/architecture.md#logs.
 package logging
 
 import (

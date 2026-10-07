@@ -507,7 +507,7 @@ message AffectedCharacter {
 // `not_found`, exactly as for a campaign that does not exist (ADR-0011). An ID
 // that is not a UUID is answered like an ID that does not exist. Responses carry
 // `Cache-Control: no-store`. Reads carry a campaign ID, so they are IDEMPOTENT
-// and POST-only (docs/privacidade.md).
+// and POST-only (docs/privacy.md).
 service TableContentService {
   // ListTableEntries returns the table's entries in full, sorted by kind and
   // Portuguese name, for the editors and for what a player reads of an option

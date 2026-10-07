@@ -426,7 +426,7 @@ export const DeleteGalleryImageResponseSchema: GenMessage<DeleteGalleryImageResp
  * Responses carry `Cache-Control: no-store`. Every request carries a
  * campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
  * ID in the URL, and URLs end up in the platform's request logs
- * (docs/privacidade.md).
+ * (docs/privacy.md).
  *
  * @generated from service meurpg.maps.v1.GalleryService
  */

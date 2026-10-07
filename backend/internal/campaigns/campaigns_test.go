@@ -99,7 +99,7 @@ func TestListsAreOrdered(t *testing.T) {
 	}
 }
 
-// TestDeletingAnAccount checks the ON DELETE rules that docs/privacidade.md
+// TestDeletingAnAccount checks the ON DELETE rules that docs/privacy.md
 // promises: a player's memberships go with their account; a master's
 // campaigns go with theirs, together with the campaigns' members and
 // invites.
@@ -141,7 +141,7 @@ func TestDeletingAnAccount(t *testing.T) {
 }
 
 // TestInvitesAreDeletedByTheDatabase: CockroachDB's row-level TTL deletes
-// invites 30 days after they expire (docs/privacidade.md).
+// invites 30 days after they expire (docs/privacy.md).
 func TestInvitesAreDeletedByTheDatabase(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)

@@ -44,7 +44,7 @@ const (
 )
 
 // The session events' payloads: IDs and numbers only, never a name or a text
-// (docs/privacidade.md).
+// (docs/privacy.md).
 type trapRevealedEvent struct {
 	PointID      string   `json:"point_id"`
 	CharacterIDs []string `json:"character_ids,omitempty"`

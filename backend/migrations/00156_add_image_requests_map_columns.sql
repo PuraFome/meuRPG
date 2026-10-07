@@ -15,7 +15,7 @@
 --
 -- map_id SET NULL when the map goes, map_image_id when the old image is deleted
 -- (then the textured map no longer fits anything). The columns hold IDs and
--- numbers, no text of the master's (docs/privacidade.md).
+-- numbers, no text of the master's (docs/privacy.md).
 --
 -- kind has three values more: 'map_scene', 'isometric' and 'textured_map'.
 --

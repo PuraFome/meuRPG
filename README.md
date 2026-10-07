@@ -1,8 +1,10 @@
 <h1 align="center">MeuRPG</h1>
 
+<p align="center"><a href="README.pt-BR.md">Português (Brasil)</a></p>
+
 <p align="center">
-  Onde uma mesa de D&amp;D 5e prepara e joga as suas campanhas.<br>
-  O mestre conduz, o jogador acompanha a ficha, e as regras fazem as contas.
+  Where a D&amp;D 5e table prepares and plays its campaigns.<br>
+  The Game Master runs the game, the players follow their sheets, and the rules do the math.
 </p>
 
 <p align="center">
@@ -15,165 +17,154 @@
   <a href="backend/go.mod"><img alt="Go" src="https://img.shields.io/github/go-mod/go-version/PuraFome/meuRPG?filename=backend%2Fgo.mod&amp;logo=go&amp;logoColor=white&amp;label=Go"></a>
   <a href="web/package.json"><img alt="Angular" src="https://img.shields.io/github/package-json/dependency-version/PuraFome/meuRPG/%40angular%2Fcore?filename=web%2Fpackage.json&amp;logo=angular&amp;logoColor=white&amp;label=Angular&amp;color=DD0031"></a>
   <a href="proto/"><img alt="API: Connect + Protobuf" src="https://img.shields.io/badge/API-Connect%20%2B%20Protobuf-4B32C3"></a>
-  <a href="docs/dados.md"><img alt="Banco: CockroachDB" src="https://img.shields.io/badge/banco-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
-  <a href="docs/operacao.md"><img alt="Infra: Cloud Run em São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
+  <a href="docs/data.md"><img alt="Database: CockroachDB" src="https://img.shields.io/badge/database-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
+  <a href="docs/operations.md"><img alt="Infra: Cloud Run in São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
 </p>
 
 <p align="center">
-  <a href="e2e/tests/a11y.spec.ts"><img alt="Acessibilidade: axe, WCAG 2.1 AA" src="https://img.shields.io/badge/a11y-axe%20%C2%B7%20WCAG%202.1%20AA-1F6FEB"></a>
-  <a href=".github/dependabot.yml"><img alt="Dependabot ativo" src="https://img.shields.io/badge/Dependabot-ativo-025E8C?logo=dependabot&amp;logoColor=white"></a>
-  <a href="https://www.conventionalcommits.org/pt-br/v1.0.0/"><img alt="Conventional Commits" src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196?logo=conventionalcommits&amp;logoColor=white"></a>
-  <a href="NOTICE"><img alt="Regras: SRD 5.1, CC BY 4.0" src="https://img.shields.io/badge/regras-SRD%205.1%20%C2%B7%20CC%20BY%204.0-555555"></a>
-  <a href="LICENSE"><img alt="Licença: Apache 2.0" src="https://img.shields.io/github/license/PuraFome/meuRPG?label=licen%C3%A7a&amp;color=D22128"></a>
-  <a href="https://github.com/PuraFome/meuRPG/commits/main"><img alt="Último commit" src="https://img.shields.io/github/last-commit/PuraFome/meuRPG/main?label=%C3%BAltimo%20commit"></a>
+  <a href="e2e/tests/a11y.spec.ts"><img alt="Accessibility: axe, WCAG 2.1 AA" src="https://img.shields.io/badge/a11y-axe%20%C2%B7%20WCAG%202.1%20AA-1F6FEB"></a>
+  <a href=".github/dependabot.yml"><img alt="Dependabot enabled" src="https://img.shields.io/badge/Dependabot-enabled-025E8C?logo=dependabot&amp;logoColor=white"></a>
+  <a href="https://www.conventionalcommits.org/v1.0.0/"><img alt="Conventional Commits" src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196?logo=conventionalcommits&amp;logoColor=white"></a>
+  <a href="NOTICE"><img alt="Rules: SRD 5.1, CC BY 4.0" src="https://img.shields.io/badge/rules-SRD%205.1%20%C2%B7%20CC%20BY%204.0-555555"></a>
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/github/license/PuraFome/meuRPG?label=license&amp;color=D22128"></a>
+  <a href="https://github.com/PuraFome/meuRPG/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/PuraFome/meuRPG/main?label=last%20commit"></a>
 </p>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/img/ficha-desktop-escuro.webp">
-    <img alt="A ficha do Pensantus, Mago 3, travada na sessão: os medalhões de habilidade, o escudo da CA, os pontos de vida e o aviso de armadura sem proficiência" src="docs/img/ficha-desktop-claro.webp" width="900">
+    <img alt="Pensantus, a level 3 Wizard, locked for the session: the ability medallions, the AC shield, hit points and the warning about armor without proficiency" src="docs/img/ficha-desktop-claro.webp" width="900">
   </picture>
 </p>
 
-## O que é
+## What it is
 
-O mestre prepara o mundo e conduz a sessão ao vivo; o jogador entra por convite, acompanha a ficha e age no RP e no combate com o que as regras permitem. Mais contexto em [Visão do produto](docs/produto/visao.md).
+MeuRPG is a companion for one table's D&D 5e campaigns. The Game Master (*mestre*) prepares the world and runs the live session; players join by invite, follow their character sheet and act in roleplay (RP) and in combat within what the rules allow. The rules engine does the math, and the server is the authority: what is hidden never leaves it for a player. More in the [product vision](docs/product/vision.md).
 
-O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app Angular e a API na mesma origem, com o CockroachDB, feito para rodar no Cloud Run, em São Paulo. O primeiro deploy vem depois. O app antigo está descontinuado e fica documentado em [App antigo](docs/app-antigo.md).
+It is a Go server that serves the Angular app and the API from the same origin, backed by CockroachDB and built to run on Cloud Run in São Paulo. The screens are in Portuguese for now; the English UI comes after the MVP. The old app is discontinued and documented in [Legacy app](docs/legacy-app.md).
 
-## O que já funciona
+## Current stage
 
-As Etapas 1 a 10 do [roadmap](docs/roadmap.md) estão na `main`:
+**Pre-MVP.** Every feature planned for the MVP is built (Stages 1 to 10 of the [roadmap](docs/roadmap.md)). What comes next: hardening and a rehearsal before the first real table session, then internationalization (an English UI), then the post-MVP stories.
 
-- **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
-- **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
-- **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta, com iniciativa e ataques. Na criação, as habilidades e os PV podem ser rolados no app, e cada magia tem a descrição completa.
-- **Sessão.** Iniciar a sessão trava as fichas dos jogadores; a história do personagem tem uma trava própria.
-- **Sessão ao vivo.** Quando o mestre inicia a sessão, quem joga na campanha vê o aviso com o link, em qualquer página do app. Na página da sessão, os PV, os espaços de magia e os dados de vida do personagem mudam na tela do jogador quando o mestre corrige, sem recarregar.
-- **Galeria.** O mestre envia as imagens da campanha, e o servidor tira os metadados, como o GPS da foto, antes de guardar.
-- **Mapas sem spoiler.** O mestre cria mapas a partir da galeria, com pontos de interesse (batalha, submapa e cena de RP) e os tokens dos personagens, e revela cada coisa na hora certa: o que está escondido nunca sai do servidor para o jogador. Na sessão, o mestre escolhe o mapa atual e move os tokens, e a mesa vê ao vivo. Ele também pode mostrar aos jogadores uma imagem da galeria.
-- **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
-- **Combate.** O mestre põe a grade de 1,5 m no mapa e inicia o combate: iniciativa, ordem dos turnos e movimento, sem o jogador ver quem está escondido nem os números dos inimigos. Na sua vez, o jogador vê o que as regras deixam fazer com a ação, a ação bônus, a reação e o movimento, e ataca, conjura, usa as habilidades de classe e as reações, com o dado do app ou o físico. O mestre aplica o dano, desfaz a última ação, marca as condições e confirma a morte de quem falha três vezes no teste contra a morte. O registro conta a luta, e cada um vê só o que pode ver. Quem tem a mesma iniciativa joga o mesmo turno (o turno conjunto), as distâncias saem em metros e em quadrados, e o fim do combate mostra os destaques.
-- **Cenas de RP.** O mestre põe as ações num ponto de cena do mapa (uma perícia, um teste de habilidade ou um teste de resistência, com CD se quiser) e abre a cena na sessão. Cada jogador vê as ações com o próprio bônus e rola no app ou digita o dado físico. O mestre escolhe, por cena, se os jogadores veem a CD e se passaram, e quantas tentativas cada um tem. Ele escreve as pistas e os ganchos do ponto, revela uma pista a quem escolher e põe os NPCs em cena, com o retrato, como num visual novel.
-- **Anotações.** O jogador guarda as próprias anotações e as pistas que recebeu, na sessão e na ficha. O mestre não lê.
-- **XP.** O mestre dá XP no fim do combate, por ouro ou avulso, ou registra um marco, conforme o modo da campanha, e desfaz o último. Toda a campanha vê o histórico, e a ficha mostra "Pode subir de nível". Na campanha por marcos, o mestre escreve os marcos antes. Quando pode, o jogador sobe o nível pela própria ficha, passo a passo, acrescentando só o que o nível dá, e o mestre vê o que mudou.
-- **Resumo da sessão.** Quando o mestre encerra a sessão, todos veem os destaques, e o mestre vê também a tabela de cada jogador.
-- **Imprimir o mapa.** O mestre imprime um mapa com a grade na escala da mesa, escolhendo o tamanho do quadrado e o papel.
-- **O mapa a fundo.** O mestre pinta no mapa o terreno difícil, as paredes, a cobertura e a luz, e põe luzes, armadilhas e tesouros. Com a névoa de guerra ligada, cada jogador vê só o que o personagem dele enxerga, com a luz que carrega e a visão no escuro, e o que já viu fica escurecido e sem inimigos. O mestre vê o mapa como cada jogador vê.
-- **Armadilhas e tesouros.** O personagem nota uma armadilha ao passar perto ou procura com Percepção ou Investigação; o mestre revela, dispara e desarma, e aplica o dano. O tesouro achado vira XP em "Voltar à cidade", nas campanhas por ouro.
-- **Movimento como nas regras oficiais.** O alcance em círculo, o terreno difícil, o salto, a cobertura e o ataque de oportunidade, tudo decidido pelo servidor.
-- **As criaturas do personagem.** O familiar, os mortos-vivos e os animais convocados entram na ficha e no combate, cada um com a vez dele, e o druida vira fera na Forma Selvagem.
-- **O conteúdo da própria mesa.** O mestre cria magias, raças, sub-raças, antecedentes, classes e subclasses, que entram na ficha, na subida de nível e no combate como as do SRD, e escolhe o que os jogadores podem usar. Quando o mestre muda uma entrada, as fichas abertas mostram a mudança na hora.
-- **As regras da mesa.** Os PV da subida de nível, os jeitos de fazer habilidades, o crítico, os testes contra a morte escondidos e a calibração da grade; e o combate sem grade, o teatro da mente.
-- **Masmorras geradas.** O mestre gera uma masmorra com portas, escadas e salas numeradas, que vira mapa da campanha, com uma cena por sala.
-- **Quebra-cabeças.** Seis tipos, com dicas por teste de perícia, informação dividida entre os jogadores e consequências ao errar.
-- **Imagens geradas por IA.** A arte de uma cena, a vista isométrica e o mapa com textura, feitos só do que os jogadores já viram.
-- **Bestiário, encontros e tesouro.** As 334 criaturas do SRD, o montador de encontros pelo orçamento do grupo e o gerador de tesouro, com o ponto escondido no mapa.
+## What works
 
-Agora vem o MVP: a mesa do Samuel joga a primeira sessão inteira pelo app. Depois, a Etapa 11 traz o que ficou para depois do MVP e tira o app antigo. Ver [Roadmap](docs/roadmap.md).
+- **Sign-in and campaigns.** OpenID Connect sign-in (Google in production), server-side sessions of up to 30 days. The Game Master creates campaigns and invites (with an expiry and a number of uses, optionally needing approval); invitees join signed in or signing in on the way.
+- **Characters.** The official sheet layout, computed by the rules engine from the SRD 5.1: modifiers, skills, AC, HP, spells and rule warnings. NPCs on a short sheet. Ability scores and HP can be rolled in the app. Sheets lock when a session starts.
+- **Live session.** Players are notified when the session starts; HP, spell slots and hit dice update on screen when the Game Master corrects them. A summary with highlights closes the session.
+- **Maps without spoilers.** Maps built from the gallery, with points of interest (battle, submap, RP scene), tokens, layers (walls, difficult terrain, cover, light), traps, treasures and per-player fog of war; hidden things never reach players. Printable at table scale.
+- **Combat.** Initiative, turn order and movement on a 1.5 m grid (or without a grid, "theatre of the mind"). On their turn players see what they can do with action, bonus action, reaction and movement, and roll with the app's dice or physical ones. Circle movement, jumping, cover and opportunity attacks as in the official rules; the Game Master applies damage, conditions and death saves; a log tells the fight.
+- **RP scenes, clues and puzzles.** Scene actions with skill checks and saves, clues and hooks, NPCs on stage with portraits, six kinds of puzzles with hints, split information and consequences.
+- **Progression.** XP by combat, gold, milestone or free-form; guided level-up on the sheet.
+- **Creatures.** The 334 SRD creatures as a bestiary, a character's familiar, undead, summoned animals and Wild Shape.
+- **The table's own content and rules.** Custom spells, races, backgrounds, classes and subclasses; table rules (level-up HP, ability score methods, critical hits, hidden death saves); switches for what players may use.
+- **Generators.** Dungeons (doors, stairs, numbered rooms), an encounter builder against the party's budget, and a treasure generator.
+- **AI images.** Scene art, an isometric view and a textured map, made only from what the players have already seen.
+- **Gallery and campaign document.** Image upload with metadata stripped; the Game Master's notes in Markdown.
 
-## O visual: a ficha de papel
+## The look: the paper sheet
 
-As telas imitam a ficha oficial de D&D 5e, na mesma ordem e com as mesmas formas: os medalhões de habilidade, o escudo da CA, os pontos de proficiência. O número de jogo é a coisa mais visível da tela. O tema claro e o escuro seguem o sistema operacional, com contraste AA nos dois, e cada tela funciona no celular, na mesa de jogo.
+The screens mimic the official D&D 5e sheet: ability medallions, the AC shield, proficiency dots. The game number is the most visible thing on screen. Light and dark themes follow the operating system with AA contrast, and every screen works on a phone at the table. Principles, tokens and how a screen is designed and reviewed: [Design](docs/design.md).
 
 <p align="center">
-  <img alt="A campanha Mirathel no celular, pelo mestre, no tema claro: a sessão em andamento, o Pensantus travado e os NPCs" src="docs/img/campanha-celular-claro.webp" width="300">
+  <img alt="The Mirathel campaign on a phone, as the Game Master, light theme: the session in progress, Pensantus locked and the NPCs" src="docs/img/campanha-celular-claro.webp" width="300">
   &nbsp;&nbsp;
-  <img alt="A ficha do Pensantus no celular, no tema escuro" src="docs/img/ficha-celular-escuro.webp" width="300">
+  <img alt="Pensantus's sheet on a phone, dark theme" src="docs/img/ficha-celular-escuro.webp" width="300">
 </p>
 
-Os princípios, os tokens de cor e fonte, os componentes e como uma tela nova é desenhada e revisada estão em [Design](docs/design.md).
+## Stack
 
-## Como funciona
-
-| Parte | O que usa |
+| Part | What it uses |
 | --- | --- |
-| Backend | Go, num monólito modular (`identity`, `authz`, `campaigns`, `rules`, `characters`, `play`), que também é o BFF do app |
-| API | Protobuf + [Connect](https://connectrpc.com), em `proto/`; o cliente TypeScript do `web/` é gerado dos mesmos `.proto` |
-| Banco | CockroachDB, com as queries no sqlc e as migrations no goose |
-| Web | Angular 21 (standalone, zoneless) com Angular Material, no visual da [ficha de papel](docs/design.md) |
-| Login | OpenID Connect com PKCE; o navegador só recebe um cookie `__Host-` com uma sessão opaca |
-| Regras | Um motor puro sobre o SRD 5.1, com os efeitos em JSON e as fórmulas num sandbox |
-| Infra | Cloud Run e CockroachDB no Google Cloud, em São Paulo |
+| Backend | Go, a modular monolith (`identity`, `authz`, `campaigns`, `rules`, `characters`, `play`, `maps`, and more) that is also the app's BFF |
+| API | Protobuf + [Connect](https://connectrpc.com) in `proto/`; the TypeScript client in `web/` is generated from the same `.proto` files |
+| Database | CockroachDB, with queries in sqlc and migrations in goose |
+| Web | Angular 21 (standalone, zoneless) with Angular Material, in the [paper sheet](docs/design.md) look |
+| Sign-in | OpenID Connect with PKCE; the browser only gets a `__Host-` cookie with an opaque session |
+| Rules | A pure engine over the SRD 5.1, with effects in JSON and formulas in a sandbox |
+| Infra | Cloud Run and CockroachDB on Google Cloud, in São Paulo |
 
-O desenho completo, com os diagramas, está em [Arquitetura](docs/arquitetura.md).
+The full design, with diagrams, is in [Architecture](docs/architecture.md).
 
-## Como rodar
+## Running it locally
 
-Precisa de Docker, Go 1.27, Node 22 e `make`. As ferramentas que só geram código ou rodam lint (buf, sqlc, golangci-lint) estão no [CONTRIBUTING](CONTRIBUTING.md#ambiente-local).
+You need Docker, Go 1.27, Node 22 and `make`. The tools that only generate code or lint (buf, sqlc, golangci-lint) are listed in [CONTRIBUTING](CONTRIBUTING.md#local-environment).
 
 ```bash
-make up      # CockroachDB, migrations, devidp e o app em http://localhost:8080
-make test    # testes do backend (go test -race)
-make e2e     # testes pela tela (Playwright) e de acessibilidade (axe)
-make down    # derruba tudo
+make up      # CockroachDB, migrations, devidp and the app at http://localhost:8080
+make test    # backend tests (go test -race)
+make e2e     # UI tests (Playwright) and accessibility tests (axe)
+make down    # tear everything down
 ```
 
-No Mac, dá para rodar tudo sem Docker: `make db-native-start` e depois `make up LOCAL_STACK=native` (ver [Tudo nativo](CONTRIBUTING.md#tudo-nativo-mac-opcional)).
+On a Mac you can run everything without Docker: `make db-native-start`, then `make up LOCAL_STACK=native` (see [All native](CONTRIBUTING.md#everything-native-mac-optional)).
 
-Abra `http://localhost:8080` no Chrome e clique em "Entrar": o login vai para o **devidp**, um provedor de teste que só existe na sua máquina e no CI, e um clique em "Mestre Teste" volta logado. O Safari não aceita cookie `Secure` em `http://localhost`.
+Open `http://localhost:8080` in Chrome and click "Entrar": sign-in goes to **devidp**, a test provider that exists only on your machine and in CI, and one click on "Mestre Teste" signs you in. Safari does not accept `Secure` cookies on `http://localhost`.
 
-Para mexer só nas telas, com recarga automática, deixe o `make up` rodando e suba o Angular em modo dev, em `http://localhost:4200`:
+To work on screens only, with live reload, leave `make up` running and start Angular in dev mode at `http://localhost:4200`:
 
 ```bash
 cd web
-npm ci --ignore-scripts   # nunca roda scripts de instalação de terceiros
+npm ci --ignore-scripts   # never runs third-party install scripts
 npm start
 ```
 
-Todos os comandos estão em `make help` e no [CONTRIBUTING](CONTRIBUTING.md).
+All commands are in `make help` and in [CONTRIBUTING](CONTRIBUTING.md).
 
-## Estrutura do repositório
+## Repository layout
 
-| Pasta | O que tem |
+| Folder | What it holds |
 | --- | --- |
-| `backend/` | O servidor Go: `cmd/` (a API, as migrations, o devidp e o importador do SRD), `internal/<módulo>` e `migrations/` |
-| `proto/` | Os contratos da API (`meurpg/<módulo>/v1/*.proto`) |
-| `web/` | O app Angular |
-| `e2e/` | Os testes Playwright de cada critério de aceite e o `a11y.spec.ts` |
-| `deploy/local/` | O Docker Compose do ambiente local |
-| `docs/` | A documentação, em português, com os diagramas em Mermaid |
-| `.github/` | Os workflows do CI, o Dependabot e o modelo de PR |
-| `src/`, `server/` | O [app antigo](docs/app-antigo.md), descontinuado |
+| `backend/` | The Go server: `cmd/` (the API, migrations, devidp and the SRD importer), `internal/<module>` and `migrations/` |
+| `proto/` | The API contracts (`meurpg/<module>/v1/*.proto`) |
+| `web/` | The Angular app |
+| `e2e/` | The Playwright tests for each acceptance criterion and `a11y.spec.ts` |
+| `deploy/local/` | The Docker Compose of the local environment |
+| `docs/` | The documentation, with Mermaid diagrams ([index](docs/README.md)) |
+| `.github/` | CI workflows, Dependabot and the PR template |
+| `src/`, `server/` | The [legacy app](docs/legacy-app.md), discontinued |
 
-## Qualidade
+## Quality
 
-Todo código entra por PR, com o CI verde. O que cada job confere está em [CONTRIBUTING](CONTRIBUTING.md#o-que-o-ci-confere).
+All code goes in through a PR with green CI. What each CI job checks is in [CONTRIBUTING](CONTRIBUTING.md#what-ci-checks).
 
-- **Cada critério de aceite vira um teste:** `go test` para a regra que roda no servidor, Playwright para o que aparece na tela, marcado com a história (`@MR-001`).
-- **Acessibilidade:** o [axe](https://github.com/dequelabs/axe-core) passa nas telas principais, no tema claro e no escuro, no computador e no celular, e o CI falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA.
-- **Contrato e código gerado:** `buf lint`, `buf format` e `buf breaking` nos `.proto`; o CI gera de novo o código do buf e do sqlc e falha se aparecer diferença.
-- **Banco de verdade nos testes:** os testes de integração rodam contra o CockroachDB, na mesma imagem do ambiente local.
-- **Tudo com versão presa:** as actions pelo SHA do commit, as imagens pelo digest, os pacotes npm na versão exata e instalados sem scripts. O Dependabot abre toda semana os PRs que mantêm isso em dia, e o `govulncheck` confere as dependências Go.
-- **Privacidade:** a regra mais restritiva entre a LGPD e o GDPR, dado a dado, em [Privacidade](docs/privacidade.md). O app não guarda nada no `localStorage` nem no `sessionStorage`.
+- **Every acceptance criterion is a test:** `go test` for server-side rules, Playwright for what shows on screen, tagged with the story (`@MR-001`).
+- **Accessibility:** [axe](https://github.com/dequelabs/axe-core) runs on the main screens, in light and dark themes, on desktop and phone; CI fails on any serious or critical WCAG 2.1 A and AA violation.
+- **Contract and generated code:** `buf lint`, `buf format` and `buf breaking` on the `.proto` files; CI regenerates the buf and sqlc code and fails on any diff.
+- **A real database in tests:** integration tests run against CockroachDB, the same image as the local environment.
+- **Everything pinned:** actions by commit SHA, images by digest, npm packages at exact versions installed without scripts. Dependabot opens the PRs that keep this current every week, and `govulncheck` checks the Go dependencies.
+- **Privacy:** the stricter of LGPD and GDPR, data item by data item, in [Privacy](docs/privacy.md). The app stores nothing in `localStorage` or `sessionStorage`.
 
-## Documentação
+## Documentation
 
-| Documento | Responde |
+| Document | Answers |
 | --- | --- |
-| [docs/README.md](docs/README.md) | O índice de toda a documentação |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Como rodar, testar e abrir um PR |
-| [Visão](docs/produto/visao.md), [Histórias](docs/produto/historias.md), [Regras](docs/produto/regras.md), [Glossário](docs/produto/glossario.md) | O que o app faz, para quem, e como o jogo se comporta nele |
-| [Roadmap](docs/roadmap.md) | A ordem das etapas até o MVP e o que já está na `main` |
-| [Arquitetura](docs/arquitetura.md), [Dados](docs/dados.md) | Como o sistema é montado, onde roda, as tabelas |
-| [Design](docs/design.md) | O visual do app e como uma tela é desenhada e revisada |
-| [Privacidade](docs/privacidade.md), [Operação](docs/operacao.md) | Os dados pessoais que guardamos; deploy, segredos e custos |
+| [docs/README.md](docs/README.md) | The index of all documentation |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to run, test and open a PR |
+| [Vision](docs/product/vision.md), [Stories](docs/product/stories.md), [Rules](docs/product/rules.md), [Glossary](docs/product/glossary.md) | What the app does, for whom, and how the game behaves in it |
+| [Roadmap](docs/roadmap.md) | The stages, the MVP gate and what comes after |
+| [Architecture](docs/architecture.md), [Data](docs/data.md) | How the system is built, where it runs, the tables |
+| [Design](docs/design.md) | The app's look and how a screen is designed and reviewed |
+| [Privacy](docs/privacy.md), [Operations](docs/operations.md) | The personal data we keep; deploy, secrets and costs |
 
-## Conteúdo de regras e licença
+The product docs and privacy are also available in Portuguese under [`docs/pt-BR/`](docs/pt-BR/README.md).
 
-As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creative Commons Attribution 4.0. O app é compatível com a quinta edição ("5E compatible") e não usa nenhuma marca da editora. A atribuição que a licença exige, com o texto exato, está no [NOTICE](NOTICE) e na página "Créditos" do app:
+## Rules content and license
+
+The rules come from the System Reference Document 5.1 (SRD 5.1), under the Creative Commons Attribution 4.0 license. The app is 5E compatible and uses no trademark of the publisher. The attribution the license requires, with the exact text, is in the [NOTICE](NOTICE) and on the app's "Créditos" page:
 
 > This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
-- O conteúdo fica embutido no binário, em `backend/internal/rules/srd51`, gerado a partir do 5e-database (MIT) num commit fixado. Nada é buscado em runtime.
-- Os nomes em português e os efeitos estruturados são nossos. As descrições do SRD ficam em inglês por enquanto.
-- Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
-- Como o motor funciona: [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#conteúdo-de-regras-srd).
+- The content is embedded in the binary, in `backend/internal/rules/srd51`, generated from the 5e-database (MIT) at a pinned commit. Nothing is fetched at runtime.
+- Three tables come from the SRD 5.2.1 (the 2024 rules, also CC BY 4.0): the ability score methods, the encounter XP budget and the magic item values. The app labels each one "SRD 5.2.1 (regras de 2024)", and the NOTICE carries their attribution.
+- The Portuguese names and the structured effects are ours. SRD descriptions stay in English for now.
+- No text from books outside the SRD enters the repository: what a table uses from other books, it registers in its own words.
+- How the engine works: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). How to update the SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
 
-As fontes (Alegreya e Alegreya Sans, OFL 1.1) e os ícones (Material Symbols, Apache 2.0) também estão no [NOTICE](NOTICE), com as licenças em [`third_party/licenses/`](third_party/licenses/).
+The fonts (Alegreya and Alegreya Sans, OFL 1.1) and icons (Material Symbols, Apache 2.0) are also in the [NOTICE](NOTICE), with licenses in [`third_party/licenses/`](third_party/licenses/).
 
-O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). O conteúdo de terceiros listado no [NOTICE](NOTICE) mantém a própria licença: o SRD 5.1 (CC BY 4.0), os dados do 5e-database (MIT), as fontes (OFL 1.1) e os ícones (Apache 2.0). Quem redistribui o MeuRPG, com ou sem mudanças, leva junto o `LICENSE` e o `NOTICE`.
+MeuRPG is distributed under the [Apache License 2.0](LICENSE). Third-party content listed in the [NOTICE](NOTICE) keeps its own license: the SRD 5.1 and the SRD 5.2.1 (CC BY 4.0), the 5e-database data (MIT), the fonts (OFL 1.1) and the icons (Apache 2.0). Anyone who redistributes MeuRPG, with or without changes, includes the `LICENSE` and `NOTICE` files.
 
-## App antigo (descontinuado)
+## Legacy app (discontinued)
 
-O Angular em `src/` e o NestJS em `server/` são o app antigo. Não recebem mudanças, e os dois saem do repositório na Etapa 11. O que eles faziam e como rodavam está em [App antigo](docs/app-antigo.md).
+The Angular app in `src/` and the NestJS server in `server/` are the old app. They receive no changes and both leave the repository after the MVP. What they did and how they ran is in [Legacy app](docs/legacy-app.md).

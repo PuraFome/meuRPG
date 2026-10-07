@@ -33,7 +33,7 @@ import "google/protobuf/timestamp.proto";
 // server trims spaces at both ends. A note is 1 to 2,000 characters and may
 // have line breaks and tabs, but no other control characters. A note is
 // fiction the player writes: do not write real people's data in it, and the
-// server never logs it (docs/privacidade.md). Deleting the account deletes
+// server never logs it (docs/privacy.md). Deleting the account deletes
 // the notes.
 //
 // Every method needs a valid session cookie and fails with `unauthenticated`
@@ -52,7 +52,7 @@ import "google/protobuf/timestamp.proto";
 //
 // Responses carry `Cache-Control: no-store`. Every request carries a campaign
 // ID, so reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL,
-// and URLs end up in the platform's request logs (docs/privacidade.md).
+// and URLs end up in the platform's request logs (docs/privacy.md).
 service NotesService {
   // ListNotes returns the caller's notes and the clues revealed to them,
   // newest first (a note by when it was last written, a clue by when it

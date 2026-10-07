@@ -3,7 +3,7 @@
 // Store is the whole interface: Put, Open and Delete. The filesystem
 // implementation (NewFS) keeps each file under a directory, for the local
 // stack and the tests. Production will use a private Cloud Storage bucket
-// behind the same interface (docs/operacao.md, "A definir"); nothing
+// behind the same interface (docs/operations.md#open-items-before-the-first-deploy); nothing
 // outside this package needs to change for that.
 //
 // A key is a path made of lowercase letters, digits, dots, dashes and

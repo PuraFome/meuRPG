@@ -3,7 +3,7 @@
 // characters module (who can fight, with which numbers) and the maps module
 // (the grid, the battle point, the tokens).
 //
-// Modules never import each other's code (docs/arquitetura.md), and the
+// Modules never import each other's code (docs/architecture.md), and the
 // numbers a combat needs are not API messages, so the types both sides
 // agree on live here, in a package that imports nothing of the project.
 // Package play declares the interfaces (CombatRoster, MapKeeper) that use

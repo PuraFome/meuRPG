@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # MeuRPG image: the Go API server plus the Angular web app it serves on the
-# same origin (see docs/arquitetura.md#frontend-web). Build context: the
+# same origin (see docs/architecture.md#web-app-web). Build context: the
 # repo root, because this needs both backend/ and web/. The Dockerfile
 # itself stays under backend/ (that is still the Go module it builds), so
 # every build passes -f explicitly:
@@ -89,7 +89,7 @@ COPY --from=web-build /src/dist/web/browser /app/web
 # write to it. It stays empty and unused unless BLOB_DIR points at it: the
 # local stack mounts a volume here (deploy/local/compose.yaml), and a new
 # volume takes this folder's owner. Production will store images in Cloud
-# Storage instead (docs/operacao.md).
+# Storage instead (docs/operations.md).
 COPY --from=build --chown=65532:65532 /out/meurpg/ /var/lib/meurpg/
 
 # OCI image labels (https://github.com/opencontainers/image-spec/blob/main/annotations.md),

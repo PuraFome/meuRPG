@@ -80,7 +80,7 @@ import "meurpg/maps/v1/maps.proto";
 // Responses carry `Cache-Control: no-store`. Every request carries a
 // campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
 // ID in the URL, and URLs end up in the platform's request logs
-// (docs/privacidade.md).
+// (docs/privacy.md).
 service GalleryService {
   // ListGalleryImages lists the campaign's images, newest first, with the
   // maps that use each one, and how much of the quota they use. Only the

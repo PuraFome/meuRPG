@@ -2405,7 +2405,7 @@ export const GameSessionBlockedReasonSchema: GenEnum<GameSessionBlockedReason> =
  * Responses carry `Cache-Control: no-store`, because they describe the
  * caller's campaigns. Reads that carry a campaign ID are IDEMPOTENT and
  * POST-only: a GET would put the ID in the URL, and URLs end up in the
- * platform's request logs (docs/privacidade.md). ListOpenGameSessions,
+ * platform's request logs (docs/privacy.md). ListOpenGameSessions,
  * whose request is empty, is NO_SIDE_EFFECTS and may use GET.
  *
  * @generated from service meurpg.play.v1.PlayService

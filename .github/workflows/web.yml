@@ -1,5 +1,5 @@
 # CI for the Angular frontend (web/), served by the Go backend on the same
-# origin (see docs/arquitetura.md#frontend-web).
+# origin (see docs/architecture.md#web-app-web).
 #
 # Every third-party action is pinned by full commit SHA (not by tag) so a
 # moving tag can't silently change what runs in CI. The `# vX.Y.Z` comment

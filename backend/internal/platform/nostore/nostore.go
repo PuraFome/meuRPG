@@ -2,7 +2,7 @@
 //
 // Every response of a service that describes the caller's data (their
 // characters, their game sessions) must carry `Cache-Control: no-store`, so
-// neither the browser nor a proxy keeps a copy (docs/privacidade.md). The
+// neither the browser nor a proxy keeps a copy (docs/privacy.md). The
 // campaigns module has its own copy of this interceptor from before this
 // package existed.
 package nostore

@@ -14,7 +14,7 @@ import (
 )
 
 // Acceptance tests: one per acceptance criterion in
-// docs/produto/historias.md, named after the story. A story's backend part
+// docs/product/stories.md, named after the story. A story's backend part
 // is done when its tests pass.
 
 // MR-001: Dado que estou logado, quando crio a campanha "Mirathel", então

@@ -16,7 +16,7 @@ import (
 
 // maxLiveContents is how many campaign contents (the SRD plus one table's layer)
 // the live source keeps, the plan's budget (ADR-0018, section 5): about 3 MB each
-// with a real table, so 8 stay far below the instance's 512 MiB (docs/operacao.md).
+// with a real table, so 8 stay far below the instance's 512 MiB (docs/operations.md).
 const maxLiveContents = 8
 
 // TableSource is the ContentSource that gives a campaign what it plays with: the

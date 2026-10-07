@@ -39,10 +39,10 @@ import (
 //
 // So only entries counted from the right are trustworthy, and we take the
 // last one. MeuRPG runs on Cloud Run with no load balancer in front
-// (docs/operacao.md). For that case Google documents no count; the front
+// (docs/operations.md). For that case Google documents no count; the front
 // end appends the address that connected to it, the client's, and there is
 // no forwarding rule address to add. If that ever proves wrong (the first
-// deploy checks it, see docs/operacao.md), the failure is safe: every
+// deploy checks it, see docs/operations.md), the failure is safe: every
 // client shares one bucket and only the global limit holds, but nobody can
 // dodge the limit by sending a header. If a load balancer is ever put in
 // front, it appends <client-ip>,<load-balancer-ip>, and

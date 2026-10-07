@@ -192,7 +192,7 @@ func (s *FS) Delete(ctx context.Context, key string) error {
 }
 
 // withoutPath drops the file name from an error of package os. A key holds
-// IDs, and IDs never go to the logs (docs/privacidade.md); the error that is
+// IDs, and IDs never go to the logs (docs/privacy.md); the error that is
 // left (such as "permission denied") still says what went wrong, and
 // errors.Is still sees fs.ErrNotExist.
 func withoutPath(err error) error {

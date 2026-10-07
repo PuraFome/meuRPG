@@ -189,7 +189,7 @@ func (s *Service) AdjustCharacterVitals(
 }
 
 // vitalsNumbers are the numbers a session event keeps about a character's
-// vitals: no names, no free text (docs/privacidade.md).
+// vitals: no names, no free text (docs/privacy.md).
 type vitalsNumbers struct {
 	HitPointsCurrent   int32   `json:"hit_points_current"`
 	HitPointsTemporary int32   `json:"hit_points_temporary"`

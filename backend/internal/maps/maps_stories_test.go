@@ -16,7 +16,7 @@ import (
 
 // The acceptance criteria of MR-008, MR-009, MR-012 (the map half) and
 // MR-028, and RN-10, as far as the server goes
-// (docs/produto/historias.md). The screens get their Playwright tests with
+// (docs/product/stories.md). The screens get their Playwright tests with
 // the maps UI.
 
 // MR-008: the master puts points of interest of each kind on a map. A

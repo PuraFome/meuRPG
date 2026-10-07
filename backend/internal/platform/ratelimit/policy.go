@@ -3,7 +3,7 @@ package ratelimit
 import "time"
 
 // Policy is the set of limiters that protect the server from one client
-// doing too much (docs/arquitetura.md, "Limites de abuso"). All of them live
+// doing too much (docs/architecture.md#abuse-limits). All of them live
 // in this instance's memory: with a second instance every limit would be
 // per instance, and a shared store (Redis, or the database) would be needed
 // to keep them exact. The server runs one instance (max-instances 1), so

@@ -10,7 +10,7 @@ import (
 )
 
 // TestConnectGETOnlyForRequestsWithoutData enforces a rule of
-// docs/arquitetura.md ("Contratos de API"): NO_SIDE_EFFECTS, which lets a
+// docs/architecture.md#api-contracts-protobuf: NO_SIDE_EFFECTS, which lets a
 // client call a method with HTTP GET, is only for requests with no fields.
 // A GET puts the whole request in the URL, and URLs end up in the
 // platform's request logs, so an ID or a personal detail must never ride

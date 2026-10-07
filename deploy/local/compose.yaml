@@ -109,7 +109,7 @@ services:
       DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
       PORT: "8080"
       # debug on the local stack: every request, RPC, stream and game event is
-      # logged (docs/arquitetura.md, "Os logs"). Production stays at info.
+      # logged (docs/architecture.md#logs). Production stays at info.
       LOG_LEVEL: ${LOG_LEVEL:-debug}
       # Sign-in through devidp (the idp service above).
       OIDC_ISSUER: http://idp.localhost:9090
@@ -117,7 +117,7 @@ services:
       OIDC_CLIENT_SECRET: meurpg-local-secret
       OIDC_REDIRECT_URL: http://localhost:8080/auth/callback
       # devidp honors max_age; Google does not document it, so production
-      # leaves it unset (docs/operacao.md).
+      # leaves it unset (docs/operations.md).
       OIDC_MAX_AGE: 1h
       # Uploaded images (the gallery, MR-019) go to the volume below.
       BLOB_DIR: /var/lib/meurpg/images
@@ -127,7 +127,7 @@ services:
       # The e2e suite sends every account's requests from one address and shares
       # a few accounts across its workers, so it would sit near the per-address
       # and per-user request limits. Ten times the production numbers keep it
-      # clear of them; the limits themselves are tested in Go (docs/operacao.md).
+      # clear of them; the limits themselves are tested in Go (docs/operations.md).
       RATE_LIMIT_MULTIPLIER: "10"
       # No cap on campaigns per master here: the e2e suite makes hundreds of
       # campaigns as one test master. The API refuses "off" on Cloud Run.

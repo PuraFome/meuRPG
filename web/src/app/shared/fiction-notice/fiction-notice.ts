@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
  * player or master could type something about a real person — personality,
  * appearance, backstory, allies, master notes, and any other free-text field
  * on a character. Always the same wording, so it lives in one component
- * instead of a string copied into every form section (`docs/privacidade.md`).
+ * instead of a string copied into every form section (`docs/privacy.md`).
  */
 @Component({
   selector: 'app-fiction-notice',

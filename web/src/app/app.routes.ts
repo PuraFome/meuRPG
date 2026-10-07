@@ -237,7 +237,7 @@ export const routes: Routes = [
   },
   {
     // Where the server redirects after sign-in-through-invite when the
-    // invite could not be accepted (docs/arquitetura.md#frontend-web).
+    // invite could not be accepted (docs/architecture.md#web-app-web).
     path: 'invite/error',
     title: 'Convite não aceito',
     loadComponent: () => import('./pages/invite-error/invite-error').then((m) => m.InviteError),

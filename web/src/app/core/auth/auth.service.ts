@@ -10,7 +10,7 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
  *
  * `displayName` is the name the user typed in the app (`UpdateProfile`,
  * "Meu perfil"), never anything from the sign-in provider (identity.proto,
- * docs/privacidade.md — no e-mail, name or photo from Google). It is `null`
+ * docs/privacy.md — no e-mail, name or photo from Google). It is `null`
  * until the user sets one, which every screen that reads it (the user menu,
  * in particular) treats as "no name chosen yet", not as an empty string.
  */
