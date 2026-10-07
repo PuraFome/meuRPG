@@ -418,6 +418,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	_, targetKnown := byID[e.ev.Target]
 	known := (e.ev.Actor == "" || actorKnown) && (e.ev.Target == "" || targetKnown || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION)
 	visible := !e.masterOnly && !e.ev.Secret && !actor.Hidden && !target.Hidden && known
+	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION && (e.ev.AttackerHidden || byID[e.ev.Target].Hidden) && !v.owns(actor) {
+		visible = false
+	}
 	// On a map with the fog of war, a line is the players' who saw its NPCs when it
 	// happened, even if they have walked into the dark since; one they did not see
 	// never appears later (MR-036). The master's copy says it is hidden from them.

@@ -171,6 +171,10 @@ type actionEvent struct {
 	// never get its line of the log, even after the master reveals the
 	// combatant (RN-10, RN-20).
 	Secret bool `json:"secret,omitempty"`
+	// AttackerHidden says the master had hidden the attacker of the blow a reaction
+	// answered: the line is the reactor's player's and the master's alone, even after a
+	// reveal, or it would tell the others a hidden NPC attacked (RN-10).
+	AttackerHidden bool `json:"attacker_hidden,omitempty"`
 	// Fogged says the event happened on a map with the fog of war on, with an NPC
 	// in it, and SeenBy lists the players (user IDs) who saw every NPC in it when it
 	// happened: the log gives the line to them and to nobody else, and never works it
