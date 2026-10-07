@@ -17,6 +17,7 @@ type memStore struct {
 	identities  map[[2]string]memIdentity
 	users       map[string]string     // user ID -> display name
 	sessions    map[string]memSession // key: session ID
+	touches     int                   // successful touchSession writes
 }
 
 type memIdentity struct {
@@ -82,27 +83,72 @@ func (m *memStore) createSession(_ context.Context, ns NewSession) (Session, err
 	if !ns.ExpiresAt.After(ns.CreatedAt) || ns.ExpiresAt.Sub(ns.CreatedAt) > SessionLifetime {
 		return Session{}, fmt.Errorf("session lifetime out of range") // the database CHECK
 	}
-	s := Session{ID: rand.Text(), UserID: ns.UserID, CreatedAt: ns.CreatedAt, ExpiresAt: ns.ExpiresAt}
+	s := Session{ID: rand.Text(), UserID: ns.UserID, CreatedAt: ns.CreatedAt, ExpiresAt: ns.ExpiresAt, LastUsedAt: ns.CreatedAt}
 	m.sessions[s.ID] = memSession{Session: s, tokenHash: string(ns.TokenHash), authTime: ns.AuthTime}
 	return s, nil
 }
 
-func (m *memStore) lookupSession(_ context.Context, tokenHash []byte, now time.Time) (Session, error) {
+func (m *memStore) lookupSession(_ context.Context, tokenHash []byte, now, idleSince time.Time) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, s := range m.sessions {
-		if s.tokenHash == string(tokenHash) && s.ExpiresAt.After(now) {
+		if s.tokenHash == string(tokenHash) && s.ExpiresAt.After(now) && s.LastUsedAt.After(idleSince) {
 			return s.Session, nil
 		}
 	}
 	return Session{}, ErrNotFound
 }
 
-func (m *memStore) sessionActive(_ context.Context, sessionID string, now time.Time) (bool, error) {
+func (m *memStore) sessionActive(_ context.Context, sessionID string, now, idleSince time.Time) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.sessions[sessionID]
-	return ok && s.ExpiresAt.After(now), nil
+	return ok && s.ExpiresAt.After(now) && s.LastUsedAt.After(idleSince), nil
+}
+
+// touches counts the writes touchSession made, for the throttle tests.
+func (m *memStore) touchCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.touches
+}
+
+func (m *memStore) touchSession(_ context.Context, sessionID string, now, staleBefore time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[sessionID]
+	if !ok || !s.LastUsedAt.Before(staleBefore) {
+		return false, nil
+	}
+	s.LastUsedAt = now
+	m.sessions[sessionID] = s
+	m.touches++
+	return true, nil
+}
+
+func (m *memStore) revokeOtherSessions(_ context.Context, userID, keepID string, now, idleSince time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var n int64
+	for id, s := range m.sessions {
+		if s.UserID == userID && id != keepID && s.ExpiresAt.After(now) && s.LastUsedAt.After(idleSince) {
+			delete(m.sessions, id)
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (m *memStore) countOtherSessions(_ context.Context, userID, keepID string, now, idleSince time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var n int64
+	for id, s := range m.sessions {
+		if s.UserID == userID && id != keepID && s.ExpiresAt.After(now) && s.LastUsedAt.After(idleSince) {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (m *memStore) revokeSession(_ context.Context, sessionID string) error {
@@ -192,6 +238,6 @@ type failingStore struct{ Store }
 var errStoreDown = fmt.Errorf("database is down")
 
 func (failingStore) saveLoginState(context.Context, LoginState) error { return errStoreDown }
-func (failingStore) lookupSession(context.Context, []byte, time.Time) (Session, error) {
+func (failingStore) lookupSession(context.Context, []byte, time.Time, time.Time) (Session, error) {
 	return Session{}, errStoreDown
 }

@@ -122,6 +122,26 @@ export class AuthService {
   }
 
   /**
+   * How many other sessions of this user still work
+   * (`IdentityService.CountOtherSessions`), for the "Sessões" section of
+   * "Meu perfil". Throws the raw error on failure, for the caller to show.
+   */
+  async countOtherSessions(): Promise<number> {
+    const res = await this.client.countOtherSessions({});
+    return res.otherSessions;
+  }
+
+  /**
+   * Ends every other session of this user (`SignOutOtherSessions`) and
+   * returns how many ended. This session stays signed in, so `state` does
+   * not change. Throws the raw error on failure.
+   */
+  async signOutOtherSessions(): Promise<number> {
+    const res = await this.client.signOutOtherSessions({});
+    return res.endedCount;
+  }
+
+  /**
    * Sends the browser to the server's sign-in flow with a full-page
    * navigation (this is a redirect dance with the OIDC provider, not
    * something the Angular router can do). `returnTo` must be a path on

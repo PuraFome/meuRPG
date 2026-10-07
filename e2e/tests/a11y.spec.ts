@@ -15,7 +15,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, signIn } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -159,6 +159,44 @@ test('as telas do mestre passam no axe no tema claro, no desktop', { tag: '@a11y
 
 test('as telas do mestre passam no axe no tema escuro, no celular', { tag: '@a11y' }, async ({ browser }) => {
   await scanMasterScreens(browser, 'dark', 390);
+});
+
+/** "Sessões" on the profile page: the count with its button, and the in-place
+ * confirmation. A second, real sign-in of the master gives the page another
+ * device to show (it sends no cookie, so it revokes nothing); the scan only
+ * opens the confirmation and cancels, so no shared session ends. */
+async function scanSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const other = await browser.newContext({ colorScheme });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  try {
+    await signIn(await other.newPage(), 'Mestre Teste', '/');
+    const page = await context.newPage();
+    const where = `(${colorScheme}, ${width}px)`;
+    await open(page, '/perfil');
+    const ask = page.getByRole('button', { name: 'Sair dos outros dispositivos' });
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(page, `Perfil, sessões ${where}`);
+    await ask.click();
+    await expect(page.getByRole('button', { name: 'Confirmar saída' })).toBeFocused();
+    await expectScreenPasses(page, `Perfil, confirmar a saída dos outros dispositivos ${where}`);
+    await page.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(ask).toBeFocused();
+  } finally {
+    await context.close();
+    await other.close();
+  }
+}
+
+test('"Sessões" do perfil passa no axe no tema claro, no desktop', { tag: '@a11y' }, async ({ browser }) => {
+  await scanSessions(browser, 'light', 1280);
+});
+
+test('"Sessões" do perfil passa no axe no tema escuro, no celular', { tag: '@a11y' }, async ({ browser }) => {
+  await scanSessions(browser, 'dark', 390);
 });
 
 /** The gallery (MR-019): empty, with images, a refused upload's notice,

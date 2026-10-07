@@ -35,3 +35,73 @@
     </button>
   </form>
 </section>
+
+<section class="mr-panel profile-panel sessions" aria-labelledby="sessions-title">
+  <h2 id="sessions-title" class="sessions__title">Sessões</h2>
+
+  @switch (sessions().status) {
+    @case ('loading') {
+      <p class="sessions__text">Verificando onde você está conectado…</p>
+    }
+    @case ('ready') {
+      @let others = sessionOthers();
+      @if (others === 0) {
+        <p class="sessions__text">Você não está conectado em outros dispositivos.</p>
+      } @else {
+        <p class="sessions__text">
+          Você está conectado em {{ others }} {{ others === 1 ? 'outro dispositivo' : 'outros dispositivos' }}.
+        </p>
+        <button
+          #askButton
+          matButton="outlined"
+          type="button"
+          (click)="askSignOutOthers(others)"
+        >
+          Sair dos outros dispositivos
+        </button>
+      }
+    }
+    @case ('confirm') {
+      <div class="sessions__confirm" role="group" aria-labelledby="sessions-confirm-text">
+        <p class="sessions__text" id="sessions-confirm-text">
+          <strong>Sair dos outros dispositivos?</strong> Quem estiver neles precisa entrar de novo.
+          Este aparelho continua conectado. Não dá para desfazer.
+        </p>
+        <div class="sessions__actions">
+          <button
+            #confirmButton
+            matButton="outlined"
+            type="button"
+            class="danger"
+            (click)="signOutOthers(sessionOthers())"
+          >
+            Confirmar saída
+          </button>
+          <button matButton type="button" (click)="cancelSignOutOthers(sessionOthers())">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    }
+    @case ('ending') {
+      <p class="sessions__text" role="status">Saindo dos outros dispositivos…</p>
+    }
+    @case ('done') {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        <p>{{ doneMessage() }}</p>
+      </div>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ errorMessage() }}</p>
+      </div>
+      <button matButton="outlined" type="button" (click)="loadSessions()">Tentar de novo</button>
+    }
+  }
+
+  <p class="sessions__hint">
+    Uma sessão que fica 14 dias sem uso termina sozinha, e nenhuma dura mais de 30 dias.
+  </p>
+</section>

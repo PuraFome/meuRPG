@@ -102,6 +102,7 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | `OIDC_ISSUER` | Não | `https://accounts.google.com` |
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
+| `SESSION_IDLE_TIMEOUT` | Não | Uma duração, de `1h` a `720h`; padrão `336h` (14 dias). Uma sessão de login sem nenhum uso por esse tempo deixa de valer (ASVS 5.0 V7.3.1), como se não existisse. Os 14 dias existem porque a mesa joga mais ou menos toda semana: perdoam duas sessões seguidas perdidas e ainda cortam um navegador esquecido muito antes dos 30 dias absolutos, que nada muda. Baixar o valor desloga quem passa um tempo sem jogar; subir ajuda pouco, porque os 30 dias absolutos continuam. Não é segredo |
 | `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age`. A reautenticação a cada 30 dias (NIST SP 800-63B-4) vem da sessão de 30 dias no servidor. No ambiente local, com o devidp, é `1h` |
 
 O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`. A `DATABASE_URL` e a `GEMINI_API_KEY` também são `config.Secret`. O `migrate` lê a URL com o pgx e, se ela não é válida, devolve uma frase fixa em vez do erro do driver, que pode repetir a senha.

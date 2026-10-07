@@ -96,6 +96,8 @@ O login do mestre funciona com qualquer provedor OpenID Connect: o Google em pro
 | `OIDC_CA_FILE` | Não | Arquivo PEM com o certificado de um provedor local com certificado autoassinado. |
 | `OIDC_MAX_AGE` | Não | Uma duração, como `1h`. Se definida, vai como `max_age`: o provedor pede a senha de novo quando o último login nele é mais antigo que isso. Use só com provedor que documenta `max_age`: `1h` com o devidp (é o que o `compose.yaml` usa); **não defina com o Google**, que não documenta `max_age`. Quem garante a reautenticação pelo menos a cada 30 dias (NIST SP 800-63B-4, AAL1) é a nossa sessão no servidor, que nunca passa de 30 dias, e não o `max_age`. |
 
+Uma variável à parte vale para a sessão de login em si: `SESSION_IDLE_TIMEOUT` (opcional, de `1h` a `720h`, padrão `336h`) é quanto tempo uma sessão pode ficar sem uso antes de deixar de valer; os 30 dias absolutos não mudam (ver [Operação](docs/operacao.md#variáveis-de-ambiente-e-segredos)). O perfil do app tem "Sair dos outros dispositivos", que termina as outras sessões da mesma conta.
+
 Sem `OIDC_ISSUER` ou sem `DATABASE_URL`, o backend sobe do mesmo jeito, avisa no log que o login está desligado, e `/auth/login` responde 503.
 
 Para testar o login na sua máquina:
@@ -127,6 +129,7 @@ O `make up` já sobe o login pronto: o serviço `idp` do `compose.yaml` roda o *
 | Mestre Teste | `devidp-mestre` | `mestre@example.com` (verificado) | O mestre dos testes. |
 | Jogador Teste | `devidp-jogador` | `jogador@example.com` (verificado) | Uma segunda pessoa, para os testes com jogador. |
 | E-mail Não Verificado | `devidp-nao-verificado` | `nao-verificado@example.com` (**não** verificado) | Conferir que um e-mail não verificado não é guardado. |
+| Sessões Teste | `devidp-sessoes` | `sessoes@example.com` (verificado) | Só o teste de "Sair dos outros dispositivos" (`e2e/tests/sessions.spec.ts`): essa ação termina todas as outras sessões da conta, então nenhuma outra conta compartilhada serve. Nenhum outro teste entra com ela. |
 
 O `sub` é fixo, então cada usuário de teste cai sempre na mesma conta do banco local. Não há senha: qualquer um que alcance o devidp entra como qualquer usuário de teste. Por isso ele **nunca** vai para produção:
 

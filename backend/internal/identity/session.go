@@ -21,6 +21,18 @@ const (
 	// 800-63B-4, section 2.1.3 (AAL1): reauthentication SHALL be required at
 	// least every 30 days. Using a session does not extend it.
 	SessionLifetime = 30 * 24 * time.Hour
+
+	// DefaultSessionIdleTimeout is how long a session may go unused before
+	// it stops working (ASVS 5.0 V7.3.1). The table plays about once a week,
+	// so 14 days forgives two missed sessions, and a laptop forgotten at a
+	// friend's house stops working long before the 30 days are up. Set
+	// SESSION_IDLE_TIMEOUT to change it (docs/operacao.md).
+	DefaultSessionIdleTimeout = 14 * 24 * time.Hour
+
+	// sessionTouchEvery is how often a session's last use is written: at
+	// most once per this interval, so a busy session is not a write per
+	// request. The idle timeout is days; ten minutes of slack is nothing.
+	sessionTouchEvery = 10 * time.Minute
 )
 
 // Session is a valid, unexpired sign-in session.
@@ -29,6 +41,9 @@ type Session struct {
 	UserID    string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	// LastUsedAt is the last use the store recorded; it can be up to
+	// sessionTouchEvery behind the real one.
+	LastUsedAt time.Time
 }
 
 // errNoSession means the request carries no valid session: no cookie, a
@@ -61,11 +76,26 @@ func (s *Service) lookupSession(ctx context.Context, token string) (Session, err
 	if !ok {
 		return Session{}, errNoSession
 	}
-	session, err := s.store.lookupSession(ctx, hash, s.now())
+	now := s.now()
+	session, err := s.store.lookupSession(ctx, hash, now, now.Add(-s.idleTimeout))
 	if errors.Is(err, ErrNotFound) {
 		return Session{}, errNoSession
 	}
 	return session, err
+}
+
+// touchSession records a use of the session, at most once per
+// sessionTouchEvery. It is best effort: a failed write only means the next
+// request tries again, so it never fails the request. It runs outside any
+// other transaction (the interceptor calls it before the handler starts).
+func (s *Service) touchSession(ctx context.Context, session Session) {
+	now := s.now()
+	if now.Sub(session.LastUsedAt) < sessionTouchEvery {
+		return // the common case: no database call at all
+	}
+	if _, err := s.store.touchSession(ctx, session.ID, now, now.Add(-sessionTouchEvery)); err != nil {
+		s.logger.WarnContext(ctx, "cannot record the session's last use", "error", err)
+	}
 }
 
 // sessionCookie is the cookie that carries a new session's token. It

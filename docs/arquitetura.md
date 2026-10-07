@@ -318,7 +318,7 @@ Unitários (Vitest, `web/src/**/*.spec.ts`) cobrem o mapeamento de erros, o cort
 
 ## Módulo identity: login e sessão
 
-O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PKCE, e o servidor abre uma sessão opaca de no máximo 30 dias, guardada num cookie `__Host-` `HttpOnly` (ADR-0002). O código fica em `backend/internal/identity` e não conhece nenhum provedor: em produção é o Google, em desenvolvimento um provedor OIDC local ou um provedor falso dos testes. Tudo vem da configuração (ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-um-provedor-oidc)) e da descoberta OIDC (`/.well-known/openid-configuration`).
+O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PKCE, e o servidor abre uma sessão opaca de no máximo 30 dias (e que acaba antes se ficar 14 dias sem uso), guardada num cookie `__Host-` `HttpOnly` (ADR-0002). O código fica em `backend/internal/identity` e não conhece nenhum provedor: em produção é o Google, em desenvolvimento um provedor OIDC local ou um provedor falso dos testes. Tudo vem da configuração (ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-um-provedor-oidc)) e da descoberta OIDC (`/.well-known/openid-configuration`).
 
 | Rota | O que faz |
 | --- | --- |
@@ -327,6 +327,8 @@ O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PK
 | `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie, conclui a intenção, se houver, e volta para `return_to` (ou para onde a intenção mandar). |
 | `IdentityService.GetMe` | Quem está logado (o ID da conta e o nome de exibição) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
 | `IdentityService.SignOut` | Revoga a sessão atual no banco e apaga o cookie. As outras sessões do usuário continuam. |
+| `IdentityService.SignOutOtherSessions` | Revoga todas as outras sessões do usuário que ainda valem e devolve quantas terminaram. A sessão atual e o cookie ficam como estão (ASVS 5.0 V7.4.3). |
+| `IdentityService.CountOtherSessions` | Quantas outras sessões do usuário ainda valem, para a tela dizer "conectado em N outros dispositivos". Aceita GET. |
 | `IdentityService.UpdateProfile` | Muda o nome de exibição (vazio apaga). O `GetMe` também devolve esse nome. |
 
 ### Diagrama: o login
@@ -359,7 +361,11 @@ O callback recusa com 400, sem criar sessão, quando: falta o cookie de login ou
 ### Sessão
 
 - **Token:** 32 bytes aleatórios (`crypto/rand`) no cookie `__Host-meurpg_session`, com `Secure`, `HttpOnly`, `SameSite=Lax` e `Path=/`. O banco guarda só o SHA-256 (`auth_sessions.token_hash`).
-- **Validade:** 30 dias corridos desde o login, sem renovar com o uso (NIST SP 800-63B-4, AAL1). Depois disso, o mestre passa pelo provedor de novo.
+- **Validade absoluta:** 30 dias corridos desde o login, sem renovar com o uso (NIST SP 800-63B-4, AAL1). Depois disso, o mestre passa pelo provedor de novo.
+- **Validade por inatividade (ASVS 5.0 V7.3.1, nível 2):** uma sessão que fica **14 dias** sem uso termina, e se comporta como uma sessão que não existe (`unauthenticated`; o app vai para o login). Os 14 dias são um risco pesado contra o uso: a mesa joga mais ou menos toda semana, então 14 dias perdoam duas sessões seguidas perdidas, e um navegador esquecido na casa de um amigo deixa de valer bem antes dos 30 dias. Muda com `SESSION_IDLE_TIMEOUT` (de 1 h a 720 h; [Operação](operacao.md#variáveis-de-ambiente-e-segredos)). O uso nunca estende os 30 dias.
+- **Como o último uso é gravado:** em `auth_sessions.last_used_at`, no máximo **uma vez a cada 10 minutos** por sessão, e não a cada requisição. O interceptor lê a sessão (que já traz o `last_used_at`) e, só se ele tem mais de 10 minutos, faz um único `UPDATE ... WHERE id = $1 AND last_used_at < $limite`, fora de qualquer transação e sem falhar a requisição se der erro (um aviso no log; a próxima requisição tenta de novo). Dois servidores ao mesmo tempo só gravam duas vezes. A tolerância de até 10 minutos é nada diante de 14 dias. `last_used_at` não está no índice que cobre a busca por `token_hash`, então a busca lê também a linha da sessão (uma leitura a mais, pela chave primária).
+- **Um stream aberto é uso:** o recheck de 60 segundos (abaixo) também confere o limite de inatividade e registra o uso (com a mesma regra dos 10 minutos), para que quem assiste a uma sessão ao vivo por dias não perca o login por não ter feito nenhuma outra chamada.
+- **Sair dos outros dispositivos:** `SignOutOtherSessions` apaga, numa só instrução, as linhas das outras sessões do usuário que ainda valem (não vencidas e não paradas). Para as chamadas novas, o token deixa de valer na hora, em qualquer instância. Um stream aberto num desses aparelhos **não** é derrubado na hora: termina no recheck seguinte, em até 60 segundos (S12 da auditoria de segurança de 07/10/2026; aceito, porque o que o membro recebe nessa janela é só o que ele já podia ver, RN-10). Derrubar na hora pediria ao módulo `play` assinar um aviso do `identity`, um acoplamento que não vale para 60 segundos.
 - **`auth_time` e `max_age`:** o servidor manda `max_age` só se `OIDC_MAX_AGE` estiver definido (o Google não documenta o parâmetro). O `auth_time` do ID token, quando vem, é só registrado em `auth_sessions.auth_time`, nunca usado para decidir: num provedor local de teste ele manteve a hora do primeiro login mesmo depois de um login forçado. No ambiente local, o devidp recebe `OIDC_MAX_AGE=1h`; com o Google, a variável fica sem valor. Quem cumpre a reautenticação a cada 30 dias (NIST SP 800-63B-4) é a sessão de 30 dias no servidor, não o `max_age`.
 - **Logout:** apaga a linha da sessão, então o token para de valer na hora, em qualquer instância. Um stream da sessão ao vivo já aberto termina na checagem seguinte, em até 60 segundos (ver [Sessão ao vivo](#sessão-ao-vivo)).
 - **Login de novo no mesmo navegador:** gera outro token (nada de reaproveitar o antigo) e revoga a sessão anterior.
@@ -1546,7 +1552,7 @@ sequenceDiagram
 | O app parou de ler e ficou 16 eventos para trás | `unavailable` | Reconecta e lê a foto de novo |
 | O app parou de ler e uma mensagem passou de 30 s sem chegar | O `Send` falha e o stream termina (`close_reason` `client_gone`) | Reconecta |
 | A pessoa já tem 8 streams abertos na campanha | `resource_exhausted`, ao abrir | Tenta de novo com espera: uma aba fechada devolve o lugar |
-| A sessão de login acabou (logout, revogada, 30 dias) | `unauthenticated`, na checagem seguinte | Manda para o login |
+| A sessão de login acabou (logout, revogada, 14 dias sem uso, 30 dias) | `unauthenticated`, na checagem seguinte | Manda para o login |
 | A pessoa saiu da campanha | `not_found`, na checagem seguinte | "Peça um convite ao mestre" |
 
 O app reconecta com espera crescente (1 s, 2 s, 4 s, até 30 s, com variação aleatória) e só com a aba visível: com a aba escondida por 2 minutos, ele mesmo fecha o stream, e reabre (com a foto nova) quando a aba volta. É o que impede uma aba esquecida de segurar uma conexão aberta (ver [Operação](operacao.md#stream-da-sessão-ao-vivo)).

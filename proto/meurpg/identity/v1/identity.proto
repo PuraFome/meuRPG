@@ -17,7 +17,8 @@ package meurpg.identity.v1;
 
 import "google/protobuf/timestamp.proto";
 
-// IdentityService answers "who am I?" and signs the user out.
+// IdentityService answers "who am I?", signs the user out, and ends the
+// user's other sessions.
 //
 // Every method needs a valid session cookie and fails with the
 // `unauthenticated` code without one. Responses carry
@@ -33,8 +34,25 @@ service IdentityService {
 
   // SignOut revokes the current session on the server right away and tells
   // the browser to delete the session cookie (Set-Cookie in the response).
-  // It only ends this session; the user's other devices stay signed in.
+  // It only ends this session; the user's other devices stay signed in
+  // (see SignOutOtherSessions for those).
   rpc SignOut(SignOutRequest) returns (SignOutResponse);
+
+  // SignOutOtherSessions revokes every other session of the signed-in user
+  // on the server, and keeps the current one (the cookie is untouched).
+  // Anything that was signed in on another device is signed out at once for
+  // new requests; a live stream on one of them ends at its next session
+  // recheck, within about 60 seconds. It never fails because there was
+  // nothing to end: the response then says 0.
+  rpc SignOutOtherSessions(SignOutOtherSessionsRequest) returns (SignOutOtherSessionsResponse);
+
+  // CountOtherSessions says how many other sessions of the signed-in user
+  // still work, so the app can offer "sign out of other devices" only when
+  // there is something to end. It has no side effects and its request is
+  // empty, so clients may call it with HTTP GET.
+  rpc CountOtherSessions(CountOtherSessionsRequest) returns (CountOtherSessionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // UpdateProfile changes what the signed-in user typed about themselves:
   // today, only the display name that other members of their campaigns see.
@@ -51,7 +69,9 @@ message GetMeResponse {
   User user = 1;
   // When the current session stops working. Sessions last at most 30 days
   // and are never extended, so the app can warn the user before this time
-  // and send them through sign-in again.
+  // and send them through sign-in again. A session also ends earlier when it
+  // goes unused for 14 days (the server's idle timeout, which using it
+  // resets); this time is only the upper bound.
   google.protobuf.Timestamp session_expires_at = 2;
 }
 
@@ -74,6 +94,28 @@ message SignOutRequest {}
 // SignOutResponse is intentionally empty; the cookie is cleared through the
 // Set-Cookie response header.
 message SignOutResponse {}
+
+// SignOutOtherSessionsRequest is intentionally empty: the session cookie says
+// which session to keep.
+message SignOutOtherSessionsRequest {}
+
+// SignOutOtherSessionsResponse says how much was ended.
+message SignOutOtherSessionsResponse {
+  // How many sessions were ended: the user's other sessions that still
+  // worked. 0 when there were none.
+  int32 ended_count = 1;
+}
+
+// CountOtherSessionsRequest is intentionally empty.
+message CountOtherSessionsRequest {}
+
+// CountOtherSessionsResponse counts the user's other sessions.
+message CountOtherSessionsResponse {
+  // How many sessions other than the current one are still valid: not
+  // expired and not idle for 14 days. Each is a device or browser where the
+  // user is signed in (or was, recently).
+  int32 other_sessions = 1;
+}
 
 // UpdateProfileRequest carries the new profile.
 message UpdateProfileRequest {
