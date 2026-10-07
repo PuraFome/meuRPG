@@ -184,6 +184,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		}
 		if ev, err := readEvent(e.Payload); err == nil {
 			undone[ev.Undone] = true
+			for _, id := range ev.UndoneAlso {
+				undone[id] = true
+			}
 		}
 	}
 	var out []*logEntry
@@ -317,6 +320,13 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				if ev.Stopped {
 					host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
 					host.stopped = append(host.stopped, ev.Pending)
+				}
+			}
+			for _, h := range ev.AlsoStopped {
+				if host, ok := byPending[h.Pending]; ok {
+					host.hosts = append(host.hosts, e.ID)
+					host.setStatus(h.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+					host.stopped = append(host.stopped, h.Pending)
 				}
 			}
 		case eventOpportunityOffered:

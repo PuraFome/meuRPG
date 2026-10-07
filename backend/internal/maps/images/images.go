@@ -17,6 +17,7 @@ package images
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/color"
@@ -128,7 +129,7 @@ func Process(data []byte) (*Result, error) {
 	if f == formatJPEG {
 		jh = readJPEGHeader(data)
 	}
-	if decodeCost(f, cfg, jh, isInterlacedPNG(data)) > maxDecodeBytes {
+	if decodeCost(f, cfg, jh, readPNGInfo(data)) > maxDecodeBytes {
 		return nil, ErrDimensions
 	}
 
@@ -206,7 +207,7 @@ func CropFit(data []byte, crop func(w, h int) image.Rectangle, outW, outH int) (
 		jh = readJPEGHeader(data)
 	}
 	// The decoded answer and the output's working copy (4 bytes a pixel) live together.
-	if cost := decodeCost(f, cfg, jh, isInterlacedPNG(data)) + 4*int64(outW)*int64(outH); cost > maxFitBytes {
+	if cost := decodeCost(f, cfg, jh, readPNGInfo(data)) + 4*int64(outW)*int64(outH); cost > maxFitBytes {
 		return nil, ErrDimensions
 	}
 	img, err := decode(f, data)
@@ -303,12 +304,12 @@ func decode(f format, data []byte) (image.Image, error) {
 // decodeCost estimates, in bytes, the memory Process needs for an image:
 // the decoded pixels (with the decoder's own buffers), the upright copy,
 // and the thumbnail's scratch space. It errs on the high side.
-func decodeCost(f format, cfg image.Config, jh jpegHeader, interlacedPNG bool) int64 {
+func decodeCost(f format, cfg image.Config, jh jpegHeader, pi pngInfo) int64 {
 	var perPixel float64
 	switch f {
 	case formatPNG:
-		perPixel = pngBytesPerPixel(cfg.ColorModel)
-		if interlacedPNG {
+		perPixel = pngBytesPerPixel(cfg.ColorModel, pi)
+		if pi.interlaced {
 			// image/png decodes each of the 7 passes into its own image
 			// before merging them: up to the image's size once more.
 			perPixel *= 2
@@ -334,33 +335,80 @@ func decodeCost(f format, cfg image.Config, jh jpegHeader, interlacedPNG bool) i
 		}
 	}
 	pixels := float64(cfg.Width) * float64(cfg.Height)
-	return int64(pixels*perPixel) + thumbnailCost(cfg.Width, cfg.Height)
+	return int64(pixels*perPixel) + thumbnailCost(cfg.Width, cfg.Height) + MaxBytes // the encoded file, at most MaxBytes, lives with the pixels
 }
 
-// pngBytesPerPixel is the size of a pixel once a PNG with this color model
-// is decoded.
-func pngBytesPerPixel(m color.Model) float64 {
+// pngBytesPerPixel is the size of a pixel once a PNG with this color model is
+// decoded, and converted by to8bit when it has 16 bits. png.DecodeConfig names
+// gray for a gray PNG with a tRNS chunk, but png.Decode returns NRGBA (NRGBA64
+// with 16 bits) for it, so the chunk counts.
+func pngBytesPerPixel(m color.Model, pi pngInfo) float64 {
 	if _, ok := m.(color.Palette); ok {
 		return 1
 	}
 	switch m {
 	case color.GrayModel:
+		if pi.transparency {
+			if pi.bitDepth == bits16 {
+				return bytesNRGBA64Plus8bit
+			}
+			return bytesNRGBA
+		}
 		return 1
 	case color.Gray16Model:
-		return 2
+		if pi.transparency {
+			return bytesNRGBA64Plus8bit
+		}
+		return bytesGray16Plus8bit
 	case color.RGBAModel, color.NRGBAModel:
-		return 4
+		return bytesNRGBA
 	default: // 16-bit color (8 bytes, and 4 more for the 8-bit copy Process stores), or something unexpected: the worst case
-		return 12
+		return bytesNRGBA64Plus8bit
 	}
 }
 
-// isInterlacedPNG reads the interlace method in a PNG's header: the last
-// byte of IHDR, which is always the first chunk (8 bytes of signature, 8 of
-// chunk length and type, then width, height, bit depth, color type,
-// compression and filter: byte 28).
-func isInterlacedPNG(data []byte) bool {
-	return sniff(data) == formatPNG && len(data) > 28 && data[28] == 1
+// The bytes a pixel takes once decoded, by the type png.Decode returns.
+const (
+	bits16               = 16
+	bytesNRGBA           = 4
+	bytesGray16Plus8bit  = 6  // Gray16 (2 bytes) and the 8-bit copy (4)
+	bytesNRGBA64Plus8bit = 12 // NRGBA64 (8 bytes) and the 8-bit copy (4)
+)
+
+// pngInfo is what the cost of decoding a PNG needs from the file that the
+// decoder's config does not say.
+type pngInfo struct {
+	interlaced   bool
+	transparency bool // a tRNS chunk before the pixels
+	bitDepth     int
+}
+
+// readPNGInfo reads the interlace method and bit depth in a PNG's header (IHDR is
+// always the first chunk: 8 bytes of signature, 8 of chunk length and type, then
+// width, height, bit depth at byte 24, color type, compression and filter, and
+// the interlace method at byte 28) and looks for a tRNS chunk among the chunks
+// before the first IDAT, where the decoder reads it. Anything else is the zero
+// value.
+func readPNGInfo(data []byte) pngInfo {
+	if sniff(data) != formatPNG || len(data) <= 28 {
+		return pngInfo{}
+	}
+	pi := pngInfo{interlaced: data[28] == 1, bitDepth: int(data[24])}
+	for off := 8; off+8 <= len(data); {
+		n := int(binary.BigEndian.Uint32(data[off:]))
+		switch string(data[off+4 : off+8]) {
+		case "tRNS":
+			pi.transparency = true
+			return pi
+		case "IDAT", "IEND":
+			return pi
+		}
+		if n < 0 || n > len(data) {
+			return pi
+		}
+		off += 12 + n // length, type, data, CRC
+	}
+	return pi
 }
 
 // to8bit returns img with 8 bits a channel when it has 16 (a 16-bit PNG): the
@@ -408,15 +456,17 @@ func thumbnailSize(w, h int) (int, int) {
 	return max(1, (w*ThumbnailSide+h/2)/h), ThumbnailSide
 }
 
-// thumbnailCost is the memory the Catmull-Rom scaler of x/image/draw
-// needs for a w x h image: a scratch row of four float64s per destination
-// column and source row, plus the thumbnail itself.
+// thumbnailCost is the memory the thumbnail needs for a w x h image: the
+// thumbnail itself and, for the scaler of x/image/draw (a scratch row of four
+// float64s per destination column and source row), the source rows of one band of
+// scaleBands.
 func thumbnailCost(w, h int) int64 {
 	if w <= ThumbnailSide && h <= ThumbnailSide {
 		return 0
 	}
 	tw, th := thumbnailSize(w, h)
-	return int64(tw)*int64(h)*32 + int64(tw)*int64(th)*4
+	bandSource := int64(scaleBandRows)*int64(h)/int64(th) + 2
+	return int64(tw)*bandSource*32 + int64(tw)*int64(th)*4
 }
 
 // thumbnail shrinks img with the Catmull-Rom filter, which keeps a map's
@@ -430,6 +480,9 @@ func thumbnail(img image.Image) image.Image {
 	return dst
 }
 
+// scaleBandRows is how many destination rows scaleBands scales at a time.
+const scaleBandRows = 32
+
 // scaleBands scales img into all of dst with the Catmull-Rom filter, a band of
 // 32 destination rows at a time. x/image/draw's scaler keeps a scratch buffer of
 // the destination's width by the source rows it is given, four float64s each:
@@ -439,11 +492,10 @@ func thumbnail(img image.Image) image.Image {
 // between bands only clamp the filter at the band's edge: a slightly narrower
 // average there, invisible in a thumbnail or a reference.
 func scaleBands(dst *image.RGBA, img image.Image, op xdraw.Op) {
-	const bandRows = 32
 	b := img.Bounds()
 	w, h := dst.Bounds().Dx(), dst.Bounds().Dy()
-	for y0 := 0; y0 < h; y0 += bandRows {
-		y1 := min(y0+bandRows, h)
+	for y0 := 0; y0 < h; y0 += scaleBandRows {
+		y1 := min(y0+scaleBandRows, h)
 		// The source rows of this band of the destination (the last band ends on
 		// the last source row).
 		sy0 := b.Min.Y + y0*b.Dy()/h
@@ -497,7 +549,7 @@ func Shrink(data []byte, side, quality int) (out []byte, resized bool, err error
 	if f == formatJPEG {
 		jh = readJPEGHeader(data)
 	}
-	if decodeCost(f, cfg, jh, isInterlacedPNG(data)) > maxDecodeBytes {
+	if decodeCost(f, cfg, jh, readPNGInfo(data)) > maxDecodeBytes {
 		return nil, false, ErrDimensions
 	}
 	img, err := decode(f, data)

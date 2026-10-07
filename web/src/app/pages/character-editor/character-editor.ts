@@ -85,6 +85,7 @@ import { openSpellDetails } from '../../shared/spell-details/open-spell-details'
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
+import { validRoll } from './hit-points-preview';
 import {
   EDITOR_STEP_LABELS,
   EditorField,
@@ -1344,10 +1345,32 @@ export class CharacterEditor {
     return problems;
   });
 
+  /** With "Rolado", the levels whose roll is empty or does not fit that level's die: the form keeps no control for
+   * them, so the page adds them to the invalid fields while they stand. */
+  private readonly rollProblems = computed<string[]>(() => {
+    const dice = this.levelDice();
+    const rolls = this.hitPointsRolls();
+    if (this.selectedHitPointsMethod() !== 'rolled' || this.hitDie() === 0) {
+      return [];
+    }
+    const problems: string[] = [];
+    for (let i = 0; i < this.rollsNeeded(); i++) {
+      if (validRoll(rolls[i], dice[i] || this.hitDie()) === null) {
+        problems.push(`Dado de vida do nível ${i + 2}`);
+      }
+    }
+    return problems;
+  });
+
   private currentInvalidFullFields(): EditorField[] {
     const fields: EditorField[] = [
       ...invalidFields(this.fullForm, FULL_SHEET_FIELDS),
       ...this.classProblems().map((label) => ({ path: 'classes', label, step: 'basico' as const })),
+      ...this.rollProblems().map((label) => ({
+        path: 'hitPointsRolls',
+        label,
+        step: 'atributos' as const,
+      })),
     ];
     if (!this.abilitiesIncomplete()) {
       return fields;
@@ -1391,7 +1414,10 @@ export class CharacterEditor {
     const form = isBasic ? this.basicForm : this.fullForm;
     if (
       form.invalid ||
-      (!isBasic && (this.abilitiesIncomplete() || this.classProblems().length > 0))
+      (!isBasic &&
+        (this.abilitiesIncomplete() ||
+          this.classProblems().length > 0 ||
+          this.rollProblems().length > 0))
     ) {
       form.markAllAsTouched();
       this.saveState.set({ status: 'idle' });

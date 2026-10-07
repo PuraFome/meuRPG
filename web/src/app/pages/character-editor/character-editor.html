@@ -479,6 +479,7 @@
                     } @else {
                       <app-hit-points-rolls
                         [hitDie]="hitDie()"
+                        [levelDice]="levelDice()"
                         [level]="rollsNeeded() + 1"
                         [constitution]="finalConstitution()"
                         [(rolls)]="hitPointsRolls"

@@ -21,6 +21,10 @@ export interface ChangeRow {
 
 /** What the summary needs besides the two sheets: how the hit points were decided and what was picked. */
 export interface SummaryContext {
+  /** The class gaining the level: a multiclass sheet lists one `spellcasting` entry per casting class, and these rows follow this one. */
+  readonly classKey: string;
+  /** Whose spell list the known spells are counted on, when it is not the class's own (a table class reusing a list, a third caster). */
+  readonly spellListClassKey?: string;
   /** "Média 4 + Constituição +3" / "Rolado 5 + Constituição +3", or '' when it can't be told yet. */
   readonly hpSub: string;
   readonly cantrips: readonly string[];
@@ -70,8 +74,8 @@ function row(
   return before === after ? null : { key, label, before, after, sub };
 }
 
-function cast(sheet: DerivedSheet) {
-  return sheet.spellcasting[0];
+function cast(sheet: DerivedSheet, classKey: string) {
+  return sheet.spellcasting.find((c) => c.classKey === classKey);
 }
 
 function savesChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
@@ -172,8 +176,8 @@ export function changeRows(
     ),
   );
 
-  const bc = cast(before);
-  const ac = cast(after);
+  const bc = cast(before, ctx.classKey);
+  const ac = cast(after, ctx.classKey);
   if (ac) {
     // Before a class casts there is nothing to compare: a dash, never a 0 or a +0 that looks like a number.
     const none = '—';
@@ -198,7 +202,9 @@ export function changeRows(
         ),
       );
     }
-    const known = (s: DerivedSheet) => s.spells.filter((x) => (x.spell?.level ?? 0) > 0).length;
+    const list = ctx.spellListClassKey || ctx.classKey;
+    const known = (s: DerivedSheet) =>
+      s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list)).length;
     const knownBefore = known(before);
     const knownAfter = known(after);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';

@@ -29,6 +29,7 @@ import {
   type MonsterHp,
   newKey,
 } from '../../../../core/combat/combat-client';
+import { ActionKey } from '../../../../core/connect/idempotency';
 import { becomesText } from '../../../../core/combat/monsters';
 import { HiddenSwitch } from '../../../../shared/hidden-switch/hidden-switch';
 import { type Segment, Segmented } from '../move-page/segmented';
@@ -124,6 +125,8 @@ export class StartCombatDialog {
   private readonly tableRules = inject(TableRulesClient);
   /** One key for this dialog: a second tap on the button can't start two. */
   private readonly key = newKey();
+  /** The key of "Adicionar": a tap after a lost answer is the same addition, other NPCs another. */
+  private readonly addKey = new ActionKey();
 
   protected readonly adding = this.data.mode === 'add';
   /** How the combat is played (RN-25), fixed once it starts: with the table's "combate com mapa" rule as the default, and "Sem mapa" when the session has no map. */
@@ -387,7 +390,12 @@ export class StartCombatDialog {
     ];
     try {
       const encounter = this.adding
-        ? await this.combat.add(this.data.campaignId, this.data.encounterId ?? '', specs)
+        ? await this.combat.add(
+            this.data.campaignId,
+            this.data.encounterId ?? '',
+            specs,
+            this.addKey.keyFor([this.data.encounterId, specs]),
+          )
         : await this.combat.start(
             this.data.campaignId,
             this.name().trim(),

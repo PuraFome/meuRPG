@@ -78,6 +78,8 @@ export interface SheetHandle<D, R> {
   /** True in the phone's bottom sheet: it draws its grab bar. */
   readonly inSheet: boolean;
   close(result?: R): void;
+  /** While locked, Esc and a click on the backdrop do not dismiss the sheet (a request is in the air). */
+  lock(locked: boolean): void;
 }
 
 export function injectSheet<D, R = void>(): SheetHandle<D, R> {
@@ -91,6 +93,14 @@ export function injectSheet<D, R = void>(): SheetHandle<D, R> {
     close: (result) => {
       dialogRef?.close(result);
       sheetRef?.dismiss(result);
+    },
+    lock: (locked) => {
+      if (dialogRef) {
+        dialogRef.disableClose = locked;
+      }
+      if (sheetRef) {
+        sheetRef.disableClose = locked;
+      }
     },
   };
 }

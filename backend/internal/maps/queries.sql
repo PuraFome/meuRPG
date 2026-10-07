@@ -10,9 +10,22 @@ FROM gallery_images
 WHERE campaign_id = $1;
 
 -- name: InsertGalleryImage :one
-INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, parent_image_id, generated_kind, copy_of_image_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING *;
+
+-- name: FindImageCopy :one
+-- The copy already made of a fog map's image to show it (or to be a portrait), unless
+-- it has become the background of a map with the fog on, which no player may receive
+-- (RN-10). The newest one when there are several.
+SELECT * FROM gallery_images g
+WHERE g.campaign_id = $1 AND g.copy_of_image_id = $2
+  AND NOT EXISTS (
+      SELECT 1 FROM maps m
+      WHERE m.campaign_id = g.campaign_id AND m.image_id = g.id AND m.fog_enabled
+  )
+ORDER BY g.created_at DESC, g.id DESC
+LIMIT 1;
 
 -- name: ListGalleryImages :many
 -- Newest first; id breaks ties, so the order never changes between calls.
@@ -901,6 +914,15 @@ WHERE campaign_id = $1 AND id = $2 AND status = 'pending' AND sent_at IS NOT NUL
 UPDATE image_requests
 SET status = CASE WHEN status = 'canceled' THEN status ELSE sqlc.arg(status) END,
     reason = sqlc.arg(reason), refunded = true, finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND status IN ('pending', 'canceled') AND NOT refunded;
+
+-- name: FinishImageRequestSpent :exec
+-- The model answered but the picture could not be stored (the gallery filled up
+-- meanwhile, or the answer cannot be used): the call was made and billed, so the slot
+-- stays spent. A request the master canceled in the meantime stays canceled.
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE sqlc.arg(status) END,
+    reason = sqlc.arg(reason), finished_at = sqlc.arg(now)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND status IN ('pending', 'canceled') AND NOT refunded;
 
 -- name: FinishImageRequestDone :execrows

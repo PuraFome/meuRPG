@@ -104,10 +104,11 @@ func (s *Service) SetShownImage(
 	}
 	keep := req.Msg.GetKeep() && imageID != nil
 	var shown *playv1.ShownImage
+	var shownCopy ShownCopy // the files of a fog map's image copy, its row not yet made
 	if imageID != nil {
 		// The image must be the campaign's. The foreign key keeps it from
 		// disappearing before the commit (below).
-		if shown, err = s.maps.ImageToShow(ctx, m.CampaignID, *imageID); err != nil {
+		if shown, shownCopy, err = s.maps.PrepareShow(ctx, m.CampaignID, *imageID); err != nil {
 			return nil, s.dbError(ctx, "find the image to show", err)
 		}
 		// What is shown is the image the maps module answered with: the copy, when
@@ -138,11 +139,19 @@ func (s *Service) SetShownImage(
 			}
 			moved = true
 		}
+		if shownCopy != nil {
+			if err := shownCopy.Insert(ctx, tx); err != nil {
+				return err
+			}
+		}
 		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: imageID, ShownImageKeep: keep}); err != nil {
 			return fmt.Errorf("set the shown image: %w", err)
 		}
 		return nil
 	})
+	if err != nil && shownCopy != nil {
+		shownCopy.Discard(ctx)
+	}
 	if isForeignKeyViolation(err) {
 		// The master deleted the image in another tab meanwhile.
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("image not found"))

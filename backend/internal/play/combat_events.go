@@ -250,6 +250,9 @@ type actionEvent struct {
 	// Escudo: the +5 the target had before, the reaction and what it did.
 	ACBonusBefore int32 `json:"ac_bonus_before,omitempty"`
 	Stopped       bool  `json:"stopped,omitempty"`
+	// AlsoStopped are the other hits on the same target that the Escudo's armor
+	// class stopped too, with the status each one had.
+	AlsoStopped []stoppedHit `json:"also_stopped,omitempty"`
 	// Extra Attack and the opportunity attack.
 	AttacksBefore int32 `json:"attacks_before,omitempty"`
 	AsReaction    bool  `json:"as_reaction,omitempty"`
@@ -360,6 +363,9 @@ type actionEvent struct {
 	// An undo: the event it took back.
 	Undone     string `json:"undone_id,omitempty"`
 	UndoneKind string `json:"undone_kind,omitempty"`
+	// UndoneAlso are the older events taken back with it: the other parts of a
+	// trap's firing that was written as several events.
+	UndoneAlso []string `json:"undone_also,omitempty"`
 
 	// The character's creatures (MR-037): the owner's character, the creatures a
 	// casting made (Created, with their MonsterKeys) and the ones it dismissed
@@ -476,4 +482,11 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 		return
 	}
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
+}
+
+// stoppedHit is a pending damage that a later Escudo stopped: its id and the
+// status the undo puts back.
+type stoppedHit struct {
+	Pending    string `json:"pending"`
+	PrevStatus string `json:"prev_status"`
 }

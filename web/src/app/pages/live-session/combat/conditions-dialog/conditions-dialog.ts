@@ -99,7 +99,9 @@ export class ConditionsDialog {
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly all = CONDITIONS;
 
-  protected readonly chosen = signal<ReadonlySet<string>>(new Set(this.data.combatant.conditions));
+  /** What the master marked and unmarked here: their changes, not a copy of the list. */
+  private readonly added = signal<ReadonlySet<string>>(new Set());
+  private readonly removed = signal<ReadonlySet<string>>(new Set());
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** The combatant as the combat has it now (the concentration may end meanwhile). */
@@ -108,6 +110,17 @@ export class ConditionsDialog {
       this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatant.id) ??
       this.data.combatant,
   );
+  /** The boxes: the conditions the combat has now, with the master's changes on top. */
+  protected readonly chosen = computed<ReadonlySet<string>>(() => {
+    const out = new Set(this.current().conditions);
+    for (const k of this.removed()) {
+      out.delete(k);
+    }
+    for (const k of this.added()) {
+      out.add(k);
+    }
+    return out;
+  });
   protected readonly spell = computed(() => this.current().concentrationSpellNamePt);
   protected readonly changed = computed(
     () => !sameKeys([...this.chosen()], this.current().conditions),
@@ -115,11 +128,14 @@ export class ConditionsDialog {
   private key = newKey();
 
   protected toggle(key: string): void {
-    const next = new Set(this.chosen());
-    if (!next.delete(key)) {
-      next.add(key);
-    }
-    this.chosen.set(next);
+    const on = !this.chosen().has(key);
+    const added = new Set(this.added());
+    const removed = new Set(this.removed());
+    added.delete(key);
+    removed.delete(key);
+    (on ? added : removed).add(key);
+    this.added.set(added);
+    this.removed.set(removed);
     this.key = newKey();
   }
 

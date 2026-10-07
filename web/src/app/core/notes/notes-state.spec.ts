@@ -159,4 +159,44 @@ describe('NotesState', () => {
     expect(state.notes()).toEqual([]);
     expect(state.loaded()).toBe(false);
   });
+
+  describe('a refresh in flight when the own write answers', () => {
+    function deferred<T>() {
+      let resolve!: (v: T) => void;
+      const promise = new Promise<T>((r) => (resolve = r));
+      return { promise, resolve };
+    }
+
+    it('still applies what the refresh carries (a clue), by reading again, and announces it once', async () => {
+      const clue = note('c1', 'Um brasão', AT(20), { clue: true });
+      const lists = [deferred<never>(), deferred<never>()];
+      const update = deferred<ReturnType<typeof note>>();
+      let calls = 0;
+      const gated = {
+        list: () => (++calls === 1 ? api.list('c1') : lists[calls - 2].promise),
+        scenes: () => api.scenes('c1'),
+        create: () => Promise.reject(new Error('unused')),
+        update: () => update.promise,
+        delete: () => Promise.resolve(),
+      };
+      const own = new NotesState(gated as never, () => 'c1');
+      await own.refresh();
+
+      const refresh = own.refresh(true); // notes_changed: in flight
+      const writing = own.update('n1', { text: 'Nova' }); // the player's own write in flight
+      update.resolve(note('n1', 'Nova', AT(30)));
+      await writing;
+      const all = { notes: [note('n1', 'Antiga', AT(3)), clue], noteCount: 1, maxNotes: 300 };
+      lists[0].resolve(all as never); // served before the write
+      await Promise.resolve();
+      expect(own.notes().map((n) => n.text)).not.toContain('Antiga');
+      lists[1].resolve({ ...all, notes: [note('n1', 'Nova', AT(30)), clue] } as never);
+      await refresh;
+
+      expect(own.notes().map((n) => n.id)).toEqual(['n1', 'c1']);
+      expect(own.notes().find((n) => n.id === 'n1')?.text).toBe('Nova');
+      expect(own.fresh().map((n) => n.id)).toEqual(['c1']);
+      expect(own.notice()).toBe(true);
+    });
+  });
 });

@@ -291,17 +291,20 @@ func (s *Service) CreateMap(
 				if count >= s.maxMaps {
 					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
 				}
-				if err := checkImage(ctx, q, m.CampaignID, imageID); err != nil {
+				// The map's image is local to the run: the copy's gallery row exists
+				// only inside this attempt, and a retry checks the original again.
+				mapImageID := imageID
+				if err := checkImage(ctx, q, m.CampaignID, mapImageID); err != nil {
 					return created, err
 				}
 				if reuse != nil {
 					if err := reuse.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
 						return created, err
 					}
-					imageID, used = reuse.id, true
+					mapImageID, used = reuse.id, true
 				}
 				row, err := q.InsertMap(ctx, mapsdb.InsertMapParams{
-					CampaignID: m.CampaignID, Name: name, ImageID: imageID, FogOnFirstGrid: fogOn,
+					CampaignID: m.CampaignID, Name: name, ImageID: mapImageID, FogOnFirstGrid: fogOn,
 					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
 				})
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {

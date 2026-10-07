@@ -46,6 +46,9 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventActionUndone {
 			if ev, err := readEvent(e.Payload); err == nil {
 				undone[ev.Undone] = true
+				for _, id := range ev.UndoneAlso {
+					undone[id] = true
+				}
 			}
 			continue
 		}
@@ -115,6 +118,29 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 	return playdb.ListRecentSessionEventsRow{}, false
 }
 
+// firingBefore lists the older events of the firing that last (a trap_triggered
+// event) is a part of, newest first, ending with the event that holds the firing
+// itself: a firing whose creatures did not fit one event is written as several,
+// back to back (trapFireEvent.Part). Nothing when last is not a part.
+func firingBefore(recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow) []playdb.ListRecentSessionEventsRow {
+	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+	if ev, err := readEvent(last.Payload); at < 0 || err != nil || ev.Trap == nil || !ev.Trap.Part {
+		return nil
+	}
+	var out []playdb.ListRecentSessionEventsRow
+	for _, e := range recent[at+1:] {
+		ev, err := readEvent(e.Payload)
+		if e.Kind != eventTrapTriggered || err != nil || ev.Trap == nil {
+			break
+		}
+		out = append(out, e)
+		if !ev.Trap.Part {
+			break
+		}
+	}
+	return out
+}
+
 // UndoLastAction implements playv1connect.CombatServiceHandler.
 func (s *Service) UndoLastAction(
 	ctx context.Context,
@@ -143,8 +169,9 @@ func (s *Service) UndoLastAction(
 	var snapBack *grid.Square            // where a mover stood before the undo of the 0 hit points rule put it back
 	var snapped string                   // and who it is
 	var rearmed *trapFireEvent           // the trap an undone firing armed again
+	var alsoUndone []string              // the older parts of a firing that went with it
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, undoneMove, snapBack, snapped, rearmed = nil, nil, nil, "", nil
+		vitals, undoneMove, snapBack, snapped, rearmed, alsoUndone = nil, nil, nil, "", nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -181,13 +208,26 @@ func (s *Service) UndoLastAction(
 		}
 		if last.Kind == eventTrapTriggered {
 			rearmed = ev.Trap
+			// A firing written as several events is taken back whole.
+			for _, older := range firingBefore(recent, last) {
+				pe, err := readEvent(older.Payload)
+				if err != nil {
+					return nil, err
+				}
+				more, err := s.takeBack(ctx, c, older.Kind, pe)
+				if err != nil {
+					return nil, err
+				}
+				vitals = append(vitals, more...)
+				alsoUndone = append(alsoUndone, older.ID)
+			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		// The undo is told to the players who were told of the action it takes back,
 		// and counts for them alone.
-		made = actionEvent{Round: c.enc.Round, Secret: ev.Secret, Fogged: ev.Fogged, SeenBy: ev.SeenBy, Actor: ev.Actor, Target: ev.Target, Undone: last.ID, UndoneKind: last.Kind}
+		made = actionEvent{Round: c.enc.Round, Secret: ev.Secret, Fogged: ev.Fogged, SeenBy: ev.SeenBy, Actor: ev.Actor, Target: ev.Target, Undone: last.ID, UndoneKind: last.Kind, UndoneAlso: alsoUndone}
 		return made, nil
 	})
 	if err != nil {
@@ -613,6 +653,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: ev.Pending, Status: pendingAwaitingReaction}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("put back the pending damage: %w", err)
+		}
+		for _, h := range ev.AlsoStopped {
+			if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: h.Pending, Status: h.PrevStatus}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("put back the other hit: %w", err)
+			}
 		}
 	case eventReactionDeclined:
 		if ev.OfferID != "" { // an opportunity offer turned down or skipped: it waits again

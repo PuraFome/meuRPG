@@ -141,7 +141,13 @@ export class EncounterBuilder {
       if (m.npc) {
         npcIndex++;
       }
-      return { name: m.name, level: m.level, npc: m.npc, index: m.npc ? npcIndex : -1 };
+      return {
+        name: m.name,
+        level: m.level,
+        npc: m.npc,
+        index: m.npc ? npcIndex : -1,
+        characterId: m.characterId,
+      };
     });
   });
 
@@ -269,8 +275,12 @@ export class EncounterBuilder {
   }
 
   protected removeNpc(index: number): void {
+    const chip = this.party().find((m) => m.npc && m.index === index);
+    if (!chip) {
+      return;
+    }
     this.saved.set(null);
-    this.draft.removeNpc(index);
+    this.draft.removeNpc(chip);
   }
 
   protected openGenerate(): void {
