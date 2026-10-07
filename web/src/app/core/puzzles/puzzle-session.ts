@@ -72,7 +72,10 @@ export class PuzzleSessionState {
         // A puzzle written (an action's answer, a `puzzle_changed` read) after this list began is newer than the list's copy.
         const runs = listed.map((r) => {
           const id = r.puzzle?.id ?? '';
-          const current = this.applied.get(id) !== written.get(id) ? this.runs().find((c) => c.puzzle?.id === id) : undefined;
+          const current =
+            this.applied.get(id) !== written.get(id)
+              ? this.runs().find((c) => c.puzzle?.id === id)
+              : undefined;
           return current ?? r;
         });
         this.runs.set(runs);

@@ -85,7 +85,9 @@ describe('InviteAccept', () => {
     }).not.toThrow();
     fixture?.detectChanges();
     expect(window.location.hash).toBe('');
-    expect((fixture?.nativeElement as HTMLElement).textContent).toContain('Link de convite inválido');
+    expect((fixture?.nativeElement as HTMLElement).textContent).toContain(
+      'Link de convite inválido',
+    );
   });
 
   it('shows a friendly message when there is no token at all', () => {

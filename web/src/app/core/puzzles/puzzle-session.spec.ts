@@ -140,7 +140,11 @@ function slowListSetup() {
     masterRun: async () => nextRun,
     listShown: async () => [],
   } as unknown as SessionApi;
-  const state = new PuzzleSessionState(api, () => 'camp-1', () => true);
+  const state = new PuzzleSessionState(
+    api,
+    () => 'camp-1',
+    () => true,
+  );
   return { list, state, setNext: (r: MasterPuzzleRun) => (nextRun = r) };
 }
 

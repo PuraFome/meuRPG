@@ -143,7 +143,10 @@ export class NotesState {
    * answer is applied only while the session it began in is still the current
    * one, so a write of campaign A never lands in the list of campaign B.
    */
-  private async write<T>(id: string, call: () => Promise<{ value: T; apply: () => void }>): Promise<T | null> {
+  private async write<T>(
+    id: string,
+    call: () => Promise<{ value: T; apply: () => void }>,
+  ): Promise<T | null> {
     if (this.isWriting(id)) {
       return null;
     }
