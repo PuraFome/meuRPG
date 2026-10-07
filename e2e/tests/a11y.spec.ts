@@ -176,7 +176,7 @@ async function scanSessions(browser: Browser, colorScheme: 'light' | 'dark', wid
     await signIn(await other.newPage(), 'Mestre Teste', '/');
     const page = await context.newPage();
     const where = `(${colorScheme}, ${width}px)`;
-    await open(page, '/perfil');
+    await open(page, '/profile');
     const ask = page.getByRole('button', { name: 'Sair dos outros dispositivos' });
     await expect(ask).toBeVisible();
     await expectScreenPasses(page, `Perfil, sessões ${where}`);
