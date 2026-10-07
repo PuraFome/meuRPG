@@ -87,6 +87,7 @@ export class CreaturesPanel {
   private first = true;
   private castInFlight = false;
   private seq = 0;
+  private wildSeq = 0;
 
   protected readonly live = computed(() =>
     this.openSessions.sessions().some((s) => s.campaignId === this.campaignId()),
@@ -140,8 +141,12 @@ export class CreaturesPanel {
     if (!this.wildShape() || this.isMaster() || !this.live()) {
       return;
     }
+    const seq = ++this.wildSeq;
     try {
       const v = await this.client.vitalsOf(this.campaignId(), this.characterId());
+      if (seq !== this.wildSeq) {
+        return;
+      }
       const r = v?.resources.find((x) => x.key === 'wild_shape');
       this.uses.set(
         r
@@ -154,7 +159,9 @@ export class CreaturesPanel {
       );
       this.form.set(v?.wildShape?.beastNamePt ?? '');
     } catch {
-      this.uses.set(null);
+      if (seq === this.wildSeq) {
+        this.uses.set(null);
+      }
     }
   }
 
