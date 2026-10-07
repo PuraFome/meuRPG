@@ -19,6 +19,7 @@ import {
   type UpdateTableEntryResponse,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { violationText } from './content-violations';
 
 /** What an editor sends: exactly one body, which gives the kind (`CreateTableEntryRequest.body`), as the request takes it. */
 export type EntryBody = NonNullable<MessageInitShape<typeof CreateTableEntryRequestSchema>['body']>;
@@ -156,6 +157,15 @@ export function contentErrorText(err: unknown, what: string): string {
       return 'Essa entrada, ou a campanha, não existe mais.';
     case Code.Unauthenticated:
       return 'Sua sessão acabou. Entre de novo para continuar.';
+    case Code.InvalidArgument: {
+      // A refused archive or unarchive (the entry needs something that is off): the server's reasons, not a connection problem.
+      const texts = new Set(
+        (refusalOf(err) ?? []).map((v) => violationText(v, { aOne: 'uma entrada' })),
+      );
+      return texts.size > 0
+        ? `Não foi possível ${what}. ${[...texts].join(' ')}`
+        : `Não foi possível ${what}: confira os dados e tente de novo.`;
+    }
     default:
       return `Não foi possível ${what}. Confira a conexão e tente de novo.`;
   }
