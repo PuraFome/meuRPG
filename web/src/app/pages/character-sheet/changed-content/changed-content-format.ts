@@ -28,7 +28,11 @@ function kindOf(key: string): Kind {
   return KINDS[key.split(':')[0]] ?? FALLBACK;
 }
 
-const DATE = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const DATE = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
 
 export function changeTitle(change: ChangedContentVm): string {
   return kindOf(change.key).title;

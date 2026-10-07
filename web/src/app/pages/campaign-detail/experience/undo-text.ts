@@ -25,7 +25,10 @@ export function undoConsequence(award: XPAward, rows: readonly ExperienceRow[]):
   }
   const each = award.shares[0]?.xp ?? 0;
   const lose = names.length > 1 ? 'perdem' : 'perde';
-  const parts = [`${nameList(names)} ${lose} ${tight(`${formatInt(each)} XP`)} ${names.length > 1 ? 'cada' : ''}`.trim() + '.'];
+  const parts = [
+    `${nameList(names)} ${lose} ${tight(`${formatInt(each)} XP`)} ${names.length > 1 ? 'cada' : ''}`.trim() +
+      '.',
+  ];
 
   // "Voltar à cidade": the treasures it converted are free again.
   if (award.treasureCount > 0) {
@@ -47,7 +50,9 @@ export function undoConsequence(award: XPAward, rows: readonly ExperienceRow[]):
     return xp < row.nextLevelXp ? [{ name: row.name, xp }] : [];
   });
   if (back.length === 1) {
-    parts.push(`${back[0].name} volta para ${tight(`${formatInt(back[0].xp)} XP`)} e deixa de poder subir de nível.`);
+    parts.push(
+      `${back[0].name} volta para ${tight(`${formatInt(back[0].xp)} XP`)} e deixa de poder subir de nível.`,
+    );
   } else if (back.length > 1) {
     parts.push(`${nameList(back.map((b) => b.name))} deixam de poder subir de nível.`);
   }

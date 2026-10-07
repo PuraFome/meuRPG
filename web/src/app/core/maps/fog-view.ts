@@ -39,7 +39,10 @@ function sameVision(a: Vision | null, b: Vision): boolean {
     a.revision === b.revision &&
     a.tilesPath === b.tilesPath &&
     a.tiles.length === b.tiles.length &&
-    a.tiles.every((t, i) => t.tx === b.tiles[i]?.tx && t.ty === b.tiles[i]?.ty && t.revision === b.tiles[i]?.revision)
+    a.tiles.every(
+      (t, i) =>
+        t.tx === b.tiles[i]?.tx && t.ty === b.tiles[i]?.ty && t.revision === b.tiles[i]?.revision,
+    )
   );
 }
 
@@ -65,7 +68,10 @@ export class FogView {
   private generation = 0;
 
   constructor(
-    private readonly loadVision: (mapId: string, as: string | null) => Promise<GetMapVisionResponse>,
+    private readonly loadVision: (
+      mapId: string,
+      as: string | null,
+    ) => Promise<GetMapVisionResponse>,
     private readonly loadLayers: (mapId: string, as: string | null) => Promise<PackedLayers>,
     /** The viewer is a player, or the master looking as one: the doors are decoded with the guard (RN-10). */
     private readonly player: () => boolean = () => false,

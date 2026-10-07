@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, effect, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -41,8 +48,14 @@ export class PuzzleNotice {
   protected readonly announce = signal('');
   private known: ReadonlySet<string> | null = null;
 
-  protected readonly lead = (p: PuzzleSummary): string => (p.solved ? 'Resolvido pelo grupo' : p.stopped ? 'O quebra-cabeça parou' : 'O mestre mostrou um quebra-cabeça');
-  protected readonly sub = (p: PuzzleSummary): string => joinDots([kindName(p.kind), PLAYED_TOGETHER]);
+  protected readonly lead = (p: PuzzleSummary): string =>
+    p.solved
+      ? 'Resolvido pelo grupo'
+      : p.stopped
+        ? 'O quebra-cabeça parou'
+        : 'O mestre mostrou um quebra-cabeça';
+  protected readonly sub = (p: PuzzleSummary): string =>
+    joinDots([kindName(p.kind), PLAYED_TOGETHER]);
 
   constructor() {
     effect(() => {

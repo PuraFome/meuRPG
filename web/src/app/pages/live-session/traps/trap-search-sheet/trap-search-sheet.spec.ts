@@ -4,13 +4,22 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { EncounterBlockedReason, EncounterBlockedSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { MapPointKind, MapPointSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { SearchForTrapsResponseSchema } from '../../../../../gen/meurpg/play/v1/traps_pb';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
 
-const roll = (face: number, total: number) => ({ diceCount: 1, diceSides: 20, faces: [face], modifier: total - face, total });
+const roll = (face: number, total: number) => ({
+  diceCount: 1,
+  diceSides: 20,
+  faces: [face],
+  modifier: total - face,
+  total,
+});
 
 function blockedBy(reason: EncounterBlockedReason): ConnectError {
   const err = new ConnectError('x', Code.FailedPrecondition);
@@ -31,13 +40,20 @@ describe('TrapSearchSheet', () => {
         return next;
       },
     };
-    const found = create(MapPointSchema, { id: 'x', kind: MapPointKind.TRAP, name: 'Fosso escondido' });
+    const found = create(MapPointSchema, {
+      id: 'x',
+      kind: MapPointKind.TRAP,
+      name: 'Fosso escondido',
+    });
     const data: TrapSearchData = {
       campaignId: 'c',
       skills: { perception: 4, investigation: 4 },
       diceMode: DiceMode.PLAYERS_CHOOSE,
       preference: DicePreference.APP,
-      state: { refresh: async () => undefined, points: () => [found] } as unknown as TrapSearchData['state'],
+      state: {
+        refresh: async () => undefined,
+        points: () => [found],
+      } as unknown as TrapSearchData['state'],
       inCombat: false,
     };
     TestBed.configureTestingModule({
@@ -49,7 +65,10 @@ describe('TrapSearchSheet', () => {
     });
     const fixture = TestBed.createComponent(TrapSearchSheet);
     fixture.detectChanges();
-    const roller = fixture.componentInstance as unknown as { rollWith(d: unknown): Promise<void>; pick(s: string): void };
+    const roller = fixture.componentInstance as unknown as {
+      rollWith(d: unknown): Promise<void>;
+      pick(s: string): void;
+    };
     return { fixture, el: fixture.nativeElement as HTMLElement, sent, roller };
   }
 
@@ -59,12 +78,18 @@ describe('TrapSearchSheet', () => {
     expect(text).toContain('Percepção +4');
     expect(text).toContain('Investigação +4');
     expect(text).toContain('Algumas armadilhas só se acham com Investigação.');
-    expect(Array.from(el.querySelectorAll('.steps__name'), (e) => e.textContent)).toEqual(['Como', 'Rolar', 'Resultado']);
+    expect(Array.from(el.querySelectorAll('.steps__name'), (e) => e.textContent)).toEqual([
+      'Como',
+      'Rolar',
+      'Resultado',
+    ]);
     expect(el.querySelector('[role=dialog], .frame')).toBeTruthy();
   });
 
   it('answers the same words for a miss as for no trap', async () => {
-    const { fixture, el, roller } = setup([create(SearchForTrapsResponseSchema, { roll: roll(6, 13), foundPointIds: [] })]);
+    const { fixture, el, roller } = setup([
+      create(SearchForTrapsResponseSchema, { roll: roll(6, 13), foundPointIds: [] }),
+    ]);
     roller.pick('investigation');
     await roller.rollWith({ face: 6 });
     fixture.detectChanges();
@@ -73,7 +98,9 @@ describe('TrapSearchSheet', () => {
   });
 
   it('reads the trap found by name', async () => {
-    const { fixture, el, roller } = setup([create(SearchForTrapsResponseSchema, { roll: roll(13, 17), foundPointIds: ['x'] })]);
+    const { fixture, el, roller } = setup([
+      create(SearchForTrapsResponseSchema, { roll: roll(13, 17), foundPointIds: ['x'] }),
+    ]);
     await roller.rollWith({ inApp: true });
     fixture.detectChanges();
     expect(el.textContent).toContain('Você achou uma armadilha: Fosso escondido.');
@@ -81,7 +108,14 @@ describe('TrapSearchSheet', () => {
   });
 
   it('asks for the second die when the server says the search has disadvantage, and sends both', async () => {
-    const { fixture, el, sent, roller } = setup([twoDiceError(), create(SearchForTrapsResponseSchema, { roll: roll(9, 13), secondRoll: roll(4, 8), foundPointIds: [] })]);
+    const { fixture, el, sent, roller } = setup([
+      twoDiceError(),
+      create(SearchForTrapsResponseSchema, {
+        roll: roll(9, 13),
+        secondRoll: roll(4, 8),
+        foundPointIds: [],
+      }),
+    ]);
     await roller.rollWith({ face: 9 });
     fixture.detectChanges();
     expect(el.textContent).toContain('Digite o segundo dado');

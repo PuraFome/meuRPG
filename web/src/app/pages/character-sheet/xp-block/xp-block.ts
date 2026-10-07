@@ -51,7 +51,9 @@ export class XpBlock {
   readonly selfLevelUp = input(false);
 
   protected readonly xpText = computed(() => tight(`${formatInt(this.xp())} XP`));
-  protected readonly bar = computed(() => progress(this.xp(), this.nextLevelXp(), this.canLevelUp()));
+  protected readonly bar = computed(() =>
+    progress(this.xp(), this.nextLevelXp(), this.canLevelUp()),
+  );
   protected readonly sentence = computed(() => {
     const next = this.nextLevelXp();
     const xp = this.xp();
@@ -64,6 +66,8 @@ export class XpBlock {
         `Chegou aos ${formatInt(next)} XP d${target}. ${this.isMaster() ? 'Suba o nível na ficha.' : this.selfLevelUp() ? 'Suba o nível pelo botão abaixo.' : 'O mestre sobe o seu nível na ficha.'}`,
       );
     }
-    return tight(`${formatInt(xp)} de ${formatInt(next)} XP para ${target}. Faltam ${formatInt(Math.max(0, next - xp))} XP.`);
+    return tight(
+      `${formatInt(xp)} de ${formatInt(next)} XP para ${target}. Faltam ${formatInt(Math.max(0, next - xp))} XP.`,
+    );
   });
 }

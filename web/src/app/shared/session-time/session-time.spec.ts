@@ -14,7 +14,11 @@ describe('session time', () => {
 
   it('adds the day when it started on another one', () => {
     const now = new Date(2026, 9, 3, 1, 10);
-    expect(sessionSince(new Date(2026, 9, 2, 23, 30), now).replace(/\u00a0/g, ' ')).toBe('Em andamento desde 02/10 às 23:30');
-    expect(sessionSince(new Date(2025, 9, 3, 20, 5), now).replace(/\u00a0/g, ' ')).toBe('Em andamento desde 03/10 às 20:05');
+    expect(sessionSince(new Date(2026, 9, 2, 23, 30), now).replace(/\u00a0/g, ' ')).toBe(
+      'Em andamento desde 02/10 às 23:30',
+    );
+    expect(sessionSince(new Date(2025, 9, 3, 20, 5), now).replace(/\u00a0/g, ' ')).toBe(
+      'Em andamento desde 03/10 às 20:05',
+    );
   });
 });

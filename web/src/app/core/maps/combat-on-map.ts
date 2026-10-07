@@ -16,7 +16,11 @@ export class CombatOnMap {
   async running(campaignId: string, mapId: string): Promise<boolean> {
     try {
       const encounter = await this.combat.get(campaignId);
-      return encounter !== null && encounter.mapId === mapId && encounter.status !== EncounterStatus.ENDED;
+      return (
+        encounter !== null &&
+        encounter.mapId === mapId &&
+        encounter.status !== EncounterStatus.ENDED
+      );
     } catch {
       return false;
     }

@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -70,7 +79,11 @@ export class InitiativeSide {
     return player ? `${player} rola os próprios dados.` : null;
   });
   protected readonly title = computed(() =>
-    this.ready() ? 'Tudo pronto' : this.missing().length === 1 ? 'Falta uma rolagem' : 'Faltam rolagens',
+    this.ready()
+      ? 'Tudo pronto'
+      : this.missing().length === 1
+        ? 'Falta uma rolagem'
+        : 'Faltam rolagens',
   );
 
   constructor() {

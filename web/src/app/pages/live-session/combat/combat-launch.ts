@@ -28,7 +28,11 @@ export function combatMapInfo(state: MapState): CombatMapInfo | null {
 }
 
 /** Opens "Iniciar combate" (a full-screen dialog on a phone) and answers with the combat it started, or `undefined`. */
-export function openStartCombat(dialog: MatDialog, phone: boolean, data: StartCombatData): Observable<Encounter | undefined> {
+export function openStartCombat(
+  dialog: MatDialog,
+  phone: boolean,
+  data: StartCombatData,
+): Observable<Encounter | undefined> {
   return dialog
     .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
       data,
@@ -119,7 +123,11 @@ export class CombatLaunch {
   protected open(): void {
     const map = this.map();
     // Without a map the combat starts without one (the theatre of the mind, RN-25): the dialog offers the choice.
-    openStartCombat(this.dialog, this.phone(), { campaignId: this.campaignId(), mode: 'start', map }).subscribe((encounter) => {
+    openStartCombat(this.dialog, this.phone(), {
+      campaignId: this.campaignId(),
+      mode: 'start',
+      map,
+    }).subscribe((encounter) => {
       if (encounter) {
         this.started.emit(encounter);
       }

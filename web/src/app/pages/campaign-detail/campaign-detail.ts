@@ -1,4 +1,12 @@
-import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -150,7 +158,9 @@ export class CampaignDetail {
           // A link with a fragment ("Abrir os mapas", in "Regras da mesa") lands on its section once the page has rendered it.
           const fragment = this.route.snapshot?.fragment;
           if (fragment) {
-            afterNextRender(() => document.getElementById(fragment)?.scrollIntoView?.(), { injector: this.injector });
+            afterNextRender(() => document.getElementById(fragment)?.scrollIntoView?.(), {
+              injector: this.injector,
+            });
           }
           // Every member reads the XP; the history comes with it. Only the master
           // reads the treasures waiting to be converted ("Voltar à cidade").

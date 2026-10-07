@@ -27,7 +27,9 @@ import type { SheetKeys } from './levelup-flow';
 
 /** Fixtures of the guided level-up's specs: Pensantus (Mago 3, E8-15's numbers) and a fighter. */
 
-export function wizardOptions(over: MessageInitShape<typeof LevelUpOptionsSchema> = {}): LevelUpOptions {
+export function wizardOptions(
+  over: MessageInitShape<typeof LevelUpOptionsSchema> = {},
+): LevelUpOptions {
   return create(LevelUpOptionsSchema, {
     classKey: 'class:wizard',
     classNamePt: 'Mago',
@@ -51,13 +53,20 @@ export function wizardOptions(over: MessageInitShape<typeof LevelUpOptionsSchema
     proficiencyBonusAfter: 2,
     spellSlotsBefore: [4, 2],
     spellSlotsAfter: [4, 3],
-    newFeatures: [{ key: 'feature:wizard-ability-score-improvement-1', namePt: 'Incremento no Valor de Habilidade' }],
+    newFeatures: [
+      {
+        key: 'feature:wizard-ability-score-improvement-1',
+        namePt: 'Incremento no Valor de Habilidade',
+      },
+    ],
     ...over,
   });
 }
 
 /** Toren, Guerreiro 4 -> 5: Ataque Extra and the proficiency bonus, nothing to choose but the hit points. */
-export function fighterOptions(over: MessageInitShape<typeof LevelUpOptionsSchema> = {}): LevelUpOptions {
+export function fighterOptions(
+  over: MessageInitShape<typeof LevelUpOptionsSchema> = {},
+): LevelUpOptions {
   return create(LevelUpOptionsSchema, {
     classKey: 'class:fighter',
     classNamePt: 'Guerreiro',
@@ -75,8 +84,21 @@ export function fighterOptions(over: MessageInitShape<typeof LevelUpOptionsSchem
   });
 }
 
-const sp = (key: string, namePt: string, level: number, school: string, extra: MessageInitShape<typeof SpellSchema> = {}): Spell =>
-  create(SpellSchema, { key, namePt, level, schoolNamePt: school, classKeys: ['class:wizard'], ...extra });
+const sp = (
+  key: string,
+  namePt: string,
+  level: number,
+  school: string,
+  extra: MessageInitShape<typeof SpellSchema> = {},
+): Spell =>
+  create(SpellSchema, {
+    key,
+    namePt,
+    level,
+    schoolNamePt: school,
+    classKeys: ['class:wizard'],
+    ...extra,
+  });
 
 /** A small slice of the wizard's list: enough to pick, search and prepare. */
 export const SPELLS: Spell[] = [
@@ -120,7 +142,10 @@ const ABILITIES = [
 ] as const;
 
 /** Pensantus as `Character.derived` (before) or `PreviewLevelUp.after` (with `after`): E8-15's numbers. */
-export function pensantus(after = false, over: MessageInitShape<typeof DerivedSheetSchema> = {}): DerivedSheet {
+export function pensantus(
+  after = false,
+  over: MessageInitShape<typeof DerivedSheetSchema> = {},
+): DerivedSheet {
   const lvl = after ? 4 : 3;
   return create(DerivedSheetSchema, {
     classes: [create(DerivedClassSchema, { classKey: 'class:wizard', namePt: 'Mago', level: lvl })],
@@ -134,11 +159,35 @@ export function pensantus(after = false, over: MessageInitShape<typeof DerivedSh
         modifier: after && ability === Ability.INTELLIGENCE ? 5 : modifier,
       }),
     ),
-    savingThrows: [create(SavingThrowSchema, { ability: Ability.INTELLIGENCE, bonus: after ? 7 : 6, proficient: true })],
+    savingThrows: [
+      create(SavingThrowSchema, {
+        ability: Ability.INTELLIGENCE,
+        bonus: after ? 7 : 6,
+        proficient: true,
+      }),
+    ],
     skills: [
-      create(DerivedSkillSchema, { key: 'skill:arcana', namePt: 'Arcanismo', ability: Ability.INTELLIGENCE, proficiency: ProficiencyLevel.PROFICIENT, bonus: after ? 7 : 6 }),
-      create(DerivedSkillSchema, { key: 'skill:history', namePt: 'História', ability: Ability.INTELLIGENCE, proficiency: ProficiencyLevel.PROFICIENT, bonus: after ? 7 : 6 }),
-      create(DerivedSkillSchema, { key: 'skill:stealth', namePt: 'Furtividade', ability: Ability.DEXTERITY, proficiency: ProficiencyLevel.NONE, bonus: 3 }),
+      create(DerivedSkillSchema, {
+        key: 'skill:arcana',
+        namePt: 'Arcanismo',
+        ability: Ability.INTELLIGENCE,
+        proficiency: ProficiencyLevel.PROFICIENT,
+        bonus: after ? 7 : 6,
+      }),
+      create(DerivedSkillSchema, {
+        key: 'skill:history',
+        namePt: 'História',
+        ability: Ability.INTELLIGENCE,
+        proficiency: ProficiencyLevel.PROFICIENT,
+        bonus: after ? 7 : 6,
+      }),
+      create(DerivedSkillSchema, {
+        key: 'skill:stealth',
+        namePt: 'Furtividade',
+        ability: Ability.DEXTERITY,
+        proficiency: ProficiencyLevel.NONE,
+        bonus: 3,
+      }),
     ],
     passivePerception: 11,
     passiveInvestigation: after ? 17 : 16,

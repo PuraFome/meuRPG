@@ -13,9 +13,7 @@ import { CharacterEditorSourceLive } from './character-editor-source.live';
 export const CHARACTER_EDITOR_ROUTES: Routes = [
   {
     path: '',
-    providers: [
-      { provide: CharacterEditorSource, useClass: CharacterEditorSourceLive },
-    ],
+    providers: [{ provide: CharacterEditorSource, useClass: CharacterEditorSourceLive }],
     loadComponent: () => import('./character-editor').then((m) => m.CharacterEditor),
   },
 ];

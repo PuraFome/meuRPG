@@ -5,8 +5,25 @@ import { PaintedLayers } from './paint-layers';
 
 // The byte layouts are rules/grid's (TestLayerEncoding, TestLightAndCoverLayerEncoding): a one-bit layer is bit n % 8 of
 // byte n / 8, a two-bit layer is bits 2 * (n % 4) and one more of byte n / 4, both row-major.
-function packed(columns: number, rows: number, extra: Partial<{ wall: Uint8Array; difficultTerrain: Uint8Array; cover: Uint8Array; light: Uint8Array; doors: Uint8Array }> = {}) {
-  return { gridColumns: columns, gridRows: rows, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), ...extra };
+function packed(
+  columns: number,
+  rows: number,
+  extra: Partial<{
+    wall: Uint8Array;
+    difficultTerrain: Uint8Array;
+    cover: Uint8Array;
+    light: Uint8Array;
+    doors: Uint8Array;
+  }> = {},
+) {
+  return {
+    gridColumns: columns,
+    gridRows: rows,
+    difficultTerrain: new Uint8Array(),
+    wall: new Uint8Array(),
+    cover: new Uint8Array(),
+    ...extra,
+  };
 }
 
 describe('PaintedLayers', () => {
@@ -78,7 +95,11 @@ describe('PaintedLayers', () => {
     layers.paint(MapLayer.LIGHT, 3, [{ col: 0, row: 0 }]);
     layers.paint(MapLayer.LIGHT, 2, [{ col: 1, row: 0 }]);
     layers.paint(MapLayer.LIGHT, 1, [{ col: 2, row: 0 }]);
-    expect(layers.layers().light).toEqual({ bright: [{ col: 0, row: 0 }], dim: [{ col: 1, row: 0 }], dark: [{ col: 2, row: 0 }] });
+    expect(layers.layers().light).toEqual({
+      bright: [{ col: 0, row: 0 }],
+      dim: [{ col: 1, row: 0 }],
+      dark: [{ col: 2, row: 0 }],
+    });
     layers.paint(MapLayer.LIGHT, 0, [{ col: 1, row: 0 }]);
     expect(layers.layers().light?.dim).toEqual([]);
   });
@@ -86,7 +107,13 @@ describe('PaintedLayers', () => {
   it('ignores a square outside the grid', () => {
     const layers = new PaintedLayers();
     layers.load(packed(2, 2));
-    expect(layers.paint(MapLayer.WALL, 1, [{ col: 5, row: 0 }, { col: -1, row: 0 }, { col: 0, row: 2 }])).toEqual([]);
+    expect(
+      layers.paint(MapLayer.WALL, 1, [
+        { col: 5, row: 0 },
+        { col: -1, row: 0 },
+        { col: 0, row: 2 },
+      ]),
+    ).toEqual([]);
   });
 
   it('writes the same bytes the server reads: a 200 x 400 grid is 10 kB a one-bit layer', () => {

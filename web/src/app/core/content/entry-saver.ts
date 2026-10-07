@@ -38,7 +38,8 @@ export class EntrySaver {
   }
 
   /** The messages of one input, by its path. */
-  issues = (path: string): readonly string[] => (this.placement().byField.get(path) ?? []).map((p) => p.text);
+  issues = (path: string): readonly string[] =>
+    (this.placement().byField.get(path) ?? []).map((p) => p.text);
 
   clear(): void {
     this.placement.set(NO_PLACEMENT);
@@ -76,12 +77,15 @@ export class EntrySaver {
 
 /** Moves the focus to the input of a path (or the first control inside a group that carries it) and scrolls it into view. */
 export function focusField(root: ParentNode, path: string): boolean {
-  const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(path) : path.replace(/["\\]/g, '\\$&');
+  const escaped =
+    typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(path) : path.replace(/["\\]/g, '\\$&');
   const el = root.querySelector<HTMLElement>(`[data-field="${escaped}"]`);
   if (!el) {
     return false;
   }
-  const target = el.matches('input, select, textarea, button') ? el : el.querySelector<HTMLElement>('input, select, textarea, button');
+  const target = el.matches('input, select, textarea, button')
+    ? el
+    : el.querySelector<HTMLElement>('input, select, textarea, button');
   (target ?? el).focus({ preventScroll: true });
   (target ?? el).scrollIntoView?.({ block: 'center', behavior: 'auto' });
   return true;

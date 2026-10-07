@@ -13,9 +13,16 @@ export class CreatureOptionsState {
   readonly data = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(new Map());
   private asked = 0;
 
-  async load(api: CombatClient, campaignId: string, encounterId: string, ids: readonly string[]): Promise<void> {
+  async load(
+    api: CombatClient,
+    campaignId: string,
+    encounterId: string,
+    ids: readonly string[],
+  ): Promise<void> {
     const mine = ++this.asked;
-    const results = await Promise.allSettled(ids.map((id) => api.turnOptions(campaignId, encounterId, id)));
+    const results = await Promise.allSettled(
+      ids.map((id) => api.turnOptions(campaignId, encounterId, id)),
+    );
     if (mine !== this.asked) {
       return;
     }

@@ -40,7 +40,8 @@ export function turnMembers(e: Encounter): Combatant[] {
   if (e.status !== EncounterStatus.ACTIVE) {
     return [];
   }
-  const ids = e.turnGroupIds.length > 0 ? e.turnGroupIds : e.currentCombatantId ? [e.currentCombatantId] : [];
+  const ids =
+    e.turnGroupIds.length > 0 ? e.turnGroupIds : e.currentCombatantId ? [e.currentCombatantId] : [];
   return ids.flatMap((id) => e.combatants.find((c) => c.id === id) ?? []);
 }
 
@@ -82,7 +83,9 @@ export function withArticle(label: string): string {
 
 /** "Brisa e Toren", "Brisa, Toren e Pensantus". */
 export function listNames(labels: readonly string[]): string {
-  return labels.length <= 1 ? labels.join('') : `${labels.slice(0, -1).join(', ')} e ${labels[labels.length - 1]}`;
+  return labels.length <= 1
+    ? labels.join('')
+    : `${labels.slice(0, -1).join(', ')} e ${labels[labels.length - 1]}`;
 }
 
 /** What a player hears for a group of NPCs that are copies of one: "os
@@ -131,14 +134,20 @@ export type OrderItem =
 export function orderItems(e: Encounter, master: boolean): OrderItem[] {
   const list = e.combatants;
   const onTurn = turnMembers(e);
-  const onTurnHoldsPlayer = onTurn.length > 1 && onTurn.some((c) => c.kind === CombatantKind.PLAYER);
+  const onTurnHoldsPlayer =
+    onTurn.length > 1 && onTurn.some((c) => c.kind === CombatantKind.PLAYER);
   const inTurnGroup = new Set(onTurnHoldsPlayer ? onTurn.map((c) => c.id) : []);
   const out: OrderItem[] = [];
   let run: Combatant[] = [];
   const flush = () => {
     if (run.length > 1) {
       const total = run.find((c) => c.initiative !== undefined)?.initiative ?? 0;
-      out.push({ kind: 'group', total, members: run, onTurn: onTurn.length > 1 && run.some((c) => onTurn.some((t) => t.id === c.id)) });
+      out.push({
+        kind: 'group',
+        total,
+        members: run,
+        onTurn: onTurn.length > 1 && run.some((c) => onTurn.some((t) => t.id === c.id)),
+      });
     } else {
       out.push(...run.map((combatant) => ({ kind: 'single' as const, combatant })));
     }
@@ -155,7 +164,12 @@ export function orderItems(e: Encounter, master: boolean): OrderItem[] {
   return out;
 }
 
-function sameGroup(a: Combatant, b: Combatant, master: boolean, inTurnGroup: ReadonlySet<string>): boolean {
+function sameGroup(
+  a: Combatant,
+  b: Combatant,
+  master: boolean,
+  inTurnGroup: ReadonlySet<string>,
+): boolean {
   if (inTurnGroup.has(a.id) && inTurnGroup.has(b.id)) {
     return true;
   }
@@ -173,14 +187,18 @@ function sameGroup(a: Combatant, b: Combatant, master: boolean, inTurnGroup: Rea
 /** The ids of the NPC-only groups a player is told about (to name them). */
 export function npcGroupOf(e: Encounter, id: string): readonly Combatant[] | null {
   const group = e.npcOnlyGroups.find((g) => g.combatantIds.includes(id));
-  return group ? group.combatantIds.flatMap((x) => e.combatants.find((c) => c.id === x) ?? []) : null;
+  return group
+    ? group.combatantIds.flatMap((x) => e.combatants.find((c) => c.id === x) ?? [])
+    : null;
 }
 
 /** Who plays after the turn that is running: the first combatant after the
  * group's last member that is not defeated, going round the order, as a name
  * (a group of NPCs a player was told about is "os Goblins", never one of
  * them), and whether it is the caller's own. `null` when nobody follows. */
-export function afterTurn(e: Encounter): { readonly name: string; readonly mine: boolean; readonly plural: boolean } | null {
+export function afterTurn(
+  e: Encounter,
+): { readonly name: string; readonly mine: boolean; readonly plural: boolean } | null {
   const list = e.combatants;
   const members = turnMembers(e);
   if (members.length === 0) {
@@ -216,7 +234,11 @@ function creatureRun(list: readonly Combatant[], at: number): readonly Combatant
   const run: Combatant[] = [];
   for (let i = at; i < list.length; i++) {
     const c = list[i];
-    if (c.kind !== CombatantKind.CREATURE || c.initiative !== first.initiative || c.ownerCharacterId !== first.ownerCharacterId) {
+    if (
+      c.kind !== CombatantKind.CREATURE ||
+      c.initiative !== first.initiative ||
+      c.ownerCharacterId !== first.ownerCharacterId
+    ) {
       break;
     }
     if (!c.defeated) {
@@ -291,7 +313,9 @@ export function partEconomy(c: Combatant): PartEconomy {
 export function leftSentence(c: Combatant): string {
   const e = partEconomy(c);
   const items = [...e.left, ...(e.movement ? [e.movement] : [])];
-  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+  return items.length <= 1
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
 }
 
 /** Who plays right before the caller's own combatant, as "do Capitão Goblin",

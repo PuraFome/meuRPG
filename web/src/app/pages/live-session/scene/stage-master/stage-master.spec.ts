@@ -17,12 +17,25 @@ const flat = (e: Element | null | undefined) => {
   }
   const copy = e.cloneNode(true) as Element;
   copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
-  return copy.textContent?.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return copy.textContent
+    ?.replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 const roster: StageCandidate[] = [
-  { characterId: 'mira', name: 'Mira', kindLabel: 'NPC de história', portraitUrl: '/images/i1/thumb' },
-  { characterId: 'capitao', name: 'Capitão Goblin', kindLabel: 'Inimigo', portraitUrl: '/images/i2/thumb' },
+  {
+    characterId: 'mira',
+    name: 'Mira',
+    kindLabel: 'NPC de história',
+    portraitUrl: '/images/i1/thumb',
+  },
+  {
+    characterId: 'capitao',
+    name: 'Capitão Goblin',
+    kindLabel: 'Inimigo',
+    portraitUrl: '/images/i2/thumb',
+  },
   { characterId: 'aldo', name: 'Aldo', kindLabel: 'NPC de história', portraitUrl: '' },
   { characterId: 'ivo', name: 'Barão Ivo', kindLabel: 'Boss', portraitUrl: '/images/i4/thumb' },
   { characterId: 'goblin', name: 'Goblin', kindLabel: 'Minion', portraitUrl: '/images/i5/thumb' },
@@ -31,13 +44,27 @@ const roster: StageCandidate[] = [
 describe('StageMaster', () => {
   const dialogOpen = vi.fn();
 
-  async function setup(stage = [stageNpc('s-mira', 'Mira', { master: true, characterId: 'mira' }), stageNpc('s-capitao', 'Capitão Goblin', { master: true, characterId: 'capitao', speaking: true })]) {
+  async function setup(
+    stage = [
+      stageNpc('s-mira', 'Mira', { master: true, characterId: 'mira' }),
+      stageNpc('s-capitao', 'Capitão Goblin', {
+        master: true,
+        characterId: 'capitao',
+        speaking: true,
+      }),
+    ],
+  ) {
     const api = new FakeSceneClient();
     api.stage = stage;
     api.names = Object.fromEntries(roster.map((c) => [c.characterId, c.name]));
-    const state = new SceneState(() => api.get(), () => true);
+    const state = new SceneState(
+      () => api.get(),
+      () => true,
+    );
     state.apply(masterScene([], stage));
-    dialogOpen.mockReset().mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
+    dialogOpen
+      .mockReset()
+      .mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
     TestBed.configureTestingModule({
       providers: [
         { provide: SceneClient, useValue: api },
@@ -62,8 +89,10 @@ describe('StageMaster', () => {
     }
   }
 
-  const cards = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('[data-stage-card]'));
-  const button = (el: HTMLElement, label: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+  const cards = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[data-stage-card]'));
+  const button = (el: HTMLElement, label: string) =>
+    el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
   const putButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.st__put')!;
 
   afterEach(() => {
@@ -74,10 +103,18 @@ describe('StageMaster', () => {
     const { el } = await setup();
     expect(el.querySelector('h3')?.textContent).toBe('Em cena');
     expect(flat(el.querySelector('.st__count'))).toBe('2 de 4 em cena');
-    expect(cards(el).map((c) => flat(c.querySelector('.card__name')))).toEqual(['Mira', 'Capitão Goblin']);
-    expect(cards(el).map((c) => flat(c.querySelector('.card__kind')))).toEqual(['NPC de história', 'Inimigo']);
+    expect(cards(el).map((c) => flat(c.querySelector('.card__name')))).toEqual([
+      'Mira',
+      'Capitão Goblin',
+    ]);
+    expect(cards(el).map((c) => flat(c.querySelector('.card__kind')))).toEqual([
+      'NPC de história',
+      'Inimigo',
+    ]);
     expect(cards(el)[0].querySelector('app-portrait')).not.toBeNull();
-    expect(flat(el.querySelector('.st__lead'))).toBe('Os jogadores veem os retratos e o nome de quem está aqui, e quem fala fica na frente.');
+    expect(flat(el.querySelector('.st__lead'))).toBe(
+      'Os jogadores veem os retratos e o nome de quem está aqui, e quem fala fica na frente.',
+    );
   });
 
   it('marks the speaker on the card: "Fala agora", pressed, with the 2px border', async () => {
@@ -98,7 +135,9 @@ describe('StageMaster', () => {
     await settle(fixture);
     expect(api.calls).toContain('speaker mira');
     expect(state.stage().map((n) => n.speaking)).toEqual([true, false]);
-    expect(button(el, 'Mira está com a fala. Tirar a fala').getAttribute('aria-pressed')).toBe('true');
+    expect(button(el, 'Mira está com a fala. Tirar a fala').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
     button(el, 'Mira está com a fala. Tirar a fala').click();
     await settle(fixture);
     expect(api.calls).toContain('speaker nobody');
@@ -137,8 +176,20 @@ describe('StageMaster', () => {
       expect(title.textContent).toBe('Pôr em cena');
       expect(document.activeElement).toBe(title);
       const rows = Array.from(el.querySelectorAll('.sl__row'));
-      expect(rows.map((r) => flat(r.querySelector('.sl__name')))).toEqual(['Mira', 'Capitão Goblin', 'Aldo', 'Barão Ivo', 'Goblin']);
-      expect(rows.map((r) => flat(r.querySelector('.sl__tag')) ?? null)).toEqual(['Em cena', 'Em cena', null, null, null]);
+      expect(rows.map((r) => flat(r.querySelector('.sl__name')))).toEqual([
+        'Mira',
+        'Capitão Goblin',
+        'Aldo',
+        'Barão Ivo',
+        'Goblin',
+      ]);
+      expect(rows.map((r) => flat(r.querySelector('.sl__tag')) ?? null)).toEqual([
+        'Em cena',
+        'Em cena',
+        null,
+        null,
+        null,
+      ]);
       expect(flat(rows[2].querySelector('.sl__kind'))).toBe('NPC de história · sem retrato');
       expect(flat(el.querySelector('.pick__lead'))).toContain('Quem entra vai para o fim da fila');
       el.remove();
@@ -174,12 +225,19 @@ describe('StageMaster', () => {
   });
 
   describe('a full stage: 4 de 4', () => {
-    const four = ['mira', 'capitao', 'aldo', 'ivo'].map((id) => stageNpc(`s-${id}`, roster.find((c) => c.characterId === id)!.name, { master: true, characterId: id }));
+    const four = ['mira', 'capitao', 'aldo', 'ivo'].map((id) =>
+      stageNpc(`s-${id}`, roster.find((c) => c.characterId === id)!.name, {
+        master: true,
+        characterId: id,
+      }),
+    );
 
     it('says "4 de 4" and why, before a dashed, off "Pôr em cena" that stays reachable', async () => {
       const { el, api, fixture } = await setup(four);
       expect(flat(el.querySelector('.st__count'))).toBe('4 de 4 em cena');
-      expect(flat(el.querySelector('.st__reason'))).toBe('A cena comporta 4 NPCs. Tire um para pôr outro.');
+      expect(flat(el.querySelector('.st__reason'))).toBe(
+        'A cena comporta 4 NPCs. Tire um para pôr outro.',
+      );
       const put = putButton(el);
       expect(put.getAttribute('aria-disabled')).toBe('true');
       expect(put.getAttribute('aria-describedby')).toBe('st-reason');
@@ -198,7 +256,7 @@ describe('StageMaster', () => {
       expect(el.querySelector('.st__reason')).toBeNull();
     });
 
-    it('turns the list\'s buttons into the same off, dashed button when the stage fills up', async () => {
+    it("turns the list's buttons into the same off, dashed button when the stage fills up", async () => {
       const three = four.slice(0, 3);
       const { el, fixture } = await setup(three);
       putButton(el).click();
@@ -208,7 +266,9 @@ describe('StageMaster', () => {
       const off = button(el, 'Pôr Goblin em cena');
       expect(off.getAttribute('aria-disabled')).toBe('true');
       expect(off.getAttribute('aria-describedby')).not.toBeNull();
-      expect(flat(el.querySelector('.sl__reason'))).toBe('A cena comporta 4 NPCs. Tire um para pôr outro.');
+      expect(flat(el.querySelector('.sl__reason'))).toBe(
+        'A cena comporta 4 NPCs. Tire um para pôr outro.',
+      );
     });
   });
 
@@ -241,12 +301,19 @@ describe('StageMaster', () => {
 
   describe('on a phone: "Pôr em cena" is a sheet', () => {
     it('opens the sheet with the list, not the list in place', async () => {
-      vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('max-width: 767'), addEventListener: () => undefined, removeEventListener: () => undefined }));
+      vi.stubGlobal('matchMedia', (q: string) => ({
+        matches: q.includes('max-width: 767'),
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
       const { el, fixture } = await setup();
       putButton(el).click();
       await settle(fixture);
       expect(dialogOpen).toHaveBeenCalledTimes(1);
-      const config = dialogOpen.mock.calls[0][1] as { ariaLabel: string; data: { candidates: () => StageCandidate[] } };
+      const config = dialogOpen.mock.calls[0][1] as {
+        ariaLabel: string;
+        data: { candidates: () => StageCandidate[] };
+      };
       expect(config.ariaLabel).toBe('Pôr em cena');
       expect(config.data.candidates()).toHaveLength(5);
       expect(el.querySelector('.pick')).toBeNull();

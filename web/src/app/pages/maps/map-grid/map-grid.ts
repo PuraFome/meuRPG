@@ -9,11 +9,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
-import {
-  MAX_COLUMNS,
-  MIN_COLUMNS,
-  gridRows,
-} from '../../../core/combat/combat-grid';
+import { MAX_COLUMNS, MIN_COLUMNS, gridRows } from '../../../core/combat/combat-grid';
 import { formatMeters, squaresToMeters } from '../../../core/units';
 import { factorLabel, maxDrawnColumns } from '../../../core/maps/calibration';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
@@ -62,7 +58,9 @@ export class MapGrid {
   /** The most columns of the drawing: the rules' grid (the drawing's times the factor) stays within 200 columns. */
   protected readonly max = computed(() => Math.min(MAX_COLUMNS, maxDrawnColumns(this.factor())));
   /** What a square of the drawing is worth: "1,5 m" for a map never calibrated. */
-  protected readonly squareText = computed(() => factorLabel(this.factor()).replace(/\u00a0/g, ' '));
+  protected readonly squareText = computed(() =>
+    factorLabel(this.factor()).replace(/\u00a0/g, ' '),
+  );
 
   /** The number in the field, or `null` while it is not a whole 5 to 60. */
   protected readonly columns = computed(() => {
@@ -82,7 +80,9 @@ export class MapGrid {
   });
   /** The squares of the rules' grid: the drawing's times the factor. */
   protected readonly squares = computed(() =>
-    this.columns() !== null && this.rows() !== null ? `${this.columns()! * this.factor()} × ${this.rows()! * this.factor()}` : '—',
+    this.columns() !== null && this.rows() !== null
+      ? `${this.columns()! * this.factor()} × ${this.rows()! * this.factor()}`
+      : '—',
   );
   protected readonly meters = computed(() =>
     this.columns() !== null && this.rows() !== null
@@ -129,7 +129,11 @@ export class MapGrid {
         return;
       }
       this.map.set(map.map);
-      this.typed.set(String(map.map.gridColumns > 0 ? map.map.drawnColumns || map.map.gridColumns : DEFAULT_COLUMNS));
+      this.typed.set(
+        String(
+          map.map.gridColumns > 0 ? map.map.drawnColumns || map.map.gridColumns : DEFAULT_COLUMNS,
+        ),
+      );
       this.phase.set('ready');
     } catch (err) {
       this.phase.set(ConnectError.from(err).code === Code.NotFound ? 'gone' : 'error');

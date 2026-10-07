@@ -43,8 +43,12 @@ export class EncounterDraft {
   readonly seed = signal<number | null>(null);
 
   readonly creatureCount = computed(() => this.entries().reduce((n, e) => n + e.count, 0));
-  readonly specs = computed<MonsterGroupSpec[]>(() => this.entries().map((e) => ({ creatureKey: e.creature.key, count: e.count })));
-  readonly party = computed<PartyNpcSpec[]>(() => this.npcs().map((n) => ({ characterId: n.characterId, name: n.name, level: n.level })));
+  readonly specs = computed<MonsterGroupSpec[]>(() =>
+    this.entries().map((e) => ({ creatureKey: e.creature.key, count: e.count })),
+  );
+  readonly party = computed<PartyNpcSpec[]>(() =>
+    this.npcs().map((n) => ({ characterId: n.characterId, name: n.name, level: n.level })),
+  );
 
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** Grows with every change: an answer is kept only if it is still for the newest one. */

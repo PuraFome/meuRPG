@@ -19,9 +19,7 @@ export function plannedOf(list: readonly Milestone[]): Milestone[] {
 /** The reached milestones, the last one reached first: what the master and the
  * players read as "Marcos alcançados". */
 export function reachedOf(list: readonly Milestone[]): Milestone[] {
-  return list
-    .filter((m) => m.reached)
-    .sort((a, b) => reachedTime(b) - reachedTime(a));
+  return list.filter((m) => m.reached).sort((a, b) => reachedTime(b) - reachedTime(a));
 }
 
 function reachedTime(m: Milestone): number {
@@ -78,7 +76,9 @@ export function plannedCount(n: number): string {
  * characters that were not marked. */
 export function reachedConfirmation(marked: readonly string[], left: readonly string[]): string {
   const lead = `Marco alcançado: ${nameList(marked)} ${marked.length > 1 ? 'podem' : 'pode'} subir de nível.`;
-  return left.length === 0 ? lead : `${lead} ${nameList(left)} ${left.length > 1 ? 'continuam como estavam' : 'continua como estava'}.`;
+  return left.length === 0
+    ? lead
+    : `${lead} ${nameList(left)} ${left.length > 1 ? 'continuam como estavam' : 'continua como estava'}.`;
 }
 
 /** What the master reads right after "Dar a mais alguém". */
@@ -89,7 +89,11 @@ export function givenConfirmation(marked: readonly string[]): string {
 /** The effect line of the "Marcar como alcançado" sheet: "2 personagens podem
  * subir de nível", empty with nobody checked. */
 export function reachedEffect(n: number): string {
-  return n === 0 ? '' : n === 1 ? '1 personagem pode subir de nível' : `${n} personagens podem subir de nível`;
+  return n === 0
+    ? ''
+    : n === 1
+      ? '1 personagem pode subir de nível'
+      : `${n} personagens podem subir de nível`;
 }
 
 /** The question before the master undoes the last mark of a milestone: who
@@ -110,7 +114,11 @@ export function undoMilestoneConsequence(m: Milestone, mark: XPAward): string {
  * read: "O mestre marcou Chegar ao Vale Seco. Pensantus pode subir de nível."
  * It names only the player's own characters. */
 export function playerAnnouncement(m: Milestone, mine: ReadonlySet<string>): string {
-  const own = m.marks.flatMap((a) => a.shares.filter((s) => mine.has(s.characterId)).map((s) => s.characterName));
+  const own = m.marks.flatMap((a) =>
+    a.shares.filter((s) => mine.has(s.characterId)).map((s) => s.characterName),
+  );
   const lead = `O mestre marcou ${m.text}.`;
-  return own.length === 0 ? lead : `${lead} ${nameList(own)} ${own.length > 1 ? 'podem' : 'pode'} subir de nível.`;
+  return own.length === 0
+    ? lead
+    : `${lead} ${nameList(own)} ${own.length > 1 ? 'podem' : 'pode'} subir de nível.`;
 }

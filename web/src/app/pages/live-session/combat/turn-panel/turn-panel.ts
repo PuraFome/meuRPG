@@ -2,7 +2,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantState,
+  type Encounter,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { joinDots, tight } from '../../../../core/format/text';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
@@ -17,7 +21,13 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
+import {
+  leftSentence,
+  listNames,
+  missingLine,
+  passNote,
+  playsBefore,
+} from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { WildBand } from '../../../../shared/wild-shape/wild-band';
 import type { FallNote } from '../../../../core/traps/trap-log';
@@ -45,7 +55,19 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction, WildBand],
+  imports: [
+    CombatantToken,
+    ConcentrationLine,
+    EndPart,
+    EndTurn,
+    JointOthers,
+    JointPill,
+    MatIconModule,
+    NgTemplateOutlet,
+    OrderStrip,
+    TurnReaction,
+    WildBand,
+  ],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -94,12 +116,20 @@ export class TurnPanel {
   /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
   protected readonly form = computed(() => {
     const c = this.own();
-    return c?.wildShapeBeastKey ? { name: c.wildShapeBeastNamePt, current: c.wildShapeHitPointsCurrent, max: c.wildShapeHitPointsMax } : null;
+    return c?.wildShapeBeastKey
+      ? {
+          name: c.wildShapeBeastNamePt,
+          current: c.wildShapeHitPointsCurrent,
+          max: c.wildShapeHitPointsMax,
+        }
+      : null;
   });
   /** "Sem magias · 12,0 m": the beast's armor class is the one on the vitals card, once on the page. */
   protected readonly formDetail = computed(() => {
     const c = this.own();
-    return c?.wildShapeBeastKey ? joinDots(['Sem magias', tight(metersFixed(c.speedDft / 10))]) : '';
+    return c?.wildShapeBeastKey
+      ? joinDots(['Sem magias', tight(metersFixed(c.speedDft / 10))])
+      : '';
   });
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
@@ -110,7 +140,9 @@ export class TurnPanel {
   });
   /** It is their turn and they are down: the hero is the danger one. */
   protected readonly down = computed(() => this.isDown() && this.banner().mine);
-  protected readonly downWord = computed(() => (article(this.own()?.label ?? '') === 'a' ? 'caída' : 'caído'));
+  protected readonly downWord = computed(() =>
+    article(this.own()?.label ?? '') === 'a' ? 'caída' : 'caído',
+  );
   /** The line of a fallen character off turn: what is owed, or that the master decides. */
   protected readonly offTurnDown = computed(() => {
     const own = this.own();
@@ -124,7 +156,9 @@ export class TurnPanel {
       ? `${own.label} está ${this.downWord()}, com três falhas: o mestre decide.`
       : `${own.label} está ${this.downWord()}. Na sua vez, role o teste contra a morte.`;
   });
-  protected readonly downTitle = computed(() => (this.down() ? `${this.own()?.label} está ${this.downWord()}` : ''));
+  protected readonly downTitle = computed(() =>
+    this.down() ? `${this.own()?.label} está ${this.downWord()}` : '',
+  );
   protected readonly downText = computed(() => {
     const own = this.own();
     const max = this.hitPointsMax();
@@ -148,9 +182,17 @@ export class TurnPanel {
       {
         name: 'Ação',
         used: c.actionUsed && !partial,
-        word: partial ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}` : c.actionUsed ? 'Usada' : 'Disponível',
+        word: partial
+          ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`
+          : c.actionUsed
+            ? 'Usada'
+            : 'Disponível',
       },
-      { name: 'Ação bônus', used: c.bonusActionUsed, word: c.bonusActionUsed ? 'Usada' : 'Disponível' },
+      {
+        name: 'Ação bônus',
+        used: c.bonusActionUsed,
+        word: c.bonusActionUsed ? 'Usada' : 'Disponível',
+      },
       { name: 'Reação', used: c.reactionUsed, word: c.reactionUsed ? 'Usada' : 'Disponível' },
     ];
   });
@@ -180,13 +222,20 @@ export class TurnPanel {
       return '';
     }
     const others = joint.members.filter((m) => !m.mine).map((m) => m.label);
-    return joint.members.some((m) => m.mine) && others.length > 0 ? `Turno conjunto com ${listNames(others)}` : 'Turno conjunto';
+    return joint.members.some((m) => m.mine) && others.length > 0
+      ? `Turno conjunto com ${listNames(others)}`
+      : 'Turno conjunto';
   });
-  protected readonly afterPrefix = computed(() => (this.banner().joint ? 'Depois de vocês' : 'Depois de você'));
+  protected readonly afterPrefix = computed(() =>
+    this.banner().joint ? 'Depois de vocês' : 'Depois de você',
+  );
   /** "O turno passa quando você e a Brisa encerrarem." */
   protected readonly footerNote = computed(() => {
     const joint = this.banner().joint;
-    return passNote((joint?.acting ?? []).filter((m) => !m.mine).map((m) => m.label), !!joint?.waitsForMaster);
+    return passNote(
+      (joint?.acting ?? []).filter((m) => !m.mine).map((m) => m.label),
+      !!joint?.waitsForMaster,
+    );
   });
   /** What the own part still has, for the question before ending it. */
   protected readonly partLeft = computed(() => {
@@ -196,7 +245,12 @@ export class TurnPanel {
   /** "Falta a Brisa. O turno passa quando ela encerrar a parte dela." */
   protected readonly missing = computed(() => {
     const joint = this.banner().joint;
-    return joint ? missingLine(joint.acting.filter((m) => !m.mine).map((m) => m.label), joint.waitsForMaster) : '';
+    return joint
+      ? missingLine(
+          joint.acting.filter((m) => !m.mine).map((m) => m.label),
+          joint.waitsForMaster,
+        )
+      : '';
   });
   /** A player whose group is not on turn, with a joint turn of players going on. */
   protected readonly outsiderJoint = computed(() => {
@@ -210,7 +264,9 @@ export class TurnPanel {
     if (banner.mine || banner.masterTurn || !banner.next) {
       return null;
     }
-    return banner.nextIsMine ? { prefix: 'Você é o próximo: depois dele, ', name: banner.next.label } : null;
+    return banner.nextIsMine
+      ? { prefix: 'Você é o próximo: depois dele, ', name: banner.next.label }
+      : null;
   });
 
   constructor() {

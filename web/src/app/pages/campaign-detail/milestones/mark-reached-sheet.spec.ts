@@ -6,9 +6,21 @@ import { ProgressionClient } from '../../../core/progression/progression-client'
 import { type MarkReachedData, MarkReachedSheet } from './mark-reached-sheet';
 
 const row = (id: string, name: string, sub: string): ExperienceRow => ({
-  id, name, playerUserId: '', sub, level: 3, xp: 0, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0,
+  id,
+  name,
+  playerUserId: '',
+  sub,
+  level: 3,
+  xp: 0,
+  nextLevelXp: 2700,
+  canLevelUp: false,
+  levelUpReason: 0,
 });
-const rows = [row('p', 'Pensantus', 'Mago 3 · de Vinicius'), row('t', 'Toren', 'Guerreiro 3 · de Caio'), row('b', 'Brisa', 'Ladina 3 · de Lia')];
+const rows = [
+  row('p', 'Pensantus', 'Mago 3 · de Vinicius'),
+  row('t', 'Toren', 'Guerreiro 3 · de Caio'),
+  row('b', 'Brisa', 'Ladina 3 · de Lia'),
+];
 
 describe('MarkReachedSheet (E8-14)', () => {
   const api = { markMilestoneReached: vi.fn(), giveMilestoneTo: vi.fn() };
@@ -18,7 +30,17 @@ describe('MarkReachedSheet (E8-14)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ProgressionClient, useValue: api },
-        { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'c1', milestoneId: 'm1', text: 'Chegar ao Vale Seco', rows, give: false, ...data } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            campaignId: 'c1',
+            milestoneId: 'm1',
+            text: 'Chegar ao Vale Seco',
+            rows,
+            give: false,
+            ...data,
+          },
+        },
         { provide: MatDialogRef, useValue: { close } },
       ],
     });
@@ -27,8 +49,10 @@ describe('MarkReachedSheet (E8-14)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
   const text = (el: HTMLElement) => el.textContent!.replace(/\s+/g, ' ');
-  const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('app-xp-actions button'));
-  const checkboxes = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('input[type=checkbox]'));
+  const buttons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('app-xp-actions button'));
+  const checkboxes = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLInputElement>('input[type=checkbox]'));
 
   beforeEach(() => {
     api.markMilestoneReached.mockReset();
@@ -64,10 +88,21 @@ describe('MarkReachedSheet (E8-14)', () => {
     api.markMilestoneReached.mockResolvedValue({ milestone: undefined });
     checkboxes(el)[2].click();
     fixture.detectChanges();
-    buttons(el).find((b) => b.textContent?.includes('Marcar como alcançado'))!.click();
+    buttons(el)
+      .find((b) => b.textContent?.includes('Marcar como alcançado'))!
+      .click();
     await fixture.whenStable();
-    expect(api.markMilestoneReached).toHaveBeenCalledWith('c1', 'm1', ['p', 't'], expect.stringMatching(/^[0-9a-f-]{36}$/));
-    expect(close).toHaveBeenCalledWith({ milestone: undefined, marked: ['Pensantus', 'Toren'], left: ['Brisa'] });
+    expect(api.markMilestoneReached).toHaveBeenCalledWith(
+      'c1',
+      'm1',
+      ['p', 't'],
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
+    expect(close).toHaveBeenCalledWith({
+      milestone: undefined,
+      marked: ['Pensantus', 'Toren'],
+      left: ['Brisa'],
+    });
   });
 
   it('retries with the same key for the same people, and a new key for other people', async () => {
@@ -89,7 +124,9 @@ describe('MarkReachedSheet (E8-14)', () => {
     expect(el.querySelector('h2')?.textContent).toBe('Dar “Chegar ao Vale Seco” a mais alguém');
     expect(checkboxes(el)).toHaveLength(1);
     api.giveMilestoneTo.mockResolvedValue({});
-    buttons(el).find((b) => b.textContent?.includes('Dar o marco'))!.click();
+    buttons(el)
+      .find((b) => b.textContent?.includes('Dar o marco'))!
+      .click();
     await fixture.whenStable();
     expect(api.giveMilestoneTo).toHaveBeenCalledWith('c1', 'm1', ['b'], expect.any(String));
     expect(close).toHaveBeenCalled();
@@ -97,7 +134,9 @@ describe('MarkReachedSheet (E8-14)', () => {
 
   it('"Cancelar" closes without marking', () => {
     const { el } = setup();
-    buttons(el).find((b) => b.textContent?.includes('Cancelar'))!.click();
+    buttons(el)
+      .find((b) => b.textContent?.includes('Cancelar'))!
+      .click();
     expect(close).toHaveBeenCalledWith(undefined);
     expect(api.markMilestoneReached).not.toHaveBeenCalled();
   });

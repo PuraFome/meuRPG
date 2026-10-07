@@ -5,7 +5,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import type { DungeonCorridorStyle, DungeonDoorMix, DungeonMask } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
+import type {
+  DungeonCorridorStyle,
+  DungeonDoorMix,
+  DungeonMask,
+} from '../../../../gen/meurpg/maps/v1/dungeons_pb';
 import type { OptionField } from '../../../core/maps/dungeon-errors';
 import { dungeonSizeText } from '../../../core/maps/dungeon-layout';
 import {
@@ -33,7 +37,14 @@ const OTHER = -1;
  */
 @Component({
   selector: 'app-dungeon-options',
-  imports: [ChoiceRow, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
+  imports: [
+    ChoiceRow,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    ReactiveFormsModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dungeon-options.html',
   styleUrl: './dungeon-options.scss',
@@ -52,9 +63,14 @@ export class DungeonOptions {
 
   protected readonly masks = MASKS as readonly Choice<DungeonMask>[];
   protected readonly corridors = CORRIDORS as readonly Choice<DungeonCorridorStyle>[];
-  protected readonly doorMixes = DOOR_MIXES as readonly (Choice<DungeonDoorMix> & { about: string })[];
+  protected readonly doorMixes = DOOR_MIXES as readonly (Choice<DungeonDoorMix> & {
+    about: string;
+  })[];
   protected readonly stairsMax = STAIRS_MAX;
-  protected readonly sizeChoices: readonly Choice<number>[] = [...SIZE_PRESETS.map((p) => ({ value: p.side, label: p.label })), { value: OTHER, label: 'Outro' }];
+  protected readonly sizeChoices: readonly Choice<number>[] = [
+    ...SIZE_PRESETS.map((p) => ({ value: p.side, label: p.label })),
+    { value: OTHER, label: 'Outro' },
+  ];
 
   protected readonly sizeControl = new FormControl('', { nonNullable: true });
   protected readonly roomMinControl = new FormControl('', { nonNullable: true });
@@ -75,12 +91,19 @@ export class DungeonOptions {
   protected readonly roomsHint = computed(() => {
     const min = wholeNumber(this.form().roomMinText);
     const max = wholeNumber(this.form().roomMaxText);
-    if (min === null || max === null || this.problems().room_side_min || this.problems().room_side_max) {
+    if (
+      min === null ||
+      max === null ||
+      this.problems().room_side_min ||
+      this.problems().room_side_max
+    ) {
       return '';
     }
     return `Salas de ${metersNumber(min * SQUARE_FT)} m a ${metersNumber(max * SQUARE_FT)} m de lado.`;
   });
-  protected readonly doorAbout = computed(() => this.doorMixes.find((d) => d.value === this.form().doors)?.about ?? '');
+  protected readonly doorAbout = computed(
+    () => this.doorMixes.find((d) => d.value === this.form().doors)?.about ?? '',
+  );
 
   constructor() {
     // The fields hold their own text: sync them from the form when it changes from outside (a preset sets the text empty), not on each keystroke.
@@ -100,7 +123,12 @@ export class DungeonOptions {
       this.mark(this.seedControl, this.seedProblem() !== null);
     });
     effect(() => {
-      for (const c of [this.sizeControl, this.roomMinControl, this.roomMaxControl, this.seedControl]) {
+      for (const c of [
+        this.sizeControl,
+        this.roomMinControl,
+        this.roomMaxControl,
+        this.seedControl,
+      ]) {
         if (this.locked()) {
           c.disable({ emitEvent: false });
         } else {
@@ -127,7 +155,11 @@ export class DungeonOptions {
 
   protected setSize(value: number): void {
     if (value === OTHER) {
-      this.formChange.emit({ ...this.form(), preset: null, sizeText: this.form().sizeText || String(sideOf(this.form()) ?? '') });
+      this.formChange.emit({
+        ...this.form(),
+        preset: null,
+        sizeText: this.form().sizeText || String(sideOf(this.form()) ?? ''),
+      });
     } else {
       this.formChange.emit({ ...this.form(), preset: value });
     }
@@ -138,7 +170,11 @@ export class DungeonOptions {
   }
 
   protected typeRooms(): void {
-    this.formChange.emit({ ...this.form(), roomMinText: this.roomMinControl.value, roomMaxText: this.roomMaxControl.value });
+    this.formChange.emit({
+      ...this.form(),
+      roomMinText: this.roomMinControl.value,
+      roomMaxText: this.roomMaxControl.value,
+    });
   }
 
   protected set<K extends keyof DungeonForm>(key: K, value: DungeonForm[K]): void {

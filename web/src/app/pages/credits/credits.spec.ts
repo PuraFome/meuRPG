@@ -19,7 +19,9 @@ describe('Credits', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
-    expect(el.querySelector('[data-testid="srd521-attribution"]')?.textContent?.trim()).toBe(SRD_521_ATTRIBUTION);
+    expect(el.querySelector('[data-testid="srd521-attribution"]')?.textContent?.trim()).toBe(
+      SRD_521_ATTRIBUTION,
+    );
     expect(SRD_521_ATTRIBUTION).toContain('System Reference Document 5.2.1');
     expect(SRD_521_ATTRIBUTION).toContain('https://www.dndbeyond.com/srd');
     expect(el.textContent).toContain('SRD 5.2.1 (regras de 2024)');

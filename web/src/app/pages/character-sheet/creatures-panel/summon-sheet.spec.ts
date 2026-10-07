@@ -4,24 +4,63 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { ReplacedCreatureSchema } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { EncounterBlockedReason, EncounterBlockedSchema } from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, beastSpell, familiarSpell, flat, isOff, raven, summary, summonAnswer, undeadSpell } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  beastSpell,
+  familiarSpell,
+  flat,
+  isOff,
+  raven,
+  summary,
+  summonAnswer,
+  undeadSpell,
+} from '../../../core/creatures/creatures-testing';
 import { SummonSheet, type SummonSheetData } from './summon-sheet';
 
 describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
   let api: FakeCreaturesClient;
   let close: ReturnType<typeof vi.fn>;
 
-  async function setup(spellKey: string, spells = [familiarSpell(), undeadSpell(), beastSpell()], slots: [number, number, number, boolean?][] = [[1, 4, 4], [3, 2, 1], [4, 1, 0]]) {
+  async function setup(
+    spellKey: string,
+    spells = [familiarSpell(), undeadSpell(), beastSpell()],
+    slots: [number, number, number, boolean?][] = [
+      [1, 4, 4],
+      [3, 2, 1],
+      [4, 1, 0],
+    ],
+  ) {
     api = new FakeCreaturesClient();
     api.options = summonAnswer(spells, slots);
-    for (const [k, n, hp, ft, fly] of [['bat', 'Morcego', 1, 5, 30], ['cat', 'Gato', 2, 40, 0], ['raven', 'Corvo', 1, 10, 50]] as const) {
-      api.blocks.set(`monster:${k}`, raven({ summary: summary(`monster:${k}`, n), hitPoints: hp, speedWalkFt: ft, speedFlyFt: fly }));
+    for (const [k, n, hp, ft, fly] of [
+      ['bat', 'Morcego', 1, 5, 30],
+      ['cat', 'Gato', 2, 40, 0],
+      ['raven', 'Corvo', 1, 10, 50],
+    ] as const) {
+      api.blocks.set(
+        `monster:${k}`,
+        raven({
+          summary: summary(`monster:${k}`, n),
+          hitPoints: hp,
+          speedWalkFt: ft,
+          speedFlyFt: fly,
+        }),
+      );
     }
-    api.blocks.set('monster:skeleton', raven({ summary: summary('monster:skeleton', 'Esqueleto', { typePt: 'morto-vivo' }) }));
+    api.blocks.set(
+      'monster:skeleton',
+      raven({ summary: summary('monster:skeleton', 'Esqueleto', { typePt: 'morto-vivo' }) }),
+    );
     api.blocks.set('monster:zombie', raven({ summary: summary('monster:zombie', 'Zumbi') }));
-    api.catalog = [summary('monster:wolf', 'Lobo', { challengeRating: '1/4', sizePt: 'Médio' }), summary('monster:bear', 'Urso negro', { challengeRating: '1/2' })];
+    api.catalog = [
+      summary('monster:wolf', 'Lobo', { challengeRating: '1/4', sizePt: 'Médio' }),
+      summary('monster:bear', 'Urso negro', { challengeRating: '1/2' }),
+    ];
     close = vi.fn();
     const data: SummonSheetData = { campaignId: 'camp-1', characterId: 'char-1', spellKey };
     TestBed.configureTestingModule({
@@ -43,8 +82,14 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     fixture.detectChanges();
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes(name))!;
-    const radio = (name: string) => Array.from(el.querySelectorAll<HTMLLabelElement>('label')).find((l) => flat(l)?.includes(name))!.querySelector<HTMLInputElement>('input[type=radio]')!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.includes(name),
+      )!;
+    const radio = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLLabelElement>('label'))
+        .find((l) => flat(l)?.includes(name))!
+        .querySelector<HTMLInputElement>('input[type=radio]')!;
     const pick = async (name: string) => {
       const r = radio(name);
       r.checked = true;
@@ -59,7 +104,8 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     };
     const plus = async (title: string) => {
       // A row not chosen yet has only "Escolher"; a chosen one has "Menos" and "Mais".
-      (el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ${title}"]`) ?? el.querySelector<HTMLButtonElement>(`button[aria-label="Escolher ${title}"]`))!.click();
+      (el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ${title}"]`) ??
+        el.querySelector<HTMLButtonElement>(`button[aria-label="Escolher ${title}"]`))!.click();
       await settle();
     };
     return { fixture, el, button, pick, type, plus, settle };
@@ -83,14 +129,25 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     await type('Nanquim');
     expect(flat(el.querySelector('.line'))).toBe('Escolha a forma.');
     await pick('Corvo');
-    expect(flat(el.querySelector('.line'))).toBe('Conjurar como ritual · 1 hora · sem gastar espaço');
+    expect(flat(el.querySelector('.line'))).toBe(
+      'Conjurar como ritual · 1 hora · sem gastar espaço',
+    );
     expect(isOff(button('Convocar o familiar'))).toBe(false);
     expect(button('Convocar o familiar').classList).not.toContain('mr-button--off');
   });
 
   it('lists the forms as "Miúdo · 1 PV · 3 m, voo 15 m" and the search narrows them by name, ignoring accents', async () => {
-    const { el, settle } = await setup('spell:find-familiar', [familiarSpell(Array.from({ length: 8 }, (_, i) => [`monster:f${i}`, `Forma ${i}`] as [string, string]).concat([['monster:raven', 'Corvo']]))]);
-    expect(flat(Array.from(el.querySelectorAll('.row')).find((r) => flat(r)?.includes('Corvo')))).toBe('Corvo Miúdo · 1 PV · 3 m, voo 15 m');
+    const { el, settle } = await setup('spell:find-familiar', [
+      familiarSpell(
+        Array.from(
+          { length: 8 },
+          (_, i) => [`monster:f${i}`, `Forma ${i}`] as [string, string],
+        ).concat([['monster:raven', 'Corvo']]),
+      ),
+    ]);
+    expect(
+      flat(Array.from(el.querySelectorAll('.row')).find((r) => flat(r)?.includes('Corvo'))),
+    ).toBe('Corvo Miúdo · 1 PV · 3 m, voo 15 m');
     const search = el.querySelector<HTMLInputElement>('input[type=search]')!;
     search.value = 'cor';
     search.dispatchEvent(new Event('input'));
@@ -113,18 +170,32 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       slot: undefined,
       summon: { option: 0, creatureKeys: ['monster:raven'], names: ['Nanquim'] },
     });
-    expect(close).toHaveBeenCalledWith({ spellName: 'Convocar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 });
+    expect(close).toHaveBeenCalledWith({
+      spellName: 'Convocar Familiar',
+      ritual: true,
+      castingTime: '1 hora',
+      names: ['Nanquim'],
+      count: 1,
+      dismissed: 0,
+    });
   });
 
   it('a refusal stays in the sheet, in words by its typed reason, and a retry keeps the key until a choice changes', async () => {
     const { el, button, pick, type, settle } = await setup('spell:find-familiar');
     await type('Nanquim');
     await pick('Corvo');
-    api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.SUMMON_IN_COMBAT }) }]);
+    api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: EncounterBlockedSchema,
+        value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.SUMMON_IN_COMBAT }),
+      },
+    ]);
     button('Convocar o familiar').click();
     await settle();
     expect(close).not.toHaveBeenCalled();
-    expect(flat(el.querySelector('[role=alert]'))).toBe('Há um combate em andamento. Conjure pela sua vez, na tela do combate.');
+    expect(flat(el.querySelector('[role=alert]'))).toBe(
+      'Há um combate em andamento. Conjure pela sua vez, na tela do combate.',
+    );
     const first = api.casts[0].idempotencyKey;
     button('Convocar o familiar').click();
     await settle();
@@ -139,21 +210,46 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     const { el, button, pick, type, settle } = await setup('spell:find-familiar');
     await type('Nanquim');
     await pick('Corvo');
-    api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.WILD_SHAPE_NO_SPELLS }) }]);
+    api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: EncounterBlockedSchema,
+        value: create(EncounterBlockedSchema, {
+          reason: EncounterBlockedReason.WILD_SHAPE_NO_SPELLS,
+        }),
+      },
+    ]);
     button('Convocar o familiar').click();
     await settle();
-    expect(flat(el.querySelector('[role=alert]'))).toBe('Na Forma Selvagem não dá para conjurar. Volte à forma normal e tente de novo.');
+    expect(flat(el.querySelector('[role=alert]'))).toBe(
+      'Na Forma Selvagem não dá para conjurar. Volte à forma normal e tente de novo.',
+    );
   });
 
-  it('warns before the cast that a new familiar takes the old one\'s place, and starts with its name', async () => {
-    const old = create(ReplacedCreatureSchema, { id: 'cr-1', name: 'Nanquim', monsterKey: 'monster:raven', monsterNamePt: 'Corvo' });
-    const { el } = await setup('spell:find-familiar', [familiarSpell(undefined, { replaces: [old] })]);
-    expect(flat(el.querySelector('.mr-notice--warning'))).toBe('Nanquim sai da ficha: um novo familiar toma o lugar.');
+  it("warns before the cast that a new familiar takes the old one's place, and starts with its name", async () => {
+    const old = create(ReplacedCreatureSchema, {
+      id: 'cr-1',
+      name: 'Nanquim',
+      monsterKey: 'monster:raven',
+      monsterNamePt: 'Corvo',
+    });
+    const { el } = await setup('spell:find-familiar', [
+      familiarSpell(undefined, { replaces: [old] }),
+    ]);
+    expect(flat(el.querySelector('.mr-notice--warning'))).toBe(
+      'Nanquim sai da ficha: um novo familiar toma o lugar.',
+    );
     expect(el.querySelector<HTMLInputElement>('input[name=name]')!.value).toBe('Nanquim');
   });
 
   it('Animar Mortos: the slot picker lists the circles with slots (a pact slot too), the count follows the slot, kinds mix', async () => {
-    const { el, button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
+    const { el, button, plus, pick, settle } = await setup(
+      'spell:animate-dead',
+      [undeadSpell()],
+      [
+        [3, 2, 1],
+        [5, 1, 1, true],
+      ],
+    );
     const rows = Array.from(el.querySelectorAll('app-slot-picker .row')).map((r) => flat(r));
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain('3º nível');
@@ -178,31 +274,66 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(flat(el.querySelector('.line'))).toBe('Escolha mais 2 criaturas.');
     await plus('Zumbi');
     await plus('Zumbi');
-    expect(flat(el.querySelector('.line'))).toBe('5 criaturas · 1 minuto · gasta um espaço de 5º nível (pacto)');
+    expect(flat(el.querySelector('.line'))).toBe(
+      '5 criaturas · 1 minuto · gasta um espaço de 5º nível (pacto)',
+    );
     expect(isOff(button('Animar os mortos'))).toBe(false);
     // No more than the count: the "+" is off.
-    expect(el.querySelector<HTMLButtonElement>('button[aria-label="Mais Zumbi"]')!.disabled).toBe(true);
+    expect(el.querySelector<HTMLButtonElement>('button[aria-label="Mais Zumbi"]')!.disabled).toBe(
+      true,
+    );
   });
 
   it('Animar Mortos casts the mix the person made, with the slot and its pact flag, one key per creature', async () => {
-    const { button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
+    const { button, plus, pick, settle } = await setup(
+      'spell:animate-dead',
+      [undeadSpell()],
+      [
+        [3, 2, 1],
+        [5, 1, 1, true],
+      ],
+    );
     await pick('5º nível (pacto)');
     for (const k of ['Esqueleto', 'Esqueleto', 'Zumbi', 'Zumbi', 'Zumbi']) {
       await plus(k);
     }
     button('Animar os mortos').click();
     await settle();
-    expect(api.casts[0]).toMatchObject({ spellKey: 'spell:animate-dead', ritual: false, slot: { level: 5, pact: true } });
-    expect(api.casts[0].summon.creatureKeys).toEqual(['monster:skeleton', 'monster:skeleton', 'monster:zombie', 'monster:zombie', 'monster:zombie']);
+    expect(api.casts[0]).toMatchObject({
+      spellKey: 'spell:animate-dead',
+      ritual: false,
+      slot: { level: 5, pact: true },
+    });
+    expect(api.casts[0].summon.creatureKeys).toEqual([
+      'monster:skeleton',
+      'monster:skeleton',
+      'monster:zombie',
+      'monster:zombie',
+      'monster:zombie',
+    ]);
     expect(api.casts[0].summon.names).toEqual([]);
   });
 
-  it('Conjurar Animais: the options come from the server, the beasts of the option\'s ND, warns what the concentration ends, any mix', async () => {
-    const wolves = [create(ReplacedCreatureSchema, { id: 'w1', name: 'Lobo 1', monsterNamePt: 'Lobo' }), create(ReplacedCreatureSchema, { id: 'w2', name: 'Lobo 2', monsterNamePt: 'Lobo' })];
-    const { el, button, pick, plus, settle } = await setup('spell:conjure-animals', [beastSpell({ replaces: wolves })], [[3, 2, 2]]);
-    expect(flat(el.querySelector('.mr-notice--warning'))).toBe('Isso encerra Conjurar Animais e dispensa 2 criaturas: Lobo 1 e Lobo 2.');
+  it("Conjurar Animais: the options come from the server, the beasts of the option's ND, warns what the concentration ends, any mix", async () => {
+    const wolves = [
+      create(ReplacedCreatureSchema, { id: 'w1', name: 'Lobo 1', monsterNamePt: 'Lobo' }),
+      create(ReplacedCreatureSchema, { id: 'w2', name: 'Lobo 2', monsterNamePt: 'Lobo' }),
+    ];
+    const { el, button, pick, plus, settle } = await setup(
+      'spell:conjure-animals',
+      [beastSpell({ replaces: wolves })],
+      [[3, 2, 2]],
+    );
+    expect(flat(el.querySelector('.mr-notice--warning'))).toBe(
+      'Isso encerra Conjurar Animais e dispensa 2 criaturas: Lobo 1 e Lobo 2.',
+    );
     const options = Array.from(el.querySelectorAll('.opt')).map((o) => flat(o));
-    expect(options).toEqual(['1 fera de ND 2 ou menos', '2 feras de ND 1 ou menos', '4 feras de ND 1/2 ou menos', '8 feras de ND 1/4 ou menos']);
+    expect(options).toEqual([
+      '1 fera de ND 2 ou menos',
+      '2 feras de ND 1 ou menos',
+      '4 feras de ND 1/2 ou menos',
+      '8 feras de ND 1/4 ou menos',
+    ]);
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '2' });
     await pick('4 feras');
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '1/2' });
@@ -213,7 +344,12 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     button('Conjurar Animais').click();
     await settle();
     expect(api.casts[0].summon.option).toBe(2);
-    expect(api.casts[0].summon.creatureKeys).toEqual(['monster:wolf', 'monster:wolf', 'monster:bear', 'monster:bear']);
+    expect(api.casts[0].summon.creatureKeys).toEqual([
+      'monster:wolf',
+      'monster:wolf',
+      'monster:bear',
+      'monster:bear',
+    ]);
   });
 
   it('the beasts of an option picked after another one never get replaced by a late answer', async () => {
@@ -228,12 +364,16 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     await pick('4 feras');
     release();
     await settle();
-    expect(Array.from(el.querySelectorAll('.row__title')).map((t) => flat(t))).not.toContain('Antigo');
+    expect(Array.from(el.querySelectorAll('.row__title')).map((t) => flat(t))).not.toContain(
+      'Antigo',
+    );
   });
 
   it('a spell the sheet no longer has is said in words, with nothing to cast', async () => {
     const { el } = await setup('spell:conjure-animals', [familiarSpell()]);
-    expect(flat(el.querySelector('[role=alert]'))).toBe('A ficha não conjura mais essa magia. Feche esta folha e olhe a ficha.');
+    expect(flat(el.querySelector('[role=alert]'))).toBe(
+      'A ficha não conjura mais essa magia. Feche esta folha e olhe a ficha.',
+    );
   });
 
   it('Cancelar and the X close without casting', async () => {

@@ -25,13 +25,25 @@ describe('TrapFireSheet', () => {
     const data: TrapFireData = {
       campaignId: 'c',
       mapId: 'm',
-      point: create(MapPointSchema, { id: 'x', kind: MapPointKind.TRAP, name: 'Fosso escondido', description: 'No corredor' }),
-      targets: signal([{ id: 't', name: 'Toren', sub: 'Perto da armadilha' }, { id: 'b', name: 'Brisa', sub: 'Longe da armadilha' }]),
+      point: create(MapPointSchema, {
+        id: 'x',
+        kind: MapPointKind.TRAP,
+        name: 'Fosso escondido',
+        description: 'No corredor',
+      }),
+      targets: signal([
+        { id: 't', name: 'Toren', sub: 'Perto da armadilha' },
+        { id: 'b', name: 'Brisa', sub: 'Longe da armadilha' },
+      ]),
       extendFiringId: '',
       ...extra,
     };
     TestBed.configureTestingModule({
-      providers: [{ provide: TrapsClient, useValue: api }, { provide: MAT_DIALOG_DATA, useValue: data }, { provide: MatDialogRef, useValue: { close } }],
+      providers: [
+        { provide: TrapsClient, useValue: api },
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close } },
+      ],
     });
     const fixture = TestBed.createComponent(TrapFireSheet);
     fixture.detectChanges();
@@ -58,7 +70,7 @@ describe('TrapFireSheet', () => {
     expect(calls[0][3]).toEqual(['b']);
   });
 
-  it('adds creatures to a firing already made: someone must be checked, and the firing\'s ID goes with them', async () => {
+  it("adds creatures to a firing already made: someone must be checked, and the firing's ID goes with them", async () => {
     const { fixture, el, calls } = setup({ extendFiringId: 'f1' });
     expect(el.textContent).toContain('Pegar mais gente');
     expect(el.querySelector('.pf__off')?.getAttribute('aria-disabled')).toBe('true');

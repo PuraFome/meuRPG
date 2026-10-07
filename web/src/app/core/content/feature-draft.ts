@@ -11,7 +11,15 @@ import {
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { CatalogAbility } from './catalog';
-import { type EffectDraft, type EffectMenuVm, draftToEffect, effectToDraft, newRowId, rangeFeet, rangeMeters } from './effect-draft';
+import {
+  type EffectDraft,
+  type EffectMenuVm,
+  draftToEffect,
+  effectToDraft,
+  newRowId,
+  rangeFeet,
+  rangeMeters,
+} from './effect-draft';
 import { paragraphs } from './spell-draft';
 
 /**
@@ -44,7 +52,11 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
   const effects = f.effects.map((e) => {
     const draft = effectToDraft(e);
     // A note that only repeats the trait's own text is shown folded away (it is sent again as the first paragraph when empty).
-    return draft.type === 'note' && draft.textPt.trim() !== '' && draft.textPt.trim() === f.descPt[0]?.trim() ? { ...draft, textPt: '' } : draft;
+    return draft.type === 'note' &&
+      draft.textPt.trim() !== '' &&
+      draft.textPt.trim() === f.descPt[0]?.trim()
+      ? { ...draft, textPt: '' }
+      : draft;
   });
   return { id: newRowId(), key: f.key, name: f.namePt, text: f.descPt.join('\n\n'), effects };
 }
@@ -69,7 +81,14 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
 }
 
 /** The `AbilityScores` fields in the sheet's order. The names the screen shows come from the catalog (`CatalogVm.abilities`). */
-export const ABILITY_FIELDS = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const;
+export const ABILITY_FIELDS = [
+  'strength',
+  'dexterity',
+  'constitution',
+  'intelligence',
+  'wisdom',
+  'charisma',
+] as const;
 
 export type AbilityField = (typeof ABILITY_FIELDS)[number];
 export type Bonuses = Record<AbilityField, number>;
@@ -80,7 +99,9 @@ export function noBonuses(): Bonuses {
 
 /** The bonuses of "Sabedoria +2, Destreza +1", in the sheet's order; "Nenhum" when there are none. */
 export function bonusText(b: Bonuses, abilities: readonly CatalogAbility[]): string {
-  const parts = abilities.filter((a) => b[a.field] !== 0).map((a) => `${a.name} ${b[a.field] > 0 ? '+' : '−'}${Math.abs(b[a.field])}`);
+  const parts = abilities
+    .filter((a) => b[a.field] !== 0)
+    .map((a) => `${a.name} ${b[a.field] > 0 ? '+' : '−'}${Math.abs(b[a.field])}`);
   return parts.length > 0 ? parts.join(', ') : 'Nenhum';
 }
 
@@ -104,7 +125,18 @@ export interface RaceDraft {
 }
 
 export function emptyRace(): RaceDraft {
-  return { name: '', size: 'Medium', speedM: '9', darkvisionM: '', bonuses: noBonuses(), choosing: false, choice: '2, 1', languages: [], languageChoices: 0, traits: [] };
+  return {
+    name: '',
+    size: 'Medium',
+    speedM: '9',
+    darkvisionM: '',
+    bonuses: noBonuses(),
+    choosing: false,
+    choice: '2, 1',
+    languages: [],
+    languageChoices: 0,
+    traits: [],
+  };
 }
 
 export const SIZE_OPTIONS: readonly { value: string; label: string }[] = [
@@ -170,7 +202,12 @@ export interface SubraceDraft {
 }
 
 export function subraceToDraft(s: TableSubrace): SubraceDraft {
-  return { name: s.namePt, raceKey: s.raceKey, bonuses: bonusesOf(s.abilityBonuses), traits: s.traits.map(featureToDraft) };
+  return {
+    name: s.namePt,
+    raceKey: s.raceKey,
+    bonuses: bonusesOf(s.abilityBonuses),
+    traits: s.traits.map(featureToDraft),
+  };
 }
 
 export function draftToSubrace(d: SubraceDraft, menu: EffectMenuVm): SubraceInit {
@@ -192,7 +229,14 @@ export interface BackgroundDraft {
 }
 
 export function emptyBackground(): BackgroundDraft {
-  return { name: '', skills: ['', ''], tools: [], languageChoices: 0, equipment: '', feature: emptyFeature() };
+  return {
+    name: '',
+    skills: ['', ''],
+    tools: [],
+    languageChoices: 0,
+    equipment: '',
+    feature: emptyFeature(),
+  };
 }
 
 export function backgroundToDraft(b: TableBackground): BackgroundDraft {
@@ -232,6 +276,10 @@ export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuV
 }
 
 /** The paths of the inputs a list of features draws. A violation at a path with no input lands on the nearest one above (`inputFor`). */
-export function featurePaths(prefix: string, features: readonly FeatureDraft[], menu: EffectMenuVm): string[] {
+export function featurePaths(
+  prefix: string,
+  features: readonly FeatureDraft[],
+  menu: EffectMenuVm,
+): string[] {
   return features.flatMap((f, i) => featureOwnPaths(`${prefix}[${i}]`, f, menu));
 }

@@ -7,7 +7,9 @@ describe('TableMark', () => {
     const fixture = TestBed.createComponent(TableMark);
     for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
     fixture.detectChanges();
-    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.mr-tag')).map((t) => t.textContent?.replace(/menu_book|inventory_2|visibility_off/g, '').trim());
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.mr-tag')).map((t) =>
+      t.textContent?.replace(/menu_book|inventory_2|visibility_off/g, '').trim(),
+    );
   }
 
   it('says "Da mesa" for the table\'s entries, in words as well as the icon', () => {

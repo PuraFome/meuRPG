@@ -23,7 +23,9 @@ describe('DocumentEditor: focus after "Descartar mudanças"', () => {
 
   const el = () => fixture.nativeElement as HTMLElement;
   const button = (label: string) =>
-    Array.from(el().querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === label)!;
+    Array.from(el().querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === label,
+    )!;
 
   it('puts the focus on the confirmation button, the one that replaced the button that was pressed', async () => {
     await fixture.whenStable();
@@ -46,7 +48,12 @@ describe('DocumentEditor: focus after "Descartar mudanças"', () => {
     let answer!: (d: CampaignDocument) => void;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [{ provide: DocumentClient, useValue: { save: () => new Promise<CampaignDocument>((r) => (answer = r)) } }],
+      providers: [
+        {
+          provide: DocumentClient,
+          useValue: { save: () => new Promise<CampaignDocument>((r) => (answer = r)) },
+        },
+      ],
     });
     fixture = TestBed.createComponent(DocumentEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');

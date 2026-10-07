@@ -41,7 +41,14 @@ const DEFAULT = 20;
  */
 @Component({
   selector: 'app-grid-panel',
-  imports: [CalibrateAsk, MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [
+    CalibrateAsk,
+    MapAsk,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid-panel.html',
   styleUrl: './grid-panel.scss',
@@ -76,8 +83,12 @@ export class GridPanel {
   /** How many squares of 1,5 m a square of the drawing is worth (1 for a map never calibrated). */
   protected readonly factor = computed(() => Math.max(1, this.map().squareFactor));
   /** The columns of the DRAWING: what "Mudar a grade" changes (the rules' grid is these times the factor). */
-  protected readonly drawnColumns = computed(() => this.map().drawnColumns || this.map().gridColumns);
-  protected readonly drawnRows = computed(() => this.map().drawnRows || Math.round(this.map().gridRows / this.factor()));
+  protected readonly drawnColumns = computed(
+    () => this.map().drawnColumns || this.map().gridColumns,
+  );
+  protected readonly drawnRows = computed(
+    () => this.map().drawnRows || Math.round(this.map().gridRows / this.factor()),
+  );
   protected readonly calibrated = computed(() => this.factor() > 1);
   protected readonly factorText = computed(() => factorLabel(this.factor()));
   /** The most columns the drawing can have at this factor: the rules' grid stays within 200 columns. */
@@ -113,7 +124,9 @@ export class GridPanel {
 
   protected closeCalibration(): void {
     this.calibrating.set(false);
-    afterNextRender(() => focusWithRing(this.calibrator()?.nativeElement), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.calibrator()?.nativeElement), {
+      injector: this.injector,
+    });
   }
 
   protected onCalibrated(map: MapMessage): void {
@@ -140,9 +153,13 @@ export class GridPanel {
     this.busy.set(true);
     this.error.set('');
     try {
-      this.changed.emit(await this.api.setGrid(this.campaignId(), this.map().id, columns, this.factor()));
+      this.changed.emit(
+        await this.api.setGrid(this.campaignId(), this.map().id, columns, this.factor()),
+      );
       this.asking.set(false);
-      afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
+      afterNextRender(() => focusWithRing(this.opener()?.nativeElement), {
+        injector: this.injector,
+      });
     } catch (err) {
       this.error.set(editorErrorMessage(err, 'grid', 'mudar a grade'));
       if (mapBlockedReason(err) === MapBlockedReason.COMBAT_RUNNING) {

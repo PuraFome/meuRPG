@@ -1,7 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { CombatantKind, CombatantSide, CoverDegree, EncounterBlockedReason, EncounterBlockedSchema, EncounterMode } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CombatantSide,
+  CoverDegree,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+  EncounterMode,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -15,8 +22,12 @@ import { OfferPanel } from './offer-panel';
 import { SpendSheet, type SpendSheetData } from './spend-sheet';
 import { TheatrePill } from './theatre-pill';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
-const button = (el: HTMLElement, name: string) => Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent).includes(name) || b.getAttribute('aria-label') === name) as HTMLButtonElement;
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const button = (el: HTMLElement, name: string) =>
+  Array.from(el.querySelectorAll('button')).find(
+    (b) => plain(b.textContent).includes(name) || b.getAttribute('aria-label') === name,
+  ) as HTMLButtonElement;
 
 const toren = combatant({
   id: 't',
@@ -32,7 +43,12 @@ const toren = combatant({
 const goblin = combatant({ id: 'g1', label: 'Goblin 1', movementLeftFt: 30, movementLeftDft: 300 });
 const cap = combatant({ id: 'cap', label: 'Capitão Goblin' });
 const theatre = (over: Parameters<typeof encounter>[0] = {}) =>
-  encounter({ mode: EncounterMode.THEATRE, currentCombatantId: 't', combatants: [toren, goblin, cap], ...over });
+  encounter({
+    mode: EncounterMode.THEATRE,
+    currentCombatantId: 't',
+    combatants: [toren, goblin, cap],
+    ...over,
+  });
 
 describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
   function setup(opts: { fail?: unknown } = {}) {
@@ -53,7 +69,17 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
                 throw opts.fail;
               }
               spent.push([id, ft]);
-              return { encounter: theatre({ revision: 2, combatants: [{ ...toren, movementLeftFt: 10, movementLeftDft: 100, movementUsedDft: 200 }, goblin, cap] }), movementLeftDft: 100 };
+              return {
+                encounter: theatre({
+                  revision: 2,
+                  combatants: [
+                    { ...toren, movementLeftFt: 10, movementLeftDft: 100, movementUsedDft: 200 },
+                    goblin,
+                    cap,
+                  ],
+                }),
+                movementLeftDft: 100,
+              };
             },
           },
         },
@@ -73,7 +99,9 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
     expect(plain(el.querySelector('output')?.textContent)).toBe('1,5 m');
     expect(plain(el.querySelector('.sum__row--after dd')?.textContent)).toBe('7,5 m');
     expect(plain(el.querySelector('.sum__row--after dt')?.textContent)).toBe('Depois restam');
-    expect(text).toContain('O app não confere o caminho nem o alcance. Combine com o mestre onde você ficou.');
+    expect(text).toContain(
+      'O app não confere o caminho nem o alcance. Combine com o mestre onde você ficou.',
+    );
   });
 
   it('steps from 1,5 m to 1,5 m, and the minus waits at one step with aria-disabled (still focusable)', () => {
@@ -115,9 +143,15 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
     expect(state.encounter()?.combatants[0].movementLeftDft).toBe(100);
   });
 
-  it('says why a spend was refused, from the server\'s reason', async () => {
-    const blocked = create(EncounterBlockedSchema, { reason: EncounterBlockedReason.NOT_YOUR_TURN });
-    const { fixture, el } = setup({ fail: new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: EncounterBlockedSchema, value: blocked }]) });
+  it("says why a spend was refused, from the server's reason", async () => {
+    const blocked = create(EncounterBlockedSchema, {
+      reason: EncounterBlockedReason.NOT_YOUR_TURN,
+    });
+    const { fixture, el } = setup({
+      fail: new ConnectError('x', Code.FailedPrecondition, undefined, [
+        { desc: EncounterBlockedSchema, value: blocked },
+      ]),
+    });
     button(el, 'Gastar 1,5 m').click();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -126,9 +160,14 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
 
   it('reads the combat again after a refusal that means the screen is stale, and says what the server has left', async () => {
     const blocked = create(EncounterBlockedSchema, { reason: EncounterBlockedReason.TOO_FAR });
-    const refreshed = theatre({ revision: 5, combatants: [{ ...toren, movementLeftFt: 10, movementLeftDft: 100 }, goblin, cap] });
+    const refreshed = theatre({
+      revision: 5,
+      combatants: [{ ...toren, movementLeftFt: 10, movementLeftDft: 100 }, goblin, cap],
+    });
     let reads = 0;
-    const err = new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: EncounterBlockedSchema, value: blocked }]);
+    const err = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      { desc: EncounterBlockedSchema, value: blocked },
+    ]);
     const state = new CombatState();
     state.apply(theatre());
     const data: SpendSheetData = { campaignId: 'c', encounterId: 'enc', combatantId: 't', state };
@@ -158,7 +197,9 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
     fixture.detectChanges();
     expect(reads).toBe(1);
     expect(state.encounter()?.revision).toBe(5);
-    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain('Você só tem 3,0 m neste turno. Escolha menos.');
+    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain(
+      'Você só tem 3,0 m neste turno. Escolha menos.',
+    );
   });
 
   it('cancels without spending', () => {
@@ -169,7 +210,7 @@ describe('SpendSheet, "Gastar movimento" (RN-25, E10-04)', () => {
   });
 });
 
-describe('MasterSpend, the master\'s movement for an NPC (E10-04 state 2)', () => {
+describe("MasterSpend, the master's movement for an NPC (E10-04 state 2)", () => {
   function setup(subject = goblin) {
     const state = new CombatState();
     state.apply(theatre({ currentCombatantId: subject.id }));
@@ -181,7 +222,13 @@ describe('MasterSpend, the master\'s movement for an NPC (E10-04 state 2)', () =
           useValue: {
             spendMovement: async (_c: string, _e: string, _id: string, ft: number) => {
               calls.push(ft);
-              return { encounter: theatre({ revision: 2, combatants: [toren, { ...goblin, movementLeftFt: 10, movementLeftDft: 100 }, cap] }), movementLeftDft: 100 };
+              return {
+                encounter: theatre({
+                  revision: 2,
+                  combatants: [toren, { ...goblin, movementLeftFt: 10, movementLeftDft: 100 }, cap],
+                }),
+                movementLeftDft: 100,
+              };
             },
           },
         },
@@ -219,7 +266,11 @@ describe('MasterSpend, the master\'s movement for an NPC (E10-04 state 2)', () =
 });
 
 describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () => {
-  function setup(rows = reactorRows(theatre({ currentCombatantId: 'g1' }), (c) => (c.id === 't' ? 'Guerreiro 4' : ''))) {
+  function setup(
+    rows = reactorRows(theatre({ currentCombatantId: 'g1' }), (c) =>
+      c.id === 't' ? 'Guerreiro 4' : '',
+    ),
+  ) {
     const fixture = TestBed.createComponent(OfferPanel);
     fixture.componentRef.setInput('moverLabel', 'Goblin 1');
     fixture.componentRef.setInput('rows', rows);
@@ -228,7 +279,12 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     fixture.componentInstance.offer.subscribe((id) => offered.push(id));
     fixture.componentInstance.cancel.subscribe(() => cancelled++);
     fixture.detectChanges();
-    return { fixture, el: fixture.nativeElement as HTMLElement, offered, cancelled: () => cancelled };
+    return {
+      fixture,
+      el: fixture.nativeElement as HTMLElement,
+      offered,
+      cancelled: () => cancelled,
+    };
   }
 
   it('lists who the mover can have left the reach of, outlined buttons of the same size, and offers the one picked', async () => {
@@ -247,13 +303,23 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     expect(go).toBeTruthy();
     // Both are outlined, at the same width: the page's one filled button is "Próximo turno".
     const no = button(el, 'Não oferecer');
-    expect([go, no].every((b) => b.classList.contains('mat-mdc-outlined-button') && b.classList.contains('btn'))).toBe(true);
+    expect(
+      [go, no].every(
+        (b) => b.classList.contains('mat-mdc-outlined-button') && b.classList.contains('btn'),
+      ),
+    ).toBe(true);
     go.click();
     expect(offered).toEqual(['t']);
   });
 
   it('says "Reação usada" on a spent reaction and leaves it off', () => {
-    const spent = reactorRows(theatre({ currentCombatantId: 'g1', combatants: [{ ...toren, reactionUsed: true }, goblin, cap] }), () => '');
+    const spent = reactorRows(
+      theatre({
+        currentCombatantId: 'g1',
+        combatants: [{ ...toren, reactionUsed: true }, goblin, cap],
+      }),
+      () => '',
+    );
     const { el } = setup(spent);
     expect(plain(el.textContent)).toContain('Reação usada');
     expect((el.querySelector('input[type="radio"]') as HTMLInputElement).disabled).toBe(true);
@@ -261,7 +327,10 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
 
   it('marks an offer that already waits (one per reactor) and leaves it off', () => {
     const rows = reactorRows(
-      theatre({ currentCombatantId: 'g1', opportunityOffers: [{ id: 'o', moverId: 'g1', reactorId: 't' } as never] }),
+      theatre({
+        currentCombatantId: 'g1',
+        opportunityOffers: [{ id: 'o', moverId: 'g1', reactorId: 't' } as never],
+      }),
       () => '',
     );
     const { el } = setup(rows);
@@ -286,7 +355,7 @@ describe('CoverPanel, "Cobertura dos alvos" (E10-04 state 4)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, saved };
   }
 
-  it('says each target\'s degree in words', () => {
+  it("says each target's degree in words", () => {
     const { el } = setup();
     const text = plain(el.textContent);
     expect(text).toContain('Cobertura dos alvos');
@@ -315,7 +384,9 @@ describe('CoverPanel, "Cobertura dos alvos" (E10-04 state 4)', () => {
   });
 
   it('says each degree with its bonus (+2, +5), and names the target with its article', () => {
-    const { fixture, el } = setup([{ ...cap, label: 'Brisa', kind: CombatantKind.PLAYER, coverMark: CoverDegree.NONE }]);
+    const { fixture, el } = setup([
+      { ...cap, label: 'Brisa', kind: CombatantKind.PLAYER, coverMark: CoverDegree.NONE },
+    ]);
     button(el, 'Mudar a cobertura de Brisa').click();
     fixture.detectChanges();
     expect(plain(el.querySelector('h3')?.textContent)).toBe('Cobertura da Brisa');
@@ -325,7 +396,7 @@ describe('CoverPanel, "Cobertura dos alvos" (E10-04 state 4)', () => {
     expect(text).toContain('“Meia cobertura (marcada pelo mestre)”');
   });
 
-  it('opens the editor on a combatant the order\'s menu asked for (the fallback for a joint or master turn)', () => {
+  it("opens the editor on a combatant the order's menu asked for (the fallback for a joint or master turn)", () => {
     const { fixture, el } = setup([]);
     fixture.componentRef.setInput('everyone', [goblin, cap]);
     fixture.componentRef.setInput('request', { id: 'g1', n: 1 });
@@ -343,14 +414,16 @@ describe('CoverPanel, "Cobertura dos alvos" (E10-04 state 4)', () => {
   });
 });
 
-describe('the player\'s panels without a map (E10-04 state 10)', () => {
+describe("the player's panels without a map (E10-04 state 10)", () => {
   it('says why once, with no map button', () => {
     const el = TestBed.createComponent(NoMapPanel);
     el.detectChanges();
     const text = plain(el.nativeElement.textContent);
     expect(text).toContain('Combate sem mapa');
     expect(text).toContain('Sem mapa, o app não sabe onde ninguém está.');
-    expect(text).toContain('O mestre diz quem está ao alcance e a que distância; você diz quanto andou.');
+    expect(text).toContain(
+      'O mestre diz quem está ao alcance e a que distância; você diz quanto andou.',
+    );
     expect(el.nativeElement.querySelector('button')).toBeNull();
   });
 
@@ -358,7 +431,9 @@ describe('the player\'s panels without a map (E10-04 state 10)', () => {
     const f = TestBed.createComponent(TheatreReaction);
     f.detectChanges();
     expect(plain(f.nativeElement.textContent)).toContain('Disponível');
-    expect(plain(f.nativeElement.textContent)).toContain('a pergunta do ataque de oportunidade abre aqui');
+    expect(plain(f.nativeElement.textContent)).toContain(
+      'a pergunta do ataque de oportunidade abre aqui',
+    );
     f.componentRef.setInput('used', true);
     f.detectChanges();
     expect(plain(f.nativeElement.textContent)).toContain('Usada');

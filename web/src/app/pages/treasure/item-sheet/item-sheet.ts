@@ -7,7 +7,14 @@ import { RouterLink } from '@angular/router';
 import type { GetMagicItemResponse } from '../../../../gen/meurpg/maps/v1/treasure_pb';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
 import { itemFailure } from '../../../core/treasure/treasure-errors';
-import { VALUE_LABEL, attunementText, itemTags, itemValueRule, itemValueText, rarityText } from '../../../core/treasure/treasure-format';
+import {
+  VALUE_LABEL,
+  attunementText,
+  itemTags,
+  itemValueRule,
+  itemValueText,
+  rarityText,
+} from '../../../core/treasure/treasure-format';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../shared/sheet/sheet-host';
 
@@ -20,7 +27,10 @@ export interface ItemSheetData {
   readonly namePt: string;
 }
 
-type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; item: GetMagicItemResponse };
+type State =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; item: GetMagicItemResponse };
 
 /**
  * "Ver descrição" (MR-044, E10-10 state 3): a magic item's rarity, its value with the "Valores do SRD 5.2.1 (regras de 2024)"
@@ -73,7 +83,10 @@ export class ItemSheet {
   protected async load(): Promise<void> {
     this.state.set({ status: 'loading' });
     try {
-      this.state.set({ status: 'ready', item: await this.client.item(this.data.campaignId, this.data.key) });
+      this.state.set({
+        status: 'ready',
+        item: await this.client.item(this.data.campaignId, this.data.key),
+      });
     } catch (err) {
       this.state.set({ status: 'error', message: itemFailure(err) });
     }

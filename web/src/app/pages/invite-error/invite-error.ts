@@ -39,6 +39,8 @@ export class InviteError {
   protected readonly message = computed(() => describeInviteErrorCode(this.reason()));
 
   protected readonly nextStep = computed(() =>
-    REASONS_WITH_OWN_ADVICE.has(this.reason() ?? '') ? null : 'Peça um novo link a quem te convidou.',
+    REASONS_WITH_OWN_ADVICE.has(this.reason() ?? '')
+      ? null
+      : 'Peça um novo link a quem te convidou.',
   );
 }

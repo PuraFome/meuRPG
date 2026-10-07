@@ -44,7 +44,8 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
   if (!c) {
     return [];
   }
-  const names = (keys: readonly string[]) => LIST.format(keys.map((k) => levelUp.namesPt[k] ?? 'uma opção que saiu da lista'));
+  const names = (keys: readonly string[]) =>
+    LIST.format(keys.map((k) => levelUp.namesPt[k] ?? 'uma opção que saiu da lista'));
   const rows: ChoiceRow[] = [];
   const up = increases(levelUp);
   if (up.length > 0) {
@@ -64,7 +65,10 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
         : hp.method === LevelUpHitPointsMethod.ROLLED_PHYSICAL
           ? 'Dado físico'
           : 'Média';
-    rows.push({ label: 'Pontos de vida', value: `${how}: ${hp.value}, mais o modificador de Constituição` });
+    rows.push({
+      label: 'Pontos de vida',
+      value: `${how}: ${hp.value}, mais o modificador de Constituição`,
+    });
   }
   if (c.subclassKey) {
     rows.push({ label: 'Subclasse', value: names([c.subclassKey]) });
@@ -74,7 +78,10 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
     [c.knownSpellKeys.length === 1 ? 'Magia nova' : 'Magias novas', c.knownSpellKeys],
     ['Magias preparadas novas', c.preparedSpellKeys],
     ['Opções de características', c.featureChoiceKeys],
-    [c.skillProficiencyKeys.length === 1 ? 'Perícia nova' : 'Perícias novas', c.skillProficiencyKeys],
+    [
+      c.skillProficiencyKeys.length === 1 ? 'Perícia nova' : 'Perícias novas',
+      c.skillProficiencyKeys,
+    ],
     ['Especialização', c.expertiseSkillKeys],
   ];
   for (const [label, keys] of lists) {

@@ -14,12 +14,18 @@ describe('EndTurn', () => {
   }
 
   it('is an outline while the action or the bonus action is still available (timeline.md, decision 2)', () => {
-    expect(setup({ actionUsed: false, bonusActionUsed: false }).end().classList).not.toContain('end--filled');
-    expect(setup({ actionUsed: true, bonusActionUsed: false }).end().classList).not.toContain('end--filled');
+    expect(setup({ actionUsed: false, bonusActionUsed: false }).end().classList).not.toContain(
+      'end--filled',
+    );
+    expect(setup({ actionUsed: true, bonusActionUsed: false }).end().classList).not.toContain(
+      'end--filled',
+    );
   });
 
   it('is the filled button once both are used', () => {
-    expect(setup({ actionUsed: true, bonusActionUsed: true }).end().classList).toContain('end--filled');
+    expect(setup({ actionUsed: true, bonusActionUsed: true }).end().classList).toContain(
+      'end--filled',
+    );
   });
 
   it('asks in place with the action unused, the focus on "Voltar", and ends only when confirmed', async () => {
@@ -28,7 +34,9 @@ describe('EndTurn', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(ended).toEqual([]);
-    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('Ainda tem ação disponível. Encerrar mesmo?');
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Ainda tem ação disponível. Encerrar mesmo?',
+    );
     const [back, go] = Array.from(el.querySelectorAll<HTMLButtonElement>('.ask__btn'));
     expect(back.textContent?.trim()).toBe('Voltar');
     back.click();

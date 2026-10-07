@@ -20,31 +20,70 @@ import { ProgressionClient } from '../../../core/progression/progression-client'
 import { MilestonesPanel } from './milestones-panel';
 
 const reachedVale = create(MilestoneSchema, {
-  id: 'm1', text: 'Chegar ao Vale Seco', reached: true, reachedAt: timestampFromDate(new Date(2026, 9, 3, 22, 5)),
-  marks: [create(XPAwardSchema, { id: 'a1', givenByDisplayName: 'Samuel', canUndo: true, createdAt: timestampFromDate(new Date(2026, 9, 3, 22, 5)),
-    shares: [{ characterId: 'p', characterName: 'Pensantus' }, { characterId: 't', characterName: 'Toren' }] })],
+  id: 'm1',
+  text: 'Chegar ao Vale Seco',
+  reached: true,
+  reachedAt: timestampFromDate(new Date(2026, 9, 3, 22, 5)),
+  marks: [
+    create(XPAwardSchema, {
+      id: 'a1',
+      givenByDisplayName: 'Samuel',
+      canUndo: true,
+      createdAt: timestampFromDate(new Date(2026, 9, 3, 22, 5)),
+      shares: [
+        { characterId: 'p', characterName: 'Pensantus' },
+        { characterId: 't', characterName: 'Toren' },
+      ],
+    }),
+  ],
 });
 
 describe('MilestonesPanel (E8-14)', () => {
   const api = { experience: vi.fn(), listAwards: vi.fn(), listMilestones: vi.fn() };
 
   async function setup(isMaster: boolean, milestones: unknown[]) {
-    api.experience.mockResolvedValue(create(GetCampaignExperienceResponseSchema, {
-      xpMode: XpMode.MILESTONES,
-      characters: [
-        create(CharacterExperienceSchema, { characterId: 'p', name: 'Pensantus', playerUserId: 'me', level: 3, canLevelUp: milestones.length > 0 }),
-        create(CharacterExperienceSchema, { characterId: 't', name: 'Toren', playerUserId: 'other', level: 3, canLevelUp: milestones.length > 0 }),
-        create(CharacterExperienceSchema, { characterId: 'b', name: 'Brisa', playerUserId: 'third', level: 3 }),
-      ],
-    }));
-    api.listMilestones.mockResolvedValue(create(ListMilestonesResponseSchema, { milestones: milestones as never }));
+    api.experience.mockResolvedValue(
+      create(GetCampaignExperienceResponseSchema, {
+        xpMode: XpMode.MILESTONES,
+        characters: [
+          create(CharacterExperienceSchema, {
+            characterId: 'p',
+            name: 'Pensantus',
+            playerUserId: 'me',
+            level: 3,
+            canLevelUp: milestones.length > 0,
+          }),
+          create(CharacterExperienceSchema, {
+            characterId: 't',
+            name: 'Toren',
+            playerUserId: 'other',
+            level: 3,
+            canLevelUp: milestones.length > 0,
+          }),
+          create(CharacterExperienceSchema, {
+            characterId: 'b',
+            name: 'Brisa',
+            playerUserId: 'third',
+            level: 3,
+          }),
+        ],
+      }),
+    );
+    api.listMilestones.mockResolvedValue(
+      create(ListMilestonesResponseSchema, { milestones: milestones as never }),
+    );
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         ExperienceStore,
         { provide: ProgressionClient, useValue: api },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
-        { provide: AuthService, useValue: { state: () => ({ status: 'signed-in', user: { id: 'me', displayName: null } }) } },
+        {
+          provide: AuthService,
+          useValue: {
+            state: () => ({ status: 'signed-in', user: { id: 'me', displayName: null } }),
+          },
+        },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatBottomSheet, useValue: { open: vi.fn() } },
       ],
@@ -60,7 +99,8 @@ describe('MilestonesPanel (E8-14)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
   const text = (el: HTMLElement) => el.textContent!.replace(/\s+/g, ' ');
-  const headings = (el: HTMLElement) => Array.from(el.querySelectorAll('h3')).map((h) => h.textContent!.trim());
+  const headings = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('h3')).map((h) => h.textContent!.trim());
 
   beforeEach(() => {
     Object.values(api).forEach((f) => f.mockReset());
@@ -84,7 +124,10 @@ describe('MilestonesPanel (E8-14)', () => {
   });
 
   it('master after a milestone: reached on top, then the group, then the planned ones', async () => {
-    const { el } = await setup(true, [reachedVale, create(MilestoneSchema, { id: 'x', text: 'Salvar o mercador' })]);
+    const { el } = await setup(true, [
+      reachedVale,
+      create(MilestoneSchema, { id: 'x', text: 'Salvar o mercador' }),
+    ]);
     expect(headings(el)).toEqual(['Marcos alcançados', 'Personagens', 'Marcos planejados']);
     expect(text(el)).toContain('Sem marco novo'); // Brisa
   });
@@ -105,7 +148,9 @@ describe('MilestonesPanel (E8-14)', () => {
   it('a player before the first milestone: the empty state, no character row, no hint', async () => {
     const { el } = await setup(false, []);
     expect(headings(el)).toEqual(['Marcos alcançados']);
-    expect(text(el)).toContain('Nenhum marco alcançado ainda. Quando o grupo cumprir um, ele aparece aqui.');
+    expect(text(el)).toContain(
+      'Nenhum marco alcançado ainda. Quando o grupo cumprir um, ele aparece aqui.',
+    );
     expect(el.querySelector('app-milestone-characters')).toBeNull();
     expect(text(el)).not.toMatch(/planejad/i);
     expect(el.querySelector('app-planned-milestones')).toBeNull();
@@ -113,11 +158,15 @@ describe('MilestonesPanel (E8-14)', () => {
 
   it('says to a player which milestone appeared since the last read, naming only their character', async () => {
     const { fixture, el } = await setup(false, []);
-    api.listMilestones.mockResolvedValue(create(ListMilestonesResponseSchema, { milestones: [reachedVale] }));
+    api.listMilestones.mockResolvedValue(
+      create(ListMilestonesResponseSchema, { milestones: [reachedVale] }),
+    );
     document.dispatchEvent(new Event('visibilitychange'));
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r));
     fixture.detectChanges();
-    expect(el.querySelector('.live')?.textContent).toBe('O mestre marcou Chegar ao Vale Seco. Pensantus pode subir de nível.');
+    expect(el.querySelector('.live')?.textContent).toBe(
+      'O mestre marcou Chegar ao Vale Seco. Pensantus pode subir de nível.',
+    );
   });
 });

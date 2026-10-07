@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,7 +38,10 @@ import {
 import { DungeonsClient, type DungeonOptionsInit } from '../../../core/maps/dungeons-client';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
-import { DungeonPreview, type DungeonLayout } from '../../../shared/dungeon-preview/dungeon-preview';
+import {
+  DungeonPreview,
+  type DungeonLayout,
+} from '../../../shared/dungeon-preview/dungeon-preview';
 import { mapNameError } from '../map-new/map-new';
 import { DungeonOptions } from './dungeon-options';
 
@@ -93,16 +104,26 @@ export class DungeonNew {
   private readonly refused = signal<Partial<Record<OptionField, string>>>({});
   /** A refusal that names no field (the shape and the size leave no room). */
   protected readonly refusedAll = signal<string | null>(null);
-  protected readonly problems = computed(() => ({ ...this.refused(), ...formProblems(this.form()) }));
-  protected readonly seedProblem = computed(() => (this.seedText().trim() === '' || parseSeed(this.seedText()) !== null ? null : SEED_PROBLEM));
+  protected readonly problems = computed(() => ({
+    ...this.refused(),
+    ...formProblems(this.form()),
+  }));
+  protected readonly seedProblem = computed(() =>
+    this.seedText().trim() === '' || parseSeed(this.seedText()) !== null ? null : SEED_PROBLEM,
+  );
   /** Whether a problem the page can already see keeps it from asking. */
-  protected readonly blocked = computed(() => Object.keys(formProblems(this.form())).length > 0 || this.seedProblem() !== null);
+  protected readonly blocked = computed(
+    () => Object.keys(formProblems(this.form())).length > 0 || this.seedProblem() !== null,
+  );
 
   protected readonly preview = signal<PreviewState>('loading');
   protected readonly layout = signal<DungeonLayout | null>(null);
   protected readonly failure = signal('');
   /** The layout on screen: the seed and the options it was made with. "Criar o mapa" sends these, never what the form says now. */
-  private readonly previewed = signal<{ readonly seed: bigint; readonly options: DungeonOptionsInit } | null>(null);
+  private readonly previewed = signal<{
+    readonly seed: bigint;
+    readonly options: DungeonOptionsInit;
+  } | null>(null);
 
   protected readonly nameControl = new FormControl('', { nonNullable: true });
   protected readonly nameError = signal<string | null>(null);
@@ -119,7 +140,9 @@ export class DungeonNew {
   /** The reason "Criar o mapa" is off, or `null` when it can go. */
   protected readonly whyOff = computed<string | null>(() => {
     if (Object.keys(this.problems()).length > 0 || this.refusedAll() !== null) {
-      return Object.keys(formProblems(this.form())).includes('size') || this.problems().size ? 'Corrija o tamanho para criar o mapa.' : 'Corrija as opções marcadas para criar o mapa.';
+      return Object.keys(formProblems(this.form())).includes('size') || this.problems().size
+        ? 'Corrija o tamanho para criar o mapa.'
+        : 'Corrija as opções marcadas para criar o mapa.';
     }
     if (this.seedProblem() !== null) {
       return 'Corrija a semente para criar o mapa.';
@@ -138,7 +161,9 @@ export class DungeonNew {
     if (all !== null) {
       return all;
     }
-    return this.problems().size ? 'Corrija o tamanho para ver a masmorra.' : 'Corrija as opções marcadas para ver a masmorra.';
+    return this.problems().size
+      ? 'Corrija o tamanho para ver a masmorra.'
+      : 'Corrija as opções marcadas para ver a masmorra.';
   });
   /** The preview's frame has the proportion of the dungeon the form asks for (or of the one drawn), in every state, so the page does not jump. */
   protected readonly frameRatio = computed(() => {
@@ -149,7 +174,12 @@ export class DungeonNew {
     const l = this.layout();
     return l ? `${l.width} / ${l.height}` : '31 / 21';
   });
-  protected readonly anyProblem = computed(() => Object.keys(this.problems()).length > 0 || this.refusedAll() !== null || this.seedProblem() !== null);
+  protected readonly anyProblem = computed(
+    () =>
+      Object.keys(this.problems()).length > 0 ||
+      this.refusedAll() !== null ||
+      this.seedProblem() !== null,
+  );
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private inFlight = false;
@@ -265,7 +295,14 @@ export class DungeonNew {
             // Something changed while it was out: this answer is for options that are gone. A newer run is waiting on its timer, or goes next.
             continue;
           }
-          this.layout.set({ width: res.width, height: res.height, open: res.open, doors: res.doors, stairs: res.stairs, roomCount: res.rooms.length });
+          this.layout.set({
+            width: res.width,
+            height: res.height,
+            open: res.open,
+            doors: res.doors,
+            stairs: res.stairs,
+            roomCount: res.rooms.length,
+          });
           this.previewed.set({ seed: res.seed, options });
           // The seed the server drew fills the field, unless the master has typed in it meanwhile.
           if (this.seedText() === seedText) {
@@ -327,7 +364,14 @@ export class DungeonNew {
       // The options and the seed of the preview on screen: the map is the one the master was shown.
       // A retry of the same preview and name sends the same key: the server answers with the map the first call made.
       const name = this.nameControl.value.trim();
-      const answer = await this.api.create(this.campaignId(), name, made.options, made.seed, this.createKey.keyFor([name, made.options, made.seed]), this.abort.signal);
+      const answer = await this.api.create(
+        this.campaignId(),
+        name,
+        made.options,
+        made.seed,
+        this.createKey.keyFor([name, made.options, made.seed]),
+        this.abort.signal,
+      );
       this.createKey.renew();
       if (this.abort.signal.aborted) {
         return;

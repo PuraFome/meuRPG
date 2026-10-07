@@ -75,7 +75,10 @@ export function isReactionHint(reason: DisabledReason | undefined): boolean {
 /** "1d4 + 2 perfurante" for a weapon, "1d10 de fogo" for a cantrip: the dice
  * as the sheet writes them, spaced, and the damage type. */
 export function damageText(attack: Attack): string {
-  const dice = attack.damage.replace(/\s*([+-])\s*/g, (_, sign: string) => ` ${sign === '-' ? '−' : '+'} `);
+  const dice = attack.damage.replace(
+    /\s*([+-])\s*/g,
+    (_, sign: string) => ` ${sign === '-' ? '−' : '+'} `,
+  );
   const type = attack.damageTypePt;
   const adjective = /^(cortante|perfurante|contundente)$/.test(type);
   if (!type) {

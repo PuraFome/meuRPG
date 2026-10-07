@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,7 +40,12 @@ import {
   toInit,
 } from '../../../core/puzzles/puzzle-draft';
 import { kindIcon, kindName } from '../../../core/puzzles/puzzle-format';
-import { type FormSection, invalidSection, puzzleErrorMessage, puzzleInvalid } from '../../../core/puzzles/puzzle-errors';
+import {
+  type FormSection,
+  invalidSection,
+  puzzleErrorMessage,
+  puzzleInvalid,
+} from '../../../core/puzzles/puzzle-errors';
 import { type PuzzleAccess, PuzzleAccessCheck } from '../../../core/puzzles/puzzle-access';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
@@ -46,7 +64,10 @@ import { RiddleForm } from './riddle-form';
 import { SequenceForm } from './sequence-form';
 import { NO_PREVIEW, type StartPreview } from './start-preview';
 
-type Load = { readonly status: 'loading' } | { readonly status: 'ready' } | { readonly status: 'blocked'; readonly message: string };
+type Load =
+  | { readonly status: 'loading' }
+  | { readonly status: 'ready' }
+  | { readonly status: 'blocked'; readonly message: string };
 
 /** How long a change of the board waits before the server draws a start (the master is still clicking). */
 const PREVIEW_PAUSE_MS = 300;
@@ -138,7 +159,9 @@ export class PuzzleForm {
   protected readonly serverField = signal('');
 
   protected readonly errors = computed(() => draftErrors(this.draft()));
-  protected readonly nameError = computed(() => (this.submitted() ? (this.errors().name ?? this.nameServerError()) : this.nameServerError()));
+  protected readonly nameError = computed(() =>
+    this.submitted() ? (this.errors().name ?? this.nameServerError()) : this.nameServerError(),
+  );
   /** What is wrong in a part of the form: the form's own check once the master tried to save, or the server's refusal. */
   private shown(section: FormSection, own: string | undefined): string {
     return (this.submitted() ? own : undefined) || this.serverErrors()[section] || '';
@@ -147,17 +170,30 @@ export class PuzzleForm {
   protected readonly hintErrors = computed(() => (this.submitted() ? this.errors().hints : {}));
   protected readonly targetError = computed(() => this.shown('target', this.errors().target));
   protected readonly messageError = computed(() => this.shown('message', this.errors().message));
-  protected readonly lockError = computed(() => (this.submitted() ? (this.errors().lock ?? '') : ''));
+  protected readonly lockError = computed(() =>
+    this.submitted() ? (this.errors().lock ?? '') : '',
+  );
   protected readonly riddleError = computed(() => this.shown('riddle', this.errors().riddle));
   protected readonly answersError = computed(() => this.shown('answers', this.errors().answers));
-  protected readonly answerRows = computed(() => (this.submitted() ? this.errors().answerRows : {}));
+  protected readonly answerRows = computed(() =>
+    this.submitted() ? this.errors().answerRows : {},
+  );
   protected readonly sequenceError = computed(() => this.shown('sequence', this.errors().sequence));
   // The server says only "solution.cipher" for a message or a key it does not take: the words stand under the key, which the master chooses last.
-  protected readonly cipherMessageError = computed(() => (this.submitted() ? (this.errors().cipherMessage ?? '') : ''));
-  protected readonly cipherKeyError = computed(() => (this.submitted() ? (this.errors().cipherKey ?? '') : '') || this.serverErrors().cipherMessage || '');
+  protected readonly cipherMessageError = computed(() =>
+    this.submitted() ? (this.errors().cipherMessage ?? '') : '',
+  );
+  protected readonly cipherKeyError = computed(
+    () =>
+      (this.submitted() ? (this.errors().cipherKey ?? '') : '') ||
+      this.serverErrors().cipherMessage ||
+      '',
+  );
   protected readonly checkError = computed(() => this.shown('check', this.errors().check));
   protected readonly wrongError = computed(() => this.shown('wrong', this.errors().wrong));
-  protected readonly partsErrors = computed<Readonly<Record<number, { owner?: string; text?: string }>>>(() => {
+  protected readonly partsErrors = computed<
+    Readonly<Record<number, { owner?: string; text?: string }>>
+  >(() => {
     const server = this.serverErrors().parts;
     const own = this.submitted() ? this.errors().parts : {};
     const found = /^parts\[(\d+)\]\.(character_id|text)$/.exec(this.serverField());
@@ -168,21 +204,37 @@ export class PuzzleForm {
     return own;
   });
   /** A refusal about the parts as a whole ("at most 8"), under the list. */
-  protected readonly partsError = computed(() => (/^parts\[\d+\]/.test(this.serverField()) ? '' : (this.serverErrors().parts ?? '')));
-  protected readonly wrongField = computed(() => (this.serverErrors().wrong ? wrongTargetOf(this.serverField()) : this.submitted() && this.errors().wrong ? wrongTarget(this.draft()) : ''));
+  protected readonly partsError = computed(() =>
+    /^parts\[\d+\]/.test(this.serverField()) ? '' : (this.serverErrors().parts ?? ''),
+  );
+  protected readonly wrongField = computed(() =>
+    this.serverErrors().wrong
+      ? wrongTargetOf(this.serverField())
+      : this.submitted() && this.errors().wrong
+        ? wrongTarget(this.draft())
+        : '',
+  );
   protected readonly judged = computed(() => JUDGED_KINDS.includes(this.draft().kind));
   /** The message and the key are good enough to cipher: the form's own checks pass. */
-  protected readonly cipherable = computed(() => !this.errors().cipherMessage && !this.errors().cipherKey);
+  protected readonly cipherable = computed(
+    () => !this.errors().cipherMessage && !this.errors().cipherKey,
+  );
   protected readonly kindTitle = computed(() => kindName(protoKindOf(this.draft().kind)));
   /** A generated start has to be on screen before the puzzle can be saved: what is saved is what the master saw. */
-  protected readonly startReady = computed(() => !['lights', 'pillars'].includes(this.draft().kind) || this.preview().status === 'ready');
+  protected readonly startReady = computed(
+    () => !['lights', 'pillars'].includes(this.draft().kind) || this.preview().status === 'ready',
+  );
   protected readonly nameField = viewChild<ElementRef<HTMLInputElement>>('nameField');
 
   /** What the preview depends on: a change of it asks the server for a new start. */
   private readonly previewKey = computed(() => {
     const d = this.draft();
     const request = startRequestOf(d);
-    return request ? JSON.stringify([d.kind, request.config, request.solution], (_, v) => (typeof v === 'bigint' ? String(v) : v)) : '';
+    return request
+      ? JSON.stringify([d.kind, request.config, request.solution], (_, v) =>
+          typeof v === 'bigint' ? String(v) : v,
+        )
+      : '';
   });
   private lastKey = '';
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -224,22 +276,38 @@ export class PuzzleForm {
       const puzzle = await this.api.get(this.campaignId, this.puzzleId);
       const draft = draftOf(puzzle);
       if (draft === null) {
-        this.load.set({ status: 'blocked', message: 'Este tipo de quebra-cabeça se edita em outra tela.' });
+        this.load.set({
+          status: 'blocked',
+          message: 'Este tipo de quebra-cabeça se edita em outra tela.',
+        });
         return;
       }
       if (puzzle.shown) {
-        this.load.set({ status: 'blocked', message: 'Este quebra-cabeça já foi mostrado numa sessão e não pode mais ser editado. Faça outro, ou arquive este.' });
+        this.load.set({
+          status: 'blocked',
+          message:
+            'Este quebra-cabeça já foi mostrado numa sessão e não pode mais ser editado. Faça outro, ou arquive este.',
+        });
         return;
       }
       // The puzzle's own start is the preview: nothing is asked of the server until something it depends on changes.
       this.draft.set(draft);
       this.lastKey = this.previewKey();
       if (draft.kind !== 'lock') {
-        this.preview.set({ status: 'ready', start: puzzle.start, moves: puzzle.minimum?.moves ?? 0, solvable: puzzle.minimum?.solvable ?? true, message: '' });
+        this.preview.set({
+          status: 'ready',
+          start: puzzle.start,
+          moves: puzzle.minimum?.moves ?? 0,
+          solvable: puzzle.minimum?.solvable ?? true,
+          message: '',
+        });
       }
       this.load.set({ status: 'ready' });
     } catch (err) {
-      this.load.set({ status: 'blocked', message: puzzleErrorMessage(err, 'abrir o quebra-cabeça') });
+      this.load.set({
+        status: 'blocked',
+        message: puzzleErrorMessage(err, 'abrir o quebra-cabeça'),
+      });
     }
   }
 
@@ -260,8 +328,18 @@ export class PuzzleForm {
   protected setKind(kind: FormKind): void {
     const d = this.draft();
     // A trap and an attempt need a move that is judged: the other kinds keep "Nada acontece" or the limits.
-    const keepWrong = JUDGED_KINDS.includes(kind) || d.wrong.option === 'none' || d.wrong.option === 'limits';
-    this.draft.set({ ...newDraft(kind), name: d.name, clue: d.clue, hints: d.hints, solve: d.solve, hintCheck: d.hintCheck, parts: d.parts, wrong: keepWrong ? d.wrong : NO_WRONG });
+    const keepWrong =
+      JUDGED_KINDS.includes(kind) || d.wrong.option === 'none' || d.wrong.option === 'limits';
+    this.draft.set({
+      ...newDraft(kind),
+      name: d.name,
+      clue: d.clue,
+      hints: d.hints,
+      solve: d.solve,
+      hintCheck: d.hintCheck,
+      parts: d.parts,
+      wrong: keepWrong ? d.wrong : NO_WRONG,
+    });
     this.preview.set(NO_PREVIEW);
     this.serverErrors.set({});
   }
@@ -280,15 +358,30 @@ export class PuzzleForm {
     }
     const ticket = ++this.ticket;
     try {
-      const answer = await this.api.previewStart(this.campaignId, request.config, request.solution, 0n);
+      const answer = await this.api.previewStart(
+        this.campaignId,
+        request.config,
+        request.solution,
+        0n,
+      );
       if (ticket !== this.ticket) {
         return;
       }
-      this.preview.set({ status: 'ready', start: answer.start, moves: answer.minimum?.moves ?? 0, solvable: answer.minimum?.solvable ?? true, message: '' });
+      this.preview.set({
+        status: 'ready',
+        start: answer.start,
+        moves: answer.minimum?.moves ?? 0,
+        solvable: answer.minimum?.solvable ?? true,
+        message: '',
+      });
       this.patch({ seed: answer.seed });
     } catch (err) {
       if (ticket === this.ticket) {
-        this.preview.set({ ...NO_PREVIEW, status: 'error', message: puzzleErrorMessage(err, 'sortear um começo') });
+        this.preview.set({
+          ...NO_PREVIEW,
+          status: 'error',
+          message: puzzleErrorMessage(err, 'sortear um começo'),
+        });
       }
     }
   }
@@ -338,7 +431,9 @@ export class PuzzleForm {
       this.focusName();
       return;
     }
-    const el = this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"], .field-bad input, .field-bad textarea, .field-bad select, .field-error');
+    const el = this.host.nativeElement.querySelector<HTMLElement>(
+      '[aria-invalid="true"], .field-bad input, .field-bad textarea, .field-bad select, .field-error',
+    );
     // `focusWithRing` does not scroll (it must not jump a question under the bar); here the jump is the point, to the field's own margin.
     el?.scrollIntoView?.({ block: 'nearest' });
     focusWithRing(el);

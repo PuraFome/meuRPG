@@ -27,7 +27,14 @@ import { formatInt, joinDots } from '../../core/format/text';
 import { RosterClient } from '../../core/maps/roster-client';
 import { type SpellClass, SpellsClient } from '../../core/spells/spells-client';
 import { BASIC_SHEET_SENTENCE, spellsErrorMessage } from '../../core/spells/spells-errors';
-import { NO_FILTER, type SpellFilter, SCHOOLS, activeFilters, filterChips, isFiltered } from '../../core/spells/spells-filter';
+import {
+  NO_FILTER,
+  type SpellFilter,
+  SCHOOLS,
+  activeFilters,
+  filterChips,
+  isFiltered,
+} from '../../core/spells/spells-filter';
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { SpellsState } from '../../core/spells/spells-state';
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
@@ -45,7 +52,14 @@ type Access =
   | { readonly status: 'error'; readonly message: string };
 
 /** The query parameters: the filters survive a reload, and the open spell is a step of the browser's history. */
-const PARAMS = { query: 'q', classKey: 'class', levels: 'levels', school: 'school', mine: 'mine', spell: 'spell' } as const;
+const PARAMS = {
+  query: 'q',
+  classKey: 'class',
+  levels: 'levels',
+  school: 'school',
+  mine: 'mine',
+  spell: 'spell',
+} as const;
 
 /** From this width the page has three columns (filters, list, description); under it, it is the phone's page. */
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -63,7 +77,14 @@ const WIDE_QUERY = '(min-width: 1100px)';
  */
 @Component({
   selector: 'app-spells',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, SpellCard, SpellFilters],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+    SpellCard,
+    SpellFilters,
+  ],
   providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './spells.html',
   styleUrls: ['./spells.scss', './spells-list.scss'],
@@ -87,11 +108,16 @@ export class Spells {
   protected readonly mine = signal<MineCharacter | null>(null);
   protected readonly classes = signal<readonly SpellClass[]>([]);
   protected readonly wide = mediaQuery(WIDE_QUERY);
-  protected readonly state = new SpellsState(this.client, this.campaignId, () => this.mine()?.id ?? null, {
-    // The filters go into the link when a search starts (not on every key), and the class names follow an edit of the table.
-    onSearch: () => this.syncUrl(),
-    onAnswered: () => void this.loadClasses(),
-  });
+  protected readonly state = new SpellsState(
+    this.client,
+    this.campaignId,
+    () => this.mine()?.id ?? null,
+    {
+      // The filters go into the link when a search starts (not on every key), and the class names follow an edit of the table.
+      onSearch: () => this.syncUrl(),
+      onAnswered: () => void this.loadClasses(),
+    },
+  );
 
   /** The key of the spell open (`?spell=`), or ''. */
   protected readonly selected = signal(this.route.snapshot.queryParamMap.get(PARAMS.spell) ?? '');
@@ -109,7 +135,9 @@ export class Spells {
   protected readonly filter = this.state.filter;
   protected readonly filtersOn = computed(() => activeFilters(this.filter()));
   protected readonly filtered = computed(() => isFiltered(this.filter()));
-  protected readonly chips = computed(() => filterChips(this.filter(), (key) => this.className(key)));
+  protected readonly chips = computed(() =>
+    filterChips(this.filter(), (key) => this.className(key)),
+  );
   protected readonly count = computed(() => {
     const n = this.state.total();
     return `${formatInt(n)} ${n === 1 ? 'magia' : 'magias'}`;
@@ -128,7 +156,9 @@ export class Spells {
   });
   /** Nothing matched: with a name typed, the name is what to check; without one, only the filters are left. */
   protected readonly emptyHint = computed(() =>
-    this.filter().query.trim() ? 'Confira o nome ou tire um filtro.' : 'Tire um filtro para ver mais magias.',
+    this.filter().query.trim()
+      ? 'Confira o nome ou tire um filtro.'
+      : 'Tire um filtro para ver mais magias.',
   );
   protected readonly emptyTitle = computed(() => {
     const q = this.filter().query.trim();
@@ -155,7 +185,10 @@ export class Spells {
     void this.start();
     // The master turned something on or off, or wrote a spell (`content_changed`): the list, the open spell and the class names
     // are read again with this person's role, so a spell that went off leaves the list and the card says so.
-    this.watcher.whileLive(() => this.campaignId, () => this.contentChanged());
+    this.watcher.whileLive(
+      () => this.campaignId,
+      () => this.contentChanged(),
+    );
   }
 
   private contentChanged(): void {
@@ -197,8 +230,12 @@ export class Spells {
 
   private async ownCharacter(): Promise<MineCharacter | null> {
     try {
-      const mine = (await this.roster.list(this.campaignId)).find((c) => c.kind === CharacterKind.PLAYER && c.classSummary !== '');
-      return mine ? { id: mine.id, name: mine.name, label: `${mine.name}, ${mine.classSummary}` } : null;
+      const mine = (await this.roster.list(this.campaignId)).find(
+        (c) => c.kind === CharacterKind.PLAYER && c.classSummary !== '',
+      );
+      return mine
+        ? { id: mine.id, name: mine.name, label: `${mine.name}, ${mine.classSummary}` }
+        : null;
     } catch {
       // Without the character, the switch is not offered; every spell can still be read.
       return null;
@@ -255,7 +292,12 @@ export class Spells {
     if (this.access().status !== 'ok') {
       return;
     }
-    void this.router.navigate([], { relativeTo: this.route, replaceUrl: true, queryParamsHandling: 'merge', queryParams: this.filterParams() });
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParamsHandling: 'merge',
+      queryParams: this.filterParams(),
+    });
   }
 
   /** The browser's Back or Forward brought other filters than the ones on screen: the state follows the link, so the two never drift. */
@@ -286,20 +328,33 @@ export class Spells {
   protected removeChip(id: 'class' | 'level' | 'school' | 'mine'): void {
     const before = this.chips().findIndex((c) => c.id === id);
     const patch: Partial<SpellFilter> =
-      id === 'class' ? { classKey: '' } : id === 'level' ? { levels: [] } : id === 'school' ? { schoolKey: '' } : { onlyMine: false };
+      id === 'class'
+        ? { classKey: '' }
+        : id === 'level'
+          ? { levels: [] }
+          : id === 'school'
+            ? { schoolKey: '' }
+            : { onlyMine: false };
     void this.state.change(patch);
     // The chip that was pressed is gone: the focus goes to the next one, or to the search when none is left.
     afterNextRender(
       () => {
         const chips = this.host.nativeElement.querySelectorAll<HTMLElement>('.chip__x');
-        (chips[Math.min(before, chips.length - 1)] ?? this.host.nativeElement.querySelector<HTMLInputElement>('input[type=search]'))?.focus();
+        (
+          chips[Math.min(before, chips.length - 1)] ??
+          this.host.nativeElement.querySelector<HTMLInputElement>('input[type=search]')
+        )?.focus();
       },
       { injector: this.injector },
     );
   }
 
   protected openFilters(): void {
-    openSpellFilterSheet(this.dialog, this.bottomSheet, { state: this.state, classes: this.classes(), mine: this.mine() }).subscribe();
+    openSpellFilterSheet(this.dialog, this.bottomSheet, {
+      state: this.state,
+      classes: this.classes(),
+      mine: this.mine(),
+    }).subscribe();
   }
 
   protected open(spell: Spell): void {
@@ -321,7 +376,12 @@ export class Spells {
       this.location.back();
       return;
     }
-    void this.router.navigate([], { relativeTo: this.route, queryParams: { [PARAMS.spell]: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { [PARAMS.spell]: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** The URL names a spell (a click, Back, Android's Back, a shared link): read it. */
@@ -348,7 +408,9 @@ export class Spells {
       afterNextRender(
         () => {
           this.scrollTo(0);
-          this.host.nativeElement.querySelector<HTMLElement>('#spell-card-title')?.focus({ preventScroll: true });
+          this.host.nativeElement
+            .querySelector<HTMLElement>('#spell-card-title')
+            ?.focus({ preventScroll: true });
         },
         { injector: this.injector },
       );
@@ -361,7 +423,9 @@ export class Spells {
     afterNextRender(
       () => {
         this.scrollTo(this.scrollBefore);
-        this.host.nativeElement.querySelector<HTMLElement>(`button.row[data-key="${CSS.escape(key)}"]`)?.focus({ preventScroll: true });
+        this.host.nativeElement
+          .querySelector<HTMLElement>(`button.row[data-key="${CSS.escape(key)}"]`)
+          ?.focus({ preventScroll: true });
       },
       { injector: this.injector },
     );
@@ -405,7 +469,10 @@ export class Spells {
     const before = this.state.spells().length;
     await this.state.more();
     // The first new row takes the focus: the button that was pressed moves down with the list.
-    afterNextRender(() => this.host.nativeElement.querySelectorAll<HTMLElement>('button.row')[before]?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => this.host.nativeElement.querySelectorAll<HTMLElement>('button.row')[before]?.focus(),
+      { injector: this.injector },
+    );
   }
 
   /** The class names for the card's line; a function so the card needs no catalog of its own. */

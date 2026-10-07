@@ -52,7 +52,11 @@ export function effectOf(oldFactor: number, newFactor: number): CalibrationEffec
 }
 
 /** The rules' grid a factor makes: "24 × 16" squares for a drawing of 12 × 8 at 3 m. */
-export function rulesGrid(drawnColumns: number, drawnRows: number, factor: number): { columns: number; rows: number } {
+export function rulesGrid(
+  drawnColumns: number,
+  drawnRows: number,
+  factor: number,
+): { columns: number; rows: number } {
   return { columns: drawnColumns * factor, rows: drawnRows * factor };
 }
 

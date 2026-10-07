@@ -86,7 +86,9 @@ export class PicksStep {
   protected readonly subclasses = computed<PickItem[]>(() =>
     this.s().options.subclasses.map((c) => ({ key: c.key, name: c.namePt, sub: '' })),
   );
-  protected readonly subclassPicked = computed(() => new Set(this.s().draft.subclassKey() ? [this.s().draft.subclassKey()] : []));
+  protected readonly subclassPicked = computed(
+    () => new Set(this.s().draft.subclassKey() ? [this.s().draft.subclassKey()] : []),
+  );
 
   /** One group per feature that offers options, with the picks that belong to it. */
   protected readonly groups = computed(() => {

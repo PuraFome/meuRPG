@@ -3,7 +3,14 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, flat, invalidField, isOff, ogre, summary } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  flat,
+  invalidField,
+  isOff,
+  ogre,
+  summary,
+} from '../../../core/creatures/creatures-testing';
 import { CreateNpcSheet, type CreateNpcData } from './create-npc-sheet';
 
 describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 state 8)', () => {
@@ -30,14 +37,19 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
     };
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes(name))!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.includes(name),
+      )!;
     const type = (text: string) => {
       const input = el.querySelector<HTMLInputElement>('input[name=name]')!;
       input.value = text;
       input.dispatchEvent(new Event('input'));
     };
     const role = (label: string) => {
-      const radio = Array.from(el.querySelectorAll<HTMLLabelElement>('.seg__opt')).find((l) => flat(l) === label)!.querySelector('input')!;
+      const radio = Array.from(el.querySelectorAll<HTMLLabelElement>('.seg__opt'))
+        .find((l) => flat(l) === label)!
+        .querySelector('input')!;
       radio.click();
     };
     return { fixture, el, button, settle, type, role };
@@ -55,7 +67,10 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
 
   it('offers only Minion and NPC de história for the role: Inimigo and Boss need a full sheet', async () => {
     const { el } = await setup();
-    expect(Array.from(el.querySelectorAll('.seg__opt')).map((l) => flat(l))).toEqual(['Minion', 'NPC de história']);
+    expect(Array.from(el.querySelectorAll('.seg__opt')).map((l) => flat(l))).toEqual([
+      'Minion',
+      'NPC de história',
+    ]);
     expect(el.querySelector<HTMLInputElement>('.seg__opt input:checked')?.value).toBe('minion');
     expect(flat(el.querySelector('.role__hint'))).toContain('Um capanga');
   });
@@ -63,26 +78,50 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
   it('shows the numbers that come from the creature: CA, PV, the speed in metres and the six abilities in full words', async () => {
     const { el } = await setup();
     const nums = Array.from(el.querySelectorAll('.num')).map((n) => flat(n));
-    expect(nums).toEqual(['CA 11', 'PV 59', 'Deslocamento 12 m', 'Força 19', 'Destreza 8', 'Constituição 16', 'Inteligência 5', 'Sabedoria 7', 'Carisma 7']);
+    expect(nums).toEqual([
+      'CA 11',
+      'PV 59',
+      'Deslocamento 12 m',
+      'Força 19',
+      'Destreza 8',
+      'Constituição 16',
+      'Inteligência 5',
+      'Sabedoria 7',
+      'Carisma 7',
+    ]);
     // The narrowest phones read them as one line instead.
-    expect(flat(el.querySelector('.nums__line'))).toBe('CA 11 · PV 59 · 12 m e as habilidades vêm da criatura.');
+    expect(flat(el.querySelector('.nums__line'))).toBe(
+      'CA 11 · PV 59 · 12 m e as habilidades vêm da criatura.',
+    );
   });
 
-  it('says the attacks that come along and that the bestiary\'s creature does not change', async () => {
+  it("says the attacks that come along and that the bestiary's creature does not change", async () => {
     const { el } = await setup();
     expect(flat(el.querySelector('.note'))).toBe(
       'Faz uma ficha básica de NPC, com os ataques da criatura (Clava grande e Azagaia), que você renomeia e edita depois. A criatura do bestiário não muda.',
     );
   });
 
-  it('creates a Minion with the master\'s name and closes with the NPC', async () => {
+  it("creates a Minion with the master's name and closes with the NPC", async () => {
     const { button, type, settle } = await setup();
     type('Capitão bandido');
     await settle();
     button('Criar NPC').click();
     await settle();
-    expect(api.npcCalls).toEqual([{ creatureKey: 'monster:ogre', name: 'Capitão bandido', role: 'minion', key: expect.stringMatching(/^[0-9a-f-]{36}$/) }]);
-    expect(close).toHaveBeenCalledWith({ id: 'npc-1', name: 'Capitão bandido', attacks: ['Clava grande', 'Azagaia'], existed: false });
+    expect(api.npcCalls).toEqual([
+      {
+        creatureKey: 'monster:ogre',
+        name: 'Capitão bandido',
+        role: 'minion',
+        key: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
+    ]);
+    expect(close).toHaveBeenCalledWith({
+      id: 'npc-1',
+      name: 'Capitão bandido',
+      attacks: ['Clava grande', 'Azagaia'],
+      existed: false,
+    });
   });
 
   it('creates an NPC de história when that role is chosen, trimming the name', async () => {
@@ -110,7 +149,9 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
     api.npcFailures = [new ConnectError('down', Code.Unavailable)];
     button('Criar NPC').click();
     await settle();
-    expect(el.querySelector('[role=alert]')?.textContent).toContain('Não deu para criar o NPC: o servidor não respondeu. Tente de novo.');
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(
+      'Não deu para criar o NPC: o servidor não respondeu. Tente de novo.',
+    );
     expect(close).not.toHaveBeenCalled();
     expect(isOff(button('Criar NPC'))).toBe(false);
     button('Criar NPC').click();
@@ -122,7 +163,10 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
 
   it('the key stays the same through edits of the name and the role: one key per open dialog', async () => {
     const { button, type, role, settle } = await setup();
-    api.npcFailures = [new ConnectError('down', Code.Unavailable), new ConnectError('down', Code.Unavailable)];
+    api.npcFailures = [
+      new ConnectError('down', Code.Unavailable),
+      new ConnectError('down', Code.Unavailable),
+    ];
     button('Criar NPC').click();
     await settle();
     type('Vesna, a capitã');
@@ -162,11 +206,23 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
   });
 
   it.each([
-    [new ConnectError('refused', Code.PermissionDenied), 'Só o mestre da campanha usa o bestiário e faz NPCs.'],
-    [invalidField('name'), 'Não deu para criar o NPC: o nome precisa ter de 1 a 80 letras, numa linha só. Confira e tente de novo.'],
-    [invalidField('creature_key'), 'Essa criatura não está no bestiário. Volte à lista e escolha outra.'],
+    [
+      new ConnectError('refused', Code.PermissionDenied),
+      'Só o mestre da campanha usa o bestiário e faz NPCs.',
+    ],
+    [
+      invalidField('name'),
+      'Não deu para criar o NPC: o nome precisa ter de 1 a 80 letras, numa linha só. Confira e tente de novo.',
+    ],
+    [
+      invalidField('creature_key'),
+      'Essa criatura não está no bestiário. Volte à lista e escolha outra.',
+    ],
     [invalidField('kind'), 'Escolha Minion ou NPC de história.'],
-    [new ConnectError('refused', Code.NotFound), 'Essa campanha não existe, ou você não é mais membro dela. Volte para Minhas campanhas.'],
+    [
+      new ConnectError('refused', Code.NotFound),
+      'Essa campanha não existe, ou você não é mais membro dela. Volte para Minhas campanhas.',
+    ],
   ])('a refusal is said in Portuguese by its code and its field (%#)', async (error, message) => {
     const { el, button, settle } = await setup();
     api.npcFailures = [error];
@@ -186,7 +242,15 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
   });
 
   it('a creature with no attack a basic sheet can hold says its attacks stay in the stat block', async () => {
-    const { el } = await setup(ogre({ actions: [], npcAttackNames: [], summary: summary('monster:ghost', 'Fantasma', { name: 'Ghost' }) }));
-    expect(flat(el.querySelector('.note'))).toContain('os ataques dela ficam na ficha do bestiário');
+    const { el } = await setup(
+      ogre({
+        actions: [],
+        npcAttackNames: [],
+        summary: summary('monster:ghost', 'Fantasma', { name: 'Ghost' }),
+      }),
+    );
+    expect(flat(el.querySelector('.note'))).toContain(
+      'os ataques dela ficam na ficha do bestiário',
+    );
   });
 });

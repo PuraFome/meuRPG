@@ -56,15 +56,27 @@ export class TreasureResult {
   protected readonly consumableRule = CONSUMABLE_RULE;
   protected readonly po = po;
   protected readonly hoard = computed(() => this.treasure().mode === TreasureMode.HOARD);
-  protected readonly title = computed(() => treasureTitle(this.treasure().mode, this.treasure().partyLevel));
+  protected readonly title = computed(() =>
+    treasureTitle(this.treasure().mode, this.treasure().partyLevel),
+  );
   protected readonly coins = computed(() => coinRows(this.treasure().coins));
   protected readonly gemRows = computed(() => pieceRows(this.treasure().gems));
   protected readonly artRows = computed(() => pieceRows(this.treasure().art));
   protected readonly items = computed(() => groupItems(this.treasure().items));
-  protected readonly hasGemsOrArt = computed(() => this.gemRows().length + this.artRows().length > 0);
+  protected readonly hasGemsOrArt = computed(
+    () => this.gemRows().length + this.artRows().length > 0,
+  );
   /** The title follows what came up: "Gemas" or "Obras de arte" alone (its total is the title's), both together with the sum. */
-  protected readonly piecesTitle = computed(() => (this.gemRows().length > 0 && this.artRows().length > 0 ? 'Gemas e obras de arte' : this.gemRows().length > 0 ? 'Gemas' : 'Obras de arte'));
-  protected readonly piecesBoth = computed(() => this.gemRows().length > 0 && this.artRows().length > 0);
+  protected readonly piecesTitle = computed(() =>
+    this.gemRows().length > 0 && this.artRows().length > 0
+      ? 'Gemas e obras de arte'
+      : this.gemRows().length > 0
+        ? 'Gemas'
+        : 'Obras de arte',
+  );
+  protected readonly piecesBoth = computed(
+    () => this.gemRows().length > 0 && this.artRows().length > 0,
+  );
   protected readonly gemsAndArtPo = computed(() => this.treasure().gemsPo + this.treasure().artPo);
   protected readonly total = computed(() => this.treasure().goldPo + this.treasure().itemsPo);
   protected readonly goldSentence = computed(() => goldLine(this.xpMode(), this.campaignName()));

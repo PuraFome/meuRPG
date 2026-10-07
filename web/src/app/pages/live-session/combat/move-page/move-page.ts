@@ -13,7 +13,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Encounter, type GetMoveOptionsResponse, MoveRefusal } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  type GetMoveOptionsResponse,
+  MoveRefusal,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { JumpLimits } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { Vision } from '../../../../core/maps/vision';
 import { type Square, stepSquare } from '../../../../core/combat/combat-grid';
@@ -40,7 +44,11 @@ import { ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
 import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import { metersFixed, reachSquares } from '../../../../core/units';
 import { tieNumbers } from '../../../../core/format/text';
-import { CombatMap, type CombatMapImage, type Reach } from '../../../../shared/combat-map/combat-map';
+import {
+  CombatMap,
+  type CombatMapImage,
+  type Reach,
+} from '../../../../shared/combat-map/combat-map';
 import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
@@ -74,7 +82,17 @@ export type JumpRequest =
  */
 @Component({
   selector: 'app-move-page',
-  imports: [CombatMap, JumpPanel, LivePill, MapLayersLegend, MatButtonModule, MatIconModule, MoveAdjust, MoveStatus, Segmented],
+  imports: [
+    CombatMap,
+    JumpPanel,
+    LivePill,
+    MapLayersLegend,
+    MatButtonModule,
+    MatIconModule,
+    MoveAdjust,
+    MoveStatus,
+    Segmented,
+  ],
   templateUrl: './move-page.html',
   styleUrl: './move-page.scss',
 })
@@ -146,7 +164,9 @@ export class MovePage {
     const own = this.own();
     return own ? { col: own.col, row: own.row } : { col: 0, row: 0 };
   });
-  protected readonly leftDft = computed(() => this.options()?.movementLeftDft ?? this.own()?.movementLeftDft ?? 0);
+  protected readonly leftDft = computed(
+    () => this.options()?.movementLeftDft ?? this.own()?.movementLeftDft ?? 0,
+  );
   protected readonly totalDft = computed(() => this.own()?.speedDft ?? 0);
   protected readonly usedDft = computed(() => this.own()?.movementUsedDft ?? 0);
   protected readonly jumping = computed(() => this.mode() === 'jump' && !!this.jumps());
@@ -171,7 +191,9 @@ export class MovePage {
   });
   /** What a jump can really do: the server's limit, and no more than the movement left (a jump costs its length). */
   protected readonly cap = computed(() => Math.min(this.limit(), this.leftDft()));
-  protected readonly atMin = computed(() => this.height() <= Math.min(HEIGHT_STEP_DFT, maxHeight(this.cap())));
+  protected readonly atMin = computed(
+    () => this.height() <= Math.min(HEIGHT_STEP_DFT, maxHeight(this.cap())),
+  );
   protected readonly atMax = computed(() => this.height() >= maxHeight(this.cap()));
   /** The line a long jump draws, to say what it costs (display only; the server decides). */
   protected readonly jumpCost = computed(() => {
@@ -185,7 +207,9 @@ export class MovePage {
       return null;
     }
     if (this.jumping()) {
-      return this.kind() === 'long' ? { origin: this.origin(), leftDft: this.cap(), squares: [] } : null;
+      return this.kind() === 'long'
+        ? { origin: this.origin(), leftDft: this.cap(), squares: [] }
+        : null;
     }
     const options = this.options();
     return {
@@ -228,7 +252,11 @@ export class MovePage {
     }
     const s = this.summary();
     if (s.kind !== 'ok') {
-      return { square, refused: true, label: s.title ? s.title.replace('Sem caminho reto', 'Sem caminho') : undefined };
+      return {
+        square,
+        refused: true,
+        label: s.title ? s.title.replace('Sem caminho reto', 'Sem caminho') : undefined,
+      };
     }
     const v = this.verdict();
     const dft = this.jumping() ? this.jumpCost() : v?.kind === 'ok' ? v.square.costDft : 0;
@@ -239,36 +267,55 @@ export class MovePage {
       return false;
     }
     if (this.jumping()) {
-      return this.kind() === 'high' ? this.height() > 0 : this.chosen() !== null && this.summary().kind === 'ok';
+      return this.kind() === 'high'
+        ? this.height() > 0
+        : this.chosen() !== null && this.summary().kind === 'ok';
     }
     return this.verdict()?.kind === 'ok';
   });
   protected readonly visibleError = computed(() => {
     const at = this.errorFor();
     const to = this.chosen();
-    return this.serverError() !== '' && ((!at && !to) || (!!at && !!to && at.col === to.col && at.row === to.row));
+    return (
+      this.serverError() !== '' &&
+      ((!at && !to) || (!!at && !!to && at.col === to.col && at.row === to.row))
+    );
   });
-  protected readonly title = computed(() => `${this.jumping() ? 'Saltar' : 'Mover'} ${this.own()?.label ?? ''}`);
+  protected readonly title = computed(
+    () => `${this.jumping() ? 'Saltar' : 'Mover'} ${this.own()?.label ?? ''}`,
+  );
   protected readonly lead = computed(() => {
-    const ask = this.jumping() ? (this.kind() === 'long' ? 'Toque no quadrado onde quer cair.' : '') : 'Toque num quadrado destacado.';
+    const ask = this.jumping()
+      ? this.kind() === 'long'
+        ? 'Toque no quadrado onde quer cair.'
+        : ''
+      : 'Toque num quadrado destacado.';
     const squares = this.jumping() ? null : reachSquares(this.leftDft() / 10);
-    return [leftLine(this.leftDft(), this.totalDft(), this.usedDft(), squares), ask].filter(Boolean).join(' ');
+    return [leftLine(this.leftDft(), this.totalDft(), this.usedDft(), squares), ask]
+      .filter(Boolean)
+      .join(' ');
   });
   protected readonly leftText = computed(() => metersFixed(this.leftDft() / 10));
   protected readonly limitText = computed(() => metersFixed(this.cap() / 10));
-  protected readonly goIcon = computed(() => (!this.jumping() ? 'arrow_forward' : this.kind() === 'high' ? 'arrow_upward' : 'north_east'));
+  protected readonly goIcon = computed(() =>
+    !this.jumping() ? 'arrow_forward' : this.kind() === 'high' ? 'arrow_upward' : 'north_east',
+  );
   protected readonly goLabel = computed(() => {
     if (!this.jumping()) {
       return 'Mover para cá';
     }
-    return this.kind() === 'long' ? 'Saltar para cá' : `Saltar ${metersFixed(this.height() / 10)} para cima`;
+    return this.kind() === 'long'
+      ? 'Saltar para cá'
+      : `Saltar ${metersFixed(this.height() / 10)} para cima`;
   });
   /** What the footer's button says it is for when it cannot be pressed. */
   protected readonly trapName = computed(() => {
     if (this.jumping()) {
       // The walk's reads know the trap squares the character knows: a jump that lands on one asks too.
       const to = this.chosen();
-      return this.kind() === 'long' && to ? (this.index().reachable.get(to.row * 1000 + to.col)?.knownTrapName ?? '') : '';
+      return this.kind() === 'long' && to
+        ? (this.index().reachable.get(to.row * 1000 + to.col)?.knownTrapName ?? '')
+        : '';
     }
     const v = this.verdict();
     return v?.kind === 'ok' ? v.square.knownTrapName : '';
@@ -364,7 +411,13 @@ export class MovePage {
 
   private jumpSummary(none: MoveSummary): MoveSummary {
     const left = this.leftDft();
-    const refused = (title: string, detail: string): MoveSummary => ({ kind: 'refused', title, detail, warning: '', trap: '' });
+    const refused = (title: string, detail: string): MoveSummary => ({
+      kind: 'refused',
+      title,
+      detail,
+      warning: '',
+      trap: '',
+    });
     if (this.kind() === 'high') {
       const h = this.height();
       return h > 0
@@ -375,7 +428,10 @@ export class MovePage {
             warning: '',
             trap: '',
           }
-        : refused('Sem salto em altura', 'Com essa Força e esse movimento, não dá para subir nem um passo de 0,3 m.');
+        : refused(
+            'Sem salto em altura',
+            'Com essa Força e esse movimento, não dá para subir nem um passo de 0,3 m.',
+          );
     }
     const to = this.chosen();
     if (!to) {
@@ -387,8 +443,16 @@ export class MovePage {
     // A jump cannot cross a wall or land on a creature: what the reads show (a wall in the options'
     // refusals, a creature on the square) is refused here, so the button never promises what the server refuses.
     const read = this.verdict();
-    if (read?.kind === 'refused' && (read.reason === MoveRefusal.WALL || read.reason === MoveRefusal.OCCUPIED)) {
-      return refused(read.reason === MoveRefusal.WALL ? 'Sem caminho' : 'Ocupado', read.reason === MoveRefusal.WALL ? 'Um salto não atravessa parede. Escolha outro quadrado.' : 'Há alguém nesse quadrado. Escolha onde cair.');
+    if (
+      read?.kind === 'refused' &&
+      (read.reason === MoveRefusal.WALL || read.reason === MoveRefusal.OCCUPIED)
+    ) {
+      return refused(
+        read.reason === MoveRefusal.WALL ? 'Sem caminho' : 'Ocupado',
+        read.reason === MoveRefusal.WALL
+          ? 'Um salto não atravessa parede. Escolha outro quadrado.'
+          : 'Há alguém nesse quadrado. Escolha onde cair.',
+      );
     }
     if (this.encounter().combatants.some((c) => c.placed && c.col === to.col && c.row === to.row)) {
       return refused('Ocupado', 'Há alguém nesse quadrado. Escolha onde cair.');

@@ -25,7 +25,12 @@ export class XpWatcher {
    * runs on every `xp_changed`, and on a reconnection (an event may have been missed);
    * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too, and `onContent` on every
    * `content_changed` (the table's content moved: the editor and the level-up read their catalog again). */
-  follow(campaignId: string | null, onChange: () => void, onCreatures?: () => void, onContent?: () => void): void {
+  follow(
+    campaignId: string | null,
+    onChange: () => void,
+    onCreatures?: () => void,
+    onContent?: () => void,
+  ): void {
     if (campaignId === this.campaignId) {
       return;
     }

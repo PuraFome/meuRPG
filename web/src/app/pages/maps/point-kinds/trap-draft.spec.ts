@@ -61,18 +61,35 @@ const pit = create(TrapPresetSchema, {
   trigger: TrapTrigger.ENTER,
   areaSize: 2,
   fallFt: 20,
-  effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' }], conditions: [{ conditionKey: 'condition:prone', conditionPt: 'Derrubado' }] },
+  effect: {
+    damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' }],
+    conditions: [{ conditionKey: 'condition:prone', conditionPt: 'Derrubado' }],
+  },
 });
 
 describe('a preset fills the form', () => {
   it('copies the numbers, the trigger, the area and the effect parts (the poison needle has no DC to notice)', () => {
     const d = trapDraftFromPreset(needle);
-    expect(d).toMatchObject({ presetKey: 'trap:poison-needle', name: 'Agulha envenenada', noticeDc: '', findDc: '20', areaSize: 1, trigger: TrapTrigger.MANUAL, targets: TrapTargets.MANUAL });
+    expect(d).toMatchObject({
+      presetKey: 'trap:poison-needle',
+      name: 'Agulha envenenada',
+      noticeDc: '',
+      findDc: '20',
+      areaSize: 1,
+      trigger: TrapTrigger.MANUAL,
+      targets: TrapTargets.MANUAL,
+    });
     expect(d.damage).toEqual([
       { dice: '1', typeKey: 'damage-type:piercing' },
       { dice: '2d10', typeKey: 'damage-type:poison' },
     ]);
-    expect(d.save).toMatchObject({ ability: Ability.CONSTITUTION, dc: '15', onPass: TrapPassOutcome.NONE, failDamage: [], failCondition: { key: 'condition:poisoned', duration: '1 hora' } });
+    expect(d.save).toMatchObject({
+      ability: Ability.CONSTITUTION,
+      dc: '15',
+      onPass: TrapPassOutcome.NONE,
+      failDamage: [],
+      failCondition: { key: 'condition:poisoned', duration: '1 hora' },
+    });
     expect(trapErrors(d)).toEqual({ parts: {} });
   });
 
@@ -83,19 +100,43 @@ describe('a preset fills the form', () => {
 
   it('starts from nothing on "Começar do zero": the square alone, fired by entering it, no effect', () => {
     const d = blankTrapDraft('Armadilha nova');
-    expect(d).toMatchObject({ presetKey: '', areaSize: 1, trigger: TrapTrigger.ENTER, state: TrapState.ARMED, attack: null, damage: [], conditions: [], save: null });
+    expect(d).toMatchObject({
+      presetKey: '',
+      areaSize: 1,
+      trigger: TrapTrigger.ENTER,
+      state: TrapState.ARMED,
+      attack: null,
+      damage: [],
+      conditions: [],
+      save: null,
+    });
   });
 });
 
 describe('trapSpecOf', () => {
   it('sends the whole spec: the DCs as numbers, an empty notice DC as 0, the parts as the server takes them', () => {
     const spec = trapSpecOf(trapDraftFromPreset(needle));
-    expect(spec).toMatchObject({ presetKey: 'trap:poison-needle', noticeDc: 0, findDc: 20, areaSize: 1, trigger: TrapTrigger.MANUAL, state: TrapState.ARMED });
+    expect(spec).toMatchObject({
+      presetKey: 'trap:poison-needle',
+      noticeDc: 0,
+      findDc: 20,
+      areaSize: 1,
+      trigger: TrapTrigger.MANUAL,
+      state: TrapState.ARMED,
+    });
     expect(spec.effect?.damage).toEqual([
       { dice: '1', damageTypeKey: 'damage-type:piercing' },
       { dice: '2d10', damageTypeKey: 'damage-type:poison' },
     ]);
-    expect(spec.effect?.save).toMatchObject({ ability: Ability.CONSTITUTION, dc: 15, onFail: { damage: [], condition: { conditionKey: 'condition:poisoned', durationPt: '1 hora' } }, onPass: TrapPassOutcome.NONE });
+    expect(spec.effect?.save).toMatchObject({
+      ability: Ability.CONSTITUTION,
+      dc: 15,
+      onFail: {
+        damage: [],
+        condition: { conditionKey: 'condition:poisoned', durationPt: '1 hora' },
+      },
+      onPass: TrapPassOutcome.NONE,
+    });
     expect(spec.effect?.attack).toBeUndefined();
   });
 });
@@ -126,9 +167,17 @@ describe('trapErrors', () => {
     expect(trapErrors(d).parts['damage:0']).toContain('2d6');
   });
 
-  it('checks an attack\'s bonus (0 to 20) and count (1 to 10)', () => {
+  it("checks an attack's bonus (0 to 20) and count (1 to 10)", () => {
     const base = { ...blankTrapDraft('A'), findDc: '15' };
-    const e = trapErrors({ ...base, attack: { ...newAttack(), bonus: '21', count: '0', damage: { dice: '1d4', typeKey: 'damage-type:piercing' } } });
+    const e = trapErrors({
+      ...base,
+      attack: {
+        ...newAttack(),
+        bonus: '21',
+        count: '0',
+        damage: { dice: '1d4', typeKey: 'damage-type:piercing' },
+      },
+    });
     expect(e.attackBonus).toBe('Use de 0 a 20.');
     expect(e.attackCount).toBe('Use de 1 a 10.');
     expect(e.attackDice).toBeUndefined();
@@ -139,13 +188,29 @@ describe('trapErrors', () => {
     const e = trapErrors({ ...base, save: { ...newSave(), dc: '' } });
     expect(e.parts['saveDc']).toBe('Use uma CD de 1 a 30.');
     expect(e.parts['save']).toContain('o que acontece a quem falha');
-    const half = trapErrors({ ...base, save: { ...newSave(), dc: '12', failCondition: { key: 'condition:prone', duration: '' }, onPass: TrapPassOutcome.HALF } });
+    const half = trapErrors({
+      ...base,
+      save: {
+        ...newSave(),
+        dc: '12',
+        failCondition: { key: 'condition:prone', duration: '' },
+        onPass: TrapPassOutcome.HALF,
+      },
+    });
     expect(half.parts['save']).toContain('Metade do dano');
   });
 
   it('"quem foi atingido" needs an attack', () => {
     const base = { ...blankTrapDraft('A'), findDc: '15' };
-    const e = trapErrors({ ...base, save: { ...newSave(), dc: '12', appliesTo: TrapSaveApplies.HIT, failDamage: [{ dice: '1d6', typeKey: 'damage-type:fire' }] } });
+    const e = trapErrors({
+      ...base,
+      save: {
+        ...newSave(),
+        dc: '12',
+        appliesTo: TrapSaveApplies.HIT,
+        failDamage: [{ dice: '1d6', typeKey: 'damage-type:fire' }],
+      },
+    });
     expect(e.parts['save']).toContain('ataque');
   });
 });
@@ -155,7 +220,15 @@ describe('what the point carries', () => {
     id: 'p1',
     name: 'Fosso escondido',
     description: 'No corredor.',
-    trap: { presetKey: 'trap:hidden-pit', noticeDc: 15, findDc: 15, areaSize: 2, trigger: TrapTrigger.ENTER, state: TrapState.ARMED, effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning' }] } },
+    trap: {
+      presetKey: 'trap:hidden-pit',
+      noticeDc: 15,
+      findDc: 15,
+      areaSize: 2,
+      trigger: TrapTrigger.ENTER,
+      state: TrapState.ARMED,
+      effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning' }] },
+    },
   });
 
   it('is the form unchanged, and clean', () => {
@@ -167,9 +240,16 @@ describe('what the point carries', () => {
   it('saves the whole spec when anything changes, and the name only when it changed', () => {
     const d = { ...trapDraftOf(point), findDc: '12', state: TrapState.DISARMED };
     const changes = trapChangesOf(d, point);
-    expect(changes?.trap).toMatchObject({ findDc: 12, state: TrapState.DISARMED, noticeDc: 15, areaSize: 2 });
+    expect(changes?.trap).toMatchObject({
+      findDc: 12,
+      state: TrapState.DISARMED,
+      noticeDc: 15,
+      areaSize: 2,
+    });
     expect(changes?.name).toBeUndefined();
-    expect(trapChangesOf({ ...d, name: ' Fosso do corredor ' }, point)?.name).toBe('Fosso do corredor');
+    expect(trapChangesOf({ ...d, name: ' Fosso do corredor ' }, point)?.name).toBe(
+      'Fosso do corredor',
+    );
   });
 
   it('adding and removing a part is a change', () => {

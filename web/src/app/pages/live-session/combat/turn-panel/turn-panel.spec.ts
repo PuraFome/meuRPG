@@ -10,7 +10,16 @@ describe('TurnPanel', () => {
   const order = [
     combatant({ id: 'brisa', label: 'Brisa', kind: CombatantKind.PLAYER }),
     combatant({ id: 'cap', label: 'Capitão Goblin', state: CombatantState.HURT }),
-    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, speedFt: 25, movementLeftFt: 25, speedDft: 250, movementLeftDft: 250 }),
+    combatant({
+      id: 'pen',
+      label: 'Pensantus',
+      kind: CombatantKind.PLAYER,
+      mine: true,
+      speedFt: 25,
+      movementLeftFt: 25,
+      speedDft: 250,
+      movementLeftDft: 250,
+    }),
     combatant({ id: 'g1', label: 'Goblin 1', defeated: true, state: CombatantState.DEFEATED }),
   ];
 
@@ -30,7 +39,9 @@ describe('TurnPanel', () => {
 
   it('shows state words for NPCs and never numbers', () => {
     const el = text({ currentCombatantId: 'cap' });
-    const chips = Array.from(el.querySelectorAll('.chip'), (c) => c.textContent?.replace(/\s+/g, ' ').trim());
+    const chips = Array.from(el.querySelectorAll('.chip'), (c) =>
+      c.textContent?.replace(/\s+/g, ' ').trim(),
+    );
     expect(chips.join('|')).toContain('Capitão GoblinFerido');
     expect(chips.join('|')).toContain('Goblin 1Derrotado');
     expect(el.textContent).not.toMatch(/PV|\d+ de \d+/);
@@ -53,12 +64,20 @@ describe('TurnPanel', () => {
     expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(false);
     expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
     expect(el.textContent).toContain('Depois de você: Goblin 1'.replace('Goblin 1', 'Brisa'));
-    expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual(['Ação', 'Ação bônus', 'Reação', 'Movimento']);
+    expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual([
+      'Ação',
+      'Ação bônus',
+      'Reação',
+      'Movimento',
+    ]);
   });
 
   it('says the turn waits for an opportunity attack, and what stopped a move short', () => {
     const fixture = TestBed.createComponent(TurnPanel);
-    fixture.componentRef.setInput('encounter', encounter({ combatants: order, currentCombatantId: 'pen' }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'pen' }),
+    );
     fixture.componentRef.setInput('waiting', {
       title: 'Esperando a reação do mestre',
       detail: 'Seu movimento já valeu; a sua vez continua quando ele responder.',
@@ -66,26 +85,52 @@ describe('TurnPanel', () => {
     fixture.componentRef.setInput('moveNote', 'Você parou antes: algo bloqueou o caminho.');
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const notices = Array.from(el.querySelectorAll('.turn__notice'), (n) => n.textContent?.replace(/\s+/g, ' ').trim());
-    expect(notices[0]).toContain('Esperando a reação do mestre. Seu movimento já valeu; a sua vez continua quando ele responder.');
+    const notices = Array.from(el.querySelectorAll('.turn__notice'), (n) =>
+      n.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(notices[0]).toContain(
+      'Esperando a reação do mestre. Seu movimento já valeu; a sua vez continua quando ele responder.',
+    );
     expect(notices[1]).toContain('Você parou antes: algo bloqueou o caminho.');
     expect(el.querySelectorAll('.turn__notice[role="status"]').length).toBe(2);
   });
 
-  it('says the player is blind while looking through the familiar\'s eyes, and offers no attack (MR-036, E9-04)', () => {
-    const blindOrder = order.map((c) => (c.id === 'pen' ? { ...c, familiarSightCreatureId: 'nanquim' } : c));
+  it("says the player is blind while looking through the familiar's eyes, and offers no attack (MR-036, E9-04)", () => {
+    const blindOrder = order.map((c) =>
+      c.id === 'pen' ? { ...c, familiarSightCreatureId: 'nanquim' } : c,
+    );
     const el = text({ combatants: blindOrder, currentCombatantId: 'pen' });
-    expect(textOf(el.querySelector('[data-testid="familiar-blind"]'))).toBe('visibility_off Cego: para atacar, fale com o mestre.');
+    expect(textOf(el.querySelector('[data-testid="familiar-blind"]'))).toBe(
+      'visibility_off Cego: para atacar, fale com o mestre.',
+    );
     // Without the sight there is no such line.
-    expect(text({ currentCombatantId: 'pen' }).querySelector('[data-testid="familiar-blind"]')).toBeNull();
+    expect(
+      text({ currentCombatantId: 'pen' }).querySelector('[data-testid="familiar-blind"]'),
+    ).toBeNull();
   });
 });
 
 describe('TurnPanel as a beast (MR-037, E9-11 state 3)', () => {
   it('says the form and what changes (the two reserves and the armor class are on the vitals card)', () => {
-    const druid = combatant({ id: 'sal', label: 'Sálvia', kind: CombatantKind.PLAYER, mine: true, speedDft: 400, speedFt: 40, movementLeftDft: 400, movementLeftFt: 40, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo', wildShapeHitPointsCurrent: 11, wildShapeHitPointsMax: 11 });
+    const druid = combatant({
+      id: 'sal',
+      label: 'Sálvia',
+      kind: CombatantKind.PLAYER,
+      mine: true,
+      speedDft: 400,
+      speedFt: 40,
+      movementLeftDft: 400,
+      movementLeftFt: 40,
+      wildShapeBeastKey: 'monster:wolf',
+      wildShapeBeastNamePt: 'Lobo',
+      wildShapeHitPointsCurrent: 11,
+      wildShapeHitPointsMax: 11,
+    });
     const fixture = TestBed.createComponent(TurnPanel);
-    fixture.componentRef.setInput('encounter', encounter({ combatants: [druid], currentCombatantId: 'sal' }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [druid], currentCombatantId: 'sal' }),
+    );
     fixture.componentRef.setInput('hitPointsMax', 38);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;

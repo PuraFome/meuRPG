@@ -7,7 +7,10 @@ import { textOf } from '../../../../core/format/text-testing';
 import { lightsPuzzle, lockPuzzle, summary } from '../../../../core/puzzles/puzzles-testing';
 import { PuzzleNotice } from './puzzle-notice';
 
-@Component({ imports: [PuzzleNotice], template: `<app-puzzle-notice campaignId="camp-1" [puzzles]="puzzles()" />` })
+@Component({
+  imports: [PuzzleNotice],
+  template: `<app-puzzle-notice campaignId="camp-1" [puzzles]="puzzles()" />`,
+})
 class Host {
   puzzles = signal<PuzzleSummary[]>([]);
 }
@@ -34,7 +37,9 @@ describe('PuzzleNotice (MR-038, E10-06 state 6)', () => {
   it('shows a card for the shown puzzle with "Abrir o quebra-cabeça", a link into the session with the puzzle in the address', async () => {
     const { el } = await render([summary(lightsPuzzle('a', 'O selo da Capela'))]);
     expect(textOf(el.querySelector('section'))).toContain('O mestre mostrou um quebra-cabeça');
-    expect(textOf(el.querySelector('section'))).toContain('O selo da Capela Apagar as luzes · todos jogam juntos');
+    expect(textOf(el.querySelector('section'))).toContain(
+      'O selo da Capela Apagar as luzes · todos jogam juntos',
+    );
     const open = el.querySelector('a')!;
     expect(open.textContent?.trim()).toBe('Abrir o quebra-cabeça');
     expect(open.getAttribute('href')).toBe('/campaigns/camp-1/session?puzzle=a');
@@ -48,7 +53,10 @@ describe('PuzzleNotice (MR-038, E10-06 state 6)', () => {
   });
 
   it('says a solved or stopped puzzle in words, and keeps the way back to it', async () => {
-    const { el } = await render([summary(lightsPuzzle('a', 'A'), { solved: true }), summary(lockPuzzle('b', 'B'), { stopped: true })]);
+    const { el } = await render([
+      summary(lightsPuzzle('a', 'A'), { solved: true }),
+      summary(lockPuzzle('b', 'B'), { stopped: true }),
+    ]);
     const cards = Array.from(el.querySelectorAll('section')).map((s) => textOf(s));
     expect(cards[0]).toContain('Resolvido pelo grupo');
     expect(cards[0]).toContain('Ver o quebra-cabeça');
@@ -59,7 +67,10 @@ describe('PuzzleNotice (MR-038, E10-06 state 6)', () => {
     const { el, host, settle } = await render([summary(lightsPuzzle('a', 'A'))]);
     const live = () => el.querySelector('[role="status"]')?.textContent?.trim();
     expect(live()).toBe('');
-    host.puzzles.set([summary(lightsPuzzle('a', 'A')), summary(lockPuzzle('b', 'O cofre do Refeitório'))]);
+    host.puzzles.set([
+      summary(lightsPuzzle('a', 'A')),
+      summary(lockPuzzle('b', 'O cofre do Refeitório')),
+    ]);
     await settle();
     expect(live()).toBe('O mestre mostrou o quebra-cabeça O cofre do Refeitório.');
   });

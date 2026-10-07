@@ -24,12 +24,17 @@ export function openSpellFilterSheet(
   bottomSheet: MatBottomSheet,
   data: SpellFilterSheetData,
 ): Observable<void | undefined> {
-  return openSheet<SpellFilterSheet, SpellFilterSheetData, void>(dialog, bottomSheet, SpellFilterSheet, {
-    data,
-    ariaLabel: 'Filtros',
-    labelledBy: 'spell-filters-t',
-    width: '480px',
-  });
+  return openSheet<SpellFilterSheet, SpellFilterSheetData, void>(
+    dialog,
+    bottomSheet,
+    SpellFilterSheet,
+    {
+      data,
+      ariaLabel: 'Filtros',
+      labelledBy: 'spell-filters-t',
+      width: '480px',
+    },
+  );
 }
 
 /**

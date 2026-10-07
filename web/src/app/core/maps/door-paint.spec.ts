@@ -7,7 +7,13 @@ import { NO_GAP_TEXT, hidesWhoStands, planDoor } from './door-paint';
 function reader(walls: readonly string[], doors: Readonly<Record<string, number>> = {}) {
   const wall = new Set(walls);
   return (layer: MapLayer, col: number, row: number) =>
-    layer === MapLayer.WALL ? (wall.has(`${col},${row}`) ? 1 : 0) : layer === MapLayer.DOORS ? (doors[`${col},${row}`] ?? 0) : 0;
+    layer === MapLayer.WALL
+      ? wall.has(`${col},${row}`)
+        ? 1
+        : 0
+      : layer === MapLayer.DOORS
+        ? (doors[`${col},${row}`] ?? 0)
+        : 0;
 }
 
 // A wall line down the middle (column 2), floor on both sides.
@@ -41,12 +47,20 @@ describe('planDoor (the "Porta" tool)', () => {
 
   it('puts a door in a gap that is already floor between two walls', () => {
     const gap = reader(['1,0', '1,2']);
-    expect(planDoor(gap, 3, 3, 1, 1, 3)).toEqual({ ok: true, kind: 3, writes: [{ layer: MapLayer.DOORS, value: 3 }] });
+    expect(planDoor(gap, 3, 3, 1, 1, 3)).toEqual({
+      ok: true,
+      kind: 3,
+      writes: [{ layer: MapLayer.DOORS, value: 3 }],
+    });
   });
 
   it('changes the kind of a door that is there, and does nothing for the same kind', () => {
     const closed = reader(['2,0', '2,2'], { '2,1': 2 });
-    expect(planDoor(closed, 5, 3, 2, 1, 3)).toEqual({ ok: true, kind: 3, writes: [{ layer: MapLayer.DOORS, value: 3 }] });
+    expect(planDoor(closed, 5, 3, 2, 1, 3)).toEqual({
+      ok: true,
+      kind: 3,
+      writes: [{ layer: MapLayer.DOORS, value: 3 }],
+    });
     expect(planDoor(closed, 5, 3, 2, 1, 2)).toEqual({ ok: true, kind: 2, writes: [] });
   });
 
@@ -72,6 +86,13 @@ describe('planDoor (the "Porta" tool)', () => {
 
 describe('hidesWhoStands', () => {
   it('is true for the doors that block sight: closed, locked and secret', () => {
-    expect([0, 1, 2, 3, 4, 5].map((k) => hidesWhoStands(k as 0 | 1 | 2 | 3 | 4 | 5))).toEqual([false, false, true, true, false, true]);
+    expect([0, 1, 2, 3, 4, 5].map((k) => hidesWhoStands(k as 0 | 1 | 2 | 3 | 4 | 5))).toEqual([
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+    ]);
   });
 });

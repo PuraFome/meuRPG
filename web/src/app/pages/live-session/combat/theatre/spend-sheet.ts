@@ -79,11 +79,23 @@ export class SpendSheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
 
-  protected readonly who = computed(() => this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatantId) ?? null);
-  protected readonly ft = signal(startAmount(this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatantId) ?? { movementLeftFt: 5 }));
+  protected readonly who = computed(
+    () =>
+      this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatantId) ?? null,
+  );
+  protected readonly ft = signal(
+    startAmount(
+      this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatantId) ?? {
+        movementLeftFt: 5,
+      },
+    ),
+  );
   protected readonly plan = computed(() => {
     const c = this.who();
-    return spendPlan(c ?? { speedDft: 1, movementLeftDft: 0, movementLeftFt: 0, movementUsedDft: 0 }, this.ft());
+    return spendPlan(
+      c ?? { speedDft: 1, movementLeftDft: 0, movementLeftFt: 0, movementUsedDft: 0 },
+      this.ft(),
+    );
   });
   protected readonly subtitle = computed(() => turnHas(this.plan().total));
   protected readonly can = computed(() => this.plan().ft > 0);
@@ -120,7 +132,13 @@ export class SpendSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.spendMovement(this.data.campaignId, this.data.encounterId, this.data.combatantId, this.plan().ft, this.key);
+      const res = await this.api.spendMovement(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.combatantId,
+        this.plan().ft,
+        this.key,
+      );
       this.data.state.apply(res.encounter);
       this.sheet.close(true);
     } catch (err) {

@@ -66,7 +66,9 @@ describe('point draft', () => {
 
     it('are refused past 4.000 characters, counting characters and not UTF-16 units', () => {
       expect(draftErrors({ ...draftOf(cena), hooks: '😀'.repeat(4000) })).toEqual({});
-      expect(draftErrors({ ...draftOf(cena), hooks: 'x'.repeat(4001) }).hooks).toBe('Use até 4.000 caracteres.');
+      expect(draftErrors({ ...draftOf(cena), hooks: 'x'.repeat(4001) }).hooks).toBe(
+        'Use até 4.000 caracteres.',
+      );
     });
 
     it('are not sent when the point stops being a Cena', () => {

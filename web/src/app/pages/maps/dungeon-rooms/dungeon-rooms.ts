@@ -1,10 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { DungeonRoom, GetDungeonRoomsResponse } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
+import type {
+  DungeonRoom,
+  GetDungeonRoomsResponse,
+} from '../../../../gen/meurpg/maps/v1/dungeons_pb';
 import { placeSceneFailure } from '../../../core/maps/dungeon-errors';
-import { TRAP_NOTE, behindSecretDoor, exitText, roomSizeText, stairsInRoom, stairsOutsideRooms } from '../../../core/maps/dungeon-layout';
+import {
+  TRAP_NOTE,
+  behindSecretDoor,
+  exitText,
+  roomSizeText,
+  stairsInRoom,
+  stairsOutsideRooms,
+} from '../../../core/maps/dungeon-layout';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import type { MapState } from '../../../core/maps/map-state';
 import { ActionKey } from '../../../core/connect/idempotency';
@@ -57,7 +75,11 @@ export class DungeonRooms {
   protected readonly rooms = computed(() => this.info().rooms);
   protected readonly entranceRoom = computed(() => {
     const e = this.info().entrance;
-    return e?.onStairs ? (this.info().rooms.find((r) => stairsInRoom(r, this.info().stairs).some((s) => s.x === e.x && s.y === e.y))?.id ?? null) : null;
+    return e?.onStairs
+      ? (this.info().rooms.find((r) =>
+          stairsInRoom(r, this.info().stairs).some((s) => s.x === e.x && s.y === e.y),
+        )?.id ?? null)
+      : null;
   });
 
   protected size(room: DungeonRoom): string {
@@ -79,7 +101,12 @@ export class DungeonRooms {
   protected readonly corridorStairs = computed(() =>
     stairsOutsideRooms(this.info().rooms, this.info().stairs).map((s) => {
       const e = this.info().entrance;
-      return { up: s.up, entrance: !!e?.onStairs && e.x === s.x && e.y === s.y, col: s.x + 1, row: s.y + 1 };
+      return {
+        up: s.up,
+        entrance: !!e?.onStairs && e.x === s.x && e.y === s.y,
+        col: s.x + 1,
+        row: s.y + 1,
+      };
     }),
   );
 
@@ -95,7 +122,11 @@ export class DungeonRooms {
   protected toggle(room: DungeonRoom): void {
     const next = this.selected() === room.id ? null : room.id;
     this.selected.set(next);
-    this.outline.emit(next === null || !room.floor ? null : { x: room.floor.x, y: room.floor.y, width: room.floor.width, height: room.floor.height });
+    this.outline.emit(
+      next === null || !room.floor
+        ? null
+        : { x: room.floor.x, y: room.floor.y, width: room.floor.width, height: room.floor.height },
+    );
   }
 
   protected async place(room: DungeonRoom): Promise<void> {
@@ -106,7 +137,12 @@ export class DungeonRooms {
     this.problem.set(null);
     this.message.set('');
     try {
-      const point = await this.api.placeScene(this.campaignId(), this.mapId(), room.id, this.placeKey.keyFor([this.mapId(), room.id]));
+      const point = await this.api.placeScene(
+        this.campaignId(),
+        this.mapId(),
+        room.id,
+        this.placeKey.keyFor([this.mapId(), room.id]),
+      );
       this.placeKey.renew();
       this.state().upsertPoint(point);
       this.message.set(`Cena “Sala ${room.id}” posta no mapa, escondida dos jogadores.`);

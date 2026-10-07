@@ -1,9 +1,17 @@
-import { canLower, canRaise, costOf, missingDie, pointsSpent, resultOfSet, typedInRange } from './ability-methods';
+import {
+  canLower,
+  canRaise,
+  costOf,
+  missingDie,
+  pointsSpent,
+  resultOfSet,
+  typedInRange,
+} from './ability-methods';
 
 const costs = [0, 1, 2, 3, 4, 5, 7, 9];
 
 describe('ability methods', () => {
-  it('adds the server\'s costs: 15, 14, 13, 10, 10 and 8 is 25 of 27', () => {
+  it("adds the server's costs: 15, 14, 13, 10, 10 and 8 is 25 of 27", () => {
     const scores = { str: 10, dex: 14, con: 13, int: 8, wis: 15, cha: 10 };
     expect(costOf(14, costs, 8)).toBe(7);
     expect(costOf(7, costs, 8)).toBeNull();
@@ -21,7 +29,11 @@ describe('ability methods', () => {
   });
 
   it('strikes the first of the lowest dice of a stored set', () => {
-    expect(resultOfSet({ dice: [6, 5, 5, 2], total: 16 })).toEqual({ total: 16, dice: [6, 5, 5, 2], dropped: 3 });
+    expect(resultOfSet({ dice: [6, 5, 5, 2], total: 16 })).toEqual({
+      total: 16,
+      dice: [6, 5, 5, 2],
+      dropped: 3,
+    });
     expect(resultOfSet({ dice: [3, 3, 4, 5], total: 12 }).dropped).toBe(0);
   });
 

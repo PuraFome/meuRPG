@@ -68,7 +68,9 @@ describe('App', () => {
   });
 
   it('draws what a player\'s session page hands the bar (the "Anotações" button), and nothing when it takes it back', () => {
-    @Component({ template: '<ng-template #bar><button class="notes-bar">Anotações</button></ng-template>' })
+    @Component({
+      template: '<ng-template #bar><button class="notes-bar">Anotações</button></ng-template>',
+    })
     class Host {
       readonly bar = viewChild.required<TemplateRef<unknown>>('bar');
     }
@@ -101,7 +103,10 @@ describe('App, the way into the content (WCAG 2.4.1, 2.4.3)', () => {
           { path: '', component: First },
           { path: 'second', component: Second },
         ]),
-        { provide: AuthService, useValue: { state: signal<AuthState>({ status: 'unknown' }).asReadonly() } },
+        {
+          provide: AuthService,
+          useValue: { state: signal<AuthState>({ status: 'unknown' }).asReadonly() },
+        },
       ],
     }).compileComponents();
   });
@@ -128,7 +133,9 @@ describe('App, the way into the content (WCAG 2.4.1, 2.4.3)', () => {
 
   it('leaves the focus alone on the first load', async () => {
     const { fixture, el } = await start();
-    expect(el.contains(document.activeElement) && document.activeElement !== document.body).toBe(false);
+    expect(el.contains(document.activeElement) && document.activeElement !== document.body).toBe(
+      false,
+    );
     fixture.destroy();
   });
 

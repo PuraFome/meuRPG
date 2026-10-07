@@ -1,4 +1,15 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -7,12 +18,26 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CharacterBlockedReason, type Character } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  CharacterBlockedReason,
+  type Character,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
-import { cannotLevelUpMessage, describeLevelUpFailure, refusalMessage, refusalStep, type LevelUpFailure } from '../../core/levelup/levelup-errors';
-import { STEP_LABELS, type LevelUpDone, type SheetKeys, type StepKey } from '../../core/levelup/levelup-flow';
+import {
+  cannotLevelUpMessage,
+  describeLevelUpFailure,
+  refusalMessage,
+  refusalStep,
+  type LevelUpFailure,
+} from '../../core/levelup/levelup-errors';
+import {
+  STEP_LABELS,
+  type LevelUpDone,
+  type SheetKeys,
+  type StepKey,
+} from '../../core/levelup/levelup-flow';
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import { AbilitiesStep } from './abilities-step/abilities-step';
@@ -97,14 +122,18 @@ export class LevelUpPage {
     return s.status === 'ready' ? s.session : null;
   });
   protected readonly steps = computed<StepKey[]>(() => this.session()?.draft.steps() ?? []);
-  protected readonly step = computed<StepKey>(() => this.steps()[Math.min(this.index(), this.steps().length - 1)] ?? 'hp');
+  protected readonly step = computed<StepKey>(
+    () => this.steps()[Math.min(this.index(), this.steps().length - 1)] ?? 'hp',
+  );
   protected readonly stepLabel = computed(() => STEP_LABELS[this.step()]);
   protected readonly isLast = computed(() => this.step() === 'summary');
   protected readonly isFirst = computed(() => this.index() === 0);
   protected readonly labels = STEP_LABELS;
 
   /** What blocks "Próximo": the choices still missing in this step. */
-  protected readonly missingHere = computed(() => this.session()?.draft.missingIn(this.step()) ?? []);
+  protected readonly missingHere = computed(
+    () => this.session()?.draft.missingIn(this.step()) ?? [],
+  );
   /** Why "Próximo" waits: a choice still missing, or a rule the server says the step's choices break. */
   protected readonly blockReason = computed(() => {
     const s = this.session();
@@ -113,7 +142,13 @@ export class LevelUpPage {
       return first.text;
     }
     const p = s?.preview.state();
-    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason, p.refusal.field) === this.step()) {
+    if (
+      p &&
+      !p.loading &&
+      p.refusal &&
+      this.step() !== 'summary' &&
+      refusalStep(p.refusal.reason, p.refusal.field) === this.step()
+    ) {
       return refusalMessage(p.refusal);
     }
     return '';
@@ -129,7 +164,12 @@ export class LevelUpPage {
   });
 
   protected readonly sheetHref = computed(() => this.sheetLink().join('/'));
-  protected readonly sheetLink = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId()]);
+  protected readonly sheetLink = computed(() => [
+    '/campaigns',
+    this.campaignId(),
+    'characters',
+    this.characterId(),
+  ]);
 
   constructor() {
     const destroyRef = inject(DestroyRef);
@@ -158,7 +198,10 @@ export class LevelUpPage {
       const d = s.draft;
       const choices = d.choices();
       // A table that makes everybody roll never shows the average, and the server would refuse to preview it.
-      const average = d.hpCard() === 'roll' && d.rolled() !== null && s.hpFixed !== 'roll' ? d.averageChoices() : null;
+      const average =
+        d.hpCard() === 'roll' && d.rolled() !== null && s.hpFixed !== 'roll'
+          ? d.averageChoices()
+          : null;
       untracked(() => {
         s.preview.request(choices, average, first);
         first = false;
@@ -169,7 +212,8 @@ export class LevelUpPage {
       const s = this.session();
       const after = s?.preview.state().after;
       if (s && after && s.draft.effective().prepares) {
-        const max = after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
+        const max =
+          after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
         if (max > 0) {
           untracked(() => s.draft.preparedMaxAfter.set(max));
         }
@@ -191,7 +235,11 @@ export class LevelUpPage {
       character = await this.client.character(campaignId, characterId);
       if (character.canAccessMasterNotes) {
         // The master's own call: the owning player levels up; the master edits the sheet.
-        this.state.set({ status: 'blocked', message: 'Quem sobe o nível é o jogador, pelo botão da ficha. O mestre ajusta a ficha pelo editor.' });
+        this.state.set({
+          status: 'blocked',
+          message:
+            'Quem sobe o nível é o jogador, pelo botão da ficha. O mestre ajusta a ficha pelo editor.',
+        });
         return;
       }
       const [options, catalog, preference] = await Promise.all([
@@ -200,19 +248,35 @@ export class LevelUpPage {
         this.client.dicePreference(campaignId).catch(() => 0),
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
-      const session = new LevelUpSession(campaignId, character, options, draft, this.client, preference, (key, name) =>
-        this.describeSpell(key, name),
+      const session = new LevelUpSession(
+        campaignId,
+        character,
+        options,
+        draft,
+        this.client,
+        preference,
+        (key, name) => this.describeSpell(key, name),
       );
       this.state.set({ status: 'ready', session });
       afterNextRender(() => this.watchFoot(), { injector: this.injector });
     } catch (err) {
       const failure = describeLevelUpFailure(err);
       let message = failure.message;
-      if (failure.kind === 'blocked' && failure.reason === CharacterBlockedReason.CANNOT_LEVEL_UP && character) {
+      if (
+        failure.kind === 'blocked' &&
+        failure.reason === CharacterBlockedReason.CANNOT_LEVEL_UP &&
+        character
+      ) {
         // The campaign's mode and the sheet's XP are known: say what is missing, not only that something is.
         const mode = await this.client.xpMode(campaignId).catch(() => XpMode.UNSPECIFIED);
-        const full = character.sheet?.content.case === 'full' ? character.sheet.content.value : null;
-        message = cannotLevelUpMessage(mode, full?.experiencePoints ?? 0, character.derived?.nextLevelXp ?? 0, character.derived?.totalLevel ?? 0);
+        const full =
+          character.sheet?.content.case === 'full' ? character.sheet.content.value : null;
+        message = cannotLevelUpMessage(
+          mode,
+          full?.experiencePoints ?? 0,
+          character.derived?.nextLevelXp ?? 0,
+          character.derived?.totalLevel ?? 0,
+        );
       }
       this.state.set({ status: failure.kind === 'blocked' ? 'blocked' : 'error', message });
     }
@@ -228,7 +292,9 @@ export class LevelUpPage {
       return;
     }
     this.footObserver?.disconnect();
-    this.footObserver = new ResizeObserver(() => this.host.nativeElement.style.setProperty('--foot-h', `${foot.offsetHeight}px`));
+    this.footObserver = new ResizeObserver(() =>
+      this.host.nativeElement.style.setProperty('--foot-h', `${foot.offsetHeight}px`),
+    );
     this.footObserver.observe(foot);
   }
 
@@ -239,7 +305,10 @@ export class LevelUpPage {
   }
 
   private describeSpell(key: string, name: string): void {
-    openSpellDetails(this.dialog, this.bottomSheet, { namePt: name, load: () => this.client.spellDetails(this.campaignId(), key) });
+    openSpellDetails(this.dialog, this.bottomSheet, {
+      namePt: name,
+      load: () => this.client.spellDetails(this.campaignId(), key),
+    });
   }
 
   protected title(s: LevelUpSession): string {
@@ -286,7 +355,9 @@ export class LevelUpPage {
     afterNextRender(
       () => {
         window.scrollTo({ top: 0 });
-        this.host.nativeElement.querySelector<HTMLElement>('.js-step')?.focus({ preventScroll: true });
+        this.host.nativeElement
+          .querySelector<HTMLElement>('.js-step')
+          ?.focus({ preventScroll: true });
       },
       { injector: this.injector },
     );
@@ -299,8 +370,12 @@ export class LevelUpPage {
       () => {
         this.clearAttention();
         const root = this.host.nativeElement;
-        const card = first ? root.querySelector<HTMLElement>(`#pick-${first.id}`) : root.querySelector<HTMLElement>('.body section');
-        const target = card?.querySelector<HTMLElement>('.rows input:not(:disabled), input:not(:disabled), button');
+        const card = first
+          ? root.querySelector<HTMLElement>(`#pick-${first.id}`)
+          : root.querySelector<HTMLElement>('.body section');
+        const target = card?.querySelector<HTMLElement>(
+          '.rows input:not(:disabled), input:not(:disabled), button',
+        );
         card?.setAttribute('data-attn', '');
         target?.scrollIntoView({ block: 'center' });
         target?.focus({ preventScroll: true, focusVisible: true } as FocusOptions);
@@ -317,7 +392,9 @@ export class LevelUpPage {
 
   /** The mark on a card goes when the player picks anything, or leaves the step. */
   protected clearAttention(): void {
-    this.host.nativeElement.querySelectorAll('[data-attn]').forEach((el) => el.removeAttribute('data-attn'));
+    this.host.nativeElement
+      .querySelectorAll('[data-attn]')
+      .forEach((el) => el.removeAttribute('data-attn'));
   }
 
   /** "Cancelar" and "Voltar para a ficha": with choices made, ask in place before discarding. */
@@ -342,7 +419,10 @@ export class LevelUpPage {
     const from = this.asking();
     this.asking.set(null);
     afterNextRender(
-      () => this.host.nativeElement.querySelector<HTMLElement>(from === 'top' ? '.js-leave-top' : '.js-leave-foot, .js-next')?.focus(),
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(from === 'top' ? '.js-leave-top' : '.js-leave-foot, .js-next')
+          ?.focus(),
       { injector: this.injector },
     );
   }
@@ -367,8 +447,16 @@ export class LevelUpPage {
     this.busy.set(true);
     this.failure.set(null);
     try {
-      const character = await this.client.levelUp(this.campaignId(), this.characterId(), s.revision(), s.draft.choices());
-      const done: LevelUpDone = { name: character.name, level: character.derived?.totalLevel ?? s.options.totalToLevel };
+      const character = await this.client.levelUp(
+        this.campaignId(),
+        this.characterId(),
+        s.revision(),
+        s.draft.choices(),
+      );
+      const done: LevelUpDone = {
+        name: character.name,
+        level: character.derived?.totalLevel ?? s.options.totalToLevel,
+      };
       await this.router.navigate(this.sheetLink(), { replaceUrl: true, state: { levelUp: done } });
     } catch (err) {
       this.show(describeLevelUpFailure(err));
@@ -380,7 +468,10 @@ export class LevelUpPage {
   private show(failure: LevelUpFailure): void {
     this.failure.set(failure);
     afterNextRender(
-      () => this.host.nativeElement.querySelector<HTMLElement>('.js-failure')?.scrollIntoView({ block: 'center' }),
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>('.js-failure')
+          ?.scrollIntoView({ block: 'center' }),
       { injector: this.injector },
     );
   }
@@ -404,9 +495,13 @@ export class LevelUpPage {
       return;
     }
     if (pickedCount(now.draft) < before) {
-      this.contentNote.set('O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.');
+      this.contentNote.set(
+        'O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.',
+      );
     } else if (offerSignature(now) !== offers) {
-      this.contentNote.set('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
+      this.contentNote.set(
+        'O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.',
+      );
     }
   }
 
@@ -427,8 +522,14 @@ export class LevelUpPage {
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
-      const session = new LevelUpSession(this.campaignId(), character, options, draft, this.client, old.preference, (key, name) =>
-        this.describeSpell(key, name),
+      const session = new LevelUpSession(
+        this.campaignId(),
+        character,
+        options,
+        draft,
+        this.client,
+        old.preference,
+        (key, name) => this.describeSpell(key, name),
       );
       old.stop();
       this.failure.set(null);
@@ -458,12 +559,19 @@ export class LevelUpPage {
   protected stepWords(step: StepKey | null): string {
     return step ? STEP_LABELS[step] : '';
   }
-
 }
 
 /** How many choices the person has made, to tell whether a re-read dropped one. */
 function pickedCount(d: LevelUpDraft): number {
-  return (d.subclassKey() ? 1 : 0) + d.cantrips().size + d.spells().size + d.prepared().size + d.features().size + d.skills().size + d.expertise().size;
+  return (
+    (d.subclassKey() ? 1 : 0) +
+    d.cantrips().size +
+    d.spells().size +
+    d.prepared().size +
+    d.features().size +
+    d.skills().size +
+    d.expertise().size
+  );
 }
 
 /** What the page offers to choose from (the subclasses, the spells, the classes): a change in it is what the note is about. */

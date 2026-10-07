@@ -55,7 +55,9 @@ export class LevelUpBanner {
       return `O mestre marcou ${name ? `“${name}”` : 'um marco'}. Você pode subir para o nível ${vm.totalLevel + 1}.`;
     }
     if (vm.levelUpReason === 'xp') {
-      return tight(`Você chegou a ${formatXp(vm.nextLevelXp)}. Você pode subir para o nível ${vm.totalLevel + 1}.`);
+      return tight(
+        `Você chegou a ${formatXp(vm.nextLevelXp)}. Você pode subir para o nível ${vm.totalLevel + 1}.`,
+      );
     }
     return `Você pode subir para o nível ${vm.totalLevel + 1}.`;
   });
@@ -79,7 +81,10 @@ export class LevelUpBanner {
         .listAwards(campaignId)
         .then((res) => {
           const award = res.awards.find(
-            (a) => a.mode === XPAwardMode.XP_AWARD_MODE_MILESTONE && !a.undone && a.shares.some((s) => s.characterId === id),
+            (a) =>
+              a.mode === XPAwardMode.XP_AWARD_MODE_MILESTONE &&
+              !a.undone &&
+              a.shares.some((s) => s.characterId === id),
           );
           this.milestone.set(award?.reason ?? '');
         })

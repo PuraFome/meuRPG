@@ -29,7 +29,14 @@ import type { CreatureFilter, SummonCast } from './creatures-client';
 type Init<T> = Partial<Omit<T, '$typeName' | '$unknown'>>;
 
 /** Convocar Familiar for a wizard: a ritual, no slot, one creature out of the given forms (key, name, none attack). */
-export function familiarSpell(forms: [string, string][] = [['monster:raven', 'Corvo'], ['monster:cat', 'Gato'], ['monster:bat', 'Morcego']], over: Init<SummonSpellOptions> = {}): SummonSpellOptions {
+export function familiarSpell(
+  forms: [string, string][] = [
+    ['monster:raven', 'Corvo'],
+    ['monster:cat', 'Gato'],
+    ['monster:bat', 'Morcego'],
+  ],
+  over: Init<SummonSpellOptions> = {},
+): SummonSpellOptions {
   return create(SummonSpellOptionsSchema, {
     spellKey: 'spell:find-familiar',
     namePt: 'Convocar Familiar',
@@ -37,21 +44,38 @@ export function familiarSpell(forms: [string, string][] = [['monster:raven', 'Co
     castingTimePt: '1 hora',
     ritual: true,
     canRitual: true,
-    circles: [{ circle: 1, options: [{ count: 1, attack: 1, forms: forms.map(([monsterKey, namePt]) => ({ monsterKey, namePt, attack: 1 })) }] }],
+    circles: [
+      {
+        circle: 1,
+        options: [
+          {
+            count: 1,
+            attack: 1,
+            forms: forms.map(([monsterKey, namePt]) => ({ monsterKey, namePt, attack: 1 })),
+          },
+        ],
+      },
+    ],
     ...over,
   });
 }
 
 /** Animar Mortos for a cleric with slots of the 3rd and the 5th circle: 1 and 5 undead. */
 export function undeadSpell(over: Init<SummonSpellOptions> = {}): SummonSpellOptions {
-  const forms = [{ monsterKey: 'monster:skeleton', namePt: 'Esqueleto', attack: 3 }, { monsterKey: 'monster:zombie', namePt: 'Zumbi', attack: 3 }];
+  const forms = [
+    { monsterKey: 'monster:skeleton', namePt: 'Esqueleto', attack: 3 },
+    { monsterKey: 'monster:zombie', namePt: 'Zumbi', attack: 3 },
+  ];
   return create(SummonSpellOptionsSchema, {
     spellKey: 'spell:animate-dead',
     namePt: 'Animar Mortos',
     level: 3,
     castingTimePt: '1 minuto',
     canCastWithSlot: true,
-    circles: [{ circle: 3, options: [{ count: 1, forms }] }, { circle: 5, options: [{ count: 5, forms }] }],
+    circles: [
+      { circle: 3, options: [{ count: 1, forms }] },
+      { circle: 5, options: [{ count: 5, forms }] },
+    ],
     ...over,
   });
 }
@@ -81,7 +105,10 @@ export function beastSpell(over: Init<SummonSpellOptions> = {}): SummonSpellOpti
 }
 
 /** What `GetSummonOptions` answers: the spells and the slots (level, total, free, pact). */
-export function summonAnswer(spells: SummonSpellOptions[], slots: [number, number, number, boolean?][] = []): GetSummonOptionsResponse {
+export function summonAnswer(
+  spells: SummonSpellOptions[],
+  slots: [number, number, number, boolean?][] = [],
+): GetSummonOptionsResponse {
   return create(GetSummonOptionsResponseSchema, {
     spells,
     slots: slots.map(([level, total, free, pact]) => ({ level, total, free, pact: pact ?? false })),
@@ -89,7 +116,11 @@ export function summonAnswer(spells: SummonSpellOptions[], slots: [number, numbe
 }
 
 /** A creature of a character, as `ListCharacterCreatures` sends it. */
-export function creature(id: string, name: string, over: Init<CharacterCreature> = {}): CharacterCreature {
+export function creature(
+  id: string,
+  name: string,
+  over: Init<CharacterCreature> = {},
+): CharacterCreature {
   return create(CharacterCreatureSchema, {
     id,
     characterId: 'char-1',
@@ -111,7 +142,11 @@ function crValue(cr: string): number {
 }
 
 /** A catalog row. */
-export function summary(key: string, namePt: string, over: Init<CreatureSummary> = {}): CreatureSummary {
+export function summary(
+  key: string,
+  namePt: string,
+  over: Init<CreatureSummary> = {},
+): CreatureSummary {
   return create(CreatureSummarySchema, {
     key,
     name: key.replace('monster:', ''),
@@ -129,7 +164,7 @@ export function summary(key: string, namePt: string, over: Init<CreatureSummary>
 export function raven(over: Init<Creature> = {}): Creature {
   const abilities = [2, 14, 8, 2, 12, 6].map((score, i) =>
     create(CreatureAbilityScoreSchema, {
-      ability: i + 1 as Ability,
+      ability: (i + 1) as Ability,
       namePt: ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'][i],
       score,
       modifier: Math.floor((score - 10) / 2),
@@ -145,14 +180,26 @@ export function raven(over: Init<Creature> = {}): Creature {
     abilities,
     skills: [{ key: 'skill:perception', namePt: 'Percepção', bonus: 3 }],
     passivePerception: 13,
-    traits: [{ name: 'Mimicry', text: 'The raven can mimic simple sounds it has heard.', usage: '' }],
-    actions: [create(CreatureActionSchema, { name: 'Beak', text: 'Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 1 piercing damage.', hasAttack: true, attackBonus: 4 })],
+    traits: [
+      { name: 'Mimicry', text: 'The raven can mimic simple sounds it has heard.', usage: '' },
+    ],
+    actions: [
+      create(CreatureActionSchema, {
+        name: 'Beak',
+        text: 'Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 1 piercing damage.',
+        hasAttack: true,
+        attackBonus: 4,
+      }),
+    ],
     ...over,
   });
 }
 
 /** Vitals with the slots the cast sheet reads. */
-export function vitalsWith(characterId: string, slots: { level: number; total: number; used: number }[]) {
+export function vitalsWith(
+  characterId: string,
+  slots: { level: number; total: number; used: number }[],
+) {
   return create(CharacterVitalsSchema, {
     characterId,
     spellSlots: slots.map((s) => create(SpellSlotUsageSchema, s)),
@@ -213,7 +260,8 @@ export class FakeCreaturesClient {
       (s) =>
         (q === '' || s.namePt.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) &&
         (!filter.type || s.type === filter.type) &&
-        (!filter.size || s.size.toLowerCase() === (CreatureSize[filter.size] ?? '').toLowerCase()) &&
+        (!filter.size ||
+          s.size.toLowerCase() === (CreatureSize[filter.size] ?? '').toLowerCase()) &&
         (!filter.minCr || crValue(s.challengeRating) >= crValue(filter.minCr)) &&
         (!filter.maxCr || crValue(s.challengeRating) <= crValue(filter.maxCr)),
     );
@@ -228,14 +276,25 @@ export class FakeCreaturesClient {
   npcCalls: { creatureKey: string; name: string; role: string; key: string }[] = [];
   /** Errors for the next `createNpc` calls, one per call, then it works. */
   npcFailures: unknown[] = [];
-  createNpc = vi.fn(async (_c: string, creatureKey: string, name: string, role: string, key: string) => {
-    this.npcCalls.push({ creatureKey, name, role, key });
-    const failure = this.npcFailures.shift();
-    if (failure) {
-      throw failure;
-    }
-    return create(CharacterSchema, { id: 'npc-1', name, sheet: { content: { case: 'basic', value: { attacks: [{ name: 'Clava grande' }, { name: 'Azagaia' }] } } } });
-  });
+  createNpc = vi.fn(
+    async (_c: string, creatureKey: string, name: string, role: string, key: string) => {
+      this.npcCalls.push({ creatureKey, name, role, key });
+      const failure = this.npcFailures.shift();
+      if (failure) {
+        throw failure;
+      }
+      return create(CharacterSchema, {
+        id: 'npc-1',
+        name,
+        sheet: {
+          content: {
+            case: 'basic',
+            value: { attacks: [{ name: 'Clava grande' }, { name: 'Azagaia' }] },
+          },
+        },
+      });
+    },
+  );
   statBlock = vi.fn(async (_c: string, key: string) => {
     const b = this.blocks.get(key);
     if (!b) {
@@ -288,7 +347,11 @@ export function flat(e: Element | null | undefined): string | undefined {
     n.insertAdjacentText('beforebegin', ' ');
     n.insertAdjacentText('afterend', ' ');
   });
-  return (copy.textContent ?? '').replace(/\s+/g, ' ').replace(/ ([.,:;)])/g, '$1').replace(/\( /g, '(').trim();
+  return (copy.textContent ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/ ([.,:;)])/g, '$1')
+    .replace(/\( /g, '(')
+    .trim();
 }
 
 /** Whether a button is off: a button that stays focusable says it with `aria-disabled`. */
@@ -301,7 +364,17 @@ export function ogre(over: Init<Creature> = {}): Creature {
   const scores = [19, 8, 16, 5, 7, 7];
   const names = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
   return create(CreatureSchema, {
-    summary: summary('monster:ogre', 'Ogro', { name: 'Ogre', size: 'Large', sizePt: 'Grande', type: 'giant', typePt: 'gigante', challengeRating: '2', xp: 450, armorClass: 11, hitPoints: 59 }),
+    summary: summary('monster:ogre', 'Ogro', {
+      name: 'Ogre',
+      size: 'Large',
+      sizePt: 'Grande',
+      type: 'giant',
+      typePt: 'gigante',
+      challengeRating: '2',
+      xp: 450,
+      armorClass: 11,
+      hitPoints: 59,
+    }),
     alignment: 'chaotic evil',
     armorClass: 11,
     armorClassLabelPt: 'Armadura',
@@ -311,7 +384,12 @@ export function ogre(over: Init<Creature> = {}): Creature {
     hitPointsRoll: '7d10+21',
     speedWalkFt: 40,
     abilities: scores.map((score, i) =>
-      create(CreatureAbilityScoreSchema, { ability: (i + 1) as Ability, namePt: names[i], score, modifier: Math.floor((score - 10) / 2) }),
+      create(CreatureAbilityScoreSchema, {
+        ability: (i + 1) as Ability,
+        namePt: names[i],
+        score,
+        modifier: Math.floor((score - 10) / 2),
+      }),
     ),
     senses: [{ namePt: 'Visão no escuro', rangeFt: 60 }],
     passivePerception: 8,
@@ -325,7 +403,9 @@ export function ogre(over: Init<Creature> = {}): Creature {
         text: 'Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage.',
         hasAttack: true,
         attackBonus: 6,
-        damage: [{ dice: '2d8+4', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'contundente' }],
+        damage: [
+          { dice: '2d8+4', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'contundente' },
+        ],
       }),
       create(CreatureActionSchema, {
         name: 'Javelin',
@@ -333,7 +413,9 @@ export function ogre(over: Init<Creature> = {}): Creature {
         text: 'Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 11 (2d6 + 4) piercing damage.',
         hasAttack: true,
         attackBonus: 6,
-        damage: [{ dice: '2d6+4', damageTypeKey: 'damage-type:piercing', damageTypePt: 'perfurante' }],
+        damage: [
+          { dice: '2d6+4', damageTypeKey: 'damage-type:piercing', damageTypePt: 'perfurante' },
+        ],
       }),
     ],
     ...over,
@@ -342,5 +424,7 @@ export function ogre(over: Init<Creature> = {}): Creature {
 
 /** A refused request as the server sends it: `invalid_argument` with the `InvalidField` detail naming the field. */
 export function invalidField(field: string): ConnectError {
-  return new ConnectError('refused', Code.InvalidArgument, undefined, [{ desc: InvalidFieldSchema, value: create(InvalidFieldSchema, { field }) }]);
+  return new ConnectError('refused', Code.InvalidArgument, undefined, [
+    { desc: InvalidFieldSchema, value: create(InvalidFieldSchema, { field }) },
+  ]);
 }

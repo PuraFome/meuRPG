@@ -48,7 +48,13 @@ type SessionsState =
  */
 @Component({
   selector: 'app-profile',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    ReactiveFormsModule,
+  ],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })

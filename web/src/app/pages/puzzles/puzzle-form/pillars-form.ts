@@ -97,6 +97,10 @@ export class PillarsForm {
 
   protected turnMural(turn: Turn): void {
     const n = this.draft().symbols;
-    this.patch.emit({ mural: this.draft().mural.map((v, i) => (i === turn.index ? (((v + turn.delta) % n) + n) % n : v)) });
+    this.patch.emit({
+      mural: this.draft().mural.map((v, i) =>
+        i === turn.index ? (((v + turn.delta) % n) + n) % n : v,
+      ),
+    });
   }
 }

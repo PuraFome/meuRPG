@@ -84,24 +84,44 @@ export class TreasurePanel {
 
   protected async mark(choice: FoundChoice): Promise<void> {
     await this.run(choice.point, 'marcar o tesouro', async () => {
-      const point = await this.api.markTreasureFound(this.campaignId(), this.state().map()?.id ?? '', choice.point.id, choice.characterIds);
+      const point = await this.api.markTreasureFound(
+        this.campaignId(),
+        this.state().map()?.id ?? '',
+        choice.point.id,
+        choice.characterIds,
+      );
       this.state().upsertPoint(point);
       const names = finders(point);
-      this.announcement.set(`${point.name} marcado como encontrado${names.length > 0 ? ` por ${listNames(names)}` : ''}. ${treasureSub(point)}.`);
+      this.announcement.set(
+        `${point.name} marcado como encontrado${names.length > 0 ? ` por ${listNames(names)}` : ''}. ${treasureSub(point)}.`,
+      );
     });
   }
 
   protected async showTo(point: MapPoint, revealed: boolean): Promise<void> {
     await this.run(point, revealed ? 'mostrar o tesouro' : 'esconder o tesouro', async () => {
-      const back = await this.api.setPointRevealed(this.campaignId(), this.state().map()?.id ?? '', point.id, revealed);
+      const back = await this.api.setPointRevealed(
+        this.campaignId(),
+        this.state().map()?.id ?? '',
+        point.id,
+        revealed,
+      );
       this.state().upsertPoint(back);
-      this.announcement.set(revealed ? `${back.name} aparece no mapa dos jogadores.` : `${back.name} saiu do mapa dos jogadores.`);
+      this.announcement.set(
+        revealed
+          ? `${back.name} aparece no mapa dos jogadores.`
+          : `${back.name} saiu do mapa dos jogadores.`,
+      );
     });
   }
 
   protected async unmark(point: MapPoint): Promise<void> {
     await this.run(point, 'desmarcar o tesouro', async () => {
-      const back = await this.api.unmarkTreasureFound(this.campaignId(), this.state().map()?.id ?? '', point.id);
+      const back = await this.api.unmarkTreasureFound(
+        this.campaignId(),
+        this.state().map()?.id ?? '',
+        point.id,
+      );
       this.state().upsertPoint(back);
       this.announcement.set(`${back.name} voltou a ficar escondido.`);
     });

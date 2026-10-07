@@ -21,8 +21,18 @@ import {
   targetAfter,
   targetRows,
 } from '../../../../core/combat/attack-flow';
-import { type AttackDie, type DamageDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
-import { damageFormula, diceName, rollFormula, sumRange } from '../../../../core/combat/combat-dice';
+import {
+  type AttackDie,
+  type DamageDie,
+  CombatClient,
+  newKey,
+} from '../../../../core/combat/combat-client';
+import {
+  damageFormula,
+  diceName,
+  rollFormula,
+  sumRange,
+} from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
@@ -98,7 +108,9 @@ export class AttackSheet {
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly attack = this.data.attack;
 
-  protected readonly stage = signal<AttackStage>(this.data.resume ? 'damage' : this.data.opportunity ? 'roll' : 'target');
+  protected readonly stage = signal<AttackStage>(
+    this.data.resume ? 'damage' : this.data.opportunity ? 'roll' : 'target',
+  );
   protected readonly targetId = signal<string | null>(this.data.opportunity?.targetId ?? null);
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
@@ -129,19 +141,35 @@ export class AttackSheet {
     const e = this.data.state.encounter();
     return rows.map((r) => {
       const c = e?.combatants.find((x) => x.id === r.id);
-      const ally = c && (isPlayer(c) || c.side === CombatantSide.PARTY) ? (article(c.label) === 'a' ? 'Aliada' : 'Aliado') : '';
+      const ally =
+        c && (isPlayer(c) || c.side === CombatantSide.PARTY)
+          ? article(c.label) === 'a'
+            ? 'Aliada'
+            : 'Aliado'
+          : '';
       return ally ? { ...r, sub: tight(joinDots([r.sub, ally].filter(Boolean))) } : r;
     });
   }
   private readonly baseRows = computed(() =>
     this.data.opportunity
-      ? [{ id: this.data.opportunity.targetId, label: this.data.opportunity.targetLabel, sub: '', blocked: '', cover: '', coverMark: null }]
+      ? [
+          {
+            id: this.data.opportunity.targetId,
+            label: this.data.opportunity.targetLabel,
+            sub: '',
+            blocked: '',
+            cover: '',
+            coverMark: null,
+          },
+        ]
       : this.data.asReaction
-      ? targetRows(
-          this.data.targets.map((t) => ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t),
-          5,
-        )
-      : targetRows(this.data.targets, this.attack.rangeFt),
+        ? targetRows(
+            this.data.targets.map(
+              (t) => ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t,
+            ),
+            5,
+          )
+        : targetRows(this.data.targets, this.attack.rangeFt),
   );
   protected readonly stepList = computed(() => steps(this.stage()));
   protected readonly target = computed(() => {
@@ -160,7 +188,13 @@ export class AttackSheet {
 
   protected readonly outcome = computed(() => {
     const r = this.roll();
-    return r ? { word: outcomeWord(r.outcome), hit: isHit(r.outcome), crit: r.outcome === AttackOutcome.CRITICAL_HIT } : null;
+    return r
+      ? {
+          word: outcomeWord(r.outcome),
+          hit: isHit(r.outcome),
+          crit: r.outcome === AttackOutcome.CRITICAL_HIT,
+        }
+      : null;
   });
   protected readonly d20Formula = computed(() => {
     const r = this.roll()?.d20;
@@ -169,7 +203,14 @@ export class AttackSheet {
   /** The dice of the damage still to roll: "2d6" (doubled on a critical hit). */
   protected readonly dice = computed(() => {
     const p = this.pending();
-    return p ? { count: p.diceCount, sides: p.diceSides, bonus: p.bonus, name: diceName(p.diceCount, p.diceSides) } : null;
+    return p
+      ? {
+          count: p.diceCount,
+          sides: p.diceSides,
+          bonus: p.bonus,
+          name: diceName(p.diceCount, p.diceSides),
+        }
+      : null;
   });
   protected readonly range = computed(() => {
     const d = this.dice();
@@ -213,23 +254,37 @@ export class AttackSheet {
     this.typing() ? 'Digite o resultado do dado' : `Atacar com ${this.name}`,
   );
   protected readonly subtitle = computed(() =>
-    this.typing() ? `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}` : this.detail,
+    this.typing()
+      ? `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}`
+      : this.detail,
   );
   protected readonly rollLabel = computed(
     () => `Role 1d20 para ${this.name} (${this.signedBonus()})`,
   );
   protected readonly damageLabel = computed(() => {
     const d = this.dice();
-    return d && d.count > 1 ? `Role ${d.name} para o dano: some os dois` : `Role ${d?.name ?? ''} para o dano`;
+    return d && d.count > 1
+      ? `Role ${d.name} para o dano: some os dois`
+      : `Role ${d?.name ?? ''} para o dano`;
   });
   protected readonly damageHint = computed(() => {
     const r = this.range();
     const p = this.pending();
-    return criticalTypedHint(p?.criticalRule ?? 0, p ? diceName(p.diceCount, p.diceSides) : '', r.min, r.max, p?.criticalMax ?? 0);
+    return criticalTypedHint(
+      p?.criticalRule ?? 0,
+      p ? diceName(p.diceCount, p.diceSides) : '',
+      r.min,
+      r.max,
+      p?.criticalMax ?? 0,
+    );
   });
   /** What the typed sum is added to: the modifier and the critical's fixed maximum (the server's numbers, shown in the total before it is sent). */
-  protected readonly damageModifier = computed(() => (this.pending()?.bonus ?? 0) + (this.pending()?.criticalMax ?? 0));
-  protected readonly fixedText = computed(() => fixedParts(this.pending()?.criticalMax ?? 0, this.pending()?.bonus ?? 0));
+  protected readonly damageModifier = computed(
+    () => (this.pending()?.bonus ?? 0) + (this.pending()?.criticalMax ?? 0),
+  );
+  protected readonly fixedText = computed(() =>
+    fixedParts(this.pending()?.criticalMax ?? 0, this.pending()?.bonus ?? 0),
+  );
   /** The critical's line only for whoever rolls physical dice (the app's dice are the server's). */
   protected readonly showCritical = computed(() => !this.canApp || this.typing());
   /** The line above the damage's dice: what a critical hit rolls under the table's rule ("role os dados duas vezes", "o máximo mais uma rolagem"), or "Acertou: role o dano.". */
@@ -242,7 +297,9 @@ export class AttackSheet {
     if (hint) {
       return hint.line;
     }
-    return p.critical || this.outcome()?.crit ? `Acerto crítico: os dados do dano dobram (${diceName(p.diceCount, p.diceSides)}).` : 'Acertou: role o dano.';
+    return p.critical || this.outcome()?.crit
+      ? `Acerto crítico: os dados do dano dobram (${diceName(p.diceCount, p.diceSides)}).`
+      : 'Acertou: role o dano.';
   });
   /** A combat without a map: the master judges the reach, and the list says so instead of "Longe demais". */
   protected readonly theatre = computed(() => isTheatre(this.data.state.encounter()));
@@ -340,7 +397,13 @@ export class AttackSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.rollDamage(this.data.campaignId, this.data.encounterId, p.id, die, this.damageKey);
+      const res = await this.api.rollDamage(
+        this.data.campaignId,
+        this.data.encounterId,
+        p.id,
+        die,
+        this.damageKey,
+      );
       this.data.state.apply(res.encounter);
       this.damage.set(res.pending);
       this.typing.set(false);

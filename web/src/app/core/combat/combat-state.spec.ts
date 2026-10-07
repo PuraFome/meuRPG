@@ -3,7 +3,10 @@ import { CombatState } from './combat-state';
 import { combatant, encounter } from './combat-testing';
 
 describe('CombatState', () => {
-  const two = [combatant({ id: 'a', label: 'A', col: 1, row: 1 }), combatant({ id: 'b', label: 'B' })];
+  const two = [
+    combatant({ id: 'a', label: 'A', col: 1, row: 1 }),
+    combatant({ id: 'b', label: 'B' }),
+  ];
 
   it('keeps the newer of two copies of the same combat', () => {
     const state = new CombatState();
@@ -32,10 +35,21 @@ describe('CombatState', () => {
 
   it('asks to read again when the turn or the move is about something unknown', () => {
     const state = new CombatState();
-    expect(state.applyTurn({ encounterId: 'enc', round: 1, currentCombatantId: 'a', masterTurn: false })).toBe(false);
+    expect(
+      state.applyTurn({ encounterId: 'enc', round: 1, currentCombatantId: 'a', masterTurn: false }),
+    ).toBe(false);
     state.apply(encounter({ combatants: two }));
-    expect(state.applyTurn({ encounterId: 'other', round: 1, currentCombatantId: 'a', masterTurn: false })).toBe(false);
-    expect(state.applyMove({ encounterId: 'enc', combatantId: 'ghost', col: 1, row: 1 })).toBe(false);
+    expect(
+      state.applyTurn({
+        encounterId: 'other',
+        round: 1,
+        currentCombatantId: 'a',
+        masterTurn: false,
+      }),
+    ).toBe(false);
+    expect(state.applyMove({ encounterId: 'enc', combatantId: 'ghost', col: 1, row: 1 })).toBe(
+      false,
+    );
   });
 
   it('applies combatant_moved in place and marks the combatant placed', () => {

@@ -26,7 +26,12 @@ export function noticerRow(n: TrapNoticer): Row {
     where: !n.onMap ? 'Fora do mapa' : n.inRange ? 'Perto, até 3 m' : 'Longe, a mais de 3 m',
     whereNote: n.onMap && n.inRange && !n.sees ? 'não vê a área' : '',
     verdict,
-    verdictWord: verdict === 'knows' ? word : near ? word.charAt(0).toUpperCase() + word.slice(1) : `Se chegar a 3 m: ${word}`,
+    verdictWord:
+      verdict === 'knows'
+        ? word
+        : near
+          ? word.charAt(0).toUpperCase() + word.slice(1)
+          : `Se chegar a 3 m: ${word}`,
     penalty: n.lightPenalty < 0 ? `${n.lightPenalty.toString().replace('-', '−')} na penumbra` : '',
   };
 }

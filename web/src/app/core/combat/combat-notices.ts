@@ -31,7 +31,9 @@ export function formNoticeText(ended: FormEnded): string {
   const beast = `${a === 'a' ? 'A' : 'O'} ${ended.beast}`;
   switch (ended.reason) {
     case WildShapeEndReason.DAMAGE:
-      return tight(`${beast} caiu a 0 PV e você voltou à forma normal.${ended.carried > 0 ? ` ${ended.carried} de dano passaram para você.` : ''}`);
+      return tight(
+        `${beast} caiu a 0 PV e você voltou à forma normal.${ended.carried > 0 ? ` ${ended.carried} de dano passaram para você.` : ''}`,
+      );
     case WildShapeEndReason.MASTER:
       return `O mestre levou ${a} ${ended.beast} a 0 PV e você voltou à forma normal.`;
     case WildShapeEndReason.ZERO_HP:
@@ -53,7 +55,12 @@ export class FormNotices {
   private combat = '';
 
   /** `reset` says the combat changed (clear what was on screen); `notice` is the new end to tell, if any. */
-  read(encounterId: string, ownId: string, loaded: boolean, entries: readonly CombatLogEntry[]): { reset: boolean; notice: FormEnded | null } {
+  read(
+    encounterId: string,
+    ownId: string,
+    loaded: boolean,
+    entries: readonly CombatLogEntry[],
+  ): { reset: boolean; notice: FormEnded | null } {
     const reset = encounterId !== this.combat;
     if (reset) {
       this.combat = encounterId;
@@ -62,7 +69,13 @@ export class FormNotices {
     if (!loaded || !ownId) {
       return { reset, notice: null };
     }
-    const lines = entries.filter((en) => en.kind === CombatLogKind.WILD_SHAPE && en.actorId === ownId && !!en.wildShape && !en.wildShape.started);
+    const lines = entries.filter(
+      (en) =>
+        en.kind === CombatLogKind.WILD_SHAPE &&
+        en.actorId === ownId &&
+        !!en.wildShape &&
+        !en.wildShape.started,
+    );
     if (this.seen === null) {
       this.seen = new Set(lines.map((l) => l.id));
       return { reset, notice: null };
@@ -74,7 +87,11 @@ export class FormNotices {
       }
       this.seen.add(line.id);
       if (line.wildShape.endReason !== WildShapeEndReason.LEFT) {
-        notice = { beast: line.wildShape.beastNamePt, reason: line.wildShape.endReason, carried: line.wildShape.carriedDamage };
+        notice = {
+          beast: line.wildShape.beastNamePt,
+          reason: line.wildShape.endReason,
+          carried: line.wildShape.carriedDamage,
+        };
       }
     }
     return { reset, notice };
@@ -94,7 +111,10 @@ export function lostNoticeText(lost: LostConcentration): string {
     return base;
   }
   const fem = lost.gone.length > 1 ? groupFeminine(lost.gone) : false;
-  const who = lost.gone.length > 1 ? `${fem ? 'As' : 'Os'} ${lost.gone.length} ${groupName(lost.gone)} sumiram.` : `${lost.gone[0].label} sumiu.`;
+  const who =
+    lost.gone.length > 1
+      ? `${fem ? 'As' : 'Os'} ${lost.gone.length} ${groupName(lost.gone)} sumiram.`
+      : `${lost.gone[0].label} sumiu.`;
   return tight(`${base} ${who}`);
 }
 
@@ -111,7 +131,12 @@ export class ConcentrationWatch {
   endedByMe = false;
 
   /** `notice` is `undefined` when nothing changes, `null` to clear what is shown, a loss to show. */
-  read(encounterId: string, spell: string, creatures: readonly Combatant[], shown: LostConcentration | null): LostConcentration | null | undefined {
+  read(
+    encounterId: string,
+    spell: string,
+    creatures: readonly Combatant[],
+    shown: LostConcentration | null,
+  ): LostConcentration | null | undefined {
     let out: LostConcentration | null | undefined;
     if (encounterId !== this.combat) {
       this.combat = encounterId;
@@ -120,7 +145,11 @@ export class ConcentrationWatch {
       out = shown ? null : undefined;
     }
     const current = out === null ? null : shown;
-    if (current && (current.gone.some((g) => creatures.some((c) => c.id === g.id)) || (spell !== '' && spell === current.spell))) {
+    if (
+      current &&
+      (current.gone.some((g) => creatures.some((c) => c.id === g.id)) ||
+        (spell !== '' && spell === current.spell))
+    ) {
       out = null;
     }
     if (this.held && spell !== this.held.spell) {
@@ -149,8 +178,15 @@ export function wildActionLine(
     return null;
   }
   const n = feature.usesLeft;
-  const uses = resource ? `restam ${n} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}` : `restam ${n} ${n === 1 ? 'uso' : 'usos'}`;
-  const back = resource?.recharge === 'long_rest' ? 'volta no descanso longo' : resource?.recharge === 'dawn' ? 'volta ao amanhecer' : 'volta no descanso curto ou longo';
+  const uses = resource
+    ? `restam ${n} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}`
+    : `restam ${n} ${n === 1 ? 'uso' : 'usos'}`;
+  const back =
+    resource?.recharge === 'long_rest'
+      ? 'volta no descanso longo'
+      : resource?.recharge === 'dawn'
+        ? 'volta ao amanhecer'
+        : 'volta no descanso curto ou longo';
   const reason = feature.enabled
     ? ''
     : feature.reason?.code === DisabledReasonCode.NO_USES
@@ -158,5 +194,9 @@ export function wildActionLine(
       : feature.reason?.code === DisabledReasonCode.ACTION_USED
         ? 'Sem ação disponível'
         : reasonText(feature.reason);
-  return { key: feature.action.key, detail: tight(joinDots(['Vire uma fera', uses, back])), reason };
+  return {
+    key: feature.action.key,
+    detail: tight(joinDots(['Vire uma fera', uses, back])),
+    reason,
+  };
 }

@@ -133,7 +133,12 @@ export type LiveEventVm =
   | { readonly kind: 'leftImages' }
   /** `encounter_changed`: the combat changed, read it again if `revision`
    * is newer than the one on screen. */
-  | { readonly kind: 'encounterChanged'; readonly encounterId: string; readonly revision: number; readonly mode?: number }
+  | {
+      readonly kind: 'encounterChanged';
+      readonly encounterId: string;
+      readonly revision: number;
+      readonly mode?: number;
+    }
   /** `turn_changed`, as this member may see it. */
   | ({ readonly kind: 'turnChanged' } & TurnChange)
   /** `combatant_moved`. */

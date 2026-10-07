@@ -38,7 +38,10 @@ export function steps(stage: AttackStage): Step[] {
 
 /** Where the attack goes after the d20: a hit with damage to roll goes on
  * to Dano; a miss, or a hit that has no damage to roll, is finished. */
-export function stageAfterRoll(outcome: AttackOutcome, pending: PendingDamage | undefined): AttackStage {
+export function stageAfterRoll(
+  outcome: AttackOutcome,
+  pending: PendingDamage | undefined,
+): AttackStage {
   const hit = outcome === AttackOutcome.HIT || outcome === AttackOutcome.CRITICAL_HIT;
   return hit && pending?.status === PendingDamageStatus.AWAITING_ROLL ? 'damage' : 'done';
 }
@@ -95,7 +98,12 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
         id: t.combatantId,
         label: t.label,
         sub: tight(joinDots(parts)),
-        blocked: cover.kind === 'blocked' ? cover.text : t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
+        blocked:
+          cover.kind === 'blocked'
+            ? cover.text
+            : t.tooFar
+              ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`)
+              : '',
         cover: cover.kind === 'listed' ? cover.text : '',
         coverMark: cover.kind === 'listed' ? cover.mark : null,
       },
@@ -143,7 +151,9 @@ export function pendingNote(pendings: readonly PendingDamage[]): string | null {
   if (pendings.some((p) => p.status === PendingDamageStatus.AWAITING_REACTION)) {
     return 'Falta a reação do alvo (Escudo)';
   }
-  return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL) ? 'Falta rolar o dano' : null;
+  return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL)
+    ? 'Falta rolar o dano'
+    : null;
 }
 
 /** The damages that still stand in the way of passing the turn. */

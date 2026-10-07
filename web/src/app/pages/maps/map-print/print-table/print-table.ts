@@ -40,11 +40,10 @@ export class PrintTable {
   readonly paperId = input.required<PaperId>();
   readonly mapSize = input.required<MapSizeCm>();
 
-  protected readonly intro = computed(
-    () =>
-      tightCm(
-        `O mapa tem ${cm1(this.mapSize().width)} × ${cm1(this.mapSize().height)} cm. Folhas por lado = o teto de (tamanho do mapa − 1 cm) ÷ (área útil − 1 cm). Área útil = folha − 2 cm de margem.`,
-      ),
+  protected readonly intro = computed(() =>
+    tightCm(
+      `O mapa tem ${cm1(this.mapSize().width)} × ${cm1(this.mapSize().height)} cm. Folhas por lado = o teto de (tamanho do mapa − 1 cm) ÷ (área útil − 1 cm). Área útil = folha − 2 cm de margem.`,
+    ),
   );
 
   protected readonly rows = computed<Row[]>(() =>

@@ -1,4 +1,16 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import { type Combatant, CoverDegree } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -138,7 +150,10 @@ export class CoverPanel {
     this.draft.set(c.coverMark === CoverDegree.UNSPECIFIED ? CoverDegree.NONE : c.coverMark);
     this.editing.set(c);
     // The focus opens on the degree that is marked.
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLInputElement>('input:checked')?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLInputElement>('input:checked')?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected close(): void {

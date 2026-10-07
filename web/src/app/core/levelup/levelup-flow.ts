@@ -3,7 +3,11 @@ import {
   type LevelUpFeatureChoice,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability as GenAbility, type Skill, type Spell } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  Ability as GenAbility,
+  type Skill,
+  type Spell,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, spellLevelLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
 import { isTableKey } from '../content/catalog';
@@ -117,11 +121,18 @@ function byLevelThenName(a: Spell, b: Spell): number {
 
 /** "2º nível · Conjuração", the way a spell row reads; extras follow ("ritual"). */
 export function spellSub(spell: Spell, ...extras: string[]): string {
-  return joinDots([spellLevelLabel(spell.level), spell.schoolNamePt, ...extras].filter((s) => s !== ''));
+  return joinDots(
+    [spellLevelLabel(spell.level), spell.schoolNamePt, ...extras].filter((s) => s !== ''),
+  );
 }
 
 function toItem(spell: Spell, ...extras: string[]): PickItem {
-  return { key: spell.key, name: spell.namePt, sub: spellSub(spell, ...extras), ...(isTableKey(spell.key) ? { table: true } : {}) };
+  return {
+    key: spell.key,
+    name: spell.namePt,
+    sub: spellSub(spell, ...extras),
+    ...(isTableKey(spell.key) ? { table: true } : {}),
+  };
 }
 
 /** What the sheet has today, by content key: the pickers never offer it twice. */
@@ -134,7 +145,11 @@ export interface SheetKeys {
 }
 
 /** The class's cantrips the character does not know yet. */
-export function cantripOptions(o: LevelUpOptions, spells: readonly Spell[], have: SheetKeys): PickItem[] {
+export function cantripOptions(
+  o: LevelUpOptions,
+  spells: readonly Spell[],
+  have: SheetKeys,
+): PickItem[] {
   const owned = new Set(have.cantrips);
   return spells
     .filter((s) => s.level === 0 && s.classKeys.includes(o.spellListClassKey) && !owned.has(s.key))
@@ -145,7 +160,11 @@ export function cantripOptions(o: LevelUpOptions, spells: readonly Spell[], have
 /** The new spells for the book or the spells known: the class's list, up to the
  * highest circle it casts, minus what is known. A Bard's Magical Secrets takes any
  * class's list (the server checks how many may come from outside). */
-export function spellOptions(o: LevelUpOptions, spells: readonly Spell[], have: SheetKeys): PickItem[] {
+export function spellOptions(
+  o: LevelUpOptions,
+  spells: readonly Spell[],
+  have: SheetKeys,
+): PickItem[] {
   const owned = new Set(have.known);
   return spells
     .filter(
@@ -183,7 +202,12 @@ export function preparedOptions(
     )
     .sort(byLevelThenName)
     .map((s) =>
-      toItem(s, ...[newSpells.has(s.key) ? 'nova no livro' : '', s.ritual ? 'ritual' : ''].filter((e) => e !== '')),
+      toItem(
+        s,
+        ...[newSpells.has(s.key) ? 'nova no livro' : '', s.ritual ? 'ritual' : ''].filter(
+          (e) => e !== '',
+        ),
+      ),
     );
 }
 

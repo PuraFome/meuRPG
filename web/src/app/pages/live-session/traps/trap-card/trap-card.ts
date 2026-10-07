@@ -2,7 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type GetTrapNoticersResponse, type MapPoint, TrapState } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type GetTrapNoticersResponse,
+  type MapPoint,
+  TrapState,
+} from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { joinDots } from '../../../../core/format/text';
 import {
   areaWords,
@@ -59,13 +63,19 @@ export class TrapCard {
   protected readonly stateIcon = computed(() => trapStateIcon(this.state()));
   protected readonly visibility = computed(() => trapVisibility(this.point()));
   protected readonly sub = computed(() =>
-    joinDots([firstLine(this.point().description), areaWords(this.point().trap?.areaSize ?? 1)].filter(Boolean)),
+    joinDots(
+      [firstLine(this.point().description), areaWords(this.point().trap?.areaSize ?? 1)].filter(
+        Boolean,
+      ),
+    ),
   );
   protected readonly dcLine = computed(() => trapDcLine(this.point()));
   protected readonly notice = computed(() => this.point().trap?.noticeDc ?? 0);
   protected readonly find = computed(() => this.point().trap?.findDc ?? 0);
   protected readonly trigger = computed(() => triggerWord(this.point().trap?.trigger ?? 0));
-  protected readonly effect = computed(() => effectLine(this.point()) || 'Só descrição, sem efeito calculado');
+  protected readonly effect = computed(
+    () => effectLine(this.point()) || 'Só descrição, sem efeito calculado',
+  );
   protected readonly everyoneSees = computed(() => this.visibility().kind === 'all');
   protected readonly closedNote = computed(() =>
     this.notice() === 0 && this.armed() ? 'Ninguém nota sozinho: só se acha com Investigação.' : '',

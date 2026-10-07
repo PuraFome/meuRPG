@@ -59,11 +59,15 @@ export class PrintPreview {
   /** The bands two neighbours share, as [start, length] along each axis. */
   protected readonly vBands = computed(() => {
     const p = this.plan();
-    return p ? Array.from({ length: p.columns - 1 }, (_, i) => (i + 1) * (p.usableW - OVERLAP_CM)) : [];
+    return p
+      ? Array.from({ length: p.columns - 1 }, (_, i) => (i + 1) * (p.usableW - OVERLAP_CM))
+      : [];
   });
   protected readonly hBands = computed(() => {
     const p = this.plan();
-    return p ? Array.from({ length: p.rows - 1 }, (_, i) => (i + 1) * (p.usableH - OVERLAP_CM)) : [];
+    return p
+      ? Array.from({ length: p.rows - 1 }, (_, i) => (i + 1) * (p.usableH - OVERLAP_CM))
+      : [];
   });
 
   /** The grid over the map: a path of lines at every square. */

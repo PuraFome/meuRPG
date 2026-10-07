@@ -48,9 +48,13 @@ export class MilestoneSheet {
     nonNullable: true,
     validators: [filled, Validators.maxLength(120)],
   });
-  private readonly reasonText = toSignal(this.reason.valueChanges.pipe(startWith('')), { initialValue: '' });
+  private readonly reasonText = toSignal(this.reason.valueChanges.pipe(startWith('')), {
+    initialValue: '',
+  });
 
-  protected readonly checked = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
+  protected readonly checked = signal<ReadonlySet<string>>(
+    new Set(this.data.rows.map((r) => r.id)),
+  );
   protected readonly busy = signal(false);
   protected readonly error = signal('');
 

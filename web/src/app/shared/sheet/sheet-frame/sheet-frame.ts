@@ -1,4 +1,14 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -79,7 +89,9 @@ export class SheetFrame {
         // Content that shows up later (an `@if` block) is observed too, and the check runs again.
         if (typeof MutationObserver === 'function') {
           const mutations = new MutationObserver((records) => {
-            records.forEach((r) => r.addedNodes.forEach((n) => n instanceof Element && observer.observe(n)));
+            records.forEach((r) =>
+              r.addedNodes.forEach((n) => n instanceof Element && observer.observe(n)),
+            );
             check();
           });
           mutations.observe(el, { childList: true });

@@ -1,4 +1,16 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -48,7 +60,19 @@ export type RaceMode = 'race' | 'subrace';
 @Component({
   selector: 'app-race-editor',
   imports: [
-    EditorAlerts, EditorBar, PlayersSwitch, EntryRead, FeatureEditor, MatButtonModule, MatIconModule, NumberStepper, PickList, RouterLink, SelectField, SwitchField, TextField,
+    EditorAlerts,
+    EditorBar,
+    PlayersSwitch,
+    EntryRead,
+    FeatureEditor,
+    MatButtonModule,
+    MatIconModule,
+    NumberStepper,
+    PickList,
+    RouterLink,
+    SelectField,
+    SwitchField,
+    TextField,
   ],
   templateUrl: './race-editor.html',
   styleUrl: '../editor.scss',
@@ -75,7 +99,12 @@ export class RaceEditor {
   readonly cancelled = output<void>();
 
   protected readonly race = signal<RaceDraft>(emptyRace());
-  protected readonly sub = signal<SubraceDraft>({ name: '', raceKey: '', bonuses: noBonuses(), traits: [] });
+  protected readonly sub = signal<SubraceDraft>({
+    name: '',
+    raceKey: '',
+    bonuses: noBonuses(),
+    traits: [],
+  });
   protected readonly saver = new EntrySaver(
     { aOne: 'uma raça', nameOf: (key) => this.entries().find((e) => e.key === key)?.namePt ?? '' },
     'a raça',
@@ -91,17 +120,27 @@ export class RaceEditor {
   protected readonly raceOptions = computed<SelectOption[]>(() => [...this.catalog().races]);
   protected readonly raceKnown = computed(() => this.sub().raceKey !== '');
   protected readonly languageOptions = computed<SelectOption[]>(() =>
-    this.menu().list('languages').map((l) => ({ value: l.key, label: l.namePt })),
+    this.menu()
+      .list('languages')
+      .map((l) => ({ value: l.key, label: l.namePt })),
   );
   protected readonly spellOptions = computed<SelectOption[]>(() => [...this.catalog().spells]);
 
-  protected readonly bonuses = computed(() => (this.isRace() ? this.race().bonuses : this.sub().bonuses));
-  protected readonly traits = computed(() => (this.isRace() ? this.race().traits : this.sub().traits));
+  protected readonly bonuses = computed(() =>
+    this.isRace() ? this.race().bonuses : this.sub().bonuses,
+  );
+  protected readonly traits = computed(() =>
+    this.isRace() ? this.race().traits : this.sub().traits,
+  );
   protected readonly name = computed(() => (this.isRace() ? this.race().name : this.sub().name));
   protected readonly parentName = computed(() => this.catalog().nameOf(this.sub().raceKey));
   protected readonly subraces = computed(() => {
     const e = this.entry();
-    return e ? this.entries().filter((x) => x.body.case === 'tableSubrace' && x.body.value.raceKey === e.key) : [];
+    return e
+      ? this.entries().filter(
+          (x) => x.body.case === 'tableSubrace' && x.body.value.raceKey === e.key,
+        )
+      : [];
   });
 
   /** "Como os jogadores veem": what a player reads, written by the same function as the player's page. */
@@ -131,7 +170,10 @@ export class RaceEditor {
       if (this.mode() === 'race') {
         this.race.set(e?.body.case === 'tableRace' ? raceToDraft(e.body.value) : emptyRace());
       } else {
-        const base: SubraceDraft = e?.body.case === 'tableSubrace' ? subraceToDraft(e.body.value) : { name: '', raceKey: this.parentKey(), bonuses: noBonuses(), traits: [] };
+        const base: SubraceDraft =
+          e?.body.case === 'tableSubrace'
+            ? subraceToDraft(e.body.value)
+            : { name: '', raceKey: this.parentKey(), bonuses: noBonuses(), traits: [] };
         this.sub.set(base);
       }
       this.saver.clear();
@@ -187,7 +229,11 @@ export class RaceEditor {
   protected addTrait(): void {
     this.setTraits([...this.traits(), emptyFeature()]);
     afterNextRender(
-      () => focusField(this.host.nativeElement, `${this.prefix()}.traits[${this.traits().length - 1}].name_pt`),
+      () =>
+        focusField(
+          this.host.nativeElement,
+          `${this.prefix()}.traits[${this.traits().length - 1}].name_pt`,
+        ),
       { injector: this.injector },
     );
   }
@@ -224,11 +270,20 @@ export class RaceEditor {
     for (const a of ABILITY_FIELDS) fixed.push(`${p}.ability_bonuses.${a}`);
     fixed.push(`${p}.ability_bonuses`);
     if (this.isRace()) {
-      fixed.push(`${p}.size`, `${p}.speed_ft`, `${p}.darkvision_ft`, `${p}.languages`, `${p}.language_choices`, `${p}.choice_bonuses`);
+      fixed.push(
+        `${p}.size`,
+        `${p}.speed_ft`,
+        `${p}.darkvision_ft`,
+        `${p}.languages`,
+        `${p}.language_choices`,
+        `${p}.choice_bonuses`,
+      );
     } else {
       fixed.push(`${p}.race_key`);
     }
-    return fixed.includes(path) || featurePaths(`${p}.traits`, this.traits(), this.menu()).includes(path);
+    return (
+      fixed.includes(path) || featurePaths(`${p}.traits`, this.traits(), this.menu()).includes(path)
+    );
   };
 
   protected async save(): Promise<void> {
@@ -239,7 +294,10 @@ export class RaceEditor {
     const body: EntryBody = this.isRace()
       ? { case: 'tableRace', value: draftToRace(this.race(), menu) }
       : { case: 'tableSubrace', value: draftToSubrace(this.sub(), menu) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
+    const res = await this.saver.run(
+      () => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)),
+      this.known,
+    );
     if (res) {
       this.saved.emit(res);
       return;

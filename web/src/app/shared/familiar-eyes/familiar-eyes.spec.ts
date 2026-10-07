@@ -10,28 +10,49 @@ import {
   EncounterBlockedSchema,
   FamiliarSightBlockedReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { FamiliarEyesClient, familiarName, familiarSightMessage } from '../../core/play/familiar-eyes';
+import {
+  FamiliarEyesClient,
+  familiarName,
+  familiarSightMessage,
+} from '../../core/play/familiar-eyes';
 import { FamiliarBand } from './familiar-band';
 import { type FamiliarEyesData, FamiliarEyesSheet } from './familiar-eyes-sheet';
 
-
 function blocked(reason: FamiliarSightBlockedReason): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
-    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.FAMILIAR_SIGHT_BLOCKED, familiarSightReason: reason }) },
+    {
+      desc: EncounterBlockedSchema,
+      value: create(EncounterBlockedSchema, {
+        reason: EncounterBlockedReason.FAMILIAR_SIGHT_BLOCKED,
+        familiarSightReason: reason,
+      }),
+    },
   ]);
 }
 
 describe('familiarSightMessage', () => {
   it('says each refusal by its reason, never by the message', () => {
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.TOO_FAR), 'Nanquim')).toBe('Nanquim está a mais de 30 m de você. Chegue mais perto para ver pelos olhos dele.');
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.NO_FAMILIAR))).toBe('Você não tem um familiar agora.');
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.NOT_ON_MAP), 'Nanquim')).toContain('precisam estar no mapa');
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.ALREADY_SEEING))).toBe('Você já está vendo pelos olhos do familiar.');
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.NOT_SEEING))).toBe('Você já voltou aos seus olhos.');
-    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.COMBAT_NOT_BEGUN))).toContain('Espere a sua vez');
+    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.TOO_FAR), 'Nanquim')).toBe(
+      'Nanquim está a mais de 30 m de você. Chegue mais perto para ver pelos olhos dele.',
+    );
+    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.NO_FAMILIAR))).toBe(
+      'Você não tem um familiar agora.',
+    );
+    expect(
+      familiarSightMessage(blocked(FamiliarSightBlockedReason.NOT_ON_MAP), 'Nanquim'),
+    ).toContain('precisam estar no mapa');
+    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.ALREADY_SEEING))).toBe(
+      'Você já está vendo pelos olhos do familiar.',
+    );
+    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.NOT_SEEING))).toBe(
+      'Você já voltou aos seus olhos.',
+    );
+    expect(familiarSightMessage(blocked(FamiliarSightBlockedReason.COMBAT_NOT_BEGUN))).toContain(
+      'Espere a sua vez',
+    );
   });
 
-  it('falls back to the combat\'s own messages for the rest', () => {
+  it("falls back to the combat's own messages for the rest", () => {
     expect(familiarSightMessage(new ConnectError('x', Code.Unavailable))).toContain('servidor');
   });
 
@@ -50,7 +71,17 @@ describe('"Ver pelos olhos do Nanquim?" (E9-04 state 3)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: FamiliarEyesClient, useValue: api },
-        { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'c1', characterId: 'p', characterName: 'Pensantus', familiarName: 'Nanquim', inCombat: false, ...data } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            campaignId: 'c1',
+            characterId: 'p',
+            characterName: 'Pensantus',
+            familiarName: 'Nanquim',
+            inCombat: false,
+            ...data,
+          },
+        },
         { provide: MatDialogRef, useValue: { close } },
       ],
     });
@@ -58,7 +89,8 @@ describe('"Ver pelos olhos do Nanquim?" (E9-04 state 3)', () => {
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
-  const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('.pair button'));
+  const buttons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.pair button'));
 
   beforeEach(() => {
     api.start.mockReset();
@@ -93,11 +125,15 @@ describe('"Ver pelos olhos do Nanquim?" (E9-04 state 3)', () => {
 
   it('says why it was refused and keeps the question open, trying again with the same key', async () => {
     const { fixture, el } = setup();
-    api.start.mockRejectedValueOnce(blocked(FamiliarSightBlockedReason.TOO_FAR)).mockResolvedValue({});
+    api.start
+      .mockRejectedValueOnce(blocked(FamiliarSightBlockedReason.TOO_FAR))
+      .mockResolvedValue({});
     buttons(el)[1].click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text(el.querySelector('[role="alert"]'))).toContain('Nanquim está a mais de 30 m de você');
+    expect(text(el.querySelector('[role="alert"]'))).toContain(
+      'Nanquim está a mais de 30 m de você',
+    );
     expect(close).not.toHaveBeenCalled();
     buttons(el)[1].click();
     await fixture.whenStable();
@@ -142,7 +178,9 @@ describe('the band "Pensantus está cego e surdo" (E9-04)', () => {
     const el = fixture.nativeElement as HTMLElement;
     const band = el.querySelector('[data-testid="familiar-band"]')!;
     expect(band.getAttribute('role')).toBe('status');
-    expect(text(band)).toBe('visibility Você está vendo pelos olhos do Nanquim. Pensantus está cego e surdo.');
+    expect(text(band)).toBe(
+      'visibility Você está vendo pelos olhos do Nanquim. Pensantus está cego e surdo.',
+    );
     const back = el.querySelector('button')!;
     expect(text(back)).toBe('arrow_back Voltar aos seus olhos');
     expect(back.classList.contains('mat-mdc-unelevated-button')).toBe(true);
@@ -152,10 +190,12 @@ describe('the band "Pensantus está cego e surdo" (E9-04)', () => {
     const fixture = create({ inCombat: true });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text((fixture.nativeElement as HTMLElement).querySelector('[data-testid="familiar-band"]'))).toContain('Até o começo da sua próxima vez. Pensantus está cego e surdo.');
+    expect(
+      text((fixture.nativeElement as HTMLElement).querySelector('[data-testid="familiar-band"]')),
+    ).toContain('Até o começo da sua próxima vez. Pensantus está cego e surdo.');
   });
 
-  it('goes back to the character\'s own eyes, and says it', async () => {
+  it("goes back to the character's own eyes, and says it", async () => {
     const fixture = create();
     api.stop.mockResolvedValue({});
     const stopped = vi.fn();
@@ -174,7 +214,9 @@ describe('the band "Pensantus está cego e surdo" (E9-04)', () => {
     (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]'))).toBe('Você já voltou aos seus olhos.');
+    expect(text((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]'))).toBe(
+      'Você já voltou aos seus olhos.',
+    );
     expect(stopped).not.toHaveBeenCalled();
   });
 
@@ -183,6 +225,8 @@ describe('the band "Pensantus está cego e surdo" (E9-04)', () => {
     const fixture = create();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text((fixture.nativeElement as HTMLElement).querySelector('strong'))).toBe('Você está vendo pelos olhos do familiar.');
+    expect(text((fixture.nativeElement as HTMLElement).querySelector('strong'))).toBe(
+      'Você está vendo pelos olhos do familiar.',
+    );
   });
 });

@@ -18,12 +18,22 @@ describe('invite copy', () => {
     const expiresAt = timestampFromDate(new Date(2026, 9, 6, 20, 14));
     const createdAt = timestampFromDate(new Date(2026, 8, 28, 9, 5));
     const at = { expiresAt, createdAt };
-    expect(inviteDateLabel({ ...at, state: InviteState.ACTIVE })).toBe('Vence em 06/10/2026\u00a0às\u00a020:14');
-    expect(inviteDateLabel({ ...at, state: InviteState.EXPIRED })).toBe('Venceu em 06/10/2026\u00a0às\u00a020:14');
-    expect(inviteDateLabel({ ...at, state: InviteState.USED_UP })).toBe('Criado em 28/09/2026\u00a0às\u00a009:05');
+    expect(inviteDateLabel({ ...at, state: InviteState.ACTIVE })).toBe(
+      'Vence em 06/10/2026\u00a0às\u00a020:14',
+    );
+    expect(inviteDateLabel({ ...at, state: InviteState.EXPIRED })).toBe(
+      'Venceu em 06/10/2026\u00a0às\u00a020:14',
+    );
+    expect(inviteDateLabel({ ...at, state: InviteState.USED_UP })).toBe(
+      'Criado em 28/09/2026\u00a0às\u00a009:05',
+    );
     // Never "Revogado em": the tag already says it (e2e: one "revogado" per row).
-    expect(inviteDateLabel({ ...at, state: InviteState.REVOKED })).toBe('Criado em 28/09/2026\u00a0às\u00a009:05');
-    expect(inviteDateLabel({ state: InviteState.ACTIVE, expiresAt: undefined, createdAt: undefined })).toBe('');
+    expect(inviteDateLabel({ ...at, state: InviteState.REVOKED })).toBe(
+      'Criado em 28/09/2026\u00a0às\u00a009:05',
+    );
+    expect(
+      inviteDateLabel({ state: InviteState.ACTIVE, expiresAt: undefined, createdAt: undefined }),
+    ).toBe('');
   });
 
   it('says whether whoever joins waits for approval', () => {
@@ -31,7 +41,7 @@ describe('invite copy', () => {
     expect(inviteApprovalLabel({ requiresApproval: false })).toBe('Entra direto na campanha');
   });
 
-  it('tags the state with MR-002\'s word, capitalised', () => {
+  it("tags the state with MR-002's word, capitalised", () => {
     expect(inviteStateTag(InviteState.ACTIVE)).toBe('Ativo');
     expect(inviteStateTag(InviteState.USED_UP)).toBe('Usado');
     expect(inviteStateTag(InviteState.EXPIRED)).toBe('Expirado');

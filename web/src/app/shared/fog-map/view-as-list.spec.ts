@@ -24,11 +24,23 @@ describe('ViewAsList', () => {
     fixture.componentInstance.choose.subscribe((c) => chosen.push(c));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    return { fixture, el, chosen, radios: () => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')) };
+    return {
+      fixture,
+      el,
+      chosen,
+      radios: () => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')),
+    };
   }
 
   it('lists "Todos" and one row for each character, with how many squares they see, counted from the states', () => {
-    const { radios } = create({ counts: new Map([['p', 76], ['t', 22], ['b', 1]]), total: 384 });
+    const { radios } = create({
+      counts: new Map([
+        ['p', 76],
+        ['t', 22],
+        ['b', 1],
+      ]),
+      total: 384,
+    });
     expect(radios().map((r) => plain(r))).toEqual([
       'Todos Sem névoa: o seu mapa de mestre',
       'Pensantus Vinicius 76 quadrados vistos',
@@ -45,8 +57,15 @@ describe('ViewAsList', () => {
 
   it('is a radio group named "Ver como", with "Todos" checked at first and one stop in the tab order', () => {
     const { el, radios } = create();
-    expect(el.querySelector('[role="radiogroup"]')?.getAttribute('aria-labelledby')).toBe('view-as-title');
-    expect(radios().map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false']);
+    expect(el.querySelector('[role="radiogroup"]')?.getAttribute('aria-labelledby')).toBe(
+      'view-as-title',
+    );
+    expect(radios().map((r) => r.getAttribute('aria-checked'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+    ]);
     expect(radios().map((r) => r.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
   });
 
@@ -80,8 +99,13 @@ describe('ViewAsList', () => {
 
   it('says "Visão do grupo" in words, on or off, and a line about the chosen view', () => {
     const off = create();
-    expect(plain(off.el.querySelector('.va__group'))).toBe('Visão do grupo: desligada neste mapa. Muda no editor do mapa.');
-    const on = create({ groupVision: true, note: 'Toren vê 22 quadrados de 384 e nenhum inimigo.' });
+    expect(plain(off.el.querySelector('.va__group'))).toBe(
+      'Visão do grupo: desligada neste mapa. Muda no editor do mapa.',
+    );
+    const on = create({
+      groupVision: true,
+      note: 'Toren vê 22 quadrados de 384 e nenhum inimigo.',
+    });
     expect(plain(on.el.querySelector('.va__group'))).toContain('ligada neste mapa');
     expect(plain(on.el.querySelector('.va__note'))).toContain('Toren vê 22 quadrados');
   });

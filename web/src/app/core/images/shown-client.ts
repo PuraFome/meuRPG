@@ -27,6 +27,7 @@ export function showImageIssue(err: unknown): string {
   return describeConnectError(err, {
     [Code.NotFound]: 'Essa imagem não está mais na galeria.',
     [Code.PermissionDenied]: 'Só o mestre da campanha mostra imagens.',
-    [Code.ResourceExhausted]: 'A galeria está cheia, e mostrar esta imagem precisaria de uma cópia dela. Apague imagens que você não usa.',
+    [Code.ResourceExhausted]:
+      'A galeria está cheia, e mostrar esta imagem precisaria de uma cópia dela. Apague imagens que você não usa.',
   });
 }

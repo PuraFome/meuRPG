@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 
 import { type Square, squareAt, stepSquare } from '../../../core/combat/combat-grid';
 import { lineSquares } from '../../../core/maps/paint-tools';
@@ -61,7 +70,9 @@ export class PaintSurface {
   /** The square the brush cursor is on (the editor draws it), `null` while there is none. */
   readonly cursor = input<Square | null>(null);
   /** The accessible name: the tool and the keys. */
-  readonly label = input('Área de pintura do mapa. Use as setas para mover o pincel, Espaço para pintar e Esc para sair.');
+  readonly label = input(
+    'Área de pintura do mapa. Use as setas para mover o pincel, Espaço para pintar e Esc para sair.',
+  );
 
   readonly stroke = output<Stroke>();
   readonly strokeEnd = output<void>();
@@ -209,7 +220,8 @@ export class PaintSurface {
       return;
     }
     // The square the brush is on now: its own record first (the input follows a render later, and two quick key presses must not both read the old one).
-    const from = this.lastHover ?? this.cursor() ?? { col: Math.floor(this.columns() / 2), row: Math.floor(this.rows() / 2) };
+    const from = this.lastHover ??
+      this.cursor() ?? { col: Math.floor(this.columns() / 2), row: Math.floor(this.rows() / 2) };
     if (event.key.startsWith('Arrow')) {
       event.preventDefault();
       const to = stepSquare(from, event.key, this.columns(), this.rows());

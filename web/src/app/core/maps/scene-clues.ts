@@ -32,7 +32,9 @@ export function clueTextError(text: string): string {
     return `Escreva a pista antes de salvar. Ela pode ter até ${CLUE_MAX} caracteres.`;
   }
   if (length > CLUE_MAX) {
-    return tight(`A pista passa de ${CLUE_MAX} caracteres: tem ${length}, tire ${length - CLUE_MAX}.`);
+    return tight(
+      `A pista passa de ${CLUE_MAX} caracteres: tem ${length}, tire ${length - CLUE_MAX}.`,
+    );
   }
   return '';
 }
@@ -117,7 +119,10 @@ export function revealedLine(clue: SceneClue, players: readonly CluePlayer[]): s
 }
 
 /** The players who do not have the clue yet. */
-export function playersWithout(clue: SceneClue, players: readonly CluePlayer[]): readonly CluePlayer[] {
+export function playersWithout(
+  clue: SceneClue,
+  players: readonly CluePlayer[],
+): readonly CluePlayer[] {
   const have = new Set(clue.revealedTo.map((r) => r.characterId));
   return players.filter((p) => !have.has(p.id));
 }
@@ -128,7 +133,11 @@ export function playersWithout(clue: SceneClue, players: readonly CluePlayer[]):
  * (everyone who does not have it yet is checked): never "todos" when someone
  * already had the clue. `open` is how many can still receive it, `players` how
  * many the campaign has. */
-export function revealLabel(picked: readonly CluePlayer[], open: number, players: number = open): string {
+export function revealLabel(
+  picked: readonly CluePlayer[],
+  open: number,
+  players: number = open,
+): string {
   if (picked.length === 0) {
     return 'Revelar a pista';
   }
@@ -142,7 +151,11 @@ export function revealLabel(picked: readonly CluePlayer[], open: number, players
 }
 
 /** The sentence under the list in the reveal dialog. */
-export function revealSummary(picked: readonly CluePlayer[], open: number, players: number = open): string {
+export function revealSummary(
+  picked: readonly CluePlayer[],
+  open: number,
+  players: number = open,
+): string {
   if (picked.length === 0) {
     return 'Ninguém marcado. Escolha quem recebe a pista.';
   }
@@ -151,5 +164,7 @@ export function revealSummary(picked: readonly CluePlayer[], open: number, playe
       ? `A pista vai para todos os ${players} jogadores.`
       : `A pista vai para os outros ${open} jogadores.`;
   }
-  return tight(`A pista vai para ${picked.length} de ${open} ${open === 1 ? 'jogador' : 'jogadores'}: ${listNames(picked.map((p) => p.name))}.`);
+  return tight(
+    `A pista vai para ${picked.length} de ${open} ${open === 1 ? 'jogador' : 'jogadores'}: ${listNames(picked.map((p) => p.name))}.`,
+  );
 }

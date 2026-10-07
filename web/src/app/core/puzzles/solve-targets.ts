@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
 import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { GetMapLayersResponse, GetMapResponse, Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
+import type {
+  GetMapLayersResponse,
+  GetMapResponse,
+  Map as MapMessage,
+} from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type DoorKind, decodeLayers } from '../maps/layers';
 import { MapsClient } from '../maps/maps-client';
 
@@ -93,7 +97,13 @@ export class SolveTargets {
     return reads.flatMap(({ points }) =>
       points
         .filter((point) => point.kind === MapPointKind.SCENE)
-        .flatMap((point) => point.clues.map((clue) => ({ id: clue.id, text: clue.text, pointName: point.name || 'Cena sem nome' }))),
+        .flatMap((point) =>
+          point.clues.map((clue) => ({
+            id: clue.id,
+            text: clue.text,
+            pointName: point.name || 'Cena sem nome',
+          })),
+        ),
     );
   }
 
@@ -104,7 +114,12 @@ export class SolveTargets {
     return reads.flatMap(({ points }, i) =>
       points
         .filter((point) => point.kind === MapPointKind.TRAP)
-        .map((point) => ({ mapId: maps[i].id, mapName: maps[i].name, pointId: point.id, name: point.name || 'Armadilha sem nome' })),
+        .map((point) => ({
+          mapId: maps[i].id,
+          mapName: maps[i].name,
+          pointId: point.id,
+          name: point.name || 'Armadilha sem nome',
+        })),
     );
   }
 

@@ -1,6 +1,19 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 
-import { type MasterPuzzleRun, PuzzleRunStatus } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  type MasterPuzzleRun,
+  PuzzleRunStatus,
+} from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { focusWithRing } from '../../../../core/creatures/focus-ring';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
 import { MasterRun } from '../master-run/master-run';
@@ -33,7 +46,11 @@ export class MasterLive {
     const id = this.state().selectedId();
     return this.state()
       .runs()
-      .find((r) => r.puzzle?.id === id && (r.status === PuzzleRunStatus.SHOWN || r.status === PuzzleRunStatus.SOLVED));
+      .find(
+        (r) =>
+          r.puzzle?.id === id &&
+          (r.status === PuzzleRunStatus.SHOWN || r.status === PuzzleRunStatus.SOLVED),
+      );
   });
 
   constructor() {
@@ -45,7 +62,13 @@ export class MasterLive {
     this.state().replace(run);
     if (run.status === PuzzleRunStatus.CLOSED) {
       const name = run.puzzle?.name ?? '';
-      afterNextRender(() => focusWithRing(document.querySelector<HTMLElement>(`[aria-label="Mostrar de novo ${name}"]`)), { injector: this.injector });
+      afterNextRender(
+        () =>
+          focusWithRing(
+            document.querySelector<HTMLElement>(`[aria-label="Mostrar de novo ${name}"]`),
+          ),
+        { injector: this.injector },
+      );
     }
   }
 }

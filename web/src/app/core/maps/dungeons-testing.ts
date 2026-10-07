@@ -35,7 +35,11 @@ export const SAMPLE_WIDTH = 11;
 export const SAMPLE_HEIGHT = 9;
 
 /** One bit a square, set where a creature can stand, in the byte layout of the walls layer. */
-export function openBits(width: number, height: number, floors: readonly (readonly [number, number, number, number])[]): Uint8Array {
+export function openBits(
+  width: number,
+  height: number,
+  floors: readonly (readonly [number, number, number, number])[],
+): Uint8Array {
   const bytes = new Uint8Array(Math.ceil((width * height) / 8));
   for (const [x, y, w, h] of floors) {
     for (let row = y; row < y + h; row++) {
@@ -48,7 +52,9 @@ export function openBits(width: number, height: number, floors: readonly (readon
   return bytes;
 }
 
-export function previewResponse(partial: MessageInitShape<typeof PreviewDungeonResponseSchema> = {}): PreviewDungeonResponse {
+export function previewResponse(
+  partial: MessageInitShape<typeof PreviewDungeonResponseSchema> = {},
+): PreviewDungeonResponse {
   return create(PreviewDungeonResponseSchema, {
     seed: 48213n,
     generatorVersion: 1,
@@ -64,7 +70,13 @@ export function previewResponse(partial: MessageInitShape<typeof PreviewDungeonR
     doors: [
       { x: 4, y: 2, kind: DungeonDoorKind.ARCHWAY, axis: DungeonAxis.VERTICAL_WALL },
       { x: 7, y: 4, kind: DungeonDoorKind.SECRET, axis: DungeonAxis.HORIZONTAL_WALL },
-      { x: 2, y: 4, kind: DungeonDoorKind.LOCKED, axis: DungeonAxis.HORIZONTAL_WALL, trapped: true },
+      {
+        x: 2,
+        y: 4,
+        kind: DungeonDoorKind.LOCKED,
+        axis: DungeonAxis.HORIZONTAL_WALL,
+        trapped: true,
+      },
       { x: 9, y: 4, kind: DungeonDoorKind.BARRED, axis: DungeonAxis.HORIZONTAL_WALL },
       { x: 5, y: 4, kind: DungeonDoorKind.CLOSED, axis: DungeonAxis.HORIZONTAL_WALL },
     ],
@@ -80,7 +92,10 @@ export function previewResponse(partial: MessageInitShape<typeof PreviewDungeonR
   });
 }
 
-export function room(id: number, partial: MessageInitShape<typeof DungeonRoomSchema> = {}): DungeonRoom {
+export function room(
+  id: number,
+  partial: MessageInitShape<typeof DungeonRoomSchema> = {},
+): DungeonRoom {
   return create(DungeonRoomSchema, {
     id,
     floor: { x: 1, y: 1, width: 3, height: 3 },
@@ -91,24 +106,63 @@ export function room(id: number, partial: MessageInitShape<typeof DungeonRoomSch
 }
 
 /** The rooms list of the sample: room 1 with a trapped locked door, room 2 behind a secret door only, and a third room with a plain door. */
-export function roomsResponse(partial: MessageInitShape<typeof GetDungeonRoomsResponseSchema> = {}): GetDungeonRoomsResponse {
+export function roomsResponse(
+  partial: MessageInitShape<typeof GetDungeonRoomsResponseSchema> = {},
+): GetDungeonRoomsResponse {
   const p = previewResponse();
   return create(GetDungeonRoomsResponseSchema, {
     rooms: [
       room(1, {
         exits: [
-          { side: DungeonSide.SOUTH, x: 2, y: 4, kind: DungeonDoorKind.LOCKED, trapped: true, otherRoomId: 0 },
-          { side: DungeonSide.EAST, x: 4, y: 2, kind: DungeonDoorKind.ARCHWAY, trapped: false, otherRoomId: 2 },
+          {
+            side: DungeonSide.SOUTH,
+            x: 2,
+            y: 4,
+            kind: DungeonDoorKind.LOCKED,
+            trapped: true,
+            otherRoomId: 0,
+          },
+          {
+            side: DungeonSide.EAST,
+            x: 4,
+            y: 2,
+            kind: DungeonDoorKind.ARCHWAY,
+            trapped: false,
+            otherRoomId: 2,
+          },
         ],
       }),
       room(2, {
         floor: { x: 5, y: 1, width: 5, height: 3 },
         centerCol: 7,
         centerRow: 2,
-        exits: [{ side: DungeonSide.SOUTH, x: 7, y: 4, kind: DungeonDoorKind.SECRET, trapped: false, otherRoomId: 0 }],
+        exits: [
+          {
+            side: DungeonSide.SOUTH,
+            x: 7,
+            y: 4,
+            kind: DungeonDoorKind.SECRET,
+            trapped: false,
+            otherRoomId: 0,
+          },
+        ],
         scenePointIds: ['scene-1'],
       }),
-      room(3, { floor: { x: 1, y: 6, width: 9, height: 1 }, centerCol: 5, centerRow: 6, exits: [{ side: DungeonSide.NORTH, x: 5, y: 4, kind: DungeonDoorKind.CLOSED, trapped: false, otherRoomId: 0 }] }),
+      room(3, {
+        floor: { x: 1, y: 6, width: 9, height: 1 },
+        centerCol: 5,
+        centerRow: 6,
+        exits: [
+          {
+            side: DungeonSide.NORTH,
+            x: 5,
+            y: 4,
+            kind: DungeonDoorKind.CLOSED,
+            trapped: false,
+            otherRoomId: 0,
+          },
+        ],
+      }),
     ],
     options: { width: SAMPLE_WIDTH, height: SAMPLE_HEIGHT },
     seed: 48213n,
@@ -149,7 +203,11 @@ export class FakeDungeonsClient {
     }
   }
 
-  async preview(_campaignId: string, options: DungeonOptionsInit, seed?: bigint): Promise<PreviewDungeonResponse> {
+  async preview(
+    _campaignId: string,
+    options: DungeonOptionsInit,
+    seed?: bigint,
+  ): Promise<PreviewDungeonResponse> {
     this.calls.push(`preview ${seed === undefined ? 'no seed' : seed}`);
     this.previewRequests.push({ options, seed });
     await this.gate;
@@ -158,7 +216,13 @@ export class FakeDungeonsClient {
     return create(PreviewDungeonResponseSchema, { ...next, seed: seed ?? this.drawSeed });
   }
 
-  async create(_campaignId: string, name: string, options: DungeonOptionsInit, seed: bigint, signal?: AbortSignal): Promise<{ map: MapMessage; seed: bigint; roomCount: number }> {
+  async create(
+    _campaignId: string,
+    name: string,
+    options: DungeonOptionsInit,
+    seed: bigint,
+    signal?: AbortSignal,
+  ): Promise<{ map: MapMessage; seed: bigint; roomCount: number }> {
     this.calls.push(`create ${name} ${seed}`);
     await this.gate;
     if (signal?.aborted) {

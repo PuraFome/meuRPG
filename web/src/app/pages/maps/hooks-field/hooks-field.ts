@@ -97,5 +97,7 @@ export class HooksField {
   readonly length = input(0);
 
   protected readonly over = computed(() => this.length() > HOOKS_MAX);
-  protected readonly counter = computed(() => `${formatInt(this.length())} de ${formatInt(HOOKS_MAX)}`);
+  protected readonly counter = computed(
+    () => `${formatInt(this.length())} de ${formatInt(HOOKS_MAX)}`,
+  );
 }

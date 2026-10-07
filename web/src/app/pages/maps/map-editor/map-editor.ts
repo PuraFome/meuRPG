@@ -19,7 +19,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { MapPointKind, type TrapSpecSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { Map as MapMessage, MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type {
+  Map as MapMessage,
+  MapPoint,
+  SceneAction,
+  SceneClue,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { TrapPresets } from '../../../core/traps/trap-presets';
@@ -191,7 +196,13 @@ export class MapEditor {
 
   // ---- painting ----
   /** The tool, the layers, the queue that saves the strokes and the question on leaving (`EditorPainting`). */
-  protected readonly paint = new EditorPainting(this.campaignId, this.map, this.mode, () => this.refreshFlags(), computed(() => this.occupants()));
+  protected readonly paint = new EditorPainting(
+    this.campaignId,
+    this.map,
+    this.mode,
+    () => this.refreshFlags(),
+    computed(() => this.occupants()),
+  );
 
   /** Who stands on which square (the tokens), for the question before a door goes over them. */
   private readonly occupants = computed<readonly Occupant[]>(() => {
@@ -213,7 +224,9 @@ export class MapEditor {
   protected readonly viewAs = signal<string | null>(null);
   protected readonly viewNote = signal('');
   protected readonly viewGone = signal('');
-  protected readonly counts = new ViewAsCounts((mapId, characterId) => this.api.vision(this.campaignId(), mapId, characterId));
+  protected readonly counts = new ViewAsCounts((mapId, characterId) =>
+    this.api.vision(this.campaignId(), mapId, characterId),
+  );
   private countsTimer: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly mapId = computed(() => this.map()?.id ?? '');
@@ -226,15 +239,27 @@ export class MapEditor {
   });
   protected readonly selectedPoint = computed(() => {
     const s = this.selection();
-    return s?.kind === 'point' ? (this.state().points().find((p) => p.id === s.id) ?? null) : null;
+    return s?.kind === 'point'
+      ? (this.state()
+          .points()
+          .find((p) => p.id === s.id) ?? null)
+      : null;
   });
   protected readonly selectedToken = computed(() => {
     const s = this.selection();
-    return s?.kind === 'token' ? (this.state().tokens().find((t) => t.characterId === s.id) ?? null) : null;
+    return s?.kind === 'token'
+      ? (this.state()
+          .tokens()
+          .find((t) => t.characterId === s.id) ?? null)
+      : null;
   });
   protected readonly pendingName = computed(() => {
     const s = this.selection();
-    return this.state().points().find((p) => p.id === s?.id)?.name ?? '';
+    return (
+      this.state()
+        .points()
+        .find((p) => p.id === s?.id)?.name ?? ''
+    );
   });
   /** The player characters, to say who has each clue ("Todos", "Só Brisa"). */
   protected readonly players = computed<readonly CluePlayer[]>(() =>
@@ -246,21 +271,33 @@ export class MapEditor {
   protected readonly finders = computed<readonly PickRow[]>(() =>
     this.everyone()
       .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
-      .map((c) => ({ id: c.id, name: c.name, sub: [c.classSummary, c.playerName].filter(Boolean).join(' · ') })),
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        sub: [c.classSummary, c.playerName].filter(Boolean).join(' · '),
+      })),
   );
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
     this.players().map((p) => ({ id: p.id, name: p.name, sub: p.playerName })),
   );
-  protected readonly viewAsPerson = computed(() => this.viewAsPeople().find((p) => p.id === this.viewAs()) ?? null);
+  protected readonly viewAsPerson = computed(
+    () => this.viewAsPeople().find((p) => p.id === this.viewAs()) ?? null,
+  );
   protected readonly available = computed(() => {
-    const onMap = new Set(this.state().tokens().map((t) => t.characterId));
+    const onMap = new Set(
+      this.state()
+        .tokens()
+        .map((t) => t.characterId),
+    );
     return this.everyone().filter((c) => !onMap.has(c.id));
   });
   protected readonly hint = computed(() => {
     if (this.mode() === 'paint') {
       return this.paint.canPaint() ? paintHint(this.paint.settings()) : null;
     }
-    return this.placing() === null ? 'Arraste para mover. As setas movem o item escolhido.' : 'Clique no mapa para pôr o ponto.';
+    return this.placing() === null
+      ? 'Arraste para mover. As setas movem o item escolhido.'
+      : 'Clique no mapa para pôr o ponto.';
   });
   protected readonly Trap = MapPointKind.TRAP;
   protected readonly Treasure = MapPointKind.TREASURE;
@@ -355,7 +392,9 @@ export class MapEditor {
 
   /** Esc leaves the paint surface: the focus goes back to the chosen tool. */
   protected leaveSurface(): void {
-    this.host.nativeElement.querySelector<HTMLElement>('app-editor-bar [aria-pressed="true"]')?.focus();
+    this.host.nativeElement
+      .querySelector<HTMLElement>('app-editor-bar [aria-pressed="true"]')
+      ?.focus();
   }
 
   protected refreshFlags(): void {
@@ -420,16 +459,21 @@ export class MapEditor {
     this.placing.set(null);
     try {
       // One key per tap on the map: the point is made once, whatever the network does with the answer.
-      const point = await this.api.createPoint(this.campaignId(), mapId, {
-        kind,
-        name: defaultName(kind),
-        description: '',
-        xBp: at.xBp,
-        yBp: at.yBp,
-        ...(kind === MapPointKind.LIGHT ? { light: await this.newLight() } : {}),
-        ...(kind === MapPointKind.TRAP ? { trap: await this.newTrap() } : {}),
-        ...(kind === MapPointKind.TREASURE ? { treasureValuePo: 0 } : {}),
-      }, newKey());
+      const point = await this.api.createPoint(
+        this.campaignId(),
+        mapId,
+        {
+          kind,
+          name: defaultName(kind),
+          description: '',
+          xBp: at.xBp,
+          yBp: at.yBp,
+          ...(kind === MapPointKind.LIGHT ? { light: await this.newLight() } : {}),
+          ...(kind === MapPointKind.TRAP ? { trap: await this.newTrap() } : {}),
+          ...(kind === MapPointKind.TREASURE ? { treasureValuePo: 0 } : {}),
+        },
+        newKey(),
+      );
       this.state().upsertPoint(point);
       this.panelError.set(null);
       this.justCreated.set(true);
@@ -449,7 +493,12 @@ export class MapEditor {
   /** A new trap starts with the numbers of the first sample trap the server lists, with no effect yet: the form edits the rest. */
   private async newTrap(): Promise<MessageInitShape<typeof TrapSpecSchema>> {
     const first = (await this.trapPresets.list(this.campaignId())).presets[0];
-    return { findDc: first?.findDc ?? 10, areaSize: 1, trigger: TrapTrigger.ENTER, effect: { targets: TrapTargets.AREA } };
+    return {
+      findDc: first?.findDc ?? 10,
+      areaSize: 1,
+      trigger: TrapTrigger.ENTER,
+      effect: { targets: TrapTargets.AREA },
+    };
   }
 
   /** Unsaved changes: the page asks before moving on. */
@@ -528,7 +577,8 @@ export class MapEditor {
         before,
         { xBp: move.xBp, yBp: move.yBp },
         {
-          save: (to) => this.api.updatePoint(this.campaignId(), mapId, move.id, { xBp: to.xBp, yBp: to.yBp }),
+          save: (to) =>
+            this.api.updatePoint(this.campaignId(), mapId, move.id, { xBp: to.xBp, yBp: to.yBp }),
           failed: (saved, err) => {
             const now = state.points().find((p) => p.id === move.id);
             if (now) {
@@ -595,19 +645,28 @@ export class MapEditor {
 
   /** The scene actions saved on their own: the point carries the new list. */
   protected setSceneActions(point: MapPoint, actions: readonly SceneAction[]): void {
-    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    const now =
+      this.state()
+        .points()
+        .find((p) => p.id === point.id) ?? point;
     this.state().upsertPoint({ ...now, sceneActions: [...actions] });
   }
 
   /** "Mostrar a CD aos jogadores" saved on its own: the point carries it. */
   protected setShowDc(point: MapPoint, showDc: boolean): void {
-    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    const now =
+      this.state()
+        .points()
+        .find((p) => p.id === point.id) ?? point;
     this.state().upsertPoint({ ...now, showDc });
   }
 
   /** The clues saved on their own: the point carries the new list. */
   protected setClues(point: MapPoint, clues: readonly SceneClue[]): void {
-    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    const now =
+      this.state()
+        .points()
+        .find((p) => p.id === point.id) ?? point;
     this.state().upsertPoint({ ...now, clues: [...clues] });
   }
 
@@ -642,7 +701,12 @@ export class MapEditor {
       return;
     }
     try {
-      const saved = await this.api.setTokenHidden(this.campaignId(), mapId, token.characterId, !token.hidden);
+      const saved = await this.api.setTokenHidden(
+        this.campaignId(),
+        mapId,
+        token.characterId,
+        !token.hidden,
+      );
       this.state().upsertToken(saved);
     } catch (err) {
       this.message.set(mapErrorMessage(err, 'mudar o token'));
@@ -675,7 +739,9 @@ export class MapEditor {
   /** "Redesenhar" sends the strokes that still wait first, so the new image has the walls just painted. */
   protected readonly beforeRedraw = async (): Promise<string | null> => {
     await this.paint.queue.flush();
-    return this.paint.queue.status() === 'error' ? 'Há traços que o servidor ainda não recebeu. Espere o aviso “Tudo salvo” e tente de novo.' : null;
+    return this.paint.queue.status() === 'error'
+      ? 'Há traços que o servidor ainda não recebeu. Espere o aviso “Tudo salvo” e tente de novo.'
+      : null;
   };
 
   /** A room chosen in the list is outlined, and the map goes to it (and back to the whole map when it is let go). */
@@ -687,7 +753,13 @@ export class MapEditor {
       return;
     }
     const scale = Math.min(3, Math.max(1.2, (0.55 * m.gridColumns) / room.width));
-    this.view()?.focusOn({ xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000, yBp: ((room.y + room.height / 2) / m.gridRows) * 10000 }, scale);
+    this.view()?.focusOn(
+      {
+        xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000,
+        yBp: ((room.y + room.height / 2) / m.gridRows) * 10000,
+      },
+      scale,
+    );
   }
 
   protected reloadDungeon(): void {
@@ -696,7 +768,10 @@ export class MapEditor {
 
   protected onForgotten(): void {
     if (this.map()?.fogEnabled) {
-      void this.counts.read(this.mapId(), this.viewAsPeople().map((p) => p.id));
+      void this.counts.read(
+        this.mapId(),
+        this.viewAsPeople().map((p) => p.id),
+      );
     }
   }
 
@@ -713,5 +788,4 @@ export class MapEditor {
     this.viewNote.set('');
     this.viewGone.set('Esse personagem morreu ou saiu da campanha. Voltamos para “Todos”.');
   }
-
 }

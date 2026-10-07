@@ -1,4 +1,12 @@
-import { Component, ElementRef, afterEveryRender, computed, input, output, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterEveryRender,
+  computed,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
@@ -72,7 +80,9 @@ export class SelectField<T extends string | number = string> {
 
   protected readonly noteId = `fn-s${nextId++}`;
   protected readonly invalid = computed(() => this.issues().length > 0);
-  protected readonly describedBy = computed(() => (this.issues().length > 0 || this.hint() ? this.noteId : null));
+  protected readonly describedBy = computed(() =>
+    this.issues().length > 0 || this.hint() ? this.noteId : null,
+  );
 
   private readonly control = viewChild<ElementRef<HTMLSelectElement>>('control');
 

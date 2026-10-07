@@ -6,14 +6,29 @@ import { create } from '@bufbuild/protobuf';
 import { of } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { TreasureToConvertSchema, XPAwardSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  TreasureToConvertSchema,
+  XPAwardSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { AwardXpSheet } from './award-xp-sheet';
 import { MilestoneSheet } from './milestone-sheet';
 import { TownSheet } from './town-sheet';
 import { type GiveResult, XpGiveButton } from './xp-give-button';
 
-const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 0, nextLevelXp: 300, canLevelUp: false, levelUpReason: 0 }];
+const rows: ExperienceRow[] = [
+  {
+    id: 'p',
+    name: 'Pensantus',
+    playerUserId: '',
+    sub: '',
+    level: 3,
+    xp: 0,
+    nextLevelXp: 300,
+    canLevelUp: false,
+    levelUpReason: 0,
+  },
+];
 
 @Component({
   imports: [XpGiveButton],
@@ -33,7 +48,9 @@ const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', playerUserId: '', s
 class Host {
   mode = XpMode.ENEMIES;
   rows = rows;
-  treasures = [create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 })];
+  treasures = [
+    create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 }),
+  ];
   showTown = false;
   treasuresState: 'loading' | 'ready' | 'error' = 'ready';
   block = false;
@@ -46,7 +63,10 @@ describe('XpGiveButton', () => {
   function setup(mode: XpMode, answer: unknown) {
     open.mockReset().mockReturnValue({ afterClosed: () => of(answer) });
     TestBed.configureTestingModule({
-      providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+      providers: [
+        { provide: MatDialog, useValue: { open } },
+        { provide: MatBottomSheet, useValue: { open } },
+      ],
     });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.mode = mode;
@@ -62,7 +82,10 @@ describe('XpGiveButton', () => {
     button!.click();
 
     expect(open.mock.calls[0][0]).toBe(AwardXpSheet);
-    expect(open.mock.calls[0][1]).toMatchObject({ data: { campaignId: 'camp-1', xpMode: XpMode.ENEMIES, rows }, width: '560px' });
+    expect(open.mock.calls[0][1]).toMatchObject({
+      data: { campaignId: 'camp-1', xpMode: XpMode.ENEMIES, rows },
+      width: '560px',
+    });
   });
 
   it('is "Registrar marco" in a milestones campaign, and opens the milestone sheet', () => {
@@ -70,7 +93,10 @@ describe('XpGiveButton', () => {
     expect(button?.textContent?.trim()).toContain('Registrar marco');
     button!.click();
     expect(open.mock.calls[0][0]).toBe(MilestoneSheet);
-    expect(open.mock.calls[0][1].data).toMatchObject({ campaignId: 'camp-1', campaignName: 'Mirathel' });
+    expect(open.mock.calls[0][1].data).toMatchObject({
+      campaignId: 'camp-1',
+      campaignName: 'Mirathel',
+    });
   });
 
   it('draws nothing until it knows how the campaign levels', () => {
@@ -94,7 +120,10 @@ describe('XpGiveButton', () => {
       open.mockReset().mockReturnValue({ afterClosed: () => of(answer) });
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+        providers: [
+          { provide: MatDialog, useValue: { open } },
+          { provide: MatBottomSheet, useValue: { open } },
+        ],
       });
       const fixture = TestBed.createComponent(Host);
       fixture.componentInstance.mode = XpMode.GOLD;
@@ -106,11 +135,17 @@ describe('XpGiveButton', () => {
 
     it('adds an outlined "Voltar à cidade" beside "Dar XP" in a campaign by gold, and opens the conversion with the treasures', () => {
       const { buttons } = gold(undefined);
-      expect(buttons.map((b) => b.textContent?.replace('currency_exchange', '').trim())).toEqual(['Dar XP', 'Voltar à cidade']);
+      expect(buttons.map((b) => b.textContent?.replace('currency_exchange', '').trim())).toEqual([
+        'Dar XP',
+        'Voltar à cidade',
+      ]);
       expect(buttons.every((b) => b.classList.contains('mat-mdc-outlined-button'))).toBe(true);
       buttons[1].click();
       expect(open.mock.calls[0][0]).toBe(TownSheet);
-      expect(open.mock.calls[0][1]).toMatchObject({ data: { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows, total: 1 }, width: '600px' });
+      expect(open.mock.calls[0][1]).toMatchObject({
+        data: { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows, total: 1 },
+        width: '600px',
+      });
       expect(open.mock.calls[0][1].data.treasures).toHaveLength(1);
     });
 
@@ -119,7 +154,10 @@ describe('XpGiveButton', () => {
       TestBed.resetTestingModule();
       open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
       TestBed.configureTestingModule({
-        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+        providers: [
+          { provide: MatDialog, useValue: { open } },
+          { provide: MatBottomSheet, useValue: { open } },
+        ],
       });
       const fixture = TestBed.createComponent(Host);
       fixture.componentInstance.showTown = true;
@@ -134,7 +172,10 @@ describe('XpGiveButton', () => {
       TestBed.resetTestingModule();
       open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
       TestBed.configureTestingModule({
-        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+        providers: [
+          { provide: MatDialog, useValue: { open } },
+          { provide: MatBottomSheet, useValue: { open } },
+        ],
       });
       const fixture = TestBed.createComponent(Host);
       fixture.detectChanges();
@@ -145,7 +186,9 @@ describe('XpGiveButton', () => {
     it('opens the conversion when "Dar XP" asks for it (and gives nothing itself)', () => {
       const { buttons, host } = gold({ town: true });
       // The conversion is then cancelled.
-      open.mockReturnValueOnce({ afterClosed: () => of({ town: true }) }).mockReturnValueOnce({ afterClosed: () => of(undefined) });
+      open
+        .mockReturnValueOnce({ afterClosed: () => of({ town: true }) })
+        .mockReturnValueOnce({ afterClosed: () => of(undefined) });
       buttons[0].click();
       expect(open.mock.calls.map((c) => c[0])).toEqual([AwardXpSheet, TownSheet]);
       expect(host.results).toEqual([]);
@@ -164,13 +207,19 @@ describe('XpGiveButton', () => {
       open.mockReset().mockReturnValue({ afterClosed: () => of(undefined) });
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [{ provide: MatDialog, useValue: { open } }, { provide: MatBottomSheet, useValue: { open } }],
+        providers: [
+          { provide: MatDialog, useValue: { open } },
+          { provide: MatBottomSheet, useValue: { open } },
+        ],
       });
       const fixture = TestBed.createComponent(Host);
       fixture.componentInstance.mode = XpMode.GOLD;
       Object.assign(fixture.componentInstance, over);
       fixture.detectChanges();
-      return { fixture, buttons: Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')) };
+      return {
+        fixture,
+        buttons: Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')),
+      };
     }
 
     it('hands over the list only once it was read: "lendo" must never turn into a false "nenhum"', () => {
@@ -202,8 +251,13 @@ describe('XpGiveButton', () => {
 
     it('makes every button the full width on a phone when the host asks (the panel), in any mode', () => {
       const { fixture, buttons } = goldHost({ block: true });
-      expect((fixture.nativeElement.querySelector('app-xp-give-button') as HTMLElement | null) ?? fixture.nativeElement).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-xp-give-button').classList.contains('block')).toBe(true);
+      expect(
+        (fixture.nativeElement.querySelector('app-xp-give-button') as HTMLElement | null) ??
+          fixture.nativeElement,
+      ).toBeTruthy();
+      expect(
+        fixture.nativeElement.querySelector('app-xp-give-button').classList.contains('block'),
+      ).toBe(true);
       expect(buttons[0].classList.contains('give--block')).toBe(true);
     });
   });

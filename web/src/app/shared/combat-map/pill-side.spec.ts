@@ -14,7 +14,9 @@ describe('where the "Vez" word goes (it must read as its own token\'s)', () => {
 
   it('goes to the side when above and below are both taken', () => {
     expect(pillSide({ col: 5, row: 8 }, 1, cells([5, 8], [5, 7], [5, 9]), 24, 16)).toBe('right');
-    expect(pillSide({ col: 5, row: 8 }, 1, cells([5, 8], [5, 7], [5, 9], [6, 8]), 24, 16)).toBe('left');
+    expect(pillSide({ col: 5, row: 8 }, 1, cells([5, 8], [5, 7], [5, 9], [6, 8]), 24, 16)).toBe(
+      'left',
+    );
   });
 
   it('never goes off the map: on the top row it goes below', () => {
@@ -27,6 +29,8 @@ describe('where the "Vez" word goes (it must read as its own token\'s)', () => {
   });
 
   it('a big token counts its own squares as its own', () => {
-    expect(pillSide({ col: 5, row: 8 }, 2, cells([5, 8], [6, 8], [5, 9], [6, 9]), 24, 16)).toBe('above');
+    expect(pillSide({ col: 5, row: 8 }, 2, cells([5, 8], [6, 8], [5, 9], [6, 9]), 24, 16)).toBe(
+      'above',
+    );
   });
 });

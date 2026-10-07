@@ -1,5 +1,11 @@
 import { article } from '../combat/combat-log';
-import { AttackOutcome, PendingDamageStatus, SaveOutcome, type TrapCaught, type TrapFiring } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  AttackOutcome,
+  PendingDamageStatus,
+  SaveOutcome,
+  type TrapCaught,
+  type TrapFiring,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { type TrapActivity, TrapSearchSkill } from '../../../gen/meurpg/play/v1/traps_pb';
 import { rollText } from '../combat/combat-dice';
 import { conditionName } from '../combat/conditions';
@@ -17,9 +23,16 @@ export interface TrapLine {
 
 function attackWords(c: TrapCaught): string[] {
   return c.attacks.map((a) => {
-    const word = a.outcome === AttackOutcome.CRITICAL_HIT ? 'acerto crítico' : a.outcome === AttackOutcome.MISS ? 'o ataque errou' : 'o ataque acertou';
+    const word =
+      a.outcome === AttackOutcome.CRITICAL_HIT
+        ? 'acerto crítico'
+        : a.outcome === AttackOutcome.MISS
+          ? 'o ataque errou'
+          : 'o ataque acertou';
     // The dice are the master's and the target's own player's: everyone else gets the word.
-    const dice = a.roll ? ` (${rollText(a.roll)}${a.targetArmorClass ? ` contra CA ${a.targetArmorClass}` : ''})` : '';
+    const dice = a.roll
+      ? ` (${rollText(a.roll)}${a.targetArmorClass ? ` contra CA ${a.targetArmorClass}` : ''})`
+      : '';
     return `${word}${dice}`;
   });
 }
@@ -28,7 +41,9 @@ function saveWords(c: TrapCaught, master: boolean): string[] {
   const saves = c.saves.length > 0 ? c.saves : c.save ? [c.save] : [];
   return saves.map((s) => {
     const word = s.outcome === SaveOutcome.SAVED ? 'passou no teste' : 'falhou no teste';
-    const dice = s.roll ? ` (${rollText(s.roll)}${master && s.dc ? ` contra CD ${s.dc}` : ''})` : '';
+    const dice = s.roll
+      ? ` (${rollText(s.roll)}${master && s.dc ? ` contra CD ${s.dc}` : ''})`
+      : '';
     return `${word}${dice}`;
   });
 }
@@ -64,7 +79,12 @@ export function caughtText(c: TrapCaught, trapName: string, master: boolean): st
 }
 
 /** The lines of one firing: the creatures it caught, then the trap's own line ("A armadilha X foi disparada. Agora todos a veem."). */
-export function firingLines(firing: TrapFiring, id: string, master: boolean, withTrapLine = true): TrapLine[] {
+export function firingLines(
+  firing: TrapFiring,
+  id: string,
+  master: boolean,
+  withTrapLine = true,
+): TrapLine[] {
   const lines = firing.caught.map((c, i): TrapLine => ({
     id: `${id}:${c.targetId}:${i}`,
     icon: 'arrow_downward',
@@ -72,7 +92,12 @@ export function firingLines(firing: TrapFiring, id: string, master: boolean, wit
     text: caughtText(c, firing.name, master),
   }));
   if (withTrapLine) {
-    lines.push({ id: `${id}:public`, icon: 'warning', actor: '', text: `A armadilha ${firing.name} foi disparada. Agora todos a veem.` });
+    lines.push({
+      id: `${id}:public`,
+      icon: 'warning',
+      actor: '',
+      text: `A armadilha ${firing.name} foi disparada. Agora todos a veem.`,
+    });
   }
   return lines;
 }
@@ -90,7 +115,10 @@ export function activityLines(a: TrapActivity, master: boolean): TrapLine[] {
     const s = a.search;
     const rolls = [s.roll, s.secondRoll].filter((r) => r !== undefined).map((r) => rollText(r));
     const found = s.foundNames.filter(Boolean);
-    const outcome = found.length > 0 ? `achou ${found.length === 1 ? 'a armadilha' : 'as armadilhas'} ${listNames(found)}` : 'não achou nada';
+    const outcome =
+      found.length > 0
+        ? `achou ${found.length === 1 ? 'a armadilha' : 'as armadilhas'} ${listNames(found)}`
+        : 'não achou nada';
     return [
       {
         id: a.id,

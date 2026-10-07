@@ -3,7 +3,13 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from '../../core/combat/combat-grid';
+import {
+  DFT_PER_SQUARE,
+  type Square,
+  squareAt,
+  squareCenter,
+  stepSquare,
+} from '../../core/combat/combat-grid';
 import type { DoorSquare, MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
@@ -182,7 +188,11 @@ export class CombatMap {
     const cursor = this.cursor();
     return cursor ? { square: cursor, refused: false } : null;
   });
-  protected readonly framedToken = computed(() => this.tokenOf(this.pickSquares() ? (this.ownMoveId() ?? '') : (this.picked() ?? this.ownMoveId() ?? '')));
+  protected readonly framedToken = computed(() =>
+    this.tokenOf(
+      this.pickSquares() ? (this.ownMoveId() ?? '') : (this.picked() ?? this.ownMoveId() ?? ''),
+    ),
+  );
 
   /** The dashed line from the token to the chosen square (E6-10). */
   protected readonly path = computed(() => {
@@ -209,7 +219,8 @@ export class CombatMap {
 
   /** Whether the cost pill of the chosen square goes above it: below by default, but never over a door (it would hide the mark), and above at the bottom edge. */
   protected costAbove(at: Square): boolean {
-    const door = (row: number) => (this.layers()?.doors ?? []).some((d) => d.col === at.col && d.row === row);
+    const door = (row: number) =>
+      (this.layers()?.doors ?? []).some((d) => d.col === at.col && d.row === row);
     const belowFree = at.row + 2 < this.rows() && !door(at.row + 1);
     const aboveFree = at.row > 0 && !door(at.row - 1);
     return !belowFree && (aboveFree || at.row + 2 >= this.rows());
@@ -230,7 +241,10 @@ export class CombatMap {
 
   /** How many squares a side of the token is drawn on: Large is 2, Huge 3, Gargantuan 4 (the picture only: the server still counts one square). */
   protected span(c: Combatant): number {
-    const n = Math.max(1, Math.min(c.size >= CreatureSize.LARGE ? c.size - 2 : 1, this.columns(), this.rows()));
+    const n = Math.max(
+      1,
+      Math.min(c.size >= CreatureSize.LARGE ? c.size - 2 : 1, this.columns(), this.rows()),
+    );
     if (n === 1) {
       return 1;
     }
@@ -251,7 +265,10 @@ export class CombatMap {
   private anchor(c: Combatant): Square {
     const at = this.place(c);
     const n = this.span(c);
-    return { col: Math.max(0, Math.min(at.col, this.columns() - n)), row: Math.max(0, Math.min(at.row, this.rows() - n)) };
+    return {
+      col: Math.max(0, Math.min(at.col, this.columns() - n)),
+      row: Math.max(0, Math.min(at.row, this.rows() - n)),
+    };
   }
 
   /** The centre of the drawing, in percent of the map. */
@@ -404,14 +421,45 @@ export class CombatMap {
 }
 
 /** The side of a token (its top-left square and its side in squares) where the "Vez" word goes; see `CombatMap.turnSide`. */
-export function pillSide(at: Square, n: number, taken: ReadonlySet<string>, columns: number, rows: number): 'above' | 'below' | 'right' | 'left' {
+export function pillSide(
+  at: Square,
+  n: number,
+  taken: ReadonlySet<string>,
+  columns: number,
+  rows: number,
+): 'above' | 'below' | 'right' | 'left' {
   const sides: { side: 'above' | 'below' | 'right' | 'left'; cells: [number, number][] }[] = [
-    { side: 'above', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row - 1] as [number, number]) },
-    { side: 'below', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row + n] as [number, number]) },
-    { side: 'right', cells: Array.from({ length: n + 2 }, (_, i) => [at.col + n, at.row - 1 + i] as [number, number]) },
-    { side: 'left', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1, at.row - 1 + i] as [number, number]) },
+    {
+      side: 'above',
+      cells: Array.from(
+        { length: n + 2 },
+        (_, i) => [at.col - 1 + i, at.row - 1] as [number, number],
+      ),
+    },
+    {
+      side: 'below',
+      cells: Array.from(
+        { length: n + 2 },
+        (_, i) => [at.col - 1 + i, at.row + n] as [number, number],
+      ),
+    },
+    {
+      side: 'right',
+      cells: Array.from(
+        { length: n + 2 },
+        (_, i) => [at.col + n, at.row - 1 + i] as [number, number],
+      ),
+    },
+    {
+      side: 'left',
+      cells: Array.from(
+        { length: n + 2 },
+        (_, i) => [at.col - 1, at.row - 1 + i] as [number, number],
+      ),
+    },
   ];
-  const own = (col: number, row: number) => col >= at.col && col < at.col + n && row >= at.row && row < at.row + n;
+  const own = (col: number, row: number) =>
+    col >= at.col && col < at.col + n && row >= at.row && row < at.row + n;
   const score = (cells: [number, number][]) => {
     // The cell in the middle of the side (right against the token) is on the map or the pill has no room; the ends only count when a token is there.
     const middle = cells.slice(1, -1);

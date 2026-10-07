@@ -82,7 +82,13 @@ export class MapHead {
   /** The generate dialog made pictures, or made one the map's image: the page reads the map again. */
   readonly imageGenerated = output<GenerateOutcome>();
 
-  protected readonly generateOrigin = computed<GenerateOrigin>(() => ({ kind: 'map', mapId: this.map().id, name: this.map().name, hasGrid: this.map().gridColumns > 0, revealed: this.map().revealed }));
+  protected readonly generateOrigin = computed<GenerateOrigin>(() => ({
+    kind: 'map',
+    mapId: this.map().id,
+    name: this.map().name,
+    hasGrid: this.map().gridColumns > 0,
+    revealed: this.map().revealed,
+  }));
   protected readonly mode = signal<Mode>('view');
   protected readonly working = signal(false);
   protected readonly error = signal<string | null>(null);

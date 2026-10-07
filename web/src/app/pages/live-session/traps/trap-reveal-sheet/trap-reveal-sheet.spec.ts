@@ -2,7 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
 
-import { MapPointKind, MapPointSchema, TrapRevealHow } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  MapPointKind,
+  MapPointSchema,
+  TrapRevealHow,
+} from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../../core/maps/maps-client';
 import { TrapRevealSheet, type TrapRevealData, trapRevealLabel } from './trap-reveal-sheet';
 
@@ -25,7 +29,12 @@ describe('trapRevealLabel', () => {
 describe('TrapRevealSheet', () => {
   function setup() {
     const calls: unknown[][] = [];
-    const api = { revealTrap: async (...a: unknown[]) => (calls.push(a), create(MapPointSchema, { id: 'x', name: 'Fosso escondido' })) };
+    const api = {
+      revealTrap: async (...a: unknown[]) => (
+        calls.push(a),
+        create(MapPointSchema, { id: 'x', name: 'Fosso escondido' })
+      ),
+    };
     const close = vi.fn();
     const point = create(MapPointSchema, {
       id: 'x',

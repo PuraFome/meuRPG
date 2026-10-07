@@ -27,7 +27,12 @@ describe('RaceEditor', () => {
           darkvisionFt: 60,
           abilityBonuses: { wisdom: 2, dexterity: 1 },
           languages: ['language:common'],
-          traits: [feature('Olhos de caçador', [{ type: 'proficiency', proficiency: 'skill:perception' }]), feature('Planar', [{ type: 'modifier', target: 'speed.walk', mode: 'add', value: '5 +' }])],
+          traits: [
+            feature('Olhos de caçador', [{ type: 'proficiency', proficiency: 'skill:perception' }]),
+            feature('Planar', [
+              { type: 'modifier', target: 'speed.walk', mode: 'add', value: '5 +' },
+            ]),
+          ],
         }),
       },
     });
@@ -35,7 +40,9 @@ describe('RaceEditor', () => {
   function setup() {
     save.mockReset();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }],
+    });
     const fixture = TestBed.createComponent(RaceEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('catalog', cat);
@@ -55,23 +62,35 @@ describe('RaceEditor', () => {
   }
 
   const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const field = (el: HTMLElement, path: string) => el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
-  const click = (el: HTMLElement, label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => text(b).includes(label))!.click();
+  const field = (el: HTMLElement, path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
+  const click = (el: HTMLElement, label: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => text(b).includes(label))!
+      .click();
 
   it('draws the race of the artboard: the form from the entry and the traits with the effect picked', () => {
     const { el } = setup();
     expect((field(el, 'table_race.name_pt') as HTMLInputElement).value).toBe('Corujeiro');
     expect((field(el, 'table_race.speed_ft') as HTMLInputElement).value).toBe('9');
     expect((field(el, 'table_race.darkvision_ft') as HTMLInputElement).value).toBe('18');
-    expect((field(el, 'table_race.traits[0].effects[0].type') as HTMLSelectElement).selectedOptions[0].text).toBe('Proficiência');
-    expect((field(el, 'table_race.traits[0].effects[0].proficiency') as HTMLSelectElement).selectedOptions[0].text).toBe('Percepção');
-    const rows = Array.from(el.querySelectorAll('.preview .rows__row')).map((r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`);
+    expect(
+      (field(el, 'table_race.traits[0].effects[0].type') as HTMLSelectElement).selectedOptions[0]
+        .text,
+    ).toBe('Proficiência');
+    expect(
+      (field(el, 'table_race.traits[0].effects[0].proficiency') as HTMLSelectElement)
+        .selectedOptions[0].text,
+    ).toBe('Percepção');
+    const rows = Array.from(el.querySelectorAll('.preview .rows__row')).map(
+      (r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`,
+    );
     expect(rows[0]).toBe('Habilidades: Destreza +1, Sabedoria +2');
     expect(rows).toContain('Idiomas: Comum');
     expect(el.querySelectorAll('app-feature-editor')).toHaveLength(2);
   });
 
-  it('sends the race with only the fields of each trait\'s effect type, and the keys the editor read', async () => {
+  it("sends the race with only the fields of each trait's effect type, and the keys the editor read", async () => {
     const { fixture, el } = setup();
     save.mockResolvedValue({ entry: corujeiro(), affected: [] });
     click(el, 'Salvar raça');
@@ -88,14 +107,26 @@ describe('RaceEditor', () => {
       descPt: ['Texto.'],
       effects: [{ type: 'proficiency', proficiency: 'skill:perception' }],
     });
-    expect(body.value.traits[1].effects).toEqual([{ type: 'modifier', target: 'speed.walk', mode: 'add', value: '5 +' }]);
+    expect(body.value.traits[1].effects).toEqual([
+      { type: 'modifier', target: 'speed.walk', mode: 'add', value: '5 +' },
+    ]);
   });
 
   it('puts "table_race.traits[1].effects[0].value" back on the formula field of the second trait', async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(
       new ConnectError('refused', Code.InvalidArgument, undefined, [
-        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_race.traits[1].effects[0].value', reason: 'bad_formula' })] }) },
+        {
+          desc: TableContentRefusalSchema,
+          value: create(TableContentRefusalSchema, {
+            violations: [
+              create(TableContentViolationSchema, {
+                field: 'table_race.traits[1].effects[0].value',
+                reason: 'bad_formula',
+              }),
+            ],
+          }),
+        },
       ]),
     );
     click(el, 'Salvar raça');
@@ -104,7 +135,9 @@ describe('RaceEditor', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(text(input.closest('app-text-field')!)).toContain('Esta fórmula não funciona.');
     expect(document.activeElement).toBe(input);
-    expect(field(el, 'table_race.traits[0].effects[0].proficiency').getAttribute('aria-invalid')).not.toBe('true');
+    expect(
+      field(el, 'table_race.traits[0].effects[0].proficiency').getAttribute('aria-invalid'),
+    ).not.toBe('true');
   });
 
   it('adds a trait, takes one off and moves one; "Só texto" drops the effects', async () => {
@@ -116,14 +149,22 @@ describe('RaceEditor', () => {
     (third.querySelector('input') as HTMLInputElement).value = 'Voo curto';
     third.querySelector('input')!.dispatchEvent(new Event('input'));
     // "Só texto" is the first option of the effect select of a feature with no effect.
-    expect((third.querySelector('select') as HTMLSelectElement).selectedOptions[0].text).toBe('Só texto');
+    expect((third.querySelector('select') as HTMLSelectElement).selectedOptions[0].text).toBe(
+      'Só texto',
+    );
     click(third as HTMLElement, 'Remover traço');
     await settle(fixture);
     expect(el.querySelectorAll('app-feature-editor')).toHaveLength(2);
     // Move the second one up.
-    (Array.from(el.querySelectorAll('app-feature-editor')[1].querySelectorAll('button')).find((b) => b.getAttribute('aria-label')?.startsWith('Subir')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('app-feature-editor')[1].querySelectorAll('button')).find(
+        (b) => b.getAttribute('aria-label')?.startsWith('Subir'),
+      ) as HTMLButtonElement
+    ).click();
     await settle(fixture);
-    expect((el.querySelector('[data-field="table_race.traits[0].name_pt"]') as HTMLInputElement).value).toBe('Planar');
+    expect(
+      (el.querySelector('[data-field="table_race.traits[0].name_pt"]') as HTMLInputElement).value,
+    ).toBe('Planar');
     // Changing a trait's effect to "Só texto" drops what it had.
     const select = field(el, 'table_race.traits[1].effects[0].type') as HTMLSelectElement;
     select.selectedIndex = 0;
@@ -135,28 +176,54 @@ describe('RaceEditor', () => {
     expect(save.mock.calls[0][2].value.traits[1].effects).toEqual([]);
   });
 
-  it('offers the six abilities with the catalog\'s names, from −4 to +4, and puts a bonus refusal under them with the focus on it', async () => {
+  it("offers the six abilities with the catalog's names, from −4 to +4, and puts a bonus refusal under them with the focus on it", async () => {
     const { fixture, el } = setup();
-    const names = Array.from(el.querySelectorAll('app-number-stepper .step__label')).map((n) => n.textContent?.trim());
-    expect(names).toEqual(['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma']);
-    const minus = el.querySelector<HTMLButtonElement>('app-number-stepper button[aria-label="Menos Força"]')!;
+    const names = Array.from(el.querySelectorAll('app-number-stepper .step__label')).map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(names).toEqual([
+      'Força',
+      'Destreza',
+      'Constituição',
+      'Inteligência',
+      'Sabedoria',
+      'Carisma',
+    ]);
+    const minus = el.querySelector<HTMLButtonElement>(
+      'app-number-stepper button[aria-label="Menos Força"]',
+    )!;
     expect(minus.disabled).toBe(false);
     save.mockRejectedValue(
       new ConnectError('refused', Code.InvalidArgument, undefined, [
-        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_race.ability_bonuses.wisdom', reason: 'limit' })] }) },
+        {
+          desc: TableContentRefusalSchema,
+          value: create(TableContentRefusalSchema, {
+            violations: [
+              create(TableContentViolationSchema, {
+                field: 'table_race.ability_bonuses.wisdom',
+                reason: 'limit',
+              }),
+            ],
+          }),
+        },
       ]),
     );
     click(el, 'Salvar raça');
     await settle(fixture);
     expect(text(el.querySelector('[role="alert"]')!)).toContain('1 campo precisa de ajuste');
     expect(text(el.querySelector('.bonuses')!.parentElement!)).toContain('O bônus vai de −4 a +4.');
-    expect(document.activeElement?.closest('[data-field="table_race.ability_bonuses.wisdom"]') ?? document.activeElement).toBeTruthy();
+    expect(
+      document.activeElement?.closest('[data-field="table_race.ability_bonuses.wisdom"]') ??
+        document.activeElement,
+    ).toBeTruthy();
   });
 
-  it('a new sub-race picks its race from the catalog (the SRD\'s and the table\'s); with a race given, it only says which', () => {
+  it("a new sub-race picks its race from the catalog (the SRD's and the table's); with a race given, it only says which", () => {
     save.mockReset();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }],
+    });
     const f = TestBed.createComponent(RaceEditor);
     f.componentRef.setInput('campaignId', 'camp-1');
     f.componentRef.setInput('mode', 'subrace');
@@ -175,11 +242,17 @@ describe('RaceEditor', () => {
 
   it('keeps a trait\'s "Mais opções" with the trait when it moves', async () => {
     const { fixture, el } = setup();
-    const open = el.querySelectorAll('app-feature-editor')[0].querySelector<HTMLButtonElement>('.more')!;
+    const open = el
+      .querySelectorAll('app-feature-editor')[0]
+      .querySelector<HTMLButtonElement>('.more')!;
     open.click();
     fixture.detectChanges();
     expect(el.querySelectorAll('app-feature-editor')[0].textContent).toContain('Menos opções');
-    (Array.from(el.querySelectorAll('app-feature-editor')[0].querySelectorAll('button')).find((b) => b.getAttribute('aria-label')?.startsWith('Descer')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('app-feature-editor')[0].querySelectorAll('button')).find(
+        (b) => b.getAttribute('aria-label')?.startsWith('Descer'),
+      ) as HTMLButtonElement
+    ).click();
     await settle(fixture);
     expect(el.querySelectorAll('app-feature-editor')[1].textContent).toContain('Menos opções');
     expect(el.querySelectorAll('app-feature-editor')[0].textContent).not.toContain('Menos opções');

@@ -8,9 +8,15 @@ describe('dice labels', () => {
   });
 
   it('lets the preference count only while players choose', () => {
-    expect(effectivePreference(DiceMode.PLAYERS_CHOOSE, DicePreference.PHYSICAL)).toBe(DicePreference.PHYSICAL);
-    expect(effectivePreference(DiceMode.PLAYERS_CHOOSE, DicePreference.UNSPECIFIED)).toBe(DicePreference.APP);
+    expect(effectivePreference(DiceMode.PLAYERS_CHOOSE, DicePreference.PHYSICAL)).toBe(
+      DicePreference.PHYSICAL,
+    );
+    expect(effectivePreference(DiceMode.PLAYERS_CHOOSE, DicePreference.UNSPECIFIED)).toBe(
+      DicePreference.APP,
+    );
     expect(effectivePreference(DiceMode.APP, DicePreference.PHYSICAL)).toBe(DicePreference.APP);
-    expect(effectivePreference(DiceMode.PHYSICAL, DicePreference.APP)).toBe(DicePreference.PHYSICAL);
+    expect(effectivePreference(DiceMode.PHYSICAL, DicePreference.APP)).toBe(
+      DicePreference.PHYSICAL,
+    );
   });
 });

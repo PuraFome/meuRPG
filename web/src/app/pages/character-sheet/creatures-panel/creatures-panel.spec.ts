@@ -8,7 +8,14 @@ import { of } from 'rxjs';
 
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, creature, familiarSpell, flat, raven, summonAnswer } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  creature,
+  familiarSpell,
+  flat,
+  raven,
+  summonAnswer,
+} from '../../../core/creatures/creatures-testing';
 import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { CreaturesPanel } from './creatures-panel';
 
@@ -20,7 +27,16 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   const sessions = signal<readonly { campaignId: string }[]>([{ campaignId: 'camp-1' }]);
   const dialogOpen = vi.fn();
 
-  async function setup(opts: { access?: SpellAccess; wildShape?: boolean; master?: boolean; creatures?: ReturnType<typeof creature>[]; denied?: boolean; failing?: boolean } = {}) {
+  async function setup(
+    opts: {
+      access?: SpellAccess;
+      wildShape?: boolean;
+      master?: boolean;
+      creatures?: ReturnType<typeof creature>[];
+      denied?: boolean;
+      failing?: boolean;
+    } = {},
+  ) {
     api = new FakeCreaturesClient();
     api.creatures = opts.creatures ?? [];
     api.options = summonAnswer(opts.access?.spells ?? []);
@@ -76,17 +92,23 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   it('empty: invites the next action and offers the spell, with what it costs under the button', async () => {
     const { el, flat } = await setup({ access: FAMILIAR() });
     expect(flat(el.querySelector('h2'))).toBe('Criaturas');
-    expect(flat(el.querySelector('.empty'))).toBe('Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar uma.');
+    expect(flat(el.querySelector('.empty'))).toBe(
+      'Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar uma.',
+    );
     const button = el.querySelector<HTMLButtonElement>('.cast__btn')!;
     expect(flat(button)).toContain('Convocar Familiar');
     expect(button.classList).toContain('mat-mdc-outlined-button');
-    expect(flat(el.querySelector('.cast__cost'))).toContain('Ritual de 1 hora: não gasta espaço de magia. Só durante uma sessão, fora de combate.');
+    expect(flat(el.querySelector('.cast__cost'))).toContain(
+      'Ritual de 1 hora: não gasta espaço de magia. Só durante uma sessão, fora de combate.',
+    );
     expect(el.querySelector('.count')).toBeNull();
   });
 
   it('a druid without a spell or a creature is told to ask the master, with no cast button', async () => {
     const { el, flat } = await setup({ wildShape: true });
-    expect(flat(el.querySelector('.empty'))).toBe('Nenhuma criatura ainda. Peça ao mestre para dar uma.');
+    expect(flat(el.querySelector('.empty'))).toBe(
+      'Nenhuma criatura ainda. Peça ao mestre para dar uma.',
+    );
     // No summoning spell to cast; the druid's Wild Shape is its own line (E9-11), off outside a session.
     expect(el.querySelector('.js-cast')).toBeNull();
     expect(flat(el.querySelector('.js-wild'))).toContain('Transformar: Forma Selvagem');
@@ -104,7 +126,10 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   });
 
   it('lists a creature as a card: the name, the kind, the origin, CA, PV "1 de 1" and the speeds in metres', async () => {
-    const { el, flat } = await setup({ access: FAMILIAR(), creatures: [creature('cr-1', 'Nanquim')] });
+    const { el, flat } = await setup({
+      access: FAMILIAR(),
+      creatures: [creature('cr-1', 'Nanquim')],
+    });
     expect(flat(el.querySelector('.panel__count'))).toBe('1 criatura');
     const card = el.querySelector('app-creature-card')!;
     expect(flat(card.querySelector('h3'))).toBe('Nanquim');
@@ -117,8 +142,14 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   });
 
   it('the player renames and dismisses any of their creatures; only the master corrects the hit points', async () => {
-    const given = creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' });
-    const player = await setup({ access: FAMILIAR(), creatures: [creature('cr-1', 'Nanquim'), given] });
+    const given = creature('cr-2', 'Mastim', {
+      source: CreatureSource.MASTER,
+      monsterKey: 'monster:mastiff',
+    });
+    const player = await setup({
+      access: FAMILIAR(),
+      creatures: [creature('cr-1', 'Nanquim'), given],
+    });
     const cards = Array.from(player.el.querySelectorAll('app-creature-card'));
     // The character's player may dismiss any of their creatures, a gift included: the server says so.
     expect(cards[0].querySelector('.js-dismiss')).not.toBeNull();
@@ -143,24 +174,42 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     el.querySelector<HTMLButtonElement>('.cast__btn')!.click();
     expect(dialogOpen).toHaveBeenCalledTimes(1);
     const data = dialogOpen.mock.calls[0][1].data;
-    expect(data).toMatchObject({ campaignId: 'camp-1', characterId: 'char-1', spellKey: 'spell:find-familiar' });
+    expect(data).toMatchObject({
+      campaignId: 'camp-1',
+      characterId: 'char-1',
+      spellKey: 'spell:find-familiar',
+    });
   });
 
   it('after a cast, reads the list and says what arrived in a live region, with no slot spent', async () => {
     const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
-    dialogOpen.mockReturnValue({ afterClosed: () => of({ spellName: 'Convocar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 }) });
+    dialogOpen.mockReturnValue({
+      afterClosed: () =>
+        of({
+          spellName: 'Convocar Familiar',
+          ritual: true,
+          castingTime: '1 hora',
+          names: ['Nanquim'],
+          count: 1,
+          dismissed: 0,
+        }),
+    });
     api.creatures = [creature('cr-1', 'Nanquim')];
     el.querySelector<HTMLButtonElement>('.cast__btn')!.click();
     await settle();
     fixture.detectChanges();
     expect(el.querySelector('.live')?.getAttribute('role')).toBe('status');
-    expect(flat(el.querySelector('.live'))).toBe('Nanquim chegou. Convocar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.');
+    expect(flat(el.querySelector('.live'))).toBe(
+      'Nanquim chegou. Convocar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.',
+    );
     expect(el.querySelectorAll('app-creature-card')).toHaveLength(1);
   });
 
   it('when the stream says the creatures changed and the master gave one, tells the player', async () => {
     const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
-    api.creatures = [creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' })];
+    api.creatures = [
+      creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' }),
+    ];
     fixture.componentRef.setInput('reload', 1);
     fixture.detectChanges();
     await settle();
@@ -196,12 +245,16 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     await settle();
     release();
     await settle();
-    expect(Array.from(el.querySelectorAll('app-creature-card h3')).map((h) => h.textContent?.trim())).toEqual(['Nova']);
+    expect(
+      Array.from(el.querySelectorAll('app-creature-card h3')).map((h) => h.textContent?.trim()),
+    ).toEqual(['Nova']);
   });
 
   it('the notice goes away when the next action starts', async () => {
     const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
-    api.creatures = [creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' })];
+    api.creatures = [
+      creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' }),
+    ];
     fixture.componentRef.setInput('reload', 1);
     fixture.detectChanges();
     await settle();
@@ -212,17 +265,27 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   });
 
   it('after a dismissal the focus goes to the next card, or to the title when none is left', async () => {
-    const { fixture, el, settle } = await setup({ access: FAMILIAR(), creatures: [creature('cr-1', 'Nanquim'), creature('cr-2', 'Pena', { monsterKey: 'monster:owl' })] });
+    const { fixture, el, settle } = await setup({
+      access: FAMILIAR(),
+      creatures: [
+        creature('cr-1', 'Nanquim'),
+        creature('cr-2', 'Pena', { monsterKey: 'monster:owl' }),
+      ],
+    });
     document.body.appendChild(fixture.nativeElement);
     el.querySelector<HTMLElement>('.js-dismiss')!.click();
     await settle();
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes('Dispensar Nanquim'))!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b)?.includes('Dispensar Nanquim'))!
+      .click();
     await settle();
     await settle();
     expect(document.activeElement?.textContent?.trim()).toBe('Pena');
     el.querySelector<HTMLElement>('.js-dismiss')!.click();
     await settle();
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes('Dispensar Pena'))!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b)?.includes('Dispensar Pena'))!
+      .click();
     await settle();
     await settle();
     expect(document.activeElement?.textContent?.trim()).toBe('Criaturas');

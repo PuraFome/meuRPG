@@ -3,7 +3,13 @@ import { createClient } from '@connectrpc/connect';
 
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
-import { CampaignService, DiceMode, DicePreference, HitPointsRule, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  CampaignService,
+  DiceMode,
+  DicePreference,
+  HitPointsRule,
+  Role,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   AbilityMethod as GenAbilityMethod,
   type AbilityOrigin as GenAbilityOrigin,
@@ -80,7 +86,9 @@ const ABILITY_METHOD_FROM_GEN: Partial<Record<GenAbilityMethod, AbilityMethodKey
   [GenAbilityMethod.TYPED]: 'typed',
 };
 
-function abilityOriginFromGen(origin: GenAbilityOrigin | undefined): CharacterForEdit['abilityOrigin'] {
+function abilityOriginFromGen(
+  origin: GenAbilityOrigin | undefined,
+): CharacterForEdit['abilityOrigin'] {
   const method = origin ? ABILITY_METHOD_FROM_GEN[origin.method] : undefined;
   if (!origin || !method) {
     return null;
@@ -89,13 +97,22 @@ function abilityOriginFromGen(origin: GenAbilityOrigin | undefined): CharacterFo
     method,
     rolls:
       method === 'rolled_4d6'
-        ? { sets: origin.rolls.map((s) => ({ dice: [...s.dice], total: s.total })), typed: origin.typed, rolledAt: null }
+        ? {
+            sets: origin.rolls.map((s) => ({ dice: [...s.dice], total: s.total })),
+            typed: origin.typed,
+            rolledAt: null,
+          }
         : null,
   };
 }
 
 /** The prepared leveled spells of the derived sheet that the sheet's own lists do not name: granted by a subclass. */
-function grantedSpellKeys(derived: { spells: readonly { spell?: { key: string; level: number }; prepared: boolean }[] } | undefined, full: GenFullSheet | undefined): string[] {
+function grantedSpellKeys(
+  derived:
+    | { spells: readonly { spell?: { key: string; level: number }; prepared: boolean }[] }
+    | undefined,
+  full: GenFullSheet | undefined,
+): string[] {
   if (!derived || !full) {
     return [];
   }
@@ -206,10 +223,18 @@ export function toFullSheetInit(v: CharacterFormValue) {
   // The first class gives the saving throws; the others follow in the order the blocks are on screen.
   const classes = v.className
     ? [
-        { classKey: v.className, level: v.level, subclass: subclassOf(v.subclassName, v.customSubclassName) },
+        {
+          classKey: v.className,
+          level: v.level,
+          subclass: subclassOf(v.subclassName, v.customSubclassName),
+        },
         ...v.extraClasses
           .filter((c) => c.classKey)
-          .map((c) => ({ classKey: c.classKey, level: c.level, subclass: subclassOf(c.subclassKey, c.customSubclassName) })),
+          .map((c) => ({
+            classKey: c.classKey,
+            level: c.level,
+            subclass: subclassOf(c.subclassKey, c.customSubclassName),
+          })),
       ]
     : [];
 
@@ -296,7 +321,10 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
   const init = toFullSheetInit(v);
   // The form edits every field of a custom background now; this only keeps a field a later
   // version of the message adds, so a save never wipes what the editor does not know.
-  if (init.background.case === 'customBackground' && original.background.case === 'customBackground') {
+  if (
+    init.background.case === 'customBackground' &&
+    original.background.case === 'customBackground'
+  ) {
     const { $typeName: _bg, ...kept } = original.background.value;
     init.background = {
       case: 'customBackground',
@@ -495,7 +523,10 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         fromTable: isTableKey(sc.key),
         archived: sc.archived,
         off: sc.off,
-        alwaysPrepared: sc.alwaysPrepared.map((a) => ({ spellKey: a.spellKey, classLevel: a.classLevel })),
+        alwaysPrepared: sc.alwaysPrepared.map((a) => ({
+          spellKey: a.spellKey,
+          classLevel: a.classLevel,
+        })),
         casting: casting
           ? {
               preparation: PREPARATION_FROM_GEN[casting.preparation],
@@ -568,7 +599,11 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         ...content.proficiencies
           .filter((p) => p.kind === NamedKeyKind.TOOL || p.kind === NamedKeyKind.OTHER)
           .map((p) => ({ key: p.key, namePt: p.namePt, kind: 'tool' as const })),
-        ...content.languages.map((l) => ({ key: l.key, namePt: l.namePt, kind: 'language' as const })),
+        ...content.languages.map((l) => ({
+          key: l.key,
+          namePt: l.namePt,
+          kind: 'language' as const,
+        })),
       ],
       viewerIsMaster,
       challengeRatings: content.challengeRatings.map((c) => ({ rating: c.rating, xp: c.xp })),
@@ -606,9 +641,20 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
           : 'sheet_locked',
       sheetLocked:
         character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
-      preparedMax: Object.fromEntries((character.derived?.spellcasting ?? []).filter((c) => c.preparedMax > 0).map((c) => [c.classKey, c.preparedMax])),
-      grantedSpellKeys: grantedSpellKeys(character.derived, sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined),
-      abilityOrigin: abilityOriginFromGen(sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet).abilityOrigin : undefined),
+      preparedMax: Object.fromEntries(
+        (character.derived?.spellcasting ?? [])
+          .filter((c) => c.preparedMax > 0)
+          .map((c) => [c.classKey, c.preparedMax]),
+      ),
+      grantedSpellKeys: grantedSpellKeys(
+        character.derived,
+        sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined,
+      ),
+      abilityOrigin: abilityOriginFromGen(
+        sheetCase === 'full'
+          ? (character.sheet!.content.value as GenFullSheet).abilityOrigin
+          : undefined,
+      ),
       full,
       basic:
         sheetCase === 'basic'
@@ -646,7 +692,11 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       typedMin: rules.typedMinScore,
       typedMax: rules.typedMaxScore,
       hitPoints:
-        rules.rules?.hitPoints === HitPointsRule.ROLL ? 'roll' : rules.rules?.hitPoints === HitPointsRule.AVERAGE ? 'average' : 'player_chooses',
+        rules.rules?.hitPoints === HitPointsRule.ROLL
+          ? 'roll'
+          : rules.rules?.hitPoints === HitPointsRule.AVERAGE
+            ? 'average'
+            : 'player_chooses',
       physicalDice: physical,
       diceForced: diceMode !== DiceMode.PLAYERS_CHOOSE,
       rolls: stored ? rollsFromGen(stored) : null,

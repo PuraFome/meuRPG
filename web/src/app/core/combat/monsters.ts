@@ -55,7 +55,14 @@ export class AddKeys {
   private last = '';
 
   keyFor(add: MonsterAdd): string {
-    const print = JSON.stringify([add.creatureKey, add.count, add.name, add.hp, add.hidden, add.target]);
+    const print = JSON.stringify([
+      add.creatureKey,
+      add.count,
+      add.name,
+      add.hp,
+      add.hidden,
+      add.target,
+    ]);
     if (this.last !== '' && print !== this.last) {
       this.key = newKey();
     }
@@ -115,5 +122,7 @@ export function groupLabel(labels: readonly string[]): string {
     return labels.join(', ');
   }
   const numbers = parts.map((p) => Number(p![2]));
-  return numbers.length === 2 ? `${base} ${numbers[0]} e ${numbers[1]}` : `${base} ${Math.min(...numbers)} a ${Math.max(...numbers)}`;
+  return numbers.length === 2
+    ? `${base} ${numbers[0]} e ${numbers[1]}`
+    : `${base} ${Math.min(...numbers)} a ${Math.max(...numbers)}`;
 }

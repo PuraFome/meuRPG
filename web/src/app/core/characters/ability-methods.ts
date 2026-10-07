@@ -25,7 +25,12 @@ export function pointsSpent(
 }
 
 /** Whether a score can go one up with the points left: the next score exists and its extra cost fits. */
-export function canRaise(score: number, left: number, costs: readonly number[], minScore: number): boolean {
+export function canRaise(
+  score: number,
+  left: number,
+  costs: readonly number[],
+  minScore: number,
+): boolean {
   const now = costOf(score, costs, minScore);
   const next = costOf(score + 1, costs, minScore);
   return now !== null && next !== null && next - now <= left;
@@ -37,7 +42,10 @@ export function canLower(score: number, costs: readonly number[], minScore: numb
 }
 
 /** A stored set as a result the placing shows: the lowest die (the first of the lowest) is the one struck. */
-export function resultOfSet(set: { readonly dice: readonly number[]; readonly total: number }): AbilityResult {
+export function resultOfSet(set: {
+  readonly dice: readonly number[];
+  readonly total: number;
+}): AbilityResult {
   const dropped = set.dice.length === 0 ? -1 : set.dice.indexOf(Math.min(...set.dice));
   return { total: set.total, dice: [...set.dice], dropped };
 }
@@ -73,7 +81,10 @@ export function missingDie(rows: readonly (readonly string[])[]): string {
  * value, `null` when it has none (the sheet was edited out of the method; the server will say). Used when a player
  * opens their own draft, which already has scores made by a recorded method.
  */
-export function placementFromScores(scores: Readonly<Record<AbilityKey, number>>, totals: readonly number[]): Placement {
+export function placementFromScores(
+  scores: Readonly<Record<AbilityKey, number>>,
+  totals: readonly number[],
+): Placement {
   const used = new Set<number>();
   const placement = emptyPlacement();
   for (const key of ABILITY_KEYS) {

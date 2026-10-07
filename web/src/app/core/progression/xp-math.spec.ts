@@ -1,4 +1,12 @@
-import { divisionSentence, eachLine, lostWords, parseAmount, shortDivision, splitAnnouncement, splitXp } from './xp-math';
+import {
+  divisionSentence,
+  eachLine,
+  lostWords,
+  parseAmount,
+  shortDivision,
+  splitAnnouncement,
+  splitXp,
+} from './xp-math';
 
 const nbsp = ' ';
 
@@ -39,13 +47,17 @@ describe('the lines of the split', () => {
   });
 
   it('says an exact division loses nothing', () => {
-    expect(divisionSentence(350, splitXp(350, 2))).toBe(`350${nbsp}XP ÷ 2 = 175. Divisão exata, nada se perde.`);
+    expect(divisionSentence(350, splitXp(350, 2))).toBe(
+      `350${nbsp}XP ÷ 2 = 175. Divisão exata, nada se perde.`,
+    );
   });
 
   it('writes the short sum beside the number, with the gold when there is some', () => {
     expect(shortDivision(150, splitXp(150, 3))).toBe(`150${nbsp}XP ÷ 3 = 50`);
     expect(shortDivision(120, splitXp(120, 3), 120)).toBe(`120${nbsp}PO = 120${nbsp}XP ÷ 3 = 40`);
-    expect(shortDivision(350, splitXp(350, 3))).toBe(`350${nbsp}XP ÷ 3 = 116. 2${nbsp}XP se perdem na divisão.`);
+    expect(shortDivision(350, splitXp(350, 3))).toBe(
+      `350${nbsp}XP ÷ 3 = 116. 2${nbsp}XP se perdem na divisão.`,
+    );
   });
 
   it('says the lost XP in the singular and the plural', () => {

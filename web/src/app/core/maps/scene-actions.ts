@@ -32,7 +32,10 @@ const ABILITIES: readonly AbilityKey[] = ABILITY_KEYS;
 
 /** The list the second field offers for a kind: the 18 skills (from the rules'
  * content), the six abilities or the six saves. */
-export function checkOptions(kind: CheckKind, skills: readonly CheckOption[]): readonly CheckOption[] {
+export function checkOptions(
+  kind: CheckKind,
+  skills: readonly CheckOption[],
+): readonly CheckOption[] {
   if (kind === 'skill') {
     return skills;
   }
@@ -82,11 +85,13 @@ export class SceneChecks {
   skills(campaignId: string): Promise<readonly CheckOption[]> {
     let skills = this.cache.get(campaignId);
     if (!skills) {
-      skills = this.client.listContent({ campaignId }).then((res) =>
-        (res.content?.skills ?? [])
-          .map((s) => ({ key: s.key, label: s.namePt }))
-          .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
-      );
+      skills = this.client
+        .listContent({ campaignId })
+        .then((res) =>
+          (res.content?.skills ?? [])
+            .map((s) => ({ key: s.key, label: s.namePt }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+        );
       this.cache.set(campaignId, skills);
       // A failed read is tried again the next time the form opens.
       skills.catch(() => this.cache.delete(campaignId));

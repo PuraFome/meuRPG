@@ -45,7 +45,9 @@ export class ScenePanel {
 
   protected readonly hasMap = computed(() => this.mapState().map() !== null);
   protected readonly hasScenes = computed(() =>
-    this.mapState().points().some((p) => p.kind === MapPointKind.SCENE),
+    this.mapState()
+      .points()
+      .some((p) => p.kind === MapPointKind.SCENE),
   );
 
   private readonly openButton = viewChild('openButton', { read: ElementRef<HTMLButtonElement> });

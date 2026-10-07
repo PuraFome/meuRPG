@@ -73,7 +73,9 @@ export class StagePlayer {
   protected readonly figs = signal<readonly Fig[]>([]);
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
   protected readonly count = computed(() => this.stage().length);
-  protected readonly label = computed(() => `Em cena: ${joinNames(this.stage().map((n) => n.name))}`);
+  protected readonly label = computed(
+    () => `Em cena: ${joinNames(this.stage().map((n) => n.name))}`,
+  );
   /** Whether a change is an answer to the master (false until the first stage was drawn). */
   protected readonly motion = signal(false);
 
@@ -92,7 +94,10 @@ export class StagePlayer {
   /** Whether motion is wanted: after the first draw, and with the person's preference allowing it. */
   private animates(): boolean {
     const view = this.host.nativeElement.ownerDocument.defaultView;
-    return this.motion() && (view?.matchMedia?.('(prefers-reduced-motion: no-preference)').matches ?? false);
+    return (
+      this.motion() &&
+      (view?.matchMedia?.('(prefers-reduced-motion: no-preference)').matches ?? false)
+    );
   }
 
   /** Keeps the drawn figures in step with the stage: new ones fade in, gone ones fade out and are dropped. */

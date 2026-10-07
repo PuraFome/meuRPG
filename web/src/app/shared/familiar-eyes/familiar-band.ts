@@ -1,8 +1,21 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { FamiliarEyesClient, familiarName, familiarSightMessage } from '../../core/play/familiar-eyes';
+import {
+  FamiliarEyesClient,
+  familiarName,
+  familiarSightMessage,
+} from '../../core/play/familiar-eyes';
 import { newKey } from '../../core/connect/idempotency';
 
 /**
@@ -40,14 +53,18 @@ export class FamiliarBand {
   private readonly key = newKey();
 
   protected readonly who = computed(() => familiarName(this.name()));
-  protected readonly title = computed(() => `Você está vendo pelos olhos do ${this.name()?.trim() || 'familiar'}.`);
+  protected readonly title = computed(
+    () => `Você está vendo pelos olhos do ${this.name()?.trim() || 'familiar'}.`,
+  );
 
   constructor() {
     effect(() => {
       const campaignId = this.campaignId();
       const characterId = this.characterId();
       const creatureId = this.creatureId();
-      untracked(() => void this.api.name(campaignId, characterId, creatureId).then((n) => this.name.set(n)));
+      untracked(
+        () => void this.api.name(campaignId, characterId, creatureId).then((n) => this.name.set(n)),
+      );
     });
   }
 

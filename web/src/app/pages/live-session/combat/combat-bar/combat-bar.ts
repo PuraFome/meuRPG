@@ -1,10 +1,26 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatantInitial, isPlayer, roundLabel, turnBanner } from '../../../../core/combat/combat-view';
+import {
+  combatantInitial,
+  isPlayer,
+  roundLabel,
+  turnBanner,
+} from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { NextTurn } from './next-turn';
 import { TheatrePill } from '../theatre/theatre-pill';
@@ -19,7 +35,14 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-combat-bar',
-  imports: [CombatantToken, MatButtonModule, MatIconModule, NextTurn, NgTemplateOutlet, TheatrePill],
+  imports: [
+    CombatantToken,
+    MatButtonModule,
+    MatIconModule,
+    NextTurn,
+    NgTemplateOutlet,
+    TheatrePill,
+  ],
   templateUrl: './combat-bar.html',
   styleUrl: './combat-bar.scss',
 })

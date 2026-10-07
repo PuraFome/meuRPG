@@ -35,14 +35,35 @@ describe('FogPanel', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   };
-  const switchOf = (label: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="switch"]')).find((s) => document.getElementById(s.getAttribute('aria-labelledby')!)?.textContent?.trim() === label)!;
-  const radio = (text: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(text))!;
-  const button = (t: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(t))!;
+  const switchOf = (label: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="switch"]')).find(
+      (s) =>
+        document.getElementById(s.getAttribute('aria-labelledby')!)?.textContent?.trim() === label,
+    )!;
+  const radio = (text: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) =>
+      b.textContent?.trim().endsWith(text),
+    )!;
+  const button = (t: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(t))!;
 
-  const on = mapMessage('map-1', 'A caverna', { gridColumns: 24, gridRows: 16, fogEnabled: true, baseLight: LightLevel.DARK, groupVision: false });
+  const on = mapMessage('map-1', 'A caverna', {
+    gridColumns: 24,
+    gridRows: 16,
+    fogEnabled: true,
+    baseLight: LightLevel.DARK,
+    groupVision: false,
+  });
 
-  it('turns the fog on, and the light of base and the group\'s vision, each in its own call', async () => {
-    await setup(mapMessage('map-1', 'A caverna', { gridColumns: 24, gridRows: 16, fogEnabled: false, baseLight: LightLevel.DARK }));
+  it("turns the fog on, and the light of base and the group's vision, each in its own call", async () => {
+    await setup(
+      mapMessage('map-1', 'A caverna', {
+        gridColumns: 24,
+        gridRows: 16,
+        fogEnabled: false,
+        baseLight: LightLevel.DARK,
+      }),
+    );
     switchOf('Ligar a névoa').click();
     await settle();
     expect(api.calls).toEqual(['setFog map-1 {"fogEnabled":true}']);
@@ -52,7 +73,10 @@ describe('FogPanel', () => {
     await settle();
     switchOf('Visão do grupo').click();
     await settle();
-    expect(api.calls).toEqual(['setFog map-1 {"baseLight":2}', 'setFog map-1 {"groupVision":true}']);
+    expect(api.calls).toEqual([
+      'setFog map-1 {"baseLight":2}',
+      'setFog map-1 {"groupVision":true}',
+    ]);
   });
 
   it('shows the light of base as Claro, Penumbra or Escuro with the chosen one checked', async () => {
@@ -90,7 +114,10 @@ describe('FogPanel', () => {
     expect(document.activeElement).toBe(button('Esquecer o que foi visto'));
     button('Esquecer o que foi visto').click();
     await settle();
-    Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim() === 'Esquecer o que foi visto').at(-1)!.click();
+    Array.from(el.querySelectorAll('button'))
+      .filter((b) => b.textContent?.trim() === 'Esquecer o que foi visto')
+      .at(-1)!
+      .click();
     await settle();
     expect(api.calls).toEqual(['forgetVision map-1']);
     expect(forgotten).toBe(1);

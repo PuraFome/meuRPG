@@ -44,7 +44,9 @@ export class ClueNotice {
 
   protected readonly title = computed(() => {
     const n = this.clues().length;
-    return n === 1 ? 'O mestre revelou uma pista para você.' : `O mestre revelou ${n} pistas para você.`;
+    return n === 1
+      ? 'O mestre revelou uma pista para você.'
+      : `O mestre revelou ${n} pistas para você.`;
   });
   protected readonly where = computed(() => {
     const n = this.clues().length;

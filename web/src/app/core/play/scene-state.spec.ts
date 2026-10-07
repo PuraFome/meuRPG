@@ -35,7 +35,11 @@ describe('SceneState', () => {
   });
 
   it("does not tell a player about another player's roll or their own new row", async () => {
-    const state = stateWith(false, playerScene(), playerScene([sceneRoll('r1', 'a1', 'Pensantus', 17)]));
+    const state = stateWith(
+      false,
+      playerScene(),
+      playerScene([sceneRoll('r1', 'a1', 'Pensantus', 17)]),
+    );
     await state.refresh();
     await state.refresh();
     expect(state.notice()).toBe('');
@@ -63,7 +67,10 @@ describe('SceneState', () => {
     let release: (s: OpenSceneInfo | null) => void = () => undefined;
     const slow = new Promise<OpenSceneInfo | null>((r) => (release = r));
     let calls = 0;
-    const state = new SceneState(() => (calls++ === 0 ? slow : Promise.resolve(null)), () => false);
+    const state = new SceneState(
+      () => (calls++ === 0 ? slow : Promise.resolve(null)),
+      () => false,
+    );
     const first = state.refresh();
     await state.refresh();
     release(playerScene());
@@ -85,11 +92,18 @@ describe('SceneState', () => {
 
   it('puts a clue the master just revealed into the open scene, and drops a read that was in flight', async () => {
     const before = create(SceneClueSchema, { id: 'k1', text: 'Uma pista' });
-    const after = create(SceneClueSchema, { id: 'k1', text: 'Uma pista', revealedTo: [{ characterId: 'b' }] });
+    const after = create(SceneClueSchema, {
+      id: 'k1',
+      text: 'Uma pista',
+      revealedTo: [{ characterId: 'b' }],
+    });
     let release!: (scene: OpenSceneInfo) => void;
     let calls = 0;
     const state = new SceneState(
-      () => (calls++ === 0 ? Promise.resolve(masterScene([], [], { clues: [before] })) : new Promise((r) => (release = r))),
+      () =>
+        calls++ === 0
+          ? Promise.resolve(masterScene([], [], { clues: [before] }))
+          : new Promise((r) => (release = r)),
       () => true,
     );
     await state.refresh();
@@ -103,11 +117,15 @@ describe('SceneState', () => {
 
   it('tells a player when the master gives another attempt, not the master', async () => {
     const before = playerScene();
-    const granted = playerScene([], [], { actions: before.actions.map((a) => (a.id === 'a5' ? { ...a, attemptsLeft: 2 } : a)) });
+    const granted = playerScene([], [], {
+      actions: before.actions.map((a) => (a.id === 'a5' ? { ...a, attemptsLeft: 2 } : a)),
+    });
     const player = stateWith(false, before, granted);
     await player.refresh();
     await player.refresh();
-    expect(player.notice()).toBe('O mestre deu mais uma tentativa em Resistir ao cheiro de fumaça.');
+    expect(player.notice()).toBe(
+      'O mestre deu mais uma tentativa em Resistir ao cheiro de fumaça.',
+    );
     const master = stateWith(true, masterScene(), masterScene());
     await master.refresh();
     await master.refresh();
@@ -115,7 +133,9 @@ describe('SceneState', () => {
   });
 
   it('says nothing about attempts when the scene was closed and opened again (the counts start over)', async () => {
-    const before = playerScene([], [], { actions: playerScene().actions.map((a) => ({ ...a, attemptsLeft: 0 })) });
+    const before = playerScene([], [], {
+      actions: playerScene().actions.map((a) => ({ ...a, attemptsLeft: 0 })),
+    });
     const reopened = playerScene([], [], { openedAt: { seconds: 1791000000n, nanos: 0 } as never });
     const player = stateWith(false, before, reopened);
     await player.refresh();
@@ -127,7 +147,7 @@ describe('SceneState', () => {
     const mira = stageNpc('s1', 'Mira');
     const capitao = stageNpc('s2', 'Capitão Goblin');
 
-    it('is the open scene\'s list, and empty with no scene', async () => {
+    it("is the open scene's list, and empty with no scene", async () => {
       const state = stateWith(false, playerScene([], [mira, capitao]));
       expect(state.stage()).toEqual([]);
       await state.refresh();
@@ -159,11 +179,14 @@ describe('SceneState', () => {
       expect(state.notice()).toBe('');
     });
 
-    it('applies the master\'s own answer at once, and drops a read that was still on its way', async () => {
+    it("applies the master's own answer at once, and drops a read that was still on its way", async () => {
       let release: (s: OpenSceneInfo | null) => void = () => undefined;
       const slow = new Promise<OpenSceneInfo | null>((r) => (release = r));
       let calls = 0;
-      const state = new SceneState(() => (calls++ === 0 ? Promise.resolve(masterScene()) : slow), () => true);
+      const state = new SceneState(
+        () => (calls++ === 0 ? Promise.resolve(masterScene()) : slow),
+        () => true,
+      );
       await state.refresh();
       const late = state.refresh();
       state.setStage([mira]);

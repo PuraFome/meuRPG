@@ -30,7 +30,11 @@ export function degreeWord(cover: CoverDegree): string {
 
 /** "do mapa" or "marcada pelo mestre". */
 export function sourceWord(source: CoverSource): string {
-  return source === CoverSource.MARK ? 'marcada pelo mestre' : source === CoverSource.MAP ? 'do mapa' : '';
+  return source === CoverSource.MARK
+    ? 'marcada pelo mestre'
+    : source === CoverSource.MAP
+      ? 'do mapa'
+      : '';
 }
 
 /** "Meia cobertura (do mapa)", "Cobertura total (marcada pelo mestre)", or `''`. */
@@ -42,12 +46,20 @@ export function coverText(cover: CoverDegree, source: CoverSource): string {
 
 /** What the degree adds to the armor class, in words ("+2 na CA"), or `''` (none, total). The SRD's fixed numbers, said where a player reads the cover that counted. */
 export function coverBonusText(cover: CoverDegree): string {
-  return cover === CoverDegree.HALF ? '+2 na CA' : cover === CoverDegree.THREE_QUARTERS ? '+5 na CA' : '';
+  return cover === CoverDegree.HALF
+    ? '+2 na CA'
+    : cover === CoverDegree.THREE_QUARTERS
+      ? '+5 na CA'
+      : '';
 }
 
 /** Which pictogram a degree draws (`mr-swatch--half`, `--three`); total has none. */
 export function coverMark(cover: CoverDegree): 'half' | 'three' | null {
-  return cover === CoverDegree.HALF ? 'half' : cover === CoverDegree.THREE_QUARTERS ? 'three' : null;
+  return cover === CoverDegree.HALF
+    ? 'half'
+    : cover === CoverDegree.THREE_QUARTERS
+      ? 'three'
+      : null;
 }
 
 /** What a target list does with a target: list it, list it disabled with the
@@ -59,10 +71,15 @@ export type CoverListing =
   | { readonly kind: 'blocked'; readonly text: string }
   | { readonly kind: 'left-out' };
 
-export function listing(t: Pick<TargetInReach, 'cover' | 'coverSource' | 'untargetable'>): CoverListing {
+export function listing(
+  t: Pick<TargetInReach, 'cover' | 'coverSource' | 'untargetable'>,
+): CoverListing {
   if (t.untargetable) {
     return t.coverSource === CoverSource.MARK
-      ? { kind: 'blocked', text: `${coverText(CoverDegree.TOTAL, CoverSource.MARK)}: não pode ser alvo` }
+      ? {
+          kind: 'blocked',
+          text: `${coverText(CoverDegree.TOTAL, CoverSource.MARK)}: não pode ser alvo`,
+        }
       : { kind: 'left-out' };
   }
   return { kind: 'listed', text: coverText(t.cover, t.coverSource), mark: coverMark(t.cover) };

@@ -8,7 +8,8 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient } from '../../../core/maps/maps-testing';
 import { DoorSheet, type DoorSheetData } from './door-sheet';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 describe('DoorSheet', () => {
   let api: FakeMapsClient;
@@ -30,7 +31,9 @@ describe('DoorSheet', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const press = async (name: string) => {
-      Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent).includes(name))!.click();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => plain(b.textContent).includes(name))!
+        .click();
       fixture.detectChanges();
       await new Promise((r) => setTimeout(r));
       await fixture.whenStable();
@@ -40,12 +43,16 @@ describe('DoorSheet', () => {
   }
   const closedDoor: DoorSquare = { col: 4, row: 2, state: 2, axis: 'h' };
 
-  it('has three choices as radios, 48 px or more, with what each means; the door\'s kind is checked', () => {
+  it("has three choices as radios, 48 px or more, with what each means; the door's kind is checked", () => {
     const { el } = setup(closedDoor);
     expect(plain(el.querySelector('h2')?.textContent)).toBe('Porta');
     expect(plain(el.textContent)).toContain('Coluna 5, linha 3');
     const radios = Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]'));
-    expect(radios.map((r) => plain(r.querySelector('b')?.textContent))).toEqual(['Aberta', 'Fechada', 'Trancada']);
+    expect(radios.map((r) => plain(r.querySelector('b')?.textContent))).toEqual([
+      'Aberta',
+      'Fechada',
+      'Trancada',
+    ]);
     expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
     expect(plain(radios[2].textContent)).toContain('Só você a destranca');
     expect(plain(el.textContent)).toContain('A mudança vale na hora, para todos.');
@@ -54,7 +61,9 @@ describe('DoorSheet', () => {
   it('paints the choice at once, in the doors layer, keeps the sheet open with the new kind checked, and "Pronto" closes it saying it changed', async () => {
     const { el, press } = setup(closedDoor);
     await press('Trancada');
-    expect(api.paints).toEqual([{ layer: MapLayer.DOORS, value: 3, squares: [{ col: 4, row: 2 }] }]);
+    expect(api.paints).toEqual([
+      { layer: MapLayer.DOORS, value: 3, squares: [{ col: 4, row: 2 }] },
+    ]);
     expect(el.querySelector('[role="radio"][aria-checked="true"] b')?.textContent).toBe('Trancada');
     expect(closed).toEqual([]);
     await press('Pronto');
@@ -65,13 +74,18 @@ describe('DoorSheet', () => {
     const { el, press } = setup(closedDoor);
     api.paint = () => Promise.reject(new ConnectError('x', Code.PermissionDenied));
     await press('Aberta');
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Só o mestre da campanha muda os mapas.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Só o mestre da campanha muda os mapas.',
+    );
     expect(el.querySelector('[role="radio"][aria-checked="true"] b')?.textContent).toBe('Fechada');
   });
 
   it('a grade offers "Aberta" and "Grade" (checked), never "Fechada", and says that opening it makes it a door', () => {
     const { el } = setup({ col: 1, row: 1, state: 4, axis: 'v' });
-    expect(Array.from(el.querySelectorAll('[role="radio"] b'), (b) => b.textContent)).toEqual(['Aberta', 'Grade']);
+    expect(Array.from(el.querySelectorAll('[role="radio"] b'), (b) => b.textContent)).toEqual([
+      'Aberta',
+      'Grade',
+    ]);
     expect(el.querySelector('[role="radio"][aria-checked="true"] b')?.textContent).toBe('Grade');
     expect(plain(el.textContent)).toContain('Abrir a grade a troca por uma porta aberta.');
   });
@@ -85,7 +99,9 @@ describe('DoorSheet', () => {
     await new Promise((r) => setTimeout(r));
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(api.paints).toEqual([{ layer: MapLayer.DOORS, value: 3, squares: [{ col: 4, row: 2 }] }]);
+    expect(api.paints).toEqual([
+      { layer: MapLayer.DOORS, value: 3, squares: [{ col: 4, row: 2 }] },
+    ]);
     expect(el.querySelector('[role="radio"][aria-checked="true"] b')?.textContent).toBe('Trancada');
   });
 
@@ -102,7 +118,9 @@ describe('DoorSheet', () => {
     await press('Revelar a porta secreta');
     await press('Revelar');
     fixture.detectChanges();
-    expect(api.paints).toEqual([{ layer: MapLayer.DOORS, value: 2, squares: [{ col: 7, row: 4 }] }]);
+    expect(api.paints).toEqual([
+      { layer: MapLayer.DOORS, value: 2, squares: [{ col: 7, row: 4 }] },
+    ]);
     expect(closed).toEqual([true]);
   });
 
@@ -110,6 +128,9 @@ describe('DoorSheet', () => {
     const { press } = setup({ col: 7, row: 4, state: 5, axis: 'h' }, true);
     await press('Revelar a porta secreta');
     await press('Revelar');
-    expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.WALL}:0`, `${MapLayer.DOORS}:2`]);
+    expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+      `${MapLayer.WALL}:0`,
+      `${MapLayer.DOORS}:2`,
+    ]);
   });
 });

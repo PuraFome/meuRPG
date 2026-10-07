@@ -36,7 +36,13 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-clue-form',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    ReactiveFormsModule,
+  ],
   template: `
     <form class="cf" novalidate (submit)="$event.preventDefault(); submit()" [attr.aria-labelledby]="id + '-t'">
       <h4 class="cf__title" [id]="id + '-t'">{{ title() }}</h4>
@@ -126,9 +132,13 @@ export class ClueForm implements OnInit {
     const clue = this.clue();
     return clue ? `Editar a pista ${clue.number}` : 'Nova pista';
   });
-  protected readonly submitLabel = computed(() => (this.clue() ? 'Salvar pista' : 'Adicionar pista'));
+  protected readonly submitLabel = computed(() =>
+    this.clue() ? 'Salvar pista' : 'Adicionar pista',
+  );
   protected readonly over = computed(() => this.length() > CLUE_MAX);
-  protected readonly counter = computed(() => `${formatInt(this.length())} de ${formatInt(CLUE_MAX)}`);
+  protected readonly counter = computed(
+    () => `${formatInt(this.length())} de ${formatInt(CLUE_MAX)}`,
+  );
   protected readonly message = computed(() => this.local() || this.error());
 
   private readonly field = viewChild.required<ElementRef<HTMLTextAreaElement>>('field');

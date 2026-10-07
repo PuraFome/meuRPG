@@ -3,7 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { PuzzleRunStatus } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
-import { FakePuzzlesClient, asClient, lightsPuzzle, lockPuzzle, masterRun } from '../../../../core/puzzles/puzzles-testing';
+import {
+  FakePuzzlesClient,
+  asClient,
+  lightsPuzzle,
+  lockPuzzle,
+  masterRun,
+} from '../../../../core/puzzles/puzzles-testing';
 import { MasterLive } from './master-live';
 
 describe('MasterLive (the open live card, in the main column)', () => {
@@ -13,9 +19,18 @@ describe('MasterLive (the open live card, in the main column)', () => {
   async function render() {
     const api = new FakePuzzlesClient();
     api.sessionResult = [masterRun(a, PuzzleRunStatus.SHOWN), masterRun(b, PuzzleRunStatus.SHOWN)];
-    const state = new PuzzleSessionState(asClient(api), () => 'camp-1', () => true);
+    const state = new PuzzleSessionState(
+      asClient(api),
+      () => 'camp-1',
+      () => true,
+    );
     await state.refresh();
-    TestBed.configureTestingModule({ providers: [{ provide: PuzzlesClient, useValue: api }, { provide: (await import('../../../../core/maps/maps-client')).MapsClient, useValue: {} }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PuzzlesClient, useValue: api },
+        { provide: (await import('../../../../core/maps/maps-client')).MapsClient, useValue: {} },
+      ],
+    });
     const fixture = TestBed.createComponent(MasterLive);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('state', state);

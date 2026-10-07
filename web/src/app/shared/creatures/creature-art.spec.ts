@@ -16,7 +16,7 @@ describe('CreatureArt: the picture by key and type (MR-042)', () => {
     expect(shape('monster:ogre', 'giant')).toBe('giant');
   });
 
-  it('the wolves are a wolf, the Werewolf\'s wolf form too (a humanoid), and the spiders a spider', () => {
+  it("the wolves are a wolf, the Werewolf's wolf form too (a humanoid), and the spiders a spider", () => {
     expect(shape('monster:wolf', 'beast')).toBe('dog');
     expect(shape('monster:werewolf-wolf-form', 'humanoid')).toBe('dog');
     expect(shape('monster:giant-wolf-spider', 'beast')).toBe('spider');

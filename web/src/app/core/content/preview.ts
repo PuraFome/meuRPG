@@ -25,12 +25,36 @@ export type PreviewBody =
 export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
   switch (body.case) {
     case 'tableSpell':
-      return readEntry(create(TableEntrySchema, { kind: TableContentKind.SPELL, body: { case: 'tableSpell', value: create(TableSpellSchema, body.value) } }), nameOf);
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.SPELL,
+          body: { case: 'tableSpell', value: create(TableSpellSchema, body.value) },
+        }),
+        nameOf,
+      );
     case 'tableRace':
-      return readEntry(create(TableEntrySchema, { kind: TableContentKind.RACE, body: { case: 'tableRace', value: create(TableRaceSchema, body.value) } }), nameOf);
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.RACE,
+          body: { case: 'tableRace', value: create(TableRaceSchema, body.value) },
+        }),
+        nameOf,
+      );
     case 'tableSubrace':
-      return readEntry(create(TableEntrySchema, { kind: TableContentKind.SUBRACE, body: { case: 'tableSubrace', value: create(TableSubraceSchema, body.value) } }), nameOf);
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.SUBRACE,
+          body: { case: 'tableSubrace', value: create(TableSubraceSchema, body.value) },
+        }),
+        nameOf,
+      );
     case 'tableBackground':
-      return readEntry(create(TableEntrySchema, { kind: TableContentKind.BACKGROUND, body: { case: 'tableBackground', value: create(TableBackgroundSchema, body.value) } }), nameOf);
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.BACKGROUND,
+          body: { case: 'tableBackground', value: create(TableBackgroundSchema, body.value) },
+        }),
+        nameOf,
+      );
   }
 }

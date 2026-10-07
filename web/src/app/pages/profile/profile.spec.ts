@@ -120,7 +120,8 @@ describe('Profile', () => {
       fixture.detectChanges();
       return fixture;
     }
-    const text = (f: { nativeElement: unknown }) => (f.nativeElement as HTMLElement).textContent ?? '';
+    const text = (f: { nativeElement: unknown }) =>
+      (f.nativeElement as HTMLElement).textContent ?? '';
     const button = (f: { nativeElement: unknown }, label: string) =>
       Array.from((f.nativeElement as HTMLElement).querySelectorAll('button')).find((b) =>
         b.textContent?.includes(label),

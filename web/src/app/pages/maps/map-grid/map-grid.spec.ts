@@ -16,8 +16,27 @@ describe('MapGrid, the older grid page, on a calibrated map (RN-25)', () => {
       providers: [
         provideRouter([]),
         { provide: MapsClient, useValue: api },
-        { provide: CampaignsService, useValue: { getCampaign: () => Promise.resolve({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: Role.MASTER, awaitingApproval: false } }) } },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', mapId: map.id })), queryParamMap: of(convertToParamMap({})) } },
+        {
+          provide: CampaignsService,
+          useValue: {
+            getCampaign: () =>
+              Promise.resolve({
+                campaign: {
+                  id: 'camp-1',
+                  name: 'Mirathel',
+                  myRole: Role.MASTER,
+                  awaitingApproval: false,
+                },
+              }),
+          },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({ id: 'camp-1', mapId: map.id })),
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
       ],
     });
     const fixture = TestBed.createComponent(MapGrid);
@@ -29,11 +48,20 @@ describe('MapGrid, the older grid page, on a calibrated map (RN-25)', () => {
     }
     return { fixture, el: fixture.nativeElement as HTMLElement, api };
   }
-  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const text = (el: HTMLElement) =>
+    (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
   it('says what the marked square is worth, caps the columns at what 200 rules columns allow, and keeps the factor on save', async () => {
     // Factor 4 (6 m): the drawing has at most 50 columns, and each square of it is 6 m.
-    const { fixture, el, api } = await setup(mapMessage('map-4', 'Torre', { gridColumns: 80, gridRows: 52, drawnColumns: 20, drawnRows: 13, squareFactor: 4 }));
+    const { fixture, el, api } = await setup(
+      mapMessage('map-4', 'Torre', {
+        gridColumns: 80,
+        gridRows: 52,
+        drawnColumns: 20,
+        drawnRows: 13,
+        squareFactor: 4,
+      }),
+    );
     expect(text(el)).toContain('O quadrado marcado tem 6 m.');
     expect(text(el)).toContain('De 5 a 50.');
     const input = el.querySelector<HTMLInputElement>('input')!;
@@ -47,13 +75,23 @@ describe('MapGrid, the older grid page, on a calibrated map (RN-25)', () => {
     fixture.detectChanges();
     // The rules' grid is the drawing's times 4: 120 × 80 squares.
     expect(text(el)).toContain('120 × 80');
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Salvar'))?.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Salvar'))
+      ?.click();
     await fixture.whenStable();
     expect(api.calls.some((c) => c === 'setGrid map-4 30 x4')).toBe(true);
   });
 
   it('a map never calibrated still says 1,5 m', async () => {
-    const { el } = await setup(mapMessage('map-1', 'Caverna', { gridColumns: 24, gridRows: 16, drawnColumns: 24, drawnRows: 16, squareFactor: 1 }));
+    const { el } = await setup(
+      mapMessage('map-1', 'Caverna', {
+        gridColumns: 24,
+        gridRows: 16,
+        drawnColumns: 24,
+        drawnRows: 16,
+        squareFactor: 1,
+      }),
+    );
     expect(text(el)).toContain('O quadrado marcado tem 1,5 m.');
     expect(text(el)).toContain('De 5 a 60.');
   });

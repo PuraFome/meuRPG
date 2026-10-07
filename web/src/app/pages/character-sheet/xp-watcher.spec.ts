@@ -8,7 +8,10 @@ import { XpWatcher } from './xp-watcher';
 class Call {
   private queue: LiveEventVm[] = [];
   private wake: (() => void) | null = null;
-  constructor(readonly campaignId: string, readonly signal: AbortSignal) {}
+  constructor(
+    readonly campaignId: string,
+    readonly signal: AbortSignal,
+  ) {}
   push(event: LiveEventVm) {
     this.queue.push(event);
     this.wake?.();
@@ -37,10 +40,12 @@ describe('XpWatcher (E7-10)', () => {
       },
       classifyError: () => 'transient',
     };
-    TestBed.configureTestingModule({ providers: [XpWatcher, { provide: LiveSessionSourceLive, useValue: source }] });
+    TestBed.configureTestingModule({
+      providers: [XpWatcher, { provide: LiveSessionSourceLive, useValue: source }],
+    });
   });
 
-  it('opens the session\'s stream and says so when the XP changes', async () => {
+  it("opens the session's stream and says so when the XP changes", async () => {
     const onChange = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', onChange);

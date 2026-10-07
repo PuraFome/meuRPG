@@ -21,7 +21,14 @@ import { countLabel } from '../editor-labels';
  */
 @Component({
   selector: 'app-spell-picker',
-  imports: [MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink, TableMark],
+  imports: [
+    MatCheckboxModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    RouterLink,
+    TableMark,
+  ],
   templateUrl: './spell-picker.html',
   styleUrl: './spell-picker.scss',
 })

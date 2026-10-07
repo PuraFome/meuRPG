@@ -39,9 +39,14 @@ const ALIGNMENT_PT: Record<string, string> = {
  * ("neutral good (50%) or neutral evil (50%)") stay the book's English, and `english` says so,
  * so the page marks them `lang="en"` (the same rule as the rest of the SRD's text).
  */
-export function alignmentPt(alignment: string): { readonly text: string; readonly english: boolean } {
+export function alignmentPt(alignment: string): {
+  readonly text: string;
+  readonly english: boolean;
+} {
   const known = ALIGNMENT_PT[alignment.trim().toLowerCase()];
-  return known ? { text: known, english: false } : { text: alignment.trim(), english: alignment.trim() !== '' };
+  return known
+    ? { text: known, english: false }
+    : { text: alignment.trim(), english: alignment.trim() !== '' };
 }
 
 /** The route segment of a creature ("monster:ogre" → "ogre") and back. */
@@ -54,10 +59,14 @@ export function creatureKeyOf(slug: string): string {
 
 /** The speed an NPC made from the creature gets, in feet: the walking one, or the best other (the server's rule, `CreateNpcFromCreature`). */
 export function npcSpeedFt(c: Creature): number {
-  return c.speedWalkFt > 0 ? c.speedWalkFt : Math.max(c.speedFlyFt, c.speedSwimFt, c.speedClimbFt, c.speedBurrowFt);
+  return c.speedWalkFt > 0
+    ? c.speedWalkFt
+    : Math.max(c.speedFlyFt, c.speedSwimFt, c.speedClimbFt, c.speedBurrowFt);
 }
 
 /** "Cimitarra e Adaga", "A, B e C". */
 export function listWithE(items: readonly string[]): string {
-  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+  return items.length < 2
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
 }

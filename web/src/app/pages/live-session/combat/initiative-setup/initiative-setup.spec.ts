@@ -6,7 +6,14 @@ import { InitiativeSetup } from './initiative-setup';
 
 describe('InitiativeSetup', () => {
   const rolled = (id: string, label: string, total: number, extra = {}) =>
-    combatant({ id, label, initiative: total, initiativeFace: total - 2, initiativeBonus: 2, ...extra });
+    combatant({
+      id,
+      label,
+      initiative: total,
+      initiativeFace: total - 2,
+      initiativeBonus: 2,
+      ...extra,
+    });
   const list = [
     rolled('brisa', 'Brisa', 19, { kind: CombatantKind.PLAYER }),
     rolled('g1', 'Goblin 1', 12, { tieUnresolved: true }),
@@ -16,7 +23,10 @@ describe('InitiativeSetup', () => {
 
   function setup() {
     const fixture = TestBed.createComponent(InitiativeSetup);
-    fixture.componentRef.setInput('encounter', encounter({ status: EncounterStatus.SETUP, round: 0, combatants: list }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ status: EncounterStatus.SETUP, round: 0, combatants: list }),
+    );
     const orders: string[][] = [];
     const submits: { id: string; face: number }[] = [];
     fixture.componentInstance.order.subscribe((o) => orders.push(o));
@@ -29,7 +39,9 @@ describe('InitiativeSetup', () => {
     const { el } = setup();
     expect(el.textContent).toContain('1d20 (17) + 2 = 19');
     expect(el.textContent?.match(/Empate em 12/g)).toHaveLength(1);
-    expect(el.textContent).toContain('Empate em 12: Goblin 1 e Goblin 2. Escolha a ordem com as setas.');
+    expect(el.textContent).toContain(
+      'Empate em 12: Goblin 1 e Goblin 2. Escolha a ordem com as setas.',
+    );
   });
 
   it('moves a tied combatant down with the arrow, and the outer arrows do nothing', () => {
@@ -51,7 +63,9 @@ describe('InitiativeSetup', () => {
 
   it('types a face for the player: the total updates and only 1 to 20 saves', async () => {
     const { fixture, el, submits } = setup();
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Digitar pelo jogador'))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Digitar pelo jogador'))!
+      .click();
     fixture.detectChanges();
     const input = el.querySelector<HTMLInputElement>('input')!;
     input.value = '99';
@@ -62,7 +76,9 @@ describe('InitiativeSetup', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(el.textContent).toContain('= 9');
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Salvar')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Salvar')!
+      .click();
     expect(submits).toEqual([{ id: 'toren', face: 7 }]);
   });
 });

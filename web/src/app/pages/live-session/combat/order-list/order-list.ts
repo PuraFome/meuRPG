@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -19,8 +28,19 @@ import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
-import { groupFeminine, groupName, isCreature, kindWord, ofOwner } from '../../../../core/combat/creature-names';
-import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import {
+  groupFeminine,
+  groupName,
+  isCreature,
+  kindWord,
+  ofOwner,
+} from '../../../../core/combat/creature-names';
+import {
+  type OrderItem,
+  jointTurn,
+  listNames,
+  orderItems,
+} from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
@@ -50,7 +70,23 @@ function concentrationOf(c: Combatant): string {
  */
 @Component({
   selector: 'app-order-list',
-  imports: [BeastPool, ConcPill, FormTag, LoseQuestion, CombatantTags, CombatantToken, OrderLegend, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [
+    BeastPool,
+    ConcPill,
+    FormTag,
+    LoseQuestion,
+    CombatantTags,
+    CombatantToken,
+    OrderLegend,
+    RowCover,
+    DeathRow,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    NgTemplateOutlet,
+    OrderGroup,
+    PartState,
+  ],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -77,7 +113,9 @@ export class OrderList {
   readonly theatre = input(false);
   /** The cover each combatant has against whoever has the turn (`GetTurnOptions`
    * of the master's subject), and who that is: "Três quartos (do mapa) contra o Pensantus". */
-  readonly coverAgainst = input<ReadonlyMap<string, { cover: CoverDegree; source: CoverSource }>>(new Map());
+  readonly coverAgainst = input<ReadonlyMap<string, { cover: CoverDegree; source: CoverSource }>>(
+    new Map(),
+  );
   readonly turnLabel = input('');
   /** The side of whoever has the turn: the cover is said only against an opponent. */
   readonly turnSide = input<CombatantSide>(CombatantSide.UNSPECIFIED);
@@ -143,7 +181,11 @@ export class OrderList {
 
   /** A player's character at 0 hit points that is still in the story. */
   protected down(c: Combatant): boolean {
-    return c.state === CombatantState.DOWN || c.state === CombatantState.DYING || c.state === CombatantState.STABLE;
+    return (
+      c.state === CombatantState.DOWN ||
+      c.state === CombatantState.DYING ||
+      c.state === CombatantState.STABLE
+    );
   }
 
   protected dying(c: Combatant): boolean {
@@ -152,7 +194,9 @@ export class OrderList {
 
   /** "Caída", "Estável", "Morrendo · 3 falhas". */
   protected downText(c: Combatant): string {
-    return this.dying(c) ? joinDots(['Morrendo', `${c.deathFailures} falhas`]) : stateWord(c.state, c.label);
+    return this.dying(c)
+      ? joinDots(['Morrendo', `${c.deathFailures} falhas`])
+      : stateWord(c.state, c.label);
   }
 
   protected player(c: Combatant): boolean {
@@ -182,7 +226,9 @@ export class OrderList {
       // "CA 14 · da Sálvia": its armor class and whose it is (the round dashed token and the legend say it is a creature); the
       // book's name only when the table gave it another ("Lobo atroz 1" needs none, "Nanquim" is a "Corvo").
       const kind = kindWord(c);
-      return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)].filter(Boolean).join(' · ');
+      return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)]
+        .filter(Boolean)
+        .join(' · ');
     }
     const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
     // A monster of the bestiary (RN-29): the master alone is told its challenge rating ("ND 1/8").
@@ -221,7 +267,9 @@ export class OrderList {
 
   /** "Turno conjunto: Brisa e Toren, iniciativa 19", for a screen reader. */
   protected groupLabel(item: OrderItem): string {
-    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
+    return item.kind === 'group'
+      ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}`
+      : '';
   }
 
   /** "Três quartos (do mapa) contra o Pensantus", or `''` when there is none or nobody has the turn. */
@@ -231,7 +279,9 @@ export class OrderList {
     const who = this.turnLabel();
     const side = this.turnSide();
     // Only against opponents: a combatant of the same side as whoever has the turn is no target of theirs.
-    return text && who && c.label !== who && (side === CombatantSide.UNSPECIFIED || c.side !== side) ? tieNumbers(`${text} contra ${article(who)} ${who}`) : '';
+    return text && who && c.label !== who && (side === CombatantSide.UNSPECIFIED || c.side !== side)
+      ? tieNumbers(`${text} contra ${article(who)} ${who}`)
+      : '';
   }
 
   protected coverPictogram(c: Combatant): 'half' | 'three' | null {
@@ -240,7 +290,10 @@ export class OrderList {
 
   /** The text action shows where cover matters: a line, or a mark already there. */
   protected hasCover(c: Combatant): boolean {
-    return !!this.coverLine(c) || (c.coverMark !== CoverDegree.NONE && c.coverMark !== CoverDegree.UNSPECIFIED);
+    return (
+      !!this.coverLine(c) ||
+      (c.coverMark !== CoverDegree.NONE && c.coverMark !== CoverDegree.UNSPECIFIED)
+    );
   }
 
   protected pickCover(id: string, cover: CoverDegree): void {
@@ -264,14 +317,22 @@ export class OrderList {
   /** The creatures a player's character keeps with its concentration: its own creatures of a casting (they carry the group the combat made), whatever the spell. */
   protected heldBy(c: Combatant): readonly Combatant[] {
     return isPlayer(c) && c.concentrationSpell
-      ? this.rows().filter((x) => isCreature(x) && x.ownerCharacterId === c.characterId && !!x.summonGroupId && !x.defeated)
+      ? this.rows().filter(
+          (x) =>
+            isCreature(x) &&
+            x.ownerCharacterId === c.characterId &&
+            !!x.summonGroupId &&
+            !x.defeated,
+        )
       : [];
   }
 
   /** "· 2 Lobos atrozes" after the spell, in the line under the name. */
   protected held(c: Combatant): string {
     const held = this.heldBy(c);
-    return held.length > 0 ? ` · ${held.length === 1 ? held[0].label : `${held.length} ${groupName(held)}`}` : '';
+    return held.length > 0
+      ? ` · ${held.length === 1 ? held[0].label : `${held.length} ${groupName(held)}`}`
+      : '';
   }
 
   /** What losing it does, for the question: "Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa.". */
@@ -289,7 +350,9 @@ export class OrderList {
       return `Dispensar ${article(held[0].label) === 'a' ? 'a' : 'o'} ${held[0].label}`;
     }
     const kinds = new Set(held.map((x) => x.monsterKey));
-    return kinds.size === 1 ? `Dispensar ${groupFeminine(held) ? 'as' : 'os'} ${groupName(held).split(' ')[0]}` : 'Dispensar as criaturas';
+    return kinds.size === 1
+      ? `Dispensar ${groupFeminine(held) ? 'as' : 'os'} ${groupName(held).split(' ')[0]}`
+      : 'Dispensar as criaturas';
   }
 
   /** "A Sálvia perdeu a concentração?". */

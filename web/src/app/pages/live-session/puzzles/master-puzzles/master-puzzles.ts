@@ -1,8 +1,22 @@
-import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type MasterPuzzleRun, PuzzleRunStatus } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  type MasterPuzzleRun,
+  PuzzleRunStatus,
+} from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { kindIcon, puzzleSummary } from '../../../../core/puzzles/puzzle-format';
 import { puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
@@ -37,7 +51,11 @@ export class MasterPuzzles {
 
   protected readonly runs = computed(() => this.state().runs());
   /** The ones the players see or solved: the live cards. A closed one is back to being a row. */
-  protected readonly live = computed(() => this.runs().filter((r) => r.status === PuzzleRunStatus.SHOWN || r.status === PuzzleRunStatus.SOLVED));
+  protected readonly live = computed(() =>
+    this.runs().filter(
+      (r) => r.status === PuzzleRunStatus.SHOWN || r.status === PuzzleRunStatus.SOLVED,
+    ),
+  );
 
   constructor() {
     // One card is open at a time: when the chosen puzzle is no longer shown (or none was chosen), the first one that is takes its place.
@@ -60,7 +78,11 @@ export class MasterPuzzles {
     return run.puzzle ? puzzleSummary(run.puzzle) : '';
   }
 
-  protected tag(run: MasterPuzzleRun): { readonly word: string; readonly tone: string; readonly icon: string } {
+  protected tag(run: MasterPuzzleRun): {
+    readonly word: string;
+    readonly tone: string;
+    readonly icon: string;
+  } {
     switch (run.status) {
       case PuzzleRunStatus.SHOWN:
         return { word: 'Mostrado agora', tone: 'success', icon: 'visibility' };
@@ -84,7 +106,10 @@ export class MasterPuzzles {
       this.state().replace(await this.api.show(this.campaignId(), id));
       // The row's button is gone: the new card (in the main column) takes the focus.
       this.state().select(id);
-      afterNextRender(() => focusWithRing(document.querySelector<HTMLElement>('app-master-live h3')), { injector: this.injector });
+      afterNextRender(
+        () => focusWithRing(document.querySelector<HTMLElement>('app-master-live h3')),
+        { injector: this.injector },
+      );
     } catch (err) {
       this.notice.set(puzzleErrorMessage(err, 'mostrar o quebra-cabeça'));
     } finally {
@@ -98,6 +123,9 @@ export class MasterPuzzles {
 
   protected open(run: MasterPuzzleRun): void {
     this.state().select(this.idOf(run));
-    afterNextRender(() => focusWithRing(document.querySelector<HTMLElement>('app-master-live h3')), { injector: this.injector });
+    afterNextRender(
+      () => focusWithRing(document.querySelector<HTMLElement>('app-master-live h3')),
+      { injector: this.injector },
+    );
   }
 }

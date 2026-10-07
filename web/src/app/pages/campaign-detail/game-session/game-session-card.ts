@@ -123,7 +123,10 @@ export class GameSessionCard implements OnInit, OnDestroy {
     this.actionState.set({ status: 'saving' });
     try {
       // A retry of the same start (a lost answer, a second tap) sends the same key and starts one session.
-      const result = await this.source.startGameSession(this.campaignId(), this.startKey.keyFor(this.campaignId()));
+      const result = await this.source.startGameSession(
+        this.campaignId(),
+        this.startKey.keyFor(this.campaignId()),
+      );
       this.startKey.renew();
       this.state.set({ status: 'ready', session: result.session });
       this.lastLockedSheetCount.set(result.lockedSheetCount);

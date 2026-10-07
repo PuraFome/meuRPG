@@ -69,7 +69,15 @@ describe('story round-trips load → save unchanged (integrator fix, phase 2b)',
     const vm = toStoryVm(undefined);
     expect(vm).toEqual({
       personality: { traits: '', ideals: '', bonds: '', flaws: '' },
-      appearance: { age: '', height: '', weight: '', eyes: '', skin: '', hair: '', description: '' },
+      appearance: {
+        age: '',
+        height: '',
+        weight: '',
+        eyes: '',
+        skin: '',
+        hair: '',
+        description: '',
+      },
       backstory: '',
       allies: '',
     });
@@ -171,7 +179,10 @@ function characterWithFullSheet(full: FullSheet): Character {
     name: 'Pensantus',
     playerUserId: 'user-1',
     playerDisplayName: 'Vinicius',
-    sheet: { $typeName: 'meurpg.characters.v1.CharacterSheet', content: { case: 'full', value: full } },
+    sheet: {
+      $typeName: 'meurpg.characters.v1.CharacterSheet',
+      content: { case: 'full', value: full },
+    },
     story: undefined,
     derived: minimalDerivedSheet(),
     revision: 1,
@@ -207,7 +218,9 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
   });
 
   it('reads experience points straight from the FullSheet, 0 included', () => {
-    const vm = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet({ experiencePoints: 0 })));
+    const vm = toCharacterSheetVm(
+      characterWithFullSheet(minimalFullSheet({ experiencePoints: 0 })),
+    );
     expect(vm.experiencePoints).toBe(0);
 
     const vmWithXp = toCharacterSheetVm(
@@ -216,7 +229,7 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
     expect(vmWithXp.experiencePoints).toBe(2700);
   });
 
-  it('maps a pending character and the master\'s can_approve (MR-024)', () => {
+  it("maps a pending character and the master's can_approve (MR-024)", () => {
     const vm = toCharacterSheetVm({
       ...characterWithFullSheet(minimalFullSheet()),
       state: CharacterState.PENDING,
@@ -300,7 +313,7 @@ describe('the sheet header names the race', () => {
 });
 
 describe('the sheet maps armor_class_description, features and hints (integrator fix)', () => {
-  it('carries armor_class_description, each feature\'s source_pt, and every hint straight through', () => {
+  it("carries armor_class_description, each feature's source_pt, and every hint straight through", () => {
     const derived: DerivedSheet = {
       ...minimalDerivedSheet(),
       armorClassDescription: 'Armadura de couro + escudo',

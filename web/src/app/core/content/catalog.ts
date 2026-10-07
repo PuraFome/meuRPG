@@ -9,7 +9,8 @@ import type { SelectOption } from '../../shared/form-fields/select-field';
  */
 export interface CatalogAbility {
   /** The field of `AbilityScores` ("strength"): the path of a bonus, the key of a draft. */
-  readonly field: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+  readonly field:
+    'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
   readonly ability: Ability;
   /** "Força", from the catalog. */
   readonly name: string;
@@ -26,7 +27,11 @@ export interface CatalogVm {
   subclassLevelOf(classKey: string): number;
   readonly schools: readonly SelectOption[];
   /** The classes a spell can be on the list of: every casting class, the table's marked. */
-  readonly castingClasses: readonly { readonly key: string; readonly name: string; readonly table: boolean }[];
+  readonly castingClasses: readonly {
+    readonly key: string;
+    readonly name: string;
+    readonly table: boolean;
+  }[];
   /** The classes a subclass can belong to: the SRD's and the table's, not the archived. */
   readonly classes: readonly SelectOption[];
   readonly skills: readonly SelectOption[];
@@ -54,8 +59,19 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   for (const n of content.languages) names.set(n.key, n.namePt);
   for (const n of content.proficiencies) names.set(n.key, n.namePt);
   for (const n of content.damageTypes) names.set(n.key, n.namePt);
-  const fields = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const;
-  const abilities: CatalogAbility[] = content.abilities.map((a, i) => ({ field: fields[i], ability: a.ability, name: a.namePt }));
+  const fields = [
+    'strength',
+    'dexterity',
+    'constitution',
+    'intelligence',
+    'wisdom',
+    'charisma',
+  ] as const;
+  const abilities: CatalogAbility[] = content.abilities.map((a, i) => ({
+    field: fields[i],
+    ability: a.ability,
+    name: a.namePt,
+  }));
   for (const a of abilities) {
     names.set(`ability:${a.field}`, a.name);
     names.set(`ability:${a.ability}`, a.name);
@@ -66,21 +82,33 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   for (const s of content.spells) {
     if (s.schoolKey && !schools.has(s.schoolKey)) schools.set(s.schoolKey, s.schoolNamePt);
   }
-  const byName = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, 'pt-BR');
+  const byName = (a: { label: string }, b: { label: string }) =>
+    a.label.localeCompare(b.label, 'pt-BR');
   const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
   return {
     abilities,
-    damageTypes: content.damageTypes.map((d) => ({ value: d.key, label: capital(d.namePt) })).sort(byName),
-    races: content.races.filter((r) => !r.archived).map((r) => ({ value: r.key, label: r.namePt })).sort(byName),
+    damageTypes: content.damageTypes
+      .map((d) => ({ value: d.key, label: capital(d.namePt) }))
+      .sort(byName),
+    races: content.races
+      .filter((r) => !r.archived)
+      .map((r) => ({ value: r.key, label: r.namePt }))
+      .sort(byName),
     subclassLevelOf: (key) => subclassLevels.get(key) ?? 0,
     schools: [...schools].map(([value, label]) => ({ value, label })).sort(byName),
     castingClasses: content.classes
       .filter((c) => !c.archived && (c.spellcasting !== undefined || c.key.endsWith('@mesa')))
       .map((c) => ({ key: c.key, name: c.namePt, table: isTableKey(c.key) }))
       .sort((a, b) => Number(a.table) - Number(b.table) || a.name.localeCompare(b.name, 'pt-BR')),
-    classes: content.classes.filter((c) => !c.archived).map((c) => ({ value: c.key, label: isTableKey(c.key) ? `${c.namePt} (da mesa)` : c.namePt })).sort(byName),
+    classes: content.classes
+      .filter((c) => !c.archived)
+      .map((c) => ({ value: c.key, label: isTableKey(c.key) ? `${c.namePt} (da mesa)` : c.namePt }))
+      .sort(byName),
     skills: content.skills.map((s) => ({ value: s.key, label: s.namePt })).sort(byName),
-    spells: content.spells.filter((s) => !s.archived).map((s) => ({ value: s.key, label: s.namePt })).sort(byName),
+    spells: content.spells
+      .filter((s) => !s.archived)
+      .map((s) => ({ value: s.key, label: s.namePt }))
+      .sort(byName),
     nameOf: (key) => names.get(key) ?? key,
   };
 }

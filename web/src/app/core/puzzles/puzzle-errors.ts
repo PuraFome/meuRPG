@@ -1,6 +1,9 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../gen/meurpg/play/v1/play_pb';
+import {
+  GameSessionBlockedReason,
+  GameSessionBlockedSchema,
+} from '../../../gen/meurpg/play/v1/play_pb';
 import {
   type PuzzleBlocked,
   PuzzleBlockedReason,
@@ -32,14 +35,22 @@ export function puzzleInvalid(err: unknown): PuzzleInvalid | null {
 /** Whether a failed move may be sent again with the same key: the server did not answer (or could not finish). */
 export function isTransient(err: unknown): boolean {
   const code = ConnectError.from(err, Code.Unavailable).code;
-  return code === Code.Unavailable || code === Code.Aborted || code === Code.DeadlineExceeded || code === Code.Unknown;
+  return (
+    code === Code.Unavailable ||
+    code === Code.Aborted ||
+    code === Code.DeadlineExceeded ||
+    code === Code.Unknown
+  );
 }
 
 /** Who reads a refusal: the master's pages and the player's page say some of them differently. */
 export type Audience = 'master' | 'player';
 
 /** What each refusal says, in words the master or the player can act on. */
-export function puzzleBlockedMessage(reason: PuzzleBlockedReason, audience: Audience = 'master'): string {
+export function puzzleBlockedMessage(
+  reason: PuzzleBlockedReason,
+  audience: Audience = 'master',
+): string {
   switch (reason) {
     case PuzzleBlockedReason.NO_OPEN_SESSION:
       return 'A sessão acabou: os quebra-cabeças só se jogam durante a sessão.';
@@ -54,9 +65,13 @@ export function puzzleBlockedMessage(reason: PuzzleBlockedReason, audience: Audi
     case PuzzleBlockedReason.NO_CHARACTER:
       return 'Você não tem um personagem vivo nesta campanha para jogar.';
     case PuzzleBlockedReason.NO_MORE_HINTS:
-      return audience === 'player' ? 'Não há mais dicas para ganhar.' : 'Não há mais dicas para soltar.';
+      return audience === 'player'
+        ? 'Não há mais dicas para ganhar.'
+        : 'Não há mais dicas para soltar.';
     case PuzzleBlockedReason.SEQUENCE_NOT_PLAYED:
-      return audience === 'player' ? 'O mestre ainda não tocou a sequência. Esperem ele tocar.' : 'Toque a sequência para os jogadores antes.';
+      return audience === 'player'
+        ? 'O mestre ainda não tocou a sequência. Esperem ele tocar.'
+        : 'Toque a sequência para os jogadores antes.';
     case PuzzleBlockedReason.SEQUENCE_PLAYING:
       return 'A sequência está tocando. Espere ela terminar.';
     case PuzzleBlockedReason.NOT_A_SEQUENCE:
@@ -183,7 +198,11 @@ export function invalidSection(invalid: PuzzleInvalid): FormSection {
  * The Portuguese message for a failed puzzle call, by code and typed detail (puzzles.proto lists what each call
  * returns). `what` finishes "Não deu para …".
  */
-export function puzzleErrorMessage(err: unknown, what = 'fazer isso', audience: Audience = 'master'): string {
+export function puzzleErrorMessage(
+  err: unknown,
+  what = 'fazer isso',
+  audience: Audience = 'master',
+): string {
   const blocked = puzzleBlocked(err);
   if (blocked) {
     return puzzleBlockedMessage(blocked.reason, audience);
@@ -191,7 +210,8 @@ export function puzzleErrorMessage(err: unknown, what = 'fazer isso', audience: 
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (
     connectErr.code === Code.FailedPrecondition &&
-    connectErr.findDetails(GameSessionBlockedSchema)[0]?.reason === GameSessionBlockedReason.NO_OPEN_SESSION
+    connectErr.findDetails(GameSessionBlockedSchema)[0]?.reason ===
+      GameSessionBlockedReason.NO_OPEN_SESSION
   ) {
     return puzzleBlockedMessage(PuzzleBlockedReason.NO_OPEN_SESSION);
   }

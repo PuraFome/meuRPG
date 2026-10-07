@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
@@ -35,7 +44,17 @@ import { PointSheet } from '../../../shared/point-sheet/point-sheet';
  */
 @Component({
   selector: 'app-player-map',
-  imports: [ChestIcon, FogMap, MapLegend, MapPins, MapPinsLegend, MapView, MatIconModule, PointSheet, RouterLink],
+  imports: [
+    ChestIcon,
+    FogMap,
+    MapLegend,
+    MapPins,
+    MapPinsLegend,
+    MapView,
+    MatIconModule,
+    PointSheet,
+    RouterLink,
+  ],
   templateUrl: './player-map.html',
   styleUrl: './player-map.scss',
 })
@@ -71,11 +90,21 @@ export class PlayerMap {
     return image ? { url: image.url, width: image.width, height: image.height } : null;
   });
   protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
-  protected readonly viewer = computed(() => ({ name: this.state().tokens().find((t) => t.mine && !t.creatureId)?.name ?? 'Seu personagem', own: true }));
+  protected readonly viewer = computed(() => ({
+    name:
+      this.state()
+        .tokens()
+        .find((t) => t.mine && !t.creatureId)?.name ?? 'Seu personagem',
+    own: true,
+  }));
   protected readonly parent = computed(() => this.map()?.parentMaps[0] ?? null);
   protected readonly selected = computed(() => {
     const s = this.selection();
-    return s ? (this.state().points().find((p) => p.id === s.id) ?? null) : null;
+    return s
+      ? (this.state()
+          .points()
+          .find((p) => p.id === s.id) ?? null)
+      : null;
   });
   protected readonly backLink = computed(() =>
     this.fromSession()

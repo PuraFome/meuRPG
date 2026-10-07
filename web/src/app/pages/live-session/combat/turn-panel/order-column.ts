@@ -4,9 +4,20 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import {
+  combatantInitial,
+  isDown,
+  isPlayer,
+  playerWord,
+  stateWord,
+} from '../../../../core/combat/combat-view';
 import { isCreature, ofOwner } from '../../../../core/combat/creature-names';
-import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import {
+  type OrderItem,
+  jointTurn,
+  listNames,
+  orderItems,
+} from '../../../../core/combat/joint-turn';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
@@ -24,7 +35,15 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-order-column',
-  imports: [CombatantTags, FormTag, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [
+    CombatantTags,
+    FormTag,
+    CombatantToken,
+    MatIconModule,
+    NgTemplateOutlet,
+    OrderGroup,
+    PartState,
+  ],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
       <h2 class="panel__title" id="order-col-title">Ordem</h2>
@@ -79,7 +98,11 @@ export class OrderColumn {
   /** The conditions, "Aliado" and the master's cover mark under the name: what everyone who sees it may read. */
   protected tags(c: Combatant): string[] {
     // The concentration is public: everyone at the table sees who holds a spell (the spell's name stays with the sheet and the master).
-    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
+    return [
+      ...(c.concentrationSpell ? ['Concentração'] : []),
+      ...conditionTags(c),
+      ...coverMarkTags(c),
+    ];
   }
 
   protected npc(c: Combatant): boolean {
@@ -112,7 +135,9 @@ export class OrderColumn {
   }
 
   protected groupLabel(item: OrderItem): string {
-    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
+    return item.kind === 'group'
+      ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}`
+      : '';
   }
 
   protected word(c: Combatant): string {

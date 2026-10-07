@@ -28,7 +28,13 @@ const QUIET_MS = 150;
  * answer never overwrites a fresh one.
  */
 export class LevelUpPreview {
-  readonly state = signal<PreviewState>({ after: null, afterAverage: null, refusal: null, loading: true, failed: '' });
+  readonly state = signal<PreviewState>({
+    after: null,
+    afterAverage: null,
+    refusal: null,
+    loading: true,
+    failed: '',
+  });
 
   private seq = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +47,11 @@ export class LevelUpPreview {
 
   /** Reads now (the first time) or after a short quiet. `average` is the same choices with the average
    * hit points, or null when `choices` already use it. */
-  request(choices: LevelUpChoicesInit, average: LevelUpChoicesInit | null, immediately = false): void {
+  request(
+    choices: LevelUpChoicesInit,
+    average: LevelUpChoicesInit | null,
+    immediately = false,
+  ): void {
     clearTimeout(this.timer);
     const seq = ++this.seq;
     this.state.update((s) => ({ ...s, loading: true }));
@@ -49,7 +59,9 @@ export class LevelUpPreview {
       try {
         const [now, avg] = await Promise.all([
           this.client.preview(this.campaignId, this.characterId, choices),
-          average ? this.client.preview(this.campaignId, this.characterId, average) : Promise.resolve(null),
+          average
+            ? this.client.preview(this.campaignId, this.characterId, average)
+            : Promise.resolve(null),
         ]);
         if (seq === this.seq) {
           this.state.set({
@@ -62,7 +74,11 @@ export class LevelUpPreview {
         }
       } catch (err) {
         if (seq === this.seq) {
-          this.state.update((s) => ({ ...s, loading: false, failed: describeLevelUpFailure(err).message }));
+          this.state.update((s) => ({
+            ...s,
+            loading: false,
+            failed: describeLevelUpFailure(err).message,
+          }));
         }
       }
     };

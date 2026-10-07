@@ -73,12 +73,24 @@ describe('DocumentMapDialog (E5-29)', () => {
     expect(el.querySelector('.doc-dialog__sub mat-icon')?.textContent).toBe('visibility_off');
   });
 
-  it('draws a trap and a found treasure with the map\'s own marks, not a floating name: the pins, and a marker that is only a hit area', async () => {
+  it("draws a trap and a found treasure with the map's own marks, not a floating name: the pins, and a marker that is only a hit area", async () => {
     links.map = {
       ...links.map,
       points: [
-        mapPoint('t1', 'Fosso escondido', { kind: MapPointKind.TRAP, revealed: true, xBp: 3000, yBp: 3000, trap: { state: TrapState.ARMED, areaSize: 2 } as never }),
-        mapPoint('c1', 'Baú de moedas', { kind: MapPointKind.TREASURE, revealed: false, treasureFoundAt: { seconds: 1n, nanos: 0 } as never, xBp: 7000, yBp: 7000 }),
+        mapPoint('t1', 'Fosso escondido', {
+          kind: MapPointKind.TRAP,
+          revealed: true,
+          xBp: 3000,
+          yBp: 3000,
+          trap: { state: TrapState.ARMED, areaSize: 2 } as never,
+        }),
+        mapPoint('c1', 'Baú de moedas', {
+          kind: MapPointKind.TREASURE,
+          revealed: false,
+          treasureFoundAt: { seconds: 1n, nanos: 0 } as never,
+          xBp: 7000,
+          yBp: 7000,
+        }),
       ],
     };
     const el = await render();
@@ -102,7 +114,9 @@ describe('DocumentMapDialog (E5-29)', () => {
   it('shows the legend with the points, and always the editor link', async () => {
     let el = await render();
     expect(el.querySelector('app-map-legend')).not.toBeNull();
-    expect(el.querySelector('a[href="/campaigns/camp-1/maps/map-1"]')?.textContent).toContain('Abrir no editor de mapas');
+    expect(el.querySelector('a[href="/campaigns/camp-1/maps/map-1"]')?.textContent).toContain(
+      'Abrir no editor de mapas',
+    );
 
     TestBed.resetTestingModule();
     links = new FakeLinks();

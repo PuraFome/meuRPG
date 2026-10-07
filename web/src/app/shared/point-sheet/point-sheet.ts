@@ -57,7 +57,8 @@ export class PointSheet {
   readonly open = output<string>();
 
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
-  protected found = () => this.point().kind === MapPointKind.TREASURE && this.point().treasureFoundAt !== undefined;
+  protected found = () =>
+    this.point().kind === MapPointKind.TREASURE && this.point().treasureFoundAt !== undefined;
   protected icon = () => pointKindIcon(this.point().kind, this.point().stairs);
   protected kind = () => pointKindLabel(this.point().kind, this.point().stairs);
 

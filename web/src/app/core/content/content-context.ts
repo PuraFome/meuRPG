@@ -14,10 +14,15 @@ export interface ContentContext {
   readonly tableRevision: number;
 }
 
-export type ContextResult = { readonly status: 'ok'; readonly ctx: ContentContext } | { readonly status: 'not-found' };
+export type ContextResult =
+  { readonly status: 'ok'; readonly ctx: ContentContext } | { readonly status: 'not-found' };
 
 /** The campaign (its name and the caller's role) and its entries. A campaign that is not the caller's, or a pending member's, is "not found". */
-export async function loadContext(campaigns: CampaignsService, content: TableContentClient, campaignId: string): Promise<ContextResult> {
+export async function loadContext(
+  campaigns: CampaignsService,
+  content: TableContentClient,
+  campaignId: string,
+): Promise<ContextResult> {
   try {
     const res = await campaigns.getCampaign(campaignId);
     const campaign = res.campaign;

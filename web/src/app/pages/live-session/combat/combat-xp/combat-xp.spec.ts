@@ -7,7 +7,11 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
 import { XpMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantState, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CombatantState,
+  EncounterStatus,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   AwardXPResponseSchema,
   CharacterExperienceSchema,
@@ -29,11 +33,32 @@ const nbsp = ' ';
 const party = [
   combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER, characterId: 'cp' }),
   combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, characterId: 'ct' }),
-  combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER, characterId: 'cb', state: CombatantState.DOWN, hitPointsCurrent: 0 }),
+  combatant({
+    id: 'b',
+    label: 'Brisa',
+    kind: CombatantKind.PLAYER,
+    characterId: 'cb',
+    state: CombatantState.DOWN,
+    hitPointsCurrent: 0,
+  }),
 ];
 const goblins = [
-  combatant({ id: 'c', label: 'Capitão Goblin', defeated: true, state: CombatantState.DEFEATED, xpValue: 200 }),
-  ...[1, 2, 3].map((n) => combatant({ id: `g${n}`, label: `Goblin ${n}`, defeated: true, state: CombatantState.DEFEATED, xpValue: 50 })),
+  combatant({
+    id: 'c',
+    label: 'Capitão Goblin',
+    defeated: true,
+    state: CombatantState.DEFEATED,
+    xpValue: 200,
+  }),
+  ...[1, 2, 3].map((n) =>
+    combatant({
+      id: `g${n}`,
+      label: `Goblin ${n}`,
+      defeated: true,
+      state: CombatantState.DEFEATED,
+      xpValue: 50,
+    }),
+  ),
 ];
 
 function experienceOf(xp: Record<string, number>, mode = XpMode.ENEMIES) {
@@ -41,7 +66,14 @@ function experienceOf(xp: Record<string, number>, mode = XpMode.ENEMIES) {
   return create(GetCampaignExperienceResponseSchema, {
     xpMode: mode,
     characters: Object.entries(xp).map(([id, points]) =>
-      create(CharacterExperienceSchema, { characterId: id, name: names[id], level: 3, experiencePoints: points, nextLevelXp: 2700, canLevelUp: points >= 2700 }),
+      create(CharacterExperienceSchema, {
+        characterId: id,
+        name: names[id],
+        level: 3,
+        experiencePoints: points,
+        nextLevelXp: 2700,
+        canLevelUp: points >= 2700,
+      }),
     ),
   });
 }
@@ -73,7 +105,10 @@ describe('CombatXp (E7-06)', () => {
     });
     const fixture = TestBed.createComponent(CombatXp);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('encounter', encounter({ id: 'enc-1', status: EncounterStatus.ENDED, combatants }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ id: 'enc-1', status: EncounterStatus.ENDED, combatants }),
+    );
     fixture.componentInstance.stateChange.subscribe((s) => states.push(s));
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
@@ -88,9 +123,11 @@ describe('CombatXp (E7-06)', () => {
   }
 
   const text = (el: HTMLElement) => el.textContent!.replace(/[ \t\r\n]+/g, ' ');
-  const boxes = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
+  const boxes = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
   const give = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('app-xp-actions .primary')!;
-  const notNow = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('app-xp-actions .secondary')!;
+  const notNow = (el: HTMLElement) =>
+    el.querySelector<HTMLButtonElement>('app-xp-actions .secondary')!;
 
   it('waits for the XP to load, then shows the block, and says where it stands', async () => {
     const { fixture, el } = setup();
@@ -110,16 +147,31 @@ describe('CombatXp (E7-06)', () => {
     expect(text(el)).toContain(`2.600${nbsp}XP agora`);
   });
 
-  it('counts each monster\'s ND: three Bandidos are 3 × 25 = 75 XP, 18 each among four, 3 left over (E10-08 state 9)', async () => {
+  it("counts each monster's ND: three Bandidos are 3 × 25 = 75 XP, 18 each among four, 3 left over (E10-08 state 9)", async () => {
     const bandits = [1, 2, 3].map((n) =>
-      combatant({ id: `b${n}`, label: `Bandido ${n}`, defeated: true, state: CombatantState.DEFEATED, xpValue: 25, challengeRating: '1/8', bestiaryCreatureKey: 'monster:bandit' }),
+      combatant({
+        id: `b${n}`,
+        label: `Bandido ${n}`,
+        defeated: true,
+        state: CombatantState.DEFEATED,
+        xpValue: 25,
+        challengeRating: '1/8',
+        bestiaryCreatureKey: 'monster:bandit',
+      }),
     );
-    const four = [...party, combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'cs' })];
+    const four = [
+      ...party,
+      combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'cs' }),
+    ];
     experience.mockResolvedValue(experienceOf({ cp: 2600, ct: 2250, cb: 1950, cs: 2000 }));
     const { fixture, el } = setup([...bandits, ...four]);
     await ready(fixture);
-    expect(Array.from(el.querySelectorAll('.kind__t')).map((k) => text(k as HTMLElement).trim())).toEqual([`Bandido 1 a 3 · ND 1/8 · 25${nbsp}XP cada`]);
-    expect(Array.from(el.querySelectorAll('.kind__n')).map((k) => k.textContent)).toEqual([`75${nbsp}XP`]);
+    expect(
+      Array.from(el.querySelectorAll('.kind__t')).map((k) => text(k as HTMLElement).trim()),
+    ).toEqual([`Bandido 1 a 3 · ND 1/8 · 25${nbsp}XP cada`]);
+    expect(Array.from(el.querySelectorAll('.kind__n')).map((k) => k.textContent)).toEqual([
+      `75${nbsp}XP`,
+    ]);
     expect(el.querySelector('.total__n')?.textContent).toBe(`75${nbsp}XP`);
     expect(text(el)).toContain('Total dos 3 derrotados');
     expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(`18${nbsp}XP para cada`);
@@ -134,7 +186,13 @@ describe('CombatXp (E7-06)', () => {
   });
 
   it('checks by default who fought and is alive or down; the dead come unchecked and cannot be checked', async () => {
-    const dead = combatant({ id: 'm', label: 'Morto Teste', kind: CombatantKind.PLAYER, characterId: 'cm', state: CombatantState.DEAD });
+    const dead = combatant({
+      id: 'm',
+      label: 'Morto Teste',
+      kind: CombatantKind.PLAYER,
+      characterId: 'cm',
+      state: CombatantState.DEAD,
+    });
     const { fixture, el } = setup([...goblins, ...party, dead]);
     await ready(fixture);
 
@@ -150,7 +208,9 @@ describe('CombatXp (E7-06)', () => {
   it('shows the division live, written out, and moves it when someone is unchecked', async () => {
     const { fixture, el } = setup();
     await ready(fixture);
-    expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(`116${nbsp}XP para cada`);
+    expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(
+      `116${nbsp}XP para cada`,
+    );
     expect(el.querySelector('app-xp-split .split__sum')?.textContent).toBe(
       `350${nbsp}XP ÷ 3 = 116,67, arredondado para baixo. 2${nbsp}XP se perdem na divisão.`,
     );
@@ -158,11 +218,17 @@ describe('CombatXp (E7-06)', () => {
 
     boxes(el)[2].click(); // Brisa
     fixture.detectChanges();
-    expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(`175${nbsp}XP para cada`);
-    expect(el.querySelector('app-xp-split .split__sum')?.textContent).toContain('Divisão exata, nada se perde.');
+    expect(el.querySelector('app-xp-split .split__big')?.textContent).toBe(
+      `175${nbsp}XP para cada`,
+    );
+    expect(el.querySelector('app-xp-split .split__sum')?.textContent).toContain(
+      'Divisão exata, nada se perde.',
+    );
     expect(text(el)).toContain(`+175${nbsp}XP`);
     // In its own polite status.
-    expect(el.querySelector('app-xp-split [role="status"]')?.textContent).toBe(`175${nbsp}XP para cada.`);
+    expect(el.querySelector('app-xp-split [role="status"]')?.textContent).toBe(
+      `175${nbsp}XP para cada.`,
+    );
   });
 
   it('waits with nobody checked, says why, and never calls', async () => {
@@ -171,7 +237,9 @@ describe('CombatXp (E7-06)', () => {
     boxes(el).forEach((b) => b.click());
     fixture.detectChanges();
 
-    expect(el.querySelector('app-xp-actions .reason')?.textContent?.trim()).toBe('Marque pelo menos um personagem');
+    expect(el.querySelector('app-xp-actions .reason')?.textContent?.trim()).toBe(
+      'Marque pelo menos um personagem',
+    );
     expect(give(el).getAttribute('aria-disabled')).toBe('true');
     give(el).click();
     expect(award).not.toHaveBeenCalled();
@@ -181,14 +249,18 @@ describe('CombatXp (E7-06)', () => {
     const free = goblins.map((g) => ({ ...g, xpValue: 0 }) as typeof g);
     const { fixture, el } = setup([...free, ...party]);
     await ready(fixture);
-    expect(el.querySelector('app-xp-actions .reason')?.textContent).toContain('Nenhum derrotado dá XP');
+    expect(el.querySelector('app-xp-actions .reason')?.textContent).toContain(
+      'Nenhum derrotado dá XP',
+    );
     expect(give(el).getAttribute('aria-disabled')).toBe('true');
   });
 
   it('the filled button and "Agora não" are the pair, the filled one first', async () => {
     const { fixture, el } = setup();
     await ready(fixture);
-    const names = Array.from(el.querySelectorAll('app-xp-actions button')).map((b) => b.textContent?.trim());
+    const names = Array.from(el.querySelectorAll('app-xp-actions button')).map((b) =>
+      b.textContent?.trim(),
+    );
     expect(names).toEqual([`Dar 116${nbsp}XP a cada um`, 'Agora não']);
   });
 
@@ -218,7 +290,7 @@ describe('CombatXp (E7-06)', () => {
       experience.mockResolvedValue(experienceOf({ cp: 2716, ct: 2366, cb: 2066 }));
     }
 
-    it('sends the combat\'s award with the reason and who is checked, once', async () => {
+    it("sends the combat's award with the reason and who is checked, once", async () => {
       answer();
       const { fixture, el } = setup();
       await ready(fixture);
@@ -229,7 +301,13 @@ describe('CombatXp (E7-06)', () => {
       await ready(fixture);
 
       expect(award).toHaveBeenCalledTimes(1);
-      expect(award).toHaveBeenCalledWith('camp-1', { mode: 'enemies', encounterId: 'enc-1' }, 'Combate: Emboscada na estrada', ['cp', 'ct'], expect.stringMatching(/^[0-9a-f-]{36}$/));
+      expect(award).toHaveBeenCalledWith(
+        'camp-1',
+        { mode: 'enemies', encounterId: 'enc-1' },
+        'Combate: Emboscada na estrada',
+        ['cp', 'ct'],
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      );
     });
 
     it('says what was given, the arithmetic of each one, and who can level up, and moves the focus to it', async () => {
@@ -243,7 +321,9 @@ describe('CombatXp (E7-06)', () => {
       const status = el.querySelector<HTMLElement>('.done')!;
       expect(status.getAttribute('role')).toBe('status');
       expect(document.activeElement).toBe(status);
-      expect(text(el)).toContain(`350${nbsp}XP dados: 116 para cada. 2${nbsp}XP se perderam na divisão.`);
+      expect(text(el)).toContain(
+        `350${nbsp}XP dados: 116 para cada. 2${nbsp}XP se perderam na divisão.`,
+      );
       expect(text(el)).toContain(`2.600 + 116 = 2.716${nbsp}XP`);
       expect(text(el)).toContain(`2.716 de${nbsp}2.700${nbsp}XP`);
       expect(el.querySelectorAll('app-level-up-tag')).toHaveLength(1);
@@ -258,7 +338,10 @@ describe('CombatXp (E7-06)', () => {
     it('says why in words when the server refuses, and reads again when it was already given', async () => {
       award.mockRejectedValue(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: XPBlockedSchema, value: { reason: XPBlockedReason.XP_BLOCKED_REASON_ALREADY_AWARDED } },
+          {
+            desc: XPBlockedSchema,
+            value: { reason: XPBlockedReason.XP_BLOCKED_REASON_ALREADY_AWARDED },
+          },
         ]),
       );
       const { fixture, el } = setup();
@@ -267,7 +350,9 @@ describe('CombatXp (E7-06)', () => {
       give(el).click();
       await ready(fixture);
 
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('O XP desse combate já foi dado');
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'O XP desse combate já foi dado',
+      );
       expect(listAwards).toHaveBeenCalled();
     });
 
@@ -309,12 +394,18 @@ describe('CombatXp (E7-06)', () => {
       el.querySelector<HTMLButtonElement>('.later')!.click();
 
       const data = dialogOpen.mock.calls[0][1].data;
-      expect(data).toMatchObject({ campaignId: 'camp-1', xpMode: XpMode.ENEMIES, reason: 'Combate: Emboscada na estrada', amount: 350, encounterId: 'enc-1' });
+      expect(data).toMatchObject({
+        campaignId: 'camp-1',
+        xpMode: XpMode.ENEMIES,
+        reason: 'Combate: Emboscada na estrada',
+        amount: 350,
+        encounterId: 'enc-1',
+      });
       expect(data.rows.map((r: { id: string }) => r.id)).toEqual(['cp', 'ct', 'cb']);
     });
   });
 
-  it('shows the XP as given when the history already has this combat\'s award (a reload, another tab)', async () => {
+  it("shows the XP as given when the history already has this combat's award (a reload, another tab)", async () => {
     listAwards.mockResolvedValue(
       create(ListXPAwardsResponseSchema, {
         awards: [
@@ -323,7 +414,10 @@ describe('CombatXp (E7-06)', () => {
             mode: XPAwardMode.XP_AWARD_MODE_ENEMIES,
             encounterId: 'enc-1',
             totalXp: 350,
-            shares: [{ characterId: 'cp', characterName: 'Pensantus', xp: 175 }, { characterId: 'ct', characterName: 'Toren', xp: 175 }],
+            shares: [
+              { characterId: 'cp', characterName: 'Pensantus', xp: 175 },
+              { characterId: 'ct', characterName: 'Toren', xp: 175 },
+            ],
           }),
         ],
       }),
@@ -337,7 +431,16 @@ describe('CombatXp (E7-06)', () => {
 
   it('ignores an award that was undone (the XP can be given again)', async () => {
     listAwards.mockResolvedValue(
-      create(ListXPAwardsResponseSchema, { awards: [create(XPAwardSchema, { id: 'a1', mode: XPAwardMode.XP_AWARD_MODE_ENEMIES, encounterId: 'enc-1', undone: true })] }),
+      create(ListXPAwardsResponseSchema, {
+        awards: [
+          create(XPAwardSchema, {
+            id: 'a1',
+            mode: XPAwardMode.XP_AWARD_MODE_ENEMIES,
+            encounterId: 'enc-1',
+            undone: true,
+          }),
+        ],
+      }),
     );
     const { fixture, el } = setup();
     await ready(fixture);

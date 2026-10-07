@@ -1,5 +1,15 @@
-import { ImageAspectRatio, ImageGenerationKind, ImageStyle } from '../../../gen/meurpg/maps/v1/imagegen_pb';
-import { type ImageForm, type PickableNpc, buildRequest, formProblem, npcPortraits } from './imagegen-form';
+import {
+  ImageAspectRatio,
+  ImageGenerationKind,
+  ImageStyle,
+} from '../../../gen/meurpg/maps/v1/imagegen_pb';
+import {
+  type ImageForm,
+  type PickableNpc,
+  buildRequest,
+  formProblem,
+  npcPortraits,
+} from './imagegen-form';
 
 const NPCS: PickableNpc[] = [
   { characterId: 'npc-capitao', name: 'Capitão Goblin', portraitImageId: 'img-capitao' },
@@ -43,10 +53,13 @@ describe('the form → request mapping', () => {
   it('the isometric view takes the same fields with its own kind', () => {
     const built = buildRequest(form({ kind: 'isometric' }), 'map-1', 'k');
     expect(built.via === 'map' && built.request.kind).toBe(ImageGenerationKind.ISOMETRIC);
-    expect(built.via === 'map' && built.request.npcCharacterIds).toEqual(['npc-capitao', 'npc-goblin1']);
+    expect(built.via === 'map' && built.request.npcCharacterIds).toEqual([
+      'npc-capitao',
+      'npc-goblin1',
+    ]);
   });
 
-  it('the textured map sends no creature at all (no NPC, no character image) and no ratio: the server picks the model\'s closest to the grid', () => {
+  it("the textured map sends no creature at all (no NPC, no character image) and no ratio: the server picks the model's closest to the grid", () => {
     const built = buildRequest(form({ kind: 'texture' }), 'map-1', 'k');
     expect(built.via).toBe('map');
     if (built.via !== 'map') {
@@ -92,7 +105,10 @@ describe('what "Gerar imagem" waits for', () => {
 describe('the portraits that go as character references', () => {
   it('are the marked NPCs that have one, each once; none for the textured map', () => {
     expect(npcPortraits(form(), NPCS)).toEqual(['img-capitao']);
-    expect(npcPortraits(form({ npcIds: ['npc-capitao', 'npc-vesna'] }), NPCS)).toEqual(['img-capitao', 'img-vesna']);
+    expect(npcPortraits(form({ npcIds: ['npc-capitao', 'npc-vesna'] }), NPCS)).toEqual([
+      'img-capitao',
+      'img-vesna',
+    ]);
     expect(npcPortraits(form({ kind: 'texture' }), NPCS)).toEqual([]);
   });
 });

@@ -22,7 +22,8 @@ import { DeathSaves } from './death-saves';
 // The death saves a table hides (RN-24, E10-04 state 6): the owner and the master read the marks and who else sees them; the other
 // players read only the state in words, and the log says why.
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 const brisaDown = combatant({
   id: 'b',
   label: 'Brisa',
@@ -37,7 +38,7 @@ const brisaDown = combatant({
   deathSaveDue: true,
 });
 
-describe('the owner\'s card of death saves', () => {
+describe("the owner's card of death saves", () => {
   function setup(ownerOnly: boolean) {
     const fixture = TestBed.createComponent(DeathSaves);
     fixture.componentRef.setInput('own', brisaDown);
@@ -50,7 +51,9 @@ describe('the owner\'s card of death saves', () => {
 
   it('says "Só você e o mestre" under the title when the table hides them, with the counts', () => {
     const el = setup(true);
-    expect(plain(el.querySelector('[data-testid="death-private"]')?.textContent)).toContain('Só você e o mestre');
+    expect(plain(el.querySelector('[data-testid="death-private"]')?.textContent)).toContain(
+      'Só você e o mestre',
+    );
     expect(plain(el.textContent)).toContain('2 de 3');
     expect(plain(el.textContent)).toContain('1 de 3');
   });
@@ -60,10 +63,13 @@ describe('the owner\'s card of death saves', () => {
   });
 });
 
-describe('the master\'s order', () => {
+describe("the master's order", () => {
   function setup(deathsHidden: boolean) {
     const fixture = TestBed.createComponent(OrderList);
-    fixture.componentRef.setInput('encounter', encounter({ combatants: [brisaDown], currentCombatantId: 'b' }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [brisaDown], currentCombatantId: 'b' }),
+    );
     fixture.componentRef.setInput('deathsHidden', deathsHidden);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
@@ -71,7 +77,9 @@ describe('the master\'s order', () => {
 
   it('names who else sees the marks when the table hides them', () => {
     const el = setup(true);
-    expect(plain(el.querySelector('app-death-row')?.textContent)).toContain('Testes contra a morte');
+    expect(plain(el.querySelector('app-death-row')?.textContent)).toContain(
+      'Testes contra a morte',
+    );
     expect(plain(el.querySelector('app-death-row')?.textContent)).toContain('Dono e mestre');
     expect(el.querySelectorAll('app-death-marks').length).toBe(2);
   });
@@ -85,9 +93,21 @@ describe('the master\'s order', () => {
 describe('the log of another player', () => {
   function setup(deathNote: boolean) {
     const log = new CombatLogState();
-    const stable = create(CombatLogEntrySchema, { id: 'e1', kind: CombatLogKind.DEATH_SAVE, round: 2, actorLabel: 'Brisa', deathSave: { stable: true } });
+    const stable = create(CombatLogEntrySchema, {
+      id: 'e1',
+      kind: CombatLogKind.DEATH_SAVE,
+      round: 2,
+      actorLabel: 'Brisa',
+      deathSave: { stable: true },
+    });
     log.rounds.set([create(CombatLogRoundSchema, { round: 2, entries: [stable] })]);
-    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }, { provide: MatDialog, useValue: { open: vi.fn() } }, { provide: MatBottomSheet, useValue: { open: vi.fn() } }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CombatClient, useValue: {} },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatBottomSheet, useValue: { open: vi.fn() } },
+      ],
+    });
     const fixture = TestBed.createComponent(CombatLogPanel);
     fixture.componentRef.setInput('log', log);
     fixture.componentRef.setInput('encounter', encounter({ round: 2, combatants: [brisaDown] }));

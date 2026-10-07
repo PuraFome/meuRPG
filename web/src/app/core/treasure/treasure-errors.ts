@@ -1,7 +1,10 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { MapBlockedReason } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { TreasureBlockedReason, TreasureBlockedSchema } from '../../../gen/meurpg/maps/v1/treasure_pb';
+import {
+  TreasureBlockedReason,
+  TreasureBlockedSchema,
+} from '../../../gen/meurpg/maps/v1/treasure_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { mapBlockedReason } from '../maps/map-errors';
 
@@ -15,7 +18,8 @@ export function treasureBlockedReason(err: unknown): TreasureBlockedReason | nul
 }
 
 /** Said when "Gerar tesouro" is refused for lack of a party level. */
-export const NO_PARTY_TEXT = 'A campanha não tem personagem de jogador vivo para dar o nível. Escolha o nível do grupo e gere de novo.';
+export const NO_PARTY_TEXT =
+  'A campanha não tem personagem de jogador vivo para dar o nível. Escolha o nível do grupo e gere de novo.';
 
 /** The words of a failed "Gerar tesouro". */
 export function generateFailure(err: unknown): string {
@@ -53,14 +57,20 @@ export function placeFailure(err: unknown): PlaceFailure {
     };
   }
   if (mapBlockedReason(err) === MapBlockedReason.NO_GRID) {
-    return { text: 'Escolha um mapa com grade. Um tesouro gerado precisa de um quadrado, e este mapa não tem grade.', generateAgain: false };
+    return {
+      text: 'Escolha um mapa com grade. Um tesouro gerado precisa de um quadrado, e este mapa não tem grade.',
+      generateAgain: false,
+    };
   }
   return {
     generateAgain: false,
     text: describeConnectError(err, {
-      [Code.InvalidArgument]: 'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado; ele foi aberto de novo, escolha o quadrado outra vez.',
-      [Code.NotFound]: 'Esse mapa não existe mais, ou você não é o mestre da campanha. Escolha outro mapa.',
-      [Code.ResourceExhausted]: 'O mapa chegou ao limite de 200 pontos. Apague um ponto ou escolha outro mapa.',
+      [Code.InvalidArgument]:
+        'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado; ele foi aberto de novo, escolha o quadrado outra vez.',
+      [Code.NotFound]:
+        'Esse mapa não existe mais, ou você não é o mestre da campanha. Escolha outro mapa.',
+      [Code.ResourceExhausted]:
+        'O mapa chegou ao limite de 200 pontos. Apague um ponto ou escolha outro mapa.',
       [Code.Aborted]: 'O mapa mudou enquanto o tesouro era posto. Tente de novo.',
       [Code.Unavailable]: 'Não deu para pôr o tesouro: o servidor não respondeu. Tente de novo.',
     }),
@@ -68,4 +78,5 @@ export function placeFailure(err: unknown): PlaceFailure {
 }
 
 /** "Escolha um mapa com grade", the dialog's own words for a map it knows has none. */
-export const NO_GRID_TEXT = 'Escolha um mapa com grade. Um tesouro gerado precisa de um quadrado, e este mapa não tem grade.';
+export const NO_GRID_TEXT =
+  'Escolha um mapa com grade. Um tesouro gerado precisa de um quadrado, e este mapa não tem grade.';

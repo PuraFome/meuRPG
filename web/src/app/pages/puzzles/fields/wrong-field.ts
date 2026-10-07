@@ -1,8 +1,24 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-import { type FormKind, type WrongDraft, type WrongOption, type WrongTarget, ATTEMPTS_MAX, MINUTES_MAX, MOVES_LIMIT_MAX } from '../../../core/puzzles/puzzle-draft';
+import {
+  type FormKind,
+  type WrongDraft,
+  type WrongOption,
+  type WrongTarget,
+  ATTEMPTS_MAX,
+  MINUTES_MAX,
+  MOVES_LIMIT_MAX,
+} from '../../../core/puzzles/puzzle-draft';
 import { type TrapChoice, SolveTargets } from '../../../core/puzzles/solve-targets';
 import { Stepper } from './stepper';
 
@@ -145,7 +161,11 @@ export class WrongField implements OnInit {
   protected atField(): boolean {
     const option = this.wrong().option;
     const target = this.target();
-    return (target === 'trap' && option === 'trap') || (target === 'attempts' && option === 'attempts') || ((target === 'moves' || target === 'minutes' || target === 'both') && option === 'limits');
+    return (
+      (target === 'trap' && option === 'trap') ||
+      (target === 'attempts' && option === 'attempts') ||
+      ((target === 'moves' || target === 'minutes' || target === 'both') && option === 'limits')
+    );
   }
 
   protected help(): string {

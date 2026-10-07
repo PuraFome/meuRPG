@@ -2,7 +2,11 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type LevelFeature, newLevelFeatureId, sortedFeatures } from '../../../core/content/class-draft';
+import {
+  type LevelFeature,
+  newLevelFeatureId,
+  sortedFeatures,
+} from '../../../core/content/class-draft';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { type FeatureDraft, emptyFeature } from '../../../core/content/feature-draft';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
@@ -209,7 +213,9 @@ export class ClassFeatures {
   readonly openIdChange = output<string>();
 
   protected readonly over = computed(() => this.features().length > this.max());
-  protected readonly levelOptions = computed<SelectOption<number>[]>(() => this.levels().map((n) => ({ value: n, label: String(n) })));
+  protected readonly levelOptions = computed<SelectOption<number>[]>(() =>
+    this.levels().map((n) => ({ value: n, label: String(n) })),
+  );
 
   /** "Recurso", "Só texto": what the feature does, in the menu's own word. */
   protected effectWord(f: FeatureDraft): string {
@@ -223,7 +229,9 @@ export class ClassFeatures {
 
   protected add(): void {
     const id = newLevelFeatureId();
-    this.featuresChange.emit(sortedFeatures([...this.features(), { id, level: this.newLevel(), feature: emptyFeature() }]));
+    this.featuresChange.emit(
+      sortedFeatures([...this.features(), { id, level: this.newLevel(), feature: emptyFeature() }]),
+    );
     this.openIdChange.emit(id);
   }
 
@@ -232,7 +240,9 @@ export class ClassFeatures {
   }
 
   protected setLevel(id: string, level: number): void {
-    this.featuresChange.emit(sortedFeatures(this.features().map((f) => (f.id === id ? { ...f, level } : f))));
+    this.featuresChange.emit(
+      sortedFeatures(this.features().map((f) => (f.id === id ? { ...f, level } : f))),
+    );
   }
 
   protected remove(id: string): void {

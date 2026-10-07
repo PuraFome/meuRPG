@@ -1,14 +1,23 @@
-import { Component, DestroyRef, ElementRef, Injector, OnInit, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
 import { describeCharacterError } from '../../../core/characters/character-errors';
-import {
-  characterKindLabel,
-  characterStateLabel,
-} from '../../../core/characters/character-labels';
+import { characterKindLabel, characterStateLabel } from '../../../core/characters/character-labels';
 import { CharacterKind } from '../../../core/characters/characters.types';
 import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../../core/progression/experience-store';
@@ -55,7 +64,15 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
  */
 @Component({
   selector: 'app-campaign-characters',
-  imports: [CharacterCreatures, LevelUpChanges, LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
+  imports: [
+    CharacterCreatures,
+    LevelUpChanges,
+    LevelUpTag,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    RouterLink,
+  ],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
@@ -94,12 +111,18 @@ export class CampaignCharacters implements OnInit {
     // the list and the XP are read again, so "Subiu para o nível N" shows without a reload.
     effect(() => {
       const id = this.campaignId();
-      const live = this.isMaster() && (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
+      const live =
+        this.isMaster() &&
+        (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
       untracked(() =>
-        this.xpWatcher?.follow(live ? id : null, () => {
-          void this.levelUps?.refresh();
-          void this.experience?.refresh();
-        }, () => this.creaturesTick.update((n) => n + 1)),
+        this.xpWatcher?.follow(
+          live ? id : null,
+          () => {
+            void this.levelUps?.refresh();
+            void this.experience?.refresh();
+          },
+          () => this.creaturesTick.update((n) => n + 1),
+        ),
       );
     });
     inject(DestroyRef).onDestroy(() => this.xpWatcher?.follow(null, () => undefined));
@@ -114,7 +137,9 @@ export class CampaignCharacters implements OnInit {
         this.openChanges.set(r.characterId);
         afterNextRender(
           () => {
-            const toggle = this.host.nativeElement.querySelector<HTMLElement>(`#changes-toggle-${r.characterId}`);
+            const toggle = this.host.nativeElement.querySelector<HTMLElement>(
+              `#changes-toggle-${r.characterId}`,
+            );
             toggle?.scrollIntoView({ block: 'center' });
             toggle?.focus({ preventScroll: true });
           },
@@ -126,7 +151,9 @@ export class CampaignCharacters implements OnInit {
 
   /** The master gave a creature (E9-10, quadro 6). */
   protected gave(character: string, creature: string): void {
-    this.giftNotice.set(`${creature} dado a ${character}. A criatura aparece na ficha do personagem, e o jogador foi avisado.`);
+    this.giftNotice.set(
+      `${creature} dado a ${character}. A criatura aparece na ficha do personagem, e o jogador foi avisado.`,
+    );
   }
 
   /** The newest level-up of a character, for the master's list. */
@@ -154,8 +181,12 @@ export class CampaignCharacters implements OnInit {
 
   /** The master's "Personagens dos jogadores": everything already in the
    * campaign. A player sees all of their own, pending included. */
-  protected listedPlayerCharacters(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {
-    return this.isMaster() ? vm.playerCharacters.filter((c) => c.state !== 'pending') : vm.playerCharacters;
+  protected listedPlayerCharacters(
+    vm: CampaignCharactersVm,
+  ): readonly CampaignCharacterListItemVm[] {
+    return this.isMaster()
+      ? vm.playerCharacters.filter((c) => c.state !== 'pending')
+      : vm.playerCharacters;
   }
 
   ngOnInit(): void {

@@ -36,10 +36,15 @@ export function openSceneRollSheet(
   bottomSheet: MatBottomSheet,
   data: SceneRollSheetData,
 ): Observable<boolean | undefined> {
-  return openSheet<SceneRollSheet, SceneRollSheetData, boolean>(dialog, bottomSheet, SceneRollSheet, {
-    data,
-    ariaLabel: `Rolar ${actionTitle(data.action)}`,
-  });
+  return openSheet<SceneRollSheet, SceneRollSheetData, boolean>(
+    dialog,
+    bottomSheet,
+    SceneRollSheet,
+    {
+      data,
+      ariaLabel: `Rolar ${actionTitle(data.action)}`,
+    },
+  );
 }
 
 /**

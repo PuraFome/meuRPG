@@ -146,7 +146,9 @@ export class MapView {
   /** Opens zoomed in on this spot, once the view has its size (the phone's fog map: the party at 2x). Read again only when it changes to another spot. */
   readonly startAt = input<{ xBp: number; yBp: number } | null>(null);
   /** The initial of a token: `tokenInitial` by default; the fog map writes an NPC's number too ("G2"). */
-  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(null);
+  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(
+    null,
+  );
 
   readonly pointSelect = output<string>();
   readonly tokenSelect = output<string>();
@@ -188,9 +190,14 @@ export class MapView {
     }
     // A small map (a phone) seen whole has no room for names: the markers and the legend say what is there, and the list under the map
     // names each point. The name of the point you chose, and every name once you zoom in, still show.
-    const crowded = this.size().width > 0 && this.size().width < 520 && this.scale() < COMPACT_LABELS_FROM_SCALE;
+    const crowded =
+      this.size().width > 0 && this.size().width < 520 && this.scale() < COMPACT_LABELS_FROM_SCALE;
     const kept = crowded
-      ? [...groups.values()].filter((members) => members.some((p) => this.selectedKey() === 'point:' + p.id || this.raisedKey() === 'point:' + p.id))
+      ? [...groups.values()].filter((members) =>
+          members.some(
+            (p) => this.selectedKey() === 'point:' + p.id || this.raisedKey() === 'point:' + p.id,
+          ),
+        )
       : [...groups.values()];
     return kept.map((members) => ({
       id: members[0].id,
@@ -311,14 +318,23 @@ export class MapView {
     }
     const view = el.getBoundingClientRect();
     const { minLeft, maxRight } = labelBounds(img, view);
-    const bounds = { minLeft, maxRight, minTop: Math.max(img.top, view.top) + 4, maxBottom: Math.min(img.bottom, view.bottom) - 4 };
+    const bounds = {
+      minLeft,
+      maxRight,
+      minTop: Math.max(img.top, view.top) + 4,
+      maxBottom: Math.min(img.bottom, view.bottom) - 4,
+    };
     const boxOf = (node: Element): Box | null => {
       const r = node.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+      return r.width > 0 && r.height > 0
+        ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+        : null;
     };
     const present = (list: (Box | null)[]): Box[] => list.filter((b): b is Box => b !== null);
     // Everything a label must stay off: the drawn marks (not the hit areas), and then the labels placed so far.
-    const marks = Array.from(el.querySelectorAll<HTMLElement>('.pt__shape:not(.pt__shape--pin), .tk__disc, .area, .pin'));
+    const marks = Array.from(
+      el.querySelectorAll<HTMLElement>('.pt__shape:not(.pt__shape--pin), .tk__disc, .area, .pin'),
+    );
     const placed: Box[] = [];
     for (const label of Array.from(el.querySelectorAll<HTMLElement>('.lbl'))) {
       const pill = label.querySelector<HTMLElement>('.lbl__pill');
@@ -334,13 +350,23 @@ export class MapView {
       const anchor = unionBox(present(marks.filter(own).map((m) => boxOf(m))));
       const origin = label.getBoundingClientRect();
       const size = pill.getBoundingClientRect();
-      const around = anchor ?? { left: origin.left - 2, top: origin.top - 2, right: origin.left + 2, bottom: origin.top + 2 };
+      const around = anchor ?? {
+        left: origin.left - 2,
+        top: origin.top - 2,
+        right: origin.left + 2,
+        bottom: origin.top + 2,
+      };
       const others = [...present(marks.filter((m) => !own(m)).map((m) => boxOf(m))), ...placed];
       const at = placeLabel(around, { width: size.width, height: size.height }, others, bounds);
       pill.style.setProperty('--lbl-x', `${at.left - origin.left}px`);
       pill.style.setProperty('--lbl-y', `${at.top - origin.top}px`);
       label.setAttribute('data-placed', '');
-      placed.push({ left: at.left, top: at.top, right: at.left + size.width, bottom: at.top + size.height });
+      placed.push({
+        left: at.left,
+        top: at.top,
+        right: at.left + size.width,
+        bottom: at.top + size.height,
+      });
     }
   }
 

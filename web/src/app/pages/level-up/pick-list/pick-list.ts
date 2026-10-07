@@ -61,7 +61,9 @@ export class PickList {
 
   protected readonly query = signal('');
   protected readonly expanded = signal(false);
-  protected readonly searchable = computed(() => this.searchLabel() !== '' && this.items().length > FIRST_ROWS);
+  protected readonly searchable = computed(
+    () => this.searchLabel() !== '' && this.items().length > FIRST_ROWS,
+  );
 
   /** The rows shown: the picked ones and the first few, or the matches of the search, or all. */
   protected readonly rows = computed(() => {
@@ -76,11 +78,14 @@ export class PickList {
     const picked = this.picked();
     return all.filter((item, index) => index < FIRST_ROWS || picked.has(item.key));
   });
-  protected readonly hidden = computed(() => (this.query().trim() === '' ? this.items().length - this.rows().length : 0));
+  protected readonly hidden = computed(() =>
+    this.query().trim() === '' ? this.items().length - this.rows().length : 0,
+  );
 
   /** "1 de 2", with the words a screen reader needs. */
   protected readonly countText = computed(
-    () => `${this.base() + Math.min(this.picked().size, this.count())} de ${this.base() + this.count()}`,
+    () =>
+      `${this.base() + Math.min(this.picked().size, this.count())} de ${this.base() + this.count()}`,
   );
 
   protected onSearch(event: Event): void {

@@ -4,7 +4,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import { type Draft, ANSWERS_MAX, ANSWER_MAX, RIDDLE_MAX, textLength } from '../../../core/puzzles/puzzle-draft';
+import {
+  type Draft,
+  ANSWERS_MAX,
+  ANSWER_MAX,
+  RIDDLE_MAX,
+  textLength,
+} from '../../../core/puzzles/puzzle-draft';
 import { SecretPill } from '../../../shared/puzzle-boards/secret-pill';
 
 /**
@@ -82,7 +88,9 @@ export class RiddleForm {
 
   protected readonly pending = signal('');
   protected readonly full = computed(() => this.draft().answers.length >= ANSWERS_MAX);
-  protected readonly badRows = computed(() => Object.entries(this.answerRows()).map(([i, msg]) => [Number(i), msg] as const));
+  protected readonly badRows = computed(() =>
+    Object.entries(this.answerRows()).map(([i, msg]) => [Number(i), msg] as const),
+  );
 
   protected length(text: string): number {
     return textLength(text.trim());

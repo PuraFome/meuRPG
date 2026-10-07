@@ -1,6 +1,11 @@
 import { create } from '@bufbuild/protobuf';
 
-import { DungeonAxis, DungeonDoorKind, DungeonDoorSchema, DungeonSide } from '../../../gen/meurpg/maps/v1/dungeons_pb';
+import {
+  DungeonAxis,
+  DungeonDoorKind,
+  DungeonDoorSchema,
+  DungeonSide,
+} from '../../../gen/meurpg/maps/v1/dungeons_pb';
 import {
   behindSecretDoor,
   doorCountText,
@@ -12,9 +17,17 @@ import {
   stairsOutsideRooms,
   wallPath,
 } from './dungeon-layout';
-import { SAMPLE_HEIGHT, SAMPLE_WIDTH, openBits, previewResponse, room, roomsResponse } from './dungeons-testing';
+import {
+  SAMPLE_HEIGHT,
+  SAMPLE_WIDTH,
+  openBits,
+  previewResponse,
+  room,
+  roomsResponse,
+} from './dungeons-testing';
 
-const door = (kind: DungeonDoorKind, axis = DungeonAxis.HORIZONTAL_WALL) => create(DungeonDoorSchema, { x: 1, y: 2, kind, axis });
+const door = (kind: DungeonDoorKind, axis = DungeonAxis.HORIZONTAL_WALL) =>
+  create(DungeonDoorSchema, { x: 1, y: 2, kind, axis });
 
 describe('the dungeon layout helpers', () => {
   it('draws a generator door as the layer kind it is: a passage is floor, a trap is no kind of its own', () => {
@@ -27,7 +40,11 @@ describe('the dungeon layout helpers', () => {
   });
 
   it('keeps every door but the passages, with the axis of its wall', () => {
-    const squares = doorSquaresOf([door(DungeonDoorKind.ARCHWAY), door(DungeonDoorKind.LOCKED, DungeonAxis.VERTICAL_WALL), door(DungeonDoorKind.CLOSED)]);
+    const squares = doorSquaresOf([
+      door(DungeonDoorKind.ARCHWAY),
+      door(DungeonDoorKind.LOCKED, DungeonAxis.VERTICAL_WALL),
+      door(DungeonDoorKind.CLOSED),
+    ]);
     expect(squares).toEqual([
       { col: 1, row: 2, state: 3, axis: 'v' },
       { col: 1, row: 2, state: 2, axis: 'h' },
@@ -37,7 +54,13 @@ describe('the dungeon layout helpers', () => {
   it('counts the doors and the passages apart ("13 portas e 8 passagens"), with the singular', () => {
     const p = previewResponse();
     expect(doorCountText(p.doors)).toBe('4 portas e 1 passagem');
-    expect(doorCountText([door(DungeonDoorKind.CLOSED), door(DungeonDoorKind.ARCHWAY), door(DungeonDoorKind.ARCHWAY)])).toBe('1 porta e 2 passagens');
+    expect(
+      doorCountText([
+        door(DungeonDoorKind.CLOSED),
+        door(DungeonDoorKind.ARCHWAY),
+        door(DungeonDoorKind.ARCHWAY),
+      ]),
+    ).toBe('1 porta e 2 passagens');
   });
 
   it('turns the open bits into a path of the wall squares, one rectangle for each run', () => {

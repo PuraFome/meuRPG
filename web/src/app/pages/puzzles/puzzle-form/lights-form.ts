@@ -9,7 +9,10 @@ import { LightsBoard } from '../../../shared/puzzle-boards/lights-board';
 import { type PickOption, PickGroup } from '../fields/pick-group';
 import type { StartPreview } from './start-preview';
 
-const SIZES: readonly PickOption<number>[] = [3, 4, 5, 6, 7].map((n) => ({ value: n, title: String(n) }));
+const SIZES: readonly PickOption<number>[] = [3, 4, 5, 6, 7].map((n) => ({
+  value: n,
+  title: String(n),
+}));
 
 /**
  * The form of "Apagar as luzes" (E10-06 state 2): the size of the board (3 to 7 a side) and the start the server drew. The
@@ -64,6 +67,8 @@ export class LightsForm {
     return kind?.case === 'lights' ? kind.value.lit : null;
   });
   protected readonly litText = computed(() => litWords(litCount(this.preview().start)));
-  protected readonly off = computed(() => (this.lit()?.length ?? 0) - litCount(this.preview().start));
+  protected readonly off = computed(
+    () => (this.lit()?.length ?? 0) - litCount(this.preview().start),
+  );
   protected readonly word = computed(() => moveWord(PuzzleKind.LIGHTS, this.preview().moves));
 }

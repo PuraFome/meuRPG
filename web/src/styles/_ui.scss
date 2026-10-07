@@ -280,14 +280,29 @@ a.mr-list__row:hover .mr-list__name {
   // Parede and Terreno difícil: the same hatches the map draws.
   &--wall {
     background-image:
-      repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-map-token-ink) 70%, transparent) 0 2px, transparent 2px 6px),
-      linear-gradient(color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent), color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent));
+      repeating-linear-gradient(
+        45deg,
+        color-mix(in srgb, var(--mr-map-token-ink) 70%, transparent) 0 2px,
+        transparent 2px 6px
+      ),
+      linear-gradient(
+        color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent),
+        color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent)
+      );
   }
 
   &--terrain {
     background-image:
-      repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px, transparent 1.5px 6px),
-      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px, transparent 1.5px 6px);
+      repeating-linear-gradient(
+        45deg,
+        color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px,
+        transparent 1.5px 6px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px,
+        transparent 1.5px 6px
+      );
   }
 
   // Cobertura: a dotted square all round, filled from the bottom, half or three quarters.
@@ -354,7 +369,10 @@ a.mr-list__row:hover .mr-list__name {
   }
 
   &--dim {
-    background-image: linear-gradient(color-mix(in srgb, var(--mr-map-fog) 25%, transparent), color-mix(in srgb, var(--mr-map-fog) 25%, transparent));
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--mr-map-fog) 25%, transparent),
+      color-mix(in srgb, var(--mr-map-fog) 25%, transparent)
+    );
   }
 
   &--grey {
@@ -363,9 +381,17 @@ a.mr-list__row:hover .mr-list__name {
 
   &--remembered {
     background-image:
-      radial-gradient(color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent) 0.9px, transparent 1.2px),
-      linear-gradient(color-mix(in srgb, var(--mr-map-fog) 60%, transparent), color-mix(in srgb, var(--mr-map-fog) 60%, transparent));
-    background-size: 4px 4px, auto;
+      radial-gradient(
+        color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent) 0.9px,
+        transparent 1.2px
+      ),
+      linear-gradient(
+        color-mix(in srgb, var(--mr-map-fog) 60%, transparent),
+        color-mix(in srgb, var(--mr-map-fog) 60%, transparent)
+      );
+    background-size:
+      4px 4px,
+      auto;
   }
 
   &--unseen {

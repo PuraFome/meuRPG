@@ -32,10 +32,19 @@ function category(kind: HighlightKind, value: number, ...winners: [string, strin
   return create(HighlightCategorySchema, {
     kind,
     value,
-    winners: winners.map(([characterId, name]) => create(HighlightWinnerSchema, { characterId, name })),
+    winners: winners.map(([characterId, name]) =>
+      create(HighlightWinnerSchema, { characterId, name }),
+    ),
   });
 }
-const row = (id: string, name: string, passed: number, tried: number, combat = {}, treasureFoundPo = 0) =>
+const row = (
+  id: string,
+  name: string,
+  passed: number,
+  tried: number,
+  combat = {},
+  treasureFoundPo = 0,
+) =>
   create(SessionCharacterSummarySchema, {
     highlights: create(CharacterHighlightsSchema, { characterId: id, name, ...combat }),
     checksPassed: passed,
@@ -62,7 +71,11 @@ const masterSummary = create(SessionSummarySchema, {
   scenesOpened: 3,
   checksPassed: 9,
   checksTried: 12,
-  players: [row('pens', 'Pensantus', 3, 4), row('toren', 'Toren', 2, 3), row('brisa', 'Brisa', 4, 5)],
+  players: [
+    row('pens', 'Pensantus', 3, 4),
+    row('toren', 'Toren', 2, 3),
+    row('brisa', 'Brisa', 4, 5),
+  ],
 });
 /** What a player gets (state 5): no counts, no table, and their own result. */
 const playerSummary = create(SessionSummarySchema, {
@@ -90,7 +103,13 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
     set('sessionId', 's5');
     set('sessionNumber', 5);
     set('isMaster', isMaster);
-    set('players', new Map([['toren', 'Caio'], ['brisa', 'Lia']]));
+    set(
+      'players',
+      new Map([
+        ['toren', 'Caio'],
+        ['brisa', 'Lia'],
+      ]),
+    );
     set('characterId', 'pens');
     set('characterName', 'Pensantus');
     fixture.detectChanges();
@@ -112,7 +131,10 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       expect(words(el.querySelector('h2#se-title'))).toBe('Sessão encerrada');
       expect(el.querySelector('#se-title')?.closest('[role="status"]')).not.toBeNull();
       expect(words(el.querySelector('.end__sub'))).toBe('Sessão 5 · Mirathel · das 20:05 às 23:10');
-      const stats = Array.from(el.querySelectorAll('.stat'), (s) => [words(s.querySelector('dt')), words(s.querySelector('dd'))]);
+      const stats = Array.from(el.querySelectorAll('.stat'), (s) => [
+        words(s.querySelector('dt')),
+        words(s.querySelector('dd')),
+      ]);
       expect(stats).toEqual([
         ['Duração', '3 h 5 min'],
         ['Combates', '1'],
@@ -123,7 +145,9 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
 
     it('has "Voltar à campanha" as the only button, outlined', async () => {
       const { el } = await setup(masterSummary, true);
-      const actions = Array.from(el.querySelectorAll<HTMLElement>('button, a[matButton], .mat-mdc-button-base'));
+      const actions = Array.from(
+        el.querySelectorAll<HTMLElement>('button, a[matButton], .mat-mdc-button-base'),
+      );
       expect(actions.map((a) => words(a))).toEqual(['Voltar à campanha']);
       expect(actions[0].classList.contains('mat-mdc-outlined-button')).toBe(true);
       expect(el.querySelector('.end__leave')?.getAttribute('href')).toBe('/campaigns/c1');
@@ -158,20 +182,34 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
         words(r.querySelector('b')),
         words(r.querySelector('.tbl__num')),
       ]);
-      expect(rows).toEqual([['Pensantus', '3 de 4'], ['Toren', '2 de 3'], ['Brisa', '4 de 5']]);
-      expect(Array.from(el.querySelectorAll('.tbl__row--head [role="columnheader"]'), (h) => h.textContent)).toEqual(['Personagem', 'Testes passados']);
+      expect(rows).toEqual([
+        ['Pensantus', '3 de 4'],
+        ['Toren', '2 de 3'],
+        ['Brisa', '4 de 5'],
+      ]);
+      expect(
+        Array.from(
+          el.querySelectorAll('.tbl__row--head [role="columnheader"]'),
+          (h) => h.textContent,
+        ),
+      ).toEqual(['Personagem', 'Testes passados']);
     });
 
     it('says no treasure was found when none was (E9-09)', async () => {
       const { el } = await setup(masterSummary, true);
       expect(words(el.querySelector('.sum__none'))).toBe('Nenhum tesouro registrado nesta sessão.');
-      expect(Array.from(el.querySelectorAll('.sum__h'), (h) => words(h))).toContain('Mais tesouro encontrado');
+      expect(Array.from(el.querySelectorAll('.sum__h'), (h) => words(h))).toContain(
+        'Mais tesouro encontrado',
+      );
     });
 
     it('has the block "Mais tesouro encontrado": every finder with the PO, not only the top one (E9-09)', async () => {
       const withTreasure = create(SessionSummarySchema, {
         ...common,
-        categories: [...categories, category(HighlightKind.TREASURE_FOUND, 250, ['brisa', 'Brisa'])],
+        categories: [
+          ...categories,
+          category(HighlightKind.TREASURE_FOUND, 250, ['brisa', 'Brisa']),
+        ],
         combats: 1,
         scenesOpened: 3,
         checksPassed: 9,
@@ -186,18 +224,27 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       const titles = Array.from(el.querySelectorAll('.tbl__title'), (h) => words(h));
       expect(titles).toEqual(['Testes passados fora do combate', 'Mais tesouro encontrado']);
       const block = Array.from(el.querySelectorAll('.tbl'))[1];
-      expect(words(block.querySelector('.tbl__caption'))).toBe('Só conta o que foi marcado durante a sessão.');
-      expect(Array.from(block.querySelectorAll('.tbl__row--head [role="columnheader"]'), (h) => h.textContent)).toEqual([
-        'Personagem',
-        'Tesouro encontrado',
-      ]);
+      expect(words(block.querySelector('.tbl__caption'))).toBe(
+        'Só conta o que foi marcado durante a sessão.',
+      );
+      expect(
+        Array.from(
+          block.querySelectorAll('.tbl__row--head [role="columnheader"]'),
+          (h) => h.textContent,
+        ),
+      ).toEqual(['Personagem', 'Tesouro encontrado']);
       const rows = Array.from(block.querySelectorAll('.tbl__row:not(.tbl__row--head)'), (r) => [
         words(r.querySelector('b')),
         words(r.querySelector('.tbl__num')),
       ]);
       // The most first, the number with its unit tied and a thousands separator.
-      expect(rows).toEqual([['Brisa', '1.250 PO'], ['Pensantus', '25 PO']]);
-      expect(words(el.querySelectorAll('.sum__note')[0])).toContain('divide o valor, arredondado para baixo');
+      expect(rows).toEqual([
+        ['Brisa', '1.250 PO'],
+        ['Pensantus', '25 PO'],
+      ]);
+      expect(words(el.querySelectorAll('.sum__note')[0])).toContain(
+        'divide o valor, arredondado para baixo',
+      );
       // The treasure has its block: the tiles of "Destaques" do not repeat it.
       const tiles = Array.from(el.querySelectorAll('.tile'), (t) => words(t));
       expect(tiles.some((t) => t?.includes('Mais tesouro encontrado'))).toBe(false);
@@ -213,8 +260,15 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       expect(el.querySelector('h2.card__title')?.closest('[role="status"]')).not.toBeNull();
       expect(words(el.querySelector('.card__sub'))).toBe('Durou 3 h 5 min');
       expect(words(el.querySelector('.card__h'))).toBe('Resumo da sessão');
-      const rows = Array.from(el.querySelectorAll('.row'), (r) => words(r.querySelector('.row__label')));
-      expect(rows).toEqual(['Mais dano causado', 'Tanque', 'Golpe final Você', 'Mais testes passados fora do combate']);
+      const rows = Array.from(el.querySelectorAll('.row'), (r) =>
+        words(r.querySelector('.row__label')),
+      );
+      expect(rows).toEqual([
+        'Mais dano causado',
+        'Tanque',
+        'Golpe final Você',
+        'Mais testes passados fora do combate',
+      ]);
       const checks = el.querySelectorAll('.row')[3];
       expect(words(checks.querySelector('.row__value'))).toBe('4 testes');
       expect(checks.textContent).not.toMatch(/\bde 5\b|tentados/);
@@ -223,7 +277,10 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
     it('shows "Seu resultado, Pensantus" with the own numbers and the own checks', async () => {
       const { el } = await setup(playerSummary, false);
       expect(words(el.querySelectorAll('.card__h')[1])).toBe('Seu resultado, Pensantus');
-      const own = Array.from(el.querySelectorAll('.own__tile'), (t) => [words(t.querySelector('.own__label')), words(t.querySelector('.own__value'))]);
+      const own = Array.from(el.querySelectorAll('.own__tile'), (t) => [
+        words(t.querySelector('.own__label')),
+        words(t.querySelector('.own__value')),
+      ]);
       expect(own).toEqual([
         ['Dano causado', '17'],
         ['Dano recebido', '0'],
@@ -233,7 +290,7 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       ]);
     });
 
-    it('draws no table, no counts and no master\'s panel', async () => {
+    it("draws no table, no counts and no master's panel", async () => {
       const { el } = await setup(playerSummary, false);
       expect(el.querySelector('.tbl')).toBeNull();
       expect(el.querySelector('.stat')).toBeNull();
@@ -270,7 +327,7 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       expect(words(el.querySelector('.own__tile'))).toBe('Tesouro encontrado125 PO');
     });
 
-    it('leaves the player\'s own block out when the character took no part', async () => {
+    it("leaves the player's own block out when the character took no part", async () => {
       const { el } = await setup(create(SessionSummarySchema, { ...common }), false);
       expect(el.querySelectorAll('.card__h')).toHaveLength(1);
       expect(el.querySelector('.own')).toBeNull();
@@ -282,9 +339,13 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
     expect(words(el.querySelector('h1'))).toBe('Sessão 5 encerrada');
     expect(el.textContent).toContain('A sessão acabou.');
     expect(el.querySelector('.end')).toBeNull();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para carregar o resumo');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não deu para carregar o resumo',
+    );
     get.mockResolvedValue(masterSummary);
-    const retry = Array.from(el.querySelectorAll('button')).find((b) => words(b) === 'Tentar de novo')!;
+    const retry = Array.from(el.querySelectorAll('button')).find(
+      (b) => words(b) === 'Tentar de novo',
+    )!;
     expect(retry.classList.contains('mat-mdc-outlined-button')).toBe(true);
     retry.click();
     for (let i = 0; i < 3; i++) {
@@ -315,7 +376,9 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
 
   it('says there was nothing to highlight, for a session with no combat and no checks', async () => {
     const { el } = await setup(create(SessionSummarySchema, { ...common, categories: [] }), true);
-    expect(el.textContent).toContain('Ninguém causou, curou, sofreu dano nem passou em testes nesta sessão.');
+    expect(el.textContent).toContain(
+      'Ninguém causou, curou, sofreu dano nem passou em testes nesta sessão.',
+    );
     expect(el.querySelector('.tile')).toBeNull();
   });
 });

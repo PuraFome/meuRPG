@@ -16,11 +16,22 @@ describe('FeatureEditor (a trait, a feature)', () => {
       ...emptyFeature(),
       name: 'Olhos de caçador',
       text: 'Enxergam longe.',
-      effects: [{ ...emptyEffect('proficiency'), proficiency: 'skill:perception' }, { ...emptyEffect('sense'), sense: 'darkvision', rangeFt: 60 }],
+      effects: [
+        { ...emptyEffect('proficiency'), proficiency: 'skill:perception' },
+        { ...emptyEffect('sense'), sense: 'darkvision', rangeFt: 60 },
+      ],
     };
   }
 
-  function setup(feature: FeatureDraft, over: { issues?: Record<string, string[]>; removeLabel?: string; index?: number; count?: number } = {}) {
+  function setup(
+    feature: FeatureDraft,
+    over: {
+      issues?: Record<string, string[]>;
+      removeLabel?: string;
+      index?: number;
+      count?: number;
+    } = {},
+  ) {
     emitted.length = 0;
     removed.mockReset();
     TestBed.resetTestingModule();
@@ -39,14 +50,20 @@ describe('FeatureEditor (a trait, a feature)', () => {
   }
 
   const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const button = (label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => text(b).includes(label))!;
-  const field = (path: string) => el.querySelector<HTMLElement>(`[data-field="table_race.traits[1].${path}"]`);
+  const button = (label: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      text(b).includes(label),
+    )!;
+  const field = (path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="table_race.traits[1].${path}"]`);
 
   it('puts the name and the effect on one row and the text in one box, with the group named apart from the name field', () => {
     setup(two());
     const grid = el.querySelector('.grid')!;
     expect(grid.querySelector('[data-field="table_race.traits[1].name_pt"]')).not.toBeNull();
-    expect(grid.querySelector('[data-field="table_race.traits[1].effects[0].type"]')).not.toBeNull();
+    expect(
+      grid.querySelector('[data-field="table_race.traits[1].effects[0].type"]'),
+    ).not.toBeNull();
     expect(el.querySelectorAll('textarea')).toHaveLength(1);
     expect(el.querySelector('[role="group"]')!.getAttribute('aria-label')).toBe('Traço 2');
   });
@@ -96,7 +113,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     expect(t).toContain('O nome tem de 1 a 60 letras.');
   });
 
-  it('tracks the effects by a stable id: moving the list keeps each row\'s own state', () => {
+  it("tracks the effects by a stable id: moving the list keeps each row's own state", () => {
     const f = two();
     setup(f);
     const sense = f.effects[1];
@@ -107,16 +124,26 @@ describe('FeatureEditor (a trait, a feature)', () => {
     fixture.detectChanges();
     expect(sense.id).not.toBe(f.effects[0].id);
     expect((field('effects[0].type') as HTMLSelectElement).selectedOptions[0].text).toBe('Sentido');
-    expect((field('effects[1].type') as HTMLSelectElement).selectedOptions[0].text).toBe('Proficiência');
+    expect((field('effects[1].type') as HTMLSelectElement).selectedOptions[0].text).toBe(
+      'Proficiência',
+    );
   });
 
   it('moves the trait up or down and offers no move for the only one', () => {
     setup(two());
     const moved = vi.fn();
     fixture.componentInstance.moved.subscribe(moved);
-    (Array.from(el.querySelectorAll('button')).find((b) => b.getAttribute('aria-label')?.startsWith('Subir')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        b.getAttribute('aria-label')?.startsWith('Subir'),
+      ) as HTMLButtonElement
+    ).click();
     expect(moved).toHaveBeenCalledWith(-1);
     setup(two(), { count: 1, index: 0 });
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.getAttribute('aria-label')?.startsWith('Subir'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) =>
+        b.getAttribute('aria-label')?.startsWith('Subir'),
+      ),
+    ).toBe(false);
   });
 });

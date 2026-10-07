@@ -7,14 +7,19 @@ import { LevelUpClient } from './levelup-client';
 // retired, and never kept past the page: a client is the page's own, and `fresh` reads again inside it.
 
 function clientWith(calls: object[]): LevelUpClient {
-  TestBed.configureTestingModule({ providers: [LevelUpClient, { provide: CONNECT_TRANSPORT, useValue: {} }] });
+  TestBed.configureTestingModule({
+    providers: [LevelUpClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+  });
   const client = TestBed.inject(LevelUpClient);
   let revision = 0;
   (client as unknown as { content: unknown }).content = {
     listContent: (req: object) => {
       calls.push(req);
       revision += 1;
-      return Promise.resolve({ tableRevision: revision, content: { spells: [], skills: [], classes: [{ key: 'class:wizard', namePt: 'Mago' }] } });
+      return Promise.resolve({
+        tableRevision: revision,
+        content: { spells: [], skills: [], classes: [{ key: 'class:wizard', namePt: 'Mago' }] },
+      });
     },
   };
   return client;

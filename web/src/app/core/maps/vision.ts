@@ -194,7 +194,11 @@ export function tileRects(vision: Vision): TileRect[] {
 /** Where a tile is fetched: the route, the tile and its revision (`r`, which
  * changes when the tile gains a square, so an unchanged tile keeps its URL and
  * the browser keeps its copy), and, for the master reading as a player, `as`. */
-export function tileUrl(vision: Vision, tile: { tx: number; ty: number; revision: number }, as: string | null): string {
+export function tileUrl(
+  vision: Vision,
+  tile: { tx: number; ty: number; revision: number },
+  as: string | null,
+): string {
   const base = `${vision.tilesPath}${tile.tx}/${tile.ty}?r=${tile.revision}`;
   return as ? `${base}&as=${encodeURIComponent(as)}` : base;
 }
@@ -205,7 +209,10 @@ export interface TileProgress {
   readonly done: number;
 }
 
-export function tileProgress(rects: readonly TileRect[], settled: ReadonlySet<string>): TileProgress {
+export function tileProgress(
+  rects: readonly TileRect[],
+  settled: ReadonlySet<string>,
+): TileProgress {
   return { total: rects.length, done: rects.filter((r) => settled.has(r.key)).length };
 }
 

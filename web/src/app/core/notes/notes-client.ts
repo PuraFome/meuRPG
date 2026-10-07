@@ -1,11 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import {
-  type Note,
-  type NoteScene,
-  NotesService,
-} from '../../../gen/meurpg/notes/v1/notes_pb';
+import { type Note, type NoteScene, NotesService } from '../../../gen/meurpg/notes/v1/notes_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** The player's whole list: their notes and the clues the master revealed. */
@@ -37,7 +33,12 @@ export class NotesClient {
   }
 
   /** `CreateNote`; an empty `scenePointId` is a note with no scene. `idempotencyKey`: one per note, sent again on a retry. */
-  async create(campaignId: string, text: string, scenePointId: string, idempotencyKey: string): Promise<Note> {
+  async create(
+    campaignId: string,
+    text: string,
+    scenePointId: string,
+    idempotencyKey: string,
+  ): Promise<Note> {
     const res = await this.client.createNote({ campaignId, text, scenePointId, idempotencyKey });
     return need(res.note, 'CreateNote');
   }

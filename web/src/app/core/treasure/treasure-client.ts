@@ -44,8 +44,18 @@ export class TreasureClient {
   }
 
   /** `GenerateTreasure`: stores nothing. No seed asks the server to draw one ("Gerar outro"). */
-  generate(campaignId: string, mode: TreasureMode, partyLevel: number, seed?: bigint): Promise<GenerateTreasureResponse> {
-    return this.client.generateTreasure({ campaignId, mode, partyLevel, ...(seed === undefined ? {} : { seed }) });
+  generate(
+    campaignId: string,
+    mode: TreasureMode,
+    partyLevel: number,
+    seed?: bigint,
+  ): Promise<GenerateTreasureResponse> {
+    return this.client.generateTreasure({
+      campaignId,
+      mode,
+      partyLevel,
+      ...(seed === undefined ? {} : { seed }),
+    });
   }
 
   /** `GetMagicItem`: "Ver descrição". */

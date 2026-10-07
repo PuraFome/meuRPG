@@ -6,7 +6,10 @@ import { takeLevelUpDone } from './levelup-done';
 describe('takeLevelUpDone: the status after the level-up shows once', () => {
   function setup(state: Record<string, unknown> | undefined, history: Record<string, unknown>) {
     const events = new Subject<unknown>();
-    const router = { currentNavigation: () => ({ extras: { state } }), events } as unknown as Router;
+    const router = {
+      currentNavigation: () => ({ extras: { state } }),
+      events,
+    } as unknown as Router;
     const replaceState = vi.fn();
     const win = { history: { state: history, replaceState } } as unknown as Pick<Window, 'history'>;
     return { router, events, win, replaceState };

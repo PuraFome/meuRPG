@@ -1,4 +1,16 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
@@ -19,11 +31,25 @@ import { MapAsk } from '../../maps/map-ask/map-ask';
 
 const OPTIONS: readonly DiceOption<XpMode>[] = [
   { value: XpMode.ENEMIES, title: 'Por inimigos', description: 'Cada inimigo derrotado dá XP.' },
-  { value: XpMode.MILESTONES, title: 'Por marcos', description: 'O nível sobe quando você marca um marco.' },
-  { value: XpMode.GOLD, title: 'Por ouro', description: 'O ouro encontrado vira XP em “Voltar à cidade”.' },
+  {
+    value: XpMode.MILESTONES,
+    title: 'Por marcos',
+    description: 'O nível sobe quando você marca um marco.',
+  },
+  {
+    value: XpMode.GOLD,
+    title: 'Por ouro',
+    description: 'O ouro encontrado vira XP em “Voltar à cidade”.',
+  },
 ];
 
-const WHEN = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const WHEN = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 /**
  * "Experiência" on "Regras da mesa" (RN-09, E10-03 state 3): the three ways the campaign awards XP, changed after the
@@ -99,7 +125,9 @@ export class XpModePanel {
     this.asking.set(null);
     this.picked.set(null);
     this.error.set('');
-    afterNextRender(() => focusWithRing(this.applyButton()?.nativeElement), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.applyButton()?.nativeElement), {
+      injector: this.injector,
+    });
   }
 
   private async send(target: XpMode, confirm: boolean): Promise<void> {
@@ -118,7 +146,9 @@ export class XpModePanel {
       if (blocked && !confirm) {
         this.asking.set({ target, blocked });
         // The whole question in view, above the page's sticky bar (the page keeps room for it in `scroll-padding-bottom`).
-        afterNextRender(() => this.box()?.nativeElement.scrollIntoView?.({ block: 'nearest' }), { injector: this.injector });
+        afterNextRender(() => this.box()?.nativeElement.scrollIntoView?.({ block: 'nearest' }), {
+          injector: this.injector,
+        });
       } else {
         this.error.set(tableRulesError(err, 'mudar o modo de XP'));
       }

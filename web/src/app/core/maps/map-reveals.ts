@@ -55,7 +55,12 @@ export class MapReveals {
     this.pendingId.set(token.characterId);
     this.error.set(null);
     try {
-      const saved = await this.api.setTokenHidden(this.campaignId(), mapId, token.characterId, hidden);
+      const saved = await this.api.setTokenHidden(
+        this.campaignId(),
+        mapId,
+        token.characterId,
+        hidden,
+      );
       this.stateOf().upsertToken(saved);
       this.announcement.set(
         hidden

@@ -128,10 +128,7 @@ export function parseMarkdown(source: string): Block[] {
     // last item.
     if (list && /^\s/.test(raw)) {
       const last = list.items.length - 1;
-      list.items[last] = [
-        ...list.items[last],
-        ...parseInline(' ' + line.trim(), budget),
-      ];
+      list.items[last] = [...list.items[last], ...parseInline(' ' + line.trim(), budget)];
       continue;
     }
     flushList();
@@ -143,7 +140,11 @@ export function parseMarkdown(source: string): Block[] {
 }
 
 /** Parses one run of text into inline tokens. */
-export function parseInline(text: string, budget: Budget = { left: WORK_BUDGET }, depth = 0): Inline[] {
+export function parseInline(
+  text: string,
+  budget: Budget = { left: WORK_BUDGET },
+  depth = 0,
+): Inline[] {
   const out: Inline[] = [];
   let buffer = '';
   const pushText = (s: string) => {
@@ -314,7 +315,12 @@ function linkToken(label: string, target: string): Inline | null {
 export function safeHttps(target: string): string | null {
   try {
     const url = new URL(target);
-    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.host === '') {
+    if (
+      url.protocol !== 'https:' ||
+      url.username !== '' ||
+      url.password !== '' ||
+      url.host === ''
+    ) {
       return null;
     }
     return url.href;
@@ -346,7 +352,11 @@ export function collectReferences(blocks: readonly Block[]): {
   characters: Set<string>;
   images: Set<string>;
 } {
-  const refs = { maps: new Set<string>(), characters: new Set<string>(), images: new Set<string>() };
+  const refs = {
+    maps: new Set<string>(),
+    characters: new Set<string>(),
+    images: new Set<string>(),
+  };
   const visit = (children: readonly Inline[]) => {
     for (const c of children) {
       if (c.type === 'ref') {

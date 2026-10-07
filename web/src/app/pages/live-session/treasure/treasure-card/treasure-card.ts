@@ -1,4 +1,18 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -59,8 +73,14 @@ export class TreasureCard {
   protected readonly converted = computed(() => this.point().treasureConverted);
   protected readonly sub = computed(() => treasureSub(this.point()));
   protected readonly line = computed(() => foundLine(this.point()));
-  protected readonly names = computed(() => this.people().filter((p) => this.picked().has(p.id)).map((p) => p.name));
-  protected readonly summary = computed(() => summaryLine(this.names(), this.point().treasureValuePo));
+  protected readonly names = computed(() =>
+    this.people()
+      .filter((p) => this.picked().has(p.id))
+      .map((p) => p.name),
+  );
+  protected readonly summary = computed(() =>
+    summaryLine(this.names(), this.point().treasureValuePo),
+  );
 
   protected startMarking(): void {
     this.picked.set(new Set());
@@ -83,7 +103,12 @@ export class TreasureCard {
 
   protected confirmMarking(): void {
     if (this.picked().size > 0 && !this.busy()) {
-      this.mark.emit({ point: this.point(), characterIds: this.people().filter((p) => this.picked().has(p.id)).map((p) => p.id) });
+      this.mark.emit({
+        point: this.point(),
+        characterIds: this.people()
+          .filter((p) => this.picked().has(p.id))
+          .map((p) => p.id),
+      });
     }
   }
 
@@ -92,7 +117,9 @@ export class TreasureCard {
     afterNextRender(
       () => {
         this.ask()?.nativeElement.scrollIntoView({ block: 'nearest' });
-        focusWithRing(this.ask()?.nativeElement.querySelector<HTMLButtonElement>('[data-initial-focus]'));
+        focusWithRing(
+          this.ask()?.nativeElement.querySelector<HTMLButtonElement>('[data-initial-focus]'),
+        );
       },
       { injector: this.injector },
     );

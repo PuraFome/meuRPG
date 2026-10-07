@@ -1,8 +1,22 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Combatant, CreatureAttack, type GetTurnOptionsResponse, type PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CreatureAttack,
+  type GetTurnOptionsResponse,
+  type PendingDamage,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { ActionOption, AttackOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { attackDetail, attackName, reasonText } from '../../../../core/combat/combat-options';
 import { article } from '../../../../core/combat/combat-log';
@@ -68,8 +82,13 @@ export class CreatureBlock {
   protected readonly mode = computed(() => this.creature().creatureAttack);
   protected readonly hp = computed(() => {
     const c = this.creature();
-    const own = c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}` : stateWord(c.state);
-    return tight(c.hitPointsCurrent !== undefined && this.ac() !== null ? `${own} · CA ${this.ac()}` : own);
+    const own =
+      c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined
+        ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}`
+        : stateWord(c.state);
+    return tight(
+      c.hitPointsCurrent !== undefined && this.ac() !== null ? `${own} · CA ${this.ac()}` : own,
+    );
   });
   protected readonly ended = computed(() => this.creature().turnPartEnded);
   /** The reason every button is off: not its turn, its part ended, or the turn waits for an answer. */
@@ -78,31 +97,49 @@ export class CreatureBlock {
       return this.locked();
     }
     if (!this.acting()) {
-      return this.ended() ? 'Esta parte do turno já foi encerrada.' : `Ainda não é a vez ${article(this.creature().label) === 'a' ? 'dela' : 'dele'}.`;
+      return this.ended()
+        ? 'Esta parte do turno já foi encerrada.'
+        : `Ainda não é a vez ${article(this.creature().label) === 'a' ? 'dela' : 'dele'}.`;
     }
     return '';
   });
   protected readonly off = computed(() => !!this.why());
-  protected readonly actionWord = computed(() => (this.creature().actionUsed ? 'Usada' : 'Disponível'));
+  protected readonly actionWord = computed(() =>
+    this.creature().actionUsed ? 'Usada' : 'Disponível',
+  );
   protected readonly flies = computed(() => this.creature().speedFlyFt > 0);
-  protected readonly moveLeft = computed(() => tight(metersFixed(this.creature().movementLeftDft / 10)));
-  protected readonly moveTotal = computed(() => tight(metersFixed(Math.max(1, this.creature().speedDft) / 10)));
+  protected readonly moveLeft = computed(() =>
+    tight(metersFixed(this.creature().movementLeftDft / 10)),
+  );
+  protected readonly moveTotal = computed(() =>
+    tight(metersFixed(Math.max(1, this.creature().speedDft) / 10)),
+  );
   protected readonly moveLabel = computed(() => `Mover o ${this.creature().label}`);
 
   /** What it attacks with as an action; a familiar of the chain attacks with its reaction instead. */
-  protected readonly attacks = computed<readonly AttackOption[]>(() => (this.mode() === CreatureAttack.FULL ? (this.options()?.options?.attacks ?? []) : []));
-  protected readonly reactionAttacks = computed<readonly AttackOption[]>(() => (this.mode() === CreatureAttack.REACTION ? (this.options()?.options?.attacks ?? []) : []));
+  protected readonly attacks = computed<readonly AttackOption[]>(() =>
+    this.mode() === CreatureAttack.FULL ? (this.options()?.options?.attacks ?? []) : [],
+  );
+  protected readonly reactionAttacks = computed<readonly AttackOption[]>(() =>
+    this.mode() === CreatureAttack.REACTION ? (this.options()?.options?.attacks ?? []) : [],
+  );
   protected readonly cannotAttack = computed(() => this.mode() === CreatureAttack.NONE);
   /** The actions everyone has, without Atacar and Conjurar (a creature has the first only as its attacks). */
   protected readonly standard = computed<readonly ActionOption[]>(() =>
-    (this.options()?.options?.standardActions ?? []).filter((a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? '')),
+    (this.options()?.options?.standardActions ?? []).filter(
+      (a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? ''),
+    ),
   );
 
   /** "do Lobo atroz 1", "da Cobra 2". */
-  protected readonly ofCreature = computed(() => `${article(this.creature().label) === 'a' ? 'da' : 'do'} ${this.creature().label}`);
+  protected readonly ofCreature = computed(
+    () => `${article(this.creature().label) === 'a' ? 'da' : 'do'} ${this.creature().label}`,
+  );
   protected readonly attackName = attackName;
   protected readonly reasonText = reasonText;
-  protected readonly reactionWhy = computed(() => (this.creature().reactionUsed ? 'Reação já usada' : ''));
+  protected readonly reactionWhy = computed(() =>
+    this.creature().reactionUsed ? 'Reação já usada' : '',
+  );
 
   constructor() {
     // The book's armor class, read once per kind (the client keeps it).

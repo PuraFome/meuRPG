@@ -69,6 +69,10 @@ export class TableQuestion {
   protected readonly id = `tq-${TableQuestion.next++}`;
 
   constructor() {
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('.ask__title')?.focus({ preventScroll: true }));
+    afterNextRender(() =>
+      this.host.nativeElement
+        .querySelector<HTMLElement>('.ask__title')
+        ?.focus({ preventScroll: true }),
+    );
   }
 }

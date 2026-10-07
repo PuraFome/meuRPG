@@ -76,7 +76,11 @@ export class SheetHeader {
   });
   /** "Pode subir de nível" beside the state tags, where there is no XP block to carry it. */
   protected readonly milestoneTag = computed(
-    () => this.xpMode() === 'milestones' && this.vm().canLevelUp && !this.isNpc() && !this.selfLevelUp(),
+    () =>
+      this.xpMode() === 'milestones' &&
+      this.vm().canLevelUp &&
+      !this.isNpc() &&
+      !this.selfLevelUp(),
   );
 
   protected readonly fields = computed<HeaderField[]>(() => {

@@ -12,16 +12,42 @@ import { encounter } from '../../../../core/combat/combat-testing';
 import { RosterClient } from '../../../../core/maps/roster-client';
 import { type CombatMapInfo, StartCombatDialog, type StartCombatData } from './start-combat-dialog';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
-const map: CombatMapInfo = { id: 'map', name: 'Emboscada na estrada', image: { url: '/i', width: 2000, height: 1400 }, columns: 20, rows: 14 };
+const map: CombatMapInfo = {
+  id: 'map',
+  name: 'Emboscada na estrada',
+  image: { url: '/i', width: 2000, height: 1400 },
+  columns: 20,
+  rows: 14,
+};
 const roster = [
-  { id: 'p', name: 'Pensantus', kind: CharacterKind.PLAYER, playerUserId: 'u1', classSummary: 'Mago 4', raceName: 'Gnomo', playerName: 'Vinicius' },
-  { id: 'g', name: 'Goblin', kind: CharacterKind.MINION, playerUserId: '', classSummary: '', raceName: '', playerName: null },
+  {
+    id: 'p',
+    name: 'Pensantus',
+    kind: CharacterKind.PLAYER,
+    playerUserId: 'u1',
+    classSummary: 'Mago 4',
+    raceName: 'Gnomo',
+    playerName: 'Vinicius',
+  },
+  {
+    id: 'g',
+    name: 'Goblin',
+    kind: CharacterKind.MINION,
+    playerUserId: '',
+    classSummary: '',
+    raceName: '',
+    playerName: null,
+  },
 ];
 
 /** Lets the dialog's reads (the roster, the members, the table's rule) finish, then draws. */
-async function settle(fixture: { detectChanges: () => void; whenStable: () => Promise<unknown> }): Promise<void> {
+async function settle(fixture: {
+  detectChanges: () => void;
+  whenStable: () => Promise<unknown>;
+}): Promise<void> {
   await fixture.whenStable();
   await new Promise((r) => setTimeout(r, 0));
   await fixture.whenStable();
@@ -30,7 +56,11 @@ async function settle(fixture: { detectChanges: () => void; whenStable: () => Pr
 
 /** The dialog with the table's "combate com mapa" rule `withMap`, over a session with or without a map. */
 async function setup(opts: { withMap: boolean | 'fails'; map?: CombatMapInfo | null }) {
-  const data: StartCombatData = { campaignId: 'c', mode: 'start', map: opts.map === undefined ? map : opts.map };
+  const data: StartCombatData = {
+    campaignId: 'c',
+    mode: 'start',
+    map: opts.map === undefined ? map : opts.map,
+  };
   const started: { mode: EncounterMode | undefined }[] = [];
   TestBed.configureTestingModule({
     providers: [
@@ -42,7 +72,9 @@ async function setup(opts: { withMap: boolean | 'fails'; map?: CombatMapInfo | n
         provide: CampaignsService,
         useValue: {
           listMembers: async () => ({ members: [] }),
-          getCampaign: async () => ({ campaign: { diceMode: DiceMode.PLAYERS_CHOOSE, dicePreference: DicePreference.APP } }),
+          getCampaign: async () => ({
+            campaign: { diceMode: DiceMode.PLAYERS_CHOOSE, dicePreference: DicePreference.APP },
+          }),
         },
       },
       {
@@ -59,7 +91,13 @@ async function setup(opts: { withMap: boolean | 'fails'; map?: CombatMapInfo | n
       {
         provide: CombatClient,
         useValue: {
-          start: async (_c: string, _n: string, _s: unknown, _k: string, extras?: { mode?: EncounterMode }) => {
+          start: async (
+            _c: string,
+            _n: string,
+            _s: unknown,
+            _k: string,
+            extras?: { mode?: EncounterMode },
+          ) => {
             started.push({ mode: extras?.mode });
             return encounter();
           },
@@ -73,7 +111,8 @@ async function setup(opts: { withMap: boolean | 'fails'; map?: CombatMapInfo | n
   return { fixture, el: fixture.nativeElement as HTMLElement, started };
 }
 
-const radios = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('input[name="combat-mode"]'));
+const radios = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll<HTMLInputElement>('input[name="combat-mode"]'));
 
 describe('"Iniciar combate": how the combat is played (RN-25, E10-04 state 1)', () => {
   it('offers "Com mapa" and "Sem mapa (teatro da mente)", with the table\'s rule as the default: with a map', async () => {
@@ -132,13 +171,15 @@ describe('"Iniciar combate": how the combat is played (RN-25, E10-04 state 1)', 
     expect(plain(el.textContent)).toContain('O mapa atual não tem grade.');
     expect(plain(el.textContent)).toContain('Esse mapa ainda não tem grade.');
     expect(plain(el.textContent)).toContain('Definir a grade');
-    expect(el.querySelector<HTMLButtonElement>('.dlg__go')!.getAttribute('aria-disabled')).not.toBe('true');
+    expect(el.querySelector<HTMLButtonElement>('.dlg__go')!.getAttribute('aria-disabled')).not.toBe(
+      'true',
+    );
     el.querySelector<HTMLButtonElement>('.dlg__go')!.click();
     await settle(fixture);
     expect(started).toEqual([{ mode: EncounterMode.THEATRE }]);
   });
 
-  it('is not ready until the table\'s rule is read, so the radio never flips under the master\'s hand', async () => {
+  it("is not ready until the table's rule is read, so the radio never flips under the master's hand", async () => {
     let release: (v: { saved: { combatStartsWithMap: boolean } }) => void = () => undefined;
     const data: StartCombatData = { campaignId: 'c', mode: 'start', map };
     TestBed.configureTestingModule({
@@ -147,7 +188,13 @@ describe('"Iniciar combate": how the combat is played (RN-25, E10-04 state 1)', 
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: () => undefined } },
         { provide: RosterClient, useValue: { list: async () => roster } },
-        { provide: CampaignsService, useValue: { listMembers: async () => ({ members: [] }), getCampaign: async () => ({ campaign: { diceMode: DiceMode.PLAYERS_CHOOSE } }) } },
+        {
+          provide: CampaignsService,
+          useValue: {
+            listMembers: async () => ({ members: [] }),
+            getCampaign: async () => ({ campaign: { diceMode: DiceMode.PLAYERS_CHOOSE } }),
+          },
+        },
         { provide: TableRulesClient, useValue: { get: () => new Promise((r) => (release = r)) } },
         { provide: CombatClient, useValue: {} },
       ],
@@ -159,7 +206,9 @@ describe('"Iniciar combate": how the combat is played (RN-25, E10-04 state 1)', 
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(plain(el.textContent)).toContain('Carregando');
-    expect(el.querySelector<HTMLButtonElement>('.dlg__go')!.getAttribute('aria-disabled')).toBe('true');
+    expect(el.querySelector<HTMLButtonElement>('.dlg__go')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
     release({ saved: { combatStartsWithMap: false } });
     await settle(fixture);
     expect(radios(el).map((r) => r.checked)).toEqual([false, true]);

@@ -32,7 +32,18 @@ describe('scene view', () => {
     expect(sceneRollFormula(pensantus)).toBe('1d20 (11) + 6 = 17');
     expect(sceneRollFormula(brisa)).toBe('14 + 3 = 17');
     expect(
-      sceneRollFormula(sceneRoll('r', 'a1', 'X', 14, { roll: { diceCount: 1, diceSides: 20, faces: [14], modifier: 0, total: 14, physical: true } })),
+      sceneRollFormula(
+        sceneRoll('r', 'a1', 'X', 14, {
+          roll: {
+            diceCount: 1,
+            diceSides: 20,
+            faces: [14],
+            modifier: 0,
+            total: 14,
+            physical: true,
+          },
+        }),
+      ),
     ).toBe('14');
   });
 
@@ -50,8 +61,12 @@ describe('scene view', () => {
   });
 
   it('reads a roll aloud as "who: action, total, passed"', () => {
-    expect(rollAnnouncement(scene, toren)).toBe('Toren: Seguir os rastros dos goblins, 7, não passou');
-    expect(rollAnnouncement(scene, pensantus)).toBe('Pensantus: Procurar pistas na carroça, 17, passou');
+    expect(rollAnnouncement(scene, toren)).toBe(
+      'Toren: Seguir os rastros dos goblins, 7, não passou',
+    );
+    expect(rollAnnouncement(scene, pensantus)).toBe(
+      'Pensantus: Procurar pistas na carroça, 17, passou',
+    );
     expect(rollAnnouncement(scene, brisa)).toBe('Brisa: Percepção, 17');
   });
 
@@ -77,14 +92,18 @@ describe('scene view', () => {
 
   it("finds the player's last roll when an action has several", () => {
     const first = sceneRoll('r1', 'a4', 'Pensantus', 9, { rolledAt: new Date(2026, 9, 3, 21, 15) });
-    const second = sceneRoll('r2', 'a4', 'Pensantus', 14, { rolledAt: new Date(2026, 9, 3, 21, 17) });
+    const second = sceneRoll('r2', 'a4', 'Pensantus', 14, {
+      rolledAt: new Date(2026, 9, 3, 21, 17),
+    });
     expect(ownRollOf(playerScene([second, first]), 'a4')?.id).toBe('r2');
     expect(ownRollOf(playerScene([first, second]), 'a4')?.id).toBe('r2');
   });
 
   describe('the attempts (MR-015, question 55)', () => {
-    const action = (maxAttempts: number, attemptsLeft?: number) => sceneAction('a', 'Percepção', { maxAttempts, attemptsLeft });
-    const text = (maxAttempts: number, attemptsLeft?: number) => playerAttempts(action(maxAttempts, attemptsLeft))?.text.replace(/\u00a0/g, ' ') ?? null;
+    const action = (maxAttempts: number, attemptsLeft?: number) =>
+      sceneAction('a', 'Percepção', { maxAttempts, attemptsLeft });
+    const text = (maxAttempts: number, attemptsLeft?: number) =>
+      playerAttempts(action(maxAttempts, attemptsLeft))?.text.replace(/\u00a0/g, ' ') ?? null;
 
     it('writes every variant the player reads', () => {
       expect(text(1, 1)).toBe('1 tentativa');
@@ -116,14 +135,18 @@ describe('scene view', () => {
 
     it('announces to a player when an action got more attempts, and only then', () => {
       const before = playerScene();
-      const granted = playerScene([], [], { actions: before.actions.map((a) => (a.id === 'a5' ? { ...a, attemptsLeft: 2 } : a)) });
-      expect(attemptsAnnouncement(before, granted)).toBe('O mestre deu mais uma tentativa em Resistir ao cheiro de fumaça.');
+      const granted = playerScene([], [], {
+        actions: before.actions.map((a) => (a.id === 'a5' ? { ...a, attemptsLeft: 2 } : a)),
+      });
+      expect(attemptsAnnouncement(before, granted)).toBe(
+        'O mestre deu mais uma tentativa em Resistir ao cheiro de fumaça.',
+      );
       expect(attemptsAnnouncement(granted, before)).toBeNull();
       expect(attemptsAnnouncement(before, before)).toBeNull();
     });
   });
 
-  describe('the master\'s roll cards', () => {
+  describe("the master's roll cards", () => {
     const at = (m: number) => new Date(2026, 9, 3, 21, m);
     const exhausted = (id: string, who: string, action: string, m: number, extra = {}) =>
       sceneRoll(id, action, who, 7, { rolledAt: at(m), attemptsLeft: 0, ...extra });
@@ -137,7 +160,12 @@ describe('scene view', () => {
       expect(rollAttemptLine(scene, two)).toBe('Tentativa 2 de 4');
       expect(rollAttemptLine(scene, other)).toBe('Tentativa 1 de 4');
       // Unlimited: nothing to count (the server leaves attempts_left unset).
-      expect(rollAttemptLine(masterScene([sceneRoll('r4', 'a3', 'Pensantus', 9)]), sceneRoll('r4', 'a3', 'Pensantus', 9))).toBe('');
+      expect(
+        rollAttemptLine(
+          masterScene([sceneRoll('r4', 'a3', 'Pensantus', 9)]),
+          sceneRoll('r4', 'a3', 'Pensantus', 9),
+        ),
+      ).toBe('');
     });
 
     it('offers "Dar mais uma tentativa" when the character has none left (the DC off: any roll)', () => {
@@ -169,9 +197,11 @@ describe('scene view', () => {
       expect(canGrantAttempt(masterScene([gone]), gone)).toBe(false);
     });
 
-    it('names the player and the action in the grant\'s label, so the buttons differ', () => {
+    it("names the player and the action in the grant's label, so the buttons differ", () => {
       const toren = exhausted('r1', 'Toren', 'a2', 11, { passed: false });
-      expect(grantLabel(masterScene([toren]), toren)).toBe('Dar mais uma tentativa a Toren em Seguir os rastros dos goblins');
+      expect(grantLabel(masterScene([toren]), toren)).toBe(
+        'Dar mais uma tentativa a Toren em Seguir os rastros dos goblins',
+      );
     });
   });
 });

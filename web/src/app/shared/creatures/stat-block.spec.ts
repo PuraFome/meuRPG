@@ -13,12 +13,17 @@ describe('StatBlock (E9-10, quadro 3)', () => {
     return { el, flat };
   }
 
-  it('draws what the server sent: CA, the creature\'s own PV, the speeds in metres, one tile each', () => {
+  it("draws what the server sent: CA, the creature's own PV, the speeds in metres, one tile each", () => {
     const { el, flat } = render();
-    expect(Array.from(el.querySelectorAll('.tile')).map((t) => flat(t))).toEqual(['CA 12', 'PV 1 de 1', 'Deslocamento 3 m', 'Voo 15 m']);
+    expect(Array.from(el.querySelectorAll('.tile')).map((t) => flat(t))).toEqual([
+      'CA 12',
+      'PV 1 de 1',
+      'Deslocamento 3 m',
+      'Voo 15 m',
+    ]);
   });
 
-  it('without a creature\'s own PV (the book\'s), shows the average and the dice', () => {
+  it("without a creature's own PV (the book's), shows the average and the dice", () => {
     const { el, flat } = render(null);
     expect(flat(el.querySelectorAll('.tile')[1])).toBe('PV 1 (1d4-1)');
   });
@@ -39,13 +44,23 @@ describe('StatBlock (E9-10, quadro 3)', () => {
   it('the lines carry Portuguese labels; the book\'s text is English, marked once and tagged lang="en"', () => {
     const { el, flat } = render();
     const lines = Array.from(el.querySelectorAll('.line')).map((l) => flat(l));
-    expect(lines).toEqual(['Perícias Percepção +3', 'Sentidos Percepção passiva 13', 'Idiomas —', 'Desafio 0']);
-    expect(flat(el.querySelector('.srd'))).toBe('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.');
+    expect(lines).toEqual([
+      'Perícias Percepção +3',
+      'Sentidos Percepção passiva 13',
+      'Idiomas —',
+      'Desafio 0',
+    ]);
+    expect(flat(el.querySelector('.srd'))).toBe(
+      'Os textos abaixo são do livro de regras (SRD 5.1), em inglês.',
+    );
     const entries = Array.from(el.querySelectorAll('.entry'));
     expect(entries.map((e) => e.getAttribute('lang'))).toEqual(['en', 'en']);
     expect(flat(entries[0].querySelector('h3'))).toBe('Mimicry');
     // The traits get a heading like the actions, and the headings go in order (h2, then h3 for each entry).
-    expect(Array.from(el.querySelectorAll('h2')).map((h) => flat(h))).toEqual(['Características', 'Ações']);
+    expect(Array.from(el.querySelectorAll('h2')).map((h) => flat(h))).toEqual([
+      'Características',
+      'Ações',
+    ]);
   });
 
   it('has no "Atacar" button: it is a page to read', () => {

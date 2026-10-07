@@ -87,7 +87,9 @@ export class TreasureStrip {
   protected readonly visible = computed(
     () => this.gold() || (this.mode() === XpMode.ENEMIES && this.treasures().length > 0),
   );
-  protected readonly label = computed(() => (this.gold() ? 'Encontrado, ainda não convertido' : 'Tesouro encontrado'));
+  protected readonly label = computed(() =>
+    this.gold() ? 'Encontrado, ainda não convertido' : 'Tesouro encontrado',
+  );
   protected readonly headline = computed(() => stripHeadline(this.treasures()));
   protected readonly shown = computed(() => this.treasures().slice(0, LINES));
   protected readonly hidden = computed(() => Math.max(0, this.treasures().length - LINES));

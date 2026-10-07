@@ -1,6 +1,9 @@
 import { signal } from '@angular/core';
 
-import { type OptionSwitchEntry, TableContentKind } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import {
+  type OptionSwitchEntry,
+  TableContentKind,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { type ContentNavKind } from './content-kinds';
 
 /**
@@ -24,17 +27,26 @@ export interface OptionCount {
   readonly total: number;
 }
 
-export function isKindOf(o: Pick<OptionSwitchEntry, 'kind'>, kinds: readonly TableContentKind[]): boolean {
+export function isKindOf(
+  o: Pick<OptionSwitchEntry, 'kind'>,
+  kinds: readonly TableContentKind[],
+): boolean {
   return kinds.includes(o.kind);
 }
 
 /** The group's rows, in the server's order (by kind, then Portuguese name); a race's sub-races follow the races. */
-export function groupRows(options: readonly OptionSwitchEntry[], nav: ContentNavKind): OptionSwitchEntry[] {
+export function groupRows(
+  options: readonly OptionSwitchEntry[],
+  nav: ContentNavKind,
+): OptionSwitchEntry[] {
   return options.filter((o) => isKindOf(o, nav.kinds));
 }
 
 /** How many have their own switch on. In "Raças" the sub-races are counted apart (`subraces`). */
-export function countOf(options: readonly OptionSwitchEntry[], kinds: readonly TableContentKind[]): OptionCount {
+export function countOf(
+  options: readonly OptionSwitchEntry[],
+  kinds: readonly TableContentKind[],
+): OptionCount {
   const rows = options.filter((o) => isKindOf(o, kinds));
   return { on: rows.filter((o) => !o.off).length, total: rows.length };
 }
@@ -71,11 +83,7 @@ export function menuCount(options: readonly OptionSwitchEntry[], nav: ContentNav
 
 /** Lower-case, no accents: "Raça" is found by "raca". */
 export function fold(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
 export function searchRows(rows: readonly OptionSwitchEntry[], query: string): OptionSwitchEntry[] {
@@ -101,7 +109,9 @@ export function isMasculine(kind: TableContentKind): boolean {
 
 /** "ligada"/"ligado", "desligada"/"desligado", agreeing with the kind's noun. */
 export function onOffWords(kind: TableContentKind): { on: string; off: string } {
-  return isMasculine(kind) ? { on: 'ligado', off: 'desligado' } : { on: 'ligada', off: 'desligada' };
+  return isMasculine(kind)
+    ? { on: 'ligado', off: 'desligado' }
+    : { on: 'ligada', off: 'desligada' };
 }
 
 /** How many children (subclasses, sub-races) the players do not receive because their parent is off or archived, while their own switch is on. */
@@ -119,7 +129,9 @@ export function hiddenCounterText(nav: ContentNavKind, n: number): string {
 }
 
 /** The races with their sub-races under them (a sub-race whose race is not in the rows follows at the end). */
-export function nestRows(rows: readonly OptionSwitchEntry[]): { row: OptionSwitchEntry; nested: boolean }[] {
+export function nestRows(
+  rows: readonly OptionSwitchEntry[],
+): { row: OptionSwitchEntry; nested: boolean }[] {
   const keys = new Set(rows.map((o) => o.key));
   const children = new Map<string, OptionSwitchEntry[]>();
   for (const o of rows) {
@@ -141,7 +153,10 @@ export function nestRows(rows: readonly OptionSwitchEntry[]): { row: OptionSwitc
 }
 
 /** What the row says under the name when the players do not get it for a reason that is not its own switch. */
-export function hiddenNote(o: OptionSwitchEntry, byKey: ReadonlyMap<string, OptionSwitchEntry>): string {
+export function hiddenNote(
+  o: OptionSwitchEntry,
+  byKey: ReadonlyMap<string, OptionSwitchEntry>,
+): string {
   if (!o.hidden || o.off || o.archived) {
     return '';
   }
@@ -178,18 +193,26 @@ export function withHidden(options: readonly OptionSwitchEntry[]): OptionSwitchE
 }
 
 /** Merges the options the server says changed into the list (by key). */
-export function mergeChanged(options: readonly OptionSwitchEntry[], changed: readonly OptionSwitchEntry[]): OptionSwitchEntry[] {
+export function mergeChanged(
+  options: readonly OptionSwitchEntry[],
+  changed: readonly OptionSwitchEntry[],
+): OptionSwitchEntry[] {
   const byKey = new Map(changed.map((o) => [o.key, o]));
   return options.map((o) => byKey.get(o.key) ?? o);
 }
 
 /** The keys that `Ligar todas` or `Desligar todas` changes: only those that are not in the state asked. */
-export function bulkChanges(rows: readonly OptionSwitchEntry[], off: boolean): { key: string; off: boolean }[] {
+export function bulkChanges(
+  rows: readonly OptionSwitchEntry[],
+  off: boolean,
+): { key: string; off: boolean }[] {
   return rows.filter((o) => o.off !== off).map((o) => ({ key: o.key, off }));
 }
 
 export interface SwitchSource {
-  switches(campaignId: string): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }>;
+  switches(
+    campaignId: string,
+  ): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }>;
   setSwitches(
     campaignId: string,
     switches: readonly { key: string; off: boolean }[],
@@ -284,7 +307,10 @@ export class OptionSwitchesState {
     const masculine = rows.length > 0 && rows.every((o) => isMasculine(o.kind));
     const w = masculine ? { on: 'ligado', off: 'desligado' } : { on: 'ligada', off: 'desligada' };
     const word = (off ? w.off : w.on) + (changes.length === 1 ? '' : 's');
-    const tail = off && using > 0 ? ` ${using === 1 ? 'A ficha que a usa continua funcionando' : 'As fichas que as usam continuam funcionando'}.` : '';
+    const tail =
+      off && using > 0
+        ? ` ${using === 1 ? 'A ficha que a usa continua funcionando' : 'As fichas que as usam continuam funcionando'}.`
+        : '';
     return this.change(changes, `${what}: ${changes.length} ${word}.${tail}`);
   }
 
@@ -293,13 +319,22 @@ export class OptionSwitchesState {
     const asked = new Map(changes.map((c) => [c.key, c.off]));
     this.changes++;
     // The switch moves at once; what is hidden for the players follows the server's answer (this is only the guess).
-    this.options.update((list) => withHidden(list.map((o) => (asked.has(o.key) ? ({ ...o, off: asked.get(o.key)! } as OptionSwitchEntry) : o))));
+    this.options.update((list) =>
+      withHidden(
+        list.map((o) =>
+          asked.has(o.key) ? ({ ...o, off: asked.get(o.key)! } as OptionSwitchEntry) : o,
+        ),
+      ),
+    );
     this.pending++;
     this.save.set({ kind: 'saving' });
     this.queue = this.queue.then(async () => {
       try {
         for (let i = 0; i < changes.length; i += SWITCH_BATCH) {
-          const res = await this.source.setSwitches(this.campaignId, changes.slice(i, i + SWITCH_BATCH));
+          const res = await this.source.setSwitches(
+            this.campaignId,
+            changes.slice(i, i + SWITCH_BATCH),
+          );
           this.options.update((list) => mergeChanged(list, res.options));
         }
         this.pending--;
@@ -311,7 +346,15 @@ export class OptionSwitchesState {
       } catch (err) {
         this.pending--;
         // Back to what it was: the switch never says what the server did not accept.
-        this.options.update((list) => withHidden(list.map((o) => (before.has(o.key) && asked.has(o.key) ? ({ ...o, off: before.get(o.key)! } as OptionSwitchEntry) : o))));
+        this.options.update((list) =>
+          withHidden(
+            list.map((o) =>
+              before.has(o.key) && asked.has(o.key)
+                ? ({ ...o, off: before.get(o.key)! } as OptionSwitchEntry)
+                : o,
+            ),
+          ),
+        );
         for (const c of changes) {
           this.failed.add(c.key);
         }

@@ -65,7 +65,8 @@ export class SceneClient {
       campaignId,
       actionId,
       idempotencyKey,
-      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+      roll:
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
     });
     return need(res.roll, 'RollSceneCheck');
   }
@@ -79,7 +80,12 @@ export class SceneClient {
     characterId: string,
     idempotencyKey: string,
   ): Promise<OpenSceneInfo> {
-    const res = await this.client.grantSceneAttempt({ campaignId, actionId, characterId, idempotencyKey });
+    const res = await this.client.grantSceneAttempt({
+      campaignId,
+      actionId,
+      characterId,
+      idempotencyKey,
+    });
     return need(res.scene, 'GrantSceneAttempt');
   }
 }

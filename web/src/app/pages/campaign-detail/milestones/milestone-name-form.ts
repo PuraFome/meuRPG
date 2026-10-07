@@ -1,5 +1,20 @@
-import { Component, ElementRef, OnInit, afterNextRender, input, output, signal, viewChild } from '@angular/core';
-import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  afterNextRender,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,7 +37,14 @@ const filled = (control: AbstractControl): ValidationErrors | null =>
  */
 @Component({
   selector: 'app-milestone-name-form',
-  imports: [FictionNotice, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
+  imports: [
+    FictionNotice,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    ReactiveFormsModule,
+  ],
   template: `
     <form class="form" novalidate (submit)="submit($event)">
       <h4 class="form__title">{{ title() }}</h4>

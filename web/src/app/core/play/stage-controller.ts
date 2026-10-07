@@ -56,7 +56,9 @@ export class StageController {
 
   /** "Pôr em cena": true when the NPC came in. */
   async put(characterId: string): Promise<boolean> {
-    const ok = await this.run(characterId, () => this.api.putOnStage(this.campaignId(), characterId));
+    const ok = await this.run(characterId, () =>
+      this.api.putOnStage(this.campaignId(), characterId),
+    );
     if (ok) {
       const sentence = `${this.nameOf(characterId)} entrou na cena.`;
       this.entered.set(sentence);
@@ -68,7 +70,9 @@ export class StageController {
   /** "Tirar de cena": at once, with no question (putting it back undoes it). */
   async take(characterId: string): Promise<boolean> {
     const name = this.nameOf(characterId);
-    const ok = await this.run(characterId, () => this.api.takeOffStage(this.campaignId(), characterId));
+    const ok = await this.run(characterId, () =>
+      this.api.takeOffStage(this.campaignId(), characterId),
+    );
     if (ok) {
       this.entered.set('');
       this.status.set(`${name} saiu da cena.`);

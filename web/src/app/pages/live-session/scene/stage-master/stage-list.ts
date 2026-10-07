@@ -95,7 +95,14 @@ export class StageList {
   protected readonly reason = STAGE_FULL_REASON;
   protected readonly reasonId = 'stage-full-reason-' + Math.random().toString(36).slice(2, 8);
   protected readonly full = computed(() => !this.ctl().hasRoom());
-  private readonly onStageIds = computed(() => new Set(this.state().stage().map((n) => n.characterId)));
+  private readonly onStageIds = computed(
+    () =>
+      new Set(
+        this.state()
+          .stage()
+          .map((n) => n.characterId),
+      ),
+  );
 
   protected onStage(c: StageCandidate): boolean {
     return this.onStageIds().has(c.characterId);
@@ -113,7 +120,9 @@ export class StageList {
     if (await this.ctl().put(c.characterId)) {
       afterNextRender(
         () => {
-          const next = this.host.nativeElement.querySelector<HTMLElement>('[data-put]:not([aria-disabled="true"])');
+          const next = this.host.nativeElement.querySelector<HTMLElement>(
+            '[data-put]:not([aria-disabled="true"])',
+          );
           if (next) {
             next.focus();
           } else {

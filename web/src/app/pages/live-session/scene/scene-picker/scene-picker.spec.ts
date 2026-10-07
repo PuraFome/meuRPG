@@ -12,7 +12,9 @@ import { FakeSceneClient } from '../../../../core/play/scene-testing';
 import { ScenePicker, type ScenePickerData } from './scene-picker';
 
 const actions = (n: number) =>
-  Array.from({ length: n }, (_, i) => create(SceneActionSchema, { id: `a${i}`, key: 'skill:arcana', checkName: 'Arcanismo' }));
+  Array.from({ length: n }, (_, i) =>
+    create(SceneActionSchema, { id: `a${i}`, key: 'skill:arcana', checkName: 'Arcanismo' }),
+  );
 
 describe('ScenePicker', () => {
   let api: FakeSceneClient;
@@ -23,16 +25,28 @@ describe('ScenePicker', () => {
     Element.prototype.scrollTo = vi.fn() as never;
   });
 
-  function setup(points = [
-    mapPoint('p1', 'A carroça tombada', { revealed: true, sceneActions: actions(5) }),
-    mapPoint('p2', 'Posto da guarda', { revealed: false, sceneActions: actions(3) }),
-    mapPoint('p3', 'Vau do riacho', { revealed: true }),
-    mapPoint('b1', 'Emboscada', { kind: MapPointKind.BATTLE, sceneActions: [] }),
-  ], openPointId: string | null = null) {
+  function setup(
+    points = [
+      mapPoint('p1', 'A carroça tombada', { revealed: true, sceneActions: actions(5) }),
+      mapPoint('p2', 'Posto da guarda', { revealed: false, sceneActions: actions(3) }),
+      mapPoint('p3', 'Vau do riacho', { revealed: true }),
+      mapPoint('b1', 'Emboscada', { kind: MapPointKind.BATTLE, sceneActions: [] }),
+    ],
+    openPointId: string | null = null,
+  ) {
     api = new FakeSceneClient();
     close = vi.fn();
-    state = new SceneState(() => api.get(), () => true);
-    const data: ScenePickerData = { campaignId: 'c1', mapName: 'Estrada do Vale', points, openPointId, state };
+    state = new SceneState(
+      () => api.get(),
+      () => true,
+    );
+    const data: ScenePickerData = {
+      campaignId: 'c1',
+      mapName: 'Estrada do Vale',
+      points,
+      openPointId,
+      state,
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: SceneClient, useValue: api },
@@ -50,7 +64,9 @@ describe('ScenePicker', () => {
       }
     };
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name))!;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.includes(name),
+      )!;
     return { fixture, el, settle, button };
   }
 
@@ -77,9 +93,14 @@ describe('ScenePicker', () => {
 
   it('counts the clues of a scene in its line', () => {
     const { el } = setup([
-      mapPoint('p9', 'Vau do riacho', { revealed: true, clues: [{ id: 'c1' } as never, { id: 'c2' } as never] }),
+      mapPoint('p9', 'Vau do riacho', {
+        revealed: true,
+        clues: [{ id: 'c1' } as never, { id: 'c2' } as never],
+      }),
     ]);
-    expect(el.querySelector('.pk__row')?.textContent?.replace(/\s+/g, ' ')).toContain('Revelado no mapa · 2 pistas');
+    expect(el.querySelector('.pk__row')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Revelado no mapa · 2 pistas',
+    );
   });
 
   it('opens a hidden point, and says it stays hidden on the map', async () => {
@@ -97,7 +118,10 @@ describe('ScenePicker', () => {
 
   it('keeps "Abrir cena" off only when the map has no scene at all', () => {
     const { el, button } = setup([mapPoint('b2', 'Emboscada', { kind: MapPointKind.BATTLE })]);
-    expect(button('Abrir cena').disabled || button('Abrir cena').getAttribute('aria-disabled') === 'true').toBe(true);
+    expect(
+      button('Abrir cena').disabled ||
+        button('Abrir cena').getAttribute('aria-disabled') === 'true',
+    ).toBe(true);
     expect(el.textContent).toContain('Este mapa não tem cena de RP');
   });
 
@@ -109,7 +133,10 @@ describe('ScenePicker', () => {
   it('shows why the server refused, from the typed reason, and stays open', async () => {
     const { el, settle, button } = setup();
     api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [
-      { desc: SceneBlockedSchema, value: create(SceneBlockedSchema, { reason: SceneBlockedReason.NO_ACTIONS }) },
+      {
+        desc: SceneBlockedSchema,
+        value: create(SceneBlockedSchema, { reason: SceneBlockedReason.NO_ACTIONS }),
+      },
     ]);
     button('Abrir cena').click();
     await settle();

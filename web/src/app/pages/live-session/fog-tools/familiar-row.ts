@@ -1,6 +1,9 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
-import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  type CharacterCreature,
+  CreatureSource,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { sourcePhrase } from '../../../core/creatures/creature-format';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { joinDots } from '../../../core/format/text';
@@ -98,7 +101,11 @@ export class FamiliarRow {
   private readonly creatures = signal<readonly CharacterCreature[]>([]);
   private seq = 0;
 
-  protected readonly familiar = computed(() => (this.seeing() ? null : (this.creatures().find((c) => c.source === CreatureSource.FAMILIAR) ?? null)));
+  protected readonly familiar = computed(() =>
+    this.seeing()
+      ? null
+      : (this.creatures().find((c) => c.source === CreatureSource.FAMILIAR) ?? null),
+  );
   protected readonly sub = computed(() => {
     const f = this.familiar();
     if (!f) {

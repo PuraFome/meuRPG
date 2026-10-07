@@ -65,7 +65,9 @@ export class AbilitiesStep {
         key,
         label: ABILITY_LABELS[key],
         score: moved ? `${was.score} → ${now.score}` : String(score),
-        modifier: moved ? `modificador ${formatModifier(was.modifier)} → ${formatModifier(now.modifier)}` : '',
+        modifier: moved
+          ? `modificador ${formatModifier(was.modifier)} → ${formatModifier(now.modifier)}`
+          : '',
         picked: on,
       };
     });
@@ -78,14 +80,22 @@ export class AbilitiesStep {
       const now = s.after().abilities.find((a) => a.ability === WIRE[key]);
       return `${ABILITY_LABELS[key]} ${now?.score ?? ''}`;
     });
-    return names.length === 0 ? '' : new Intl.ListFormat('pt-BR', { type: 'conjunction' }).format(names);
+    return names.length === 0
+      ? ''
+      : new Intl.ListFormat('pt-BR', { type: 'conjunction' }).format(names);
   });
 
-  protected readonly changes = computed(() => this.s().rows().filter((r) => ABILITY_DERIVED.test(r.key)));
+  protected readonly changes = computed(() =>
+    this.s()
+      .rows()
+      .filter((r) => ABILITY_DERIVED.test(r.key)),
+  );
   /** The server says the pick would take an ability past 20: the rule is its, the page only shows it. */
   protected readonly aboveTwenty = computed(() => {
     const p = this.s().preview.state();
     return !p.loading && p.refusal?.reason === LevelUpRefusalReason.ABILITY_ABOVE_20;
   });
-  protected readonly constitutionPicked = computed(() => this.s().draft.abilityKeys().includes('con'));
+  protected readonly constitutionPicked = computed(() =>
+    this.s().draft.abilityKeys().includes('con'),
+  );
 }

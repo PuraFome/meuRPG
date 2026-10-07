@@ -130,7 +130,10 @@ export class TurnBar {
 
   /** "O turno passa quando você e a Brisa encerrarem." */
   protected note(others: readonly string[]): string {
-    return passNote(others.filter((o) => o !== 'o mestre'), others.includes('o mestre'));
+    return passNote(
+      others.filter((o) => o !== 'o mestre'),
+      others.includes('o mestre'),
+    );
   }
 
   protected readonly left = computed(() => {
@@ -142,7 +145,9 @@ export class TurnBar {
     if (!c.actionUsed) {
       items.push({ name: 'Ação' });
     } else if (this.attacksLeft() > 0) {
-      items.push({ name: `${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}` });
+      items.push({
+        name: `${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}`,
+      });
     }
     if (!c.bonusActionUsed) {
       items.push({ name: 'Ação bônus' });
@@ -152,7 +157,15 @@ export class TurnBar {
     }
     // Without a map the movement is said once, in its tile ("3,0 m de 9,0 m"), not again here.
     if (c.movementLeftFt > 0 && !this.theatre()) {
-      items.push({ name: 'Mover', amount: tight(joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))])) });
+      items.push({
+        name: 'Mover',
+        amount: tight(
+          joinDots([
+            metersFixed(c.movementLeftDft / 10),
+            squaresText(reachSquares(c.movementLeftFt)),
+          ]),
+        ),
+      });
     }
     return items;
   });

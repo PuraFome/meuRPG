@@ -7,6 +7,12 @@
       "options": {
         "parser": "angular"
       }
+    },
+    {
+      "files": "*.ts",
+      "options": {
+        "embeddedLanguageFormatting": "off"
+      }
     }
   ]
 }

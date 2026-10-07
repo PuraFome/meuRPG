@@ -4,7 +4,10 @@ import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { timestampFromMs } from '@bufbuild/protobuf/wkt';
 
-import { LevelUpChoicesSchema, LevelUpSchema } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  LevelUpChoicesSchema,
+  LevelUpSchema,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpClient } from '../../../core/levelup/levelup-client';
 import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { OpenSessions } from '../../../shell/live-notice/open-sessions';
@@ -17,7 +20,14 @@ class Source {
   listCharacters(): Promise<CampaignCharactersVm> {
     return Promise.resolve({
       playerCharacters: [
-        { id: 'p1', name: 'Pensantus', kind: 'player', state: 'locked', classSummary: 'Mago 4', playerDisplayName: 'Vinicius' },
+        {
+          id: 'p1',
+          name: 'Pensantus',
+          kind: 'player',
+          state: 'locked',
+          classSummary: 'Mago 4',
+          playerDisplayName: 'Vinicius',
+        },
       ],
       npcs: [],
       hasLivingCharacter: false,
@@ -91,6 +101,8 @@ describe("the master's characters list and the stream (MR-040)", () => {
     f.detectChanges();
     await f.whenStable();
     f.detectChanges();
-    expect((f.nativeElement as HTMLElement).textContent).toContain('O que Pensantus escolheu no nível 4');
+    expect((f.nativeElement as HTMLElement).textContent).toContain(
+      'O que Pensantus escolheu no nível 4',
+    );
   });
 });

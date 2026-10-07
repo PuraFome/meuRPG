@@ -104,9 +104,18 @@ describe('MapState', () => {
     expect(state.map()?.pointCount).toBe(1);
   });
 
-  it('tells a creature\'s token from its owner\'s: they share a character_id, not a key (a light never replaces the creature)', () => {
+  it("tells a creature's token from its owner's: they share a character_id, not a key (a light never replaces the creature)", () => {
     const state = new MapState(async () => mapResponse(mapMessage('m', 'M'), [], []));
-    state.apply(mapResponse(mapMessage('m', 'M'), [], [mapToken('pensantus', 'Pensantus'), mapToken('pensantus', 'Nanquim', { creatureId: 'raven' })]));
+    state.apply(
+      mapResponse(
+        mapMessage('m', 'M'),
+        [],
+        [
+          mapToken('pensantus', 'Pensantus'),
+          mapToken('pensantus', 'Nanquim', { creatureId: 'raven' }),
+        ],
+      ),
+    );
     state.upsertToken(mapToken('pensantus', 'Pensantus', { carriedLight: 'light:torch' }));
     expect(state.tokens().map((t) => [t.name, t.carriedLight])).toEqual([
       ['Pensantus', 'light:torch'],

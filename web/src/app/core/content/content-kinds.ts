@@ -31,11 +31,56 @@ export interface ContentNavKind {
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
-  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: true, createSegment: 'class' },
-  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: true, createSegment: 'subclass' },
-  { slug: 'races', plural: 'Raças', singular: 'raça', kinds: [TableContentKind.RACE, TableContentKind.SUBRACE], newLabel: 'Nova raça', aOne: 'uma raça', editable: true, createSegment: 'race' },
-  { slug: 'backgrounds', plural: 'Antecedentes', singular: 'antecedente', kinds: [TableContentKind.BACKGROUND], newLabel: 'Novo antecedente', aOne: 'um antecedente', editable: true, createSegment: 'background' },
-  { slug: 'spells', plural: 'Magias', singular: 'magia', kinds: [TableContentKind.SPELL], newLabel: 'Nova magia', aOne: 'uma magia', editable: true, createSegment: 'spell' },
+  {
+    slug: 'classes',
+    plural: 'Classes',
+    singular: 'classe',
+    kinds: [TableContentKind.CLASS],
+    newLabel: 'Nova classe',
+    aOne: 'uma classe',
+    editable: true,
+    createSegment: 'class',
+  },
+  {
+    slug: 'subclasses',
+    plural: 'Subclasses',
+    singular: 'subclasse',
+    kinds: [TableContentKind.SUBCLASS],
+    newLabel: 'Nova subclasse',
+    aOne: 'uma subclasse',
+    editable: true,
+    createSegment: 'subclass',
+  },
+  {
+    slug: 'races',
+    plural: 'Raças',
+    singular: 'raça',
+    kinds: [TableContentKind.RACE, TableContentKind.SUBRACE],
+    newLabel: 'Nova raça',
+    aOne: 'uma raça',
+    editable: true,
+    createSegment: 'race',
+  },
+  {
+    slug: 'backgrounds',
+    plural: 'Antecedentes',
+    singular: 'antecedente',
+    kinds: [TableContentKind.BACKGROUND],
+    newLabel: 'Novo antecedente',
+    aOne: 'um antecedente',
+    editable: true,
+    createSegment: 'background',
+  },
+  {
+    slug: 'spells',
+    plural: 'Magias',
+    singular: 'magia',
+    kinds: [TableContentKind.SPELL],
+    newLabel: 'Nova magia',
+    aOne: 'uma magia',
+    editable: true,
+    createSegment: 'spell',
+  },
 ];
 
 export function navOfKind(kind: TableContentKind): ContentNavKind | undefined {
@@ -66,10 +111,25 @@ export interface KindNoun {
 
 export const KIND_NOUNS: Readonly<Record<number, KindNoun>> = {
   [TableContentKind.CLASS]: { article: 'A', noun: 'classe', saved: 'salva', archived: 'arquivada' },
-  [TableContentKind.SUBCLASS]: { article: 'A', noun: 'subclasse', saved: 'salva', archived: 'arquivada' },
+  [TableContentKind.SUBCLASS]: {
+    article: 'A',
+    noun: 'subclasse',
+    saved: 'salva',
+    archived: 'arquivada',
+  },
   [TableContentKind.RACE]: { article: 'A', noun: 'raça', saved: 'salva', archived: 'arquivada' },
-  [TableContentKind.SUBRACE]: { article: 'A', noun: 'sub-raça', saved: 'salva', archived: 'arquivada' },
-  [TableContentKind.BACKGROUND]: { article: 'O', noun: 'antecedente', saved: 'salvo', archived: 'arquivado' },
+  [TableContentKind.SUBRACE]: {
+    article: 'A',
+    noun: 'sub-raça',
+    saved: 'salva',
+    archived: 'arquivada',
+  },
+  [TableContentKind.BACKGROUND]: {
+    article: 'O',
+    noun: 'antecedente',
+    saved: 'salvo',
+    archived: 'arquivado',
+  },
   [TableContentKind.SPELL]: { article: 'A', noun: 'magia', saved: 'salva', archived: 'arquivada' },
 };
 
@@ -114,7 +174,11 @@ export function summaryLine(entries: readonly TableEntry[]): string {
 
 /** Lower case with no accents, so a search finds "Cartografo" for "Cartógrafo". */
 export function plain(text: string): string {
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 /** What the list shows of one kind: the search, then the filter, in the server's order (sorted by name). Only the master
@@ -155,7 +219,10 @@ export interface EntryState {
   readonly archived: boolean;
 }
 
-export function entryState(e: Pick<TableEntry, 'archived' | 'charactersUsing' | 'kind'> & { readonly off?: boolean }, master: boolean): EntryState | null {
+export function entryState(
+  e: Pick<TableEntry, 'archived' | 'charactersUsing' | 'kind'> & { readonly off?: boolean },
+  master: boolean,
+): EntryState | null {
   if (!master) {
     return null;
   }
@@ -169,9 +236,14 @@ export function entryState(e: Pick<TableEntry, 'archived' | 'charactersUsing' | 
   if (e.off) {
     // "Opções para os jogadores" (RN-23): the master still reads and edits it; the players do not receive it.
     const word = KIND_NOUNS[e.kind]?.article === 'O' ? 'Desligado' : 'Desligada';
-    return { text: using ? `${word} para os jogadores · ${using}` : `${word} para os jogadores`, archived: false };
+    return {
+      text: using ? `${word} para os jogadores · ${using}` : `${word} para os jogadores`,
+      archived: false,
+    };
   }
-  return n > 0 ? { text: `Em uso por ${n} ${n === 1 ? 'ficha' : 'fichas'}`, archived: false } : null;
+  return n > 0
+    ? { text: `Em uso por ${n} ${n === 1 ? 'ficha' : 'fichas'}`, archived: false }
+    : null;
 }
 
 /** "2 fichas usam Corujeiro agora.", "Nenhuma ficha usa Corujeiro agora." */
@@ -183,7 +255,11 @@ export function usageSentence(name: string, n: number): string {
 }
 
 /** The one-line support of a list row, from the body: "d10 · conjuração de metade, Sabedoria · subclasse no nível 3". */
-export function entrySupport(e: TableEntry, nameOf: (key: string) => string, subclassLevelOf: (classKey: string) => number = () => 0): string {
+export function entrySupport(
+  e: TableEntry,
+  nameOf: (key: string) => string,
+  subclassLevelOf: (classKey: string) => number = () => 0,
+): string {
   const parts: string[] = [];
   switch (e.body.case) {
     case 'tableClass': {

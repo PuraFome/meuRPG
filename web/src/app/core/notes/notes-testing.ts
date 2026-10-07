@@ -1,7 +1,13 @@
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 
-import { type Note, NoteKind, NoteSchema, type NoteScene, NoteSceneSchema } from '../../../gen/meurpg/notes/v1/notes_pb';
+import {
+  type Note,
+  NoteKind,
+  NoteSchema,
+  type NoteScene,
+  NoteSceneSchema,
+} from '../../../gen/meurpg/notes/v1/notes_pb';
 import type { NotesList } from './notes-client';
 
 /**
@@ -71,7 +77,12 @@ export class FakeNotesClient {
   /** The idempotency key of each `create`, in order. */
   readonly createKeys: string[] = [];
 
-  async create(_campaignId: string, text: string, scenePointId: string, idempotencyKey: string): Promise<Note> {
+  async create(
+    _campaignId: string,
+    text: string,
+    scenePointId: string,
+    idempotencyKey: string,
+  ): Promise<Note> {
     this.record(`create ${text} ${scenePointId}`);
     this.createKeys.push(idempotencyKey);
     if (this.failNextCreate) {

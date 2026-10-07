@@ -8,7 +8,11 @@ import { FakeMapsClient } from '../../../core/maps/maps-testing';
 import { SceneChecks } from '../../../core/maps/scene-actions';
 import { SceneActions } from './scene-actions';
 
-function action(id: string, checkName: string, extra: Partial<Omit<SceneAction, '$typeName'>> = {}): SceneAction {
+function action(
+  id: string,
+  checkName: string,
+  extra: Partial<Omit<SceneAction, '$typeName'>> = {},
+): SceneAction {
   return create(SceneActionSchema, { id, key: 'skill:x', checkName, ...extra });
 }
 
@@ -17,7 +21,11 @@ const FIVE = [
   action('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', dc: 13 }),
   action('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos' }),
   action('a4', 'Percepção', { key: 'skill:perception' }),
-  action('a5', 'Teste de resistência de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, key: 'save:con' }),
+  action('a5', 'Teste de resistência de Constituição', {
+    name: 'Resistir ao cheiro de fumaça',
+    dc: 10,
+    key: 'save:con',
+  }),
 ];
 
 describe('SceneActions', () => {
@@ -73,8 +81,11 @@ describe('SceneActions', () => {
   const control = (id: string, which: 'up' | 'down' | 'remove') =>
     el.querySelector<HTMLButtonElement>(`[data-action="${id}"][data-control="${which}"]`)!;
   const button = (name: string) =>
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name))!;
-  const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.includes(name),
+    )!;
+  const flat = (e: Element | null | undefined) =>
+    e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
   function type(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -85,18 +96,36 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     expect(flat(el.querySelector('.sa__count'))).toBe('5 de 20');
     expect(rows().map((r) => r.querySelector('.sa__name')?.textContent)).toEqual([
-      'Procurar pistas na carroça', 'Seguir os rastros dos goblins', 'Acalmar os cavalos', 'Percepção', 'Resistir ao cheiro de fumaça',
+      'Procurar pistas na carroça',
+      'Seguir os rastros dos goblins',
+      'Acalmar os cavalos',
+      'Percepção',
+      'Resistir ao cheiro de fumaça',
     ]);
     expect(rows().map((r) => r.querySelector('.sa__check')?.textContent)).toEqual([
-      'Investigação', 'Sobrevivência', 'Adestrar Animais', 'Perícia', 'Teste de resistência de Constituição',
+      'Investigação',
+      'Sobrevivência',
+      'Adestrar Animais',
+      'Perícia',
+      'Teste de resistência de Constituição',
     ]);
-    expect(rows().map((r) => flat(r.querySelector('.sa__dc')) ?? null)).toEqual(['CD 12', 'CD 13', null, null, 'CD 10']);
+    expect(rows().map((r) => flat(r.querySelector('.sa__dc')) ?? null)).toEqual([
+      'CD 12',
+      'CD 13',
+      null,
+      null,
+      'CD 10',
+    ]);
   });
 
   it('names every control by its action, and quiets the first ↑ and the last ↓', () => {
     setup([...FIVE]);
-    expect(control('a2', 'up').getAttribute('aria-label')).toBe('Subir Seguir os rastros dos goblins');
-    expect(control('a2', 'down').getAttribute('aria-label')).toBe('Descer Seguir os rastros dos goblins');
+    expect(control('a2', 'up').getAttribute('aria-label')).toBe(
+      'Subir Seguir os rastros dos goblins',
+    );
+    expect(control('a2', 'down').getAttribute('aria-label')).toBe(
+      'Descer Seguir os rastros dos goblins',
+    );
     expect(control('a4', 'remove').getAttribute('aria-label')).toBe('Remover Percepção');
     expect(control('a1', 'up').getAttribute('aria-disabled')).toBe('true');
     expect(control('a5', 'down').getAttribute('aria-disabled')).toBe('true');
@@ -117,8 +146,14 @@ describe('SceneActions', () => {
     control('a3', 'up').click();
     await settle();
     expect(api.calls).toContain('moveSceneAction p1 a3 up');
-    expect(rows().map((r) => r.querySelector('.sa__name')?.textContent).slice(0, 3)).toEqual([
-      'Procurar pistas na carroça', 'Acalmar os cavalos', 'Seguir os rastros dos goblins',
+    expect(
+      rows()
+        .map((r) => r.querySelector('.sa__name')?.textContent)
+        .slice(0, 3),
+    ).toEqual([
+      'Procurar pistas na carroça',
+      'Acalmar os cavalos',
+      'Seguir os rastros dos goblins',
     ]);
     expect(document.activeElement).toBe(control('a3', 'up'));
     expect(flat(el.querySelector('[role="status"]'))).toBe('Acalmar os cavalos: posição 2 de 5.');
@@ -163,14 +198,20 @@ describe('SceneActions', () => {
     // The button is gone while the form is open (the form has its own "Adicionar ação").
     expect(el.querySelectorAll('.sa__add')).toHaveLength(0);
     expect(document.activeElement).toBe(el.querySelector('input[type="radio"]'));
-    expect(Array.from(el.querySelectorAll('.sf__kind'), (l) => flat(l))).toEqual(['Perícia', 'Teste de habilidade', 'Teste de resistência']);
+    expect(Array.from(el.querySelectorAll('.sf__kind'), (l) => flat(l))).toEqual([
+      'Perícia',
+      'Teste de habilidade',
+      'Teste de resistência',
+    ]);
     // The buttons are under the fields, "Adicionar ação" outlined and "Cancelar" a text button.
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.sf__actions button'));
     expect(buttons.map((b) => flat(b))).toEqual(['Adicionar ação', 'Cancelar']);
     expect(buttons[0].classList).toContain('mat-mdc-outlined-button');
     expect(buttons[1].classList).toContain('mat-mdc-button');
     const lastField = el.querySelectorAll('mat-form-field')[2];
-    expect(lastField.compareDocumentPosition(buttons[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      lastField.compareDocumentPosition(buttons[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     button('Cancelar').click();
     await settle();
     expect(el.querySelector('form')).toBeNull();
@@ -183,11 +224,19 @@ describe('SceneActions', () => {
     button('Adicionar ação').click();
     await settle();
     const select = () => el.querySelector<HTMLSelectElement>('app-scene-action-form select')!;
-    expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual(['Arcanismo', 'Investigação']);
+    expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual([
+      'Arcanismo',
+      'Investigação',
+    ]);
     el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click();
     fixture.detectChanges();
     expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual([
-      'Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma',
+      'Força',
+      'Destreza',
+      'Constituição',
+      'Inteligência',
+      'Sabedoria',
+      'Carisma',
     ]);
     el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2].click();
     fixture.detectChanges();
@@ -198,13 +247,21 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     button('Adicionar ação').click();
     await settle();
-    const [name, dc] = Array.from(el.querySelectorAll<HTMLInputElement>('input[matInput], input.mat-mdc-input-element'));
+    const [name, dc] = Array.from(
+      el.querySelectorAll<HTMLInputElement>('input[matInput], input.mat-mdc-input-element'),
+    );
     type(name, 'Procurar mais pistas');
-    expect(flat(el.querySelector('mat-form-field:nth-of-type(2) .mat-mdc-form-field-hint-wrapper'))).toContain('20 de 60');
+    expect(
+      flat(el.querySelector('mat-form-field:nth-of-type(2) .mat-mdc-form-field-hint-wrapper')),
+    ).toContain('20 de 60');
     type(dc, '14');
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
-    expect(api.calls).toEqual(['addSceneAction p1 {"key":"skill:arcana","name":"Procurar mais pistas","dc":14}']);
+    expect(api.calls).toEqual([
+      'addSceneAction p1 {"key":"skill:arcana","name":"Procurar mais pistas","dc":14}',
+    ]);
     expect(emitted.at(-1)).toHaveLength(6);
     expect(el.querySelector('form')).toBeNull();
     expect(rows()).toHaveLength(6);
@@ -218,7 +275,9 @@ describe('SceneActions', () => {
     await settle();
     const dc = el.querySelectorAll<HTMLInputElement>('input.mat-mdc-input-element')[1];
     type(dc, '31');
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     const error = el.querySelector('mat-error');
     expect(flat(error)).toContain('A CD vai de 1 a 30. Digite outro número ou deixe em branco.');
@@ -235,7 +294,9 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     button('Adicionar ação').click();
     await settle();
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     expect(api.calls[0]).toContain('"dc":0');
   });
@@ -244,13 +305,17 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     button('Adicionar ação').click();
     await settle();
-    expect(el.querySelector('[role="note"]')?.textContent).toContain('É ficção: não escreva dados reais de pessoas.');
+    expect(el.querySelector('[role="note"]')?.textContent).toContain(
+      'É ficção: não escreva dados reais de pessoas.',
+    );
   });
 
   it('at 20 of 20 says the limit in words above a disabled button, tied to it', () => {
     setup(Array.from({ length: 20 }, (_, i) => action(`x${i}`, 'Arcanismo')));
     expect(flat(el.querySelector('.sa__count'))).toBe('20 de 20');
-    expect(flat(el.querySelector('.sa__limit'))).toBe('Limite de 20 ações. Remova uma para adicionar outra.');
+    expect(flat(el.querySelector('.sa__limit'))).toBe(
+      'Limite de 20 ações. Remova uma para adicionar outra.',
+    );
     const add = button('Adicionar ação');
     expect(add.getAttribute('aria-disabled')).toBe('true');
     expect(add.getAttribute('aria-describedby')).toBe('sa-limit');
@@ -258,7 +323,10 @@ describe('SceneActions', () => {
     fixture.detectChanges();
     expect(el.querySelector('form')).toBeNull();
     // The sentence comes before the button.
-    expect(el.querySelector('.sa__limit')!.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      el.querySelector('.sa__limit')!.compareDocumentPosition(add) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('takes the limit from the server too (`resource_exhausted`) and stays in the form', async () => {
@@ -266,7 +334,9 @@ describe('SceneActions', () => {
     button('Adicionar ação').click();
     await settle();
     api.sceneActions = Array.from({ length: 20 }, (_, i) => action(`x${i}`, 'Arcanismo'));
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     expect(el.querySelector('form [role="alert"]')?.textContent).toContain('Limite de 20 ações');
     expect(el.querySelector('form')).not.toBeNull();
@@ -293,7 +363,9 @@ describe('SceneActions', () => {
       );
       expect(el.querySelector('.sa__preview')).toBeNull();
       // The switch is above the first action.
-      expect(dcSwitch().compareDocumentPosition(rows()[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        dcSwitch().compareDocumentPosition(rows()[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     it('turns on with its own copy and shows how the player sees the DC, saving at once with show_dc alone', async () => {
@@ -334,19 +406,31 @@ describe('SceneActions', () => {
     it('gives every action a 44px select "Tentativas por jogador": 1 to 5 and "Sem limite", 1 by default', () => {
       setup([...FIVE.map((a) => ({ ...a, maxAttempts: 1 }))]);
       const first = select('a1');
-      expect(Array.from(first.options, (o) => o.textContent?.trim())).toEqual(['1', '2', '3', '4', '5', 'Sem limite']);
+      expect(Array.from(first.options, (o) => o.textContent?.trim())).toEqual([
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        'Sem limite',
+      ]);
       expect(first.value).toBe('1');
       expect(flat(el.querySelector('label[for="sa-att-a1"]'))).toBe('Tentativas por jogador');
       expect(el.querySelectorAll('.sa__select select')).toHaveLength(5);
     });
 
     it('shows the saved limit, "Sem limite" included, with what it means', () => {
-      setup([action('a1', 'Percepção', { maxAttempts: 3 }), action('a2', 'Adestrar Animais', { maxAttempts: 0 })]);
+      setup([
+        action('a1', 'Percepção', { maxAttempts: 3 }),
+        action('a2', 'Adestrar Animais', { maxAttempts: 0 }),
+      ]);
       expect(select('a1').value).toBe('3');
       expect(select('a2').value).toBe('0');
       expect(select('a2').selectedOptions[0].textContent?.trim()).toBe('Sem limite');
       expect(el.querySelectorAll('.sa__unlimited')).toHaveLength(1);
-      expect(flat(el.querySelector('.sa__unlimited'))).toContain('o jogador rola quantas vezes quiser e você vê cada rolagem');
+      expect(flat(el.querySelector('.sa__unlimited'))).toContain(
+        'o jogador rola quantas vezes quiser e você vê cada rolagem',
+      );
     });
 
     it('puts the select back on what the server has when the save is refused', async () => {
@@ -366,11 +450,15 @@ describe('SceneActions', () => {
       await settle();
       expect(api.calls).toEqual(['setSceneActionAttempts p1 a1 3']);
       expect(emitted.at(-1)?.[0].maxAttempts).toBe(3);
-      expect(flat(el.querySelector('[role="status"]'))).toBe('Percepção: 3 tentativas por jogador.');
+      expect(flat(el.querySelector('[role="status"]'))).toBe(
+        'Percepção: 3 tentativas por jogador.',
+      );
       select('a1').value = '0';
       select('a1').dispatchEvent(new Event('change'));
       await settle();
-      expect(flat(el.querySelector('[role="status"]'))).toBe('Percepção: sem limite de tentativas.');
+      expect(flat(el.querySelector('[role="status"]'))).toBe(
+        'Percepção: sem limite de tentativas.',
+      );
     });
   });
 });

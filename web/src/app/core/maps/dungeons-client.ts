@@ -25,8 +25,16 @@ export class DungeonsClient {
   private readonly client = createClient(DungeonService, inject(CONNECT_TRANSPORT));
 
   /** `PreviewDungeon`: the layout for the live preview; stores nothing. No seed asks the server to draw one. */
-  preview(campaignId: string, options: DungeonOptionsInit, seed?: bigint, signal?: AbortSignal): Promise<PreviewDungeonResponse> {
-    return this.client.previewDungeon({ campaignId, options, ...(seed === undefined ? {} : { seed }) }, { signal });
+  preview(
+    campaignId: string,
+    options: DungeonOptionsInit,
+    seed?: bigint,
+    signal?: AbortSignal,
+  ): Promise<PreviewDungeonResponse> {
+    return this.client.previewDungeon(
+      { campaignId, options, ...(seed === undefined ? {} : { seed }) },
+      { signal },
+    );
   }
 
   /** `CreateDungeonMap`: the hidden map with its fog on. The call goes on in the server if `signal` aborts it. */
@@ -38,7 +46,10 @@ export class DungeonsClient {
     idempotencyKey: string,
     signal?: AbortSignal,
   ): Promise<{ map: MapMessage; seed: bigint; roomCount: number }> {
-    const res = await this.client.createDungeonMap({ campaignId, name, options, seed, idempotencyKey }, { signal });
+    const res = await this.client.createDungeonMap(
+      { campaignId, name, options, seed, idempotencyKey },
+      { signal },
+    );
     if (!res.map) {
       throw new Error('CreateDungeonMap answered without a map');
     }
@@ -51,7 +62,12 @@ export class DungeonsClient {
   }
 
   /** `PlaceDungeonScene`: a hidden scene point, "Sala N", on the middle square of the room. */
-  async placeScene(campaignId: string, mapId: string, roomId: number, idempotencyKey: string): Promise<MapPoint> {
+  async placeScene(
+    campaignId: string,
+    mapId: string,
+    roomId: number,
+    idempotencyKey: string,
+  ): Promise<MapPoint> {
     const res = await this.client.placeDungeonScene({ campaignId, mapId, roomId, idempotencyKey });
     if (!res.point) {
       throw new Error('PlaceDungeonScene answered without a point');

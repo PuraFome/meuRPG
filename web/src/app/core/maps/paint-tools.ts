@@ -24,7 +24,14 @@ export interface PaintSettings {
   readonly erase: boolean;
 }
 
-export const DEFAULT_SETTINGS: PaintSettings = { tool: 'terrain', cover: 1, light: 2, door: 2, brush: 1, erase: false };
+export const DEFAULT_SETTINGS: PaintSettings = {
+  tool: 'terrain',
+  cover: 1,
+  light: 2,
+  door: 2,
+  brush: 1,
+  erase: false,
+};
 
 export const TOOL_LABEL: Readonly<Record<PaintTool, string>> = {
   terrain: 'Terreno difícil',
@@ -37,10 +44,20 @@ export const TOOL_LABEL: Readonly<Record<PaintTool, string>> = {
 /** The kinds the door tool offers, in the order of the second row ("Tipo de porta"). */
 export const DOOR_CHOICES: readonly DoorKind[] = [2, 1, 3, 4, 5];
 /** What each kind is called on the tool's buttons (the legend says "Porta fechada"; the row is already about doors). */
-export const DOOR_LABEL: Readonly<Record<DoorKind, string>> = { 1: 'Aberta', 2: 'Fechada', 3: 'Trancada', 4: 'Grade', 5: 'Secreta' };
+export const DOOR_LABEL: Readonly<Record<DoorKind, string>> = {
+  1: 'Aberta',
+  2: 'Fechada',
+  3: 'Trancada',
+  4: 'Grade',
+  5: 'Secreta',
+};
 
 export const COVER_LABEL: Readonly<Record<CoverDegree, string>> = { 1: 'Meia', 2: 'Três quartos' };
-export const LIGHT_LABEL: Readonly<Record<LightDegree, string>> = { 3: 'Claro', 2: 'Penumbra', 1: 'Escuro' };
+export const LIGHT_LABEL: Readonly<Record<LightDegree, string>> = {
+  3: 'Claro',
+  2: 'Penumbra',
+  1: 'Escuro',
+};
 
 const LAYER: Readonly<Record<PaintTool, MapLayer>> = {
   terrain: MapLayer.DIFFICULT_TERRAIN,
@@ -112,11 +129,19 @@ export function lineSquares(from: Square, to: Square): Square[] {
 /** "Terreno difícil · arraste para pintar · Shift apaga": the line over the map's corner. */
 export function paintHint(s: PaintSettings): string {
   if (s.tool === 'door') {
-    return s.erase ? 'Porta · toque numa porta para tirá-la' : `Porta · ${DOOR_LABEL[s.door]} · toque para pôr · Shift tira`;
+    return s.erase
+      ? 'Porta · toque numa porta para tirá-la'
+      : `Porta · ${DOOR_LABEL[s.door]} · toque para pôr · Shift tira`;
   }
   const what =
-    s.tool === 'cover' ? `Cobertura · ${COVER_LABEL[s.cover]}` : s.tool === 'light' ? `Luz · ${LIGHT_LABEL[s.light]}` : TOOL_LABEL[s.tool];
-  return s.erase ? `${TOOL_LABEL[s.tool]} · arraste para apagar` : `${what} · arraste para pintar · Shift apaga`;
+    s.tool === 'cover'
+      ? `Cobertura · ${COVER_LABEL[s.cover]}`
+      : s.tool === 'light'
+        ? `Luz · ${LIGHT_LABEL[s.light]}`
+        : TOOL_LABEL[s.tool];
+  return s.erase
+    ? `${TOOL_LABEL[s.tool]} · arraste para apagar`
+    : `${what} · arraste para pintar · Shift apaga`;
 }
 
 /** What the "Camadas" list says under each layer's name. */
@@ -133,7 +158,9 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
   const doors = l.doors?.length ?? 0;
   let coverText = 'nada pintado';
   if (l.half.length > 0 && l.threeQuarters.length > 0) {
-    coverText = tight(`${squaresText(l.half.length)} de meia cobertura e ${l.threeQuarters.length} de três quartos`);
+    coverText = tight(
+      `${squaresText(l.half.length)} de meia cobertura e ${l.threeQuarters.length} de três quartos`,
+    );
   } else if (l.half.length > 0) {
     coverText = tight(`${squaresText(l.half.length)} de meia cobertura`);
   } else if (l.threeQuarters.length > 0) {
@@ -144,16 +171,30 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
       tool: 'terrain',
       name: 'Terreno difícil',
       count: l.terrain.length,
-      detail: l.terrain.length > 0 ? tight(`${squaresText(l.terrain.length)} · custa +1,5 m por quadrado`) : 'nada pintado',
+      detail:
+        l.terrain.length > 0
+          ? tight(`${squaresText(l.terrain.length)} · custa +1,5 m por quadrado`)
+          : 'nada pintado',
     },
     {
       tool: 'wall',
       name: 'Parede',
       count: l.walls.length,
-      detail: l.walls.length > 0 ? `${squaresText(l.walls.length)} · bloqueia movimento, visão e luz` : 'nada pintado',
+      detail:
+        l.walls.length > 0
+          ? `${squaresText(l.walls.length)} · bloqueia movimento, visão e luz`
+          : 'nada pintado',
     },
     { tool: 'cover', name: 'Cobertura', count: cover, detail: coverText },
-    { tool: 'light', name: 'Luz', count: light, detail: light > 0 ? `${squaresText(light)} ${light === 1 ? 'pintado' : 'pintados'}` : 'nada pintado' },
+    {
+      tool: 'light',
+      name: 'Luz',
+      count: light,
+      detail:
+        light > 0
+          ? `${squaresText(light)} ${light === 1 ? 'pintado' : 'pintados'}`
+          : 'nada pintado',
+    },
     { tool: 'door', name: 'Portas', count: doors, detail: doorsText(l) },
   ];
 }
@@ -165,6 +206,9 @@ function doorsText(l: MapLayers): string {
   if (total === 0) {
     return 'nada pintado';
   }
-  const notes = [counts[3] > 0 ? `${counts[3]} ${counts[3] === 1 ? 'trancada' : 'trancadas'}` : '', counts[5] > 0 ? `${counts[5]} ${counts[5] === 1 ? 'secreta' : 'secretas'}` : ''].filter(Boolean);
+  const notes = [
+    counts[3] > 0 ? `${counts[3]} ${counts[3] === 1 ? 'trancada' : 'trancadas'}` : '',
+    counts[5] > 0 ? `${counts[5]} ${counts[5] === 1 ? 'secreta' : 'secretas'}` : '',
+  ].filter(Boolean);
   return tight([`${total} ${total === 1 ? 'porta' : 'portas'}`, ...notes].join(' · '));
 }

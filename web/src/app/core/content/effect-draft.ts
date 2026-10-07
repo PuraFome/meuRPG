@@ -259,13 +259,17 @@ export class EffectMenuVm {
   /** "Um número ou uma fórmula com: mod("<habilidade>"), prof()…": the functions are the server's (`helpers`). */
   formulaHint(): string {
     const calls = this.helpers.map((h) => h.call);
-    return calls.length > 0 ? `Um número ou uma fórmula. Funções: ${calls.join(', ')}.` : 'Um número ou uma fórmula.';
+    return calls.length > 0
+      ? `Um número ou uma fórmula. Funções: ${calls.join(', ')}.`
+      : 'Um número ou uma fórmula.';
   }
 
   /** The prefixes a tag starts with, from the menu's `tag_prefixes`: "against:… (Contra…)". */
   tagHint(): string {
     const prefixes = this.list('tag_prefixes').map((p) => `${p.key}…`);
-    return prefixes.length > 0 ? `Separe por vírgula, começando por ${prefixes.join(' ou ')}. O app só lembra; o mestre decide.` : 'Separe por vírgula. O app só lembra; o mestre decide.';
+    return prefixes.length > 0
+      ? `Separe por vírgula, começando por ${prefixes.join(' ou ')}. O app só lembra; o mestre decide.`
+      : 'Separe por vírgula. O app só lembra; o mestre decide.';
   }
 
   typeOf(type: string): EffectMenuType | undefined {
@@ -294,7 +298,11 @@ export class EffectMenuVm {
         return this.list('tools');
       case 'cantrip':
       case 'spell':
-        return this.classIndexes.map((i) => ({ key: `class:${i}`, namePt: this.classNamePt(`class:${i}`), hintPt: '' }));
+        return this.classIndexes.map((i) => ({
+          key: `class:${i}`,
+          namePt: this.classNamePt(`class:${i}`),
+          hintPt: '',
+        }));
       case 'feature':
         return this.optionSets.map((s) => ({ key: s.key, namePt: s.namePt, hintPt: '' }));
       default:
@@ -328,21 +336,36 @@ export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
     }
     const empty = ((): boolean => {
       switch (f.name) {
-        case 'target': return d.target === '';
-        case 'mode': return d.mode === '';
-        case 'value': return d.value.trim() === '';
-        case 'proficiency': return d.proficiency === '';
-        case 'roll': return d.roll === '';
-        case 'targets': return d.targets.length === 0;
-        case 'sense': return d.sense === '';
-        case 'range_ft': return d.rangeFt <= 0;
-        case 'resource': return d.resource.trim() === '';
-        case 'max': return d.max.trim() === '';
-        case 'recharge': return d.recharge === '';
-        case 'choice': return d.choice === '';
-        case 'count': return d.count <= 0;
-        case 'economy': return d.economy === '';
-        default: return false;
+        case 'target':
+          return d.target === '';
+        case 'mode':
+          return d.mode === '';
+        case 'value':
+          return d.value.trim() === '';
+        case 'proficiency':
+          return d.proficiency === '';
+        case 'roll':
+          return d.roll === '';
+        case 'targets':
+          return d.targets.length === 0;
+        case 'sense':
+          return d.sense === '';
+        case 'range_ft':
+          return d.rangeFt <= 0;
+        case 'resource':
+          return d.resource.trim() === '';
+        case 'max':
+          return d.max.trim() === '';
+        case 'recharge':
+          return d.recharge === '';
+        case 'choice':
+          return d.choice === '';
+        case 'count':
+          return d.count <= 0;
+        case 'economy':
+          return d.economy === '';
+        default:
+          return false;
       }
     })();
     if (empty) {

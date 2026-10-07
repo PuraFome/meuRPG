@@ -3,7 +3,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ReactionOutcome, type ReactionPrompt } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { type SlotRow, defaultSlot, freeText, lastSlotWarning, slotRows } from '../../../../core/combat/cast-flow';
+import {
+  type SlotRow,
+  defaultSlot,
+  freeText,
+  lastSlotWarning,
+  slotRows,
+} from '../../../../core/combat/cast-flow';
 import { circleLabel } from '../../../../core/combat/combat-grid';
 import { joinDots } from '../../../../core/format/text';
 import { article } from '../../../../core/combat/combat-log';
@@ -20,8 +26,16 @@ export interface ShieldSheetData {
   readonly encounterId: string;
   readonly prompt: ReactionPrompt;
   readonly round: number;
-  readonly usage: readonly { readonly level: number; readonly total: number; readonly used: number }[];
-  readonly pact: { readonly slotLevel: number; readonly total: number; readonly used: number } | null;
+  readonly usage: readonly {
+    readonly level: number;
+    readonly total: number;
+    readonly used: number;
+  }[];
+  readonly pact: {
+    readonly slotLevel: number;
+    readonly total: number;
+    readonly used: number;
+  } | null;
   readonly state: CombatState;
   /** The player's armor class from their own sheet, for "Sua CA é 18"; `null` when unknown. */
   readonly armorClass: number | null;
@@ -123,7 +137,9 @@ export class ShieldSheet {
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
 
-  protected readonly rows = computed(() => slotRows(1, this.data.prompt.slots, this.data.usage, this.data.pact));
+  protected readonly rows = computed(() =>
+    slotRows(1, this.data.prompt.slots, this.data.usage, this.data.pact),
+  );
   protected readonly slot = signal<SlotRow | null>(defaultSlot(this.rows()));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -138,7 +154,11 @@ export class ShieldSheet {
     }
     const p = this.data.prompt;
     return p.attackerLabel
-      ? joinDots([p.attackerLabel, ...(p.attackNamePt ? [p.attackNamePt] : []), `Rodada ${this.data.round}`])
+      ? joinDots([
+          p.attackerLabel,
+          ...(p.attackNamePt ? [p.attackNamePt] : []),
+          `Rodada ${this.data.round}`,
+        ])
       : `Rodada ${this.data.round}`;
   });
   /** " do Capitão Goblin" after "segurou o ataque"; empty when the attacker is hidden. */
@@ -158,13 +178,19 @@ export class ShieldSheet {
     if (this.outcome() !== null) {
       return 'result';
     }
-    const waiting = this.data.state.encounter()?.reactionPrompts.some((p) => p.pendingDamageId === this.data.prompt.pendingDamageId);
+    const waiting = this.data.state
+      .encounter()
+      ?.reactionPrompts.some((p) => p.pendingDamageId === this.data.prompt.pendingDamageId);
     return waiting || this.busy() ? 'ask' : 'gone';
   });
-  protected readonly title = computed(() => (this.stage() === 'result' ? `${this.name} conjurado` : 'Você foi atingido'));
+  protected readonly title = computed(() =>
+    this.stage() === 'result' ? `${this.name} conjurado` : 'Você foi atingido',
+  );
   protected readonly after = computed(() => {
     const s = this.slot();
-    return s ? `Espaços de ${circleLabel(s.level)}: ${freeText(Math.max(0, s.free - 1), s.total)}` : '';
+    return s
+      ? `Espaços de ${circleLabel(s.level)}: ${freeText(Math.max(0, s.free - 1), s.total)}`
+      : '';
   });
   private readonly key = newKey();
   private readonly focus = viewChild('close', { read: ElementRef<HTMLButtonElement> });
@@ -205,7 +231,12 @@ export class ShieldSheet {
     this.error.set('');
     try {
       this.data.state.apply(
-        await this.api.declineReaction(this.data.campaignId, this.data.encounterId, this.data.prompt.pendingDamageId, this.key),
+        await this.api.declineReaction(
+          this.data.campaignId,
+          this.data.encounterId,
+          this.data.prompt.pendingDamageId,
+          this.key,
+        ),
       );
       this.sheet.close(false);
     } catch (err) {

@@ -2,7 +2,11 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import { GetMapLayersResponseSchema, GetMapResponseSchema, MapSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  GetMapLayersResponseSchema,
+  GetMapResponseSchema,
+  MapSchema,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { type SolveDraft, NO_SOLVE } from '../../../core/puzzles/puzzle-draft';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { HintsField } from './hints-field';
@@ -25,7 +29,12 @@ const settle = async (fixture: { detectChanges(): void; whenStable(): Promise<un
 })
 class PickHost {
   layout: 'cards' | 'rows' | 'segments' = 'segments';
-  options: PickOption<number>[] = [3, 4, 5].map((n) => ({ value: n, title: String(n), sub: `${n} de lado`, icon: 'lightbulb' }));
+  options: PickOption<number>[] = [3, 4, 5].map((n) => ({
+    value: n,
+    title: String(n),
+    sub: `${n} de lado`,
+    icon: 'lightbulb',
+  }));
   value = 5;
 }
 
@@ -97,7 +106,9 @@ describe('Stepper', () => {
     fixture.componentInstance.value = 6;
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[aria-label="Mais roda"]')?.getAttribute('aria-disabled')).toBe('true');
+    expect(el.querySelector('[aria-label="Mais roda"]')?.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
     expect(el.querySelector('[aria-label="Menos roda"]')?.getAttribute('aria-disabled')).toBeNull();
     // It stays focusable (a button that turns itself off never drops the focus), and does nothing.
     (el.querySelector('[aria-label="Mais roda"]') as HTMLElement).click();
@@ -115,7 +126,10 @@ class HintsHost {
 }
 
 describe('HintsField (E10-06 state 2)', () => {
-  const buttonNamed = (el: HTMLElement, name: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(name) || b.getAttribute('aria-label') === name) as HTMLButtonElement;
+  const buttonNamed = (el: HTMLElement, name: string) =>
+    Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes(name) || b.getAttribute('aria-label') === name,
+    ) as HTMLButtonElement;
 
   it('invites the first hint when there is none', async () => {
     const fixture = TestBed.createComponent(HintsHost);
@@ -137,9 +151,12 @@ describe('HintsField (E10-06 state 2)', () => {
     el.remove();
   });
 
-  it('edits a row and removes one, naming the button by the hint\'s number', async () => {
+  it("edits a row and removes one, naming the button by the hint's number", async () => {
     const fixture = TestBed.createComponent(HintsHost);
-    fixture.componentInstance.hints = ['A luz do selo responde ao toque.', 'Cada toque troca cinco luzes de uma vez.'];
+    fixture.componentInstance.hints = [
+      'A luz do selo responde ao toque.',
+      'Cada toque troca cinco luzes de uma vez.',
+    ];
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
     const inputs = el.querySelectorAll('input');
@@ -186,7 +203,15 @@ describe('SolveField ("Ao resolver", E10-06 state 2)', () => {
   const api = {
     list: async () => [create(MapSchema, { id: 'm1', name: 'A capela' })],
     get: async () => create(GetMapResponseSchema, { points: [] }),
-    layers: async () => create(GetMapLayersResponseSchema, { gridColumns: 2, gridRows: 2, wall: new Uint8Array(1), difficultTerrain: new Uint8Array(1), cover: new Uint8Array(1), doors }),
+    layers: async () =>
+      create(GetMapLayersResponseSchema, {
+        gridColumns: 2,
+        gridRows: 2,
+        wall: new Uint8Array(1),
+        difficultTerrain: new Uint8Array(1),
+        cover: new Uint8Array(1),
+        doors,
+      }),
   };
 
   beforeEach(() => {
@@ -197,8 +222,15 @@ describe('SolveField ("Ao resolver", E10-06 state 2)', () => {
     const fixture = TestBed.createComponent(SolveHost);
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
-    const options = Array.from(el.querySelectorAll('.opt__title')).map((t) => t.textContent?.trim());
-    expect(options).toEqual(['Só me avisar', 'Abrir uma porta', 'Revelar um ponto do mapa', 'Revelar uma pista']);
+    const options = Array.from(el.querySelectorAll('.opt__title')).map((t) =>
+      t.textContent?.trim(),
+    );
+    expect(options).toEqual([
+      'Só me avisar',
+      'Abrir uma porta',
+      'Revelar um ponto do mapa',
+      'Revelar uma pista',
+    ]);
     expect(el.querySelector<HTMLInputElement>('input[type="radio"]')?.checked).toBe(true);
     expect(el.textContent).toContain('O mestre é sempre avisado. Resolver não rola dado nenhum.');
     expect(el.querySelector('mat-form-field select')).toBeNull();
@@ -217,10 +249,18 @@ describe('SolveField ("Ao resolver", E10-06 state 2)', () => {
     await settle(fixture);
     expect(fixture.componentInstance.solve.mapId).toBe('m1');
     const door = el.querySelectorAll<HTMLSelectElement>('select')[1];
-    expect(Array.from(door.options).map((o) => o.textContent?.trim())).toEqual(['Escolha uma porta', 'Fechada · (2, 1)']);
+    expect(Array.from(door.options).map((o) => o.textContent?.trim())).toEqual([
+      'Escolha uma porta',
+      'Fechada · (2, 1)',
+    ]);
     door.value = '1,0';
     door.dispatchEvent(new Event('change'));
-    expect(fixture.componentInstance.solve).toMatchObject({ choice: 'door', mapId: 'm1', col: 1, row: 0 });
+    expect(fixture.componentInstance.solve).toMatchObject({
+      choice: 'door',
+      mapId: 'm1',
+      col: 1,
+      row: 0,
+    });
   });
 
   it('keeps the message when the action changes, and counts it', async () => {
@@ -231,7 +271,10 @@ describe('SolveField ("Ao resolver", E10-06 state 2)', () => {
     expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('17 de 200');
     el.querySelector<HTMLInputElement>('input[value="clue"]')!.click();
     await settle(fixture);
-    expect(fixture.componentInstance.solve).toMatchObject({ choice: 'clue', message: 'A porta se abriu.' });
+    expect(fixture.componentInstance.solve).toMatchObject({
+      choice: 'clue',
+      message: 'A porta se abriu.',
+    });
   });
 
   it('says there is nothing to pick when no scene has a clue, and shows what is wrong with the target', async () => {

@@ -15,7 +15,8 @@ export function isBasicSheet(err: unknown): boolean {
 export function spellsErrorMessage(err: unknown, action: 'list' | 'read' = 'list'): string {
   const what = action === 'read' ? 'abrir a descrição' : 'abrir as magias';
   return describeConnectError(err, {
-    [Code.NotFound]: 'Essa campanha não existe, ou você não é mais membro dela. Volte para Minhas campanhas.',
+    [Code.NotFound]:
+      'Essa campanha não existe, ou você não é mais membro dela. Volte para Minhas campanhas.',
     [Code.InvalidArgument]: `Não deu para ${what}: confira a busca e os filtros e tente de novo.`,
     [Code.FailedPrecondition]: `Não deu para ${what} com esses filtros. Tire um filtro e tente de novo.`,
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,

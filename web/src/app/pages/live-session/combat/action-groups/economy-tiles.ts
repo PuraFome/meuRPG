@@ -52,9 +52,17 @@ export class EconomyTiles {
       {
         name: 'Ação',
         used: c.actionUsed && !partial,
-        word: partial ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}` : c.actionUsed ? 'Usada' : 'Disponível',
+        word: partial
+          ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`
+          : c.actionUsed
+            ? 'Usada'
+            : 'Disponível',
       },
-      { name: 'Ação bônus', used: c.bonusActionUsed, word: c.bonusActionUsed ? 'Usada' : 'Disponível' },
+      {
+        name: 'Ação bônus',
+        used: c.bonusActionUsed,
+        word: c.bonusActionUsed ? 'Usada' : 'Disponível',
+      },
       { name: 'Reação', used: c.reactionUsed, word: c.reactionUsed ? 'Usada' : 'Disponível' },
     ];
   });

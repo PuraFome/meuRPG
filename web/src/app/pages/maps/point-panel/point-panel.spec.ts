@@ -15,7 +15,10 @@ describe('PointPanel', () => {
     fixture = TestBed.createComponent(PointPanel);
     fixture.componentRef.setInput(
       'point',
-      mapPoint('p1', 'Taverna do Javali', { description: 'Onde a Velha Odra conta o que sabe.', revealed: false }),
+      mapPoint('p1', 'Taverna do Javali', {
+        description: 'Onde a Velha Odra conta o que sabe.',
+        revealed: false,
+      }),
     );
     fixture.componentRef.setInput('maps', [{ id: 'm2', name: 'Torre de Mirathel' }]);
     dirty = [];
@@ -40,7 +43,9 @@ describe('PointPanel', () => {
   });
 
   it('keeps "Salvar ponto" off until something changes, then sends only that', () => {
-    const save = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Salvar ponto')) as HTMLButtonElement;
+    const save = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Salvar ponto'),
+    ) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     expect(fixture.componentInstance.changes()).toBeNull();
     type(el.querySelector('input') as HTMLInputElement, 'Taverna nova');
@@ -54,7 +59,10 @@ describe('PointPanel', () => {
     (el.querySelectorAll('[role="radio"]')[1] as HTMLElement).click();
     fixture.detectChanges();
     const select = el.querySelector('select') as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Nenhum mapa', 'Torre de Mirathel']);
+    expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual([
+      'Nenhum mapa',
+      'Torre de Mirathel',
+    ]);
     expect(fixture.componentInstance.changes()).toEqual({ kind: MapPointKind.SUBMAP });
   });
 
@@ -66,9 +74,15 @@ describe('PointPanel', () => {
   });
 
   it('confirms a delete in place, naming the point', () => {
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Apagar ponto')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Apagar ponto'),
+      ) as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
-    expect(el.querySelector('.pp__confirm')?.textContent).toContain('Apagar Taverna do Javali? Não dá para desfazer.');
+    expect(el.querySelector('.pp__confirm')?.textContent).toContain(
+      'Apagar Taverna do Javali? Não dá para desfazer.',
+    );
     const removed: number[] = [];
     fixture.componentInstance.removeConfirmed.subscribe(() => removed.push(1));
     (el.querySelector('.pp__confirm button') as HTMLButtonElement).click();
@@ -92,7 +106,10 @@ describe('PointPanel', () => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({ providers: [{ provide: MapsClient, useValue: api }] });
       cena = TestBed.createComponent(PointPanel);
-      cena.componentRef.setInput('point', mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.' }));
+      cena.componentRef.setInput(
+        'point',
+        mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.' }),
+      );
       cena.componentRef.setInput('campaignId', 'c1');
       cena.detectChanges();
       cenaEl = cena.nativeElement;
@@ -101,8 +118,12 @@ describe('PointPanel', () => {
     it('has "Pistas" and "Ganchos e anotações" after the actions, with the lock and "Só você vê" first', () => {
       const titles = Array.from(cenaEl.querySelectorAll('h3'), (h) => h.textContent?.trim());
       expect(titles).toEqual(['Ações da cena', 'Pistas', 'Ganchos e anotações', 'Imagem da cena']);
-      expect(cenaEl.querySelector('.hf__lock')?.textContent).toContain('Só você vê. Nunca aparece para os jogadores.');
-      expect(cenaEl.querySelector('.hf textarea')?.getAttribute('aria-labelledby')).toBe('hf-title');
+      expect(cenaEl.querySelector('.hf__lock')?.textContent).toContain(
+        'Só você vê. Nunca aparece para os jogadores.',
+      );
+      expect(cenaEl.querySelector('.hf textarea')?.getAttribute('aria-labelledby')).toBe(
+        'hf-title',
+      );
     });
 
     it('saves "Mostrar a CD aos jogadores" at once with show_dc alone, and the unsaved name survives', async () => {
@@ -120,11 +141,16 @@ describe('PointPanel', () => {
       expect(api.calls).toEqual(['updatePoint map-1 p1 {"showDc":true}']);
       expect(saved).toEqual([true]);
       // The page puts the saved flag on the point: the draft is not reset, and "Salvar ponto" sends only the name.
-      cena.componentRef.setInput('point', mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.', showDc: true }));
+      cena.componentRef.setInput(
+        'point',
+        mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.', showDc: true }),
+      );
       cena.detectChanges();
       expect((cenaEl.querySelector('input') as HTMLInputElement).value).toBe('Carroça nova');
       expect(cena.componentInstance.changes()).toEqual({ name: 'Carroça nova' });
-      expect(cenaEl.querySelector('.sa__dcswitch [role="switch"]')?.getAttribute('aria-checked')).toBe('true');
+      expect(
+        cenaEl.querySelector('.sa__dcswitch [role="switch"]')?.getAttribute('aria-checked'),
+      ).toBe('true');
     });
 
     it('carries the "É ficção" notice once', () => {
@@ -138,8 +164,13 @@ describe('PointPanel', () => {
       field.value = 'Mira está escondida debaixo da carroça.';
       field.dispatchEvent(new Event('input'));
       cena.detectChanges();
-      expect(cena.componentInstance.changes()).toEqual({ hooks: 'Mira está escondida debaixo da carroça.' });
-      expect(cenaEl.querySelector('.hf mat-hint[align="end"], .hf .mat-mdc-form-field-hint-wrapper')?.textContent).toContain('39 de 4.000');
+      expect(cena.componentInstance.changes()).toEqual({
+        hooks: 'Mira está escondida debaixo da carroça.',
+      });
+      expect(
+        cenaEl.querySelector('.hf mat-hint[align="end"], .hf .mat-mdc-form-field-hint-wrapper')
+          ?.textContent,
+      ).toContain('39 de 4.000');
       expect(api.calls).toEqual([]);
     });
 
@@ -150,7 +181,9 @@ describe('PointPanel', () => {
       cena.detectChanges();
       expect(cena.componentInstance.changes()).toBeNull();
       cena.detectChanges();
-      expect(cenaEl.querySelector('.hf mat-error')?.textContent).toContain('Use até 4.000 caracteres.');
+      expect(cenaEl.querySelector('.hf mat-error')?.textContent).toContain(
+        'Use até 4.000 caracteres.',
+      );
     });
   });
 });

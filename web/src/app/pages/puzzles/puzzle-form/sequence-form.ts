@@ -1,8 +1,23 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Draft, BELLS_MAX, BELLS_MIN, STEPS_MAX, STEPS_MIN } from '../../../core/puzzles/puzzle-draft';
+import {
+  type Draft,
+  BELLS_MAX,
+  BELLS_MIN,
+  STEPS_MAX,
+  STEPS_MIN,
+} from '../../../core/puzzles/puzzle-draft';
 import { bellFaces } from '../../../core/puzzles/puzzle-symbols';
 import { BellsBoard } from '../../../shared/puzzle-boards/bells-board';
 import { SecretPill } from '../../../shared/puzzle-boards/secret-pill';
@@ -92,7 +107,9 @@ export class SequenceForm {
   protected add(bell: number): void {
     if (this.draft().steps.length < STEPS_MAX) {
       this.patch.emit({ steps: [...this.draft().steps, bell] });
-      this.announce.set(`Passo ${this.draft().steps.length + 1}: ${this.faces()[bell]?.namePt ?? ''}.`);
+      this.announce.set(
+        `Passo ${this.draft().steps.length + 1}: ${this.faces()[bell]?.namePt ?? ''}.`,
+      );
     }
   }
 

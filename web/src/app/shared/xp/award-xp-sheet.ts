@@ -1,13 +1,23 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { startWith } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type TreasureToConvert, type XPAward, XPBlockedReason } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  type TreasureToConvert,
+  type XPAward,
+  XPBlockedReason,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../core/connect/idempotency';
 import { formatInt, tight } from '../../core/format/text';
 import type { ExperienceRow } from '../../core/progression/experience-store';
@@ -117,16 +127,24 @@ export class AwardXpSheet {
     nonNullable: true,
     validators: [wholeAmount],
   });
-  private readonly amountText = toSignal(this.amount.valueChanges.pipe(startWith(this.amount.value)), {
-    initialValue: this.amount.value,
-  });
-  private readonly reasonText = toSignal(this.reason.valueChanges.pipe(startWith(this.reason.value)), {
-    initialValue: this.reason.value,
-  });
+  private readonly amountText = toSignal(
+    this.amount.valueChanges.pipe(startWith(this.amount.value)),
+    {
+      initialValue: this.amount.value,
+    },
+  );
+  private readonly reasonText = toSignal(
+    this.reason.valueChanges.pipe(startWith(this.reason.value)),
+    {
+      initialValue: this.reason.value,
+    },
+  );
 
   /** Who is alive: a character the server says cannot receive leaves the list. */
   protected readonly rows = signal<readonly ExperienceRow[]>(this.data.rows);
-  protected readonly checked = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
+  protected readonly checked = signal<ReadonlySet<string>>(
+    new Set(this.data.rows.map((r) => r.id)),
+  );
   protected readonly busy = signal(false);
   protected readonly error = signal('');
 
@@ -153,7 +171,9 @@ export class AwardXpSheet {
 
   /** The sum, for the body of a short screen (the footer shows only the number there). */
   protected readonly sumNote = computed(() =>
-    this.split().count === 0 ? '' : shortDivision(this.total(), this.split(), this.gold ? this.total() : 0),
+    this.split().count === 0
+      ? ''
+      : shortDivision(this.total(), this.split(), this.gold ? this.total() : 0),
   );
 
   protected readonly recipients = computed<Recipient[]>(() => {
@@ -181,10 +201,7 @@ export class AwardXpSheet {
     return '';
   });
   protected readonly blocked = computed(
-    () =>
-      this.reasonToWait() !== '' ||
-      this.total() === 0 ||
-      this.reasonText().trim() === '',
+    () => this.reasonToWait() !== '' || this.total() === 0 || this.reasonText().trim() === '',
   );
   protected readonly primaryLabel = computed(() =>
     !this.blocked() ? tight(`Dar ${formatInt(this.split().each)} XP a cada um`) : 'Dar XP',
@@ -193,7 +210,9 @@ export class AwardXpSheet {
   /** By gold: what waits for "Voltar à cidade", the host's list and then the server's. */
   protected readonly treasures = signal<readonly TreasureToConvert[]>(this.data.treasures ?? []);
   protected readonly treasuresTotal = signal(this.data.treasuresTotal ?? 0);
-  protected readonly treasuresState = signal<'loading' | 'ready' | 'error'>(this.data.treasures ? 'ready' : 'loading');
+  protected readonly treasuresState = signal<'loading' | 'ready' | 'error'>(
+    this.data.treasures ? 'ready' : 'loading',
+  );
 
   private key = newKey();
   private keyFor = '';
@@ -258,9 +277,13 @@ export class AwardXpSheet {
     }
     const reason = this.reason.value.trim();
     const total = this.total();
-    const ids = this.rows().filter((r) => this.checked().has(r.id)).map((r) => r.id);
+    const ids = this.rows()
+      .filter((r) => this.checked().has(r.id))
+      .map((r) => r.id);
     const fromCombat =
-      !this.gold && !!this.data.encounterId && total === this.data.amount ? this.data.encounterId : '';
+      !this.gold && !!this.data.encounterId && total === this.data.amount
+        ? this.data.encounterId
+        : '';
     const input = this.gold
       ? ({ mode: 'gold', gold: total } as const)
       : fromCombat
@@ -286,7 +309,10 @@ export class AwardXpSheet {
       this.error.set(xpErrorMessage(err, 'dar o XP'));
       // A character that cannot receive (died, left) leaves the list, so the retry can go.
       const blocked = xpBlocked(err);
-      if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE && blocked.characterId) {
+      if (
+        blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE &&
+        blocked.characterId
+      ) {
         this.rows.update((rows) => rows.filter((r) => r.id !== blocked.characterId));
         this.checked.update((set) => {
           const next = new Set(set);

@@ -4,7 +4,11 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 import { GameSession, PlayService } from '../../../../gen/meurpg/play/v1/play_pb';
 import { CONNECT_TRANSPORT } from '../../../core/connect/transport';
-import { GameSessionSource, GameSessionVm, StartGameSessionResultVm } from './game-session-card.types';
+import {
+  GameSessionSource,
+  GameSessionVm,
+  StartGameSessionResultVm,
+} from './game-session-card.types';
 
 function toVm(gameSession: GameSession): GameSessionVm {
   return {
@@ -31,7 +35,10 @@ export class GameSessionSourceLive implements GameSessionSource {
     return open ? toVm(open) : null;
   }
 
-  async startGameSession(campaignId: string, idempotencyKey: string): Promise<StartGameSessionResultVm> {
+  async startGameSession(
+    campaignId: string,
+    idempotencyKey: string,
+  ): Promise<StartGameSessionResultVm> {
     const res = await this.client.startGameSession({ campaignId, idempotencyKey });
     return { session: toVm(res.gameSession!), lockedSheetCount: res.lockedSheetCount };
   }

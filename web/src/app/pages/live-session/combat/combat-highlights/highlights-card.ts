@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 
 import type { CharacterHighlights } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';

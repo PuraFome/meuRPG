@@ -27,7 +27,9 @@ function category(kind: HighlightKind, value: number, ...winners: [string, strin
   return create(HighlightCategorySchema, {
     kind,
     value,
-    winners: winners.map(([characterId, name]) => create(HighlightWinnerSchema, { characterId, name })),
+    winners: winners.map(([characterId, name]) =>
+      create(HighlightWinnerSchema, { characterId, name }),
+    ),
   });
 }
 
@@ -54,7 +56,11 @@ const master: SessionSummary = create(SessionSummarySchema, {
     category(HighlightKind.FINAL_BLOW, 2, ['pens', 'Pensantus'], ['toren', 'Toren']),
     category(HighlightKind.CHECKS_PASSED, 4, ['brisa', 'Brisa']),
   ],
-  players: [player('pens', 'Pensantus', 3, 4), player('toren', 'Toren', 2, 3), player('brisa', 'Brisa', 4, 5)],
+  players: [
+    player('pens', 'Pensantus', 3, 4),
+    player('toren', 'Toren', 2, 3),
+    player('brisa', 'Brisa', 4, 5),
+  ],
 });
 
 describe('session summary (MR-032)', () => {
@@ -77,7 +83,12 @@ describe('session summary (MR-032)', () => {
 
   it('makes a tile per category, the checks one included, with how many the winner tried (master)', () => {
     const tiles = summaryTiles(master);
-    expect(tiles.map((t) => t.label)).toEqual(['Mais dano causado', 'Tanque', 'Golpe final', 'Mais testes passados fora do combate']);
+    expect(tiles.map((t) => t.label)).toEqual([
+      'Mais dano causado',
+      'Tanque',
+      'Golpe final',
+      'Mais testes passados fora do combate',
+    ]);
     const checks = tiles[3];
     expect(plain(checks.value)).toBe('4 testes');
     expect(checks.names).toBe('Brisa');
@@ -89,7 +100,9 @@ describe('session summary (MR-032)', () => {
 
   it('says nothing of how many were tried when the winners tied with different numbers, or for a player (no table)', () => {
     const tie = create(SessionSummarySchema, {
-      categories: [category(HighlightKind.CHECKS_PASSED, 3, ['pens', 'Pensantus'], ['brisa', 'Brisa'])],
+      categories: [
+        category(HighlightKind.CHECKS_PASSED, 3, ['pens', 'Pensantus'], ['brisa', 'Brisa']),
+      ],
       players: [player('pens', 'Pensantus', 3, 4), player('brisa', 'Brisa', 3, 5)],
     });
     expect(summaryTiles(tie)[0].sub).toBe('');
@@ -97,15 +110,22 @@ describe('session summary (MR-032)', () => {
     expect(summaryTiles(forPlayer).every((t) => !t.sub.startsWith('de'))).toBe(true);
   });
 
-  it('makes the master\'s table: one row per player, passed of tried, zeros included', () => {
+  it("makes the master's table: one row per player, passed of tried, zeros included", () => {
     expect(summaryRows(master).map((r) => [r.name, plain(r.cells[0])])).toEqual([
       ['Pensantus', '3 de 4'],
       ['Toren', '2 de 3'],
       ['Brisa', '4 de 5'],
     ]);
-    expect(plain(summaryRows(create(SessionSummarySchema, { players: [player('x', 'Mira', 0, 2)] }))[0].cells[0])).toBe('0 de 2');
+    expect(
+      plain(
+        summaryRows(create(SessionSummarySchema, { players: [player('x', 'Mira', 0, 2)] }))[0]
+          .cells[0],
+      ),
+    ).toBe('0 de 2');
     // Fought but tried no test: "nenhum teste", muted, never "0 de 0".
-    const fought = summaryRows(create(SessionSummarySchema, { players: [player('x', 'Mira', 0, 0, { damageDealt: 5 })] }))[0];
+    const fought = summaryRows(
+      create(SessionSummarySchema, { players: [player('x', 'Mira', 0, 0, { damageDealt: 5 })] }),
+    )[0];
     expect([fought.cells[0], fought.muted]).toEqual(['nenhum teste', true]);
   });
 
@@ -119,7 +139,9 @@ describe('session summary (MR-032)', () => {
       ['Testes passados fora do combate', '3 de 4'],
     ]);
     // Only a scene: just the checks. Nothing at all: no block.
-    expect(summaryOwn(player('pens', 'Pensantus', 1, 2)).map((n) => n.label)).toEqual(['Testes passados fora do combate']);
+    expect(summaryOwn(player('pens', 'Pensantus', 1, 2)).map((n) => n.label)).toEqual([
+      'Testes passados fora do combate',
+    ]);
     expect(summaryOwn(player('pens', 'Pensantus', 0, 0))).toEqual([]);
     expect(summaryOwn(undefined)).toEqual([]);
   });
@@ -143,12 +165,28 @@ describe('session summary (MR-032)', () => {
       highlights: create(CharacterHighlightsSchema, { characterId: 'toren', name: 'Toren' }),
       treasureFoundPo: 245,
     });
-    expect(summaryRows(create(SessionSummarySchema, { players: [onlyTreasure, player('brisa', 'Brisa', 1, 1)] })).map((r) => r.name)).toEqual(['Brisa']);
-    expect(summaryOwn(onlyTreasure).map((n) => [n.label, plain(n.value)])).toEqual([['Tesouro encontrado', '245 PO']]);
+    expect(
+      summaryRows(
+        create(SessionSummarySchema, { players: [onlyTreasure, player('brisa', 'Brisa', 1, 1)] }),
+      ).map((r) => r.name),
+    ).toEqual(['Brisa']);
+    expect(summaryOwn(onlyTreasure).map((n) => [n.label, plain(n.value)])).toEqual([
+      ['Tesouro encontrado', '245 PO'],
+    ]);
     const both = create(SessionCharacterSummarySchema, {
-      highlights: create(CharacterHighlightsSchema, { characterId: 'toren', name: 'Toren', damageDealt: 7 }),
+      highlights: create(CharacterHighlightsSchema, {
+        characterId: 'toren',
+        name: 'Toren',
+        damageDealt: 7,
+      }),
       treasureFoundPo: 120,
     });
-    expect(summaryOwn(both).map((n) => n.label)).toEqual(['Dano causado', 'Dano recebido', 'Golpes finais', 'Cura', 'Tesouro encontrado']);
+    expect(summaryOwn(both).map((n) => n.label)).toEqual([
+      'Dano causado',
+      'Dano recebido',
+      'Golpes finais',
+      'Cura',
+      'Tesouro encontrado',
+    ]);
   });
 });

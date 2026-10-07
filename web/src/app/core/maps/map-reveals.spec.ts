@@ -7,10 +7,18 @@ import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from './m
 async function setup() {
   const api = new FakeMapsClient();
   const state = new MapState(async () =>
-    mapResponse(mapMessage('map-1', 'Mirathel'), [mapPoint('p1', 'Torre')], [mapToken('t1', 'Goblin', { hidden: true })]),
+    mapResponse(
+      mapMessage('map-1', 'Mirathel'),
+      [mapPoint('p1', 'Torre')],
+      [mapToken('t1', 'Goblin', { hidden: true })],
+    ),
   );
   await state.open('map-1');
-  const reveals = new MapReveals(api as never, () => state, () => 'camp-1');
+  const reveals = new MapReveals(
+    api as never,
+    () => state,
+    () => 'camp-1',
+  );
   return { api, state, reveals };
 }
 

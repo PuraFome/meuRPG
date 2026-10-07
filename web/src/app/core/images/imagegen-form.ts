@@ -25,7 +25,9 @@ export interface PickableNpc {
 }
 
 /** The request the form makes, from a map (`GenerateMapImage`) or from nothing (`GenerateSceneImage`). */
-export type Built = { readonly via: 'map'; readonly request: MapRequest } | { readonly via: 'scene'; readonly request: SceneRequest };
+export type Built =
+  | { readonly via: 'map'; readonly request: MapRequest }
+  | { readonly via: 'scene'; readonly request: SceneRequest };
 
 /**
  * The form → request mapping (RN-28, E10-07). The way of a map takes the NPCs marked and only theirs: the server turns each portrait into a
@@ -36,7 +38,18 @@ export type Built = { readonly via: 'map'; readonly request: MapRequest } | { re
 export function buildRequest(form: ImageForm, mapId: string | null, key: string): Built {
   const prompt = form.prompt.trim();
   if (mapId === null) {
-    return { via: 'scene', request: { idempotencyKey: key, prompt, name: form.name.trim(), style: form.style, aspectRatio: form.ratio, objectImageIds: [...form.objectImageIds], characterImageIds: [] } };
+    return {
+      via: 'scene',
+      request: {
+        idempotencyKey: key,
+        prompt,
+        name: form.name.trim(),
+        style: form.style,
+        aspectRatio: form.ratio,
+        objectImageIds: [...form.objectImageIds],
+        characterImageIds: [],
+      },
+    };
   }
   const texture = form.kind === 'texture';
   return {

@@ -1,4 +1,14 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -49,7 +59,14 @@ type PageState =
  */
 @Component({
   selector: 'app-content-list',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, SelectField, TextField],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+    SelectField,
+    TextField,
+  ],
   providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './content-list.html',
   styleUrl: './content-list.scss',
@@ -72,7 +89,9 @@ export class ContentList {
   protected readonly campaignId = signal('');
   protected readonly state = signal<PageState>({ status: 'loading' });
   /** The list opens on the first kind of the menu (every kind has an editor now). */
-  protected readonly slug = signal<ContentNavKind['slug']>(CONTENT_NAV.find((n) => n.editable)?.slug ?? 'classes');
+  protected readonly slug = signal<ContentNavKind['slug']>(
+    CONTENT_NAV.find((n) => n.editable)?.slug ?? 'classes',
+  );
   protected readonly query = signal('');
   protected readonly filter = signal<ContentFilter>('all');
   protected readonly catalog = signal<CatalogVm | null>(null);
@@ -88,18 +107,27 @@ export class ContentList {
   protected readonly entries = computed(() => this.ctx()?.entries ?? []);
   protected readonly isMaster = computed(() => this.ctx()?.isMaster ?? false);
   protected readonly current = computed(() => navBySlug(this.slug()) ?? CONTENT_NAV[0]);
-  protected readonly counts = computed(() => new Map(CONTENT_NAV.map((n) => [n.slug, countOfNav(this.entries(), n)])));
-  protected readonly rows = computed(() => filterEntries(this.entries(), this.current(), this.query(), this.filter()));
+  protected readonly counts = computed(
+    () => new Map(CONTENT_NAV.map((n) => [n.slug, countOfNav(this.entries(), n)])),
+  );
+  protected readonly rows = computed(() =>
+    filterEntries(this.entries(), this.current(), this.query(), this.filter()),
+  );
   protected readonly limit = computed(() => limitLine(this.entries()));
   protected readonly empty = computed(() => this.entries().length === 0);
   /** The player's panels: only the kinds that have something. */
   protected readonly panels = computed(() =>
-    CONTENT_NAV.map((n) => ({ nav: n, rows: filterEntries(this.entries(), n, '', 'all') })).filter((p) => p.rows.length > 0),
+    CONTENT_NAV.map((n) => ({ nav: n, rows: filterEntries(this.entries(), n, '', 'all') })).filter(
+      (p) => p.rows.length > 0,
+    ),
   );
   protected readonly kindOptions = computed<SelectOption[]>(() =>
     CONTENT_NAV.map((n) => ({ value: n.slug, label: n.plural })),
   );
-  protected readonly filterOptions: SelectOption[] = CONTENT_FILTERS.map((f) => ({ value: f.value, label: f.label }));
+  protected readonly filterOptions: SelectOption[] = CONTENT_FILTERS.map((f) => ({
+    value: f.value,
+    label: f.label,
+  }));
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
@@ -154,9 +182,14 @@ export class ContentList {
         (content) => this.catalog.set(catalogVm(content, res.ctx.entries)),
         () => undefined,
       );
-      afterNextRender(() => this.title()?.nativeElement.focus({ preventScroll: true }), { injector: this.injector });
+      afterNextRender(() => this.title()?.nativeElement.focus({ preventScroll: true }), {
+        injector: this.injector,
+      });
     } catch (err) {
-      this.state.set({ status: 'error', message: contentErrorText(err, 'abrir o conteúdo da mesa') });
+      this.state.set({
+        status: 'error',
+        message: contentErrorText(err, 'abrir o conteúdo da mesa'),
+      });
     }
   }
 
@@ -168,7 +201,10 @@ export class ContentList {
     const cat = this.catalog();
     return entrySupport(
       e,
-      (key) => cat?.nameOf(key) ?? this.entries().find((x) => x.key === key)?.namePt ?? key.replace(/^[a-z]+:/, ''),
+      (key) =>
+        cat?.nameOf(key) ??
+        this.entries().find((x) => x.key === key)?.namePt ??
+        key.replace(/^[a-z]+:/, ''),
       (classKey) => cat?.subclassLevelOf(classKey) ?? 0,
     );
   }
@@ -208,11 +244,16 @@ export class ContentList {
     this.actionError.set('');
     if (!e.archived) {
       const confirmed = await new Promise<boolean>((resolve) =>
-        openSheet<ArchiveSheet, { name: string; using: number }, boolean>(this.dialog, this.bottomSheet, ArchiveSheet, {
-          data: { name: e.namePt, using: e.charactersUsing },
-          ariaLabel: `Arquivar ${e.namePt}?`,
-          labelledBy: 'archive-t',
-        }).subscribe((r) => resolve(r === true)),
+        openSheet<ArchiveSheet, { name: string; using: number }, boolean>(
+          this.dialog,
+          this.bottomSheet,
+          ArchiveSheet,
+          {
+            data: { name: e.namePt, using: e.charactersUsing },
+            ariaLabel: `Arquivar ${e.namePt}?`,
+            labelledBy: 'archive-t',
+          },
+        ).subscribe((r) => resolve(r === true)),
       );
       if (!confirmed) {
         return;
@@ -220,10 +261,16 @@ export class ContentList {
     }
     this.busyKey.set(e.key);
     try {
-      const entry = e.archived ? await this.client.unarchive(this.campaignId(), e.key) : await this.client.archive(this.campaignId(), e.key);
+      const entry = e.archived
+        ? await this.client.unarchive(this.campaignId(), e.key)
+        : await this.client.archive(this.campaignId(), e.key);
       this.replace(entry);
       const noun = KIND_NOUNS[entry.kind];
-      this.status.set(entry.archived ? `${noun.article} ${noun.noun} ${entry.namePt} foi ${noun.archived}.` : `${noun.article} ${noun.noun} ${entry.namePt} voltou.`);
+      this.status.set(
+        entry.archived
+          ? `${noun.article} ${noun.noun} ${entry.namePt} foi ${noun.archived}.`
+          : `${noun.article} ${noun.noun} ${entry.namePt} voltou.`,
+      );
     } catch (err) {
       this.actionError.set(contentErrorText(err, e.archived ? 'desarquivar' : 'arquivar'));
     } finally {
@@ -236,6 +283,9 @@ export class ContentList {
     if (s.status !== 'ready') {
       return;
     }
-    this.state.set({ status: 'ready', ctx: { ...s.ctx, entries: s.ctx.entries.map((x) => (x.key === entry.key ? entry : x)) } });
+    this.state.set({
+      status: 'ready',
+      ctx: { ...s.ctx, entries: s.ctx.entries.map((x) => (x.key === entry.key ? entry : x)) },
+    });
   }
 }

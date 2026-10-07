@@ -52,7 +52,10 @@ describe('PortraitField (E8-08)', () => {
 
   const button = (el: HTMLElement, name: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === name);
-  const pickerData = () => (open.mock.calls[0][0] === undefined ? undefined : (open.mock.calls[0][1] as { data: ImagePickerData }).data);
+  const pickerData = () =>
+    open.mock.calls[0][0] === undefined
+      ? undefined
+      : (open.mock.calls[0][1] as { data: ImagePickerData }).data;
 
   afterEach(() => document.body.querySelectorAll('app-portrait-field').forEach((e) => e.remove()));
 

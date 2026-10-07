@@ -5,8 +5,18 @@ import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { TurnOptionsSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 
-import { DeathSaveVisibility, DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantSide, CombatantState, EncounterMode, OpportunityOfferSchema } from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  DeathSaveVisibility,
+  DiceMode,
+  DicePreference,
+} from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  CombatantKind,
+  CombatantSide,
+  CombatantState,
+  EncounterMode,
+  OpportunityOfferSchema,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
 import { TableRulesClient } from '../../../core/campaigns/table-rules';
 import { CombatClient } from '../../../core/combat/combat-client';
 import { CombatState } from '../../../core/combat/combat-state';
@@ -20,11 +30,44 @@ import { CombatView } from './combat-view';
 
 // The combat screen of a combat without a map (RN-25, E10-04), as the page mounts it: what each audience gets, and what is not drawn.
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
-const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY, characterId: 'toren-c', hitPointsCurrent: 49, hitPointsMax: 49, armorClass: 16, mine: true, placed: false });
-const brisa = combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY, characterId: 'brisa-c', placed: false });
-const goblin = combatant({ id: 'g', label: 'Goblin', placed: false, hitPointsCurrent: 7, hitPointsMax: 7, armorClass: 15 });
-const cap = combatant({ id: 'cap', label: 'Capitão Goblin', placed: false, hitPointsCurrent: 27, hitPointsMax: 27, armorClass: 13 });
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const toren = combatant({
+  id: 't',
+  label: 'Toren',
+  kind: CombatantKind.PLAYER,
+  side: CombatantSide.PARTY,
+  characterId: 'toren-c',
+  hitPointsCurrent: 49,
+  hitPointsMax: 49,
+  armorClass: 16,
+  mine: true,
+  placed: false,
+});
+const brisa = combatant({
+  id: 'b',
+  label: 'Brisa',
+  kind: CombatantKind.PLAYER,
+  side: CombatantSide.PARTY,
+  characterId: 'brisa-c',
+  placed: false,
+});
+const goblin = combatant({
+  id: 'g',
+  label: 'Goblin',
+  placed: false,
+  hitPointsCurrent: 7,
+  hitPointsMax: 7,
+  armorClass: 15,
+});
+const cap = combatant({
+  id: 'cap',
+  label: 'Capitão Goblin',
+  placed: false,
+  hitPointsCurrent: 27,
+  hitPointsMax: 27,
+  armorClass: 13,
+});
 
 /** A laptop-sized screen (1024 px): the master has the combat bar and the card with its title, the player the desktop layout. */
 function laptop(): void {
@@ -38,7 +81,14 @@ function laptop(): void {
   }));
 }
 
-function setup(opts: { master: boolean; current: string; combatants?: ReturnType<typeof combatant>[]; offers?: unknown[]; deathSaves?: DeathSaveVisibility; mode?: EncounterMode }) {
+function setup(opts: {
+  master: boolean;
+  current: string;
+  combatants?: ReturnType<typeof combatant>[];
+  offers?: unknown[];
+  deathSaves?: DeathSaveVisibility;
+  mode?: EncounterMode;
+}) {
   // A test may mount the screen twice (two tables to compare): start from a clean module each time.
   TestBed.resetTestingModule();
   laptop();
@@ -61,7 +111,12 @@ function setup(opts: { master: boolean; current: string; combatants?: ReturnType
           case 'log':
             return async () => ({ rounds: [], undoableEventId: '' });
           case 'turnOptions':
-            return async () => ({ options: create(TurnOptionsSchema, {}), attackTargets: [], spellTargets: [], pendingDamages: [] });
+            return async () => ({
+              options: create(TurnOptionsSchema, {}),
+              attackTargets: [],
+              spellTargets: [],
+              pendingDamages: [],
+            });
           default:
             return async () => ({});
         }
@@ -87,10 +142,30 @@ function setup(opts: { master: boolean; current: string; combatants?: ReturnType
       { provide: RosterClient, useValue: { list: async () => [] } },
       { provide: MapsClient, useValue: { layers: async () => ({}) } },
       { provide: SpellCatalog, useValue: { details: async () => null } },
-      { provide: CreaturesClient, useValue: { list: async () => [], statBlock: async () => null, summonOptions: async () => [] } },
-      { provide: TableRulesClient, useValue: { get: async () => ({ saved: { deathSaves: opts.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL } }) } },
-      { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => ({ subscribe: () => undefined }) }) } },
-      { provide: MatBottomSheet, useValue: { open: () => ({ afterDismissed: () => ({ subscribe: () => undefined }) }) } },
+      {
+        provide: CreaturesClient,
+        useValue: {
+          list: async () => [],
+          statBlock: async () => null,
+          summonOptions: async () => [],
+        },
+      },
+      {
+        provide: TableRulesClient,
+        useValue: {
+          get: async () => ({
+            saved: { deathSaves: opts.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL },
+          }),
+        },
+      },
+      {
+        provide: MatDialog,
+        useValue: { open: () => ({ afterClosed: () => ({ subscribe: () => undefined }) }) },
+      },
+      {
+        provide: MatBottomSheet,
+        useValue: { open: () => ({ afterDismissed: () => ({ subscribe: () => undefined }) }) },
+      },
     ],
   });
   const fixture = TestBed.createComponent(CombatView);
@@ -104,16 +179,20 @@ function setup(opts: { master: boolean; current: string; combatants?: ReturnType
   return { fixture, el: fixture.nativeElement as HTMLElement, state, calls };
 }
 
-async function settle(fixture: { detectChanges: () => void; whenStable: () => Promise<unknown> }): Promise<void> {
+async function settle(fixture: {
+  detectChanges: () => void;
+  whenStable: () => Promise<unknown>;
+}): Promise<void> {
   await fixture.whenStable();
   await new Promise((r) => setTimeout(r, 0));
   await fixture.whenStable();
   fixture.detectChanges();
 }
 
-const press = (el: HTMLElement, name: string) => [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(name))!.click();
+const press = (el: HTMLElement, name: string) =>
+  [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(name))!.click();
 
-describe('CombatView, the master\'s screen without a map', () => {
+describe("CombatView, the master's screen without a map", () => {
   it('draws a card, the order, the cover and the log: no map, no "Sem quadrado no mapa", and the mode\'s pill', async () => {
     const { fixture, el } = setup({ master: true, current: 'g' });
     await settle(fixture);
@@ -125,7 +204,7 @@ describe('CombatView, the master\'s screen without a map', () => {
     expect(el.querySelector('app-order-list')).not.toBeNull();
   });
 
-  it('opens the offer\'s form right under its button, inside the card, with one key per reactor, and closes it with the turn', async () => {
+  it("opens the offer's form right under its button, inside the card, with one key per reactor, and closes it with the turn", async () => {
     const { fixture, el, calls, state } = setup({ master: true, current: 'g' });
     await settle(fixture);
     expect(el.querySelector('app-offer-panel')).toBeNull();
@@ -134,8 +213,13 @@ describe('CombatView, the master\'s screen without a map', () => {
     const card = el.querySelector('app-npc-card')!;
     expect(card.querySelector('app-offer-panel')).not.toBeNull();
     // The button comes before the form in the card.
-    const button = [...card.querySelectorAll('button')].find((b) => plain(b.textContent).includes('Oferecer ataque de oportunidade'))!;
-    expect(button.compareDocumentPosition(card.querySelector('app-offer-panel')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const button = [...card.querySelectorAll('button')].find((b) =>
+      plain(b.textContent).includes('Oferecer ataque de oportunidade'),
+    )!;
+    expect(
+      button.compareDocumentPosition(card.querySelector('app-offer-panel')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     await settle(fixture);
     press(el, 'Oferecer a ');
     await settle(fixture);
@@ -148,16 +232,30 @@ describe('CombatView, the master\'s screen without a map', () => {
     expect(el.querySelector('app-offer-panel')).toBeNull();
   });
 
-  it('does not disable the offer while another reactor\'s offer waits, and dashes it with the reason only when nobody can react', async () => {
-    const waiting = create(OpportunityOfferSchema, { id: 'o1', moverId: 'g', reactorId: 't', moverLabel: 'Goblin', reactorLabel: 'Toren', forYou: true });
+  it("does not disable the offer while another reactor's offer waits, and dashes it with the reason only when nobody can react", async () => {
+    const waiting = create(OpportunityOfferSchema, {
+      id: 'o1',
+      moverId: 'g',
+      reactorId: 't',
+      moverLabel: 'Goblin',
+      reactorLabel: 'Toren',
+      forYou: true,
+    });
     const { fixture, el } = setup({ master: true, current: 'g', offers: [waiting] });
     await settle(fixture);
-    const offer = [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes('Oferecer ataque de oportunidade'))!;
+    const offer = [...el.querySelectorAll('button')].find((b) =>
+      plain(b.textContent).includes('Oferecer ataque de oportunidade'),
+    )!;
     expect(offer.getAttribute('aria-disabled')).not.toBe('true');
-    const both = [create(OpportunityOfferSchema, { id: 'o1', moverId: 'g', reactorId: 't' }), create(OpportunityOfferSchema, { id: 'o2', moverId: 'g', reactorId: 'b' })];
+    const both = [
+      create(OpportunityOfferSchema, { id: 'o1', moverId: 'g', reactorId: 't' }),
+      create(OpportunityOfferSchema, { id: 'o2', moverId: 'g', reactorId: 'b' }),
+    ];
     const alone = setup({ master: true, current: 'g', offers: both });
     await settle(alone.fixture);
-    const off = [...alone.el.querySelectorAll('button')].find((b) => plain(b.textContent).includes('Oferecer ataque de oportunidade'))!;
+    const off = [...alone.el.querySelectorAll('button')].find((b) =>
+      plain(b.textContent).includes('Oferecer ataque de oportunidade'),
+    )!;
     expect(off.getAttribute('aria-disabled')).toBe('true');
     expect(plain(alone.el.textContent)).toContain('Ninguém pode reagir agora.');
   });
@@ -168,13 +266,19 @@ describe('CombatView, the master\'s screen without a map', () => {
     expect(plain(el.textContent)).toContain('Ações do Toren');
     expect(plain(el.textContent)).toContain('Gastar movimento');
     expect(plain(el.textContent)).not.toContain('Oferecer ataque de oportunidade');
-    const down = setup({ master: true, current: 'b', combatants: [toren, { ...brisa, state: CombatantState.DOWN }, goblin, cap] });
+    const down = setup({
+      master: true,
+      current: 'b',
+      combatants: [toren, { ...brisa, state: CombatantState.DOWN }, goblin, cap],
+    });
     await settle(down.fixture);
-    expect(plain(down.el.querySelector('app-npc-card')?.textContent)).not.toContain('Gastar movimento');
+    expect(plain(down.el.querySelector('app-npc-card')?.textContent)).not.toContain(
+      'Gastar movimento',
+    );
   });
 });
 
-describe('CombatView, the player\'s screen without a map', () => {
+describe("CombatView, the player's screen without a map", () => {
   it('draws the panel in the map\'s place, "Gastar movimento" and the reaction card; no "Mover", no map, no familiar eyes', async () => {
     const { fixture, el } = setup({ master: false, current: 't' });
     await settle(fixture);
@@ -186,11 +290,17 @@ describe('CombatView, the player\'s screen without a map', () => {
     expect(text).not.toContain('Ver mapa');
     expect(text).not.toContain('Ver pelos olhos');
     expect(el.querySelector('app-theatre-reaction')).not.toBeNull();
-    expect([...el.querySelectorAll('button')].some((b) => plain(b.textContent) === 'Mover')).toBe(false);
+    expect([...el.querySelectorAll('button')].some((b) => plain(b.textContent) === 'Mover')).toBe(
+      false,
+    );
   });
 
   it('shows no live control to a fallen character: no reaction card, no movement', async () => {
-    const { fixture, el } = setup({ master: false, current: 'g', combatants: [{ ...toren, state: CombatantState.DOWN }, brisa, goblin, cap] });
+    const { fixture, el } = setup({
+      master: false,
+      current: 'g',
+      combatants: [{ ...toren, state: CombatantState.DOWN }, brisa, goblin, cap],
+    });
     await settle(fixture);
     expect(el.querySelector('app-theatre-reaction')).toBeNull();
     expect(plain(el.textContent)).not.toContain('Gastar movimento');
@@ -202,11 +312,21 @@ describe('CombatView, the player\'s screen without a map', () => {
     await settle(none.fixture);
     expect(none.el.querySelector('app-combat-log-panel')).not.toBeNull();
     expect(plain(none.el.textContent)).not.toContain('Esta mesa só deixa o dono e o mestre');
-    const someone = setup({ master: false, current: 'b', deathSaves: hidden, combatants: [toren, { ...brisa, state: CombatantState.DOWN }, goblin, cap] });
+    const someone = setup({
+      master: false,
+      current: 'b',
+      deathSaves: hidden,
+      combatants: [toren, { ...brisa, state: CombatantState.DOWN }, goblin, cap],
+    });
     await settle(someone.fixture);
     expect(someone.el.querySelector('[data-testid="death-hidden-note"]')).not.toBeNull();
     // The owner of the fallen character sees their own marks: the note is for the others.
-    const mine = setup({ master: false, current: 't', deathSaves: hidden, combatants: [{ ...toren, state: CombatantState.DOWN }, brisa, goblin, cap] });
+    const mine = setup({
+      master: false,
+      current: 't',
+      deathSaves: hidden,
+      combatants: [{ ...toren, state: CombatantState.DOWN }, brisa, goblin, cap],
+    });
     await settle(mine.fixture);
     expect(mine.el.querySelector('[data-testid="death-hidden-note"]')).toBeNull();
   });

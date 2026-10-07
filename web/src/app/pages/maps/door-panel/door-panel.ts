@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  untracked,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { MapAsk } from '../map-ask/map-ask';
@@ -107,7 +119,12 @@ export class DoorPanel {
     // The question opens wholly in view, at any size (below the map at 1024, the panel may be off the screen).
     effect(() => {
       if (this.standing()) {
-        untracked(() => afterNextRender(() => this.host.nativeElement.scrollIntoView({ block: 'center', behavior: 'smooth' }), { injector: this.injector }));
+        untracked(() =>
+          afterNextRender(
+            () => this.host.nativeElement.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+            { injector: this.injector },
+          ),
+        );
       }
     });
   }

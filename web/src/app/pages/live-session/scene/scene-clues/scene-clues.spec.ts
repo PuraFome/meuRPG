@@ -20,7 +20,11 @@ function clue(id: string, text: string, to: { id: string; at: Date }[] = []): Sc
   return create(SceneClueSchema, {
     id,
     text,
-    revealedTo: to.map((r) => ({ characterId: r.id, characterName: r.id === 'p' ? 'Pensantus' : 'Brisa', revealedAt: timestampFromDate(r.at) })),
+    revealedTo: to.map((r) => ({
+      characterId: r.id,
+      characterName: r.id === 'p' ? 'Pensantus' : 'Brisa',
+      revealedAt: timestampFromDate(r.at),
+    })),
   });
 }
 
@@ -39,7 +43,10 @@ describe('SceneClues (the open scene)', () => {
   let answer: SceneClue | undefined;
 
   function setup(phone = false) {
-    state = new SceneState(() => Promise.resolve(null), () => true);
+    state = new SceneState(
+      () => Promise.resolve(null),
+      () => true,
+    );
     state.apply(masterScene([], [], { clues: CLUES }));
     opened = [];
     answer = undefined;
@@ -90,9 +97,13 @@ describe('SceneClues (the open scene)', () => {
     const { el } = setup();
     expect(el.querySelector('[data-reveal="k1"]')).toBeNull();
     expect(el.querySelector('[data-reveal="k2"]')?.textContent).toContain('Revelar');
-    expect(el.querySelector('[data-reveal="k2"]')?.getAttribute('aria-label')).toBe('Revelar a pista 2');
+    expect(el.querySelector('[data-reveal="k2"]')?.getAttribute('aria-label')).toBe(
+      'Revelar a pista 2',
+    );
     expect(el.querySelector('[data-reveal="k3"]')?.textContent).toContain('Revelar aos outros');
-    expect(el.querySelector('[data-reveal="k3"]')?.getAttribute('aria-label')).toBe('Revelar a pista 3 aos outros');
+    expect(el.querySelector('[data-reveal="k3"]')?.getAttribute('aria-label')).toBe(
+      'Revelar a pista 3 aos outros',
+    );
     // There is no way to take a clue back.
     expect(el.textContent).not.toContain('Esconder');
   });
@@ -102,7 +113,7 @@ describe('SceneClues (the open scene)', () => {
     expect(flat(el.querySelector('.sc__hint'))).toBe('Só quem você escolher recebe a pista.');
   });
 
-  it('says on a computer that the clue goes to the person\'s notes', () => {
+  it("says on a computer that the clue goes to the person's notes", () => {
     const { el, flat } = setup(false);
     expect(flat(el.querySelector('.sc__hint'))).toContain('vai para as anotações da pessoa');
   });
@@ -111,7 +122,9 @@ describe('SceneClues (the open scene)', () => {
     const { el } = setup();
     el.querySelector<HTMLButtonElement>('[data-reveal="k2"]')!.click();
     expect(opened).toHaveLength(1);
-    expect((opened[0] as { data: { number: number; total: number; sceneName: string } }).data).toMatchObject({
+    expect(
+      (opened[0] as { data: { number: number; total: number; sceneName: string } }).data,
+    ).toMatchObject({
       number: 2,
       total: 3,
       sceneName: 'A carroça tombada',
@@ -120,10 +133,14 @@ describe('SceneClues (the open scene)', () => {
 
   it('after revealing: the clue changes, a strip in a live region says what happened, and focus goes to its button', async () => {
     const { el, flat, settle } = setup();
-    answer = clue('k2', 'Rastros de três goblins.', [{ id: 'b', at: new Date(2026, 9, 3, 21, 31) }]);
+    answer = clue('k2', 'Rastros de três goblins.', [
+      { id: 'b', at: new Date(2026, 9, 3, 21, 31) },
+    ]);
     el.querySelector<HTMLButtonElement>('[data-reveal="k2"]')!.click();
     await settle();
-    expect(flat(el.querySelector('[role="status"]'))).toContain('Pista revelada só para Brisa às 21:31.');
+    expect(flat(el.querySelector('[role="status"]'))).toContain(
+      'Pista revelada só para Brisa às 21:31.',
+    );
     expect(flat(el.querySelectorAll('.sc__who')[1])).toContain('Revelada só para Brisa às 21:31');
     expect(el.querySelector('[data-reveal="k2"]')?.textContent).toContain('Revelar aos outros');
     expect(document.activeElement).toBe(el.querySelector('[data-reveal="k2"]'));
@@ -153,6 +170,8 @@ describe('SceneClues (the open scene)', () => {
     const { fixture, el, flat } = setup();
     state.apply(masterScene([], [], { clues: [] }));
     fixture.detectChanges();
-    expect(flat(el.querySelector('.sc__empty'))).toBe('Esta cena não tem pistas. Adicione no editor do mapa.');
+    expect(flat(el.querySelector('.sc__empty'))).toBe(
+      'Esta cena não tem pistas. Adicione no editor do mapa.',
+    );
   });
 });

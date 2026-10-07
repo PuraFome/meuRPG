@@ -81,7 +81,9 @@ export class LevelGrid {
   readonly featureAdded = output<number>();
 
   protected readonly problemsId = `grid-problems-${nextGridId++}`;
-  protected readonly circles = computed(() => Array.from({ length: this.columns().circles }, (_, i) => i));
+  protected readonly circles = computed(() =>
+    Array.from({ length: this.columns().circles }, (_, i) => i),
+  );
 
   /** Every refusal at a cell or a row, with its place in words (shown under the grid, so a cell stays small). */
   protected readonly problems = computed<GridProblem[]>(() => {
@@ -90,7 +92,8 @@ export class LevelGrid {
     const cols = this.columns();
     for (const r of this.rows()) {
       const at = (path: string, what: string): void => {
-        for (const text of issues(path)) out.push({ where: `Nível ${r.level}${what ? `, ${what}` : ''}`, text });
+        for (const text of issues(path))
+          out.push({ where: `Nível ${r.level}${what ? `, ${what}` : ''}`, text });
       };
       at(r.base, '');
       if (this.showBonus()) at(`${r.base}.prof_bonus`, fieldLabel('profBonus', 0));
@@ -102,7 +105,9 @@ export class LevelGrid {
     return out;
   });
 
-  protected readonly tableIssues = computed(() => (this.path() ? this.issuesOf()(this.path()) : []));
+  protected readonly tableIssues = computed(() =>
+    this.path() ? this.issuesOf()(this.path()) : [],
+  );
 
   protected cellLabel(level: number, field: GridField, slot = 0): string {
     return `Nível ${level}, ${fieldLabel(field, slot)}`;
@@ -150,7 +155,16 @@ export class LevelGrid {
     if (!(el instanceof HTMLInputElement)) {
       return;
     }
-    const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : event.key === 'PageDown' ? 5 : event.key === 'PageUp' ? -5 : 0;
+    const step =
+      event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowUp'
+          ? -1
+          : event.key === 'PageDown'
+            ? 5
+            : event.key === 'PageUp'
+              ? -5
+              : 0;
     if (step === 0) {
       return;
     }
@@ -159,7 +173,9 @@ export class LevelGrid {
     const root = el.closest('table');
     const rows = this.rows().length;
     const target = Math.max(0, Math.min(rows - 1, row + step));
-    const next = root?.querySelector<HTMLInputElement>(`input[data-col="${col}"][data-row="${target}"]`);
+    const next = root?.querySelector<HTMLInputElement>(
+      `input[data-col="${col}"][data-row="${target}"]`,
+    );
     if (next) {
       event.preventDefault();
       next.focus();

@@ -3,7 +3,13 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import type { GalleryImage } from '../../../../gen/meurpg/maps/v1/gallery_pb';
 import { GalleryClient } from '../../../core/images/gallery-client';
-import { FakeGalleryClient, FakeImageUploader, galleryImage, galleryUsage, plain } from '../../../core/images/gallery-testing';
+import {
+  FakeGalleryClient,
+  FakeImageUploader,
+  galleryImage,
+  galleryUsage,
+  plain,
+} from '../../../core/images/gallery-testing';
 import { ImageUploader } from '../../../core/images/image-uploader';
 import { type ImagePickerData, ImagePickerDialog } from './image-picker-dialog';
 
@@ -58,8 +64,12 @@ describe('ImagePickerDialog and a picture of the whole map', () => {
       await flush();
       fixture.detectChanges();
     };
-    const tile = (name: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((r) => plain(r.textContent).includes(name))!;
-    const button = (name: string) => Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent).includes(name));
+    const tile = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((r) =>
+        plain(r.textContent).includes(name),
+      )!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent).includes(name));
     return { fixture, el, settle, tile, button };
   }
 
@@ -70,13 +80,17 @@ describe('ImagePickerDialog and a picture of the whole map', () => {
   });
 
   it('confirming it asks first, in place; "Voltar" has the focus and shows nothing', async () => {
-    const { el, settle, tile, button } = await setup({ wholeMapConfirmLabel: 'Mostrar mesmo assim' });
+    const { el, settle, tile, button } = await setup({
+      wholeMapConfirmLabel: 'Mostrar mesmo assim',
+    });
     tile('Mapa com textura').click();
     await settle();
     button('Mostrar aos jogadores')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Mostrar o mapa inteiro?');
-    expect(plain(el.textContent)).toContain('Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.');
+    expect(plain(el.textContent)).toContain(
+      'Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.',
+    );
     expect(submitted).toEqual([]);
     expect(document.activeElement?.textContent?.trim()).toBe('Voltar');
     button('Voltar')!.click();
@@ -98,7 +112,7 @@ describe('ImagePickerDialog and a picture of the whole map', () => {
     expect(closed).toEqual([true]);
   });
 
-  it('any other picture is shown at once, and a picker that did not ask for the question (a map\'s image) never asks', async () => {
+  it("any other picture is shown at once, and a picker that did not ask for the question (a map's image) never asks", async () => {
     const withQuestion = await setup({ wholeMapConfirmLabel: 'Mostrar mesmo assim' });
     withQuestion.tile('Carta do rei').click();
     await withQuestion.settle();

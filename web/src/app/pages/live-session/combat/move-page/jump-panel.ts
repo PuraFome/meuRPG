@@ -72,8 +72,14 @@ export class JumpPanel {
   /** The stepper moved one step: `+1` or `-1`. */
   readonly step = output<1 | -1>();
 
-  protected readonly long = computed(() => ({ running: metersFixed(this.limits().longRunningDft / 10), standing: metersFixed(this.limits().longStandingDft / 10) }));
-  protected readonly high = computed(() => ({ running: metersFixed(this.limits().highRunningDft / 10), standing: metersFixed(this.limits().highStandingDft / 10) }));
+  protected readonly long = computed(() => ({
+    running: metersFixed(this.limits().longRunningDft / 10),
+    standing: metersFixed(this.limits().longStandingDft / 10),
+  }));
+  protected readonly high = computed(() => ({
+    running: metersFixed(this.limits().highRunningDft / 10),
+    standing: metersFixed(this.limits().highStandingDft / 10),
+  }));
   protected readonly seal = computed(() => runSeal(this.limits()));
   protected readonly heightText = computed(() => metersFixed(this.height() / 10));
   /** For the page: the limit that applies to the picked kind. */

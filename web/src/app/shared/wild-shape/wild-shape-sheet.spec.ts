@@ -9,16 +9,34 @@ import { WildShapeSheet, type WildShapeSheetData } from './wild-shape-sheet';
 describe('WildShapeSheet (E9-11 state 2)', () => {
   async function setup(data: Partial<WildShapeSheetData> = {}, fail: unknown = null) {
     const api = new FakeCreaturesClient();
-    api.forms = [summary('monster:boar', 'Javali', { name: 'Boar', sizePt: 'Médio', challengeRating: '1/4' }), summary('monster:wolf', 'Lobo', { name: 'Wolf', sizePt: 'Médio', challengeRating: '1/4' })];
-    api.blocks.set('monster:boar', raven({ armorClass: 11, hitPoints: 11, speedWalkFt: 40, speedFlyFt: 0, actions: [] }));
-    api.blocks.set('monster:wolf', raven({ armorClass: 13, hitPoints: 11, speedWalkFt: 40, speedFlyFt: 0 }));
+    api.forms = [
+      summary('monster:boar', 'Javali', { name: 'Boar', sizePt: 'Médio', challengeRating: '1/4' }),
+      summary('monster:wolf', 'Lobo', { name: 'Wolf', sizePt: 'Médio', challengeRating: '1/4' }),
+    ];
+    api.blocks.set(
+      'monster:boar',
+      raven({ armorClass: 11, hitPoints: 11, speedWalkFt: 40, speedFlyFt: 0, actions: [] }),
+    );
+    api.blocks.set(
+      'monster:wolf',
+      raven({ armorClass: 13, hitPoints: 11, speedWalkFt: 40, speedFlyFt: 0 }),
+    );
     api.failWith = fail;
     const close = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         { provide: CreaturesClient, useValue: api },
         { provide: MatDialogRef, useValue: { close } },
-        { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'c', characterId: 'ch', inCombat: true, uses: { left: 2, total: 2 }, ...data } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            campaignId: 'c',
+            characterId: 'ch',
+            inCombat: true,
+            uses: { left: 2, total: 2 },
+            ...data,
+          },
+        },
       ],
     });
     const fixture = TestBed.createComponent(WildShapeSheet);
@@ -59,7 +77,15 @@ describe('WildShapeSheet (E9-11 state 2)', () => {
         providers: [
           { provide: CreaturesClient, useValue: api },
           { provide: MatDialogRef, useValue: { close: vi.fn() } },
-          { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'c', characterId: 'ch', inCombat: true, uses: { left: 2, total: 2 } } },
+          {
+            provide: MAT_DIALOG_DATA,
+            useValue: {
+              campaignId: 'c',
+              characterId: 'ch',
+              inCombat: true,
+              uses: { left: 2, total: 2 },
+            },
+          },
         ],
       });
       const fixture = TestBed.createComponent(WildShapeSheet);
@@ -78,7 +104,9 @@ describe('WildShapeSheet (E9-11 state 2)', () => {
     el.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click();
     await settle();
     expect(flat(el.querySelectorAll('.row__sub')[1])).toContain('CA 13');
-    expect(flat(el.querySelector('.line'))).toContain('Gasta a ação e 1 uso de Forma Selvagem (restará 1).');
+    expect(flat(el.querySelector('.line'))).toContain(
+      'Gasta a ação e 1 uso de Forma Selvagem (restará 1).',
+    );
     expect(flat(el.querySelector('.go'))).toBe('Virar Lobo');
     el.querySelector<HTMLButtonElement>('.go')!.click();
     await settle();

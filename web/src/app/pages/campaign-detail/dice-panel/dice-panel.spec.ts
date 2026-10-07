@@ -10,8 +10,13 @@ function row(name: string, dicePreference: DicePreference, role = 'jogador'): Me
   return { userId: name, name, role, isViewer: false, hasName: true, dicePreference };
 }
 
-async function render(mode: DiceMode, setDiceMode = (_id: string, m: DiceMode) => Promise.resolve({ mode: m })) {
-  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CampaignsService, useValue: { setDiceMode } }] });
+async function render(
+  mode: DiceMode,
+  setDiceMode = (_id: string, m: DiceMode) => Promise.resolve({ mode: m }),
+) {
+  TestBed.configureTestingModule({
+    providers: [provideRouter([]), { provide: CampaignsService, useValue: { setDiceMode } }],
+  });
   const fixture = TestBed.createComponent(DicePanel);
   fixture.componentRef.setInput('campaignId', 'camp-1');
   fixture.componentRef.setInput('savedMode', mode);
@@ -46,6 +51,8 @@ describe('DicePanel', () => {
     expect(el.textContent).toContain('Todos rolam os próprios dados');
     expect(el.querySelector('input[type=radio]')).toBeNull();
     expect(el.querySelector('button')).toBeNull();
-    expect(el.querySelector('a[href="/campaigns/camp-1/rules"]')?.textContent).toContain('Mudar em Regras da mesa');
+    expect(el.querySelector('a[href="/campaigns/camp-1/rules"]')?.textContent).toContain(
+      'Mudar em Regras da mesa',
+    );
   });
 });

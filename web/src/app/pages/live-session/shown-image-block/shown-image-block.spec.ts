@@ -3,8 +3,20 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { ShownImageVm } from '../live-session.types';
 import { ShownImageBlock } from './shown-image-block';
 
-const goblin: ShownImageVm = { id: 'g', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/g' };
-const tavern: ShownImageVm = { id: 't', name: 'Taverna do Javali', width: 800, height: 500, url: '/images/t' };
+const goblin: ShownImageVm = {
+  id: 'g',
+  name: 'Capitão Goblin',
+  width: 400,
+  height: 500,
+  url: '/images/g',
+};
+const tavern: ShownImageVm = {
+  id: 't',
+  name: 'Taverna do Javali',
+  width: 800,
+  height: 500,
+  url: '/images/t',
+};
 
 describe('ShownImageBlock', () => {
   let fixture: ComponentFixture<ShownImageBlock>;
@@ -46,7 +58,9 @@ describe('ShownImageBlock', () => {
     expect(img.getAttribute('width')).toBe('400');
     expect(el.querySelector('.block__name')?.textContent).toBe('Capitão Goblin');
     expect(el.textContent).toContain('Fica aqui enquanto o mestre mostrar.');
-    expect(el.querySelector('button[aria-label="Ver Capitão Goblin em tela cheia"]')).not.toBeNull();
+    expect(
+      el.querySelector('button[aria-label="Ver Capitão Goblin em tela cheia"]'),
+    ).not.toBeNull();
   });
 
   it('reserves the frame from the image shape before its bytes arrive', () => {
@@ -83,7 +97,11 @@ describe('ShownImageBlock', () => {
     (el.querySelector('img') as HTMLImageElement).dispatchEvent(new Event('error'));
     fixture.detectChanges();
     expect(el.textContent).toContain('Não deu para carregar a imagem.');
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar de novo')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Tentar de novo'),
+      ) as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
     expect(el.querySelector('img')).not.toBeNull();
     expect(el.textContent).not.toContain('Não deu para carregar a imagem.');

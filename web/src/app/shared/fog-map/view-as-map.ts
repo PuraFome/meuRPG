@@ -108,7 +108,10 @@ export class ViewAsMapView {
     }
     const enemies = this.view.map
       .tokens()
-      .filter((t) => !t.creatureId && t.kind !== CharacterKind.PLAYER && t.kind !== CharacterKind.UNSPECIFIED)
+      .filter(
+        (t) =>
+          !t.creatureId && t.kind !== CharacterKind.PLAYER && t.kind !== CharacterKind.UNSPECIFIED,
+      )
       .map((t) => t.name);
     const seen = `${this.name()} vê ${seenCount(vision).toLocaleString('pt-BR')} ${seenCount(vision) === 1 ? 'quadrado' : 'quadrados'} de ${(vision.columns * vision.rows).toLocaleString('pt-BR')}`;
     return enemies.length === 0

@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -49,7 +60,18 @@ const CHANGED_MS = 6000;
 @Component({
   selector: 'app-puzzle-play',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HintTryControl, LimitCounters, LivePill, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MyPart, PillarsBoard, PuzzleHost, RouterLink],
+  imports: [
+    HintTryControl,
+    LimitCounters,
+    LivePill,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MyPart,
+    PillarsBoard,
+    PuzzleHost,
+    RouterLink,
+  ],
   templateUrl: './puzzle-play.html',
   styleUrl: './puzzle-play.scss',
 })
@@ -118,9 +140,13 @@ export class PuzzlePlayPage {
   protected readonly wheelWords = computed(() => {
     const run = this.run();
     const state = run?.state?.kind;
-    return state?.case === 'lock' ? state.value.wheels.map((w) => run?.symbols[w]?.namePt ?? '').join(' · ') : '';
+    return state?.case === 'lock'
+      ? state.value.wheels.map((w) => run?.symbols[w]?.namePt ?? '').join(' · ')
+      : '';
   });
-  protected readonly faceList = computed(() => (this.run()?.symbols ?? []).map((s) => ({ key: s.key, namePt: s.namePt })));
+  protected readonly faceList = computed(() =>
+    (this.run()?.symbols ?? []).map((s) => ({ key: s.key, namePt: s.namePt })),
+  );
   protected readonly instruction = computed(() => {
     switch (this.kind()) {
       case PuzzleKind.LIGHTS:
@@ -158,18 +184,33 @@ export class PuzzlePlayPage {
     const config = this.run()?.config?.kind;
     return config?.case === 'pillars' && config.value.links.some((l) => l.alsoTurns.length > 0);
   });
-  protected readonly changedPillars = computed(() => (this.kind() === PuzzleKind.PILLARS ? pillarsChangedText(this.run()?.lastMove?.changed ?? []) : ''));
+  protected readonly changedPillars = computed(() =>
+    this.kind() === PuzzleKind.PILLARS
+      ? pillarsChangedText(this.run()?.lastMove?.changed ?? [])
+      : '',
+  );
   /** The kinds that judge a typed answer or a bell: they stop being a board when solved or stopped, and say why nothing can be typed. */
-  protected readonly judged = computed(() => this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.SEQUENCE || this.kind() === PuzzleKind.CIPHER);
-  protected readonly hostMode = computed<'play' | 'view'>(() => (this.judged() && (this.frozen() || this.play.gone()) ? 'view' : 'play'));
+  protected readonly judged = computed(
+    () =>
+      this.kind() === PuzzleKind.RIDDLE ||
+      this.kind() === PuzzleKind.SEQUENCE ||
+      this.kind() === PuzzleKind.CIPHER,
+  );
+  protected readonly hostMode = computed<'play' | 'view'>(() =>
+    this.judged() && (this.frozen() || this.play.gone()) ? 'view' : 'play',
+  );
   /** The counters of "Ao errar": attempts, moves, time (the time runs down by the clock, from the server's deadline). */
   protected readonly counters = computed(() => {
     const run = this.run();
     return run ? limitRows(run, this.now()) : [];
   });
-  protected readonly outOfAttempts = computed(() => this.counters().some((c) => c.key === 'attempts' && c.spent));
+  protected readonly outOfAttempts = computed(() =>
+    this.counters().some((c) => c.key === 'attempts' && c.spent),
+  );
   /** Why nothing can be typed now, for the riddle and the cipher. */
-  protected readonly blocked = computed(() => (this.outOfAttempts() && !this.frozen() ? 'Você não tem mais tentativas.' : ''));
+  protected readonly blocked = computed(() =>
+    this.outOfAttempts() && !this.frozen() ? 'Você não tem mais tentativas.' : '',
+  );
   /** The trap that the last wrong move fired ("Dardos envenenados"); only for a player who sees it (the server sends nothing else). */
   protected readonly trap = computed(() => trapFired(this.run()?.lastMove));
   /** "Errou o passo 4. A tentativa recomeçou..." for the sequence, until the master plays it again. */
@@ -184,15 +225,32 @@ export class PuzzlePlayPage {
       return null;
     }
     const own = this.ownName() !== '' && last.characterName === this.ownName();
-    return { lead: `Errou o passo ${last.step}.`, text: `A tentativa recomeçou; ${own ? 'você errou' : `${last.characterName} errou`}.` };
+    return {
+      lead: `Errou o passo ${last.step}.`,
+      text: `A tentativa recomeçou; ${own ? 'você errou' : `${last.characterName} errou`}.`,
+    };
   });
   /** Whether the counters stand in the "Como está" panel: the riddle and the cipher draw them beside their button. */
-  protected readonly countersBelow = computed(() => this.counters().length > 0 && !(this.hostMode() === 'play' && (this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.CIPHER)));
+  protected readonly countersBelow = computed(
+    () =>
+      this.counters().length > 0 &&
+      !(
+        this.hostMode() === 'play' &&
+        (this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.CIPHER)
+      ),
+  );
   /** The "Como está" panel has something to say: never an empty card (the riddle and the sequence say it all in their board). */
   protected readonly showInfo = computed(() => {
     const kind = this.kind();
-    const own = kind === PuzzleKind.LIGHTS || kind === PuzzleKind.LOCK || kind === PuzzleKind.PILLARS;
-    return !!this.run()?.solved || own || this.instruction() !== '' || !!this.last() || this.countersBelow();
+    const own =
+      kind === PuzzleKind.LIGHTS || kind === PuzzleKind.LOCK || kind === PuzzleKind.PILLARS;
+    return (
+      !!this.run()?.solved ||
+      own ||
+      this.instruction() !== '' ||
+      !!this.last() ||
+      this.countersBelow()
+    );
   });
   /** The stopped notice names the limit that was spent, as the artboard's state 10 does ("O limite de jogadas chegou: 10 de 10."). */
   protected readonly stoppedWhy = computed(() => {
@@ -200,7 +258,13 @@ export class PuzzlePlayPage {
     if (!this.run()?.stopped || spent.length === 0) {
       return '';
     }
-    const parts = spent.flatMap((c) => (c.key === 'moves' ? [`O limite de jogadas chegou: ${c.value}.`] : c.key === 'time' ? ['O tempo acabou.'] : []));
+    const parts = spent.flatMap((c) =>
+      c.key === 'moves'
+        ? [`O limite de jogadas chegou: ${c.value}.`]
+        : c.key === 'time'
+          ? ['O tempo acabou.']
+          : [],
+    );
     return parts.join(' ');
   });
   /** "Investigação" in "Tentar uma dica · Investigação". */

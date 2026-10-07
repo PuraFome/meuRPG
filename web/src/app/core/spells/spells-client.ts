@@ -33,7 +33,9 @@ export class SpellsClient {
   /** The content version each campaign's answers carried last: the master's edit changes it, and the caches below start over. */
   private readonly versionByCampaign = new Map<string, string>();
 
-  async list(request: MessageInitShape<typeof ListSpellsRequestSchema>): Promise<ListSpellsResponse> {
+  async list(
+    request: MessageInitShape<typeof ListSpellsRequestSchema>,
+  ): Promise<ListSpellsResponse> {
     const res = await this.client.listSpells(request);
     this.noteVersion(request.campaignId ?? '', res.contentVersion);
     return res;

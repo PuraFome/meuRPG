@@ -93,10 +93,15 @@ describe('GalleryLightbox', () => {
     const plain = open(1);
     expect(plain.textContent).not.toContain('Pedir um ajuste');
     expect(plain.textContent).not.toContain('Gerada por IA');
-    fixture.componentRef.setInput('images', [...mirathelImages(), galleryImage('img-gen', 'Imagem 1', { generated: true })]);
+    fixture.componentRef.setInput('images', [
+      ...mirathelImages(),
+      galleryImage('img-gen', 'Imagem 1', { generated: true }),
+    ]);
     const dialog = open(5);
     expect(dialog.textContent).toContain('Gerada por IA');
-    const button = Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Pedir um ajuste')!;
+    const button = Array.from(dialog.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Pedir um ajuste',
+    )!;
     button.click();
     expect(adjusts.map((i) => i.id)).toEqual(['img-gen']);
   });

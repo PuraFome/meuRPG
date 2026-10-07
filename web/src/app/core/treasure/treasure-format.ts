@@ -134,8 +134,16 @@ export function rarityText(rarity: MagicItemRarity): string {
 }
 
 /** The tags of an item, each with its word: the rarity, "Consumível" and "Exige sintonização". */
-export function itemTags(item: { rarity: MagicItemRarity; consumable: boolean; attunement: boolean }): string[] {
-  return [rarityText(item.rarity), item.consumable ? 'Consumível' : '', item.attunement ? 'Exige sintonização' : ''].filter((t) => t !== '');
+export function itemTags(item: {
+  rarity: MagicItemRarity;
+  consumable: boolean;
+  attunement: boolean;
+}): string[] {
+  return [
+    rarityText(item.rarity),
+    item.consumable ? 'Consumível' : '',
+    item.attunement ? 'Exige sintonização' : '',
+  ].filter((t) => t !== '');
 }
 
 /** "Exige sintonização por um paladino" for the sheet; plain "Exige sintonização" for anyone. */
@@ -185,14 +193,19 @@ export function treasureTitle(mode: TreasureMode, level: number): string {
 }
 
 /** The sentence under "Nível do grupo": the party, then why the lowest level is the one the table reads. */
-export function partyHelp(party: { livingCount: number; lowestLevel: number; highestLevel: number } | null): string {
+export function partyHelp(
+  party: { livingCount: number; lowestLevel: number; highestLevel: number } | null,
+): string {
   if (!party) {
     return '';
   }
   if (party.livingCount === 0) {
     return 'A campanha ainda não tem personagem de jogador vivo. Escolha o nível, de 1 a 20.';
   }
-  const where = party.lowestLevel === party.highestLevel ? `O grupo está no nível ${party.lowestLevel}.` : `O grupo está nos níveis ${party.lowestLevel} e ${party.highestLevel}.`;
+  const where =
+    party.lowestLevel === party.highestLevel
+      ? `O grupo está no nível ${party.lowestLevel}.`
+      : `O grupo está nos níveis ${party.lowestLevel} e ${party.highestLevel}.`;
   return `${where} A tabela usa o menor nível, para o tesouro não passar do que o grupo aguenta.`;
 }
 
@@ -209,9 +222,22 @@ export function goldLine(xpMode: XpMode, campaignName: string): string {
 }
 
 /** The same sentence once the treasure is on the map, with the amount and what stays in the description (E10-10 state 5). */
-export function placedXpLine(xpMode: XpMode, campaignName: string, goldPo: number, itemCount: number): string {
-  const items = itemCount === 0 ? '' : itemCount === 1 ? ' O item fica na descrição.' : ` Os ${itemCount} itens ficam na descrição.`;
-  const line = xpMode === XpMode.GOLD ? `${campaignName} dá XP por ouro: o grupo converte ${po(goldPo)} em XP em “Voltar à cidade”.` : goldLine(xpMode, campaignName);
+export function placedXpLine(
+  xpMode: XpMode,
+  campaignName: string,
+  goldPo: number,
+  itemCount: number,
+): string {
+  const items =
+    itemCount === 0
+      ? ''
+      : itemCount === 1
+        ? ' O item fica na descrição.'
+        : ` Os ${itemCount} itens ficam na descrição.`;
+  const line =
+    xpMode === XpMode.GOLD
+      ? `${campaignName} dá XP por ouro: o grupo converte ${po(goldPo)} em XP em “Voltar à cidade”.`
+      : goldLine(xpMode, campaignName);
   return tight(`${line}${items}`);
 }
 

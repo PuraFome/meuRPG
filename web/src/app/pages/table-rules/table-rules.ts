@@ -1,4 +1,15 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -65,37 +76,97 @@ const XP_OPTION_TITLES: Readonly<Record<number, string>> = {
 };
 
 const STYLE_OPTIONS: readonly DiceOption<TableStyle>[] = [
-  { value: TableStyle.TUDO_NO_APP, title: 'Tudo no app', description: 'Dados no app, combate com mapa, névoa ligada nos mapas novos.' },
-  { value: TableStyle.MESA_FISICA, title: 'Mesa física', description: 'Dados físicos digitados, combate sem mapa por padrão, névoa desligada.' },
-  { value: TableStyle.TEATRO_DA_MENTE, title: 'Teatro da mente', description: 'Cada jogador escolhe os dados, combate sem mapa, sem névoa.' },
-  { value: TableStyle.PERSONALIZADO, title: 'Personalizado', description: 'Suas escolhas não batem com nenhum estilo.' },
+  {
+    value: TableStyle.TUDO_NO_APP,
+    title: 'Tudo no app',
+    description: 'Dados no app, combate com mapa, névoa ligada nos mapas novos.',
+  },
+  {
+    value: TableStyle.MESA_FISICA,
+    title: 'Mesa física',
+    description: 'Dados físicos digitados, combate sem mapa por padrão, névoa desligada.',
+  },
+  {
+    value: TableStyle.TEATRO_DA_MENTE,
+    title: 'Teatro da mente',
+    description: 'Cada jogador escolhe os dados, combate sem mapa, sem névoa.',
+  },
+  {
+    value: TableStyle.PERSONALIZADO,
+    title: 'Personalizado',
+    description: 'Suas escolhas não batem com nenhum estilo.',
+  },
 ];
 
 const HIT_POINT_OPTIONS: readonly DiceOption<HitPointsRule>[] = [
-  { value: HitPointsRule.PLAYER_CHOOSES, title: 'O jogador escolhe', description: 'Rola o dado ou usa a média, na hora de subir.' },
-  { value: HitPointsRule.ROLL, title: 'Rolar o dado', description: 'Todos rolam; a média não é oferecida.' },
-  { value: HitPointsRule.AVERAGE, title: 'A média', description: 'Todos recebem o valor médio do dado de vida.' },
+  {
+    value: HitPointsRule.PLAYER_CHOOSES,
+    title: 'O jogador escolhe',
+    description: 'Rola o dado ou usa a média, na hora de subir.',
+  },
+  {
+    value: HitPointsRule.ROLL,
+    title: 'Rolar o dado',
+    description: 'Todos rolam; a média não é oferecida.',
+  },
+  {
+    value: HitPointsRule.AVERAGE,
+    title: 'A média',
+    description: 'Todos recebem o valor médio do dado de vida.',
+  },
 ];
 
 const CRITICAL_OPTIONS: readonly DiceOption<CriticalRule>[] = [
-  { value: CriticalRule.DOUBLED_DICE, title: 'Dados dobrados (SRD)', description: 'Todos os dados de dano do ataque ou da magia são rolados duas vezes.' },
-  { value: CriticalRule.MAX_PLUS_ROLL, title: 'O máximo dos dados mais uma rolagem', description: 'Os dados valem o máximo; depois se rola um conjunto.' },
+  {
+    value: CriticalRule.DOUBLED_DICE,
+    title: 'Dados dobrados (SRD)',
+    description: 'Todos os dados de dano do ataque ou da magia são rolados duas vezes.',
+  },
+  {
+    value: CriticalRule.MAX_PLUS_ROLL,
+    title: 'O máximo dos dados mais uma rolagem',
+    description: 'Os dados valem o máximo; depois se rola um conjunto.',
+  },
 ];
 
 const DEATH_SAVE_OPTIONS: readonly DiceOption<DeathSaveVisibility>[] = [
-  { value: DeathSaveVisibility.VISIBLE_TO_ALL, title: 'Todos veem', description: 'Os outros jogadores veem as falhas e os sucessos.' },
-  { value: DeathSaveVisibility.OWNER_AND_MASTER, title: 'Só o dono e o mestre', description: 'Os outros não veem, nem na tela, nem no registro.' },
+  {
+    value: DeathSaveVisibility.VISIBLE_TO_ALL,
+    title: 'Todos veem',
+    description: 'Os outros jogadores veem as falhas e os sucessos.',
+  },
+  {
+    value: DeathSaveVisibility.OWNER_AND_MASTER,
+    title: 'Só o dono e o mestre',
+    description: 'Os outros não veem, nem na tela, nem no registro.',
+  },
 ];
 
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
-  { value: DiceMode.APP, title: 'Todos rolam no app', description: 'O app rola e registra cada dado.' },
-  { value: DiceMode.PHYSICAL, title: 'Todos rolam os próprios dados', description: 'Cada jogador digita o que tirou.' },
-  { value: DiceMode.PLAYERS_CHOOSE, title: 'Cada jogador escolhe', description: 'Rolar no app ou com os próprios dados.' },
+  {
+    value: DiceMode.APP,
+    title: 'Todos rolam no app',
+    description: 'O app rola e registra cada dado.',
+  },
+  {
+    value: DiceMode.PHYSICAL,
+    title: 'Todos rolam os próprios dados',
+    description: 'Cada jogador digita o que tirou.',
+  },
+  {
+    value: DiceMode.PLAYERS_CHOOSE,
+    title: 'Cada jogador escolhe',
+    description: 'Rolar no app ou com os próprios dados.',
+  },
 ];
 
 const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
   { value: 1, title: 'Começar com mapa', description: 'O combate usa o mapa e a grade.' },
-  { value: 0, title: 'Começar sem mapa (teatro da mente)', description: 'O mestre julga o alcance; o movimento é por número.' },
+  {
+    value: 0,
+    title: 'Começar sem mapa (teatro da mente)',
+    description: 'O mestre julga o alcance; o movimento é por número.',
+  },
 ];
 
 /**
@@ -169,7 +240,9 @@ export class TableRulesPage {
     const d = this.draft();
     return d ? draftProblem(d) : '';
   });
-  protected readonly canSave = computed(() => this.changes() > 0 && this.problem() === '' && !this.saving());
+  protected readonly canSave = computed(
+    () => this.changes() > 0 && this.problem() === '' && !this.saving(),
+  );
   protected readonly saveLine = computed(() => {
     const n = this.changes();
     if (n === 0) {
@@ -200,12 +273,24 @@ export class TableRulesPage {
     ].filter((m) => m !== '');
     return [
       { label: 'Dados', value: DICE_TITLES[d.diceMode] },
-      { label: 'Combate', value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)' },
+      {
+        label: 'Combate',
+        value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)',
+      },
       { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
-      { label: 'Pontos de vida ao subir de nível', value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '' },
+      {
+        label: 'Pontos de vida ao subir de nível',
+        value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '',
+      },
       { label: 'Habilidades de uma ficha nova', value: methods.join(', ') },
-      { label: 'Acertos críticos', value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '' },
-      { label: 'Testes contra a morte', value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '' },
+      {
+        label: 'Acertos críticos',
+        value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '',
+      },
+      {
+        label: 'Testes contra a morte',
+        value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
+      },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
     ];
   });
@@ -260,7 +345,13 @@ export class TableRulesPage {
       this.draft.set(vm.saved);
       this.styleNote.set(null);
       this.wentCustom.set(false);
-      this.state.set({ status: 'ready', vm, campaignName: campaign.name, xpMode: campaign.xpMode, canEdit });
+      this.state.set({
+        status: 'ready',
+        vm,
+        campaignName: campaign.name,
+        xpMode: campaign.xpMode,
+        canEdit,
+      });
     } catch (err) {
       const code = ConnectError.from(err, Code.Unavailable).code;
       this.state.set(
@@ -284,7 +375,9 @@ export class TableRulesPage {
     this.justSaved.set(false);
     this.error.set('');
     this.styleNote.set(null);
-    this.wentCustom.set(before !== TableStyle.PERSONALIZADO && styleOf(next, vm.presets) === TableStyle.PERSONALIZADO);
+    this.wentCustom.set(
+      before !== TableStyle.PERSONALIZADO && styleOf(next, vm.presets) === TableStyle.PERSONALIZADO,
+    );
   }
 
   protected chooseStyle(style: TableStyle): void {
@@ -328,7 +421,12 @@ export class TableRulesPage {
     }
     return {
       dice: d.diceMode !== s.diceMode ? DICE_WORDS[s.diceMode] : '',
-      combat: d.combatStartsWithMap !== s.combatStartsWithMap ? (s.combatStartsWithMap ? 'com mapa' : 'sem mapa') : '',
+      combat:
+        d.combatStartsWithMap !== s.combatStartsWithMap
+          ? s.combatStartsWithMap
+            ? 'com mapa'
+            : 'sem mapa'
+          : '',
       fog: d.fogOnNewMaps !== s.fogOnNewMaps ? (s.fogOnNewMaps ? 'ligada' : 'desligada') : '',
     };
   });

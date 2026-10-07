@@ -149,7 +149,10 @@ describe('GalleryCard', () => {
   });
   it('tags an image the app generated "Gerada por IA", and an adjustment says which image it came from; a plain image has neither', async () => {
     expect(plain(el.textContent)).not.toContain('Gerada por IA');
-    fixture.componentRef.setInput('image', galleryImage('img-2', 'Imagem 2', { generated: true, parentImageId: 'img-1' }));
+    fixture.componentRef.setInput(
+      'image',
+      galleryImage('img-2', 'Imagem 2', { generated: true, parentImageId: 'img-1' }),
+    );
     fixture.componentRef.setInput('parentName', 'Imagem 1');
     await settle();
     expect(plain(el.textContent)).toContain('Gerada por IA');

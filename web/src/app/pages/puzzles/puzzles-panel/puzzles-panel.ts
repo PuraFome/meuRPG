@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, OnInit, afterNextRender, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -10,7 +21,10 @@ import { puzzleErrorMessage } from '../../../core/puzzles/puzzle-errors';
 import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
 import { MapAsk } from '../../maps/map-ask/map-ask';
 
-type State = { readonly status: 'loading' } | { readonly status: 'error'; readonly message: string } | { readonly status: 'ready' };
+type State =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error'; readonly message: string }
+  | { readonly status: 'ready' };
 
 /**
  * The master's "Quebra-cabeças" panel on `/campaigns/:id` (MR-038, E10-06 state 1): one row for each puzzle with its kind's
@@ -44,8 +58,12 @@ export class PuzzlesPanel implements OnInit {
   protected readonly icon = kindIcon;
   protected readonly summary = puzzleSummary;
   /** What the list shows: the archived ones only when asked (they are read with the rest, so "Mostrar os arquivados" costs no call). */
-  protected readonly visible = computed(() => (this.withArchived() ? this.puzzles() : this.puzzles().filter((p) => !p.archived)));
-  protected readonly archivedCount = computed(() => this.puzzles().filter((p) => p.archived).length);
+  protected readonly visible = computed(() =>
+    this.withArchived() ? this.puzzles() : this.puzzles().filter((p) => !p.archived),
+  );
+  protected readonly archivedCount = computed(
+    () => this.puzzles().filter((p) => p.archived).length,
+  );
 
   ngOnInit(): void {
     void this.reload();
@@ -56,7 +74,10 @@ export class PuzzlesPanel implements OnInit {
       this.puzzles.set(await this.api.list(this.campaignId(), true));
       this.state.set({ status: 'ready' });
     } catch (err) {
-      this.state.set({ status: 'error', message: puzzleErrorMessage(err, 'abrir os quebra-cabeças') });
+      this.state.set({
+        status: 'error',
+        message: puzzleErrorMessage(err, 'abrir os quebra-cabeças'),
+      });
     }
   }
 
@@ -72,7 +93,13 @@ export class PuzzlesPanel implements OnInit {
   protected cancel(puzzle: Puzzle): void {
     this.asking.set(null);
     // The question took the row's place: the button that asked gets the focus back.
-    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-archive="${puzzle.id}"]`)), { injector: this.injector });
+    afterNextRender(
+      () =>
+        focusWithRing(
+          this.host.nativeElement.querySelector<HTMLElement>(`[data-archive="${puzzle.id}"]`),
+        ),
+      { injector: this.injector },
+    );
   }
 
   protected async archive(puzzle: Puzzle): Promise<void> {
@@ -86,8 +113,13 @@ export class PuzzlesPanel implements OnInit {
       // The row is gone: the focus goes to the row that took its place, or to the panel's title when it was the last.
       afterNextRender(
         () => {
-          const buttons = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('[data-archive]'));
-          focusWithRing(buttons[Math.min(at, buttons.length - 1)] ?? this.host.nativeElement.querySelector<HTMLElement>('#puzzles-heading'));
+          const buttons = Array.from(
+            this.host.nativeElement.querySelectorAll<HTMLElement>('[data-archive]'),
+          );
+          focusWithRing(
+            buttons[Math.min(at, buttons.length - 1)] ??
+              this.host.nativeElement.querySelector<HTMLElement>('#puzzles-heading'),
+          );
         },
         { injector: this.injector },
       );

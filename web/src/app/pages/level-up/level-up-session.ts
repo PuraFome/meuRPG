@@ -72,7 +72,12 @@ export class LevelUpSession {
     this.canType = rule !== LevelUpDiceRule.FORCED_IN_APP;
     this.preferApp = this.canApp && (!this.canType || preference !== DicePreference.PHYSICAL);
     const hp = options.hitPointsRule;
-    this.hpFixed = hp === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : hp === LevelUpHitPointsRule.AVERAGE_ONLY ? 'average' : null;
+    this.hpFixed =
+      hp === LevelUpHitPointsRule.ROLL_ONLY
+        ? 'roll'
+        : hp === LevelUpHitPointsRule.AVERAGE_ONLY
+          ? 'average'
+          : null;
     if (this.hpFixed === 'roll') {
       // Only the die is offered: a roll the server kept is taken back at once, as the die card does.
       this.chooseRoll();
@@ -131,14 +136,19 @@ export class LevelUpSession {
       return true;
     }
     const sheet = this.character.sheet?.content;
-    const own = sheet?.case === 'full' ? sheet.value.classes.find((c) => c.classKey === this.options.classKey)?.subclass : undefined;
+    const own =
+      sheet?.case === 'full'
+        ? sheet.value.classes.find((c) => c.classKey === this.options.classKey)?.subclass
+        : undefined;
     return own?.case === 'subclassKey' && isTableKey(own.value);
   }
 
   /** "4 + Constituição +3", or "4 − 1 de Constituição": the die and what the Constituição adds, as words. */
   withCon(base: number | string): string {
     const mod = this.conModifier();
-    return mod < 0 ? `${base} − ${-mod} de Constituição` : `${base} + Constituição ${formatModifier(mod)}`;
+    return mod < 0
+      ? `${base} − ${-mod} de Constituição`
+      : `${base} + Constituição ${formatModifier(mod)}`;
   }
 
   /** The hit points before, and with the average, as the server derives them. */
@@ -174,7 +184,12 @@ export class LevelUpSession {
     this.rolling.set(true);
     this.rollError.set('');
     try {
-      const res = await this.client.rollHitPoints(this.campaignId, this.character.id, this.options.classKey, newKey());
+      const res = await this.client.rollHitPoints(
+        this.campaignId,
+        this.character.id,
+        this.options.classKey,
+        newKey(),
+      );
       this.draft.rolled.set({ kind: 'app', value: res.value });
     } catch (err) {
       this.rollError.set(describeLevelUpFailure(err).message);
@@ -194,7 +209,12 @@ export class LevelUpSession {
     d.setHpCard('roll');
     const kept = this.options.keptHitPointRoll;
     const keptClass = this.options.keptHitPointRollClassKey;
-    if (this.canApp && kept > 0 && (keptClass === '' || keptClass === this.options.classKey) && d.rolled() === null) {
+    if (
+      this.canApp &&
+      kept > 0 &&
+      (keptClass === '' || keptClass === this.options.classKey) &&
+      d.rolled() === null
+    ) {
       d.rolled.set({ kind: 'app', value: kept });
     }
   }
@@ -216,12 +236,22 @@ export class LevelUpSession {
     const out: GiveRow[] = [];
     const choice = (title: string, step: 'abilities' | 'picks' | 'spells', done: boolean): void => {
       const n = this.stepNumber(step);
-      out.push({ title, sub: done ? `Feito no passo ${n}` : `Passo ${n}`, tag: done ? 'chosen' : 'choose' });
+      out.push({
+        title,
+        sub: done ? `Feito no passo ${n}` : `Passo ${n}`,
+        tag: done ? 'chosen' : 'choose',
+      });
     };
     const pending = (step: 'picks' | 'spells', ids: readonly string[]) =>
-      d.missing().some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
+      d
+        .missing()
+        .some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
     if (o.abilityScoreImprovement) {
-      choice('Incremento no Valor de Habilidade', 'abilities', d.missingIn('abilities').length === 0);
+      choice(
+        'Incremento no Valor de Habilidade',
+        'abilities',
+        d.missingIn('abilities').length === 0,
+      );
     }
     if (o.subclassDue) {
       choice('Subclasse', 'picks', d.subclassKey() !== '');
@@ -231,20 +261,30 @@ export class LevelUpSession {
       choice(f.feature?.namePt ?? 'Característica', 'picks', !pending('picks', [`feature-${i}`]));
     }
     if (t.skills > 0) {
-      choice(t.skills === 1 ? 'Perícia nova' : `${t.skills} perícias novas`, 'picks', !pending('picks', ['skills']));
+      choice(
+        t.skills === 1 ? 'Perícia nova' : `${t.skills} perícias novas`,
+        'picks',
+        !pending('picks', ['skills']),
+      );
     }
     if (t.expertise > 0) {
       choice('Especialização', 'picks', !pending('picks', ['expertise']));
     }
     const bits = [
       t.cantrips > 0 ? (t.cantrips === 1 ? 'Truque novo' : `${t.cantrips} truques novos`) : '',
-      t.spells > 0 ? `${t.spells === 1 ? '1 magia' : `${t.spells} magias`} ${d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'conhecidas'}` : '',
+      t.spells > 0
+        ? `${t.spells === 1 ? '1 magia' : `${t.spells} magias`} ${d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'conhecidas'}`
+        : '',
     ].filter((s) => s !== '');
     if (bits.length > 0) {
       choice(bits.join(' e '), 'spells', !pending('spells', ['cantrips', 'spells']));
     }
     if (d.effective().prepares && d.preparedMaxAfter() > 0) {
-      choice(`Magias preparadas: até ${d.preparedMaxAfter()}`, 'spells', !pending('spells', ['prepared']));
+      choice(
+        `Magias preparadas: até ${d.preparedMaxAfter()}`,
+        'spells',
+        !pending('spells', ['prepared']),
+      );
     }
     const auto = (title: string, change: string): void => {
       out.push({ title, sub: `Entra sozinho · ${change}`, tag: 'auto' });
@@ -257,14 +297,22 @@ export class LevelUpSession {
     }
     const pb = (n: number) => `${formatModifier(n)}`;
     if (o.proficiencyBonusBefore !== o.proficiencyBonusAfter) {
-      auto('Bônus de proficiência', `${pb(o.proficiencyBonusBefore)} → ${pb(o.proficiencyBonusAfter)}`);
+      auto(
+        'Bônus de proficiência',
+        `${pb(o.proficiencyBonusBefore)} → ${pb(o.proficiencyBonusAfter)}`,
+      );
     }
     const dice = (s: DerivedSheet) => s.hitDice.map((x) => `${x.count}d${x.faces}`).join(' + ');
-    out.push({ title: 'Dados de vida', sub: `Entra sozinho · ${dice(this.before)} → ${dice(this.after())}`, tag: 'auto' });
+    out.push({
+      title: 'Dados de vida',
+      sub: `Entra sozinho · ${dice(this.before)} → ${dice(this.after())}`,
+      tag: 'auto',
+    });
     const chosen = new Set(t.featureChoices.map((f) => f.feature?.key));
     const skip = new Set(o.masterAdds.map((m) => m.key));
     for (const f of o.newFeatures) {
-      if (chosen.has(f.key) || skip.has(f.key) || /ability-score-improvement|subclass/.test(f.key)) continue;
+      if (chosen.has(f.key) || skip.has(f.key) || /ability-score-improvement|subclass/.test(f.key))
+        continue;
       out.push({ title: f.namePt, sub: 'Característica do nível', tag: 'auto' });
     }
     return out;

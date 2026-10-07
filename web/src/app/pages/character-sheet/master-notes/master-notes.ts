@@ -10,9 +10,7 @@ import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 import { CharacterSheetSource } from '../character-sheet.types';
 
 type NotesState =
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
+  { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
 type SavingState =
   | { status: 'idle' }

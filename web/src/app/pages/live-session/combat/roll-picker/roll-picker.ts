@@ -1,5 +1,17 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, model, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -78,10 +90,14 @@ export class RollPicker {
   protected readonly value = computed(() => parseSum(this.text(), this.min(), this.max()));
   protected readonly invalid = computed(() => this.text().trim() !== '' && this.value() === null);
   protected readonly showTyping = computed(() => this.typing() || !this.canApp());
-  protected readonly errorText = computed(() => tight(`Digite um número de ${this.min()} a ${this.max()}`));
+  protected readonly errorText = computed(() =>
+    tight(`Digite um número de ${this.min()} a ${this.max()}`),
+  );
   protected readonly hintText = computed(() => tight(this.hint()));
   /** What a screen reader hears while the well shows only "—". */
-  protected readonly waitText = computed(() => tight(`O total aparece quando o número for de ${this.min()} a ${this.max()}.`));
+  protected readonly waitText = computed(() =>
+    tight(`O total aparece quando o número for de ${this.min()} a ${this.max()}.`),
+  );
   protected readonly total = computed(() => {
     const v = this.value();
     return v === null ? null : { sum: v + this.modifier(), text: typedTotal(v, this.modifier()) };
@@ -91,7 +107,9 @@ export class RollPicker {
       return this.fixedText();
     }
     const m = this.modifier();
-    return m === 0 ? '' : `${m < 0 ? '−' : '+'} ${Math.abs(m)} de ${this.max() === 20 ? 'bônus' : 'modificador'}`;
+    return m === 0
+      ? ''
+      : `${m < 0 ? '−' : '+'} ${Math.abs(m)} de ${this.max() === 20 ? 'bônus' : 'modificador'}`;
   });
 
   /** Back to the two buttons, with the field empty (after a roll went through). */

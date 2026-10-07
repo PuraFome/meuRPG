@@ -70,7 +70,9 @@ export class PrintSetup {
     }
     return {
       name: c.best.orientation === 'landscape' ? 'Paisagem' : 'Retrato',
-      detail: tightCm(`Paisagem usa ${c.landscape.sheets} folhas e retrato usa ${c.portrait.sheets}: o app escolhe a que gasta menos.`),
+      detail: tightCm(
+        `Paisagem usa ${c.landscape.sheets} folhas e retrato usa ${c.portrait.sheets}: o app escolhe a que gasta menos.`,
+      ),
     };
   });
   protected readonly sheetsText = computed(() => {
@@ -85,7 +87,11 @@ export class PrintSetup {
     const cols = `${p.columns} ${p.columns === 1 ? 'coluna' : 'colunas'}`;
     const rows = `${p.rows} ${p.rows === 1 ? 'linha' : 'linhas'}`;
     // The pieces never split ("1 cm", "3 linhas") and a dot never starts a line.
-    return joinDots([tightCm(`${cols} × ${rows}`), 'margem de 1\u00a0cm', '1\u00a0cm de sobreposição']);
+    return joinDots([
+      tightCm(`${cols} × ${rows}`),
+      'margem de 1\u00a0cm',
+      '1\u00a0cm de sobreposição',
+    ]);
   });
   /** The amber notice over 16 sheets: names the paper that spends fewer. */
   protected readonly manySheets = computed(() => {
@@ -102,7 +108,9 @@ export class PrintSetup {
     const way = b.orientation === 'landscape' ? 'paisagem' : 'retrato';
     return {
       total,
-      rest: tightCm(`${lean.paper.inName} o mesmo mapa gasta ${b.sheets} ${b.sheets === 1 ? 'folha' : 'folhas'} (${way}, ${b.columns} × ${b.rows}); um quadrado menor também gasta menos.`),
+      rest: tightCm(
+        `${lean.paper.inName} o mesmo mapa gasta ${b.sheets} ${b.sheets === 1 ? 'folha' : 'folhas'} (${way}, ${b.columns} × ${b.rows}); um quadrado menor também gasta menos.`,
+      ),
     };
   });
 

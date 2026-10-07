@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
@@ -21,7 +30,11 @@ export interface DoorSheetData {
   readonly wall: boolean;
 }
 
-const CHOICES: readonly { readonly state: DoorKind; readonly name: string; readonly what: string }[] = [
+const CHOICES: readonly {
+  readonly state: DoorKind;
+  readonly name: string;
+  readonly what: string;
+}[] = [
   { state: 1, name: 'Aberta', what: 'Dá para passar; não bloqueia a vista' },
   { state: 2, name: 'Fechada', what: 'Quem andar até ela a abre' },
   { state: 3, name: 'Trancada', what: 'Só você a destranca' },
@@ -41,15 +54,29 @@ const POPOVER_WIDTH = 340;
  * sees the door change on the map while he chooses. It is placed once, to the right of the door (to the left near the edge), and keeps
  * its top-left corner through the stages.
  */
-export function openDoorSheet(dialog: MatDialog, bottomSheet: MatBottomSheet, data: DoorSheetData): Observable<boolean | undefined> {
+export function openDoorSheet(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: DoorSheetData,
+): Observable<boolean | undefined> {
   const phone = typeof matchMedia === 'function' && matchMedia('(max-width: 767.98px)').matches;
-  const anchor = document.querySelector<HTMLElement>(`app-door-picks [data-door="${data.door.col},${data.door.row}"]`);
+  const anchor = document.querySelector<HTMLElement>(
+    `app-door-picks [data-door="${data.door.col},${data.door.row}"]`,
+  );
   if (phone || !anchor) {
-    return openSheet<DoorSheet, DoorSheetData, boolean>(dialog, bottomSheet, DoorSheet, { data, ariaLabel: 'Porta', labelledBy: 'door-t', width: '440px' });
+    return openSheet<DoorSheet, DoorSheetData, boolean>(dialog, bottomSheet, DoorSheet, {
+      data,
+      ariaLabel: 'Porta',
+      labelledBy: 'door-t',
+      width: '440px',
+    });
   }
   const rect = anchor.getBoundingClientRect();
   const room = window.innerWidth - rect.right - 14;
-  const left = Math.max(12, room >= POPOVER_WIDTH + 12 ? rect.right + 14 : rect.left - 14 - POPOVER_WIDTH);
+  const left = Math.max(
+    12,
+    room >= POPOVER_WIDTH + 12 ? rect.right + 14 : rect.left - 14 - POPOVER_WIDTH,
+  );
   const top = Math.max(72, Math.min(rect.top + rect.height / 2 - 130, window.innerHeight - 420));
   return dialog
     .open<DoorSheet, DoorSheetData, boolean>(DoorSheet, {
@@ -167,8 +194,13 @@ export class DoorSheet {
     }
     event.preventDefault();
     const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
-    const radios = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'));
-    const here = Math.max(0, radios.findIndex((r) => r === document.activeElement));
+    const radios = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
+    const here = Math.max(
+      0,
+      radios.findIndex((r) => r === document.activeElement),
+    );
     const next = radios[(here + step + radios.length) % radios.length];
     next?.focus();
     next?.click();
@@ -177,7 +209,9 @@ export class DoorSheet {
   /** Changes the stage of the sheet and puts the focus where the person goes on: "Voltar" of the question, or the button that asked. */
   protected show(stage: 'sheet' | 'ask', focus: string): void {
     this.stage.set(stage);
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(focus)?.focus(), { injector: this.injector });
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(focus)?.focus(), {
+      injector: this.injector,
+    });
   }
 
   /** The option the master tapped: the door is painted that way at once. */
@@ -193,7 +227,10 @@ export class DoorSheet {
 
   /** "Revelar": the secret door becomes a closed one (and a wall painted under it goes, or it would still be a wall). */
   protected async reveal(): Promise<void> {
-    const writes = [...(this.sheet.data.wall ? [{ layer: MapLayer.WALL, value: 0 }] : []), { layer: MapLayer.DOORS, value: 2 }];
+    const writes = [
+      ...(this.sheet.data.wall ? [{ layer: MapLayer.WALL, value: 0 }] : []),
+      { layer: MapLayer.DOORS, value: 2 },
+    ];
     if (await this.paint(writes)) {
       this.sheet.close(true);
     }
@@ -209,7 +246,9 @@ export class DoorSheet {
     this.error.set('');
     try {
       for (const w of writes) {
-        await this.api.paint(campaignId, mapId, w.layer, w.value, [{ col: door.col, row: door.row }]);
+        await this.api.paint(campaignId, mapId, w.layer, w.value, [
+          { col: door.col, row: door.row },
+        ]);
       }
       this.changed = true;
       return true;

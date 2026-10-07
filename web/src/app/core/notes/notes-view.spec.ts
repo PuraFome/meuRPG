@@ -1,4 +1,13 @@
-import { FILTER_ALL, FILTER_NONE, applyFilter, entryCount, filterOptions, noteCounter, noteStamp, sortNotes } from './notes-view';
+import {
+  FILTER_ALL,
+  FILTER_NONE,
+  applyFilter,
+  entryCount,
+  filterOptions,
+  noteCounter,
+  noteStamp,
+  sortNotes,
+} from './notes-view';
 import { note, scene } from './notes-testing';
 
 describe('notes view', () => {
@@ -12,19 +21,33 @@ describe('notes view', () => {
   });
 
   it('sorts newest first, by the last time written', () => {
-    const list = sortNotes([note('a', 'a', new Date(2026, 9, 1)), note('b', 'b', new Date(2026, 9, 3)), note('c', 'c', new Date(2026, 9, 2))]);
+    const list = sortNotes([
+      note('a', 'a', new Date(2026, 9, 1)),
+      note('b', 'b', new Date(2026, 9, 3)),
+      note('c', 'c', new Date(2026, 9, 2)),
+    ]);
     expect(list.map((n) => n.id)).toEqual(['b', 'c', 'a']);
   });
 
   const notes = [
-    note('1', 'um', new Date(2026, 9, 3, 21, 24), { sceneId: 's1', sceneName: 'A carroça tombada' }),
-    note('2', 'dois', new Date(2026, 9, 3, 21, 20), { sceneId: 's1', sceneName: 'A carroça tombada', clue: true }),
+    note('1', 'um', new Date(2026, 9, 3, 21, 24), {
+      sceneId: 's1',
+      sceneName: 'A carroça tombada',
+    }),
+    note('2', 'dois', new Date(2026, 9, 3, 21, 20), {
+      sceneId: 's1',
+      sceneName: 'A carroça tombada',
+      clue: true,
+    }),
     note('3', 'três', new Date(2026, 9, 1, 22, 3)),
     note('4', 'quatro', new Date(2026, 8, 30, 18, 40)),
   ];
 
   it('lists "Todas as anotações", the discovered scenes and "Sem cena", each with its count (the clue counts)', () => {
-    const options = filterOptions(notes, [scene('s1', 'A carroça tombada'), scene('s2', 'A ponte do rio')]);
+    const options = filterOptions(notes, [
+      scene('s1', 'A carroça tombada'),
+      scene('s2', 'A ponte do rio'),
+    ]);
     expect(options.map((o) => `${o.label} ${o.count}`)).toEqual([
       'Todas as anotações 4',
       'A carroça tombada 2',

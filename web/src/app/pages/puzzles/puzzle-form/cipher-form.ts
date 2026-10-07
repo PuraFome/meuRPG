@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
@@ -28,7 +39,11 @@ const METHODS: readonly PickOption<CipherMethod>[] = [
   { value: 'keyword', title: 'Palavra-chave' },
 ];
 
-type Preview = { readonly status: 'idle' | 'loading' | 'ready' | 'error'; readonly text: string; readonly message: string };
+type Preview = {
+  readonly status: 'idle' | 'loading' | 'ready' | 'error';
+  readonly text: string;
+  readonly message: string;
+};
 
 /**
  * The form of the cipher (MR-038, RN-27, E10-12 state 3): the plain message, how its letters are swapped, and the scene clue the key lives
@@ -142,7 +157,10 @@ export class CipherForm implements OnInit {
   readonly patch = output<Partial<Draft>>();
 
   protected readonly preview = signal<Preview>({ status: 'idle', text: '', message: '' });
-  protected readonly clues = signal<{ readonly status: 'loading' | 'ready' | 'error'; readonly list: readonly ClueChoice[] }>({ status: 'loading', list: [] });
+  protected readonly clues = signal<{
+    readonly status: 'loading' | 'ready' | 'error';
+    readonly list: readonly ClueChoice[];
+  }>({ status: 'loading', list: [] });
 
   private lastKey = '';
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -189,7 +207,11 @@ export class CipherForm implements OnInit {
       }
     } catch (err) {
       if (ticket === this.ticket) {
-        this.preview.set({ status: 'error', text: '', message: puzzleErrorMessage(err, 'cifrar a mensagem') });
+        this.preview.set({
+          status: 'error',
+          text: '',
+          message: puzzleErrorMessage(err, 'cifrar a mensagem'),
+        });
       }
     }
   }

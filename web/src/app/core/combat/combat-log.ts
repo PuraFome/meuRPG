@@ -136,7 +136,10 @@ function damageText(d: CombatLogDamage): string {
       return `, ${d.amount} de dano descartado`;
     default: {
       // The master may apply another number than the dice made: only he is told both.
-      const other = d.rolledAmount !== undefined && d.rolledAmount !== d.amount ? ` (o dado deu ${d.rolledAmount})` : '';
+      const other =
+        d.rolledAmount !== undefined && d.rolledAmount !== d.amount
+          ? ` (o dado deu ${d.rolledAmount})`
+          : '';
       const half = d.half ? ' (metade)' : '';
       const failures =
         d.deathFailuresAdded > 0
@@ -218,10 +221,14 @@ function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: Po
   const slot = e.spell?.slot;
   const circle = slot ? ` (${circleLabel(slot.level)})` : '';
   const targets = e.spell?.targets ?? [];
-  const plain = targets.every((t) => t.darts === 0 && !t.save && t.outcome === AttackOutcome.UNSPECIFIED && !t.damage);
+  const plain = targets.every(
+    (t) => t.darts === 0 && !t.save && t.outcome === AttackOutcome.UNSPECIFIED && !t.damage,
+  );
   let out = ` conjura ${e.keyNamePt || 'uma magia'}${circle}`;
   if (targets.length > 0) {
-    out += plain ? ` ${listNames(targets.map(castTargetText))}` : `: ${targets.map(castTargetText).join('; ')}`;
+    out += plain
+      ? ` ${listNames(targets.map(castTargetText))}`
+      : `: ${targets.map(castTargetText).join('; ')}`;
   }
   if (e.spell?.concentrationEndedKey) {
     out += '. A concentração anterior acabou';
@@ -247,7 +254,12 @@ function clauses(e: CombatLogEntry, ctx: LogContext): string {
   return (spell.targets ?? [])
     .map((t, i) => {
       const label = t.targetLabel || 'alguém';
-      const w = effectWords(spell.effectKind, spell.effectConditionKey, t.effect?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+      const w = effectWords(
+        spell.effectKind,
+        spell.effectConditionKey,
+        t.effect?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
+        label,
+      );
       const verb = w.affected ? w.present : notAffectedPast(label);
       const text = `${subject(label, ctx)} ${verb}.`;
       return i === 0 ? text : upFirst(text);
@@ -256,7 +268,12 @@ function clauses(e: CombatLogEntry, ctx: LogContext): string {
 }
 
 function notAffectedPast(label: string): string {
-  return effectWords(SpellEffectKind.UNSPECIFIED, '', SpellEffectOutcome.NOT_AFFECTED, label).past.toLowerCase();
+  return effectWords(
+    SpellEffectKind.UNSPECIFIED,
+    '',
+    SpellEffectOutcome.NOT_AFFECTED,
+    label,
+  ).past.toLowerCase();
 }
 
 function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: PoolCard } {
@@ -275,7 +292,12 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
   const out = (spell.targets ?? []).map((t) => {
     const label = t.targetLabel || 'alguém';
     const fx = t.effect;
-    const w = effectWords(spell.effectKind, spell.effectConditionKey, fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+    const w = effectWords(
+      spell.effectKind,
+      spell.effectConditionKey,
+      fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
+      label,
+    );
     const prep = ctx.players.has(label) ? `em ${label}` : inThe(label);
     const facts: string[] = [];
     if (fx?.hitPointsBefore !== undefined) {
@@ -286,8 +308,12 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
     }
     const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
     const healed = fx?.healed !== undefined && w.affected ? `recupera ${fx.healed} PV` : '';
-    const reason = !w.affected && fx ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold) : '';
-    const result = healed || (w.affected ? w.present : `${w.present}${reason ? `: ${reason}` : ''}`);
+    const reason =
+      !w.affected && fx
+        ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold)
+        : '';
+    const result =
+      healed || (w.affected ? w.present : `${w.present}${reason ? `: ${reason}` : ''}`);
     return `${prep}${detail}: ${result}`;
   });
   return { text: ` conjura ${name} ${out.join('; ')}` };
@@ -309,7 +335,12 @@ function poolCard(e: CombatLogEntry): PoolCard | undefined {
   const rows: PoolCardRow[] = targets.map((t) => {
     const label = t.targetLabel || 'alguém';
     const fx = t.effect;
-    const w = effectWords(spell.effectKind, spell.effectConditionKey, fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+    const w = effectWords(
+      spell.effectKind,
+      spell.effectConditionKey,
+      fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
+      label,
+    );
     const hp = fx?.hitPointsBefore;
     const left = fx?.poolLeft;
     let math = '';
@@ -330,7 +361,10 @@ function poolCard(e: CombatLogEntry): PoolCard | undefined {
   });
   const roll = poolRollText(spell.poolRoll).replace(' · dado físico', '');
   const summary = `${roll} PV${spell.poolRoll.physical ? ', dado físico' : ''}. ${rows
-    .map((r) => `${r.label}${r.hitPoints ? ` (${r.hitPoints})` : ''} ${r.affected ? `${r.word.toLowerCase()}${r.math ? `, ${r.math}` : ''}` : 'não é afetado'}.`)
+    .map(
+      (r) =>
+        `${r.label}${r.hitPoints ? ` (${r.hitPoints})` : ''} ${r.affected ? `${r.word.toLowerCase()}${r.math ? `, ${r.math}` : ''}` : 'não é afetado'}.`,
+    )
     .join(' ')}`;
   return {
     roll,
@@ -338,7 +372,9 @@ function poolCard(e: CombatLogEntry): PoolCard | undefined {
     rows,
     note: 'A magia começa por quem tem menos PV e vai descontando do total; só afeta quem tem PV igual ou menor que o que sobra. Os PV de quem ficou assim não mudam: a condição não é ferimento.',
     slot: spell.slot ? `${e.actorLabel} gastou um espaço de ${circleLabel(spell.slot.level)}.` : '',
-    changeFor: rows.filter((r) => r.affected && !!condition).map((r) => ({ id: r.id, label: r.label })),
+    changeFor: rows
+      .filter((r) => r.affected && !!condition)
+      .map((r) => ({ id: r.id, label: r.label })),
     summary,
   };
 }
@@ -361,7 +397,9 @@ function deathSaveText(e: CombatLogEntry): string {
           ? 'falha'
           : 'sucesso';
   // The d20 is the master's and the character's own player's; the others read the outcome.
-  const roll = s.roll ? `rola o teste contra a morte: ${rollText(s.roll)}, ` : 'faz um teste contra a morte: ';
+  const roll = s.roll
+    ? `rola o teste contra a morte: ${rollText(s.roll)}, `
+    : 'faz um teste contra a morte: ';
   let out = ` ${roll}${word}`;
   if (s.outcome !== DeathSaveOutcome.REVIVED) {
     out += ` (${countsSentence(s.successes, s.failures)})`;
@@ -450,18 +488,36 @@ export function logLine(
         icon: 'flag',
         actor: '',
         text:
-          (encounterName ? `Combate iniciado: ${encounterName}` : 'Combate iniciado') + (ctx.theatre ? ', sem mapa (teatro da mente)' : ''),
+          (encounterName ? `Combate iniciado: ${encounterName}` : 'Combate iniciado') +
+          (ctx.theatre ? ', sem mapa (teatro da mente)' : ''),
       };
     case CombatLogKind.ATTACK:
       // A spell attack (Raio de Fogo) has the sparkles E6-15 draws for spells.
-      return { ...base, icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords', text: attackText(e) };
+      return {
+        ...base,
+        icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords',
+        text: attackText(e),
+      };
     case CombatLogKind.ACTION:
-      return { ...base, icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt', text: actionText(e) };
+      return {
+        ...base,
+        icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt',
+        text: actionText(e),
+      };
     case CombatLogKind.MOVED:
-      return { ...base, icon: ctx.theatre ? 'directions_run' : 'arrow_forward', text: ctx.theatre ? spentText(e) : movedText(e) };
+      return {
+        ...base,
+        icon: ctx.theatre ? 'directions_run' : 'arrow_forward',
+        text: ctx.theatre ? spentText(e) : movedText(e),
+      };
     case CombatLogKind.HIT_POINTS_ADJUSTED:
       // The server puts the NPC whose hit points changed in the target.
-      return { ...base, actor: e.actorLabel || e.targetLabel, icon: 'healing', text: hitPointsText(e) };
+      return {
+        ...base,
+        actor: e.actorLabel || e.targetLabel,
+        icon: 'healing',
+        text: hitPointsText(e),
+      };
     case CombatLogKind.REVEAL_CHANGED:
       return {
         ...base,
@@ -477,7 +533,11 @@ export function logLine(
     }
     case CombatLogKind.REACTION: {
       const slot = e.spell?.slot;
-      return { ...base, icon: 'shield', text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${circleLabel(slot.level)})` : ''}, com a reação` };
+      return {
+        ...base,
+        icon: 'shield',
+        text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${circleLabel(slot.level)})` : ''}, com a reação`,
+      };
     }
     case CombatLogKind.DEATH_SAVE:
       return { ...base, icon: 'heart_broken', text: deathSaveText(e) };
@@ -485,13 +545,22 @@ export function logLine(
       // The server puts the character in the target.
       return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'close', text: ' morreu' };
     case CombatLogKind.CONDITIONS_CHANGED:
-      return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'label', text: conditionsText(e) };
+      return {
+        ...base,
+        actor: e.targetLabel || e.actorLabel,
+        icon: 'label',
+        text: conditionsText(e),
+      };
     case CombatLogKind.TRAP_TRIGGERED:
       // A trap that fired is public: everyone reads the line (the dice stay with the master and the creature's player).
       return { ...base, icon: 'warning', actor: '', text: trapLogText(e.trap, ctx.master) };
     case CombatLogKind.TURN_PART_ENDED:
       // A member of a joint turn ended their part and the turn goes on.
-      return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };
+      return {
+        ...base,
+        icon: 'flag',
+        text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}`,
+      };
     case CombatLogKind.WILD_SHAPE:
       return { ...base, icon: 'pets', text: wildShapeText(e) };
     case CombatLogKind.OPPORTUNITY_OFFERED:
@@ -556,7 +625,9 @@ export function logGroups(
   ctx: LogContext = NO_CONTEXT,
 ): LogGroup[] {
   return rounds.map((r) => {
-    const lines = r.entries.map((e) => logLine(e, encounterName, ctx)).filter((l): l is LogLine => l !== null);
+    const lines = r.entries
+      .map((e) => logLine(e, encounterName, ctx))
+      .filter((l): l is LogLine => l !== null);
     if (r.round > 1) {
       lines.push({
         id: `round-${r.round}`,
@@ -571,7 +642,14 @@ export function logGroups(
       round: r.round,
       // Round 0 is before the combat begins: the monsters the master put in while it was being set up.
       title: r.round === 0 ? 'Antes do combate' : `Rodada ${r.round}`,
-      status: r.round === 0 ? (currentRound === 0 ? 'em preparação' : 'encerrada') : r.round >= currentRound ? 'em andamento' : 'encerrada',
+      status:
+        r.round === 0
+          ? currentRound === 0
+            ? 'em preparação'
+            : 'encerrada'
+          : r.round >= currentRound
+            ? 'em andamento'
+            : 'encerrada',
       lines,
     };
   });
@@ -601,11 +679,14 @@ export function undoLabel(e: CombatLogEntry): string {
     case CombatLogKind.ATTACK: {
       const target = e.targetLabel || 'alguém';
       const to = article(target) === 'a' ? 'à' : 'ao';
-      const damage = e.damage && e.damage.status !== PendingDamageStatus.AWAITING_ROLL && e.outcome !== AttackOutcome.MISS
-        ? ` (${e.damage.amount} de dano)`
-        : e.outcome === AttackOutcome.MISS
-          ? ' (errou)'
-          : '';
+      const damage =
+        e.damage &&
+        e.damage.status !== PendingDamageStatus.AWAITING_ROLL &&
+        e.outcome !== AttackOutcome.MISS
+          ? ` (${e.damage.amount} de dano)`
+          : e.outcome === AttackOutcome.MISS
+            ? ' (errou)'
+            : '';
       return `o ataque ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel} ${to} ${target}${damage}`;
     }
     case CombatLogKind.ACTION:
@@ -613,7 +694,10 @@ export function undoLabel(e: CombatLogEntry): string {
     case CombatLogKind.HIT_POINTS_ADJUSTED:
       return `o ajuste de PV de ${e.actorLabel || e.targetLabel}`;
     case CombatLogKind.SPELL_CAST:
-      return `a magia ${e.keyNamePt || ''} ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`.replace('  ', ' ');
+      return `a magia ${e.keyNamePt || ''} ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`.replace(
+        '  ',
+        ' ',
+      );
     case CombatLogKind.REACTION:
       return `a reação ${article(e.actorLabel) === 'a' ? 'da' : 'do'} ${e.actorLabel}`;
     case CombatLogKind.OPPORTUNITY_OFFERED:

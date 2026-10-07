@@ -15,7 +15,10 @@ const flat = (e: Element | null | undefined) => {
   }
   const copy = e.cloneNode(true) as Element;
   copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
-  return copy.textContent?.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return copy.textContent
+    ?.replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 const mira = stageNpc('s1', 'Mira', { portraitUrl: '/images/i1' });
@@ -27,9 +30,14 @@ describe('StagePlayer', () => {
   const dialogOpen = vi.fn();
 
   function setup(stage = [mira, capitao]) {
-    const state = new SceneState(() => Promise.resolve(playerScene([], stage)), () => false);
+    const state = new SceneState(
+      () => Promise.resolve(playerScene([], stage)),
+      () => false,
+    );
     state.apply(playerScene([], stage));
-    dialogOpen.mockReset().mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
+    dialogOpen
+      .mockReset()
+      .mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
     TestBed.configureTestingModule({
       providers: [
         { provide: MatDialog, useValue: { open: dialogOpen } },
@@ -67,17 +75,29 @@ describe('StagePlayer', () => {
     [2, [mira, capitao]],
     [3, [mira, capitao, aldo]],
     [4, [mira, capitao, aldo, ivo]],
-  ])('draws %i NPC(s) as a group named by who is on it, one figure each, whole names', (count, stage) => {
-    const { el } = setup(stage);
-    const group = el.querySelector('[role="group"]')!;
-    expect(group.getAttribute('aria-label')).toBe(`Em cena: ${stage.map((n) => n.name).join(count === 2 ? ' e ' : ', ').replace(/, ([^,]+)$/, ' e $1')}`);
-    expect(el.querySelector('.stage')?.getAttribute('data-count')).toBe(String(count));
-    expect(figures(el).map((f) => flat(f.querySelector('.stage__name')))).toEqual(stage.map((n) => n.name));
-  });
+  ])(
+    'draws %i NPC(s) as a group named by who is on it, one figure each, whole names',
+    (count, stage) => {
+      const { el } = setup(stage);
+      const group = el.querySelector('[role="group"]')!;
+      expect(group.getAttribute('aria-label')).toBe(
+        `Em cena: ${stage
+          .map((n) => n.name)
+          .join(count === 2 ? ' e ' : ', ')
+          .replace(/, ([^,]+)$/, ' e $1')}`,
+      );
+      expect(el.querySelector('.stage')?.getAttribute('data-count')).toBe(String(count));
+      expect(figures(el).map((f) => flat(f.querySelector('.stage__name')))).toEqual(
+        stage.map((n) => n.name),
+      );
+    },
+  );
 
   it('draws the hint, in a quiet line', () => {
     const { el } = setup();
-    expect(flat(el.querySelector('.stage__hint'))).toContain('Escolha um personagem para ver maior');
+    expect(flat(el.querySelector('.stage__hint'))).toContain(
+      'Escolha um personagem para ver maior',
+    );
   });
 
   it('puts the speaker in front: the base line, the bold name and "Fala agora" in words', () => {
@@ -97,7 +117,9 @@ describe('StagePlayer', () => {
     const img = el.querySelector<HTMLImageElement>('.fig__img')!;
     expect(img.getAttribute('src')).toBe('/images/i1/thumb');
     expect(img.getAttribute('alt')).toBe('');
-    expect(el.querySelector('app-stage-figure')?.getAttribute('aria-label')).toBe('Retrato de Mira');
+    expect(el.querySelector('app-stage-figure')?.getAttribute('aria-label')).toBe(
+      'Retrato de Mira',
+    );
     expect(el.querySelector('.fig__tile')).toBeNull();
   });
 
@@ -105,7 +127,9 @@ describe('StagePlayer', () => {
     const { el } = setup([aldo]);
     expect(el.querySelector('.fig__img')).toBeNull();
     expect(flat(el.querySelector('.fig__tile'))).toBe('AL');
-    expect(el.querySelector('app-stage-figure')?.getAttribute('aria-label')).toBe('Sem retrato: Aldo');
+    expect(el.querySelector('app-stage-figure')?.getAttribute('aria-label')).toBe(
+      'Sem retrato: Aldo',
+    );
   });
 
   it('falls back to the initials, with no broken image, when the portrait is a 404', async () => {
@@ -126,11 +150,16 @@ describe('StagePlayer', () => {
     expect(flat(el.querySelector('.stage__tag'))).toContain('Fala agora');
     state.apply(playerScene([], [{ ...capitao, speaking: true }]));
     await settle(fixture);
-    expect(figures(el).map((f) => flat(f.querySelector('.stage__name')))).toEqual(['Capitão Goblin']);
+    expect(figures(el).map((f) => flat(f.querySelector('.stage__name')))).toEqual([
+      'Capitão Goblin',
+    ]);
   });
 
-  it('is built for the master\'s scene too, without needing a character id', () => {
-    const state = new SceneState(() => Promise.resolve(masterScene()), () => true);
+  it("is built for the master's scene too, without needing a character id", () => {
+    const state = new SceneState(
+      () => Promise.resolve(masterScene()),
+      () => true,
+    );
     state.apply(masterScene([], [stageNpc('s1', 'Mira', { master: true })]));
     const fixture = TestBed.createComponent(StagePlayer);
     fixture.componentRef.setInput('state', state);
@@ -143,7 +172,10 @@ describe('StagePlayer', () => {
       const { el } = setup([mira, capitao]);
       figures(el)[1].click();
       expect(dialogOpen).toHaveBeenCalledTimes(1);
-      const [component, config] = dialogOpen.mock.calls[0] as [unknown, { data: { entryId: string }; ariaLabelledBy: string }];
+      const [component, config] = dialogOpen.mock.calls[0] as [
+        unknown,
+        { data: { entryId: string }; ariaLabelledBy: string },
+      ];
       expect(component).toBe(StageViewer);
       expect(config.data.entryId).toBe('s2');
       expect(config.ariaLabelledBy).toBe('stage-viewer-title');

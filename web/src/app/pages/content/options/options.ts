@@ -1,4 +1,14 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,10 +17,18 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type OptionSwitchEntry, TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import {
+  type OptionSwitchEntry,
+  TableContentKind,
+} from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient, contentErrorText } from '../../../core/content/content-client';
-import { CONTENT_NAV, type ContentNavKind, KIND_WORDS, navBySlug } from '../../../core/content/content-kinds';
+import {
+  CONTENT_NAV,
+  type ContentNavKind,
+  KIND_WORDS,
+  navBySlug,
+} from '../../../core/content/content-kinds';
 import { ContentWatcher } from '../../../core/content/content-watcher';
 import {
   OptionSwitchesState,
@@ -53,7 +71,15 @@ type Access =
  */
 @Component({
   selector: 'app-content-options',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, SelectField, SwitchField, TextField],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+    SelectField,
+    SwitchField,
+    TextField,
+  ],
   providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './options.html',
   styleUrl: './options.scss',
@@ -120,28 +146,51 @@ export class ContentOptions {
   });
   /** What the list draws: the races with their sub-races under them, the rest as they come. */
   protected readonly shown = computed(() =>
-    this.current().slug === 'races' ? nestRows(this.rows()) : this.rows().map((row) => ({ row, nested: false })),
+    this.current().slug === 'races'
+      ? nestRows(this.rows())
+      : this.rows().map((row) => ({ row, nested: false })),
   );
   protected readonly counter = computed(
-    () => counterText(this.current(), mainCount(this.options(), this.current())) + (['subclasses', 'races'].includes(this.current().slug) ? hiddenCounterText(this.current(), hiddenByParent(this.rowsAll())) : ''),
+    () =>
+      counterText(this.current(), mainCount(this.options(), this.current())) +
+      (['subclasses', 'races'].includes(this.current().slug)
+        ? hiddenCounterText(this.current(), hiddenByParent(this.rowsAll()))
+        : ''),
   );
   protected readonly subraces = computed(() => {
     const c = subraceCount(this.options());
     return this.current().slug === 'races' && c.total > 0 ? subraceCounterText(c) : '';
   });
   protected readonly subraceTotal = computed(() => subraceCount(this.options()).total);
-  protected readonly menuCounts = computed(() => new Map(CONTENT_NAV.map((n) => [n.slug, menuCount(this.options(), n)])));
-  protected readonly kindOptions = computed<SelectOption[]>(() => CONTENT_NAV.map((n) => ({ value: n.slug, label: `${n.plural} · ${this.menuCounts().get(n.slug)}` })));
+  protected readonly menuCounts = computed(
+    () => new Map(CONTENT_NAV.map((n) => [n.slug, menuCount(this.options(), n)])),
+  );
+  protected readonly kindOptions = computed<SelectOption[]>(() =>
+    CONTENT_NAV.map((n) => ({
+      value: n.slug,
+      label: `${n.plural} · ${this.menuCounts().get(n.slug)}`,
+    })),
+  );
   protected readonly searching = computed(() => this.query().trim() !== '');
   /** "Ligar todas" acts on what the list shows: with a search on, only on the rows found, and the buttons say so. */
-  protected readonly narrowed = computed(() => this.searching() || this.levelFilter() !== '' || this.classFilter() !== '');
-  protected readonly bulkSuffix = computed(() => (this.narrowed() ? ` (${this.rows().length})` : ''));
+  protected readonly narrowed = computed(
+    () => this.searching() || this.levelFilter() !== '' || this.classFilter() !== '',
+  );
+  protected readonly bulkSuffix = computed(() =>
+    this.narrowed() ? ` (${this.rows().length})` : '',
+  );
   /** "Ligar todas" and "Desligar todas" are off when they would change nothing in the rows in view. */
   protected readonly turnOnDisabled = computed(() => this.rows().every((o) => !o.off));
   protected readonly turnOffDisabled = computed(() => this.rows().every((o) => o.off));
-  protected readonly allWord = computed(() => (this.current().slug === 'backgrounds' ? 'todos' : 'todas'));
-  protected readonly onWord = computed(() => (this.current().slug === 'backgrounds' ? 'Ligado' : 'Ligada'));
-  protected readonly offWord = computed(() => (this.current().slug === 'backgrounds' ? 'Desligado' : 'Desligada'));
+  protected readonly allWord = computed(() =>
+    this.current().slug === 'backgrounds' ? 'todos' : 'todas',
+  );
+  protected readonly onWord = computed(() =>
+    this.current().slug === 'backgrounds' ? 'Ligado' : 'Ligada',
+  );
+  protected readonly offWord = computed(() =>
+    this.current().slug === 'backgrounds' ? 'Desligado' : 'Desligada',
+  );
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
@@ -174,11 +223,15 @@ export class ContentOptions {
         this.access.set({ status: 'not-master', campaignName: campaign.name });
         return;
       }
-      this.state = new OptionSwitchesState(this.client, id, (err) => contentErrorText(err, 'salvar'));
+      this.state = new OptionSwitchesState(this.client, id, (err) =>
+        contentErrorText(err, 'salvar'),
+      );
       this.stateSignal.set(this.state);
       this.access.set({ status: 'ok', campaignName: campaign.name });
       await this.state.load();
-      afterNextRender(() => this.title()?.nativeElement.focus({ preventScroll: true }), { injector: this.injector });
+      afterNextRender(() => this.title()?.nativeElement.focus({ preventScroll: true }), {
+        injector: this.injector,
+      });
     } catch (err) {
       this.access.set(
         ConnectError.from(err, Code.Unavailable).code === Code.NotFound
@@ -235,10 +288,15 @@ export class ContentOptions {
     this.classFilter.set(key);
     if (key && !this.classSpells().has(key)) {
       // The class's own spell list, as the server serves it to the master (the SRD's and the table's spells alike).
-      void this.spellsClient.list({ campaignId: this.campaignId(), classKey: key, pageSize: 400 }).then(
-        (res) => this.classSpells.update((m) => new Map(m).set(key, new Set(res.spells.map((s) => s.key)))),
-        () => this.classFilter.set(''),
-      );
+      void this.spellsClient
+        .list({ campaignId: this.campaignId(), classKey: key, pageSize: 400 })
+        .then(
+          (res) =>
+            this.classSpells.update((m) =>
+              new Map(m).set(key, new Set(res.spells.map((s) => s.key))),
+            ),
+          () => this.classFilter.set(''),
+        );
     }
   }
 
@@ -257,7 +315,9 @@ export class ContentOptions {
     }
     if (o.off && o.charactersUsing > 0) {
       const p = isMasculine(o.kind) ? 'o' : 'a';
-      return o.charactersUsing === 1 ? `A ficha que ${p} usa continua funcionando.` : `As fichas que ${p} usam continuam funcionando.`;
+      return o.charactersUsing === 1
+        ? `A ficha que ${p} usa continua funcionando.`
+        : `As fichas que ${p} usam continuam funcionando.`;
     }
     if (o.archived) {
       return 'Arquivada: os jogadores não a recebem.';
@@ -269,7 +329,9 @@ export class ContentOptions {
     if (o.kind === TableContentKind.SPELL) {
       return spellLevelLabel(o.level);
     }
-    return o.kind === TableContentKind.SUBRACE || o.kind === TableContentKind.SUBCLASS ? this.parentName(o) : '';
+    return o.kind === TableContentKind.SUBRACE || o.kind === TableContentKind.SUBCLASS
+      ? this.parentName(o)
+      : '';
   }
 
   private parentName(o: OptionSwitchEntry): string {
@@ -277,6 +339,8 @@ export class ContentOptions {
     if (!parent) {
       return '';
     }
-    return o.kind === TableContentKind.SUBRACE ? `Sub-raça de ${parent.namePt}` : `Subclasse de ${parent.namePt}`;
+    return o.kind === TableContentKind.SUBRACE
+      ? `Sub-raça de ${parent.namePt}`
+      : `Subclasse de ${parent.namePt}`;
   }
 }

@@ -52,19 +52,31 @@ export class TreasureSheet {
   private readonly sheet = injectSheet<{ point: MapPoint; mapName: string }, void>();
   protected readonly point = this.sheet.data.point;
   protected readonly inSheet = this.sheet.inSheet;
-  protected readonly subtitle = joinDots(['Tesouro', this.sheet.data.mapName ? `em ${this.sheet.data.mapName}` : ''].filter(Boolean));
+  protected readonly subtitle = joinDots(
+    ['Tesouro', this.sheet.data.mapName ? `em ${this.sheet.data.mapName}` : ''].filter(Boolean),
+  );
 
   protected close(): void {
     this.sheet.close();
   }
 }
 
-export function openTreasureSheet(dialog: MatDialog, bottomSheet: MatBottomSheet, point: MapPoint, mapName: string): Observable<void | undefined> {
-  return openSheet<TreasureSheet, { point: MapPoint; mapName: string }, void>(dialog, bottomSheet, TreasureSheet, {
-    data: { point, mapName },
-    ariaLabel: point.name,
-    labelledBy: 'treasure-t',
-  });
+export function openTreasureSheet(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  point: MapPoint,
+  mapName: string,
+): Observable<void | undefined> {
+  return openSheet<TreasureSheet, { point: MapPoint; mapName: string }, void>(
+    dialog,
+    bottomSheet,
+    TreasureSheet,
+    {
+      data: { point, mapName },
+      ariaLabel: point.name,
+      labelledBy: 'treasure-t',
+    },
+  );
 }
 
 /**
@@ -132,11 +144,18 @@ export class FoundTreasures {
   readonly points = input.required<readonly MapPoint[]>();
   readonly mapName = input('');
 
-  protected readonly found = computed(() => this.points().filter((p) => p.kind === MapPointKind.TREASURE && p.treasureFoundAt !== undefined));
+  protected readonly found = computed(() =>
+    this.points().filter(
+      (p) => p.kind === MapPointKind.TREASURE && p.treasureFoundAt !== undefined,
+    ),
+  );
 
   protected sub(p: MapPoint): string {
     const names = finders(p);
-    return joinDots(['Tesouro', names.length > 0 ? `encontrado por ${listNames(names)}` : 'encontrado']);
+    return joinDots([
+      'Tesouro',
+      names.length > 0 ? `encontrado por ${listNames(names)}` : 'encontrado',
+    ]);
   }
 
   protected open(p: MapPoint): void {

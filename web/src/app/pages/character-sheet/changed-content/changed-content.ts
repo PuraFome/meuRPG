@@ -86,6 +86,10 @@ export class ChangedContentNotice {
   protected readonly announcement = changeAnnouncement;
 
   protected open(change: ChangedContentVm): void {
-    openChangedContent(this.dialog, this.bottomSheet, { change, canEdit: this.canEdit(), skills: this.skills() });
+    openChangedContent(this.dialog, this.bottomSheet, {
+      change,
+      canEdit: this.canEdit(),
+      skills: this.skills(),
+    });
   }
 }

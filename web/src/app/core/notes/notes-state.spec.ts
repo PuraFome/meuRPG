@@ -28,7 +28,14 @@ describe('NotesState', () => {
 
   it('counts a clue that arrives through notes_changed as new and raises the notice', async () => {
     await state.refresh();
-    api.notes = [note('c1', 'Um brasão de lobo', AT(20), { clue: true, sceneId: 's1', sceneName: 'A carroça tombada' }), ...api.notes];
+    api.notes = [
+      note('c1', 'Um brasão de lobo', AT(20), {
+        clue: true,
+        sceneId: 's1',
+        sceneName: 'A carroça tombada',
+      }),
+      ...api.notes,
+    ];
     await state.refresh(true);
     expect(state.fresh().map((n) => n.id)).toEqual(['c1']);
     expect(state.notice()).toBe(true);
@@ -39,7 +46,11 @@ describe('NotesState', () => {
 
   it('does not count again what it already had, nor a note, nor the clues of a read that is not an announcement', async () => {
     await state.refresh();
-    api.notes = [note('c1', 'Pista', AT(20), { clue: true }), note('n3', 'Outra', AT(21)), ...api.notes];
+    api.notes = [
+      note('c1', 'Pista', AT(20), { clue: true }),
+      note('n3', 'Outra', AT(21)),
+      ...api.notes,
+    ];
     await state.refresh(false);
     expect(state.fresh()).toEqual([]);
     await state.refresh(true);
@@ -129,7 +140,10 @@ describe('NotesState', () => {
     expect(state.isWriting('n1')).toBe(false);
     expect(api.calls.filter((c) => c.startsWith('update'))).toHaveLength(1);
     // Another note is not blocked.
-    const both = await Promise.all([state.update('n1', { text: 'C' }), state.update('n2', { text: 'D' })]);
+    const both = await Promise.all([
+      state.update('n1', { text: 'C' }),
+      state.update('n2', { text: 'D' }),
+    ]);
     expect(both.every((n) => n !== null)).toBe(true);
   });
 

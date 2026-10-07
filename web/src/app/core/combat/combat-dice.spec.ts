@@ -11,7 +11,15 @@ import {
 } from './combat-dice';
 
 function roll(over: Partial<DiceRoll>): DiceRoll {
-  return { diceCount: 1, diceSides: 20, faces: [], modifier: 0, total: 0, physical: false, ...over } as DiceRoll;
+  return {
+    diceCount: 1,
+    diceSides: 20,
+    faces: [],
+    modifier: 0,
+    total: 0,
+    physical: false,
+    ...over,
+  } as DiceRoll;
 }
 
 describe('the dice formula', () => {
@@ -29,7 +37,9 @@ describe('the dice formula', () => {
   });
 
   it('writes a typed roll without the dice', () => {
-    expect(rollFormula(roll({ faces: [16], modifier: 5, total: 21, physical: true }))).toBe('16 + 5 = 21');
+    expect(rollFormula(roll({ faces: [16], modifier: 5, total: 21, physical: true }))).toBe(
+      '16 + 5 = 21',
+    );
     expect(typedTotal(16, 5)).toBe('16 + 5 = 21');
     const typed = roll({ diceCount: 1, diceSides: 8, modifier: 3, total: 9, physical: true });
     expect(damageFormula(typed, 'cortante')).toBe('6 + 3 = 9 de dano cortante');
@@ -60,9 +70,19 @@ describe('a typed roll', () => {
 });
 
 describe('a roll in a sentence', () => {
-  it('writes the app\'s roll with its dice and a typed d20 as the number it showed', () => {
-    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [14], modifier: 0, total: 14 }))).toBe('1d20 (14) = 14');
-    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 0, total: 1, physical: true }))).toBe('1 · dado físico');
-    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 5, total: 21, physical: true }))).toBe('16 + 5 = 21 · dado físico');
+  it("writes the app's roll with its dice and a typed d20 as the number it showed", () => {
+    expect(
+      rollText(roll({ diceCount: 1, diceSides: 20, faces: [14], modifier: 0, total: 14 })),
+    ).toBe('1d20 (14) = 14');
+    expect(
+      rollText(
+        roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 0, total: 1, physical: true }),
+      ),
+    ).toBe('1 · dado físico');
+    expect(
+      rollText(
+        roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 5, total: 21, physical: true }),
+      ),
+    ).toBe('16 + 5 = 21 · dado físico');
   });
 });

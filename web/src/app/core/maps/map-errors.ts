@@ -73,22 +73,28 @@ export type EditorCall =
   | 'point';
 
 /** What a full gallery means for the fog: it needs a copy of the image. */
-export const GALLERY_FULL = 'A galeria da campanha está cheia: apague uma imagem para ligar a névoa.';
+export const GALLERY_FULL =
+  'A galeria da campanha está cheia: apague uma imagem para ligar a névoa.';
 
 /** What a full gallery means for a new image: it needs a copy of it. */
-export const IMAGE_GALLERY_FULL = 'A galeria da campanha está cheia: apague uma imagem para usar esta no mapa.';
+export const IMAGE_GALLERY_FULL =
+  'A galeria da campanha está cheia: apague uma imagem para usar esta no mapa.';
 
 /** The map's point limit (`CreateMapPoint`). */
 export const POINTS_FULL = 'O mapa chegou ao limite de 200 pontos. Apague um para pôr outro.';
 
 const BLOCKED_TEXT: Readonly<Record<number, string>> = {
   [MapBlockedReason.NO_GRID]: 'Defina a grade para pintar e ligar a névoa.',
-  [MapBlockedReason.COMBAT_RUNNING]: 'Há um combate neste mapa: a grade e a imagem só mudam depois dele.',
-  [MapBlockedReason.TREASURE_CONVERTED]: 'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.',
+  [MapBlockedReason.COMBAT_RUNNING]:
+    'Há um combate neste mapa: a grade e a imagem só mudam depois dele.',
+  [MapBlockedReason.TREASURE_CONVERTED]:
+    'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.',
   [MapBlockedReason.TREASURE_FOUND]: 'Esse tesouro foi encontrado. Desmarque antes de apagar.',
 };
 
-const PROFILES: Readonly<Record<EditorCall, { blocked: readonly MapBlockedReason[]; exhausted?: string }>> = {
+const PROFILES: Readonly<
+  Record<EditorCall, { blocked: readonly MapBlockedReason[]; exhausted?: string }>
+> = {
   paint: { blocked: [MapBlockedReason.NO_GRID] },
   grid: { blocked: [MapBlockedReason.COMBAT_RUNNING] },
   image: { blocked: [MapBlockedReason.COMBAT_RUNNING], exhausted: IMAGE_GALLERY_FULL },

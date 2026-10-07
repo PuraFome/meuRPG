@@ -5,7 +5,8 @@ import type { ImageRun } from '../../core/images/imagegen-run';
 
 /** The words that go under "Cancelar" / "Parar de esperar" for each moment, said in the footer by the dialog. */
 export const WAIT_NOTES = {
-  sending: 'Se você cancelar agora, o pedido é parado e a vaga do mês volta, a não ser que ele já tenha saído.',
+  sending:
+    'Se você cancelar agora, o pedido é parado e a vaga do mês volta, a não ser que ele já tenha saído.',
   waiting:
     'Se o pedido ainda não saiu do servidor, a vaga do mês volta. Se já saiu, o Google já o recebeu: a vaga continua gasta e a imagem, se chegar, vai para a galeria.',
   canceling: 'Cancelando o pedido…',

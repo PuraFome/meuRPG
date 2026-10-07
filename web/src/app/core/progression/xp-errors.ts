@@ -96,10 +96,13 @@ export function xpErrorMessage(err: unknown, what = 'fazer isso'): string {
   }
   return describeConnectError(err, {
     [Code.InvalidArgument]: `Não deu para ${what}: confira o motivo e o valor e tente de novo.`,
-    [Code.NotFound]: 'Essa campanha não existe mais, ou você não faz parte dela. Recarregue a página.',
+    [Code.NotFound]:
+      'Essa campanha não existe mais, ou você não faz parte dela. Recarregue a página.',
     [Code.PermissionDenied]: 'Só o mestre da campanha pode fazer isso.',
-    [Code.ResourceExhausted]: 'A campanha já tem 100 marcos. Remova um marco planejado para escrever outro.',
-    [Code.Aborted]: 'O XP mudou enquanto você agia. A tela foi atualizada; confira e tente de novo.',
+    [Code.ResourceExhausted]:
+      'A campanha já tem 100 marcos. Remova um marco planejado para escrever outro.',
+    [Code.Aborted]:
+      'O XP mudou enquanto você agia. A tela foi atualizada; confira e tente de novo.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });
 }

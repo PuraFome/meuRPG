@@ -56,8 +56,16 @@ const BANDS: Record<GenerateBand, EncounterBand> = {
 export class EncountersClient {
   private readonly client = createClient(EncounterService, inject(CONNECT_TRANSPORT));
 
-  async evaluate(campaignId: string, entries: readonly MonsterGroupSpec[], extraParty: readonly PartyNpcSpec[]): Promise<EncounterEvaluation> {
-    const res = await this.client.evaluateEncounter({ campaignId, entries: entries.map(toGroup), extraParty: extraParty.map(toNpc) });
+  async evaluate(
+    campaignId: string,
+    entries: readonly MonsterGroupSpec[],
+    extraParty: readonly PartyNpcSpec[],
+  ): Promise<EncounterEvaluation> {
+    const res = await this.client.evaluateEncounter({
+      campaignId,
+      entries: entries.map(toGroup),
+      extraParty: extraParty.map(toNpc),
+    });
     return need(res.evaluation, 'EvaluateEncounter');
   }
 
@@ -69,13 +77,24 @@ export class EncountersClient {
     seed: number,
     extraParty: readonly PartyNpcSpec[],
   ): Promise<{ readonly evaluation: EncounterEvaluation; readonly seed: number }> {
-    const res = await this.client.generateEncounter({ campaignId, band: BANDS[band], creatureType, seed, extraParty: extraParty.map(toNpc) });
+    const res = await this.client.generateEncounter({
+      campaignId,
+      band: BANDS[band],
+      creatureType,
+      seed,
+      extraParty: extraParty.map(toNpc),
+    });
     return { evaluation: need(res.evaluation, 'GenerateEncounter'), seed: res.seed };
   }
 
   /** "Trocar criatura": the creatures with the same XP (the same type when one was chosen). */
-  async swaps(campaignId: string, creatureKey: string, creatureType: string): Promise<readonly CreatureSummary[]> {
-    return (await this.client.listEncounterSwaps({ campaignId, creatureKey, creatureType })).creatures;
+  async swaps(
+    campaignId: string,
+    creatureKey: string,
+    creatureType: string,
+  ): Promise<readonly CreatureSummary[]> {
+    return (await this.client.listEncounterSwaps({ campaignId, creatureKey, creatureType }))
+      .creatures;
   }
 
   async save(
@@ -83,18 +102,32 @@ export class EncountersClient {
     mapPointId: string,
     encounter: SavedEncounter,
     extraParty: readonly PartyNpcSpec[],
-  ): Promise<{ readonly evaluation: EncounterEvaluation | undefined; readonly updatedAt: Date | undefined }> {
+  ): Promise<{
+    readonly evaluation: EncounterEvaluation | undefined;
+    readonly updatedAt: Date | undefined;
+  }> {
     const res = await this.client.saveBattleEncounter({
       campaignId,
       mapPointId,
       encounter: toBattle(encounter),
       extraParty: extraParty.map(toNpc),
     });
-    return { evaluation: res.evaluation, updatedAt: res.updatedAt ? new Date(Number(res.updatedAt.seconds) * 1000) : undefined };
+    return {
+      evaluation: res.evaluation,
+      updatedAt: res.updatedAt ? new Date(Number(res.updatedAt.seconds) * 1000) : undefined,
+    };
   }
 
-  async get(campaignId: string, mapPointId: string, extraParty: readonly PartyNpcSpec[] = []): Promise<BattleRead> {
-    const res = await this.client.getBattleEncounter({ campaignId, mapPointId, extraParty: extraParty.map(toNpc) });
+  async get(
+    campaignId: string,
+    mapPointId: string,
+    extraParty: readonly PartyNpcSpec[] = [],
+  ): Promise<BattleRead> {
+    const res = await this.client.getBattleEncounter({
+      campaignId,
+      mapPointId,
+      extraParty: extraParty.map(toNpc),
+    });
     return {
       encounter: res.encounter ? fromBattle(res.encounter) : null,
       evaluation: res.evaluation ?? null,
@@ -120,13 +153,25 @@ function toNpc(n: PartyNpcSpec): { characterId: string; name: string; level: num
   return { characterId: n.characterId, name: n.name, level: n.level };
 }
 
-function toBattle(e: SavedEncounter): { monsters: ReturnType<typeof toGroup>[]; hitPoints: MonsterHitPoints; hidden: boolean } {
-  return { monsters: e.monsters.map(toGroup), hitPoints: e.hp === 'rolled' ? MonsterHitPoints.ROLLED : MonsterHitPoints.AVERAGE, hidden: e.hidden };
+function toBattle(e: SavedEncounter): {
+  monsters: ReturnType<typeof toGroup>[];
+  hitPoints: MonsterHitPoints;
+  hidden: boolean;
+} {
+  return {
+    monsters: e.monsters.map(toGroup),
+    hitPoints: e.hp === 'rolled' ? MonsterHitPoints.ROLLED : MonsterHitPoints.AVERAGE,
+    hidden: e.hidden,
+  };
 }
 
 function fromBattle(b: BattleEncounter): SavedEncounter {
   return {
-    monsters: b.monsters.map((m) => ({ creatureKey: m.creatureKey, count: m.count || 1, name: m.name })),
+    monsters: b.monsters.map((m) => ({
+      creatureKey: m.creatureKey,
+      count: m.count || 1,
+      name: m.name,
+    })),
     // Unset is the average, and unset hidden is hidden (encounters.proto).
     hp: b.hitPoints === MonsterHitPoints.ROLLED ? 'rolled' : 'average',
     hidden: b.hidden ?? true,

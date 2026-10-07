@@ -11,4 +11,10 @@ export interface StartPreview {
   readonly message: string;
 }
 
-export const NO_PREVIEW: StartPreview = { status: 'idle', start: undefined, moves: 0, solvable: true, message: '' };
+export const NO_PREVIEW: StartPreview = {
+  status: 'idle',
+  start: undefined,
+  moves: 0,
+  solvable: true,
+  message: '',
+};

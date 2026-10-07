@@ -1,6 +1,11 @@
 import { create } from '@bufbuild/protobuf';
 
-import { AttackOutcome, PendingDamageStatus, SaveOutcome, TrapFiringSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  AttackOutcome,
+  PendingDamageStatus,
+  SaveOutcome,
+  TrapFiringSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { TrapActivitySchema, TrapSearchSkill } from '../../../gen/meurpg/play/v1/traps_pb';
 import { activityLines, fallNote, trapLogText } from './trap-log';
 
@@ -27,7 +32,9 @@ describe('trap log', () => {
     expect(trapLogText(firing, true)).toContain('esperando você aplicar');
     expect(text).toContain('falhou no teste');
     expect(text).not.toMatch(/CD/);
-    expect(trapLogText(create(TrapFiringSchema, { name: 'X' }), false)).toBe('A armadilha X foi disparada. Ninguém estava na área.');
+    expect(trapLogText(create(TrapFiringSchema, { name: 'X' }), false)).toBe(
+      'A armadilha X foi disparada. Ninguém estava na área.',
+    );
   });
 
   it('tells the player what happened to their own character and whether the damage waits', () => {
@@ -43,16 +50,30 @@ describe('trap log', () => {
     const note = fallNote(firing, 'c1', 'Lobo atroz 1')!;
     expect(note.title).toBe('O Lobo atroz 1 caiu na armadilha Fosso escondido.');
     expect(note.waiting).toBe(true);
-    expect(fallNote(firing, 'c1', 'Nanquim')!.title).toBe('O Nanquim caiu na armadilha Fosso escondido.');
-    expect(fallNote(firing, 'c1', 'Cobra 2')!.title).toBe('A Cobra 2 caiu na armadilha Fosso escondido.');
+    expect(fallNote(firing, 'c1', 'Nanquim')!.title).toBe(
+      'O Nanquim caiu na armadilha Fosso escondido.',
+    );
+    expect(fallNote(firing, 'c1', 'Cobra 2')!.title).toBe(
+      'A Cobra 2 caiu na armadilha Fosso escondido.',
+    );
   });
 
   it('matches the caught by combatant: a familiar and its owner each get their own line', () => {
     const both = create(TrapFiringSchema, {
       name: 'Fosso',
       caught: [
-        { targetId: 'owner', targetLabel: 'Pensantus', characterId: 'p', damages: [{ amount: 4, damageTypePt: 'concussão', status: PendingDamageStatus.ROLLED }] },
-        { targetId: 'raven', targetLabel: 'Nanquim', characterId: 'p', damages: [{ amount: 1, damageTypePt: 'concussão', status: PendingDamageStatus.APPLIED }] },
+        {
+          targetId: 'owner',
+          targetLabel: 'Pensantus',
+          characterId: 'p',
+          damages: [{ amount: 4, damageTypePt: 'concussão', status: PendingDamageStatus.ROLLED }],
+        },
+        {
+          targetId: 'raven',
+          targetLabel: 'Nanquim',
+          characterId: 'p',
+          damages: [{ amount: 1, damageTypePt: 'concussão', status: PendingDamageStatus.APPLIED }],
+        },
       ],
     });
     expect(fallNote(both, 'owner')!.detail).toContain('4 de concussão');
@@ -63,15 +84,33 @@ describe('trap log', () => {
   it('writes the search and notice lines of the activity', () => {
     const search = create(TrapActivitySchema, {
       id: 's',
-      search: { characterName: 'Brisa', skill: TrapSearchSkill.INVESTIGATION, roll: { diceCount: 1, diceSides: 20, faces: [13], modifier: 4, total: 17 }, foundNames: ['Fosso escondido'] },
+      search: {
+        characterName: 'Brisa',
+        skill: TrapSearchSkill.INVESTIGATION,
+        roll: { diceCount: 1, diceSides: 20, faces: [13], modifier: 4, total: 17 },
+        foundNames: ['Fosso escondido'],
+      },
     });
     const [line] = activityLines(search, true);
     expect(line.actor).toBe('Brisa');
     expect(line.text).toContain('procurou armadilhas (Investigação)');
     expect(line.text).toContain('achou a armadilha Fosso escondido');
-    const none = create(TrapActivitySchema, { id: 'n', search: { characterName: 'Pensantus', skill: TrapSearchSkill.PERCEPTION, roll: { diceCount: 1, diceSides: 20, faces: [6], total: 6 } } });
+    const none = create(TrapActivitySchema, {
+      id: 'n',
+      search: {
+        characterName: 'Pensantus',
+        skill: TrapSearchSkill.PERCEPTION,
+        roll: { diceCount: 1, diceSides: 20, faces: [6], total: 6 },
+      },
+    });
     expect(activityLines(none, false)[0].text).toContain('não achou nada');
-    const notice = create(TrapActivitySchema, { id: 'q', notice: { characterNames: ['Sálvia'], trapName: 'Fosso escondido' } });
-    expect(activityLines(notice, false)[0]).toMatchObject({ actor: 'Sálvia', text: ' notou a armadilha Fosso escondido ao passar' });
+    const notice = create(TrapActivitySchema, {
+      id: 'q',
+      notice: { characterNames: ['Sálvia'], trapName: 'Fosso escondido' },
+    });
+    expect(activityLines(notice, false)[0]).toMatchObject({
+      actor: 'Sálvia',
+      text: ' notou a armadilha Fosso escondido ao passar',
+    });
   });
 });

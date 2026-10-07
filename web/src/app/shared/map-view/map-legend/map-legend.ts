@@ -81,7 +81,9 @@ export class MapLegend {
   /** "Tokens" above the names, even where the states are not listed (the editor, painting). */
   readonly tokensTitle = input(false);
   /** The letter of a token, as the map writes it (`mapTokenInitial`: "G2", "C"). */
-  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(null);
+  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(
+    null,
+  );
 
   private has(kind: number): boolean {
     const points = this.points();
@@ -89,14 +91,28 @@ export class MapLegend {
   }
   protected readonly showBattle = computed(() => this.has(1));
   /** A generated dungeon's stairs (the point says so: `stairs`) are named for themselves, never as "Submapa". */
-  protected readonly showSubmap = computed(() => this.points() === null || this.points()!.some((p) => p.kind === 2 && !p.stairs));
-  protected readonly showStairUp = computed(() => this.points() !== null && this.points()!.some((p) => p.stairs === 1));
-  protected readonly showStairDown = computed(() => this.points() !== null && this.points()!.some((p) => p.stairs === 2));
-  protected readonly showScene = computed(() => this.points() === null || this.points()!.some((p) => p.kind === 3 || p.kind === 0));
+  protected readonly showSubmap = computed(
+    () => this.points() === null || this.points()!.some((p) => p.kind === 2 && !p.stairs),
+  );
+  protected readonly showStairUp = computed(
+    () => this.points() !== null && this.points()!.some((p) => p.stairs === 1),
+  );
+  protected readonly showStairDown = computed(
+    () => this.points() !== null && this.points()!.some((p) => p.stairs === 2),
+  );
+  protected readonly showScene = computed(
+    () => this.points() === null || this.points()!.some((p) => p.kind === 3 || p.kind === 0),
+  );
   /** The two states belong to the three plain kinds: a trap, a treasure and a light have their own marks in the pins' legend. */
-  private readonly plain = computed(() => (this.points() ?? []).filter((p) => p.kind <= 3 && !p.stairs));
-  protected readonly showRevealed = computed(() => this.states() && (this.points() === null || this.plain().some((p) => !pointHidden(p))));
-  protected readonly showHidden = computed(() => this.states() && (this.points() === null || this.plain().some((p) => pointHidden(p))));
+  private readonly plain = computed(() =>
+    (this.points() ?? []).filter((p) => p.kind <= 3 && !p.stairs),
+  );
+  protected readonly showRevealed = computed(
+    () => this.states() && (this.points() === null || this.plain().some((p) => !pointHidden(p))),
+  );
+  protected readonly showHidden = computed(
+    () => this.states() && (this.points() === null || this.plain().some((p) => pointHidden(p))),
+  );
 
   protected readonly key = tokenKey;
   private readonly all = computed(() => this.tokens());

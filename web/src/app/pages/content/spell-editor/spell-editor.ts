@@ -1,8 +1,23 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { AffectedCharacter, TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import type {
+  AffectedCharacter,
+  TableEntry,
+} from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
@@ -53,7 +68,19 @@ export interface EditorSaved {
  */
 @Component({
   selector: 'app-spell-editor',
-  imports: [CheckRow, EditorAlerts, EditorBar, PlayersSwitch, EntryRead, MatButtonModule, MatIconModule, Segmented, SelectField, SwitchField, TextField],
+  imports: [
+    CheckRow,
+    EditorAlerts,
+    EditorBar,
+    PlayersSwitch,
+    EntryRead,
+    MatButtonModule,
+    MatIconModule,
+    Segmented,
+    SelectField,
+    SwitchField,
+    TextField,
+  ],
   templateUrl: './spell-editor.html',
   styleUrl: './spell-editor.scss',
 })
@@ -97,9 +124,14 @@ export class SpellEditor {
   protected readonly attackOptions: SelectOption[] = [...ATTACK_OPTIONS];
   protected readonly successOptions: SelectOption[] = [...SAVE_SUCCESS_OPTIONS];
   /** The abilities and the damage types are the server's (`Content`), named as it names them. */
-  protected readonly abilityOptions = computed<SelectOption<number>[]>(() => this.catalog().abilities.map((a) => ({ value: a.ability as number, label: a.name })));
+  protected readonly abilityOptions = computed<SelectOption<number>[]>(() =>
+    this.catalog().abilities.map((a) => ({ value: a.ability as number, label: a.name })),
+  );
   protected readonly damageTypes = computed<SelectOption[]>(() => [...this.catalog().damageTypes]);
-  protected readonly timeSelect: SelectOption[] = TIME_OPTIONS.map((t) => ({ value: t.value, label: t.label }));
+  protected readonly timeSelect: SelectOption[] = TIME_OPTIONS.map((t) => ({
+    value: t.value,
+    label: t.label,
+  }));
 
   protected readonly levels = computed<SelectOption<number>[]>(() => {
     // A spell never crosses between truque and leveled: sheets keep them in different lists (the server says `immutable`).
@@ -112,7 +144,9 @@ export class SpellEditor {
     }));
   });
   /** What a player reads, written by the same function as the player's page, from the entry the form would send. */
-  protected readonly preview = computed(() => previewRead({ case: 'tableSpell', value: draftToSpell(this.draft()) }, this.catalog().nameOf));
+  protected readonly preview = computed(() =>
+    previewRead({ case: 'tableSpell', value: draftToSpell(this.draft()) }, this.catalog().nameOf),
+  );
   protected readonly previewName = computed(() => this.draft().name.trim() || 'Nova magia');
   protected readonly sizeText = computed(() => sizeLabel(this.draft().shape));
   protected readonly moreText = computed(() => moreLabel(this.draft().level));
@@ -158,7 +192,10 @@ export class SpellEditor {
     this.patch({ classKeys: on ? [...d.classKeys, key] : d.classKeys.filter((k) => k !== key) });
   }
 
-  protected setCount(text: string, field: 'count' | 'perSlot' | 'timeAmount' | 'durationAmount'): void {
+  protected setCount(
+    text: string,
+    field: 'count' | 'perSlot' | 'timeAmount' | 'durationAmount',
+  ): void {
     const n = Number(text.trim());
     this.patch({ [field]: Number.isInteger(n) && n >= 0 ? n : 0 } as Partial<SpellDraft>);
   }
@@ -174,7 +211,10 @@ export class SpellEditor {
       return;
     }
     const body: EntryBody = { case: 'tableSpell', value: draftToSpell(this.draft()) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
+    const res = await this.saver.run(
+      () => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)),
+      this.known,
+    );
     if (res) {
       this.dirty.set(false);
       this.saved.emit(res);
@@ -186,7 +226,9 @@ export class SpellEditor {
         if (first) {
           focusField(this.host.nativeElement, first);
         } else {
-          this.host.nativeElement.querySelector<HTMLElement>('[role="alert"]')?.scrollIntoView({ block: 'center' });
+          this.host.nativeElement
+            .querySelector<HTMLElement>('[role="alert"]')
+            ?.scrollIntoView({ block: 'center' });
         }
       },
       { injector: this.injector },

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 
 import type { DoorSquare, MapLayers } from '../../core/maps/layers';
 import { DOOR_NAME } from './door-mark';
@@ -78,7 +86,12 @@ export class DoorPicks {
   }
 
   protected onKey(event: KeyboardEvent, index: number): void {
-    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
     if (step === 0) {
       return;
     }

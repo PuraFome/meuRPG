@@ -76,7 +76,9 @@ export class PartyNpcSheet {
     const npc = this.data.npcs.find((n) => n.id === id);
     return npc ? { characterId: npc.id, name: '', level: this.level(), label: npc.name } : null;
   });
-  private readonly measureKey = computed(() => `${this.pick()}|${this.level()}|${this.candidate() !== null}`);
+  private readonly measureKey = computed(
+    () => `${this.pick()}|${this.level()}|${this.candidate() !== null}`,
+  );
   protected readonly before = computed(() => this.line(this.data.before));
   protected readonly after = computed(() => this.line(this.preview()));
 
@@ -90,9 +92,15 @@ export class PartyNpcSheet {
     });
   }
 
-  private line(ev: EncounterEvaluation | null): { low: string; moderate: string; high: string } | null {
+  private line(
+    ev: EncounterEvaluation | null,
+  ): { low: string; moderate: string; high: string } | null {
     return ev?.budget
-      ? { low: formatInt(ev.budget.low), moderate: formatInt(ev.budget.moderate), high: formatInt(ev.budget.high) }
+      ? {
+          low: formatInt(ev.budget.low),
+          moderate: formatInt(ev.budget.moderate),
+          high: formatInt(ev.budget.high),
+        }
       : null;
   }
 

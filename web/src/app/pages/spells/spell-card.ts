@@ -13,7 +13,12 @@ import { spellSubtitle } from '../../shared/spell-details/spell-details-format';
 export type SpellCardState =
   | { readonly status: 'loading'; readonly namePt: string }
   /** `canRetry` is false for a spell that is not there (or not for this person): the sentence says so and there is nothing to try again. */
-  | { readonly status: 'error'; readonly namePt: string; readonly message: string; readonly canRetry: boolean }
+  | {
+      readonly status: 'error';
+      readonly namePt: string;
+      readonly message: string;
+      readonly canRetry: boolean;
+    }
   | { readonly status: 'ready'; readonly details: SpellDetailsVm };
 
 /**
@@ -48,7 +53,10 @@ export class SpellCard {
     if (!d) {
       return '';
     }
-    const classes = (d.classKeys ?? []).map(this.className()).filter((n) => n !== '').join(', ');
+    const classes = (d.classKeys ?? [])
+      .map(this.className())
+      .filter((n) => n !== '')
+      .join(', ');
     return joinDots([spellSubtitle(d), classes].filter((p) => p !== ''));
   });
   protected readonly english = computed(() => {
