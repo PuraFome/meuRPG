@@ -1,0 +1,85 @@
+# Filebeat for MeuRPG's API logs. The API writes one JSON object per line
+# (the contract: the backend log contract, backend/internal/platform/logging). Filebeat only parses the line into `json`;
+# the ingest pipeline `meurpg-logs` (setup/pipeline.json) maps it to ECS.
+#
+# Two sources, same pipeline:
+#   (a) the `api` service of the Docker Compose project meurpg-local (autodiscover, by label);
+#   (b) the native stack's files ~/.meurpg/run/api.log and ~/.meurpg/run-<port>/api.log.
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: false
+      labels.dedot: true
+      templates:
+        - condition:
+            and:
+              - equals:
+                  docker.container.labels.com_docker_compose_project: meurpg-local
+              - equals:
+                  docker.container.labels.com_docker_compose_service: api
+          config:
+            - type: filestream
+              id: meurpg-api-${data.docker.container.id}
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log
+              # Small files are fine too (the default fingerprint needs 1 KiB before it starts).
+              prospector.scanner.fingerprint.enabled: false
+              file_identity.native: ~
+              parsers:
+                - container:
+                    stream: all
+                    format: docker
+                - ndjson:
+                    target: json
+                    add_error_key: true
+              processors:
+                - add_fields:
+                    target: labels
+                    fields:
+                      stack: docker
+
+filebeat.inputs:
+  - type: filestream
+    id: meurpg-api-native
+    paths:
+      - /native/run/api.log
+      - /native/run-*/api.log
+    prospector.scanner.fingerprint.enabled: false
+    prospector.scanner.check_interval: 5s
+    file_identity.native: ~
+    parsers:
+      - ndjson:
+          target: json
+          add_error_key: true
+    processors:
+      - add_fields:
+          target: labels
+          fields:
+            stack: native
+
+processors:
+  # Data streams only accept `create`.
+  - add_fields:
+      target: "@metadata"
+      fields:
+        op_type: create
+  - drop_fields:
+      ignore_missing: true
+      fields: ["docker", "agent.ephemeral_id", "agent.id", "ecs"]
+
+# The data stream, its template, the ILM policy and the pipeline belong to the setup service.
+setup.template.enabled: false
+setup.ilm.enabled: false
+
+output.elasticsearch:
+  hosts: ["https://es01:9200"]
+  username: meurpg_filebeat
+  password: "${FILEBEAT_PASSWORD}"
+  ssl.certificate_authorities: ["/certs/ca/ca.crt"]
+  index: logs-meurpg-default
+  pipeline: meurpg-logs
+
+logging.level: info
+logging.to_stderr: true
+http.enabled: false

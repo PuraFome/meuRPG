@@ -1,0 +1,97 @@
+{
+  "index_patterns": ["logs-meurpg-*"],
+  "data_stream": {},
+  "priority": 500,
+  "_meta": { "description": "MeuRPG API logs (ECS). Pipeline: meurpg-logs. Retention: ILM policy meurpg-logs (14 days)." },
+  "template": {
+    "settings": {
+      "index.number_of_shards": 1,
+      "index.number_of_replicas": 0,
+      "index.lifecycle.name": "meurpg-logs",
+      "index.default_pipeline": "meurpg-logs",
+      "index.mapping.ignore_malformed": true,
+      "index.mapping.total_fields.limit": 1000
+    },
+    "mappings": {
+      "dynamic": true,
+      "dynamic_templates": [
+        {
+          "meurpg_strings_are_keywords": {
+            "path_match": "meurpg.*",
+            "match_mapping_type": "string",
+            "mapping": { "type": "keyword", "ignore_above": 1024 }
+          }
+        },
+        {
+          "labels_are_keywords": {
+            "path_match": "labels.*",
+            "match_mapping_type": "string",
+            "mapping": { "type": "keyword", "ignore_above": 1024 }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": { "type": "date_nanos" },
+        "message": { "type": "match_only_text" },
+        "tags": { "type": "keyword" },
+        "log": {
+          "properties": {
+            "level": { "type": "keyword" },
+            "offset": { "type": "long" },
+            "file": { "properties": { "path": { "type": "keyword", "ignore_above": 1024 } } }
+          }
+        },
+        "service": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "version": { "type": "keyword" }
+          }
+        },
+        "http": {
+          "properties": {
+            "request": {
+              "properties": {
+                "id": { "type": "keyword" },
+                "method": { "type": "keyword" }
+              }
+            },
+            "response": { "properties": { "status_code": { "type": "long" } } }
+          }
+        },
+        "url": { "properties": { "path": { "type": "keyword", "ignore_above": 2048 } } },
+        "user": { "properties": { "id": { "type": "keyword" } } },
+        "trace": { "properties": { "id": { "type": "keyword" } } },
+        "error": { "properties": { "message": { "type": "match_only_text" } } },
+        "event": {
+          "properties": {
+            "dataset": { "type": "keyword" },
+            "kind": { "type": "keyword" },
+            "duration": { "type": "long" },
+            "ingested": { "type": "date" }
+          }
+        },
+        "meurpg": {
+          "properties": {
+            "procedure": { "type": "keyword" },
+            "code": { "type": "keyword" },
+            "reason": { "type": "keyword" },
+            "event": { "type": "keyword" },
+            "stream": { "type": "boolean" },
+            "messages": { "type": "long" },
+            "close_reason": { "type": "keyword" },
+            "outcome": { "type": "keyword" },
+            "kind": { "type": "keyword" },
+            "campaign_id": { "type": "keyword" },
+            "session_id": { "type": "keyword" },
+            "character_id": { "type": "keyword" },
+            "combat_id": { "type": "keyword" },
+            "map_id": { "type": "keyword" },
+            "puzzle_id": { "type": "keyword" },
+            "entry_key": { "type": "keyword" },
+            "gcp_trace": { "type": "keyword" }
+          }
+        }
+      }
+    }
+  }
+}
