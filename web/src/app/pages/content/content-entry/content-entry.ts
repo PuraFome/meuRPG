@@ -303,10 +303,12 @@ export class ContentEntry {
       const now = this.state();
       if (res.status === 'ok' && now.status === 'ready') {
         const open = now.ctx.entries.find((e) => e.key === this.key());
+        const editing = this.editing();
         const entries = res.ctx.entries.map((e) =>
           // The entry being edited keeps its body and revision when another write changed them: what is typed is not thrown
           // away, and "Salvar" says the entry changed (stale) as it always did. Only the switches and the counts follow.
-          open && e.key === open.key && e.revision !== open.revision
+          // A reader (a player, or a master with no editor open) adopts the new entry whole.
+          editing && open && e.key === open.key && e.revision !== open.revision
             ? ({
                 ...open,
                 off: e.off,
