@@ -157,5 +157,24 @@ describe('CombatState', () => {
       expect(acts(e, brisa)).toBe(false);
       expect(turnBanner(e).title).toBe('Sua vez, Pensantus');
     });
+
+    it('keeps the group, and who ended their part, when a part ends inside it', () => {
+      const state = new CombatState();
+      state.apply(
+        encounter({
+          combatants: [{ ...brisa, turnPartEnded: true }, toren, pens],
+          currentCombatantId: 'b',
+          turnGroupIds: ['b', 't'],
+          revision: 5,
+        }),
+      );
+      const round = state.encounter()!.round;
+      // Brisa ended her part: the server moves "current" to Toren, in the same round, and says so.
+      state.applyTurn({ encounterId: 'enc', round, currentCombatantId: 't', masterTurn: false });
+      const e = state.encounter()!;
+      expect(e.turnGroupIds).toEqual(['b', 't']);
+      expect(e.combatants.find((c) => c.id === 'b')?.turnPartEnded).toBe(true);
+      expect(turnMembers(e).map((c) => c.id)).toEqual(['b', 't']);
+    });
   });
 });
