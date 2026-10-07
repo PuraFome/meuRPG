@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { create } from '@bufbuild/protobuf';
 
@@ -2234,6 +2234,26 @@ describe("CharacterEditor, the master's switches (RN-23: an option switched off,
     expect(el.textContent).not.toContain('O mestre mudou as opções da mesa');
   });
 
+  it('takes the class hit die the master changed, though no key, name or switch moved, and says nothing', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    const wizardDie = () =>
+      cmp.state().catalog.classes.find((c: { key: string }) => c.key === 'class:wizard').hitDie;
+    expect(wizardDie()).toBe(6);
+    fake.loadCatalogFn = () =>
+      Promise.resolve({
+        ...catalog(),
+        classes: catalog().classes.map((c) => (c.key === 'class:wizard' ? { ...c, hitDie: 8 } : c)),
+      });
+    watcher.hint();
+    await flush();
+    fixture.detectChanges();
+    expect(wizardDie()).toBe(8);
+    expect(el.textContent).not.toContain('O mestre mudou as opções da mesa');
+  });
+
   const fill = (cmp: any) =>
     cmp.fullForm.patchValue({
       name: 'Ícaro',
@@ -2296,5 +2316,215 @@ describe("CharacterEditor, the master's switches (RN-23: an option switched off,
     );
     expect(el.textContent).not.toContain('Esta opção');
     expect(el.textContent).not.toContain('Uma das opções');
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function fullSheetFor(over: object = {}): CharacterForEdit {
+  return {
+    kind: 'player',
+    revision: 7,
+    blocked: null,
+    sheetLocked: false,
+    basic: null,
+    full: {
+      name: 'Pensantus',
+      race: 'race:gnome',
+      subrace: 'subrace:rock-gnome',
+      className: 'class:wizard',
+      subclassName: 'subclass:evocation',
+      customSubclassName: '',
+      level: 3,
+      background: 'background:acolyte',
+      customBackgroundName: '',
+      customBackgroundSkills: null,
+      customBackgroundProficiencies: [],
+      customBackgroundFeatureName: '',
+      customBackgroundFeatureText: '',
+      customBackgroundEquipment: '',
+      extraClasses: [],
+      skillProficiencies: ['skill:arcana'],
+      expertiseSkillKeys: [],
+      abilities: { str: 8, dex: 14, con: 16, int: 18, wis: 12, cha: 10 },
+      extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      hitPointsMethod: 'average',
+      hitPointsRolls: [],
+      isCaster: true,
+      cantrips: ['spell:fire-bolt'],
+      spellsKnown: [],
+      spellsPrepared: [],
+      armor: '',
+      shield: false,
+      weapons: [],
+      equipmentText: '',
+      languagesText: '',
+      toolProficienciesText: '',
+      experiencePoints: 0,
+      challengeRating: '',
+      xpValue: 0,
+      portraitImageId: '',
+      size: 0,
+      alignment: '',
+      customFeaturesText: '',
+      ...over,
+    },
+  } as CharacterForEdit;
+}
+
+const basicSheetFor = (): CharacterForEdit => ({
+  kind: 'story',
+  revision: 2,
+  blocked: null,
+  sheetLocked: false,
+  full: null,
+  basic: {
+    name: 'Mira',
+    hitPointsMax: 9,
+    armorClass: 11,
+    speedFt: 30,
+    initiativeBonus: 2,
+    attacks: [],
+    legacyDamage: '',
+    legacyAttackBonus: 0,
+    description: '',
+    challengeRating: '',
+    xpValue: 0,
+    portraitImageId: '',
+    size: 0,
+  },
+});
+
+describe('CharacterEditor, leaving the route while a read or a save is in flight', () => {
+  let fake: FakeCharacterEditorSource;
+  let params$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+
+  function configure(params: Record<string, string>): void {
+    params$ = new BehaviorSubject(convertToParamMap(params));
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        { provide: ActivatedRoute, useValue: { paramMap: params$ } },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { fixture, cmp: fixture.componentInstance as any };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function fillValid(cmp: any): void {
+    cmp.fullForm.patchValue({
+      name: 'Pensantus',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      level: 3,
+      background: 'background:acolyte',
+    });
+  }
+
+  it('does not navigate to the new sheet when the person left the editor while the create was pending', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, cmp } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const pending = deferred<{ characterId: string }>();
+    fake.createCharacterFn = () => pending.promise;
+    fillValid(cmp);
+
+    const done = cmp.submit() as Promise<void>;
+    await flush();
+    expect(fake.createCharacterCalls.length).toBe(1);
+    fixture.destroy();
+    pending.resolve({ characterId: 'new-char' });
+    await done;
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate when the editor was destroyed while the update was pending', async () => {
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () => Promise.resolve(fullSheetFor());
+    const { fixture, cmp } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const pending = deferred<{ revision: number }>();
+    fake.updateCharacterFn = () => pending.promise;
+
+    const done = cmp.submit() as Promise<void>;
+    await flush();
+    expect(fake.updateCharacterCalls.length).toBe(1);
+    fixture.destroy();
+    pending.resolve({ revision: 8 });
+    await done;
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('still navigates to the sheet when the person stayed', async () => {
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () => Promise.resolve(fullSheetFor());
+    const { cmp } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    await cmp.submit();
+
+    expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'char-1']);
+  });
+
+  it('drops the late answer for character A once the route moved to character B', async () => {
+    configure({ id: 'camp-1', characterId: 'A' });
+    const slowA = deferred<CharacterForEdit>();
+    fake.loadCharacterForEditFn = (_c, id) =>
+      id === 'A'
+        ? slowA.promise
+        : Promise.resolve({ ...fullSheetFor({ name: 'Bruxa B' }), revision: 20 });
+    const { fixture, cmp } = await render();
+    // Same component instance, new params (/characters/A/edit -> /characters/B/edit).
+    params$.next(convertToParamMap({ id: 'camp-1', characterId: 'B' }));
+    await flush();
+    await fixture.whenStable();
+    expect(cmp.fullForm.getRawValue().name).toBe('Bruxa B');
+
+    slowA.resolve({ ...fullSheetFor({ name: 'Ana A' }), revision: 5 });
+    await flush();
+    await fixture.whenStable();
+
+    expect(cmp.fullForm.getRawValue().name).toBe('Bruxa B');
+    expect(cmp.state().characterId).toBe('B');
+    expect(cmp.state().revision).toBe(20);
+  });
+
+  it("leaves none of a full sheet's picks behind when the route moves to a basic NPC", async () => {
+    configure({ id: 'camp-1', characterId: 'A' });
+    fake.loadCharacterForEditFn = (_c, id) =>
+      Promise.resolve(id === 'A' ? fullSheetFor({ hitPointsRolls: [3, 4] }) : basicSheetFor());
+    const { fixture, cmp } = await render();
+    expect(cmp.selectedSkills().size).toBe(1);
+
+    params$.next(convertToParamMap({ id: 'camp-1', characterId: 'B' }));
+    await flush();
+    await fixture.whenStable();
+    expect(cmp.state().kind).toBe('story');
+
+    expect(cmp.selectedSkills().size).toBe(0);
+    expect(cmp.selectedCantrips().size).toBe(0);
+    expect(cmp.hitPointsRolls()).toEqual([]);
   });
 });

@@ -3523,7 +3523,9 @@ message TrapCaught {
   // creature's, with `character_id` the owner's.
   string target_id = 1;
   string target_label = 2;
-  // The player's character, or the NPC's character, the target stands for (a UUID).
+  // The character the target stands for (a UUID): the player's character, for the
+  // master and for the players; an NPC's only for the master (an NPC's character is
+  // the master's secret).
   string character_id = 3;
   // The trap's attacks that were made against it, in order.
   repeated TrapAttackRoll attacks = 4;

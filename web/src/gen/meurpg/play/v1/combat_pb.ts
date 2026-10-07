@@ -5723,7 +5723,9 @@ export type TrapCaught = Message<"meurpg.play.v1.TrapCaught"> & {
   targetLabel: string;
 
   /**
-   * The player's character, or the NPC's character, the target stands for (a UUID).
+   * The character the target stands for (a UUID): the player's character, for the
+   * master and for the players; an NPC's only for the master (an NPC's character is
+   * the master's secret).
    *
    * @generated from field: string character_id = 3;
    */
