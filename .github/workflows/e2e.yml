@@ -51,7 +51,7 @@ jobs:
     # (@a11y) are the long ones: three plain shards took 522, 171 and 119
     # seconds. So the @a11y tests get two runners and the rest two.
     name: playwright ${{ matrix.part }} (local stack with devidp)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
