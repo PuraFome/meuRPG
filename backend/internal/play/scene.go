@@ -521,20 +521,23 @@ type attemptTally struct {
 
 type attemptKey struct{ characterID, actionID string }
 
+// maxUnlimitedSceneRolls is how many times one character may roll one action
+// whose limit is "unlimited" (0) in one opening of a scene. Every roll is a
+// row of the session's log, which the readers of the scene and the summary
+// go through; far more than a table rolls by hand, short of letting one
+// member fill the log.
+const maxUnlimitedSceneRolls = 200
+
 // tallyAttempts reads the rolls and the grants of the opening that began at
 // event number after.
 func tallyAttempts(ctx context.Context, q *playdb.Queries, sessionID string, after int32) (attemptTally, error) {
 	t := attemptTally{rolled: map[attemptKey]int{}, granted: map[attemptKey]int{}}
-	rolls, err := q.ListSceneRollEvents(ctx, playdb.ListSceneRollEventsParams{GameSessionID: sessionID, Seq: after})
+	rolls, err := q.CountSceneRolls(ctx, playdb.CountSceneRollsParams{GameSessionID: sessionID, Seq: after})
 	if err != nil {
-		return t, fmt.Errorf("list the scene's rolls: %w", err)
+		return t, fmt.Errorf("count the scene's rolls: %w", err)
 	}
 	for _, r := range rolls {
-		var ev sceneRollEvent
-		if err := json.Unmarshal(r.Payload, &ev); err != nil {
-			return t, fmt.Errorf("decode the roll of event %s: %w", r.ID, err)
-		}
-		t.rolled[attemptKey{deref(r.CharacterID), ev.ActionID}]++
+		t.rolled[attemptKey{deref(r.CharacterID), r.ActionID}] += int(r.Rolls)
 	}
 	grants, err := q.ListSceneAttemptGrantEvents(ctx, playdb.ListSceneAttemptGrantEventsParams{GameSessionID: sessionID, Seq: after})
 	if err != nil {
@@ -689,6 +692,11 @@ func (s *Service) RollSceneCheck(
 		tally, err := tallyAttempts(ctx, q, session.ID, opened.Seq)
 		if err != nil {
 			return err
+		}
+		// An unlimited action still has a cap, so the rows a member can
+		// append stay bounded; a new opening of the scene starts the count over.
+		if action.MaxAttempts == 0 && tally.rolled[attemptKey{who.ID, action.ID}] >= maxUnlimitedSceneRolls {
+			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_ALREADY_ROLLED, "this action has been rolled too many times; the master can close and open the scene again")
 		}
 		if left := tally.left(action, who.ID); left != nil && *left == 0 {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_ALREADY_ROLLED, "no attempt left at this action; the master may grant one more")
