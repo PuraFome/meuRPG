@@ -192,7 +192,8 @@ const (
 	// secret). The target is a PuzzleDoorTarget.
 	PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR PuzzleSolveAction = 2
 	// Reveal a point of a map to the players (the same as MapService.
-	// SetMapPointRevealed). The target is a PuzzlePointTarget.
+	// SetMapPointRevealed). The target is a PuzzlePointTarget; a light is refused, since
+	// the players never see one.
 	PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT PuzzleSolveAction = 3
 	// Reveal a scene clue (MR-029) to the character whose move solved the puzzle,
 	// and to nobody else. The target is a PuzzleClueTarget.
@@ -3495,7 +3496,8 @@ type PuzzleRun struct {
 	// What happened when the puzzle was solved, as the players read it: the master's
 	// own text of "Ao resolver" or, without one, a generic line for what the action
 	// did ("Uma porta se abriu.", "Salão do trono apareceu no mapa.", "Você ganhou uma
-	// pista."). Empty until solved, and when the action did nothing and the master wrote
+	// pista."). A point the players do not see (its map is hidden from them) is not named:
+	// "Algo apareceu no mapa.". Empty until solved, and when the action did nothing and the master wrote
 	// no text.
 	SolvedMessage string `protobuf:"bytes,15,opt,name=solved_message,json=solvedMessage,proto3" json:"solved_message,omitempty"`
 	// The limits of this puzzle: this player's attempts left, the moves and the time.

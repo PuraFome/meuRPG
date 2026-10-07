@@ -440,6 +440,9 @@ func solveLine(master string, outcome playv1.PuzzleSolveOutcome, pointName strin
 	case playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_OPENED:
 		return "Uma porta se abriu."
 	case playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_POINT_REVEALED:
+		if pointName == "" { // the players do not see the point: its name is not theirs to read
+			return "Algo apareceu no mapa."
+		}
 		return pointName + " apareceu no mapa."
 	case playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_CLUE_REVEALED:
 		return "Você ganhou uma pista." // the clue itself goes to the solver only
@@ -485,7 +488,11 @@ func (s *Service) runSolveAction(ctx context.Context, tx pgx.Tx, m authz.Members
 		if maps == nil {
 			return gone, "", nil
 		}
-		changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId())
+		onScreen, err := s.queries.WithTx(tx).GetOnScreen(ctx, m.CampaignID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return 0, "", fmt.Errorf("read what the session shows: %w", err)
+		}
+		changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId(), deref(onScreen.CurrentMapID))
 		switch {
 		case connect.CodeOf(err) == connect.CodeNotFound:
 			return gone, "", nil

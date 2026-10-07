@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -224,7 +225,9 @@ func (s *Service) UndoLastAction(
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
-		made = actionEvent{Round: c.enc.Round, Secret: ev.Secret, Actor: ev.Actor, Target: ev.Target, Undone: last.ID, UndoneKind: last.Kind, UndoneAlso: alsoUndone}
+		// The undo is told to the players who were told of the action it takes back,
+		// and counts for them alone.
+		made = actionEvent{Round: c.enc.Round, Secret: ev.Secret, Fogged: ev.Fogged, SeenBy: ev.SeenBy, Actor: ev.Actor, Target: ev.Target, Undone: last.ID, UndoneKind: last.Kind, UndoneAlso: alsoUndone}
 		return made, nil
 	})
 	if err != nil {
@@ -235,7 +238,7 @@ func (s *Service) UndoLastAction(
 		return nil, s.dbError(ctx, "read the undone action", err)
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishUndone(ctx, m.CampaignID, d, ev)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		if undoneMove != nil { // the combatant is back where it was: the fog follows it
 			if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == undoneMove.Actor }); i >= 0 {
@@ -258,6 +261,33 @@ func (s *Service) UndoLastAction(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.UndoLastActionResponse{Encounter: out}), nil
+}
+
+// publishUndone tells the combat changed after an undo. On a map with the fog the
+// players' hint goes only to those who were told of the action it takes back (the
+// event keeps who saw it) and to the owners of the player characters and creatures
+// in it, whose own sheet it changes; the others would learn that something happened
+// out of their sight (RN-10).
+func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
+	f, err := s.fogSightOf(ctx, campaignID, d.enc)
+	if err != nil || f == nil || !ev.Fogged {
+		s.publishEncounterChanged(ctx, campaignID, d.enc)
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+	told := slices.Clone(ev.SeenBy)
+	if !ev.Secret {
+		for _, id := range ev.combatantIDs() {
+			if i := slices.IndexFunc(d.cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 && d.cs[i].Kind != kindNPC && d.cs[i].UserID != nil {
+				told = append(told, *d.cs[i].UserID)
+			}
+		}
+	}
+	slices.Sort(told)
+	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID, Mode: d.enc.Mode})
+	for _, u := range slices.Compact(told) {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
+	}
 }
 
 // takeBack puts back what the event changed, inside the undo's transaction.

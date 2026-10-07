@@ -2503,9 +2503,16 @@ func (q *Queries) ListClueRevealsOfPoint(ctx context.Context, pointID *string) (
 const listDiscoveredScenes = `-- name: ListDiscoveredScenes :many
 SELECT p.id, p.name FROM scene_discoveries AS d
 JOIN map_points AS p ON p.id = d.point_id
+JOIN maps AS m ON m.id = p.map_id
 WHERE d.campaign_id = $1 AND p.kind = 'scene'
+  AND (m.revealed_at IS NOT NULL OR m.id = $2::UUID)
 ORDER BY d.discovered_at, p.id
 `
+
+type ListDiscoveredScenesParams struct {
+	CampaignID   string
+	CurrentMapID *string
+}
 
 type ListDiscoveredScenesRow struct {
 	ID   string
@@ -2513,9 +2520,10 @@ type ListDiscoveredScenesRow struct {
 }
 
 // The scenes the group discovered, with their current names, oldest discovery
-// first. A point that stopped being a scene is not listed.
-func (q *Queries) ListDiscoveredScenes(ctx context.Context, campaignID string) ([]ListDiscoveredScenesRow, error) {
-	rows, err := q.db.Query(ctx, listDiscoveredScenes, campaignID)
+// first. A point that stopped being a scene is not listed, nor is one of a map the
+// players cannot open (not revealed, and not the session's current map).
+func (q *Queries) ListDiscoveredScenes(ctx context.Context, arg ListDiscoveredScenesParams) ([]ListDiscoveredScenesRow, error) {
+	rows, err := q.db.Query(ctx, listDiscoveredScenes, arg.CampaignID, arg.CurrentMapID)
 	if err != nil {
 		return nil, err
 	}

@@ -183,7 +183,7 @@ func (s *Service) SearchForTraps(
 		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
 		switch {
 		case err == nil:
-			if done.Kind != eventTrapSearched {
+			if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != m.UserID {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			repeated = true
