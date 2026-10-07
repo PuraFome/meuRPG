@@ -191,11 +191,18 @@ test(
     const table = await tableWithDocumentParts(page, `Documento conflito ${Date.now()}`);
     const url = `/campanhas/${table.campaignId}/documento`;
 
+    // Chrome shows one tab at a time and does not render the hidden ones, so a
+    // hidden tab's scroll-into-view (part of every click) can stall for many
+    // seconds on a busy machine. Like a person switching tabs, bring each tab
+    // to the front before acting on it.
     const tabB = await context.newPage();
+    await page.bringToFront();
     await page.goto(url);
+    await tabB.bringToFront();
     await tabB.goto(url);
-    await page.getByRole('button', { name: 'Editar documento' }).click();
     await tabB.getByRole('button', { name: 'Editar documento' }).click();
+    await page.bringToFront();
+    await page.getByRole('button', { name: 'Editar documento' }).click();
 
     // Tab A saves first.
     await page.getByRole('textbox', { name: 'Texto' }).fill('Texto da aba A');
@@ -203,6 +210,7 @@ test(
     await expect(page.getByText('Texto da aba A', { exact: true })).toBeVisible();
 
     // Tab B, still on revision 0, saves a different text.
+    await tabB.bringToFront();
     const textB = tabB.getByRole('textbox', { name: 'Texto' });
     await textB.fill('Texto da aba B, que ainda não foi salvo');
     await tabB.getByRole('button', { name: 'Salvar documento' }).click();
