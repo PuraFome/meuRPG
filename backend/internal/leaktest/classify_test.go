@@ -79,6 +79,8 @@ var notReads = map[string]classified{
 	identityv1connect.IdentityServiceGetMeProcedure:                           {notACampaignCall, "the caller's own account: nothing of a campaign"},
 	identityv1connect.IdentityServiceSignOutProcedure:                         {notACampaignCall, "the caller's own session"},
 	identityv1connect.IdentityServiceUpdateProfileProcedure:                   {notACampaignCall, "the caller's own profile"},
+	identityv1connect.IdentityServiceCountOtherSessionsProcedure:              {notACampaignCall, "a count of the caller's own other sessions: nothing of a campaign"},
+	identityv1connect.IdentityServiceSignOutOtherSessionsProcedure:            {notACampaignCall, "ends the caller's own other sessions"},
 	mapsv1connect.DungeonServiceCreateDungeonMapProcedure:                     {masterWrite, masterOnlyWhy},
 	mapsv1connect.DungeonServicePlaceDungeonSceneProcedure:                    {masterWrite, masterOnlyWhy},
 	mapsv1connect.DungeonServiceRedrawDungeonMapProcedure:                     {masterWrite, masterOnlyWhy},
