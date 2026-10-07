@@ -380,7 +380,7 @@ Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde �
 | backend (`go-db`) | `go test -race` com `MEURPG_TEST_DATABASE_URL` apontando para um CockroachDB de verdade (a mesma imagem, presa pelo mesmo digest, do `compose.yaml`), então os testes de integração rodam em vez de serem pulados. |
 | e2e | Em quatro máquinas ao mesmo tempo (os testes de acessibilidade, `@a11y`, que são os longos, em duas, e o resto em outras duas, com `--grep`, `--grep-invert` e `--shard`), sobe o ambiente local com `docker compose up --build` (com o `deploy/local/compose.ci.yaml`, que deixa o banco na memória), confere que a imagem de produção não tem o devidp (numa delas) e roda os testes Playwright de `e2e/` no Chromium. Se falhar, mostra os logs do ambiente e guarda o relatório do Playwright daquela parte como artifact por 7 dias (`playwright-report-0` a `-3`). Mudança só em documentação (`docs/`, arquivos `.md`) não roda esse job. |
 
-Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem controla uma action consegue mover uma tag para um código malicioso, mas não consegue mudar um SHA.
+Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem controla uma action consegue mover uma tag para um código malicioso, mas não consegue mudar um SHA. A máquina de cada job também fica presa na versão do Ubuntu (`runs-on: ubuntu-26.04`), nunca em `ubuntu-latest`, que muda de versão sozinha: o GitHub passa o `ubuntu-latest` para o Ubuntu 26.04 entre 19/10 e 19/11/2026, e o CI já roda nele desde 07/10/2026.
 
 O Dependabot (`.github/dependabot.yml`) abre toda semana os PRs que mantêm essas travas em dia: as actions (o SHA e o comentário com a versão), os módulos Go, os pacotes npm do `web/` e do `e2e/` e as imagens base dos Dockerfiles. Versões menores e correções chegam juntas, num PR por grupo. Não chegam pelo Dependabot, e são feitas à mão:
 
@@ -388,6 +388,7 @@ O Dependabot (`.github/dependabot.yml`) abre toda semana os PRs que mantêm essa
 - uma major do `@types/node`, que acompanha a versão do Node em que o código roda (22, no CI e no `backend/Dockerfile`);
 - uma versão nova do Node ou do Go nas imagens, que muda junto com o CI e o `go.mod`;
 - a imagem do CockroachDB, que o `deploy/local/compose.yaml` e o job `go-db` prendem pelo mesmo digest.
+- a versão do Ubuntu das máquinas do CI (`runs-on`), que muda junto em todos os jobs, testada num PR antes.
 
 O `package.json` da raiz é o do [app antigo](docs/app-antigo.md) (`src/`, descontinuado) e não recebe atualização.
 

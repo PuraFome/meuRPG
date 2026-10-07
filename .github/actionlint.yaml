@@ -1,0 +1,6 @@
+# actionlint (1.7.12) doesn't know GitHub's ubuntu-26.04 label yet: it became
+# generally available on 17/09/2026. Listing it here only stops the false
+# "unknown label" error; drop this file once actionlint knows the label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
