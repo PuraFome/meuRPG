@@ -41,7 +41,7 @@ const MIN_LEVEL = 1;
 const MAX_LEVEL = 20;
 
 /**
- * "/campanhas/:id/tesouro" (MR-044, MR-041, RN-09, RN-10, E10-10, states 1, 2 and 5): the master's treasure generator. The mode
+ * "/campaigns/:id/treasure" (MR-044, MR-041, RN-09, RN-10, E10-10, states 1, 2 and 5): the master's treasure generator. The mode
  * (individual or de covil), the party level (from `GetTreasureParty`, the lowest level of the living characters, and editable), then
  * "Gerar tesouro": the server rolls and the page draws it (`app-treasure-result`), with the seed shown. "Gerar outro" asks again
  * without a seed; the same seed, mode and level give the same treasure. "Ver descrição" opens an item (`ItemSheet`) and "Pôr no mapa"
@@ -119,7 +119,7 @@ export class TreasurePage {
   });
   protected readonly placedLink = computed(() => {
     const p = this.placed();
-    return p ? ['/campanhas', this.campaignId, 'mapas', p.mapId] : null;
+    return p ? ['/campaigns', this.campaignId, 'maps', p.mapId] : null;
   });
   protected readonly goldSentence = computed(() => goldLine(this.xpMode(), this.campaignName()));
 

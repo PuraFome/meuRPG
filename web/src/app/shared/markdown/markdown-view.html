@@ -7,9 +7,9 @@
       @case ('link') {<a class="md-link" [href]="node.href" target="_blank" rel="noopener noreferrer">{{ node.text }}<span class="mr-visually-hidden"> (abre em outra aba)</span></a>}
       @case ('ref') {
         @if (isMissing(node.kind, node.id)) {
-          <span>{{ node.text }} {{ node.kind === 'mapa' ? '(mapa apagado)' : '(ficha apagada)' }}</span>
+          <span>{{ node.text }} {{ node.kind === 'map' ? '(mapa apagado)' : '(ficha apagada)' }}</span>
         } @else {
-          <button type="button" class="md-link md-ref" aria-haspopup="dialog" (click)="open(node)"><mat-icon aria-hidden="true">{{ node.kind === 'mapa' ? 'map' : 'badge' }}</mat-icon>{{ node.text }}</button>
+          <button type="button" class="md-link md-ref" aria-haspopup="dialog" (click)="open(node)"><mat-icon aria-hidden="true">{{ node.kind === 'map' ? 'map' : 'badge' }}</mat-icon>{{ node.text }}</button>
         }
       }
     }

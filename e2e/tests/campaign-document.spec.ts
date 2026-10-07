@@ -19,7 +19,7 @@ test(
     await page.goto('/');
     const table = await tableWithDocumentParts(page, `Documento ${Date.now()}`);
 
-    await page.goto(`/campanhas/${table.campaignId}`);
+    await page.goto(`/campaigns/${table.campaignId}`);
     const panel = page.getByRole('region', { name: 'Documento da campanha' });
     await expect(panel.getByText('Ainda sem texto. Só você vê este documento.')).toBeVisible();
     await panel.getByRole('link', { name: 'Abrir documento' }).click();
@@ -57,17 +57,17 @@ test(
     const imageDialog = page.getByRole('dialog', { name: 'Imagem da galeria' });
     await imageDialog.getByRole('radio', { name: /Taverna do Javali/ }).click();
     await imageDialog.getByRole('button', { name: 'Inserir imagem' }).click();
-    await expect(text).toHaveValue(/!\[Taverna do Javali\]\(imagem:[0-9a-f-]{36}\)/);
+    await expect(text).toHaveValue(/!\[Taverna do Javali\]\(image:[0-9a-f-]{36}\)/);
 
     await page.getByRole('button', { name: 'Link para mapa' }).click();
     await page.getByRole('dialog', { name: 'Link para mapa' }).getByRole('button', { name: /Mirathel e arredores/ }).click();
-    await expect(text).toHaveValue(new RegExp(`\\[Mirathel e arredores\\]\\(mapa:${table.mapId}\\)`));
+    await expect(text).toHaveValue(new RegExp(`\\[Mirathel e arredores\\]\\(map:${table.mapId}\\)`));
     await expect(text).toBeFocused();
 
     await page.keyboard.type(' e ');
     await page.getByRole('button', { name: 'Link para ficha' }).click();
     await page.getByRole('dialog', { name: 'Link para ficha' }).getByRole('button', { name: /Capitão Goblin/ }).click();
-    await expect(text).toHaveValue(new RegExp(`\\[Capitão Goblin\\]\\(ficha:${table.npcId}\\)`));
+    await expect(text).toHaveValue(new RegExp(`\\[Capitão Goblin\\]\\(character:${table.npcId}\\)`));
 
     await page.getByRole('button', { name: 'Salvar documento' }).click();
 
@@ -113,7 +113,7 @@ test(
     await expect(mapDialog.locator('.lbl__pill', { hasText: 'Covil dos goblins' })).toContainText('Escondido');
     await expect(mapDialog.getByRole('list', { name: 'Pontos deste mapa' })).toContainText('Covil dos goblins, Submapa, escondido');
     await expect(mapDialog.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Escondido');
-    await expect(mapDialog.getByRole('link', { name: 'Abrir no editor de mapas' })).toHaveAttribute('href', `/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+    await expect(mapDialog.getByRole('link', { name: 'Abrir no editor de mapas' })).toHaveAttribute('href', `/campaigns/${table.campaignId}/maps/${table.mapId}`);
     await page.keyboard.press('Escape');
     await expect(mapDialog).toBeHidden();
     await expect(page.getByRole('button', { name: 'Mirathel e arredores' })).toBeFocused();
@@ -124,7 +124,7 @@ test(
     await expect(sheetDialog.getByText(/Mago 3/)).toBeVisible();
     await expect(sheetDialog.getByRole('link', { name: 'Abrir ficha' })).toHaveAttribute(
       'href',
-      `/campanhas/${table.campaignId}/personagens/${table.npcId}`,
+      `/campaigns/${table.campaignId}/characters/${table.npcId}`,
     );
   },
 );
@@ -152,11 +152,11 @@ test(
       });
       expect(accepted.ok()).toBeTruthy();
 
-      await player.goto(`/campanhas/${table.campaignId}`);
+      await player.goto(`/campaigns/${table.campaignId}`);
       await expect(player.getByRole('heading', { level: 1, name: table.campaignName })).toBeVisible();
       await expect(player.getByRole('heading', { name: 'Documento da campanha' })).toHaveCount(0);
 
-      await player.goto(`/campanhas/${table.campaignId}/documento`);
+      await player.goto(`/campaigns/${table.campaignId}/document`);
       await expect(player.getByText('Só o mestre vê o documento da campanha.')).toBeVisible();
       await expect(player.getByText('O capitão trabalha')).toHaveCount(0);
       await expect(player.getByRole('button', { name: 'Editar documento' })).toHaveCount(0);
@@ -175,7 +175,7 @@ test(
     const context = await newSignedInContext(browser, 'Jogador Teste');
     try {
       const stranger = await context.newPage();
-      await stranger.goto(`/campanhas/${table.campaignId}/documento`);
+      await stranger.goto(`/campaigns/${table.campaignId}/document`);
       await expect(stranger.getByRole('heading', { level: 1, name: 'Campanha não encontrada' })).toBeVisible();
     } finally {
       await context.close();
@@ -189,7 +189,7 @@ test(
   async ({ page, context }) => {
     await page.goto('/');
     const table = await tableWithDocumentParts(page, `Documento conflito ${Date.now()}`);
-    const url = `/campanhas/${table.campaignId}/documento`;
+    const url = `/campaigns/${table.campaignId}/document`;
 
     // Chrome shows one tab at a time and does not render the hidden ones, so a
     // hidden tab's scroll-into-view (part of every click) can stall for many
@@ -232,7 +232,7 @@ test(
   async ({ page }) => {
     await page.goto('/');
     const table = await tableWithDocumentParts(page, `Documento sair ${Date.now()}`);
-    await page.goto(`/campanhas/${table.campaignId}/documento`);
+    await page.goto(`/campaigns/${table.campaignId}/document`);
     await page.getByRole('button', { name: 'Editar documento' }).click();
     await page.getByRole('textbox', { name: 'Texto' }).fill('Rascunho que não vai ser salvo');
 
@@ -241,7 +241,7 @@ test(
     const ask = page.getByRole('dialog', { name: 'Sair sem salvar?' });
     await expect(ask).toBeVisible();
     await ask.getByRole('button', { name: 'Continuar editando' }).click();
-    await expect(page).toHaveURL(new RegExp(`/campanhas/${table.campaignId}/documento$`));
+    await expect(page).toHaveURL(new RegExp(`/campaigns/${table.campaignId}/document$`));
     await expect(page.getByRole('textbox', { name: 'Texto' })).toHaveValue('Rascunho que não vai ser salvo');
 
     // "Descartar mudanças" confirms in place, then returns to reading.
@@ -268,13 +268,13 @@ test(
     await saveDocumentRPC(
       page,
       table.campaignId,
-      `Veja [Torre perdida](mapa:${doomed}) e [Mirathel](mapa:${table.mapId}).\n\n![Taverna](imagem:${lonelyImage})\n\n![Fantasma](imagem:00000000-0000-4000-8000-000000000000)\n\n[x](javascript:alert(1)) <script>alert(1)</script>`,
+      `Veja [Torre perdida](map:${doomed}) e [Mirathel](map:${table.mapId}).\n\n![Taverna](image:${lonelyImage})\n\n![Fantasma](image:00000000-0000-4000-8000-000000000000)\n\n[x](javascript:alert(1)) <script>alert(1)</script>`,
       0,
     );
     const deleted = await callRPC(page, 'meurpg.maps.v1.MapService/DeleteMap', { campaignId: table.campaignId, mapId: doomed });
     expect(deleted.ok()).toBeTruthy();
 
-    await page.goto(`/campanhas/${table.campaignId}/documento`);
+    await page.goto(`/campaigns/${table.campaignId}/document`);
     const article = page.getByRole('article', { name: 'Texto do documento' });
     await expect(article.getByText('Torre perdida (mapa apagado)')).toBeVisible();
     await expect(article.getByRole('button', { name: 'Mirathel' })).toBeVisible();

@@ -7,7 +7,7 @@ import { callRPC } from './support';
 
 /** The "Gerar masmorra" page of a campaign. */
 export function dungeonRoute(campaignId: string): string {
-  return `/campanhas/${campaignId}/mapas/masmorra`;
+  return `/campaigns/${campaignId}/maps/dungeon`;
 }
 
 /** Previews a dungeon through the API (the same call the page makes), as the master. */

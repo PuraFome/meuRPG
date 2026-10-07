@@ -74,7 +74,7 @@ func TestRealProviderSignIn(t *testing.T) {
 
 	signIn := func() *http.Cookie {
 		t.Helper()
-		rec := h.get("/auth/login?return_to=/campanhas")
+		rec := h.get("/auth/login?return_to=/campaigns")
 		if rec.Code != http.StatusFound {
 			t.Fatalf("GET /auth/login status = %d, want 302", rec.Code)
 		}
@@ -87,8 +87,8 @@ func TestRealProviderSignIn(t *testing.T) {
 		code := browser.signIn(authURL)
 		callback := env["REDIRECT_URL"] + "?" + url.Values{"code": {code}, "state": {authURL.Query().Get("state")}}.Encode()
 		rec = h.finishLogin(callback, loginCookie)
-		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campanhas" {
-			t.Fatalf("callback: status %d, Location %q; want 303 to /campanhas. Logs: %s", rec.Code, rec.Header().Get("Location"), logs)
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campaigns" {
+			t.Fatalf("callback: status %d, Location %q; want 303 to /campaigns. Logs: %s", rec.Code, rec.Header().Get("Location"), logs)
 		}
 		return findCookie(t, rec, SessionCookieName)
 	}

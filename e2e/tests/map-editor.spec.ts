@@ -620,6 +620,6 @@ test('sair com traços que o servidor não recebeu pergunta no lugar; o mestre f
     await expect(saved(master)).toBeVisible();
     expect((await layersOf(master, campaignId, mapId)).wall).toBe(1);
     await master.getByRole('link', { name: 'Minhas campanhas' }).first().click();
-    await expect(master).toHaveURL(/\/campanhas$/);
+    await expect(master).toHaveURL(/\/campaigns$/);
   });
 });

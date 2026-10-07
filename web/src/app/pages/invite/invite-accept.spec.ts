@@ -106,7 +106,7 @@ describe('InviteAccept', () => {
     await fixture.whenStable();
 
     expect(campaigns.acceptInvite).toHaveBeenCalledWith('abc123');
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
   it('already_member also navigates to the campaign (idempotent accept)', async () => {
@@ -124,7 +124,7 @@ describe('InviteAccept', () => {
     await flush();
     await fixture.whenStable();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
   it('invite with approval: a new pending member goes straight to creating the character (MR-024)', async () => {
@@ -145,7 +145,7 @@ describe('InviteAccept', () => {
     await flush();
     await fixture.whenStable();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'novo']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'new']);
   });
 
   it('invite with approval, already pending: goes to the campaign page, which shows the wait', async () => {
@@ -166,7 +166,7 @@ describe('InviteAccept', () => {
     await flush();
     await fixture.whenStable();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
   it('signed in, invite expired: shows the specific InviteUnusable message', async () => {
@@ -211,7 +211,7 @@ describe('InviteAccept', () => {
 
     const valueOf = (name: string) =>
       (form.querySelector(`input[name="${name}"]`) as HTMLInputElement | null)?.value;
-    expect(valueOf('return_to')).toBe('/campanhas');
+    expect(valueOf('return_to')).toBe('/campaigns');
     expect(valueOf('intent')).toBe('campaign_invite');
     expect(valueOf('intent_payload')).toBe('super-secret-token');
     expect(submitSpy).toHaveBeenCalled();

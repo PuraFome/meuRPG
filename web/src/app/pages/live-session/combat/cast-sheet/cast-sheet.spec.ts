@@ -25,7 +25,7 @@ describe('CastSheet: ending another concentration', () => {
       casterId: 's',
       round: 2,
       spellKey: 'spell:entangle',
-      name: 'Enredar',
+      name: 'Constrição',
       level: 1,
       concentration,
       economy: ActionEconomy.ACTION,
@@ -59,17 +59,17 @@ describe('CastSheet: ending another concentration', () => {
 
   it('says nothing when the spell needs no concentration, or is the one already held', () => {
     expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })], false)).toBeNull();
-    expect(open([salvia({ concentrationSpell: 'spell:entangle', concentrationSpellNamePt: 'Enredar' })])).toBeNull();
+    expect(open([salvia({ concentrationSpell: 'spell:entangle', concentrationSpellNamePt: 'Constrição' })])).toBeNull();
   });
 
   it('says what the other concentration is when the caster holds one that keeps no creatures', () => {
-    expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })])).toContain('Enredar encerra a concentração em Teia.');
+    expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })])).toContain('Constrição encerra a concentração em Teia.');
     expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })])).not.toContain('somem');
   });
 
   it('adds the creatures that go with it, from the combatants with this owner and a summon group', () => {
     const text = open([salvia({ concentrationSpell: 'spell:conjure-animals', concentrationSpellNamePt: 'Conjurar Animais' }), wolf(1), wolf(2)]);
-    expect(text).toContain('Enredar encerra a concentração em Conjurar Animais.');
+    expect(text).toContain('Constrição encerra a concentração em Conjurar Animais.');
     expect(text).toContain('Os 2 Lobos atrozes somem.');
   });
 });

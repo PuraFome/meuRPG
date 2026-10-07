@@ -1,5 +1,5 @@
 @if (load() === 'ready' && summary() && !(closed() && !isMaster())) {
-  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <a class="back" [routerLink]="['/campaigns', campaignId()]">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
   </a>
   <h1 class="mr-page-title">Sessão {{ sessionNumber() }}</h1>
@@ -13,7 +13,7 @@
             <div role="status"><h2 class="end__title" id="se-title">Sessão encerrada</h2></div>
             <p class="end__sub">Sessão {{ sessionNumber() }} · {{ campaignName() }} · {{ span() }}</p>
           </div>
-          <a matButton="outlined" class="end__leave" [routerLink]="['/campanhas', campaignId()]">Voltar à campanha</a>
+          <a matButton="outlined" class="end__leave" [routerLink]="['/campaigns', campaignId()]">Voltar à campanha</a>
         </div>
         <dl class="end__stats">
           <div class="stat"><dt>Duração</dt><dd>{{ duration() }}</dd></div>

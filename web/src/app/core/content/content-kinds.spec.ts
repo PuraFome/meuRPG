@@ -21,7 +21,7 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
 
   it('counts every entry of each kind, archived ones included, and says the limit in the nav', () => {
     const counts = Object.fromEntries(CONTENT_NAV.map((n) => [n.slug, countOfNav(entries, n)]));
-    expect(counts).toEqual({ classes: 2, subclasses: 2, racas: 1, antecedentes: 1, magias: 1 });
+    expect(counts).toEqual({ classes: 2, subclasses: 2, races: 1, backgrounds: 1, spells: 1 });
     expect(limitLine(entries)).toBe('7 de 300 entradas · o limite de uma campanha');
     expect(summaryLine(entries)).toBe('7 entradas, 1 arquivada');
     expect(summaryLine(entries.slice(0, 1))).toBe('1 entrada');
@@ -40,9 +40,9 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
   });
 
   it('searches the name with no case and no accents', () => {
-    expect(filterEntries(entries, nav('antecedentes'), 'cartografo', 'all').map((e) => e.namePt)).toEqual(['Cartógrafo do Vale']);
-    expect(filterEntries(entries, nav('magias'), 'LÂMINA', 'all')).toHaveLength(1);
-    expect(filterEntries(entries, nav('magias'), 'xyz', 'all')).toEqual([]);
+    expect(filterEntries(entries, nav('backgrounds'), 'cartografo', 'all').map((e) => e.namePt)).toEqual(['Cartógrafo do Vale']);
+    expect(filterEntries(entries, nav('spells'), 'LÂMINA', 'all')).toHaveLength(1);
+    expect(filterEntries(entries, nav('spells'), 'xyz', 'all')).toEqual([]);
   });
 
   it('says what was saved with the noun of the kind, so the copy agrees', () => {

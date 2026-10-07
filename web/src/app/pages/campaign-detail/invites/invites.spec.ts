@@ -92,7 +92,7 @@ describe('CampaignInvites', () => {
     expect(fake.createInvite).toHaveBeenCalledWith('camp-1', 1, 7, false);
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('não será mostrado de novo');
-    expect(el.textContent).toContain('/convite#t=sekret-token');
+    expect(el.textContent).toContain('/invite#t=sekret-token');
   });
 
   it('"Exigir aprovação do mestre" creates an invite with approval (MR-024)', async () => {
@@ -177,7 +177,7 @@ describe('CampaignInvites', () => {
 
       const el = fixture.nativeElement as HTMLElement;
       const link = el.querySelector('.invite-reveal__link')?.textContent?.trim();
-      expect(link).toMatch(/\/convite#t=tok$/);
+      expect(link).toMatch(/\/invite#t=tok$/);
       const copy = Array.from(el.querySelectorAll('button')).find((b) =>
         b.textContent?.includes('Copiar link'),
       ) as HTMLButtonElement;

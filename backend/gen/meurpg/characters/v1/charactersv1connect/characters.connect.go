@@ -629,7 +629,7 @@ type CharacterServiceClient interface {
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 	// GetSummonOptions says what a character can summon from its sheet (MR-037,
 	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The
 	// server works all of it out (the spell on the sheet, prepared or in the
@@ -1489,7 +1489,7 @@ type CharacterServiceHandler interface {
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 	// GetSummonOptions says what a character can summon from its sheet (MR-037,
 	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The
 	// server works all of it out (the spell on the sheet, prepared or in the

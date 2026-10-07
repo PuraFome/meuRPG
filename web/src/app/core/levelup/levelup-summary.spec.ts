@@ -6,7 +6,7 @@ const plain = (s: string) => s.replace(/ /g, ' ');
 const ctx: SummaryContext = {
   hpSub: 'Média 4 + Constituição +3',
   cantrips: ['Prestidigitação'],
-  spells: ['Passo Nebuloso', 'Imagem Espelhada'],
+  spells: ['Passo Nebuloso', 'Reflexos'],
   prepared: ['Passo Nebuloso', 'Detectar Magia'],
   spellbook: true,
   spellsMissing: 0,

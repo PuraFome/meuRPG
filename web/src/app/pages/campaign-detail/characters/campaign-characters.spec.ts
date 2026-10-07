@@ -93,7 +93,7 @@ describe('CampaignCharacters', () => {
     expect(queue.textContent).toContain('Novata');
     expect(queue.textContent).toContain('Samuel');
     expect(queue.textContent).not.toContain('Pensantus');
-    expect(queue.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/c2');
+    expect(queue.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
   });
 
   it('shows no "Esperando aprovação" when nobody waits', async () => {

@@ -89,7 +89,7 @@
                 }
                 <app-map-legend [shapes]="true" [states]="true" [tokens]="[]" />
               </div>
-              <a matButton="outlined" class="map__open" [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]" [queryParams]="{ de: 'sessao' }">
+              <a matButton="outlined" class="map__open" [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]" [queryParams]="{ de: 'session' }">
                 <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
               </a>
             </div>
@@ -143,8 +143,8 @@
               class="map__cover"
               tabindex="-1"
               aria-hidden="true"
-              [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
-              [queryParams]="{ de: 'sessao' }"
+              [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]"
+              [queryParams]="{ from: 'session' }"
             ></a>
           }
         </div>
@@ -179,8 +179,8 @@
             <a
               matButton="outlined"
               class="map__open"
-              [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
-              [queryParams]="{ de: 'sessao' }"
+              [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]"
+              [queryParams]="{ from: 'session' }"
             >
               <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
             </a>

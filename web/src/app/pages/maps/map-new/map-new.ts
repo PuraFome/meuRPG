@@ -92,7 +92,7 @@ export class MapNew {
     this.saving.set(true);
     try {
       const map = await this.api.create(this.campaignId(), this.nameControl.value.trim(), imageId);
-      await this.router.navigate(['/campanhas', this.campaignId(), 'mapas', map.id]);
+      await this.router.navigate(['/campaigns', this.campaignId(), 'maps', map.id]);
     } catch (err) {
       this.saving.set(false);
       this.failure.set(

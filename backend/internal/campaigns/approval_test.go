@@ -207,7 +207,7 @@ func TestSignInWithAnApprovalInviteGoesToCreateTheCharacter(t *testing.T) {
 	token := res.Msg.GetToken()
 
 	location, session := st.signInWithInvite(token)
-	if want := "/campanhas/" + campaign.GetId() + "/personagens/novo"; location != want {
+	if want := "/campaigns/" + campaign.GetId() + "/characters/new"; location != want {
 		t.Errorf("callback went to %q, want %q; logs: %s", location, want, st.logs)
 	}
 	player := st.userID(session)
@@ -216,7 +216,7 @@ func TestSignInWithAnApprovalInviteGoesToCreateTheCharacter(t *testing.T) {
 		t.Errorf("status = %q, %v; want pending", status, err)
 	}
 
-	if location, _ := st.continueWithInvite(token); location != "/campanhas/"+campaign.GetId() {
+	if location, _ := st.continueWithInvite(token); location != "/campaigns/"+campaign.GetId() {
 		t.Errorf("second sign-in went to %q, want the campaign's page", location)
 	}
 	st.assertNoSecretsInLogs(token)

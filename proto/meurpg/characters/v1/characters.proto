@@ -609,7 +609,7 @@ service CharacterService {
 
   // GetSummonOptions says what a character can summon from its sheet (MR-037,
   // Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-  // it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+  // it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
   // (as a ritual, with a slot, or both), what each one may bring at each circle
   // it can use, the slots it has, and what a casting would send away. The
   // server works all of it out (the spell on the sheet, prepared or in the
@@ -2041,9 +2041,9 @@ message LevelUp {
 // CreatureSource is where a creature came from.
 enum CreatureSource {
   CREATURE_SOURCE_UNSPECIFIED = 0;
-  // Encontrar Familiar: at most one at a time.
+  // Convocar Familiar: at most one at a time.
   CREATURE_SOURCE_FAMILIAR = 1;
-  // Animar os Mortos: skeletons and zombies.
+  // Animar Mortos: skeletons and zombies.
   CREATURE_SOURCE_ANIMATE_DEAD = 2;
   // Conjurar Animais: animals that last while the caster concentrates.
   CREATURE_SOURCE_CONJURE_ANIMALS = 3;
@@ -2207,7 +2207,7 @@ message SummonSpellOptions {
   // The spell, "spell:find-familiar", "spell:animate-dead" or
   // "spell:conjure-animals".
   string spell_key = 1;
-  // Its Portuguese name ("Encontrar Familiar").
+  // Its Portuguese name ("Convocar Familiar").
   string name_pt = 2;
   // The spell's own circle, 1 to 9.
   int32 level = 3;
@@ -2218,7 +2218,7 @@ message SummonSpellOptions {
   bool concentration = 6;
   // Whether this character can cast it as a ritual (no slot): a wizard from the
   // spellbook, another caster from its prepared list, a warlock with the Pact
-  // of the Chain for Encontrar Familiar. Always false for a spell that is not a
+  // of the Chain for Convocar Familiar. Always false for a spell that is not a
   // ritual.
   bool can_ritual = 7;
   // Whether this character can cast it with a slot: the spell is on the sheet and
@@ -2249,7 +2249,7 @@ message SummonCircle {
 // skeletons and a zombie) is allowed.
 message SummonOption {
   // How many creatures, already counting the circle (Conjurar Animais doubles at
-  // the 5th, Animar os Mortos adds two for each circle above the 3rd).
+  // the 5th, Animar Mortos adds two for each circle above the 3rd).
   int32 count = 1;
   // The creatures a casting may choose from. Empty when `type` and `max_cr`
   // say it.

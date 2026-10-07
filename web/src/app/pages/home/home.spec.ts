@@ -72,7 +72,7 @@ describe('Home', () => {
     expect(el.querySelectorAll('h1').length).toBe(1);
     expect(el.textContent).toContain('ficha');
     const entrar = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.trim() === 'Entrar');
-    expect(entrar?.getAttribute('href')).toBe('/auth/login?return_to=%2Fcampanhas');
+    expect(entrar?.getAttribute('href')).toBe('/auth/login?return_to=%2Fcampaigns');
     // A link, so it never doubles the app bar's "Entrar" button.
     expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Entrar'))).toBe(false);
   });
@@ -86,8 +86,8 @@ describe('Home', () => {
 
     expect(el.querySelector('h1')?.textContent).toContain('Olá, Vinicius');
     const links = Array.from(el.querySelectorAll('a'));
-    expect(links.some((a) => a.getAttribute('href') === '/campanhas')).toBe(true);
-    expect(links.some((a) => a.getAttribute('href') === '/perfil')).toBe(false);
+    expect(links.some((a) => a.getAttribute('href') === '/campaigns')).toBe(true);
+    expect(links.some((a) => a.getAttribute('href') === '/profile')).toBe(false);
     expect(links.some((a) => a.textContent?.trim() === 'Entrar')).toBe(false);
   });
 
@@ -100,6 +100,6 @@ describe('Home', () => {
 
     expect(el.querySelector('h1')?.textContent?.trim()).toBe('Olá');
     const links = Array.from(el.querySelectorAll('a'));
-    expect(links.some((a) => a.getAttribute('href') === '/perfil')).toBe(true);
+    expect(links.some((a) => a.getAttribute('href') === '/profile')).toBe(true);
   });
 });

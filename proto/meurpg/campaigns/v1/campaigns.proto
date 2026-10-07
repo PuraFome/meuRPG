@@ -113,7 +113,7 @@ service CampaignService {
   //
   // The response carries the invite's secret token, and this is the only
   // time the server ever returns it: the database keeps only a hash. The app
-  // shares it as https://<app>/convite#t=<token>. The token goes in the URL
+  // shares it as https://<app>/invite#t=<token>. The token goes in the URL
   // fragment, which browsers never send to a server, so it stays out of
   // request logs and Referer headers (ADR-0009).
   //
@@ -160,8 +160,8 @@ service CampaignService {
   // (CharacterService.RejectCharacter), the pending membership is deleted
   // and they need a new invite. Accepting it through sign-in works the same
   // way: a new pending member lands on
-  // /campanhas/<campaign_id>/personagens/novo, and someone who was already
-  // in the campaign on /campanhas/<campaign_id>.
+  // /campaigns/<campaign_id>/characters/new, and someone who was already
+  // in the campaign on /campaigns/<campaign_id>.
   //
   // Errors:
   //   - `invalid_argument`: the token is empty.
@@ -467,7 +467,7 @@ message CreateInviteRequest {
 // CreateInviteResponse returns the invite and, this one time, its token.
 message CreateInviteResponse {
   Invite invite = 1;
-  // The secret that goes into the link's fragment: /convite#t=<token>.
+  // The secret that goes into the link's fragment: /invite#t=<token>.
   // Never log it and never put it in a query string.
   string token = 2;
 }
@@ -496,7 +496,7 @@ message RevokeInviteResponse {
 
 // AcceptInviteRequest carries the invite's token.
 message AcceptInviteRequest {
-  // The token from the invite link's fragment (/convite#t=<token>).
+  // The token from the invite link's fragment (/invite#t=<token>).
   string token = 1;
 }
 

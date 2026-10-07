@@ -24,7 +24,7 @@ export async function tableForPrinting(masterPage: Page, playerPage: Page, name:
   return { ...table, gridMapId, plainMapId };
 }
 
-export const printRoute = (campaignId: string, mapId: string): string => `/campanhas/${campaignId}/mapas/${mapId}/imprimir`;
+export const printRoute = (campaignId: string, mapId: string): string => `/campaigns/${campaignId}/maps/${mapId}/print`;
 
 /** The summary box's text, e.g. "76,2 × 50,8 cm em 9 folhas A4 ...". */
 export function summary(page: Page) {

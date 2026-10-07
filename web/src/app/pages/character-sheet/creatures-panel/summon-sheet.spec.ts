@@ -21,7 +21,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     }
     api.blocks.set('monster:skeleton', raven({ summary: summary('monster:skeleton', 'Esqueleto', { typePt: 'morto-vivo' }) }));
     api.blocks.set('monster:zombie', raven({ summary: summary('monster:zombie', 'Zumbi') }));
-    api.catalog = [summary('monster:wolf', 'Lobo', { challengeRating: '1/4', sizePt: 'Médio' }), summary('monster:bear', 'Urso-negro', { challengeRating: '1/2' })];
+    api.catalog = [summary('monster:wolf', 'Lobo', { challengeRating: '1/4', sizePt: 'Médio' }), summary('monster:bear', 'Urso negro', { challengeRating: '1/2' })];
     close = vi.fn();
     const data: SummonSheetData = { campaignId: 'camp-1', characterId: 'char-1', spellKey };
     TestBed.configureTestingModule({
@@ -65,9 +65,9 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     return { fixture, el, button, pick, type, plus, settle };
   }
 
-  it('Encontrar Familiar as a ritual: the title, "ritual · 1 hora", the name field, the forms the server lists and no slot picker', async () => {
+  it('Convocar Familiar as a ritual: the title, "ritual · 1 hora", the name field, the forms the server lists and no slot picker', async () => {
     const { el } = await setup('spell:find-familiar');
-    expect(flat(el.querySelector('.frame__title'))).toBe('Encontrar Familiar');
+    expect(flat(el.querySelector('.frame__title'))).toBe('Convocar Familiar');
     expect(flat(el.querySelector('.frame__sub'))).toBe('Magia de 1º círculo · ritual · 1 hora');
     expect(el.querySelector('app-slot-picker')).toBeNull();
     expect(flat(el.querySelector('.forms .cap'))).toBe('Forma · 3 do livro');
@@ -113,7 +113,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       slot: undefined,
       summon: { option: 0, creatureKeys: ['monster:raven'], names: ['Nanquim'] },
     });
-    expect(close).toHaveBeenCalledWith({ spellName: 'Encontrar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 });
+    expect(close).toHaveBeenCalledWith({ spellName: 'Convocar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 });
   });
 
   it('a refusal stays in the sheet, in words by its typed reason, and a retry keeps the key until a choice changes', async () => {
@@ -152,7 +152,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(el.querySelector<HTMLInputElement>('input[name=name]')!.value).toBe('Nanquim');
   });
 
-  it('Animar os Mortos: the slot picker lists the circles with slots (a pact slot too), the count follows the slot, kinds mix', async () => {
+  it('Animar Mortos: the slot picker lists the circles with slots (a pact slot too), the count follows the slot, kinds mix', async () => {
     const { el, button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
     const rows = Array.from(el.querySelectorAll('app-slot-picker .row')).map((r) => flat(r));
     expect(rows).toHaveLength(2);
@@ -184,7 +184,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(el.querySelector<HTMLButtonElement>('button[aria-label="Mais Zumbi"]')!.disabled).toBe(true);
   });
 
-  it('Animar os Mortos casts the mix the person made, with the slot and its pact flag, one key per creature', async () => {
+  it('Animar Mortos casts the mix the person made, with the slot and its pact flag, one key per creature', async () => {
     const { button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
     await pick('5º círculo (pacto)');
     for (const k of ['Esqueleto', 'Esqueleto', 'Zumbi', 'Zumbi', 'Zumbi']) {
@@ -206,8 +206,8 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '2' });
     await pick('4 feras');
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '1/2' });
-    await plus('Urso-negro');
-    await plus('Urso-negro');
+    await plus('Urso negro');
+    await plus('Urso negro');
     await plus('Lobo');
     await plus('Lobo');
     button('Conjurar Animais').click();

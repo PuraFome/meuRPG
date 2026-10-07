@@ -18,7 +18,7 @@ type PanelState =
   | { status: 'ready'; images: readonly GalleryImage[]; usage: GalleryUsage };
 
 /**
- * The master's "Galeria" panel on `/campanhas/:id` (E5-09, MR-019): the
+ * The master's "Galeria" panel on `/campaigns/:id` (E5-09, MR-019): the
  * newest images in a row (5 from a tablet up, 3 on a phone), "5 imagens,
  * 5,8 MB de 500 MB" and "Abrir galeria". `CampaignDetail` renders it for
  * the master only: the server refuses the gallery to a player (RN-10).

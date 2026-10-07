@@ -75,7 +75,7 @@ export class PuzzlePlayPage {
   readonly openNotes = output<void>();
 
   protected readonly Kind = PuzzleKind;
-  /** The puzzle's moves and run; `open` starts it over for another puzzle (going from `?quebra-cabeca=A` to `B` loads B). */
+  /** The puzzle's moves and run; `open` starts it over for another puzzle (going from `?puzzle=A` to `B` loads B). */
   protected readonly play = new PuzzlePlay(
     this.api,
     () => this.campaignId(),

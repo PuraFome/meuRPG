@@ -22,7 +22,7 @@ type State =
 const TOKEN_PATTERN = /^#t=(.+)$/;
 
 /**
- * "/convite" (public, MR-003): reads the invite token from the URL
+ * "/invite" (public, MR-003): reads the invite token from the URL
  * fragment, strips the fragment immediately, and either accepts the invite
  * (signed in) or offers the sign-in-through-invite path (signed out).
  *
@@ -92,12 +92,12 @@ export class InviteAccept {
       if (id && res.campaign?.awaitingApproval && !res.alreadyMember) {
         // An invite with approval (RN-15, MR-024): the new pending member
         // goes straight to creating the character the master will approve.
-        await this.router.navigate(['/campanhas', id, 'personagens', 'novo']);
+        await this.router.navigate(['/campaigns', id, 'characters', 'new']);
       } else if (id) {
         // A fresh join or `already_member` (pending or not): the campaign
         // page is where they go. For someone still pending, it shows
         // "esperando a aprovação do mestre" and their character.
-        await this.router.navigate(['/campanhas', id]);
+        await this.router.navigate(['/campaigns', id]);
       }
     } catch (err) {
       this.state.set({ status: 'error', message: describeAcceptInviteError(err) });
@@ -120,7 +120,7 @@ export class InviteAccept {
     form.hidden = true;
 
     const fields: Record<string, string> = {
-      return_to: '/campanhas',
+      return_to: '/campaigns',
       intent: 'campaign_invite',
       intent_payload: this.token ?? '',
     };

@@ -50,11 +50,11 @@ describe('describeInviteErrorCode', () => {
     ['not_found', 'não encontrado'],
     ['invalid', 'inválido'],
     ['unavailable', 'alguns minutos'],
-  ])('maps motivo=%s to a message containing %j', (motivo, fragment) => {
-    expect(describeInviteErrorCode(motivo)).toContain(fragment);
+  ])('maps reason=%s to a message containing %j', (reason, fragment) => {
+    expect(describeInviteErrorCode(reason)).toContain(fragment);
   });
 
-  it('falls back to a generic message for an unknown or missing motivo', () => {
+  it('falls back to a generic message for an unknown or missing reason', () => {
     expect(describeInviteErrorCode('something-new')).toBe('Não foi possível aceitar o convite.');
     expect(describeInviteErrorCode(null)).toBe('Não foi possível aceitar o convite.');
   });

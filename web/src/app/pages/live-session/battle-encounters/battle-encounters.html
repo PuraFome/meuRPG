@@ -16,7 +16,7 @@
 
     @if (k.evaluation) {
       <p class="enc__band">{{ head(k) }}</p>
-      <p class="enc__guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+      <p class="enc__guide"><strong>{{ guide }}</strong> · <a routerLink="/credits" target="_blank">Créditos</a></p>
       <ul class="enc__rows">
         @for (l of lines(k); track l.key) {
           <li class="enc__row">
@@ -34,7 +34,7 @@
         <mat-icon aria-hidden="true">warning</mat-icon>
         <p>
           <strong>Uma criatura deste encontro não está mais no SRD.</strong>
-          Abra este encontro <a [routerLink]="['/campanhas', campaignId(), 'encontros']" [queryParams]="{ mapa: mapId(), ponto: k.pointId }">nos Encontros</a> e guarde-o de novo sem ela.
+          Abra este encontro <a [routerLink]="['/campaigns', campaignId(), 'encounters']" [queryParams]="{ map: mapId(), point: k.pointId }">nos Encontros</a> e guarde-o de novo sem ela.
         </p>
       </div>
     }

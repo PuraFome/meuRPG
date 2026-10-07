@@ -18,8 +18,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Casting a summoning spell (MR-037, Etapa 9): Encontrar Familiar (1 hour, a
-// ritual: no slot), Animar os Mortos (1 minute) and Conjurar Animais (1 action).
+// Casting a summoning spell (MR-037, Etapa 9): Convocar Familiar (1 hour, a
+// ritual: no slot), Animar Mortos (1 minute) and Conjurar Animais (1 action).
 // The long ones are cast outside a combat, here (CastSummon); Conjurar Animais
 // is cast in a combat with CastSpell (combat_spells.go), where its creatures
 // join the fight with one initiative roll. The rules (what a spell may summon

@@ -10,6 +10,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait a week after a release before proposing it, so a compromised
+    # publish is usually yanked before it reaches us (security updates
+    # ignore the cooldown).
+    cooldown:
+      default-days: 7
     groups:
       actions-minor-patch:
         update-types:
@@ -21,6 +26,11 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
+    # Wait a week after a release before proposing it, so a compromised
+    # publish is usually yanked before it reaches us (security updates
+    # ignore the cooldown).
+    cooldown:
+      default-days: 7
     groups:
       go-minor-patch:
         update-types:
@@ -34,6 +44,11 @@ updates:
     directory: "/web"
     schedule:
       interval: "weekly"
+    # Wait a week after a release before proposing it, so a compromised
+    # publish is usually yanked before it reaches us (security updates
+    # ignore the cooldown).
+    cooldown:
+      default-days: 7
     groups:
       web-minor-patch:
         update-types:
@@ -64,6 +79,11 @@ updates:
     directory: "/e2e"
     schedule:
       interval: "weekly"
+    # Wait a week after a release before proposing it, so a compromised
+    # publish is usually yanked before it reaches us (security updates
+    # ignore the cooldown).
+    cooldown:
+      default-days: 7
     groups:
       e2e-minor-patch:
         update-types:
@@ -77,16 +97,18 @@ updates:
 
   # Base images of the production image and of devidp, pinned by digest.
   # Patch releases and new digests (security fixes) come here; a new Node
-  # or Go version goes together with CI and go.mod, by hand. The
-  # CockroachDB image is not here on purpose: deploy/local/compose.yaml and
-  # the go-db job in .github/workflows/backend.yml pin the same digest, and
-  # it changes in both at once, by hand.
+  # or Go version goes together with CI, go.mod and .node-version, by hand.
   - package-ecosystem: "docker"
     directories:
       - "/backend"
       - "/deploy/local"
     schedule:
       interval: "weekly"
+    # Wait a week after a release before proposing it, so a compromised
+    # publish is usually yanked before it reaches us (security updates
+    # ignore the cooldown).
+    cooldown:
+      default-days: 7
     groups:
       base-images:
         patterns:
@@ -96,3 +118,14 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "golang"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  # The CockroachDB image in the local stack, pinned by digest. The go-db job
+  # in .github/workflows/backend.yml pins the same digest: when this opens a
+  # PR, change COCKROACH_IMAGE there in the same PR (and the version in the
+  # Makefile and in CONTRIBUTING.md).
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy/local"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7

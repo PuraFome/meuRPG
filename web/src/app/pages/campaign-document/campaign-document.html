@@ -1,6 +1,6 @@
 @let s = state();
 @if (s.status !== 'not-found' && s.status !== 'forbidden') {
-  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <a class="back" [routerLink]="['/campaigns', campaignId()]">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>
     Voltar para a campanha
   </a>
@@ -25,7 +25,7 @@
           Confira o link com o mestre.
         </p>
       </div>
-      <a mat-flat-button class="page-action" routerLink="/campanhas">Ir para Minhas campanhas</a>
+      <a mat-flat-button class="page-action" routerLink="/campaigns">Ir para Minhas campanhas</a>
     </div>
   }
   @case ('forbidden') {
@@ -35,7 +35,7 @@
         <mat-icon aria-hidden="true">lock</mat-icon>
         <p><strong>Só o mestre vê o documento da campanha.</strong></p>
       </div>
-      <a mat-flat-button class="page-action" [routerLink]="['/campanhas', campaignId()]"
+      <a mat-flat-button class="page-action" [routerLink]="['/campaigns', campaignId()]"
         >Voltar para a campanha</a
       >
     </div>
@@ -90,7 +90,7 @@
     }
 
     @if (opened(); as ref) {
-      @if (ref.kind === 'mapa') {
+      @if (ref.kind === 'map') {
         <app-document-map-dialog [campaignId]="campaignId()" [mapId]="ref.id" [text]="ref.text" (closed)="closeRef()" />
       } @else {
         <app-document-sheet-dialog [campaignId]="campaignId()" [characterId]="ref.id" [text]="ref.text" (closed)="closeRef()" />

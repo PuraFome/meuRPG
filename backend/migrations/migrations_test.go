@@ -9,7 +9,6 @@ import (
 	"go/token"
 	"io/fs"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -19,6 +18,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 )
 
 // TestMigrationsUpDownUp applies every migration to a brand-new database,
@@ -79,10 +80,7 @@ var freshCounter atomic.Int64
 func freshDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 
-	rawURL := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if rawURL == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 
 	admin := open(t, rawURL)
 	// The clock alone is not unique: on macOS it ticks in microseconds, and two

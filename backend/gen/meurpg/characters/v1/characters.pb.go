@@ -1117,9 +1117,9 @@ type CreatureSource int32
 
 const (
 	CreatureSource_CREATURE_SOURCE_UNSPECIFIED CreatureSource = 0
-	// Encontrar Familiar: at most one at a time.
+	// Convocar Familiar: at most one at a time.
 	CreatureSource_CREATURE_SOURCE_FAMILIAR CreatureSource = 1
-	// Animar os Mortos: skeletons and zombies.
+	// Animar Mortos: skeletons and zombies.
 	CreatureSource_CREATURE_SOURCE_ANIMATE_DEAD CreatureSource = 2
 	// Conjurar Animais: animals that last while the caster concentrates.
 	CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS CreatureSource = 3
@@ -7596,7 +7596,7 @@ type SummonSpellOptions struct {
 	// The spell, "spell:find-familiar", "spell:animate-dead" or
 	// "spell:conjure-animals".
 	SpellKey string `protobuf:"bytes,1,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
-	// Its Portuguese name ("Encontrar Familiar").
+	// Its Portuguese name ("Convocar Familiar").
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The spell's own circle, 1 to 9.
 	Level int32 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
@@ -7607,7 +7607,7 @@ type SummonSpellOptions struct {
 	Concentration bool `protobuf:"varint,6,opt,name=concentration,proto3" json:"concentration,omitempty"`
 	// Whether this character can cast it as a ritual (no slot): a wizard from the
 	// spellbook, another caster from its prepared list, a warlock with the Pact
-	// of the Chain for Encontrar Familiar. Always false for a spell that is not a
+	// of the Chain for Convocar Familiar. Always false for a spell that is not a
 	// ritual.
 	CanRitual bool `protobuf:"varint,7,opt,name=can_ritual,json=canRitual,proto3" json:"can_ritual,omitempty"`
 	// Whether this character can cast it with a slot: the spell is on the sheet and
@@ -7788,7 +7788,7 @@ func (x *SummonCircle) GetOptions() []*SummonOption {
 type SummonOption struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How many creatures, already counting the circle (Conjurar Animais doubles at
-	// the 5th, Animar os Mortos adds two for each circle above the 3rd).
+	// the 5th, Animar Mortos adds two for each circle above the 3rd).
 	Count int32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
 	// The creatures a casting may choose from. Empty when `type` and `max_cr`
 	// say it.

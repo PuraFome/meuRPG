@@ -1,5 +1,5 @@
 /**
- * The view-models and the port of the session page (`/campanhas/:id/sessao`,
+ * The view-models and the port of the session page (`/campaigns/:id/session`,
  * MR-011, MR-012, RN-02). Nothing here
  * imports generated code: the
  * `LiveSessionSourceLive` maps `PlayService`, `CharacterService` and

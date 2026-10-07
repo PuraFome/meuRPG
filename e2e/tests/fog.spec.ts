@@ -307,7 +307,7 @@ test('o servidor recusa ver pelos olhos de um familiar a mais de 30 m, e a tela 
 
 test('na ficha, o cartão do familiar também tem "Ver pelos olhos" durante a sessão @MR-036 @MR-037', async ({ browser }) => {
   await atTable(browser, { familiar: { col: 15, row: 8 } }, 'Ficha do familiar', async ({ table, ap }) => {
-    await ap.goto(`/campanhas/${table.campaignId}/personagens/${table.pensantusId}`);
+    await ap.goto(`/campaigns/${table.campaignId}/characters/${table.pensantusId}`);
     const card = ap.locator('app-creature-card', { hasText: 'Nanquim' });
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Ver pelos olhos' }).click();
@@ -373,7 +373,7 @@ test('no combate, o mapa tem a mesma névoa e os controles continuam; ver pelos 
 test('"Mapas revelados": o jogador abre o mapa com a mesma névoa e nenhum pedido baixa a imagem inteira @MR-036 @RN-10', async ({ browser }) => {
   await atTable(browser, {}, 'Mapas revelados', async ({ table, ap }) => {
     const fetched = watch(ap);
-    await ap.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+    await ap.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
     await expect(ap.locator('app-fog-map')).toBeVisible();
     await loaded(ap);
     expect((await shading(ap)).grey).toBeGreaterThan(0);

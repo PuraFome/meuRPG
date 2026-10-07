@@ -36,11 +36,11 @@ test(
       ({ campaignId } = await tableWithPensantus(masterPage, playerPage, name));
 
       // The player has the app open, on "Minhas campanhas".
-      await playerPage.goto('/campanhas');
+      await playerPage.goto('/campaigns');
       await waitForCampaignList(playerPage);
 
       // The master starts the session from the campaign page.
-      await masterPage.goto(`/campanhas/${campaignId}`);
+      await masterPage.goto(`/campaigns/${campaignId}`);
       await masterPage.getByRole('button', { name: 'Iniciar sessão' }).click();
       await expect(masterPage.getByText('Sessão 1 em andamento')).toBeVisible();
 
@@ -48,11 +48,11 @@ test(
       const enter = await waitForNotice(playerPage, name);
       // …and "Entrar na sessão" opens the session page.
       await enter.click();
-      await expect(playerPage).toHaveURL(`/campanhas/${campaignId}/sessao`);
+      await expect(playerPage).toHaveURL(`/campaigns/${campaignId}/session`);
       await expect(playerPage.getByRole('heading', { level: 1, name: 'Sessão 1' })).toBeVisible();
       await expect(playerPage.getByRole('heading', { level: 2, name: 'Pensantus' })).toBeVisible();
 
-      // The master copies the session link: /campanhas/<id>/sessao, no secret.
+      // The master copies the session link: /campaigns/<id>/session, no secret.
       // The clipboard only works in the focused page: in CI's headless
       // Chromium, reading it from a page in the background never resolves.
       await masterPage.bringToFront();
@@ -64,7 +64,7 @@ test(
           new Promise<string>((_, reject) => setTimeout(() => reject(new Error('reading the clipboard timed out')), 5_000)),
         ]),
       );
-      expect(copied).toBe(new URL(`/campanhas/${campaignId}/sessao`, baseURL).toString());
+      expect(copied).toBe(new URL(`/campaigns/${campaignId}/session`, baseURL).toString());
     } finally {
       if (campaignId) {
         await endOpenSessionRPC(masterPage, campaignId);
@@ -95,7 +95,7 @@ test(
       const sessionId = await startSessionRPC(masterPage, campaignId);
 
       const playerPage = await player.newPage();
-      await playerPage.goto(`/campanhas/${campaignId}/sessao`);
+      await playerPage.goto(`/campaigns/${campaignId}/session`);
       // Two calls in a row (the sign-in check, then the campaign's): allow a
       // busy stack the same 30 s as openSessionPage.
       await expect(playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' })).toBeVisible({

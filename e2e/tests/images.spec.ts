@@ -226,7 +226,7 @@ test('com a geração desligada o botão fica ao lado da razão e nenhum diálog
     await mp.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGenerationStatus', (route) =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' } }) }),
     );
-    await mp.goto(`/campanhas/${campaignId}/galeria`);
+    await mp.goto(`/campaigns/${campaignId}/gallery`);
     const button = mp.getByRole('button', { name: 'Gerar imagem com IA' });
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(mp.getByText('A geração de imagens não está ligada neste servidor.')).toBeVisible();
@@ -253,7 +253,7 @@ test('da galeria: uma imagem gerada leva a etiqueta, e "Pedir um ajuste" abre o 
       return ((await list.json()).images ?? []).filter((i: { generated?: boolean }) => i.generated).length;
     }).toBe(2);
 
-    await mp.goto(`/campanhas/${table.campaignId}/galeria`);
+    await mp.goto(`/campaigns/${table.campaignId}/gallery`);
     await expect(mp.getByText('Gerada por IA')).toHaveCount(2);
     await expect(mp.getByText('Editada de Uma taverna à noite')).toBeVisible();
 
@@ -270,7 +270,7 @@ test('da galeria: uma imagem gerada leva a etiqueta, e "Pedir um ajuste" abre o 
 test('da galeria: mostrar um mapa com textura pergunta antes, e só mostra na segunda vez @MR-039 @RN-10', async ({ browser }) => {
   await atTable(browser, `Mapa inteiro ${Date.now()}`, async ({ table, mp, ap }) => {
     const textureId = await generateTextureRPC(mp, table);
-    await mp.goto(`/campanhas/${table.campaignId}/galeria`);
+    await mp.goto(`/campaigns/${table.campaignId}/gallery`);
     await mp.getByRole('button', { name: /^Ver / }).first().click();
     await mp.getByRole('button', { name: 'Pedir um ajuste' }).click();
     const d = dialog(mp);
@@ -318,7 +318,7 @@ test('na sessão: o seletor de "Mostrar imagem" marca o mapa inteiro e pergunta 
 test('no documento: inserir uma imagem do mapa inteiro pergunta antes, porque os jogadores leem o documento @MR-039 @RN-10', async ({ browser }) => {
   await atTable(browser, `Documento ${Date.now()}`, async ({ table, mp }) => {
     const textureId = await generateTextureRPC(mp, table);
-    await mp.goto(`/campanhas/${table.campaignId}/documento`);
+    await mp.goto(`/campaigns/${table.campaignId}/document`);
     await mp.getByRole('button', { name: 'Editar documento' }).click();
     const text = mp.getByRole('textbox', { name: 'Texto' });
     await mp.getByRole('button', { name: 'Imagem da galeria' }).click();
@@ -333,6 +333,6 @@ test('no documento: inserir uma imagem do mapa inteiro pergunta antes, porque os
     await expect(picker.getByText('Inserir o mapa inteiro?')).toHaveCount(0);
     await picker.getByRole('button', { name: 'Inserir imagem' }).click();
     await picker.getByRole('button', { name: 'Inserir mesmo assim' }).click();
-    await expect(text).toHaveValue(new RegExp(`imagem:${textureId}`));
+    await expect(text).toHaveValue(new RegExp(`image:${textureId}`));
   });
 });

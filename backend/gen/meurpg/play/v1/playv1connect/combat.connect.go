@@ -880,11 +880,11 @@ type CombatServiceClient interface {
 	//     with no roll to hit.
 	//   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
 	//     RollDamage, with the caster's spellcasting modifier.
-	//   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
-	//     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+	//   - A spell that reads hit points (Sono, Leque Cromático, Palavra de Poder:
+	//     Atordoar and Matar, Estabilizar, Cura Completa; effect_kind of
 	//     the answer): the server reads each target's current hit points (an NPC's
 	//     from the combat, a player's character's from its vitals) and applies the
-	//     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+	//     effect at once, in the same transaction. A pool (Sono, Leque Cromático)
 	//     is rolled by the server (roll_in_app) or typed from physical dice
 	//     (pool_sum), RN-18; it goes through the targets in ascending order of
 	//     current hit points, skips the unconscious and those at 0, and gives the
@@ -892,7 +892,7 @@ type CombatServiceClient interface {
 	//     (Palavra de Poder) affects a target at or below the limit: a condition,
 	//     or death (an NPC is defeated; a player's character drops to 0 hit points
 	//     with three death save failures, and the master confirms the death with
-	//     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+	//     ConfirmDeath). Estabilizar makes a player's character at 0 hit
 	//     points stable. Cura Completa heals and ends blindness and deafness. The
 	//     caster's player gets their own pool roll and who was affected, never a
 	//     target's hit points; the master gets the pool, each target's hit points
@@ -2316,11 +2316,11 @@ type CombatServiceHandler interface {
 	//     with no roll to hit.
 	//   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
 	//     RollDamage, with the caster's spellcasting modifier.
-	//   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
-	//     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+	//   - A spell that reads hit points (Sono, Leque Cromático, Palavra de Poder:
+	//     Atordoar and Matar, Estabilizar, Cura Completa; effect_kind of
 	//     the answer): the server reads each target's current hit points (an NPC's
 	//     from the combat, a player's character's from its vitals) and applies the
-	//     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+	//     effect at once, in the same transaction. A pool (Sono, Leque Cromático)
 	//     is rolled by the server (roll_in_app) or typed from physical dice
 	//     (pool_sum), RN-18; it goes through the targets in ascending order of
 	//     current hit points, skips the unconscious and those at 0, and gives the
@@ -2328,7 +2328,7 @@ type CombatServiceHandler interface {
 	//     (Palavra de Poder) affects a target at or below the limit: a condition,
 	//     or death (an NPC is defeated; a player's character drops to 0 hit points
 	//     with three death save failures, and the master confirms the death with
-	//     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+	//     ConfirmDeath). Estabilizar makes a player's character at 0 hit
 	//     points stable. Cura Completa heals and ends blindness and deafness. The
 	//     caster's player gets their own pool roll and who was affected, never a
 	//     target's hit points; the master gets the pool, each target's hit points

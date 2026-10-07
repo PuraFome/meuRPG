@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 )
 
 // testPool connects to the database in MEURPG_TEST_DATABASE_URL, or skips the
@@ -24,10 +25,7 @@ import (
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	url := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
+	url := testenv.DatabaseURL(t)
 
 	pool, err := NewPool(t.Context(), url)
 	if err != nil {
@@ -132,10 +130,7 @@ func mustExec(t *testing.T, pool *pgxpool.Pool, sql string) {
 // past the limit is canceled with 57014, and an idle transaction is closed.
 func TestSessionTimeouts(t *testing.T) {
 	t.Parallel()
-	url := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
+	url := testenv.DatabaseURL(t)
 	sep := "?"
 	if strings.Contains(url, "?") {
 		sep = "&"

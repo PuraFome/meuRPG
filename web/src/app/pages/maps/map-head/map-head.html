@@ -1,4 +1,4 @@
-<a class="back" [routerLink]="['/campanhas', campaignId()]">
+<a class="back" [routerLink]="['/campaigns', campaignId()]">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
 </a>
 @if (mode() === 'rename') {
@@ -45,7 +45,7 @@
           <a
             matButton="outlined"
             class="print__button"
-            [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'imprimir']"
+            [routerLink]="['/campaigns', campaignId(), 'maps', map().id, 'print']"
           >
             <mat-icon aria-hidden="true">print</mat-icon>Imprimir com a grade
           </a>

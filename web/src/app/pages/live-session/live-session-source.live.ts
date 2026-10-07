@@ -109,7 +109,7 @@ export function classifyLiveError(err: unknown): LiveErrorKind {
 
 /**
  * `LiveSessionSource` over the generated clients. Provided at the route
- * level for `/campanhas/:id/sessao` (`live-session.routes.ts`), so
+ * level for `/campaigns/:id/session` (`live-session.routes.ts`), so
  * `play.v1`, `characters.v1` and `rules.v1`'s generated code stays in this
  * page's lazy chunk.
  */

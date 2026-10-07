@@ -44,7 +44,7 @@ test('antes de qualquer sessão, o jogador edita a própria ficha e a alteraçã
     const character = (await created.json()).character;
     expect(character.canEdit).toBe(true);
 
-    await joinedPage.goto(`/campanhas/${campaignId}/personagens/${character.id}`);
+    await joinedPage.goto(`/campaigns/${campaignId}/characters/${character.id}`);
     await expect(joinedPage.getByText('Ficha travada desde', { exact: false })).toHaveCount(0);
     await joinedPage.getByRole('link', { name: 'Editar ficha' }).click();
     await joinedPage.getByLabel('Nível').fill('4');
@@ -94,12 +94,12 @@ test(
       expect((await startRes.json()).lockedSheetCount).toBe(1);
 
       // The screen: read-only, with the lock banner, no edit button.
-      await joinedPage.goto(`/campanhas/${campaignId}/personagens/${character.id}`);
+      await joinedPage.goto(`/campaigns/${campaignId}/characters/${character.id}`);
       await expect(joinedPage.getByText('Ficha travada desde', { exact: false })).toBeVisible();
       await expect(joinedPage.getByRole('link', { name: 'Editar ficha' })).toHaveCount(0);
 
       // The edit URL, typed or bookmarked: the lock, before any form.
-      await joinedPage.goto(`/campanhas/${campaignId}/personagens/${character.id}/editar`);
+      await joinedPage.goto(`/campaigns/${campaignId}/characters/${character.id}/edit`);
       await expect(joinedPage.getByText('A ficha está travada', { exact: false })).toBeVisible();
       await expect(joinedPage.getByRole('button', { name: 'Salvar ficha' })).toHaveCount(0);
 
@@ -170,12 +170,12 @@ test('depois da primeira sessão, o jogador só edita a história quando o mestr
     );
 
     // The master allows it, from their own view of the sheet.
-    await page.goto(`/campanhas/${campaignId}/personagens/${character.id}`);
+    await page.goto(`/campaigns/${campaignId}/characters/${character.id}`);
     await page.getByRole('button', { name: 'Permitir editar a história' }).click();
     await expect(page.getByRole('button', { name: 'Travar a história' })).toBeVisible();
 
     // Now the player edits and saves, through the screen.
-    await joinedPage.goto(`/campanhas/${campaignId}/personagens/${character.id}`);
+    await joinedPage.goto(`/campaigns/${campaignId}/characters/${character.id}`);
     await joinedPage.getByRole('button', { name: 'Editar história' }).click();
     await joinedPage.getByLabel('Antecedentes').fill('Pensantus cresceu em Mirathel, entre livros e engrenagens.');
     await joinedPage.getByRole('button', { name: 'Salvar história' }).click();

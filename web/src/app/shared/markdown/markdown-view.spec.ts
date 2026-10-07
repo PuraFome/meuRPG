@@ -40,7 +40,7 @@ describe('MarkdownView', () => {
   });
 
   it('draws an image with its caption, and "Imagem apagada" when the gallery lacks it', () => {
-    const src = `![A Taverna](imagem:${IMG})`;
+    const src = `![A Taverna](image:${IMG})`;
     const { el } = render(src);
     expect(el.querySelector('img')?.getAttribute('src')).toBe(`/images/${IMG}`);
     expect(el.querySelector('figcaption')?.textContent).toBe('A Taverna');
@@ -51,14 +51,14 @@ describe('MarkdownView', () => {
   });
 
   it('turns a failed image into "Imagem apagada"', () => {
-    const { fixture, el } = render(`![x](imagem:${IMG})`);
+    const { fixture, el } = render(`![x](image:${IMG})`);
     el.querySelector('img')!.dispatchEvent(new Event('error'));
     fixture.detectChanges();
     expect(el.textContent).toContain('Imagem apagada');
   });
 
   it('makes map and sheet links buttons that open, and says when the target is gone', () => {
-    const src = `[Mirathel](mapa:${MAP}) e [Capitão](ficha:${CHAR})`;
+    const src = `[Mirathel](map:${MAP}) e [Capitão](character:${CHAR})`;
     const { fixture, el } = render(src);
     const opened: RefOpen[] = [];
     fixture.componentInstance.openRef.subscribe((r) => opened.push(r));
@@ -66,7 +66,7 @@ describe('MarkdownView', () => {
     expect(buttons).toHaveLength(2);
     expect(buttons[0].getAttribute('aria-haspopup')).toBe('dialog');
     buttons[1].click();
-    expect(opened).toEqual([{ kind: 'ficha', id: CHAR, text: 'Capitão' }]);
+    expect(opened).toEqual([{ kind: 'character', id: CHAR, text: 'Capitão' }]);
 
     const gone = render(src, { maps: new Set(), characters: new Set([CHAR]), images: null });
     expect(gone.el.textContent).toContain('Mirathel (mapa apagado)');

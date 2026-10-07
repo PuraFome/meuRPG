@@ -141,7 +141,7 @@ describe('sessionsToAnnounce', () => {
   const ids = (list: readonly OpenSessionVm[]) => list.map((s) => s.sessionId);
 
   it('announces every session the person plays in, oldest first', () => {
-    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas'))).toEqual(['s1', 's2']);
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns'))).toEqual(['s1', 's2']);
   });
 
   it('a session that starts later goes below, so the first notice never moves', () => {
@@ -155,20 +155,20 @@ describe('sessionsToAnnounce', () => {
   });
 
   it("doesn't announce a session on its campaign's page (its Sessão panel says it)", () => {
-    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2'))).toEqual(['s1']);
-    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2?x=1#y'))).toEqual(['s1']);
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2'))).toEqual(['s1']);
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2?x=1#y'))).toEqual(['s1']);
   });
 
   it('announces on the pages under a campaign, such as a sheet', () => {
-    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2/personagens/p1'))).toEqual([
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2/characters/p1'))).toEqual([
       's1',
       's2',
     ]);
   });
 
   it('never announces on a session page', () => {
-    expect(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2/sessao')).toEqual([]);
-    expect(sessionsToAnnounce(sessions, new Set(), '/campanhas/c9/sessao')).toEqual([]);
+    expect(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2/session')).toEqual([]);
+    expect(sessionsToAnnounce(sessions, new Set(), '/campaigns/c9/session')).toEqual([]);
   });
 
   it("doesn't announce to the master the session they started", () => {
@@ -179,11 +179,11 @@ describe('sessionsToAnnounce', () => {
 describe('sessionForLiveLink', () => {
   it('links to the newest open session, as master or player', () => {
     const sessions = [open('s3', 'c3', true), open('s1', 'c1')];
-    expect(sessionForLiveLink(sessions, '/perfil')?.sessionId).toBe('s3');
+    expect(sessionForLiveLink(sessions, '/profile')?.sessionId).toBe('s3');
   });
 
   it('shows nothing on a session page, whose status line has its own pill', () => {
-    expect(sessionForLiveLink([open('s1', 'c1')], '/campanhas/c1/sessao')).toBeNull();
+    expect(sessionForLiveLink([open('s1', 'c1')], '/campaigns/c1/session')).toBeNull();
   });
 
   it('shows nothing without an open session', () => {

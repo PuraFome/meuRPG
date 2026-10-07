@@ -5,7 +5,7 @@ import { LiveSessionSource } from './live-session.types';
 
 /**
  * Lazily loaded from `app.routes.ts` via `loadChildren` for
- * `/campanhas/:id/sessao`, so `LiveSessionSource` gets a route-scoped
+ * `/campaigns/:id/session`, so `LiveSessionSource` gets a route-scoped
  * provider without `app.routes.ts` (eager) importing the generated clients
  * behind it — see `../character-sheet/character-sheet.routes.ts`.
  */
