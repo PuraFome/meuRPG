@@ -1,4 +1,3 @@
-// Finding U13-07 (review/unit-13-web-live-rest.md): "Voltar" then asking again after a lost answer makes a new idempotency key, so the first (already applied) grant is granted twice.
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
@@ -9,7 +8,7 @@ import { SceneRollLine } from './scene-roll-line';
 
 const failed = sceneRoll('r1', 'a2', 'Toren', 7, { passed: false, attemptsLeft: 0 });
 
-describe('Review13 U13-07: a grant sent again after Voltar keeps the key of the lost one', () => {
+describe('SceneRollLine: the idempotency key of a grant', () => {
   async function setup() {
     const api = new FakeSceneClient();
     api.granted = masterScene([failed], [], {});

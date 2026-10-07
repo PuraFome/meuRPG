@@ -1,4 +1,3 @@
-// Finding U13-04 (review/unit-13-web-live-rest.md): a roll refused with SceneBlocked NO_OPEN_SCENE never re-reads the scene, so the stale closed scene (and its "Rolar" buttons) stays.
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -11,7 +10,7 @@ import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, playerScene } from '../../../../core/play/scene-testing';
 import { SceneRollSheet, type SceneRollSheetData } from './scene-roll-sheet';
 
-describe('Review13 U13-04: roll refused with NO_OPEN_SCENE leaves the closed scene on screen', () => {
+describe('SceneRollSheet: a roll the server refuses', () => {
   beforeEach(() => {
     Element.prototype.scrollTo = vi.fn() as never;
   });
@@ -67,7 +66,7 @@ describe('Review13 U13-04: roll refused with NO_OPEN_SCENE leaves the closed sce
     expect(state.scene()).toBeNull();
   });
 
-  it('re-reads the scene after NO_OPEN_SCENE so the stale scene is cleared', async () => {
+  it('re-reads the scene after NO_OPEN_SCENE, so the closed scene leaves the screen', async () => {
     const { api, state, el } = await run(SceneBlockedReason.NO_OPEN_SCENE);
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('fechou a cena');
     expect(api.calls.filter((c) => c === 'get')).toHaveLength(1);

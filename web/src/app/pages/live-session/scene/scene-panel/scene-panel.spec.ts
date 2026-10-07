@@ -1,4 +1,3 @@
-// Finding U13-05 (review/unit-13-web-live-rest.md): ScenePanel.open() does not await map.refresh(), so the picker gets the pre-refresh points.
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
@@ -15,7 +14,7 @@ const actions = (n: number) =>
     create(SceneActionSchema, { id: `a${i}`, key: 'skill:arcana', checkName: 'Arcanismo' }),
   );
 
-describe('Review13 U13-05: scene picker shows the pre-refresh points', () => {
+describe("ScenePanel: the picker follows the map's points", () => {
   async function setup() {
     const api = new FakeSceneClient();
     const state = new SceneState(
@@ -71,7 +70,7 @@ describe('Review13 U13-05: scene picker shows the pre-refresh points', () => {
     expect(rows()[0]).toContain('1 ação');
   });
 
-  it('shows the refreshed points once the refresh answers', async () => {
+  it('follows the points the map refresh brings once it answers', async () => {
     const { fixture, mapState, settle, rows, finish } = await setup();
     (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
     await settle();
