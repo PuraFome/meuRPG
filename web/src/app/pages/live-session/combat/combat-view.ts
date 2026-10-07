@@ -45,6 +45,7 @@ import {
   type MoveResult,
   newKey,
 } from '../../../core/combat/combat-client';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
   type FormEnded,
@@ -241,6 +242,8 @@ export class CombatView {
   protected readonly wideLayout = mediaQuery('(min-width: 1280px)');
   /** One save in flight per combatant (see `MoveSaves`). */
   private readonly moves = new MoveSaves();
+  /** The key of a jump: the same jump again is a retry of it. */
+  private readonly jumpKey = new ActionKey();
 
   readonly campaignId = input.required<string>();
   readonly isMaster = input(false);
@@ -1157,7 +1160,13 @@ export class CombatView {
 
   private async refreshAfter(err: unknown): Promise<void> {
     const code = ConnectError.from(err).code;
-    if (code === Code.Aborted || code === Code.FailedPrecondition || code === Code.NotFound) {
+    if (
+      code === Code.Aborted ||
+      code === Code.FailedPrecondition ||
+      code === Code.NotFound ||
+      code === Code.Unavailable ||
+      code === Code.DeadlineExceeded
+    ) {
       try {
         this.state().apply(await this.api.get(this.campaignId()));
       } catch {
@@ -2030,17 +2039,31 @@ export class CombatView {
     }
     const before = own.movementUsedDft;
     this.moveError.set('');
-    const ok = await this.runMove((e) =>
-      req.kind === 'long'
-        ? this.api.move(this.campaignId(), e.id, own.id, req.square.col, req.square.row, {
-            kind: 'long',
-          })
-        : this.api.move(this.campaignId(), e.id, own.id, own.col, own.row, {
-            kind: 'high',
-            heightDft: req.heightDft,
-          }),
-    );
+    const ok = await this.runMove((e) => {
+      // The same jump again (a lost answer) is a retry: it keeps its key and is not charged twice.
+      const key = this.jumpKey.keyFor([e.id, own.id, req]);
+      return req.kind === 'long'
+        ? this.api.move(
+            this.campaignId(),
+            e.id,
+            own.id,
+            req.square.col,
+            req.square.row,
+            { kind: 'long' },
+            key,
+          )
+        : this.api.move(
+            this.campaignId(),
+            e.id,
+            own.id,
+            own.col,
+            own.row,
+            { kind: 'high', heightDft: req.heightDft },
+            key,
+          );
+    });
     if (ok) {
+      this.jumpKey.renew();
       const spent = (this.mover()?.movementUsedDft ?? before) - before;
       this.moveNote.set(
         req.kind === 'long'
