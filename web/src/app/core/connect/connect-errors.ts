@@ -1,5 +1,8 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
+/** What every call says when the login session is gone: no retry fixes it, signing in again does. */
+export const SESSION_ENDED = 'Sua sessão acabou. Entre de novo para continuar.';
+
 /**
  * Turns whatever a Connect call rejected with into a Portuguese message a
  * screen can show as-is.
@@ -23,6 +26,7 @@ export function describeConnectError(
   }
   return (
     messages[connectErr.code] ??
+    (connectErr.code === Code.Unauthenticated ? SESSION_ENDED : undefined) ??
     messages[Code.Unavailable] ??
     'Não foi possível falar com o servidor agora. Tente de novo em instantes.'
   );
