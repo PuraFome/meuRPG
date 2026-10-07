@@ -1,0 +1,235 @@
+{
+  "tests/a11y.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "playwright/no-force-option": {
+      "count": 5
+    }
+  },
+  "tests/classes-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "tests/classes.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "tests/combat.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 2
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 4
+    }
+  },
+  "tests/content-options.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    }
+  },
+  "tests/content-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "tests/content.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "playwright/no-force-option": {
+      "count": 5
+    }
+  },
+  "tests/creatures-combat.spec.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/creatures.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 3
+    },
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/credits.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/dungeon-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "tests/dungeon.spec.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "playwright/prefer-web-first-assertions": {
+      "count": 1
+    }
+  },
+  "tests/fog.spec.ts": {
+    "playwright/prefer-to-have-length": {
+      "count": 2
+    }
+  },
+  "tests/gold.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    },
+    "playwright/no-force-option": {
+      "count": 3
+    }
+  },
+  "tests/images-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "tests/images.spec.ts": {
+    "playwright/no-force-option": {
+      "count": 1
+    },
+    "playwright/prefer-to-have-length": {
+      "count": 1
+    }
+  },
+  "tests/joint-turns.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    }
+  },
+  "tests/layout.ts": {
+    "playwright/valid-describe-callback": {
+      "count": 4
+    }
+  },
+  "tests/levelup.spec.ts": {
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/live-session.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/map-editor.spec.ts": {
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/map-print.spec.ts": {
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/milestones.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 2
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/monsters.spec.ts": {
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/notes.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    },
+    "playwright/no-force-option": {
+      "count": 1
+    }
+  },
+  "tests/puzzles-more.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 1
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/puzzles.spec.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "playwright/prefer-to-have-length": {
+      "count": 1
+    }
+  },
+  "tests/scenes.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 6
+    }
+  },
+  "tests/session-summary.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/stage.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 3
+    }
+  },
+  "tests/table-rules.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    }
+  },
+  "tests/table-sheet-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "tests/table-sheet.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    }
+  },
+  "tests/theatre.spec.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/traps.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 4
+    }
+  },
+  "tests/treasure-support.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "tests/xp.spec.ts": {
+    "@typescript-eslint/await-thenable": {
+      "count": 1
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 3
+    },
+    "playwright/no-useless-await": {
+      "count": 1
+    }
+  }
+}

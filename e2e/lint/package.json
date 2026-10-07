@@ -1,0 +1,13 @@
+{
+  "name": "meurpg-e2e-lint",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ESLint for e2e/. A separate package because e2e/ type-checks with TypeScript 7 (the native compiler), which typescript-eslint cannot use yet: it needs the TypeScript 5.x JavaScript API.",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "eslint-plugin-playwright": "2.12.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1"
+  }
+}

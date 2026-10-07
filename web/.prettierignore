@@ -1,0 +1,10 @@
+# Generated or built: never formatted by hand.
+src/gen/
+dist/
+coverage/
+.angular/
+out-tsc/
+node_modules/
+package-lock.json
+# The suppressions file is written by ESLint.
+eslint-suppressions.json

@@ -1,0 +1,2874 @@
+{
+  "src/app/app.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 3
+    }
+  },
+  "src/app/app.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/core/campaigns/campaigns.service.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/core/campaigns/table-rules.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/characters/character-errors.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/cast-flow.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 3
+    }
+  },
+  "src/app/core/combat/combat-dice.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/combat-errors.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/combat-grid.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/combat/combat-log.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "src/app/core/combat/combat-notices.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/combat-options.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/combat/combat-view.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/creature-names.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/combat/death-saves.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/combat/spell-summary.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/catalog.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/content-kinds.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/content-read.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/content-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 30
+    }
+  },
+  "src/app/core/content/content-violations.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/effect-draft.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/content/spell-draft.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "src/app/core/content/spell-draft.ts": {
+    "complexity": {
+      "count": 4
+    }
+  },
+  "src/app/core/creatures/creatures-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 10
+    }
+  },
+  "src/app/core/creatures/summon-labels.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/dice/dice.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 11
+    }
+  },
+  "src/app/core/encounters/encounter-text.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/encounters/encounters-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 10
+    }
+  },
+  "src/app/core/images/bytes-url.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/core/images/gallery-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 8
+    }
+  },
+  "src/app/core/images/image-format.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/core/images/image-uploader.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/images/imagegen-copy.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/images/imagegen-run.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/images/imagegen-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 9
+    }
+  },
+  "src/app/core/images/upload-errors.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/app/core/levelup/levelup-draft.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/levelup/levelup-errors.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/core/levelup/levelup-feed.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/core/levelup/levelup-summary.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/levelup/levelup-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 36
+    }
+  },
+  "src/app/core/maps/calibration.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/core/maps/door-paint.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/maps/dungeon-layout.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/core/maps/dungeon-options.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 6
+    }
+  },
+  "src/app/core/maps/dungeons-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 15
+    }
+  },
+  "src/app/core/maps/layers.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 12
+    }
+  },
+  "src/app/core/maps/maps-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
+    }
+  },
+  "src/app/core/maps/paint-layers.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 34
+    }
+  },
+  "src/app/core/maps/paint-queue.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    }
+  },
+  "src/app/core/maps/paint-session.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/maps/paint-tools.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 6
+    }
+  },
+  "src/app/core/maps/vision-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/maps/vision.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/notes/notes-state.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/notes/notes-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/core/play/scene-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 15
+    }
+  },
+  "src/app/core/play/scene-view.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/play/session-summary.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/core/progression/xp-errors.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/puzzles/puzzle-draft.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/core/puzzles/puzzle-errors.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/core/puzzles/puzzle-format.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 7
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/puzzles/puzzle-play.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/puzzles/puzzle-text.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/puzzles/puzzles-testing.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 19
+    }
+  },
+  "src/app/core/spells/spells-state.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/core/title/page-title.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/core/traps/trap-area.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/traps/trap-search.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/core/traps/trap-text.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/core/units.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/bestiary/bestiary-creature/bestiary-creature.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/bestiary/bestiary-list/bestiary-list.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/bestiary/bestiary-list/bestiary-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/bestiary/bestiary-list/bestiary-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/bestiary/create-npc-sheet/create-npc-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/bestiary-panel/bestiary-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/campaign-detail.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/characters/campaign-characters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/characters/level-up-changes.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/creatures/character-creatures.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/creatures/give-creature-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/dice-panel/dice-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/dice-preference-panel/dice-preference-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/document-panel/document-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/encounters-panel/encounters-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/experience/award-history.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/experience/experience-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/experience/xp-rows.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/gallery-panel/gallery-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/game-session/game-session-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/invites/invite-reveal.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/invites/invites.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/campaign-detail/level-up-notice/level-up-notice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/maps-panel/maps-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/mark-reached-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/milestone-ask.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/milestone-characters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/milestone-name-form.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/milestones-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/planned-milestones.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/milestones/reached-milestones.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-detail/pending-members/pending-members.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/campaign-document.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/doc-dialog/doc-dialog.html": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/doc-dialog/doc-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/document-editor/document-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/document-format.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/document-read/document-read.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/document-toc/document-toc.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/document-toolbar/document-toolbar.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/edit-actions.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/campaign-document/image-picker-dialog/image-picker-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/link-picker-dialog/link-picker-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/map-dialog/map-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaign-document/sheet-dialog/sheet-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/campaigns/campaigns.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/ability-fields/ability-fields.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/ability-scores/ability-placing/ability-placing.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/ability-scores/ability-scores.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/ability-scores/dice-result/dice-result.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/character-editor-source.live.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/pages/character-editor/character-editor.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/pages/character-editor/character-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 23
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/class-block/class-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/class-blocks.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/defeat-xp/defeat-xp.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/defeat-xp/defeat-xp.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/editor-stepper/editor-stepper.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/editor-stepper/editor-stepper.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/granted-spells/granted-spells.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/hit-points-rolls/hit-points-rolls.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/npc-short-form/basic-form.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 17
+    }
+  },
+  "src/app/pages/character-editor/npc-short-form/npc-attack-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/npc-short-form/npc-short-form.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/portrait-field/portrait-field.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/skill-picker/skill-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/spell-picker/spell-picker.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/table-ability-scores/table-ability-scores.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/ability-medallions/ability-medallions.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/basic-sheet/basic-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/changed-content/changed-content-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/changed-content/changed-content.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/character-sheet-source.live.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "src/app/pages/character-sheet/character-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/combat-column/combat-column.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/combat-stats/combat-stats.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creature-page/creature-page.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creatures-panel/creature-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creatures-panel/creature-edit.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creatures-panel/creatures-panel.html": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creatures-panel/creatures-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/creatures-panel/summon-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/features-panel/features-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/level-up-banner/level-up-banner.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/level-up-banner/level-up-banner.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/level-up-banner/level-up-done.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/master-notes/master-notes.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/proficiency-column/proficiency-column.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/sheet-format.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/sheet-header/sheet-header.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-sheet/story-panel/story-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 9
+    }
+  },
+  "src/app/pages/character-sheet/xp-block/xp-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/archive/archive-question.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/archive/archive-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/background-editor/background-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/class-editor/class-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
+    }
+  },
+  "src/app/pages/content/class-parts/casting-fields.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/class-parts/class-features.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/class-parts/section-nav.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/class-parts/table-question.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/content-entry/content-entry.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/content-list/content-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/editor-bar/editor-bar.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/content/entry-read/entry-read.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/options/options.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/players-switch/players-switch.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/race-editor/race-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/spell-editor/spell-editor.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/spell-editor/spell-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/content/subclass-editor/subclass-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/credits/credits.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/budget-bar/budget-bar.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/encounters/creature-pick/creature-pick.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/encounter-builder/encounter-builder.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/encounter-rows/encounter-rows.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/generate-sheet/generate-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/party-chips/party-chips.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/party-npc-sheet/party-npc-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/save-sheet/save-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/encounters/swap-panel/swap-panel.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/gallery/gallery-card/gallery-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/gallery/gallery-lightbox/gallery-lightbox.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/gallery/gallery-lightbox/gallery-lightbox.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/gallery/gallery.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/gallery/upload-zone/upload-zone.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/home/home.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/invite-error/invite-error.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/invite/invite-accept.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/abilities-step/abilities-step.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/change-rows/change-rows.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/hp-step/hp-step.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/level-up-session.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/level-up.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/pick-list/pick-list.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/pick-list/pick-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/picks-step/picks-step.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/side-column/side-column.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/spells-step/spells-step.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/steps-bar/steps-bar.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/level-up/summary-step/summary-step.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/adjust-vitals/adjust-vitals.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/battle-encounters/battle-encounters.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/battle-encounters/battle-encounters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/carried-light/carried-light-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/carried-light/carried-light.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/carried-light/light-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/clue-notice/clue-notice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/action-groups/action-groups.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/action-groups/action-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/action-groups/economy-tiles.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/action-groups/group-state.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/adjust-npc/adjust-npc.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/attack-sheet/attack-result.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/attack-sheet/attack-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/pages/live-session/combat/attack-sheet/attack-steps.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/cast-sheet/cast-result.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/cast-sheet/cast-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/cast-sheet/cast-targets.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/cast-sheet/slot-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-bar/combat-bar.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-bar/next-turn.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-highlights/combat-highlights.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-highlights/highlights-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-launch.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-log/combat-log-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/combat-log/log-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-log/log-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-log/pool-card.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-map-card/combat-map-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 8
+    }
+  },
+  "src/app/pages/live-session/combat/combat-summary/combat-summary.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combat-view.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/combat-xp/combat-xp.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combatant-tags/combatant-tags.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/combatant-tags/form-tag.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/conditions-dialog/conditions-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/creature-turn/creature-bar.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/creature-turn/creature-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/creature-turn/creature-hero.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/death-question/death-question.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/death-saves/death-marks.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/death-saves/death-saves.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/dice-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/feature-sheet/feature-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/initiative-setup/initiative-setup.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/initiative-side/initiative-side.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/end-part.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/joint-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/joint-others.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/joint-pill.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/order-group.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/joint-turn/part-state.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/mine-tabs/mine-tabs.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/move-page/move-page.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 7
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/npc-card/attack-choice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/npc-card/npc-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/npc-card/pending-damages.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/opportunity/opportunity-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/order-list/cover-mark.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/order-list/lose-question.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/order-list/order-legend.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/order-list/order-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/order-list/row-cover.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/player-initiative/player-initiative.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/roll-picker/roll-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/shield-sheet/shield-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/start-combat/npc-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/start-combat/player-row.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/start-combat/saved-monsters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/start-combat/start-combat-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/start-combat/start-combat-saved.spec.ts": {
+    "@typescript-eslint/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/cover-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/master-spend.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/no-map-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/offer-panel.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/spend-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/spend-stepper.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/theatre/theatre-pill.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/end-turn.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/order-column.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/order-strip.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/turn-bar.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/turn-extras.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/combat/turn-panel/turn-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/door-sheet/door-sheet.ts": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 10
+    }
+  },
+  "src/app/pages/live-session/fog-tools/familiar-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/fog-tools/fog-master-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/fog-tools/fog-player-tools.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/left-images-block/left-images-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/left-images-list/left-images-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/live-session-source.live.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/live-session.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/live-stream.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/party-panel/party-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/player-vitals/player-vitals.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/puzzles/master-run/master-run.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/puzzles/master-run/master-run.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/puzzles/puzzle-notice/puzzle-notice.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/puzzles/puzzle-play/puzzle-play.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/reveal-sheet/reveal-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-clues/scene-clues.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-hooks/scene-hooks.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-open/scene-open.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-panel/scene-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-picker/scene-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-player/scene-player.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-roll-line/scene-roll-line.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/scene-roll-sheet/scene-roll-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/stage-master/stage-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/scene/stage-master/stage-master.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/stage-master/stage-picker-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/stage-player/stage-figure.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/stage-player/stage-player.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/scene/stage-player/stage-viewer.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-blocked/session-blocked.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-ended/session-ended.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-header/session-header.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-map/session-map.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-tokens/session-tokens.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/session-xp/session-xp.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/shown-image-block/shown-image-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/shown-image-block/shown-image-viewer.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/shown-image-panel/keep-switch.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/shown-image-panel/shown-image-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/slot-dots/slot-dots.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/traps/trap-card/trap-card.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/traps/trap-damages/trap-damages.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/traps/trap-fire-sheet/trap-fire-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/traps/trap-panel/trap-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/traps/trap-reveal-sheet/trap-reveal-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/traps/trap-search-sheet/trap-search-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/treasure/found-treasures/found-treasures.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 2
+    }
+  },
+  "src/app/pages/live-session/treasure/treasure-panel/treasure-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/live-session/vitals-stepper/vitals-stepper.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/clue-list/clue-form.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/clue-list/clue-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/door-panel/door-panel.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/dungeon-new/choice-row.ts": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/dungeon-new/dungeon-new.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/dungeon-new/dungeon-new.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    },
+    "max-depth": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/editor-bar/editor-bar.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 4
+    }
+  },
+  "src/app/pages/maps/editor-bar/editor-bar.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/editor-overlay/editor-overlay.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
+    }
+  },
+  "src/app/pages/maps/fog-panel/fog-panel.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/grid-panel/calibrate-ask.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/hooks-field/hooks-field.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/layers-panel/layers-panel.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-ask/map-ask.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-ask/map-ask.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-editor/editor-painting.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-editor/map-editor.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 6
+    }
+  },
+  "src/app/pages/maps/map-grid/map-grid.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-head/map-head.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-manage/map-manage.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/pages/maps/map-new/map-new.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-page/map-page.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-print/map-print.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-print/print-math.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 11
+    }
+  },
+  "src/app/pages/maps/map-print/print-preview/print-preview.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/maps/map-print/print-setup/print-setup.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-print/print-sheets/print-sheets.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/map-print/print-table/print-table.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/paint-surface/paint-surface.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/player-map/player-map.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/point-kinds/light-draft.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/pages/maps/point-kinds/light-point-panel.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/point-kinds/trap-draft.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 15
+    },
+    "complexity": {
+      "count": 2
+    }
+  },
+  "src/app/pages/maps/point-kinds/trap-point-panel.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 6
+    }
+  },
+  "src/app/pages/maps/point-kinds/trap-point-panel.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/maps/point-panel/point-panel.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/point-panel/point-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/reveal-switch/reveal-switch.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/scene-actions/scene-action-form.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/maps/scene-actions/scene-actions.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/pages/not-found/not-found.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/profile/profile.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/puzzles/fields/fields.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 4
+    }
+  },
+  "src/app/pages/puzzles/fields/solve-field.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/puzzles/puzzle-form/cipher-form.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/pages/puzzles/puzzle-form/lights-form.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/pages/puzzles/puzzle-form/puzzle-form.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/puzzles/puzzle-form/puzzle-form.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/server-unavailable/server-unavailable.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/spells/spell-card.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/spells/spell-filter-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/spells/spell-filters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/spells/spells.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/table-rules/fog-switch/fog-switch.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/table-rules/method-cards/method-cards.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/table-rules/rules-read/rules-read.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/table-rules/table-rules.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/pages/table-rules/xp-mode-panel/xp-mode-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/treasure/item-sheet/item-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/treasure/place-sheet/place-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 6
+    }
+  },
+  "src/app/pages/treasure/treasure.spec.ts": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/app/pages/treasure/treasure.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/check-box/check-box.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/combat-map/combat-map.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/combatant-token/combatant-token.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/creatures/creature-art.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/creatures/creature-choice-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@angular-eslint/template/label-has-associated-control": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/creatures/stat-block.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/dice-choice/dice-choice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/effect-picker/effect-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/familiar-eyes/familiar-band.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/familiar-eyes/familiar-eyes-button.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/familiar-eyes/familiar-eyes-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/feature-editor/feature-editor.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/fiction-notice/fiction-notice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/fog-map/fog-map.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/shared/fog-map/view-as-list.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/shared/fog-map/view-as-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/app/shared/fog-map/view-as-map.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/check-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/field-note.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/form-fields.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/number-stepper.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/form-fields/pick-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/select-field.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/switch-field.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/form-fields/text-field.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/gallery-picker/gallery-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/gallery-picker/image-picker-dialog/image-picker-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/gallery-picker/image-privacy-note.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/gallery-picker/upload-progress/upload-progress.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/hidden-switch/hidden-switch.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/highlights/highlight-tiles.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/highlights/highlights-frame.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/highlights/highlights-table.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/image-generate/generate-result.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/image-generate/image-generate-dialog.spec.ts": {
+    "@typescript-eslint/await-thenable": {
+      "count": 10
+    }
+  },
+  "src/app/shared/image-generate/image-generate-dialog.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/image-generate/kind-strip.ts": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/shared/image-generate/npc-picks.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/image-generate/reference-picks.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/level-grid/level-grid.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/shared/level-grid/level-grid.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
+    }
+  },
+  "src/app/shared/live-pill/live-pill.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-layers/map-layers-legend.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/shared/map-lists/map-points-list.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/map-lists/map-tokens-list.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-pins/map-pins.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-view/map-geometry.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 11
+    }
+  },
+  "src/app/shared/map-view/map-labels.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
+  "src/app/shared/map-view/map-legend/map-legend.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/map-view/map-marker/map-marker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
+    }
+  },
+  "src/app/shared/map-view/map-token/map-token.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-view/map-view.html": {
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-view/map-view.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 5
+    }
+  },
+  "src/app/shared/markdown/markdown-view.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/markdown/markdown.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 3
+    }
+  },
+  "src/app/shared/monsters/put-sheet/put-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/notes/note-fields.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/notes/note-list.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/notes/notes-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/notes/notes-select.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/notes/notes-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/pair-foot/pair-foot.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/point-sheet/point-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/portrait/portrait.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/puzzle-boards/lights-board.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/app/shared/puzzle-boards/symbol-columns.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/sheet/sheet-frame/sheet-frame.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/sheet/sheet-frame/sheet-frame.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/spell-details/spell-body.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/spell-details/spell-details-map.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/spell-details/spell-details.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/spell-details/spell-help.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/table-mark/table-mark.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/wild-shape/beast-traits.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/wild-shape/wild-band.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/wild-shape/wild-pools.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/wild-shape/wild-shape-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/award-xp-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/level-up-tag.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/milestone-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/town-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/treasure-strip.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/treasure-strip.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-actions.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-give-button.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-give-button.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-parts.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-reason.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-recipients.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/xp/xp-split.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shell/live-notice/live-notice.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shell/user-menu/user-menu.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  }
+}

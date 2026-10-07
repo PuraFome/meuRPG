@@ -40,7 +40,6 @@ describe('MilestoneSheet (E7-08)', () => {
   const primary = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('app-xp-actions .primary')!;
   const line = (el: HTMLElement) => el.querySelector('.effect')?.textContent?.replace(/[ \t\r\n]+/g, ' ').trim();
   function type(fixture: ComponentFixture<MilestoneSheet>, value: string) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const input = fixture.nativeElement.querySelector('app-xp-reason input') as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));

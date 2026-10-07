@@ -149,7 +149,7 @@ export class CampaignDocumentPage {
    * list that fails leaves its links shown as usual. */
   protected loadRefs(): void {
     const id = this.campaignId();
-    Promise.allSettled([
+    void Promise.allSettled([
       this.links.listMaps(id),
       this.links.listCharacters(id),
       this.gallery.list(id),

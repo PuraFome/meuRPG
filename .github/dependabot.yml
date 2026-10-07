@@ -68,6 +68,12 @@ updates:
       # accepts one vitest major at a time: it moves with Angular.
       - dependency-name: "vitest"
         update-types: ["version-update:semver-major"]
+      # The coverage provider must match vitest's major.
+      - dependency-name: "@vitest/coverage-v8"
+        update-types: ["version-update:semver-major"]
+      # angular-eslint's major follows Angular's (21.x for Angular 21).
+      - dependency-name: "angular-eslint"
+        update-types: ["version-update:semver-major"]
       # Node's types follow the Node major the app is built with (22, in
       # CI and in backend/Dockerfile), not the newest Node.
       - dependency-name: "@types/node"
@@ -93,6 +99,24 @@ updates:
       # The tests run on Node 22 (CI's setup-node); newer types would
       # accept APIs that don't exist there.
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # The linter of the Playwright tests (e2e/lint/): its own package, because
+  # typescript-eslint needs TypeScript 5.x while e2e/ type-checks with 7.
+  - package-ecosystem: "npm"
+    directory: "/e2e/lint"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      e2e-lint-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Stays on TypeScript 5.x until typescript-eslint supports the next major.
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
   # Base images of the production image and of devidp, pinned by digest.
