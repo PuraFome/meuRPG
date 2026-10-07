@@ -206,8 +206,12 @@ func buildTiles(p *playerView, src tileSource) *viewTiles {
 	ring := src.ring()
 	out := &viewTiles{imageID: src.imageID, g: p.g, byXY: map[[2]int]int{}, at: time.Now()}
 	known := func(c, r int) bool { return p.known(grid.Square{Col: c, Row: r}) }
+	W, H := workingSize(max(1, src.width), max(1, src.height))
 	for ty := range rows {
 		for tx := range cols {
+			if x0, x1, y0, y1 := tilePixels(p.g, W, H, tx, ty); x0 == x1 || y0 == y1 {
+				continue // no pixel to draw: nothing to list
+			}
 			seen := false
 			for dr := 0; dr < tileSquares && !seen; dr++ {
 				for dc := 0; dc < tileSquares && !seen; dc++ {
@@ -311,6 +315,23 @@ func squareOf(px, n, size int) int {
 	return min(max(((px+1)*n+size-1)/size-1, 0), n-1)
 }
 
+// workingSize is the size of the working copy of a sw x sh image: the image's, or
+// shrunk so its long side is at most workingMaxSide.
+func workingSize(sw, sh int) (w, h int) {
+	if long := max(sw, sh); long > workingMaxSide {
+		return max(1, sw*workingMaxSide/long), max(1, sh*workingMaxSide/long)
+	}
+	return sw, sh
+}
+
+// tilePixels is the pixel rectangle of tile (tx, ty) in a W x H working copy. A grid
+// finer than the image's pixels leaves some tiles with none.
+func tilePixels(g grid.Grid, W, H, tx, ty int) (x0, x1, y0, y1 int) {
+	c0, c1 := tx*tileSquares, min((tx+1)*tileSquares, g.Columns)
+	r0, r1 := ty*tileSquares, min((ty+1)*tileSquares, g.Rows)
+	return pixelAt(c0, g.Columns, W), pixelAt(c1, g.Columns, W), pixelAt(r0, g.Rows, H), pixelAt(r1, g.Rows, H)
+}
+
 // errTooBig is the refusal of a stored image whose decode would need more than decodeLimit.
 var errTooBig = errors.New("the stored image needs too much memory to decode")
 
@@ -365,10 +386,7 @@ func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) 
 	}
 	b := src.Bounds()
 	sw, sh := b.Dx(), b.Dy()
-	w, h := sw, sh
-	if long := max(sw, sh); long > workingMaxSide {
-		w, h = max(1, sw*workingMaxSide/long), max(1, sh*workingMaxSide/long)
-	}
+	w, h := workingSize(sw, sh)
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 	if w == sw && h == sh {
 		xdraw.Draw(dst, dst.Bounds(), src, b.Min, xdraw.Src)
@@ -674,9 +692,11 @@ func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage boo
 	if c0 >= c1 || r0 >= r1 {
 		return nil, errors.New("the tile is outside the grid")
 	}
-	x0, x1 := pixelAt(c0, g.Columns, W), pixelAt(c1, g.Columns, W)
-	y0, y1 := pixelAt(r0, g.Rows, H), pixelAt(r1, g.Rows, H)
+	x0, x1, y0, y1 := tilePixels(g, W, H, tx, ty)
 	w, h := x1-x0, y1-y0
+	if w == 0 || h == 0 {
+		return nil, errMapNotFound() // the index never lists it
+	}
 
 	// Which pixel may be shown. First: its square is known, and so are the squares
 	// one pixel around it (the belt; for a JPEG the blocks below take over).

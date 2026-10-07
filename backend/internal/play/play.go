@@ -110,6 +110,13 @@ type VitalsKeeper interface {
 	SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, characterID, creatureID string, inCombat bool, conditions []string) (*playv1.CharacterVitals, error)
 }
 
+// ShownCopy is a copy of a gallery image made to show it, not yet in the gallery
+// (see MapKeeper.PrepareShow).
+type ShownCopy = interface {
+	Insert(ctx context.Context, tx pgx.Tx) error
+	Discard(ctx context.Context)
+}
+
 // MapKeeper is what the session's screen needs from the maps module
 // (maps.SessionMaps), whose tables the maps and the gallery images are: it
 // checks and reveals the map the master makes current (SetCurrentMap), and
@@ -133,11 +140,14 @@ type MapKeeper interface {
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.
 	ShownImage(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
-	// ImageToShow is ShownImage for an image the master is about to show: one that
+	// PrepareShow is ShownImage for an image the master is about to show: one that
 	// is the background of a map with the fog of war on comes back as a copy of its
-	// own, whose ID the caller stores (RN-10, MR-036). `resource_exhausted` when the
-	// gallery has no room for the copy.
-	ImageToShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
+	// own (the one made before, or a new one), whose ID the caller stores (RN-10,
+	// MR-036). A new copy has only its files; the caller adds its gallery row inside
+	// the transaction that shows it (ShownCopy.Insert, `resource_exhausted` when the
+	// gallery has no room) or deletes the files (Discard). The copy is nil when
+	// there is nothing to add.
+	PrepareShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, ShownCopy, error)
 	// LeaveImage adds the campaign's image to the images left with the
 	// players inside tx. An image already left stays as it is, and one that
 	// is not the campaign's anymore is skipped.
