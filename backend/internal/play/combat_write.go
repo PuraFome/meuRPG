@@ -366,12 +366,12 @@ func (s *Service) logCombatEvent(ctx context.Context, res combatResult) {
 func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) error {
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
-		if kind != eventActionUndone { // an undo is no line: its hint goes to every player
+		if kind != eventActionUndone { // an undo keeps the stamp of the action it takes back
 			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
 				return err
 			}
-			c.stamped = &ev
 		}
+		c.stamped = &ev
 		payload = ev
 	}
 	body, err := json.Marshal(payload)

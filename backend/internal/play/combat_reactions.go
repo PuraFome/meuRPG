@@ -248,7 +248,7 @@ func (s *Service) UseReaction(
 		}
 		c.characterID = &target.CharacterID
 		made = actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
+			Round: c.enc.Round, Secret: secretOf(target, attacker), Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
 			Stopped: stopped, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
 		}
 		return made, nil

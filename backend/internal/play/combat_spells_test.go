@@ -2203,3 +2203,86 @@ func TestNoDeathSaveOnTheTurnTheCharacterDrops(t *testing.T) {
 		t.Error("the death save is not due at the start of his next turn")
 	}
 }
+
+// Escudo against a master-hidden attacker is told to the master alone: another player's
+// log gets no line and their stream no hint, or they would learn a hidden NPC attacked (RN-10).
+func TestShieldAgainstAHiddenAttackerIsNotInOthersLog(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.hiddenCapitaoFight(t) // the Capitão is first and hidden
+
+	other := a.caio.watch(t, a.campaignID)
+	other.ready(t)
+
+	lines := func() int {
+		n := 0
+		for _, r := range a.log(t, a.caio, e).GetRounds() {
+			n += len(r.GetEntries())
+		}
+		return n
+	}
+	before := lines()
+
+	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if _, err := a.useReaction(t, a.ana, e, hit.GetPendingDamage().GetId(), slotOfLevel(1)); err != nil {
+		t.Fatalf("UseReaction() error = %v", err)
+	}
+	a.mustEndTurn(t, a.master, e) // the sentinel: a turn change reaches the stream
+
+	if after := lines(); after != before {
+		for _, r := range a.log(t, a.caio, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				t.Logf("Toren's log: %v", en)
+			}
+		}
+		t.Errorf("Toren's log has %d lines after a hidden NPC's attack met Pensantus's Escudo, want the %d it had before", after, before)
+	}
+	hints := 0
+	for turns := 0; turns < 1; {
+		ev := other.nextChange(t)
+		switch {
+		case ev.GetCombatLogChanged() != nil:
+			hints++
+		case ev.GetTurnChanged() != nil:
+			turns++
+		}
+	}
+	if hints != 0 {
+		t.Errorf("Toren's stream got %d combat_log_changed hints, want none: the only change was the hidden NPC's attack and its Escudo", hints)
+	}
+}
+
+// A retried CastSpell (same key) is answered from the combat as it stands: a target the
+// master hid since is not in it (RN-10).
+func TestReplayedCastDoesNotShowAHiddenTarget(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	goblin := a.id(t, "Goblin")
+
+	key := newKey()
+	targets := []*playv1.SpellTarget{darts(a, t, "Goblin", 3)}
+	first, err := a.castKey(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), targets, noCastRoll, key)
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	a.h.roller.queue(2, 2, 2)
+	a.mustDamage(t, a.ana, e, first.GetCast().GetPendingDamages()[0].GetId(), inAppDamage)
+
+	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: goblin, IdempotencyKey: newKey(), Hidden: true,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden() error = %v", err)
+	}
+
+	replay, err := a.castKey(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), targets, noCastRoll, key)
+	if err != nil {
+		return // refusing the replay leaks nothing
+	}
+	if strings.Contains(replay.String(), goblin) {
+		t.Errorf("the replayed cast shows the hidden goblin %s: %v", goblin, replay.GetCast())
+	}
+	if n := len(replay.GetCast().GetPendingDamages()); n != 0 {
+		t.Errorf("the replayed cast carries %d pending damages of the hidden goblin, want none", n)
+	}
+}

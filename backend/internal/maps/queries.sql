@@ -631,10 +631,13 @@ ON CONFLICT (campaign_id, point_id) DO NOTHING;
 
 -- name: ListDiscoveredScenes :many
 -- The scenes the group discovered, with their current names, oldest discovery
--- first. A point that stopped being a scene is not listed.
+-- first. A point that stopped being a scene is not listed, nor is one of a map the
+-- players cannot open (not revealed, and not the session's current map).
 SELECT p.id, p.name FROM scene_discoveries AS d
 JOIN map_points AS p ON p.id = d.point_id
-WHERE d.campaign_id = $1 AND p.kind = 'scene'
+JOIN maps AS m ON m.id = p.map_id
+WHERE d.campaign_id = sqlc.arg(campaign_id) AND p.kind = 'scene'
+  AND (m.revealed_at IS NOT NULL OR m.id = sqlc.narg(current_map_id)::UUID)
 ORDER BY d.discovered_at, p.id;
 
 -- name: ListReceivedClues :many

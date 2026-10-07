@@ -343,11 +343,22 @@ func TestMR038_CreateChecksWhatTheMasterWrote(t *testing.T) {
 		_, err := p.pc(p.master).CreatePuzzle(ctx, connect.NewRequest(req))
 		return err
 	}
+	lx, ly := sq(6, 6)
+	light, err := p.mc(p.master).CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT, Name: "Tocha", XBp: lx, YBp: ly,
+		Light: &mapsv1.LightSpec{PresetKey: "light:torch"},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		name string
 		edit func(*playv1.CreatePuzzleRequest)
 		want playv1.PuzzleInvalidReason
 	}{
+		{"a light, which the players never see", func(r *playv1.CreatePuzzleRequest) {
+			r.OnSolve = &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT, Target: &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{MapId: p.mapID, PointId: light.Msg.GetPoint().GetId()}}}
+		}, playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_TARGET},
 		{"no name", func(r *playv1.CreatePuzzleRequest) { r.Name = "  " }, playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_NAME},
 		{"a long name", func(r *playv1.CreatePuzzleRequest) { r.Name = strings.Repeat("a", 81) }, playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_NAME},
 		{"a long clue", func(r *playv1.CreatePuzzleRequest) { r.Clue = strings.Repeat("a", 501) }, playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_TEXT},
@@ -1785,5 +1796,56 @@ func TestMR038_APuzzleNeverClosesTheUndoChain(t *testing.T) {
 	f.undoLast(t) // still the master's forced move of Goblin 1
 	if got := f.who(t, f.master, "Goblin 1"); got.GetCol() != 18 {
 		t.Errorf("the undo left Goblin 1 at column %d, want 18: a puzzle closed the undo chain", got.GetCol())
+	}
+}
+
+// A puzzle whose "Ao resolver" reveals a point of a map the players cannot open does not
+// name it in the line they read, in the puzzle or in the session's events (RN-10).
+func TestPuzzleRevealDoesNotNameAPointOfAHiddenMap(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	const secret = "TOCHA-SECRETA-U6F"
+	hiddenMap := p.h.newMap(p.campaignID, gridColumns) // not current, never revealed
+	res, err := p.mc(p.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: p.campaignID, MapId: hiddenMap, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: secret,
+		XBp: 2500, YBp: 2500,
+	}))
+	if err != nil {
+		t.Fatalf("CreateMapPoint() error = %v", err)
+	}
+	puz := p.oneMoveLock(t, &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT,
+		Target: &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{MapId: hiddenMap, PointId: res.Msg.GetPoint().GetId()}},
+	})
+	var rev *string
+	if err := p.h.pool.QueryRow(t.Context(), `SELECT revealed_at::TEXT FROM maps WHERE id = $1`, hiddenMap).Scan(&rev); err != nil || rev != nil {
+		t.Fatalf("the map must be hidden: %v %v", err, rev)
+	}
+	move := p.mustMove(t, p.caio, puz.GetId(), lockMove(0, 1))
+	var seen []string
+	seen = append(seen, "move: "+jsonOf(move))
+	for _, u := range []*user{p.caio, p.ana, p.bia} {
+		seen = append(seen, "read: "+jsonOf(p.read(t, u, puz.GetId())))
+	}
+	var sid string
+	if err := p.h.pool.QueryRow(t.Context(), `SELECT id::STRING FROM game_sessions WHERE campaign_id = $1 LIMIT 1`, p.campaignID).Scan(&sid); err != nil {
+		t.Fatalf("read the session: %v", err)
+	}
+	rows, err := p.h.pool.Query(t.Context(), `SELECT kind, payload::STRING FROM session_events WHERE game_session_id = $1 ORDER BY seq`, sid)
+	if err != nil {
+		t.Fatalf("read session_events: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kind, payload string
+		if err := rows.Scan(&kind, &payload); err != nil {
+			t.Fatal(err)
+		}
+		seen = append(seen, "event "+kind+": "+payload)
+	}
+	for _, s := range seen {
+		if strings.Contains(s, secret) {
+			t.Errorf("a player can read the hidden point's name: %s", s)
+		}
 	}
 }

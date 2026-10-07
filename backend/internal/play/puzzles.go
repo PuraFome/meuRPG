@@ -66,11 +66,14 @@ type PuzzleMaps interface {
 	// DoorsChanged tells the watchers, after the commit, that doors of the map
 	// were opened.
 	DoorsChanged(ctx context.Context, campaignID, mapID string)
-	// PuzzleCheckPoint says whether the point is on the campaign's map.
+	// PuzzleCheckPoint says whether the point is on the campaign's map and is one a
+	// puzzle can reveal (not a light).
 	PuzzleCheckPoint(ctx context.Context, tx pgx.Tx, campaignID, mapID, pointID string) error
 	// PuzzleRevealPoint reveals the point to the players and says whether it
-	// changed, with its name; the function it returns tells the watchers after the commit.
-	PuzzleRevealPoint(ctx context.Context, tx pgx.Tx, campaignID, mapID, pointID string) (changed bool, name string, after func(context.Context), err error)
+	// changed, with its name when the players see the point (the session shows
+	// currentMapID, or the map was revealed), "" otherwise; the function it returns
+	// tells the watchers after the commit.
+	PuzzleRevealPoint(ctx context.Context, tx pgx.Tx, campaignID, mapID, pointID, currentMapID string) (changed bool, name string, after func(context.Context), err error)
 	// PuzzleCheckClue says whether the clue is on a scene point of the campaign.
 	PuzzleCheckClue(ctx context.Context, tx pgx.Tx, campaignID, clueID string) error
 	// PuzzleRevealClue gives the clue to the character's player and says whether

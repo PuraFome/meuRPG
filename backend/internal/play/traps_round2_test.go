@@ -577,3 +577,128 @@ func (r *trapRig) hpOf(t *testing.T, characterID string) int32 {
 	}
 	return hp
 }
+
+// A trap's line in the combat log carries the character id of a player's character, never
+// of an NPC: an NPC's character is the master's secret, and GetEncounter withholds it from
+// the same player.
+func TestTrapFiringLogWithholdsAnNPCCharacterID(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	statue := r.trap(t, "Estátua de Fogo", 15, 12, func(s *mapsv1.TrapSpec) {
+		s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL
+		s.Effect = &rulesv1.TrapEffect{
+			Damage:  []*rulesv1.TrapDamage{{Dice: "1d4", DamageTypeKey: "damage-type:fire"}},
+			Targets: rulesv1.TrapTargets_TRAP_TARGETS_MANUAL,
+		}
+	})
+	r.fight(t)
+	r.h.roller.queue(2)
+	if _, err := r.fireByHand(t, statue, r.id(t, "Goblin 1")); err != nil {
+		t.Fatalf("FireTrap: %v", err)
+	}
+	enc := r.get(t, r.ana)
+	if id := byLabel(t, enc, "Goblin 1").GetCharacterId(); id != "" {
+		t.Fatalf("precondition: the player's GetEncounter already shows the goblin's character_id %q", id)
+	}
+	found := false
+	for _, rd := range r.log(t, r.ana, enc).GetRounds() {
+		for _, en := range rd.GetEntries() {
+			for _, c := range en.GetTrap().GetCaught() {
+				found = true
+				if c.GetCharacterId() != "" {
+					t.Errorf("player's combat log shows NPC %q character_id %q (GetEncounter withholds it)", c.GetTargetLabel(), c.GetCharacterId())
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no trap entry in the player's log")
+	}
+}
+
+// A trap firing that caught an NPC the master had hidden stays out of the players' log
+// after the master reveals it: a revealed combatant does not bring its old entries.
+func TestTrapFiringOfAHiddenNPCDoesNotAppearOnReveal(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	statue := r.trap(t, "Estátua de Fogo", 15, 12, func(s *mapsv1.TrapSpec) {
+		s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL
+		s.Effect = &rulesv1.TrapEffect{
+			Save: &rulesv1.TrapSaveEffect{
+				Ability: rulesv1.Ability_ABILITY_DEXTERITY, Dc: 12, AppliesTo: rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT,
+				OnFail: &rulesv1.TrapOnFail{
+					Damage:    []*rulesv1.TrapDamage{{Dice: "2d6", DamageTypeKey: "damage-type:fire"}},
+					Condition: &rulesv1.TrapCondition{ConditionKey: "condition:poisoned"},
+				},
+				OnPass: rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF,
+			},
+			Targets: rulesv1.TrapTargets_TRAP_TARGETS_MANUAL,
+		}
+	})
+	e := r.fight(t)
+	r.hide(t, "Goblin 1")
+	r.h.roller.queue(5, 3, 4)
+	if _, err := r.fireByHand(t, statue, r.id(t, "Goblin 1")); err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+
+	leaks := func() (n int) {
+		for _, round := range r.log(t, r.caio, r.get(t, r.caio)).GetRounds() {
+			for _, en := range round.GetEntries() {
+				for _, c := range en.GetTrap().GetCaught() {
+					if c.GetTargetLabel() == "Goblin 1" {
+						n++
+						t.Logf("player sees: %v", c)
+					}
+				}
+			}
+		}
+		return n
+	}
+	if n := leaks(); n != 0 {
+		t.Fatalf("while hidden, the player's log already shows the goblin caught (%d), want nothing", n)
+	}
+	if _, err := r.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: r.campaignID, EncounterId: e.GetId(), CombatantId: r.id(t, "Goblin 1"), IdempotencyKey: newKey(), Hidden: false,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden(reveal) error = %v", err)
+	}
+	if n := leaks(); n != 0 {
+		t.Errorf("after the reveal the old firing on the formerly hidden goblin reached the player's log (%d caught); a revealed combatant must not bring its old entries", n)
+	}
+}
+
+// A key used by one player's search is refused to another player: the answer holds the
+// first one's roll and the ids of the traps they found (RN-10).
+func TestSearchForTrapsKeyIsPerCaller(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	needle := r.trap(t, "Agulha Rubra", 8, 8, func(s *mapsv1.TrapSpec) { s.NoticeDc, s.FindDc = 0, 13 })
+	r.place(t, r.pens.GetId(), 8, 7)  // Ana's character, next to the trap
+	r.place(t, r.toren.GetId(), 3, 3) // Caio's character, far away
+
+	key := newKey()
+	req := func() *playv1.SearchForTrapsRequest {
+		return &playv1.SearchForTrapsRequest{CampaignId: r.campaignID, IdempotencyKey: key,
+			Skill: investigation, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: 20}}
+	}
+	a, err := r.ana.play.SearchForTraps(t.Context(), connect.NewRequest(req()))
+	if err != nil || len(a.Msg.GetFoundPointIds()) != 1 || a.Msg.GetFoundPointIds()[0] != needle.GetId() {
+		t.Fatalf("A's search = %v, %v; want the needle", a, err)
+	}
+	b, err := r.caio.play.SearchForTraps(t.Context(), connect.NewRequest(req()))
+	if err == nil {
+		t.Errorf("B reusing A's key got no error; response = %v (found %v)", b.Msg, b.Msg.GetFoundPointIds())
+		for _, id := range b.Msg.GetFoundPointIds() {
+			if id == needle.GetId() {
+				t.Errorf("B received trap id %s that B's character never found", id)
+			}
+		}
+	} else {
+		wantCode(t, "SearchForTraps(B, A's key)", err, connect.CodeInvalidArgument)
+	}
+	r.wantKnows(t, "B's player", r.caio, needle.GetId(), false)
+	if n := r.eventCount(t, "trap_searched"); n != 1 {
+		t.Errorf("trap_searched events = %d, want 1", n)
+	}
+}
