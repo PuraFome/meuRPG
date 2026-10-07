@@ -16,8 +16,8 @@ import (
 // transaction is retried. A plain tx read (the control) is retried and succeeds.
 
 // injectedRetry runs read inside db.InTx with a 40001 injected on the first
-// attempt only, and returns the error and the number of attempts.
-func injectedRetry(t *testing.T, a *armed, read func(tx pgx.Tx) error) (error, int) {
+// attempt only, and returns the number of attempts and the error.
+func injectedRetry(t *testing.T, a *armed, read func(tx pgx.Tx) error) (int, error) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := a.h.pool.Exec(ctx, `SET inject_retry_errors_enabled = true`); err != nil {
@@ -34,14 +34,14 @@ func injectedRetry(t *testing.T, a *armed, read func(tx pgx.Tx) error) (error, i
 		}
 		return read(tx)
 	})
-	return err, attempts
+	return attempts, err
 }
 
 func TestRosterReadInsideTxIsRetriedOn40001(t *testing.T) {
 	a := newSummoners(t)
 	ctx := t.Context()
 
-	err, n := injectedRetry(t, a, func(tx pgx.Tx) error {
+	n, err := injectedRetry(t, a, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `SELECT 1`)
 		return err
 	})
@@ -49,7 +49,7 @@ func TestRosterReadInsideTxIsRetriedOn40001(t *testing.T) {
 		t.Fatalf("control (plain tx read): err = %v after %d attempts, want one retry and success", err, n)
 	}
 
-	err, n = injectedRetry(t, a, func(tx pgx.Tx) error {
+	n, err = injectedRetry(t, a, func(tx pgx.Tx) error {
 		_, err := a.h.chars.GetVitalsTx(ctx, tx, a.campaignID, a.bri.GetId())
 		return err
 	})
@@ -88,7 +88,7 @@ func TestRosterReadInsideTxIsRetriedOnRealConflict(t *testing.T) {
 	}
 	defer other.Close(ctx)
 
-	run := func(read func(tx pgx.Tx) error) (error, int) {
+	run := func(read func(tx pgx.Tx) error) (int, error) {
 		attempts := 0
 		err := db.InTx(ctx, a.h.pool, func(tx pgx.Tx) error {
 			attempts++
@@ -115,13 +115,13 @@ func TestRosterReadInsideTxIsRetriedOnRealConflict(t *testing.T) {
 			}
 			return read(tx)
 		})
-		return err, attempts
+		return attempts, err
 	}
-	err, n := run(func(tx pgx.Tx) error { _, err := tx.Exec(ctx, `SELECT 1`); return err })
+	n, err := run(func(tx pgx.Tx) error { _, err := tx.Exec(ctx, `SELECT 1`); return err })
 	if err != nil || n < 2 {
 		t.Skipf("control did not hit a real conflict: err = %v attempts = %d", err, n)
 	}
-	err, n = run(func(tx pgx.Tx) error {
+	n, err = run(func(tx pgx.Tx) error {
 		_, err := a.h.chars.GetVitalsTx(ctx, tx, a.campaignID, a.bri.GetId())
 		return err
 	})
