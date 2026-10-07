@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { bitAt, createDungeonRPC, dungeonRoute, layersOfDungeon, previewRPC, roomsRPC } from './dungeon-support';
 import { editorRoute, getMapRPC } from './editor-support';
 import { canvasPng, revealMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
+import { expectLoaded } from './loaded';
 import { callRPC, newSignedInContext } from './support';
 
 // "Gerar masmorra", the rooms list and "Redesenhar" (Etapa 10, slice 10.14b: MR-010, RN-26, RN-10; E10-05 1 to 6). The campaign
@@ -245,7 +246,7 @@ test('o jogador lê o mapa revelado e nunca recebe a lista das salas @MR-010 @RN
     await player.goto(editorRoute(table.campaignId, mapId));
     await expect(player.getByRole('heading', { level: 1, name: 'A masmorra do jogador' })).toBeVisible();
     await expect(player.locator('app-player-map')).toBeVisible();
-    await player.waitForLoadState('networkidle');
+    await expectLoaded(player);
     expect(asked).toEqual([]);
     await expect(player.getByRole('heading', { name: 'Salas', exact: true })).toHaveCount(0);
     await expect(player.getByRole('button', { name: 'Redesenhar' })).toHaveCount(0);

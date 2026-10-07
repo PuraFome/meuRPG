@@ -267,7 +267,7 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
     return { text: ` conjura ${name}: ${clauses(e, ctx)}` };
   }
   if (spell.effectKind === SpellEffectKind.POOL) {
-    const card = poolCard(e, ctx);
+    const card = poolCard(e);
     const slot = spell.slot ? ` (${circleLabel(spell.slot.level)})` : '';
     return { text: ` conjura ${name}${slot}`, card };
   }
@@ -295,7 +295,7 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
 
 /** The master's table for a pool spell: the dice, then each creature from the lowest hit
  * points up with the total that is left, and the word with the condition it got. */
-function poolCard(e: CombatLogEntry, ctx: LogContext): PoolCard | undefined {
+function poolCard(e: CombatLogEntry): PoolCard | undefined {
   const spell = e.spell!;
   if (!spell.poolRoll) {
     return undefined;

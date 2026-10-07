@@ -182,14 +182,19 @@ test('a sequência: o jogador vê tocar passo a passo e repete; um passo errado 
     await card.getByRole('button', { name: 'Tocar a sequência' }).click();
     await expect(player.getByText('O mestre está tocando os sinos.')).toBeVisible({ timeout: 15_000 });
     // The server sends a step only when its time has come: the first at once, then one every 1,2 s. Read it three times while it plays.
+    const readSequence = async () => JSON.parse(await playerRunText(player, table.campaignId, puzzleId)).run.sequence as { shown?: number[]; totalSteps: number };
     for (let i = 0; i < 3; i++) {
-      const read = JSON.parse(await playerRunText(player, table.campaignId, puzzleId)).run.sequence as { shown?: number[]; totalSteps: number };
+      const read = await readSequence();
       const elapsed = Date.now() - started;
       expect(read.totalSteps).toBe(6);
       expect((read.shown ?? []).length).toBeLessThanOrEqual(Math.floor(elapsed / 1200) + 1);
       // Each bell shown so far is the sequence's own, in order; none of the ones to come.
       expect(read.shown ?? []).toEqual(SEQUENCE.slice(0, (read.shown ?? []).length));
-      await player.waitForTimeout(700);
+      // Wait for the next step to be sent, not for a fixed time: the server's own clock decides when.
+      const seen = (read.shown ?? []).length;
+      if (seen < read.totalSteps) {
+        await expect.poll(async () => ((await readSequence()).shown ?? []).length, { timeout: 10_000 }).toBeGreaterThan(seen);
+      }
     }
     await expect(player.getByText(/passo [2-6] de 6/)).toBeVisible({ timeout: 15_000 });
     await expect(player.locator('.big__name')).toBeVisible();

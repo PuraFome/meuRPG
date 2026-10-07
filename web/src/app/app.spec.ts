@@ -1,6 +1,6 @@
 import { Component, TemplateRef, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { AuthState, AuthService } from './core/auth/auth.service';
 import { OpenSessionVm, OpenSessions } from './shell/live-notice/open-sessions';
@@ -84,5 +84,90 @@ describe('App', () => {
     notes.bar.set(null);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.notes-bar')).toBeNull();
+  });
+});
+
+describe('App, the way into the content (WCAG 2.4.1, 2.4.3)', () => {
+  @Component({ template: '<h1>Primeira</h1>' })
+  class First {}
+  @Component({ template: '<h1>Segunda</h1><button class="own">Meu botão</button>' })
+  class Second {}
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideRouter([
+          { path: '', component: First },
+          { path: 'second', component: Second },
+        ]),
+        { provide: AuthService, useValue: { state: signal<AuthState>({ status: 'unknown' }).asReadonly() } },
+      ],
+    }).compileComponents();
+  });
+
+  async function start() {
+    const fixture = TestBed.createComponent(App);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return { fixture, router, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('has a skip link first in the page that moves the focus to the main region, without a navigation', async () => {
+    const { fixture, router, el } = await start();
+    const skip = el.querySelector<HTMLAnchorElement>('a.skip-link')!;
+    expect(skip.textContent).toContain('Pular para o conteúdo');
+    expect(el.firstElementChild).toBe(skip);
+    skip.click();
+    expect(document.activeElement).toBe(el.querySelector('main#main'));
+    expect(router.url).toBe('/');
+    fixture.destroy();
+  });
+
+  it('leaves the focus alone on the first load', async () => {
+    const { fixture, el } = await start();
+    expect(el.contains(document.activeElement) && document.activeElement !== document.body).toBe(false);
+    fixture.destroy();
+  });
+
+  it('moves the focus to the heading of the new page', async () => {
+    const { fixture, router, el } = await start();
+    await router.navigateByUrl('/second');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(el.querySelector('main h1'));
+    expect(document.activeElement?.textContent).toBe('Segunda');
+    fixture.destroy();
+  });
+
+  it('does not move it for a change that only touches the query', async () => {
+    const { fixture, router, el } = await start();
+    await router.navigateByUrl('/second');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    el.querySelector<HTMLElement>('.own')!.focus();
+    await router.navigateByUrl('/second?filter=a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(el.querySelector('.own'));
+    fixture.destroy();
+  });
+
+  it('does not take the focus from a dialog that is open', async () => {
+    const { fixture, router } = await start();
+    const overlay = document.createElement('div');
+    overlay.className = 'cdk-overlay-container';
+    const inDialog = document.createElement('button');
+    overlay.append(inDialog);
+    document.body.append(overlay);
+    inDialog.focus();
+    await router.navigateByUrl('/second');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(inDialog);
+    overlay.remove();
+    fixture.destroy();
   });
 });

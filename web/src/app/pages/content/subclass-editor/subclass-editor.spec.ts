@@ -175,7 +175,7 @@ describe('SubclassEditor', () => {
           namePt: 'Tradição da Tinta',
           classKey: 'class:fighter',
           casting: { kind: 'third', ability: Ability.INTELLIGENCE, preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
-          levels: defaults.tables[7].rows.filter((r, i) => i >= 2).map((r, i) => ({ level: i + 3, cantripsKnown: r.cantripsKnown, spellsKnown: r.spellsKnown, slots: r.slots })),
+          levels: defaults.tables[7].rows.filter((_r, i) => i >= 2).map((r, i) => ({ level: i + 3, cantripsKnown: r.cantripsKnown, spellsKnown: r.spellsKnown, slots: r.slots })),
         }),
       },
     });

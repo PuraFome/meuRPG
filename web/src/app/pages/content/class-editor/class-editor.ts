@@ -329,7 +329,7 @@ export class ClassEditor {
     return `table_class.${field === 'anyOf' ? 'any_of' : 'minimums'}${ability ? '.' + ability : ''}`;
   }
 
-  protected requirementOptions(field: 'minimums' | 'anyOf'): SelectOption[] {
+  protected requirementOptions(): SelectOption[] {
     return this.abilities().map((a) => ({ value: a.field, label: a.name }));
   }
 
@@ -361,7 +361,7 @@ export class ClassEditor {
 
   protected freeRequirementOptions(field: 'minimums' | 'anyOf'): SelectOption[] {
     const m = this.draft()[field];
-    return this.requirementOptions(field).filter((o) => !(m[o.value as AbilityField] > 0));
+    return this.requirementOptions().filter((o) => !(m[o.value as AbilityField] > 0));
   }
 
   protected setRequirement(field: 'minimums' | 'anyOf', ability: AbilityField, text: string): void {

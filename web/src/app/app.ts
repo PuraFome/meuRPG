@@ -1,4 +1,18 @@
-import { Component, DestroyRef, ViewContainerRef, computed, effect, inject, signal, viewChildren } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  ViewContainerRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -48,6 +62,14 @@ import { UserMenu } from './shell/user-menu/user-menu';
 })
 export class App {
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly document = inject(DOCUMENT);
+  /** The main region: the skip link's target, and the fallback for the focus after a navigation. */
+  private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
+  /** The path (no query, no fragment) of the page shown, to tell a new page from a changed filter. */
+  private path = pathOf(this.router.url);
+  /** The first navigation is the page load: the browser starts at the top, and focus stays where it is. */
+  private firstNavigation = true;
   private readonly openSessions = inject(OpenSessions);
   protected readonly sessionNotes = inject(SessionNotes);
   /** Where the player's "Anotações" button goes (the session page hands over its template). */
@@ -81,7 +103,50 @@ export class App {
       .subscribe((e) => {
         this.menuOpen.set(false);
         this.url.set(e.urlAfterRedirects);
+        this.moveFocusToThePage(pathOf(e.urlAfterRedirects));
       });
+  }
+
+  /** "Pular para o conteúdo": a plain `#main` link would go through the router (the `<base href>` is `/`). */
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    this.main().nativeElement.focus();
+  }
+
+  /**
+   * After a navigation to another page, focus goes to the page's heading, so a
+   * screen reader reads where it landed and the next Tab starts inside the page
+   * (WCAG 2.4.3). It does not move on the first load, on a change that only
+   * touches the query or the fragment, when the page already put the focus
+   * somewhere inside itself, or while a dialog or sheet holds the focus.
+   */
+  private moveFocusToThePage(path: string): void {
+    const samePage = path === this.path;
+    this.path = path;
+    if (this.firstNavigation) {
+      this.firstNavigation = false;
+      return;
+    }
+    if (samePage) {
+      return;
+    }
+    // After the page's first render, so the heading exists and the page had its turn to place the focus.
+    afterNextRender(
+      () => {
+        const main = this.main().nativeElement;
+        const active = this.document.activeElement;
+        if (active instanceof HTMLElement && (main.contains(active) || active.closest('.cdk-overlay-container'))) {
+          return;
+        }
+        const heading = main.querySelector<HTMLElement>('h1');
+        if (heading && !heading.hasAttribute('tabindex')) {
+          // Focusable by code only: it is not a stop for Tab (styles.scss draws no ring on it).
+          heading.setAttribute('tabindex', '-1');
+        }
+        (heading ?? main).focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   /** The visible word comes first, then which session it opens. */
@@ -92,4 +157,9 @@ export class App {
   protected toggleMenu(): void {
     this.menuOpen.update((open) => !open);
   }
+}
+
+/** The URL without its query and fragment. */
+function pathOf(url: string): string {
+  return url.split(/[?#]/)[0];
 }

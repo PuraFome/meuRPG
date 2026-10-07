@@ -9,6 +9,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Campaign, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { AuthService } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
+import { setPageSubject } from '../../core/title/page-title';
 import { describeConnectError } from '../../core/connect/connect-errors';
 import { LevelUpFeed } from '../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../core/progression/experience-store';
@@ -114,6 +115,11 @@ export class CampaignDetail {
   });
 
   constructor() {
+    // The tab's title carries the campaign's name once it is loaded.
+    setPageSubject(() => {
+      const s = this.state();
+      return s.status === 'ready' || s.status === 'pending' ? s.campaign.name : null;
+    });
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id');
       if (id) {
