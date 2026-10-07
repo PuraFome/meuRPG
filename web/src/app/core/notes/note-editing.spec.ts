@@ -100,6 +100,17 @@ describe('NoteEditing', () => {
     expect(editing.stage()).toBe('list');
   });
 
+  it('keeps the text and the form when cancelled again while the question shows', () => {
+    editing.openNew();
+    type('Algo importante');
+    editing.cancel();
+    expect(editing.confirmingDiscard()).toBe(true);
+    editing.cancel();
+    expect(editing.stage()).toBe('form');
+    expect(editing.confirmingDiscard()).toBe(true);
+    expect(editing.text.value).toBe('Algo importante');
+  });
+
   it('counts a new note tagged with the open scene as untouched until something is written', () => {
     open = 's1';
     editing.openNew();
