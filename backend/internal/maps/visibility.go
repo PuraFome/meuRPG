@@ -2,8 +2,10 @@ package maps
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -11,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
 // Who sees what on a map (RN-10, MR-009). The master sees everything. A
@@ -125,15 +128,28 @@ type campaignMaps struct {
 
 // loadMaps reads the campaign's maps. A campaign has at most 200, so
 // reading them all is cheap, and it gives every response the names and
-// states it needs (parents, submap targets) in two queries.
+// states it needs (parents, submap targets) in two queries. The two run in one
+// read-only transaction, so the links always match the rows (audit D-03).
 func (s *Service) loadMaps(ctx context.Context, campaignID string) (campaignMaps, error) {
-	rows, err := s.queries.ListMapDetails(ctx, campaignID)
+	var cm campaignMaps
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		cm, err = loadMapsWith(ctx, s.queries.WithTx(tx), campaignID)
+		return err
+	})
+	return cm, err
+}
+
+// loadMapsWith is loadMaps on queries the caller already holds, for a read RPC
+// that puts more statements in the same read-only transaction (GetMap).
+func loadMapsWith(ctx context.Context, q *mapsdb.Queries, campaignID string) (campaignMaps, error) {
+	rows, err := q.ListMapDetails(ctx, campaignID)
 	if err != nil {
-		return campaignMaps{}, err
+		return campaignMaps{}, fmt.Errorf("list the map details: %w", err)
 	}
-	links, err := s.queries.ListSubmapLinks(ctx, campaignID)
+	links, err := q.ListSubmapLinks(ctx, campaignID)
 	if err != nil {
-		return campaignMaps{}, err
+		return campaignMaps{}, fmt.Errorf("list the submap links: %w", err)
 	}
 	cm := campaignMaps{rows: rows, byID: make(map[string]mapsdb.ListMapDetailsRow, len(rows)), links: links}
 	for _, r := range rows {

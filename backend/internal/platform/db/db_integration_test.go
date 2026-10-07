@@ -185,3 +185,62 @@ func TestDefaultSessionTimeouts(t *testing.T) {
 		}
 	}
 }
+
+// TestReadTxSeesOneSnapshot: two reads in a ReadTx agree even when another
+// connection commits a write between them, while the same two reads as
+// autocommit statements disagree (the torn read of audit D-03). A write inside
+// a ReadTx is refused.
+func TestReadTxSeesOneSnapshot(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	side := testPool(t) // its own connection: the writer that commits in between
+	ctx := t.Context()
+
+	table := pgx.Identifier{fmt.Sprintf("readtx_test_%d", time.Now().UnixNano())}.Sanitize()
+	mustExec(t, pool, "CREATE TABLE "+table+" (id INT PRIMARY KEY, n INT NOT NULL)")
+	t.Cleanup(func() { mustExec(t, pool, "DROP TABLE IF EXISTS "+table) })
+	mustExec(t, pool, "INSERT INTO "+table+" (id, n) VALUES (1, 1)")
+
+	read := func(q interface {
+		QueryRow(context.Context, string, ...any) pgx.Row
+	},
+	) int {
+		var n int
+		if err := q.QueryRow(ctx, "SELECT n FROM "+table+" WHERE id = 1").Scan(&n); err != nil {
+			t.Fatalf("read n: %v", err)
+		}
+		return n
+	}
+
+	var first, second int
+	err := ReadTx(ctx, pool, func(tx pgx.Tx) error {
+		first = read(tx)
+		mustExec(t, side, "UPDATE "+table+" SET n = 2 WHERE id = 1") // commits now
+		second = read(tx)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ReadTx() error = %v", err)
+	}
+	if first != 1 || second != 1 {
+		t.Errorf("reads inside ReadTx = %d, %d; want 1, 1 (one snapshot)", first, second)
+	}
+	if got := read(pool); got != 2 {
+		t.Errorf("a read after the commit = %d, want 2 (ReadTx is not stale reading)", got)
+	}
+
+	// Contrast: autocommit reads each take their own timestamp.
+	a := read(pool)
+	mustExec(t, side, "UPDATE "+table+" SET n = 3 WHERE id = 1")
+	if b := read(pool); a == b {
+		t.Errorf("autocommit reads = %d, %d; expected them to differ", a, b)
+	}
+
+	err = ReadTx(ctx, pool, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "UPDATE "+table+" SET n = 9 WHERE id = 1")
+		return err
+	})
+	if err == nil {
+		t.Error("a write inside ReadTx succeeded, want an error (read-only transaction)")
+	}
+}

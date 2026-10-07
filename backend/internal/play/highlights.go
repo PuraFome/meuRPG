@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -11,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -207,27 +207,34 @@ func (s *Service) GetCombatHighlights(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.openSession(ctx, m.CampaignID)
+	// The encounter, its events and its combatants are one snapshot (audit D-03).
+	var (
+		events []playdb.ListEncounterCombatEventsRow
+		cs     []playdb.Combatant
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		session, err := openSessionWith(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		enc, err := encounterInSessionWith(ctx, q, session.ID, encID)
+		if err != nil {
+			return err
+		}
+		if enc.Status != statusEnded {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ENDED, "the combat has not ended")
+		}
+		if events, err = q.ListEncounterCombatEvents(ctx, &enc.ID); err != nil {
+			return fmt.Errorf("list the combat's events: %w", err)
+		}
+		if cs, err = q.ListCombatants(ctx, enc.ID); err != nil {
+			return fmt.Errorf("list the combatants: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: encID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the encounter", err)
-	}
-	if enc.Status != statusEnded {
-		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ENDED, "the combat has not ended")
-	}
-	events, err := s.queries.ListEncounterCombatEvents(ctx, &enc.ID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the combat's events", fmt.Errorf("highlights: %w", err))
-	}
-	cs, err := s.queries.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the combatants", err)
+		return nil, s.dbError(ctx, "read the combat's highlights", err)
 	}
 	tallies := tallyHighlights(events, cs)
 

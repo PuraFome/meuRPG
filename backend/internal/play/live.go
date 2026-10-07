@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -137,14 +139,66 @@ func vitalsAudience(v *playv1.CharacterVitals) live.Audience {
 // openSession returns the campaign's open session, or the NO_OPEN_SESSION
 // failed_precondition.
 func (s *Service) openSession(ctx context.Context, campaignID string) (playdb.GameSession, error) {
-	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	session, err := openSessionWith(ctx, s.queries, campaignID)
+	if err != nil {
+		return playdb.GameSession{}, s.dbError(ctx, "find the open session", err) // a connect error passes through
+	}
+	return session, nil
+}
+
+// openSessionWith is openSession on the queries of a read-only transaction
+// (db.ReadTx). It returns the NO_OPEN_SESSION error as is and any database
+// error wrapped, for the caller to map once the transaction is over.
+func openSessionWith(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
+	session, err := q.GetOpenGameSession(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return playdb.GameSession{}, errNoOpenSession()
 	}
 	if err != nil {
-		return playdb.GameSession{}, s.dbError(ctx, "find the open session", err)
+		return playdb.GameSession{}, fmt.Errorf("find the open session: %w", err)
 	}
 	return session, nil
+}
+
+// encounterInSessionWith finds an encounter of the open session, or the
+// "encounter not found" error. Like openSessionWith, for a read-only transaction.
+func encounterInSessionWith(ctx context.Context, q *playdb.Queries, sessionID, encounterID string) (playdb.Encounter, error) {
+	enc, err := q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: sessionID, ID: encounterID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.Encounter{}, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
+	}
+	if err != nil {
+		return playdb.Encounter{}, fmt.Errorf("find the encounter: %w", err)
+	}
+	return enc, nil
+}
+
+// readEncounter reads the open session, one of its encounters and the
+// encounter's combatants in one read-only transaction (audit D-03), so a combat
+// the master changes while the request runs is seen whole or not at all: never
+// new combatants beside the old revision.
+func (s *Service) readEncounter(ctx context.Context, campaignID, encounterID string) (playdb.GameSession, *encounterData, error) {
+	var (
+		session playdb.GameSession
+		d       *encounterData
+	)
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if session, err = openSessionWith(ctx, q, campaignID); err != nil {
+			return err
+		}
+		enc, err := encounterInSessionWith(ctx, q, session.ID, encounterID)
+		if err != nil {
+			return err
+		}
+		d, err = loadEncounter(ctx, q, enc)
+		return err
+	})
+	if err != nil {
+		return playdb.GameSession{}, nil, s.dbError(ctx, "read the encounter", err)
+	}
+	return session, d, nil
 }
 
 // WatchGameSession implements playv1connect.PlayServiceHandler. See the

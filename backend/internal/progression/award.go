@@ -33,7 +33,7 @@ const (
 )
 
 // The kinds of session_events rows this module writes
-// (session_events_kind_valid; package play lists them too).
+// (session_event_kinds; package play lists them too).
 const (
 	eventXPAwarded       = "xp_awarded"
 	eventXPAwardUndone   = "xp_award_undone"
