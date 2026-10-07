@@ -23,10 +23,10 @@ import (
 
 func rpcStatus(t *testing.T, h http.Handler, procedure, token string) int {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, procedure, strings.NewReader("{}"))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, procedure, strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Connect-Protocol-Version", "1")
-	req.AddCookie(&http.Cookie{Name: identity.SessionCookieName, Value: token})
+	req.AddCookie(&http.Cookie{Name: identity.SessionCookieName, Value: token}) //nolint:gosec // G124: a request cookie in a test
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec.Code
@@ -44,8 +44,10 @@ func TestIdentityRPCsAreRateLimitedPerUser(t *testing.T) {
 	must(t, err)
 	t.Cleanup(m.play.Close)
 	svc, err := identity.New(ctx, identity.Config{
-		OIDC: config.OIDC{IssuerURL: "http://localhost:1", ClientID: "test", ClientSecret: "test",
-			RedirectURL: "http://localhost:8080/auth/callback"},
+		OIDC: config.OIDC{
+			IssuerURL: "http://localhost:1", ClientID: "test", ClientSecret: "test",
+			RedirectURL: "http://localhost:8080/auth/callback",
+		},
 		Store: m.users, Logger: logger,
 	})
 	must(t, err)

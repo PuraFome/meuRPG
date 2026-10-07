@@ -39,6 +39,13 @@ const (
 	maxReturnToLength = 1024
 )
 
+// loginClientBurst is how many requests one client may send at once, and
+// loginClientEvery how often it earns another.
+const (
+	loginClientBurst = 40
+	loginClientEvery = 3 * time.Second
+)
+
 // loginRateLimit caps /auth/login (GET and POST together) and
 // /auth/callback, because every login hit writes a login state row and every
 // callback with a matching cookie deletes one. A sign-in is one of each. The
@@ -51,7 +58,7 @@ const (
 //     the rows a botnet can write: at most 7,200 an hour per instance,
 //     deleted by the row TTL within the next hour.
 var loginRateLimit = ratelimit.Config{
-	PerClient:  ratelimit.Rate{Burst: 40, Every: 3 * time.Second},
+	PerClient:  ratelimit.Rate{Burst: loginClientBurst, Every: loginClientEvery},
 	Global:     ratelimit.Rate{Burst: 200, Every: 500 * time.Millisecond},
 	MaxClients: 10_000,
 }

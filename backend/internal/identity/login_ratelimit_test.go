@@ -123,7 +123,7 @@ func TestCallbackIsRateLimitedPerClient(t *testing.T) {
 		state, _ := secret.New()
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://meurpg.test/auth/callback?state="+state+"&code=x", nil)
 		req.RemoteAddr = remoteAddr
-		req.AddCookie(&http.Cookie{Name: loginCookieName, Value: state})
+		req.AddCookie(&http.Cookie{Name: loginCookieName, Value: state}) //nolint:gosec // G124: a request cookie in a test
 		rec := httptest.NewRecorder()
 		h.mux.ServeHTTP(rec, req)
 		return rec.Code

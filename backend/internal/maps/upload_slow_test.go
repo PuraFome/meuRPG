@@ -91,7 +91,7 @@ func TestQueuedUploadsDoNotReadTheirBodies(t *testing.T) {
 		}()
 	}
 
-	// Correct behaviour: while the slot is busy, the waiting requests do not
+	// Correct behavior: while the slot is busy, the waiting requests do not
 	// all hold a full body. Give them time to (wrongly) read everything.
 	deadline := time.Now().Add(10 * time.Second)
 	for consumed.Load() < total && time.Now().Before(deadline) {
