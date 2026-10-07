@@ -168,6 +168,17 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     createNpc(el).click();
     await settle();
     expect(el.querySelector('.made')?.textContent?.trim()).toBe('');
+    // The sheet does not give the focus back by itself (`restoreFocus: false`): the page puts it on the button that opened it.
+    expect(document.activeElement).toBe(createNpc(el));
+  });
+
+  it('a "Pôr no combate" sheet closed with nothing put in gives the focus back to its button', async () => {
+    dialogResult = undefined;
+    const { el, settle } = await open();
+    const put = Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find((b) => flat(b) === 'Pôr no combate')!;
+    put.click();
+    await settle();
+    expect(document.activeElement).toBe(put);
   });
 
   it('a creature that is not in the book says so; the stat block is not asked of a player', async () => {

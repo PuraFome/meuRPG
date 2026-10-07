@@ -58,8 +58,8 @@ export class BestiaryCreature {
   protected readonly put = signal<PutMonstersResult | null>(null);
 
   private readonly madeBox = viewChild<ElementRef<HTMLElement>>('madeBox');
-  private readonly createButton = viewChild<ElementRef<HTMLButtonElement>>('createButton');
-  private readonly putButton = viewChild<ElementRef<HTMLButtonElement>>('putButton');
+  private readonly createButton = viewChild('createButton', { read: ElementRef<HTMLButtonElement> });
+  private readonly putButton = viewChild('putButton', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
     void this.start();

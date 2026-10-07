@@ -106,14 +106,19 @@ export class DocumentEditor {
   protected readonly maxKb = Math.round(MAX_BODY_BYTES / 1024);
 
   private readonly textarea = viewChild.required<ElementRef<HTMLTextAreaElement>>('textarea');
-  private readonly discardButton = viewChild<ElementRef<HTMLButtonElement>>('confirmDiscard');
+  private readonly discardButton = viewChild('confirmDiscard', { read: ElementRef<HTMLButtonElement> });
   private readonly conflictNotice = viewChild<ElementRef<HTMLElement>>('conflictNotice');
   private selection = { start: 0, end: 0 };
   private trigger: HTMLElement | null = null;
   private previewTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Set when the person left the page: a save still in flight must not emit or touch the view then. */
+  private destroyed = false;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.previewTimer));
+    inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
+      clearTimeout(this.previewTimer);
+    });
   }
 
   /** Whether there is text the server does not have. */
@@ -216,10 +221,17 @@ export class DocumentEditor {
     const body = normalizeBody(this.draft());
     this.client.save(this.campaignId(), body, this.doc().revision).then(
       (doc) => {
+        // An output emitted after its component died logs NG0953; the parent that wanted the news is gone too.
+        if (this.destroyed) {
+          return;
+        }
         this.saving.set(false);
         this.saved.emit(doc);
       },
       (err: unknown) => {
+        if (this.destroyed) {
+          return;
+        }
         this.saving.set(false);
         if (isConflict(err)) {
           this.conflict.set(true);
