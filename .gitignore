@@ -63,3 +63,8 @@ server/.nuxt
 /backend/api
 /backend/migrate
 /backend/devidp
+
+# ELK stack (deploy/elk): passwords and the generated CA
+deploy/elk/.env
+deploy/elk/certs/*
+!deploy/elk/certs/.gitkeep
