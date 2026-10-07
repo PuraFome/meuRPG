@@ -18,7 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 )
 
-// The acceptance criteria of MR-040 (docs/produto/historias.md): a character
+// The acceptance criteria of MR-040 (docs/product/stories.md): a character
 // that can level up goes up on its locked sheet, through the guided level-up,
 // and only gets what the level gives. Each test starts its own database.
 

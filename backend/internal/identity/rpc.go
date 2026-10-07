@@ -24,7 +24,7 @@ const MaxDisplayNameLength = 40
 // up in the database. No exported function puts a session into a context:
 // other modules learn who is calling through UserID (the authz.Caller
 // interface), and their tests pass a fake of that interface instead
-// (docs/arquitetura.md, "Quem está chamando").
+// (docs/architecture.md#who-is-calling).
 type sessionKey struct{}
 
 // sessionFromContext returns the session that Interceptor found for this

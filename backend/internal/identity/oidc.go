@@ -26,7 +26,7 @@ import (
 const providerTimeout = 10 * time.Second
 
 // scopes asks for the identity (openid) and the e-mail, the only personal
-// data we use (docs/privacidade.md). No profile: we never want the name or
+// data we use (docs/privacy.md). No profile: we never want the name or
 // the photo.
 var scopes = []string{oidc.ScopeOpenID, oidc.ScopeEmail}
 

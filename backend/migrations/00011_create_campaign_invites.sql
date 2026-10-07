@@ -13,7 +13,7 @@
 -- AcceptInvite calls, and no invite lives longer than 30 days.
 --
 -- Rows are deleted by CockroachDB's row-level TTL 30 days after the invite
--- expires (docs/privacidade.md). Queries still filter on expires_at: the TTL
+-- expires (docs/privacy.md). Queries still filter on expires_at: the TTL
 -- job runs once a day. Deleting the campaign, or the account that created
 -- the invite, deletes it too. There is no index on created_by, for the same
 -- reason as campaigns.created_by.

@@ -24,7 +24,7 @@ import (
 // that search found for its own character).
 
 // creatureLabels names the creatures a firing caught outside a combat (their owner's free text, read now and never
-// kept in the event: docs/privacidade.md), by creature ID.
+// kept in the event: docs/privacy.md), by creature ID.
 func (s *Service) creatureLabels(ctx context.Context, campaignID string, caught []trapCaughtEvent) (map[string]string, error) {
 	var owners []string
 	for _, cc := range caught {
@@ -175,7 +175,7 @@ func (s *Service) ListTrapActivity(
 		}
 	}
 	// A creature dropped into a trap is caught under its owner's character: its name is
-	// the owner's free text, read now and never kept in the event (docs/privacidade.md).
+	// the owner's free text, read now and never kept in the event (docs/privacy.md).
 	creatureNames := map[string]string{}
 	if len(ownerIDs) > 0 {
 		var found []link.Creature

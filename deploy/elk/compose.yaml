@@ -2,7 +2,7 @@
 #
 # Usage: `make elk-up` from the repo root (or `docker compose -f deploy/elk/compose.yaml up -d`).
 # Needs deploy/elk/.env (`make elk-up` creates it with random passwords).
-# How to verify it and how production differs: docs/operacao.md, section "Logs no ELK".
+# How to verify it and how production differs: docs/operations.md#logs-in-elk.
 #
 # Services, in start order:
 #   certs        - one-shot: makes a CA and the TLS certificates (HTTP and transport) into the
@@ -15,7 +15,7 @@
 #   filebeat     - ships the API's JSON lines (Docker containers and native ~/.meurpg/run*/api.log).
 #
 # Every host port is bound to 127.0.0.1. Nothing here is distributed with MeuRPG:
-# the images are external services (licences: docs/operacao.md).
+# the images are external services (licences: docs/operations.md).
 name: meurpg-elk
 
 x-es-image: &es-image docker.elastic.co/elasticsearch/elasticsearch:9.5.5@sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984

@@ -42,7 +42,7 @@ import (
 //     then the firing), so the master takes the firing back first.
 
 // trapFireEvent is the payload of `trap_triggered` (IDs and numbers only, no name:
-// docs/privacidade.md), and what a combat's undo and log read back.
+// docs/privacy.md), and what a combat's undo and log read back.
 type trapFireEvent struct {
 	PointID string `json:"point_id"`
 	MapID   string `json:"map_id"`

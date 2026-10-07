@@ -22,7 +22,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     // <mat-icon>name</mat-icon> defaults to Google's "Material Icons"
     // ligature font, which this app does not ship (no Google Fonts — see
-    // docs/privacidade.md). Point it at the self-hosted Material Symbols
+    // docs/privacy.md). Point it at the self-hosted Material Symbols
     // font instead (index.html's <link>, copied into the build by
     // angular.json's assets entry).
     provideAppInitializer(() => {

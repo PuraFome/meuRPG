@@ -422,7 +422,7 @@ func TestPostgresStoreLoginStateIntents(t *testing.T) {
 }
 
 // TestRowLevelTTL checks that CockroachDB deletes expired rows on its own
-// (docs/privacidade.md promises it).
+// (docs/privacy.md promises it).
 func TestRowLevelTTL(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)

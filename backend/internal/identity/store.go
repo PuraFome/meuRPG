@@ -24,7 +24,7 @@ var ErrNotFound = errors.New("identity: not found")
 // this package can create or look up a session, and only this package can
 // implement a Store. Other modules get accounts and display names, but they
 // cannot forge a session, directly or through a fake Store
-// (docs/arquitetura.md, "Quem está chamando").
+// (docs/architecture.md#who-is-calling).
 type Store interface {
 	// saveLoginState records a sign-in that has just started.
 	saveLoginState(ctx context.Context, state LoginState) error
@@ -364,7 +364,7 @@ func (s *PostgresStore) SetDisplayName(ctx context.Context, userID, displayName 
 // VerifiedEmails returns the verified e-mail addresses of a user, as the
 // provider gave them (the identity module's public answer to "who is this?"
 // for campaigns.Profiles). It is empty for a user whose e-mail the provider
-// did not verify: such an e-mail is never stored (docs/privacidade.md).
+// did not verify: such an e-mail is never stored (docs/privacy.md).
 func (s *PostgresStore) VerifiedEmails(ctx context.Context, userID string) ([]string, error) {
 	emails, err := s.queries.ListVerifiedEmails(ctx, userID)
 	if err != nil {

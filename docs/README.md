@@ -1,36 +1,40 @@
-# Documentação do MeuRPG
+# MeuRPG documentation
 
-Este diretório é a fonte da verdade sobre o produto, as regras e a arquitetura do MeuRPG. Um assunto vive em um arquivo só; os outros apontam para ele por link, sem copiar o conteúdo.
+This directory is the source of truth about the product, the rules and the architecture of MeuRPG. English is the canonical language. A subject lives in one file; the others link to it instead of copying it. **Current stage: pre-MVP** (see the [roadmap](roadmap.md)).
 
-## Índice
+## Index
 
-| Documento | Para quem | Responde |
+| Document | For whom | Answers |
 | --- | --- | --- |
-| [produto/visao.md](produto/visao.md) | Todo o time, principalmente o Samuel | Por que o app existe e o que cada papel faz |
-| [produto/glossario.md](produto/glossario.md) | Todo o time | O que cada termo significa |
-| [produto/regras.md](produto/regras.md) | Samuel, dev da história | Como o jogo se comporta dentro do app |
-| [produto/historias.md](produto/historias.md) | Samuel, dev da história | O que construir e como saber que está pronto |
-| [produto/perguntas-em-aberto.md](produto/perguntas-em-aberto.md) | Samuel | O que ainda falta decidir |
-| [design.md](design.md) | Quem mexe numa tela, com revisão do Samuel e do Vinicius | O visual do app: princípios, tokens, componentes e como uma tela é desenhada e revisada |
-| [arquitetura.md](arquitetura.md) | Quem abre o PR, com revisão do Samuel | Como o sistema é montado e onde roda |
-| [dados.md](dados.md) | Quem abre o PR, com revisão do Samuel | Tabelas, relações e migrations |
-| [privacidade.md](privacidade.md) | Quem abre o PR, com revisão do Samuel e do Vinicius | Que dados pessoais guardamos, por quê e por quanto tempo, e a checklist de privacidade de todo PR |
-| [roadmap.md](roadmap.md) | Todo o time | A ordem das etapas até o MVP |
-| [operacao.md](operacao.md) | Vinicius e Samuel | Deploy, segredos, custos e alertas |
-| [app-antigo.md](app-antigo.md) | Quem consulta o app antigo | O que o Angular em `src/` e o NestJS em `server/` faziam, como rodavam e quando saem do repositório (descontinuados) |
-| [code-quality.md](code-quality.md) | Quem consulta o Angular antigo | Relatório de qualidade do frontend antigo (`src/`, descontinuado) |
-| `adr/` | Samuel e Vinicius | Decisões difíceis de desfazer. Repositório privado separado; a pasta local está no `.gitignore` e não é versionada aqui. |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Todo o time | Como rodar, testar e abrir um PR |
-| [../README.md](../README.md) | Quem chega no repositório agora | Visão geral do projeto: o que já funciona, o visual, a stack, como rodar e o que o CI confere, com link para o resto |
+| [product/vision.md](product/vision.md) | Everyone | Why the app exists and what each role does |
+| [product/glossary.md](product/glossary.md) | Everyone | What each term means |
+| [product/rules.md](product/rules.md) | Product owner, story developer | How the game behaves inside the app |
+| [product/stories.md](product/stories.md) | Product owner, story developer | What to build and how to know it is done |
+| [design.md](design.md) | Anyone touching a screen | The app's look: principles, tokens, components, and how a screen is designed and reviewed |
+| [architecture.md](architecture.md) | PR authors | How the system is built and where it runs |
+| [data.md](data.md) | PR authors | Tables, relations and migrations |
+| [privacy.md](privacy.md) | PR authors, reviewers | Which personal data we keep, why and for how long, and the privacy checklist of every PR |
+| [roadmap.md](roadmap.md) | Everyone | The stages up to the MVP and what comes after |
+| [operations.md](operations.md) | Operators | Deploy, secrets, costs and alerts |
+| [legacy-app.md](legacy-app.md) | Anyone consulting the old app | What the Angular app in `src/` and the NestJS server in `server/` did and how they ran (discontinued) |
+| [archive/](archive/README.md) | Anyone looking for history | Decision history, per-stage delivery history and archived notes |
+| `adr/` | Maintainers | Hard-to-reverse decisions. A separate private repository; the local folder is in `.gitignore` and not versioned here |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Everyone | How to run, test and open a PR |
+| [../README.md](../README.md) | Newcomers | Project overview: what works, the look, the stack, how to run it |
 
-Contratos de API (`.proto`) e migrations de banco não ficam documentados aqui: o `.proto` em `proto/meurpg/**/v1/*.proto` é a própria referência, gerada pelo CI; as migrations ficam em `backend/migrations/`.
+API contracts (`.proto`) and database migrations are not documented here: the `.proto` files in `proto/meurpg/**/v1/*.proto` are the reference themselves; migrations live in `backend/migrations/`.
 
-## Como manter a documentação
+## Portuguese versions
 
-A documentação muda no mesmo PR que o código. Um PR que muda comportamento sem mudar o documento correspondente volta na revisão. A tabela completa de "o que atualizar quando" e as regras de escrita ficam em [CONTRIBUTING.md → Como manter a documentação](../CONTRIBUTING.md#como-manter-a-documentação).
+The readers' docs have a Portuguese (Brazil) version under [pt-BR/](pt-BR/README.md): the product docs (vision, stories, rules, glossary) and privacy, plus [README.pt-BR.md](../README.pt-BR.md). Engineering docs are English only. The UI text stays Portuguese until internationalization.
 
-Convenções rápidas:
+## Keeping the docs current
 
-- Português, com termos de software em inglês (backend, deploy, token, migration, commit, PR, CI, stream). Código, comentários e nomes no código ficam em inglês.
-- Diagramas em Mermaid, porque o GitHub renderiza direto no Markdown.
-- A primeira frase de cada seção é a resposta; o contexto vem depois.
+Documentation changes in the same PR as the code. A PR that changes behavior without changing its document goes back in review. The full "what to update when" table and the writing rules are in [CONTRIBUTING.md → How to keep the docs current](../CONTRIBUTING.md#how-to-keep-the-docs-current).
+
+Quick conventions:
+
+- English, with software terms as usual. Code, comments and names in code are in English; quoted UI strings stay in Portuguese.
+- Diagrams in Mermaid, which GitHub renders directly in Markdown.
+- The first sentence of each section is the answer; the context follows.
+- Documents say what the system does and why. When something was decided and by whom goes to the [archive](archive/decisions.md).

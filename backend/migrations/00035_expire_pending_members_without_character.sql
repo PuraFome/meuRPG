@@ -1,7 +1,7 @@
 -- +goose Up
 -- A pending membership without a character is deleted by CockroachDB's
 -- row-level TTL job, on its own, 30 days after the person joined (RN-15,
--- MR-024, docs/privacidade.md). The person loses nothing else: no account,
+-- MR-024, docs/privacy.md). The person loses nothing else: no account,
 -- no other campaign. A new invite brings them back.
 --
 -- Same pattern as migration 00020. The expiration expression is the column

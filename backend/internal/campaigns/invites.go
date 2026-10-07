@@ -24,7 +24,7 @@ import (
 // secret (package secret) that the server returns once, to the master, and
 // then only knows as a SHA-256 hash. It travels in the URL fragment, which
 // browsers never send to a server, and the app posts it to AcceptInvite in
-// the request body (ADR-0009, docs/privacidade.md).
+// the request body (ADR-0009, docs/privacy.md).
 
 // newInviteToken returns a new invite token and the hash to store.
 func newInviteToken() (token string, hash []byte) { return secret.New() }

@@ -48,13 +48,13 @@ import (
 // that ends without a picture gives the slot back.
 
 // DefaultMonthlyImages is how many images a campaign may generate per month
-// (a proposal; docs/operacao.md has the cost behind it).
+// (a proposal; docs/operations.md has the cost behind it).
 const DefaultMonthlyImages = 20
 
 // DefaultDailyImages is how many images the whole server may generate per day
 // (Brazil's day), on top of each campaign's monthly limit: with one table and
 // 20 a month, a day is never close, so the cap only bites when someone is
-// abusing it, and it bounds the Gemini bill (docs/operacao.md).
+// abusing it, and it bounds the Gemini bill (docs/operations.md).
 const DefaultDailyImages = 100
 
 const (
@@ -1072,7 +1072,7 @@ func (s *Service) WaitForGenerations(ctx context.Context) {
 // generationWaiters wakes the long polls of one instance: a request's goroutine
 // (or a cancel) calls notify, and every GetImageGeneration waiting on it reads
 // the row again. One instance only: Cloud Run runs max-instances 1
-// (docs/operacao.md); with more, the poll still ends at its deadline.
+// (docs/operations.md); with more, the poll still ends at its deadline.
 type generationWaiters struct {
 	mu sync.Mutex
 	m  map[string]map[chan struct{}]struct{}

@@ -39,7 +39,7 @@ export function characterKindLabel(kind: CharacterKind): string {
   }
 }
 
-/** `CharacterState`'s pt-BR name, exactly as `docs/produto/regras.md`'s
+/** `CharacterState`'s pt-BR name, exactly as `docs/product/rules.md`'s
  * lifecycle table names each state (plan §2). */
 export function characterStateLabel(state: CharacterState): string {
   switch (state) {

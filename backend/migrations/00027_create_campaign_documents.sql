@@ -3,7 +3,7 @@
 -- text the master writes to prepare the game, with links to maps, character
 -- sheets and gallery images. Only the master reads and writes it
 -- (CampaignDocumentService, package campaigns). The server never parses the
--- text: the web app renders it (docs/arquitetura.md).
+-- text: the web app renders it (docs/architecture.md).
 --
 -- One document per campaign: campaign_id is the primary key. A campaign
 -- with no row has an empty document at revision 0. The first save inserts

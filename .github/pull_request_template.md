@@ -20,4 +20,4 @@ MR-xxx · RN-xx
 ## Documentação
 - [ ] Atualizei os documentos afetados, ou não há mudança de comportamento
 - [ ] Decisão difícil de desfazer? Abri um ADR no repositório privado
-- [ ] Mexe com dado pessoal, logs, imagens ou fornecedor? Segui o checklist de privacidade (`docs/privacidade.md`)
+- [ ] Mexe com dado pessoal, logs, imagens ou fornecedor? Segui o checklist de privacidade (`docs/privacy.md`)

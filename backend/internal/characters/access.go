@@ -41,7 +41,7 @@ var (
 )
 
 // characterState computes a character's state from its columns
-// (docs/produto/regras.md, "Ciclo de vida da ficha"). NPCs are never locked
+// (docs/product/rules.md#character-lifecycle). NPCs are never locked
 // nor dead, so they are always drafts.
 func characterState(status string, sheetLockedAt *time.Time) charactersv1.CharacterState {
 	switch {

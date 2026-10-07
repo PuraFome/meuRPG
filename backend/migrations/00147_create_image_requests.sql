@@ -19,7 +19,7 @@
 -- idempotency_key comes from the client: asking twice with the same key in a
 -- campaign gives the same row (a unique index, in 00148).
 --
--- prompt is the master's own text (their data, see docs/privacidade.md): it is
+-- prompt is the master's own text (their data, see docs/privacy.md): it is
 -- what was sent to the model, and for an edit, the new instruction. The
 -- server adds nothing personal to it. style and aspect_ratio are the closed
 -- values ImageGenerationService validates. reference_ids and character_ids are

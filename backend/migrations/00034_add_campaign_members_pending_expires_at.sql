@@ -6,7 +6,7 @@
 -- not been approved yet. If they never create their character, nobody ever
 -- has anything to approve or reject, so the master would have to notice and
 -- remove them by hand. The deadline spares him that, and keeps a row that
--- serves no purpose from living forever (docs/privacidade.md). Migration
+-- serves no purpose from living forever (docs/privacy.md). Migration
 -- 00035 turns the deadline into row-level TTL.
 --
 -- The column is set only while the membership is pending AND the person has

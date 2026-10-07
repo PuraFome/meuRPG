@@ -32,7 +32,7 @@
 // Who is calling comes from a Caller: the identity module in production,
 // which reads the session its own interceptor found, and a fake in tests.
 // This package never sets the caller itself, and nothing outside identity's
-// interceptor can (docs/arquitetura.md, "Quem está chamando").
+// interceptor can (docs/architecture.md#who-is-calling).
 //
 // Interceptor must wrap the Connect service, after identity's session
 // interceptor. It gives each request a small memo, so a request that checks

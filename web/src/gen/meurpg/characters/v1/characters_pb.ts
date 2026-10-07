@@ -11,7 +11,7 @@
 // characters such as line breaks; multi-line fields accept line breaks and
 // tabs and reject other control characters. Every free-text field is
 // fiction: the app reminds people not to write real people's data there,
-// and the server never logs it (docs/privacidade.md). No field holds the
+// and the server never logs it (docs/privacy.md). No field holds the
 // player's real name or e-mail.
 //
 // Stored as JSON. The server stores CharacterSheet and CharacterStory in the
@@ -4071,7 +4071,7 @@ export const CharacterKindSchema: GenEnum<CharacterKind> = /*@__PURE__*/
 
 /**
  * CharacterState is where a character is in its life cycle
- * (docs/produto/regras.md, "Ciclo de vida da ficha"). The server computes it
+ * (docs/product/rules.md#character-lifecycle). The server computes it
  * on every read.
  *
  * NPCs are always DRAFT: they never lock and never die, so the app shows no
@@ -5092,7 +5092,7 @@ export const CreatureSourceSchema: GenEnum<CreatureSource> = /*@__PURE__*/
  * Responses carry `Cache-Control: no-store`, because they describe the
  * caller's characters. Reads carry IDs, so they are IDEMPOTENT and
  * POST-only: a GET would put the IDs in the URL, and URLs end up in the
- * platform's request logs (docs/privacidade.md).
+ * platform's request logs (docs/privacy.md).
  *
  * @generated from service meurpg.characters.v1.CharacterService
  */
@@ -5493,7 +5493,7 @@ export const CharacterService: GenService<{
    * The character never became part of the campaign, so, in one
    * transaction, it is deleted with its story (and any notes the master
    * wrote about it), and its player's pending membership is deleted too
-   * (docs/privacidade.md). The player sees the campaign no more, like anyone
+   * (docs/privacy.md). The player sees the campaign no more, like anyone
    * who is not in it, and needs a new invite to try again. An active
    * membership is never touched.
    *

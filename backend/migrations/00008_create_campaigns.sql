@@ -8,7 +8,7 @@
 --
 -- created_by is the account that created the campaign, today always its
 -- master. Deleting that account deletes the campaign, and with it the
--- memberships and invites (docs/privacidade.md, "Excluir a conta"). There is
+-- memberships and invites (docs/privacy.md#delete-the-account). There is
 -- no index on created_by: only an account deletion looks campaigns up by it,
 -- and scanning a small table then is fine.
 CREATE TABLE IF NOT EXISTS campaigns (

@@ -1671,7 +1671,7 @@ export const DeathSaveVisibilitySchema: GenEnum<DeathSaveVisibility> = /*@__PURE
  * Reads are marked by their idempotency level. NO_SIDE_EFFECTS, which lets
  * clients call a method with HTTP GET, is only for requests with no IDs and
  * no personal data (ListMyCampaigns): a GET puts the whole request in the
- * URL, and URLs end up in the platform's request logs (docs/privacidade.md).
+ * URL, and URLs end up in the platform's request logs (docs/privacy.md).
  * Reads whose requests carry an ID are IDEMPOTENT instead: safe to retry,
  * documented as reads, and POST-only.
  *

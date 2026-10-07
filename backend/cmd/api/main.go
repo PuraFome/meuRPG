@@ -202,7 +202,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Info("images are stored on disk", "dir", cfg.BlobDir)
 	}
 
-	// The request-rate limits (docs/arquitetura.md, "Limites de abuso"), in this
+	// The request-rate limits (docs/architecture.md#abuse-limits), in this
 	// instance's memory. They are built before the modules, which hold two of them.
 	policy := ratelimit.NewPolicy(cfg.Limits.RateMultiplier)
 

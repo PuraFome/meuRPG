@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-/** The reminder docs/privacidade.md asks for next to every image upload:
+/** The reminder docs/privacy.md asks for next to every image upload:
  * an image can be a photo of a real person. */
 export const IMAGE_PRIVACY_REMINDER =
   'Use imagens do jogo. Não envie fotos de pessoas sem a autorização delas.';

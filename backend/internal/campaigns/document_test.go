@@ -450,7 +450,7 @@ func TestUpdateCampaignDocumentValidates(t *testing.T) {
 }
 
 // TestCampaignDocumentGoesWithTheCampaign checks the ON DELETE rules that
-// docs/privacidade.md promises: deleting the account of whoever saved the
+// docs/privacy.md promises: deleting the account of whoever saved the
 // document last keeps the document, with no editor; deleting the campaign,
 // or the account of the master who created it, deletes the document.
 func TestCampaignDocumentGoesWithTheCampaign(t *testing.T) {

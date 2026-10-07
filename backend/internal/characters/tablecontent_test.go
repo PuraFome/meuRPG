@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The acceptance criteria of MR-025 (docs/produto/historias.md) for the table's
+// The acceptance criteria of MR-025 (docs/product/stories.md) for the table's
 // own content: storage, API and liveness (RN-23, ADR-0018). Each test starts its
 // own database.
 
