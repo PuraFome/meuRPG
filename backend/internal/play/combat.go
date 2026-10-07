@@ -86,7 +86,8 @@ func (s *Service) StartEncounter(
 
 	digest := startDigest(req.Msg)
 	var newMap string // the map the point made current, if it changed
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventEncounterStarted}, func(c *combatTx) (any, error) {
+	// No request hash: the start is compared by its own digest, which reads the defaults written out as the same request.
+	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventEncounterStarted}, func(c *combatTx) (any, error) {
 		newMap = ""
 		_, err := c.q.GetOpenEncounter(ctx, c.session.ID)
 		switch {
