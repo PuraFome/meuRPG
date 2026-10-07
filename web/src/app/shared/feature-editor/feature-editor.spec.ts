@@ -49,7 +49,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     el = fixture.nativeElement as HTMLElement;
   }
 
-  const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const button = (label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       text(b).includes(label),

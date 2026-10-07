@@ -109,7 +109,7 @@ describe('ContentEntry', () => {
     fixture.detectChanges();
   }
 
-  const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (el: Element) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const click = (el: HTMLElement, label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
       .find((b) => text(b).includes(label))!

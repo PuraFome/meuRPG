@@ -19,7 +19,7 @@ import {
 } from './treasure-format';
 import { hoardItems, magicItemResponse, sampleHoard, treasureItem } from './treasure-testing';
 
-const plain = (s: string) => s.replace(/ /g, ' ');
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 describe('treasure-format: what the server rolled, in words (MR-044)', () => {
   it('writes PO with a thousands dot and a no-break space between the number and the unit', () => {

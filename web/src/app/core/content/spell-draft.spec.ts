@@ -226,7 +226,7 @@ describe('the spell editor form (E10-01 states 4, 4b)', () => {
 
   it('writes "Como os jogadores veem" from the form, with the Alvo row', () => {
     const rows = previewRows(lamina(), (k) => catalog().nameOf(k)).map(
-      (r) => `${r.label}: ${r.value.replace(/ /g, ' ')}`,
+      (r) => `${r.label}: ${r.value.replace(/\u00a0/g, ' ')}`,
     );
     expect(rows).toEqual([
       'Tempo: 1 ação',

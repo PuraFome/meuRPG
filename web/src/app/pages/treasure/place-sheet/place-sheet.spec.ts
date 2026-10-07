@@ -24,7 +24,7 @@ import {
 } from '../../../core/treasure/treasure-testing';
 import { PlaceSheet, type PlaceSheetData } from './place-sheet';
 
-const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
+const plain = (s: string | undefined) => s?.replace(/\u00a0/g, ' ');
 
 describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', () => {
   let treasure: FakeTreasureClient;

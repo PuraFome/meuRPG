@@ -68,7 +68,7 @@ describe('SceneRollSheet', () => {
     expect(el.querySelector('h2')?.textContent).toBe('Procurar pistas na carroça');
     expect(el.textContent).toContain('Investigação');
     expect(el.textContent).toContain('bônus +6');
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 + 6');
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 + 6');
     expect(el.textContent).toContain('O mestre vê o resultado e diz o que acontece.');
     expect(button('Rolar no app')?.classList).not.toContain('pick__main--quiet');
     expect(button('Digitar o resultado')?.classList).toContain('pick__link');
@@ -110,7 +110,7 @@ describe('SceneRollSheet', () => {
     expect(api.calls.filter((c) => c.startsWith('roll '))).toHaveLength(1);
     expect(api.calls[0]).toMatch(/^roll a1 app [0-9a-f-]{36}$/);
     expect(el.querySelector('.res__sum')?.textContent).toBe('17');
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 (11) + 6 = 17');
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 (11) + 6 = 17');
     expect(el.textContent).toContain('Seu total em Investigação');
     expect(el.textContent).toContain('O mestre vê o resultado.');
     expect(el.textContent).toContain('rolado no app');
@@ -125,16 +125,18 @@ describe('SceneRollSheet', () => {
     button('Digitar o resultado')!.click();
     fixture.detectChanges();
     expect(el.querySelector('h2')?.textContent).toBe('Digite o resultado do dado');
-    expect(el.querySelector('.type__bonus')?.textContent?.replace(/ /g, ' ')).toBe('+ 6 de bônus');
+    expect(el.querySelector('.type__bonus')?.textContent?.replace(/\u00a0/g, ' ')).toBe(
+      '+ 6 de bônus',
+    );
     type('27');
-    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/ /g, ' ')).toContain(
+    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
       'Digite um número de 1 a 20',
     );
     expect(button('Confirmar')?.getAttribute('aria-disabled')).toBe('true');
     type('0');
     expect(el.querySelector('[role="alert"]')).not.toBeNull();
     type('11');
-    expect(el.querySelector('.type__sum')?.textContent?.replace(/ /g, ' ')).toContain(
+    expect(el.querySelector('.type__sum')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
       '11 + 6 = 17 · dado físico',
     );
     button('Confirmar 11')!.click();
@@ -195,9 +197,9 @@ describe('SceneRollSheet', () => {
       action: sceneAction('a4', 'Percepção', { bonus: -1, key: 'skill:perception' }),
     });
     expect(el.querySelector('h2')?.textContent).toBe('Percepção');
-    expect(el.querySelector('.frame__sub')?.textContent?.replace(/ /g, ' ')).toBe(
+    expect(el.querySelector('.frame__sub')?.textContent?.replace(/\u00a0/g, ' ')).toBe(
       'Perícia · bônus −1',
     );
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 − 1');
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 − 1');
   });
 });

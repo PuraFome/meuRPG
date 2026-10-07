@@ -21,7 +21,7 @@ import {
   verdictFor,
 } from './move-plan';
 
-const plain = (t: string) => t.replace(/ /g, ' ');
+const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 const origin = { col: 8, row: 7 };
 
 // Toren (README-B, "Numbers"): 7,07 ft = 2,1 m to (7,8); a wall square, an enemy square and one too costly.

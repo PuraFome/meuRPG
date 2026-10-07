@@ -28,7 +28,7 @@ describe('what the player reads after Conjurar Animais (E9-12 state 2)', () => {
       npcOnlyGroups: [{ combatantIds: ['g', 'g2'] }] as never,
     });
     const r = summonResult(e, ['w1', 'w2']);
-    expect(r.text.replace(/ /g, ' ')).toBe(
+    expect(r.text.replace(/\u00a0/g, ' ')).toBe(
       'Os 2 Lobos atrozes entram no combate com iniciativa 10 (um d20 para os dois: 8 + 2). Eles agem juntos, depois dos Goblins.',
     );
     expect(r.creatures.length).toBe(2);

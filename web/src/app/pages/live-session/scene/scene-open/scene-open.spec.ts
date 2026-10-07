@@ -8,7 +8,10 @@ import { FakeSceneClient, masterScene, sceneRoll } from '../../../../core/play/s
 import { SceneOpen } from './scene-open';
 
 const flat = (e: Element | null | undefined) =>
-  e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  e?.textContent
+    ?.replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 describe('SceneOpen', () => {
   const toren = sceneRoll('r1', 'a2', 'Toren', 7, { passed: false });

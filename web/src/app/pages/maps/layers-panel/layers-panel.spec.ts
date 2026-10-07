@@ -49,7 +49,7 @@ describe('LayersPanel', () => {
     fixture.detectChanges();
     el = fixture.nativeElement;
   }
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
   it("lists the five layers with what each holds, in the artboard's words", () => {
     setup();

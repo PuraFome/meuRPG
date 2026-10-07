@@ -1,7 +1,7 @@
 import { changeRows, type SummaryContext } from './levelup-summary';
 import { pensantus } from './levelup-testing';
 
-const plain = (s: string) => s.replace(/ /g, ' ');
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 const ctx: SummaryContext = {
   hpSub: 'Média 4 + Constituição +3',

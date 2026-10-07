@@ -77,7 +77,7 @@ describe('SpellEditor', () => {
     fixture.detectChanges();
   }
 
-  const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (el: Element) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const field = (el: HTMLElement, path: string) =>
     el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
   const click = (el: HTMLElement, label: string) =>

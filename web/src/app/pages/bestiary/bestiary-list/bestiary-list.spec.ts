@@ -137,7 +137,9 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(flat(rows[0].querySelector('.row__en'))).toBe('Wolf · SRD');
     expect(flat(rows[0].querySelector('.row__kind'))).toBe('Fera · Médio');
     expect(flat(rows[0].querySelector('.row__nd'))).toBe('ND 1/4');
-    expect(flat(rows[0].querySelector('.row__stats'))?.replace(/ /g, ' ')).toBe('CA 13 · PV 11');
+    expect(flat(rows[0].querySelector('.row__stats'))?.replace(/\u00a0/g, ' ')).toBe(
+      'CA 13 · PV 11',
+    );
     expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe(
       '/campaigns/camp-1/bestiary/wolf',
     );

@@ -69,7 +69,7 @@ describe('BackgroundEditor (E10-01 state 7)', () => {
     fixture.detectChanges();
   }
 
-  const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const field = (el: HTMLElement, path: string) =>
     el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
   const click = (el: HTMLElement, label: string) =>

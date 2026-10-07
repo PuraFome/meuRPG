@@ -38,7 +38,7 @@ describe('GridPanel', () => {
 
   const button = (text: string) =>
     Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(text))!;
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const settle = async () => {
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r));

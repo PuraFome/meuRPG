@@ -162,7 +162,7 @@ describe('TrapPointPanel', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   };
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const button = (t: string) =>
     Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) =>
       b.textContent?.trim().endsWith(t),

@@ -8,7 +8,10 @@ import { FakeImageGenClient, imageStatus } from '../../core/images/imagegen-test
 import { GenerateImageButton } from './generate-image-button';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 describe('GenerateImageButton (E10-07 8: generation off)', () => {
   let api: FakeImageGenClient;

@@ -50,7 +50,7 @@ const scene = create(MapPointSchema, {
   revealed: true,
 });
 
-const plain = (s: string) => s.replace(/ /g, ' ');
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 describe('pointSubLine', () => {
   it('writes the numbers that matter, by kind', () => {

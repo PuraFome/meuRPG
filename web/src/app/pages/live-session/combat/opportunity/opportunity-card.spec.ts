@@ -11,7 +11,10 @@ import type { ReactorAttack } from '../../../../core/combat/opportunity';
 import { type MasterAnswer, OpportunityCard } from './opportunity-card';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const toren = combatant({
   id: 'toren',

@@ -85,7 +85,10 @@ describe('SceneActions', () => {
       b.textContent?.includes(name),
     )!;
   const flat = (e: Element | null | undefined) =>
-    e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    e?.textContent
+      ?.replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   function type(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));

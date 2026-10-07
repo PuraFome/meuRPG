@@ -22,7 +22,7 @@ import {
   waitingText,
 } from './opportunity';
 
-const plain = (t: string) => t.replace(/ /g, ' ');
+const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 
 // E9-13: Toren leaves the reach of Goblin 2.
 const toGoblin = create(OpportunityOfferSchema, {

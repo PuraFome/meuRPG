@@ -9,7 +9,10 @@ import { CombatState } from '../../../../core/combat/combat-state';
 import { OpportunitySheet, type OpportunitySheetData } from './opportunity-sheet';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // Goblin 2 leaves Toren's reach (E9-13, frames C and G).
 const offer = create(OpportunityOfferSchema, {

@@ -74,7 +74,7 @@ describe('ContentList', () => {
     fixture.detectChanges();
   }
 
-  const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (el: Element) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
   it('opens on the first kind, "Classes", with "Nova classe"; "Raças" has "Nova sub-raça" beside "Nova raça"', async () => {
     const { el } = await setup(Role.MASTER);

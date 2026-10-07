@@ -14,7 +14,10 @@ import type { MapLayers } from '../../../../core/maps/layers';
 import { type JumpRequest, MovePage } from './move-page';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // Toren at (8, 7) with 9,0 m: Goblin 2 stands at (7, 7), the wall is at (8, 5).
 const toren = combatant({
