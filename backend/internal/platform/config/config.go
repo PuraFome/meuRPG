@@ -33,6 +33,12 @@ type Config struct {
 	// through $PORT (usually 8080).
 	Port int
 
+	// ListenHost is the interface the HTTP server listens on, from
+	// $LISTEN_HOST. Empty means every interface, which is what Cloud Run
+	// needs; the local stacks set 127.0.0.1 so nothing on the LAN reaches a
+	// development server. (Not $HOST: zsh sets HOST to the machine's name.)
+	ListenHost string
+
 	// DatabaseURL is a PostgreSQL connection string for CockroachDB, e.g.
 	// postgresql://user:pass@host:26257/meurpg?sslmode=verify-full.
 	// Empty means "run without a database": the API still starts, and
@@ -208,6 +214,8 @@ func Load(getenv func(string) string) (Config, error) {
 			cfg.Port = port
 		}
 	}
+
+	cfg.ListenHost = strings.TrimSpace(getenv("LISTEN_HOST"))
 
 	if raw := strings.TrimSpace(getenv("WEB_DIR")); raw != "" {
 		cfg.WebDir = raw
