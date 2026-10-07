@@ -101,6 +101,8 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
 | `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age`. A reautenticação a cada 30 dias (NIST SP 800-63B-4) vem da sessão de 30 dias no servidor. No ambiente local, com o devidp, é `1h` |
+| `GOOGLE_CLOUD_PROJECT` | Não | O id do projeto, definido no deploy (`--set-env-vars`): **o Cloud Run não o define sozinho**. Sem ele, as linhas de log não levam o trace do Cloud Logging, e as de uma mesma requisição não aparecem juntas (ver [Arquitetura](arquitetura.md#os-logs)) |
+| `LISTEN_HOST` | Não | Não definir: vazio, o servidor escuta em todas as interfaces, que é o que o Cloud Run pede. Os ambientes locais usam `127.0.0.1` |
 
 O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`.
 
