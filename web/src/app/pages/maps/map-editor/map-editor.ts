@@ -32,7 +32,7 @@ import { LightPresets } from '../../../core/maps/light-presets';
 import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
 import { DungeonInfo } from '../../../core/maps/dungeon-info';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
-import { MapState } from '../../../core/maps/map-state';
+import { MapState, tokenKey } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { paintHint } from '../../../core/maps/paint-tools';
@@ -590,7 +590,7 @@ export class MapEditor {
       );
       return;
     }
-    const before = state.tokens().find((t) => t.characterId === move.id);
+    const before = state.tokens().find((t) => tokenKey(t) === move.id);
     if (!before) {
       return;
     }
@@ -600,9 +600,12 @@ export class MapEditor {
       before,
       { xBp: move.xBp, yBp: move.yBp },
       {
-        save: (to) => this.api.placeToken(this.campaignId(), mapId, move.id, to.xBp, to.yBp),
+        save: (to) =>
+          before.creatureId
+            ? this.api.placeToken(this.campaignId(), mapId, '', to.xBp, to.yBp, before.creatureId)
+            : this.api.placeToken(this.campaignId(), mapId, move.id, to.xBp, to.yBp),
         failed: (saved, err) => {
-          const now = state.tokens().find((t) => t.characterId === move.id);
+          const now = state.tokens().find((t) => tokenKey(t) === move.id);
           if (now) {
             state.upsertToken({ ...now, xBp: saved.xBp, yBp: saved.yBp });
           }

@@ -1,4 +1,3 @@
-// Finding U13-22 (review/unit-13-web-live-rest.md): SessionMap.onMoved matches tokens by characterId only, so a dragged creature token (id = creature id) is dropped silently and an owner's drag can move the owner's creature instead.
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
@@ -12,7 +11,7 @@ import { MapView } from '../../../shared/map-view/map-view';
 import { LiveSessionSource } from '../live-session.types';
 import { SessionMap } from './session-map';
 
-describe('Review13 U13-22: session map drags of creature tokens', () => {
+describe('SessionMap dragging a token', () => {
   const placeToken = vi.fn();
   const raven = mapToken('pens', 'Nanquim', { creatureId: 'raven', xBp: 2000, yBp: 2000 });
   const owner = mapToken('pens', 'Pensantus', { mine: true, xBp: 6000, yBp: 6000 });
@@ -51,7 +50,7 @@ describe('Review13 U13-22: session map drags of creature tokens', () => {
     });
   });
 
-  it('control: dragging the owner alone (no creature) saves the owner', async () => {
+  it('saves the move of a character token by its character id', async () => {
     const { state, view } = await mount([owner]);
     view.moved.emit({ kind: 'token', id: 'pens', xBp: 7000, yBp: 7000 });
     await Promise.resolve();
@@ -59,15 +58,15 @@ describe('Review13 U13-22: session map drags of creature tokens', () => {
     expect(at(state, 'pens')).toEqual([[7000, 7000]]);
   });
 
-  it('trigger A: dragging the creature token saves the creature move (creature_id)', async () => {
+  it('saves the move of a creature token by its creature id', async () => {
     const { view } = await mount();
     view.moved.emit({ kind: 'token', id: 'raven', xBp: 3000, yBp: 3000 });
     await Promise.resolve();
     expect(placeToken).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(placeToken.mock.calls[0])).toContain('raven');
+    expect(placeToken).toHaveBeenCalledWith('camp-1', 'map-1', '', 3000, 3000, 'raven');
   });
 
-  it("trigger B: dragging the owner moves the owner's token, not its creature's", async () => {
+  it("moves the owner's token, not its creature's, when the owner is dragged", async () => {
     const { state, view } = await mount();
     view.moved.emit({ kind: 'token', id: 'pens', xBp: 7000, yBp: 7000 });
     await Promise.resolve();
