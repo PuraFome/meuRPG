@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { XpMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantState, type Combatant, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { XPAwardMode, XPBlockedReason, type XPAward } from '../../../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../../../core/connect/idempotency';
 import { article } from '../../../../core/combat/combat-log';

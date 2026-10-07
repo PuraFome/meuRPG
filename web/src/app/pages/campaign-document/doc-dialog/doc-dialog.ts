@@ -1,4 +1,4 @@
-import { Component, ElementRef, afterNextRender, inject, input, output, viewChild } from '@angular/core';
+import { Component, ElementRef, afterNextRender, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 let nextId = 0;

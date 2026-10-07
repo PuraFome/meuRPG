@@ -124,24 +124,6 @@ export function isCantrip(attack: Attack): boolean {
   return attack.kind === AttackKind.SPELL;
 }
 
-/** The line under a spell: school, concentration, and the warning when this
- * casting would use the last free slot of the spell. */
-export function spellDetail(o: SpellOption): string {
-  const parts = [o.spell?.schoolNamePt ?? ''];
-  if (o.spell?.concentration) {
-    parts.push('Concentração');
-  }
-  if (o.spell?.ritual) {
-    parts.push('Ritual');
-  }
-  const level = o.spell?.level ?? 0;
-  const free = o.slots.reduce((sum, s) => sum + s.free, 0);
-  if (level > 0 && o.enabled && free === 1) {
-    parts.push(`gasta o último espaço de ${circleLabel(o.slots[0].level)}`);
-  }
-  return parts.filter(Boolean).join(' · ');
-}
-
 /** The tags under a spell's name: its circle, and the economy when it is not
  * an action ("Reação", "Ação bônus"): the spells of every economy share one
  * list in the server's order (E8-02). */

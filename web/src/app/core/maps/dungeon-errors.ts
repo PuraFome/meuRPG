@@ -48,10 +48,6 @@ const OPTION_TEXT: Readonly<Record<OptionField, string>> = {
   stairs: 'As escadas vão de 0 a 4.',
 };
 
-export function optionRefusalText(field: OptionField): string {
-  return OPTION_TEXT[field];
-}
-
 /** Said when the options are refused as a whole (the silhouette and the size leave no room for a room). */
 export const NO_ROOM_TEXT = 'Com esse tamanho e esse formato não cabe nenhuma sala. Aumente o tamanho ou mude o formato.';
 

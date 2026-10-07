@@ -13,9 +13,6 @@ export interface PackedLayers {
   readonly doors?: Uint8Array;
 }
 
-/** Cover as the layer stores it: 1 half, 2 three-quarters (walls are the wall layer). */
-export type PaintedCover = 1 | 2;
-
 /** The squares of each layer, ready to draw. */
 export interface MapLayers {
   readonly columns: number;

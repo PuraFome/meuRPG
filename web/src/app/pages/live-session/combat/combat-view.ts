@@ -24,12 +24,10 @@ import {
   type ReactionPrompt,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { ActionEconomy, type Attack, AttackKind, DisabledReasonCode, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type AttackDie, CombatClient, type MoveResult, newKey } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { type FormEnded, ConcentrationWatch, FormNotices, type LostConcentration, formNoticeText, lostNoticeText, wildActionLine } from '../../../core/combat/combat-notices';
-import { reasonText } from '../../../core/combat/combat-options';
-import { joinDots, tight } from '../../../core/format/text';
 import { MoveOptionsState } from '../../../core/combat/move-options-state';
 import { TableRulesClient } from '../../../core/campaigns/table-rules';
 import { DeathSaveVisibility } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -336,8 +334,6 @@ export class CombatView {
     return ended ? formNoticeText(ended) : '';
   });
   private readonly formNotices = new FormNotices();
-  /** The combat the notices belong to: another combat starts clean. */
-  private noticeOf = '';
   /** "Transformar": the list of beasts the level allows. */
   protected openTransform(): void {
     const own = this.own();

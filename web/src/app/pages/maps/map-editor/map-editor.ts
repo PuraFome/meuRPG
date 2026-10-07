@@ -21,7 +21,6 @@ import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_p
 import { MapPointKind, type TrapSpecSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { Map as MapMessage, MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import type { Square } from '../../../core/combat/combat-grid';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { LightPresets } from '../../../core/maps/light-presets';

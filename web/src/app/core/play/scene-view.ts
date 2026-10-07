@@ -123,11 +123,6 @@ export function masterAttempts(action: SceneActionView): string {
     : `${action.maxAttempts} ${action.maxAttempts === 1 ? 'tentativa' : 'tentativas'} por jogador`;
 }
 
-/** The same limit as the editor's select writes it: "1", "2"... or "Sem limite". */
-export function attemptsOption(max: number): string {
-  return max === 0 ? 'Sem limite' : String(max);
-}
-
 /** The rolls of one character at one action, oldest first. */
 function rollsOfCharacter(scene: OpenSceneInfo, roll: SceneRoll): SceneRoll[] {
   return scene.rolls

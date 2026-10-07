@@ -13,7 +13,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { type OptionField, createFailure, previewFailure } from '../../../core/maps/dungeon-errors';
-import { doorCountText, roomCountText, stairCountText } from '../../../core/maps/dungeon-layout';
+import { stairCountText } from '../../../core/maps/dungeon-layout';
 import {
   CORRIDORS,
   DEFAULT_FORM,

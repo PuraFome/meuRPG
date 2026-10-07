@@ -7,7 +7,6 @@ import { POINT_DESCRIPTION_MAX, POINT_NAME_MAX } from '../point-panel/point-draf
 /** The custom light's radii are metres in whole squares of 1,5 m (5 ft), up to 120 ft (36 m): the server's limit. */
 export const CUSTOM_KEY = '';
 export const MAX_LIGHT_FT = 120;
-export const MAX_LIGHT_M = 36;
 
 /**
  * What the Luz form edits (E9-02, MR-036): the name, the description and the light, a preset of the SRD or

@@ -1,4 +1,3 @@
-import { gridRows } from '../combat/combat-grid';
 import { SQUARE_M, formatMeters } from '../units';
 
 /**
@@ -66,9 +65,4 @@ export function fits(drawnColumns: number, drawnRows: number, factor: number): b
 /** The most columns a drawing can have at that factor. */
 export function maxDrawnColumns(factor: number): number {
   return Math.floor(MAX_RULE_COLUMNS / Math.max(1, factor));
-}
-
-/** The drawn rows of a new column count, as the server rounds them. */
-export function drawnRowsFor(columns: number, imageWidth: number, imageHeight: number): number {
-  return gridRows(columns, imageWidth, imageHeight);
 }

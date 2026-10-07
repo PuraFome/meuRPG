@@ -475,10 +475,6 @@ JOIN map_points AS p ON p.id = a.point_id
 WHERE p.map_id = $1
 ORDER BY a.point_id, a.position, a.created_at, a.id;
 
--- name: CountSceneActions :one
-SELECT count(*)::INT4 AS action_count FROM scene_actions
-WHERE point_id = $1;
-
 -- name: InsertSceneAction :one
 INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, created_at, updated_at)
 VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.arg(now), sqlc.arg(now))
