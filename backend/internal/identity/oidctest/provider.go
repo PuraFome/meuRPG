@@ -79,6 +79,10 @@ func TestUsers() []User {
 		{Subject: "devidp-mestre", Name: "Mestre Teste", Email: "mestre@example.com", EmailVerified: true},
 		{Subject: "devidp-jogador", Name: "Jogador Teste", Email: "jogador@example.com", EmailVerified: true},
 		{Subject: "devidp-nao-verificado", Name: "E-mail Não Verificado", Email: "nao-verificado@example.com", EmailVerified: false},
+		// Only the "sign out of other devices" test (e2e/tests/sessions.spec.ts)
+		// uses this one: that action ends every other session of the user, so
+		// it must never be an account other tests share.
+		{Subject: "devidp-sessoes", Name: "Sessões Teste", Email: "sessoes@example.com", EmailVerified: true},
 	}
 }
 

@@ -551,6 +551,7 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00164_create_map_points_create_key_index` | `map_points` | Índice único parcial `(create_key)` onde `create_key` não é nulo: como a chave leva o ID da campanha, a mesma chave não faz dois pontos na campanha, nem com duas chamadas ao mesmo tempo. |
 | `00165_create_campaign_content_off` | `campaign_content_off` | As opções que o mestre **desligou** para os jogadores em "Opções para os jogadores" (MR-025, RN-23, Etapa 10, fatia 10.1d): uma linha por opção desligada, `(campaign_id, content_key)` de chave primária, com `created_at`; tudo está ligado por padrão, então **sem linha é ligado** e ligar de novo apaga a linha. A chave é a de uma classe, subclasse, raça, sub-raça, antecedente ou magia do SRD (`class:wizard`) ou da mesa (`race:anao@mesa`); não é chave estrangeira (as chaves do SRD moram no snapshot das regras, não numa tabela), e o servidor confere que a chave existe antes de escrever. Está no `characters`, como o conteúdo. Cada escrita sobe a revisão da campanha (`campaign_content_state`) na mesma transação, então o conteúdo em cache, por (campanha, revisão), sempre é lido com o conjunto que o acompanha. Apagar a campanha apaga as linhas (`CASCADE`); não é dado pessoal. |
 | `00166_add_generated_kind_and_image_name` | `gallery_images`, `image_requests` | `gallery_images.generated_kind`: o jeito de uma imagem gerada (`scene`, `map_scene`, `isometric`, `textured_map`; vazio num envio), e um ajuste herda o da imagem que ajusta (MR-039, RN-10, fatia 10.16): `textured_map` quer dizer "mostra o mapa inteiro", e o app nunca a mostra aos jogadores com um toque. `image_requests.image_name`: o nome que a imagem terá na galeria, o do mestre ou o padrão do servidor, porque o jogador a quem ela é mostrada o lê (nunca "Imagem n"). |
+| `00173_auth_sessions_last_used_at` | `auth_sessions` | A coluna `last_used_at` (`NOT NULL`, padrão `now()`): o último uso da sessão, para o limite de 14 dias de inatividade, gravada no máximo a cada 10 minutos. As sessões que já existem começam com a hora da migration. |
 | `00167_backfill_generated_kind` | `gallery_images` | Marca como `textured_map` as imagens antigas feitas de um pedido de mapa com textura e todos os ajustes abaixo delas, numa consulta recursiva (`WITH RECURSIVE` por `parent_image_id`), qualquer que seja o tamanho da cadeia. Pode rodar de novo. |
 | `00168_create_session_event_kinds` | `session_event_kinds` | A tabela de referência dos tipos de evento da sessão (`kind` é a chave), com todos os tipos de hoje. Um tipo novo é um `INSERT ... ON CONFLICT DO NOTHING` numa migration, e nenhuma linha de `session_events` é relida (decisão D-02 da auditoria de 07/10/2026). |
 | `00169_add_session_events_kind_fkey` | `session_events` | A chave estrangeira `session_events_kind_fkey` de `kind` para `session_event_kinds`, validada uma vez só. Roda de novo sem erro (apaga a restrição se existir e a põe outra vez). |
@@ -564,7 +565,7 @@ As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `0000
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
 - `email` é opcional: só é gravado quando o provedor diz que foi verificado, e é atualizado (ou apagado) a cada login. Nome e foto nunca são gravados.
 - `oauth_handshakes` virou `oidc_login_states`, com o hash do `state` como chave.
-- `auth_sessions` ganhou `id` (para listar e revogar uma sessão, ADR-0009) e `auth_time` (só registro). Um `CHECK` no banco impede sessão com mais de 30 dias.
+- `auth_sessions` ganhou `id` (para listar e revogar uma sessão, ADR-0009) e `auth_time` (só registro). Um `CHECK` no banco impede sessão com mais de 30 dias. A `00173` acrescentou `last_used_at`, o último uso (o limite de 14 dias de inatividade); fora do índice da busca por `token_hash`.
 - Toda FK para `users` tem `ON DELETE CASCADE`: excluir a conta apaga identidades e sessões.
 - `auth_sessions` e `oidc_login_states` usam o TTL por linha do CockroachDB (`ttl_expiration_expression = 'expires_at'`). O job apaga as linhas vencidas uma vez por dia nas sessões e de hora em hora nos logins. As consultas continuam filtrando `expires_at`, porque a linha vencida existe até o job passar.
 
@@ -710,6 +711,7 @@ erDiagram
         timestamptz created_at
         timestamptz expires_at "no máximo 30 dias, TTL"
         timestamptz auth_time "opcional, só registro"
+        timestamptz last_used_at "último uso, no máximo a cada 10 min"
     }
 
     oidc_login_states {
