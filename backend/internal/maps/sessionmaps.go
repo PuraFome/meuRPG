@@ -12,6 +12,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -344,4 +345,10 @@ func (sm *SessionMaps) PortraitImage(ctx context.Context, campaignID, imageID st
 		}
 	}
 	return img.ID, true, nil
+}
+
+// CheckWired fails when the maps service was never connected (SetService): the
+// fog's first view of a map would then never be computed (see platform/wiring).
+func (sm *SessionMaps) CheckWired() error {
+	return wiring.Check("maps.SessionMaps", wiring.Dep{Setter: "SetService", Missing: sm.svc == nil})
 }

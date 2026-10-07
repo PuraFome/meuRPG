@@ -151,8 +151,42 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado, imagem usada num mapa. Vem com um detalhe que diz o motivo, quando há mais de um (`InviteUnusable`, `CharacterBlocked`, `GameSessionBlocked`, `XPBlocked`, `AbilityScoresRefusal`, `XpModeChangeBlocked`), ou o que a tela precisa mostrar (`ImageInUse`, com os mapas que usam a imagem). |
 | `not_found` | Não existe, ou o usuário não pode saber que existe: um mapa escondido para o jogador, ou uma campanha da qual ele não é membro (ADR-0011). O membro pendente (RN-15) recebe o mesmo `not_found` fora das poucas chamadas que ele pode fazer. |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
-| `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019), 200 mapas na campanha ou 200 pontos num mapa. |
-| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha ou um documento da campanha que mudou desde que o app o leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
+| `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019), 200 mapas na campanha ou 200 pontos num mapa; ou a pessoa já tem 8 streams ao vivo abertos naquela campanha (`WatchGameSession`, sem detalhe tipado: o app tenta de novo com espera). |
+| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas (`rpcerr.FromDB`), ou uma ficha ou um documento da campanha que mudou desde que o app o leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
+
+### Os erros do banco
+
+Um erro de leitura ou de escrita vira o código do Connect por **um só lugar**, `platform/rpcerr` (`rpcerr.FromDB`), que cada módulo chama pelo seu `dbError`. Antes havia seis cópias, e todas diziam `unavailable` para tudo o que não conheciam: uma aba fechada no meio da requisição virava "o banco não responde" e um `ERROR` no log.
+
+| O que aconteceu | Código | Nível do log |
+| --- | --- | --- |
+| Um erro do Connect que o *handler* escolheu | o mesmo, sem log | — |
+| A requisição foi cancelada (o cliente saiu) | `canceled` | `DEBUG` |
+| O prazo da requisição acabou, ou o banco cancelou um comando por passar de `statement_timeout` (SQLSTATE `57014`) | `deadline_exceeded` | `WARN` |
+| `db.InTx` repetiu o `40001` até desistir | `aborted` (o cliente pode tentar de novo) | `WARN` |
+| Não alcançou o banco: falha de conexão, erro de rede, conexão fechada no meio, nó desligando (classe `08`, `57P01`, `57P03`) | `unavailable` | `ERROR` |
+| Qualquer outra coisa (um bug, uma linha que não devia faltar) | `internal` | `ERROR` |
+
+O cliente recebe só uma frase fixa, nunca o texto do erro (que pode ter SQL ou o nome de um servidor); a causa vai para a linha de log, uma vez só. Um módulo trata antes o caso que é só dele (`campaigns` e `characters`: a linha que sumiu entre a checagem e a consulta; `characters`: o documento que não se lê).
+
+### Quando uma goroutine ou um *handler* entra em pânico
+
+O `net/http` só se recupera de um pânico na goroutine do próprio *handler*; uma goroutine que o servidor mesmo começa e que entra em pânico derruba o processo inteiro, e com ele todas as sessões ao vivo. Por isso:
+
+- **Os *handlers* do Connect** têm `connect.WithRecover` logo depois do `rpclog` (`connectOptions`, em `cmd/api/main.go`): o pânico vira `internal` com frase fixa, a pilha vai para o log (`rpc handler panicked`, com `request_id`, usuário e campanha) e o `rpclog` ainda escreve a linha `rpc` com `code=internal`.
+- **As goroutines de fundo** (o pedido de imagem de `maps/imagegen.go`, os temporizadores das dicas ao vivo de `maps` e de `play`, o corpo do pedido ao Gemini) usam `defer safego.Recover(logger, "...")` (`platform/safego`): o trabalho que quebrou é perdido (o pedido de imagem é gravado como falho e devolve o espaço), a pilha vai para o log, e o servidor segue.
+
+### Clientes lentos
+
+O servidor não tem `ReadTimeout` nem `WriteTimeout` globais, de propósito: cortariam os streams. O limite fica na operação que pode travar (`platform/slowclient`):
+
+- **Cada `Send` de um stream ao vivo** tem 30 s para chegar ao cliente (`slowclient.Interceptor`; o `Middleware` guarda o `http.ResponseController` no contexto, porque o Connect não entrega o `ResponseWriter`). O prazo é posto antes de cada envio e tirado depois, então o silêncio entre duas mensagens não conta. Um leitor que parou de ler (um notebook que dormiu, uma conexão móvel morta que nunca fechou) acaba com o `Send` falhando e o stream termina como `client_gone`, em vez de a goroutine ficar presa até o Cloud Run fechar a conexão. O teto de 30 minutos do stream, o `ReadHeaderTimeout` e o `IdleTimeout` continuam.
+- **O corpo de um envio de imagem** tem 2 minutos para chegar (10 MiB, a menos de 1 Mbit/s), e **o formulário de `POST /auth/login`**, 10 s (`slowclient.ReadBody`). Passou do prazo: o envio responde 400 (`MALFORMED_REQUEST`, "the upload took too long") e o login, "the form could not be read".
+- Um RPC unário não tem prazo de leitura de corpo (o corpo é no máximo 4 MiB): fica para depois.
+
+### A ligação dos módulos é conferida na partida
+
+`campaigns`, `characters`, `play`, `maps` e `progression` precisam uns dos outros, então alguns colaboradores entram depois do `New`, por um `Set...` chamado em ordem fixa no `cmd/api` (`wireModules`). O compilador não vê uma chamada que falta, e um colaborador `nil` raramente falha alto: uma fonte de névoa `nil` quer dizer "sem névoa de guerra", e os jogadores veriam os NPCs que o mestre escondeu (RN-10), sem erro nenhum. Cada módulo tem um `CheckWired()` que lista os setters de que precisa (`platform/wiring`), e o fim de `wireModules` os chama: um `Set...` esquecido **impede o servidor de subir**, com o nome dele na mensagem. O `TestTheRealWiringIsComplete` monta a ligação de verdade (sem banco e sem provedor de login) e passa só se tudo está ligado.
 
 ## Os logs
 
@@ -1509,6 +1543,8 @@ sequenceDiagram
 | 30 minutos de stream | Fim sem erro | Reconecta e lê a foto de novo |
 | O servidor vai reiniciar (graceful shutdown) | Fim sem erro, na hora: o `httpserver` chama `play.Service.Close` quando o desligamento começa | Reconecta |
 | O app parou de ler e ficou 16 eventos para trás | `unavailable` | Reconecta e lê a foto de novo |
+| O app parou de ler e uma mensagem passou de 30 s sem chegar | O `Send` falha e o stream termina (`close_reason` `client_gone`) | Reconecta |
+| A pessoa já tem 8 streams abertos na campanha | `resource_exhausted`, ao abrir | Tenta de novo com espera: uma aba fechada devolve o lugar |
 | A sessão de login acabou (logout, revogada, 30 dias) | `unauthenticated`, na checagem seguinte | Manda para o login |
 | A pessoa saiu da campanha | `not_found`, na checagem seguinte | "Peça um convite ao mestre" |
 

@@ -2,12 +2,15 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -16,7 +19,7 @@ import (
 //
 // Start a throwaway CockroachDB with:
 //
-//	docker run -d --rm --name crdb -p 26257:26257 cockroachdb/cockroach:v26.3.2 start-single-node --insecure
+//	docker run -d --rm --name crdb -p 26257:26257 cockroachdb/cockroach:v26.2.7 start-single-node --insecure
 //	export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable'
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
@@ -121,5 +124,69 @@ func mustExec(t *testing.T, pool *pgxpool.Pool, sql string) {
 	defer cancel()
 	if _, err := pool.Exec(ctx, sql); err != nil {
 		t.Fatalf("exec %q: %v", sql, err)
+	}
+}
+
+// TestSessionTimeouts checks that the database really got the timeouts (they
+// travel as startup parameters), and that they bite: a statement that runs
+// past the limit is canceled with 57014, and an idle transaction is closed.
+func TestSessionTimeouts(t *testing.T) {
+	t.Parallel()
+	url := os.Getenv("MEURPG_TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
+	}
+	sep := "?"
+	if strings.Contains(url, "?") {
+		sep = "&"
+	}
+	// Short limits in the URL: the test must not wait 30 seconds, and it proves
+	// at the same time that the URL's value wins over the default.
+	pool, err := NewPool(t.Context(), url+sep+"statement_timeout=300&idle_in_transaction_session_timeout=400")
+	if err != nil {
+		t.Fatalf("NewPool() error = %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	var got string
+	if err := pool.QueryRow(t.Context(), "SHOW statement_timeout").Scan(&got); err != nil {
+		t.Fatalf("SHOW statement_timeout: %v", err)
+	}
+	if got != "300" {
+		t.Errorf("statement_timeout = %q, want 300 ms (the URL's value)", got)
+	}
+
+	_, err = pool.Exec(t.Context(), "SELECT pg_sleep(5)")
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); !ok || pgErr.Code != "57014" {
+		t.Errorf("a statement past the limit: error = %v, want SQLSTATE 57014", err)
+	}
+
+	tx, err := pool.Begin(t.Context())
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	if _, err := tx.Exec(t.Context(), "SELECT 1"); err != nil {
+		t.Fatalf("first statement: %v", err)
+	}
+	time.Sleep(1200 * time.Millisecond)
+	if _, err := tx.Exec(t.Context(), "SELECT 1"); err == nil {
+		t.Error("a transaction idle past the limit still works; want it closed by the database")
+	}
+	_ = tx.Rollback(t.Context())
+}
+
+// TestDefaultSessionTimeouts: with nothing in the URL, the pool asks for 30 s
+// and 60 s (SHOW prints milliseconds).
+func TestDefaultSessionTimeouts(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	for name, want := range map[string]string{"statement_timeout": "30000", "idle_in_transaction_session_timeout": "60000"} {
+		var got string
+		if err := pool.QueryRow(t.Context(), "SHOW "+name).Scan(&got); err != nil {
+			t.Fatalf("SHOW %s: %v", name, err)
+		}
+		if got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
 	}
 }

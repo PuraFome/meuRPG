@@ -30,6 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
 )
 
 // ImageGenerationService (MR-039, RN-28, ADR-0019): pictures made by an image
@@ -1091,6 +1092,12 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	defer s.waiters.notify(id)
 	ctx, cancel := context.WithTimeout(s.baseCtx, generationTimeout)
 	defer cancel()
+	// This goroutine decodes and draws what a model sent back, and a panic in a
+	// goroutine the server started itself would take the whole process down (the
+	// net/http recover only covers a handler's own goroutine). So a panic fails
+	// this one request: logged with its stack, recorded as failed. Declared last,
+	// so it runs first, before the waiters are woken and the slot is given back.
+	defer safego.Recover(s.logger, "image request", func() { s.finishFailed(campaignID, id, stateFailed, reasonUnavailable) })
 	select {
 	case s.generating <- struct{}{}:
 		defer func() { <-s.generating }()

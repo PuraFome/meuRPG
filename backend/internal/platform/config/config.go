@@ -3,11 +3,13 @@
 // Following the twelve-factor app style, everything that changes between
 // environments (local, CI, Cloud Run) comes from the environment, and the
 // defaults are chosen so that `go run ./cmd/api` works with no setup at all.
-// The package only uses the standard library on purpose: configuration is
+// The package uses the standard library, plus pgx to read DATABASE_URL's TLS
+// settings (checkDatabaseTLS), on purpose: configuration is
 // small enough that a framework would add more concepts than it removes.
 package config
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Defaults used when a variable is unset or empty.
@@ -36,8 +40,11 @@ type Config struct {
 	// DatabaseURL is a PostgreSQL connection string for CockroachDB, e.g.
 	// postgresql://user:pass@host:26257/meurpg?sslmode=verify-full.
 	// Empty means "run without a database": the API still starts, and
-	// /readyz reports the database as disabled.
-	DatabaseURL string
+	// /readyz reports the database as disabled. It holds the password, so it is
+	// a Secret: a log line or an error that formats the whole Config shows
+	// [REDACTED]. On Cloud Run, Load refuses a URL that does not verify the
+	// server's certificate (sslmode=verify-full or verify-ca).
+	DatabaseURL Secret
 
 	// LogLevel is the minimum level written to the logs.
 	LogLevel slog.Level
@@ -185,7 +192,7 @@ func (s Secret) MarshalText() ([]byte, error) {
 func Load(getenv func(string) string) (Config, error) {
 	cfg := Config{
 		Port:        DefaultPort,
-		DatabaseURL: strings.TrimSpace(getenv("DATABASE_URL")),
+		DatabaseURL: Secret(strings.TrimSpace(getenv("DATABASE_URL"))),
 		LogLevel:    DefaultLogLevel,
 		WebDir:      DefaultWebDir,
 		CloudRun:    strings.TrimSpace(getenv("K_SERVICE")) != "",
@@ -228,6 +235,12 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
+	if cfg.CloudRun && cfg.DatabaseURL != "" {
+		if err := checkDatabaseTLS(cfg.DatabaseURL.Reveal()); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
 	oidc, oidcErrs := loadOIDC(getenv)
 	cfg.OIDC = oidc
 	errs = append(errs, oidcErrs...)
@@ -236,6 +249,37 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return cfg, nil
+}
+
+// checkDatabaseTLS refuses, on Cloud Run, a DATABASE_URL whose connection could
+// go in plain text or could talk to an impostor: the traffic to the database
+// carries every password hash and every player's data. pgx's default
+// (sslmode=prefer) silently falls back to plain text, and `require` encrypts
+// without checking who is on the other end, so only verify-full (the host name
+// is checked too) and verify-ca are accepted. The URL is parsed by pgx, so the
+// PG* environment variables count as well; the error never echoes the URL, which
+// holds the password.
+func checkDatabaseTLS(databaseURL string) error {
+	pc, err := pgconn.ParseConfig(databaseURL)
+	if err != nil {
+		return errors.New("DATABASE_URL is not a valid PostgreSQL connection string")
+	}
+	verified := func(c *tls.Config) bool {
+		if c == nil {
+			return false
+		}
+		// verify-full: pgx leaves InsecureSkipVerify off and sets the ServerName.
+		// verify-ca: pgx skips the stock check and installs its own (VerifyPeerCertificate).
+		return !c.InsecureSkipVerify || c.VerifyPeerCertificate != nil
+	}
+	ok := verified(pc.TLSConfig)
+	for _, fb := range pc.Fallbacks {
+		ok = ok && verified(fb.TLSConfig) // a fallback without TLS is how `prefer` and `allow` work
+	}
+	if !ok {
+		return errors.New("DATABASE_URL must use sslmode=verify-full (or verify-ca) on Cloud Run: the connection to the database must be encrypted and the server's certificate checked")
+	}
+	return nil
 }
 
 // loadOIDC reads the OIDC_* variables. They go together: either all the

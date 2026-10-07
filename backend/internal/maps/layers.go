@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -345,8 +347,9 @@ func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow m
 // once, and the ones that follow within the interval merge into a single hint
 // sent when it ends, so the last change is never left unannounced.
 type hintGate struct {
-	mu   sync.Mutex
-	keys map[string]*gateState
+	mu     sync.Mutex
+	keys   map[string]*gateState
+	logger *slog.Logger // for a panic in a send that runs on the timer's own goroutine
 }
 
 type gateState struct {
@@ -374,6 +377,7 @@ func (g *hintGate) fire(key string, every time.Duration, players bool, send func
 	if wait := every - time.Since(st.last); wait > 0 {
 		st.players = players
 		st.timer = time.AfterFunc(wait, func() {
+			defer safego.Recover(g.logger, "map hint")
 			g.mu.Lock()
 			p := st.players
 			st.timer, st.players, st.last = nil, false, time.Now()
