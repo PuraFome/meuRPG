@@ -1,4 +1,3 @@
-// Finding U13-15 (review/unit-13-web-live-rest.md): aria-disabled (disabledInteractive) trap buttons still emit, and reveal()/fire() do not re-check busy or "everyone sees".
 import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,7 +12,7 @@ import { TrapBoard } from '../../../../core/traps/trap-board';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapPanel } from './trap-panel';
 
-describe('Review13 U13-15: disabled trap buttons must not open sheets', () => {
+describe('TrapPanel buttons that are only dimmed (they keep focus, so a click still comes)', () => {
   function setup(revealed: boolean) {
     const opened: string[] = [];
     const sheet = {
@@ -89,7 +88,7 @@ describe('Review13 U13-15: disabled trap buttons must not open sheets', () => {
     expect(opened).toEqual([]);
   });
 
-  it('does not open the fire sheet while the disarm call is pending', async () => {
+  it('does not open the fire sheet while a disarm call is pending', async () => {
     const { fixture, opened, button, finishDisarm } = setup(false);
     await fixture.whenStable();
     fixture.detectChanges();

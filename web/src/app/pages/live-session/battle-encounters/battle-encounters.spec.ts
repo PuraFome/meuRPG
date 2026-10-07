@@ -143,7 +143,11 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     expect(flat(el.querySelector('.mr-notice--warning'))).toContain(
       'Uma criatura deste encontro não está mais no SRD.',
     );
-    expect(isOff(el.querySelector<HTMLButtonElement>('.enc__go')!)).toBe(true);
+    const go = el.querySelector<HTMLButtonElement>('.enc__go')!;
+    expect(isOff(go)).toBe(true);
+    // The button stays focusable (disabledInteractive), so a click still reaches the handler: it does nothing.
+    go.click();
+    expect(opened).toHaveLength(0);
   });
 
   it('a saved encounter that does not fit one combat of 40 shows the warning the server sends, and the lost-creature notice links to the builder on that point', async () => {
