@@ -21,7 +21,8 @@ export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificad
  * the server. ui.spec.ts covers the same flow through the app's buttons.
  *
  * This hits the real, rate-limited `/auth/login` (`backend/internal/
- * identity/login.go`, 20 per client then 1 every 3s). Only call it where a
+ * identity/login.go`, shared with `/auth/callback`: 40 per client, so 20
+ * sign-ins, then 1 every 3s). Only call it where a
  * fresh sign-in is the point of the test — `auth.setup.ts` (once per user,
  * per whole run), `login.spec.ts`, `ui.spec.ts`, and the signed-out half of
  * `invite.spec.ts`'s intent=campaign_invite test. Everything else reuses

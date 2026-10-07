@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -914,6 +915,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	header.Set("Content-Type", "image/png")
+	defer slowclient.WriteBody(w, downloadWriteTimeout)()
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(png))
 	return nil
 }

@@ -527,21 +527,23 @@ func (s *Service) shrunkImage(ctx context.Context, campaignID, id string) (gen.I
 		return gen.Image{}, errStorage()
 	}
 	key, _ := blobKeys(campaignID, id)
+	// The slot first, then the read: the file (at most 10 MiB) is in memory
+	// only while it holds the slot, so waiting requests hold none.
+	release, err := s.acquireProcessing(ctx)
+	if err != nil {
+		return gen.Image{}, err
+	}
 	data, err := s.readBlob(ctx, key, images.MaxBytes)
 	if err != nil {
+		release()
 		s.logger.ErrorContext(ctx, "maps: cannot read an image file", "error", err)
 		return gen.Image{}, errStorage()
-	}
-	select {
-	case s.processing <- struct{}{}:
-	case <-ctx.Done():
-		return gen.Image{}, ctx.Err()
 	}
 	if s.onReferenceDecode != nil {
 		s.onReferenceDecode()
 	}
 	small, resized, err := images.Shrink(data, images.ReferenceSide, images.ReferenceQuality)
-	<-s.processing
+	release()
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot shrink a reference image", "error", err)
 		return gen.Image{}, errStorage()
