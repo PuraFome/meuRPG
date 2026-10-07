@@ -28,7 +28,11 @@ export function creaturesText(n: number): string {
  * familiar toma o lugar."), the creatures a concentration holds are dismissed ("Isso encerra Conjurar Animais e
  * dispensa 8 criaturas: Lobo 1, Lobo 2 e mais 6."). Empty when nothing goes.
  */
-export function replacesText(spellNamePt: string, concentration: boolean, replaces: readonly ReplacedCreature[]): string {
+export function replacesText(
+  spellNamePt: string,
+  concentration: boolean,
+  replaces: readonly ReplacedCreature[],
+): string {
   if (replaces.length === 0) {
     return '';
   }
@@ -38,13 +42,31 @@ export function replacesText(spellNamePt: string, concentration: boolean, replac
   }
   const shown = replaces.slice(0, 3).map((r) => r.name);
   const rest = replaces.length - shown.length;
-  const list = rest > 0 ? `${shown.join(', ')} e mais ${rest}` : shown.length > 1 ? `${shown.slice(0, -1).join(', ')} e ${shown[shown.length - 1]}` : shown[0];
-  return tight(`Isso encerra ${spellNamePt} e dispensa ${creaturesText(replaces.length)}: ${list}.`);
+  const list =
+    rest > 0
+      ? `${shown.join(', ')} e mais ${rest}`
+      : shown.length > 1
+        ? `${shown.slice(0, -1).join(', ')} e ${shown[shown.length - 1]}`
+        : shown[0];
+  return tight(
+    `Isso encerra ${spellNamePt} e dispensa ${creaturesText(replaces.length)}: ${list}.`,
+  );
 }
 
 /** The live notice after a cast: what arrived, what it cost, what left. */
-export function castNotice(arrived: string, spellNamePt: string, ritual: boolean, time: string, dismissed: number): string {
-  const cost = ritual ? `${spellNamePt}, ritual de ${time}. Nenhum espaço de magia foi gasto.` : `${spellNamePt}: o espaço de magia foi gasto.`;
-  const left = dismissed > 0 ? ` ${dismissed === 1 ? 'Uma criatura foi dispensada' : creaturesText(dismissed) + ' foram dispensadas'} no lugar.` : '';
+export function castNotice(
+  arrived: string,
+  spellNamePt: string,
+  ritual: boolean,
+  time: string,
+  dismissed: number,
+): string {
+  const cost = ritual
+    ? `${spellNamePt}, ritual de ${time}. Nenhum espaço de magia foi gasto.`
+    : `${spellNamePt}: o espaço de magia foi gasto.`;
+  const left =
+    dismissed > 0
+      ? ` ${dismissed === 1 ? 'Uma criatura foi dispensada' : creaturesText(dismissed) + ' foram dispensadas'} no lugar.`
+      : '';
   return tight(`${arrived} ${cost}${left}`);
 }

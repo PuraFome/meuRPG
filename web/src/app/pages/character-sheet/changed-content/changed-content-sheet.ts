@@ -1,5 +1,9 @@
 import { Component, inject } from '@angular/core';
-import { MatBottomSheet, MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import {
+  MatBottomSheet,
+  MAT_BOTTOM_SHEET_DATA,
+  MatBottomSheetRef,
+} from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -158,8 +162,12 @@ export class ChangedContentSheet {
   protected readonly data =
     inject<ChangedContentData | null>(MAT_DIALOG_DATA, { optional: true }) ??
     inject<ChangedContentData>(MAT_BOTTOM_SHEET_DATA);
-  private readonly dialogRef = inject<MatDialogRef<ChangedContentSheet>>(MatDialogRef, { optional: true });
-  private readonly sheetRef = inject<MatBottomSheetRef<ChangedContentSheet>>(MatBottomSheetRef, { optional: true });
+  private readonly dialogRef = inject<MatDialogRef<ChangedContentSheet>>(MatDialogRef, {
+    optional: true,
+  });
+  private readonly sheetRef = inject<MatBottomSheetRef<ChangedContentSheet>>(MatBottomSheetRef, {
+    optional: true,
+  });
 
   protected readonly inSheet = this.sheetRef !== null;
   protected readonly title = changeSheetTitle(this.data.change);
@@ -176,11 +184,26 @@ export class ChangedContentSheet {
 }
 
 /** Opens "O que mudou": a bottom sheet on a phone, a 560 px dialog from a tablet up. Focus returns to the button. */
-export function openChangedContent(dialog: MatDialog, bottomSheet: MatBottomSheet, data: ChangedContentData): void {
+export function openChangedContent(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: ChangedContentData,
+): void {
   const phone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
   if (phone) {
-    bottomSheet.open(ChangedContentSheet, { data, ariaLabel: `O que mudou: ${data.change.namePt}`, autoFocus: 'first-heading', panelClass: 'mr-sheet' });
+    bottomSheet.open(ChangedContentSheet, {
+      data,
+      ariaLabel: `O que mudou: ${data.change.namePt}`,
+      autoFocus: 'first-heading',
+      panelClass: 'mr-sheet',
+    });
   } else {
-    dialog.open(ChangedContentSheet, { data, width: '560px', maxWidth: 'calc(100vw - 32px)', ariaLabelledBy: 'changed-title', autoFocus: 'first-heading' });
+    dialog.open(ChangedContentSheet, {
+      data,
+      width: '560px',
+      maxWidth: 'calc(100vw - 32px)',
+      ariaLabelledBy: 'changed-title',
+      autoFocus: 'first-heading',
+    });
   }
 }

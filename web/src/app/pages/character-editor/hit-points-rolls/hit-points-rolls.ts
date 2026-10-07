@@ -40,7 +40,13 @@ export class HitPointsRolls {
   readonly rolls = model.required<readonly number[]>();
 
   protected readonly preview = computed(() =>
-    hitPointsPreview(this.hitDie(), this.level(), this.constitution(), this.rolls(), this.levelDice()),
+    hitPointsPreview(
+      this.hitDie(),
+      this.level(),
+      this.constitution(),
+      this.rolls(),
+      this.levelDice(),
+    ),
   );
   protected readonly modifier = computed(() => formatModifier(this.preview().constitutionModifier));
   /** "+ 3" or "− 1", the way the formula line writes it. */

@@ -54,7 +54,12 @@ export class PaintQueue {
   private drainedCallbacks: (() => void)[] = [];
 
   constructor(
-    private readonly send: (target: PaintTarget, layer: MapLayer, value: number, squares: readonly Square[]) => Promise<void>,
+    private readonly send: (
+      target: PaintTarget,
+      layer: MapLayer,
+      value: number,
+      squares: readonly Square[],
+    ) => Promise<void>,
     private readonly delayMs = 150,
   ) {}
 
@@ -140,7 +145,12 @@ export class PaintQueue {
       const squares = [...batch.squares.values()];
       for (let i = 0; i < squares.length; i += MAX_PAINT_BATCH) {
         try {
-          await this.send(batch.target, batch.layer, batch.value, squares.slice(i, i + MAX_PAINT_BATCH));
+          await this.send(
+            batch.target,
+            batch.layer,
+            batch.value,
+            squares.slice(i, i + MAX_PAINT_BATCH),
+          );
         } catch (err) {
           this.failure.set(err);
           this.status.set('error');

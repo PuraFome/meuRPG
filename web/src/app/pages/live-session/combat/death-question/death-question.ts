@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -104,7 +115,9 @@ export class DeathQuestion {
 
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly box = viewChild('box', { read: ElementRef<HTMLElement> });
-  protected readonly asking = computed(() => this.dying().filter((c) => !this.dismissed().has(c.id)));
+  protected readonly asking = computed(() =>
+    this.dying().filter((c) => !this.dismissed().has(c.id)),
+  );
   protected readonly article = article;
 
   constructor() {

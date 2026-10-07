@@ -135,7 +135,10 @@ export class App {
       () => {
         const main = this.main().nativeElement;
         const active = this.document.activeElement;
-        if (active instanceof HTMLElement && (main.contains(active) || active.closest('.cdk-overlay-container'))) {
+        if (
+          active instanceof HTMLElement &&
+          (main.contains(active) || active.closest('.cdk-overlay-container'))
+        ) {
           return;
         }
         const heading = main.querySelector<HTMLElement>('h1');

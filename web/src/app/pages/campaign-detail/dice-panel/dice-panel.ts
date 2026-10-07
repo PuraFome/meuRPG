@@ -28,7 +28,9 @@ export class DicePanel {
   protected readonly preferenceLabel = preferenceLabel;
   protected readonly DicePreference = DicePreference;
 
-  protected readonly option = computed(() => DICE_MODE_OPTIONS.find((o) => o.value === this.savedMode()));
+  protected readonly option = computed(() =>
+    DICE_MODE_OPTIONS.find((o) => o.value === this.savedMode()),
+  );
   protected readonly showChoices = computed(() => this.savedMode() === DiceMode.PLAYERS_CHOOSE);
   protected readonly players = computed(() => this.members().filter((m) => m.role === 'jogador'));
 }

@@ -66,7 +66,8 @@ export class LinkPickerDialog implements OnInit {
             list.map<Row>((c) => ({
               id: c.id,
               name: c.name,
-              sub: [c.classSummary, c.raceName].filter((p) => p !== '').join(', ') || 'Ficha básica',
+              sub:
+                [c.classSummary, c.raceName].filter((p) => p !== '').join(', ') || 'Ficha básica',
             })),
           );
     rows.then(

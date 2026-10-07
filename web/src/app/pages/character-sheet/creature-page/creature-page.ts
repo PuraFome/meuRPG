@@ -1,10 +1,24 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  type CharacterCreature,
+  CreatureSource,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CharacterSheetSource } from '../character-sheet.types';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
@@ -23,7 +37,13 @@ type PageState =
   | { status: 'loading' }
   | { status: 'not-found' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; creature: CharacterCreature; block: Creature; ownerName: string; isMaster: boolean };
+  | {
+      status: 'ready';
+      creature: CharacterCreature;
+      block: Creature;
+      ownerName: string;
+      isMaster: boolean;
+    };
 
 /**
  * "/campaigns/:id/characters/:characterId/creatures/:creatureId" (E9-10,
@@ -40,7 +60,14 @@ type PageState =
  */
 @Component({
   selector: 'app-creature-page',
-  imports: [CreatureArt, CreatureEdit, MatIconModule, MatProgressSpinnerModule, RouterLink, StatBlock],
+  imports: [
+    CreatureArt,
+    CreatureEdit,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+    StatBlock,
+  ],
   templateUrl: './creature-page.html',
   styleUrl: './creature-page.scss',
 })
@@ -59,7 +86,12 @@ export class CreaturePage {
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly mode = signal<EditMode | null>(null);
 
-  protected readonly back = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId()]);
+  protected readonly back = computed(() => [
+    '/campaigns',
+    this.campaignId(),
+    'characters',
+    this.characterId(),
+  ]);
 
   protected readonly subtitle = computed(() => {
     const s = this.state();
@@ -67,7 +99,12 @@ export class CreaturePage {
       return '';
     }
     const summary = s.block.summary;
-    return joinDots([s.creature.monsterNamePt, [summary?.sizePt, summary?.typePt].filter((p) => p).join(', ')].filter((p) => p));
+    return joinDots(
+      [
+        s.creature.monsterNamePt,
+        [summary?.sizePt, summary?.typePt].filter((p) => p).join(', '),
+      ].filter((p) => p),
+    );
   });
   protected readonly origin = computed(() => {
     const s = this.state();
@@ -80,7 +117,10 @@ export class CreaturePage {
       return '';
     }
     const name = s.creature.name;
-    if (s.creature.source === CreatureSource.FAMILIAR && s.creature.attack === CreatureAttack.NONE) {
+    if (
+      s.creature.source === CreatureSource.FAMILIAR &&
+      s.creature.attack === CreatureAttack.NONE
+    ) {
       return `Como familiar, ${name} não ataca. Pode fazer as outras ações e entregar magias de toque (livro de regras).`;
     }
     if (s.creature.attack === CreatureAttack.REACTION) {
@@ -117,10 +157,20 @@ export class CreaturePage {
         this.client.statBlock(campaignId, creature.monsterKey),
         this.sheets.getCharacterSheet(campaignId, characterId),
       ]);
-      this.state.set({ status: 'ready', creature, block, ownerName: sheet.name, isMaster: sheet.isMaster });
+      this.state.set({
+        status: 'ready',
+        creature,
+        block,
+        ownerName: sheet.name,
+        isMaster: sheet.isMaster,
+      });
     } catch (err) {
       // A creature the viewer may not read (RN-20) or that is gone is the same page: "não encontrada".
-      this.state.set(creaturesHidden(err) ? { status: 'not-found' } : { status: 'error', message: creatureErrorMessage(err, 'read') });
+      this.state.set(
+        creaturesHidden(err)
+          ? { status: 'not-found' }
+          : { status: 'error', message: creatureErrorMessage(err, 'read') },
+      );
     }
   }
 
@@ -133,7 +183,10 @@ export class CreaturePage {
     this.mode.set(null);
     if (!changed) {
       // Backing out: the focus goes back to the action that asked.
-      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector });
+      afterNextRender(
+        () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)),
+        { injector: this.injector },
+      );
       return;
     }
     if (was === 'dismiss') {
@@ -142,7 +195,10 @@ export class CreaturePage {
     }
     // The question closed: the action that opened it is where the person was.
     void this.load(this.campaignId(), this.characterId(), this.creatureId()).then(() =>
-      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector }),
+      afterNextRender(
+        () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)),
+        { injector: this.injector },
+      ),
     );
   }
 }

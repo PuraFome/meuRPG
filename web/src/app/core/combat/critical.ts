@@ -21,7 +21,12 @@ export interface CriticalHint {
 /** The hint for a damage, or `null` when the hit was not a critical one (or the rule is not told). `dice` is the
  * dice to roll as the server gave them (`dice_count`, `dice_sides`); `max` is `critical_max`. Shown only when the player rolls
  * physical dice: with the app's dice the server rolls them. */
-export function criticalHint(rule: CriticalDamageRule, count: number, sides: number, max: number): CriticalHint | null {
+export function criticalHint(
+  rule: CriticalDamageRule,
+  count: number,
+  sides: number,
+  max: number,
+): CriticalHint | null {
   const dice = diceName(count, sides);
   switch (rule) {
     case CriticalDamageRule.DOUBLED_DICE:
@@ -46,7 +51,13 @@ export function criticalHint(rule: CriticalDamageRule, count: number, sides: num
 
 /** The line under the typed field: for a critical hit under "o máximo mais uma rolagem" one clear instruction ("Role 1d8 e digite só o
  * que saiu"), since the maximum and the modifier are the app's to add; otherwise the sum of the dice. */
-export function criticalTypedHint(rule: CriticalDamageRule, dice: string, min: number, max: number, fixed: number): string {
+export function criticalTypedHint(
+  rule: CriticalDamageRule,
+  dice: string,
+  min: number,
+  max: number,
+  fixed: number,
+): string {
   if (rule === CriticalDamageRule.MAX_PLUS_ROLL && fixed > 0) {
     return `Role ${dice} e digite só o que saiu, de ${min} a ${max}. O app soma o resto.`;
   }

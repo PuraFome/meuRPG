@@ -13,9 +13,25 @@ import { CastSheet, type CastSheetData } from './cast-sheet';
 /** A concentration spell cast over another one says what it ends, and what goes with it (the combat's own data). */
 describe('CastSheet: ending another concentration', () => {
   const salvia = (over: Record<string, unknown> = {}) =>
-    combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'sc', mine: true, ...over });
+    combatant({
+      id: 's',
+      label: 'Sálvia',
+      kind: CombatantKind.PLAYER,
+      characterId: 'sc',
+      mine: true,
+      ...over,
+    });
   const wolf = (n: number) =>
-    combatant({ id: `w${n}`, label: `Lobo atroz ${n}`, kind: CombatantKind.CREATURE, characterId: '', ownerCharacterId: 'sc', summonGroupId: 'cast', monsterKey: 'monster:dire-wolf', monsterNamePt: 'Lobo atroz' });
+    combatant({
+      id: `w${n}`,
+      label: `Lobo atroz ${n}`,
+      kind: CombatantKind.CREATURE,
+      characterId: '',
+      ownerCharacterId: 'sc',
+      summonGroupId: 'cast',
+      monsterKey: 'monster:dire-wolf',
+      monsterNamePt: 'Lobo atroz',
+    });
 
   function open(combatants: ReturnType<typeof combatant>[], concentration = true) {
     TestBed.resetTestingModule();
@@ -50,7 +66,12 @@ describe('CastSheet: ending another concentration', () => {
     });
     const fixture = TestBed.createComponent(CastSheet);
     fixture.detectChanges();
-    return (fixture.nativeElement as HTMLElement).querySelector('.ends')?.textContent?.replace(/\s+/g, ' ').trim() ?? null;
+    return (
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.ends')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim() ?? null
+    );
   }
 
   it('says nothing when the caster is not concentrating', () => {
@@ -58,17 +79,34 @@ describe('CastSheet: ending another concentration', () => {
   });
 
   it('says nothing when the spell needs no concentration, or is the one already held', () => {
-    expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })], false)).toBeNull();
-    expect(open([salvia({ concentrationSpell: 'spell:entangle', concentrationSpellNamePt: 'Constrição' })])).toBeNull();
+    expect(
+      open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })], false),
+    ).toBeNull();
+    expect(
+      open([
+        salvia({ concentrationSpell: 'spell:entangle', concentrationSpellNamePt: 'Constrição' }),
+      ]),
+    ).toBeNull();
   });
 
   it('says what the other concentration is when the caster holds one that keeps no creatures', () => {
-    expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })])).toContain('Constrição encerra a concentração em Teia.');
-    expect(open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })])).not.toContain('somem');
+    expect(
+      open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })]),
+    ).toContain('Constrição encerra a concentração em Teia.');
+    expect(
+      open([salvia({ concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia' })]),
+    ).not.toContain('somem');
   });
 
   it('adds the creatures that go with it, from the combatants with this owner and a summon group', () => {
-    const text = open([salvia({ concentrationSpell: 'spell:conjure-animals', concentrationSpellNamePt: 'Conjurar Animais' }), wolf(1), wolf(2)]);
+    const text = open([
+      salvia({
+        concentrationSpell: 'spell:conjure-animals',
+        concentrationSpellNamePt: 'Conjurar Animais',
+      }),
+      wolf(1),
+      wolf(2),
+    ]);
     expect(text).toContain('Constrição encerra a concentração em Conjurar Animais.');
     expect(text).toContain('Os 2 Lobos atrozes somem.');
   });

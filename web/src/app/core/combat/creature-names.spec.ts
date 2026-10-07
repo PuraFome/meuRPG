@@ -1,12 +1,41 @@
 import { CombatantKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
-import { creatureTurnTitle, endLabel, groupName, kindWord, ofOwner, pluralName } from './creature-names';
+import {
+  creatureTurnTitle,
+  endLabel,
+  groupName,
+  kindWord,
+  ofOwner,
+  pluralName,
+} from './creature-names';
 
-const salvia = combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, mine: true, characterId: 'char-s' });
-const wolf = (n: number) => combatant({ id: `w${n}`, label: `Lobo atroz ${n}`, kind: CombatantKind.CREATURE, controlledByMe: true, ownerCharacterId: 'char-s', monsterKey: 'monster:dire-wolf', monsterNamePt: 'Lobo atroz' });
-const raven = combatant({ id: 'n', label: 'Nanquim', kind: CombatantKind.CREATURE, ownerCharacterId: 'char-p', monsterKey: 'monster:raven', monsterNamePt: 'Corvo' });
+const salvia = combatant({
+  id: 's',
+  label: 'Sálvia',
+  kind: CombatantKind.PLAYER,
+  mine: true,
+  characterId: 'char-s',
+});
+const wolf = (n: number) =>
+  combatant({
+    id: `w${n}`,
+    label: `Lobo atroz ${n}`,
+    kind: CombatantKind.CREATURE,
+    controlledByMe: true,
+    ownerCharacterId: 'char-s',
+    monsterKey: 'monster:dire-wolf',
+    monsterNamePt: 'Lobo atroz',
+  });
+const raven = combatant({
+  id: 'n',
+  label: 'Nanquim',
+  kind: CombatantKind.CREATURE,
+  ownerCharacterId: 'char-p',
+  monsterKey: 'monster:raven',
+  monsterNamePt: 'Corvo',
+});
 
-describe('the names of a player\'s creatures', () => {
+describe("the names of a player's creatures", () => {
   it('pluralizes word by word', () => {
     expect(pluralName('Lobo atroz')).toBe('Lobos atrozes');
     expect(pluralName('Urso-marrom')).toBe('Ursos-marrons');
@@ -14,7 +43,7 @@ describe('the names of a player\'s creatures', () => {
     expect(pluralName('Esqueleto')).toBe('Esqueletos');
   });
 
-  it('names a group, and keeps one creature\'s own name', () => {
+  it("names a group, and keeps one creature's own name", () => {
     expect(groupName([wolf(1), wolf(2)])).toBe('Lobos atrozes');
     expect(groupName([wolf(1), raven])).toBe('Criaturas');
     expect(groupName([raven])).toBe('Nanquim');

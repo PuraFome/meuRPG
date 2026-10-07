@@ -33,7 +33,13 @@ export const CREATURE_SIZES: readonly { value: string; label: string; size: Crea
 ];
 
 /** Every challenge rating of the SRD, as `ListCreatures` takes them. */
-export const CHALLENGE_RATINGS: readonly string[] = ['0', '1/8', '1/4', '1/2', ...Array.from({ length: 30 }, (_, i) => String(i + 1))];
+export const CHALLENGE_RATINGS: readonly string[] = [
+  '0',
+  '1/8',
+  '1/4',
+  '1/2',
+  ...Array.from({ length: 30 }, (_, i) => String(i + 1)),
+];
 
 /** What the bestiary's "ND" filter offers besides one exact rating: ranges (the value is `min-max`, either end empty). */
 export const CHALLENGE_RANGES: readonly { value: string; label: string }[] = [

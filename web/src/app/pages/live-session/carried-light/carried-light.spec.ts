@@ -17,7 +17,12 @@ const options: LightOption[] = [
   { key: 'light:hooded-lantern', name: 'Lanterna coberta', radii: lightRadii(30, 30) },
   { key: 'light:light-spell', name: 'Luz', radii: lightRadii(20, 20) },
 ];
-const presets = { list: vi.fn(async () => [...options, { key: 'light:candle', name: 'Vela', radii: '1,5 m claro + 1,5 m de penumbra' }]) };
+const presets = {
+  list: vi.fn(async () => [
+    ...options,
+    { key: 'light:candle', name: 'Vela', radii: '1,5 m claro + 1,5 m de penumbra' },
+  ]),
+};
 
 describe('the sheet "Luz que você carrega" (E9-04)', () => {
   const api = new FakeMapsClient();
@@ -25,7 +30,15 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
   const changed = vi.fn();
 
   function setup(current = '') {
-    const data: CarriedLightData = { campaignId: 'c1', mapId: 'm1', characterId: 'toren', characterName: 'Toren', current, options, changed };
+    const data: CarriedLightData = {
+      campaignId: 'c1',
+      mapId: 'm1',
+      characterId: 'toren',
+      characterName: 'Toren',
+      current,
+      options,
+      changed,
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: MapsClient, useValue: api },
@@ -37,7 +50,8 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
-  const radios = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('input[type=radio]'));
+  const radios = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLInputElement>('input[type=radio]'));
 
   beforeEach(() => {
     api.calls = [];
@@ -64,7 +78,10 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(api.calls).toEqual(['setCarriedLight m1 toren light:torch']);
-    expect(changed).toHaveBeenCalledWith(expect.objectContaining({ carriedLight: 'light:torch' }), options[0]);
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({ carriedLight: 'light:torch' }),
+      options[0],
+    );
     expect(radios(el)[1].checked).toBe(true);
     expect(close).not.toHaveBeenCalled();
     expect(Array.from(el.querySelectorAll('button'), (b) => text(b))).toContain('Pronto');
@@ -85,14 +102,18 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
     radios(el)[1].click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text(el.querySelector('[role="alert"]'))).toContain('Você só muda a luz do seu próprio personagem.');
+    expect(text(el.querySelector('[role="alert"]'))).toContain(
+      'Você só muda a luz do seu próprio personagem.',
+    );
     expect(radios(el)[0].checked).toBe(true);
     expect(changed).not.toHaveBeenCalled();
   });
 
   it('closes with "Pronto" and with the ×', () => {
     const { el } = setup();
-    Array.from(el.querySelectorAll('button')).find((b) => text(b) === 'Pronto')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => text(b) === 'Pronto')!
+      .click();
     expect(close).toHaveBeenCalledTimes(1);
     el.querySelector<HTMLButtonElement>('button[aria-label="Fechar"]')!.click();
     expect(close).toHaveBeenCalledTimes(2);
@@ -100,13 +121,18 @@ describe('the sheet "Luz que você carrega" (E9-04)', () => {
 });
 
 describe('the row "Luz que você carrega"', () => {
-  beforeEach(() => TestBed.configureTestingModule({ providers: [{ provide: LightPresets, useValue: presets }] }));
+  beforeEach(() =>
+    TestBed.configureTestingModule({ providers: [{ provide: LightPresets, useValue: presets }] }),
+  );
 
   function create(carried: string) {
     const fixture = TestBed.createComponent(CarriedLight);
     fixture.componentRef.setInput('campaignId', 'c1');
     fixture.componentRef.setInput('mapId', 'm1');
-    fixture.componentRef.setInput('token', mapToken('toren', 'Toren', { mine: true, carriedLight: carried }));
+    fixture.componentRef.setInput(
+      'token',
+      mapToken('toren', 'Toren', { mine: true, carriedLight: carried }),
+    );
     fixture.detectChanges();
     return fixture;
   }
@@ -124,7 +150,9 @@ describe('the row "Luz que você carrega"', () => {
     const fixture = create('light:hooded-lantern');
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(text((fixture.nativeElement as HTMLElement).querySelector('.row__value'))).toBe('Lanterna coberta');
+    expect(text((fixture.nativeElement as HTMLElement).querySelector('.row__value'))).toBe(
+      'Lanterna coberta',
+    );
   });
 });
 
@@ -140,17 +168,24 @@ describe('the master\'s "Luz dos personagens"', () => {
     });
     const state = new MapState(async () => mapResponse(mapMessage('m1', 'A caverna'), [], []));
     state.apply(
-      mapResponse(mapMessage('m1', 'A caverna'), [], [
-        mapToken('pensantus', 'Pensantus'),
-        mapToken('toren', 'Toren', { carriedLight: 'light:torch' }),
-        mapToken('goblin', 'Goblin 1', { kind: CharacterKind.MINION }),
-        mapToken('nanquim', 'Nanquim', { creatureId: 'c1', kind: CharacterKind.UNSPECIFIED }),
-      ]),
+      mapResponse(
+        mapMessage('m1', 'A caverna'),
+        [],
+        [
+          mapToken('pensantus', 'Pensantus'),
+          mapToken('toren', 'Toren', { carriedLight: 'light:torch' }),
+          mapToken('goblin', 'Goblin 1', { kind: CharacterKind.MINION }),
+          mapToken('nanquim', 'Nanquim', { creatureId: 'c1', kind: CharacterKind.UNSPECIFIED }),
+        ],
+      ),
     );
     const fixture = TestBed.createComponent(LightPanel);
     fixture.componentRef.setInput('campaignId', 'c1');
     fixture.componentRef.setInput('state', state);
-    fixture.componentRef.setInput('info', new Map([['toren', { classSummary: 'Guerreiro 5', playerName: 'Caio' }]]));
+    fixture.componentRef.setInput(
+      'info',
+      new Map([['toren', { classSummary: 'Guerreiro 5', playerName: 'Caio' }]]),
+    );
     fixture.detectChanges();
     return { fixture, state, el: fixture.nativeElement as HTMLElement };
   }
@@ -164,15 +199,23 @@ describe('the master\'s "Luz dos personagens"', () => {
     const { fixture, el } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.row__name'), (n) => text(n))).toEqual(['Pensantus', 'Toren']);
+    expect(Array.from(el.querySelectorAll('.row__name'), (n) => text(n))).toEqual([
+      'Pensantus',
+      'Toren',
+    ]);
     const selects = Array.from(el.querySelectorAll<HTMLSelectElement>('select'));
     expect(selects.map((s) => s.value)).toEqual(['', 'light:torch']);
-    expect(Array.from(selects[0].options, (o) => text(o))).toEqual(['Nenhuma', 'Tocha', 'Lanterna coberta', 'Luz']);
+    expect(Array.from(selects[0].options, (o) => text(o))).toEqual([
+      'Nenhuma',
+      'Tocha',
+      'Lanterna coberta',
+      'Luz',
+    ]);
     expect(selects[1].getAttribute('aria-label')).toBe('Luz de Toren');
     expect(text(el.querySelectorAll('.row__sub')[1])).toBe('Caio');
   });
 
-  it('sets the light of anyone at once, puts the new token on the map\'s state, and says what it did', async () => {
+  it("sets the light of anyone at once, puts the new token on the map's state, and says what it did", async () => {
     const { fixture, state, el } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -182,7 +225,11 @@ describe('the master\'s "Luz dos personagens"', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(api.calls).toEqual(['setCarriedLight m1 pensantus light:hooded-lantern']);
-    expect(state.tokens().find((t) => t.characterId === 'pensantus')?.carriedLight).toBe('light:hooded-lantern');
-    expect(text(el.querySelector('.line'))).toContain('Pensantus carrega lanterna coberta (9 m claro + 9 m de penumbra). Muda na hora no mapa de todos que enxergam esse lugar.');
+    expect(state.tokens().find((t) => t.characterId === 'pensantus')?.carriedLight).toBe(
+      'light:hooded-lantern',
+    );
+    expect(text(el.querySelector('.line'))).toContain(
+      'Pensantus carrega lanterna coberta (9 m claro + 9 m de penumbra). Muda na hora no mapa de todos que enxergam esse lugar.',
+    );
   });
 });

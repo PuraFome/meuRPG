@@ -3,7 +3,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type TreasureToConvert, XPBlockedReason } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  type TreasureToConvert,
+  XPBlockedReason,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../core/connect/idempotency';
 import { joinDots } from '../../core/format/text';
 import type { ExperienceRow, LoadState } from '../../core/progression/experience-store';
@@ -73,16 +76,26 @@ export class TownSheet {
   protected readonly people = signal<readonly ExperienceRow[]>(this.data.rows);
   private known = new Set(this.treasures().map((t) => t.pointId));
   protected readonly checkedTreasures = signal<ReadonlySet<string>>(new Set(this.known));
-  protected readonly checkedPeople = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
+  protected readonly checkedPeople = signal<ReadonlySet<string>>(
+    new Set(this.data.rows.map((r) => r.id)),
+  );
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly frame = viewChild.required(SheetFrame);
 
-  protected readonly chosen = computed(() => this.treasures().filter((t) => this.checkedTreasures().has(t.pointId)));
-  protected readonly receivers = computed(() => this.people().filter((r) => this.checkedPeople().has(r.id)));
-  protected readonly calc = computed(() => townCalc(this.chosen().length, totalPo(this.chosen()), this.receivers().length));
+  protected readonly chosen = computed(() =>
+    this.treasures().filter((t) => this.checkedTreasures().has(t.pointId)),
+  );
+  protected readonly receivers = computed(() =>
+    this.people().filter((r) => this.checkedPeople().has(r.id)),
+  );
+  protected readonly calc = computed(() =>
+    townCalc(this.chosen().length, totalPo(this.chosen()), this.receivers().length),
+  );
   /** Treasures the list does not hold (it stops at 100). */
-  protected readonly more = computed(() => Math.max(0, this.totalFound() - this.treasures().length));
+  protected readonly more = computed(() =>
+    Math.max(0, this.totalFound() - this.treasures().length),
+  );
   protected readonly moreText = computed(() => moreTreasures(this.more(), 'para a próxima vez'));
   /** One line above the list when a find was made outside a session (the rows carry a short tag). */
   protected readonly anyOutside = computed(() => this.treasures().some((t) => !t.foundInSession));
@@ -105,9 +118,13 @@ export class TownSheet {
   protected readonly primaryLabel = computed(() =>
     this.waiting() ? 'Dar XP' : `Dar ${eachLine(this.calc().split)}`,
   );
-  protected readonly announcement = computed(() => this.waiting() || `${eachLine(this.calc().split)}.`);
+  protected readonly announcement = computed(
+    () => this.waiting() || `${eachLine(this.calc().split)}.`,
+  );
   /** Nothing to convert (after a read that worked) or nothing known yet: no filled button. */
-  protected readonly noList = computed(() => this.state() !== 'ready' || this.treasures().length === 0);
+  protected readonly noList = computed(
+    () => this.state() !== 'ready' || this.treasures().length === 0,
+  );
 
   protected readonly sub = (t: TreasureToConvert) =>
     joinDots([foundLine(t), ...(t.foundInSession ? [] : ['fora de uma sessão'])]);
@@ -140,7 +157,9 @@ export class TownSheet {
       const res = await this.api.listTreasures(this.data.campaignId);
       const now = new Set(res.treasures.map((t) => t.pointId));
       const fresh = res.treasures.filter((t) => !this.known.has(t.pointId)).map((t) => t.pointId);
-      this.checkedTreasures.update((set) => new Set([...[...set].filter((id) => now.has(id)), ...fresh]));
+      this.checkedTreasures.update(
+        (set) => new Set([...[...set].filter((id) => now.has(id)), ...fresh]),
+      );
       this.known = new Set([...this.known, ...now]);
       this.treasures.set(res.treasures);
       this.totalFound.set(res.total);
@@ -182,12 +201,17 @@ export class TownSheet {
         people,
         this.key,
       );
-      this.sheet.close(res.award ? { award: res.award, xpEach: res.xpEach, lostXp: res.lostXp } : undefined);
+      this.sheet.close(
+        res.award ? { award: res.award, xpEach: res.xpEach, lostXp: res.lostXp } : undefined,
+      );
     } catch (err) {
       this.error.set(townErrorMessage(err));
       this.frame().scrollToTop();
       const blocked = xpBlocked(err);
-      if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE && blocked.characterId) {
+      if (
+        blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE &&
+        blocked.characterId
+      ) {
         this.drop(blocked.characterId);
       }
       if (blocked || xpNotFound(err)) {

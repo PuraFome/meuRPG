@@ -131,14 +131,27 @@ export class FakeMapsClient {
     this.record('layers', mapId, asCharacterId);
     return (
       this.layersResponse ??
-      ({ $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: 0, gridRows: 0, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array() } as unknown as GetMapLayersResponse)
+      ({
+        $typeName: 'meurpg.maps.v1.GetMapLayersResponse',
+        gridColumns: 0,
+        gridRows: 0,
+        difficultTerrain: new Uint8Array(),
+        wall: new Uint8Array(),
+        cover: new Uint8Array(),
+      } as unknown as GetMapLayersResponse)
     );
   }
 
   /** What `PaintMapCells` was asked: layer, value and the squares of each call, in order. */
   paints: { layer: MapLayer; value: number; squares: { col: number; row: number }[] }[] = [];
 
-  async paint(_c: string, mapId: string, layer: MapLayer, value: number, squares: readonly { col: number; row: number }[]): Promise<{ layersRevision: number; changed: number }> {
+  async paint(
+    _c: string,
+    mapId: string,
+    layer: MapLayer,
+    value: number,
+    squares: readonly { col: number; row: number }[],
+  ): Promise<{ layersRevision: number; changed: number }> {
     this.record('paint', mapId, layer, value, squares.length);
     this.paints.push({ layer, value, squares: squares.map((s) => ({ col: s.col, row: s.row })) });
     return { layersRevision: this.paints.length, changed: squares.length };
@@ -147,16 +160,27 @@ export class FakeMapsClient {
   /** The map the next `SetMapFog` and `SetMapGrid` answer with (set by the spec). */
   mapAfter: MapMessage | null = null;
 
-  async setFog(_c: string, mapId: string, changes: { fogEnabled?: boolean; baseLight?: LightLevel; groupVision?: boolean }): Promise<MapMessage> {
+  async setFog(
+    _c: string,
+    mapId: string,
+    changes: { fogEnabled?: boolean; baseLight?: LightLevel; groupVision?: boolean },
+  ): Promise<MapMessage> {
     this.record('setFog', mapId, JSON.stringify(changes));
-    return this.mapAfter ?? mapMessage(mapId, 'Mapa', { gridColumns: 24, gridRows: 16, ...changes });
+    return (
+      this.mapAfter ?? mapMessage(mapId, 'Mapa', { gridColumns: 24, gridRows: 16, ...changes })
+    );
   }
 
   async forgetVision(_c: string, mapId: string): Promise<void> {
     this.record('forgetVision', mapId);
   }
 
-  async setGrid(_c: string, mapId: string, columns: number, squareFactor: number): Promise<MapMessage> {
+  async setGrid(
+    _c: string,
+    mapId: string,
+    columns: number,
+    squareFactor: number,
+  ): Promise<MapMessage> {
     // The factor is only written when it is not 1, so the calls of a map that was never calibrated read as before.
     this.record('setGrid', mapId, squareFactor === 1 ? columns : `${columns} x${squareFactor}`);
     const drawnRows = Math.round((columns * 1600) / 2400);
@@ -175,14 +199,33 @@ export class FakeMapsClient {
   /** What `GetTrapNoticers` answers. */
   noticers: GetTrapNoticersResponse | null = null;
 
-  async getTrapNoticers(_c: string, mapId: string, pointId: string): Promise<GetTrapNoticersResponse> {
+  async getTrapNoticers(
+    _c: string,
+    mapId: string,
+    pointId: string,
+  ): Promise<GetTrapNoticersResponse> {
     this.record('getTrapNoticers', mapId, pointId);
-    return this.noticers ?? ({ $typeName: 'meurpg.maps.v1.GetTrapNoticersResponse', noticers: [], noticeDc: 0 } as GetTrapNoticersResponse);
+    return (
+      this.noticers ??
+      ({
+        $typeName: 'meurpg.maps.v1.GetTrapNoticersResponse',
+        noticers: [],
+        noticeDc: 0,
+      } as GetTrapNoticersResponse)
+    );
   }
 
-  async markTreasureFound(_c: string, mapId: string, pointId: string, characterIds: readonly string[]): Promise<MapPoint> {
+  async markTreasureFound(
+    _c: string,
+    mapId: string,
+    pointId: string,
+    characterIds: readonly string[],
+  ): Promise<MapPoint> {
     this.record('markTreasureFound', mapId, pointId, characterIds.join(','));
-    return mapPoint(pointId, 'Baú', { kind: MapPointKind.TREASURE, treasureFoundAt: { seconds: 1n, nanos: 0, $typeName: 'google.protobuf.Timestamp' } as never });
+    return mapPoint(pointId, 'Baú', {
+      kind: MapPointKind.TREASURE,
+      treasureFoundAt: { seconds: 1n, nanos: 0, $typeName: 'google.protobuf.Timestamp' } as never,
+    });
   }
 
   async unmarkTreasureFound(_c: string, mapId: string, pointId: string): Promise<MapPoint> {
@@ -190,7 +233,11 @@ export class FakeMapsClient {
     return mapPoint(pointId, 'Baú', { kind: MapPointKind.TREASURE });
   }
 
-  async createPoint(_c: string, mapId: string, point: { kind: MapPointKind; name: string; xBp: number; yBp: number }): Promise<MapPoint> {
+  async createPoint(
+    _c: string,
+    mapId: string,
+    point: { kind: MapPointKind; name: string; xBp: number; yBp: number },
+  ): Promise<MapPoint> {
     this.record('createPoint', mapId, JSON.stringify(point));
     return mapPoint('new-point', point.name, { kind: point.kind, xBp: point.xBp, yBp: point.yBp });
   }
@@ -203,14 +250,21 @@ export class FakeMapsClient {
     this.record('removeToken', mapId, characterId);
   }
 
-  async setCarriedLight(_c: string, mapId: string, characterId: string, lightKey: string): Promise<MapToken> {
+  async setCarriedLight(
+    _c: string,
+    mapId: string,
+    characterId: string,
+    lightKey: string,
+  ): Promise<MapToken> {
     this.record('setCarriedLight', mapId, characterId, lightKey);
     return mapToken(characterId, 'Token', { carriedLight: lightKey });
   }
 
   async get(_campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapResponse> {
     this.record('get', mapId, ...(asCharacterId ? [asCharacterId] : []));
-    const res = this.responses.get(asCharacterId ? `${mapId}@${asCharacterId}` : mapId) ?? this.responses.get(mapId);
+    const res =
+      this.responses.get(asCharacterId ? `${mapId}@${asCharacterId}` : mapId) ??
+      this.responses.get(mapId);
     if (!res) {
       const { ConnectError, Code } = await import('@connectrpc/connect');
       throw new ConnectError('not found', Code.NotFound);
@@ -280,7 +334,11 @@ export class FakeMapsClient {
     }
     this.sceneActions = [
       ...this.sceneActions,
-      create(SceneActionSchema, { id: `n${this.sceneActions.length + 1}`, checkName: action.key, ...action }),
+      create(SceneActionSchema, {
+        id: `n${this.sceneActions.length + 1}`,
+        checkName: action.key,
+        ...action,
+      }),
     ];
     return this.sceneActions;
   }
@@ -311,7 +369,9 @@ export class FakeMapsClient {
     maxAttempts: number,
   ): Promise<readonly SceneAction[]> {
     this.record('setSceneActionAttempts', pointId, actionId, String(maxAttempts));
-    this.sceneActions = this.sceneActions.map((a) => (a.id === actionId ? { ...a, maxAttempts } : a));
+    this.sceneActions = this.sceneActions.map((a) =>
+      a.id === actionId ? { ...a, maxAttempts } : a,
+    );
     return this.sceneActions;
   }
 
@@ -331,13 +391,21 @@ export class FakeMapsClient {
   /** What the next reveal answers with (set by the spec). */
   revealed: SceneClue | null = null;
 
-  async addSceneClue(_c: string, _m: string, pointId: string, text: string): Promise<readonly SceneClue[]> {
+  async addSceneClue(
+    _c: string,
+    _m: string,
+    pointId: string,
+    text: string,
+  ): Promise<readonly SceneClue[]> {
     this.record('addSceneClue', pointId, text);
     if (this.sceneClues.length >= 30) {
       const { ConnectError, Code } = await import('@connectrpc/connect');
       throw new ConnectError('limit', Code.ResourceExhausted);
     }
-    this.sceneClues = [...this.sceneClues, create(SceneClueSchema, { id: `k${this.sceneClues.length + 1}`, text })];
+    this.sceneClues = [
+      ...this.sceneClues,
+      create(SceneClueSchema, { id: `k${this.sceneClues.length + 1}`, text }),
+    ];
     return this.sceneClues;
   }
 
@@ -371,13 +439,22 @@ export class FakeMapsClient {
     return list;
   }
 
-  async removeSceneClue(_c: string, _m: string, pointId: string, clueId: string): Promise<readonly SceneClue[]> {
+  async removeSceneClue(
+    _c: string,
+    _m: string,
+    pointId: string,
+    clueId: string,
+  ): Promise<readonly SceneClue[]> {
     this.record('removeSceneClue', pointId, clueId);
     this.sceneClues = this.sceneClues.filter((c) => c.id !== clueId);
     return this.sceneClues;
   }
 
-  async revealSceneClue(_c: string, clueId: string, characterIds: readonly string[]): Promise<SceneClue> {
+  async revealSceneClue(
+    _c: string,
+    clueId: string,
+    characterIds: readonly string[],
+  ): Promise<SceneClue> {
     this.record('revealSceneClue', clueId, characterIds.join(','));
     return this.revealed ?? create(SceneClueSchema, { id: clueId, text: 'x' });
   }

@@ -16,7 +16,12 @@ export class MoveOptionsState {
   private asked = 0;
   private subject = '';
 
-  async load(api: CombatClient, campaignId: string, encounterId: string, combatantId: string): Promise<void> {
+  async load(
+    api: CombatClient,
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+  ): Promise<void> {
     const mine = ++this.asked;
     // Another combatant's circle is never drawn for this one while the answer comes.
     if (this.subject !== combatantId) {

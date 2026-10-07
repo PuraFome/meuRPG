@@ -44,7 +44,9 @@ export function foundWhen(foundAt: TreasureToConvert['foundAt'], now: Date = new
   }
   const date = timestampDate(foundAt);
   const today =
-    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
   // The hour never leaves its "às" (`tight` does not know the accent).
   return today ? `às\u00a0${formatClock(date)}` : `em ${formatDayAt(date)}`;
 }
@@ -52,7 +54,9 @@ export function foundWhen(foundAt: TreasureToConvert['foundAt'], now: Date = new
 /** "Encontrado por Brisa às 21:40" (who and when; either may be missing). */
 export function foundLine(t: TreasureToConvert, now: Date = new Date()): string {
   const who = nameList(t.foundBy.map((f) => f.characterName));
-  return ['Encontrado', who ? `por ${who}` : '', foundWhen(t.foundAt, now)].filter(Boolean).join(' ');
+  return ['Encontrado', who ? `por ${who}` : '', foundWhen(t.foundAt, now)]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /** What the dialog's calculation box says for the treasures and the characters
@@ -70,9 +74,14 @@ export interface TownCalc {
 
 export function townCalc(treasures: number, poTotal: number, characters: number): TownCalc {
   const split = splitXp(poTotal, characters);
-  const left = split.lost === 0 ? 'Sobra 0 XP.' : `Sobra ${formatInt(split.lost)} XP, que não vai para ninguém.`;
+  const left =
+    split.lost === 0
+      ? 'Sobra 0 XP.'
+      : `Sobra ${formatInt(split.lost)} XP, que não vai para ninguém.`;
   return {
-    sum: tight(`${formatInt(poTotal)} PO em ${treasureCount(treasures)} = ${formatInt(poTotal)} XP`),
+    sum: tight(
+      `${formatInt(poTotal)} PO em ${treasureCount(treasures)} = ${formatInt(poTotal)} XP`,
+    ),
     big: tight(`${formatInt(poTotal)} XP ÷ ${characters} = ${eachLine(split)}`),
     left: tight(left),
     split,
@@ -98,8 +107,14 @@ export function awardTitle(award: XPAward): string {
 export function townGivenText(award: XPAward, xpEach: number, lostXp: number): string {
   const names = nameList(award.shares.map((s) => s.characterName));
   const lost = lostXp === 0 ? '' : ` Sobra ${formatInt(lostXp)} XP, que não vai para ninguém.`;
-  const done = award.treasureCount === 1 ? 'O tesouro foi convertido.' : `Os ${formatInt(award.treasureCount)} tesouros foram convertidos.`;
-  return tight(`Voltar à cidade: ${names} ${award.shares.length > 1 ? 'receberam' : 'recebeu'} ${formatInt(xpEach)} XP ${award.shares.length > 1 ? 'cada' : ''}`.trim() + `. ${done}${lost}`);
+  const done =
+    award.treasureCount === 1
+      ? 'O tesouro foi convertido.'
+      : `Os ${formatInt(award.treasureCount)} tesouros foram convertidos.`;
+  return tight(
+    `Voltar à cidade: ${names} ${award.shares.length > 1 ? 'receberam' : 'recebeu'} ${formatInt(xpEach)} XP ${award.shares.length > 1 ? 'cada' : ''}`.trim() +
+      `. ${done}${lost}`,
+  );
 }
 
 /** Said after undoing a "Voltar à cidade": the treasures are free again. */

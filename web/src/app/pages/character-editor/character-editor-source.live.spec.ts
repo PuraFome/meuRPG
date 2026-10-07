@@ -201,7 +201,10 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     expect(form.customBackgroundName).toBe('Sábio');
     expect(form.customBackgroundSkills).toEqual(['skill:arcana', 'skill:history']);
     // The editor shows every field of the "Outro" background now (slice 10.12b).
-    expect(form.customBackgroundProficiencies).toEqual(['proficiency:thieves-tools', 'language:elvish']);
+    expect(form.customBackgroundProficiencies).toEqual([
+      'proficiency:thieves-tools',
+      'language:elvish',
+    ]);
     expect(form.customBackgroundFeatureName).toBe('Pesquisador');
     expect(form.customBackgroundFeatureText).toBe('Sabe a quem perguntar.');
     expect(form.customBackgroundEquipment).toBe('Um tinteiro.');
@@ -229,25 +232,69 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     const loaded: FullSheet = {
       ...fullyPopulatedFullSheet(),
       classes: [
-        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:wizard', level: 3, subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' } },
-        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:cleric', level: 1, subclass: { case: 'subclassKey', value: 'subclass:path@mesa' } },
-        { $typeName: 'meurpg.characters.v1.ClassLevel', classKey: 'class:fighter', level: 2, subclass: { case: 'customSubclassName', value: 'Duelista' } },
+        {
+          $typeName: 'meurpg.characters.v1.ClassLevel',
+          classKey: 'class:wizard',
+          level: 3,
+          subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' },
+        },
+        {
+          $typeName: 'meurpg.characters.v1.ClassLevel',
+          classKey: 'class:cleric',
+          level: 1,
+          subclass: { case: 'subclassKey', value: 'subclass:path@mesa' },
+        },
+        {
+          $typeName: 'meurpg.characters.v1.ClassLevel',
+          classKey: 'class:fighter',
+          level: 2,
+          subclass: { case: 'customSubclassName', value: 'Duelista' },
+        },
       ],
     };
     const form = toFormFullSheet('Corvina', loaded);
-    expect(form).toMatchObject({ className: 'class:wizard', level: 3, subclassName: 'subclass:ink@mesa' });
+    expect(form).toMatchObject({
+      className: 'class:wizard',
+      level: 3,
+      subclassName: 'subclass:ink@mesa',
+    });
     expect(form.extraClasses).toEqual([
-      { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa', customSubclassName: '' },
+      {
+        classKey: 'class:cleric',
+        level: 1,
+        subclassKey: 'subclass:path@mesa',
+        customSubclassName: '',
+      },
       { classKey: 'class:fighter', level: 2, subclassKey: '', customSubclassName: 'Duelista' },
     ]);
     // Saving it unchanged sends every class back, never only the first.
     expect(mergeFullSheetInit(loaded, form).classes).toEqual([
-      { classKey: 'class:wizard', level: 3, subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' } },
-      { classKey: 'class:cleric', level: 1, subclass: { case: 'subclassKey', value: 'subclass:path@mesa' } },
-      { classKey: 'class:fighter', level: 2, subclass: { case: 'customSubclassName', value: 'Duelista' } },
+      {
+        classKey: 'class:wizard',
+        level: 3,
+        subclass: { case: 'subclassKey', value: 'subclass:ink@mesa' },
+      },
+      {
+        classKey: 'class:cleric',
+        level: 1,
+        subclass: { case: 'subclassKey', value: 'subclass:path@mesa' },
+      },
+      {
+        classKey: 'class:fighter',
+        level: 2,
+        subclass: { case: 'customSubclassName', value: 'Duelista' },
+      },
     ]);
     // A block with no class chosen never reaches the wire.
-    expect(toFullSheetInit({ ...form, extraClasses: [...form.extraClasses, { classKey: '', level: 1, subclassKey: '', customSubclassName: '' }] }).classes).toHaveLength(3);
+    expect(
+      toFullSheetInit({
+        ...form,
+        extraClasses: [
+          ...form.extraClasses,
+          { classKey: '', level: 1, subclassKey: '', customSubclassName: '' },
+        ],
+      }).classes,
+    ).toHaveLength(3);
   });
 
   it('CreateCharacter (no loaded message) is exactly toFullSheetInit — nothing to merge yet', () => {
@@ -270,12 +317,9 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
 describe('the catalog the editor reads (slice 10.12b)', () => {
   const key = (k: string) => k.endsWith('@mesa');
 
-  it('marks an entry of the table by its key, carries the class numbers and a third caster\'s subclass, and a table class reuses another list', async () => {
+  it("marks an entry of the table by its key, carries the class numbers and a third caster's subclass, and a table class reuses another list", async () => {
     TestBed.configureTestingModule({
-      providers: [
-        CharacterEditorSourceLive,
-        { provide: CONNECT_TRANSPORT, useValue: {} },
-      ],
+      providers: [CharacterEditorSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
     });
     const source = TestBed.inject(CharacterEditorSourceLive);
     // The generated client is a field of the source: the spec gives it the server's answer.
@@ -284,23 +328,85 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
         Promise.resolve({
           content: {
             races: [
-              { key: 'race:gnome', namePt: 'Gnomo', abilityBonuses: { constitution: 0 }, choiceBonuses: [], archived: false },
-              { key: 'race:corujeiro@mesa', namePt: 'Corujeiro', abilityBonuses: undefined, choiceBonuses: [2, 1], archived: true },
+              {
+                key: 'race:gnome',
+                namePt: 'Gnomo',
+                abilityBonuses: { constitution: 0 },
+                choiceBonuses: [],
+                archived: false,
+              },
+              {
+                key: 'race:corujeiro@mesa',
+                namePt: 'Corujeiro',
+                abilityBonuses: undefined,
+                choiceBonuses: [2, 1],
+                archived: true,
+              },
             ],
             subraces: [],
             classes: [
-              { key: 'class:guardiao@mesa', namePt: 'Guardião do Vale', hitDie: 10, savingThrows: [1, 5], skillChoice: { count: 2 }, subclassLevel: 3, spellcasting: { preparation: 2, firstLevel: 2, maxSpellLevelByLevel: [0, 1], listClassKey: 'class:druid' } },
-              { key: 'class:fighter', namePt: 'Guerreiro', hitDie: 10, savingThrows: [], subclassLevel: 3 },
+              {
+                key: 'class:guardiao@mesa',
+                namePt: 'Guardião do Vale',
+                hitDie: 10,
+                savingThrows: [1, 5],
+                skillChoice: { count: 2 },
+                subclassLevel: 3,
+                spellcasting: {
+                  preparation: 2,
+                  firstLevel: 2,
+                  maxSpellLevelByLevel: [0, 1],
+                  listClassKey: 'class:druid',
+                },
+              },
+              {
+                key: 'class:fighter',
+                namePt: 'Guerreiro',
+                hitDie: 10,
+                savingThrows: [],
+                subclassLevel: 3,
+              },
             ],
             subclasses: [
-              { key: 'subclass:ink@mesa', namePt: 'Lâmina de Tinta', classKey: 'class:fighter', alwaysPrepared: [{ spellKey: 'spell:shield', classLevel: 3 }], spellcasting: { preparation: 1, listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } },
-              { key: 'subclass:champion', namePt: 'Campeão', classKey: 'class:fighter', alwaysPrepared: [] },
+              {
+                key: 'subclass:ink@mesa',
+                namePt: 'Lâmina de Tinta',
+                classKey: 'class:fighter',
+                alwaysPrepared: [{ spellKey: 'spell:shield', classLevel: 3 }],
+                spellcasting: {
+                  preparation: 1,
+                  listClassKey: 'class:wizard',
+                  firstLevel: 3,
+                  maxSpellLevelByLevel: [0, 0, 1],
+                },
+              },
+              {
+                key: 'subclass:champion',
+                namePt: 'Campeão',
+                classKey: 'class:fighter',
+                alwaysPrepared: [],
+              },
             ],
-            backgrounds: [{ key: 'background:cartografo@mesa', namePt: 'Cartógrafo do Vale', equipmentPt: 'Uma luneta' }],
+            backgrounds: [
+              {
+                key: 'background:cartografo@mesa',
+                namePt: 'Cartógrafo do Vale',
+                equipmentPt: 'Uma luneta',
+              },
+            ],
             skills: [],
             armor: [],
             weapons: [],
-            spells: [{ key: 'spell:ink-blade@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'], archived: false, off: false }],
+            spells: [
+              {
+                key: 'spell:ink-blade@mesa',
+                namePt: 'Lâmina de Nanquim',
+                level: 1,
+                classKeys: ['class:wizard'],
+                archived: false,
+                off: false,
+              },
+            ],
             proficiencies: [
               { key: 'proficiency:smiths-tools', namePt: 'Ferramentas de ferreiro', kind: 3 - 2 },
               { key: 'proficiency:thieves-tools', namePt: 'Ferramentas de ladrão', kind: 7 },
@@ -321,15 +427,34 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
       ['race:corujeiro@mesa', true, true, [2, 1]],
     ]);
     const guardian = catalog.classes[0];
-    expect(guardian).toMatchObject({ fromTable: true, skillChoose: 2, savingThrows: ['str', 'wis'], spellListClassKey: 'class:druid', isCaster: true, spellcastingFirstLevel: 2 });
+    expect(guardian).toMatchObject({
+      fromTable: true,
+      skillChoose: 2,
+      savingThrows: ['str', 'wis'],
+      spellListClassKey: 'class:druid',
+      isCaster: true,
+      spellcastingFirstLevel: 2,
+    });
     // A class that casts nothing has no list.
-    expect(catalog.classes[1]).toMatchObject({ isCaster: false, spellListClassKey: '', skillChoose: 0 });
+    expect(catalog.classes[1]).toMatchObject({
+      isCaster: false,
+      spellListClassKey: '',
+      skillChoose: 0,
+    });
     const [ink, champion] = catalog.classes[1].subclasses;
     (source as unknown as { campaignClient: unknown }).campaignClient = {
       getCampaign: () => Promise.resolve({ campaign: { myRole: Role.MASTER } }),
     };
     expect((await source.loadCatalog('camp-1')).viewerIsMaster).toBe(true);
-    expect(ink).toMatchObject({ fromTable: true, casting: { preparation: 'known', listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1] } });
+    expect(ink).toMatchObject({
+      fromTable: true,
+      casting: {
+        preparation: 'known',
+        listClassKey: 'class:wizard',
+        firstLevel: 3,
+        maxSpellLevelByLevel: [0, 0, 1],
+      },
+    });
     expect(champion).toMatchObject({ fromTable: false, casting: null, alwaysPrepared: [] });
     expect(ink.alwaysPrepared).toEqual([{ spellKey: 'spell:shield', classLevel: 3 }]);
     expect(catalog.backgrounds[0]).toMatchObject({ fromTable: true, equipmentPt: 'Uma luneta' });
@@ -419,8 +544,14 @@ describe('a basic sheet through the editor', () => {
     expect(toBasicSheetInit(large).size).toBe(CreatureSize.LARGE);
 
     // What the master typed beyond the table survives too.
-    expect(toBasicSheetInit({ ...form, challengeRating: '1/2', xpValue: 70 })).toMatchObject({ challengeRating: '1/2', xpValue: 70 });
-    expect(toBasicSheetInit({ ...form, challengeRating: '', xpValue: 0 })).toMatchObject({ challengeRating: '', xpValue: 0 });
+    expect(toBasicSheetInit({ ...form, challengeRating: '1/2', xpValue: 70 })).toMatchObject({
+      challengeRating: '1/2',
+      xpValue: 70,
+    });
+    expect(toBasicSheetInit({ ...form, challengeRating: '', xpValue: 0 })).toMatchObject({
+      challengeRating: '',
+      xpValue: 0,
+    });
   });
 
   it('sends the old damage text back unchanged while there are no attacks', () => {

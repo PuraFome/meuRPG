@@ -19,7 +19,10 @@ function clue(to: string[] = []): SceneClue {
   return create(SceneClueSchema, {
     id: 'k3',
     text: 'Uma carta rasgada.',
-    revealedTo: to.map((characterId) => ({ characterId, revealedAt: timestampFromDate(new Date()) })),
+    revealedTo: to.map((characterId) => ({
+      characterId,
+      revealedAt: timestampFromDate(new Date()),
+    })),
   });
 }
 
@@ -55,9 +58,13 @@ describe('RevealSheet', () => {
       }
     };
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim().includes(name))!;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.trim().includes(name),
+      )!;
     const row = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLInputElement>('.rv__row input')).find((i) => i.closest('label')?.textContent?.includes(name))!;
+      Array.from(el.querySelectorAll<HTMLInputElement>('.rv__row input')).find((i) =>
+        i.closest('label')?.textContent?.includes(name),
+      )!;
     const flat = (e: Element | null) => e?.textContent?.replace(/\s+/g, ' ').trim();
     return { fixture, el, settle, button, row, flat };
   }
@@ -66,7 +73,9 @@ describe('RevealSheet', () => {
     const { el, button, settle, flat } = setup();
     expect(flat(el.querySelector('.rv__clue'))).toBe('Uma carta rasgada.');
     expect(el.querySelectorAll('.rv__row input:checked')).toHaveLength(0);
-    expect(flat(el.querySelector('.rv__summary'))).toBe('Ninguém marcado. Escolha quem recebe a pista.');
+    expect(flat(el.querySelector('.rv__summary'))).toBe(
+      'Ninguém marcado. Escolha quem recebe a pista.',
+    );
     const dashed = button('Revelar a pista');
     expect(dashed.getAttribute('aria-disabled')).toBe('true');
     expect(dashed.classList).toContain('rv__off');
@@ -92,7 +101,9 @@ describe('RevealSheet', () => {
     row('Brisa').click();
     fixture.detectChanges();
     expect(button('Revelar para Brisa').classList).toContain('mat-mdc-unelevated-button');
-    expect(flat(el.querySelector('.rv__summary'))).toBe('A pista vai para 1 de 3 jogadores: Brisa.');
+    expect(flat(el.querySelector('.rv__summary'))).toBe(
+      'A pista vai para 1 de 3 jogadores: Brisa.',
+    );
     row('Toren').click();
     fixture.detectChanges();
     expect(button('Revelar para 2 jogadores')).toBeTruthy();
@@ -153,7 +164,9 @@ describe('RevealSheet', () => {
     api.failWith = new ConnectError('x', Code.NotFound);
     button('Revelar para Brisa').click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('A pista, ou um desses personagens, não existe mais.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'A pista, ou um desses personagens, não existe mais.',
+    );
     expect(close).not.toHaveBeenCalled();
   });
 

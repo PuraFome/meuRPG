@@ -84,7 +84,9 @@ export class CreaturePick {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly announce = computed(() =>
-    this.open() && this.text().trim() !== '' && !this.busy() ? `${this.found().length} criaturas encontradas` : '',
+    this.open() && this.text().trim() !== '' && !this.busy()
+      ? `${this.found().length} criaturas encontradas`
+      : '',
   );
 
   private timer: ReturnType<typeof setTimeout> | null = null;

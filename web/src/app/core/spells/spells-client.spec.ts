@@ -11,22 +11,42 @@ describe('SpellsClient, the caches follow the content version (M8)', () => {
     asked.length = 0;
     version = 'v1';
     const transport = {
-      unary: async (method: { name: string; output: { fromJson?: unknown } }, _s: unknown, _t: unknown, _h: unknown, input: unknown) => {
+      unary: async (
+        method: { name: string; output: { fromJson?: unknown } },
+        _s: unknown,
+        _t: unknown,
+        _h: unknown,
+        input: unknown,
+      ) => {
         asked.push(method.name);
         const message =
           method.name === 'ListSpells'
             ? { spells: [], nextPageToken: '', total: 0, contentVersion: version }
             : method.name === 'GetSpellDetails'
               ? { spell: { spell: { key: (input as { spellKey: string }).spellKey } } }
-              : { content: { classes: [{ key: 'class:wizard', namePt: 'Mago' }], spells: [{ classKeys: ['class:wizard'] }] } };
-        return { stream: false, service: {}, method, header: new Headers(), trailer: new Headers(), message };
+              : {
+                  content: {
+                    classes: [{ key: 'class:wizard', namePt: 'Mago' }],
+                    spells: [{ classKeys: ['class:wizard'] }],
+                  },
+                };
+        return {
+          stream: false,
+          service: {},
+          method,
+          header: new Headers(),
+          trailer: new Headers(),
+          message,
+        };
       },
     };
-    TestBed.configureTestingModule({ providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
     return TestBed.inject(SpellsClient);
   }
 
-  it('keeps a spell\'s details and the class names until the version changes, then reads them again', async () => {
+  it("keeps a spell's details and the class names until the version changes, then reads them again", async () => {
     const c = client();
     await c.list({ campaignId: 'camp-1' });
     await c.details('camp-1', 'spell:a');

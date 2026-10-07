@@ -1,4 +1,13 @@
-import { Component, DestroyRef, HostListener, Injector, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  Injector,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -83,9 +92,7 @@ export class MapPage {
 
   protected readonly state = new MapState((mapId) => this.api.get(this.campaignId(), mapId));
   protected readonly map = this.state.map;
-  protected readonly others = computed(() =>
-    this.maps().map((m) => ({ id: m.id, name: m.name })),
-  );
+  protected readonly others = computed(() => this.maps().map((m) => ({ id: m.id, name: m.name })));
   /** The player's list: revealed maps, and the one open. */
   protected readonly playerMaps = computed(() => this.maps());
 

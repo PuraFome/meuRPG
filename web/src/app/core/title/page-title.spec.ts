@@ -17,7 +17,7 @@ class Page {
 @Component({ template: '' })
 class Other {}
 
-describe('the tab\'s title', () => {
+describe("the tab's title", () => {
   let title: Title;
   let router: Router;
 
@@ -37,12 +37,12 @@ describe('the tab\'s title', () => {
     router = TestBed.inject(Router);
   });
 
-  it('is the route\'s title, then the app\'s name', async () => {
+  it("is the route's title, then the app's name", async () => {
     await router.navigateByUrl('/two');
     expect(title.getTitle()).toBe('Ficha · MeuRPG');
   });
 
-  it('is only the app\'s name for a route with no title', async () => {
+  it("is only the app's name for a route with no title", async () => {
     await router.navigateByUrl('/bare');
     expect(title.getTitle()).toBe('MeuRPG');
   });
@@ -60,7 +60,7 @@ describe('the tab\'s title', () => {
     expect(title.getTitle()).toBe('Campanha · MeuRPG');
   });
 
-  it('never shows the previous page\'s name on the next page', async () => {
+  it("never shows the previous page's name on the next page", async () => {
     await router.navigateByUrl('/one');
     const page = TestBed.createComponent(Page);
     page.componentInstance.name.set('Mirathel');
@@ -111,7 +111,7 @@ describe('every route has a title (WCAG 2.4.2)', () => {
     expect(missing(CONTENT_ROUTES, false, '/content')).toEqual([]);
   });
 
-  it('is a sentence-case Portuguese name, never the app\'s name twice', () => {
+  it("is a sentence-case Portuguese name, never the app's name twice", () => {
     for (const r of routes) {
       expect(r.title).toBeTypeOf('string');
       expect(r.title).not.toContain('MeuRPG');

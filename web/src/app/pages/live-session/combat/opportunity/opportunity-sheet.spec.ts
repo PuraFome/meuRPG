@@ -8,7 +8,8 @@ import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { OpportunitySheet, type OpportunitySheetData } from './opportunity-sheet';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 // Goblin 2 leaves Toren's reach (E9-13, frames C and G).
 const offer = create(OpportunityOfferSchema, {
@@ -20,9 +21,20 @@ const offer = create(OpportunityOfferSchema, {
   forYou: true,
 });
 
-function setup(opts: { present?: boolean; fail?: boolean; attacks?: { key: string; name: string; detail: string; attack: null }[] } = {}) {
+function setup(
+  opts: {
+    present?: boolean;
+    fail?: boolean;
+    attacks?: { key: string; name: string; detail: string; attack: null }[];
+  } = {},
+) {
   const state = new CombatState();
-  state.apply(encounter({ combatants: [combatant({ id: 'g2', label: 'Goblin 2' })], opportunityOffers: opts.present === false ? [] : [offer] }));
+  state.apply(
+    encounter({
+      combatants: [combatant({ id: 'g2', label: 'Goblin 2' })],
+      opportunityOffers: opts.present === false ? [] : [offer],
+    }),
+  );
   const declined: string[] = [];
   const closed: unknown[] = [];
   const data: OpportunitySheetData = {
@@ -34,7 +46,17 @@ function setup(opts: { present?: boolean; fail?: boolean; attacks?: { key: strin
       if (opts.fail) {
         throw new Error('down');
       }
-      return { attacks: opts.attacks ?? [{ key: 'attack:longsword', name: 'Espada longa', detail: 'Espada longa +5 · 1d8 + 3 cortante', attack: null }], options: {} as never };
+      return {
+        attacks: opts.attacks ?? [
+          {
+            key: 'attack:longsword',
+            name: 'Espada longa',
+            detail: 'Espada longa +5 · 1d8 + 3 cortante',
+            attack: null,
+          },
+        ],
+        options: {} as never,
+      };
     },
     state,
   };
@@ -68,21 +90,32 @@ describe('OpportunitySheet', () => {
     expect(text).toContain('Goblin 2 · Rodada 2');
     expect(text).toContain('O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?');
     expect(text).toContain('Gasta a sua reação.');
-    expect(plain(el.querySelector('.weapons li')?.textContent)).toBe('Espada longa +5 · 1d8 + 3 cortante');
+    expect(plain(el.querySelector('.weapons li')?.textContent)).toBe(
+      'Espada longa +5 · 1d8 + 3 cortante',
+    );
     expect(text).not.toMatch(/CA \d/);
   });
 
   it('stacks the answers, "Não atacar" first and marked for the initial focus, one filled button, and no close button', async () => {
     const { fixture, el } = setup({
       attacks: [
-        { key: 'a', name: 'Espada longa', detail: 'Espada longa +5 · 1d8 + 3 cortante', attack: null },
+        {
+          key: 'a',
+          name: 'Espada longa',
+          detail: 'Espada longa +5 · 1d8 + 3 cortante',
+          attack: null,
+        },
         { key: 'b', name: 'Adaga', detail: 'Adaga +5 · 1d4 + 3 perfurante', attack: null },
       ],
     });
     await fixture.whenStable();
     fixture.detectChanges();
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.stack .btn'));
-    expect(buttons.map((b) => plain(b.textContent))).toEqual(['Não atacar', 'Atacar com Espada longa', 'Atacar com Adaga']);
+    expect(buttons.map((b) => plain(b.textContent))).toEqual([
+      'Não atacar',
+      'Atacar com Espada longa',
+      'Atacar com Adaga',
+    ]);
     expect(buttons[0].hasAttribute('data-initial-focus')).toBe(true);
     // The same width (full) for all, and one filled button: the first weapon's.
     expect(buttons.every((b) => b.classList.contains('btn'))).toBe(true);
@@ -94,7 +127,9 @@ describe('OpportunitySheet', () => {
   it('keeps the attack buttons off until the attacks are read, and says why', () => {
     const { el } = setup();
     expect(plain(el.textContent)).toContain('Lendo os seus ataques…');
-    const attack = Array.from(el.querySelectorAll<HTMLButtonElement>('.stack .btn')).find((b) => plain(b.textContent) === 'Atacar')!;
+    const attack = Array.from(el.querySelectorAll<HTMLButtonElement>('.stack .btn')).find(
+      (b) => plain(b.textContent) === 'Atacar',
+    )!;
     expect(attack.disabled || attack.getAttribute('aria-disabled') === 'true').toBe(true);
   });
 
@@ -126,6 +161,8 @@ describe('OpportunitySheet', () => {
   it('says so when the master answered first, and only closes', () => {
     const { el } = setup({ present: false });
     expect(plain(el.textContent)).toContain('O mestre respondeu por você');
-    expect(Array.from(el.querySelectorAll('.btn'), (b) => plain(b.textContent))).toEqual(['Fechar']);
+    expect(Array.from(el.querySelectorAll('.btn'), (b) => plain(b.textContent))).toEqual([
+      'Fechar',
+    ]);
   });
 });

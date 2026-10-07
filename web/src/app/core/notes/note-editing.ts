@@ -44,7 +44,9 @@ export class NoteEditing {
   readonly dirty = computed(() => {
     const note = this.editing();
     const text = this.typed().trim();
-    return note ? text !== note.text || this.sceneId() !== note.scenePointId : text !== '' || this.sceneId() !== this.startScene;
+    return note
+      ? text !== note.text || this.sceneId() !== note.scenePointId
+      : text !== '' || this.sceneId() !== this.startScene;
   });
 
   private startScene = '';

@@ -24,7 +24,9 @@ describe('the archive question (E10-01 states 8 and 10)', () => {
     it('asks with the warning and how many sheets use it, in words that suit a race and a background alike', () => {
       const { el } = setup();
       expect(text(el)).toContain('Arquivar Corujeiro?');
-      expect(text(el)).toContain('As fichas que usam Corujeiro continuam funcionando. A entrada só deixa de aparecer para fichas novas.');
+      expect(text(el)).toContain(
+        'As fichas que usam Corujeiro continuam funcionando. A entrada só deixa de aparecer para fichas novas.',
+      );
       expect(text(el)).toContain('2 fichas usam Corujeiro agora.');
       // No word that takes a gender: it reads the same for a spell, a race and a background.
       expect(text(el)).not.toMatch(/continuam com (ele|ela)/);
@@ -70,14 +72,19 @@ describe('the archive question (E10-01 states 8 and 10)', () => {
     it('asks in a frame whose title is the question, with the same neutral warning and how many sheets use it', () => {
       const { el } = setup('Guardião do Vale', 2);
       expect(text(el)).toContain('Arquivar Guardião do Vale?');
-      expect(text(el)).toContain('As fichas que usam Guardião do Vale continuam funcionando. A entrada só deixa de aparecer para fichas novas.');
+      expect(text(el)).toContain(
+        'As fichas que usam Guardião do Vale continuam funcionando. A entrada só deixa de aparecer para fichas novas.',
+      );
       expect(text(el)).toContain('2 fichas usam Guardião do Vale agora.');
       expect(text(setup('Bardo', 0).el)).toContain('Nenhuma ficha usa Bardo agora.');
     });
 
     it('answers true on "Arquivar" and false on "Voltar" and on the X', () => {
       const { el, close } = setup();
-      const byText = (label: string) => Array.from(el.querySelectorAll('button')).find((b) => text(b).includes(label) || b.getAttribute('aria-label') === label)!;
+      const byText = (label: string) =>
+        Array.from(el.querySelectorAll('button')).find(
+          (b) => text(b).includes(label) || b.getAttribute('aria-label') === label,
+        )!;
       byText('Arquivar').click();
       expect(close).toHaveBeenLastCalledWith(true);
       byText('Voltar').click();

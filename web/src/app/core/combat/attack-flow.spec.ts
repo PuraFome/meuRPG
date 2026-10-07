@@ -28,11 +28,9 @@ describe('the attack sheet steps', () => {
   });
 
   it('names the outcome', () => {
-    expect([AttackOutcome.HIT, AttackOutcome.CRITICAL_HIT, AttackOutcome.MISS].map(outcomeWord)).toEqual([
-      'Acertou',
-      'Crítico',
-      'Errou',
-    ]);
+    expect(
+      [AttackOutcome.HIT, AttackOutcome.CRITICAL_HIT, AttackOutcome.MISS].map(outcomeWord),
+    ).toEqual(['Acertou', 'Crítico', 'Errou']);
   });
 });
 
@@ -40,8 +38,19 @@ describe('the targets', () => {
   it('writes the state word and the distance, and blocks one that is too far', () => {
     const rows = targetRows(
       [
-        create(TargetInReachSchema, { combatantId: 'c', label: 'Capitão Goblin', state: CombatantState.HURT, distanceFt: 25 }),
-        create(TargetInReachSchema, { combatantId: 'g', label: 'Goblin 2', state: CombatantState.UNHURT, distanceFt: 40, tooFar: true }),
+        create(TargetInReachSchema, {
+          combatantId: 'c',
+          label: 'Capitão Goblin',
+          state: CombatantState.HURT,
+          distanceFt: 25,
+        }),
+        create(TargetInReachSchema, {
+          combatantId: 'g',
+          label: 'Goblin 2',
+          state: CombatantState.UNHURT,
+          distanceFt: 40,
+          tooFar: true,
+        }),
       ],
       120,
     );
@@ -56,10 +65,36 @@ describe('the targets', () => {
   it('names the cover of each target with its source, disables a mark of total cover and leaves out a wall (E9-07)', () => {
     const rows = targetRows(
       [
-        create(TargetInReachSchema, { combatantId: 'g2', label: 'Goblin 2', distanceFt: 25, cover: CoverDegree.HALF, coverSource: CoverSource.MAP }),
-        create(TargetInReachSchema, { combatantId: 'c', label: 'Capitão Goblin', distanceFt: 35, cover: CoverDegree.THREE_QUARTERS, coverSource: CoverSource.MAP }),
-        create(TargetInReachSchema, { combatantId: 'g1', label: 'Goblin 1', distanceFt: 30, cover: CoverDegree.TOTAL, coverSource: CoverSource.MAP, untargetable: true }),
-        create(TargetInReachSchema, { combatantId: 'g3', label: 'Goblin 3', distanceFt: 20, cover: CoverDegree.TOTAL, coverSource: CoverSource.MARK, untargetable: true }),
+        create(TargetInReachSchema, {
+          combatantId: 'g2',
+          label: 'Goblin 2',
+          distanceFt: 25,
+          cover: CoverDegree.HALF,
+          coverSource: CoverSource.MAP,
+        }),
+        create(TargetInReachSchema, {
+          combatantId: 'c',
+          label: 'Capitão Goblin',
+          distanceFt: 35,
+          cover: CoverDegree.THREE_QUARTERS,
+          coverSource: CoverSource.MAP,
+        }),
+        create(TargetInReachSchema, {
+          combatantId: 'g1',
+          label: 'Goblin 1',
+          distanceFt: 30,
+          cover: CoverDegree.TOTAL,
+          coverSource: CoverSource.MAP,
+          untargetable: true,
+        }),
+        create(TargetInReachSchema, {
+          combatantId: 'g3',
+          label: 'Goblin 3',
+          distanceFt: 20,
+          cover: CoverDegree.TOTAL,
+          coverSource: CoverSource.MARK,
+          untargetable: true,
+        }),
         create(TargetInReachSchema, { combatantId: 'g4', label: 'Goblin 4', distanceFt: 20 }),
       ],
       120,
@@ -74,7 +109,10 @@ describe('the targets', () => {
   });
 
   it('says what happened to the target', () => {
-    const defeated = create(PendingDamageSchema, { status: PendingDamageStatus.APPLIED, targetDefeated: true });
+    const defeated = create(PendingDamageSchema, {
+      status: PendingDamageStatus.APPLIED,
+      targetDefeated: true,
+    });
     expect(targetAfter('Goblin 2', false, defeated, 'Derrotado')).toBe('Goblin 2 derrotado');
     const rolled = create(PendingDamageSchema, { status: PendingDamageStatus.ROLLED });
     expect(targetAfter('Toren', true, rolled, '')).toBe('Esperando o mestre aplicar o dano');

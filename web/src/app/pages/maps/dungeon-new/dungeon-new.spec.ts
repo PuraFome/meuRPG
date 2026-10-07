@@ -6,7 +6,12 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { DungeonCorridorStyle, DungeonDoorMix, DungeonMask, DungeonOptionRefusedSchema } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
+import {
+  DungeonCorridorStyle,
+  DungeonDoorMix,
+  DungeonMask,
+  DungeonOptionRefusedSchema,
+} from '../../../../gen/meurpg/maps/v1/dungeons_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { FakeDungeonsClient } from '../../../core/maps/dungeons-testing';
@@ -15,7 +20,10 @@ import { DungeonNew, PREVIEW_DELAY_MS } from './dungeon-new';
 @Component({ template: 'editor' })
 class Stub {}
 
-const refused = (option: string) => new ConnectError('refused', Code.InvalidArgument, undefined, [{ desc: DungeonOptionRefusedSchema, value: create(DungeonOptionRefusedSchema, { option }) }]);
+const refused = (option: string) =>
+  new ConnectError('refused', Code.InvalidArgument, undefined, [
+    { desc: DungeonOptionRefusedSchema, value: create(DungeonOptionRefusedSchema, { option }) },
+  ]);
 
 describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
   let api: FakeDungeonsClient;
@@ -23,7 +31,12 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
 
   async function open(options: { role?: Role; phone?: boolean; campaignFails?: boolean } = {}) {
     api = new FakeDungeonsClient();
-    vi.stubGlobal('matchMedia', (query: string) => ({ matches: !!options.phone && query.includes('767'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: !!options.phone && query.includes('767'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -38,7 +51,13 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
               if (options.campaignFails) {
                 throw new ConnectError('down', Code.Unavailable);
               }
-              return { campaign: { name: 'Mirathel', myRole: options.role ?? Role.MASTER, awaitingApproval: false } };
+              return {
+                campaign: {
+                  name: 'Mirathel',
+                  myRole: options.role ?? Role.MASTER,
+                  awaitingApproval: false,
+                },
+              };
             },
           },
         },
@@ -79,10 +98,18 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
   });
 
   const text = (el: HTMLElement) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const button = (el: HTMLElement, label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim().endsWith(label))!;
-  const radio = (el: HTMLElement, label: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(label))!;
+  const button = (el: HTMLElement, label: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.trim().endsWith(label),
+    )!;
+  const radio = (el: HTMLElement, label: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) =>
+      b.textContent?.trim().endsWith(label),
+    )!;
   const field = (el: HTMLElement, label: string) =>
-    Array.from(el.querySelectorAll('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.trim() === label)!.querySelector('input')!;
+    Array.from(el.querySelectorAll('mat-form-field'))
+      .find((f) => f.querySelector('mat-label')?.textContent?.trim() === label)!
+      .querySelector('input')!;
   function type(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -96,7 +123,17 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       await debounced();
       expect(api.previewRequests).toHaveLength(1);
       expect(api.previewRequests[0]!.seed).toBeUndefined();
-      expect(api.previewRequests[0]!.options).toMatchObject({ width: 31, height: 21, mask: DungeonMask.NONE, roomSideMin: 3, roomSideMax: 9, corridorStyle: DungeonCorridorStyle.MEANDERING, doorMix: DungeonDoorMix.TYPICAL, deadendRemoval: 60, stairs: 2 });
+      expect(api.previewRequests[0]!.options).toMatchObject({
+        width: 31,
+        height: 21,
+        mask: DungeonMask.NONE,
+        roomSideMin: 3,
+        roomSideMax: 9,
+        corridorStyle: DungeonCorridorStyle.MEANDERING,
+        doorMix: DungeonDoorMix.TYPICAL,
+        deadendRemoval: 60,
+        stairs: 2,
+      });
       expect(el.querySelector('app-dungeon-preview [role="img"]')).toBeTruthy();
       // The seed the server drew fills the field, and "Criar o mapa" is on.
       expect(field(el, 'Semente').value).toBe('48213');
@@ -106,7 +143,9 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
     it('says under the preview that the map is born hidden, with the fog on and the base light "Clara"', async () => {
       const { el, debounced } = await open();
       await debounced();
-      expect(text(el)).toContain('O mapa nasce escondido dos jogadores, com a névoa ligada e a luz de base “Clara” (você muda no mapa).');
+      expect(text(el)).toContain(
+        'O mapa nasce escondido dos jogadores, com a névoa ligada e a luz de base “Clara” (você muda no mapa).',
+      );
     });
 
     it('draws the counts and the legend of what the preview shows, with the passages apart', async () => {
@@ -117,7 +156,15 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       expect(words).toContain('4 portas e 1 passagem');
       expect(words).toContain('2 escadas');
       expect(words).toContain('11 × 9 quadrados');
-      for (const entry of ['Parede', 'Porta fechada', 'Porta trancada (só você vê)', 'Grade', 'Porta secreta (só você vê)', 'Escada para cima', 'Escada para baixo']) {
+      for (const entry of [
+        'Parede',
+        'Porta fechada',
+        'Porta trancada (só você vê)',
+        'Grade',
+        'Porta secreta (só você vê)',
+        'Escada para cima',
+        'Escada para baixo',
+      ]) {
         expect(words).toContain(entry);
       }
       // A passage is floor: no legend entry.
@@ -134,7 +181,11 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       expect(api.previewRequests).toHaveLength(1);
       await debounced();
       expect(api.previewRequests).toHaveLength(2);
-      expect(api.previewRequests[1]!.options).toMatchObject({ width: 51, height: 35, mask: DungeonMask.DONUT });
+      expect(api.previewRequests[1]!.options).toMatchObject({
+        width: 51,
+        height: 35,
+        mask: DungeonMask.DONUT,
+      });
       // The seed on screen goes with the request: the same seed, the new options.
       expect(api.previewRequests[1]!.seed).toBe(48213n);
     });
@@ -244,7 +295,7 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       expect(el.querySelector('app-dungeon-preview')).toBeTruthy();
     });
 
-    it('puts the server\'s refusal on the field it names', async () => {
+    it("puts the server's refusal on the field it names", async () => {
       const { el, debounced, settle } = await open();
       await debounced();
       api.failWith.set('preview', refused('room_side_max'));
@@ -252,7 +303,9 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       await settle();
       radio(el, 'Retos').click();
       await debounced();
-      expect(text(el)).toContain('O maior lado das salas vai até 31 quadrados e não pode ser menor que o menor.');
+      expect(text(el)).toContain(
+        'O maior lado das salas vai até 31 quadrados e não pode ser menor que o menor.',
+      );
       expect(field(el, 'Maior lado').getAttribute('aria-invalid')).toBe('true');
       expect(text(el)).toContain('Corrija as opções marcadas para ver a masmorra.');
       // Changing an option clears the server's reason: the page asks again.
@@ -285,7 +338,9 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       const { el, debounced, settle } = await open();
       api.failWith.set('preview', new ConnectError('down', Code.Unavailable));
       await debounced();
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para gerar a prévia.');
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'Não deu para gerar a prévia.',
+      );
       expect(text(el)).toContain('As opções continuam as mesmas.');
       expect(text(el)).toContain('Sem a prévia não dá para criar o mapa.');
       api.failWith.delete('preview');
@@ -341,7 +396,9 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       await vi.advanceTimersByTimeAsync(450);
       await settle();
       const words = text(el);
-      expect(el.querySelector('.work__status')?.textContent).toBe('Criando o mapa. Costuma levar poucos segundos.');
+      expect(el.querySelector('.work__status')?.textContent).toBe(
+        'Criando o mapa. Costuma levar poucos segundos.',
+      );
       expect(el.querySelector('.work__status')?.getAttribute('role')).toBe('status');
       expect(el.querySelector('[aria-current]')).toBeNull();
       expect(words).not.toContain('Desenhar a imagem');
@@ -349,8 +406,13 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       expect(words).toContain('Semente 48213');
       expect(words).toContain('As opções ficam travadas enquanto o mapa é criado.');
       expect(words).toContain('Se você sair desta tela, ele continua sendo criado');
-      expect(el.querySelector('mat-progress-bar')?.getAttribute('aria-label')).toBe('Criando o mapa');
-      expect(button(el, 'Criando o mapa...').disabled || button(el, 'Criando o mapa...').getAttribute('aria-disabled') === 'true').toBe(true);
+      expect(el.querySelector('mat-progress-bar')?.getAttribute('aria-label')).toBe(
+        'Criando o mapa',
+      );
+      expect(
+        button(el, 'Criando o mapa...').disabled ||
+          button(el, 'Criando o mapa...').getAttribute('aria-disabled') === 'true',
+      ).toBe(true);
       expect(el.querySelector('app-dungeon-options')).toBeNull();
       release();
       await settle();

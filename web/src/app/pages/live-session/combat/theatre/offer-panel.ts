@@ -1,4 +1,14 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -75,7 +85,9 @@ export class OfferPanel {
 
   protected readonly id = `offer-${nextId++}`;
   protected readonly picked = signal('');
-  protected readonly mover = computed(() => tieNumbers(`${cap(article(this.moverLabel()))} ${this.moverLabel()}`));
+  protected readonly mover = computed(() =>
+    tieNumbers(`${cap(article(this.moverLabel()))} ${this.moverLabel()}`),
+  );
   protected readonly toName = computed(() => {
     const r = this.rows().find((x) => x.id === this.picked());
     return r ? tieNumbers(`a ${r.label}`) : '';
@@ -89,7 +101,9 @@ export class OfferPanel {
         if (first) {
           this.picked.set(first.id);
         }
-        queueMicrotask(() => this.host.nativeElement.querySelector<HTMLInputElement>('input:checked')?.focus());
+        queueMicrotask(() =>
+          this.host.nativeElement.querySelector<HTMLInputElement>('input:checked')?.focus(),
+        );
       },
       { injector: this.injector },
     );

@@ -6,16 +6,29 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
-import { DiceMode, DicePreference, Role } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  DiceMode,
+  DicePreference,
+  Role,
+} from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../../gen/meurpg/characters/v1/characters_pb';
-import { type Encounter, EncounterBlockedReason, EncounterMode } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  EncounterBlockedReason,
+  EncounterMode,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { DiceOption } from '../../../../core/campaigns/dice-labels';
 import { TableRulesClient } from '../../../../core/campaigns/table-rules';
 import { THEATRE_WHY, THEATRE_WHY_DIALOG } from '../../../../core/combat/theatre';
 import { DiceChoice } from '../../../../shared/dice-choice/dice-choice';
 import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
-import { CombatClient, type JoinSpec, type MonsterHp, newKey } from '../../../../core/combat/combat-client';
+import {
+  CombatClient,
+  type JoinSpec,
+  type MonsterHp,
+  newKey,
+} from '../../../../core/combat/combat-client';
 import { becomesText } from '../../../../core/combat/monsters';
 import { HiddenSwitch } from '../../../../shared/hidden-switch/hidden-switch';
 import { type Segment, Segmented } from '../move-page/segmented';
@@ -129,16 +142,27 @@ export class StartCombatDialog {
     {
       value: EncounterMode.THEATRE,
       title: 'Sem mapa (teatro da mente)',
-      description: 'Só a ordem, o movimento por número e a sua palavra: você decide quem está ao alcance. Não precisa de mapa.',
+      description:
+        'Só a ordem, o movimento por número e a sua palavra: você decide quem está ao alcance. Não precisa de mapa.',
     },
   ];
   /** "Com mapa" waits when the session has no map: dashed, with the reason where its line is. */
-  protected readonly modeInert = computed<readonly EncounterMode[]>(() => (this.mapReady() ? [] : [EncounterMode.GRID]));
+  protected readonly modeInert = computed<readonly EncounterMode[]>(() =>
+    this.mapReady() ? [] : [EncounterMode.GRID],
+  );
   protected readonly modeNotes = computed<Partial<Record<number, string>>>(() =>
-    this.mapReady() ? {} : { [EncounterMode.GRID]: this.data.map ? 'O mapa atual não tem grade.' : 'A sessão não tem um mapa atual.' },
+    this.mapReady()
+      ? {}
+      : {
+          [EncounterMode.GRID]: this.data.map
+            ? 'O mapa atual não tem grade.'
+            : 'A sessão não tem um mapa atual.',
+        },
   );
   /** A map with a grid: a map without one counts as no map for "Com mapa". */
-  private readonly mapReady = computed(() => !!this.data.map && this.data.map.columns > 0 && !this.noGridMap());
+  private readonly mapReady = computed(
+    () => !!this.data.map && this.data.map.columns > 0 && !this.noGridMap(),
+  );
   protected readonly why = THEATRE_WHY;
   protected readonly whyMore = THEATRE_WHY_DIALOG;
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
@@ -152,7 +176,10 @@ export class StartCombatDialog {
     { value: 'average', label: 'Média' },
     { value: 'rolled', label: 'Rolar' },
   ];
-  protected readonly monsterRows = (this.saved?.groups ?? []).map((g) => ({ ...g, becomes: becomesText(g.name || g.namePt, g.count) }));
+  protected readonly monsterRows = (this.saved?.groups ?? []).map((g) => ({
+    ...g,
+    becomes: becomesText(g.name || g.namePt, g.count),
+  }));
   protected readonly monsterTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -165,14 +192,24 @@ export class StartCombatDialog {
   protected readonly counts = signal<ReadonlyMap<string, number>>(new Map());
   protected readonly hiddenAt = signal<ReadonlyMap<string, boolean>>(new Map());
 
-  protected readonly players = computed(() => this.entries().filter((e) => e.kind === CharacterKind.PLAYER));
-  protected readonly npcs = computed(() => this.entries().filter((e) => e.kind !== CharacterKind.PLAYER));
+  protected readonly players = computed(() =>
+    this.entries().filter((e) => e.kind === CharacterKind.PLAYER),
+  );
+  protected readonly npcs = computed(() =>
+    this.entries().filter((e) => e.kind !== CharacterKind.PLAYER),
+  );
   protected readonly npcTotal = computed(() =>
     this.npcs().reduce((sum, n) => sum + (this.counts().get(n.id) ?? 0), 0),
   );
-  protected readonly npcKinds = computed(() => this.npcs().filter((n) => (this.counts().get(n.id) ?? 0) > 0).length);
+  protected readonly npcKinds = computed(
+    () => this.npcs().filter((n) => (this.counts().get(n.id) ?? 0) > 0).length,
+  );
   protected readonly total = computed(
-    () => (this.adding ? 0 : this.included().size) + this.npcTotal() + this.monsterTotal + (this.data.existing ?? 0),
+    () =>
+      (this.adding ? 0 : this.included().size) +
+      this.npcTotal() +
+      this.monsterTotal +
+      (this.data.existing ?? 0),
   );
   protected readonly hasGrid = computed(() => this.adding || (this.data.map?.columns ?? 0) > 0);
   protected readonly gridMapId = computed(() => this.noGridMap() ?? this.data.map?.id ?? null);
@@ -185,7 +222,9 @@ export class StartCombatDialog {
         }
       : null;
   });
-  protected readonly nameOk = computed(() => this.name().trim().length >= 1 && this.name().trim().length <= 80);
+  protected readonly nameOk = computed(
+    () => this.name().trim().length >= 1 && this.name().trim().length <= 80,
+  );
   /** Why the main button waits, or `null` when it can go. */
   protected readonly blocked = computed(() => {
     if (this.state() !== 'ready') {
@@ -258,12 +297,16 @@ export class StartCombatDialog {
         new Map(
           entries.map((e) => [
             e.id,
-            preferenceLabel(effectivePreference(mode, byUser.get(e.playerUserId) ?? DicePreference.APP)),
+            preferenceLabel(
+              effectivePreference(mode, byUser.get(e.playerUserId) ?? DicePreference.APP),
+            ),
           ]),
         ),
       );
       this.entries.set(entries);
-      this.included.set(new Set(entries.filter((e) => e.kind === CharacterKind.PLAYER).map((e) => e.id)));
+      this.included.set(
+        new Set(entries.filter((e) => e.kind === CharacterKind.PLAYER).map((e) => e.id)),
+      );
       this.state.set('ready');
     } catch {
       this.state.set('error');
@@ -329,7 +372,11 @@ export class StartCombatDialog {
     this.busy.set(true);
     this.error.set('');
     const specs: JoinSpec[] = [
-      ...(this.adding ? [] : this.players().filter((p) => this.included().has(p.id)).map((p) => ({ characterId: p.id }))),
+      ...(this.adding
+        ? []
+        : this.players()
+            .filter((p) => this.included().has(p.id))
+            .map((p) => ({ characterId: p.id }))),
       ...this.npcs()
         .filter((n) => (this.counts().get(n.id) ?? 0) > 0)
         .map((n) => ({
@@ -349,7 +396,11 @@ export class StartCombatDialog {
             this.saved
               ? {
                   mode: this.playMode(),
-                  monsters: this.saved.groups.map((g) => ({ creatureKey: g.key, count: g.count, name: g.name })),
+                  monsters: this.saved.groups.map((g) => ({
+                    creatureKey: g.key,
+                    count: g.count,
+                    name: g.name,
+                  })),
                   monsterHp: this.monsterHp(),
                   monstersHidden: this.monstersHidden(),
                   mapPointId: this.saved.pointId,
@@ -363,7 +414,9 @@ export class StartCombatDialog {
       if (blocked?.reason === EncounterBlockedReason.MAP_HAS_NO_GRID) {
         this.noGridMap.set(blocked.mapId || this.data.map?.id || null);
       }
-      this.error.set(combatErrorMessage(err, this.adding ? 'adicionar os combatentes' : 'iniciar o combate'));
+      this.error.set(
+        combatErrorMessage(err, this.adding ? 'adicionar os combatentes' : 'iniciar o combate'),
+      );
     }
   }
 }

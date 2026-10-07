@@ -35,8 +35,16 @@ const NAME_MAX = 80;
 
 /** The roles a basic sheet can take: the full-sheet ones (Inimigo, Boss) need a class and a race, so they are not offered. */
 const ROLES: readonly { value: NpcRole; label: string; hint: string }[] = [
-  { value: 'minion', label: 'Minion', hint: 'Um capanga: ficha simples, entra nos combates como inimigo.' },
-  { value: 'story', label: 'NPC de história', hint: 'Um personagem da trama: ficha simples, para conversar e interpretar.' },
+  {
+    value: 'minion',
+    label: 'Minion',
+    hint: 'Um capanga: ficha simples, entra nos combates como inimigo.',
+  },
+  {
+    value: 'story',
+    label: 'NPC de história',
+    hint: 'Um personagem da trama: ficha simples, para conversar e interpretar.',
+  },
 ];
 
 /**
@@ -84,9 +92,13 @@ export class CreateNpcSheet {
   protected readonly creatureName = computed(() => this.c.summary?.namePt ?? '');
   protected readonly englishName = computed(() => this.c.summary?.name ?? '');
   protected readonly challenge = computed(() => `ND ${this.c.summary?.challengeRating ?? '0'}`);
-  protected readonly roleHint = computed(() => ROLES.find((r) => r.value === this.role())?.hint ?? '');
+  protected readonly roleHint = computed(
+    () => ROLES.find((r) => r.value === this.role())?.hint ?? '',
+  );
   protected readonly speed = metersText(npcSpeedFt(this.c));
-  protected readonly oneLine = tieNumbers(`CA ${this.c.armorClass} · PV ${this.c.hitPoints} · ${this.speed}`);
+  protected readonly oneLine = tieNumbers(
+    `CA ${this.c.armorClass} · PV ${this.c.hitPoints} · ${this.speed}`,
+  );
   /** The attacks that go along come from the server (`npc_attack_names`: the same function that builds the sheet). */
   protected readonly attackNote = computed(() => {
     const names = this.c.npcAttackNames;
@@ -118,7 +130,13 @@ export class CreateNpcSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const made = await this.client.createNpc(this.data.campaignId, this.c.summary?.key ?? '', name, this.role(), this.key);
+      const made = await this.client.createNpc(
+        this.data.campaignId,
+        this.c.summary?.key ?? '',
+        name,
+        this.role(),
+        this.key,
+      );
       const sheet = made?.sheet?.content;
       const attacks = sheet?.case === 'basic' ? sheet.value.attacks.map((a) => a.name) : [];
       this.sheet.close({ id: made?.id ?? '', name: made?.name ?? name, attacks, existed: false });

@@ -1,4 +1,11 @@
-import { CombatantKind, CombatantSide, CombatantState, CoverDegree, EncounterMode, OpportunityOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CombatantSide,
+  CombatantState,
+  CoverDegree,
+  EncounterMode,
+  OpportunityOfferSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { create } from '@bufbuild/protobuf';
 import { combatant, encounter } from './combat-testing';
 import {
@@ -18,13 +25,23 @@ import {
 /** The app writes a number and its unit with a non-breaking space. */
 const nb = (text: string) => text.replace(/ /g, '\u00a0');
 
-const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY });
+const toren = combatant({
+  id: 't',
+  label: 'Toren',
+  kind: CombatantKind.PLAYER,
+  side: CombatantSide.PARTY,
+});
 const g1 = combatant({ id: 'g1', label: 'Goblin 1' });
 const cap = combatant({ id: 'cap', label: 'Capitão Goblin' });
-const brisa = combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY });
+const brisa = combatant({
+  id: 'b',
+  label: 'Brisa',
+  kind: CombatantKind.PLAYER,
+  side: CombatantSide.PARTY,
+});
 
 describe('combat without a map', () => {
-  it('branches on the encounter\'s mode', () => {
+  it("branches on the encounter's mode", () => {
     expect(isTheatre(encounter({ mode: EncounterMode.THEATRE }))).toBe(true);
     expect(isTheatre(encounter({ mode: EncounterMode.GRID }))).toBe(false);
     // A combat the server did not tell the mode of is a map one.
@@ -50,7 +67,7 @@ describe('combat without a map', () => {
       expect(clampSpend(900, 1000)).toBe(600);
     });
 
-    it('says what is left after the amount, from the server\'s numbers (the artboard: 6,0 m of 9,0 m leaves 3,0 m)', () => {
+    it("says what is left after the amount, from the server's numbers (the artboard: 6,0 m of 9,0 m leaves 3,0 m)", () => {
       const plan = spendPlan(c, 20);
       expect(plan.amount).toBe(nb('6,0 m'));
       expect(plan.after).toBe(nb('3,0 m'));
@@ -73,7 +90,10 @@ describe('combat without a map', () => {
     });
 
     it('reads what is left after a turn that already spent some', () => {
-      const plan = spendPlan({ speedDft: 300, movementLeftDft: 100, movementLeftFt: 10, movementUsedDft: 200 }, 5);
+      const plan = spendPlan(
+        { speedDft: 300, movementLeftDft: 100, movementLeftFt: 10, movementUsedDft: 200 },
+        5,
+      );
       expect(plan.spent).toBe(nb('6,0 m'));
       expect(plan.left).toBe(nb('3,0 m'));
       expect(plan.after).toBe(nb('1,5 m'));
@@ -82,14 +102,28 @@ describe('combat without a map', () => {
     });
   });
 
-  describe('the master\'s offer', () => {
+  describe("the master's offer", () => {
     it('lists the other side of whoever is on turn, standing, in the order the combat has them', () => {
       const e = encounter({
         mode: EncounterMode.THEATRE,
         currentCombatantId: 'g1',
-        combatants: [brisa, g1, toren, cap, combatant({ id: 'x', label: 'Goblin 3', defeated: true })],
+        combatants: [
+          brisa,
+          g1,
+          toren,
+          cap,
+          combatant({ id: 'x', label: 'Goblin 3', defeated: true }),
+        ],
       });
-      expect(reactorRows(e, (c) => (c.id === 't' ? 'Guerreiro 4' : '')).map((r) => [r.id, r.sub, r.player, r.spent, r.offered])).toEqual([
+      expect(
+        reactorRows(e, (c) => (c.id === 't' ? 'Guerreiro 4' : '')).map((r) => [
+          r.id,
+          r.sub,
+          r.player,
+          r.spent,
+          r.offered,
+        ]),
+      ).toEqual([
         ['b', '', true, false, false],
         ['t', 'Guerreiro 4', true, false, false],
       ]);
@@ -99,36 +133,74 @@ describe('combat without a map', () => {
       const ally = combatant({ id: 'al', label: 'Aliado', side: CombatantSide.PARTY });
       const e = encounter({
         currentCombatantId: 'g1',
-        combatants: [g1, combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY, reactionUsed: true }), ally],
+        combatants: [
+          g1,
+          combatant({
+            id: 't',
+            label: 'Toren',
+            kind: CombatantKind.PLAYER,
+            side: CombatantSide.PARTY,
+            reactionUsed: true,
+          }),
+          ally,
+        ],
       });
       const rows = reactorRows(e, () => '');
-      expect(rows.map((r) => [r.id, r.spent])).toEqual([['t', true], ['al', false]]);
+      expect(rows.map((r) => [r.id, r.spent])).toEqual([
+        ['t', true],
+        ['al', false],
+      ]);
     });
 
     it('leaves out a character at 0 hit points (it cannot react) and marks the reactor that already has an offer from this mover', () => {
-      const down = combatant({ id: 'd', label: 'Caído', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY, state: CombatantState.DOWN });
+      const down = combatant({
+        id: 'd',
+        label: 'Caído',
+        kind: CombatantKind.PLAYER,
+        side: CombatantSide.PARTY,
+        state: CombatantState.DOWN,
+      });
       const offer = create(OpportunityOfferSchema, { id: 'o', moverId: 'g1', reactorId: 't' });
-      const e = encounter({ currentCombatantId: 'g1', combatants: [g1, toren, down], opportunityOffers: [offer] });
+      const e = encounter({
+        currentCombatantId: 'g1',
+        combatants: [g1, toren, down],
+        opportunityOffers: [offer],
+      });
       expect(reactorRows(e, () => '').map((r) => [r.id, r.offered])).toEqual([['t', true]]);
     });
 
-    it('is nothing in the master\'s turn', () => {
-      expect(reactorRows(encounter({ currentCombatantId: '', combatants: [g1, toren] }), () => '')).toEqual([]);
+    it("is nothing in the master's turn", () => {
+      expect(
+        reactorRows(encounter({ currentCombatantId: '', combatants: [g1, toren] }), () => ''),
+      ).toEqual([]);
     });
   });
 
   describe('cover', () => {
     it('has four rows and says each degree', () => {
-      expect(COVER_CHOICES.map((c) => c.name)).toEqual(['Sem cobertura', 'Meia cobertura', 'Três quartos', 'Total (não dá para mirar)']);
-      expect(COVER_CHOICES.map((c) => c.sub)).toEqual(['', '+2 na CA e em Destreza', '+5 na CA e em Destreza', '']);
+      expect(COVER_CHOICES.map((c) => c.name)).toEqual([
+        'Sem cobertura',
+        'Meia cobertura',
+        'Três quartos',
+        'Total (não dá para mirar)',
+      ]);
+      expect(COVER_CHOICES.map((c) => c.sub)).toEqual([
+        '',
+        '+2 na CA e em Destreza',
+        '+5 na CA e em Destreza',
+        '',
+      ]);
       expect(coverLine(CoverDegree.NONE)).toBe('Sem cobertura');
       expect(coverLine(CoverDegree.HALF)).toBe('Meia cobertura: +2 na CA');
       expect(coverLine(CoverDegree.THREE_QUARTERS)).toBe('Três quartos: +5 na CA');
       expect(coverLine(CoverDegree.TOTAL)).toBe('Total: não dá para mirar');
     });
 
-    it('lists everyone standing when nobody is the single mover (the master\'s turn), for the cover opened from the order\'s menu', () => {
-      const e = encounter({ currentCombatantId: '', combatants: [toren, g1, combatant({ id: 'x', label: 'Goblin 3', defeated: true })] });
+    it("lists everyone standing when nobody is the single mover (the master's turn), for the cover opened from the order's menu", () => {
+      const e = encounter({
+        currentCombatantId: '',
+        combatants: [toren, g1, combatant({ id: 'x', label: 'Goblin 3', defeated: true })],
+      });
       expect(coverTargets(e).map((c) => c.label)).toEqual(['Toren', 'Goblin 1']);
       expect(everyoneStanding(e).map((c) => c.label)).toEqual(['Toren', 'Goblin 1']);
     });

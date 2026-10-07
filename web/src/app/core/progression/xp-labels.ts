@@ -85,7 +85,8 @@ export function progress(xp: number, nextLevelXp: number, canLevelUp: boolean): 
     return { of: tight(`${formatInt(xp)} XP`), percent: 100, missing: '' };
   }
   const percent = Math.min(100, Math.max(0, Math.round((xp / nextLevelXp) * 100)));
-  const missing = !canLevelUp && xp < nextLevelXp ? tight(`Faltam ${formatInt(nextLevelXp - xp)} XP`) : '';
+  const missing =
+    !canLevelUp && xp < nextLevelXp ? tight(`Faltam ${formatInt(nextLevelXp - xp)} XP`) : '';
   return { of: tight(`${formatInt(xp)} de ${formatInt(nextLevelXp)} XP`), percent, missing };
 }
 
@@ -105,7 +106,12 @@ export function experienceLead(
 /** "350 XP dados: 116 para cada. 2 XP se perderam na divisão." (what the
  * master reads right after giving). */
 export function givenText(totalXp: number, xpEach: number, lostXp: number): string {
-  const lost = lostXp === 0 ? '' : lostXp === 1 ? ' 1 XP se perdeu na divisão.' : ` ${formatInt(lostXp)} XP se perderam na divisão.`;
+  const lost =
+    lostXp === 0
+      ? ''
+      : lostXp === 1
+        ? ' 1 XP se perdeu na divisão.'
+        : ` ${formatInt(lostXp)} XP se perderam na divisão.`;
   return tight(`${formatInt(totalXp)} XP dados: ${formatInt(xpEach)} para cada.${lost}`);
 }
 
@@ -116,5 +122,7 @@ export function milestoneText(award: XPAward, everyone: boolean): string {
   const lead = everyone
     ? 'Marco registrado: todos podem subir de nível.'
     : `Marco registrado: ${nameList(names)} ${names.length > 1 ? 'podem' : 'pode'} subir de nível.`;
-  return everyone ? `${lead} ${nameList(names)} ${names.length > 1 ? 'ganharam' : 'ganhou'} a marca.` : lead;
+  return everyone
+    ? `${lead} ${nameList(names)} ${names.length > 1 ? 'ganharam' : 'ganhou'} a marca.`
+    : lead;
 }

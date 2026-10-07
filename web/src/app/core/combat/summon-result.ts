@@ -29,7 +29,9 @@ export function afterWhom(e: Encounter, members: readonly Combatant[]): string {
     }
     const group = npcGroupOf(e, c.id);
     const named = group ? npcPlural(group.map((m) => m.label)) : null;
-    return named ? `depois d${named}` : `depois ${article(c.label) === 'a' ? 'da' : 'do'} ${c.label}`;
+    return named
+      ? `depois d${named}`
+      : `depois ${article(c.label) === 'a' ? 'da' : 'do'} ${c.label}`;
   }
   return 'antes de todos';
 }
@@ -54,6 +56,8 @@ export function summonResult(e: Encounter, ids: readonly string[]): SummonResult
       ? ` (${several ? together : 'um d20'}: ${first.initiativeFace} ${first.initiativeBonus < 0 ? '−' : '+'} ${Math.abs(first.initiativeBonus)})`
       : '';
   const enters = `${who} ${several ? 'entram' : 'entra'} no combate${total === undefined ? '' : ` com iniciativa ${total}`}${roll}.`;
-  const acts = several ? ` Eles agem juntos, ${afterWhom(e, creatures)}.` : ` Ele age ${afterWhom(e, creatures)}.`;
+  const acts = several
+    ? ` Eles agem juntos, ${afterWhom(e, creatures)}.`
+    : ` Ele age ${afterWhom(e, creatures)}.`;
   return { text: tight(enters + acts), creatures };
 }

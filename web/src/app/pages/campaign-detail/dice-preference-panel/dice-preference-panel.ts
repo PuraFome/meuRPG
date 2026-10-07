@@ -51,9 +51,13 @@ export class DicePreferencePanel {
   );
   /** When the master decided, the card in force; otherwise the player's pick. */
   protected readonly selected = computed(() =>
-    this.canChoose() ? (this.picked() ?? this.baseline()) : effectivePreference(this.mode(), this.baseline()),
+    this.canChoose()
+      ? (this.picked() ?? this.baseline())
+      : effectivePreference(this.mode(), this.baseline()),
   );
-  protected readonly dirty = computed(() => this.canChoose() && this.selected() !== this.baseline());
+  protected readonly dirty = computed(
+    () => this.canChoose() && this.selected() !== this.baseline(),
+  );
   protected readonly decision = computed(() =>
     this.mode() === DiceMode.PHYSICAL ? 'todos rolam os próprios dados' : 'todos rolam no app',
   );
@@ -63,9 +67,14 @@ export class DicePreferencePanel {
     }
     const inForce = this.selected();
     return {
-      [DicePreference.APP]: inForce === DicePreference.APP ? 'Definido pelo mestre para todos.' : 'Indisponível nesta campanha.',
+      [DicePreference.APP]:
+        inForce === DicePreference.APP
+          ? 'Definido pelo mestre para todos.'
+          : 'Indisponível nesta campanha.',
       [DicePreference.PHYSICAL]:
-        inForce === DicePreference.PHYSICAL ? 'Definido pelo mestre para todos.' : 'Indisponível nesta campanha.',
+        inForce === DicePreference.PHYSICAL
+          ? 'Definido pelo mestre para todos.'
+          : 'Indisponível nesta campanha.',
     };
   });
 

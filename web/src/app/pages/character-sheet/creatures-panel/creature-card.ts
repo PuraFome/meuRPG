@@ -15,7 +15,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  type CharacterCreature,
+  CreatureSource,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
@@ -46,7 +49,14 @@ import { CreatureEdit, type EditMode } from './creature-edit';
  */
 @Component({
   selector: 'app-creature-card',
-  imports: [CreatureArt, CreatureEdit, FamiliarEyesButton, MatButtonModule, MatIconModule, RouterLink],
+  imports: [
+    CreatureArt,
+    CreatureEdit,
+    FamiliarEyesButton,
+    MatButtonModule,
+    MatIconModule,
+    RouterLink,
+  ],
   templateUrl: './creature-card.html',
   styleUrl: './creature-card.scss',
 })
@@ -65,13 +75,21 @@ export class CreatureCard {
   /** The creature changed (renamed, dismissed, corrected): the panel reads the list again, and says how. */
   readonly changed = output<EditMode>();
 
-  protected readonly seeable = computed(() => this.live() && !this.isMaster() && this.creature().source === CreatureSource.FAMILIAR);
+  protected readonly seeable = computed(
+    () => this.live() && !this.isMaster() && this.creature().source === CreatureSource.FAMILIAR,
+  );
   protected readonly block = signal<Creature | null>(null);
   protected readonly mode = signal<EditMode | null>(null);
 
   protected readonly subtitle = computed(() => {
     const c = this.creature();
-    return joinDots([c.monsterNamePt, this.block()?.summary?.sizePt ?? '', sourcePhrase(c.source, this.ownerName())].filter((p) => p));
+    return joinDots(
+      [
+        c.monsterNamePt,
+        this.block()?.summary?.sizePt ?? '',
+        sourcePhrase(c.source, this.ownerName()),
+      ].filter((p) => p),
+    );
   });
 
   protected readonly speed = computed(() => {
@@ -79,7 +97,12 @@ export class CreatureCard {
     if (!b) {
       return { main: '—', extra: '' };
     }
-    const main = b.speedWalkFt > 0 ? metersText(b.speedWalkFt) : b.speedFlyFt > 0 ? metersText(b.speedFlyFt) : '0 m';
+    const main =
+      b.speedWalkFt > 0
+        ? metersText(b.speedWalkFt)
+        : b.speedFlyFt > 0
+          ? metersText(b.speedFlyFt)
+          : '0 m';
     const extras: string[] = [];
     if (b.speedWalkFt > 0 && b.speedFlyFt > 0) {
       extras.push(`voo ${metersText(b.speedFlyFt)}`);
@@ -93,7 +116,14 @@ export class CreatureCard {
     return { main: tight(main), extra: tight(extras.join(', ')) };
   });
 
-  protected readonly link = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId(), 'creatures', this.creature().id]);
+  protected readonly link = computed(() => [
+    '/campaigns',
+    this.campaignId(),
+    'characters',
+    this.characterId(),
+    'creatures',
+    this.creature().id,
+  ]);
 
   constructor() {
     effect(() => {
@@ -120,6 +150,9 @@ export class CreatureCard {
       return;
     }
     // Backing out: the focus goes back to the action that asked.
-    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector });
+    afterNextRender(
+      () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)),
+      { injector: this.injector },
+    );
   }
 }

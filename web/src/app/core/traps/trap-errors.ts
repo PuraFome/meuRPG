@@ -42,9 +42,11 @@ export function trapErrorMessage(err: unknown, what = 'fazer isso'): string {
   }
   return describeConnectError(err, {
     [Code.InvalidArgument]: `Não deu para ${what}: confira os campos e tente de novo.`,
-    [Code.NotFound]: 'Essa armadilha, ou um desses personagens, não existe mais. Feche e tente de novo.',
+    [Code.NotFound]:
+      'Essa armadilha, ou um desses personagens, não existe mais. Feche e tente de novo.',
     [Code.PermissionDenied]: 'Só o mestre da campanha faz isso.',
-    [Code.FailedPrecondition]: 'A sessão mudou enquanto você agia. A tela foi atualizada; tente de novo.',
+    [Code.FailedPrecondition]:
+      'A sessão mudou enquanto você agia. A tela foi atualizada; tente de novo.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });
 }
@@ -60,7 +62,8 @@ export function trapMapErrorMessage(err: unknown, what = 'fazer isso'): string {
   }
   return describeConnectError(err, {
     [Code.InvalidArgument]: `Não deu para ${what}: marque pelo menos um personagem e tente de novo.`,
-    [Code.NotFound]: 'Esse ponto, ou um desses personagens, não existe mais. Feche e tente de novo.',
+    [Code.NotFound]:
+      'Esse ponto, ou um desses personagens, não existe mais. Feche e tente de novo.',
     [Code.PermissionDenied]: 'Só o mestre da campanha faz isso.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });

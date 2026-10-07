@@ -7,12 +7,7 @@ import {
   DisabledReasonSchema,
   Recharge,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import {
-  attackDetail,
-  endTurnIsPrimary,
-  isReactionHint,
-  reasonText,
-} from './combat-options';
+import { attackDetail, endTurnIsPrimary, isReactionHint, reasonText } from './combat-options';
 
 function reason(code: DisabledReasonCode, extra: { minLevel?: number; recharge?: Recharge } = {}) {
   return create(DisabledReasonSchema, { code, ...extra });
@@ -46,7 +41,9 @@ describe('the reasons an option is disabled', () => {
 
   it('has a word for every code, and an empty one for none', () => {
     expect(reasonText(undefined)).toBe('');
-    for (const code of Object.values(DisabledReasonCode).filter((c) => typeof c === 'number' && c > 0)) {
+    for (const code of Object.values(DisabledReasonCode).filter(
+      (c) => typeof c === 'number' && c > 0,
+    )) {
       expect(reasonText(reason(code as DisabledReasonCode))).not.toBe('Indisponível agora');
     }
   });
@@ -62,18 +59,33 @@ const plain = (text: string) => text.replace(/\u00a0/g, ' ');
 describe('the line under an attack', () => {
   it('writes a cantrip and a close weapon', () => {
     const fireBolt = create(AttackSchema, {
-      name: 'Fire Bolt', namePt: 'Raio de Fogo', attackBonus: 6, damage: '1d10', damageTypePt: 'fogo',
-      kind: AttackKind.SPELL, rangeFt: 120,
+      name: 'Fire Bolt',
+      namePt: 'Raio de Fogo',
+      attackBonus: 6,
+      damage: '1d10',
+      damageTypePt: 'fogo',
+      kind: AttackKind.SPELL,
+      rangeFt: 120,
     });
     expect(plain(attackDetail(fireBolt))).toBe('+6 para acertar · 1d10 de fogo · alcance 36 m');
     const dagger = create(AttackSchema, {
-      name: 'Dagger', namePt: 'Adaga', attackBonus: 4, damage: '1d4+2', damageTypePt: 'perfurante',
-      kind: AttackKind.WEAPON, rangeFt: 5, longRangeFt: 0,
+      name: 'Dagger',
+      namePt: 'Adaga',
+      attackBonus: 4,
+      damage: '1d4+2',
+      damageTypePt: 'perfurante',
+      kind: AttackKind.WEAPON,
+      rangeFt: 5,
+      longRangeFt: 0,
     });
-    expect(plain(attackDetail(dagger))).toBe('+4 para acertar · 1d4 + 2 perfurante · corpo a corpo');
+    expect(plain(attackDetail(dagger))).toBe(
+      '+4 para acertar · 1d4 + 2 perfurante · corpo a corpo',
+    );
     // The number, its unit and "alcance" never split across lines.
     expect(attackDetail(fireBolt)).toContain('alcance\u00a036\u00a0m');
-    expect(plain(attackDetail(dagger, true))).toBe('+4 para acertar · 1d4 + 2 perfurante · corpo a corpo, 1,5 m');
+    expect(plain(attackDetail(dagger, true))).toBe(
+      '+4 para acertar · 1d4 + 2 perfurante · corpo a corpo, 1,5 m',
+    );
   });
 });
 

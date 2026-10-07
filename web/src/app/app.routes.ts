@@ -24,7 +24,9 @@ export const routes: Routes = [
     title: 'Campanha',
     canActivate: [authGuard],
     loadChildren: () =>
-      import('./pages/campaign-detail/campaign-detail.routes').then((m) => m.CAMPAIGN_DETAIL_ROUTES),
+      import('./pages/campaign-detail/campaign-detail.routes').then(
+        (m) => m.CAMPAIGN_DETAIL_ROUTES,
+      ),
   },
   {
     // The live session (MR-011, MR-012, RN-06, RN-07): the link the master
@@ -110,13 +112,15 @@ export const routes: Routes = [
     path: 'campaigns/:id/puzzles/new',
     title: 'Novo quebra-cabeça',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+    loadComponent: () =>
+      import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
   },
   {
     path: 'campaigns/:id/puzzles/:puzzleId/edit',
     title: 'Editar quebra-cabeça',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
+    loadComponent: () =>
+      import('./pages/puzzles/puzzle-form/puzzle-form').then((m) => m.PuzzleForm),
   },
   {
     // The bestiary (MR-042, E10-08), master only: the SRD's 334 creatures, then one creature's
@@ -126,14 +130,17 @@ export const routes: Routes = [
     path: 'campaigns/:id/bestiary',
     title: 'Bestiário',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/bestiary/bestiary-list/bestiary-list').then((m) => m.BestiaryList),
+    loadComponent: () =>
+      import('./pages/bestiary/bestiary-list/bestiary-list').then((m) => m.BestiaryList),
   },
   {
     path: 'campaigns/:id/bestiary/:slug',
     title: 'Criatura',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
+      import('./pages/bestiary/bestiary-creature/bestiary-creature').then(
+        (m) => m.BestiaryCreature,
+      ),
   },
   {
     // "Tesouro" (MR-044, MR-041, E10-10), master only: the generator, an item's description and "Pôr no mapa". The page tells a player so.
@@ -148,7 +155,10 @@ export const routes: Routes = [
     path: 'campaigns/:id/encounters',
     title: 'Encontros',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/encounters/encounter-builder/encounter-builder').then((m) => m.EncounterBuilder),
+    loadComponent: () =>
+      import('./pages/encounters/encounter-builder/encounter-builder').then(
+        (m) => m.EncounterBuilder,
+      ),
   },
   {
     // "Magias" (MR-045, RN-23): the players' spell reference, for every active member, the master too.

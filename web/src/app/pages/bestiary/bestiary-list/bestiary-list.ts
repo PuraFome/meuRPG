@@ -4,16 +4,33 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, NavigationCancel, NavigationError, NavigationStart, Router, RouterLink } from '@angular/router';
+import {
+  ActivatedRoute,
+  NavigationCancel,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterLink,
+} from '@angular/router';
 
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creatures/bestiary-access';
 import { bestiaryErrorMessage } from '../../../core/creatures/bestiary-errors';
 import { acAndHp, creatureSlug, typeAndSize } from '../../../core/creatures/bestiary-format';
-import { CHALLENGE_RANGES, CHALLENGE_RATINGS, CREATURE_SIZES, CREATURE_TYPES, challengeBounds } from '../../../core/creatures/creature-types';
+import {
+  CHALLENGE_RANGES,
+  CHALLENGE_RATINGS,
+  CREATURE_SIZES,
+  CREATURE_TYPES,
+  challengeBounds,
+} from '../../../core/creatures/creature-types';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { formatInt, joinDots } from '../../../core/format/text';
-import { PutMonstersSheet, type PutMonstersData, type PutMonstersResult } from '../../../shared/monsters/put-sheet/put-sheet';
+import {
+  PutMonstersSheet,
+  type PutMonstersData,
+  type PutMonstersResult,
+} from '../../../shared/monsters/put-sheet/put-sheet';
 import { openSheet } from '../../live-session/combat/sheet-host';
 import { BestiaryRow, type BestiaryRowData } from './bestiary-row';
 
@@ -73,7 +90,10 @@ export class BestiaryList {
   protected readonly ranges = CHALLENGE_RANGES;
   protected readonly ratings = CHALLENGE_RATINGS;
 
-  protected readonly filtered = computed(() => this.query().trim() !== '' || this.type() !== '' || this.size() !== '' || this.cr() !== '');
+  protected readonly filtered = computed(
+    () =>
+      this.query().trim() !== '' || this.type() !== '' || this.size() !== '' || this.cr() !== '',
+  );
   /** "5 de 334 criaturas"; nothing until the book's size is known (never "5 de 5"), and just "5 criaturas" if it cannot be. */
   protected readonly count = computed(() => {
     const all = this.catalog();
@@ -85,7 +105,12 @@ export class BestiaryList {
   /** The search in the URL's words, for the rows' links: opening a row keeps what is typed, even before the pause ends. */
   protected readonly rowParams = computed<Record<string, string>>(() => {
     const out: Record<string, string> = {};
-    const entries: [string, string][] = [[PARAMS.query, this.query().trim()], [PARAMS.type, this.type()], [PARAMS.size, this.size()], [PARAMS.cr, this.cr()]];
+    const entries: [string, string][] = [
+      [PARAMS.query, this.query().trim()],
+      [PARAMS.type, this.type()],
+      [PARAMS.size, this.size()],
+      [PARAMS.cr, this.cr()],
+    ];
     for (const [key, value] of entries) {
       if (value !== '') {
         out[key] = value;
@@ -156,13 +181,18 @@ export class BestiaryList {
     if (!creature) {
       return;
     }
-    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(this.dialog, this.bottomSheet, PutMonstersSheet, {
-      data: { campaignId: this.campaignId, creature },
-      ariaLabel: 'Pôr no combate',
-      labelledBy: 'put-t',
-      width: '600px',
-      tall: true,
-    }).subscribe((result) => {
+    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(
+      this.dialog,
+      this.bottomSheet,
+      PutMonstersSheet,
+      {
+        data: { campaignId: this.campaignId, creature },
+        ariaLabel: 'Pôr no combate',
+        labelledBy: 'put-t',
+        width: '600px',
+        tall: true,
+      },
+    ).subscribe((result) => {
       if (result) {
         this.put.set(result);
       }

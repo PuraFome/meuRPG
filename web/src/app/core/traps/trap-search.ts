@@ -23,8 +23,18 @@ export function skillOptions(skills: SearchSkills | null): readonly SkillOption[
   const p = skills?.perception ?? 0;
   const i = skills?.investigation ?? 0;
   return [
-    { skill: 'perception', title: skills?.perception == null ? 'Percepção' : `Percepção ${signed(p)}`, detail: 'Reparar em armadilhas à vista', bonus: p },
-    { skill: 'investigation', title: skills?.investigation == null ? 'Investigação' : `Investigação ${signed(i)}`, detail: 'Examinar o lugar com calma', bonus: i },
+    {
+      skill: 'perception',
+      title: skills?.perception == null ? 'Percepção' : `Percepção ${signed(p)}`,
+      detail: 'Reparar em armadilhas à vista',
+      bonus: p,
+    },
+    {
+      skill: 'investigation',
+      title: skills?.investigation == null ? 'Investigação' : `Investigação ${signed(i)}`,
+      detail: 'Examinar o lugar com calma',
+      bonus: i,
+    },
   ];
 }
 
@@ -41,13 +51,19 @@ export function searchStep(hasResult: boolean, typing: boolean): 1 | 2 | 3 {
 }
 
 /** The answer in words: the same for "nothing there" and "the roll fell short" (the server's rule: the answer never says which). */
-export function resultMessage(found: readonly string[]): { readonly title: string; readonly detail: string } {
+export function resultMessage(found: readonly string[]): {
+  readonly title: string;
+  readonly detail: string;
+} {
   if (found.length === 0) {
     return { title: 'Você não encontrou nada.', detail: '' };
   }
   return found.length === 1
     ? { title: `Você achou uma armadilha: ${found[0]}.`, detail: 'Ela já aparece no seu mapa.' }
-    : { title: `Você achou ${found.length} armadilhas: ${found.join(', ')}.`, detail: 'Elas já aparecem no seu mapa.' };
+    : {
+        title: `Você achou ${found.length} armadilhas: ${found.join(', ')}.`,
+        detail: 'Elas já aparecem no seu mapa.',
+      };
 }
 
 /** Where the Search action of a combat goes: the trap search needs the combat's map to have a grid and the player's combatant to

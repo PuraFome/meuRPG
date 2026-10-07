@@ -53,7 +53,11 @@ export function mineTabs(e: Encounter): MineTab[] {
     return [];
   }
   const acting = new Set(actingIds(e));
-  const turnAt = Math.min(...turnMembers(e).map((m) => e.combatants.indexOf(m)).filter((i) => i >= 0));
+  const turnAt = Math.min(
+    ...turnMembers(e)
+      .map((m) => e.combatants.indexOf(m))
+      .filter((i) => i >= 0),
+  );
   const groups = new Map<string, Combatant[]>();
   for (const c of all) {
     const key = c.mine ? CHARACTER_TAB : c.summonGroupId || c.id;
@@ -62,7 +66,14 @@ export function mineTabs(e: Encounter): MineTab[] {
   const tabs = [...groups].map(([id, members]) => {
     const live = members.filter((m) => acting.has(m.id));
     const at = Math.min(...members.map((m) => e.combatants.indexOf(m)));
-    const state: TabState = live.length > 0 ? 'turn' : Number.isFinite(turnAt) && at < turnAt ? 'done' : turnMembers(e).some((m) => members.includes(m)) ? 'done' : 'wait';
+    const state: TabState =
+      live.length > 0
+        ? 'turn'
+        : Number.isFinite(turnAt) && at < turnAt
+          ? 'done'
+          : turnMembers(e).some((m) => members.includes(m))
+            ? 'done'
+            : 'wait';
     return {
       id,
       members,

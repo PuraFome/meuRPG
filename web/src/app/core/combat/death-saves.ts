@@ -27,7 +27,9 @@ export function countsSentence(successes: number, failures: number): string {
  * morte: 1d20 (14) = 14. Sucesso." A natural 20 brings the character back
  * ("Brisa volta com 1 PV"); three successes make it stable. */
 export function saveAnnouncement(save: DeathSave, name: string): string {
-  const roll = save.roll ? `Teste contra a morte: ${rollText(save.roll)}.` : 'Teste contra a morte.';
+  const roll = save.roll
+    ? `Teste contra a morte: ${rollText(save.roll)}.`
+    : 'Teste contra a morte.';
   switch (save.outcome) {
     case DeathSaveOutcome.REVIVED:
       return `${roll} ${name} volta com 1 PV.`;

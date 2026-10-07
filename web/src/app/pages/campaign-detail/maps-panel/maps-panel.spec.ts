@@ -22,7 +22,9 @@ async function render(isMaster: boolean, maps: FakeMapsClient): Promise<HTMLElem
 describe('MapsPanel', () => {
   it('invites the master to create the first map', async () => {
     const el = await render(true, new FakeMapsClient());
-    expect(el.textContent).toContain('Nenhum mapa ainda. Crie o primeiro a partir de uma imagem da galeria.');
+    expect(el.textContent).toContain(
+      'Nenhum mapa ainda. Crie o primeiro a partir de uma imagem da galeria.',
+    );
     expect(el.querySelector('a')?.textContent).toContain('Novo mapa');
   });
 
@@ -30,7 +32,11 @@ describe('MapsPanel', () => {
     const maps = new FakeMapsClient();
     maps.maps = [
       mapMessage('a', 'Mirathel e arredores', { revealed: true, current: true, pointCount: 5 }),
-      mapMessage('b', 'Torre de Mirathel', { revealed: false, parentMaps: [{ id: 'a', name: 'Mirathel e arredores' } as never], pointCount: 1 }),
+      mapMessage('b', 'Torre de Mirathel', {
+        revealed: false,
+        parentMaps: [{ id: 'a', name: 'Mirathel e arredores' } as never],
+        pointCount: 1,
+      }),
     ];
     const el = await render(true, maps);
     const rows = el.querySelectorAll('li');
@@ -44,7 +50,11 @@ describe('MapsPanel', () => {
   it('gives the master "Gerar masmorra" and "Gerar tesouro", next to "Novo mapa", on the maps list (MR-010, MR-044)', async () => {
     const el = await render(true, new FakeMapsClient());
     const links = Array.from(el.querySelectorAll('.maps__actions a'));
-    expect(links.map((a) => a.textContent?.replace('add', '').replace('castle', '').replace('paid', '').trim())).toEqual(['Novo mapa', 'Gerar masmorra', 'Gerar tesouro']);
+    expect(
+      links.map((a) =>
+        a.textContent?.replace('add', '').replace('castle', '').replace('paid', '').trim(),
+      ),
+    ).toEqual(['Novo mapa', 'Gerar masmorra', 'Gerar tesouro']);
     expect(links[1]!.getAttribute('href')).toBe('/campaigns/camp-1/maps/dungeon');
     expect(links[2]!.getAttribute('href')).toBe('/campaigns/camp-1/treasure');
   });
@@ -66,6 +76,8 @@ describe('MapsPanel', () => {
   });
 
   it('describes a map by where it sits', () => {
-    expect(mapRowSub(mapMessage('a', 'A', { pointCount: 0 }), true)).toBe('Mapa principal, 0 pontos');
+    expect(mapRowSub(mapMessage('a', 'A', { pointCount: 0 }), true)).toBe(
+      'Mapa principal, 0 pontos',
+    );
   });
 });

@@ -29,12 +29,33 @@ describe('PaintSurface', () => {
     fixture.componentInstance.leave.subscribe(() => left++);
     fixture.detectChanges();
     host = fixture.nativeElement;
-    host.getBoundingClientRect = () => ({ left: 100, top: 50, width: 240, height: 160, right: 340, bottom: 210, x: 100, y: 50, toJSON: () => ({}) });
+    host.getBoundingClientRect = () => ({
+      left: 100,
+      top: 50,
+      width: 240,
+      height: 160,
+      right: 340,
+      bottom: 210,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    });
   });
 
-  function pointer(type: string, x: number, y: number, init: MouseEventInit & { id?: number; kind?: string } = {}): void {
+  function pointer(
+    type: string,
+    x: number,
+    y: number,
+    init: MouseEventInit & { id?: number; kind?: string } = {},
+  ): void {
     const { id = 1, kind = 'mouse', ...mouse } = init;
-    const event = new MouseEvent(type, { clientX: 100 + x, clientY: 50 + y, bubbles: true, button: 0, ...mouse });
+    const event = new MouseEvent(type, {
+      clientX: 100 + x,
+      clientY: 50 + y,
+      bubbles: true,
+      button: 0,
+      ...mouse,
+    });
     Object.defineProperty(event, 'pointerId', { value: id });
     Object.defineProperty(event, 'pointerType', { value: kind });
     host.dispatchEvent(event);
@@ -57,7 +78,9 @@ describe('PaintSurface', () => {
     pointer('pointerdown', 5, 5);
     pointer('pointermove', 45, 5);
     pointer('pointerup', 45, 5);
-    expect(strokes.flatMap((s) => s.centers)).toEqual([0, 1, 2, 3, 4].map((col) => ({ col, row: 0 })));
+    expect(strokes.flatMap((s) => s.centers)).toEqual(
+      [0, 1, 2, 3, 4].map((col) => ({ col, row: 0 })),
+    );
     expect(ends).toBe(1);
   });
 

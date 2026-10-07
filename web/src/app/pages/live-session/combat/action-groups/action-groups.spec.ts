@@ -11,21 +11,34 @@ import {
 import { ActionGroups } from './action-groups';
 
 /** A spell option as `GetTurnOptions` sends it (name, circle, economy, and why it is off). */
-function spell(key: string, namePt: string, level: number, over: { enabled?: boolean; reason?: DisabledReasonCode; economy?: ActionEconomy } = {}) {
+function spell(
+  key: string,
+  namePt: string,
+  level: number,
+  over: { enabled?: boolean; reason?: DisabledReasonCode; economy?: ActionEconomy } = {},
+) {
   const enabled = over.enabled ?? true;
   return create(SpellOptionSchema, {
     spell: { key, name: namePt, namePt, level, schoolNamePt: 'Encantamento' },
     economy: over.economy ?? ActionEconomy.ACTION,
     enabled,
-    reason: enabled ? undefined : { code: over.reason ?? DisabledReasonCode.NO_SLOT, minLevel: level },
+    reason: enabled
+      ? undefined
+      : { code: over.reason ?? DisabledReasonCode.NO_SLOT, minLevel: level },
   });
 }
 
 describe('ActionGroups: the spells (E8-02)', () => {
-  function setup(spells: ReturnType<typeof spell>[], slots = { usage: [] as { level: number; total: number; used: number }[], pact: null }) {
+  function setup(
+    spells: ReturnType<typeof spell>[],
+    slots = { usage: [] as { level: number; total: number; used: number }[], pact: null },
+  ) {
     const fixture = TestBed.createComponent(ActionGroups);
     fixture.componentRef.setInput('options', create(TurnOptionsSchema, { spells }));
-    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }));
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }),
+    );
     fixture.componentRef.setInput('slots', slots);
     const described: { key: string; name: string }[] = [];
     const cast: string[] = [];
@@ -41,18 +54,32 @@ describe('ActionGroups: the spells (E8-02)', () => {
     spell('spell:minor-illusion', 'Ilusão Menor', 0),
     spell('spell:mage-armor', 'Armadura Arcana', 1),
     spell('spell:sleep', 'Sono', 1),
-    spell('spell:shield', 'Escudo Arcano', 1, { enabled: false, reason: DisabledReasonCode.REACTION_ONLY_WHEN_HIT, economy: ActionEconomy.REACTION }),
+    spell('spell:shield', 'Escudo Arcano', 1, {
+      enabled: false,
+      reason: DisabledReasonCode.REACTION_ONLY_WHEN_HIT,
+      economy: ActionEconomy.REACTION,
+    }),
     spell('spell:scorching-ray', 'Raio Ardente', 2, { enabled: false }),
     spell('spell:web', 'Teia', 2, { enabled: false }),
   ];
 
   // The spell rows: the Movimento row has no name.
-  const rows = (el: HTMLElement) => ([...el.querySelectorAll('app-action-row')] as HTMLElement[]).filter((r) => r.querySelector('.row__name'));
+  const rows = (el: HTMLElement) =>
+    ([...el.querySelectorAll('app-action-row')] as HTMLElement[]).filter((r) =>
+      r.querySelector('.row__name'),
+    );
   const name = (row: HTMLElement) => row.querySelector('.row__name')!.textContent!.trim();
 
   it('lists the spells in the order the server sent, every economy in one list', () => {
     const { el } = setup(SERVER_ORDER);
-    expect(rows(el).map(name)).toEqual(['Ilusão Menor', 'Armadura Arcana', 'Sono', 'Escudo Arcano', 'Raio Ardente', 'Teia']);
+    expect(rows(el).map(name)).toEqual([
+      'Ilusão Menor',
+      'Armadura Arcana',
+      'Sono',
+      'Escudo Arcano',
+      'Raio Ardente',
+      'Teia',
+    ]);
   });
 
   it('gives each spell the "?" with its name, 44 px, whether or not it can be cast', () => {
@@ -75,7 +102,8 @@ describe('ActionGroups: the spells (E8-02)', () => {
 
   it('puts the circle in a tag on its own line, and "Reação" next to it for Escudo', () => {
     const { el } = setup(SERVER_ORDER);
-    const tags = (row: HTMLElement) => [...row.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
+    const tags = (row: HTMLElement) =>
+      [...row.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
     expect(tags(rows(el)[0])).toEqual(['Truque']);
     expect(tags(rows(el)[2])).toEqual(['1º nível']);
     expect(tags(rows(el)[3])).toEqual(['1º nível', 'Reação']);
@@ -123,7 +151,11 @@ describe('ActionGroups: the spells (E8-02)', () => {
 });
 
 describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', () => {
-  const plain = (t: string | null | undefined) => (t ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  const plain = (t: string | null | undefined) =>
+    (t ?? '')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   function setup(own: Parameters<typeof create<typeof CombatantSchema>>[1], locked = '') {
     const fixture = TestBed.createComponent(ActionGroups);
@@ -135,22 +167,43 @@ describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', ()
   }
 
   it('says the movement in tenths of a foot, metres with one decimal', () => {
-    const el = setup({ speedDft: 300, movementLeftDft: 229, movementLeftFt: 22, movementUsedDft: 71, movementUsedFt: 7 });
+    const el = setup({
+      speedDft: 300,
+      movementLeftDft: 229,
+      movementLeftFt: 22,
+      movementUsedDft: 71,
+      movementUsedFt: 7,
+    });
     expect(plain(el.textContent)).toContain('Restam 6,9 m');
-    expect(plain(el.textContent)).toContain('Você já andou 2,1 m. Dá para andar mais 6,9 m (4 quadrados).');
+    expect(plain(el.textContent)).toContain(
+      'Você já andou 2,1 m. Dá para andar mais 6,9 m (4 quadrados).',
+    );
   });
 
   it('turns "Mover" off with the reason instead of failing on click', () => {
-    const el = setup({ speedDft: 300, movementLeftDft: 150, movementLeftFt: 15 }, 'Esperando a reação do mestre');
-    const move = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => plain(b.textContent) === 'Mover')!;
+    const el = setup(
+      { speedDft: 300, movementLeftDft: 150, movementLeftFt: 15 },
+      'Esperando a reação do mestre',
+    );
+    const move = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => plain(b.textContent) === 'Mover',
+    )!;
     expect(move.getAttribute('aria-disabled') === 'true' || move.disabled).toBe(true);
     expect(plain(el.textContent)).toContain('Esperando a reação do mestre');
   });
 
   it('reads Desengajar as such: a notice, "Desengajado" and the move that does not provoke', () => {
-    const el = setup({ speedDft: 300, movementLeftDft: 300, movementLeftFt: 30, disengaged: true, actionUsed: true });
+    const el = setup({
+      speedDft: 300,
+      movementLeftDft: 300,
+      movementLeftFt: 30,
+      disengaged: true,
+      actionUsed: true,
+    });
     const text = plain(el.textContent);
-    expect(text).toContain('Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.');
+    expect(text).toContain(
+      'Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.',
+    );
     expect(text).toContain('Desengajado');
     expect(text).toContain('Dá para andar até 9,0 m (6 quadrados) sem provocar.');
   });
@@ -160,28 +213,39 @@ describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
   function setup(familiar: string | null, own: Partial<{ actionUsed: boolean }> = {}) {
     const fixture = TestBed.createComponent(ActionGroups);
     fixture.componentRef.setInput('options', create(TurnOptionsSchema, {}));
-    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: 25, speedFt: 25, ...own }));
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25, ...own }),
+    );
     fixture.componentRef.setInput('familiar', familiar);
     const asked: number[] = [];
     fixture.componentInstance.familiarEyes.subscribe(() => asked.push(1));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const row = [...el.querySelectorAll('app-action-row')].find((r) => r.textContent?.includes('Ver pelos olhos'));
+    const row = [...el.querySelectorAll('app-action-row')].find((r) =>
+      r.textContent?.includes('Ver pelos olhos'),
+    );
     return { el, row: row as HTMLElement | undefined, asked };
   }
 
   it('is an Ação row with its tag and what it lasts, and asks the question when pressed', () => {
     const { row, asked } = setup('Nanquim');
-    expect(row?.querySelector('.row__name')?.textContent?.trim()).toBe('Ver pelos olhos do Nanquim');
+    expect(row?.querySelector('.row__name')?.textContent?.trim()).toBe(
+      'Ver pelos olhos do Nanquim',
+    );
     expect(row?.querySelector('.row__pill')?.textContent?.trim()).toBe('Ação');
-    expect(row?.querySelector('.row__detail')?.textContent?.trim()).toBe('Dura até o começo da sua próxima vez, ou até você voltar.');
+    expect(row?.querySelector('.row__detail')?.textContent?.trim()).toBe(
+      'Dura até o começo da sua próxima vez, ou até você voltar.',
+    );
     row!.querySelector<HTMLButtonElement>('button')!.click();
     expect(asked).toEqual([1]);
   });
 
   it('is off, with the reason, once the action is spent', () => {
     const { row, asked } = setup('Nanquim', { actionUsed: true });
-    expect(row?.querySelector('.row__why')?.textContent).toContain('Você já usou a sua ação neste turno.');
+    expect(row?.querySelector('.row__why')?.textContent).toContain(
+      'Você já usou a sua ação neste turno.',
+    );
     row!.querySelector<HTMLButtonElement>('button')!.click();
     expect(asked).toEqual([]);
   });
@@ -193,16 +257,34 @@ describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
 
 describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
   const wildFeature = () => ({
-    action: { key: 'feature:wild-shape', namePt: 'Forma Selvagem', economy: ActionEconomy.ACTION, resourceKey: 'wild_shape' },
+    action: {
+      key: 'feature:wild-shape',
+      namePt: 'Forma Selvagem',
+      economy: ActionEconomy.ACTION,
+      resourceKey: 'wild_shape',
+    },
     enabled: true,
     usesLeft: 2,
   });
 
-  function setup(over: { wild?: { key: string; detail: string; reason: string } | null; beast?: string } = {}) {
+  function setup(
+    over: { wild?: { key: string; detail: string; reason: string } | null; beast?: string } = {},
+  ) {
     const fixture = TestBed.createComponent(ActionGroups);
-    fixture.componentRef.setInput('options', create(TurnOptionsSchema, { featureActions: [wildFeature() as never] }));
-    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }));
-    fixture.componentRef.setInput('wild', over.wild === undefined ? { key: 'feature:wild-shape', detail: 'Vire uma fera · restam 2 de 2 usos', reason: '' } : over.wild);
+    fixture.componentRef.setInput(
+      'options',
+      create(TurnOptionsSchema, { featureActions: [wildFeature() as never] }),
+    );
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }),
+    );
+    fixture.componentRef.setInput(
+      'wild',
+      over.wild === undefined
+        ? { key: 'feature:wild-shape', detail: 'Vire uma fera · restam 2 de 2 usos', reason: '' }
+        : over.wild,
+    );
     fixture.componentRef.setInput('beast', over.beast ?? '');
     const events: string[] = [];
     fixture.componentInstance.transform.subscribe(() => events.push('transform'));
@@ -214,17 +296,25 @@ describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
 
   it('is a line of the Ação with "Transformar" and what it costs', () => {
     const { el, events } = setup();
-    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Forma Selvagem'))!;
+    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) =>
+      text(r)?.includes('Forma Selvagem'),
+    )!;
     expect(text(row)).toContain('Característica');
     expect(text(row)).toContain('Vire uma fera · restam 2 de 2 usos');
     row.querySelector('button')!.click();
     expect(events).toEqual(['transform']);
-    expect(row.querySelector('button')?.getAttribute('aria-label')).toBe('Transformar: Forma Selvagem');
+    expect(row.querySelector('button')?.getAttribute('aria-label')).toBe(
+      'Transformar: Forma Selvagem',
+    );
   });
 
   it('with no uses the button is off and the line says why', () => {
-    const { el } = setup({ wild: { key: 'feature:wild-shape', detail: 'Vire uma fera', reason: 'Sem usos' } });
-    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Forma Selvagem'))!;
+    const { el } = setup({
+      wild: { key: 'feature:wild-shape', detail: 'Vire uma fera', reason: 'Sem usos' },
+    });
+    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) =>
+      text(r)?.includes('Forma Selvagem'),
+    )!;
     expect(row.querySelector('button')?.getAttribute('aria-disabled')).toBe('true');
     expect(text(row)).toContain('Sem usos');
   });
@@ -233,7 +323,9 @@ describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
     const { el, events } = setup({ wild: null, beast: 'Lobo' });
     expect(text(el)).toContain('Sem magias na forma de fera. Volte à forma normal para conjurar.');
     expect(text(el)).not.toContain('Transformar');
-    const back = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Voltar à forma normal'))!;
+    const back = Array.from(el.querySelectorAll('app-action-row')).find((r) =>
+      text(r)?.includes('Voltar à forma normal'),
+    )!;
     back.querySelector('button')!.click();
     expect(events).toEqual(['leave']);
   });
@@ -243,7 +335,15 @@ describe('ActionGroups: the movement without a map (RN-25, E10-04 state 7)', () 
   function setup(left: number, theatre: boolean) {
     const fixture = TestBed.createComponent(ActionGroups);
     fixture.componentRef.setInput('options', create(TurnOptionsSchema, {}));
-    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: left, movementLeftDft: left * 10, speedFt: 30, speedDft: 300 }));
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, {
+        movementLeftFt: left,
+        movementLeftDft: left * 10,
+        speedFt: 30,
+        speedDft: 300,
+      }),
+    );
     fixture.componentRef.setInput('theatre', theatre);
     const moves: number[] = [];
     fixture.componentInstance.move.subscribe(() => moves.push(1));
@@ -254,7 +354,9 @@ describe('ActionGroups: the movement without a map (RN-25, E10-04 state 7)', () 
 
   it('has one phrase and "Gastar movimento" instead of "Mover"', () => {
     const { el, moves } = setup(30, true);
-    expect(text(el)).toContain('Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.');
+    expect(text(el)).toContain(
+      'Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.',
+    );
     const buttons = [...el.querySelectorAll('button')].map((b) => (b.textContent ?? '').trim());
     expect(buttons.some((b) => b.includes('Gastar movimento'))).toBe(true);
     expect(buttons).not.toContain('Mover');

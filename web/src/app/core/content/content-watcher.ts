@@ -39,7 +39,8 @@ export class ContentWatcher {
     let firstRun = true;
     effect(() => {
       const id = campaignId();
-      const live = id !== '' && (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
+      const live =
+        id !== '' && (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
       // A session that was already open when the page came reads once, with the page's own load (the first `ready` asks
       // nothing). One that opens while the page is up connects up to 30 s later (the poll of open sessions): its first `ready`
       // reads, because the content may have changed in between.

@@ -88,7 +88,9 @@ export class SceneOpen {
   protected readonly sceneName = computed(() => tieShortWords(this.scene()?.name ?? ''));
   protected readonly since = computed(() => {
     const at = this.scene()?.openedAt;
-    return at ? `Aberta para os jogadores desde ${formatClock(timestampDate(at))}` : 'Aberta para os jogadores';
+    return at
+      ? `Aberta para os jogadores desde ${formatClock(timestampDate(at))}`
+      : 'Aberta para os jogadores';
   });
   /** The phone's line under "Rolagens": how many, and the order (E7-05). */
   protected readonly rollsHint = computed(() => {
@@ -100,7 +102,9 @@ export class SceneOpen {
     if (!scene) {
       return '';
     }
-    const onMap = this.mapState().points().some((p) => p.id === scene.pointId);
+    const onMap = this.mapState()
+      .points()
+      .some((p) => p.id === scene.pointId);
     const mapName = this.mapState().map()?.name;
     return joinDots([
       ...(onMap && mapName ? [`Mapa ${mapName}`] : []),

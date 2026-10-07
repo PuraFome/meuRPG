@@ -11,7 +11,19 @@ const point = (state: TrapState, extra = {}) =>
     kind: MapPointKind.TRAP,
     name: 'Fosso escondido',
     description: 'No corredor',
-    trap: { state, noticeDc: 15, findDc: 15, areaSize: 2, trigger: TrapTrigger.ENTER, presetKey: 'trap:hidden-pit', effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' }] } },
+    trap: {
+      state,
+      noticeDc: 15,
+      findDc: 15,
+      areaSize: 2,
+      trigger: TrapTrigger.ENTER,
+      presetKey: 'trap:hidden-pit',
+      effect: {
+        damage: [
+          { dice: '2d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' },
+        ],
+      },
+    },
     ...extra,
   });
 
@@ -28,7 +40,8 @@ function setup(state: TrapState, open = true, extra = {}) {
   c.disarm.subscribe(() => calls.push('disarm'));
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
-  const button = (t: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
+  const button = (t: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
   return { fixture, el, calls, button };
 }
 
@@ -58,7 +71,11 @@ describe('TrapCard', () => {
     const { fixture, el, button, calls } = setup(TrapState.TRIGGERED);
     expect(el.textContent).toContain('Disparada');
     expect(el.textContent).toContain('Visível para todos');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Disparar em mais alguém'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) =>
+        b.textContent?.includes('Disparar em mais alguém'),
+      ),
+    ).toBe(false);
     fixture.componentRef.setInput('canExtend', true);
     fixture.detectChanges();
     button('Disparar em mais alguém').click();

@@ -84,7 +84,12 @@ export class PlayersSwitch {
     const n = e.charactersUsing;
     const masculine = KIND_NOUNS[e.kind]?.article === 'O';
     const pronoun = masculine ? 'o' : 'a';
-    const using = n === 0 ? '' : n === 1 ? ` A ficha que ${pronoun} usa continua funcionando.` : ` As ${n} fichas que ${pronoun} usam continuam funcionando.`;
+    const using =
+      n === 0
+        ? ''
+        : n === 1
+          ? ` A ficha que ${pronoun} usa continua funcionando.`
+          : ` As ${n} fichas que ${pronoun} usam continuam funcionando.`;
     return e.off
       ? `Desligado, ninguém ${masculine ? 'o' : 'a'} escolhe numa ficha nova e os jogadores não ${pronoun} leem.${using || ' Quem já ' + pronoun + ' usa continua com ' + (masculine ? 'ele' : 'ela') + '.'}`
       : `Ligado, os jogadores ${pronoun} leem por inteiro e podem escolhê-l${masculine ? 'o' : 'a'}.`;
@@ -100,7 +105,9 @@ export class PlayersSwitch {
     try {
       await this.client.setSwitches(this.campaignId(), [{ key: e.key, off: !on }]);
       const noun = KIND_NOUNS[e.kind];
-      this.saved.set(`${noun?.article ?? 'A'} ${noun?.noun ?? 'entrada'} ${e.namePt} ${on ? 'está disponível' : 'não está mais disponível'} para os jogadores.`);
+      this.saved.set(
+        `${noun?.article ?? 'A'} ${noun?.noun ?? 'entrada'} ${e.namePt} ${on ? 'está disponível' : 'não está mais disponível'} para os jogadores.`,
+      );
       this.switched.emit({ ...e, off: !on } as TableEntry);
     } catch (err) {
       this.error.set(`${contentErrorText(err, 'salvar')} O interruptor continua como estava.`);

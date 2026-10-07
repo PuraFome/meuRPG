@@ -3,7 +3,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Combatant, EncounterBlockedReason } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  EncounterBlockedReason,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -109,7 +112,13 @@ export class MasterSpend {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.spendMovement(this.campaignId(), this.encounterId(), this.subject().id, plan.ft, this.key);
+      const res = await this.api.spendMovement(
+        this.campaignId(),
+        this.encounterId(),
+        this.subject().id,
+        plan.ft,
+        this.key,
+      );
       this.state().apply(res.encounter);
       this.key = newKey();
       this.ft.set(startAmount({ movementLeftFt: Math.floor(res.movementLeftDft / 10) }));

@@ -59,8 +59,12 @@ describe('a rate-limited call', () => {
     expect(rateLimitedMessage(limited(Code.ResourceExhausted, '3'))).toBe(
       'Muitas ações em pouco tempo. Espere 3 segundos e tente de novo.',
     );
-    expect(rateLimitedMessage(limited(Code.ResourceExhausted, '1'))).toContain('Espere 1 segundo e');
-    expect(rateLimitedMessage(limited(Code.ResourceExhausted, 'soon'))).toContain('Espere alguns segundos');
+    expect(rateLimitedMessage(limited(Code.ResourceExhausted, '1'))).toContain(
+      'Espere 1 segundo e',
+    );
+    expect(rateLimitedMessage(limited(Code.ResourceExhausted, 'soon'))).toContain(
+      'Espere alguns segundos',
+    );
     expect(
       describeConnectError(limited(Code.ResourceExhausted), {
         [Code.ResourceExhausted]: 'A galeria está cheia.',
@@ -68,4 +72,3 @@ describe('a rate-limited call', () => {
     ).toBe('Muitas ações em pouco tempo. Espere 3 segundos e tente de novo.');
   });
 });
-

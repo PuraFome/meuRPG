@@ -31,7 +31,8 @@ export const THEATRE_WHY_DIALOG =
   'Por isso não há mapa, alcance, névoa, armadilhas nem posição das criaturas convocadas. Dá para escolher só agora: o modo vale até o fim do combate.';
 
 /** What follows the line on the player's panel. */
-export const THEATRE_WHY_PLAYER = 'O mestre diz quem está ao alcance e a que distância; você diz quanto andou.';
+export const THEATRE_WHY_PLAYER =
+  'O mestre diz quem está ao alcance e a que distância; você diz quanto andou.';
 
 /** The step of "Gastar movimento": one square, 5 ft, 1,5 m. */
 export const SPEND_STEP_FT = 5;
@@ -82,7 +83,10 @@ export function stepSpend(ft: number, direction: -1 | 1, leftFt: number): number
 }
 
 /** The plan of one amount on a combatant: all of it read from the server's `*_dft` numbers. */
-export function spendPlan(c: Pick<Combatant, 'speedDft' | 'movementLeftDft' | 'movementLeftFt' | 'movementUsedDft'>, ft: number): SpendPlan {
+export function spendPlan(
+  c: Pick<Combatant, 'speedDft' | 'movementLeftDft' | 'movementLeftFt' | 'movementUsedDft'>,
+  ft: number,
+): SpendPlan {
   const limitFt = Math.max(0, c.movementLeftFt);
   const amount = clampSpend(ft, limitFt);
   const total = Math.max(1, c.speedDft);
@@ -156,18 +160,20 @@ export function reactorRows(e: Encounter, sub: (c: Combatant) => string): Reacto
   if (!mover) {
     return [];
   }
-  return e.combatants
-    // A character at 0 hit points cannot react: it is not offered.
-    .filter((c) => c.id !== mover.id && !c.defeated && !isDown(c) && opposed(mover, c))
-    .map((c) => ({
-      id: c.id,
-      label: c.label,
-      sub: sub(c),
-      player: c.kind === CombatantKind.PLAYER,
-      spent: c.reactionUsed,
-      offered: e.opportunityOffers.some((o) => o.moverId === mover.id && o.reactorId === c.id),
-      hidden: c.hidden,
-    }));
+  return (
+    e.combatants
+      // A character at 0 hit points cannot react: it is not offered.
+      .filter((c) => c.id !== mover.id && !c.defeated && !isDown(c) && opposed(mover, c))
+      .map((c) => ({
+        id: c.id,
+        label: c.label,
+        sub: sub(c),
+        player: c.kind === CombatantKind.PLAYER,
+        spent: c.reactionUsed,
+        offered: e.opportunityOffers.some((o) => o.moverId === mover.id && o.reactorId === c.id),
+        hidden: c.hidden,
+      }))
+  );
 }
 
 /** The targets whose cover the master marks: the opposite side of whoever is on turn (what a hit would be aimed at). In the master's
@@ -177,7 +183,9 @@ export function coverTargets(e: Encounter): Combatant[] {
     return [];
   }
   const mover = onTurn(e);
-  return e.combatants.filter((c) => !c.defeated && (!mover || (c.id !== mover.id && opposed(mover, c))));
+  return e.combatants.filter(
+    (c) => !c.defeated && (!mover || (c.id !== mover.id && opposed(mover, c))),
+  );
 }
 
 /** Everyone standing, for the cover editor opened from the order's menu (the fallback for any combatant). */
@@ -197,7 +205,12 @@ export interface CoverChoice {
 export const COVER_CHOICES: readonly CoverChoice[] = [
   { value: CoverDegree.NONE, name: 'Sem cobertura', sub: '', mark: null },
   { value: CoverDegree.HALF, name: 'Meia cobertura', sub: '+2 na CA e em Destreza', mark: 'half' },
-  { value: CoverDegree.THREE_QUARTERS, name: 'Três quartos', sub: '+5 na CA e em Destreza', mark: 'three' },
+  {
+    value: CoverDegree.THREE_QUARTERS,
+    name: 'Três quartos',
+    sub: '+5 na CA e em Destreza',
+    mark: 'three',
+  },
   { value: CoverDegree.TOTAL, name: 'Total (não dá para mirar)', sub: '', mark: null },
 ];
 

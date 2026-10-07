@@ -49,7 +49,10 @@ export interface ViewToken {
 }
 
 /** What tells one token from another: a creature's ID, or the character's (a creature's `characterId` is its owner's). */
-export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
+export function tokenKey(token: {
+  readonly characterId: string;
+  readonly creatureId?: string;
+}): string {
   return token.creatureId || token.characterId;
 }
 
@@ -344,14 +347,42 @@ export function placeLabel(
   let bestCost = Number.POSITIVE_INFINITY;
   for (const c of candidates) {
     // Slide it back inside the image (a wider label than the image starts at its left edge).
-    const left = w > bounds.maxRight - bounds.minLeft ? bounds.minLeft : clamp(c.left, bounds.minLeft, bounds.maxRight - w);
+    const left =
+      w > bounds.maxRight - bounds.minLeft
+        ? bounds.minLeft
+        : clamp(c.left, bounds.minLeft, bounds.maxRight - w);
     const top = clamp(c.top, bounds.minTop, Math.max(bounds.minTop, bounds.maxBottom - h));
     const box: Box = { left, top, right: left + w, bottom: top + h };
     // What it covers of its own anchor weighs most; then the others; then how far sliding moved it.
-    const far = Math.max(0, Math.hypot(left + w / 2 - cx, top + h / 2 - cy) - Math.hypot(w / 2 + (anchor.right - anchor.left) / 2, h / 2 + (anchor.bottom - anchor.top) / 2)) / 100;
+    const far =
+      Math.max(
+        0,
+        Math.hypot(left + w / 2 - cx, top + h / 2 - cy) -
+          Math.hypot(
+            w / 2 + (anchor.right - anchor.left) / 2,
+            h / 2 + (anchor.bottom - anchor.top) / 2,
+          ),
+      ) / 100;
     // A label beside another mark reads as that mark's: keep a 12 px margin off the others (it weighs less than covering them).
-    const crowd = obstacles.reduce((sum, o) => sum + overlapArea(box, { left: o.left - 12, top: o.top - 12, right: o.right + 12, bottom: o.bottom + 12 }), 0) * 0.5;
-    const cost = overlapArea(box, anchor) * 4 + obstacles.reduce((sum, o) => sum + overlapArea(box, o), 0) + crowd + Math.abs(left - c.left) + Math.abs(top - c.top) + far;
+    const crowd =
+      obstacles.reduce(
+        (sum, o) =>
+          sum +
+          overlapArea(box, {
+            left: o.left - 12,
+            top: o.top - 12,
+            right: o.right + 12,
+            bottom: o.bottom + 12,
+          }),
+        0,
+      ) * 0.5;
+    const cost =
+      overlapArea(box, anchor) * 4 +
+      obstacles.reduce((sum, o) => sum + overlapArea(box, o), 0) +
+      crowd +
+      Math.abs(left - c.left) +
+      Math.abs(top - c.top) +
+      far;
     if (cost < bestCost) {
       bestCost = cost;
       best = { left, top };

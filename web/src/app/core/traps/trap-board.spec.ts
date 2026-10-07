@@ -8,8 +8,17 @@ const res = (dc: number) => create(GetTrapNoticersResponseSchema, { noticeDc: dc
 function setup(read: (n: number) => Promise<unknown>) {
   let n = 0;
   const maps = { getTrapNoticers: () => read(++n) };
-  const traps = { activity: async () => ({ activity: [] }), damages: async () => ({ damages: [] }) };
-  return new TrapBoard(traps as never, maps as never, () => 'c', () => 'm', () => true);
+  const traps = {
+    activity: async () => ({ activity: [] }),
+    damages: async () => ({ damages: [] }),
+  };
+  return new TrapBoard(
+    traps as never,
+    maps as never,
+    () => 'c',
+    () => 'm',
+    () => true,
+  );
 }
 
 describe('TrapBoard "Quem notaria"', () => {
@@ -32,7 +41,9 @@ describe('TrapBoard "Quem notaria"', () => {
 
   it('never lets a stale answer overwrite a newer one', async () => {
     const slow: ((v: unknown) => void)[] = [];
-    const board = setup((n) => (n === 1 ? new Promise((r) => slow.push(r)) : Promise.resolve(res(20))));
+    const board = setup((n) =>
+      n === 1 ? new Promise((r) => slow.push(r)) : Promise.resolve(res(20)),
+    );
     const first = board.watchNoticers('p1');
     await board.retryNoticers('p1'); // the newer read answers 20
     slow[0](res(5)); // the older one arrives late

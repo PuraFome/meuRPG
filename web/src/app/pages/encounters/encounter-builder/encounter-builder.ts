@@ -1,4 +1,13 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -9,9 +18,21 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creatures/bestiary-access';
-import { EncounterDraft, ENTRY_MAX, KINDS_MAX, PARTY_NPC_MAX } from '../../../core/encounters/encounter-draft';
+import {
+  EncounterDraft,
+  ENTRY_MAX,
+  KINDS_MAX,
+  PARTY_NPC_MAX,
+} from '../../../core/encounters/encounter-draft';
 import { EncountersClient } from '../../../core/encounters/encounters-client';
-import { GUIDE_CAVEAT, GUIDE_LABEL, capLine, encounterErrorMessage, headline, warningLines } from '../../../core/encounters/encounter-text';
+import {
+  GUIDE_CAVEAT,
+  GUIDE_LABEL,
+  capLine,
+  encounterErrorMessage,
+  headline,
+  warningLines,
+} from '../../../core/encounters/encounter-text';
 import { formatInt, tight } from '../../../core/format/text';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { openSheet } from '../../live-session/combat/sheet-host';
@@ -19,7 +40,11 @@ import { BudgetBar } from '../budget-bar/budget-bar';
 import { EncounterRows } from '../encounter-rows/encounter-rows';
 import { PartyChips } from '../party-chips/party-chips';
 import { CreaturePick } from '../creature-pick/creature-pick';
-import { GenerateSheet, type GenerateData, type GenerateResult } from '../generate-sheet/generate-sheet';
+import {
+  GenerateSheet,
+  type GenerateData,
+  type GenerateResult,
+} from '../generate-sheet/generate-sheet';
 import { PartyNpcSheet, type PartyNpcData } from '../party-npc-sheet/party-npc-sheet';
 import { SaveSheet, type SaveData, type SaveResult } from '../save-sheet/save-sheet';
 import type { DraftNpc } from '../../../core/encounters/encounter-draft';
@@ -38,7 +63,16 @@ type PageState = { status: 'loading' } | { status: 'error'; message: string } | 
  */
 @Component({
   selector: 'app-encounter-builder',
-  imports: [BudgetBar, CreaturePick, EncounterRows, PartyChips, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
+  imports: [
+    BudgetBar,
+    CreaturePick,
+    EncounterRows,
+    PartyChips,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+  ],
   templateUrl: './encounter-builder.html',
   styleUrl: './encounter-builder.scss',
 })
@@ -55,7 +89,9 @@ export class EncounterBuilder {
   private readonly encounters = inject(EncountersClient);
   protected readonly draft = new EncounterDraft(this.encounters, this.campaignId);
   /** The battle point whose saved encounter is on screen (`?point=`), and the question "Tirar o encontro?" in place. */
-  protected readonly keptAt = signal<{ readonly mapId: string; readonly pointId: string } | null>(null);
+  protected readonly keptAt = signal<{ readonly mapId: string; readonly pointId: string } | null>(
+    null,
+  );
   protected readonly clearing = signal(false);
   protected readonly clearBusy = signal(false);
   /** Saved creatures the SRD no longer has: left out of the draft, and gone from the point once it is saved again. */
@@ -142,7 +178,9 @@ export class EncounterBuilder {
       }
       this.keptAt.set({ mapId, pointId });
       this.lost.set(read.unknownKeys.length);
-      const have = new Map((read.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature]));
+      const have = new Map(
+        (read.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature]),
+      );
       const entries = read.encounter.monsters.flatMap((m) => {
         const creature = have.get(m.creatureKey);
         return creature ? [{ creature, count: m.count }] : [];
@@ -156,7 +194,10 @@ export class EncounterBuilder {
   protected askClear(): void {
     this.clearing.set(true);
     // The question is drawn on the next render: "Voltar" takes the focus.
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(),
+      { injector: this.injector },
+    );
   }
 
   /** "Tirar o encontro" (`ClearBattleEncounter`): the point keeps nothing; the draft stays on screen. */
@@ -197,13 +238,23 @@ export class EncounterBuilder {
     let npcs;
     try {
       const have = new Set(this.draft.npcs().map((n) => n.characterId));
-      npcs = (await this.roster.list(this.campaignId)).filter((e) => e.kind !== CharacterKind.PLAYER && !have.has(e.id));
+      npcs = (await this.roster.list(this.campaignId)).filter(
+        (e) => e.kind !== CharacterKind.PLAYER && !have.has(e.id),
+      );
     } catch {
-      this.npcError.set('Não deu para ler os NPCs da campanha: o servidor não respondeu. Tente de novo.');
+      this.npcError.set(
+        'Não deu para ler os NPCs da campanha: o servidor não respondeu. Tente de novo.',
+      );
       return;
     }
     openSheet<PartyNpcSheet, PartyNpcData, DraftNpc>(this.dialog, this.bottomSheet, PartyNpcSheet, {
-      data: { campaignId: this.campaignId, npcs, entries: this.draft.specs(), party: this.draft.party(), before: this.ev() },
+      data: {
+        campaignId: this.campaignId,
+        npcs,
+        entries: this.draft.specs(),
+        party: this.draft.party(),
+        before: this.ev(),
+      },
       ariaLabel: 'Pôr um NPC no grupo',
       labelledBy: 'pn-t',
       width: '620px',
@@ -223,19 +274,27 @@ export class EncounterBuilder {
   }
 
   protected openGenerate(): void {
-    openSheet<GenerateSheet, GenerateData, GenerateResult>(this.dialog, this.bottomSheet, GenerateSheet, {
-      data: {
-        campaignId: this.campaignId,
-        campaignName: this.access().status === 'master' ? (this.access() as { campaignName: string }).campaignName : '',
-        party: this.draft.party(),
-        evaluation: this.ev(),
+    openSheet<GenerateSheet, GenerateData, GenerateResult>(
+      this.dialog,
+      this.bottomSheet,
+      GenerateSheet,
+      {
+        data: {
+          campaignId: this.campaignId,
+          campaignName:
+            this.access().status === 'master'
+              ? (this.access() as { campaignName: string }).campaignName
+              : '',
+          party: this.draft.party(),
+          evaluation: this.ev(),
+        },
+        ariaLabel: 'Gerar encontro',
+        labelledBy: 'gen-t',
+        width: '760px',
+        tall: true,
+        focus: 'input[type=radio]:checked',
       },
-      ariaLabel: 'Gerar encontro',
-      labelledBy: 'gen-t',
-      width: '760px',
-      tall: true,
-      focus: 'input[type=radio]:checked',
-    }).subscribe((result) => {
+    ).subscribe((result) => {
       if (result) {
         this.saved.set(null);
         this.draft.replace(result.entries, result.seed);
@@ -276,6 +335,8 @@ export class EncounterBuilder {
 
   protected readonly savedLine = computed(() => {
     const s = this.saved();
-    return s?.evaluation ? `${headline(s.evaluation)} · ${s.evaluation.creatureCount} criaturas` : '';
+    return s?.evaluation
+      ? `${headline(s.evaluation)} · ${s.evaluation.creatureCount} criaturas`
+      : '';
   });
 }

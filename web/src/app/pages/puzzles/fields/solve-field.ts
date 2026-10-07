@@ -1,9 +1,29 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-import { type SolveChoice, type SolveDraft, MESSAGE_MAX, NO_SOLVE, textLength } from '../../../core/puzzles/puzzle-draft';
-import { type ClueChoice, type DoorChoice, type MapChoice, type PointChoice, SolveTargets } from '../../../core/puzzles/solve-targets';
+import {
+  type SolveChoice,
+  type SolveDraft,
+  MESSAGE_MAX,
+  NO_SOLVE,
+  textLength,
+} from '../../../core/puzzles/puzzle-draft';
+import {
+  type ClueChoice,
+  type DoorChoice,
+  type MapChoice,
+  type PointChoice,
+  SolveTargets,
+} from '../../../core/puzzles/solve-targets';
 import { DoorCrop } from '../../live-session/puzzles/door-crop/door-crop';
 import { type PickOption, PickGroup } from './pick-group';
 
@@ -234,9 +254,15 @@ export class SolveField implements OnInit {
       return;
     }
     if (kind === 'door') {
-      this.targets.doors(mapId).then((d) => mapId === this.chosenMap && this.doors.set(d), () => this.load.set('error'));
+      this.targets.doors(mapId).then(
+        (d) => mapId === this.chosenMap && this.doors.set(d),
+        () => this.load.set('error'),
+      );
     } else {
-      this.targets.points(mapId).then((p) => mapId === this.chosenMap && this.points.set(p), () => this.load.set('error'));
+      this.targets.points(mapId).then(
+        (p) => mapId === this.chosenMap && this.points.set(p),
+        () => this.load.set('error'),
+      );
     }
   }
 

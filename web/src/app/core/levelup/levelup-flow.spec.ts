@@ -19,8 +19,12 @@ import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, wizardOptions } from './le
 
 const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
-const steps = (o: ReturnType<typeof wizardOptions>, sub = '', maxAfter = o.preparedMaxAfter, prepared = 7) =>
-  stepsFor(o, totalsFor(o, sub), preparedMore(o, maxAfter, prepared));
+const steps = (
+  o: ReturnType<typeof wizardOptions>,
+  sub = '',
+  maxAfter = o.preparedMaxAfter,
+  prepared = 7,
+) => stepsFor(o, totalsFor(o, sub), preparedMore(o, maxAfter, prepared));
 
 describe('the steps of a level-up (MR-040)', () => {
   it('gives Pensantus Habilidades, Vida, Magias and Resumo at Mago 4', () => {
@@ -35,16 +39,30 @@ describe('the steps of a level-up (MR-040)', () => {
   });
 
   it('keeps Magias for a level that only lets the caster prepare more', () => {
-    const cleric = wizardOptions({ abilityScoreImprovement: false, cantrips: 0, spells: 0, spellsKind: 0, classKey: 'class:cleric' });
+    const cleric = wizardOptions({
+      abilityScoreImprovement: false,
+      cantrips: 0,
+      spells: 0,
+      spellsKind: 0,
+      classKey: 'class:cleric',
+    });
     expect(steps(cleric, '', 6, 4)).toEqual(['hp', 'spells', 'summary']);
     expect(steps(cleric, '', 4, 4)).toEqual(['hp', 'summary']);
   });
 
   it('adds Escolhas for a subclass, a feature option, a skill or expertise', () => {
-    const due = fighterOptions({ subclassDue: true, subclasses: [create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' })] });
+    const due = fighterOptions({
+      subclassDue: true,
+      subclasses: [create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' })],
+    });
     expect(steps(due)).toEqual(['hp', 'picks', 'summary']);
     const style = fighterOptions({
-      featureChoices: [create(LevelUpFeatureChoiceSchema, { choose: 1, options: [{ key: 'style:defense', namePt: 'Defesa' }] })],
+      featureChoices: [
+        create(LevelUpFeatureChoiceSchema, {
+          choose: 1,
+          options: [{ key: 'style:defense', namePt: 'Defesa' }],
+        }),
+      ],
     });
     expect(steps(style)).toEqual(['hp', 'picks', 'summary']);
     expect(steps(fighterOptions({ skillChoices: 2 }))).toEqual(['hp', 'picks', 'summary']);
@@ -54,7 +72,14 @@ describe('the steps of a level-up (MR-040)', () => {
   it('puts the chosen subclass share into the counts, so Magias can appear after it', () => {
     const o = fighterOptions({
       subclassDue: true,
-      subclasses: [create(LevelUpSubclassSchema, { key: 'sub:land', namePt: 'Círculo da Terra', cantrips: 1, skillChoices: 1 })],
+      subclasses: [
+        create(LevelUpSubclassSchema, {
+          key: 'sub:land',
+          namePt: 'Círculo da Terra',
+          cantrips: 1,
+          skillChoices: 1,
+        }),
+      ],
     });
     expect(totalsFor(o, '')).toMatchObject({ cantrips: 0, skills: 0 });
     expect(totalsFor(o, 'sub:land')).toMatchObject({ cantrips: 1, skills: 1 });
@@ -89,12 +114,19 @@ describe('the pickers lists', () => {
   });
 
   it("lets a Bard's Magical Secrets take any class's list", () => {
-    const names = spellOptions(wizardOptions({ anyClassSpells: 2 }), SPELLS, WIZARD_KEYS).map((i) => i.name);
+    const names = spellOptions(wizardOptions({ anyClassSpells: 2 }), SPELLS, WIZARD_KEYS).map(
+      (i) => i.name,
+    );
     expect(names).toContain('Curar Ferimentos');
   });
 
   it('offers for preparing the book with the spells just copied, marked as new', () => {
-    const items = preparedOptions(o, SPELLS, { ...WIZARD_KEYS, prepared: ['spell:magic-missile'] }, new Set(['spell:misty-step']));
+    const items = preparedOptions(
+      o,
+      SPELLS,
+      { ...WIZARD_KEYS, prepared: ['spell:magic-missile'] },
+      new Set(['spell:misty-step']),
+    );
     expect(items.map((i) => [i.name, plain(i.sub)])).toEqual([
       ['Detectar Magia', '1º nível · Adivinhação · ritual'],
       ['Passo Nebuloso', '2º nível · Conjuração · nova no livro'],
@@ -102,10 +134,22 @@ describe('the pickers lists', () => {
   });
 
   it('offers new skills, and expertise only in trained ones (today or just picked)', () => {
-    expect(skillOptions(SKILLS, WIZARD_KEYS).map((s) => s.name)).toEqual(['Furtividade', 'Percepção']);
-    expect(expertiseOptions(SKILLS, WIZARD_KEYS, new Set()).map((s) => s.name)).toEqual(['Arcanismo', 'História']);
-    expect(expertiseOptions(SKILLS, WIZARD_KEYS, new Set(['skill:stealth'])).map((s) => s.name)).toContain('Furtividade');
-    expect(expertiseOptions(SKILLS, { ...WIZARD_KEYS, expertise: ['skill:arcana'] }, new Set()).map((s) => s.name)).toEqual(['História']);
+    expect(skillOptions(SKILLS, WIZARD_KEYS).map((s) => s.name)).toEqual([
+      'Furtividade',
+      'Percepção',
+    ]);
+    expect(expertiseOptions(SKILLS, WIZARD_KEYS, new Set()).map((s) => s.name)).toEqual([
+      'Arcanismo',
+      'História',
+    ]);
+    expect(
+      expertiseOptions(SKILLS, WIZARD_KEYS, new Set(['skill:stealth'])).map((s) => s.name),
+    ).toContain('Furtividade');
+    expect(
+      expertiseOptions(SKILLS, { ...WIZARD_KEYS, expertise: ['skill:arcana'] }, new Set()).map(
+        (s) => s.name,
+      ),
+    ).toEqual(['História']);
   });
 });
 

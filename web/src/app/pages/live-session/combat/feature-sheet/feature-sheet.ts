@@ -122,7 +122,9 @@ export class FeatureSheet {
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
-  protected readonly title = computed(() => (this.typing() ? 'Digite o resultado do dado' : this.data.name));
+  protected readonly title = computed(() =>
+    this.typing() ? 'Digite o resultado do dado' : this.data.name,
+  );
   protected readonly formula = computed(() => {
     const r = this.roll();
     return r ? `${rollFormula(r)} de cura` : '';

@@ -5,9 +5,14 @@ import { ListSpellsResponseSchema, SpellSchema } from '../../../gen/meurpg/rules
 import { spellsErrorMessage } from './spells-errors';
 import { SpellsState } from './spells-state';
 
-const spell = (key: string, namePt: string) => create(SpellSchema, { key, namePt, name: namePt, level: 1 });
+const spell = (key: string, namePt: string) =>
+  create(SpellSchema, { key, namePt, name: namePt, level: 1 });
 const page = (keys: string[], total: number, next = '') =>
-  create(ListSpellsResponseSchema, { spells: keys.map((k) => spell(k, k)), total, nextPageToken: next });
+  create(ListSpellsResponseSchema, {
+    spells: keys.map((k) => spell(k, k)),
+    total,
+    nextPageToken: next,
+  });
 
 describe('SpellsState (MR-045)', () => {
   const requests: Record<string, unknown>[] = [];
@@ -45,7 +50,11 @@ describe('SpellsState (MR-045)', () => {
     const s = make();
     await s.search();
     await s.change({ classKey: 'class:wizard', onlyMine: true });
-    expect(requests[1]).toMatchObject({ classKey: 'class:wizard', characterId: 'char-1', pageToken: '' });
+    expect(requests[1]).toMatchObject({
+      classKey: 'class:wizard',
+      characterId: 'char-1',
+      pageToken: '',
+    });
   });
 
   it('reads the list again after a content change, keeping the pages "Mostrar mais" had opened, and drops what went away (RN-23)', async () => {
@@ -74,7 +83,7 @@ describe('SpellsState (MR-045)', () => {
     expect(s.status()).toBe('ready');
   });
 
-  it('pages with the server\'s token and adds the rows under the ones already there', async () => {
+  it("pages with the server's token and adds the rows under the ones already there", async () => {
     answer = async (req) => (req['pageToken'] ? page(['c'], 3) : page(['a', 'b'], 3, 'next-1'));
     const s = make();
     await s.search();
@@ -165,7 +174,9 @@ describe('SpellsState (MR-045)', () => {
     const s = make();
     await s.search();
     expect(s.status()).toBe('error');
-    expect(s.error()).toBe('Não deu para abrir as magias: o servidor não respondeu. Tente de novo.');
+    expect(s.error()).toBe(
+      'Não deu para abrir as magias: o servidor não respondeu. Tente de novo.',
+    );
     answer = async () => page(['a'], 1);
     await s.search();
     expect(s.status()).toBe('ready');
@@ -174,7 +185,10 @@ describe('SpellsState (MR-045)', () => {
 
 describe('SpellsState, the next page and the filters (M4)', () => {
   const calls: Record<string, unknown>[] = [];
-  const state = (answer: (req: Record<string, unknown>) => Promise<ReturnType<typeof page>>, hooks = {}) =>
+  const state = (
+    answer: (req: Record<string, unknown>) => Promise<ReturnType<typeof page>>,
+    hooks = {},
+  ) =>
     new SpellsState(
       {
         list: (req) => {
@@ -219,24 +233,47 @@ describe('SpellsState, the next page and the filters (M4)', () => {
 
   it('clears the filters but keeps the name, for the sheet\'s "Limpar"', async () => {
     const s = state(async () => page(['a'], 1));
-    await s.change({ query: 'maos', classKey: 'class:wizard', levels: [1], schoolKey: 'school:evocation', onlyMine: true });
+    await s.change({
+      query: 'maos',
+      classKey: 'class:wizard',
+      levels: [1],
+      schoolKey: 'school:evocation',
+      onlyMine: true,
+    });
     await s.clearFilters();
-    expect(s.filter()).toEqual({ query: 'maos', classKey: '', levels: [], schoolKey: '', onlyMine: false });
+    expect(s.filter()).toEqual({
+      query: 'maos',
+      classKey: '',
+      levels: [],
+      schoolKey: '',
+      onlyMine: false,
+    });
   });
 
   it('tells the page when a search starts and when an answer arrives', async () => {
     const events: string[] = [];
-    const s = state(async () => page(['a'], 1), { onSearch: () => events.push('search'), onAnswered: () => events.push('answered') });
+    const s = state(async () => page(['a'], 1), {
+      onSearch: () => events.push('search'),
+      onAnswered: () => events.push('answered'),
+    });
     await s.search();
     expect(events).toEqual(['search', 'answered']);
   });
 });
 
 describe('spellsErrorMessage', () => {
-  it('maps codes to sentences, never the server\'s message', () => {
-    expect(spellsErrorMessage(new ConnectError('raw secret', Code.NotFound))).toContain('não existe');
-    expect(spellsErrorMessage(new ConnectError('raw secret', Code.InvalidArgument))).toContain('confira a busca');
-    expect(spellsErrorMessage(new ConnectError('raw secret', Code.InvalidArgument), 'read')).toContain('abrir a descrição');
-    expect(spellsErrorMessage(new ConnectError('raw secret', Code.Internal))).not.toContain('raw secret');
+  it("maps codes to sentences, never the server's message", () => {
+    expect(spellsErrorMessage(new ConnectError('raw secret', Code.NotFound))).toContain(
+      'não existe',
+    );
+    expect(spellsErrorMessage(new ConnectError('raw secret', Code.InvalidArgument))).toContain(
+      'confira a busca',
+    );
+    expect(
+      spellsErrorMessage(new ConnectError('raw secret', Code.InvalidArgument), 'read'),
+    ).toContain('abrir a descrição');
+    expect(spellsErrorMessage(new ConnectError('raw secret', Code.Internal))).not.toContain(
+      'raw secret',
+    );
   });
 });

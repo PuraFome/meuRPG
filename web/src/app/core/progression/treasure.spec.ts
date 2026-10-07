@@ -1,7 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 
-import { TreasureToConvertSchema, XPAwardSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  TreasureToConvertSchema,
+  XPAwardSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import {
   awardTitle,
   foundLine,
@@ -20,7 +23,13 @@ import {
 const nbsp = '\u00a0';
 const NOW = new Date(2026, 9, 4, 23, 0);
 
-function treasure(name: string, valuePo: number, finders: string[], at = new Date(2026, 9, 4, 21, 40), inSession = true) {
+function treasure(
+  name: string,
+  valuePo: number,
+  finders: string[],
+  at = new Date(2026, 9, 4, 21, 40),
+  inSession = true,
+) {
   return create(TreasureToConvertSchema, {
     pointId: name,
     name,
@@ -42,7 +51,7 @@ describe('treasure texts (E9-09)', () => {
     expect(treasureCount(1200)).toBe('1.200\u00a0tesouros');
   });
 
-  it('sums the PO and writes the strip\'s headline and lines', () => {
+  it("sums the PO and writes the strip's headline and lines", () => {
     expect(totalPo([CHEST, PURSE, IDOL])).toBe(420);
     expect(stripHeadline([CHEST, PURSE, IDOL])).toBe(`3\u00a0tesouros · 420${nbsp}PO`);
     expect(stripLine(CHEST)).toBe(`Baú de moedas, 250${nbsp}PO, de Brisa`);
@@ -84,12 +93,19 @@ describe('treasure texts (E9-09)', () => {
   });
 
   describe('the history', () => {
-    const town = create(XPAwardSchema, { id: 'a', reason: 'Voltar à cidade', gold: 420, treasureCount: 3 });
+    const town = create(XPAwardSchema, {
+      id: 'a',
+      reason: 'Voltar à cidade',
+      gold: 420,
+      treasureCount: 3,
+    });
 
     it('titles a "Voltar à cidade" award by its treasures, and any other by its reason', () => {
       expect(townTitle(3, 420)).toBe(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
       expect(awardTitle(town)).toBe(`Voltar à cidade · 420${nbsp}PO em 3\u00a0tesouros`);
-      expect(awardTitle(create(XPAwardSchema, { reason: 'Venda do cálice de prata', gold: 60 }))).toBe('Venda do cálice de prata');
+      expect(
+        awardTitle(create(XPAwardSchema, { reason: 'Venda do cálice de prata', gold: 60 })),
+      ).toBe('Venda do cálice de prata');
     });
 
     it('says what the master reads after giving and after undoing', () => {
@@ -97,19 +113,27 @@ describe('treasure texts (E9-09)', () => {
         { characterId: 'p', characterName: 'Pensantus', xp: 105 },
         { characterId: 't', characterName: 'Toren', xp: 105 },
       ];
-      const award = create(XPAwardSchema, { id: 'a', reason: 'Voltar à cidade', gold: 420, treasureCount: 3, shares });
+      const award = create(XPAwardSchema, {
+        id: 'a',
+        reason: 'Voltar à cidade',
+        gold: 420,
+        treasureCount: 3,
+        shares,
+      });
       expect(townGivenText(award, 105, 0)).toBe(
         `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3\u00a0tesouros foram convertidos.`,
       );
       expect(townGivenText(award, 105, 1)).toContain(`Sobra 1${nbsp}XP, que não vai para ninguém.`);
-      expect(townUndoneText(award)).toBe('XP desfeito: os 3\u00a0tesouros voltaram a “encontrado, não convertido”.');
+      expect(townUndoneText(award)).toBe(
+        'XP desfeito: os 3\u00a0tesouros voltaram a “encontrado, não convertido”.',
+      );
       expect(townUndoneText(create(XPAwardSchema, { treasureCount: 1 }))).toBe(
         'XP desfeito: o tesouro voltou a “encontrado, não convertido”.',
       );
     });
   });
 
-  describe('the preview agrees with the server\'s split (backend/internal/rules TestSplitXP, and its remainders)', () => {
+  describe("the preview agrees with the server's split (backend/internal/rules TestSplitXP, and its remainders)", () => {
     // Each row: PO total, receivers, what each gets and what is left: the numbers the Go tests give for
     // SplitXP (100/4 = 25, 100/3 = 33 r1, 7/1 = 7, 1/2 = 0 r1) plus ones with a remainder of 2 and 3.
     it.each([
@@ -128,7 +152,11 @@ describe('treasure texts (E9-09)', () => {
   });
 
   it('agrees in number, with the count tied to its noun', () => {
-    expect(moreTreasures(1, 'para depois')).toBe(`Há mais 1${nbsp}tesouro encontrado, que fica para depois.`);
-    expect(moreTreasures(29, 'para a próxima vez')).toBe(`Há mais 29${nbsp}tesouros encontrados, que ficam para a próxima vez.`);
+    expect(moreTreasures(1, 'para depois')).toBe(
+      `Há mais 1${nbsp}tesouro encontrado, que fica para depois.`,
+    );
+    expect(moreTreasures(29, 'para a próxima vez')).toBe(
+      `Há mais 29${nbsp}tesouros encontrados, que ficam para a próxima vez.`,
+    );
   });
 });

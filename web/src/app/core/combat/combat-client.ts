@@ -205,7 +205,11 @@ export class CombatClient {
       ...(extras.mode === undefined ? {} : { mode: extras.mode }),
       ...(extras.monsters && extras.monsters.length > 0
         ? {
-            monsters: extras.monsters.map((m) => ({ creatureKey: m.creatureKey, count: m.count, name: m.name ?? '' })),
+            monsters: extras.monsters.map((m) => ({
+              creatureKey: m.creatureKey,
+              count: m.count,
+              name: m.name ?? '',
+            })),
             monsterHitPoints: toHitPoints(extras.monsterHp),
             monstersHidden: extras.monstersHidden ?? true,
           }
@@ -219,7 +223,13 @@ export class CombatClient {
   async addMonsters(
     campaignId: string,
     encounterId: string,
-    add: { readonly creatureKey: string; readonly count: number; readonly name: string; readonly hp: MonsterHp; readonly hidden: boolean },
+    add: {
+      readonly creatureKey: string;
+      readonly count: number;
+      readonly name: string;
+      readonly hp: MonsterHp;
+      readonly hidden: boolean;
+    },
     idempotencyKey: string,
   ): Promise<AddMonstersResult> {
     const res = await this.client.addMonsters({
@@ -246,7 +256,10 @@ export class CombatClient {
       encounterId,
       combatantId,
       idempotencyKey: newKey(),
-      roll: 'inApp' in roll ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: roll.face },
+      roll:
+        'inApp' in roll
+          ? { case: 'rollInApp', value: true }
+          : { case: 'd20Face', value: roll.face },
     });
     return need(res.encounter, 'SubmitInitiative');
   }
@@ -317,54 +330,139 @@ export class CombatClient {
       jump: jump ? (jump.kind === 'long' ? JumpKind.LONG : JumpKind.HIGH) : JumpKind.UNSPECIFIED,
       jumpHeightDft: jump?.kind === 'high' ? jump.heightDft : 0,
     });
-    return { encounter: need(res.encounter, 'MoveCombatant'), stoppedEarly: res.stoppedEarly, lockedDoor: res.lockedDoor, provoked: res.provoked };
+    return {
+      encounter: need(res.encounter, 'MoveCombatant'),
+      stoppedEarly: res.stoppedEarly,
+      lockedDoor: res.lockedDoor,
+      provoked: res.provoked,
+    };
   }
 
   /** `GetMoveOptions`: where the combatant can go in one straight move, the
    * cost of each square and why the others inside the circle are refused. */
-  moveOptions(campaignId: string, encounterId: string, combatantId: string): Promise<GetMoveOptionsResponse> {
+  moveOptions(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+  ): Promise<GetMoveOptionsResponse> {
     return this.client.getMoveOptions({ campaignId, encounterId, combatantId });
   }
 
   /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
-  async setSide(campaignId: string, encounterId: string, combatantId: string, side: CombatantSide): Promise<Encounter> {
-    const res = await this.client.setCombatantSide({ campaignId, encounterId, combatantId, idempotencyKey: newKey(), side });
+  async setSide(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    side: CombatantSide,
+  ): Promise<Encounter> {
+    const res = await this.client.setCombatantSide({
+      campaignId,
+      encounterId,
+      combatantId,
+      idempotencyKey: newKey(),
+      side,
+    });
     return need(res.encounter, 'SetCombatantSide');
   }
 
   /** The master's "Marcar cobertura": the cover the map does not show. */
-  async setCover(campaignId: string, encounterId: string, combatantId: string, cover: CoverDegree): Promise<Encounter> {
-    const res = await this.client.setCombatantCover({ campaignId, encounterId, combatantId, idempotencyKey: newKey(), cover });
+  async setCover(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    cover: CoverDegree,
+  ): Promise<Encounter> {
+    const res = await this.client.setCombatantCover({
+      campaignId,
+      encounterId,
+      combatantId,
+      idempotencyKey: newKey(),
+      cover,
+    });
     return need(res.encounter, 'SetCombatantCover');
   }
 
   /** "Não atacar": turns an opportunity offer down. */
-  async declineOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
-    const res = await this.client.declineOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+  async declineOpportunity(
+    campaignId: string,
+    encounterId: string,
+    offerId: string,
+  ): Promise<Encounter> {
+    const res = await this.client.declineOpportunity({
+      campaignId,
+      encounterId,
+      opportunityOfferId: offerId,
+      idempotencyKey: newKey(),
+    });
     return need(res.encounter, 'DeclineOpportunity');
   }
 
   /** The master's "Seguir sem esperar": passes over an offer nobody answers. */
-  async skipOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
-    const res = await this.client.skipOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+  async skipOpportunity(
+    campaignId: string,
+    encounterId: string,
+    offerId: string,
+  ): Promise<Encounter> {
+    const res = await this.client.skipOpportunity({
+      campaignId,
+      encounterId,
+      opportunityOfferId: offerId,
+      idempotencyKey: newKey(),
+    });
     return need(res.encounter, 'SkipOpportunity');
   }
 
   /** "Gastar movimento" (a combat without a map, RN-25): whole feet, never more than what is left. The server says what is left. */
-  async spendMovement(campaignId: string, encounterId: string, combatantId: string, distanceFt: number, idempotencyKey: string): Promise<SpendResult> {
-    const res = await this.client.spendMovement({ campaignId, encounterId, combatantId, distanceFt, idempotencyKey });
-    return { encounter: need(res.encounter, 'SpendMovement'), movementLeftDft: res.movementLeftDft };
+  async spendMovement(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    distanceFt: number,
+    idempotencyKey: string,
+  ): Promise<SpendResult> {
+    const res = await this.client.spendMovement({
+      campaignId,
+      encounterId,
+      combatantId,
+      distanceFt,
+      idempotencyKey,
+    });
+    return {
+      encounter: need(res.encounter, 'SpendMovement'),
+      movementLeftDft: res.movementLeftDft,
+    };
   }
 
   /** The master's "Oferecer ataque de oportunidade" (a combat without a map): who left whose reach. */
-  async offerOpportunity(campaignId: string, encounterId: string, moverId: string, reactorId: string, idempotencyKey: string): Promise<Encounter> {
-    const res = await this.client.offerOpportunity({ campaignId, encounterId, moverId, reactorId, idempotencyKey });
+  async offerOpportunity(
+    campaignId: string,
+    encounterId: string,
+    moverId: string,
+    reactorId: string,
+    idempotencyKey: string,
+  ): Promise<Encounter> {
+    const res = await this.client.offerOpportunity({
+      campaignId,
+      encounterId,
+      moverId,
+      reactorId,
+      idempotencyKey,
+    });
     return need(res.encounter, 'OfferOpportunity');
   }
 
   /** "Retirar a oferta": an offer nobody answered is taken back; the reactor keeps its reaction. */
-  async withdrawOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
-    const res = await this.client.withdrawOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+  async withdrawOpportunity(
+    campaignId: string,
+    encounterId: string,
+    offerId: string,
+  ): Promise<Encounter> {
+    const res = await this.client.withdrawOpportunity({
+      campaignId,
+      encounterId,
+      opportunityOfferId: offerId,
+      idempotencyKey: newKey(),
+    });
     return need(res.encounter, 'WithdrawOpportunity');
   }
 
@@ -438,7 +536,8 @@ export class CombatClient {
       attackKey,
       targetId,
       idempotencyKey: key,
-      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+      roll:
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
       asReaction,
       opportunityOfferId,
     });
@@ -461,7 +560,8 @@ export class CombatClient {
       encounterId,
       pendingDamageId,
       idempotencyKey: key,
-      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'typedSum', value: die.sum },
+      roll:
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'typedSum', value: die.sum },
     });
     return {
       encounter: need(res.encounter, 'RollDamage'),
@@ -520,13 +620,29 @@ export class CombatClient {
     slot: { level: number; pact: boolean },
     key: string,
   ): Promise<ReactionResult> {
-    const res = await this.client.useReaction({ campaignId, encounterId, pendingDamageId, slot, idempotencyKey: key });
+    const res = await this.client.useReaction({
+      campaignId,
+      encounterId,
+      pendingDamageId,
+      slot,
+      idempotencyKey: key,
+    });
     return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
   }
 
   /** The master lets the hit go ("Seguir sem Escudo"). */
-  async declineReaction(campaignId: string, encounterId: string, pendingDamageId: string, key: string): Promise<Encounter> {
-    const res = await this.client.declineReaction({ campaignId, encounterId, pendingDamageId, idempotencyKey: key });
+  async declineReaction(
+    campaignId: string,
+    encounterId: string,
+    pendingDamageId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.declineReaction({
+      campaignId,
+      encounterId,
+      pendingDamageId,
+      idempotencyKey: key,
+    });
     return need(res.encounter, 'DeclineReaction');
   }
 
@@ -585,9 +701,19 @@ export class CombatClient {
           : 'poolSum' in die
             ? { case: 'poolSum', value: die.poolSum }
             : { case: 'd20Face', value: die.face },
-      summon: summon ? { option: summon.option, creatureKeys: [...summon.creatureKeys], names: [...(summon.names ?? [])] } : undefined,
+      summon: summon
+        ? {
+            option: summon.option,
+            creatureKeys: [...summon.creatureKeys],
+            names: [...(summon.names ?? [])],
+          }
+        : undefined,
     });
-    return { encounter: need(res.encounter, 'CastSpell'), cast: need(res.cast, 'CastSpell'), summoned: res.summonedCombatantIds };
+    return {
+      encounter: need(res.encounter, 'CastSpell'),
+      cast: need(res.cast, 'CastSpell'),
+      summoned: res.summonedCombatantIds,
+    };
   }
 
   async rollDeathSave(
@@ -602,14 +728,28 @@ export class CombatClient {
       encounterId,
       combatantId,
       idempotencyKey: key,
-      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+      roll:
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
     });
-    return { encounter: need(res.encounter, 'RollDeathSave'), save: need(res.deathSave, 'RollDeathSave') };
+    return {
+      encounter: need(res.encounter, 'RollDeathSave'),
+      save: need(res.deathSave, 'RollDeathSave'),
+    };
   }
 
   /** The master confirms a death (three failed death saves). It cannot be undone. */
-  async confirmDeath(campaignId: string, encounterId: string, combatantId: string, key: string): Promise<Encounter> {
-    const res = await this.client.confirmDeath({ campaignId, encounterId, combatantId, idempotencyKey: key });
+  async confirmDeath(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.confirmDeath({
+      campaignId,
+      encounterId,
+      combatantId,
+      idempotencyKey: key,
+    });
     return need(res.encounter, 'ConfirmDeath');
   }
 

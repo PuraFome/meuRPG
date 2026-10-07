@@ -16,7 +16,10 @@ const KINDS: Record<number, { label: string; icon: string; sub?: string }> = {
   [HighlightKind.FINAL_BLOW]: { label: 'Golpe final', icon: 'target' },
   [HighlightKind.CRITICAL_HITS]: { label: 'Acertos críticos', icon: 'casino' },
   // Only the session's summary has it: the checks passed in scenes that showed their DC.
-  [HighlightKind.CHECKS_PASSED]: { label: 'Mais testes passados fora do combate', icon: 'task_alt' },
+  [HighlightKind.CHECKS_PASSED]: {
+    label: 'Mais testes passados fora do combate',
+    icon: 'task_alt',
+  },
   // Also only the session's summary: the PO found while the session was open.
   [HighlightKind.TREASURE_FOUND]: { label: 'Mais tesouro encontrado', icon: 'paid' },
 };
@@ -69,25 +72,27 @@ export function highlightTiles(
   tried: ReadonlyMap<string, number> = new Map(),
 ): HighlightTile[] {
   // A kind this app does not know (a newer server) is left out, never drawn as damage.
-  return res.categories.filter((c) => KINDS[c.kind] !== undefined).map((c) => {
-    const kind = KINDS[c.kind];
-    const counts = new Set(c.winners.map((w) => tried.get(w.characterId)));
-    const [count] = counts;
-    const triedLine =
-      c.kind === HighlightKind.CHECKS_PASSED && counts.size === 1 && count !== undefined
-        ? `de${NBSP}${count}${NBSP}${count === 1 ? 'tentado' : 'tentados'}`
-        : '';
-    return {
-      kind: c.kind,
-      label: kind.label,
-      icon: kind.icon,
-      sub: triedLine || (kind.sub ?? ''),
-      value: highlightValue(c.kind, c.value),
-      names: joinNames(c.winners.map((w) => w.name)),
-      tie: c.winners.length > 1,
-      characterIds: c.winners.map((w) => w.characterId),
-    };
-  });
+  return res.categories
+    .filter((c) => KINDS[c.kind] !== undefined)
+    .map((c) => {
+      const kind = KINDS[c.kind];
+      const counts = new Set(c.winners.map((w) => tried.get(w.characterId)));
+      const [count] = counts;
+      const triedLine =
+        c.kind === HighlightKind.CHECKS_PASSED && counts.size === 1 && count !== undefined
+          ? `de${NBSP}${count}${NBSP}${count === 1 ? 'tentado' : 'tentados'}`
+          : '';
+      return {
+        kind: c.kind,
+        label: kind.label,
+        icon: kind.icon,
+        sub: triedLine || (kind.sub ?? ''),
+        value: highlightValue(c.kind, c.value),
+        names: joinNames(c.winners.map((w) => w.name)),
+        tie: c.winners.length > 1,
+        characterIds: c.winners.map((w) => w.characterId),
+      };
+    });
 }
 
 /** One row of the master's "Números de cada jogador": every number, zeros
@@ -125,8 +130,13 @@ export interface OwnNumber {
  * one row of the table, their own character's, zeros included. Empty when
  * there is none (the character was not in the combat).
  */
-export function ownNumbers(characters: readonly CharacterHighlights[], characterId: string): OwnNumber[] {
-  const mine = characters.find((c) => c.characterId === characterId) ?? (characters.length === 1 ? characters[0] : undefined);
+export function ownNumbers(
+  characters: readonly CharacterHighlights[],
+  characterId: string,
+): OwnNumber[] {
+  const mine =
+    characters.find((c) => c.characterId === characterId) ??
+    (characters.length === 1 ? characters[0] : undefined);
   if (!mine) {
     return [];
   }

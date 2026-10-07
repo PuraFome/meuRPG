@@ -116,9 +116,13 @@ export class HintTryControl {
   protected readonly typing = signal(false);
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   private readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
-  private readonly prefersApp = computed(() => effectivePreference(this.diceMode(), this.dicePreference()) === DicePreference.APP);
+  private readonly prefersApp = computed(
+    () => effectivePreference(this.diceMode(), this.dicePreference()) === DicePreference.APP,
+  );
   /** "Digitar o resultado" as a link: only when the table lets the player choose and they prefer the app. */
-  protected readonly offerType = computed(() => this.canApp() && this.canType() && this.prefersApp());
+  protected readonly offerType = computed(
+    () => this.canApp() && this.canType() && this.prefersApp(),
+  );
   protected readonly help = computed(() => {
     if (!this.canType()) {
       return 'A rolagem é no app.';

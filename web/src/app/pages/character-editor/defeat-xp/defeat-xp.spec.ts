@@ -40,7 +40,8 @@ describe('DefeatXp (E7-11)', () => {
 
   const xpInput = (el: HTMLElement) => el.querySelector<HTMLInputElement>('input[type="number"]')!;
   const hint = (el: HTMLElement) => el.querySelector('#xp-hint')!.textContent!.trim();
-  const useButton = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Usar'));
+  const useButton = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Usar'));
 
   /** What choosing an ND in the list does: the select's `selectionChange` (only a person causes it). */
   function choose(fixture: ReturnType<typeof setup>['fixture'], host: Host, rating: string) {
@@ -124,9 +125,11 @@ describe('DefeatXp (E7-11)', () => {
     expect(useButton(el)).toBeUndefined();
   });
 
-  it('lists the rows with the XP beside each, in the table\'s order', () => {
+  it("lists the rows with the XP beside each, in the table's order", () => {
     const { component } = setup();
-    expect(TABLE.map((row) => `${component['ratingText'](row)} ${component['xpText'](row)}`)).toEqual([
+    expect(
+      TABLE.map((row) => `${component['ratingText'](row)} ${component['xpText'](row)}`),
+    ).toEqual([
       `ND 0 10${nbsp}XP`,
       `ND 1/8 25${nbsp}XP`,
       `ND 1/4 50${nbsp}XP`,

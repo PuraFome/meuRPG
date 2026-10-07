@@ -1,4 +1,8 @@
-import type { DerivedSheet, DerivedSkill, SavingThrow } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type {
+  DerivedSheet,
+  DerivedSkill,
+  SavingThrow,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, formatModifier, spellLevelLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
@@ -56,7 +60,13 @@ function newNames(names: readonly string[], one: string, many: string): string {
   return names.length === 0 ? '' : `${names.length === 1 ? one : many}: ${LIST.format(names)}`;
 }
 
-function row(key: string, label: string, before: string, after: string, sub = ''): ChangeRow | null {
+function row(
+  key: string,
+  label: string,
+  before: string,
+  after: string,
+  sub = '',
+): ChangeRow | null {
   return before === after ? null : { key, label, before, after, sub };
 }
 
@@ -69,7 +79,15 @@ function savesChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
   return after.savingThrows.flatMap((s) => {
     const b = was.get(s.ability);
     const key = ABILITY_KEY[s.ability];
-    const r = b && key ? row(`save-${key}`, `Teste de resistência de ${abilityLabel(key)}`, formatModifier(b.bonus), formatModifier(s.bonus)) : null;
+    const r =
+      b && key
+        ? row(
+            `save-${key}`,
+            `Teste de resistência de ${abilityLabel(key)}`,
+            formatModifier(b.bonus),
+            formatModifier(s.bonus),
+          )
+        : null;
     return r ? [r] : [];
   });
 }
@@ -82,7 +100,11 @@ function skillsChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
     const b = was.get(s.key);
     if (!b || b.bonus === s.bonus) continue;
     const id = `${b.bonus}>${s.bonus}`;
-    const g = groups.get(id) ?? { names: [], before: formatModifier(b.bonus), after: formatModifier(s.bonus) };
+    const g = groups.get(id) ?? {
+      names: [],
+      before: formatModifier(b.bonus),
+      after: formatModifier(s.bonus),
+    };
     g.names.push(s.namePt);
     groups.set(id, g);
   }
@@ -101,7 +123,11 @@ function skillsChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
  * numbers up and words them. A line whose two sides are the same is left out;
  * "Nível" always stays.
  */
-export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: SummaryContext): ChangeRow[] {
+export function changeRows(
+  before: DerivedSheet,
+  after: DerivedSheet,
+  ctx: SummaryContext,
+): ChangeRow[] {
   const rows: (ChangeRow | null)[] = [];
   const level = (s: DerivedSheet) => s.classes.map((c) => `${c.namePt} ${c.level}`).join(' / ');
   rows.push({ key: 'level', label: 'Nível', before: level(before), after: level(after), sub: '' });
@@ -112,15 +138,39 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
     const key = ABILITY_KEY[a.ability];
     if (b && key && b.score !== a.score) {
       rows.push(
-        row(`ability-${key}`, abilityLabel(key), String(b.score), String(a.score), `Modificador ${formatModifier(b.modifier)} → ${formatModifier(a.modifier)}`),
+        row(
+          `ability-${key}`,
+          abilityLabel(key),
+          String(b.score),
+          String(a.score),
+          `Modificador ${formatModifier(b.modifier)} → ${formatModifier(a.modifier)}`,
+        ),
       );
     }
   }
-  rows.push(row('hp', 'Pontos de vida', String(before.hitPointsMax), String(after.hitPointsMax), ctx.hpSub));
+  rows.push(
+    row('hp', 'Pontos de vida', String(before.hitPointsMax), String(after.hitPointsMax), ctx.hpSub),
+  );
   rows.push(row('hit-dice', 'Dados de vida', hitDice(before), hitDice(after)));
-  rows.push(row('proficiency', 'Bônus de proficiência', formatModifier(before.proficiencyBonus), formatModifier(after.proficiencyBonus)));
-  rows.push(row('armor', 'Classe de Armadura', String(before.armorClass), String(after.armorClass)));
-  rows.push(row('initiative', 'Iniciativa', formatModifier(before.initiative), formatModifier(after.initiative)));
+  rows.push(
+    row(
+      'proficiency',
+      'Bônus de proficiência',
+      formatModifier(before.proficiencyBonus),
+      formatModifier(after.proficiencyBonus),
+    ),
+  );
+  rows.push(
+    row('armor', 'Classe de Armadura', String(before.armorClass), String(after.armorClass)),
+  );
+  rows.push(
+    row(
+      'initiative',
+      'Iniciativa',
+      formatModifier(before.initiative),
+      formatModifier(after.initiative),
+    ),
+  );
 
   const bc = cast(before);
   const ac = cast(after);
@@ -128,10 +178,25 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
     // Before a class casts there is nothing to compare: a dash, never a 0 or a +0 that looks like a number.
     const none = '—';
     rows.push(row('dc', 'CD das magias', bc ? String(bc.saveDc) : none, String(ac.saveDc)));
-    rows.push(row('attack', 'Ataque com magia', bc ? formatModifier(bc.attackBonus) : none, formatModifier(ac.attackBonus)));
+    rows.push(
+      row(
+        'attack',
+        'Ataque com magia',
+        bc ? formatModifier(bc.attackBonus) : none,
+        formatModifier(ac.attackBonus),
+      ),
+    );
     // A class with no cantrips has nothing to gain: no row for "— → 0".
     if (bc || ac.cantripsKnown > 0) {
-      rows.push(row('cantrips', 'Truques', bc ? String(bc.cantripsKnown) : none, String(ac.cantripsKnown), newNames(ctx.cantrips, 'Novo', 'Novos')));
+      rows.push(
+        row(
+          'cantrips',
+          'Truques',
+          bc ? String(bc.cantripsKnown) : none,
+          String(ac.cantripsKnown),
+          newNames(ctx.cantrips, 'Novo', 'Novos'),
+        ),
+      );
     }
     const known = (s: DerivedSheet) => s.spells.filter((x) => (x.spell?.level ?? 0) > 0).length;
     const knownBefore = known(before);
@@ -146,29 +211,77 @@ export function changeRows(before: DerivedSheet, after: DerivedSheet, ctx: Summa
         sub: newNames(ctx.spells, 'Nova', 'Novas'),
       });
     }
-    const slots = (s: DerivedSheet, level: number) => s.spellSlots.find((x) => x.level === level)?.count ?? 0;
+    const slots = (s: DerivedSheet, level: number) =>
+      s.spellSlots.find((x) => x.level === level)?.count ?? 0;
     const circles = new Set([...before.spellSlots, ...after.spellSlots].map((x) => x.level));
     for (const level of [...circles].sort((a, b) => a - b)) {
-      const slotRow = row(`slots-${level}`, `Espaços de ${spellLevelLabel(level)}`, String(slots(before, level)), String(slots(after, level)), ctx.table ? 'Da tabela da classe' : '');
+      const slotRow = row(
+        `slots-${level}`,
+        `Espaços de ${spellLevelLabel(level)}`,
+        String(slots(before, level)),
+        String(slots(after, level)),
+        ctx.table ? 'Da tabela da classe' : '',
+      );
       rows.push(slotRow && ctx.table ? { ...slotRow, table: true } : slotRow);
     }
     if (after.pactMagic) {
       const p = before.pactMagic;
-      const pactRow = row('pact', 'Espaços do pacto', p ? `${p.count} de ${spellLevelLabel(p.slotLevel)}` : '0', `${after.pactMagic.count} de ${spellLevelLabel(after.pactMagic.slotLevel)}`, ctx.table ? 'Da tabela da classe' : '');
+      const pactRow = row(
+        'pact',
+        'Espaços do pacto',
+        p ? `${p.count} de ${spellLevelLabel(p.slotLevel)}` : '0',
+        `${after.pactMagic.count} de ${spellLevelLabel(after.pactMagic.slotLevel)}`,
+        ctx.table ? 'Da tabela da classe' : '',
+      );
       rows.push(pactRow && ctx.table ? { ...pactRow, table: true } : pactRow);
     }
     if (ac.preparedMax > 0) {
       const names = newNames(ctx.prepared, 'Nova', 'Novas');
-      rows.push(row('prepared', 'Magias preparadas', bc ? String(bc.preparedMax) : none, String(ac.preparedMax), names));
+      rows.push(
+        row(
+          'prepared',
+          'Magias preparadas',
+          bc ? String(bc.preparedMax) : none,
+          String(ac.preparedMax),
+          names,
+        ),
+      );
     }
   }
   if (ctx.newFeatures && ctx.newFeatures.length > 0) {
-    rows.push({ key: 'features', label: 'Novas características', before: '', after: String(ctx.newFeatures.length), sub: joinDots([...ctx.newFeatures]) });
+    rows.push({
+      key: 'features',
+      label: 'Novas características',
+      before: '',
+      after: String(ctx.newFeatures.length),
+      sub: joinDots([...ctx.newFeatures]),
+    });
   }
   rows.push(...savesChanged(before, after));
   rows.push(...skillsChanged(before, after));
-  rows.push(row('passive-perception', 'Percepção passiva', String(before.passivePerception), String(after.passivePerception)));
-  rows.push(row('passive-investigation', 'Investigação passiva', String(before.passiveInvestigation), String(after.passiveInvestigation)));
-  rows.push(row('passive-insight', 'Intuição passiva', String(before.passiveInsight), String(after.passiveInsight)));
+  rows.push(
+    row(
+      'passive-perception',
+      'Percepção passiva',
+      String(before.passivePerception),
+      String(after.passivePerception),
+    ),
+  );
+  rows.push(
+    row(
+      'passive-investigation',
+      'Investigação passiva',
+      String(before.passiveInvestigation),
+      String(after.passiveInvestigation),
+    ),
+  );
+  rows.push(
+    row(
+      'passive-insight',
+      'Intuição passiva',
+      String(before.passiveInsight),
+      String(after.passiveInsight),
+    ),
+  );
   return rows.filter((r): r is ChangeRow => r !== null);
 }

@@ -5,22 +5,42 @@ import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/ca
 import { CombatClient } from '../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../core/combat/combat-testing';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, beastSpell, flat, isOff, summary, summonAnswer } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  beastSpell,
+  flat,
+  isOff,
+  summary,
+  summonAnswer,
+} from '../../../core/creatures/creatures-testing';
 import { SummonSheet, type SummonSheetData } from './summon-sheet';
 
 /** Conjurar Animais in a combat (E9-12): the group's one initiative d20 follows the campaign's dice (RN-18). */
-describe('SummonSheet in a combat: the group\'s initiative die', () => {
+describe("SummonSheet in a combat: the group's initiative die", () => {
   async function setup(diceMode: DiceMode, preference: DicePreference) {
     const api = new FakeCreaturesClient();
     api.options = summonAnswer([beastSpell()], [[3, 2, 2]]);
     api.catalog = [summary('monster:wolf', 'Lobo', { challengeRating: '1/4' })];
-    const castSpell = vi.fn(async () => ({ encounter: encounter({ combatants: [combatant({ id: 'w1', label: 'Lobo 1', monsterKey: 'monster:wolf' })] }), cast: {}, summoned: ['w1'] }));
+    const castSpell = vi.fn(async () => ({
+      encounter: encounter({
+        combatants: [combatant({ id: 'w1', label: 'Lobo 1', monsterKey: 'monster:wolf' })],
+      }),
+      cast: {},
+      summoned: ['w1'],
+    }));
     const state = { apply: vi.fn() };
     const data: SummonSheetData = {
       campaignId: 'camp',
       characterId: 'char-1',
       spellKey: 'spell:conjure-animals',
-      combat: { encounterId: 'enc', casterId: 'sal', diceMode, preference, state: state as never, concentrating: '' },
+      combat: {
+        encounterId: 'enc',
+        casterId: 'sal',
+        diceMode,
+        preference,
+        state: state as never,
+        concentrating: '',
+      },
     };
     TestBed.configureTestingModule({
       providers: [
@@ -42,12 +62,18 @@ describe('SummonSheet in a combat: the group\'s initiative die', () => {
     fixture.detectChanges();
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const go = () => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes('Conjurar Animais'))!;
+    const go = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.includes('Conjurar Animais'),
+      )!;
     const choose = async () => {
       // Two wolves: the option of 2 beasts, then "Escolher" twice.
       el.querySelectorAll<HTMLInputElement>('input[name=option]')[1].click();
       await settle();
-      const wolf = () => el.querySelector<HTMLButtonElement>('button[aria-label="Escolher Lobo"], button[aria-label="Mais Lobo"]')!;
+      const wolf = () =>
+        el.querySelector<HTMLButtonElement>(
+          'button[aria-label="Escolher Lobo"], button[aria-label="Mais Lobo"]',
+        )!;
       wolf().click();
       await settle();
       wolf().click();
@@ -57,7 +83,10 @@ describe('SummonSheet in a combat: the group\'s initiative die', () => {
   }
 
   it('physical dice only: the face is asked for from the start, the cast waits for it and sends it', async () => {
-    const { el, go, choose, castSpell, settle } = await setup(DiceMode.PHYSICAL, DicePreference.UNSPECIFIED);
+    const { el, go, choose, castSpell, settle } = await setup(
+      DiceMode.PHYSICAL,
+      DicePreference.UNSPECIFIED,
+    );
     expect(el.querySelector('#initiative-face')).not.toBeNull();
     await choose();
     expect(isOff(go())).toBe(true);
@@ -73,7 +102,10 @@ describe('SummonSheet in a combat: the group\'s initiative die', () => {
   });
 
   it('app dice only: no field, and the server rolls it', async () => {
-    const { el, go, choose, castSpell, settle } = await setup(DiceMode.APP, DicePreference.UNSPECIFIED);
+    const { el, go, choose, castSpell, settle } = await setup(
+      DiceMode.APP,
+      DicePreference.UNSPECIFIED,
+    );
     expect(el.querySelector('#initiative-face')).toBeNull();
     await choose();
     go().click();
@@ -81,7 +113,7 @@ describe('SummonSheet in a combat: the group\'s initiative die', () => {
     expect((castSpell.mock.calls[0] as unknown[])[6]).toEqual({ inApp: true });
   });
 
-  it('both allowed: the player\'s preference decides where it starts, and the other way is one tap away', async () => {
+  it("both allowed: the player's preference decides where it starts, and the other way is one tap away", async () => {
     const physical = await setup(DiceMode.PLAYERS_CHOOSE, DicePreference.PHYSICAL);
     expect(physical.el.querySelector('#initiative-face')).not.toBeNull();
     expect(flat(physical.el.querySelector('.roll__hint'))).toContain('Rolar no app');

@@ -1,6 +1,9 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../gen/meurpg/play/v1/play_pb';
+import {
+  GameSessionBlockedReason,
+  GameSessionBlockedSchema,
+} from '../../../gen/meurpg/play/v1/play_pb';
 import {
   SceneBlockedReason,
   type SceneBlocked,

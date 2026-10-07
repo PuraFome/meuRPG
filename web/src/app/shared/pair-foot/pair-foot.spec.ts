@@ -4,7 +4,10 @@ import { needsStack } from './pair-foot';
 
 /** A pair of Material-like buttons with fixed word widths, in a room of a fixed width, on a computer or a phone. */
 function pair(room: number, words: [number, number], desktop: boolean): HTMLElement {
-  vi.stubGlobal('matchMedia', (query: string) => ({ matches: desktop && query.includes('768'), media: query }));
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: desktop && query.includes('768'),
+    media: query,
+  }));
   const parent = document.createElement('div');
   Object.defineProperty(parent, 'clientWidth', { value: room });
   const foot = document.createElement('div');
@@ -19,7 +22,11 @@ function pair(room: number, words: [number, number], desktop: boolean): HTMLElem
     label.className = 'mdc-button__label';
     label.getBoundingClientRect = () => ({ width }) as DOMRect;
     // The parts of a Material button that are as wide as the button: they must not count.
-    for (const cls of ['mat-mdc-button-persistent-ripple', 'mat-focus-indicator', 'mat-mdc-button-touch-target']) {
+    for (const cls of [
+      'mat-mdc-button-persistent-ripple',
+      'mat-focus-indicator',
+      'mat-mdc-button-touch-target',
+    ]) {
       const part = document.createElement('span');
       part.className = cls;
       part.getBoundingClientRect = () => ({ width: room }) as DOMRect;

@@ -11,7 +11,12 @@ describe('MapView', () => {
   let moves: MapMove[];
 
   const taverna = mapPoint('p1', 'Taverna do Javali', { revealed: true, xBp: 5000, yBp: 5000 });
-  const covil = mapPoint('p2', 'Covil dos goblins', { revealed: false, kind: 2, xBp: 2500, yBp: 7000 });
+  const covil = mapPoint('p2', 'Covil dos goblins', {
+    revealed: false,
+    kind: 2,
+    xBp: 2500,
+    yBp: 7000,
+  });
   const pensantus = mapToken('t1', 'Pensantus', { mine: true });
   const capitao = mapToken('t2', 'Capitão Goblin', { hidden: true });
 
@@ -93,7 +98,12 @@ describe('MapView', () => {
   });
 
   it('names the points of one square with one label, hidden only when all of them are', () => {
-    const agulha = mapPoint('p3', 'Agulha envenenada', { kind: 4, xBp: 5050, yBp: 5050, revealed: false });
+    const agulha = mapPoint('p3', 'Agulha envenenada', {
+      kind: 4,
+      xBp: 5050,
+      yBp: 5050,
+      revealed: false,
+    });
     setup({ isMaster: true, mode: 'tokens', squares: 20, points: [taverna, agulha, covil] });
     const labels = Array.from(el.querySelectorAll('.lbl'));
     // The tavern and the needle trap stand on one square: one label with both names; the lair is on another.
@@ -110,13 +120,28 @@ describe('MapView', () => {
   });
 
   it('shows a found treasure and a trap known to a character to a player, whatever "revealed" says; never a light', () => {
-    const chest = mapPoint('c1', 'Baú de moedas', { kind: 5, revealed: false, treasureFoundAt: { seconds: 1n, nanos: 0 } as never, xBp: 1000, yBp: 1000 });
-    const trap = mapPoint('t1', 'Fosso', { kind: 4, revealed: false, xBp: 9000, yBp: 1000, trap: { state: 2 } as never });
+    const chest = mapPoint('c1', 'Baú de moedas', {
+      kind: 5,
+      revealed: false,
+      treasureFoundAt: { seconds: 1n, nanos: 0 } as never,
+      xBp: 1000,
+      yBp: 1000,
+    });
+    const trap = mapPoint('t1', 'Fosso', {
+      kind: 4,
+      revealed: false,
+      xBp: 9000,
+      yBp: 1000,
+      trap: { state: 2 } as never,
+    });
     const torch = mapPoint('l1', 'Tocha', { kind: 6, revealed: true, xBp: 9000, yBp: 9000 });
     setup({ isMaster: false, points: [chest, trap, torch] });
     expect(item('point:c1')).toBeTruthy();
     expect(item('point:l1')).toBeNull();
-    expect(Array.from(el.querySelectorAll('.lbl')).map((l) => l.textContent?.trim())).toEqual(['Baú de moedas', 'Fosso']);
+    expect(Array.from(el.querySelectorAll('.lbl')).map((l) => l.textContent?.trim())).toEqual([
+      'Baú de moedas',
+      'Fosso',
+    ]);
   });
 
   it('labels the markers with the name and the kind', () => {

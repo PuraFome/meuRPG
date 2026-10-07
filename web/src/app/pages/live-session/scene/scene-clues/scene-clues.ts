@@ -69,7 +69,12 @@ export class SceneClues {
         n: i + 1,
         audience,
         line: revealedLine(clue, players),
-        button: audience.kind === 'all' ? null : audience.kind === 'none' ? 'Revelar' : 'Revelar aos outros',
+        button:
+          audience.kind === 'all'
+            ? null
+            : audience.kind === 'none'
+              ? 'Revelar'
+              : 'Revelar aos outros',
       };
     });
   });

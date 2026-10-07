@@ -4,10 +4,20 @@ import { Component, computed, input } from '@angular/core';
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
-import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import {
+  combatantInitial,
+  isPlayer,
+  playerWord,
+  stateWord,
+} from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
-import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import {
+  type OrderItem,
+  jointTurn,
+  listNames,
+  orderItems,
+} from '../../../../core/combat/joint-turn';
 import { OrderGroup } from '../joint-turn/order-group';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { FormTag } from '../combatant-tags/form-tag';
@@ -184,7 +194,11 @@ export class OrderStrip {
 
   protected tags(c: Combatant): string[] {
     // The chip is 104 px: the cover says its degree only ("Meia cobertura"); the full words ("marcada pelo mestre") are in the lists and the cast.
-    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c).map((t) => t.replace(' · marcada pelo mestre', ''))];
+    return [
+      ...(c.concentrationSpell ? ['Concentração'] : []),
+      ...conditionTags(c),
+      ...coverMarkTags(c).map((t) => t.replace(' · marcada pelo mestre', '')),
+    ];
   }
 
   protected readonly items = computed(() => orderItems(this.encounter(), false));
@@ -200,6 +214,8 @@ export class OrderStrip {
   }
 
   protected groupLabel(item: OrderItem): string {
-    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
+    return item.kind === 'group'
+      ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}`
+      : '';
   }
 }

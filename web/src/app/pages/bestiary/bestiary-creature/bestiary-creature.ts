@@ -1,4 +1,12 @@
-import { Component, ElementRef, afterNextRender, inject, signal, viewChild, Injector } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+  Injector,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -10,14 +18,27 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type BestiaryAccess, BestiaryAccessCheck } from '../../../core/creatures/bestiary-access';
 import { bestiaryErrorMessage } from '../../../core/creatures/bestiary-errors';
-import { alignmentPt, capitalized, creatureKeyOf, listWithE } from '../../../core/creatures/bestiary-format';
+import {
+  alignmentPt,
+  capitalized,
+  creatureKeyOf,
+  listWithE,
+} from '../../../core/creatures/bestiary-format';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { StatBlock } from '../../../shared/creatures/stat-block';
 import { openSheet } from '../../live-session/combat/sheet-host';
-import { CreateNpcSheet, type CreateNpcData, type CreateNpcResult } from '../create-npc-sheet/create-npc-sheet';
-import { PutMonstersSheet, type PutMonstersData, type PutMonstersResult } from '../../../shared/monsters/put-sheet/put-sheet';
+import {
+  CreateNpcSheet,
+  type CreateNpcData,
+  type CreateNpcResult,
+} from '../create-npc-sheet/create-npc-sheet';
+import {
+  PutMonstersSheet,
+  type PutMonstersData,
+  type PutMonstersResult,
+} from '../../../shared/monsters/put-sheet/put-sheet';
 
 type PageState =
   | { status: 'loading' }
@@ -35,7 +56,14 @@ type PageState =
  */
 @Component({
   selector: 'app-bestiary-creature',
-  imports: [CreatureArt, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, StatBlock],
+  imports: [
+    CreatureArt,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+    StatBlock,
+  ],
   templateUrl: './bestiary-creature.html',
   styleUrl: './bestiary-creature.scss',
 })
@@ -58,7 +86,9 @@ export class BestiaryCreature {
   protected readonly put = signal<PutMonstersResult | null>(null);
 
   private readonly madeBox = viewChild<ElementRef<HTMLElement>>('madeBox');
-  private readonly createButton = viewChild('createButton', { read: ElementRef<HTMLButtonElement> });
+  private readonly createButton = viewChild('createButton', {
+    read: ElementRef<HTMLButtonElement>,
+  });
   private readonly putButton = viewChild('putButton', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
@@ -77,7 +107,10 @@ export class BestiaryCreature {
   protected async load(): Promise<void> {
     this.state.set({ status: 'loading' });
     try {
-      this.state.set({ status: 'ready', creature: await this.client.statBlock(this.campaignId, this.key) });
+      this.state.set({
+        status: 'ready',
+        creature: await this.client.statBlock(this.campaignId, this.key),
+      });
     } catch (err) {
       this.state.set(
         ConnectError.from(err, Code.Unavailable).code === Code.NotFound
@@ -89,7 +122,11 @@ export class BestiaryCreature {
 
   protected readonly attackList = listWithE;
 
-  protected typeLine(c: Creature): { readonly en: string; readonly rest: string; readonly alignment: { text: string; english: boolean } } {
+  protected typeLine(c: Creature): {
+    readonly en: string;
+    readonly rest: string;
+    readonly alignment: { text: string; english: boolean };
+  } {
     const s = c.summary;
     return {
       en: s?.name ?? '',
@@ -102,14 +139,19 @@ export class BestiaryCreature {
     if (!creature.summary) {
       return;
     }
-    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(this.dialog, this.bottomSheet, PutMonstersSheet, {
-      data: { campaignId: this.campaignId, creature: creature.summary },
-      ariaLabel: 'Pôr no combate',
-      labelledBy: 'put-t',
-      width: '600px',
-      tall: true,
-      restoreFocus: false,
-    }).subscribe((result) => {
+    openSheet<PutMonstersSheet, PutMonstersData, PutMonstersResult>(
+      this.dialog,
+      this.bottomSheet,
+      PutMonstersSheet,
+      {
+        data: { campaignId: this.campaignId, creature: creature.summary },
+        ariaLabel: 'Pôr no combate',
+        labelledBy: 'put-t',
+        width: '600px',
+        tall: true,
+        restoreFocus: false,
+      },
+    ).subscribe((result) => {
       if (result) {
         this.made.set(null);
         this.put.set(result);
@@ -128,15 +170,20 @@ export class BestiaryCreature {
   }
 
   protected openCreate(creature: Creature): void {
-    openSheet<CreateNpcSheet, CreateNpcData, CreateNpcResult>(this.dialog, this.bottomSheet, CreateNpcSheet, {
-      data: { campaignId: this.campaignId, creature },
-      ariaLabel: 'Criar NPC',
-      labelledBy: 'npc-t',
-      width: '540px',
-      tall: true,
-      focus: 'input[name=name]',
-      restoreFocus: false,
-    }).subscribe((result) => {
+    openSheet<CreateNpcSheet, CreateNpcData, CreateNpcResult>(
+      this.dialog,
+      this.bottomSheet,
+      CreateNpcSheet,
+      {
+        data: { campaignId: this.campaignId, creature },
+        ariaLabel: 'Criar NPC',
+        labelledBy: 'npc-t',
+        width: '540px',
+        tall: true,
+        focus: 'input[name=name]',
+        restoreFocus: false,
+      },
+    ).subscribe((result) => {
       if (result) {
         this.put.set(null);
         this.made.set(result);

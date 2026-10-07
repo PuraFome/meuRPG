@@ -134,7 +134,11 @@ export class SessionMap {
   protected readonly map = computed(() => this.state().map());
   protected readonly status = computed(() => this.state().status());
   /** The points the old markers draw: traps, treasures and lights have their own marks, panels and legend. */
-  protected readonly markerPoints = computed(() => this.state().points().filter((p) => !isPinKind(p.kind)));
+  protected readonly markerPoints = computed(() =>
+    this.state()
+      .points()
+      .filter((p) => !isPinKind(p.kind)),
+  );
   protected readonly image = computed(() => {
     const image = this.map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;
@@ -149,13 +153,27 @@ export class SessionMap {
   // ---- the fog of war (MR-036) ----
   protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
   /** The player's own token: the carried light is read from it. */
-  protected readonly ownToken = computed(() => this.state().tokens().find((t) => t.mine && !t.creatureId) ?? null);
-  protected readonly viewAsPerson = computed(() => this.people().find((p) => p.id === this.viewAs()) ?? null);
-  protected readonly viewer = computed(() => ({ name: this.ownToken()?.name ?? (this.characterName() || 'Seu personagem'), own: true }));
+  protected readonly ownToken = computed(
+    () =>
+      this.state()
+        .tokens()
+        .find((t) => t.mine && !t.creatureId) ?? null,
+  );
+  protected readonly viewAsPerson = computed(
+    () => this.people().find((p) => p.id === this.viewAs()) ?? null,
+  );
+  protected readonly viewer = computed(() => ({
+    name: this.ownToken()?.name ?? (this.characterName() || 'Seu personagem'),
+    own: true,
+  }));
   /** The master reads the whole picture. */
   protected readonly masterImage = computed(() => this.image());
-  protected readonly carriedName = computed(() => lightKeyName(this.ownToken()?.carriedLight ?? '').toLocaleLowerCase('pt-BR'));
-  protected readonly seeingName = computed(() => (this.seeing() ? (this.seeingFamiliar() ?? 'familiar') : null));
+  protected readonly carriedName = computed(() =>
+    lightKeyName(this.ownToken()?.carriedLight ?? '').toLocaleLowerCase('pt-BR'),
+  );
+  protected readonly seeingName = computed(() =>
+    this.seeing() ? (this.seeingFamiliar() ?? 'familiar') : null,
+  );
 
   /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
   protected openDoor(door: DoorSquare): void {
@@ -167,7 +185,9 @@ export class SessionMap {
       campaignId: this.campaignId(),
       mapId,
       door,
-      wall: (this.fog()?.layers().walls ?? []).some((w) => w.col === door.col && w.row === door.row),
+      wall: (this.fog()?.layers().walls ?? []).some(
+        (w) => w.col === door.col && w.row === door.row,
+      ),
     };
     openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
   }

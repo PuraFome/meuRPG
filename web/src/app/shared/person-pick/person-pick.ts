@@ -70,7 +70,9 @@ export class PersonPick {
   readonly allToggle = input(true);
 
   protected readonly open = computed(() => this.rows().filter((r) => !r.locked));
-  protected readonly allPicked = computed(() => this.open().length > 0 && this.open().every((r) => this.picked().has(r.id)));
+  protected readonly allPicked = computed(
+    () => this.open().length > 0 && this.open().every((r) => this.picked().has(r.id)),
+  );
 
   protected toggle(id: string): void {
     this.picked.update((set) => {

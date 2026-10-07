@@ -1,4 +1,12 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,7 +29,10 @@ export interface ImagePickerData {
   /** What to say when the current image is checked ("Essa imagem já está à mostra."). */
   readonly currentNote: string;
   /** What to say under the grid for any other image, given the one checked. */
-  readonly note: (image: GalleryImage | null, current: { id: string; name: string } | null) => string;
+  readonly note: (
+    image: GalleryImage | null,
+    current: { id: string; name: string } | null,
+  ) => string;
   /** Images that are the background of a hidden map, with the map's name. */
   readonly hiddenMapImages: ReadonlyMap<string, string>;
   readonly emptyError: string;
@@ -154,7 +165,10 @@ export class ImagePickerDialog {
   /** The question: the two answers replace the footer's buttons, and the focus is on "Voltar". */
   private ask(): void {
     this.asking.set(true);
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>('[data-initial-focus]')?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected back(): void {

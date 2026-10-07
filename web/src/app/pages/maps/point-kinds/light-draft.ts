@@ -37,7 +37,10 @@ export function metresToFt(m: number | null): number | null {
   return Math.abs(squares - Math.round(squares)) < 1e-9 ? Math.round(squares) * 5 : null;
 }
 
-export function lightDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'light'>, presets: readonly LightOption[]): LightDraft {
+export function lightDraftOf(
+  point: Pick<MapPoint, 'name' | 'description' | 'light'>,
+  presets: readonly LightOption[],
+): LightDraft {
   const l = point.light;
   const known = l && presets.some((p) => p.key === l.presetKey);
   return {
@@ -50,7 +53,11 @@ export function lightDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'lig
 }
 
 /** Choosing a preset fills the radii; "Personalizada" keeps what is typed. */
-export function withPreset(d: LightDraft, key: string, presets: readonly LightOption[]): LightDraft {
+export function withPreset(
+  d: LightDraft,
+  key: string,
+  presets: readonly LightOption[],
+): LightDraft {
   const p = presets.find((x) => x.key === key);
   if (!p || p.brightFt === undefined || p.dimFt === undefined) {
     return { ...d, presetKey: CUSTOM_KEY };
@@ -112,7 +119,11 @@ export function lightSquares(d: LightDraft): { bright: number; dim: number } | n
   return ft ? { bright: ft.brightFt / 5, dim: ft.dimFt / 5 } : null;
 }
 
-export function isLightDirty(d: LightDraft, point: Pick<MapPoint, 'name' | 'description' | 'light'>, presets: readonly LightOption[]): boolean {
+export function isLightDirty(
+  d: LightDraft,
+  point: Pick<MapPoint, 'name' | 'description' | 'light'>,
+  presets: readonly LightOption[],
+): boolean {
   return JSON.stringify(d) !== JSON.stringify(lightDraftOf(point, presets));
 }
 

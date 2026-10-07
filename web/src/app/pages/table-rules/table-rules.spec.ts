@@ -16,13 +16,32 @@ import {
   XpModeChangeBlockedSchema,
 } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
-import { type RulesDraft, TableRulesClient, type TableRulesVm } from '../../core/campaigns/table-rules';
+import {
+  type RulesDraft,
+  TableRulesClient,
+  type TableRulesVm,
+} from '../../core/campaigns/table-rules';
 import { TableRulesPage } from './table-rules';
 
 const presets = [
-  create(TableStylePresetSchema, { style: TableStyle.TUDO_NO_APP, diceMode: DiceMode.APP, combatStartsWithMap: true, fogOnNewMaps: true }),
-  create(TableStylePresetSchema, { style: TableStyle.MESA_FISICA, diceMode: DiceMode.PHYSICAL, combatStartsWithMap: false, fogOnNewMaps: false }),
-  create(TableStylePresetSchema, { style: TableStyle.TEATRO_DA_MENTE, diceMode: DiceMode.PLAYERS_CHOOSE, combatStartsWithMap: false, fogOnNewMaps: false }),
+  create(TableStylePresetSchema, {
+    style: TableStyle.TUDO_NO_APP,
+    diceMode: DiceMode.APP,
+    combatStartsWithMap: true,
+    fogOnNewMaps: true,
+  }),
+  create(TableStylePresetSchema, {
+    style: TableStyle.MESA_FISICA,
+    diceMode: DiceMode.PHYSICAL,
+    combatStartsWithMap: false,
+    fogOnNewMaps: false,
+  }),
+  create(TableStylePresetSchema, {
+    style: TableStyle.TEATRO_DA_MENTE,
+    diceMode: DiceMode.PLAYERS_CHOOSE,
+    combatStartsWithMap: false,
+    fogOnNewMaps: false,
+  }),
 ];
 
 const saved: RulesDraft = {
@@ -61,14 +80,31 @@ describe('TableRulesPage', () => {
 
   async function setup(role: Role = Role.MASTER, over: Partial<RulesDraft> = {}) {
     get.mockReset().mockResolvedValue(vm(over));
-    set.mockReset().mockImplementation(async (_id: string, d: RulesDraft) => ({ saved: d, style: TableStyle.PERSONALIZADO }));
-    setXpMode.mockReset().mockResolvedValue({ xpMode: XpMode.MILESTONES, changedAt: { seconds: 1791236520n, nanos: 0 } });
-    getCampaign.mockReset().mockResolvedValue({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false, xpMode: XpMode.ENEMIES } });
+    set.mockReset().mockImplementation(async (_id: string, d: RulesDraft) => ({
+      saved: d,
+      style: TableStyle.PERSONALIZADO,
+    }));
+    setXpMode.mockReset().mockResolvedValue({
+      xpMode: XpMode.MILESTONES,
+      changedAt: { seconds: 1791236520n, nanos: 0 },
+    });
+    getCampaign.mockReset().mockResolvedValue({
+      campaign: {
+        id: 'camp-1',
+        name: 'Mirathel',
+        myRole: role,
+        awaitingApproval: false,
+        xpMode: XpMode.ENEMIES,
+      },
+    });
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) },
+        },
         { provide: CampaignsService, useValue: { getCampaign } },
         { provide: TableRulesClient, useValue: { get, set, setXpMode } },
       ],
@@ -88,11 +124,16 @@ describe('TableRulesPage', () => {
     fixture.detectChanges();
   }
 
-  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const text = (el: HTMLElement) =>
+    (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const radio = (el: HTMLElement, label: string) =>
-    Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).find((i) => i.closest('label')?.textContent?.includes(label))!;
+    Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).find((i) =>
+      i.closest('label')?.textContent?.includes(label),
+    )!;
   const button = (el: HTMLElement, label: string) =>
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.replace(/\s+/g, ' ').trim().includes(label))!;
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    )!;
 
   it('gives a player the rules in words, read-only, with the reminders and no controls', async () => {
     const { el } = await setup(Role.PLAYER);
@@ -100,12 +141,16 @@ describe('TableRulesPage', () => {
     expect(el.querySelector('button[role="switch"]')).toBeNull();
     expect(el.querySelector('input')).toBeNull();
     expect(el.querySelector('button')).toBeNull();
-    const rows = Array.from(el.querySelectorAll('.read__row')).map((r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`);
+    const rows = Array.from(el.querySelectorAll('.read__row')).map(
+      (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
+    );
     expect(rows).toContain('Dados Cada jogador escolhe');
     expect(rows).toContain('Combate Começa com mapa');
     expect(rows).toContain('Névoa de guerra nos mapas novos Ligada');
     expect(rows).toContain('Pontos de vida ao subir de nível O jogador escolhe');
-    expect(rows).toContain('Habilidades de uma ficha nova Conjunto padrão, Compra por pontos, 4d6, descartando o menor, Digitar os valores');
+    expect(rows).toContain(
+      'Habilidades de uma ficha nova Conjunto padrão, Compra por pontos, 4d6, descartando o menor, Digitar os valores',
+    );
     expect(rows).toContain('Experiência Por inimigos');
     expect(text(el)).toContain('Personalizado');
     expect(text(el)).toContain('Beber uma poção é uma ação bônus');
@@ -117,8 +162,22 @@ describe('TableRulesPage', () => {
     const { el } = await setup();
     const titles = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
     expect(titles[0]).toBe('Estilo da mesa');
-    expect(titles).toEqual(expect.arrayContaining(['Pontos de vida ao subir de nível', 'Habilidades de uma ficha nova', 'Acertos críticos', 'Testes contra a morte', 'Dados', 'Combate e névoa', 'Experiência', 'Lembretes da mesa', 'Grade dos mapas']));
-    expect(text(el)).toContain('Mirathel · Estas escolhas valem para cada ficha e cada combate da campanha.');
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        'Pontos de vida ao subir de nível',
+        'Habilidades de uma ficha nova',
+        'Acertos críticos',
+        'Testes contra a morte',
+        'Dados',
+        'Combate e névoa',
+        'Experiência',
+        'Lembretes da mesa',
+        'Grade dos mapas',
+      ]),
+    );
+    expect(text(el)).toContain(
+      'Mirathel · Estas escolhas valem para cada ficha e cada combate da campanha.',
+    );
     // The saved rules do not match any preset: "Personalizado" is the one on, and cannot be chosen.
     expect(radio(el, 'Personalizado').checked).toBe(true);
     expect(radio(el, 'Personalizado').disabled).toBe(true);
@@ -126,7 +185,9 @@ describe('TableRulesPage', () => {
     expect(radio(el, 'Começar com mapa').checked).toBe(true);
     expect(el.querySelector('button[role="switch"]')?.getAttribute('aria-checked')).toBe('true');
     expect(text(el)).toContain('Beber uma poção é uma ação bônus'.slice(0, 0));
-    expect((el.querySelector('.reminder input') as HTMLInputElement).value).toBe('Beber uma poção é uma ação bônus');
+    expect((el.querySelector('.reminder input') as HTMLInputElement).value).toBe(
+      'Beber uma poção é uma ação bônus',
+    );
     const save = button(el, 'Salvar regras');
     expect(save.classList).toContain('mr-button--off');
     expect(text(el)).toContain('Tudo salvo. Nenhuma mudança para salvar.');
@@ -136,12 +197,16 @@ describe('TableRulesPage', () => {
     const { el } = await setup();
     const cards = Array.from(el.querySelectorAll('app-method-cards .card'));
     expect(cards).toHaveLength(4);
-    expect(cards.slice(0, 3).every((c) => c.textContent?.includes('SRD 5.2.1 (regras de 2024)'))).toBe(true);
+    expect(
+      cards.slice(0, 3).every((c) => c.textContent?.includes('SRD 5.2.1 (regras de 2024)')),
+    ).toBe(true);
     expect(cards[3].textContent).not.toContain('2024');
     expect(cards[3].textContent).toContain('de 3 a 18, antes do bônus da raça');
     expect(text(el)).toContain('15, 14, 13, 12, 10 e 8, um para cada habilidade.');
     expect(text(el)).toContain('27 pontos; cada valor vai de 8 a 15.');
-    expect(el.querySelector('app-method-cards')?.parentElement?.querySelector('a[href="/credits"]')).not.toBeNull();
+    expect(
+      el.querySelector('app-method-cards')?.parentElement?.querySelector('a[href="/credits"]'),
+    ).not.toBeNull();
   });
 
   it('choosing a style fills the three choices in place, says what it changed, and lights "Salvar regras"', async () => {
@@ -152,7 +217,9 @@ describe('TableRulesPage', () => {
     expect(radio(el, 'Começar sem mapa').checked).toBe(true);
     expect(el.querySelector('button[role="switch"]')?.getAttribute('aria-checked')).toBe('false');
     const note = text(el);
-    expect(note).toContain('Teatro da mente: o estilo preencheu 2 escolhas abaixo; ainda não foi salvo.');
+    expect(note).toContain(
+      'Teatro da mente: o estilo preencheu 2 escolhas abaixo; ainda não foi salvo.',
+    );
     expect(note).toContain('Combate: começar sem mapa.');
     expect(note).toContain('Névoa de guerra nos mapas novos: desligada.');
     expect(note).toContain('Dados: já era “Cada jogador escolhe”.');
@@ -184,14 +251,27 @@ describe('TableRulesPage', () => {
     expect(set).toHaveBeenCalledTimes(1);
     const [id, sent] = set.mock.calls[0] as [string, RulesDraft];
     expect(id).toBe('camp-1');
-    expect(sent).toMatchObject({ diceMode: DiceMode.PHYSICAL, combatStartsWithMap: false, fogOnNewMaps: false, hitPoints: HitPointsRule.AVERAGE, houseRules: ['Beber uma poção é uma ação bônus'] });
+    expect(sent).toMatchObject({
+      diceMode: DiceMode.PHYSICAL,
+      combatStartsWithMap: false,
+      fogOnNewMaps: false,
+      hitPoints: HitPointsRule.AVERAGE,
+      houseRules: ['Beber uma poção é uma ação bônus'],
+    });
     expect(text(el)).toContain('Regras salvas.');
     expect(button(el, 'Salvar regras').classList).toContain('mr-button--off');
   });
 
   it('keeps at least one way of making scores: with none the save is off and says why', async () => {
-    const { fixture, el } = await setup(Role.MASTER, { standardArray: false, pointBuy: false, rolled4d6: false, typed: true });
-    const typed = Array.from(el.querySelectorAll<HTMLInputElement>('app-method-cards input')).at(-1)!;
+    const { fixture, el } = await setup(Role.MASTER, {
+      standardArray: false,
+      pointBuy: false,
+      rolled4d6: false,
+      typed: true,
+    });
+    const typed = Array.from(el.querySelectorAll<HTMLInputElement>('app-method-cards input')).at(
+      -1,
+    )!;
     typed.click();
     await settle(fixture);
     expect(text(el)).toContain('Marque pelo menos um jeito de fazer as habilidades.');
@@ -222,7 +302,9 @@ describe('TableRulesPage', () => {
   });
 
   it('stops adding reminders at 20', async () => {
-    const { el } = await setup(Role.MASTER, { houseRules: Array.from({ length: 20 }, (_, i) => `Regra ${i + 1}`) });
+    const { el } = await setup(Role.MASTER, {
+      houseRules: Array.from({ length: 20 }, (_, i) => `Regra ${i + 1}`),
+    });
     expect(el.querySelectorAll('.reminder')).toHaveLength(20);
     expect(button(el, 'Adicionar um lembrete')).toBeUndefined();
     expect(text(el)).toContain('Chegou ao limite de 20 lembretes.');
@@ -242,13 +324,18 @@ describe('TableRulesPage', () => {
     const { el } = await setup();
     expect(el.querySelector('a[href="/campaigns/camp-1/content"]')).toBeNull();
     expect(text(el)).not.toContain('Conteúdo da mesa');
-    expect(el.querySelector('a[href="/campaigns/camp-1#maps"]')?.textContent).toContain('Abrir os mapas');
+    expect(el.querySelector('a[href="/campaigns/camp-1#maps"]')?.textContent).toContain(
+      'Abrir os mapas',
+    );
   });
 
   it('puts "Dados" beside "Estilo da mesa", and the style cards in a grid', async () => {
     const { el } = await setup();
     const top = el.querySelector('.top')!;
-    expect(Array.from(top.querySelectorAll('h2')).map((h) => h.textContent?.trim())).toEqual(['Estilo da mesa', 'Dados']);
+    expect(Array.from(top.querySelectorAll('h2')).map((h) => h.textContent?.trim())).toEqual([
+      'Estilo da mesa',
+      'Dados',
+    ]);
     expect(top.querySelector('.dice-choice--grid')).not.toBeNull();
   });
 
@@ -256,14 +343,21 @@ describe('TableRulesPage', () => {
     const { fixture, el } = await setup(Role.MASTER, {});
     expect(button(el, 'Salvar regras').classList).toContain('mdc-button--unelevated');
     setXpMode.mockRejectedValueOnce(
-      new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: XpModeChangeBlockedSchema, value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }) }]),
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: XpModeChangeBlockedSchema,
+          value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }),
+        },
+      ]),
     );
     radio(el, 'Por marcos').click();
     await settle(fixture);
     button(el, 'Mudar para marcos').click();
     await settle(fixture);
     expect(button(el, 'Salvar regras').classList).toContain('mat-mdc-outlined-button');
-    expect(el.querySelectorAll('button.mat-mdc-unelevated-button, button.mdc-button--unelevated').length).toBe(1);
+    expect(
+      el.querySelectorAll('button.mat-mdc-unelevated-button, button.mdc-button--unelevated').length,
+    ).toBe(1);
   });
 
   it('keeps the save status as a live region all the time', async () => {
@@ -303,10 +397,13 @@ describe('TableRulesPage', () => {
       expect(text(el)).toContain('Vale daqui para frente.');
     });
 
-    it('asks in place when XP was already given, with the server\'s numbers, and changes only on the confirmation', async () => {
+    it("asks in place when XP was already given, with the server's numbers, and changes only on the confirmation", async () => {
       const { fixture, el } = await setup();
       const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
-        { desc: XpModeChangeBlockedSchema, value: create(XpModeChangeBlockedSchema, { awards: 3, totalXp: 2716n }) },
+        {
+          desc: XpModeChangeBlockedSchema,
+          value: create(XpModeChangeBlockedSchema, { awards: 3, totalXp: 2716n }),
+        },
       ]);
       setXpMode.mockRejectedValueOnce(blocked);
       radio(el, 'Por marcos').click();
@@ -321,7 +418,9 @@ describe('TableRulesPage', () => {
       expect(setXpMode).toHaveBeenCalledTimes(1);
       expect(setXpMode).toHaveBeenCalledWith('camp-1', XpMode.MILESTONES, false);
 
-      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button')).find((b) => b.textContent?.includes('Mudar para marcos'))!.click();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button'))
+        .find((b) => b.textContent?.includes('Mudar para marcos'))!
+        .click();
       await settle(fixture);
       expect(setXpMode).toHaveBeenLastCalledWith('camp-1', XpMode.MILESTONES, true);
       expect(radio(el, 'Por marcos').checked).toBe(true);
@@ -331,7 +430,10 @@ describe('TableRulesPage', () => {
     it('"Voltar" closes the question, changes nothing and puts the card and the focus back', async () => {
       const { fixture, el } = await setup();
       const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
-        { desc: XpModeChangeBlockedSchema, value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }) },
+        {
+          desc: XpModeChangeBlockedSchema,
+          value: create(XpModeChangeBlockedSchema, { awards: 1, totalXp: 50n }),
+        },
       ]);
       setXpMode.mockRejectedValueOnce(blocked);
       radio(el, 'Por ouro').click();
@@ -340,7 +442,9 @@ describe('TableRulesPage', () => {
       await settle(fixture);
       expect(text(el)).toContain('1 prêmio, 50 XP');
       expect(radio(el, 'Por ouro').checked).toBe(true);
-      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button')).find((b) => b.textContent?.trim() === 'Voltar')!.click();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.ask button'))
+        .find((b) => b.textContent?.trim() === 'Voltar')!
+        .click();
       await settle(fixture);
       expect(el.querySelector('h3')).toBeNull();
       expect(radio(el, 'Por inimigos').checked).toBe(true);

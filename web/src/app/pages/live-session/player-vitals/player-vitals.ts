@@ -54,12 +54,16 @@ export class PlayerVitals {
     };
   });
   /** The armor class on the shield: the beast's while it is one, else the sheet's. */
-  protected readonly armorClass = computed(() => (this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null)));
+  protected readonly armorClass = computed(() =>
+    this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null),
+  );
 
   /** "Classe de Armadura", or "CA do Lobo" while a beast (the shield is narrow). */
   protected readonly acLabel = computed(() => {
     const w = this.vitals().wildShape;
-    return w ? `CA d${article(w.beastNamePt) === 'a' ? 'a' : 'o'} ${w.beastNamePt}` : 'Classe de Armadura';
+    return w
+      ? `CA d${article(w.beastNamePt) === 'a' ? 'a' : 'o'} ${w.beastNamePt}`
+      : 'Classe de Armadura';
   });
 
   protected readonly usedWords = usedWords;

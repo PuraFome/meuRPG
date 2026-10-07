@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
@@ -31,8 +43,20 @@ import {
   requestLine,
   resultCaption,
 } from '../../core/images/imagegen-copy';
-import { type GenerateIssue, blockedOf, blockedText, generateIssue, invalidField, useIssue } from '../../core/images/imagegen-errors';
-import { type ImageForm, type PickableNpc, buildRequest, formProblem } from '../../core/images/imagegen-form';
+import {
+  type GenerateIssue,
+  blockedOf,
+  blockedText,
+  generateIssue,
+  invalidField,
+  useIssue,
+} from '../../core/images/imagegen-errors';
+import {
+  type ImageForm,
+  type PickableNpc,
+  buildRequest,
+  formProblem,
+} from '../../core/images/imagegen-form';
 import { ImageRun } from '../../core/images/imagegen-run';
 import { ShownImageClient, showImageIssue } from '../../core/images/shown-client';
 import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
@@ -77,7 +101,14 @@ type RunFor = 'generate' | 'edit';
  */
 @Component({
   selector: 'app-image-generate-dialog',
-  imports: [GenerateForm, GenerateResult, GenerateRunning, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    GenerateForm,
+    GenerateResult,
+    GenerateRunning,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './image-generate-dialog.html',
   styleUrl: './image-generate-dialog.scss',
@@ -91,8 +122,13 @@ export class ImageGenerateDialog {
   private readonly roster = inject(RosterClient);
   private readonly mapsApi = inject(MapsClient);
   private readonly sheet = injectSheet<ImageGenerateData, GenerateOutcome>();
-  private readonly dialogRef = inject<MatDialogRef<unknown, GenerateOutcome>>(MatDialogRef, { optional: true });
-  private readonly sheetRef = inject<MatBottomSheetRef<unknown, GenerateOutcome>>(MatBottomSheetRef, { optional: true });
+  private readonly dialogRef = inject<MatDialogRef<unknown, GenerateOutcome>>(MatDialogRef, {
+    optional: true,
+  });
+  private readonly sheetRef = inject<MatBottomSheetRef<unknown, GenerateOutcome>>(
+    MatBottomSheetRef,
+    { optional: true },
+  );
   private readonly frame = viewChild(SheetFrame);
 
   protected readonly data = this.sheet.data;
@@ -150,13 +186,21 @@ export class ImageGenerateDialog {
   private readonly lastForm = signal<ImageForm | null>(null);
   private lastGrid = '';
 
-  private readonly mapId = computed(() => (this.data.origin.kind === 'map' && this.data.origin.hasGrid !== false ? (this.data.origin.mapId ?? null) : null));
-  protected readonly choices = computed(() => kindChoices(this.data.origin, this.textureTooLarge()));
+  private readonly mapId = computed(() =>
+    this.data.origin.kind === 'map' && this.data.origin.hasGrid !== false
+      ? (this.data.origin.mapId ?? null)
+      : null,
+  );
+  protected readonly choices = computed(() =>
+    kindChoices(this.data.origin, this.textureTooLarge()),
+  );
   protected readonly textureGrid = computed(() => {
     const t = this.textureRef();
     return t ? { columns: t.gridColumns, rows: t.gridRows } : null;
   });
-  protected readonly reference = computed(() => (this.form().kind === 'texture' ? this.textureRef() : this.sceneRef()));
+  protected readonly reference = computed(() =>
+    this.form().kind === 'texture' ? this.textureRef() : this.sceneRef(),
+  );
 
   /** Why "Gerar imagem" cannot be pressed yet, in words (the button is dashed and the line is above it); empty when it can. */
   protected readonly why = computed(() => {
@@ -167,7 +211,12 @@ export class ImageGenerateDialog {
     if (s && s.enabled && s.remaining <= 0) {
       return blockedText(ImageGenerationBlockedReason.LIMIT_REACHED, s);
     }
-    if (this.mapId() !== null && this.form().kind !== 'texture' && this.referenceState() === 'ready' && this.reference()?.playersSee === false) {
+    if (
+      this.mapId() !== null &&
+      this.form().kind !== 'texture' &&
+      this.referenceState() === 'ready' &&
+      this.reference()?.playersSee === false
+    ) {
       return blockedText(ImageGenerationBlockedReason.PLAYERS_SEE_NOTHING, null);
     }
     if (this.mapId() !== null && this.referenceState() === 'loading') {
@@ -191,13 +240,18 @@ export class ImageGenerateDialog {
     const place = origin.kind === 'scene' ? `Cena: ${origin.name ?? ''}` : (origin.name ?? '');
     switch (this.stage()) {
       case 'running':
-        return this.run()?.phase() === 'sending' ? 'Antes de o pedido sair do servidor' : 'O servidor está gerando a imagem';
+        return this.run()?.phase() === 'sending'
+          ? 'Antes de o pedido sair do servidor'
+          : 'O servidor está gerando a imagem';
       case 'result': {
         const v = this.view();
         // From the gallery there is no map to name: the way alone ("O mapa com textura").
         // The heading is the image's name: when it already holds the map's name the subtitle says only the way.
-        const named = v !== null && (origin.name ?? '') !== '' && v.image.name.includes(origin.name ?? '');
-        return [origin.kind === 'gallery' || named ? '' : place, v ? this.resultKindText() : ''].filter((t) => t !== '').join(' · ');
+        const named =
+          v !== null && (origin.name ?? '') !== '' && v.image.name.includes(origin.name ?? '');
+        return [origin.kind === 'gallery' || named ? '' : place, v ? this.resultKindText() : '']
+          .filter((t) => t !== '')
+          .join(' · ');
       }
       default:
         return place;
@@ -209,7 +263,13 @@ export class ImageGenerateDialog {
   /** What the running request is called over its text. */
   protected readonly summary = computed(() => {
     const f = this.lastForm() ?? this.form();
-    return this.runFor() === 'edit' ? requestLine('edit', f.style, 0) : requestLine(f.kind, f.style, this.mapId() !== null && f.kind !== 'texture' ? f.npcIds.length : 0);
+    return this.runFor() === 'edit'
+      ? requestLine('edit', f.style, 0)
+      : requestLine(
+          f.kind,
+          f.style,
+          this.mapId() !== null && f.kind !== 'texture' ? f.npcIds.length : 0,
+        );
   });
   protected readonly runPrompt = signal('');
 
@@ -227,9 +287,14 @@ export class ImageGenerateDialog {
     }
     return v.wholeMap ? 'ask-show' : 'show';
   });
-  protected readonly canUse = computed(() => this.mapId() !== null && (this.view()?.wholeMap ?? false));
+  protected readonly canUse = computed(
+    () => this.mapId() !== null && (this.view()?.wholeMap ?? false),
+  );
   /** The result's actions are not offered while a question over them is open ("Usar…", "Mostrar o mapa inteiro?"). */
-  protected readonly asking = computed(() => this.useStage() === 'asking' || this.useStage() === 'busy' || this.showStage() === 'asking');
+  protected readonly asking = computed(
+    () =>
+      this.useStage() === 'asking' || this.useStage() === 'busy' || this.showStage() === 'asking',
+  );
   protected readonly editWhy = computed(() => {
     const s = this.status();
     if (s && s.enabled && s.remaining <= 0) {
@@ -246,12 +311,20 @@ export class ImageGenerateDialog {
     // Closing must always go through `requestClose`: a request in the air is asked about first.
     if (this.dialogRef) {
       this.dialogRef.disableClose = true;
-      this.dialogRef.keydownEvents().subscribe((e) => e.key === 'Escape' && (this.closing() ? this.keepWaiting() : this.requestClose()));
+      this.dialogRef
+        .keydownEvents()
+        .subscribe(
+          (e) => e.key === 'Escape' && (this.closing() ? this.keepWaiting() : this.requestClose()),
+        );
       this.dialogRef.backdropClick().subscribe(() => this.requestClose());
     }
     if (this.sheetRef) {
       this.sheetRef.disableClose = true;
-      this.sheetRef.keydownEvents().subscribe((e) => e.key === 'Escape' && (this.closing() ? this.keepWaiting() : this.requestClose()));
+      this.sheetRef
+        .keydownEvents()
+        .subscribe(
+          (e) => e.key === 'Escape' && (this.closing() ? this.keepWaiting() : this.requestClose()),
+        );
       this.sheetRef.backdropClick().subscribe(() => this.requestClose());
     }
     inject(DestroyRef).onDestroy(() => this.run()?.destroy());
@@ -302,7 +375,13 @@ export class ImageGenerateDialog {
       this.sceneRef.set(viewOf(scene));
       this.textureRef.set(viewOf(texture));
       this.textureTooLarge.set(texture.textureTooLarge);
-      this.npcs.set(scene.creatures.map((c) => ({ characterId: c.characterId, name: c.name, portraitImageId: c.portraitImageId })));
+      this.npcs.set(
+        scene.creatures.map((c) => ({
+          characterId: c.characterId,
+          name: c.name,
+          portraitImageId: c.portraitImageId,
+        })),
+      );
       this.referenceState.set('ready');
     } catch {
       this.referenceState.set('error');
@@ -315,14 +394,30 @@ export class ImageGenerateDialog {
    */
   private async loadHiddenPortraits(mapId: string): Promise<void> {
     try {
-      const [list, map] = await Promise.all([this.roster.list(this.data.campaignId), this.mapsApi.get(this.data.campaignId, mapId)]);
+      const [list, map] = await Promise.all([
+        this.roster.list(this.data.campaignId),
+        this.mapsApi.get(this.data.campaignId, mapId),
+      ]);
       const seen = new Set(this.npcs().map((n) => n.characterId));
       const onMap = new Set(map.tokens.map((t) => t.characterId));
-      const hidden = new Set(list.filter((c) => c.playerUserId === '' && onMap.has(c.id) && !seen.has(c.id) && c.portraitImageId !== '').map((c) => c.portraitImageId));
+      const hidden = new Set(
+        list
+          .filter(
+            (c) =>
+              c.playerUserId === '' &&
+              onMap.has(c.id) &&
+              !seen.has(c.id) &&
+              c.portraitImageId !== '',
+          )
+          .map((c) => c.portraitImageId),
+      );
       this.hiddenPortraits.set(hidden);
       if (hidden.size > 0 && this.references().some((r) => hidden.has(r.id))) {
         this.references.update((l) => l.filter((r) => !hidden.has(r.id)));
-        this.form.update((f) => ({ ...f, objectImageIds: f.objectImageIds.filter((id) => !hidden.has(id)) }));
+        this.form.update((f) => ({
+          ...f,
+          objectImageIds: f.objectImageIds.filter((id) => !hidden.has(id)),
+        }));
       }
     } catch {
       // The picker offers everything; a refused portrait is said by the server.
@@ -347,7 +442,13 @@ export class ImageGenerateDialog {
     this.chain.set(chain);
     const here = chain.find((e) => e.image?.id === image.id);
     this.resultKindText.set(image.showsWholeMap ? KIND_LABEL.texture.long : 'Imagem gerada');
-    this.view.set({ image, number: here?.number ?? 0, caption: here?.prompt ? `Pedido: ${here.prompt}` : '', texture: false, wholeMap: image.showsWholeMap });
+    this.view.set({
+      image,
+      number: here?.number ?? 0,
+      caption: here?.prompt ? `Pedido: ${here.prompt}` : '',
+      texture: false,
+      wholeMap: image.showsWholeMap,
+    });
     this.stage.set('result');
     this.focusAfterStage();
   }
@@ -361,7 +462,9 @@ export class ImageGenerateDialog {
     this.form.update((f) => {
       const next = { ...f, ...patch };
       // Until the master writes a name, it follows the way ("… · vista isométrica").
-      return patch.kind !== undefined && !this.nameTouched ? { ...next, name: defaultImageName(this.data.origin, patch.kind) } : next;
+      return patch.kind !== undefined && !this.nameTouched
+        ? { ...next, name: defaultImageName(this.data.origin, patch.kind) }
+        : next;
     });
     this.issue.set(null);
   }
@@ -409,7 +512,11 @@ export class ImageGenerateDialog {
     }
     const f = this.form();
     const cid = this.data.campaignId;
-    const built = buildRequest(f, this.mapId(), this.keyFor(JSON.stringify(['generate', this.mapId(), f])));
+    const built = buildRequest(
+      f,
+      this.mapId(),
+      this.keyFor(JSON.stringify(['generate', this.mapId(), f])),
+    );
     this.issue.set(null);
     this.notice.set(null);
     this.lastForm.set(f);
@@ -418,7 +525,10 @@ export class ImageGenerateDialog {
     const ref = this.reference();
     this.lastGrid = ref && ref.gridColumns > 0 ? `${ref.gridColumns} × ${ref.gridRows}` : '';
     this.begin(
-      (signal) => (built.via === 'map' ? this.api.generateMap(cid, built.request, signal) : this.api.generateScene(cid, built.request, signal)),
+      (signal) =>
+        built.via === 'map'
+          ? this.api.generateMap(cid, built.request, signal)
+          : this.api.generateScene(cid, built.request, signal),
       (err) => {
         const issue = generateIssue(err);
         // A typed refusal is an answer: the next try is a new request. A lost answer is not: the key stays, and a retry never spends two slots.
@@ -466,14 +576,26 @@ export class ImageGenerateDialog {
     if (issue.field === 'object_image_ids' || issue.field === 'character_image_ids') {
       const hidden = this.hiddenPortraits();
       this.references.update((l) => l.filter((r) => !hidden.has(r.id)));
-      this.form.update((f) => ({ ...f, objectImageIds: f.objectImageIds.filter((id) => !hidden.has(id)) }));
+      this.form.update((f) => ({
+        ...f,
+        objectImageIds: f.objectImageIds.filter((id) => !hidden.has(id)),
+      }));
     }
-    this.focusAfterStage(issue.field === 'npc_character_ids' ? 'npc' : issue.field === 'object_image_ids' || issue.field === 'character_image_ids' ? 'refs' : undefined);
+    this.focusAfterStage(
+      issue.field === 'npc_character_ids'
+        ? 'npc'
+        : issue.field === 'object_image_ids' || issue.field === 'character_image_ids'
+          ? 'refs'
+          : undefined,
+    );
   }
 
   // ---- Waiting
 
-  private begin(ask: (signal: AbortSignal) => ReturnType<ImageGenClient['generateScene']>, refused: (err: unknown) => void): void {
+  private begin(
+    ask: (signal: AbortSignal) => ReturnType<ImageGenClient['generateScene']>,
+    refused: (err: unknown) => void,
+  ): void {
     const run = new ImageRun(this.api, this.data.campaignId, ask);
     this.closing.set(false);
     this.run.set(run);
@@ -493,7 +615,9 @@ export class ImageGenerateDialog {
   protected askClose(): void {
     this.closing.set(true);
     // The question is read at once, and its answers are in the footer.
-    afterNextRender(() => document.getElementById('gen-close-t')?.focus(), { injector: this.injector });
+    afterNextRender(() => document.getElementById('gen-close-t')?.focus(), {
+      injector: this.injector,
+    });
   }
 
   protected keepWaiting(): void {
@@ -577,7 +701,13 @@ export class ImageGenerateDialog {
       wholeMap: whole,
       caption: edit
         ? resultCaption({ edit: this.instruction().trim() })
-        : resultCaption({ kind, fromMap: this.mapId() !== null, style: f.style, npcs: whole || this.mapId() === null ? 0 : f.npcIds.length, grid: this.lastGrid }),
+        : resultCaption({
+            kind,
+            fromMap: this.mapId() !== null,
+            style: f.style,
+            npcs: whole || this.mapId() === null ? 0 : f.npcIds.length,
+            grid: this.lastGrid,
+          }),
     });
     this.useStage.set('idle');
     this.useError.set(null);
@@ -594,7 +724,10 @@ export class ImageGenerateDialog {
   private async loadChain(image: GalleryImage): Promise<void> {
     try {
       const chain = await this.api.edits(this.data.campaignId, image.id);
-      if (this.view()?.image.id === image.id || chain.some((e) => e.image?.id === this.view()?.image.id)) {
+      if (
+        this.view()?.image.id === image.id ||
+        chain.some((e) => e.image?.id === this.view()?.image.id)
+      ) {
         this.chain.set(chain);
       }
     } catch {
@@ -609,7 +742,13 @@ export class ImageGenerateDialog {
     if (!edit?.image) {
       return;
     }
-    this.view.set({ image: edit.image, number: edit.number, caption: edit.prompt ? `Pedido: ${edit.prompt}` : '', texture: edit.image.showsWholeMap && this.mapId() !== null, wholeMap: edit.image.showsWholeMap });
+    this.view.set({
+      image: edit.image,
+      number: edit.number,
+      caption: edit.prompt ? `Pedido: ${edit.prompt}` : '',
+      texture: edit.image.showsWholeMap && this.mapId() !== null,
+      wholeMap: edit.image.showsWholeMap,
+    });
     this.useStage.set('idle');
     this.showStage.set('idle');
     this.showError.set(null);
@@ -724,7 +863,9 @@ export class ImageGenerateDialog {
       () => {
         this.frame()?.scrollToTop();
         // The field the server named, when it did, otherwise the title.
-        const target = field ? document.querySelector<HTMLElement>(`[data-field="${field}"]`) : null;
+        const target = field
+          ? document.querySelector<HTMLElement>(`[data-field="${field}"]`)
+          : null;
         (target ?? document.getElementById('gen-t'))?.focus({ preventScroll: !target });
       },
       { injector: this.injector },
@@ -745,12 +886,21 @@ function viewOf(res: Awaited<ReturnType<ImageGenClient['reference']>>): Referenc
 }
 
 /** Opens "Gerar imagem": a dialog from a tablet up and a bottom sheet with a fixed footer on a phone. The opener gets what was made when it closes. */
-export function openImageGenerate(dialog: MatDialog, bottomSheet: MatBottomSheet, data: ImageGenerateData): Observable<GenerateOutcome | undefined> {
-  return openSheet<ImageGenerateDialog, ImageGenerateData, GenerateOutcome>(dialog, bottomSheet, ImageGenerateDialog, {
-    data,
-    ariaLabel: 'Gerar imagem',
-    labelledBy: 'gen-t',
-    width: '580px',
-    panelClass: 'mr-sheet-image',
-  });
+export function openImageGenerate(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: ImageGenerateData,
+): Observable<GenerateOutcome | undefined> {
+  return openSheet<ImageGenerateDialog, ImageGenerateData, GenerateOutcome>(
+    dialog,
+    bottomSheet,
+    ImageGenerateDialog,
+    {
+      data,
+      ariaLabel: 'Gerar imagem',
+      labelledBy: 'gen-t',
+      width: '580px',
+      panelClass: 'mr-sheet-image',
+    },
+  );
 }

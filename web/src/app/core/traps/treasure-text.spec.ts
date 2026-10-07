@@ -13,7 +13,8 @@ const found = (id: string, who: string[] = ['Brisa']) =>
     treasureFoundAt: timestampFromDate(new Date(2026, 9, 4, 21, 40)),
     treasureFoundBy: who.map((n) => ({ characterId: n, characterName: n })),
   });
-const hidden = (id: string) => create(MapPointSchema, { id, kind: MapPointKind.TREASURE, name: 'Baú com agulha' });
+const hidden = (id: string) =>
+  create(MapPointSchema, { id, kind: MapPointKind.TREASURE, name: 'Baú com agulha' });
 const plain = (t: string) => t.replace(/ /g, ' ');
 
 describe('treasure text', () => {
@@ -23,13 +24,17 @@ describe('treasure text', () => {
 
   it('writes the toast', () => {
     expect(foundToastTitle(found('a'))).toBe('Brisa encontrou: Baú de moedas');
-    expect(foundToastTitle(found('a', ['Brisa', 'Toren']))).toBe('Brisa e Toren encontraram: Baú de moedas');
+    expect(foundToastTitle(found('a', ['Brisa', 'Toren']))).toBe(
+      'Brisa e Toren encontraram: Baú de moedas',
+    );
   });
 
   it('says what goes into the summary without dividing', () => {
     expect(summaryLine([], 250)).toBe('Ninguém marcado. Escolha quem encontrou.');
     expect(plain(summaryLine(['Brisa'], 250))).toBe('No resumo da sessão: Brisa · 250 PO');
-    expect(plain(summaryLine(['Brisa', 'Toren'], 250))).toBe('No resumo da sessão: Brisa e Toren · 250 PO');
+    expect(plain(summaryLine(['Brisa', 'Toren'], 250))).toBe(
+      'No resumo da sessão: Brisa e Toren · 250 PO',
+    );
   });
 
   it('never calls a treasure found before the page arrived news', () => {

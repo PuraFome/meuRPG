@@ -1,6 +1,9 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../gen/meurpg/play/v1/play_pb';
+import {
+  GameSessionBlockedReason,
+  GameSessionBlockedSchema,
+} from '../../../gen/meurpg/play/v1/play_pb';
 import {
   EncounterBlockedReason,
   type EncounterBlocked,
@@ -14,7 +17,8 @@ import { metersFixed, metersText } from '../units';
 /** What a refusal says when the first square of a move is a locked door (RN-26): nothing moved and nothing was spent. A move that gets
  * some squares first is no refusal: the "Mover" page says "A porta está trancada." and the map keeps drawing "Porta fechada" (the app
  * does not remember the lock for players). */
-export const LOCKED_DOOR_FIRST_STEP_TEXT = 'A porta está trancada: você não saiu do lugar. Só o mestre a destranca.';
+export const LOCKED_DOOR_FIRST_STEP_TEXT =
+  'A porta está trancada: você não saiu do lugar. Só o mestre a destranca.';
 
 /** The typed detail of a `failed_precondition` from `CombatService`, or
  * `null` (another code, or another detail). Never read from the message. */

@@ -49,7 +49,16 @@ import { PointFoot } from './point-foot';
  */
 @Component({
   selector: 'app-treasure-point-panel',
-  imports: [MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, PairFoot, PersonPick, PointFoot],
+  imports: [
+    MapAsk,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    PairFoot,
+    PersonPick,
+    PointFoot,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './treasure-point-panel.html',
   styleUrl: './point-panel-kinds.scss',
@@ -87,9 +96,23 @@ export class TreasurePointPanel {
   protected readonly errors = computed(() => treasureErrors(this.draft()));
   protected readonly shown = computed(() => (this.show() ? this.errors() : {}));
   protected readonly dirty = computed(() => isTreasureDirty(this.draft(), this.point()));
-  protected readonly names = computed(() => this.people().filter((p) => this.picked().has(p.id)).map((p) => p.name));
-  protected readonly summary = computed(() => summaryLine(this.names(), this.point().treasureValuePo));
-  protected readonly state = computed(() => (this.converted() ? 'convertido' : this.found() ? 'visível para todos' : this.point().revealed ? 'visível para todos' : 'escondido'));
+  protected readonly names = computed(() =>
+    this.people()
+      .filter((p) => this.picked().has(p.id))
+      .map((p) => p.name),
+  );
+  protected readonly summary = computed(() =>
+    summaryLine(this.names(), this.point().treasureValuePo),
+  );
+  protected readonly state = computed(() =>
+    this.converted()
+      ? 'convertido'
+      : this.found()
+        ? 'visível para todos'
+        : this.point().revealed
+          ? 'visível para todos'
+          : 'escondido',
+  );
   protected readonly blocked = computed(() =>
     this.converted()
       ? 'Convertido em XP: este tesouro não pode ser apagado.'
@@ -120,7 +143,9 @@ export class TreasurePointPanel {
           this.mode.set('view');
           this.callError.set('');
           if (this.focusName()) {
-            afterNextRender(() => this.nameField()?.nativeElement.focus(), { injector: this.injector });
+            afterNextRender(() => this.nameField()?.nativeElement.focus(), {
+              injector: this.injector,
+            });
           }
         }
       });
@@ -187,12 +212,18 @@ export class TreasurePointPanel {
     if (this.picked().size === 0 || this.busy()) {
       return;
     }
-    const ids = this.people().filter((p) => this.picked().has(p.id)).map((p) => p.id);
-    await this.run('marcar o tesouro', () => this.api.markTreasureFound(this.campaignId(), this.point().mapId, this.point().id, ids));
+    const ids = this.people()
+      .filter((p) => this.picked().has(p.id))
+      .map((p) => p.id);
+    await this.run('marcar o tesouro', () =>
+      this.api.markTreasureFound(this.campaignId(), this.point().mapId, this.point().id, ids),
+    );
   }
 
   protected async confirmUnmark(): Promise<void> {
-    await this.run('desmarcar o tesouro', () => this.api.unmarkTreasureFound(this.campaignId(), this.point().mapId, this.point().id));
+    await this.run('desmarcar o tesouro', () =>
+      this.api.unmarkTreasureFound(this.campaignId(), this.point().mapId, this.point().id),
+    );
   }
 
   private async run(what: string, call: () => Promise<MapPoint>): Promise<void> {

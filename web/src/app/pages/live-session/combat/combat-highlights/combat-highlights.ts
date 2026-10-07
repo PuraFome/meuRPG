@@ -10,7 +10,10 @@ import {
   highlightTiles,
 } from '../../../../core/combat/combat-highlights';
 import { HighlightTiles } from '../../../../shared/highlights/highlight-tiles';
-import { HighlightsTable, type HighlightsTableRow } from '../../../../shared/highlights/highlights-table';
+import {
+  HighlightsTable,
+  type HighlightsTableRow,
+} from '../../../../shared/highlights/highlights-table';
 import type { CombatantInfo } from '../combat-info';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -46,16 +49,27 @@ export class CombatHighlights {
   protected readonly state = signal<LoadState>({ status: 'loading' });
   protected readonly tiles = signal<readonly HighlightTile[]>([]);
   protected readonly rows = signal<readonly HighlightsTableRow[]>([]);
-  protected readonly columns = ['Dano causado', 'Cura', 'Dano recebido', 'Golpes finais', 'Acertos críticos'];
+  protected readonly columns = [
+    'Dano causado',
+    'Cura',
+    'Dano recebido',
+    'Golpes finais',
+    'Acertos críticos',
+  ];
   /** The players' names by character, for the tiles' "de Caio". */
   protected readonly players = computed(
-    () => new Map([...this.info()].flatMap(([id, c]) => (c.playerName ? [[id, c.playerName] as const] : []))),
+    () =>
+      new Map(
+        [...this.info()].flatMap(([id, c]) => (c.playerName ? [[id, c.playerName] as const] : [])),
+      ),
   );
   protected readonly error = computed(() => {
     const s = this.state();
     return s.status === 'error' ? s.message : '';
   });
-  protected readonly empty = computed(() => this.state().status === 'ready' && this.tiles().length === 0);
+  protected readonly empty = computed(
+    () => this.state().status === 'ready' && this.tiles().length === 0,
+  );
 
   constructor() {
     effect(() => {
@@ -65,7 +79,10 @@ export class CombatHighlights {
     });
   }
 
-  protected async load(campaignId = this.campaignId(), encounterId = this.encounterId()): Promise<void> {
+  protected async load(
+    campaignId = this.campaignId(),
+    encounterId = this.encounterId(),
+  ): Promise<void> {
     this.state.set({ status: 'loading' });
     try {
       const res = await this.api.highlights(campaignId, encounterId);
@@ -74,12 +91,17 @@ export class CombatHighlights {
         highlightRows(res.characters).map((r) => ({
           id: r.characterId,
           name: r.name,
-          cells: [r.damageDealt, r.healingDone, r.damageTaken, r.finalBlows, r.criticalHits].map(String),
+          cells: [r.damageDealt, r.healingDone, r.damageTaken, r.finalBlows, r.criticalHits].map(
+            String,
+          ),
         })),
       );
       this.state.set({ status: 'ready' });
     } catch (err) {
-      this.state.set({ status: 'error', message: combatErrorMessage(err, 'carregar os destaques') });
+      this.state.set({
+        status: 'error',
+        message: combatErrorMessage(err, 'carregar os destaques'),
+      });
     }
   }
 }

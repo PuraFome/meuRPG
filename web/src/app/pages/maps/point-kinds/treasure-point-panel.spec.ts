@@ -1,7 +1,11 @@
 import { create } from '@bufbuild/protobuf';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { type MapPoint, MapPointKind, MapPointSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type MapPoint,
+  MapPointKind,
+  MapPointSchema,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient } from '../../../core/maps/maps-testing';
 import type { PickRow } from '../../../shared/person-pick/person-pick';
@@ -11,9 +15,21 @@ const people: PickRow[] = [
   { id: 'c1', name: 'Brisa', sub: 'Clériga 5 · Ana' },
   { id: 'c2', name: 'Toren', sub: 'Guerreiro 5 · Caio' },
 ];
-const base = { id: 't1', mapId: 'map-1', kind: MapPointKind.TREASURE, name: 'Baú de moedas', description: '250 PO e uma adaga de prata.', treasureValuePo: 250 };
+const base = {
+  id: 't1',
+  mapId: 'map-1',
+  kind: MapPointKind.TREASURE,
+  name: 'Baú de moedas',
+  description: '250 PO e uma adaga de prata.',
+  treasureValuePo: 250,
+};
 const hidden = create(MapPointSchema, base);
-const foundInit = { ...base, treasureFoundAt: { seconds: 1_790_000_000n }, treasureFoundBy: [{ characterId: 'c1', characterName: 'Brisa' }], revealed: true };
+const foundInit = {
+  ...base,
+  treasureFoundAt: { seconds: 1_790_000_000n },
+  treasureFoundBy: [{ characterId: 'c1', characterName: 'Brisa' }],
+  revealed: true,
+};
 const found = create(MapPointSchema, foundInit);
 const converted = create(MapPointSchema, { ...foundInit, treasureConverted: true });
 
@@ -45,7 +61,10 @@ describe('TreasurePointPanel', () => {
     fixture.detectChanges();
   };
   const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const button = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim().endsWith(t))!;
+  const button = (t: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) =>
+      b.textContent?.trim().endsWith(t),
+    )!;
   const panel = () => fixture.componentInstance;
 
   it('not found: hidden, with who can mark it and the line about the summary outside a session', async () => {
@@ -69,7 +88,9 @@ describe('TreasurePointPanel', () => {
     expect(text()).toContain('Quem encontrou Baú de moedas?');
     expect(el.querySelectorAll('input[type=checkbox]:checked')).toHaveLength(0);
     expect(document.activeElement).toBe(el.querySelector('input[type=checkbox]'));
-    const go = Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim().endsWith('Marcar como encontrado')).at(-1)!;
+    const go = Array.from(el.querySelectorAll('button'))
+      .filter((b) => b.textContent?.trim().endsWith('Marcar como encontrado'))
+      .at(-1)!;
     expect(go.getAttribute('aria-disabled')).toBe('true');
     go.click();
     await settle();
@@ -78,7 +99,10 @@ describe('TreasurePointPanel', () => {
     brisa.click();
     await settle();
     expect(text()).toContain('No resumo da sessão: Brisa · 250 PO');
-    Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim().endsWith('Marcar como encontrado')).at(-1)!.click();
+    Array.from(el.querySelectorAll('button'))
+      .filter((b) => b.textContent?.trim().endsWith('Marcar como encontrado'))
+      .at(-1)!
+      .click();
     await settle();
     expect(api.calls).toEqual(['markTreasureFound map-1 t1 c1']);
     expect(changed).toHaveLength(1);
@@ -94,7 +118,10 @@ describe('TreasurePointPanel', () => {
     expect(document.activeElement?.textContent?.trim()).toBe('Desmarcar Baú de moedas?');
     expect(button('Voltar')).toBeTruthy();
     expect(api.calls).toEqual([]);
-    Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.trim() === 'Desmarcar').at(-1)!.click();
+    Array.from(el.querySelectorAll('button'))
+      .filter((b) => b.textContent?.trim() === 'Desmarcar')
+      .at(-1)!
+      .click();
     await settle();
     expect(api.calls).toEqual(['unmarkTreasureFound map-1 t1']);
   });
@@ -114,7 +141,9 @@ describe('TreasurePointPanel', () => {
     expect(text()).toContain('Convertido em XP: este tesouro não pode ser apagado.');
     const textarea = el.querySelector('textarea')!;
     expect(textarea.readOnly).toBe(true);
-    const value = Array.from(el.querySelectorAll('input')).find((i) => i.closest('mat-form-field')?.textContent?.includes('Valor em ouro'))!;
+    const value = Array.from(el.querySelectorAll('input')).find((i) =>
+      i.closest('mat-form-field')?.textContent?.includes('Valor em ouro'),
+    )!;
     expect(value.readOnly).toBe(true);
     expect(button('Desmarcar').classList).toContain('mr-button--off');
     expect(button('Apagar ponto').classList).toContain('mr-button--off');
@@ -122,7 +151,9 @@ describe('TreasurePointPanel', () => {
 
   it('saves the value as a number, and refuses what is not 0 to 1.000.000', async () => {
     await setup(hidden);
-    const value = Array.from(el.querySelectorAll('input')).find((i) => i.closest('mat-form-field')?.textContent?.includes('Valor em ouro'))!;
+    const value = Array.from(el.querySelectorAll('input')).find((i) =>
+      i.closest('mat-form-field')?.textContent?.includes('Valor em ouro'),
+    )!;
     value.value = '300';
     value.dispatchEvent(new Event('input'));
     fixture.detectChanges();

@@ -47,15 +47,24 @@ export class FeatureEditor {
   readonly moved = output<-1 | 1>();
 
   protected readonly canAddEffect = computed(
-    () => this.feature().effects.length > 0 && this.feature().effects.length < this.menu().maxEffects,
+    () =>
+      this.feature().effects.length > 0 && this.feature().effects.length < this.menu().maxEffects,
   );
   /** The effects after the first, with their place in the list (the first sits beside the name). */
-  protected readonly otherEffects = computed(() => this.feature().effects.map((effect, index) => ({ id: effect.id, effect, index })).slice(1));
+  protected readonly otherEffects = computed(() =>
+    this.feature()
+      .effects.map((effect, index) => ({ id: effect.id, effect, index }))
+      .slice(1),
+  );
   /** With no effect, the picker shows "Só texto". */
-  protected readonly firstEffect = computed<EffectDraft>(() => this.feature().effects[0] ?? emptyEffect(''));
+  protected readonly firstEffect = computed<EffectDraft>(
+    () => this.feature().effects[0] ?? emptyEffect(''),
+  );
 
   /** The group's own name, never the name field's label (two things with one name confuse a screen reader and a test). */
-  protected readonly groupLabel = computed(() => this.heading() || (this.index() >= 0 ? `Traço ${this.index() + 1}` : 'Característica'));
+  protected readonly groupLabel = computed(
+    () => this.heading() || (this.index() >= 0 ? `Traço ${this.index() + 1}` : 'Característica'),
+  );
 
   protected path(field: string): string {
     return `${this.basePath()}.${field}`;

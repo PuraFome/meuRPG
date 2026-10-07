@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { EncounterBand, type EncounterEvaluation } from '../../../../gen/meurpg/play/v1/encounters_pb';
+import {
+  EncounterBand,
+  type EncounterEvaluation,
+} from '../../../../gen/meurpg/play/v1/encounters_pb';
 import { bandLimit, bandWord, barGeometry } from '../../../core/encounters/encounter-text';
 import { formatInt, tight } from '../../../core/format/text';
 
@@ -74,18 +77,37 @@ export class BudgetBar {
     const ev = this.evaluation();
     return ev ? barGeometry(ev) : { low: 0, moderate: 0, high: 0, fill: 0, over: false };
   });
-  protected readonly total = computed(() => tight(`${formatInt(this.evaluation()?.totalXp ?? 0)} XP`));
+  protected readonly total = computed(() =>
+    tight(`${formatInt(this.evaluation()?.totalXp ?? 0)} XP`),
+  );
   /** The marker keeps clear of the bar's two ends, so its label never leaves the card. */
-  protected readonly markerAt = computed(() => Math.min(94, Math.max(6, this.geo().over ? 100 : this.geo().fill)));
+  protected readonly markerAt = computed(() =>
+    Math.min(94, Math.max(6, this.geo().over ? 100 : this.geo().fill)),
+  );
   protected readonly ticks = computed(() => {
     const ev = this.evaluation();
     const g = this.geo();
     return ev
       ? [
-          { xp: ev.budget?.low ?? 0, at: g.low, label: formatInt(ev.budget?.low ?? 0), hidden: false },
-          { xp: ev.budget?.moderate ?? 0, at: g.moderate, label: formatInt(ev.budget?.moderate ?? 0), hidden: false },
+          {
+            xp: ev.budget?.low ?? 0,
+            at: g.low,
+            label: formatInt(ev.budget?.low ?? 0),
+            hidden: false,
+          },
+          {
+            xp: ev.budget?.moderate ?? 0,
+            at: g.moderate,
+            label: formatInt(ev.budget?.moderate ?? 0),
+            hidden: false,
+          },
           // Past the high budget the marker sits at the tip, close to this label: "400 › 3.050 XP" would read as a comparison, so the label waits.
-          { xp: ev.budget?.high ?? 0, at: g.high, label: formatInt(ev.budget?.high ?? 0), hidden: g.over },
+          {
+            xp: ev.budget?.high ?? 0,
+            at: g.high,
+            label: formatInt(ev.budget?.high ?? 0),
+            hidden: g.over,
+          },
         ]
       : [];
   });

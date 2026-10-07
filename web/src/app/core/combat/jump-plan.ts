@@ -23,7 +23,10 @@ export function limitFor(limits: JumpLimits, kind: JumpMode): number {
 
 /** "4,8 m com corrida · 2,4 m parado". */
 export function limitsLine(running: number, standing: number): string {
-  return joinDots([`${metersFixed(running / 10)} com corrida`, `${metersFixed(standing / 10)} parado`]);
+  return joinDots([
+    `${metersFixed(running / 10)} com corrida`,
+    `${metersFixed(standing / 10)} parado`,
+  ]);
 }
 
 /** The move on foot that gives a running start: 10 ft (SRD), said in metres. */
@@ -48,7 +51,10 @@ export function maxHeight(limitDft: number): number {
 /** One step up (`+1`) or down (`-1`) from `current`, kept between one step and the maximum. */
 export function stepHeight(current: number, direction: 1 | -1, limitDft: number): number {
   const max = maxHeight(limitDft);
-  return Math.min(max, Math.max(Math.min(HEIGHT_STEP_DFT, max), current + direction * HEIGHT_STEP_DFT));
+  return Math.min(
+    max,
+    Math.max(Math.min(HEIGHT_STEP_DFT, max), current + direction * HEIGHT_STEP_DFT),
+  );
 }
 
 /** The straight line from the jumper's square to the chosen one, in tenths of a

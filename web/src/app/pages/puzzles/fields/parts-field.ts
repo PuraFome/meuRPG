@@ -1,11 +1,30 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, OnInit, afterNextRender, computed, inject, input, output, signal, viewChild, viewChildren } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { type PartDraft, PARTS_MAX, PART_MAX, textLength } from '../../../core/puzzles/puzzle-draft';
+import {
+  type PartDraft,
+  PARTS_MAX,
+  PART_MAX,
+  textLength,
+} from '../../../core/puzzles/puzzle-draft';
 import { RosterClient } from '../../../core/maps/roster-client';
 
 interface Who {
@@ -103,13 +122,17 @@ export class PartsField implements OnInit {
   protected readonly hasNoOwner = computed(() => this.parts().some((p) => p.characterId === ''));
 
   private readonly texts = viewChildren<ElementRef<HTMLTextAreaElement>>('text');
-  private readonly addButton = viewChild<string, ElementRef<HTMLElement>>('add', { read: ElementRef });
+  private readonly addButton = viewChild<string, ElementRef<HTMLElement>>('add', {
+    read: ElementRef,
+  });
 
   ngOnInit(): void {
     this.roster.list(this.campaignId()).then(
       (all) =>
         this.characters.set(
-          all.filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '').map((c) => ({ id: c.id, name: c.name })),
+          all
+            .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
+            .map((c) => ({ id: c.id, name: c.name })),
         ),
       () => this.failed.set(true),
     );
@@ -118,7 +141,9 @@ export class PartsField implements OnInit {
   /** The characters a part's select offers: the party, plus the part's own owner when they are no longer in it. */
   protected whoFor(part: PartDraft): readonly Who[] {
     const all = this.characters();
-    return part.characterId !== '' && !all.some((w) => w.id === part.characterId) ? [...all, { id: part.characterId, name: 'Personagem que saiu da mesa' }] : all;
+    return part.characterId !== '' && !all.some((w) => w.id === part.characterId)
+      ? [...all, { id: part.characterId, name: 'Personagem que saiu da mesa' }]
+      : all;
   }
 
   protected takenByAnother(id: string, index: number): boolean {
@@ -143,11 +168,24 @@ export class PartsField implements OnInit {
   }
 
   protected edit(index: number, partial: Partial<PartDraft>): void {
-    this.partsChange.emit(this.parts().map((p, i) => (i === index ? { ...p, ...partial, ownerUnavailable: partial.characterId === undefined ? p.ownerUnavailable : false } : p)));
+    this.partsChange.emit(
+      this.parts().map((p, i) =>
+        i === index
+          ? {
+              ...p,
+              ...partial,
+              ownerUnavailable: partial.characterId === undefined ? p.ownerUnavailable : false,
+            }
+          : p,
+      ),
+    );
   }
 
   protected append(): void {
-    this.partsChange.emit([...this.parts(), { characterId: '', text: '', ownerUnavailable: false }]);
+    this.partsChange.emit([
+      ...this.parts(),
+      { characterId: '', text: '', ownerUnavailable: false },
+    ]);
     afterNextRender(() => this.texts().at(-1)?.nativeElement.focus(), { injector: this.injector });
   }
 

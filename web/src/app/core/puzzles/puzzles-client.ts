@@ -17,7 +17,10 @@ import {
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** What the master writes about a puzzle, as `CreatePuzzle` takes it (`UpdatePuzzle` takes the same, with the ID). */
-export type PuzzleInit = Omit<MessageInitShape<typeof CreatePuzzleRequestSchema>, 'campaignId' | '$typeName'>;
+export type PuzzleInit = Omit<
+  MessageInitShape<typeof CreatePuzzleRequestSchema>,
+  'campaignId' | '$typeName'
+>;
 
 /** How the hint's d20 comes (RN-18): the app rolls it, or the player typed the face of a real die. */
 export type HintDie = { readonly inApp: true } | { readonly face: number };
@@ -51,11 +54,17 @@ export class PuzzlesClient {
 
   /** `idempotencyKey`: one per new puzzle, sent again on a retry (see `ActionKey`). */
   async create(campaignId: string, init: PuzzleInit, idempotencyKey: string): Promise<Puzzle> {
-    return need((await this.client.createPuzzle({ ...init, campaignId, idempotencyKey })).puzzle, 'CreatePuzzle');
+    return need(
+      (await this.client.createPuzzle({ ...init, campaignId, idempotencyKey })).puzzle,
+      'CreatePuzzle',
+    );
   }
 
   async update(campaignId: string, puzzleId: string, init: PuzzleInit): Promise<Puzzle> {
-    return need((await this.client.updatePuzzle({ ...init, campaignId, puzzleId })).puzzle, 'UpdatePuzzle');
+    return need(
+      (await this.client.updatePuzzle({ ...init, campaignId, puzzleId })).puzzle,
+      'UpdatePuzzle',
+    );
   }
 
   /** The start the form shows, and the fewest moves from it; `seed` 0 draws a new one. */
@@ -69,16 +78,25 @@ export class PuzzlesClient {
   }
 
   /** The message as the players will read it ("Como os jogadores a veem"): the server ciphers it, the browser never does. */
-  async previewCipher(campaignId: string, solution: MessageInitShape<typeof CipherSolutionSchema>): Promise<string> {
+  async previewCipher(
+    campaignId: string,
+    solution: MessageInitShape<typeof CipherSolutionSchema>,
+  ): Promise<string> {
     return (await this.client.previewPuzzleCipher({ campaignId, solution })).ciphertext;
   }
 
   async archive(campaignId: string, puzzleId: string): Promise<Puzzle> {
-    return need((await this.client.archivePuzzle({ campaignId, puzzleId })).puzzle, 'ArchivePuzzle');
+    return need(
+      (await this.client.archivePuzzle({ campaignId, puzzleId })).puzzle,
+      'ArchivePuzzle',
+    );
   }
 
   async unarchive(campaignId: string, puzzleId: string): Promise<Puzzle> {
-    return need((await this.client.unarchivePuzzle({ campaignId, puzzleId })).puzzle, 'UnarchivePuzzle');
+    return need(
+      (await this.client.unarchivePuzzle({ campaignId, puzzleId })).puzzle,
+      'UnarchivePuzzle',
+    );
   }
 
   // The master's session.
@@ -88,7 +106,10 @@ export class PuzzlesClient {
   }
 
   async masterRun(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return need((await this.client.getMasterPuzzleRun({ campaignId, puzzleId })).run, 'GetMasterPuzzleRun');
+    return need(
+      (await this.client.getMasterPuzzleRun({ campaignId, puzzleId })).run,
+      'GetMasterPuzzleRun',
+    );
   }
 
   async show(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
@@ -108,12 +129,18 @@ export class PuzzlesClient {
   }
 
   async releaseHint(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return need((await this.client.releaseNextPuzzleHint({ campaignId, puzzleId })).run, 'ReleaseNextPuzzleHint');
+    return need(
+      (await this.client.releaseNextPuzzleHint({ campaignId, puzzleId })).run,
+      'ReleaseNextPuzzleHint',
+    );
   }
 
   /** "Tocar a sequência": every player's phone shows it step by step. */
   async playSequence(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return need((await this.client.playPuzzleSequence({ campaignId, puzzleId })).run, 'PlayPuzzleSequence');
+    return need(
+      (await this.client.playPuzzleSequence({ campaignId, puzzleId })).run,
+      'PlayPuzzleSequence',
+    );
   }
 
   // The player's session (the master may read what a player reads).
@@ -126,18 +153,33 @@ export class PuzzlesClient {
     return need((await this.client.getPuzzleRun({ campaignId, puzzleId })).run, 'GetPuzzleRun');
   }
 
-  async move(campaignId: string, puzzleId: string, move: MessageInitShape<typeof PuzzleMoveSchema>, idempotencyKey: string): Promise<MoveAnswer> {
+  async move(
+    campaignId: string,
+    puzzleId: string,
+    move: MessageInitShape<typeof PuzzleMoveSchema>,
+    idempotencyKey: string,
+  ): Promise<MoveAnswer> {
     const res = await this.client.makePuzzleMove({ campaignId, puzzleId, move, idempotencyKey });
-    return { run: need(res.run, 'MakePuzzleMove'), replayed: res.replayed, solvedByThisMove: res.solvedByThisMove };
+    return {
+      run: need(res.run, 'MakePuzzleMove'),
+      replayed: res.replayed,
+      solvedByThisMove: res.solvedByThisMove,
+    };
   }
 
   /** "Tentar uma dica": the d20 rolls in the app, or is the face of a real die the player typed (RN-18). */
-  async tryHint(campaignId: string, puzzleId: string, die: HintDie, idempotencyKey: string): Promise<TryPuzzleHintResponse> {
+  async tryHint(
+    campaignId: string,
+    puzzleId: string,
+    die: HintDie,
+    idempotencyKey: string,
+  ): Promise<TryPuzzleHintResponse> {
     return this.client.tryPuzzleHint({
       campaignId,
       puzzleId,
       idempotencyKey,
-      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+      roll:
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
     });
   }
 }

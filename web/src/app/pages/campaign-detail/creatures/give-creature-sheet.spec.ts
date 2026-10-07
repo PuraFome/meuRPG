@@ -3,7 +3,13 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, raven, summary, flat, isOff } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  raven,
+  summary,
+  flat,
+  isOff,
+} from '../../../core/creatures/creatures-testing';
 import { GiveCreatureSheet, type GiveCreatureData } from './give-creature-sheet';
 
 describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () => {
@@ -13,13 +19,26 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
   async function setup() {
     api = new FakeCreaturesClient();
     api.catalog = [
-      summary('monster:mastiff', 'Mastim', { name: 'Mastiff', sizePt: 'Médio', challengeRating: '1/8' }),
+      summary('monster:mastiff', 'Mastim', {
+        name: 'Mastiff',
+        sizePt: 'Médio',
+        challengeRating: '1/8',
+      }),
       summary('monster:sea-horse', 'Cavalo-marinho', { name: 'Sea Horse' }),
-      summary('monster:goblin', 'Goblin', { name: 'Goblin', type: 'humanoid', typePt: 'humanoide', challengeRating: '1/4' }),
+      summary('monster:goblin', 'Goblin', {
+        name: 'Goblin',
+        type: 'humanoid',
+        typePt: 'humanoide',
+        challengeRating: '1/4',
+      }),
     ];
     api.blocks.set('monster:mastiff', raven({ hitPoints: 5 }));
     close = vi.fn();
-    const data: GiveCreatureData = { campaignId: 'camp-1', characterId: 'char-1', characterName: 'Toren' };
+    const data: GiveCreatureData = {
+      campaignId: 'camp-1',
+      characterId: 'char-1',
+      characterName: 'Toren',
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: CreaturesClient, useValue: api },
@@ -39,14 +58,19 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
     fixture.detectChanges();
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes(name))!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.includes(name),
+      )!;
     return { fixture, el, flat, button, settle };
   }
 
   it('opens with the whole book, the title naming the character, and three fields of the same height in a row', async () => {
     const { el, flat } = await setup();
     expect(flat(el.querySelector('.frame__title'))).toBe('Dar uma criatura a Toren');
-    expect(flat(el.querySelector('.frame__sub'))).toBe('Escolha uma criatura do livro de regras (SRD) para Toren.');
+    expect(flat(el.querySelector('.frame__sub'))).toBe(
+      'Escolha uma criatura do livro de regras (SRD) para Toren.',
+    );
     expect(el.querySelectorAll('.filters .box')).toHaveLength(3);
     expect(flat(el.querySelector('.list__n'))).toBe('3 de 3 · em ordem de nome');
     expect(flat(el.querySelectorAll('.row')[0])).toContain('Mastim (Mastiff)');
@@ -79,9 +103,13 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
     r.dispatchEvent(new Event('change'));
     await settle();
     expect(el.querySelector<HTMLInputElement>('input[name=name]')!.value).toBe('Mastim');
-    expect(flat(el.querySelector('.note'))).toBe('Vai para a ficha de Toren e entra nos combates com os PV do livro (5). Você corrige PV e condições depois.');
+    expect(flat(el.querySelector('.note'))).toBe(
+      'Vai para a ficha de Toren e entra nos combates com os PV do livro (5). Você corrige PV e condições depois.',
+    );
     // The chosen row says its armor class and hit points, read from its stat block.
-    expect(flat(el.querySelector('.row--on .row__sub'))).toBe('Médio · fera · ND 1/8 · CA 12 · PV 5');
+    expect(flat(el.querySelector('.row--on .row__sub'))).toBe(
+      'Médio · fera · ND 1/8 · CA 12 · PV 5',
+    );
     expect(isOff(button('Dar Mastim a Toren'))).toBe(false);
     expect(fixture.nativeElement.querySelector('mat-hint').textContent).toContain('6 de 40');
   });
@@ -98,7 +126,13 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
     await settle();
     button('Dar Mastim a Toren').click();
     await settle();
-    expect(api.give).toHaveBeenCalledWith('camp-1', 'char-1', 'monster:mastiff', 'Brutus', expect.any(String));
+    expect(api.give).toHaveBeenCalledWith(
+      'camp-1',
+      'char-1',
+      'monster:mastiff',
+      'Brutus',
+      expect.any(String),
+    );
     expect(close).toHaveBeenCalledWith({ name: 'Brutus' });
   });
 

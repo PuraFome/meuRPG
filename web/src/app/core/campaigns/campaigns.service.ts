@@ -2,7 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 import { durationFromMs } from '@bufbuild/protobuf/wkt';
 
-import { CampaignService, DiceMode, DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  CampaignService,
+  DiceMode,
+  DicePreference,
+  XpMode,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 const dayMs = 24 * 60 * 60 * 1000;

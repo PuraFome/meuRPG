@@ -70,7 +70,12 @@ export class NpcPicks {
   readonly toggled = output<string>();
 
   protected readonly markedPortraits = computed(
-    () => new Set(this.npcs().filter((n) => this.marked().includes(n.characterId) && n.portraitImageId !== '').map((n) => n.portraitImageId)).size,
+    () =>
+      new Set(
+        this.npcs()
+          .filter((n) => this.marked().includes(n.characterId) && n.portraitImageId !== '')
+          .map((n) => n.portraitImageId),
+      ).size,
   );
   protected readonly full = computed(() => this.markedPortraits() >= this.maxPortraits());
 

@@ -98,7 +98,11 @@ export class ExperienceStore {
 
   /** The treasures again (after an award, an undo, or a conversion that went wrong). */
   async loadTreasures(): Promise<void> {
-    if (!this.withTreasures || this.xpMode() === XpMode.MILESTONES || this.xpMode() === XpMode.UNSPECIFIED) {
+    if (
+      !this.withTreasures ||
+      this.xpMode() === XpMode.MILESTONES ||
+      this.xpMode() === XpMode.UNSPECIFIED
+    ) {
       return;
     }
     const seq = ++this.treasuresSeq;
@@ -159,7 +163,9 @@ export class ExperienceStore {
             id: c.characterId,
             name: c.name,
             playerUserId: c.playerUserId,
-            sub: joinDots([entry?.classSummary ?? '', player ? `de ${player}` : ''].filter(Boolean)),
+            sub: joinDots(
+              [entry?.classSummary ?? '', player ? `de ${player}` : ''].filter(Boolean),
+            ),
             level: c.level,
             xp: c.experiencePoints,
             nextLevelXp: c.nextLevelXp,

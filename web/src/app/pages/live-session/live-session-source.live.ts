@@ -2,7 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError, createClient } from '@connectrpc/connect';
 
-import { CampaignService, DiceMode, DicePreference, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  CampaignService,
+  DiceMode,
+  DicePreference,
+  Role,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   CharacterVitals,
@@ -54,7 +59,12 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     familiarSight: v.familiarSight
       ? { creatureId: v.familiarSight.creatureId, inCombat: v.familiarSight.inCombat }
       : null,
-    resources: v.resources.map((r) => ({ key: r.key, total: r.total, used: r.used, recharge: RECHARGE[r.recharge] ?? 'none' })),
+    resources: v.resources.map((r) => ({
+      key: r.key,
+      total: r.total,
+      used: r.used,
+      recharge: RECHARGE[r.recharge] ?? 'none',
+    })),
     wildShape: v.wildShape
       ? {
           beastKey: v.wildShape.beastKey,
@@ -219,7 +229,11 @@ export class LiveSessionSourceLive implements LiveSessionSource {
           yield { kind: 'stageChanged' };
           break;
         case 'trapNoticed':
-          yield { kind: 'trapNoticed', mapId: res.event.value.mapId, pointId: res.event.value.pointId };
+          yield {
+            kind: 'trapNoticed',
+            mapId: res.event.value.mapId,
+            pointId: res.event.value.pointId,
+          };
           break;
         case 'creaturesChanged':
           yield { kind: 'creaturesChanged' };
@@ -306,7 +320,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     return {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
-      skills: derived ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') } : undefined,
+      skills: derived
+        ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') }
+        : undefined,
       senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };
   }

@@ -90,23 +90,33 @@ export class LevelUpDraft {
   readonly effective = computed(() => withSubclass(this.options, this.subclassKey()));
   /** Whose spell list the new spells come from, by name: the class's own, the one a table class reuses, a third caster's. */
   readonly listName = computed(
-    () => this.catalog.classes?.find((c) => c.key === this.effective().spellListClassKey)?.namePt ?? this.options.classNamePt,
+    () =>
+      this.catalog.classes?.find((c) => c.key === this.effective().spellListClassKey)?.namePt ??
+      this.options.classNamePt,
   );
   readonly totals = computed(() => totalsFor(this.options, this.subclassKey()));
-  readonly more = computed(() => preparedMore(this.effective(), this.preparedMaxAfter(), this.have.prepared.length));
+  readonly more = computed(() =>
+    preparedMore(this.effective(), this.preparedMaxAfter(), this.have.prepared.length),
+  );
   readonly steps = computed<StepKey[]>(() => stepsFor(this.options, this.totals(), this.more()));
 
   readonly cantripItems = computed<PickItem[]>(() =>
     cantripOptions(this.effective(), this.catalog.spells, this.have),
   );
-  private readonly spellItemsBase = computed<PickItem[]>(() => spellOptions(this.effective(), this.catalog.spells, this.have));
+  private readonly spellItemsBase = computed<PickItem[]>(() =>
+    spellOptions(this.effective(), this.catalog.spells, this.have),
+  );
   /** The new spells, with the rows from outside the class list turned off once the cap is reached. */
   readonly spellItems = computed<PickItem[]>(() => {
     const base = this.spellItemsBase();
-    const full = base.filter((i) => i.outside && this.spells().has(i.key)).length >= this.options.anyClassSpells;
+    const full =
+      base.filter((i) => i.outside && this.spells().has(i.key)).length >=
+      this.options.anyClassSpells;
     return full
       ? base.map((i) =>
-          i.outside && !this.spells().has(i.key) ? { ...i, disabled: `Limite de ${this.options.anyClassSpells} de outra classe` } : i,
+          i.outside && !this.spells().has(i.key)
+            ? { ...i, disabled: `Limite de ${this.options.anyClassSpells} de outra classe` }
+            : i,
         )
       : base;
   });
@@ -163,7 +173,11 @@ export class LevelUpDraft {
     const out: Missing[] = [];
     if (o.abilityScoreImprovement && this.abilityKeys().length < this.abilityAsked()) {
       const n = this.abilityAsked() - this.abilityKeys().length;
-      out.push({ step: 'abilities', id: 'abilities', text: needText(n, 'habilidade', 'habilidades') });
+      out.push({
+        step: 'abilities',
+        id: 'abilities',
+        text: needText(n, 'habilidade', 'habilidades'),
+      });
     }
     if (this.hpCard() === 'roll' && this.rolled() === null) {
       out.push({ step: 'hp', id: 'hp', text: 'Falta rolar o dado de vida.' });
@@ -178,27 +192,68 @@ export class LevelUpDraft {
         out.push({
           step: 'picks',
           id: `feature-${i}`,
-          text: needText(n, `opção de ${f.feature?.namePt ?? 'característica'}`, `opções de ${f.feature?.namePt ?? 'característica'}`),
+          text: needText(
+            n,
+            `opção de ${f.feature?.namePt ?? 'característica'}`,
+            `opções de ${f.feature?.namePt ?? 'característica'}`,
+          ),
         });
       }
     });
     const short = (picked: ReadonlySet<string>, asked: number) => Math.max(0, asked - picked.size);
     // A list with fewer rows than the level asks cannot be completed: the message says so (the server would refuse less).
     const lack = (asked: number, items: readonly PickItem[], what: string): string =>
-      items.length < asked ? `A lista só traz ${items.length} ${what} e o nível pede ${asked}. Peça ao mestre para ajustar a ficha.` : '';
+      items.length < asked
+        ? `A lista só traz ${items.length} ${what} e o nível pede ${asked}. Peça ao mestre para ajustar a ficha.`
+        : '';
     let n = short(this.skills(), this.skillsAsked());
-    if (n > 0) out.push({ step: 'picks', id: 'skills', text: lack(this.skillsAsked(), this.skillItems(), 'perícias') || needText(n, 'perícia', 'perícias') });
+    if (n > 0)
+      out.push({
+        step: 'picks',
+        id: 'skills',
+        text:
+          lack(this.skillsAsked(), this.skillItems(), 'perícias') ||
+          needText(n, 'perícia', 'perícias'),
+      });
     n = short(this.expertise(), this.expertiseAsked());
-    if (n > 0) out.push({ step: 'picks', id: 'expertise', text: lack(this.expertiseAsked(), this.expertiseItems(), 'perícias para a especialização') || needText(n, 'especialização', 'especializações') });
+    if (n > 0)
+      out.push({
+        step: 'picks',
+        id: 'expertise',
+        text:
+          lack(this.expertiseAsked(), this.expertiseItems(), 'perícias para a especialização') ||
+          needText(n, 'especialização', 'especializações'),
+      });
     n = short(this.cantrips(), this.cantripsAsked());
-    if (n > 0) out.push({ step: 'spells', id: 'cantrips', text: lack(this.cantripsAsked(), this.cantripItems(), 'truques') || needText(n, 'truque', 'truques') });
+    if (n > 0)
+      out.push({
+        step: 'spells',
+        id: 'cantrips',
+        text:
+          lack(this.cantripsAsked(), this.cantripItems(), 'truques') ||
+          needText(n, 'truque', 'truques'),
+      });
     n = short(this.spells(), this.spellsAsked());
     if (n > 0) {
-      const where = this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'para as magias conhecidas';
-      out.push({ step: 'spells', id: 'spells', text: lack(this.spellsAsked(), this.spellItems(), 'magias') || needText(n, 'magia', 'magias').replace(/\.$/, ` ${where}.`) });
+      const where =
+        this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK
+          ? 'para o livro'
+          : 'para as magias conhecidas';
+      out.push({
+        step: 'spells',
+        id: 'spells',
+        text:
+          lack(this.spellsAsked(), this.spellItems(), 'magias') ||
+          needText(n, 'magia', 'magias').replace(/\.$/, ` ${where}.`),
+      });
     }
     n = short(this.prepared(), this.preparedAsked());
-    if (n > 0) out.push({ step: 'spells', id: 'prepared', text: needText(n, 'magia', 'magias', 'preparar') });
+    if (n > 0)
+      out.push({
+        step: 'spells',
+        id: 'prepared',
+        text: needText(n, 'magia', 'magias', 'preparar'),
+      });
     return out;
   });
 
@@ -213,9 +268,14 @@ export class LevelUpDraft {
       this.abilityKeys().length > 0 ||
       this.hpCard() !== this.startCard ||
       this.subclassKey() !== '' ||
-      [this.cantrips(), this.spells(), this.prepared(), this.features(), this.skills(), this.expertise()].some(
-        (s) => s.size > 0,
-      ),
+      [
+        this.cantrips(),
+        this.spells(),
+        this.prepared(),
+        this.features(),
+        this.skills(),
+        this.expertise(),
+      ].some((s) => s.size > 0),
   );
 
   private build(hp: Rolled | null): LevelUpChoicesInit {
@@ -278,9 +338,9 @@ export class LevelUpDraft {
       return;
     }
     const gone = new Set(
-      (this.options.subclasses.find((c) => c.key === this.subclassKey())?.featureChoices ?? []).flatMap((f) =>
-        f.options.map((o) => o.key),
-      ),
+      (
+        this.options.subclasses.find((c) => c.key === this.subclassKey())?.featureChoices ?? []
+      ).flatMap((f) => f.options.map((o) => o.key)),
     );
     this.subclassKey.set(key);
     // A subclass that prepares (a third caster) says its own maximum until the preview gives the exact one.
@@ -322,7 +382,9 @@ export class LevelUpDraft {
     this.cantrips.set(keep(other.cantrips(), this.cantripItems()));
     this.spells.set(keep(other.spells(), this.spellItems()));
     this.prepared.set(keep(other.prepared(), this.preparedItems()));
-    const options = new Set(this.totals().featureChoices.flatMap((f) => f.options.map((o) => o.key)));
+    const options = new Set(
+      this.totals().featureChoices.flatMap((f) => f.options.map((o) => o.key)),
+    );
     this.features.set(new Set([...other.features()].filter((k) => options.has(k))));
     this.skills.set(keep(other.skills(), this.skillItems()));
     this.expertise.set(keep(other.expertise(), this.expertiseItems()));

@@ -43,7 +43,14 @@ describe('MapLegend', () => {
       fixture.detectChanges();
       return fixture.nativeElement as HTMLElement;
     }
-    const point = (kind: number, revealed = true) => ({ id: `p${kind}${revealed}`, name: 'P', kind, xBp: 0, yBp: 0, revealed });
+    const point = (kind: number, revealed = true) => ({
+      id: `p${kind}${revealed}`,
+      name: 'P',
+      kind,
+      xBp: 0,
+      yBp: 0,
+      revealed,
+    });
     const words = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ');
 
     it('lists only the kinds and the states of the points it is given', () => {
@@ -56,7 +63,10 @@ describe('MapLegend', () => {
     });
 
     it('lists a hidden state only when a point is hidden, and a trap or a light adds no plain kind', () => {
-      const el = render({ states: true, points: [point(1, false), point(4, true), point(6, true)] });
+      const el = render({
+        states: true,
+        points: [point(1, false), point(4, true), point(6, true)],
+      });
       expect(words(el)).toContain('Batalha');
       expect(words(el)).toContain('Escondido');
       expect(words(el)).not.toContain('Revelado');
@@ -71,7 +81,15 @@ describe('MapLegend', () => {
     });
 
     it('draws a token as the map does: the same initial, an NPC as the white rounded square', () => {
-      const goblin: ViewToken = { characterId: 'g', name: 'Goblin 2', mine: false, hidden: false, xBp: 0, yBp: 0, kind: 2 };
+      const goblin: ViewToken = {
+        characterId: 'g',
+        name: 'Goblin 2',
+        mine: false,
+        hidden: false,
+        xBp: 0,
+        yBp: 0,
+        kind: 2,
+      };
       const el = render({ tokens: [goblin], kindShapes: true, initialOf: () => 'G2' });
       // The legend uses the map's own token component, so the two cannot differ.
       const token = el.querySelector('app-map-token')!;
@@ -81,7 +99,15 @@ describe('MapLegend', () => {
     });
 
     it('draws a creature as the maps do: round and hollow, with a dashed outline', () => {
-      const raven: ViewToken = { characterId: 'p', creatureId: 'r', name: 'Nanquim', mine: false, hidden: false, xBp: 0, yBp: 0 };
+      const raven: ViewToken = {
+        characterId: 'p',
+        creatureId: 'r',
+        name: 'Nanquim',
+        mine: false,
+        hidden: false,
+        xBp: 0,
+        yBp: 0,
+      };
       const el = render({ tokens: [raven], kindShapes: true });
       expect(el.querySelector('app-map-token')?.classList).toContain('tk--creature');
     });
@@ -93,22 +119,45 @@ describe('MapLegend', () => {
     });
   });
 
-  describe('a generated dungeon\'s stairs', () => {
+  describe("a generated dungeon's stairs", () => {
     function pointsLegend(points: Partial<ViewPoint>[], states = true): string[] {
       TestBed.resetTestingModule();
       const fixture = TestBed.createComponent(MapLegend);
-      fixture.componentRef.setInput('points', points.map((p, i) => ({ id: `p${i}`, name: 'x', kind: 2, xBp: 0, yBp: 0, revealed: true, ...p })));
+      fixture.componentRef.setInput(
+        'points',
+        points.map((p, i) => ({
+          id: `p${i}`,
+          name: 'x',
+          kind: 2,
+          xBp: 0,
+          yBp: 0,
+          revealed: true,
+          ...p,
+        })),
+      );
       fixture.componentRef.setInput('states', states);
       fixture.detectChanges();
-      return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li')).map((li) => li.textContent!.replace(/\s+/g, ' ').replace(/arrow_(up|down)ward|stairs|swords|chat_bubble/g, '').trim());
+      return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li')).map((li) =>
+        li
+          .textContent!.replace(/\s+/g, ' ')
+          .replace(/arrow_(up|down)ward|stairs|swords|chat_bubble/g, '')
+          .trim(),
+      );
     }
 
     it('names the stairs the points say they are, by direction, and not as "Submapa"', () => {
-      expect(pointsLegend([{ stairs: 1 }, { stairs: 2 }])).toEqual(['Escada para cima', 'Escada para baixo']);
+      expect(pointsLegend([{ stairs: 1 }, { stairs: 2 }])).toEqual([
+        'Escada para cima',
+        'Escada para baixo',
+      ]);
     });
 
     it('keeps "Submapa" for a submap that is not a stair', () => {
-      expect(pointsLegend([{ stairs: 1 }, {}])).toEqual(['Submapa', 'Escada para cima', 'Revelado']);
+      expect(pointsLegend([{ stairs: 1 }, {}])).toEqual([
+        'Submapa',
+        'Escada para cima',
+        'Revelado',
+      ]);
     });
 
     it('has no "Revelado" entry for revealed stairs alone (an empty box that explains nothing)', () => {

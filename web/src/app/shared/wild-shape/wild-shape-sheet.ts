@@ -37,13 +37,22 @@ export interface WildShapeResult {
 }
 
 /** Opens "Forma Selvagem": a bottom sheet on a phone, a dialog from a tablet up. */
-export function openWildShape(dialog: MatDialog, bottomSheet: MatBottomSheet, data: WildShapeSheetData) {
-  return openSheet<WildShapeSheet, WildShapeSheetData, WildShapeResult>(dialog, bottomSheet, WildShapeSheet, {
-    data,
-    ariaLabel: 'Forma Selvagem',
-    labelledBy: 'wild-t',
-    width: '560px',
-  });
+export function openWildShape(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: WildShapeSheetData,
+) {
+  return openSheet<WildShapeSheet, WildShapeSheetData, WildShapeResult>(
+    dialog,
+    bottomSheet,
+    WildShapeSheet,
+    {
+      data,
+      ariaLabel: 'Forma Selvagem',
+      labelledBy: 'wild-t',
+      width: '560px',
+    },
+  );
 }
 
 /**
@@ -81,7 +90,14 @@ export class WildShapeSheet {
       return '';
     }
     // What the level forbids, as the server says it: flying, swimming, both or neither.
-    const no = f.noFly && f.noSwim ? ', sem voo nem natação' : f.noFly ? ', sem voo' : f.noSwim ? ', sem natação' : '';
+    const no =
+      f.noFly && f.noSwim
+        ? ', sem voo nem natação'
+        : f.noFly
+          ? ', sem voo'
+          : f.noSwim
+            ? ', sem natação'
+            : '';
     return tight(`Feras de ND até ${f.maxCr}${no}.`);
   });
   protected readonly count = computed(() => {
@@ -91,18 +107,30 @@ export class WildShapeSheet {
   protected readonly rows = computed<readonly ChoiceRow[]>(() =>
     (this.forms()?.forms ?? []).map((s) => {
       const block = this.blocks().get(s.key);
-      return { key: s.key, title: s.namePt, alias: s.name, subtitle: beastLine(s, block), attacks: block ? beastAttacks(block) : undefined };
+      return {
+        key: s.key,
+        title: s.namePt,
+        alias: s.name,
+        subtitle: beastLine(s, block),
+        attacks: block ? beastAttacks(block) : undefined,
+      };
     }),
   );
-  protected readonly beast = computed<CreatureSummary | null>(() => this.forms()?.forms.find((s) => s.key === this.chosen()) ?? null);
+  protected readonly beast = computed<CreatureSummary | null>(
+    () => this.forms()?.forms.find((s) => s.key === this.chosen()) ?? null,
+  );
 
   /** What it costs, before it is done. */
   protected readonly cost = computed(() => {
     const u = this.data.uses;
     const left = u ? ` (restará ${Math.max(0, u.left - 1)})` : '';
     return this.data.inCombat
-      ? tight(`Gasta a ação e 1 uso de Forma Selvagem${left}. O app não conta o tempo: o mestre encerra a forma.`)
-      : tight(`Gasta 1 uso de Forma Selvagem${left}. O app não conta o tempo: o mestre encerra a forma.`);
+      ? tight(
+          `Gasta a ação e 1 uso de Forma Selvagem${left}. O app não conta o tempo: o mestre encerra a forma.`,
+        )
+      : tight(
+          `Gasta 1 uso de Forma Selvagem${left}. O app não conta o tempo: o mestre encerra a forma.`,
+        );
   });
   protected readonly buttonLabel = computed(() => {
     const b = this.beast();
@@ -119,14 +147,21 @@ export class WildShapeSheet {
       this.forms.set(forms);
       void this.readBlocks(forms.forms.map((f) => f.key));
     } catch (err) {
-      this.forms.set({ forms: [], maxCr: '', noFly: false, noSwim: false } as unknown as ListWildShapeFormsResponse);
+      this.forms.set({
+        forms: [],
+        maxCr: '',
+        noFly: false,
+        noSwim: false,
+      } as unknown as ListWildShapeFormsResponse);
       this.error.set(combatErrorMessage(err, 'abrir a lista de feras'));
     }
   }
 
   /** The numbers of each beast, six at a time: a row shows the book's summary first and its numbers as they arrive. */
   private readBlocks(keys: readonly string[]): Promise<void> {
-    return readBlocks(this.client, this.data.campaignId, keys, (key, block) => this.blocks.update((m) => new Map(m).set(key, block)));
+    return readBlocks(this.client, this.data.campaignId, keys, (key, block) =>
+      this.blocks.update((m) => new Map(m).set(key, block)),
+    );
   }
 
   protected pick(key: string): void {
@@ -143,7 +178,12 @@ export class WildShapeSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.client.assumeWildShape(this.data.campaignId, this.data.characterId, beast.key, this.key);
+      const res = await this.client.assumeWildShape(
+        this.data.campaignId,
+        this.data.characterId,
+        beast.key,
+        this.key,
+      );
       this.sheet.close({ beastNamePt: beast.namePt, vitals: res.vitals, encounter: res.encounter });
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'virar a fera'));

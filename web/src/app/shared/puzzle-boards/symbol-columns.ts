@@ -26,7 +26,11 @@ export interface Turn {
   selector: 'app-symbol-columns',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, SymbolGlyph],
-  host: { '[style.--n]': 'positions().length', '[style.--per]': 'perRow()', '[class.sc--pillar]': "kind() === 'pillar'" },
+  host: {
+    '[style.--n]': 'positions().length',
+    '[style.--per]': 'perRow()',
+    '[class.sc--pillar]': "kind() === 'pillar'",
+  },
   template: `
     <div class="cols" role="group" [attr.aria-label]="groupLabel()" [attr.aria-disabled]="disabled() ? 'true' : null">
       @for (at of positions(); track $index) {
@@ -78,10 +82,16 @@ export class SymbolColumns {
   readonly turn = output<Turn>();
 
   /** Columns in a row on a phone under 375 px: more than 4 go in two rows, so every target keeps its 44 px. */
-  protected readonly perRow = computed(() => (this.positions().length > 4 ? Math.ceil(this.positions().length / 2) : this.positions().length));
+  protected readonly perRow = computed(() =>
+    this.positions().length > 4 ? Math.ceil(this.positions().length / 2) : this.positions().length,
+  );
   protected readonly noun = computed(() => (this.kind() === 'pillar' ? 'Pilar' : 'Roda'));
-  protected readonly groupLabel = computed(() => this.label() || (this.kind() === 'pillar' ? 'Pilares' : 'Rodas'));
+  protected readonly groupLabel = computed(
+    () => this.label() || (this.kind() === 'pillar' ? 'Pilares' : 'Rodas'),
+  );
   protected readonly changedSet = computed(() => new Set(this.changed()));
   /** Arrows above and below: a wheel in `play` and `edit`, a pillar in `edit` only (it has "Girar" in `play`). */
-  protected readonly arrows = computed(() => this.mode() === 'edit' || (this.mode() === 'play' && this.kind() === 'wheel'));
+  protected readonly arrows = computed(
+    () => this.mode() === 'edit' || (this.mode() === 'play' && this.kind() === 'wheel'),
+  );
 }

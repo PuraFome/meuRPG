@@ -7,7 +7,11 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CampaignSchema, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { ListSpellsResponseSchema, SpellDetailsSchema, SpellSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  ListSpellsResponseSchema,
+  SpellDetailsSchema,
+  SpellSchema,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { fakeContentWatcher } from '../../core/content/content-testing';
 import { RosterClient } from '../../core/maps/roster-client';
@@ -20,7 +24,9 @@ const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim() 
 
 describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   let requests: Record<string, unknown>[];
-  let list: (req: Record<string, unknown>) => Promise<ReturnType<typeof create<typeof ListSpellsResponseSchema>>>;
+  let list: (
+    req: Record<string, unknown>,
+  ) => Promise<ReturnType<typeof create<typeof ListSpellsResponseSchema>>>;
   let role: Role;
   let awaiting: boolean;
   let character: { id: string; name: string; kind: CharacterKind; classSummary: string }[];
@@ -53,15 +59,29 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
         provideRouter([{ path: 'campaigns/:id/spells', component: Spells }]),
         {
           provide: CampaignsService,
-          useValue: { getCampaign: async () => {
+          useValue: {
+            getCampaign: async () => {
               if (campaignFails) {
                 throw campaignFails;
               }
-              return { campaign: create(CampaignSchema, { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: awaiting }) };
+              return {
+                campaign: create(CampaignSchema, {
+                  id: 'camp-1',
+                  name: 'Mirathel',
+                  myRole: role,
+                  awaitingApproval: awaiting,
+                }),
+              };
             },
           },
         },
-        { provide: RosterClient, useValue: { list: async () => character.map((c) => ({ ...c, playerUserId: 'u', raceName: '', playerName: null })) } },
+        {
+          provide: RosterClient,
+          useValue: {
+            list: async () =>
+              character.map((c) => ({ ...c, playerUserId: 'u', raceName: '', playerName: null })),
+          },
+        },
         {
           provide: SpellsClient,
           useValue: {
@@ -75,7 +95,14 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
                 throw detailsFail;
               }
               return create(SpellDetailsSchema, {
-                spell: { key, namePt: key.endsWith('@mesa') ? 'Lâmina de Nanquim' : 'Mãos Flamejantes', name: 'Burning Hands', level: 1, schoolNamePt: 'Evocação', classKeys: ['class:wizard'] },
+                spell: {
+                  key,
+                  namePt: key.endsWith('@mesa') ? 'Lâmina de Nanquim' : 'Mãos Flamejantes',
+                  name: 'Burning Hands',
+                  level: 1,
+                  schoolNamePt: 'Evocação',
+                  classKeys: ['class:wizard'],
+                },
                 target: { labelPt: 'Cone de 4,5 m' },
                 description: ['As you hold your hands…'],
               });
@@ -104,7 +131,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     requests = [];
     role = Role.PLAYER;
     awaiting = false;
-    character = [{ id: 'char-1', name: 'Pensantus', kind: CharacterKind.PLAYER, classSummary: 'Mago 4' }];
+    character = [
+      { id: 'char-1', name: 'Pensantus', kind: CharacterKind.PLAYER, classSummary: 'Mago 4' },
+    ];
     list = async () => create(ListSpellsResponseSchema, { spells: rows(), total: 3 });
     wide = false;
     campaignFails = null;
@@ -124,13 +153,22 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     const { el } = await open();
     expect(flat(el.querySelector('h1'))).toBe('Magias');
     const items = Array.from(el.querySelectorAll('button.row'));
-    expect(items.map((r) => flat(r.querySelector('.row__name')))).toEqual(['Mãos Flamejantes', 'Lâmina de Nanquim', 'Velha']);
+    expect(items.map((r) => flat(r.querySelector('.row__name')))).toEqual([
+      'Mãos Flamejantes',
+      'Lâmina de Nanquim',
+      'Velha',
+    ]);
     expect(flat(items[0].querySelector('.row__sub'))).toBe('1º nível · Evocação');
     expect(flat(items[1])).toContain('Da mesa');
     expect(flat(items[0])).not.toContain('Da mesa');
     expect(flat(el.querySelector('.list__n'))).toContain('3 magias');
     expect(requests).toHaveLength(1);
-    expect(requests[0]).toMatchObject({ campaignId: 'camp-1', query: '', characterId: '', pageToken: '' });
+    expect(requests[0]).toMatchObject({
+      campaignId: 'camp-1',
+      query: '',
+      characterId: '',
+      pageToken: '',
+    });
   });
 
   it('marks a retired table spell "Arquivada" (the server only sends it to the master)', async () => {
@@ -141,7 +179,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   });
 
   it('asks only the server for the filters in the link, and "Só as que posso aprender" with the character', async () => {
-    const { el } = await open('/campaigns/camp-1/spells?q=maos&class=class:wizard&levels=0,1&school=school:evocation&mine=1');
+    const { el } = await open(
+      '/campaigns/camp-1/spells?q=maos&class=class:wizard&levels=0,1&school=school:evocation&mine=1',
+    );
     expect(requests[0]).toMatchObject({
       query: 'maos',
       classKey: 'class:wizard',
@@ -170,20 +210,26 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(el.querySelector('button.row')).toBeNull();
     expect(flat(el.querySelector('#spell-card-title'))).toBe('Mãos Flamejantes');
     expect(flat(el.querySelector('.spell__facts'))).toContain('Alvo Cone de 4,5 m');
-    expect(flat(el.querySelector('.card__line'))).toContain('Burning Hands · 1º nível · Evocação · Mago');
+    expect(flat(el.querySelector('.card__line'))).toContain(
+      'Burning Hands · 1º nível · Evocação · Mago',
+    );
     expect(flat(el)).toContain('Texto do SRD 5.1, em inglês.');
     expect(el.querySelector('a[href="/credits"]')).not.toBeNull();
     // "Voltar para Magias" takes back the step that opened the spell: the same list, no new ask, the focus on the row.
     document.body.appendChild(el);
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'arrow_back Voltar para Magias')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'arrow_back Voltar para Magias')!
+      .click();
     await untilBack(settle, () => el.querySelectorAll('button.row').length === 3);
     expect(requests).toHaveLength(1);
     expect(location.path()).not.toContain('spell=');
-    expect(document.activeElement).toBe(el.querySelector('button.row[data-key="spell:burning-hands"]'));
+    expect(document.activeElement).toBe(
+      el.querySelector('button.row[data-key="spell:burning-hands"]'),
+    );
     el.remove();
   });
 
-  it('closes the spell with the browser\'s own Back too, and the list is the same one', async () => {
+  it("closes the spell with the browser's own Back too, and the list is the same one", async () => {
     const { el, settle } = await open();
     document.body.appendChild(el);
     el.querySelectorAll<HTMLButtonElement>('button.row')[1].click();
@@ -198,15 +244,21 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   it('does not push a step for a spell opened by a link: "Voltar para Magias" leaves the link behind', async () => {
     const { el, settle } = await open('/campaigns/camp-1/spells?spell=spell:burning-hands');
     expect(flat(el.querySelector('#spell-card-title'))).toBe('Mãos Flamejantes');
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'arrow_back Voltar para Magias')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'arrow_back Voltar para Magias')!
+      .click();
     await settle();
     await settle();
     expect(location.path()).not.toContain('spell=');
     expect(el.querySelectorAll('button.row')).toHaveLength(3);
   });
 
-  it('follows the link\'s filters when the history brings other ones, so the link and the state never drift', async () => {
-    list = async (req) => create(ListSpellsResponseSchema, { spells: req['query'] ? [] : rows(), total: req['query'] ? 0 : 3 });
+  it("follows the link's filters when the history brings other ones, so the link and the state never drift", async () => {
+    list = async (req) =>
+      create(ListSpellsResponseSchema, {
+        spells: req['query'] ? [] : rows(),
+        total: req['query'] ? 0 : 3,
+      });
     const { el, settle, harness } = await open('/campaigns/camp-1/spells?class=class:wizard');
     expect(requests.at(-1)).toMatchObject({ classKey: 'class:wizard', query: '' });
     // Back to an older entry: another search in the link.
@@ -230,12 +282,18 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
   });
 
   it('says there is no spell with the name, offers "Limpar a busca" and keeps the focus in the field', async () => {
-    list = async (req) => create(ListSpellsResponseSchema, { spells: req['query'] ? [] : rows(), total: req['query'] ? 0 : 3 });
+    list = async (req) =>
+      create(ListSpellsResponseSchema, {
+        spells: req['query'] ? [] : rows(),
+        total: req['query'] ? 0 : 3,
+      });
     const { el, settle } = await open('/campaigns/camp-1/spells?q=zzz');
     expect(flat(el.querySelector('.empty__t'))).toContain('Nenhuma magia com “zzz”.');
     expect(flat(el.querySelector('.empty__s'))).toBe('Confira o nome ou tire um filtro.');
     document.body.appendChild(el);
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.empty button')).find((b) => flat(b) === 'Limpar a busca')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.empty button'))
+      .find((b) => flat(b) === 'Limpar a busca')!
+      .click();
     await settle();
     expect(el.querySelectorAll('button.row')).toHaveLength(3);
     expect(document.activeElement).toBe(el.querySelector('input[type=search]'));
@@ -253,7 +311,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     const { el, settle } = await open();
     expect(flat(el.querySelector('[role=alert]'))).toContain('o servidor não respondeu');
     fail = false;
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'Tentar de novo')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'Tentar de novo')!
+      .click();
     await settle();
     expect(el.querySelectorAll('button.row')).toHaveLength(3);
   });
@@ -266,9 +326,13 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
       return create(ListSpellsResponseSchema, { spells: rows(), total: 3 });
     };
     const { el, settle } = await open('/campaigns/camp-1/spells?mine=1');
-    expect(flat(el.querySelector('.list__msg'))).toContain('Essa ficha é básica e não tem classes que conjuram');
+    expect(flat(el.querySelector('.list__msg'))).toContain(
+      'Essa ficha é básica e não tem classes que conjuram',
+    );
     expect(flat(el.querySelector('.list__msg'))).not.toContain('failed');
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.list__msg button')).find((b) => flat(b) === 'Ler todas as magias')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.list__msg button'))
+      .find((b) => flat(b) === 'Ler todas as magias')!
+      .click();
     await settle();
     expect(el.querySelectorAll('button.row')).toHaveLength(3);
   });
@@ -280,7 +344,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
         : create(ListSpellsResponseSchema, { spells: rows(), total: 4, nextPageToken: 'tok' });
     const { el, settle } = await open();
     expect(flat(el.querySelector('.more__n'))).toBe('Mostrando 3 de 4 magias');
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.more button')).find((b) => flat(b) === 'Mostrar mais')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.more button'))
+      .find((b) => flat(b) === 'Mostrar mais')!
+      .click();
     await settle();
     expect(requests[1]).toMatchObject({ pageToken: 'tok' });
     expect(el.querySelectorAll('button.row')).toHaveLength(4);
@@ -294,7 +360,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('says so when the campaign is not the person\'s, without asking for spells (the stranger)', async () => {
+  it("says so when the campaign is not the person's, without asking for spells (the stranger)", async () => {
     campaignFails = new ConnectError('x', Code.NotFound);
     const { el } = await open();
     expect(flat(el.querySelector('h1'))).toBe('Campanha não encontrada');
@@ -306,7 +372,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     const { el, settle } = await open();
     el.querySelectorAll<HTMLButtonElement>('button.row')[1].click();
     await settle();
-    expect(flat(el.querySelector('.card [role=alert]'))).toContain('Esta magia não está disponível.');
+    expect(flat(el.querySelector('.card [role=alert]'))).toContain(
+      'Esta magia não está disponível.',
+    );
     expect(flat(el)).not.toContain('Tentar de novo');
     expect(flat(el)).not.toContain('campanha não existe');
   });
@@ -318,7 +386,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     await settle();
     expect(flat(el.querySelector('.card [role=alert]'))).toContain('o servidor não respondeu');
     detailsFail = null;
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.card button')).find((b) => flat(b) === 'Tentar de novo')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.card button'))
+      .find((b) => flat(b) === 'Tentar de novo')!
+      .click();
     await settle();
     expect(flat(el.querySelector('#spell-card-title'))).toBe('Mãos Flamejantes');
   });
@@ -371,7 +441,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     const withName = await open('/campaigns/camp-1/spells?q=zzz');
     expect(flat(withName.el.querySelector('.empty__s'))).toBe('Confira o nome ou tire um filtro.');
   });
-  it('reads the list again when the table\'s content changed (content_changed, RN-23): a spell the master switched off leaves it', async () => {
+  it("reads the list again when the table's content changed (content_changed, RN-23): a spell the master switched off leaves it", async () => {
     const { el, settle } = await open('/campaigns/camp-1/spells?q=ma');
     expect(watcher.following()).toBe('camp-1');
     expect(el.querySelectorAll('button.row')).toHaveLength(3);
@@ -379,7 +449,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     watcher.hint();
     await settle();
     await settle();
-    expect(Array.from(el.querySelectorAll('button.row')).map((r) => flat(r.querySelector('.row__name')))).toEqual(['Mãos Flamejantes', 'Lâmina de Nanquim']);
+    expect(
+      Array.from(el.querySelectorAll('button.row')).map((r) => flat(r.querySelector('.row__name'))),
+    ).toEqual(['Mãos Flamejantes', 'Lâmina de Nanquim']);
     expect(flat(el.querySelector('.list__n'))).toContain('2 magias');
     // The same filter as the list on screen, from the first page.
     expect(requests).toHaveLength(2);
@@ -395,7 +467,9 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     await settle();
     await settle();
     expect(flat(el)).toContain('Esta magia não está disponível.');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b) === 'Tentar de novo')).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) => flat(b) === 'Tentar de novo'),
+    ).toBe(false);
   });
 
   it('keeps the list on screen when the read after a change fails', async () => {

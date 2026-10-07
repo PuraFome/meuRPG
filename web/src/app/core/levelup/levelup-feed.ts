@@ -35,7 +35,9 @@ export class LevelUpFeed {
   /** Level-ups of the last 24 hours, newest first. */
   readonly fresh = computed(() => {
     const now = this.now();
-    return this.items().filter((l) => l.createdAt && now - Number(l.createdAt.seconds) * 1000 < FRESH_MS);
+    return this.items().filter(
+      (l) => l.createdAt && now - Number(l.createdAt.seconds) * 1000 < FRESH_MS,
+    );
   });
 
   /** Reads the campaign's level-ups, once per campaign; `refresh` reads again. */

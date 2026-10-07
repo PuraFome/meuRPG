@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +18,13 @@ import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { EncounterEvaluation } from '../../../../gen/meurpg/play/v1/encounters_pb';
 import { EncountersClient, type SavedEncounter } from '../../../core/encounters/encounters-client';
 import { EncounterWarning } from '../../../../gen/meurpg/play/v1/encounters_pb';
-import { GUIDE_LABEL, GUIDE_CAVEAT, encounterErrorMessage, headline, warningLines } from '../../../core/encounters/encounter-text';
+import {
+  GUIDE_LABEL,
+  GUIDE_CAVEAT,
+  encounterErrorMessage,
+  headline,
+  warningLines,
+} from '../../../core/encounters/encounter-text';
 import { formatInt, tight } from '../../../core/format/text';
 import type { MapState } from '../../../core/maps/map-state';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
@@ -59,12 +74,13 @@ export class BattleEncounters {
 
   private seq = 0;
   /** Which battle points the map has, as a key: the points are read again when it changes, not at every reveal. */
-  private readonly battleKey = computed(() =>
-    `${this.state().map()?.id ?? ''}|${this.state()
-      .points()
-      .filter((p) => p.kind === MapPointKind.BATTLE)
-      .map((p) => p.id)
-      .join(',')}`,
+  private readonly battleKey = computed(
+    () =>
+      `${this.state().map()?.id ?? ''}|${this.state()
+        .points()
+        .filter((p) => p.kind === MapPointKind.BATTLE)
+        .map((p) => p.id)
+        .join(',')}`,
   );
 
   constructor() {
@@ -80,7 +96,9 @@ export class BattleEncounters {
   }
 
   protected tooManyText(k: Kept): string {
-    return warningLines(k.evaluation!).find((w) => w.kind === EncounterWarning.TOO_MANY)?.text ?? '';
+    return (
+      warningLines(k.evaluation!).find((w) => w.kind === EncounterWarning.TOO_MANY)?.text ?? ''
+    );
   }
 
   /** The builder on this point's map and point, where the creature that left the SRD is taken out. */
@@ -110,14 +128,24 @@ export class BattleEncounters {
     }
     try {
       const list = await this.api.list(this.campaignId(), mapId);
-      const points = new Map(this.state().points().map((p) => [p.id, p]));
+      const points = new Map(
+        this.state()
+          .points()
+          .map((p) => [p.id, p]),
+      );
       const reads = await Promise.all(
         list
           .filter((k) => points.has(k.mapPointId))
           .map(async (k): Promise<Kept | null> => {
             const read = await this.api.get(this.campaignId(), k.mapPointId);
             return read.encounter
-              ? { pointId: k.mapPointId, name: points.get(k.mapPointId)!.name, encounter: read.encounter, evaluation: read.evaluation, unknown: read.unknownKeys }
+              ? {
+                  pointId: k.mapPointId,
+                  name: points.get(k.mapPointId)!.name,
+                  encounter: read.encounter,
+                  evaluation: read.evaluation,
+                  unknown: read.unknownKeys,
+                }
               : null;
           }),
       );
@@ -135,7 +163,9 @@ export class BattleEncounters {
   /** "Começar este combate": "Iniciar combate" opens filled from the point. */
   protected begin(k: Kept): void {
     const map = combatMapInfo(this.state());
-    const byKey = new Map((k.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature?.namePt ?? '']));
+    const byKey = new Map(
+      (k.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature?.namePt ?? '']),
+    );
     openStartCombat(this.dialog, this.phone(), {
       campaignId: this.campaignId(),
       mode: 'start',
@@ -145,7 +175,12 @@ export class BattleEncounters {
         pointName: k.name,
         hp: k.encounter.hp,
         hidden: k.encounter.hidden,
-        groups: k.encounter.monsters.map((m) => ({ key: m.creatureKey, namePt: byKey.get(m.creatureKey) ?? m.creatureKey, count: m.count, name: m.name })),
+        groups: k.encounter.monsters.map((m) => ({
+          key: m.creatureKey,
+          namePt: byKey.get(m.creatureKey) ?? m.creatureKey,
+          count: m.count,
+          name: m.name,
+        })),
       },
     }).subscribe((encounter) => {
       if (encounter) {

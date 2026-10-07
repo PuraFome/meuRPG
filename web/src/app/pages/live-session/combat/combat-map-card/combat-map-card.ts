@@ -89,14 +89,17 @@ export class CombatMapCard {
   protected onFogSettled(set: ReadonlySet<string>): void {
     this.settled.set(set);
   }
-  protected readonly preview = computed(() => this.cropOnPhone() && this.isMaster() && this.phone());
+  protected readonly preview = computed(
+    () => this.cropOnPhone() && this.isMaster() && this.phone(),
+  );
 
   /** Where the 2x map sits inside the preview frame, so that the one on turn
    * is in the middle (clamped, so no empty edge shows). The frame is 326 x 224
    * like the artboard: its height over the map's is `frameOverMap`. */
   protected readonly shift = computed(() => {
     const e = this.encounter();
-    const focus = e.combatants.find((c) => c.id === e.currentCombatantId && c.placed) ??
+    const focus =
+      e.combatants.find((c) => c.id === e.currentCombatantId && c.placed) ??
       e.combatants.find((c) => c.placed);
     const fx = focus ? (focus.col + 0.5) / e.gridColumns : 0.5;
     const fy = focus ? (focus.row + 0.5) / e.gridRows : 0.5;
@@ -117,6 +120,10 @@ export class CombatMapCard {
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));
   /** A player's creature has a square on the map: the legend names the dashed round token. */
-  protected readonly hasCreatures = computed(() => this.encounter().combatants.some((c) => c.kind === CombatantKind.CREATURE && c.placed));
-  protected readonly hasDefeated = computed(() => this.encounter().combatants.some((c) => c.defeated));
+  protected readonly hasCreatures = computed(() =>
+    this.encounter().combatants.some((c) => c.kind === CombatantKind.CREATURE && c.placed),
+  );
+  protected readonly hasDefeated = computed(() =>
+    this.encounter().combatants.some((c) => c.defeated),
+  );
 }

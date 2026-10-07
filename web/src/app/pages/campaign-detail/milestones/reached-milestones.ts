@@ -1,10 +1,25 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Milestone, XPAward } from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../../core/connect/idempotency';
-import { leveledLine, markLines, reachedWhen, undoMilestoneConsequence } from '../../../core/progression/milestones';
+import {
+  leveledLine,
+  markLines,
+  reachedWhen,
+  undoMilestoneConsequence,
+} from '../../../core/progression/milestones';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { xpAborted, xpErrorMessage } from '../../../core/progression/xp-errors';
 import { MilestoneAsk } from './milestone-ask';
@@ -77,9 +92,12 @@ export class ReachedMilestones {
     this.asking.set(null);
     this.error.set('');
     // The question replaced the button that opened it: the focus goes back to it.
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(`[data-undo="${m.id}"]`)?.focus(), {
-      injector: this.injector,
-    });
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>(`[data-undo="${m.id}"]`)?.focus(),
+      {
+        injector: this.injector,
+      },
+    );
   }
 
   protected async undo(mark: XPAward): Promise<void> {
@@ -96,7 +114,9 @@ export class ReachedMilestones {
       if (xpAborted(err)) {
         // Another award is the last now: read again and say so.
         this.asking.set(null);
-        this.notice.set('A lista mudou enquanto você olhava: outro marco foi dado ou desfeito. Ela foi atualizada; confira e tente de novo.');
+        this.notice.set(
+          'A lista mudou enquanto você olhava: outro marco foi dado ou desfeito. Ela foi atualizada; confira e tente de novo.',
+        );
         this.undone.emit('');
       } else {
         // A failed call is retried with the same key: it changes nothing twice.

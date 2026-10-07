@@ -21,7 +21,12 @@ export function openSpellDetails(
   const phone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
   const ariaLabel = `Descrição de ${data.namePt}`;
   if (phone && !over) {
-    bottomSheet.open(SpellDetails, { data, ariaLabel, autoFocus: 'first-heading', panelClass: 'mr-sheet' });
+    bottomSheet.open(SpellDetails, {
+      data,
+      ariaLabel,
+      autoFocus: 'first-heading',
+      panelClass: 'mr-sheet',
+    });
   } else if (phone) {
     dialog.open(SpellDetails, {
       data: { ...data, sheet: true },

@@ -4,8 +4,24 @@ import { SpellOptionVm } from '../character-editor.types';
 import { SpellPicker } from './spell-picker';
 
 const SPELLS: SpellOptionVm[] = [
-  { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
-  { key: 'spell:light', namePt: 'Luz', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+  {
+    key: 'spell:fire-bolt',
+    namePt: 'Raio de Fogo',
+    level: 0,
+    classKeys: ['class:wizard'],
+    fromTable: false,
+    archived: false,
+    off: false,
+  },
+  {
+    key: 'spell:light',
+    namePt: 'Luz',
+    level: 0,
+    classKeys: ['class:wizard'],
+    fromTable: false,
+    archived: false,
+    off: false,
+  },
 ];
 
 describe('SpellPicker', () => {
@@ -83,7 +99,15 @@ describe('SpellPicker', () => {
   });
 
   it('tags the master\'s own spell "Da mesa", and a retired one with its word', () => {
-    const ink: SpellOptionVm = { key: 'spell:ink@mesa', namePt: 'Lâmina de Nanquim', level: 0, classKeys: ['class:wizard'], fromTable: true, archived: true, off: false };
+    const ink: SpellOptionVm = {
+      key: 'spell:ink@mesa',
+      namePt: 'Lâmina de Nanquim',
+      level: 0,
+      classKeys: ['class:wizard'],
+      fromTable: true,
+      archived: true,
+      off: false,
+    };
     const { el } = render({ filtered: [SPELLS[0], ink] });
     const rows = Array.from(el.querySelectorAll('.picker__row'));
     expect(rows[0].querySelector('.mr-tag')).toBeNull();

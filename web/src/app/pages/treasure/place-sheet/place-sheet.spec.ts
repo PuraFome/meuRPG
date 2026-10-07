@@ -6,14 +6,22 @@ import { create } from '@bufbuild/protobuf';
 
 import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { MapBlockedReason, MapBlockedSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import { type Treasure, TreasureBlockedReason, TreasureBlockedSchema } from '../../../../gen/meurpg/maps/v1/treasure_pb';
+import {
+  type Treasure,
+  TreasureBlockedReason,
+  TreasureBlockedSchema,
+} from '../../../../gen/meurpg/maps/v1/treasure_pb';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { FakeDungeonsClient } from '../../../core/maps/dungeons-testing';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient, mapMessage, mapResponse } from '../../../core/maps/maps-testing';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
-import { FakeTreasureClient, sampleHoard, sampleIndividual } from '../../../core/treasure/treasure-testing';
+import {
+  FakeTreasureClient,
+  sampleHoard,
+  sampleIndividual,
+} from '../../../core/treasure/treasure-testing';
 import { PlaceSheet, type PlaceSheetData } from './place-sheet';
 
 const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
@@ -24,12 +32,19 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   let dungeons: FakeDungeonsClient;
   let close: ReturnType<typeof vi.fn>;
 
-  async function setup(opts: { phone?: boolean; xpMode?: XpMode; prep?: () => void; treasure?: Treasure } = {}) {
+  async function setup(
+    opts: { phone?: boolean; xpMode?: XpMode; prep?: () => void; treasure?: Treasure } = {},
+  ) {
     treasure = new FakeTreasureClient();
     maps = new FakeMapsClient();
     dungeons = new FakeDungeonsClient();
     maps.maps = [
-      mapMessage('map-1', 'Masmorra de Mirathel', { gridColumns: 11, gridRows: 9, current: true, generatedDungeon: true }),
+      mapMessage('map-1', 'Masmorra de Mirathel', {
+        gridColumns: 11,
+        gridRows: 9,
+        current: true,
+        generatedDungeon: true,
+      }),
       mapMessage('map-2', 'A caverna', { gridColumns: 24, gridRows: 16 }),
       mapMessage('map-3', 'Mapa sem grade'),
     ];
@@ -38,14 +53,21 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     }
     opts.prep?.();
     close = vi.fn();
-    const data: PlaceSheetData = { campaignId: 'camp-1', treasure: opts.treasure ?? sampleHoard(), xpMode: opts.xpMode ?? XpMode.ENEMIES, campaignName: 'Mirathel' };
+    const data: PlaceSheetData = {
+      campaignId: 'camp-1',
+      treasure: opts.treasure ?? sampleHoard(),
+      xpMode: opts.xpMode ?? XpMode.ENEMIES,
+      campaignName: 'Mirathel',
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: TreasureClient, useValue: treasure },
         { provide: MapsClient, useValue: maps },
         { provide: DungeonsClient, useValue: dungeons },
         { provide: MAT_DIALOG_DATA, useValue: data },
-        opts.phone ? { provide: MatBottomSheetRef, useValue: { dismiss: close } } : { provide: MatDialogRef, useValue: { close } },
+        opts.phone
+          ? { provide: MatBottomSheetRef, useValue: { dismiss: close } }
+          : { provide: MatDialogRef, useValue: { close } },
       ],
     });
     const fixture = TestBed.createComponent(PlaceSheet);
@@ -59,7 +81,10 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     };
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.startsWith(name))!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.startsWith(name),
+      )!;
     const pickMap = async (id: string) => {
       const select = el.querySelector<HTMLSelectElement>('select')!;
       select.selectedIndex = maps.maps.findIndex((m) => m.id === id);
@@ -67,7 +92,9 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
       await settle();
     };
     const arrow = async (key: string, shiftKey = false) => {
-      el.querySelector('.pick')!.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
+      el.querySelector('.pick')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }),
+      );
       await settle();
     };
     return { el, settle, button, pickMap, arrow };
@@ -76,7 +103,9 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   it('opens on the map of the session, with the square in the middle of its first room, and says where in words', async () => {
     const { el } = await setup();
     expect(flat(el.querySelector('.frame__title'))).toBe('Pôr no mapa');
-    expect(flat(el.querySelector('.frame__sub'))).toBe('Cria um ponto de tesouro escondido no quadrado escolhido.');
+    expect(flat(el.querySelector('.frame__sub'))).toBe(
+      'Cria um ponto de tesouro escondido no quadrado escolhido.',
+    );
     expect(el.querySelector<HTMLSelectElement>('select')!.value).toBe('map-1');
     expect(flat(el.querySelector('.where'))).toBe('Onde Na Sala 1.');
     expect(el.querySelector('app-map-view')).not.toBeNull();
@@ -86,14 +115,18 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   it('shows no coordinates on screen; a screen reader hears the chosen square', async () => {
     const { el } = await setup();
     expect(el.querySelector('.pick')?.getAttribute('aria-describedby')).toBe('place-map-help');
-    expect(flat(el.querySelector('[role=status].mr-visually-hidden'))).toBe('Quadrado escolhido: coluna 3, linha 3, na Sala 1.');
+    expect(flat(el.querySelector('[role=status].mr-visually-hidden'))).toBe(
+      'Quadrado escolhido: coluna 3, linha 3, na Sala 1.',
+    );
   });
 
   it('the summary says the gold apart from the items, in words, and what the campaign does with it', async () => {
     const { el } = await setup();
     const what = plain(flat(el.querySelector('.what')))!;
     expect(what).toContain('517 PO em moedas, gemas e arte.');
-    expect(what).toContain('Na descrição: 1.200 PP, 340 PO, 2 × Ágata, Quartzo azul, Cálice de prata gravado, Poção de Cura, Capa Élfica, Varinha de Mísseis Mágicos, Anel de Proteção.');
+    expect(what).toContain(
+      'Na descrição: 1.200 PP, 340 PO, 2 × Ágata, Quartzo azul, Cálice de prata gravado, Poção de Cura, Capa Élfica, Varinha de Mísseis Mágicos, Anel de Proteção.',
+    );
     expect(what).toContain('Mirathel dá XP por inimigos');
   });
 
@@ -115,7 +148,16 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
       name: '',
     });
     expect(treasure.placed[0]!.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
-    expect(close).toHaveBeenCalledWith(expect.objectContaining({ kind: 'placed', mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 1', goldPo: 517, itemCount: 4 }));
+    expect(close).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'placed',
+        mapId: 'map-1',
+        mapName: 'Masmorra de Mirathel',
+        place: 'Sala 1',
+        goldPo: 517,
+        itemCount: 4,
+      }),
+    );
   });
 
   it('the arrow keys move the square inside the grid, Shift by five', async () => {
@@ -161,7 +203,11 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
 
   it('on a desktop the rooms are radios beside the map too: choosing one moves the square to its middle, and the map outlines the room', async () => {
     const { el, button, settle } = await setup();
-    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual(['Sala 1', 'Sala 2', 'Sala 3']);
+    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual([
+      'Sala 1',
+      'Sala 2',
+      'Sala 3',
+    ]);
     el.querySelectorAll<HTMLInputElement>('.room input')[2]!.click();
     await settle();
     expect(flat(el.querySelector('.where'))).toBe('Onde Na Sala 3.');
@@ -199,7 +245,12 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     const { el, button, settle } = await setup();
     treasure.failWith.set(
       'place',
-      new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: TreasureBlockedSchema, value: create(TreasureBlockedSchema, { reason: TreasureBlockedReason.CONTENT_CHANGED }) }]),
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: TreasureBlockedSchema,
+          value: create(TreasureBlockedSchema, { reason: TreasureBlockedReason.CONTENT_CHANGED }),
+        },
+      ]),
     );
     button('Pôr no mapa').click();
     await settle();
@@ -224,7 +275,12 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     const { el, button, settle } = await setup();
     treasure.failWith.set(
       'place',
-      new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: MapBlockedSchema, value: create(MapBlockedSchema, { reason: MapBlockedReason.NO_GRID }) }]),
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: MapBlockedSchema,
+          value: create(MapBlockedSchema, { reason: MapBlockedReason.NO_GRID }),
+        },
+      ]),
     );
     button('Pôr no mapa').click();
     await settle();
@@ -237,7 +293,9 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     expect(flat(el.querySelector('[data-testid=no-grid]'))).toContain('Escolha um mapa com grade');
     expect(isOff(button('Pôr no mapa'))).toBe(true);
     expect(el.querySelector('app-map-view')).toBeNull();
-    expect(Array.from(el.querySelectorAll('option')).map((o) => o.textContent?.trim())).toContain('Mapa sem grade · sem grade');
+    expect(Array.from(el.querySelectorAll('option')).map((o) => o.textContent?.trim())).toContain(
+      'Mapa sem grade · sem grade',
+    );
   });
 
   it('a map that is not a dungeon starts in the middle and names no room', async () => {
@@ -260,7 +318,11 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     const { el, button, settle } = await setup({ phone: true });
     expect(el.querySelector('app-map-view')).toBeNull();
     expect(flat(el.querySelector('.frame__sub'))).toBe('Um ponto de tesouro escondido');
-    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual(['Sala 1', 'Sala 2', 'Sala 3']);
+    expect(Array.from(el.querySelectorAll('.rooms__grid .room')).map((r) => flat(r))).toEqual([
+      'Sala 1',
+      'Sala 2',
+      'Sala 3',
+    ]);
     el.querySelectorAll<HTMLInputElement>('.room input')[2]!.click();
     await settle();
     expect(el.querySelector('.room--on')?.textContent).toContain('Sala 3');
@@ -273,7 +335,9 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
   it('on a phone a map without rooms puts the point in its middle and says so', async () => {
     const { el, button, pickMap, settle } = await setup({ phone: true });
     await pickMap('map-2');
-    expect(flat(el.querySelector('[data-testid=no-rooms]'))).toContain('o ponto cai no meio do mapa');
+    expect(flat(el.querySelector('[data-testid=no-rooms]'))).toContain(
+      'o ponto cai no meio do mapa',
+    );
     button('Pôr no mapa').click();
     await settle();
     expect(treasure.placed[0]).toMatchObject({ column: 12, row: 8 });

@@ -26,8 +26,10 @@ export function saveErrorMessage(err: unknown): string {
       'O servidor não aceitou o texto. Ele passa de 200 KB, ou tem um caractere de controle que não dá para salvar. Encurte ou apague o trecho e salve de novo.',
     [Code.PermissionDenied]: 'Só o mestre da campanha edita o documento.',
     [Code.NotFound]: 'Essa campanha não existe mais, ou você não é membro dela.',
-    [Code.Unauthenticated]: 'Sua sessão expirou. Entre de novo; o texto continua aqui, no navegador.',
-    [Code.Unavailable]: 'Não deu para salvar: a conexão caiu. O texto continua aqui. Tente de novo.',
+    [Code.Unauthenticated]:
+      'Sua sessão expirou. Entre de novo; o texto continua aqui, no navegador.',
+    [Code.Unavailable]:
+      'Não deu para salvar: a conexão caiu. O texto continua aqui. Tente de novo.',
   });
 }
 

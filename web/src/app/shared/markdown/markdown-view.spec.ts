@@ -28,7 +28,9 @@ describe('MarkdownView', () => {
   });
 
   it('renders headings with ids, bold, italic, lists and https links', () => {
-    const { el } = render('## Título\n\nUm **forte** e *leve* [site](https://example.com)\n\n- a\n- b\n\n1. c');
+    const { el } = render(
+      '## Título\n\nUm **forte** e *leve* [site](https://example.com)\n\n- a\n- b\n\n1. c',
+    );
     expect(el.querySelector('h2')?.id).toBe('doc-h-0');
     expect(el.querySelector('strong')?.textContent).toBe('forte');
     expect(el.querySelector('em')?.textContent).toBe('leve');

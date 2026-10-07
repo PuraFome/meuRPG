@@ -46,7 +46,9 @@ export class GrantedSpells {
   /** Inside a class's section the rows come without a heading of their own, and say which subclass gives them. */
   readonly headed = input(true);
   readonly title = input('Sempre preparadas');
-  readonly hint = input('Vêm da subclasse, já estão na ficha e não contam no limite de preparadas.');
+  readonly hint = input(
+    'Vêm da subclasse, já estão na ficha e não contam no limite de preparadas.',
+  );
   readonly source = input('');
   readonly describe = output<SpellOptionVm>();
   protected readonly circle = spellLevelLabel;

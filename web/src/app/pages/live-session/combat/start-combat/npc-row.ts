@@ -235,6 +235,10 @@ export class NpcRow {
 
   protected readonly initial = computed(() => combatantInitial(this.name()));
   protected readonly word = computed(() =>
-    this.count() === 0 ? 'Fora do combate' : this.hidden() ? 'Escondido no início' : 'À vista no início',
+    this.count() === 0
+      ? 'Fora do combate'
+      : this.hidden()
+        ? 'Escondido no início'
+        : 'À vista no início',
   );
 }

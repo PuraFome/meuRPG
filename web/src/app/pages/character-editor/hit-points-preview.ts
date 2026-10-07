@@ -70,6 +70,8 @@ export function hitPointsPreview(
     total,
     missing,
     min: total + missing.length * gainOf(1),
-    max: levels.filter((row) => row.roll === null).reduce((sum, row) => sum + gainOf(row.die), total),
+    max: levels
+      .filter((row) => row.roll === null)
+      .reduce((sum, row) => sum + gainOf(row.die), total),
   };
 }

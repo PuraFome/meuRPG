@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -24,16 +33,47 @@ import {
   type ReactionPrompt,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { type AttackDie, CombatClient, type MoveResult, newKey } from '../../../core/combat/combat-client';
+import {
+  ActionEconomy,
+  type Attack,
+  AttackKind,
+  type SpellDetails,
+} from '../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  type AttackDie,
+  CombatClient,
+  type MoveResult,
+  newKey,
+} from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import { type FormEnded, ConcentrationWatch, FormNotices, type LostConcentration, formNoticeText, lostNoticeText, wildActionLine } from '../../../core/combat/combat-notices';
+import {
+  type FormEnded,
+  ConcentrationWatch,
+  FormNotices,
+  type LostConcentration,
+  formNoticeText,
+  lostNoticeText,
+  wildActionLine,
+} from '../../../core/combat/combat-notices';
 import { MoveOptionsState } from '../../../core/combat/move-options-state';
 import { TableRulesClient } from '../../../core/campaigns/table-rules';
 import { DeathSaveVisibility } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { coverTargets, everyoneStanding, isTheatre, reactorRows } from '../../../core/combat/theatre';
+import {
+  coverTargets,
+  everyoneStanding,
+  isTheatre,
+  reactorRows,
+} from '../../../core/combat/theatre';
 import { CreatureOptionsState } from '../../../core/combat/creature-options-state';
-import { CHARACTER_TAB, type MineTab, actingTab, membersToEnd, mineTabs, ownCreatures, validTab } from '../../../core/combat/mine';
+import {
+  CHARACTER_TAB,
+  type MineTab,
+  actingTab,
+  membersToEnd,
+  mineTabs,
+  ownCreatures,
+  validTab,
+} from '../../../core/combat/mine';
 import { article } from '../../../core/combat/combat-log';
 import { ofThe } from '../../../core/combat/move-plan';
 import {
@@ -59,7 +99,13 @@ import type { CombatState } from '../../../core/combat/combat-state';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
-import { currentCombatant, isDown, isPlayer, ownCombatant, npcKindLabel } from '../../../core/combat/combat-view';
+import {
+  currentCombatant,
+  isDown,
+  isPlayer,
+  ownCombatant,
+  npcKindLabel,
+} from '../../../core/combat/combat-view';
 import { acts, jointTurn } from '../../../core/combat/joint-turn';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
@@ -90,7 +136,11 @@ import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { type JumpRequest, MovePage } from './move-page/move-page';
 import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
-import { OpportunitySheet, type OpportunityAnswer, type OpportunitySheetData } from './opportunity/opportunity-sheet';
+import {
+  OpportunitySheet,
+  type OpportunityAnswer,
+  type OpportunitySheetData,
+} from './opportunity/opportunity-sheet';
 import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
@@ -100,7 +150,10 @@ import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { openFamiliarEyes } from '../../../shared/familiar-eyes/familiar-eyes-sheet';
 import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
 import { BeastTraits } from '../../../shared/wild-shape/beast-traits';
-import { SummonSheet, type SummonSheetData } from '../../character-sheet/creatures-panel/summon-sheet';
+import {
+  SummonSheet,
+  type SummonSheetData,
+} from '../../character-sheet/creatures-panel/summon-sheet';
 import { CreatureBar } from './creature-turn/creature-bar';
 import { CreatureBlock } from './creature-turn/creature-block';
 import { CreatureHero } from './creature-turn/creature-hero';
@@ -253,7 +306,15 @@ export class CombatView {
   /** Who the mover can have left the reach of (the other side, standing): the form's rows. */
   protected readonly offerRows = computed(() => {
     const e = this.encounter();
-    return e ? reactorRows(e, (c) => (this.info().get(c.characterId)?.classSummary ?? this.info().get(c.characterId)?.kindLabel ?? '')) : [];
+    return e
+      ? reactorRows(
+          e,
+          (c) =>
+            this.info().get(c.characterId)?.classSummary ??
+            this.info().get(c.characterId)?.kindLabel ??
+            '',
+        )
+      : [];
   });
   /** Why the offer cannot be made now (nobody on the other side can react), or `''`. */
   protected readonly offerWhy = computed(() => {
@@ -271,7 +332,12 @@ export class CombatView {
   /** The log says the table hides the death saves, to the other players and only when someone is down. */
   protected readonly deathNote = computed(() => {
     const e = this.encounter();
-    return this.deathsHidden() && !this.isMaster() && !!e && e.combatants.some((c) => isDown(c) && !c.mine);
+    return (
+      this.deathsHidden() &&
+      !this.isMaster() &&
+      !!e &&
+      e.combatants.some((c) => isDown(c) && !c.mine)
+    );
   });
   /** Whose cover the master marks (the other side of whoever is on turn). */
   protected readonly coverTargets = computed(() => {
@@ -280,13 +346,20 @@ export class CombatView {
   });
   /** The table hides the death saves from the other players (RN-24); `null` while the rule is not read (then every screen shows them as before). */
   private readonly deathRule = signal<DeathSaveVisibility | null>(null);
-  protected readonly deathsHidden = computed(() => this.deathRule() === DeathSaveVisibility.OWNER_AND_MASTER);
+  protected readonly deathsHidden = computed(
+    () => this.deathRule() === DeathSaveVisibility.OWNER_AND_MASTER,
+  );
   protected readonly info = computed<ReadonlyMap<string, CombatantInfo>>(() => {
     const merged = new Map(this.rosterInfo());
     // A player has no roster: their own combatant says what the table needs.
     for (const [id, p] of this.partyInfo()) {
       if (!merged.has(id)) {
-        merged.set(id, { classSummary: p.classSummary, playerName: p.playerName, kindLabel: '', raceName: '' });
+        merged.set(id, {
+          classSummary: p.classSummary,
+          playerName: p.playerName,
+          kindLabel: '',
+          raceName: '',
+        });
       }
     }
     return merged;
@@ -323,8 +396,12 @@ export class CombatView {
   /** The druid's Wild Shape as a line of the Ação: its uses ("restam 2 de 2 usos") and why it cannot be used now. `null` without it, and while in a form. */
   protected readonly wild = computed(() => {
     const own = this.own();
-    const feature = this.options()?.options?.featureActions.find((a) => a.action?.key.startsWith('feature:wild-shape'));
-    const resource = feature?.action ? this.ownVitals()?.resources?.find((r) => r.key === feature.action?.resourceKey) : undefined;
+    const feature = this.options()?.options?.featureActions.find((a) =>
+      a.action?.key.startsWith('feature:wild-shape'),
+    );
+    const resource = feature?.action
+      ? this.ownVitals()?.resources?.find((r) => r.key === feature.action?.resourceKey)
+      : undefined;
     return own ? wildActionLine(feature, !!own.wildShapeBeastKey, resource) : null;
   });
   /** What the form's end said, from the combat log's line (the server's number and reason): until it is touched. */
@@ -362,7 +439,11 @@ export class CombatView {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.creaturesApi.leaveWildShape(this.campaignId(), own.characterId, newKey());
+      const res = await this.creaturesApi.leaveWildShape(
+        this.campaignId(),
+        own.characterId,
+        newKey(),
+      );
       if (res.encounter) {
         this.state().apply(res.encounter);
       }
@@ -404,7 +485,9 @@ export class CombatView {
   protected readonly showTabs = computed(() => this.tabs().length > 1);
   /** The tab the page shows; it follows the turn to where the player acts, and a tap changes it. */
   protected readonly tabId = signal(CHARACTER_TAB);
-  protected readonly tab = computed<MineTab | null>(() => this.tabs().find((t) => t.id === this.tabId()) ?? this.tabs()[0] ?? null);
+  protected readonly tab = computed<MineTab | null>(
+    () => this.tabs().find((t) => t.id === this.tabId()) ?? this.tabs()[0] ?? null,
+  );
   /** The page of a creature's turn is open (not the character's). */
   protected readonly creatureTab = computed(() => {
     const t = this.tab();
@@ -444,7 +527,10 @@ export class CombatView {
     if (!joint || !this.myTurn()) {
       return null;
     }
-    return [...joint.acting.filter((m) => !m.mine).map((m) => m.label), ...(joint.waitsForMaster ? ['o mestre'] : [])];
+    return [
+      ...joint.acting.filter((m) => !m.mine).map((m) => m.label),
+      ...(joint.waitsForMaster ? ['o mestre'] : []),
+    ];
   });
   /** The player's own slots, for the rows above the spell list. */
   protected readonly ownSlots = computed(() => {
@@ -458,8 +544,14 @@ export class CombatView {
     () => !this.isMaster(),
   );
   /** On a fog map the player's layers come with the vision (filtered to what they see); otherwise they are the map's. */
-  protected readonly fogVision = computed(() => (this.isMaster() ? null : (this.fog()?.vision() ?? null)));
-  protected readonly layers = computed(() => (this.fogVision() ? (this.fog()?.layers() ?? this.layersState.layers()) : this.layersState.layers()));
+  protected readonly fogVision = computed(() =>
+    this.isMaster() ? null : (this.fog()?.vision() ?? null),
+  );
+  protected readonly layers = computed(() =>
+    this.fogVision()
+      ? (this.fog()?.layers() ?? this.layersState.layers())
+      : this.layersState.layers(),
+  );
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
   protected readonly moveOptions = new MoveOptionsState();
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
@@ -508,13 +600,20 @@ export class CombatView {
       : '';
   });
   /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
-  protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(new Map());
+  protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
+    new Map(),
+  );
   protected readonly masterAttacks = computed<ReadonlyMap<string, readonly ReactorAttack[]>>(
     () =>
       new Map(
         this.toAnswer().map((o) => [
           o.id,
-          reactorAttacks(o, (this.reactorOptions().get(o.id)?.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : []))),
+          reactorAttacks(
+            o,
+            (this.reactorOptions().get(o.id)?.options?.attacks ?? []).flatMap((a) =>
+              a.attack ? [a.attack] : [],
+            ),
+          ),
         ]),
       ),
   );
@@ -526,7 +625,14 @@ export class CombatView {
     }
     return e.opportunityOffers.flatMap((o) => {
       const r = e.combatants.find((c) => c.id === o.reactorId && c.placed);
-      return r ? [{ reactor: { col: r.col, row: r.row }, left: o.forYou ? { col: o.leftCol, row: o.leftRow } : null }] : [];
+      return r
+        ? [
+            {
+              reactor: { col: r.col, row: r.row },
+              left: o.forYou ? { col: o.leftCol, row: o.leftRow } : null,
+            },
+          ]
+        : [];
     });
   });
   /** "Desengajar" can still be taken here: the action is free and it was not. */
@@ -535,7 +641,11 @@ export class CombatView {
     return !!who && !who.actionUsed && !who.disengaged;
   });
   /** How far and how high the mover can jump: the creature's own options, or the character's. */
-  protected readonly moverJumps = computed(() => (this.moverId() ? this.creatureOptions.data().get(this.moverId())?.options?.jumps : this.options()?.options?.jumps));
+  protected readonly moverJumps = computed(() =>
+    this.moverId()
+      ? this.creatureOptions.data().get(this.moverId())?.options?.jumps
+      : this.options()?.options?.jumps,
+  );
   private readonly offersHandled = new Set<string>();
   private readonly reactorReading = new Set<string>();
   /** The offers whose reactor's attacks could not be read: the master's card offers "Tentar de novo". */
@@ -543,20 +653,31 @@ export class CombatView {
   /** Where the player dropped their token on the main map: the "Mover" page starts there (the drop never moves). */
   protected readonly dropStart = signal<Square | null>(null);
   /** The master's last action is a move: the log's undoable entry says so ("Desfazer o movimento"). */
-  protected readonly canUndoMove = computed(() => this.log.undoable()?.kind === CombatLogKind.MOVED);
+  protected readonly canUndoMove = computed(
+    () => this.log.undoable()?.kind === CombatLogKind.MOVED,
+  );
   protected readonly turnSide = computed(() => this.subject()?.side ?? CombatantSide.UNSPECIFIED);
   /** Who has the cover each combatant has against whoever has the turn (the master's order list). */
   protected readonly coverAgainst = computed(() => {
     const out = new Map<string, { cover: CoverDegree; source: CoverSource }>();
     const opts = this.options();
-    for (const t of [...(opts?.attackTargets ?? []).flatMap((a) => a.targets), ...(opts?.spellTargets ?? []).flatMap((s) => s.targets)]) {
-      if (!out.has(t.combatantId) && t.cover !== CoverDegree.NONE && t.cover !== CoverDegree.UNSPECIFIED) {
+    for (const t of [
+      ...(opts?.attackTargets ?? []).flatMap((a) => a.targets),
+      ...(opts?.spellTargets ?? []).flatMap((s) => s.targets),
+    ]) {
+      if (
+        !out.has(t.combatantId) &&
+        t.cover !== CoverDegree.NONE &&
+        t.cover !== CoverDegree.UNSPECIFIED
+      ) {
         out.set(t.combatantId, { cover: t.cover, source: t.coverSource });
       }
     }
     return out;
   });
-  protected readonly turnLabel = computed(() => (this.isMaster() ? (this.subject()?.label ?? '') : ''));
+  protected readonly turnLabel = computed(() =>
+    this.isMaster() ? (this.subject()?.label ?? '') : '',
+  );
   /** The one whose options the screen asks for: the player's own character
    * on their turn, and for the master whoever is on turn. */
   protected readonly subject = computed(() => {
@@ -575,7 +696,8 @@ export class CombatView {
   protected readonly attacksPerAction = computed(() => this.economy()?.attacksPerAction ?? 1);
   /** The player's maximum hit points, for "com 0 de 24 pontos de vida". */
   protected readonly ownMaxHp = computed(
-    () => this.vitals().find((v) => v.characterId === this.own()?.characterId)?.hitPointsMax ?? null,
+    () =>
+      this.vitals().find((v) => v.characterId === this.own()?.characterId)?.hitPointsMax ?? null,
   );
   protected readonly ownDown = computed(() => {
     const own = this.own();
@@ -590,14 +712,24 @@ export class CombatView {
   protected readonly opportunities = computed(() => {
     const own = this.own();
     const opts = this.options();
-    if (this.isMaster() || !own || this.myTurn() || !this.active() || own.reactionUsed || isDown(own) || !opts?.options) {
+    if (
+      this.isMaster() ||
+      !own ||
+      this.myTurn() ||
+      !this.active() ||
+      own.reactionUsed ||
+      isDown(own) ||
+      !opts?.options
+    ) {
       return [];
     }
     return opts.options.attacks.flatMap((a) => {
       const atk = a.attack;
       // The melee reach is 5 ft, whatever range the weapon has when thrown.
       const reach = atk
-        ? opts.attackTargets.find((t) => t.attackKey === atk.key)?.targets.some((t) => t.distanceFt !== undefined && t.distanceFt <= 5)
+        ? opts.attackTargets
+            .find((t) => t.attackKey === atk.key)
+            ?.targets.some((t) => t.distanceFt !== undefined && t.distanceFt <= 5)
         : false;
       return atk && atk.kind === AttackKind.WEAPON && atk.saveDc === 0 && atk.melee && reach
         ? [{ key: atk.key, name: atk.namePt || atk.name }]
@@ -606,7 +738,9 @@ export class CombatView {
   });
   /** The characters at three failures: the master is asked to confirm each death (E6-30). */
   protected readonly dying = computed(() =>
-    this.isMaster() ? (this.encounter()?.combatants ?? []).filter((c) => c.state === CombatantState.DYING) : [],
+    this.isMaster()
+      ? (this.encounter()?.combatants ?? []).filter((c) => c.state === CombatantState.DYING)
+      : [],
   );
   /** The player's hit whose damage is still to roll (the sheet was closed). */
   protected readonly ownPendingRoll = computed(() => {
@@ -618,7 +752,9 @@ export class CombatView {
     );
   });
   /** What the master's turn still owes a hit: "Falta aplicar 5 de dano". */
-  protected readonly owed = computed(() => (this.isMaster() ? pendingNote(this.options()?.pendingDamages ?? []) : null));
+  protected readonly owed = computed(() =>
+    this.isMaster() ? pendingNote(this.options()?.pendingDamages ?? []) : null,
+  );
   /** The master's card shows for an NPC on turn, and for any turn that left
    * damage to apply. */
   protected readonly masterCard = computed(() => {
@@ -638,7 +774,9 @@ export class CombatView {
     const c = this.masterCard();
     return (
       !!c &&
-      (!isPlayer(c) || openDamages(this.options()?.pendingDamages ?? []).length > 0 || this.settledTurn() === c.id)
+      (!isPlayer(c) ||
+        openDamages(this.options()?.pendingDamages ?? []).length > 0 ||
+        this.settledTurn() === c.id)
     );
   });
   protected readonly unplaced = computed(() =>
@@ -655,7 +793,9 @@ export class CombatView {
   /** Changes only when the turn passes (or the combat ends): a string, so the effects that read it ignore the combat's other updates. */
   private readonly turnKey = computed(() => {
     const e = this.encounter();
-    return e && e.status === EncounterStatus.ACTIVE ? `${e.id}:${e.round}:${e.currentCombatantId}` : '';
+    return e && e.status === EncounterStatus.ACTIVE
+      ? `${e.id}:${e.round}:${e.currentCombatantId}`
+      : '';
   });
 
   /** The table's rule on who sees the death saves (RN-24): read when a combat shows and again when someone falls, so a rule changed meanwhile is caught. */
@@ -696,7 +836,10 @@ export class CombatView {
       untracked(
         () =>
           void this.creaturesApi.list(campaignId, mine.characterId).then(
-            (list) => this.familiar.set(list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null),
+            (list) =>
+              this.familiar.set(
+                list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null,
+              ),
             () => this.familiar.set(null),
           ),
       );
@@ -780,7 +923,9 @@ export class CombatView {
       if (!this.moverActs() || !this.active()) {
         untracked(() => {
           if (this.moverId() && this.active() && !this.mover() && this.moverName) {
-            this.moveNote.set(`${article(this.moverName) === 'a' ? 'A' : 'O'} ${this.moverName} saiu do combate.`);
+            this.moveNote.set(
+              `${article(this.moverName) === 'a' ? 'A' : 'O'} ${this.moverName} saiu do combate.`,
+            );
           }
           this.state().moving.set(false);
           this.moverId.set('');
@@ -843,7 +988,10 @@ export class CombatView {
     effect(() => {
       const e = this.encounter();
       const campaignId = this.campaignId();
-      const ids = e && !this.isMaster() && e.status === EncounterStatus.ACTIVE ? ownCreatures(e).map((c) => c.id) : [];
+      const ids =
+        e && !this.isMaster() && e.status === EncounterStatus.ACTIVE
+          ? ownCreatures(e).map((c) => c.id)
+          : [];
       if (!e || ids.length === 0) {
         untracked(() => this.creatureOptions.clear());
         return;
@@ -875,7 +1023,12 @@ export class CombatView {
       const rounds = this.log.rounds();
       const loaded = this.log.loaded();
       untracked(() => {
-        const { reset, notice } = this.formNotices.read(id, own?.id ?? '', loaded, rounds.flatMap((r) => r.entries));
+        const { reset, notice } = this.formNotices.read(
+          id,
+          own?.id ?? '',
+          loaded,
+          rounds.flatMap((r) => r.entries),
+        );
         if (reset) {
           this.formEnded.set(null);
           this.lostConcentration.set(null);
@@ -891,9 +1044,15 @@ export class CombatView {
     effect(() => {
       const e = this.encounter();
       const spell = this.own()?.concentrationSpellNamePt ?? '';
-      const creatures = e && !this.isMaster() ? ownCreatures(e).filter((c) => !!c.summonGroupId) : [];
+      const creatures =
+        e && !this.isMaster() ? ownCreatures(e).filter((c) => !!c.summonGroupId) : [];
       untracked(() => {
-        const out = this.concentration.read(e?.id ?? '', spell, creatures, this.lostConcentration());
+        const out = this.concentration.read(
+          e?.id ?? '',
+          spell,
+          creatures,
+          this.lostConcentration(),
+        );
         if (out !== undefined) {
           this.lostConcentration.set(out);
         }
@@ -906,7 +1065,10 @@ export class CombatView {
         return;
       }
       for (const offer of this.toAnswer()) {
-        if (reactorIsMasters(e, offer) && !untracked(() => this.reactorOptions().has(offer.id) || this.reactorReading.has(offer.id))) {
+        if (
+          reactorIsMasters(e, offer) &&
+          !untracked(() => this.reactorOptions().has(offer.id) || this.reactorReading.has(offer.id))
+        ) {
           untracked(() => void this.loadReactor(offer));
         }
       }
@@ -1033,13 +1195,18 @@ export class CombatView {
 
   /** The same for a combatant of the player's: their character, or one of their creatures. */
   protected takeActionFor(id: string, key: string): Promise<boolean> {
-    return this.run(async (e) => (await this.api.takeAction(this.campaignId(), e.id, id, key)).encounter);
+    return this.run(
+      async (e) => (await this.api.takeAction(this.campaignId(), e.id, id, key)).encounter,
+    );
   }
 
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {
-    if (key === 'standard:search' && searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps') {
+    if (
+      key === 'standard:search' &&
+      searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps'
+    ) {
       this.searchTraps();
       return;
     }
@@ -1120,17 +1287,30 @@ export class CombatView {
         preference: this.dicePreference(),
         state: this.state(),
       };
-      openSheet<FeatureSheet, FeatureSheetData, boolean>(this.dialog, this.bottomSheet, FeatureSheet, {
-        data,
-        ariaLabel: name,
-        labelledBy: 'sheet-t',
-      }).subscribe();
+      openSheet<FeatureSheet, FeatureSheetData, boolean>(
+        this.dialog,
+        this.bottomSheet,
+        FeatureSheet,
+        {
+          data,
+          ariaLabel: name,
+          labelledBy: 'sheet-t',
+        },
+      ).subscribe();
       return;
     }
     const actionKey = key;
     // Surto de Ação (any level's feature) gives the action back.
-    const note = option.action.resourceKey === 'action_surge' ? `${name}: você tem outra ação.` : `${name}: usado.`;
-    if (await this.run(async (current) => (await this.api.takeAction(this.campaignId(), current.id, own.id, actionKey)).encounter)) {
+    const note =
+      option.action.resourceKey === 'action_surge'
+        ? `${name}: você tem outra ação.`
+        : `${name}: usado.`;
+    if (
+      await this.run(
+        async (current) =>
+          (await this.api.takeAction(this.campaignId(), current.id, own.id, actionKey)).encounter,
+      )
+    ) {
       this.actionNote.set(note);
     }
   }
@@ -1147,7 +1327,9 @@ export class CombatView {
     if (!p) {
       return;
     }
-    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === p.attackKey)?.attack;
+    const attack = this.options()?.options?.attacks.find(
+      (a) => a.attack?.key === p.attackKey,
+    )?.attack;
     if (attack && attack.saveDc === 0) {
       this.attackSheet(p.attackKey, p);
       return;
@@ -1155,7 +1337,10 @@ export class CombatView {
     // A spell's damage (Mísseis Mágicos, Mãos Flamejantes): the cast sheet, at the damage.
     const own = this.own();
     const owed = (this.options()?.pendingDamages ?? []).filter(
-      (x) => x.status === PendingDamageStatus.AWAITING_ROLL && x.attackerId === own?.id && x.attackKey === p.attackKey,
+      (x) =>
+        x.status === PendingDamageStatus.AWAITING_ROLL &&
+        x.attackerId === own?.id &&
+        x.attackKey === p.attackKey,
     );
     this.castSheet(p.attackKey, owed);
   }
@@ -1164,13 +1349,26 @@ export class CombatView {
   protected openCreatureAttack(id: string, key: string, asReaction = false): void {
     const who = this.encounter()?.combatants.find((c) => c.id === id);
     if (who) {
-      this.attackSheet(key, undefined, asReaction, who, this.creatureOptions.data().get(id) ?? null);
+      this.attackSheet(
+        key,
+        undefined,
+        asReaction,
+        who,
+        this.creatureOptions.data().get(id) ?? null,
+      );
     }
   }
 
   /** A hit of one of the player's creatures whose damage waits to be rolled (from the creature's own options). */
   protected creaturePending(id: string): PendingDamage | null {
-    return this.creatureOptions.data().get(id)?.pendingDamages.find((p) => p.status === PendingDamageStatus.AWAITING_ROLL && p.attackerId === id) ?? null;
+    return (
+      this.creatureOptions
+        .data()
+        .get(id)
+        ?.pendingDamages.find(
+          (p) => p.status === PendingDamageStatus.AWAITING_ROLL && p.attackerId === id,
+        ) ?? null
+    );
   }
 
   /** "Rolar o dano" of a creature's hit: the attack sheet again, at the damage. */
@@ -1182,7 +1380,13 @@ export class CombatView {
     }
   }
 
-  private attackSheet(key: string, resume?: PendingDamage, asReaction = false, who?: Combatant, creatureOpts?: GetTurnOptionsResponse | null): void {
+  private attackSheet(
+    key: string,
+    resume?: PendingDamage,
+    asReaction = false,
+    who?: Combatant,
+    creatureOpts?: GetTurnOptionsResponse | null,
+  ): void {
     const e = this.encounter();
     const own = who ?? this.own();
     const opts = who ? creatureOpts : this.options();
@@ -1202,14 +1406,21 @@ export class CombatView {
       state: this.state(),
       asReaction,
       attacksLeft: who ? (opts?.options?.economy?.attacksLeft ?? 0) : this.attacksLeft(),
-      attacksPerAction: who ? (opts?.options?.economy?.attacksPerAction ?? 1) : this.attacksPerAction(),
+      attacksPerAction: who
+        ? (opts?.options?.economy?.attacksPerAction ?? 1)
+        : this.attacksPerAction(),
       resume: resume
-        ? { pending: resume, targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '' }
+        ? {
+            pending: resume,
+            targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '',
+          }
         : undefined,
     };
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
-      ariaLabel: asReaction ? `Ataque de oportunidade com ${attack.namePt || attack.name}` : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
+      ariaLabel: asReaction
+        ? `Ataque de oportunidade com ${attack.namePt || attack.name}`
+        : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
     }).subscribe();
   }
@@ -1270,10 +1481,16 @@ export class CombatView {
     }
     const spell = opts.options.spells.find((s) => s.spell?.key === key);
     const cantrip = opts.options.attacks.find((a) => a.attack?.key === key)?.attack;
-    const name = spell?.spell ? spell.spell.namePt || spell.spell.name : cantrip ? cantrip.namePt || cantrip.name : key;
+    const name = spell?.spell
+      ? spell.spell.namePt || spell.spell.name
+      : cantrip
+        ? cantrip.namePt || cantrip.name
+        : key;
     const vitals = this.vitals().find((v) => v.characterId === own.characterId);
     const shield = opts.options.spells.find((s) => s.spell?.key === 'spell:shield');
-    const attackBonus = this.spellAttackBonus(opts.options.attacks.flatMap((a) => (a.attack ? [a.attack] : [])));
+    const attackBonus = this.spellAttackBonus(
+      opts.options.attacks.flatMap((a) => (a.attack ? [a.attack] : [])),
+    );
     const data: CastSheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
@@ -1355,7 +1572,9 @@ export class CombatView {
     const own = this.own();
     this.concentration.endedByMe = true;
     return own
-      ? this.run((e) => this.api.setConditions(this.campaignId(), e.id, own.id, { endConcentration: true })).then((ok) => {
+      ? this.run((e) =>
+          this.api.setConditions(this.campaignId(), e.id, own.id, { endConcentration: true }),
+        ).then((ok) => {
           if (!ok) {
             this.concentration.endedByMe = false;
           }
@@ -1372,7 +1591,11 @@ export class CombatView {
       if (!e || !membersToEnd(e, { ...tab, members: [member] }).length) {
         continue;
       }
-      if (!(await this.run((current) => this.api.endTurn(this.campaignId(), current.id, member.id, false, current.round)))) {
+      if (
+        !(await this.run((current) =>
+          this.api.endTurn(this.campaignId(), current.id, member.id, false, current.round),
+        ))
+      ) {
         return;
       }
     }
@@ -1435,13 +1658,23 @@ export class CombatView {
     if (!e || !combatant) {
       return;
     }
-    const data: ConditionsData = { campaignId: this.campaignId(), encounterId: e.id, combatant, state: this.state() };
-    openSheet<ConditionsDialog, ConditionsData, boolean>(this.dialog, this.bottomSheet, ConditionsDialog, {
-      data,
-      ariaLabel: `Condições de ${combatant.label}`,
-      labelledBy: 'sheet-t',
-      width: '600px',
-    }).subscribe();
+    const data: ConditionsData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      combatant,
+      state: this.state(),
+    };
+    openSheet<ConditionsDialog, ConditionsData, boolean>(
+      this.dialog,
+      this.bottomSheet,
+      ConditionsDialog,
+      {
+        data,
+        ariaLabel: `Condições de ${combatant.label}`,
+        labelledBy: 'sheet-t',
+        width: '600px',
+      },
+    ).subscribe();
   }
 
   /** "Você foi atingido: usar Escudo?": opens by itself, and has to be answered. */
@@ -1494,11 +1727,15 @@ export class CombatView {
   }
 
   protected submitFace(combatantId: string, face: number): Promise<boolean> {
-    return this.run((e) => this.api.submitInitiative(this.campaignId(), e.id, combatantId, { face }));
+    return this.run((e) =>
+      this.api.submitInitiative(this.campaignId(), e.id, combatantId, { face }),
+    );
   }
 
   protected rollInApp(combatantId: string): Promise<boolean> {
-    return this.run((e) => this.api.submitInitiative(this.campaignId(), e.id, combatantId, { inApp: true }));
+    return this.run((e) =>
+      this.api.submitInitiative(this.campaignId(), e.id, combatantId, { inApp: true }),
+    );
   }
 
   protected setOrder(ids: string[]): Promise<boolean> {
@@ -1511,7 +1748,9 @@ export class CombatView {
 
   /** The master: "Perdeu a concentração" (the app does not roll the save; the damage card reminds the DC). */
   protected loseConcentration(id: string): Promise<boolean> {
-    return this.run((e) => this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }));
+    return this.run((e) =>
+      this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }),
+    );
   }
 
   protected remove(id: string): Promise<boolean> {
@@ -1570,16 +1809,24 @@ export class CombatView {
         const options = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId);
         return {
           options,
-          attacks: reactorAttacks(offer, (options.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : []))),
+          attacks: reactorAttacks(
+            offer,
+            (options.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : [])),
+          ),
         };
       },
       state: this.state(),
     };
-    openSheet<OpportunitySheet, OpportunitySheetData, OpportunityAnswer>(this.dialog, this.bottomSheet, OpportunitySheet, {
-      data,
-      ariaLabel: 'Ataque de oportunidade',
-      alert: true,
-    }).subscribe((answer) => {
+    openSheet<OpportunitySheet, OpportunitySheetData, OpportunityAnswer>(
+      this.dialog,
+      this.bottomSheet,
+      OpportunitySheet,
+      {
+        data,
+        ariaLabel: 'Ataque de oportunidade',
+        alert: true,
+      },
+    ).subscribe((answer) => {
       if (answer) {
         this.opportunityAttack(offer, answer.attackKey, answer.options, false);
       }
@@ -1588,14 +1835,20 @@ export class CombatView {
 
   /** The offer is still pending after the attack sheet closed (nobody rolled): ask again, it must be answered. */
   private rearm(offer: OpportunityOffer): void {
-    const still = this.encounter()?.opportunityOffers.some((o) => o.id === offer.id && o.forYou) ?? false;
+    const still =
+      this.encounter()?.opportunityOffers.some((o) => o.id === offer.id && o.forYou) ?? false;
     if (still && !this.isMaster()) {
       untracked(() => this.openOpportunity(offer));
     }
   }
 
   /** "Atacar com <arma>": the attack sheet, with the mover as its target. */
-  private opportunityAttack(offer: OpportunityOffer, key: string, options: GetTurnOptionsResponse | null | undefined, byMaster: boolean): void {
+  private opportunityAttack(
+    offer: OpportunityOffer,
+    key: string,
+    options: GetTurnOptionsResponse | null | undefined,
+    byMaster: boolean,
+  ): void {
     const e = this.encounter();
     const attack = options?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
     if (!e || !attack) {
@@ -1612,7 +1865,12 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       asReaction: true,
-      opportunity: { offerId: offer.id, targetId: offer.moverId, targetLabel: offer.moverLabel, byMaster },
+      opportunity: {
+        offerId: offer.id,
+        targetId: offer.moverId,
+        targetLabel: offer.moverLabel,
+        byMaster,
+      },
     };
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
@@ -1655,7 +1913,9 @@ export class CombatView {
       key = newKey();
       this.offerKeys.set(reactorId, key);
     }
-    const ok = await this.run((current) => this.api.offerOpportunity(this.campaignId(), current.id, mover.id, reactorId, key));
+    const ok = await this.run((current) =>
+      this.api.offerOpportunity(this.campaignId(), current.id, mover.id, reactorId, key),
+    );
     if (ok) {
       this.offering.set(false);
     } else if (this.error()) {
@@ -1729,11 +1989,18 @@ export class CombatView {
           this.state().apply(res.encounter);
           if (res.lockedDoor) {
             // The master walks through closed doors but a locked one stops him too (RN-26).
-            this.error.set('Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.');
+            this.error.set(
+              'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
+            );
           }
         },
         failed: (saved, err) => {
-          this.state().applyMove({ encounterId: e.id, combatantId: c.id, col: saved.xBp, row: saved.yBp });
+          this.state().applyMove({
+            encounterId: e.id,
+            combatantId: c.id,
+            col: saved.xBp,
+            row: saved.yBp,
+          });
           this.error.set(combatErrorMessage(err, 'mover o token'));
           void this.refreshAfter(err);
         },
@@ -1748,7 +2015,9 @@ export class CombatView {
       return;
     }
     this.moveError.set('');
-    const ok = await this.runMove((e) => this.api.move(this.campaignId(), e.id, own.id, to.col, to.row));
+    const ok = await this.runMove((e) =>
+      this.api.move(this.campaignId(), e.id, own.id, to.col, to.row),
+    );
     this.afterMove(ok);
   }
 
@@ -1763,13 +2032,20 @@ export class CombatView {
     this.moveError.set('');
     const ok = await this.runMove((e) =>
       req.kind === 'long'
-        ? this.api.move(this.campaignId(), e.id, own.id, req.square.col, req.square.row, { kind: 'long' })
-        : this.api.move(this.campaignId(), e.id, own.id, own.col, own.row, { kind: 'high', heightDft: req.heightDft }),
+        ? this.api.move(this.campaignId(), e.id, own.id, req.square.col, req.square.row, {
+            kind: 'long',
+          })
+        : this.api.move(this.campaignId(), e.id, own.id, own.col, own.row, {
+            kind: 'high',
+            heightDft: req.heightDft,
+          }),
     );
     if (ok) {
       const spent = (this.mover()?.movementUsedDft ?? before) - before;
       this.moveNote.set(
-        req.kind === 'long' ? `Você saltou ${metersFixed(spent / 10)}.` : `Você saltou ${metersFixed(spent / 10)} para cima.`,
+        req.kind === 'long'
+          ? `Você saltou ${metersFixed(spent / 10)}.`
+          : `Você saltou ${metersFixed(spent / 10)} para cima.`,
       );
     }
     this.afterMove(ok);
@@ -1839,7 +2115,12 @@ export class CombatView {
     if (!e || !who) {
       return;
     }
-    const data: SpendSheetData = { campaignId: this.campaignId(), encounterId: e.id, combatantId: who, state: this.state() };
+    const data: SpendSheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      combatantId: who,
+      state: this.state(),
+    };
     openSheet<SpendSheet, SpendSheetData, boolean>(this.dialog, this.bottomSheet, SpendSheet, {
       data,
       ariaLabel: 'Gastar movimento',
@@ -1886,7 +2167,9 @@ export class CombatView {
     for (let row = 0; row < e.gridRows; row++) {
       for (let col = 0; col < e.gridColumns; col++) {
         const d = Math.max(Math.abs(col - middle.col), Math.abs(row - middle.row));
-        const dBest = best ? Math.max(Math.abs(best.col - middle.col), Math.abs(best.row - middle.row)) : Infinity;
+        const dBest = best
+          ? Math.max(Math.abs(best.col - middle.col), Math.abs(best.row - middle.row))
+          : Infinity;
         if (!taken.has(`${col},${row}`) && d < dBest) {
           best = { col, row };
         }
@@ -1894,7 +2177,10 @@ export class CombatView {
     }
     if (best) {
       const spot = best;
-      await this.run(async (current) => (await this.api.move(this.campaignId(), current.id, id, spot.col, spot.row)).encounter);
+      await this.run(
+        async (current) =>
+          (await this.api.move(this.campaignId(), current.id, id, spot.col, spot.row)).encounter,
+      );
     }
   }
 

@@ -75,7 +75,14 @@ export class AdjustNpc {
   /** What the call sends: only what changes the NPC. `null`: nothing to change. */
   protected readonly adjust = computed<HpAdjust | null>(() => {
     const kind = this.mode();
-    const change = kind === 'exact' ? (this.amount() === this.hp ? undefined : { kind, value: this.amount() }) : this.amount() > 0 ? { kind, value: this.amount() } : undefined;
+    const change =
+      kind === 'exact'
+        ? this.amount() === this.hp
+          ? undefined
+          : { kind, value: this.amount() }
+        : this.amount() > 0
+          ? { kind, value: this.amount() }
+          : undefined;
     const temporary = this.temporary() !== this.temp0 ? this.temporary() : undefined;
     return change || temporary !== undefined ? { change, temporary } : null;
   });
@@ -91,11 +98,14 @@ export class AdjustNpc {
     }
   });
   protected readonly preview = computed(() =>
-    this.adjust()?.change ? `Depois: ${this.after()} de ${this.max} PV` : `Agora: ${this.hp} de ${this.max} PV`,
+    this.adjust()?.change
+      ? `Depois: ${this.after()} de ${this.max} PV`
+      : `Agora: ${this.hp} de ${this.max} PV`,
   );
 
   protected readonly amountStep = (step: number) => (step < 0 ? `Tirar ${-step}` : `Somar ${step}`);
-  protected readonly tempStep = (step: number) => (step < 0 ? 'Tirar 1 PV temporário' : 'Somar 1 PV temporário');
+  protected readonly tempStep = (step: number) =>
+    step < 0 ? 'Tirar 1 PV temporário' : 'Somar 1 PV temporário';
 
   protected async save(): Promise<void> {
     const adjust = this.adjust();
@@ -116,7 +126,13 @@ export class AdjustNpc {
     this.error.set('');
     try {
       this.data.state.apply(
-        await this.api.adjustHitPoints(this.data.campaignId, this.data.encounterId, this.c.id, adjust, this.key),
+        await this.api.adjustHitPoints(
+          this.data.campaignId,
+          this.data.encounterId,
+          this.c.id,
+          adjust,
+          this.key,
+        ),
       );
       this.sheet.close(true);
     } catch (err) {

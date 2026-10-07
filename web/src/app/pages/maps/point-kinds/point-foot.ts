@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { PairFoot } from '../../../shared/pair-foot/pair-foot';
@@ -82,6 +93,12 @@ export class PointFoot {
 
   protected cancelAsk(): void {
     this.confirming.set(false);
-    afterNextRender(() => focusWithRing((this.pair()?.nativeElement.querySelector('.pf__cancel') as HTMLElement | null | undefined)), { injector: this.injector });
+    afterNextRender(
+      () =>
+        focusWithRing(
+          this.pair()?.nativeElement.querySelector('.pf__cancel') as HTMLElement | null | undefined,
+        ),
+      { injector: this.injector },
+    );
   }
 }

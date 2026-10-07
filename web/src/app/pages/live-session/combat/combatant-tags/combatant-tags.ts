@@ -60,6 +60,10 @@ export class CombatantTags {
   /** One tag only, with "+N" for the rest. */
   readonly compact = input(false);
 
-  protected readonly shown = computed(() => (this.compact() ? this.names().slice(0, 1) : this.names()));
-  protected readonly more = computed(() => (this.compact() ? Math.max(0, this.names().length - 1) : 0));
+  protected readonly shown = computed(() =>
+    this.compact() ? this.names().slice(0, 1) : this.names(),
+  );
+  protected readonly more = computed(() =>
+    this.compact() ? Math.max(0, this.names().length - 1) : 0,
+  );
 }

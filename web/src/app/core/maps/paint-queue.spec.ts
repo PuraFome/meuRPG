@@ -33,7 +33,8 @@ describe('PaintQueue', () => {
 
   const A: PaintTarget = { campaignId: 'c', mapId: 'a' };
   const B: PaintTarget = { campaignId: 'c', mapId: 'b' };
-  const sq = (n: number) => Array.from({ length: n }, (_, i) => ({ col: i % 200, row: Math.floor(i / 200) }));
+  const sq = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ col: i % 200, row: Math.floor(i / 200) }));
 
   it('is "Tudo salvo" while nothing waits', () => {
     expect(queue.status()).toBe('saved');
@@ -43,7 +44,10 @@ describe('PaintQueue', () => {
   it('joins the squares of a drag in one call and sends it a moment later', async () => {
     queue.add(A, MapLayer.WALL, 1, [{ col: 0, row: 0 }]);
     queue.add(A, MapLayer.WALL, 1, [{ col: 1, row: 0 }]);
-    queue.add(A, MapLayer.WALL, 1, [{ col: 1, row: 0 }, { col: 2, row: 0 }]);
+    queue.add(A, MapLayer.WALL, 1, [
+      { col: 1, row: 0 },
+      { col: 2, row: 0 },
+    ]);
     expect(queue.status()).toBe('saving');
     expect(calls).toEqual([]);
     await vi.advanceTimersByTimeAsync(150);
@@ -63,7 +67,11 @@ describe('PaintQueue', () => {
     queue.add(A, MapLayer.WALL, 0, [{ col: 0, row: 0 }]);
     queue.add(A, MapLayer.COVER, 2, [{ col: 1, row: 0 }]);
     await queue.flush();
-    expect(calls.map((c) => `${c.layer}:${c.value}`)).toEqual([`${MapLayer.WALL}:1`, `${MapLayer.WALL}:0`, `${MapLayer.COVER}:2`]);
+    expect(calls.map((c) => `${c.layer}:${c.value}`)).toEqual([
+      `${MapLayer.WALL}:1`,
+      `${MapLayer.WALL}:0`,
+      `${MapLayer.COVER}:2`,
+    ]);
   });
 
   it('splits a long stroke at 400 squares a call', async () => {

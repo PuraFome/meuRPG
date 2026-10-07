@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -23,7 +34,15 @@ import { XpRows } from './xp-rows';
  */
 @Component({
   selector: 'app-experience-panel',
-  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, TreasureStrip, XpGiveButton, XpRows],
+  imports: [
+    AwardHistory,
+    MatButtonModule,
+    MatIconModule,
+    MilestonesPanel,
+    TreasureStrip,
+    XpGiveButton,
+    XpRows,
+  ],
   templateUrl: './experience-panel.html',
   styleUrl: './experience-panel.scss',
 })
@@ -45,7 +64,9 @@ export class ExperiencePanel {
     // The news sits above the card: bring it into view, whatever the page was showing.
     effect(() => {
       if (this.confirmation()) {
-        afterNextRender(() => this.status()?.nativeElement.scrollIntoView?.({ block: 'start' }), { injector: this.injector });
+        afterNextRender(() => this.status()?.nativeElement.scrollIntoView?.({ block: 'start' }), {
+          injector: this.injector,
+        });
       }
     });
   }
@@ -55,8 +76,13 @@ export class ExperiencePanel {
     const rows = this.store.rows();
     const first = rows[0];
     const same =
-      first && first.nextLevelXp > 0 && rows.every((r) => r.level === first.level && r.nextLevelXp === first.nextLevelXp);
-    return experienceLead(this.store.xpMode(), same ? { level: first.level + 1, xp: first.nextLevelXp } : null);
+      first &&
+      first.nextLevelXp > 0 &&
+      rows.every((r) => r.level === first.level && r.nextLevelXp === first.nextLevelXp);
+    return experienceLead(
+      this.store.xpMode(),
+      same ? { level: first.level + 1, xp: first.nextLevelXp } : null,
+    );
   });
   protected readonly emptyHistory = computed(() => {
     if (this.milestones()) {
@@ -73,7 +99,9 @@ export class ExperiencePanel {
     if (result.kind === 'xp') {
       const { award, xpEach, lostXp } = result.result;
       this.confirmation.set(
-        award.treasureCount > 0 ? townGivenText(award, xpEach, lostXp) : givenText(award.totalXp, xpEach, lostXp),
+        award.treasureCount > 0
+          ? townGivenText(award, xpEach, lostXp)
+          : givenText(award.totalXp, xpEach, lostXp),
       );
       this.gained.set(new Map(award.shares.map((s) => [s.characterId, s.xp])));
     } else {

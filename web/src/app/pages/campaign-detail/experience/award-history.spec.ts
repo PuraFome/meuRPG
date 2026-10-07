@@ -4,7 +4,13 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { UndoLastXPAwardResponseSchema, XPAwardMode, XPAwardSchema, XPBlockedReason, XPBlockedSchema } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  UndoLastXPAwardResponseSchema,
+  XPAwardMode,
+  XPAwardSchema,
+  XPBlockedReason,
+  XPBlockedSchema,
+} from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { RosterClient } from '../../../core/maps/roster-client';
@@ -28,8 +34,23 @@ function award(over: Parameters<typeof create<typeof XPAwardSchema>>[1]) {
 }
 
 const LAST = award({ id: 'a3', reason: 'Combate: Emboscada na estrada', canUndo: true });
-const MIDDLE = award({ id: 'a2', mode: XPAwardMode.XP_AWARD_MODE_MANUAL, reason: 'Pela ajuda ao ferreiro', totalXp: 80, shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 40 }, { characterId: 't', characterName: 'Toren', xp: 40 }] });
-const UNDONE = award({ id: 'a1', reason: 'Combate: Lobos', undone: true, undoneByDisplayName: 'Samuel', undoneAt: timestampFromDate(new Date(2026, 9, 1, 22, 0)) });
+const MIDDLE = award({
+  id: 'a2',
+  mode: XPAwardMode.XP_AWARD_MODE_MANUAL,
+  reason: 'Pela ajuda ao ferreiro',
+  totalXp: 80,
+  shares: [
+    { characterId: 'p', characterName: 'Pensantus', xp: 40 },
+    { characterId: 't', characterName: 'Toren', xp: 40 },
+  ],
+});
+const UNDONE = award({
+  id: 'a1',
+  reason: 'Combate: Lobos',
+  undone: true,
+  undoneByDisplayName: 'Samuel',
+  undoneAt: timestampFromDate(new Date(2026, 9, 1, 22, 0)),
+});
 
 describe('AwardHistory (E7-09)', () => {
   const undoLast = vi.fn();
@@ -55,8 +76,28 @@ describe('AwardHistory (E7-09)', () => {
     const store = TestBed.inject(ExperienceStore);
     store.awards.set(awards);
     store.rows.set([
-      { id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-      { id: 't', name: 'Toren', playerUserId: '', sub: '', level: 3, xp: 2366, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
+      {
+        id: 'p',
+        name: 'Pensantus',
+        playerUserId: '',
+        sub: '',
+        level: 3,
+        xp: 2716,
+        nextLevelXp: 2700,
+        canLevelUp: true,
+        levelUpReason: 1,
+      },
+      {
+        id: 't',
+        name: 'Toren',
+        playerUserId: '',
+        sub: '',
+        level: 3,
+        xp: 2366,
+        nextLevelXp: 2700,
+        canLevelUp: false,
+        levelUpReason: 0,
+      },
     ]);
     const fixture = TestBed.createComponent(AwardHistory);
     fixture.componentRef.setInput('campaignId', 'camp-1');
@@ -67,7 +108,10 @@ describe('AwardHistory (E7-09)', () => {
   }
 
   const items = (el: HTMLElement) => Array.from(el.querySelectorAll('li.item'));
-  const button = (el: HTMLElement, name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name))!;
+  const button = (el: HTMLElement, name: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.includes(name),
+    )!;
   const settle = async (fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) => {
     await fixture.whenStable();
     fixture.detectChanges();
@@ -96,7 +140,9 @@ describe('AwardHistory (E7-09)', () => {
 
   it('offers "Desfazer" only on the one award the server says can be undone', async () => {
     const { el } = await setup();
-    expect(Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.includes('Desfazer'))).toHaveLength(1);
+    expect(
+      Array.from(el.querySelectorAll('button')).filter((b) => b.textContent?.includes('Desfazer')),
+    ).toHaveLength(1);
     expect(items(el)[0].querySelector('button')).not.toBeNull();
     expect(items(el)[1].querySelector('button')).toBeNull();
   });
@@ -108,7 +154,14 @@ describe('AwardHistory (E7-09)', () => {
   });
 
   it('shows no XP number in a milestones campaign', async () => {
-    const mark = award({ id: 'm1', mode: XPAwardMode.XP_AWARD_MODE_MILESTONE, reason: 'Marco: a ponte', totalXp: 0, canUndo: true, shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 0 }] });
+    const mark = award({
+      id: 'm1',
+      mode: XPAwardMode.XP_AWARD_MODE_MILESTONE,
+      reason: 'Marco: a ponte',
+      totalXp: 0,
+      canUndo: true,
+      shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 0 }],
+    });
     const { el } = await setup([mark], true);
     expect(el.textContent).toContain('Marco');
     expect(el.textContent).toContain('Samuel marcou Pensantus');
@@ -125,7 +178,9 @@ describe('AwardHistory (E7-09)', () => {
       expect(question.textContent).toContain('Desfazer o XP de “Combate: Emboscada na estrada”?');
       expect(question.textContent).toContain(`Pensantus e Toren perdem 116${nbsp}XP cada.`);
       // Pensantus can level up now and would not after it: the question says so.
-      expect(question.textContent).toContain(`Pensantus volta para 2.600${nbsp}XP e deixa de poder subir de nível.`);
+      expect(question.textContent).toContain(
+        `Pensantus volta para 2.600${nbsp}XP e deixa de poder subir de nível.`,
+      );
       expect(question.textContent).toContain('O histórico guarda o desfazer.');
       expect(document.activeElement).toBe(button(el, 'Voltar'));
       expect(undoLast).not.toHaveBeenCalled();
@@ -158,7 +213,9 @@ describe('AwardHistory (E7-09)', () => {
       const { fixture, el } = await setup();
       button(el, 'Desfazer').click();
       await settle(fixture);
-      el.querySelector('[role="alertdialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
       await settle(fixture);
       expect(el.querySelector('[role="alertdialog"]')).toBeNull();
       expect(document.activeElement).toBe(button(el, 'Desfazer'));
@@ -172,7 +229,11 @@ describe('AwardHistory (E7-09)', () => {
       button(el, 'Desfazer XP').click();
       await settle(fixture);
 
-      expect(undoLast).toHaveBeenCalledWith('camp-1', 'a3', expect.stringMatching(/^[0-9a-f-]{36}$/));
+      expect(undoLast).toHaveBeenCalledWith(
+        'camp-1',
+        'a3',
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      );
       expect(refresh).toHaveBeenCalled();
       expect(el.querySelector('[role="alertdialog"]')).toBeNull();
       expect(el.querySelector('[role="status"]')?.textContent).toContain('XP desfeito');
@@ -195,7 +256,10 @@ describe('AwardHistory (E7-09)', () => {
     it('says why in words when it cannot, by the typed reason, and keeps the question open for a retry with the same key', async () => {
       undoLast.mockRejectedValue(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: XPBlockedSchema, value: { reason: XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO } },
+          {
+            desc: XPBlockedSchema,
+            value: { reason: XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO },
+          },
         ]),
       );
       const { fixture, el } = await setup();
@@ -203,7 +267,9 @@ describe('AwardHistory (E7-09)', () => {
       await settle(fixture);
       button(el, 'Desfazer XP').click();
       await settle(fixture);
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não há nenhum prêmio para desfazer');
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'Não há nenhum prêmio para desfazer',
+      );
       expect(el.querySelector('[role="alertdialog"]')).not.toBeNull();
 
       button(el, 'Desfazer XP').click();
@@ -245,7 +311,14 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
       { characterId: 't', characterName: 'Toren', xp: 105 },
     ],
   });
-  const OLDER = award({ id: 'a8', mode: XPAwardMode.XP_AWARD_MODE_GOLD, reason: 'Venda do cálice de prata', gold: 60, totalXp: 120, shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 60 }] });
+  const OLDER = award({
+    id: 'a8',
+    mode: XPAwardMode.XP_AWARD_MODE_GOLD,
+    reason: 'Venda do cálice de prata',
+    gold: 60,
+    totalXp: 120,
+    shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 60 }],
+  });
 
   const undoLast = vi.fn();
   const refresh = vi.fn();
@@ -299,30 +372,47 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
 
   it('asks in place and says that the treasures go back to "encontrado, não convertido"', async () => {
     const { fixture, el } = await setup([TOWN, OLDER], true);
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Desfazer'))!
+      .click();
     await settle(fixture);
     const question = el.querySelector('[role="alertdialog"]')!;
     expect(question.textContent).toContain('Desfazer o XP de “Voltar à cidade”?');
     expect(question.textContent).toContain(`Pensantus e Toren perdem 105${nbsp}XP cada.`);
-    expect(question.textContent).toContain(`Os 3\u00a0tesouros (420${nbsp}PO) voltam a “encontrado, não convertido”.`);
+    expect(question.textContent).toContain(
+      `Os 3\u00a0tesouros (420${nbsp}PO) voltam a “encontrado, não convertido”.`,
+    );
     expect(question.textContent).toContain('O histórico guarda o desfazer.');
   });
 
   it('says after undoing that the treasures are free again, and reads the XP and the treasures again', async () => {
     const { fixture, el } = await setup([TOWN, OLDER], true);
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Desfazer'))!
+      .click();
     await settle(fixture);
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Desfazer XP')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Desfazer XP')!
+      .click();
     await settle(fixture);
     expect(undoLast).toHaveBeenCalledWith('camp-1', 'a9', expect.any(String));
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('os 3\u00a0tesouros voltaram a “encontrado, não convertido”');
+    expect(el.querySelector('[role="status"]')?.textContent).toContain(
+      'os 3\u00a0tesouros voltaram a “encontrado, não convertido”',
+    );
     expect(refresh).toHaveBeenCalled();
   });
 
   it('tells the master why a "Voltar à cidade" that is not the last cannot be undone', async () => {
-    const newer = award({ id: 'a10', mode: XPAwardMode.XP_AWARD_MODE_MANUAL, reason: 'Avulso', canUndo: true });
+    const newer = award({
+      id: 'a10',
+      mode: XPAwardMode.XP_AWARD_MODE_MANUAL,
+      reason: 'Avulso',
+      canUndo: true,
+    });
     const { el } = await setup([newer, { ...TOWN, canUndo: false } as typeof TOWN], true);
-    expect(items(el)[1].textContent).toContain('Os tesouros ficam livres quando os prêmios mais novos forem desfeitos.');
+    expect(items(el)[1].textContent).toContain(
+      'Os tesouros ficam livres quando os prêmios mais novos forem desfeitos.',
+    );
     expect(items(el)[1].querySelector('button')).toBeNull();
     expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
   });
@@ -339,10 +429,14 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
     const { fixture, el } = await setup([TOWN, OLDER], true);
     const told = vi.fn();
     fixture.componentInstance.undone.subscribe(told);
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Desfazer'))!
+      .click();
     await settle(fixture);
     fixture.componentRef.setInput('hideNotice', true);
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Desfazer XP')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Desfazer XP')!
+      .click();
     await settle(fixture);
     expect(told).toHaveBeenCalled();
     expect(el.querySelector('.notice')).toBeNull();
@@ -352,7 +446,10 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
   });
 
   it('keeps an undone one as it was, with its tag', async () => {
-    const { el } = await setup([{ ...TOWN, undone: true, canUndo: false, undoneByDisplayName: 'Samuel' } as typeof TOWN], true);
+    const { el } = await setup(
+      [{ ...TOWN, undone: true, canUndo: false, undoneByDisplayName: 'Samuel' } as typeof TOWN],
+      true,
+    );
     expect(items(el)[0].textContent).toContain('Desfeito por Samuel');
     expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
   });
@@ -360,26 +457,83 @@ describe('"Voltar à cidade" in the history (E9-09)', () => {
 
 describe('what undoing says', () => {
   const rows = [
-    { id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-    { id: 't', name: 'Toren', playerUserId: '', sub: '', level: 3, xp: 3000, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-    { id: 'b', name: 'Brisa', playerUserId: '', sub: '', level: 3, xp: 2066, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
+    {
+      id: 'p',
+      name: 'Pensantus',
+      playerUserId: '',
+      sub: '',
+      level: 3,
+      xp: 2716,
+      nextLevelXp: 2700,
+      canLevelUp: true,
+      levelUpReason: 1,
+    },
+    {
+      id: 't',
+      name: 'Toren',
+      playerUserId: '',
+      sub: '',
+      level: 3,
+      xp: 3000,
+      nextLevelXp: 2700,
+      canLevelUp: true,
+      levelUpReason: 1,
+    },
+    {
+      id: 'b',
+      name: 'Brisa',
+      playerUserId: '',
+      sub: '',
+      level: 3,
+      xp: 2066,
+      nextLevelXp: 2700,
+      canLevelUp: false,
+      levelUpReason: 0,
+    },
   ];
 
   it('names the one who stops being able to level up, and not the one who still can', () => {
-    const text = undoConsequence(award({ id: 'x', reason: 'r', shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 116 }, { characterId: 't', characterName: 'Toren', xp: 116 }] }), rows);
+    const text = undoConsequence(
+      award({
+        id: 'x',
+        reason: 'r',
+        shares: [
+          { characterId: 'p', characterName: 'Pensantus', xp: 116 },
+          { characterId: 't', characterName: 'Toren', xp: 116 },
+        ],
+      }),
+      rows,
+    );
     expect(text).toContain(`Pensantus volta para 2.600${nbsp}XP e deixa de poder subir de nível.`);
     expect(text).not.toContain('Toren volta');
   });
 
   it('says several at once', () => {
     const close = rows.map((r) => (r.id === 't' ? { ...r, xp: 2750 } : r));
-    const text = undoConsequence(award({ id: 'x', reason: 'r', shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 116 }, { characterId: 't', characterName: 'Toren', xp: 116 }] }), close);
+    const text = undoConsequence(
+      award({
+        id: 'x',
+        reason: 'r',
+        shares: [
+          { characterId: 'p', characterName: 'Pensantus', xp: 116 },
+          { characterId: 't', characterName: 'Toren', xp: 116 },
+        ],
+      }),
+      close,
+    );
     expect(text).toContain('Pensantus e Toren deixam de poder subir de nível.');
   });
 
   it('is about the mark for a milestone', () => {
-    const mark = award({ id: 'm', reason: 'Marco: a ponte', mode: XPAwardMode.XP_AWARD_MODE_MILESTONE, shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 0 }] });
+    const mark = award({
+      id: 'm',
+      reason: 'Marco: a ponte',
+      mode: XPAwardMode.XP_AWARD_MODE_MILESTONE,
+      shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 0 }],
+    });
     expect(undoTitle(mark)).toBe('Desfazer o marco “Marco: a ponte”?');
-    expect(undoConsequence(mark, rows)).toBe('Pensantus perde a marca “Pode subir de nível”. O histórico guarda o desfazer.');
+    expect(undoConsequence(mark, rows)).toBe(
+      'Pensantus perde a marca “Pode subir de nível”. O histórico guarda o desfazer.',
+    );
   });
 });

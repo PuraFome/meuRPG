@@ -1,4 +1,14 @@
-import { Component, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { creatureSlug } from '../../../../core/creatures/bestiary-format';
@@ -27,7 +37,12 @@ import { ofThe } from '../../../../core/combat/move-plan';
 import { joinDots } from '../../../../core/format/text';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
-import { combatantInitial, isDown, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
+import {
+  combatantInitial,
+  isDown,
+  isPlayer,
+  roundLabel,
+} from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
@@ -52,7 +67,21 @@ import { PendingDamages } from './pending-damages';
  */
 @Component({
   selector: 'app-npc-card',
-  imports: [AttackChoice, CombatantToken, MasterSpend, MatButtonModule, TheatrePill, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker, RouterLink],
+  imports: [
+    AttackChoice,
+    CombatantToken,
+    MasterSpend,
+    MatButtonModule,
+    TheatrePill,
+    MatFormFieldModule,
+    MatIconModule,
+    MatSelectModule,
+    NextTurn,
+    PendingDamages,
+    Portrait,
+    RollPicker,
+    RouterLink,
+  ],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
 })
@@ -99,7 +128,11 @@ export class NpcCard {
   /** The master's own "Usar Escudo por ele" stopped the hit. */
   private readonly stoppedHere = signal(false);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
-  protected readonly last = signal<{ roll: AttackRoll; pending: PendingDamage | null; subject: string } | null>(null);
+  protected readonly last = signal<{
+    roll: AttackRoll;
+    pending: PendingDamage | null;
+    subject: string;
+  } | null>(null);
   private key = newKey();
   /** The reaction spell's name, remembered from the prompt that waited (it is gone once answered). */
   protected readonly shieldName = signal('Escudo Arcano');
@@ -108,20 +141,31 @@ export class NpcCard {
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
   /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
-  protected readonly creatureSlug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey ?? ''));
-  protected readonly isNpc = computed(() => !isPlayer(this.subject()) && !isCreature(this.subject()));
+  protected readonly creatureSlug = computed(() =>
+    creatureSlug(this.subject().bestiaryCreatureKey ?? ''),
+  );
+  protected readonly isNpc = computed(
+    () => !isPlayer(this.subject()) && !isCreature(this.subject()),
+  );
   /** The one on turn is at 0 hit points: nobody spends movement for them. */
   /** "do Goblin", "da Brisa". */
   protected readonly ofLabel = computed(() => ofThe([this.subject().label]));
   protected readonly down = computed(() => isDown(this.subject()));
   /** The card with the stats, the economy and the movement: an NPC's, and in a combat without a map also a player's (the master spends their movement when they are away). */
-  protected readonly full = computed(() => this.isNpc() || (this.theatre() && !this.isCreatureSubject()));
-  protected readonly attacks = computed<Attack[]>(() =>
-    (this.options()?.options?.attacks ?? []).flatMap((a) => (a.attack && a.attack.saveDc === 0 ? [a.attack] : [])),
+  protected readonly full = computed(
+    () => this.isNpc() || (this.theatre() && !this.isCreatureSubject()),
   );
-  protected readonly attack = computed(() => this.attacks().find((a) => a.key === this.attackKey()) ?? null);
+  protected readonly attacks = computed<Attack[]>(() =>
+    (this.options()?.options?.attacks ?? []).flatMap((a) =>
+      a.attack && a.attack.saveDc === 0 ? [a.attack] : [],
+    ),
+  );
+  protected readonly attack = computed(
+    () => this.attacks().find((a) => a.key === this.attackKey()) ?? null,
+  );
   protected readonly targets = computed(
-    () => this.options()?.attackTargets.find((t) => t.attackKey === this.attackKey())?.targets ?? [],
+    () =>
+      this.options()?.attackTargets.find((t) => t.attackKey === this.attackKey())?.targets ?? [],
   );
   protected readonly targetLabel = computed(
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
@@ -139,12 +183,19 @@ export class NpcCard {
   protected readonly stats = computed(() => {
     const c = this.subject();
     return {
-      hp: c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
+      hp:
+        c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
       ac: c.armorClass,
-      speed: { meters: metersFixed(c.speedDft / 10), squares: this.theatre() ? '' : squaresText(reachSquares(c.speedFt)) },
+      speed: {
+        meters: metersFixed(c.speedDft / 10),
+        squares: this.theatre() ? '' : squaresText(reachSquares(c.speedFt)),
+      },
       movement: this.theatre()
         ? restamText(c.movementLeftDft)
-        : joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
+        : joinDots([
+            metersFixed(c.movementLeftDft / 10),
+            squaresText(reachSquares(c.movementLeftFt)),
+          ]),
     };
   });
   protected readonly result = computed(() => {
@@ -169,9 +220,10 @@ export class NpcCard {
   });
   protected readonly rollLabel = computed(() => {
     const a = this.attack();
-    return a ? `Role 1d20 para ${attackName(a)} (${a.attackBonus < 0 ? '−' : '+'}${Math.abs(a.attackBonus)})` : '';
+    return a
+      ? `Role 1d20 para ${attackName(a)} (${a.attackBonus < 0 ? '−' : '+'}${Math.abs(a.attackBonus)})`
+      : '';
   });
-
 
   constructor() {
     // Each new turn starts clean, with the first attack and the first target.

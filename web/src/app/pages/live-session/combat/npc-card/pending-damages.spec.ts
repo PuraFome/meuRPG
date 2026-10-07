@@ -1,16 +1,44 @@
 import { TestBed } from '@angular/core/testing';
 
-import { CombatantKind, CriticalDamageRule, PendingDamageStatus, ReactionOutcome } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CriticalDamageRule,
+  PendingDamageStatus,
+  ReactionOutcome,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { PendingDamages } from './pending-damages';
 
 describe('PendingDamages, a hit that waits for Escudo (E6-28b)', () => {
-  const pending = { id: 'p1', attackerId: 'cap', targetId: 'pen', status: PendingDamageStatus.AWAITING_REACTION, diceCount: 1, diceSides: 6, bonus: 2 } as never;
+  const pending = {
+    id: 'p1',
+    attackerId: 'cap',
+    targetId: 'pen',
+    status: PendingDamageStatus.AWAITING_REACTION,
+    diceCount: 1,
+    diceSides: 6,
+    bonus: 2,
+  } as never;
   const enc = encounter({
-    combatants: [combatant({ id: 'cap', label: 'Capitão Goblin' }), combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER })],
-    reactionPrompts: [{ pendingDamageId: 'p1', targetId: 'pen', spellKey: 'spell:shield', spellNamePt: 'Escudo Arcano', slots: [{ level: 2, pact: false, free: 1 }, { level: 1, pact: false, free: 2 }, { level: 3, pact: false, free: 0 }] }],
+    combatants: [
+      combatant({ id: 'cap', label: 'Capitão Goblin' }),
+      combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+    ],
+    reactionPrompts: [
+      {
+        pendingDamageId: 'p1',
+        targetId: 'pen',
+        spellKey: 'spell:shield',
+        spellNamePt: 'Escudo Arcano',
+        slots: [
+          { level: 2, pact: false, free: 1 },
+          { level: 1, pact: false, free: 2 },
+          { level: 3, pact: false, free: 0 },
+        ],
+      },
+    ],
   } as never);
   const api = { useReaction: vi.fn(), declineReaction: vi.fn() };
 
@@ -26,17 +54,22 @@ describe('PendingDamages, a hit that waits for Escudo (E6-28b)', () => {
     fixture.detectChanges();
     return { el: fixture.nativeElement as HTMLElement, reacted, fixture };
   }
-  const button = (el: HTMLElement, name: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(name))!;
+  const button = (el: HTMLElement, name: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(name))!;
 
   it('explains the wait, offers two same-size answers and disables "Rolar dano" with its reason', () => {
     const { el } = setup();
     expect(el.textContent).toContain('Esperando a reação do Pensantus.');
-    expect(el.textContent).toContain('Ele pode conjurar Escudo Arcano (+5 na CA). O jogador decide sem ver o total; você pode responder por ele.');
+    expect(el.textContent).toContain(
+      'Ele pode conjurar Escudo Arcano (+5 na CA). O jogador decide sem ver o total; você pode responder por ele.',
+    );
     expect(button(el, 'Usar Escudo Arcano por ele').classList).toContain('dmg__skip');
     expect(button(el, 'Seguir sem Escudo Arcano').classList).toContain('dmg__skip');
     const off = button(el, 'Rolar dano');
     expect(off.getAttribute('aria-disabled')).toBe('true');
-    expect(el.querySelector(`#${off.getAttribute('aria-describedby')}`)?.textContent).toContain('Espere a reação do Pensantus.');
+    expect(el.querySelector(`#${off.getAttribute('aria-describedby')}`)?.textContent).toContain(
+      'Espere a reação do Pensantus.',
+    );
   });
 
   it('casts Escudo for the target with the lowest free slot, and says what it did', async () => {
@@ -44,7 +77,13 @@ describe('PendingDamages, a hit that waits for Escudo (E6-28b)', () => {
     const { el, reacted, fixture } = setup();
     button(el, 'Usar Escudo Arcano por ele').click();
     await fixture.whenStable();
-    expect(api.useReaction).toHaveBeenCalledWith('camp', 'enc', 'p1', { level: 1, pact: false }, expect.any(String));
+    expect(api.useReaction).toHaveBeenCalledWith(
+      'camp',
+      'enc',
+      'p1',
+      { level: 1, pact: false },
+      expect.any(String),
+    );
     expect(reacted).toEqual(['stopped']);
   });
 
@@ -60,13 +99,24 @@ describe('PendingDamages, a hit that waits for Escudo (E6-28b)', () => {
 
 describe('PendingDamages, the critical hint (RN-24)', () => {
   const enc = encounter({
-    combatants: [combatant({ id: 'cap', label: 'Capitão Goblin' }), combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER })],
+    combatants: [
+      combatant({ id: 'cap', label: 'Capitão Goblin' }),
+      combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+    ],
   } as never);
 
   function setup(over: Record<string, unknown>) {
     TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
     const fixture = TestBed.createComponent(PendingDamages);
-    const pending = { id: 'p1', attackerId: 'cap', targetId: 'pen', status: PendingDamageStatus.AWAITING_ROLL, diceSides: 6, bonus: 2, ...over } as never;
+    const pending = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.AWAITING_ROLL,
+      diceSides: 6,
+      bonus: 2,
+      ...over,
+    } as never;
     fixture.componentRef.setInput('pendings', [pending]);
     fixture.componentRef.setInput('encounter', enc);
     fixture.componentRef.setInput('campaignId', 'camp');
@@ -74,16 +124,25 @@ describe('PendingDamages, the critical hint (RN-24)', () => {
     fixture.detectChanges();
     return fixture;
   }
-  const hint = (el: HTMLElement) => (el.querySelector('[data-testid="critical-hint"]')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const hint = (el: HTMLElement) =>
+    (el.querySelector('[data-testid="critical-hint"]')?.textContent ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   const typeIt = (fixture: ReturnType<typeof setup>) => {
-    [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Digitar o resultado'))!.click();
+    [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+      .find((b) => (b.textContent ?? '').includes('Digitar o resultado'))!
+      .click();
     fixture.detectChanges();
   };
   const clean = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ');
 
   it('says "role os dados duas vezes" for a critical hit under the SRD rule, once the master types a physical roll', () => {
-    const fixture = setup({ diceCount: 4, critical: true, criticalRule: CriticalDamageRule.DOUBLED_DICE });
+    const fixture = setup({
+      diceCount: 4,
+      critical: true,
+      criticalRule: CriticalDamageRule.DOUBLED_DICE,
+    });
     const el = fixture.nativeElement as HTMLElement;
     // With the app's dice the server rolls them: no hint.
     expect(hint(el)).toBe('');
@@ -92,14 +151,23 @@ describe('PendingDamages, the critical hint (RN-24)', () => {
   });
 
   it('says "o máximo mais uma rolagem", with the maximum as the fixed part and the live total', () => {
-    const fixture = setup({ diceCount: 2, critical: true, criticalRule: CriticalDamageRule.MAX_PLUS_ROLL, criticalMax: 12 });
+    const fixture = setup({
+      diceCount: 2,
+      critical: true,
+      criticalRule: CriticalDamageRule.MAX_PLUS_ROLL,
+      criticalMax: 12,
+    });
     const el = fixture.nativeElement as HTMLElement;
     typeIt(fixture);
-    expect(hint(el)).toBe('Acerto crítico: o máximo mais uma rolagem. O máximo dos dados (12) já vale sem rolar; role 2d6 uma vez.');
+    expect(hint(el)).toBe(
+      'Acerto crítico: o máximo mais uma rolagem. O máximo dos dados (12) já vale sem rolar; role 2d6 uma vez.',
+    );
     // One instruction, the fixed parts named, and the live total the one the server records (typed 7 + 12 + 2 = 21).
     expect(clean(el)).toContain('Role 2d6 e digite só o que saiu, de 2 a 12. O app soma o resto.');
     expect(clean(el)).toContain('+ 12 do crítico + 2 de modificador');
-    const field = el.querySelector('input.type__field, input[type="text"], input') as HTMLInputElement;
+    const field = el.querySelector(
+      'input.type__field, input[type="text"], input',
+    ) as HTMLInputElement;
     field.value = '7';
     field.dispatchEvent(new Event('input'));
     fixture.detectChanges();

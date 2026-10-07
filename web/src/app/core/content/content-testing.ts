@@ -25,19 +25,45 @@ import { EffectMenuVm } from './effect-draft';
 
 type Body = TableEntry['body'];
 
-export function entry(kind: TableContentKind, namePt: string, over: { archived?: boolean; charactersUsing?: number; key?: string; body?: Body } = {}): TableEntry {
+export function entry(
+  kind: TableContentKind,
+  namePt: string,
+  over: { archived?: boolean; charactersUsing?: number; key?: string; body?: Body } = {},
+): TableEntry {
   const slug = namePt.toLowerCase().replace(/[^a-z]+/g, '-');
-  const prefix = { [TableContentKind.CLASS]: 'class', [TableContentKind.SUBCLASS]: 'subclass', [TableContentKind.RACE]: 'race', [TableContentKind.SUBRACE]: 'subrace', [TableContentKind.BACKGROUND]: 'background', [TableContentKind.SPELL]: 'spell' }[kind as 1];
+  const prefix = {
+    [TableContentKind.CLASS]: 'class',
+    [TableContentKind.SUBCLASS]: 'subclass',
+    [TableContentKind.RACE]: 'race',
+    [TableContentKind.SUBRACE]: 'subrace',
+    [TableContentKind.BACKGROUND]: 'background',
+    [TableContentKind.SPELL]: 'spell',
+  }[kind as 1];
   const body: Body =
     over.body ??
     (kind === TableContentKind.CLASS
-      ? { case: 'tableClass', value: create(TableClassSchema, { namePt, hitDie: 10, subclassLevel: 3 }) }
+      ? {
+          case: 'tableClass',
+          value: create(TableClassSchema, { namePt, hitDie: 10, subclassLevel: 3 }),
+        }
       : kind === TableContentKind.SUBCLASS
-        ? { case: 'tableSubclass', value: create(TableSubclassSchema, { namePt, classKey: 'class:wizard', level: 2 }) }
+        ? {
+            case: 'tableSubclass',
+            value: create(TableSubclassSchema, { namePt, classKey: 'class:wizard', level: 2 }),
+          }
         : kind === TableContentKind.RACE
-          ? { case: 'tableRace', value: create(TableRaceSchema, { namePt, size: 'Medium', speedFt: 30 }) }
+          ? {
+              case: 'tableRace',
+              value: create(TableRaceSchema, { namePt, size: 'Medium', speedFt: 30 }),
+            }
           : kind === TableContentKind.BACKGROUND
-            ? { case: 'tableBackground', value: create(TableBackgroundSchema, { namePt, skills: ['skill:arcana', 'skill:history'] }) }
+            ? {
+                case: 'tableBackground',
+                value: create(TableBackgroundSchema, {
+                  namePt,
+                  skills: ['skill:arcana', 'skill:history'],
+                }),
+              }
             : { case: 'tableSpell', value: create(TableSpellSchema, { namePt, level: 1 }) });
   return create(TableEntrySchema, {
     key: over.key ?? `${prefix}:${slug}@mesa`,
@@ -63,35 +89,153 @@ export function mirathel(): TableEntry[] {
   ];
 }
 
-export function feature(name: string, effects: Parameters<typeof create<typeof TableEffectSchema>>[1][] = []) {
-  return create(TableFeatureSchema, { key: `feature:${name}`, namePt: name, descPt: ['Texto.'], effects: effects.map((e) => create(TableEffectSchema, e)) });
+export function feature(
+  name: string,
+  effects: Parameters<typeof create<typeof TableEffectSchema>>[1][] = [],
+) {
+  return create(TableFeatureSchema, {
+    key: `feature:${name}`,
+    namePt: name,
+    descPt: ['Texto.'],
+    effects: effects.map((e) => create(TableEffectSchema, e)),
+  });
 }
 
 /** The menu: the real one's types and field order (backend/internal/rules/tablemenu.go), with a few of its lists. */
 export function menuResponse(): GetEffectMenuResponse {
-  const field = (name: string, kind: string, required = false, list = '', min = 0, max = 0) => ({ name, kind, required, list, min, max });
+  const field = (name: string, kind: string, required = false, list = '', min = 0, max = 0) => ({
+    name,
+    kind,
+    required,
+    list,
+    min,
+    max,
+  });
   return create(GetEffectMenuResponseSchema, {
     types: [
-      { type: 'modifier', namePt: 'Modificador', hintPt: 'Soma, define ou limita um número da ficha.', fields: [field('target', 'choice', true, 'modifier_targets'), field('mode', 'choice', true, 'modifier_modes'), field('value', 'formula', true), field('when', 'condition'), field('tags', 'tags', false, 'tag_prefixes'), field('text_pt', 'text')] },
-      { type: 'proficiency', namePt: 'Proficiência', hintPt: 'Dá proficiência.', fields: [field('proficiency', 'choice', true, 'proficiency_targets'), field('level', 'choice', false, 'proficiency_levels'), field('when', 'condition'), field('text_pt', 'text')] },
-      { type: 'sense', namePt: 'Sentido', hintPt: 'Visão no escuro.', fields: [field('sense', 'choice', true, 'senses'), field('range_ft', 'number', true, '', 1), field('when', 'condition'), field('text_pt', 'text')] },
-      { type: 'choice', namePt: 'Escolha', hintPt: 'Algo que o jogador escolhe.', fields: [field('choice', 'choice', true, 'choice_kinds'), field('count', 'number', true, '', 1), field('from', 'choices'), field('when', 'condition'), field('text_pt', 'text')] },
-      { type: 'note', namePt: 'Nota e magia concedida', hintPt: 'Um lembrete.', fields: [field('text_pt', 'text'), field('value', 'formula'), field('spells', 'choices'), field('tags', 'tags', false, 'tag_prefixes'), field('when', 'condition')] },
+      {
+        type: 'modifier',
+        namePt: 'Modificador',
+        hintPt: 'Soma, define ou limita um número da ficha.',
+        fields: [
+          field('target', 'choice', true, 'modifier_targets'),
+          field('mode', 'choice', true, 'modifier_modes'),
+          field('value', 'formula', true),
+          field('when', 'condition'),
+          field('tags', 'tags', false, 'tag_prefixes'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
+        type: 'proficiency',
+        namePt: 'Proficiência',
+        hintPt: 'Dá proficiência.',
+        fields: [
+          field('proficiency', 'choice', true, 'proficiency_targets'),
+          field('level', 'choice', false, 'proficiency_levels'),
+          field('when', 'condition'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
+        type: 'sense',
+        namePt: 'Sentido',
+        hintPt: 'Visão no escuro.',
+        fields: [
+          field('sense', 'choice', true, 'senses'),
+          field('range_ft', 'number', true, '', 1),
+          field('when', 'condition'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
+        type: 'choice',
+        namePt: 'Escolha',
+        hintPt: 'Algo que o jogador escolhe.',
+        fields: [
+          field('choice', 'choice', true, 'choice_kinds'),
+          field('count', 'number', true, '', 1),
+          field('from', 'choices'),
+          field('when', 'condition'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
+        type: 'note',
+        namePt: 'Nota e magia concedida',
+        hintPt: 'Um lembrete.',
+        fields: [
+          field('text_pt', 'text'),
+          field('value', 'formula'),
+          field('spells', 'choices'),
+          field('tags', 'tags', false, 'tag_prefixes'),
+          field('when', 'condition'),
+        ],
+      },
     ],
     lists: [
-      { name: 'modifier_targets', values: [{ key: 'speed.walk', namePt: 'Deslocamento' }, { key: 'ac', namePt: 'Classe de Armadura' }] },
+      {
+        name: 'modifier_targets',
+        values: [
+          { key: 'speed.walk', namePt: 'Deslocamento' },
+          { key: 'ac', namePt: 'Classe de Armadura' },
+        ],
+      },
       { name: 'modifier_modes', values: [{ key: 'add', namePt: 'Somar' }] },
       { name: 'proficiency_targets', values: [{ key: 'skill:perception', namePt: 'Percepção' }] },
-      { name: 'proficiency_levels', values: [{ key: 'half', namePt: 'Metade' }, { key: 'full', namePt: 'Completa' }] },
+      {
+        name: 'proficiency_levels',
+        values: [
+          { key: 'half', namePt: 'Metade' },
+          { key: 'full', namePt: 'Completa' },
+        ],
+      },
       { name: 'senses', values: [{ key: 'darkvision', namePt: 'Visão no escuro' }] },
-      { name: 'choice_kinds', values: [{ key: 'skill', namePt: 'Perícias' }, { key: 'feature', namePt: 'Uma opção de uma lista do SRD' }] },
-      { name: 'skills', values: [{ key: 'skill:arcana', namePt: 'Arcanismo' }, { key: 'skill:perception', namePt: 'Percepção' }] },
-      { name: 'languages', values: [{ key: 'language:common', namePt: 'Comum' }, { key: 'language:primordial', namePt: 'Primordial' }] },
-      { name: 'tools', values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }] },
-      { name: 'tag_prefixes', values: [{ key: 'against:', namePt: 'Contra…' }, { key: 'about:', namePt: 'Sobre…' }] },
+      {
+        name: 'choice_kinds',
+        values: [
+          { key: 'skill', namePt: 'Perícias' },
+          { key: 'feature', namePt: 'Uma opção de uma lista do SRD' },
+        ],
+      },
+      {
+        name: 'skills',
+        values: [
+          { key: 'skill:arcana', namePt: 'Arcanismo' },
+          { key: 'skill:perception', namePt: 'Percepção' },
+        ],
+      },
+      {
+        name: 'languages',
+        values: [
+          { key: 'language:common', namePt: 'Comum' },
+          { key: 'language:primordial', namePt: 'Primordial' },
+        ],
+      },
+      {
+        name: 'tools',
+        values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }],
+      },
+      {
+        name: 'tag_prefixes',
+        values: [
+          { key: 'against:', namePt: 'Contra…' },
+          { key: 'about:', namePt: 'Sobre…' },
+        ],
+      },
     ],
-    helpers: [{ call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' }, { call: 'prof()', returns: 'number', hintPt: 'O bônus de proficiência.' }],
-    optionSets: [{ key: 'feature:fighting-style', namePt: 'Estilo de luta', choose: 1, options: [{ key: 'option:archery', namePt: 'Arquearia' }] }],
+    helpers: [
+      { call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' },
+      { call: 'prof()', returns: 'number', hintPt: 'O bônus de proficiência.' },
+    ],
+    optionSets: [
+      {
+        key: 'feature:fighting-style',
+        namePt: 'Estilo de luta',
+        choose: 1,
+        options: [{ key: 'option:archery', namePt: 'Arquearia' }],
+      },
+    ],
     classIndexes: ['wizard', 'cleric'],
     maxFeaturesPerClass: 60,
     maxEffectsPerFeature: 4,
@@ -106,7 +250,9 @@ export function menu(): EffectMenuVm {
 }
 
 /** The six abilities as the catalog names them, for the specs. */
-export const abilities: readonly CatalogAbility[] = (['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map((field, i) => ({
+export const abilities: readonly CatalogAbility[] = (
+  ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const
+).map((field, i) => ({
   field,
   ability: (i + 1) as Ability,
   name: ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'][i],
@@ -122,9 +268,23 @@ export function catalog(extra: Parameters<typeof catalogVm>[1] = []): CatalogVm 
         { key: 'class:wizard', namePt: 'Mago', subclassLevel: 2, spellcasting: { ability: 4 } },
         { key: 'class:paladin', namePt: 'Paladino', subclassLevel: 3 },
       ],
-      skills: [{ key: 'skill:arcana', namePt: 'Arcanismo' }, { key: 'skill:perception', namePt: 'Percepção' }, { key: 'skill:investigation', namePt: 'Investigação' }],
-      spells: [{ key: 'spell:light', namePt: 'Luz', schoolKey: 'school:evocation', schoolNamePt: 'Evocação' }],
-      languages: [{ key: 'language:common', namePt: 'Comum' }, { key: 'language:primordial', namePt: 'Primordial' }],
+      skills: [
+        { key: 'skill:arcana', namePt: 'Arcanismo' },
+        { key: 'skill:perception', namePt: 'Percepção' },
+        { key: 'skill:investigation', namePt: 'Investigação' },
+      ],
+      spells: [
+        {
+          key: 'spell:light',
+          namePt: 'Luz',
+          schoolKey: 'school:evocation',
+          schoolNamePt: 'Evocação',
+        },
+      ],
+      languages: [
+        { key: 'language:common', namePt: 'Comum' },
+        { key: 'language:primordial', namePt: 'Primordial' },
+      ],
       proficiencies: [
         { key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' },
         { key: 'proficiency:light-armor', namePt: 'Armadura leve' },
@@ -133,7 +293,10 @@ export function catalog(extra: Parameters<typeof catalogVm>[1] = []): CatalogVm 
         { key: 'proficiency:simple-weapons', namePt: 'Armas simples' },
         { key: 'proficiency:martial-weapons', namePt: 'Armas marciais' },
       ],
-      damageTypes: [{ key: 'damage-type:necrotic', namePt: 'necrótico' }, { key: 'damage-type:fire', namePt: 'fogo' }],
+      damageTypes: [
+        { key: 'damage-type:necrotic', namePt: 'necrótico' },
+        { key: 'damage-type:fire', namePt: 'fogo' },
+      ],
     }),
     extra,
   );
@@ -172,10 +335,20 @@ export function classDefaults(): GetClassTableDefaultsResponse {
     Array.from({ length: 20 }, (_, i) => {
       const level = i + 1;
       const casts = start > 0 && level >= start;
-      return { profBonus: prof(i), features: [], cantripsKnown: casts ? cantrips : 0, spellsKnown: casts ? known : 0, slots: casts ? [...slotsAt(level), ...Array<number>(9 - slotsAt(level).length).fill(0)] : [] };
+      return {
+        profBonus: prof(i),
+        features: [],
+        cantripsKnown: casts ? cantrips : 0,
+        spellsKnown: casts ? known : 0,
+        slots: casts
+          ? [...slotsAt(level), ...Array<number>(9 - slotsAt(level).length).fill(0)]
+          : [],
+      };
     });
-  const half = (level: number) => (level < 3 ? [2] : level < 5 ? [3] : level < 9 ? [4, 2] : [4, 3, 2]);
-  const full = (level: number) => (level < 2 ? [2] : level < 3 ? [3] : level < 5 ? [4, 2] : [4, 3, 3]);
+  const half = (level: number) =>
+    level < 3 ? [2] : level < 5 ? [3] : level < 9 ? [4, 2] : [4, 3, 2];
+  const full = (level: number) =>
+    level < 2 ? [2] : level < 3 ? [3] : level < 5 ? [4, 2] : [4, 3, 3];
   const pact = (level: number) => [0, 0, level < 5 ? 2 : 4];
   const third = (level: number) => (level < 7 ? [2] : [4, 2]);
   return create(GetClassTableDefaultsResponseSchema, {
@@ -184,14 +357,62 @@ export function classDefaults(): GetClassTableDefaultsResponse {
     subclassLevel: 3,
     tables: [
       { kind: '', preparation: '', startLevel: 0, referenceClassKey: '', rows: rows(0, () => []) },
-      { kind: 'full', preparation: 'prepared', startLevel: 1, referenceClassKey: 'class:cleric', rows: rows(1, full, 3) },
-      { kind: 'full', preparation: 'known', startLevel: 1, referenceClassKey: 'class:sorcerer', rows: rows(1, full, 4, 2) },
-      { kind: 'half', preparation: 'prepared', startLevel: 2, referenceClassKey: 'class:paladin', rows: rows(2, half) },
-      { kind: 'half', preparation: 'known', startLevel: 2, referenceClassKey: 'class:ranger', rows: rows(2, half, 0, 2) },
-      { kind: 'pact', preparation: 'known', startLevel: 1, referenceClassKey: 'class:warlock', rows: rows(1, pact, 2, 2) },
-      { kind: 'pact', preparation: 'prepared', startLevel: 1, referenceClassKey: 'class:warlock', rows: rows(1, pact, 2) },
-      { kind: 'third', preparation: 'known', startLevel: 3, referenceClassKey: '', rows: rows(3, third, 2, 3) },
-      { kind: 'third', preparation: 'prepared', startLevel: 3, referenceClassKey: '', rows: rows(3, third, 2) },
+      {
+        kind: 'full',
+        preparation: 'prepared',
+        startLevel: 1,
+        referenceClassKey: 'class:cleric',
+        rows: rows(1, full, 3),
+      },
+      {
+        kind: 'full',
+        preparation: 'known',
+        startLevel: 1,
+        referenceClassKey: 'class:sorcerer',
+        rows: rows(1, full, 4, 2),
+      },
+      {
+        kind: 'half',
+        preparation: 'prepared',
+        startLevel: 2,
+        referenceClassKey: 'class:paladin',
+        rows: rows(2, half),
+      },
+      {
+        kind: 'half',
+        preparation: 'known',
+        startLevel: 2,
+        referenceClassKey: 'class:ranger',
+        rows: rows(2, half, 0, 2),
+      },
+      {
+        kind: 'pact',
+        preparation: 'known',
+        startLevel: 1,
+        referenceClassKey: 'class:warlock',
+        rows: rows(1, pact, 2, 2),
+      },
+      {
+        kind: 'pact',
+        preparation: 'prepared',
+        startLevel: 1,
+        referenceClassKey: 'class:warlock',
+        rows: rows(1, pact, 2),
+      },
+      {
+        kind: 'third',
+        preparation: 'known',
+        startLevel: 3,
+        referenceClassKey: '',
+        rows: rows(3, third, 2, 3),
+      },
+      {
+        kind: 'third',
+        preparation: 'prepared',
+        startLevel: 3,
+        referenceClassKey: '',
+        rows: rows(3, third, 2),
+      },
     ],
   });
 }

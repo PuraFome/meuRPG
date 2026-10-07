@@ -16,7 +16,14 @@ import type { PuzzleInit } from './puzzles-client';
 /** The six kinds the forms make. */
 export type FormKind = 'lights' | 'lock' | 'pillars' | 'riddle' | 'sequence' | 'cipher';
 
-export const FORM_KINDS: readonly FormKind[] = ['lights', 'lock', 'pillars', 'riddle', 'sequence', 'cipher'];
+export const FORM_KINDS: readonly FormKind[] = [
+  'lights',
+  'lock',
+  'pillars',
+  'riddle',
+  'sequence',
+  'cipher',
+];
 
 /** The kinds that judge a move (a typed answer, a bell): only they have a wrong move to fire a trap or spend an attempt on. */
 export const JUDGED_KINDS: readonly FormKind[] = ['riddle', 'sequence', 'cipher'];
@@ -61,7 +68,16 @@ export interface WrongDraft {
   readonly combined: boolean;
 }
 
-export const NO_WRONG: WrongDraft = { option: 'none', mapId: '', pointId: '', attempts: 3, movesText: '', minutesText: '', keptSeconds: 0, combined: false };
+export const NO_WRONG: WrongDraft = {
+  option: 'none',
+  mapId: '',
+  pointId: '',
+  attempts: 3,
+  movesText: '',
+  minutesText: '',
+  keptSeconds: 0,
+  combined: false,
+};
 
 /** The skill check that wins a hint: both a skill and a DC, or neither. */
 export interface HintCheckDraft {
@@ -143,7 +159,15 @@ export interface Draft {
   readonly seed: bigint;
 }
 
-export const NO_SOLVE: SolveDraft = { choice: 'notify', mapId: '', col: -1, row: -1, pointId: '', clueId: '', message: '' };
+export const NO_SOLVE: SolveDraft = {
+  choice: 'notify',
+  mapId: '',
+  col: -1,
+  row: -1,
+  pointId: '',
+  clueId: '',
+  message: '',
+};
 
 /** A new puzzle's form, with the values the artboard starts from. */
 export function newDraft(kind: FormKind): Draft {
@@ -201,8 +225,14 @@ export function draftOf(puzzle: Puzzle): Draft | null {
     clue: puzzle.clue,
     hints: [...puzzle.hints],
     solve: solveDraftOf(puzzle),
-    hintCheck: puzzle.hintCheck ? { skillKey: puzzle.hintCheck.skillKey, dcText: String(puzzle.hintCheck.dc) } : NO_HINT_CHECK,
-    parts: puzzle.parts.map((p) => ({ characterId: p.characterId, text: p.text, ownerUnavailable: p.ownerUnavailable })),
+    hintCheck: puzzle.hintCheck
+      ? { skillKey: puzzle.hintCheck.skillKey, dcText: String(puzzle.hintCheck.dc) }
+      : NO_HINT_CHECK,
+    parts: puzzle.parts.map((p) => ({
+      characterId: p.characterId,
+      text: p.text,
+      ownerUnavailable: p.ownerUnavailable,
+    })),
     wrong: wrongDraftOf(puzzle),
   };
   const config = puzzle.config?.kind;
@@ -210,7 +240,8 @@ export function draftOf(puzzle: Puzzle): Draft | null {
     case 'lights':
       return { ...base, kind: 'lights', size: config.value.size };
     case 'lock': {
-      const solution = puzzle.solution?.kind.case === 'lock' ? puzzle.solution.kind.value.wheels : [];
+      const solution =
+        puzzle.solution?.kind.case === 'lock' ? puzzle.solution.kind.value.wheels : [];
       const start = puzzle.start?.kind.case === 'lock' ? puzzle.start.kind.value.wheels : [];
       return {
         ...base,
@@ -222,7 +253,8 @@ export function draftOf(puzzle: Puzzle): Draft | null {
       };
     }
     case 'pillars': {
-      const mural = puzzle.solution?.kind.case === 'pillars' ? puzzle.solution.kind.value.pillars : [];
+      const mural =
+        puzzle.solution?.kind.case === 'pillars' ? puzzle.solution.kind.value.pillars : [];
       return {
         ...base,
         kind: 'pillars',
@@ -233,15 +265,18 @@ export function draftOf(puzzle: Puzzle): Draft | null {
       };
     }
     case 'riddle': {
-      const answers = puzzle.solution?.kind.case === 'riddle' ? puzzle.solution.kind.value.answers : [];
+      const answers =
+        puzzle.solution?.kind.case === 'riddle' ? puzzle.solution.kind.value.answers : [];
       return { ...base, kind: 'riddle', riddleText: config.value.text, answers: [...answers] };
     }
     case 'sequence': {
-      const steps = puzzle.solution?.kind.case === 'sequence' ? puzzle.solution.kind.value.steps : [];
+      const steps =
+        puzzle.solution?.kind.case === 'sequence' ? puzzle.solution.kind.value.steps : [];
       return { ...base, kind: 'sequence', bells: config.value.bells, steps: [...steps] };
     }
     case 'cipher': {
-      const solution = puzzle.solution?.kind.case === 'cipher' ? puzzle.solution.kind.value : undefined;
+      const solution =
+        puzzle.solution?.kind.case === 'cipher' ? puzzle.solution.kind.value : undefined;
       const keyword = solution?.method.case === 'keyword' ? solution.method.value : '';
       return {
         ...base,
@@ -275,7 +310,8 @@ function wrongDraftOf(puzzle: Puzzle): WrongDraft {
     pointId: trap?.pointId ?? '',
     attempts: attempts ? on.attemptsPerPlayer : 3,
     movesText: on.maxMoves > 0 ? String(on.maxMoves) : '',
-    minutesText: on.timeLimitSeconds > 0 ? String(Math.max(1, Math.round(on.timeLimitSeconds / 60))) : '',
+    minutesText:
+      on.timeLimitSeconds > 0 ? String(Math.max(1, Math.round(on.timeLimitSeconds / 60))) : '',
     keptSeconds: on.timeLimitSeconds,
     combined: kinds > 1,
   };
@@ -286,9 +322,22 @@ function solveDraftOf(puzzle: Puzzle): SolveDraft {
   const message = on?.message ?? '';
   switch (on?.target.case) {
     case 'door':
-      return { ...NO_SOLVE, choice: 'door', mapId: on.target.value.mapId, col: on.target.value.col, row: on.target.value.row, message };
+      return {
+        ...NO_SOLVE,
+        choice: 'door',
+        mapId: on.target.value.mapId,
+        col: on.target.value.col,
+        row: on.target.value.row,
+        message,
+      };
     case 'point':
-      return { ...NO_SOLVE, choice: 'point', mapId: on.target.value.mapId, pointId: on.target.value.pointId, message };
+      return {
+        ...NO_SOLVE,
+        choice: 'point',
+        mapId: on.target.value.mapId,
+        pointId: on.target.value.pointId,
+        message,
+      };
     case 'clue':
       return { ...NO_SOLVE, choice: 'clue', clueId: on.target.value.clueId, message };
     default:
@@ -304,13 +353,27 @@ export function neighbourLinks(count: number, linked: boolean): { alsoTurns: num
 }
 
 /** The `config` and `solution` the server needs to draw a start for the lights or the pillars. */
-export function startRequestOf(draft: Draft): { config: PuzzleInit['config']; solution: PuzzleInit['solution'] } | null {
+export function startRequestOf(
+  draft: Draft,
+): { config: PuzzleInit['config']; solution: PuzzleInit['solution'] } | null {
   if (draft.kind === 'lights') {
-    return { config: { kind: { case: 'lights', value: { size: draft.size } } }, solution: undefined };
+    return {
+      config: { kind: { case: 'lights', value: { size: draft.size } } },
+      solution: undefined,
+    };
   }
   if (draft.kind === 'pillars') {
     return {
-      config: { kind: { case: 'pillars', value: { pillars: draft.pillars, symbols: draft.symbols, links: neighbourLinks(draft.pillars, draft.linked) } } },
+      config: {
+        kind: {
+          case: 'pillars',
+          value: {
+            pillars: draft.pillars,
+            symbols: draft.symbols,
+            links: neighbourLinks(draft.pillars, draft.linked),
+          },
+        },
+      },
       solution: { kind: { case: 'pillars', value: { pillars: [...draft.mural] } } },
     };
   }
@@ -322,11 +385,23 @@ export function onSolveOf(solve: SolveDraft): MessageInitShape<typeof PuzzleOnSo
   const message = solve.message.trim();
   switch (solve.choice) {
     case 'door':
-      return { action: PuzzleSolveAction.OPEN_DOOR, message, target: { case: 'door', value: { mapId: solve.mapId, col: solve.col, row: solve.row } } };
+      return {
+        action: PuzzleSolveAction.OPEN_DOOR,
+        message,
+        target: { case: 'door', value: { mapId: solve.mapId, col: solve.col, row: solve.row } },
+      };
     case 'point':
-      return { action: PuzzleSolveAction.REVEAL_POINT, message, target: { case: 'point', value: { mapId: solve.mapId, pointId: solve.pointId } } };
+      return {
+        action: PuzzleSolveAction.REVEAL_POINT,
+        message,
+        target: { case: 'point', value: { mapId: solve.mapId, pointId: solve.pointId } },
+      };
     case 'clue':
-      return { action: PuzzleSolveAction.REVEAL_CLUE, message, target: { case: 'clue', value: { clueId: solve.clueId } } };
+      return {
+        action: PuzzleSolveAction.REVEAL_CLUE,
+        message,
+        target: { case: 'clue', value: { clueId: solve.clueId } },
+      };
     default:
       return { action: PuzzleSolveAction.NOTIFY, message };
   }
@@ -340,7 +415,9 @@ export function toInit(draft: Draft): PuzzleInit {
     hints: draft.hints.map((h) => h.trim()).filter((h) => h !== ''),
     onSolve: onSolveOf(draft.solve),
     seed: draft.seed,
-    ...(draft.hintCheck.skillKey !== '' ? { hintCheck: { skillKey: draft.hintCheck.skillKey, dc: Number(draft.hintCheck.dcText) } } : {}),
+    ...(draft.hintCheck.skillKey !== ''
+      ? { hintCheck: { skillKey: draft.hintCheck.skillKey, dc: Number(draft.hintCheck.dcText) } }
+      : {}),
     parts: draft.parts.map((p) => ({ characterId: p.characterId, text: p.text.trim() })),
     ...onWrongOf(draft),
   };
@@ -351,7 +428,9 @@ export function toInit(draft: Draft): PuzzleInit {
       return {
         ...common,
         seed: 0n,
-        config: { kind: { case: 'lock', value: { wheels: draft.wheels, alphabet: draft.alphabet } } },
+        config: {
+          kind: { case: 'lock', value: { wheels: draft.wheels, alphabet: draft.alphabet } },
+        },
         solution: { kind: { case: 'lock', value: { wheels: [...draft.lockSolution] } } },
         start: { kind: { case: 'lock', value: { wheels: [...draft.lockStart] } } },
       };
@@ -364,13 +443,17 @@ export function toInit(draft: Draft): PuzzleInit {
         ...common,
         seed: 0n,
         config: { kind: { case: 'riddle', value: { text: draft.riddleText.trim() } } },
-        solution: { kind: { case: 'riddle', value: { answers: draft.answers.map((a) => a.trim()) } } },
+        solution: {
+          kind: { case: 'riddle', value: { answers: draft.answers.map((a) => a.trim()) } },
+        },
       };
     case 'sequence':
       return {
         ...common,
         seed: 0n,
-        config: { kind: { case: 'sequence', value: { bells: draft.bells, steps: draft.steps.length } } },
+        config: {
+          kind: { case: 'sequence', value: { bells: draft.bells, steps: draft.steps.length } },
+        },
         solution: { kind: { case: 'sequence', value: { steps: [...draft.steps] } } },
       };
     case 'cipher':
@@ -387,7 +470,10 @@ export function toInit(draft: Draft): PuzzleInit {
 export function cipherSolutionOf(draft: Draft): MessageInitShape<typeof CipherSolutionSchema> {
   return {
     message: draft.cipherMessage.trim(),
-    method: draft.cipherMethod === 'keyword' ? { case: 'keyword', value: draft.keyword.trim() } : { case: 'shift', value: draft.shift },
+    method:
+      draft.cipherMethod === 'keyword'
+        ? { case: 'keyword', value: draft.keyword.trim() }
+        : { case: 'shift', value: draft.shift },
   };
 }
 
@@ -411,7 +497,12 @@ function onWrongOf(draft: Draft): { onWrong?: MessageInitShape<typeof PuzzleOnWr
     case 'attempts':
       return { onWrong: { attemptsPerPlayer: wrong.attempts } };
     case 'limits':
-      return { onWrong: { maxMoves: Number(wrong.movesText.trim() || 0), timeLimitSeconds: secondsOf(wrong) } };
+      return {
+        onWrong: {
+          maxMoves: Number(wrong.movesText.trim() || 0),
+          timeLimitSeconds: secondsOf(wrong),
+        },
+      };
     default:
       return {};
   }
@@ -511,7 +602,8 @@ function riddleErrors(draft: Draft, errors: DraftErrors): void {
     } else if (folded === '') {
       errors.answerRows[i] = 'Esta resposta não tem nenhuma letra ou número.';
     } else if (seen.has(folded)) {
-      errors.answerRows[i] = 'Esta resposta é igual a outra: maiúsculas, acentos e pontuação não contam.';
+      errors.answerRows[i] =
+        'Esta resposta é igual a outra: maiúsculas, acentos e pontuação não contam.';
     }
     seen.add(folded);
   });
@@ -620,10 +712,16 @@ export function wrongTarget(draft: Draft): WrongTarget {
   if (moves === '' && minutes === '') {
     return 'both';
   }
-  if (moves !== '' && !(/^\d{1,4}$/.test(moves) && Number(moves) >= 1 && Number(moves) <= MOVES_LIMIT_MAX)) {
+  if (
+    moves !== '' &&
+    !(/^\d{1,4}$/.test(moves) && Number(moves) >= 1 && Number(moves) <= MOVES_LIMIT_MAX)
+  ) {
     return 'moves';
   }
-  if (minutes !== '' && !(/^\d{1,4}$/.test(minutes) && Number(minutes) >= 1 && Number(minutes) <= MINUTES_MAX)) {
+  if (
+    minutes !== '' &&
+    !(/^\d{1,4}$/.test(minutes) && Number(minutes) >= 1 && Number(minutes) <= MINUTES_MAX)
+  ) {
     return 'minutes';
   }
   return '';
@@ -642,10 +740,16 @@ function wrongError(draft: Draft): string | undefined {
   if (moves === '' && minutes === '') {
     return 'Ponha um limite de jogadas, de minutos, ou os dois.';
   }
-  if (moves !== '' && !(/^\d{1,4}$/.test(moves) && Number(moves) >= 1 && Number(moves) <= MOVES_LIMIT_MAX)) {
+  if (
+    moves !== '' &&
+    !(/^\d{1,4}$/.test(moves) && Number(moves) >= 1 && Number(moves) <= MOVES_LIMIT_MAX)
+  ) {
     return `O limite de jogadas vai de 1 a ${MOVES_LIMIT_MAX}.`;
   }
-  if (minutes !== '' && !(/^\d{1,4}$/.test(minutes) && Number(minutes) >= 1 && Number(minutes) <= MINUTES_MAX)) {
+  if (
+    minutes !== '' &&
+    !(/^\d{1,4}$/.test(minutes) && Number(minutes) >= 1 && Number(minutes) <= MINUTES_MAX)
+  ) {
     return `O limite de tempo vai de 1 a ${MINUTES_MAX} minutos.`;
   }
   return undefined;

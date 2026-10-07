@@ -30,7 +30,13 @@ function experience(xp: number) {
         nextLevelXp: 2700,
         canLevelUp: xp >= 2700,
       }),
-      create(CharacterExperienceSchema, { characterId: 't1', name: 'Toren', level: 3, experiencePoints: 2250, nextLevelXp: 2700 }),
+      create(CharacterExperienceSchema, {
+        characterId: 't1',
+        name: 'Toren',
+        level: 3,
+        experiencePoints: 2250,
+        nextLevelXp: 2700,
+      }),
     ],
   });
 }
@@ -56,9 +62,22 @@ describe('ExperienceStore', () => {
 
   beforeEach(() => {
     api.experience.mockReset().mockResolvedValue(experience(2600));
-    api.listAwards.mockReset().mockResolvedValue(create(ListXPAwardsResponseSchema, { awards: [award('a2'), award('a1')], nextPageToken: 'next' }));
+    api.listAwards.mockReset().mockResolvedValue(
+      create(ListXPAwardsResponseSchema, {
+        awards: [award('a2'), award('a1')],
+        nextPageToken: 'next',
+      }),
+    );
     roster.list.mockReset().mockResolvedValue([
-      { id: 'p1', name: 'Pensantus', kind: 1, playerUserId: 'u1', classSummary: 'Mago 3', raceName: 'Gnomo', playerName: null },
+      {
+        id: 'p1',
+        name: 'Pensantus',
+        kind: 1,
+        playerUserId: 'u1',
+        classSummary: 'Mago 3',
+        raceName: 'Gnomo',
+        playerName: null,
+      },
     ]);
   });
 
@@ -68,7 +87,13 @@ describe('ExperienceStore', () => {
 
     expect(s.rowsState()).toBe('ready');
     expect(s.xpMode()).toBe(XpMode.ENEMIES);
-    expect(s.rows()[0]).toMatchObject({ id: 'p1', name: 'Pensantus', xp: 2600, nextLevelXp: 2700, canLevelUp: false });
+    expect(s.rows()[0]).toMatchObject({
+      id: 'p1',
+      name: 'Pensantus',
+      xp: 2600,
+      nextLevelXp: 2700,
+      canLevelUp: false,
+    });
     expect(s.rows()[0].sub).toBe(`Mago 3${nbsp}· de Vinicius`);
     // A character the roster does not list still reads, with what the XP call knows.
     expect(s.rows()[1].sub).toBe('');
@@ -124,7 +149,9 @@ describe('ExperienceStore', () => {
   it('reads the next page of the history and appends it', async () => {
     const s = store();
     await s.load('c1', true);
-    api.listAwards.mockResolvedValueOnce(create(ListXPAwardsResponseSchema, { awards: [award('a0')], nextPageToken: '' }));
+    api.listAwards.mockResolvedValueOnce(
+      create(ListXPAwardsResponseSchema, { awards: [award('a0')], nextPageToken: '' }),
+    );
     await s.more();
 
     expect(api.listAwards).toHaveBeenLastCalledWith('c1', 'next');
@@ -147,13 +174,19 @@ describe('ExperienceStore', () => {
   });
 
   describe('the treasures to convert (E9-09, master only)', () => {
-    const found = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 });
+    const found = create(TreasureToConvertSchema, {
+      pointId: 'c',
+      name: 'Baú de moedas',
+      valuePo: 250,
+    });
 
     function withTreasures(mode: XpMode) {
       api.experience.mockResolvedValue({ ...experience(2600), xpMode: mode });
-      (api as Record<string, unknown>)['listTreasures'] = vi.fn().mockResolvedValue(
-        create(ListTreasuresToConvertResponseSchema, { treasures: [found], total: 130 }),
-      );
+      (api as Record<string, unknown>)['listTreasures'] = vi
+        .fn()
+        .mockResolvedValue(
+          create(ListTreasuresToConvertResponseSchema, { treasures: [found], total: 130 }),
+        );
       return (api as unknown as { listTreasures: ReturnType<typeof vi.fn> }).listTreasures;
     }
 
@@ -185,12 +218,14 @@ describe('ExperienceStore', () => {
       expect(listTreasures).toHaveBeenCalledTimes(2);
     });
 
-    it('forgets the last campaign\'s treasures when another one is loaded', async () => {
+    it("forgets the last campaign's treasures when another one is loaded", async () => {
       withTreasures(XpMode.GOLD);
       const s = store();
       await s.load('camp-1', false, true);
       expect(s.treasures()).toHaveLength(1);
-      (api as unknown as { listTreasures: ReturnType<typeof vi.fn> }).listTreasures.mockRejectedValue(new Error('down'));
+      (
+        api as unknown as { listTreasures: ReturnType<typeof vi.fn> }
+      ).listTreasures.mockRejectedValue(new Error('down'));
       await s.load('camp-2', false, true);
       expect(s.treasures()).toEqual([]);
       expect(s.treasuresTotal()).toBe(0);

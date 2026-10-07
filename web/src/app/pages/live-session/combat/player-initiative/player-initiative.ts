@@ -65,7 +65,9 @@ export class PlayerInitiative {
   protected readonly players = computed(() => this.encounter().combatants.filter(isPlayer));
 
   /** How this player rolls: the campaign's mode, then their own choice. */
-  protected readonly way = computed(() => effectivePreference(this.diceMode(), this.dicePreference()));
+  protected readonly way = computed(() =>
+    effectivePreference(this.diceMode(), this.dicePreference()),
+  );
   protected readonly inApp = computed(() => this.way() === DicePreference.APP);
   /** Both ways while the campaign lets each player choose; the one way a
    * forced mode allows otherwise (RN-18). The saved choice only decides

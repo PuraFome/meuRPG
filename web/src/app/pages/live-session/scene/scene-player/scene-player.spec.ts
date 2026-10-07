@@ -9,9 +9,13 @@ import { ScenePlayer } from './scene-player';
 
 describe('ScenePlayer', () => {
   /** The scene's actions with one at no attempts left, as the server sends it after the roll. */
-  const exhausted = (id: string) => playerScene().actions.map((a) => (a.id === id ? { ...a, attemptsLeft: 0 } : a));
+  const exhausted = (id: string) =>
+    playerScene().actions.map((a) => (a.id === id ? { ...a, attemptsLeft: 0 } : a));
   function setup(scene = playerScene()) {
-    const state = new SceneState(() => Promise.resolve(scene), () => false);
+    const state = new SceneState(
+      () => Promise.resolve(scene),
+      () => false,
+    );
     state.apply(scene);
     const fixture = TestBed.createComponent(ScenePlayer);
     fixture.componentRef.setInput('campaignId', 'c1');
@@ -23,7 +27,8 @@ describe('ScenePlayer', () => {
   }
 
   const rows = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('.sc__row'));
-  const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  const flat = (e: Element | null | undefined) =>
+    e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
   /** The words of an element, without its icons' ligature names. */
   const words = (e: Element | null | undefined) => {
     if (!e) {
@@ -35,7 +40,10 @@ describe('ScenePlayer', () => {
   };
 
   it('shows nothing while no scene is open', () => {
-    const state = new SceneState(() => Promise.resolve(null), () => false);
+    const state = new SceneState(
+      () => Promise.resolve(null),
+      () => false,
+    );
     const fixture = TestBed.createComponent(ScenePlayer);
     fixture.componentRef.setInput('campaignId', 'c1');
     fixture.componentRef.setInput('state', state);
@@ -52,9 +60,21 @@ describe('ScenePlayer', () => {
     expect(rows(el)).toHaveLength(5);
     expect(flat(rows(el)[0])).toContain('Procurar pistas na carroça');
     expect(flat(rows(el)[0])).toContain('+6');
-    expect(rows(el).map((r) => r.querySelector('.sc__bonus')?.textContent)).toEqual(['+6', '+1', '+1', '+1', '+3']);
-    expect(rows(el).every((r) => r.querySelector('button')?.getAttribute('aria-label')?.startsWith('Rolar '))).toBe(true);
-    expect(rows(el)[0].querySelector('button')?.getAttribute('aria-label')).toBe('Rolar Procurar pistas na carroça');
+    expect(rows(el).map((r) => r.querySelector('.sc__bonus')?.textContent)).toEqual([
+      '+6',
+      '+1',
+      '+1',
+      '+1',
+      '+3',
+    ]);
+    expect(
+      rows(el).every((r) =>
+        r.querySelector('button')?.getAttribute('aria-label')?.startsWith('Rolar '),
+      ),
+    ).toBe(true);
+    expect(rows(el)[0].querySelector('button')?.getAttribute('aria-label')).toBe(
+      'Rolar Procurar pistas na carroça',
+    );
     expect(el.textContent).toContain('O mestre vê cada resultado. Você vê só os seus.');
   });
 
@@ -62,13 +82,19 @@ describe('ScenePlayer', () => {
     const { el } = setup();
     expect(rows(el)[3].querySelector('.sc__name')?.textContent).toBe('Percepção');
     expect(rows(el)[3].querySelector('.sc__check')?.textContent).toBe('Perícia');
-    expect(rows(el)[4].querySelector('.sc__check')?.textContent).toBe('Teste de resistência de Constituição');
+    expect(rows(el)[4].querySelector('.sc__check')?.textContent).toBe(
+      'Teste de resistência de Constituição',
+    );
   });
 
   it('shows the passive value only where the server sent one, in small print', () => {
     const { el } = setup();
     expect(rows(el).map((r) => flat(r.querySelector('.sc__passive')) ?? null)).toEqual([
-      'Investigação passiva 16', null, null, 'Percepção passiva 11', null,
+      'Investigação passiva 16',
+      null,
+      null,
+      'Percepção passiva 11',
+      null,
     ]);
   });
 
@@ -90,7 +116,11 @@ describe('ScenePlayer', () => {
     expect(flat(first.querySelector('.sc__done'))).toContain('Rolada');
     expect(first.querySelector('button')).toBeNull();
     expect(first.querySelector('.sc__bonus')).toBeNull();
-    expect(rows(el).slice(1).every((r) => r.querySelector('button') !== null)).toBe(true);
+    expect(
+      rows(el)
+        .slice(1)
+        .every((r) => r.querySelector('button') !== null),
+    ).toBe(true);
   });
 
   it('has no "Rolar" for a player with no living character (no bonus)', () => {
@@ -101,13 +131,15 @@ describe('ScenePlayer', () => {
     expect(el.querySelector('button')).toBeNull();
   });
 
-  it('opens the roll sheet for the action, with the campaign\'s dice choice', () => {
+  it("opens the roll sheet for the action, with the campaign's dice choice", () => {
     const open = vi.fn(() => ({ afterClosed: () => of(true) }));
     TestBed.overrideProvider(MatDialog, { useValue: { open } });
     const { el } = setup();
     rows(el)[1].querySelector('button')!.click();
     expect(open).toHaveBeenCalledTimes(1);
-    const config = (open.mock.calls[0] as unknown[])[1] as { data: { action: { id: string }; diceMode: number } };
+    const config = (open.mock.calls[0] as unknown[])[1] as {
+      data: { action: { id: string }; diceMode: number };
+    };
     expect(config.data.action.id).toBe('a2');
     expect(config.data.diceMode).toBe(DiceMode.PLAYERS_CHOOSE);
   });
@@ -118,10 +150,13 @@ describe('ScenePlayer', () => {
         passed,
         roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
       });
-    const withActions = (change: (a: ReturnType<typeof playerScene>['actions'][number]) => object) =>
-      playerScene().actions.map((a) => ({ ...a, ...change(a) }));
-    const tags = (el: HTMLElement) => rows(el).map((r) => words(r.querySelector('.mr-tag')) ?? null);
-    const attempts = (el: HTMLElement) => rows(el).map((r) => words(r.querySelector('.sc__attempts')) ?? null);
+    const withActions = (
+      change: (a: ReturnType<typeof playerScene>['actions'][number]) => object,
+    ) => playerScene().actions.map((a) => ({ ...a, ...change(a) }));
+    const tags = (el: HTMLElement) =>
+      rows(el).map((r) => words(r.querySelector('.mr-tag')) ?? null);
+    const attempts = (el: HTMLElement) =>
+      rows(el).map((r) => words(r.querySelector('.sc__attempts')) ?? null);
 
     it('shows the "CD 12" pill only when the master shows the DC, and only on an action that has one', () => {
       const shown = playerScene([], [], {
@@ -135,10 +170,20 @@ describe('ScenePlayer', () => {
     });
 
     it('turns the pill into "Passou · CD 12" with a check, or "Não passou · CD 10" with a cross', () => {
-      const scene = playerScene([roll(true), sceneRoll('r2', 'a5', 'Pensantus', 7, { passed: false })], [], {
-        showDc: true,
-        actions: withActions((a) => (a.id === 'a1' ? { dc: 12, attemptsLeft: 0 } : a.id === 'a5' ? { dc: 10, attemptsLeft: 0 } : {})),
-      });
+      const scene = playerScene(
+        [roll(true), sceneRoll('r2', 'a5', 'Pensantus', 7, { passed: false })],
+        [],
+        {
+          showDc: true,
+          actions: withActions((a) =>
+            a.id === 'a1'
+              ? { dc: 12, attemptsLeft: 0 }
+              : a.id === 'a5'
+                ? { dc: 10, attemptsLeft: 0 }
+                : {},
+          ),
+        },
+      );
       const { el } = setup(scene);
       const [first, , , , last] = rows(el);
       expect(words(first.querySelector('.mr-tag'))).toBe('Passou · CD 12');
@@ -152,7 +197,13 @@ describe('ScenePlayer', () => {
     it('writes the attempts: "1 tentativa", "Restam 2 de 3 tentativas", "Restam N" over the limit, "Sem mais tentativas", and nothing when unlimited', () => {
       const scene = playerScene([roll()], [], {
         actions: withActions((a) =>
-          a.id === 'a1' ? { attemptsLeft: 0 } : a.id === 'a4' ? { attemptsLeft: 2 } : a.id === 'a5' ? { attemptsLeft: 2 } : {},
+          a.id === 'a1'
+            ? { attemptsLeft: 0 }
+            : a.id === 'a4'
+              ? { attemptsLeft: 2 }
+              : a.id === 'a5'
+                ? { attemptsLeft: 2 }
+                : {},
         ),
       });
       const { el } = setup(scene);
@@ -171,16 +222,24 @@ describe('ScenePlayer', () => {
 
     it('keeps "Rolar" on an action with attempts left (and the last result), and drops it at none', () => {
       const scene = playerScene([sceneRoll('r1', 'a4', 'Pensantus', 9)], [], {
-        actions: withActions((a) => (a.id === 'a4' ? { attemptsLeft: 2 } : a.id === 'a1' ? { attemptsLeft: 0 } : {})),
+        actions: withActions((a) =>
+          a.id === 'a4' ? { attemptsLeft: 2 } : a.id === 'a1' ? { attemptsLeft: 0 } : {},
+        ),
       });
       const { el } = setup(scene);
       const perception = rows(el)[3];
       expect(perception.querySelector('.sc__total')?.textContent).toBe('9');
-      expect(perception.querySelector('button')?.getAttribute('aria-label')).toBe('Rolar Percepção');
+      expect(perception.querySelector('button')?.getAttribute('aria-label')).toBe(
+        'Rolar Percepção',
+      );
       expect(perception.querySelector('.sc__done')).toBeNull();
       expect(rows(el)[0].querySelector('button')).toBeNull();
       // Every row keeps the slot or the button at its end: "Rolar" never moves.
-      expect(rows(el).every((r) => r.querySelector('.sc__last')?.lastElementChild?.matches('button, .sc__slot'))).toBe(true);
+      expect(
+        rows(el).every((r) =>
+          r.querySelector('.sc__last')?.lastElementChild?.matches('button, .sc__slot'),
+        ),
+      ).toBe(true);
     });
 
     it('says "Rolada às 21:14" when it was rolled out of attempts and no pill says how it went', () => {

@@ -104,10 +104,14 @@ export class ConditionsDialog {
   protected readonly error = signal('');
   /** The combatant as the combat has it now (the concentration may end meanwhile). */
   protected readonly current = computed(
-    () => this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatant.id) ?? this.data.combatant,
+    () =>
+      this.data.state.encounter()?.combatants.find((c) => c.id === this.data.combatant.id) ??
+      this.data.combatant,
   );
   protected readonly spell = computed(() => this.current().concentrationSpellNamePt);
-  protected readonly changed = computed(() => !sameKeys([...this.chosen()], this.current().conditions));
+  protected readonly changed = computed(
+    () => !sameKeys([...this.chosen()], this.current().conditions),
+  );
   private key = newKey();
 
   protected toggle(key: string): void {
@@ -123,7 +127,10 @@ export class ConditionsDialog {
   private keys(): string[] {
     const chosen = this.chosen();
     const kept = this.current().conditions.filter((k) => chosen.has(k));
-    return [...kept, ...CONDITIONS.map((c) => c.key).filter((k) => chosen.has(k) && !kept.includes(k))];
+    return [
+      ...kept,
+      ...CONDITIONS.map((c) => c.key).filter((k) => chosen.has(k) && !kept.includes(k)),
+    ];
   }
 
   protected save(): Promise<void> {
@@ -134,7 +141,10 @@ export class ConditionsDialog {
     return this.send({ endConcentration: true }, false);
   }
 
-  private async send(change: { keys?: string[]; endConcentration?: boolean }, closes: boolean): Promise<void> {
+  private async send(
+    change: { keys?: string[]; endConcentration?: boolean },
+    closes: boolean,
+  ): Promise<void> {
     if (this.busy()) {
       return;
     }
@@ -143,7 +153,13 @@ export class ConditionsDialog {
     try {
       const key = change.endConcentration ? newKey() : this.key;
       this.data.state.apply(
-        await this.api.setConditions(this.data.campaignId, this.data.encounterId, this.data.combatant.id, change, key),
+        await this.api.setConditions(
+          this.data.campaignId,
+          this.data.encounterId,
+          this.data.combatant.id,
+          change,
+          key,
+        ),
       );
       if (closes) {
         this.sheet.close(true);

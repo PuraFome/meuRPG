@@ -24,7 +24,9 @@ describe('NextTurn', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(sent).toEqual([]);
-    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('Há dano sem aplicar. Passar o turno mesmo assim?');
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Há dano sem aplicar. Passar o turno mesmo assim?',
+    );
     const [back, go] = Array.from(el.querySelectorAll<HTMLButtonElement>('.ask__buttons button'));
     expect(back.textContent?.trim()).toBe('Voltar');
     back.click();

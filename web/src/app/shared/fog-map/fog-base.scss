@@ -37,7 +37,11 @@
   border: 2px dashed var(--mr-control-line);
   // The artboard's faint navy stripes: thin, one way, and nothing like Parede's heavy hatch.
   background:
-    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--mr-map-token-surface) 9%, transparent) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--mr-map-token-surface) 9%, transparent) 0 1px,
+      transparent 1px 9px
+    ),
     var(--mr-map-token-ink);
 }
 

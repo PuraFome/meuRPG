@@ -61,6 +61,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Prettier formats the TypeScript, SCSS and JSON (not the Angular
+      # templates: see web/.prettierignore). `npm run format` fixes it.
+      - name: Formatting (Prettier)
+        run: npm run format:check
+
       # The verdict: the plain run, where the setup file (src/test-setup.ts)
       # resets the stubbed globals and the clock after every test.
       - name: Run unit tests

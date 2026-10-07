@@ -8,14 +8,21 @@ import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
 import { EncountersClient } from '../../../core/encounters/encounters-client';
 import { EncounterWarning } from '../../../../gen/meurpg/play/v1/encounters_pb';
-import { FakeEncountersClient, GOBLIN, artboardEncounter, evaluation, line } from '../../../core/encounters/encounters-testing';
+import {
+  FakeEncountersClient,
+  GOBLIN,
+  artboardEncounter,
+  evaluation,
+  line,
+} from '../../../core/encounters/encounters-testing';
 import { MapState } from '../../../core/maps/map-state';
 import { mapMessage, mapPoint } from '../../../core/maps/maps-testing';
 import { BattleEncounters } from './battle-encounters';
 
 @Component({
   imports: [BattleEncounters],
-  template: '<app-battle-encounters campaignId="camp-1" [state]="state" (started)="started.set($event.name)" />',
+  template:
+    '<app-battle-encounters campaignId="camp-1" [state]="state" (started)="started.set($event.name)" />',
 })
 class Host {
   state = new MapState(async () => {
@@ -33,7 +40,11 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     api = new FakeEncountersClient();
     const art = artboardEncounter();
     api.kept = [{ mapPointId: 'pt-1', creatureCount: 13 }];
-    api.battle.set('pt-1', { encounter: art.encounter, evaluation: art.evaluation, unknownKeys: [] });
+    api.battle.set('pt-1', {
+      encounter: art.encounter,
+      evaluation: art.evaluation,
+      unknownKeys: [],
+    });
     prep(api);
     opened = [];
     result = undefined;
@@ -71,7 +82,7 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     return { el, settle, host: fixture.componentInstance };
   }
 
-  it('shows the point that keeps an encounter, with the band against today\'s party, the label, and the creatures', async () => {
+  it("shows the point that keeps an encounter, with the band against today's party, the label, and the creatures", async () => {
     const { el } = await setup();
     expect(api.list).toHaveBeenCalledWith('camp-1', 'map-1');
     // Only the point that keeps one is read (the other battle point and the scene are not).
@@ -80,7 +91,9 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     expect(flat(el.querySelector('.enc__t'))).toBe('Emboscada na ponte');
     expect(flat(el.querySelector('.enc__pill'))).toBe('Encontro guardado');
     expect(flat(el.querySelector('.enc__band'))).toBe('Moderada · 1.550 de 1.875 XP');
-    expect(flat(el.querySelector('.enc__guide'))).toBe('Guia de dificuldade do SRD 5.2.1 (regras de 2024) · Créditos');
+    expect(flat(el.querySelector('.enc__guide'))).toBe(
+      'Guia de dificuldade do SRD 5.2.1 (regras de 2024) · Créditos',
+    );
     expect(Array.from(el.querySelectorAll('.enc__row')).map((r) => flat(r))).toEqual([
       '1 × Ogro ND 2 450 XP',
       '2 × Bugbear ND 1 400 XP',
@@ -127,7 +140,9 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
       const read = a.battle.get('pt-1')!;
       a.battle.set('pt-1', { ...read, unknownKeys: ['monster:gone'] });
     });
-    expect(flat(el.querySelector('.mr-notice--warning'))).toContain('Uma criatura deste encontro não está mais no SRD.');
+    expect(flat(el.querySelector('.mr-notice--warning'))).toContain(
+      'Uma criatura deste encontro não está mais no SRD.',
+    );
     expect(isOff(el.querySelector<HTMLButtonElement>('.enc__go')!)).toBe(true);
   });
 
@@ -142,11 +157,15 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     });
     const notices = Array.from(el.querySelectorAll('.mr-notice--warning')).map((n) => flat(n));
     expect(notices.some((n) => n?.startsWith('Criaturas demais para um combate.'))).toBe(true);
-    expect(el.querySelector('.mr-notice--warning a')?.getAttribute('href')).toBe('/campaigns/camp-1/encounters?map=map-1&point=pt-1');
+    expect(el.querySelector('.mr-notice--warning a')?.getAttribute('href')).toBe(
+      '/campaigns/camp-1/encounters?map=map-1&point=pt-1',
+    );
   });
 
   it('says in words when the saved encounters cannot be read', async () => {
     const { el } = await setup((a) => a.list.mockRejectedValueOnce(new Error('down')));
-    expect(el.querySelector('[role=alert]')?.textContent).toContain('Não deu para ler o encontro guardado');
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(
+      'Não deu para ler o encontro guardado',
+    );
   });
 });

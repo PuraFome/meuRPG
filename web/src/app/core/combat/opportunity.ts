@@ -33,7 +33,12 @@ export function offersOn(e: Encounter, moverId: string): OpportunityOffer[] {
 /** The offers that hold a player's turn: the server makes the whole turn group of the same
  * player wait (their character and their creatures that act in it), not only the one who moved. */
 export function offersHolding(e: Encounter, ownId: string): OpportunityOffer[] {
-  const group = new Set([ownId, ...e.turnGroupIds.filter((id) => e.combatants.some((c) => c.id === id && (c.mine || c.controlledByMe)))]);
+  const group = new Set([
+    ownId,
+    ...e.turnGroupIds.filter((id) =>
+      e.combatants.some((c) => c.id === id && (c.mine || c.controlledByMe)),
+    ),
+  ]);
   return e.opportunityOffers.filter((o) => group.has(o.moverId));
 }
 
@@ -49,7 +54,10 @@ export function reactorIsMasters(e: Encounter, offer: OpportunityOffer): boolean
 
 /** What the waiting mover reads: the title (a live region) and the line under it.
  * A reactor they do not see is not named: "Esperando o mestre". */
-export function waitingText(e: Encounter, offers: readonly OpportunityOffer[]): { title: string; detail: string } | null {
+export function waitingText(
+  e: Encounter,
+  offers: readonly OpportunityOffer[],
+): { title: string; detail: string } | null {
   if (offers.length === 0) {
     return null;
   }
@@ -57,7 +65,10 @@ export function waitingText(e: Encounter, offers: readonly OpportunityOffer[]): 
   const unseen = offers.length - seen.length;
   const trail = 'Seu movimento já valeu; a sua vez continua quando responderem.';
   if (seen.length === 0) {
-    return { title: 'Esperando o mestre', detail: `Seu movimento já valeu; a sua vez continua quando ele responder.` };
+    return {
+      title: 'Esperando o mestre',
+      detail: `Seu movimento já valeu; a sua vez continua quando ele responder.`,
+    };
   }
   const masters = seen.filter((o) => reactorIsMasters(e, o));
   const players = seen.filter((o) => !reactorIsMasters(e, o));
@@ -102,7 +113,9 @@ export function playerQuestion(offer: OpportunityOffer, reactorIsCharacter = tru
 
 /** What the answer spends: "Gasta a sua reação." or "Gasta a reação do Lobo atroz 1.". */
 export function spendText(offer: OpportunityOffer, reactorIsCharacter = true): string {
-  const cost = reactorIsCharacter ? 'Gasta a sua reação.' : `Gasta a reação ${ofThe([offer.reactorLabel])}.`;
+  const cost = reactorIsCharacter
+    ? 'Gasta a sua reação.'
+    : `Gasta a reação ${ofThe([offer.reactorLabel])}.`;
   // The master offered it by hand (a combat without a map): nobody has a square, so the prompt says who judged the reach.
   if (!offer.byHand) {
     return cost;
@@ -133,7 +146,10 @@ export interface ReactorAttack {
 /** The offer's attacks with their numbers, from the reactor's options (its own
  * `GetTurnOptions`: the player's, or the master's read of an NPC). An attack the
  * options do not list is still offered by name. */
-export function reactorAttacks(offer: OpportunityOffer, attacks: readonly Attack[]): ReactorAttack[] {
+export function reactorAttacks(
+  offer: OpportunityOffer,
+  attacks: readonly Attack[],
+): ReactorAttack[] {
   return offer.attacks.map((a) => {
     const attack = attacks.find((x) => x.key === a.key) ?? null;
     return {

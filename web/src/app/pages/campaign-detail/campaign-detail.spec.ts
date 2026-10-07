@@ -13,7 +13,11 @@ import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { FakePuzzlesClient, lightsPuzzle } from '../../core/puzzles/puzzles-testing';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { create } from '@bufbuild/protobuf';
-import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema, ListXPAwardsResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  CharacterExperienceSchema,
+  GetCampaignExperienceResponseSchema,
+  ListXPAwardsResponseSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import { FakeGalleryClient } from '../../core/images/gallery-testing';
 import { CampaignDetail } from './campaign-detail';
 import {
@@ -109,7 +113,16 @@ describe('CampaignDetail', () => {
     experience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
-        characters: [create(CharacterExperienceSchema, { characterId: 'c1', name: 'Pensantus', level: 3, experiencePoints: 2716, nextLevelXp: 2700, canLevelUp: true })],
+        characters: [
+          create(CharacterExperienceSchema, {
+            characterId: 'c1',
+            name: 'Pensantus',
+            level: 3,
+            experiencePoints: 2716,
+            nextLevelXp: 2700,
+            canLevelUp: true,
+          }),
+        ],
       }),
     );
     listAwards.mockReset().mockResolvedValue(create(ListXPAwardsResponseSchema, {}));
@@ -237,15 +250,21 @@ describe('CampaignDetail', () => {
 
   it('shows the "Bestiário" panel only for the master (MR-042: the SRD is public, the app shows the bestiary to the master)', async () => {
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
-    const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Abrir o bestiário'));
+    const link = Array.from(master.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Abrir o bestiário'),
+    );
     expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary');
 
     TestBed.resetTestingModule();
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
     expect(player.textContent).not.toContain('Bestiário');
@@ -254,15 +273,21 @@ describe('CampaignDetail', () => {
 
   it('shows the "Encontros" panel only for the master (MR-043: the builder and what it keeps are his secret, RN-10)', async () => {
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
-    const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Montar um encontro'));
+    const link = Array.from(master.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Montar um encontro'),
+    );
     expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/encounters');
 
     TestBed.resetTestingModule();
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
     expect(player.textContent).not.toContain('Encontros');
@@ -272,7 +297,9 @@ describe('CampaignDetail', () => {
   it('shows the "Quebra-cabeças" panel only for the master (MR-038: the answers live there)', async () => {
     configure();
     puzzles.listResult = [lightsPuzzle('a', 'O selo da Capela')];
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     expect(master.textContent).toContain('O selo da Capela');
@@ -280,7 +307,9 @@ describe('CampaignDetail', () => {
 
     TestBed.resetTestingModule();
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
     expect(player.textContent).not.toContain('Quebra-cabeças');
@@ -308,24 +337,41 @@ describe('CampaignDetail', () => {
 
   it('gives everyone the "Regras da mesa" panel: the master opens them, a player reads them (MR-025)', async () => {
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.MASTER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     expect(master.textContent).toContain('Regras da mesa');
-    expect(Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) => a.textContent?.trim())).toContain('Abrir as regras');
+    expect(
+      Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) =>
+        a.textContent?.trim(),
+      ),
+    ).toContain('Abrir as regras');
 
     TestBed.resetTestingModule();
     configure();
-    fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
-    expect(Array.from(player.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) => a.textContent?.trim())).toContain('Ler as regras');
+    expect(
+      Array.from(player.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) =>
+        a.textContent?.trim(),
+      ),
+    ).toContain('Ler as regras');
   });
 
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {
     configure();
     fake.getCampaignResult = Promise.resolve({
-      campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
+      campaign: {
+        ...campaign('camp-1', 'Mirathel', Role.PLAYER),
+        awaitingApproval: true,
+        diceMode: 1,
+        dicePreference: 1,
+      },
     });
     const listMembers = vi.spyOn(fake, 'listMembers');
 
@@ -369,28 +415,52 @@ describe('CampaignDetail', () => {
       await flush();
       const column = el.querySelector('.campaign-layout__column')!;
       const order = Array.from(column.children).map((c) => c.tagName.toLowerCase());
-      expect(order.indexOf('app-experience-panel')).toBe(order.indexOf('app-game-session-card') + 1);
-      expect(Array.from(el.querySelectorAll('app-experience-panel button')).some((b) => b.textContent?.trim() === 'Dar XP')).toBe(true);
+      expect(order.indexOf('app-experience-panel')).toBe(
+        order.indexOf('app-game-session-card') + 1,
+      );
+      expect(
+        Array.from(el.querySelectorAll('app-experience-panel button')).some(
+          (b) => b.textContent?.trim() === 'Dar XP',
+        ),
+      ).toBe(true);
     });
 
     it('tags who can level up in the group list too (RN-12)', async () => {
       asRole(Role.MASTER);
-      const source = TestBed.inject(CampaignCharactersSource) as unknown as FakeCampaignCharactersSource;
+      const source = TestBed.inject(
+        CampaignCharactersSource,
+      ) as unknown as FakeCampaignCharactersSource;
       source.listCharactersResult = Promise.resolve({
-        playerCharacters: [{ id: 'c1', name: 'Pensantus', kind: 'player', state: 'locked', classSummary: 'Mago 3', playerDisplayName: 'Vinicius' }],
+        playerCharacters: [
+          {
+            id: 'c1',
+            name: 'Pensantus',
+            kind: 'player',
+            state: 'locked',
+            classSummary: 'Mago 3',
+            playerDisplayName: 'Vinicius',
+          },
+        ],
         npcs: [],
         hasLivingCharacter: true,
       });
       const el = await render();
       await flush();
       const fixtureEl = el.querySelector('app-campaign-characters')!;
-      expect(fixtureEl.querySelector('app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+      expect(fixtureEl.querySelector('app-level-up-tag')?.textContent).toContain(
+        'Pode subir de nível',
+      );
     });
 
     it('does not ask a pending member for the XP, which the server would refuse', async () => {
       configure();
       fake.getCampaignResult = Promise.resolve({
-        campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
+        campaign: {
+          ...campaign('camp-1', 'Mirathel', Role.PLAYER),
+          awaitingApproval: true,
+          diceMode: 1,
+          dicePreference: 1,
+        },
       });
       await render();
       expect(experience).not.toHaveBeenCalled();

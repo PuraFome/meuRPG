@@ -68,21 +68,33 @@ export class LightPointPanel {
 
   protected readonly presets = signal<readonly LightOption[]>([]);
   protected readonly presetsFailed = signal(false);
-  protected readonly draft = signal<LightDraft>({ name: '', description: '', presetKey: CUSTOM_KEY, brightM: '', dimM: '' });
+  protected readonly draft = signal<LightDraft>({
+    name: '',
+    description: '',
+    presetKey: CUSTOM_KEY,
+    brightM: '',
+    dimM: '',
+  });
   protected readonly show = signal(false);
   protected readonly custom = computed(() => this.draft().presetKey === CUSTOM_KEY);
   protected readonly errors = computed(() => lightErrors(this.draft()));
   protected readonly shown = computed(() => (this.show() ? this.errors() : {}));
-  protected readonly dirty = computed(() => isLightDirty(this.draft(), this.point(), this.presets()));
+  protected readonly dirty = computed(() =>
+    isLightDirty(this.draft(), this.point(), this.presets()),
+  );
   protected readonly squares = computed(() => lightSquares(this.draft()));
   protected readonly reachLine = computed(() => {
     const s = this.squares();
     return s
-      ? tight(`Raios: ${s.bright} ${s.bright === 1 ? 'quadrado' : 'quadrados'} de luz clara e mais ${s.dim} de penumbra, até ${s.bright + s.dim} ${s.bright + s.dim === 1 ? 'quadrado' : 'quadrados'} no total.`)
+      ? tight(
+          `Raios: ${s.bright} ${s.bright === 1 ? 'quadrado' : 'quadrados'} de luz clara e mais ${s.dim} de penumbra, até ${s.bright + s.dim} ${s.bright + s.dim === 1 ? 'quadrado' : 'quadrados'} no total.`,
+        )
       : '';
   });
   protected readonly metresLine = computed(() =>
-    this.reachLine() ? `Em metros, contados do centro do quadrado, em múltiplos de 1,5 m (um quadrado). ${this.reachLine()}` : '',
+    this.reachLine()
+      ? `Em metros, contados do centro do quadrado, em múltiplos de 1,5 m (um quadrado). ${this.reachLine()}`
+      : '',
   );
 
   private readonly nameField = viewChild('nameField', { read: ElementRef<HTMLInputElement> });
@@ -102,7 +114,12 @@ export class LightPointPanel {
             // it). A name or a description typed meanwhile stay.
             if (!this.editedLight) {
               const fromPoint = lightDraftOf(this.point(), list);
-              this.draft.update((d) => ({ ...d, presetKey: fromPoint.presetKey, brightM: fromPoint.brightM, dimM: fromPoint.dimM }));
+              this.draft.update((d) => ({
+                ...d,
+                presetKey: fromPoint.presetKey,
+                brightM: fromPoint.brightM,
+                dimM: fromPoint.dimM,
+              }));
             }
           },
           () => this.presetsFailed.set(true),
@@ -116,7 +133,9 @@ export class LightPointPanel {
           this.currentId = point.id;
           this.reset();
           if (this.focusName()) {
-            afterNextRender(() => this.nameField()?.nativeElement.focus(), { injector: this.injector });
+            afterNextRender(() => this.nameField()?.nativeElement.focus(), {
+              injector: this.injector,
+            });
           }
         }
       });
@@ -125,7 +144,9 @@ export class LightPointPanel {
     effect(() => {
       const ft = lightFt(this.draft());
       const p = this.point();
-      this.reachChange.emit(ft ? { xBp: p.xBp, yBp: p.yBp, brightFt: ft.brightFt, dimFt: ft.dimFt } : null);
+      this.reachChange.emit(
+        ft ? { xBp: p.xBp, yBp: p.yBp, brightFt: ft.brightFt, dimFt: ft.dimFt } : null,
+      );
     });
   }
 
@@ -172,7 +193,9 @@ export class LightPointPanel {
     }
     event.preventDefault();
     const step = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1;
-    const buttons = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'));
+    const buttons = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
     const here = buttons.findIndex((b) => b === document.activeElement);
     const next = buttons[(Math.max(0, here) + step + buttons.length) % buttons.length];
     next?.focus();

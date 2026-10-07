@@ -130,7 +130,9 @@ export class MapState {
   upsertToken(token: MapToken): void {
     const key = tokenKey(token);
     this.tokens.update((list) =>
-      list.some((t) => tokenKey(t) === key) ? list.map((t) => (tokenKey(t) === key ? token : t)) : [...list, token],
+      list.some((t) => tokenKey(t) === key)
+        ? list.map((t) => (tokenKey(t) === key ? token : t))
+        : [...list, token],
     );
   }
 
@@ -151,6 +153,9 @@ export class MapState {
 }
 
 /** What tells one token from another on a map: a creature's ID, or the character's (a creature's `character_id` is its owner's). */
-export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
+export function tokenKey(token: {
+  readonly characterId: string;
+  readonly creatureId?: string;
+}): string {
   return token.creatureId || token.characterId;
 }

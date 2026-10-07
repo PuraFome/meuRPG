@@ -87,7 +87,9 @@ export class FogMasterPanel {
   readonly noteChange = output<string>();
   readonly gone = output<void>();
 
-  protected readonly counts = new ViewAsCounts((mapId, characterId) => this.api.vision(this.campaignId(), mapId, characterId));
+  protected readonly counts = new ViewAsCounts((mapId, characterId) =>
+    this.api.vision(this.campaignId(), mapId, characterId),
+  );
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));

@@ -1,12 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasTreasureErrors, isTreasureDirty, parsePo, treasureChangesOf, treasureDraftOf, treasureErrors } from './treasure-draft';
+import {
+  hasTreasureErrors,
+  isTreasureDirty,
+  parsePo,
+  treasureChangesOf,
+  treasureDraftOf,
+  treasureErrors,
+} from './treasure-draft';
 
-const point = { name: 'Baú de moedas', description: '250 PO e uma adaga de prata.', treasureValuePo: 250 };
+const point = {
+  name: 'Baú de moedas',
+  description: '250 PO e uma adaga de prata.',
+  treasureValuePo: 250,
+};
 
 describe('the Tesouro form', () => {
   it('shows the saved value as a number of PO', () => {
-    expect(treasureDraftOf(point)).toEqual({ name: 'Baú de moedas', description: '250 PO e uma adaga de prata.', valuePo: '250' });
+    expect(treasureDraftOf(point)).toEqual({
+      name: 'Baú de moedas',
+      description: '250 PO e uma adaga de prata.',
+      valuePo: '250',
+    });
   });
 
   it('reads whole PO, with or without the thousands dot, 0 to 1.000.000', () => {
@@ -32,6 +47,9 @@ describe('the Tesouro form', () => {
     expect(isTreasureDirty(d, point)).toBe(true);
     expect(treasureChangesOf(d, point)).toEqual({ treasureValuePo: 300 });
     expect(treasureChangesOf(treasureDraftOf(point), point)).toBeNull();
-    expect(treasureChangesOf({ ...d, name: ' Baú ' }, point)).toEqual({ name: 'Baú', treasureValuePo: 300 });
+    expect(treasureChangesOf({ ...d, name: ' Baú ' }, point)).toEqual({
+      name: 'Baú',
+      treasureValuePo: 300,
+    });
   });
 });

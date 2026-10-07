@@ -2,7 +2,11 @@ import { computed, signal } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { GalleryImage } from '../../../gen/meurpg/maps/v1/gallery_pb';
-import { type ImageGeneration, ImageGenerationState, type ImageGenerationStatus } from '../../../gen/meurpg/maps/v1/imagegen_pb';
+import {
+  type ImageGeneration,
+  ImageGenerationState,
+  type ImageGenerationStatus,
+} from '../../../gen/meurpg/maps/v1/imagegen_pb';
 import type { ImageGenClient, Started } from './imagegen-client';
 import { failureText } from './imagegen-errors';
 
@@ -57,8 +61,12 @@ export class ImageRun {
   readonly note = signal<string | null>(null);
   /** Whole seconds since the request went out. */
   readonly seconds = signal(0);
-  readonly slow = computed(() => this.phase() === 'waiting' && this.seconds() >= SLOW_AFTER_SECONDS);
-  readonly running = computed(() => this.phase() === 'sending' || this.phase() === 'waiting' || this.phase() === 'canceling');
+  readonly slow = computed(
+    () => this.phase() === 'waiting' && this.seconds() >= SLOW_AFTER_SECONDS,
+  );
+  readonly running = computed(
+    () => this.phase() === 'sending' || this.phase() === 'waiting' || this.phase() === 'canceling',
+  );
 
   private readonly abort = new AbortController();
   private cancelWanted = false;
@@ -69,7 +77,8 @@ export class ImageRun {
     private readonly api: ImageGenClient,
     private readonly campaignId: string,
     private readonly begin: (signal: AbortSignal) => Promise<Started>,
-    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+    private readonly sleep: (ms: number) => Promise<void> = (ms) =>
+      new Promise((r) => setTimeout(r, ms)),
   ) {}
 
   /**
@@ -97,7 +106,9 @@ export class ImageRun {
       if (this.phase() === 'sending' || this.phase() === 'canceling') {
         throw err;
       }
-      this.fail('Perdemos a conexão com o servidor. O pedido continua lá: se a imagem chegar, ela aparece na galeria.');
+      this.fail(
+        'Perdemos a conexão com o servidor. O pedido continua lá: se a imagem chegar, ela aparece na galeria.',
+      );
     } finally {
       this.stopClock();
     }
@@ -165,7 +176,9 @@ export class ImageRun {
       if (ConnectError.from(err).code === Code.NotFound) {
         this.fail('Esse pedido não existe mais.');
       } else {
-        this.fail('Não deu para cancelar: perdemos a conexão com o servidor. Veja a galeria daqui a pouco para saber se a imagem chegou.');
+        this.fail(
+          'Não deu para cancelar: perdemos a conexão com o servidor. Veja a galeria daqui a pouco para saber se a imagem chegou.',
+        );
       }
     }
   }
@@ -176,7 +189,12 @@ export class ImageRun {
     let current = first;
     while (!this.destroyed && this.phase() === 'waiting') {
       try {
-        const res = await this.api.poll(this.campaignId, current.id, POLL_SECONDS, this.abort.signal);
+        const res = await this.api.poll(
+          this.campaignId,
+          current.id,
+          POLL_SECONDS,
+          this.abort.signal,
+        );
         failures = 0;
         this.status.set(res.status ?? this.status());
         if (res.generation) {
@@ -196,7 +214,9 @@ export class ImageRun {
           return;
         }
         if (++failures >= POLL_RETRIES) {
-          this.fail('Perdemos a conexão com o servidor. O pedido continua lá: se a imagem chegar, ela aparece na galeria.');
+          this.fail(
+            'Perdemos a conexão com o servidor. O pedido continua lá: se a imagem chegar, ela aparece na galeria.',
+          );
           return;
         }
         await this.sleep(2000);
@@ -205,11 +225,15 @@ export class ImageRun {
   }
 
   /** The request ended: a picture, or the words for what went wrong. */
-  private async settle(generation: ImageGeneration, image: GalleryImage | null = null): Promise<void> {
+  private async settle(
+    generation: ImageGeneration,
+    image: GalleryImage | null = null,
+  ): Promise<void> {
     this.stopClock();
     switch (generation.state) {
       case ImageGenerationState.DONE: {
-        const picture = image ?? (await this.api.poll(this.campaignId, generation.id, 0)).image ?? null;
+        const picture =
+          image ?? (await this.api.poll(this.campaignId, generation.id, 0)).image ?? null;
         if (!picture) {
           this.fail('A imagem foi feita, mas não deu para abri-la. Procure por ela na galeria.');
           return;

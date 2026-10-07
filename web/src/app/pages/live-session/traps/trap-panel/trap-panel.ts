@@ -1,5 +1,14 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -59,7 +68,9 @@ export class TrapPanel {
 
   protected readonly mapId = computed(() => this.state().map()?.id ?? '');
   protected readonly traps = computed(() => trapPoints(this.state().points()));
-  protected readonly armedCount = computed(() => this.traps().filter((p) => (p.trap?.state ?? TrapState.ARMED) === TrapState.ARMED).length);
+  protected readonly armedCount = computed(
+    () => this.traps().filter((p) => (p.trap?.state ?? TrapState.ARMED) === TrapState.ARMED).length,
+  );
   protected readonly openId = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -81,7 +92,8 @@ export class TrapPanel {
       const traps = this.traps();
       const open = untracked(() => this.openId());
       if (open === null || !traps.some((p) => p.id === open)) {
-        const first = traps.find((p) => (p.trap?.state ?? TrapState.ARMED) === TrapState.ARMED) ?? traps[0];
+        const first =
+          traps.find((p) => (p.trap?.state ?? TrapState.ARMED) === TrapState.ARMED) ?? traps[0];
         untracked(() => this.openId.set(first?.id ?? null));
       }
     });
@@ -142,7 +154,11 @@ export class TrapPanel {
   private targetsFor(p: MapPoint): readonly PickRow[] | null {
     const e = this.encounter();
     if (e) {
-      return e.combatants.map((c) => ({ id: c.id, name: c.label, sub: isPlayer(c) ? 'Personagem' : 'NPC' }));
+      return e.combatants.map((c) => ({
+        id: c.id,
+        name: c.label,
+        sub: isPlayer(c) ? 'Personagem' : 'NPC',
+      }));
     }
     const read = this.board().noticers().get(p.id);
     if (!read) {
@@ -150,7 +166,11 @@ export class TrapPanel {
     }
     return read.noticers
       .filter((n) => n.onMap)
-      .map((n) => ({ id: n.characterId, name: n.characterName, sub: n.inRange ? 'Perto da armadilha, até 3 m' : 'Longe da armadilha' }));
+      .map((n) => ({
+        id: n.characterId,
+        name: n.characterName,
+        sub: n.inRange ? 'Perto da armadilha, até 3 m' : 'Longe da armadilha',
+      }));
   }
 
   protected fire(p: MapPoint, extend = false): void {
@@ -165,7 +185,9 @@ export class TrapPanel {
       point: p,
       targets: computed(() => this.targetsFor(p)),
       extendFiringId: firing?.id ?? '',
-      targetsFailed: computed(() => this.encounter() === null && this.board().noticersFailed().has(p.id)),
+      targetsFailed: computed(
+        () => this.encounter() === null && this.board().noticersFailed().has(p.id),
+      ),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((done) => {

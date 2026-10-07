@@ -95,7 +95,12 @@ export class MapNew {
     try {
       // A retry of the same form (a lost answer, a second tap) sends the same key and makes one map.
       const name = this.nameControl.value.trim();
-      const map = await this.api.create(this.campaignId(), name, imageId, this.createKey.keyFor([name, imageId]));
+      const map = await this.api.create(
+        this.campaignId(),
+        name,
+        imageId,
+        this.createKey.keyFor([name, imageId]),
+      );
       this.createKey.renew();
       await this.router.navigate(['/campaigns', this.campaignId(), 'maps', map.id]);
     } catch (err) {

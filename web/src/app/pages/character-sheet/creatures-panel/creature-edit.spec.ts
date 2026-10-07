@@ -2,7 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, creature, flat, isOff } from '../../../core/creatures/creatures-testing';
+import {
+  FakeCreaturesClient,
+  creature,
+  flat,
+  isOff,
+} from '../../../core/creatures/creatures-testing';
 import { CreatureEdit, type EditMode } from './creature-edit';
 
 describe('CreatureEdit: the questions a card asks in place', () => {
@@ -14,7 +19,10 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     Element.prototype.scrollIntoView = vi.fn();
     const fixture = TestBed.createComponent(CreatureEdit);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('creature', creature('cr-1', 'Nanquim', { hitPointsCurrent: 1, hitPointsMax: 1 }));
+    fixture.componentRef.setInput(
+      'creature',
+      creature('cr-1', 'Nanquim', { hitPointsCurrent: 1, hitPointsMax: 1 }),
+    );
     fixture.componentRef.setInput('mode', mode);
     fixture.componentRef.setInput('ownerView', over.ownerView ?? true);
     fixture.componentRef.setInput('ownerName', 'Pensantus');
@@ -33,7 +41,10 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     fixture.detectChanges();
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.includes(name))!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        flat(b)?.includes(name),
+      )!;
     return { fixture, el, flat, button, closed, settle };
   }
 
@@ -41,7 +52,9 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     const { el, flat, button } = await setup('dismiss');
     const ask = el.querySelector('[role=alertdialog]')!;
     expect(flat(ask.querySelector('.ask__t'))).toBe('Dispensar Nanquim?');
-    expect(flat(ask.querySelector('.ask__d'))).toContain('Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).');
+    expect(flat(ask.querySelector('.ask__d'))).toContain(
+      'Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).',
+    );
     expect(document.activeElement).toBe(button('Voltar'));
     expect(api.dismiss).not.toHaveBeenCalled();
   });
@@ -62,7 +75,9 @@ describe('CreatureEdit: the questions a card asks in place', () => {
 
   it("the master's dismissal says whose sheet it leaves", async () => {
     const { flat, el } = await setup('dismiss', { ownerView: false });
-    expect(flat(el.querySelector('.ask__d'))).toContain('Nanquim some da ficha de Pensantus e do mapa.');
+    expect(flat(el.querySelector('.ask__d'))).toContain(
+      'Nanquim some da ficha de Pensantus e do mapa.',
+    );
   });
 
   it('rename: the field starts with the name, counts "7 de 40" and saves only a changed, non-blank name', async () => {

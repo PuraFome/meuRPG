@@ -87,7 +87,9 @@ export class EditorStepper extends CdkStepper {
   constructor() {
     super();
     // Every way of opening a step (a tab, "Próximo", a refused save) ends in `selectionChange`.
-    this.selectionChange.subscribe((e) => this.visited.update((v) => (v.has(e.selectedIndex) ? v : new Set([...v, e.selectedIndex]))));
+    this.selectionChange.subscribe((e) =>
+      this.visited.update((v) => (v.has(e.selectedIndex) ? v : new Set([...v, e.selectedIndex]))),
+    );
   }
 
   /** Whether step `index` has its content: it was opened at least once, or it is eager. */

@@ -30,7 +30,14 @@ export const NO_GAP_TEXT = 'Aqui não dá: uma porta precisa de chão dos dois l
  *
  * Pure: it reads the layers and says what to write; `EditorPainting` writes it.
  */
-export function planDoor(read: LayerReader, columns: number, rows: number, col: number, row: number, kind: DoorKind | 0): DoorPlan {
+export function planDoor(
+  read: LayerReader,
+  columns: number,
+  rows: number,
+  col: number,
+  row: number,
+  kind: DoorKind | 0,
+): DoorPlan {
   if (col < 0 || row < 0 || col >= columns || row >= rows) {
     return { ok: false };
   }
@@ -38,13 +45,29 @@ export function planDoor(read: LayerReader, columns: number, rows: number, col: 
   const wall = read(MapLayer.WALL, col, row) === 1;
   if (kind === 0) {
     // The wall first, then the door goes: the square is never a gap in between.
-    return { ok: true, kind, writes: door === 0 ? [] : [...(wall ? [] : [{ layer: MapLayer.WALL, value: 1 }]), { layer: MapLayer.DOORS, value: 0 }] };
+    return {
+      ok: true,
+      kind,
+      writes:
+        door === 0
+          ? []
+          : [
+              ...(wall ? [] : [{ layer: MapLayer.WALL, value: 1 }]),
+              { layer: MapLayer.DOORS, value: 0 },
+            ],
+    };
   }
   if (door !== 0) {
-    return { ok: true, kind, writes: door === kind ? [] : [{ layer: MapLayer.DOORS, value: kind }] };
+    return {
+      ok: true,
+      kind,
+      writes: door === kind ? [] : [{ layer: MapLayer.DOORS, value: kind }],
+    };
   }
-  const open = (c: number, r: number) => c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 0;
-  const closed = (c: number, r: number) => c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 1;
+  const open = (c: number, r: number) =>
+    c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 0;
+  const closed = (c: number, r: number) =>
+    c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 1;
   if (wall) {
     if ((open(col - 1, row) && open(col + 1, row)) || (open(col, row - 1) && open(col, row + 1))) {
       return {
@@ -61,7 +84,10 @@ export function planDoor(read: LayerReader, columns: number, rows: number, col: 
     }
     return { ok: false };
   }
-  if ((closed(col - 1, row) && closed(col + 1, row)) || (closed(col, row - 1) && closed(col, row + 1))) {
+  if (
+    (closed(col - 1, row) && closed(col + 1, row)) ||
+    (closed(col, row - 1) && closed(col, row + 1))
+  ) {
     return { ok: true, kind, writes: [{ layer: MapLayer.DOORS, value: kind }] };
   }
   return { ok: false };

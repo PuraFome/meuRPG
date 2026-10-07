@@ -30,7 +30,13 @@ describe('ActionRow', () => {
   });
 
   it('keeps a disabled option in place and in the keyboard order, with the reason wired to the button', () => {
-    const { el, pressed } = setup({ name: 'Teia', tags: ['2º nível'], button: 'Conjurar', off: true, reason: 'Sem espaço de 2º nível ou maior' });
+    const { el, pressed } = setup({
+      name: 'Teia',
+      tags: ['2º nível'],
+      button: 'Conjurar',
+      off: true,
+      reason: 'Sem espaço de 2º nível ou maior',
+    });
     const button = el.querySelector('button')!;
     expect(button.disabled).toBe(false); // `disabledInteractive`: still a focus stop
     expect(button.getAttribute('aria-disabled')).toBe('true');
@@ -42,11 +48,19 @@ describe('ActionRow', () => {
   });
 
   it('puts the tags on a line of their own and the "?" between the text and the button', () => {
-    const { el } = setup({ name: 'Escudo Arcano', tags: ['1º nível', 'Reação'], helpName: 'Escudo Arcano' });
-    const tags = [...el.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
+    const { el } = setup({
+      name: 'Escudo Arcano',
+      tags: ['1º nível', 'Reação'],
+      helpName: 'Escudo Arcano',
+    });
+    const tags = [...el.querySelectorAll('.row__tags .row__pill')].map((t) =>
+      t.textContent!.trim(),
+    );
     expect(tags).toEqual(['1º nível', 'Reação']);
     expect(el.querySelector('.row__name .row__pill')).toBeNull();
-    expect(el.querySelector('app-spell-help button')!.getAttribute('aria-label')).toBe('Detalhes de Escudo Arcano');
+    expect(el.querySelector('app-spell-help button')!.getAttribute('aria-label')).toBe(
+      'Detalhes de Escudo Arcano',
+    );
   });
 
   it('opens the details from the "?" even when the row is off', () => {
@@ -58,7 +72,9 @@ describe('ActionRow', () => {
     const helped: number[] = [];
     fixture.componentInstance.help.subscribe(() => helped.push(1));
     fixture.detectChanges();
-    const help = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('app-spell-help button')!;
+    const help = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'app-spell-help button',
+    )!;
     expect(help.disabled).toBe(false);
     expect(help.getAttribute('aria-disabled')).toBeNull();
     help.click();
@@ -66,7 +82,10 @@ describe('ActionRow', () => {
   });
 
   it('has no button for a row that waits for something else (Escudo)', () => {
-    const { el } = setup({ name: 'Escudo', detail: 'Quando você for atingido, o app pergunta se quer usar.' });
+    const { el } = setup({
+      name: 'Escudo',
+      detail: 'Quando você for atingido, o app pergunta se quer usar.',
+    });
     expect(el.querySelector('button')).toBeNull();
   });
 });

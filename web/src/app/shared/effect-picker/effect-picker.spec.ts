@@ -9,7 +9,10 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
   let fixture: ComponentFixture<EffectPicker>;
   let el: HTMLElement;
 
-  function setup(effect: EffectDraft, over: { issues?: Record<string, string[]>; allowTextOnly?: boolean } = {}) {
+  function setup(
+    effect: EffectDraft,
+    over: { issues?: Record<string, string[]>; allowTextOnly?: boolean } = {},
+  ) {
     emitted.length = 0;
     TestBed.resetTestingModule();
     fixture = TestBed.createComponent(EffectPicker);
@@ -24,7 +27,8 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
   }
 
   const text = (e: Element) => (e.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const field = (path: string) => el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
+  const field = (path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
   const change = (select: HTMLSelectElement, label: string) => {
     select.selectedIndex = Array.from(select.options).findIndex((o) => o.text.trim() === label);
     select.dispatchEvent(new Event('change'));
@@ -33,10 +37,19 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
   it('lists the menu\'s types with "Só texto" first only where a feature may have none, and says what the type is for', () => {
     setup(emptyEffect('proficiency'), { allowTextOnly: true });
     const type = field('type') as HTMLSelectElement;
-    expect(Array.from(type.options).map((o) => o.text.trim())).toEqual(['Só texto', 'Modificador', 'Proficiência', 'Sentido', 'Escolha', 'Nota e magia concedida']);
+    expect(Array.from(type.options).map((o) => o.text.trim())).toEqual([
+      'Só texto',
+      'Modificador',
+      'Proficiência',
+      'Sentido',
+      'Escolha',
+      'Nota e magia concedida',
+    ]);
     expect(text(el)).toContain('Dá proficiência.');
     setup(emptyEffect('proficiency'));
-    expect(Array.from((field('type') as HTMLSelectElement).options).map((o) => o.text.trim())).not.toContain('Só texto');
+    expect(
+      Array.from((field('type') as HTMLSelectElement).options).map((o) => o.text.trim()),
+    ).not.toContain('Só texto');
   });
 
   it('draws the fields the menu says the type reads: the required one open, the optional ones folded under "Mais opções"', async () => {
@@ -45,7 +58,11 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(field('level')).toBeNull();
     expect(field('when')).toBeNull();
     expect(text(el)).toContain('Mais opções');
-    (Array.from(el.querySelectorAll('button')).find((b) => text(b).includes('Mais opções')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        text(b).includes('Mais opções'),
+      ) as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
     expect(field('level')).not.toBeNull();
     expect(field('when')).not.toBeNull();
@@ -56,7 +73,11 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     setup({ ...emptyEffect('proficiency'), proficiency: 'skill:perception', when: 'level() >= 5' });
     expect(field('when')).not.toBeNull();
     expect(field('level')).toBeNull();
-    setup(emptyEffect('proficiency'), { issues: { 'table_race.traits[0].effects[0].level': ['Este valor não serve para este efeito.'] } });
+    setup(emptyEffect('proficiency'), {
+      issues: {
+        'table_race.traits[0].effects[0].level': ['Este valor não serve para este efeito.'],
+      },
+    });
     expect(field('level')).not.toBeNull();
     expect(text(el)).toContain('Este valor não serve para este efeito.');
     expect(field('level')!.getAttribute('aria-invalid')).toBe('true');
@@ -65,7 +86,11 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
   it('takes the formula functions and the tag prefixes from the menu, not from the browser', () => {
     setup({ ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add', tags: '' });
     expect(text(el)).toContain('Funções: mod("<habilidade>"), prof().');
-    (Array.from(el.querySelectorAll('button')).find((b) => text(b).includes('Mais opções')) as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        text(b).includes('Mais opções'),
+      ) as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
     expect(text(el)).toContain('começando por against:… ou about:….');
   });
@@ -93,7 +118,7 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(emitted.at(-1)).toMatchObject({ choice: 'feature', from: [] });
   });
 
-  it('asks a sense\'s range in metres and keeps feet underneath', () => {
+  it("asks a sense's range in metres and keeps feet underneath", () => {
     setup({ ...emptyEffect('sense'), sense: 'darkvision', rangeFt: 60 });
     const range = field('range_ft') as HTMLInputElement;
     expect(range.value).toBe('18');
@@ -105,7 +130,10 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
   it('puts the hint beside its field, and the refusal under it', () => {
     setup({ ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add' });
     expect(el.querySelector('.frow__hint')).not.toBeNull();
-    setup({ ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add' }, { issues: { 'table_race.traits[0].effects[0].value': ['Esta fórmula não funciona.'] } });
+    setup(
+      { ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add' },
+      { issues: { 'table_race.traits[0].effects[0].value': ['Esta fórmula não funciona.'] } },
+    );
     const row = field('value')!.closest('.frow')!;
     expect(text(row)).toContain('Esta fórmula não funciona.');
     expect(row.querySelector('.frow__hint')).toBeNull();

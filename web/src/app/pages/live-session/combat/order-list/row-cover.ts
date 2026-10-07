@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import type { CoverDegree } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -84,6 +93,9 @@ export class RowCover {
   /** "Fechar": the focus goes back to "Marcar cobertura", where the person was. */
   protected closeMark(): void {
     this.close.emit();
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLButtonElement>('.action')?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLButtonElement>('.action')?.focus(),
+      { injector: this.injector },
+    );
   }
 }

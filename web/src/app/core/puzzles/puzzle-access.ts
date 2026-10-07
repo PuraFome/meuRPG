@@ -28,13 +28,18 @@ export class PuzzleAccessCheck {
       if (!campaign) {
         return { status: 'not-found' };
       }
-      return campaign.myRole === Role.MASTER && !campaign.awaitingApproval ? { status: 'master', campaignName: campaign.name } : { status: 'forbidden' };
+      return campaign.myRole === Role.MASTER && !campaign.awaitingApproval
+        ? { status: 'master', campaignName: campaign.name }
+        : { status: 'forbidden' };
     } catch (err) {
       return ConnectError.from(err, Code.Unavailable).code === Code.NotFound
         ? { status: 'not-found' }
         : {
             status: 'error',
-            message: describeConnectError(err, { [Code.Unavailable]: 'Não deu para abrir a campanha: o servidor não respondeu. Tente de novo.' }),
+            message: describeConnectError(err, {
+              [Code.Unavailable]:
+                'Não deu para abrir a campanha: o servidor não respondeu. Tente de novo.',
+            }),
           };
     }
   }

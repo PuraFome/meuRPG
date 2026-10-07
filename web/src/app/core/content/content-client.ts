@@ -51,7 +51,12 @@ export class TableContentClient {
     return res.entry as TableEntry;
   }
 
-  async update(campaignId: string, key: string, expectedRevision: number, body: EntryBody): Promise<UpdateTableEntryResponse> {
+  async update(
+    campaignId: string,
+    key: string,
+    expectedRevision: number,
+    body: EntryBody,
+  ): Promise<UpdateTableEntryResponse> {
     return this.client.updateTableEntry({ campaignId, key, expectedRevision, body });
   }
 
@@ -80,13 +85,18 @@ export class TableContentClient {
   }
 
   /** "Opções para os jogadores" (MR-025, RN-23): every class, subclass, race, subrace, background and spell with its switch (master only). */
-  async switches(campaignId: string): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }> {
+  async switches(
+    campaignId: string,
+  ): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }> {
     const res = await this.client.listOptionSwitches({ campaignId });
     return { options: res.options, tableRevision: res.tableRevision };
   }
 
   /** Turns options off or on for the players, at once; the answer lists the options whose state changed. */
-  setSwitches(campaignId: string, switches: readonly { key: string; off: boolean }[]): Promise<SetOptionSwitchesResponse> {
+  setSwitches(
+    campaignId: string,
+    switches: readonly { key: string; off: boolean }[],
+  ): Promise<SetOptionSwitchesResponse> {
     return this.client.setOptionSwitches({ campaignId, switches: [...switches] });
   }
 

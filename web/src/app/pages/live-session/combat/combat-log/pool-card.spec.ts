@@ -23,25 +23,38 @@ const SLEEP = create(CombatLogEntrySchema, {
     effectConditionKey: 'condition:unconscious',
     poolRoll: { diceCount: 5, diceSides: 8, faces: [2, 4, 1, 5, 3], modifier: 0, total: 15 },
     targets: [
-      { targetId: 'g1', targetLabel: 'Goblin 1', effect: { outcome: SpellEffectOutcome.AFFECTED, hitPointsBefore: 7, poolLeft: 8, poolOrder: 1 } },
+      {
+        targetId: 'g1',
+        targetLabel: 'Goblin 1',
+        effect: {
+          outcome: SpellEffectOutcome.AFFECTED,
+          hitPointsBefore: 7,
+          poolLeft: 8,
+          poolOrder: 1,
+        },
+      },
       {
         targetId: 'cap',
         targetLabel: 'Capitão Goblin',
-        effect: { outcome: SpellEffectOutcome.NOT_AFFECTED, reason: SpellEffectReason.ABOVE_POOL, hitPointsBefore: 27, poolLeft: 8, poolOrder: 2 },
+        effect: {
+          outcome: SpellEffectOutcome.NOT_AFFECTED,
+          reason: SpellEffectReason.ABOVE_POOL,
+          hitPointsBefore: 27,
+          poolLeft: 8,
+          poolOrder: 2,
+        },
       },
     ],
   },
 });
 
-describe('the master\'s card under Sono in the log (E8-03)', () => {
+describe("the master's card under Sono in the log (E8-03)", () => {
   function render(master: boolean) {
     const fixture = TestBed.createComponent(LogList);
-    const groups = logGroups(
-      [{ round: 1, entries: [SLEEP] }] as never,
-      1,
-      '',
-      { master, players: new Set(['Pensantus']) },
-    );
+    const groups = logGroups([{ round: 1, entries: [SLEEP] }] as never, 1, '', {
+      master,
+      players: new Set(['Pensantus']),
+    });
     fixture.componentRef.setInput('groups', groups);
     const changed: string[] = [];
     fixture.componentInstance.conditions.subscribe((id) => changed.push(id));
@@ -58,7 +71,10 @@ describe('the master\'s card under Sono in the log (E8-03)', () => {
       r.querySelector('.row__hp')!.textContent!.trim(),
       r.querySelector('.row__math')!.textContent!.replace(/ /g, ' ').trim(),
       r.querySelector('.row__word mat-icon')!.textContent!.trim(),
-      r.querySelector('.row__word')!.textContent!.replace(r.querySelector('.row__word mat-icon')!.textContent!, '').trim(),
+      r
+        .querySelector('.row__word')!
+        .textContent!.replace(r.querySelector('.row__word mat-icon')!.textContent!, '')
+        .trim(),
     ]);
     expect(rows).toEqual([
       ['Goblin 1', '7 PV', '15 − 7 = 8 restam', 'bedtime', 'Adormeceu · Inconsciente'],
@@ -75,7 +91,7 @@ describe('the master\'s card under Sono in the log (E8-03)', () => {
     expect(changed).toEqual(['g1']);
   });
 
-  it('has no card at all in a player\'s log, and not a number of an enemy\'s', () => {
+  it("has no card at all in a player's log, and not a number of an enemy's", () => {
     const { el } = render(false);
     expect(el.querySelector('app-pool-card')).toBeNull();
     expect(el.textContent).not.toContain('PV');

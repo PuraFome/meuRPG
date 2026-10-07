@@ -1,13 +1,35 @@
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { EncounterBlockedReason, EncounterBlockedSchema } from '../../../gen/meurpg/play/v1/combat_pb';
-import { ADD_MAX, AddKeys, COMBAT_MAX, addMonstersErrorMessage, becomesText, groupLabel, monsterLabels, monsterSentence, roomFor } from './monsters';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  ADD_MAX,
+  AddKeys,
+  COMBAT_MAX,
+  addMonstersErrorMessage,
+  becomesText,
+  groupLabel,
+  monsterLabels,
+  monsterSentence,
+  roomFor,
+} from './monsters';
 
-const add = { creatureKey: 'monster:bandit', count: 3, name: 'Bandido', hp: 'average' as const, hidden: true, target: 'enc-1' };
+const add = {
+  creatureKey: 'monster:bandit',
+  count: 3,
+  name: 'Bandido',
+  hp: 'average' as const,
+  hidden: true,
+  target: 'enc-1',
+};
 
 function blocked(reason: EncounterBlockedReason): ConnectError {
-  return new ConnectError('blocked', Code.FailedPrecondition, undefined, [{ desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) }]);
+  return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+  ]);
 }
 
 describe('"Pôr no combate": the names, the room and the key (MR-042, RN-29)', () => {
@@ -32,7 +54,7 @@ describe('"Pôr no combate": the names, the room and the key (MR-042, RN-29)', (
     expect(groupLabel(['Salteador', 'Bandido 2'])).toBe('Salteador, Bandido 2');
   });
 
-  it('leaves room for what a combat of 40 still takes, never past one add\'s 10', () => {
+  it("leaves room for what a combat of 40 still takes, never past one add's 10", () => {
     expect(roomFor(0)).toBe(ADD_MAX);
     expect(roomFor(COMBAT_MAX - 4)).toBe(4);
     expect(roomFor(COMBAT_MAX)).toBe(0);
@@ -54,20 +76,34 @@ describe('"Pôr no combate": the names, the room and the key (MR-042, RN-29)', (
 
 describe('the words of a refused "Pôr no combate" (by code and typed detail, never by the message)', () => {
   it('says the combat is full, ended or that there is no session', () => {
-    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.TOO_MANY_COMBATANTS))).toContain('Não cabem mais combatentes');
-    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.ENCOUNTER_ENDED))).toContain('já terminou');
-    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.NO_CURRENT_MAP))).toContain('mapa');
+    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.TOO_MANY_COMBATANTS))).toContain(
+      'Não cabem mais combatentes',
+    );
+    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.ENCOUNTER_ENDED))).toContain(
+      'já terminou',
+    );
+    expect(addMonstersErrorMessage(blocked(EncounterBlockedReason.NO_CURRENT_MAP))).toContain(
+      'mapa',
+    );
   });
 
-  it('names the 40 combatants for an invalid request (the server has no detail for the cap) and never shows the server\'s text', () => {
-    const text = addMonstersErrorMessage(new ConnectError('a combat has at most 40 combatants', Code.InvalidArgument));
+  it("names the 40 combatants for an invalid request (the server has no detail for the cap) and never shows the server's text", () => {
+    const text = addMonstersErrorMessage(
+      new ConnectError('a combat has at most 40 combatants', Code.InvalidArgument),
+    );
     expect(text).toContain('40 combatentes');
     expect(text).not.toContain('a combat has at most');
   });
 
   it('maps the other codes', () => {
-    expect(addMonstersErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('Só o mestre');
-    expect(addMonstersErrorMessage(new ConnectError('x', Code.NotFound))).toContain('não existe mais');
-    expect(addMonstersErrorMessage(new ConnectError('x', Code.Unavailable))).toContain('o servidor não respondeu');
+    expect(addMonstersErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain(
+      'Só o mestre',
+    );
+    expect(addMonstersErrorMessage(new ConnectError('x', Code.NotFound))).toContain(
+      'não existe mais',
+    );
+    expect(addMonstersErrorMessage(new ConnectError('x', Code.Unavailable))).toContain(
+      'o servidor não respondeu',
+    );
   });
 });

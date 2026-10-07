@@ -32,18 +32,26 @@ const KIND_FROM_GEN: Partial<Record<SpellHitPointEffectKind, HpSpellKind>> = {
 
 /** What kind of hit-point spell this is, from the rule `GetSpellDetails` sends, or `null` for any other spell. */
 export function hpSpellKind(details: SpellDetails | null): HpSpellKind | null {
-  return KIND_FROM_GEN[details?.hitPointEffect?.kind ?? SpellHitPointEffectKind.UNSPECIFIED] ?? null;
+  return (
+    KIND_FROM_GEN[details?.hitPointEffect?.kind ?? SpellHitPointEffectKind.UNSPECIFIED] ?? null
+  );
 }
 
 /** The pool a spell rolls when cast with a slot of `slotLevel`: Sono is 5d8 at
  * the 1st circle and 7d8 at the 2nd. `null` when the spell has no pool. */
-export function poolDice(details: SpellDetails | null, slotLevel: number): { count: number; sides: number } | null {
+export function poolDice(
+  details: SpellDetails | null,
+  slotLevel: number,
+): { count: number; sides: number } | null {
   const fx = details?.hitPointEffect;
   if (!fx || fx.kind !== SpellHitPointEffectKind.POOL) {
     return null;
   }
   const own = details?.spell?.level ?? 1;
-  return { count: fx.poolDiceCount + fx.poolDicePerLevel * Math.max(0, slotLevel - own), sides: fx.poolDiceSides };
+  return {
+    count: fx.poolDiceCount + fx.poolDicePerLevel * Math.max(0, slotLevel - own),
+    sides: fx.poolDiceSides,
+  };
 }
 
 // ---- what happened to one target, in words ----
@@ -85,7 +93,12 @@ export function effectWords(
   label = '',
 ): EffectWords {
   if (outcome !== SpellEffectOutcome.AFFECTED) {
-    return { present: notAffected(label, false), past: label && feminine(label) ? 'Não foi afetada' : 'Não foi afetado', icon: 'block', affected: false };
+    return {
+      present: notAffected(label, false),
+      past: label && feminine(label) ? 'Não foi afetada' : 'Não foi afetado',
+      icon: 'block',
+      affected: false,
+    };
   }
   const known = CONDITION_WORDS[condition];
   if (known) {
@@ -100,7 +113,12 @@ export function effectWords(
       return { present: 'está estável', past: 'Ficou estável', icon: 'favorite', affected: true };
     case SpellEffectKind.FLAT_HEAL: {
       const f = feminine(label);
-      return { present: f ? 'é curada' : 'é curado', past: f ? 'Foi curada' : 'Foi curado', icon: 'healing', affected: true };
+      return {
+        present: f ? 'é curada' : 'é curado',
+        past: f ? 'Foi curada' : 'Foi curado',
+        icon: 'healing',
+        affected: true,
+      };
     }
     default:
       // A threshold with no condition is Palavra de Poder Matar.
@@ -121,7 +139,9 @@ export function reasonWords(
         ? 'mais PV do que sobrou do total'
         : `${hitPoints} é mais que ${left} restantes`;
     case SpellEffectReason.ABOVE_LIMIT:
-      return threshold === undefined ? 'acima do limite' : `${hitPoints ?? ''} PV, acima do limite de ${threshold}`.trim();
+      return threshold === undefined
+        ? 'acima do limite'
+        : `${hitPoints ?? ''} PV, acima do limite de ${threshold}`.trim();
     case SpellEffectReason.SKIPPED:
       return 'já estava inconsciente ou a 0 PV';
     case SpellEffectReason.NOT_AT_ZERO:

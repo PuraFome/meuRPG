@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 
 import { lightLabel } from '../../core/puzzles/puzzle-format';
 
@@ -90,7 +99,9 @@ export class LightsBoard {
   protected readonly hintSet = computed(() => new Set(this.hints()));
   /** The light that holds the board's one tab stop (the last one focused). */
   protected readonly active = signal(0);
-  protected readonly tabStop = computed(() => Math.min(this.active(), Math.max(0, this.lit().length - 1)));
+  protected readonly tabStop = computed(() =>
+    Math.min(this.active(), Math.max(0, this.lit().length - 1)),
+  );
   protected readonly label = lightLabel;
 
   protected onKey(event: KeyboardEvent, index: number): void {

@@ -57,7 +57,9 @@ describe('who got what', () => {
 
   it('says who gave an award and who a milestone', () => {
     expect(givenLine(award())).toBe('Samuel deu a Pensantus, Toren e Brisa');
-    expect(givenLine(award({ mode: XPAwardMode.XP_AWARD_MODE_MILESTONE }))).toBe('Samuel marcou Pensantus, Toren e Brisa');
+    expect(givenLine(award({ mode: XPAwardMode.XP_AWARD_MODE_MILESTONE }))).toBe(
+      'Samuel marcou Pensantus, Toren e Brisa',
+    );
     expect(givenLine(award({ givenByDisplayName: '' }))).toMatch(/^O mestre deu a/);
   });
 
@@ -70,10 +72,18 @@ describe('who got what', () => {
     expect(awardWhen(award())).toBe(formatDayAt(new Date(2026, 9, 2, 20, 41)));
     expect(awardWhen(award())).toMatch(/^02\/10\s+às\s+20:41$/);
     // An account that was deleted has no name: "pelo mestre", not "por o mestre".
-    expect(undoneLine(award({ undone: true, undoneByDisplayName: '' }))).toBe('Desfeito pelo mestre.');
-    expect(undoneLine(award({ undone: true, undoneByDisplayName: 'Samuel', undoneAt: timestampFromDate(new Date(2026, 9, 2, 21, 10)) }))).toBe(
-      `Desfeito por Samuel em ${formatDayAt(new Date(2026, 9, 2, 21, 10))}.`,
+    expect(undoneLine(award({ undone: true, undoneByDisplayName: '' }))).toBe(
+      'Desfeito pelo mestre.',
     );
+    expect(
+      undoneLine(
+        award({
+          undone: true,
+          undoneByDisplayName: 'Samuel',
+          undoneAt: timestampFromDate(new Date(2026, 9, 2, 21, 10)),
+        }),
+      ),
+    ).toBe(`Desfeito por Samuel em ${formatDayAt(new Date(2026, 9, 2, 21, 10))}.`);
   });
 });
 
@@ -92,17 +102,27 @@ describe('the progress towards the next level', () => {
   });
 
   it('has no next level at 20', () => {
-    expect(progress(400000, 0, false)).toEqual({ of: `400.000${nbsp}XP`, percent: 100, missing: '' });
+    expect(progress(400000, 0, false)).toEqual({
+      of: `400.000${nbsp}XP`,
+      percent: 100,
+      missing: '',
+    });
   });
 
   it('shows an empty bar for 0 XP', () => {
-    expect(progress(0, 300, false)).toEqual({ of: `0 de${nbsp}300${nbsp}XP`, percent: 0, missing: `Faltam${nbsp}300${nbsp}XP` });
+    expect(progress(0, 300, false)).toEqual({
+      of: `0 de${nbsp}300${nbsp}XP`,
+      percent: 0,
+      missing: `Faltam${nbsp}300${nbsp}XP`,
+    });
   });
 });
 
 describe('what the master reads after giving', () => {
   it('says the total, each one and what is lost', () => {
-    expect(givenText(350, 116, 2)).toBe(`350${nbsp}XP dados: 116 para cada. 2${nbsp}XP se perderam na divisão.`);
+    expect(givenText(350, 116, 2)).toBe(
+      `350${nbsp}XP dados: 116 para cada. 2${nbsp}XP se perderam na divisão.`,
+    );
     expect(givenText(350, 175, 0)).toBe(`350${nbsp}XP dados: 175 para cada.`);
     expect(givenText(100, 33, 1)).toContain(`1${nbsp}XP se perdeu na divisão.`);
   });
@@ -119,7 +139,9 @@ describe('what the master reads after giving', () => {
 
 describe('the line under "Experiência"', () => {
   it('says what the campaign counts, and the next level when the group is at one', () => {
-    expect(experienceLead(XpMode.ENEMIES, { level: 4, xp: 2700 })).toBe(`XP por inimigos derrotados. O nível 4 pede 2.700${nbsp}XP.`);
+    expect(experienceLead(XpMode.ENEMIES, { level: 4, xp: 2700 })).toBe(
+      `XP por inimigos derrotados. O nível 4 pede 2.700${nbsp}XP.`,
+    );
     expect(experienceLead(XpMode.GOLD, null)).toBe('XP por ouro encontrado.');
     expect(experienceLead(XpMode.MILESTONES, null)).toMatch(/marcos/);
   });

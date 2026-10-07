@@ -38,7 +38,11 @@ describe('LayersState', () => {
   });
 
   it('keeps what is on screen when a read fails, and tries again on the next change', async () => {
-    const load = vi.fn().mockResolvedValueOnce(packed(0)).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce(packed(2));
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce(packed(0))
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValueOnce(packed(2));
     const state = new LayersState(load);
     await state.open('m1', 1);
     await state.open('m1', 2);

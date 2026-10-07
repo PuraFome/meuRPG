@@ -37,7 +37,8 @@ export function summaryLine(names: readonly string[], value: number): string {
 export function foundToastTitle(point: MapPoint): string {
   const names = finders(point);
   const who = names.length > 0 ? listNames(names) : 'O mestre';
-  const verb = names.length > 1 ? 'encontraram' : names.length === 1 ? 'encontrou' : 'marcou como encontrado';
+  const verb =
+    names.length > 1 ? 'encontraram' : names.length === 1 ? 'encontrou' : 'marcou como encontrado';
   return `${who} ${verb}: ${point.name}`;
 }
 
@@ -51,7 +52,9 @@ export class TreasureWatch {
   private seen = new Set<string>();
 
   newlyFound(mapId: string | null, points: readonly MapPoint[]): readonly MapPoint[] {
-    const found = points.filter((p) => p.kind === MapPointKind.TREASURE && p.treasureFoundAt !== undefined);
+    const found = points.filter(
+      (p) => p.kind === MapPointKind.TREASURE && p.treasureFoundAt !== undefined,
+    );
     if (mapId === null) {
       this.mapId = null;
       this.seen = new Set();

@@ -39,9 +39,13 @@ const plain = (text: string) => text.replace(/\u00a0/g, ' ');
 
 describe('clue text', () => {
   it('asks for the words when there are none, and says how many to take off when there are too many', () => {
-    expect(clueTextError('   ')).toBe('Escreva a pista antes de salvar. Ela pode ter até 500 caracteres.');
+    expect(clueTextError('   ')).toBe(
+      'Escreva a pista antes de salvar. Ela pode ter até 500 caracteres.',
+    );
     expect(clueTextError('x'.repeat(500))).toBe('');
-    expect(plain(clueTextError('x'.repeat(512)))).toBe('A pista passa de 500 caracteres: tem 512, tire 12.');
+    expect(plain(clueTextError('x'.repeat(512)))).toBe(
+      'A pista passa de 500 caracteres: tem 512, tire 12.',
+    );
   });
 
   it('counts characters, not UTF-16 units', () => {
@@ -66,7 +70,15 @@ describe('who has a clue', () => {
 
   it('says "Só Brisa" for one, with no article, and lists two', () => {
     expect(clueAudience(clue([{ id: 'b', name: 'Brisa' }]), PLAYERS).label).toBe('Só Brisa');
-    expect(clueAudience(clue([{ id: 'b', name: 'Brisa' }, { id: 't', name: 'Toren' }]), PLAYERS).label).toBe('Só Brisa e Toren');
+    expect(
+      clueAudience(
+        clue([
+          { id: 'b', name: 'Brisa' },
+          { id: 't', name: 'Toren' },
+        ]),
+        PLAYERS,
+      ).label,
+    ).toBe('Só Brisa e Toren');
   });
 
   it('says "Todos" only when every player character has it', () => {
@@ -118,7 +130,9 @@ describe('the reveal button', () => {
     // Brisa has it: Pensantus and Toren can still receive it (open 2 of 3 players).
     expect(revealLabel(pick('p', 't'), 2, 3)).toBe('Revelar aos outros');
     expect(revealLabel(pick('t'), 2, 3)).toBe('Revelar para Toren');
-    expect(plain(revealSummary(pick('p', 't'), 2, 3))).toBe('A pista vai para os outros 2 jogadores.');
+    expect(plain(revealSummary(pick('p', 't'), 2, 3))).toBe(
+      'A pista vai para os outros 2 jogadores.',
+    );
     // Only one is left: it is that one by name.
     expect(revealLabel(pick('t'), 1, 3)).toBe('Revelar para Toren');
     // Three to go among four players, two checked: a count.
@@ -129,6 +143,8 @@ describe('the reveal button', () => {
 
   it('says who gets it above the buttons', () => {
     expect(plain(revealSummary(pick('b'), 3))).toBe('A pista vai para 1 de 3 jogadores: Brisa.');
-    expect(plain(revealSummary(pick('p', 't', 'b'), 3))).toBe('A pista vai para todos os 3 jogadores.');
+    expect(plain(revealSummary(pick('p', 't', 'b'), 3))).toBe(
+      'A pista vai para todos os 3 jogadores.',
+    );
   });
 });

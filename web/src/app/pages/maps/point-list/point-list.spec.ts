@@ -5,12 +5,50 @@ import { MapPointKind, MapPointSchema, TrapState } from '../../../../gen/meurpg/
 import { TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { PointList, pointSubLine } from './point-list';
 
-const pit = create(MapPointSchema, { id: 'p1', kind: MapPointKind.TRAP, name: 'Fosso escondido', trap: { findDc: 15, noticeDc: 15, areaSize: 2, trigger: TrapTrigger.ENTER, state: TrapState.ARMED } });
-const needle = create(MapPointSchema, { id: 'p2', kind: MapPointKind.TRAP, name: 'Agulha envenenada', trap: { findDc: 20, areaSize: 1, trigger: TrapTrigger.MANUAL, state: TrapState.ARMED } });
-const chest = create(MapPointSchema, { id: 'p3', kind: MapPointKind.TREASURE, name: 'Baú de moedas', treasureValuePo: 250 });
-const found = create(MapPointSchema, { id: 'p4', kind: MapPointKind.TREASURE, name: 'Baú achado', treasureValuePo: 1000, revealed: true, treasureFoundAt: { seconds: 1n, nanos: 0 } });
-const torch = create(MapPointSchema, { id: 'p5', kind: MapPointKind.LIGHT, name: 'Tocha da guarita', light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 } });
-const scene = create(MapPointSchema, { id: 'p6', kind: MapPointKind.SCENE, name: 'Taverna', revealed: true });
+const pit = create(MapPointSchema, {
+  id: 'p1',
+  kind: MapPointKind.TRAP,
+  name: 'Fosso escondido',
+  trap: {
+    findDc: 15,
+    noticeDc: 15,
+    areaSize: 2,
+    trigger: TrapTrigger.ENTER,
+    state: TrapState.ARMED,
+  },
+});
+const needle = create(MapPointSchema, {
+  id: 'p2',
+  kind: MapPointKind.TRAP,
+  name: 'Agulha envenenada',
+  trap: { findDc: 20, areaSize: 1, trigger: TrapTrigger.MANUAL, state: TrapState.ARMED },
+});
+const chest = create(MapPointSchema, {
+  id: 'p3',
+  kind: MapPointKind.TREASURE,
+  name: 'Baú de moedas',
+  treasureValuePo: 250,
+});
+const found = create(MapPointSchema, {
+  id: 'p4',
+  kind: MapPointKind.TREASURE,
+  name: 'Baú achado',
+  treasureValuePo: 1000,
+  revealed: true,
+  treasureFoundAt: { seconds: 1n, nanos: 0 },
+});
+const torch = create(MapPointSchema, {
+  id: 'p5',
+  kind: MapPointKind.LIGHT,
+  name: 'Tocha da guarita',
+  light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 },
+});
+const scene = create(MapPointSchema, {
+  id: 'p6',
+  kind: MapPointKind.SCENE,
+  name: 'Taverna',
+  revealed: true,
+});
 
 const plain = (s: string) => s.replace(/ /g, ' ');
 
@@ -29,7 +67,10 @@ describe('PointList', () => {
   let el: HTMLElement;
   let picked: string[];
 
-  function setup(points = [torch, pit, needle, chest, found, scene], selectedId: string | null = null) {
+  function setup(
+    points = [torch, pit, needle, chest, found, scene],
+    selectedId: string | null = null,
+  ) {
     picked = [];
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});

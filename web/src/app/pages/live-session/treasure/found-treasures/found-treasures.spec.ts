@@ -12,7 +12,12 @@ const treasure = (id: string, found: boolean) =>
     name: `Baú ${id}`,
     treasureValuePo: 250,
     treasureFoundAt: found ? timestampFromDate(new Date()) : undefined,
-    treasureFoundBy: found ? [{ characterId: 'b', characterName: 'Brisa' }, { characterId: 't', characterName: 'Toren' }] : [],
+    treasureFoundBy: found
+      ? [
+          { characterId: 'b', characterName: 'Brisa' },
+          { characterId: 't', characterName: 'Toren' },
+        ]
+      : [],
   });
 
 describe('FoundTreasures', () => {

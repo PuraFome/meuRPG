@@ -63,7 +63,9 @@ export class NoteFields {
     { value: '', label: 'Sem cena' },
     ...this.scenes().map((s) => ({ value: s.id, label: s.name })),
   ]);
-  protected readonly counter = computed(() => noteCounter(this.editing().length(), this.editing().max));
+  protected readonly counter = computed(() =>
+    noteCounter(this.editing().length(), this.editing().max),
+  );
   protected readonly atLimit = computed(() => this.editing().length() >= this.editing().max);
 
   private readonly field = viewChild.required<ElementRef<HTMLTextAreaElement>>('field');

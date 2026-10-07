@@ -35,7 +35,10 @@ describe('parseMarkdown', () => {
   it('reads bold, italic and nesting', () => {
     expect(parseInline('a **b *c* d** e *f*')).toEqual([
       text('a '),
-      { type: 'bold', children: [text('b '), { type: 'italic', children: [text('c')] }, text(' d')] },
+      {
+        type: 'bold',
+        children: [text('b '), { type: 'italic', children: [text('c')] }, text(' d')],
+      },
       text(' e '),
       { type: 'italic', children: [text('f')] },
     ]);
@@ -68,7 +71,9 @@ describe('parseMarkdown', () => {
   it('continues a list item on an indented line and ends it on a plain one', () => {
     const blocks = parseMarkdown('- um\n  continua\nfim');
     expect(blocks).toHaveLength(2);
-    expect(inlineText((blocks[0] as Extract<Block, { type: 'list' }>).items[0])).toBe('um continua');
+    expect(inlineText((blocks[0] as Extract<Block, { type: 'list' }>).items[0])).toBe(
+      'um continua',
+    );
     expect(blocks[1].type).toBe('paragraph');
   });
 
@@ -78,7 +83,9 @@ describe('parseMarkdown', () => {
     );
     const kinds = (p as Extract<Block, { type: 'paragraph' }>).children.map((c) => c.type);
     expect(kinds).toEqual(['text', 'ref', 'text', 'ref', 'text', 'link', 'text']);
-    const refs = (p as Extract<Block, { type: 'paragraph' }>).children.filter((c) => c.type === 'ref');
+    const refs = (p as Extract<Block, { type: 'paragraph' }>).children.filter(
+      (c) => c.type === 'ref',
+    );
     expect(refs).toEqual([
       { type: 'ref', kind: 'map', id: MAP, text: 'Mirathel' },
       { type: 'ref', kind: 'character', id: CHAR, text: 'Capitão' },
@@ -115,9 +122,7 @@ describe('parseMarkdown', () => {
 
 describe('hostile input', () => {
   const allText = (blocks: Block[]) =>
-    blocks.every(
-      (b) => b.type === 'paragraph' && b.children.every((c) => c.type === 'text'),
-    );
+    blocks.every((b) => b.type === 'paragraph' && b.children.every((c) => c.type === 'text'));
 
   it('leaves raw HTML as plain text, tags and all', () => {
     const src = '<script>alert(1)</script> <img src=x onerror=alert(1)> <b>x</b>';
@@ -146,7 +151,10 @@ describe('hostile input', () => {
       const [b] = parseMarkdown(src);
       expect(b.type).toBe('paragraph');
       const children = (b as Extract<Block, { type: 'paragraph' }>).children;
-      expect(children.every((c) => c.type === 'text'), target).toBe(true);
+      expect(
+        children.every((c) => c.type === 'text'),
+        target,
+      ).toBe(true);
       expect(inlineText(children)).toBe(src);
     }
   });

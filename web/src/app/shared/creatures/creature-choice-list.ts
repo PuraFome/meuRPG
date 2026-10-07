@@ -1,4 +1,14 @@
-import { Component, ElementRef, afterNextRender, computed, effect, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { AttackLine } from '../../core/creatures/creature-format';
@@ -132,7 +142,9 @@ export class CreatureChoiceList {
   protected readonly filter = signal('');
   protected readonly shown = computed(() => {
     const needle = fold(this.filter());
-    return needle ? this.rows().filter((r) => fold(`${r.title} ${r.alias ?? ''}`).includes(needle)) : this.rows();
+    return needle
+      ? this.rows().filter((r) => fold(`${r.title} ${r.alias ?? ''}`).includes(needle))
+      : this.rows();
   });
   /** The tallest the list needs to be: a generous 96 px for each row it shows. */
   protected readonly rowsMax = computed(() => `${Math.max(1, this.shown().length) * 96}px`);
@@ -147,7 +159,9 @@ export class CreatureChoiceList {
       if (!key || this.multi()) {
         return;
       }
-      setTimeout(() => this.list().nativeElement.querySelector('.row--on')?.scrollIntoView?.({ block: 'nearest' }));
+      setTimeout(() =>
+        this.list().nativeElement.querySelector('.row--on')?.scrollIntoView?.({ block: 'nearest' }),
+      );
     });
     afterNextRender(() => {
       this.measure();

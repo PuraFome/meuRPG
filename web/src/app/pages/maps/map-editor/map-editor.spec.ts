@@ -3,7 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { LightLevel, MapLayer, MapPointKind, MapPointSchema, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  LightLevel,
+  MapLayer,
+  MapPointKind,
+  MapPointSchema,
+  TrapState,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { Code, ConnectError } from '@connectrpc/connect';
 import type { GetDungeonRoomsResponse } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
@@ -12,7 +18,13 @@ import { FakeDungeonsClient, roomsResponse } from '../../../core/maps/dungeons-t
 import { LightPresets } from '../../../core/maps/light-presets';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
-import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../../core/maps/maps-testing';
+import {
+  FakeMapsClient,
+  mapMessage,
+  mapPoint,
+  mapResponse,
+  mapToken,
+} from '../../../core/maps/maps-testing';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { visionResponse } from '../../../core/maps/vision-testing';
 import { TrapPresets } from '../../../core/traps/trap-presets';
@@ -21,13 +33,60 @@ import { PaintSurface } from '../paint-surface/paint-surface';
 import { MapEditor } from './map-editor';
 
 const roster = [
-  { id: 'c-pensantus', name: 'Pensantus', kind: CharacterKind.PLAYER, playerUserId: 'u1', classSummary: 'Mago 3', raceName: 'Gnomo', playerName: 'Vinicius' },
-  { id: 'c-toren', name: 'Toren', kind: CharacterKind.PLAYER, playerUserId: 'u2', classSummary: 'Guerreiro 5', raceName: 'Humano', playerName: 'Caio' },
+  {
+    id: 'c-pensantus',
+    name: 'Pensantus',
+    kind: CharacterKind.PLAYER,
+    playerUserId: 'u1',
+    classSummary: 'Mago 3',
+    raceName: 'Gnomo',
+    playerName: 'Vinicius',
+  },
+  {
+    id: 'c-toren',
+    name: 'Toren',
+    kind: CharacterKind.PLAYER,
+    playerUserId: 'u2',
+    classSummary: 'Guerreiro 5',
+    raceName: 'Humano',
+    playerName: 'Caio',
+  },
 ];
 
-const pit = create(MapPointSchema, { id: 'pit', mapId: 'map-1', kind: MapPointKind.TRAP, name: 'Fosso escondido', xBp: 4800, yBp: 5000, trap: { presetKey: '', noticeDc: 15, findDc: 15, areaSize: 2, trigger: TrapTrigger.ENTER, state: TrapState.ARMED } });
-const chest = create(MapPointSchema, { id: 'chest', mapId: 'map-1', kind: MapPointKind.TREASURE, name: 'Baú de moedas', xBp: 7000, yBp: 8000, treasureValuePo: 250 });
-const torch = create(MapPointSchema, { id: 'torch', mapId: 'map-1', kind: MapPointKind.LIGHT, name: 'Tocha da guarita', xBp: 8000, yBp: 3000, light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 } });
+const pit = create(MapPointSchema, {
+  id: 'pit',
+  mapId: 'map-1',
+  kind: MapPointKind.TRAP,
+  name: 'Fosso escondido',
+  xBp: 4800,
+  yBp: 5000,
+  trap: {
+    presetKey: '',
+    noticeDc: 15,
+    findDc: 15,
+    areaSize: 2,
+    trigger: TrapTrigger.ENTER,
+    state: TrapState.ARMED,
+  },
+});
+const chest = create(MapPointSchema, {
+  id: 'chest',
+  mapId: 'map-1',
+  kind: MapPointKind.TREASURE,
+  name: 'Baú de moedas',
+  xBp: 7000,
+  yBp: 8000,
+  treasureValuePo: 250,
+});
+const torch = create(MapPointSchema, {
+  id: 'torch',
+  mapId: 'map-1',
+  kind: MapPointKind.LIGHT,
+  name: 'Tocha da guarita',
+  xBp: 8000,
+  yBp: 3000,
+  light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 },
+});
 const tavern = mapPoint('tavern', 'Taverna', { kind: MapPointKind.SCENE });
 
 describe('MapEditor', () => {
@@ -38,7 +97,11 @@ describe('MapEditor', () => {
   let state: MapState;
 
   async function setup(
-    mapPartial: Parameters<typeof mapMessage>[2] = { gridColumns: 24, gridRows: 16, fogEnabled: false },
+    mapPartial: Parameters<typeof mapMessage>[2] = {
+      gridColumns: 24,
+      gridRows: 16,
+      fogEnabled: false,
+    },
     inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {},
     layers: { wall?: Uint8Array; doors?: Uint8Array } = {},
     dungeonRooms: GetDungeonRoomsResponse | null = null,
@@ -47,9 +110,26 @@ describe('MapEditor', () => {
     // An ordinary map: the generator did not make it, so `GetDungeonRooms` is `not_found` and the editor shows nothing of a dungeon.
     dungeons = new FakeDungeonsClient();
     dungeons.roomsAnswer = dungeonRooms;
-    const map = mapMessage('map-1', 'A caverna do Vale Seco', { ...mapPartial, generatedDungeon: dungeonRooms !== null });
-    api.layersResponse = { $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: mapPartial.gridColumns ?? 0, gridRows: mapPartial.gridRows ?? 0, layersRevision: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), light: new Uint8Array(), doors: new Uint8Array(), fogWithheld: false, ...layers };
-    state = new MapState(async () => mapResponse(map, [tavern, pit, chest, torch], [mapToken('c-pensantus', 'Pensantus')]));
+    const map = mapMessage('map-1', 'A caverna do Vale Seco', {
+      ...mapPartial,
+      generatedDungeon: dungeonRooms !== null,
+    });
+    api.layersResponse = {
+      $typeName: 'meurpg.maps.v1.GetMapLayersResponse',
+      gridColumns: mapPartial.gridColumns ?? 0,
+      gridRows: mapPartial.gridRows ?? 0,
+      layersRevision: 1,
+      difficultTerrain: new Uint8Array(),
+      wall: new Uint8Array(),
+      cover: new Uint8Array(),
+      light: new Uint8Array(),
+      doors: new Uint8Array(),
+      fogWithheld: false,
+      ...layers,
+    };
+    state = new MapState(async () =>
+      mapResponse(map, [tavern, pit, chest, torch], [mapToken('c-pensantus', 'Pensantus')]),
+    );
     await state.open('map-1');
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -57,8 +137,25 @@ describe('MapEditor', () => {
         { provide: MapsClient, useValue: api },
         { provide: DungeonsClient, useValue: dungeons },
         { provide: RosterClient, useValue: { list: () => Promise.resolve(roster) } },
-        { provide: LightPresets, useValue: { list: () => Promise.resolve([{ key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra', brightFt: 20, dimFt: 20 }]) } },
-        { provide: TrapPresets, useValue: { list: () => Promise.resolve({ presets: [], severities: [] }) } },
+        {
+          provide: LightPresets,
+          useValue: {
+            list: () =>
+              Promise.resolve([
+                {
+                  key: 'light:torch',
+                  name: 'Tocha',
+                  radii: '6 m claro + 6 m de penumbra',
+                  brightFt: 20,
+                  dimFt: 20,
+                },
+              ]),
+          },
+        },
+        {
+          provide: TrapPresets,
+          useValue: { list: () => Promise.resolve({ presets: [], severities: [] }) },
+        },
       ],
     });
     fixture = TestBed.createComponent(MapEditor);
@@ -82,11 +179,18 @@ describe('MapEditor', () => {
   };
   const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
   const button = (t: string, last = false) => {
-    const all = Array.from(el.querySelectorAll<HTMLElement>('button')).filter((b) => b.textContent?.trim().endsWith(t));
+    const all = Array.from(el.querySelectorAll<HTMLElement>('button')).filter((b) =>
+      b.textContent?.trim().endsWith(t),
+    );
     return (last ? all[all.length - 1] : all[0])!;
   };
-  const radio = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(t))!;
-  const surface = () => fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as PaintSurface | undefined;
+  const radio = (t: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) =>
+      b.textContent?.trim().endsWith(t),
+    )!;
+  const surface = () =>
+    fixture.debugElement.query(By.directive(PaintSurface))?.componentInstance as
+      PaintSurface | undefined;
   /** The painted squares are drawn once a frame: let one go by. */
   const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
   // The paint queue and the counts run on the fake clock; the painted squares are drawn on a real animation frame,
@@ -121,7 +225,12 @@ describe('MapEditor', () => {
       el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
       await settle();
       const rect = el.querySelector('app-editor-overlay svg.room rect')!;
-      expect([rect.getAttribute('x'), rect.getAttribute('y'), rect.getAttribute('width'), rect.getAttribute('height')]).toEqual(['5', '1', '5', '3']);
+      expect([
+        rect.getAttribute('x'),
+        rect.getAttribute('y'),
+        rect.getAttribute('width'),
+        rect.getAttribute('height'),
+      ]).toEqual(['5', '1', '5', '3']);
       el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms .room__head')[1]!.click();
       await settle();
       expect(el.querySelector('app-editor-overlay svg.room')).toBeNull();
@@ -130,7 +239,9 @@ describe('MapEditor', () => {
     it('puts a scene on the map at once and reads the rooms again', async () => {
       await setup(undefined, {}, {}, roomsResponse());
       const before = dungeons.calls.length;
-      Array.from(el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms button')).find((b) => b.textContent?.trim() === 'Pôr uma cena nesta sala')!.click();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-dungeon-rooms button'))
+        .find((b) => b.textContent?.trim() === 'Pôr uma cena nesta sala')!
+        .click();
       await settle();
       await settle();
       expect(state.points().some((p) => p.name === 'Sala 1')).toBe(true);
@@ -164,7 +275,9 @@ describe('MapEditor', () => {
       dungeons.failWith.set('rooms', new ConnectError('down', Code.Unavailable));
       (fixture.componentInstance as unknown as { reloadDungeon(): void }).reloadDungeon();
       await settle();
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para ler as salas da masmorra.');
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'Não deu para ler as salas da masmorra.',
+      );
       dungeons.failWith.clear();
       button('Tentar de novo').click();
       await settle();
@@ -186,12 +299,16 @@ describe('MapEditor', () => {
 
     it('names the stairs for themselves in the legend and in the list ("Escada", never "Submapa")', async () => {
       await setup({ gridColumns: 11, gridRows: 9, fogEnabled: false }, {}, {}, roomsResponse());
-      state.upsertPoint(mapPoint('stair-up', 'Escada para cima', { kind: MapPointKind.SUBMAP, stairs: 1 }));
+      state.upsertPoint(
+        mapPoint('stair-up', 'Escada para cima', { kind: MapPointKind.SUBMAP, stairs: 1 }),
+      );
       await settle();
       const legend = (el.querySelector('.legend')?.textContent ?? '').replace(/\s+/g, ' ');
       expect(legend).toContain('Escada para cima');
       expect(legend).not.toContain('Submapa');
-      const row = Array.from(el.querySelectorAll('.pl__row')).find((r) => r.textContent?.includes('Escada para cima'))!;
+      const row = Array.from(el.querySelectorAll('.pl__row')).find((r) =>
+        r.textContent?.includes('Escada para cima'),
+      )!;
       expect(row.textContent).toContain('Escada');
       expect(row.textContent).not.toContain('Submapa');
     });
@@ -225,9 +342,16 @@ describe('MapEditor', () => {
   describe('unsaved changes', () => {
     async function dirtyTrap(): Promise<void> {
       await setup();
-      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) => r.textContent?.includes('Fosso escondido'))!.click();
+      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row'))
+        .find((r) => r.textContent?.includes('Fosso escondido'))!
+        .click();
       await settle();
-      const field = Array.from(el.querySelectorAll('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)')!.querySelector('input')!;
+      const field = Array.from(el.querySelectorAll('mat-form-field'))
+        .find(
+          (f) =>
+            f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)',
+        )!
+        .querySelector('input')!;
       field.value = '12';
       field.dispatchEvent(new Event('input'));
       await settle();
@@ -255,9 +379,16 @@ describe('MapEditor', () => {
       expect(api.calls.some((c) => c.startsWith('updatePoint'))).toBe(false);
       radio('Pontos').click();
       await settle();
-      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) => r.textContent?.includes('Fosso escondido'))!.click();
+      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row'))
+        .find((r) => r.textContent?.includes('Fosso escondido'))!
+        .click();
       await settle();
-      const field = Array.from(el.querySelectorAll('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)')!.querySelector('input')!;
+      const field = Array.from(el.querySelectorAll('mat-form-field'))
+        .find(
+          (f) =>
+            f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)',
+        )!
+        .querySelector('input')!;
       field.value = '12';
       field.dispatchEvent(new Event('input'));
       await settle();
@@ -286,7 +417,9 @@ describe('MapEditor', () => {
       expect(text()).toContain('1 quadrado · bloqueia movimento, visão e luz');
       expect(text()).toContain('Salvando');
       await flush();
-      expect(api.paints).toEqual([{ layer: MapLayer.WALL, value: 1, squares: [{ col: 3, row: 4 }] }]);
+      expect(api.paints).toEqual([
+        { layer: MapLayer.WALL, value: 1, squares: [{ col: 3, row: 4 }] },
+      ]);
       expect(text()).toContain('Tudo salvo');
     });
 
@@ -314,7 +447,10 @@ describe('MapEditor', () => {
       surface()!.stroke.emit({ centers: [{ col: 1, row: 1 }], erase: false });
       surface()!.stroke.emit({ centers: [{ col: 1, row: 1 }], erase: true });
       await flush();
-      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.WALL}:1`, `${MapLayer.WALL}:0`]);
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.WALL}:1`,
+        `${MapLayer.WALL}:0`,
+      ]);
       expect(text()).toContain('nada pintado');
     });
 
@@ -325,7 +461,9 @@ describe('MapEditor', () => {
       button('Cobertura').click();
       await settle();
       expect(text()).toContain('Graus de cobertura');
-      expect(text()).toContain('+2 na CA e nos testes de resistência de Destreza. Dá para passar por cima.');
+      expect(text()).toContain(
+        '+2 na CA e nos testes de resistência de Destreza. Dá para passar por cima.',
+      );
       radio('Três quartos').click();
       surface()!.stroke.emit({ centers: [{ col: 2, row: 2 }], erase: false });
       button('Luz').click();
@@ -333,7 +471,10 @@ describe('MapEditor', () => {
       radio('Claro').click();
       surface()!.stroke.emit({ centers: [{ col: 3, row: 2 }], erase: false });
       await flush();
-      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.COVER}:2`, `${MapLayer.LIGHT}:3`]);
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.COVER}:2`,
+        `${MapLayer.LIGHT}:3`,
+      ]);
     });
 
     it('says "Não salvou" when the server refuses, keeps what was painted and tries again', async () => {
@@ -362,7 +503,9 @@ describe('MapEditor', () => {
       await frame();
       await settle();
       expect(el.querySelectorAll('app-editor-overlay .sq--wall')).toHaveLength(1);
-      const wall = Array.from(el.querySelectorAll<HTMLElement>('app-layers-panel [role="switch"]'))[1];
+      const wall = Array.from(
+        el.querySelectorAll<HTMLElement>('app-layers-panel [role="switch"]'),
+      )[1];
       wall.click();
       await settle();
       expect(el.querySelectorAll('app-editor-overlay .sq--wall')).toHaveLength(0);
@@ -394,7 +537,9 @@ describe('MapEditor', () => {
 
     it('while a combat runs says so, still paints, and turns the grid change off', async () => {
       await setup(undefined, { combatRunning: true });
-      expect(text()).toContain('Um combate está em andamento neste mapa. Dá para pintar e apagar; a grade e a imagem só mudam depois dele.');
+      expect(text()).toContain(
+        'Um combate está em andamento neste mapa. Dá para pintar e apagar; a grade e a imagem só mudam depois dele.',
+      );
       radio('Pintar').click();
       await settle();
       expect(surface()).toBeDefined();
@@ -428,7 +573,9 @@ describe('MapEditor', () => {
       await frame();
       await settle();
     };
-    async function paintMode(layers: { wall?: Uint8Array; doors?: Uint8Array } = { wall: wallAt([9, 6], [15, 2]) }) {
+    async function paintMode(
+      layers: { wall?: Uint8Array; doors?: Uint8Array } = { wall: wallAt([9, 6], [15, 2]) },
+    ) {
       await setup(undefined, undefined, layers);
       radio('Pintar').click();
       await settle();
@@ -471,7 +618,9 @@ describe('MapEditor', () => {
       await flush();
       expect(api.paints).toEqual([]);
       const alert = el.querySelector('[role="alert"]');
-      expect(alert?.textContent).toContain('Aqui não dá: uma porta precisa de chão dos dois lados.');
+      expect(alert?.textContent).toContain(
+        'Aqui não dá: uma porta precisa de chão dos dois lados.',
+      );
     });
 
     it('"Tirar a porta" closes the gap again as a wall', async () => {
@@ -504,7 +653,10 @@ describe('MapEditor', () => {
       await tap(9, 6);
       button('Pôr a porta').click();
       await flush();
-      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.DOORS}:2`, `${MapLayer.WALL}:0`]);
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.DOORS}:2`,
+        `${MapLayer.WALL}:0`,
+      ]);
     });
 
     it('"Tirar a porta" over someone asks too: the wall that comes back would hide them', async () => {
@@ -521,13 +673,20 @@ describe('MapEditor', () => {
       expect(text()).toContain('Com a parede de volta');
       button('Tirar a porta', true).click();
       await flush();
-      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.WALL}:1`, `${MapLayer.DOORS}:0`]);
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.WALL}:1`,
+        `${MapLayer.DOORS}:0`,
+      ]);
     });
 
     it('the door tool\'s row has no "Apagar" and no brush (one square at a time), and the cursor says "Aqui não dá" where a tap would be refused', async () => {
       await paintMode();
       expect(el.querySelector('#bar-brush')).toBeNull();
-      expect(Array.from(el.querySelectorAll('[aria-label="Ferramenta de pintura"] button')).some((b) => b.textContent?.trim().endsWith('Apagar'))).toBe(false);
+      expect(
+        Array.from(el.querySelectorAll('[aria-label="Ferramenta de pintura"] button')).some((b) =>
+          b.textContent?.trim().endsWith('Apagar'),
+        ),
+      ).toBe(false);
       surface()!.hover.emit({ col: 3, row: 3 });
       await settle();
       expect(el.querySelector('.cursor__tag')?.textContent?.trim()).toBe('Aqui não dá');
@@ -545,10 +704,13 @@ describe('MapEditor', () => {
       await tap(9, 6);
       await flush();
       expect(text()).not.toContain('Pôr a porta onde há alguém?');
-      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([`${MapLayer.DOORS}:1`, `${MapLayer.WALL}:0`]);
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.DOORS}:1`,
+        `${MapLayer.WALL}:0`,
+      ]);
     });
 
-    it('a secret door is drawn with the wall\'s hatch for the master and named in the legend with the crossed eye', async () => {
+    it("a secret door is drawn with the wall's hatch for the master and named in the legend with the crossed eye", async () => {
       await paintMode();
       button('Secreta').click();
       await settle();
@@ -646,12 +808,14 @@ describe('MapEditor', () => {
     it('the points of one square share one label', async () => {
       await setup();
       // The fixtures stand on different squares: each point has its own label here.
-      const labels = Array.from(el.querySelectorAll('.lbl'), (l) => l.textContent?.replace(/\s+/g, ' ').trim());
+      const labels = Array.from(el.querySelectorAll('.lbl'), (l) =>
+        l.textContent?.replace(/\s+/g, ' ').trim(),
+      );
       expect(labels.length).toBe(4);
       expect(labels.some((l) => l?.includes('Fosso escondido'))).toBe(true);
     });
 
-    it('the legend names only what the map has, with the toolbar\'s light names', async () => {
+    it("the legend names only what the map has, with the toolbar's light names", async () => {
       await setup();
       const legend = el.querySelector('app-map-legend')?.textContent ?? '';
       expect(legend).toContain('Cena de RP');
@@ -692,8 +856,14 @@ describe('MapEditor', () => {
 
     it('"Ver como" comes first in the side column', async () => {
       await setup({ gridColumns: 24, gridRows: 16, fogEnabled: true, baseLight: LightLevel.DARK });
-      api.visions.set('c-toren', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
-      api.visions.set('c-pensantus', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
+      api.visions.set(
+        'c-toren',
+        visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]),
+      );
+      api.visions.set(
+        'c-pensantus',
+        visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]),
+      );
       await settle();
       const viewAs = el.querySelector('aside app-view-as-list')!;
       const list = el.querySelector('aside app-point-list')!;
@@ -702,16 +872,25 @@ describe('MapEditor', () => {
 
     it('one question pattern: the unsaved point asks with the title focused and the filled button last', async () => {
       await setup();
-      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) => r.textContent?.includes('Fosso escondido'))!.click();
+      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row'))
+        .find((r) => r.textContent?.includes('Fosso escondido'))!
+        .click();
       await settle();
-      const field = Array.from(el.querySelectorAll('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)')!.querySelector('input')!;
+      const field = Array.from(el.querySelectorAll('mat-form-field'))
+        .find(
+          (f) =>
+            f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)',
+        )!
+        .querySelector('input')!;
       field.value = '12';
       field.dispatchEvent(new Event('input'));
       await settle();
       radio('Pintar').click();
       await settle();
       const ask = el.querySelector('app-map-ask')!;
-      expect(ask.querySelector('h3')?.textContent).toContain('Salvar as mudanças em Fosso escondido?');
+      expect(ask.querySelector('h3')?.textContent).toContain(
+        'Salvar as mudanças em Fosso escondido?',
+      );
       expect(document.activeElement).toBe(ask.querySelector('h3'));
       const buttons = Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim());
       expect(buttons[0]).toBe('Continuar editando');
@@ -721,7 +900,9 @@ describe('MapEditor', () => {
 
   describe('the new points', () => {
     function pick(name: string): void {
-      const row = Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) => r.textContent?.includes(name))!;
+      const row = Array.from(el.querySelectorAll<HTMLElement>('button.pl__row')).find((r) =>
+        r.textContent?.includes(name),
+      )!;
       row.click();
     }
 
@@ -762,7 +943,11 @@ describe('MapEditor', () => {
     it('creates a trap with a spec the server takes, a light from the torch preset and a treasure with no value', async () => {
       await setup();
       const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
-      for (const [label, kind] of [['Armadilha', MapPointKind.TRAP], ['Luz', MapPointKind.LIGHT], ['Tesouro', MapPointKind.TREASURE]] as const) {
+      for (const [label, kind] of [
+        ['Armadilha', MapPointKind.TRAP],
+        ['Luz', MapPointKind.LIGHT],
+        ['Tesouro', MapPointKind.TREASURE],
+      ] as const) {
         button(label).click();
         view.emptyClick.emit({ xBp: 1000, yBp: 2000 });
         await settle();
@@ -786,12 +971,31 @@ describe('MapEditor', () => {
   describe('"Ver como"', () => {
     it('is offered with the fog on, and shows that player\'s map with "Voltar à sua vista"', async () => {
       await setup({ gridColumns: 24, gridRows: 16, fogEnabled: true, baseLight: LightLevel.DARK });
-      api.visions.set('c-toren', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
-      api.visions.set('c-pensantus', visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]));
-      api.responses.set('map-1@c-toren', mapResponse(mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16, fogEnabled: true }), [], [mapToken('c-toren', 'Toren')]));
+      api.visions.set(
+        'c-toren',
+        visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]),
+      );
+      api.visions.set(
+        'c-pensantus',
+        visionResponse(['B'.repeat(24), ...Array.from({ length: 15 }, () => '.'.repeat(24))]),
+      );
+      api.responses.set(
+        'map-1@c-toren',
+        mapResponse(
+          mapMessage('map-1', 'A caverna do Vale Seco', {
+            gridColumns: 24,
+            gridRows: 16,
+            fogEnabled: true,
+          }),
+          [],
+          [mapToken('c-toren', 'Toren')],
+        ),
+      );
       await settle();
       expect(text()).toContain('Ver como');
-      const row = Array.from(el.querySelectorAll<HTMLElement>('app-view-as-list [role="radio"]')).find((r) => r.textContent?.includes('Toren'))!;
+      const row = Array.from(
+        el.querySelectorAll<HTMLElement>('app-view-as-list [role="radio"]'),
+      ).find((r) => r.textContent?.includes('Toren'))!;
       row.click();
       await settle();
       expect(text()).toContain('Você está vendo o mapa como Toren');

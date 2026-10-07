@@ -13,7 +13,12 @@ export class TurnOptionsState {
   readonly data = signal<GetTurnOptionsResponse | null>(null);
   private asked = 0;
 
-  async load(api: CombatClient, campaignId: string, encounterId: string, combatantId: string): Promise<void> {
+  async load(
+    api: CombatClient,
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+  ): Promise<void> {
     const mine = ++this.asked;
     try {
       const res = await api.turnOptions(campaignId, encounterId, combatantId);

@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -95,8 +106,16 @@ export class MapPointsList {
       hidden: pointHidden(point),
       sub: pointSubLine(point, this.lightNames().get(point.light?.presetKey ?? '') ?? ''),
       // A trap and a treasure keep their state in words (Armada, Não encontrado) next to who sees them; a Luz is the master's alone.
-      tags: point.kind > MapPointKind.SCENE ? pointTags(point) : [pointHidden(point) ? { icon: 'visibility_off', text: 'Escondido' } : { icon: 'visibility', text: 'Revelado' }],
-      canMark: point.kind === MapPointKind.TREASURE && this.people() !== null && !point.treasureFoundAt,
+      tags:
+        point.kind > MapPointKind.SCENE
+          ? pointTags(point)
+          : [
+              pointHidden(point)
+                ? { icon: 'visibility_off', text: 'Escondido' }
+                : { icon: 'visibility', text: 'Revelado' },
+            ],
+      canMark:
+        point.kind === MapPointKind.TREASURE && this.people() !== null && !point.treasureFoundAt,
     })),
   );
 
@@ -115,7 +134,11 @@ export class MapPointsList {
 
   protected cancelMarking(id: string): void {
     this.marking.set(null);
-    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-mark="${id}"]`)), { injector: this.injector });
+    afterNextRender(
+      () =>
+        focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-mark="${id}"]`)),
+      { injector: this.injector },
+    );
   }
 
   protected confirmMarking(point: MapPoint): void {

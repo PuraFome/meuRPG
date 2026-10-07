@@ -23,14 +23,56 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   let opened: unknown[];
 
   const catalog = () => [
-    summary('monster:wolf', 'Lobo', { name: 'Wolf', sizePt: 'Médio', size: 'Medium', challengeRating: '1/4', armorClass: 13, hitPoints: 11 }),
-    summary('monster:giant-wolf-spider', 'Aranha-lobo gigante', { name: 'Giant wolf spider', sizePt: 'Médio', size: 'Medium', challengeRating: '1/4', armorClass: 13, hitPoints: 11 }),
-    summary('monster:dire-wolf', 'Lobo atroz', { name: 'Dire wolf', sizePt: 'Grande', size: 'Large', challengeRating: '1', armorClass: 14, hitPoints: 37 }),
-    summary('monster:winter-wolf', 'Lobo do inverno', { name: 'Winter wolf', type: 'monstrosity', typePt: 'monstruosidade', sizePt: 'Grande', size: 'Large', challengeRating: '3', armorClass: 13, hitPoints: 75 }),
-    summary('monster:ogre', 'Ogro', { name: 'Ogre', type: 'giant', typePt: 'gigante', sizePt: 'Grande', size: 'Large', challengeRating: '2', armorClass: 11, hitPoints: 59 }),
+    summary('monster:wolf', 'Lobo', {
+      name: 'Wolf',
+      sizePt: 'Médio',
+      size: 'Medium',
+      challengeRating: '1/4',
+      armorClass: 13,
+      hitPoints: 11,
+    }),
+    summary('monster:giant-wolf-spider', 'Aranha-lobo gigante', {
+      name: 'Giant wolf spider',
+      sizePt: 'Médio',
+      size: 'Medium',
+      challengeRating: '1/4',
+      armorClass: 13,
+      hitPoints: 11,
+    }),
+    summary('monster:dire-wolf', 'Lobo atroz', {
+      name: 'Dire wolf',
+      sizePt: 'Grande',
+      size: 'Large',
+      challengeRating: '1',
+      armorClass: 14,
+      hitPoints: 37,
+    }),
+    summary('monster:winter-wolf', 'Lobo do inverno', {
+      name: 'Winter wolf',
+      type: 'monstrosity',
+      typePt: 'monstruosidade',
+      sizePt: 'Grande',
+      size: 'Large',
+      challengeRating: '3',
+      armorClass: 13,
+      hitPoints: 75,
+    }),
+    summary('monster:ogre', 'Ogro', {
+      name: 'Ogre',
+      type: 'giant',
+      typePt: 'gigante',
+      sizePt: 'Grande',
+      size: 'Large',
+      challengeRating: '2',
+      armorClass: 11,
+      hitPoints: 59,
+    }),
   ];
 
-  async function open(url = '/campaigns/camp-1/bestiary', prep: (a: FakeCreaturesClient) => void = () => undefined) {
+  async function open(
+    url = '/campaigns/camp-1/bestiary',
+    prep: (a: FakeCreaturesClient) => void = () => undefined,
+  ) {
     api = new FakeCreaturesClient();
     api.catalog = catalog();
     prep(api);
@@ -85,7 +127,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     vi.useRealTimers();
   });
 
-  it('lists the creatures with the Portuguese name, the SRD\'s in small type, the type and size, the ND, and CA and PV', async () => {
+  it("lists the creatures with the Portuguese name, the SRD's in small type, the type and size, the ND, and CA and PV", async () => {
     const { el } = await open();
     expect(flat(el.querySelector('h1'))).toBe('Bestiário');
     expect(flat(el.querySelector('.mr-page-lead'))).toBe('5 criaturas do SRD 5.1 · Mirathel');
@@ -96,7 +138,9 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(flat(rows[0].querySelector('.row__kind'))).toBe('Fera · Médio');
     expect(flat(rows[0].querySelector('.row__nd'))).toBe('ND 1/4');
     expect(flat(rows[0].querySelector('.row__stats'))?.replace(/ /g, ' ')).toBe('CA 13 · PV 11');
-    expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary/wolf');
+    expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe(
+      '/campaigns/camp-1/bestiary/wolf',
+    );
     expect(flat(el.querySelector('.list__n'))).toBe('5 de 5 criaturas');
     // The SRD's name is English: marked for a screen reader.
     expect(rows[0].querySelector('.row__en [lang=en]')?.textContent).toBe('Wolf');
@@ -112,9 +156,16 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     await debounced();
     expect(api.searches.map((s) => s.query)).toEqual(['', 'lobo']);
     expect(api.searches[1].pageSize).toBe(400);
-    expect(Array.from(el.querySelectorAll('.row__pt')).map((n) => n.textContent)).toEqual(['Lobo', 'Aranha-lobo gigante', 'Lobo atroz', 'Lobo do inverno']);
+    expect(Array.from(el.querySelectorAll('.row__pt')).map((n) => n.textContent)).toEqual([
+      'Lobo',
+      'Aranha-lobo gigante',
+      'Lobo atroz',
+      'Lobo do inverno',
+    ]);
     expect(flat(el.querySelector('.list__n'))).toBe('4 de 5 criaturas');
-    expect(flat(el.querySelector('.list__note'))).toContain('A busca vale para o nome em português e para o nome do SRD, em inglês.');
+    expect(flat(el.querySelector('.list__note'))).toContain(
+      'A busca vale para o nome em português e para o nome do SRD, em inglês.',
+    );
     expect(el.textContent).toContain('Limpar filtros');
   });
 
@@ -125,7 +176,9 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.dispatchEvent(new Event('input'));
     await settle();
     // The tap: the navigation starts (the list stays on screen until it is done), then the pause ends.
-    const navigation = TestBed.inject(Router).navigateByUrl(el.querySelector('.row__link')!.getAttribute('href')!);
+    const navigation = TestBed.inject(Router).navigateByUrl(
+      el.querySelector('.row__link')!.getAttribute('href')!,
+    );
     await vi.advanceTimersByTimeAsync(300);
     await navigation;
     await settle();
@@ -154,7 +207,9 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     await settle();
     expect(api.searches[api.searches.length - 1]).toMatchObject({ minCr: '1/4', maxCr: '1/4' });
     // The filters offer the six sizes and the ND as ranges, then one by one.
-    expect(Array.from(el.querySelectorAll('select[name=size] option')).map((o) => o.textContent)).toEqual(['Todos', 'Miúdo', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Imenso']);
+    expect(
+      Array.from(el.querySelectorAll('select[name=size] option')).map((o) => o.textContent),
+    ).toEqual(['Todos', 'Miúdo', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Imenso']);
     expect(el.querySelectorAll('select[name=cr] optgroup')).toHaveLength(2);
   });
 
@@ -173,10 +228,14 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.dispatchEvent(new Event('input'));
     await debounced();
     expect(flat(el.querySelector('.empty__t'))).toBe('Nenhuma criatura com “wyrm”.');
-    expect(flat(el.querySelector('.empty__s'))).toBe('Confira a grafia ou procure pelo nome em inglês do SRD. Os filtros de tipo, tamanho e ND também contam.');
+    expect(flat(el.querySelector('.empty__s'))).toBe(
+      'Confira a grafia ou procure pelo nome em inglês do SRD. Os filtros de tipo, tamanho e ND também contam.',
+    );
     expect(flat(el.querySelector('.list__n'))).toBe('0 de 5 criaturas');
     expect(el.querySelector('.list__n')?.getAttribute('role')).toBe('status');
-    const clear = Array.from(el.querySelectorAll('button')).find((b) => flat(b) === 'Limpar a busca')!;
+    const clear = Array.from(el.querySelectorAll('button')).find(
+      (b) => flat(b) === 'Limpar a busca',
+    )!;
     clear.click();
     await settle();
     expect(el.querySelectorAll('.row')).toHaveLength(5);
@@ -202,7 +261,15 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'campaigns/:id/bestiary', component: BestiaryList }]),
-        { provide: CreaturesClient, useValue: { search: async () => { await held; return { creatures: [], total: 0 }; } } },
+        {
+          provide: CreaturesClient,
+          useValue: {
+            search: async () => {
+              await held;
+              return { creatures: [], total: 0 };
+            },
+          },
+        },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
       ],
     });
@@ -223,9 +290,13 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.value = 'lobo';
     q.dispatchEvent(new Event('input'));
     await debounced();
-    expect(el.querySelector('[role=alert]')?.textContent).toContain('Não deu para abrir o bestiário: o servidor não respondeu.');
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(
+      'Não deu para abrir o bestiário: o servidor não respondeu.',
+    );
     api.searchFail = null;
-    Array.from(el.querySelectorAll('button')).find((b) => flat(b) === 'Tentar de novo')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => flat(b) === 'Tentar de novo')!
+      .click();
     await settle();
     expect(el.querySelectorAll('.row')).toHaveLength(4);
   });
@@ -261,13 +332,15 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(harness.routeNativeElement?.querySelectorAll('.row')).toHaveLength(5);
   });
 
-  it('the rows\' links carry the typed search at once, before the pause ends, so a quick click keeps it', async () => {
+  it("the rows' links carry the typed search at once, before the pause ends, so a quick click keeps it", async () => {
     const { el, settle } = await open();
     const q = el.querySelector<HTMLInputElement>('input[type=search]')!;
     q.value = 'ogro';
     q.dispatchEvent(new Event('input'));
     await settle();
-    expect(el.querySelector('.row__link')?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary/wolf?q=ogro');
+    expect(el.querySelector('.row__link')?.getAttribute('href')).toBe(
+      '/campaigns/camp-1/bestiary/wolf?q=ogro',
+    );
   });
 
   it('with a search in the link the count waits for the book\'s size: nothing, then "N de M"; and says only "N criaturas" if the size cannot be had', async () => {
@@ -304,15 +377,26 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   });
 
   it('"Pôr no combate" opens the sheet for that row\'s creature, and what went in is announced above the list', async () => {
-    dialogResult = { count: 3, names: 'Lobo 1, Lobo 2 e Lobo 3', combatName: 'Emboscada na ponte', started: false, hidden: true, encounterId: 'enc-1' };
+    dialogResult = {
+      count: 3,
+      names: 'Lobo 1, Lobo 2 e Lobo 3',
+      combatName: 'Emboscada na ponte',
+      started: false,
+      hidden: true,
+      encounterId: 'enc-1',
+    };
     const { el, settle } = await open();
     el.querySelectorAll<HTMLButtonElement>('.row__put')[0].click();
     await settle();
     expect(opened).toHaveLength(1);
-    expect((opened[0] as { data: { campaignId: string; creature: { key: string } } }).data).toMatchObject({ campaignId: 'camp-1', creature: { key: 'monster:wolf' } });
+    expect(
+      (opened[0] as { data: { campaignId: string; creature: { key: string } } }).data,
+    ).toMatchObject({ campaignId: 'camp-1', creature: { key: 'monster:wolf' } });
     const done = el.querySelector('.put-done')!;
     expect(done.getAttribute('role')).toBe('status');
-    expect(flat(done.querySelector('p'))).toBe('Entraram no combate: Lobo 1, Lobo 2 e Lobo 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
+    expect(flat(done.querySelector('p'))).toBe(
+      'Entraram no combate: Lobo 1, Lobo 2 e Lobo 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.',
+    );
     expect(done.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/session');
   });
 

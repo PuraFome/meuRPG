@@ -1,4 +1,15 @@
-import { Component, DestroyRef, ElementRef, Injector, ViewChild, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  ViewChild,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CdkStep } from '@angular/cdk/stepper';
@@ -14,11 +25,21 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
-import { characterBlockedMessage, contentRef, describeCharacterError, invalidFieldPath, switchedOffKey } from '../../core/characters/character-errors';
+import {
+  characterBlockedMessage,
+  contentRef,
+  describeCharacterError,
+  invalidFieldPath,
+  switchedOffKey,
+} from '../../core/characters/character-errors';
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { catalogChanged, offControlOf } from './catalog-changes';
-import { abilityLabel, characterKindLabel, spellLevelLabel } from '../../core/characters/character-labels';
+import {
+  abilityLabel,
+  characterKindLabel,
+  spellLevelLabel,
+} from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { ActionKey } from '../../core/connect/idempotency';
 import { formatXp } from '../../core/format/text';
@@ -373,11 +394,15 @@ export class CharacterEditor {
   /** The way the player chose; the server checks the scores against it. */
   protected readonly abilityMethod = signal<AbilityMethodKey>('typed');
   /** A player editing their own draft: the way the server recorded the scores were made, which the step keeps (RN-24). */
-  protected readonly lockedOrigin = signal<NonNullable<CharacterForEdit['abilityOrigin']> | null>(null);
+  protected readonly lockedOrigin = signal<NonNullable<CharacterForEdit['abilityOrigin']> | null>(
+    null,
+  );
   /** What the table leaves of the hit points of a new sheet: both ways, only "Rolado" or only "Média". */
   protected readonly hpRule = computed<'player_chooses' | 'roll' | 'average'>(() => {
     const s = this.state();
-    return s.status === 'ready' && s.mode === 'create' ? (this.abilityTable()?.hitPoints ?? 'player_chooses') : 'player_chooses';
+    return s.status === 'ready' && s.mode === 'create'
+      ? (this.abilityTable()?.hitPoints ?? 'player_chooses')
+      : 'player_chooses';
   });
 
   protected readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
@@ -392,9 +417,12 @@ export class CharacterEditor {
   private readonly selectedLevel = toSignal(this.fullForm.controls.level.valueChanges, {
     initialValue: 1,
   });
-  protected readonly selectedSubclassKey = toSignal(this.fullForm.controls.subclassName.valueChanges, {
-    initialValue: '',
-  });
+  protected readonly selectedSubclassKey = toSignal(
+    this.fullForm.controls.subclassName.valueChanges,
+    {
+      initialValue: '',
+    },
+  );
   private readonly selectedCustomSubclass = toSignal(
     this.fullForm.controls.customSubclassName.valueChanges,
     { initialValue: '' },
@@ -451,7 +479,14 @@ export class CharacterEditor {
       return undefined;
     }
     const c = s.catalog;
-    return [...c.races, ...c.classes, ...c.backgrounds, ...c.spells, ...c.races.flatMap((r) => r.subraces), ...c.classes.flatMap((k) => k.subclasses)].find((e) => e.key === key)?.namePt;
+    return [
+      ...c.races,
+      ...c.classes,
+      ...c.backgrounds,
+      ...c.spells,
+      ...c.races.flatMap((r) => r.subraces),
+      ...c.classes.flatMap((k) => k.subclasses),
+    ].find((e) => e.key === key)?.namePt;
   }
 
   /** The caller is the master: the one who is offered what is switched off for the players. */
@@ -462,23 +497,48 @@ export class CharacterEditor {
   /** What each list offers as a NEW choice: never a retired entry, unless it is the value the form already has. */
   protected readonly raceOptions = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? offered(s.catalog.races, [this.selectedRaceKey()], this.master()) : [];
+    return s.status === 'ready'
+      ? offered(s.catalog.races, [this.selectedRaceKey()], this.master())
+      : [];
   });
-  protected readonly subraceOptions = computed(() => offered(this.availableSubraces(), [this.selectedSubraceKey()], this.master()));
+  protected readonly subraceOptions = computed(() =>
+    offered(this.availableSubraces(), [this.selectedSubraceKey()], this.master()),
+  );
   protected readonly classOptions = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? offered(s.catalog.classes, [this.selectedClassKey()], this.master()) : [];
+    return s.status === 'ready'
+      ? offered(s.catalog.classes, [this.selectedClassKey()], this.master())
+      : [];
   });
-  protected readonly subclassOptions = computed(() => offered(this.selectedClass()?.subclasses ?? [], [this.selectedSubclassKey()], this.master()));
+  protected readonly subclassOptions = computed(() =>
+    offered(this.selectedClass()?.subclasses ?? [], [this.selectedSubclassKey()], this.master()),
+  );
   protected readonly backgroundOptions = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? offered(s.catalog.backgrounds, [this.selectedBackground()], this.master()) : [];
+    return s.status === 'ready'
+      ? offered(s.catalog.backgrounds, [this.selectedBackground()], this.master())
+      : [];
   });
   /** A value the catalog does not list at all (a key from an old sheet): the select says so instead of staying blank. */
-  protected readonly raceUnlisted = computed(() => unlisted(this.state().status === 'ready' ? (this.state() as ReadyState).catalog.races : [], this.selectedRaceKey()));
-  protected readonly classUnlisted = computed(() => unlisted(this.state().status === 'ready' ? (this.state() as ReadyState).catalog.classes : [], this.selectedClassKey()));
+  protected readonly raceUnlisted = computed(() =>
+    unlisted(
+      this.state().status === 'ready' ? (this.state() as ReadyState).catalog.races : [],
+      this.selectedRaceKey(),
+    ),
+  );
+  protected readonly classUnlisted = computed(() =>
+    unlisted(
+      this.state().status === 'ready' ? (this.state() as ReadyState).catalog.classes : [],
+      this.selectedClassKey(),
+    ),
+  );
   protected readonly backgroundUnlisted = computed(
-    () => this.selectedBackground() !== 'custom' && unlisted(this.state().status === 'ready' ? (this.state() as ReadyState).catalog.backgrounds : [], this.selectedBackground()),
+    () =>
+      this.selectedBackground() !== 'custom' &&
+      unlisted(
+        this.state().status === 'ready' ? (this.state() as ReadyState).catalog.backgrounds : [],
+        this.selectedBackground(),
+      ),
   );
 
   protected readonly selectedClass = computed(() => {
@@ -519,15 +579,25 @@ export class CharacterEditor {
   protected readonly isCaster = computed(() => this.sections().length > 0);
   /** The heading of a section when there is more than one: "Clérigo · 1º nível". */
   protected sectionHeading(section: CasterSection): string {
-    const name = section.subclassNamePt ? `${section.namePt} · ${section.subclassNamePt}` : section.namePt;
+    const name = section.subclassNamePt
+      ? `${section.namePt} · ${section.subclassNamePt}`
+      : section.namePt;
     const max = section.maxCircle;
-    return max === null ? name : max === 0 ? `${name} · só truques` : `${name} · até o ${max}º nível de magia`;
+    return max === null
+      ? name
+      : max === 0
+        ? `${name} · só truques`
+        : `${name} · até o ${max}º nível de magia`;
   }
   protected sectionLabel = sectionName;
 
   /** Every cantrip and spell of the sheet's lists, for "the chosen line" and for what a save may send. */
-  protected readonly availableCantrips = computed(() => this.unionOf((sec, spells) => cantripsOf(spells, sec, new Set(this.selectedCantrips()), true)));
-  protected readonly availableSpells = computed(() => this.unionOf((sec, spells) => allOfSection(spells, sec).filter((sp) => sp.level >= 1)));
+  protected readonly availableCantrips = computed(() =>
+    this.unionOf((sec, spells) => cantripsOf(spells, sec, new Set(this.selectedCantrips()), true)),
+  );
+  protected readonly availableSpells = computed(() =>
+    this.unionOf((sec, spells) => allOfSection(spells, sec).filter((sp) => sp.level >= 1)),
+  );
   private unionOf(
     pick: (section: CasterSection, spells: readonly SpellOptionVm[]) => SpellOptionVm[],
   ): SpellOptionVm[] {
@@ -541,7 +611,9 @@ export class CharacterEditor {
         seen.set(spell.key, spell);
       }
     }
-    return [...seen.values()].sort((a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'));
+    return [...seen.values()].sort(
+      (a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'),
+    );
   }
 
   /** What each section's pickers list now: the cantrips, the spells up to the circle the class level
@@ -552,21 +624,41 @@ export class CharacterEditor {
       return [];
     }
     const filters = this.spellFilters();
-    const query = (section: CasterSection, list: string) => filters[`${section.index}:${list}`] ?? '';
+    const query = (section: CasterSection, list: string) =>
+      filters[`${section.index}:${list}`] ?? '';
     return this.sections().map((section) => {
-      const cantrips = cantripsOf(s.catalog.spells, section, this.selectedCantrips(), this.master());
+      const cantrips = cantripsOf(
+        s.catalog.spells,
+        section,
+        this.selectedCantrips(),
+        this.master(),
+      );
       // An always-prepared spell is never a pick: it is in its locked row, free, and never in these lists.
       const alwaysKeys = new Set(section.alwaysPrepared);
-      const known = leveledOf(s.catalog.spells, section, this.selectedSpellsKnown(), this.master()).filter((sp) => !alwaysKeys.has(sp.key));
-      const prepared = leveledOf(s.catalog.spells, section, this.selectedSpellsPrepared(), this.master()).filter((sp) => !alwaysKeys.has(sp.key));
+      const known = leveledOf(
+        s.catalog.spells,
+        section,
+        this.selectedSpellsKnown(),
+        this.master(),
+      ).filter((sp) => !alwaysKeys.has(sp.key));
+      const prepared = leveledOf(
+        s.catalog.spells,
+        section,
+        this.selectedSpellsPrepared(),
+        this.master(),
+      ).filter((sp) => !alwaysKeys.has(sp.key));
       // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
       const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
       const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
       const max = this.preparedMaxByClass()[section.classKey];
-      const picked = prepared.filter((sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key)).length;
+      const picked = prepared.filter(
+        (sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key),
+      ).length;
       const preparation = section.preparation;
       const noLeveledYet =
-        section.maxCircle === 0 && this.selectedSpellsKnown().size === 0 && this.selectedSpellsPrepared().size === 0;
+        section.maxCircle === 0 &&
+        this.selectedSpellsKnown().size === 0 &&
+        this.selectedSpellsPrepared().size === 0;
       return {
         section,
         id: String(section.index),
@@ -575,7 +667,9 @@ export class CharacterEditor {
           shown: filterByName(cantrips, query(section, 'cantrips')),
           filter: query(section, 'cantrips'),
           // A cantrip already on the sheet keeps the picker, so it can still be unchecked.
-          show: cantrips.length > 0 || (this.sections().length === 1 && this.selectedCantrips().size > 0),
+          show:
+            cantrips.length > 0 ||
+            (this.sections().length === 1 && this.selectedCantrips().size > 0),
           outside: outsideTheLists(s.catalog, this.sections(), query(section, 'cantrips'), true),
         },
         known: {
@@ -595,7 +689,10 @@ export class CharacterEditor {
         always,
         alwaysSourcePt: section.alwaysSourcePt,
         // On an edit the server says how many the class prepares (its own number, from the saved sheet).
-        preparedCount: section.preparation !== 'known' && max !== undefined ? `Preparadas ${picked} de ${max}` : '',
+        preparedCount:
+          section.preparation !== 'known' && max !== undefined
+            ? `Preparadas ${picked} de ${max}`
+            : '',
         noLeveledYet,
         castingStarts: `O ${sectionName(section)} conjura magias a partir do nível ${section.firstLevel}.`,
       };
@@ -611,20 +708,32 @@ export class CharacterEditor {
     return this.grantedSpells().filter((sp) => !always.has(sp.key));
   });
 
-  protected setSpellFilter(section: number, list: 'cantrips' | 'known' | 'prepared', value: string): void {
+  protected setSpellFilter(
+    section: number,
+    list: 'cantrips' | 'known' | 'prepared',
+    value: string,
+  ): void {
     this.spellFilters.update((f) => ({ ...f, [`${section}:${list}`]: value }));
   }
 
   /** The entries chosen in the closed selects, for the "Da mesa" tag beside the name (a select shows only text). */
   protected readonly selectedRace = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? s.catalog.races.find((r) => r.key === this.selectedRaceKey()) : undefined;
+    return s.status === 'ready'
+      ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
+      : undefined;
   });
-  protected readonly selectedSubrace = computed(() => this.availableSubraces().find((r) => r.key === this.selectedSubraceKey()));
-  protected readonly selectedSubclass = computed(() => this.selectedClass()?.subclasses.find((c) => c.key === this.selectedSubclassKey()));
+  protected readonly selectedSubrace = computed(() =>
+    this.availableSubraces().find((r) => r.key === this.selectedSubraceKey()),
+  );
+  protected readonly selectedSubclass = computed(() =>
+    this.selectedClass()?.subclasses.find((c) => c.key === this.selectedSubclassKey()),
+  );
   protected readonly selectedBackgroundVm = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? s.catalog.backgrounds.find((b) => b.key === this.selectedBackground()) : undefined;
+    return s.status === 'ready'
+      ? s.catalog.backgrounds.find((b) => b.key === this.selectedBackground())
+      : undefined;
   });
 
   /** What the first class asks of the skills and the saving throws, from the server's entry for it. */
@@ -634,7 +743,10 @@ export class CharacterEditor {
       return '';
     }
     const saves = c.savingThrows.map((a) => abilityLabel(a));
-    const savesText = saves.length > 0 ? ` e dá proficiência nos testes de resistência de ${BONUS_LIST.format(saves)}` : '';
+    const savesText =
+      saves.length > 0
+        ? ` e dá proficiência nos testes de resistência de ${BONUS_LIST.format(saves)}`
+        : '';
     return `O ${c.namePt} escolhe ${c.skillChoose} ${c.skillChoose === 1 ? 'perícia' : 'perícias'} ao começar${savesText}.`;
   });
   protected readonly spellCircle = spellLevelLabel;
@@ -647,7 +759,10 @@ export class CharacterEditor {
   /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
   protected readonly choiceBonusesHint = computed(() => {
     const s = this.state();
-    const race = s.status === 'ready' ? s.catalog.races.find((r) => r.key === this.selectedRaceKey()) : undefined;
+    const race =
+      s.status === 'ready'
+        ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
+        : undefined;
     const bonuses = race?.choiceBonuses ?? [];
     return bonuses.length > 0
       ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.`
@@ -692,10 +807,13 @@ export class CharacterEditor {
       if (change.classKey !== undefined) f.className.setValue(change.classKey);
       if (change.level !== undefined) f.level.setValue(change.level);
       if (change.subclassKey !== undefined) f.subclassName.setValue(change.subclassKey);
-      if (change.customSubclassName !== undefined) f.customSubclassName.setValue(change.customSubclassName);
+      if (change.customSubclassName !== undefined)
+        f.customSubclassName.setValue(change.customSubclassName);
       return;
     }
-    this.extraClasses.update((list) => list.map((c, i) => (i === index - 1 ? { ...c, ...change } : c)));
+    this.extraClasses.update((list) =>
+      list.map((c, i) => (i === index - 1 ? { ...c, ...change } : c)),
+    );
   }
 
   /** The classes the other blocks already use: a class cannot be taken twice (the SRD's multiclass), so they are not offered here. */
@@ -709,7 +827,10 @@ export class CharacterEditor {
   /** "Adicionar classe": a new block at level 1 with nothing chosen. The server checks the multiclass
    * prerequisites of every class and shows what the sheet does not meet as issues on the sheet. */
   protected addClass(): void {
-    this.extraClasses.update((list) => [...list, { classKey: '', level: 1, subclassKey: '', customSubclassName: '' }]);
+    this.extraClasses.update((list) => [
+      ...list,
+      { classKey: '', level: 1, subclassKey: '', customSubclassName: '' },
+    ]);
   }
 
   protected removeClass(index: number): void {
@@ -840,11 +961,18 @@ export class CharacterEditor {
   constructor() {
     // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
     // page from ever being quiet (every NPC editor of a live campaign would hold one).
-    this.watcher.whileLive(() => (this.master() ? '' : this.campaignIdSignal()), () => void this.refreshCatalog());
+    this.watcher.whileLive(
+      () => (this.master() ? '' : this.campaignIdSignal()),
+      () => void this.refreshCatalog(),
+    );
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
       const c = this.selectedClass();
-      const waits = !!c && c.subclassLevel > 0 && this.selectedLevel() < c.subclassLevel && this.selectedSubclassKey() === '';
+      const waits =
+        !!c &&
+        c.subclassLevel > 0 &&
+        this.selectedLevel() < c.subclassLevel &&
+        this.selectedSubclassKey() === '';
       const control = this.fullForm.controls.subclassName;
       if (waits && control.enabled) {
         control.disable({ emitEvent: false });
@@ -877,7 +1005,8 @@ export class CharacterEditor {
   private loadForCreate(campaignId: string, kind: CharacterKind): void {
     this.state.set({ status: 'loading', title: titleFor('create', kind) });
     // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs are free.
-    const table = kind === 'player' ? this.source.loadAbilityTable(campaignId) : Promise.resolve(null);
+    const table =
+      kind === 'player' ? this.source.loadAbilityTable(campaignId) : Promise.resolve(null);
     Promise.all([this.source.loadCatalog(campaignId), table]).then(
       ([catalog, abilityTable]) => {
         this.abilityTable.set(abilityTable);
@@ -925,7 +1054,10 @@ export class CharacterEditor {
         // A player's own draft keeps the way its scores were made (RN-24): the step shows that way and its limits.
         // The master (and an NPC, or a sheet made before the rules) keeps the free editor.
         const origin = existing.abilityOrigin ?? null;
-        const table = origin && existing.kind === 'player' ? await this.source.loadAbilityTable(campaignId) : null;
+        const table =
+          origin && existing.kind === 'player'
+            ? await this.source.loadAbilityTable(campaignId)
+            : null;
         this.abilityTable.set(table);
         this.lockedOrigin.set(table ? origin : null);
         return [catalog, existing] as const;
@@ -939,7 +1071,9 @@ export class CharacterEditor {
             message: characterBlockedMessage(existing.blocked),
             backLink: ['/campaigns', campaignId, 'characters', characterId],
             backLabel: 'Voltar para a ficha',
-            blocked: { title: existing.blocked === 'character_dead' ? 'Personagem morto' : 'Ficha travada' },
+            blocked: {
+              title: existing.blocked === 'character_dead' ? 'Personagem morto' : 'Ficha travada',
+            },
           });
           return;
         }
@@ -1203,7 +1337,8 @@ export class CharacterEditor {
     const problems: string[] = [];
     this.extraClasses().forEach((c, i) => {
       if (c.classKey === '') problems.push(`Classe ${i + 2}`);
-      if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_TOTAL_LEVEL) problems.push(`Nível da classe ${i + 2}`);
+      if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_TOTAL_LEVEL)
+        problems.push(`Nível da classe ${i + 2}`);
     });
     if (this.totalLevelProblem()) problems.push('o nível total vai até 20');
     return problems;
@@ -1218,7 +1353,10 @@ export class CharacterEditor {
       return fields;
     }
     const problem = this.abilitiesProblem();
-    return [...fields, problem ? { ...UNPLACED_RESULTS_FIELD, label: problem } : UNPLACED_RESULTS_FIELD];
+    return [
+      ...fields,
+      problem ? { ...UNPLACED_RESULTS_FIELD, label: problem } : UNPLACED_RESULTS_FIELD,
+    ];
   }
 
   /** After a submit with an invalid field: opens the step of the first one
@@ -1251,7 +1389,10 @@ export class CharacterEditor {
     }
     const isBasic = !isFullSheetKind(s.kind);
     const form = isBasic ? this.basicForm : this.fullForm;
-    if (form.invalid || (!isBasic && (this.abilitiesIncomplete() || this.classProblems().length > 0))) {
+    if (
+      form.invalid ||
+      (!isBasic && (this.abilitiesIncomplete() || this.classProblems().length > 0))
+    ) {
       form.markAllAsTouched();
       this.saveState.set({ status: 'idle' });
       this.showErrors.set(true);
@@ -1272,7 +1413,10 @@ export class CharacterEditor {
           ...(this.abilityTable() && !isBasic ? { abilityMethod: this.abilityMethod() } : {}),
         };
         // A retry of the same form (a lost answer, a second tap) sends the same key and makes one character.
-        const res = await this.source.createCharacter({ ...input, idempotencyKey: this.createKey.keyFor(input) });
+        const res = await this.source.createCharacter({
+          ...input,
+          idempotencyKey: this.createKey.keyFor(input),
+        });
         this.createKey.renew();
         await this.router.navigate(['/campaigns', s.campaignId, 'characters', res.characterId]);
       } else if (s.characterId) {
@@ -1317,20 +1461,27 @@ export class CharacterEditor {
       return false;
     }
     const ref = contentRef(key, (k) => this.nameOfKey(k));
-    this.fullForm.controls[control].setErrors({ switchedOff: characterBlockedMessage('switched_off_content', { ...ref, step: '' }) });
+    this.fullForm.controls[control].setErrors({
+      switchedOff: characterBlockedMessage('switched_off_content', { ...ref, step: '' }),
+    });
     this.fullForm.controls[control].markAsTouched();
     this.showErrors.set(true);
     this.saveState.set({ status: 'idle' });
     this.openFirstInvalidStep();
     afterNextRender(
-      () => this.host.nativeElement.querySelector<HTMLElement>(`[formcontrolname="${control}"]`)?.focus(),
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(`[formcontrolname="${control}"]`)
+          ?.focus(),
       { injector: this.injector },
     );
     return true;
   }
 
   /** The sentence of a switched-off option on its field, for the template. */
-  protected switchedOff(control: 'className' | 'race' | 'subrace' | 'subclassName' | 'background'): string {
+  protected switchedOff(
+    control: 'className' | 'race' | 'subrace' | 'subclassName' | 'background',
+  ): string {
     return (this.fullForm.controls[control].getError('switchedOff') as string | null) ?? '';
   }
 
@@ -1345,7 +1496,9 @@ export class CharacterEditor {
       const now = this.state();
       if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
         this.state.set({ ...now, catalog });
-        this.contentNote.set('O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.');
+        this.contentNote.set(
+          'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.',
+        );
       }
     } catch {
       // Keep the lists on screen: the next change reads again.

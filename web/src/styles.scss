@@ -24,7 +24,8 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-500-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-500-normal.woff2')
+    format('woff2');
   ascent-override: 100.5%;
   descent-override: 35.6%;
 }
@@ -33,7 +34,8 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-700-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-700-normal.woff2')
+    format('woff2');
   ascent-override: 100.5%;
   descent-override: 35.6%;
 }
@@ -42,7 +44,8 @@
   font-style: normal;
   font-weight: 800;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-800-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-800-normal.woff2')
+    format('woff2');
   ascent-override: 100.5%;
   descent-override: 35.6%;
 }
@@ -51,7 +54,8 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-400-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-400-normal.woff2')
+    format('woff2');
   ascent-override: 92%;
   descent-override: 28%;
 }
@@ -60,7 +64,8 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-500-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-500-normal.woff2')
+    format('woff2');
   ascent-override: 92%;
   descent-override: 28%;
 }
@@ -69,7 +74,8 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-700-normal.woff2') format('woff2');
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-700-normal.woff2')
+    format('woff2');
   ascent-override: 92%;
   descent-override: 28%;
 }
@@ -353,7 +359,6 @@ a:hover {
   outline: 2px solid var(--mr-focus);
   outline-offset: 2px;
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   *,

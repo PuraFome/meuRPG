@@ -172,12 +172,16 @@ export class CampaignDocumentPage {
     this.mode.set('edit');
     this.savedAt.set('');
     this.loadRefs();
-    afterNextRender(() => document.getElementById('doc-text')?.focus(), { injector: this.injector });
+    afterNextRender(() => document.getElementById('doc-text')?.focus(), {
+      injector: this.injector,
+    });
   }
 
   protected onSaved(doc: CampaignDocument): void {
     this.doc.set(doc);
-    this.savedAt.set(`Salvo às ${formatClock(doc.updatedAt ? timestampDate(doc.updatedAt) : new Date())}`);
+    this.savedAt.set(
+      `Salvo às ${formatClock(doc.updatedAt ? timestampDate(doc.updatedAt) : new Date())}`,
+    );
     this.announce(this.savedAt());
     this.backToReading();
   }

@@ -23,21 +23,36 @@ describe('scene actions', () => {
     expect(checkOptions('skill', skills)).toEqual(skills);
     const abilities = checkOptions('ability', skills);
     expect(abilities.map((o) => o.key)).toEqual([
-      'ability:str', 'ability:dex', 'ability:con', 'ability:int', 'ability:wis', 'ability:cha',
+      'ability:str',
+      'ability:dex',
+      'ability:con',
+      'ability:int',
+      'ability:wis',
+      'ability:cha',
     ]);
     expect(abilities[0].label).toBe('Força');
     expect(checkOptions('save', skills).map((o) => o.key)[4]).toBe('save:wis');
   });
 
   it('names an action by its own name, or by the check when it has none', () => {
-    const named = { name: 'Procurar pistas', checkName: 'Investigação', key: 'skill:investigation' };
+    const named = {
+      name: 'Procurar pistas',
+      checkName: 'Investigação',
+      key: 'skill:investigation',
+    };
     const bare = { name: '', checkName: 'Percepção', key: 'skill:perception' };
     expect(actionTitle(named)).toBe('Procurar pistas');
     expect(actionSubtitle(named)).toBe('Investigação');
     expect(actionTitle(bare)).toBe('Percepção');
     expect(actionSubtitle(bare)).toBe('Perícia');
-    expect(actionSubtitle({ name: '', checkName: 'Teste de Força', key: 'ability:str' })).toBe('Teste de habilidade');
+    expect(actionSubtitle({ name: '', checkName: 'Teste de Força', key: 'ability:str' })).toBe(
+      'Teste de habilidade',
+    );
     expect(checkKindLabel('save:wis')).toBe('Teste de resistência');
-    expect(CHECK_KINDS.map((k) => k.label)).toEqual(['Perícia', 'Teste de habilidade', 'Teste de resistência']);
+    expect(CHECK_KINDS.map((k) => k.label)).toEqual([
+      'Perícia',
+      'Teste de habilidade',
+      'Teste de resistência',
+    ]);
   });
 });

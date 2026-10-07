@@ -28,8 +28,14 @@ describe('EditorBar', () => {
     el = fixture.nativeElement;
   }
 
-  const button = (text: string) => Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim().endsWith(text))!;
-  const radio = (text: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().endsWith(text))!;
+  const button = (text: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) =>
+      b.textContent?.trim().endsWith(text),
+    )!;
+  const radio = (text: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) =>
+      b.textContent?.trim().endsWith(text),
+    )!;
 
   it('says which mode it is in with a check first, and changes it', () => {
     setup('points');
@@ -41,9 +47,13 @@ describe('EditorBar', () => {
 
   it('adds the three new kinds beside the three it always had', () => {
     setup('points');
-    const names = Array.from(el.querySelectorAll('[aria-labelledby="bar-add"] button')).map((b) => b.textContent?.replace(/\s+/g, ' ').trim());
+    const names = Array.from(el.querySelectorAll('[aria-labelledby="bar-add"] button')).map((b) =>
+      b.textContent?.replace(/\s+/g, ' ').trim(),
+    );
     expect(names).toHaveLength(6);
-    ['Batalha', 'Submapa', 'Cena de RP', 'Luz', 'Armadilha', 'Tesouro'].forEach((n, i) => expect(names[i]?.endsWith(n), n).toBe(true));
+    ['Batalha', 'Submapa', 'Cena de RP', 'Luz', 'Armadilha', 'Tesouro'].forEach((n, i) =>
+      expect(names[i]?.endsWith(n), n).toBe(true),
+    );
     button('Armadilha').click();
     expect(kinds).toEqual([MapPointKind.TRAP]);
   });
@@ -86,8 +96,16 @@ describe('EditorBar', () => {
   it('opens a second line for the kind of door: each kind with its own mark, checked when chosen, and "Tirar a porta"', () => {
     setup('paint', true, { ...DEFAULT_SETTINGS, tool: 'door', door: 3 });
     expect(el.textContent).toContain('Tipo de porta');
-    const names = Array.from(el.querySelectorAll('[aria-labelledby="bar-door"] button')).map((b) => b.textContent?.replace(/\s+/g, ' ').trim());
-    expect(names.map((n) => n?.replace('check', '').trim())).toEqual(['Fechada', 'Aberta', 'Trancada', 'Grade', 'Secreta']);
+    const names = Array.from(el.querySelectorAll('[aria-labelledby="bar-door"] button')).map((b) =>
+      b.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(names.map((n) => n?.replace('check', '').trim())).toEqual([
+      'Fechada',
+      'Aberta',
+      'Trancada',
+      'Grade',
+      'Secreta',
+    ]);
     // One mark each, in the drawing the map uses.
     expect(el.querySelectorAll('[aria-labelledby="bar-door"] app-door-mark')).toHaveLength(5);
     expect(button('Trancada').getAttribute('aria-pressed')).toBe('true');

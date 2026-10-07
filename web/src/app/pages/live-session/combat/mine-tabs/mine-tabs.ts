@@ -118,7 +118,16 @@ export class MineTabs {
   /** The arrows, Home and End move the choice (and the focus) between the tabs. */
   protected key(event: KeyboardEvent, at: number): void {
     const n = this.tabs().length;
-    const to = event.key === 'ArrowRight' ? (at + 1) % n : event.key === 'ArrowLeft' ? (at - 1 + n) % n : event.key === 'Home' ? 0 : event.key === 'End' ? n - 1 : -1;
+    const to =
+      event.key === 'ArrowRight'
+        ? (at + 1) % n
+        : event.key === 'ArrowLeft'
+          ? (at - 1 + n) % n
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? n - 1
+              : -1;
     if (to < 0) {
       return;
     }

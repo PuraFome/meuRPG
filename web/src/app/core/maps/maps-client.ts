@@ -90,7 +90,12 @@ export class MapsClient {
   }
 
   /** `CreateMap`. `idempotencyKey`: one per create, sent again on a retry (see `ActionKey`). */
-  async create(campaignId: string, name: string, imageId: string, idempotencyKey: string): Promise<MapMessage> {
+  async create(
+    campaignId: string,
+    name: string,
+    imageId: string,
+    idempotencyKey: string,
+  ): Promise<MapMessage> {
     const res = await this.client.createMap({ campaignId, name, imageId, idempotencyKey });
     return need(res.map, 'CreateMap');
   }
@@ -118,7 +123,12 @@ export class MapsClient {
    * grid. `squareFactor` is required: how many squares of 1,5 m each is worth (1 to 20). A caller that changes only the
    * columns passes the map's own factor, or the server would read 0 as 1 and drop the calibration. The server
    * answers with the rows it worked out. */
-  async setGrid(campaignId: string, mapId: string, columns: number, squareFactor: number): Promise<MapMessage> {
+  async setGrid(
+    campaignId: string,
+    mapId: string,
+    columns: number,
+    squareFactor: number,
+  ): Promise<MapMessage> {
     const res = await this.client.setMapGrid({ campaignId, mapId, columns, squareFactor });
     return need(res.map, 'SetMapGrid');
   }
@@ -244,7 +254,11 @@ export class MapsClient {
   }
 
   /** `GetTrapNoticers`: "Quem notaria", worked out by the server. */
-  getTrapNoticers(campaignId: string, mapId: string, pointId: string): Promise<GetTrapNoticersResponse> {
+  getTrapNoticers(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+  ): Promise<GetTrapNoticersResponse> {
     return this.client.getTrapNoticers({ campaignId, mapId, pointId });
   }
 
@@ -261,7 +275,12 @@ export class MapsClient {
     pointId: string,
     characterIds: readonly string[],
   ): Promise<MapPoint> {
-    const res = await this.client.markTreasureFound({ campaignId, mapId, pointId, characterIds: [...characterIds] });
+    const res = await this.client.markTreasureFound({
+      campaignId,
+      mapId,
+      pointId,
+      characterIds: [...characterIds],
+    });
     return need(res.point, 'MarkTreasureFound');
   }
 
@@ -280,7 +299,13 @@ export class MapsClient {
     action: { key: string; name: string; dc: number },
     idempotencyKey: string,
   ): Promise<readonly SceneAction[]> {
-    const res = await this.client.addSceneAction({ campaignId, mapId, pointId, ...action, idempotencyKey });
+    const res = await this.client.addSceneAction({
+      campaignId,
+      mapId,
+      pointId,
+      ...action,
+      idempotencyKey,
+    });
     return res.actions;
   }
 
@@ -293,7 +318,13 @@ export class MapsClient {
     actionId: string,
     maxAttempts: number,
   ): Promise<readonly SceneAction[]> {
-    const res = await this.client.updateSceneAction({ campaignId, mapId, pointId, actionId, maxAttempts });
+    const res = await this.client.updateSceneAction({
+      campaignId,
+      mapId,
+      pointId,
+      actionId,
+      maxAttempts,
+    });
     return res.actions;
   }
 
@@ -310,8 +341,7 @@ export class MapsClient {
       mapId,
       pointId,
       actionId,
-      direction:
-        direction === 'up' ? SceneActionDirection.UP : SceneActionDirection.DOWN,
+      direction: direction === 'up' ? SceneActionDirection.UP : SceneActionDirection.DOWN,
     });
     return res.actions;
   }
@@ -335,7 +365,13 @@ export class MapsClient {
     text: string,
     idempotencyKey: string,
   ): Promise<readonly SceneClue[]> {
-    const res = await this.client.addSceneClue({ campaignId, mapId, pointId, text, idempotencyKey });
+    const res = await this.client.addSceneClue({
+      campaignId,
+      mapId,
+      pointId,
+      text,
+      idempotencyKey,
+    });
     return res.clues;
   }
 

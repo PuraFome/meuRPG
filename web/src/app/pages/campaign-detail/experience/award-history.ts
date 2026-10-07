@@ -114,7 +114,10 @@ export class AwardHistory {
     // The question replaced the "Desfazer" that opened it: focus goes back to it.
     afterNextRender(
       // Code puts the focus back here, so it asks for the ring the browser would not draw on its own.
-      () => this.host.nativeElement.querySelector<HTMLElement>(`[data-undo="${awardId}"]`)?.focus({ focusVisible: true } as FocusOptions),
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(`[data-undo="${awardId}"]`)
+          ?.focus({ focusVisible: true } as FocusOptions),
       { injector: this.injector },
     );
   }
@@ -142,7 +145,9 @@ export class AwardHistory {
         // Someone gave or undid another award: read again and say so.
         this.asking.set(null);
         this.undone.emit();
-        this.notice.set('O histórico mudou enquanto você olhava: outro prêmio foi dado ou desfeito. A lista foi atualizada; confira e tente de novo.');
+        this.notice.set(
+          'O histórico mudou enquanto você olhava: outro prêmio foi dado ou desfeito. A lista foi atualizada; confira e tente de novo.',
+        );
         await this.store.refresh();
       } else {
         this.error.set(xpErrorMessage(err, 'desfazer o prêmio'));

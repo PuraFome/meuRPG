@@ -1,7 +1,11 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Combatant, CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantKind,
+  type Encounter,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial } from '../../../../core/combat/combat-view';
 import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
@@ -53,7 +57,9 @@ export class JointOthers {
       return '';
     }
     const who =
-      still.length > 1 && still.every(isCreature) && new Set(still.map((m) => m.monsterKey)).size === 1
+      still.length > 1 &&
+      still.every(isCreature) &&
+      new Set(still.map((m) => m.monsterKey)).size === 1
         ? `${groupFeminine(still) ? 'as' : 'os'} ${still.length} ${groupName(still).split(' ')[0]}`
         : listNames(still.map((m) => `${article(m.label)} ${m.label}`));
     return `${still.length === 1 ? 'Falta' : 'Faltam'} ${who}`;
@@ -62,7 +68,9 @@ export class JointOthers {
     switch (this.mode()) {
       case 'others': {
         const others = this.blocks();
-        return others.length === 1 ? `O que ${article(others[0].label)} ${others[0].label} ainda tem` : 'O que os outros ainda têm';
+        return others.length === 1
+          ? `O que ${article(others[0].label)} ${others[0].label} ainda tem`
+          : 'O que os outros ainda têm';
       }
       case 'summary':
         return 'Neste turno conjunto';

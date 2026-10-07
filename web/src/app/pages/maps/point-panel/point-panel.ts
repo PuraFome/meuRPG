@@ -128,10 +128,14 @@ export class PointPanel {
   protected readonly descriptionControl = new FormControl('', { nonNullable: true });
   protected readonly hooksControl = new FormControl('', { nonNullable: true });
   protected readonly hooksLength = computed(() => [...this.draft().hooks].length);
-  protected readonly targets = computed(() => this.maps().filter((m) => m.id !== this.point().mapId));
+  protected readonly targets = computed(() =>
+    this.maps().filter((m) => m.id !== this.point().mapId),
+  );
 
   private readonly nameField = viewChild('nameField', { read: ElementRef<HTMLInputElement> });
-  private readonly confirmButton = viewChild('confirmButton', { read: ElementRef<HTMLButtonElement> });
+  private readonly confirmButton = viewChild('confirmButton', {
+    read: ElementRef<HTMLButtonElement>,
+  });
   private currentId = '';
 
   constructor() {

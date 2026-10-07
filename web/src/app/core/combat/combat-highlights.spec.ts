@@ -15,7 +15,9 @@ function category(kind: HighlightKind, value: number, ...winners: [string, strin
   return create(HighlightCategorySchema, {
     kind,
     value,
-    winners: winners.map(([characterId, name]) => create(HighlightWinnerSchema, { characterId, name })),
+    winners: winners.map(([characterId, name]) =>
+      create(HighlightWinnerSchema, { characterId, name }),
+    ),
   });
 }
 
@@ -27,8 +29,19 @@ const response = create(GetCombatHighlightsResponseSchema, {
     category(HighlightKind.FINAL_BLOW, 2, ['pens', 'Pensantus'], ['toren', 'Toren']),
   ],
   characters: [
-    create(CharacterHighlightsSchema, { characterId: 'pens', name: 'Pensantus', damageDealt: 17, finalBlows: 2 }),
-    create(CharacterHighlightsSchema, { characterId: 'toren', name: 'Toren', damageDealt: 23, damageTaken: 10, finalBlows: 2 }),
+    create(CharacterHighlightsSchema, {
+      characterId: 'pens',
+      name: 'Pensantus',
+      damageDealt: 17,
+      finalBlows: 2,
+    }),
+    create(CharacterHighlightsSchema, {
+      characterId: 'toren',
+      name: 'Toren',
+      damageDealt: 23,
+      damageTaken: 10,
+      finalBlows: 2,
+    }),
   ],
 });
 
@@ -47,7 +60,11 @@ describe('combat highlights', () => {
   it('makes one tile per category the server sent, in its order, and none for the ones it left out', () => {
     const tiles = highlightTiles(response);
     expect(tiles.map((t) => t.label)).toEqual(['Mais dano causado', 'Tanque', 'Golpe final']);
-    expect(tiles.map((t) => t.value)).toEqual([`23${nbsp}de${nbsp}dano`, `24${nbsp}de${nbsp}dano`, `2${nbsp}inimigos`]);
+    expect(tiles.map((t) => t.value)).toEqual([
+      `23${nbsp}de${nbsp}dano`,
+      `24${nbsp}de${nbsp}dano`,
+      `2${nbsp}inimigos`,
+    ]);
     expect(tiles[1].sub).toBe('mais dano recebido');
     expect(tiles[0].sub).toBe('');
     expect(tiles.some((t) => t.kind === HighlightKind.MOST_HEALING)).toBe(false);
@@ -61,7 +78,15 @@ describe('combat highlights', () => {
     expect(finalBlow.tie).toBe(true);
     const three = highlightTiles(
       create(GetCombatHighlightsResponseSchema, {
-        categories: [category(HighlightKind.MOST_HEALING, 9, ['a', 'Brisa'], ['b', 'Toren'], ['c', 'Pensantus'])],
+        categories: [
+          category(
+            HighlightKind.MOST_HEALING,
+            9,
+            ['a', 'Brisa'],
+            ['b', 'Toren'],
+            ['c', 'Pensantus'],
+          ),
+        ],
       }),
     );
     expect(three[0].names).toBe('Brisa, Toren e Pensantus');
@@ -71,15 +96,38 @@ describe('combat highlights', () => {
     expect(highlightTiles(create(GetCombatHighlightsResponseSchema, {}))).toEqual([]);
   });
 
-  it('keeps every row of the master\'s table, zeros included', () => {
+  it("keeps every row of the master's table, zeros included", () => {
     expect(highlightRows(response.characters)).toEqual([
-      { characterId: 'pens', name: 'Pensantus', damageDealt: 17, healingDone: 0, damageTaken: 0, finalBlows: 2, criticalHits: 0 },
-      { characterId: 'toren', name: 'Toren', damageDealt: 23, healingDone: 0, damageTaken: 10, finalBlows: 2, criticalHits: 0 },
+      {
+        characterId: 'pens',
+        name: 'Pensantus',
+        damageDealt: 17,
+        healingDone: 0,
+        damageTaken: 0,
+        finalBlows: 2,
+        criticalHits: 0,
+      },
+      {
+        characterId: 'toren',
+        name: 'Toren',
+        damageDealt: 23,
+        healingDone: 0,
+        damageTaken: 10,
+        finalBlows: 2,
+        criticalHits: 0,
+      },
     ]);
   });
 
   it('gives a player the numbers of their own row, zeros included, in the order of the card', () => {
-    const own = [create(CharacterHighlightsSchema, { characterId: 'pens', name: 'Pensantus', damageDealt: 17, finalBlows: 2 })];
+    const own = [
+      create(CharacterHighlightsSchema, {
+        characterId: 'pens',
+        name: 'Pensantus',
+        damageDealt: 17,
+        finalBlows: 2,
+      }),
+    ];
     expect(ownNumbers(own, 'pens')).toEqual([
       { label: 'Dano causado', value: '17' },
       { label: 'Dano recebido', value: '0' },

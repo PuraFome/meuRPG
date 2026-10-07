@@ -26,7 +26,7 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
         halved: true,
         consumable: true,
         attunement: false,
-        description: ['Potion, common', "You regain hit points when you drink this potion."],
+        description: ['Potion, common', 'You regain hit points when you drink this potion.'],
       }),
     );
     close = vi.fn();
@@ -54,15 +54,22 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
     expect(flat(el.querySelector('.frame__title'))).toBe('Anel de Proteção');
     expect(el.querySelector('.names__en')?.getAttribute('lang')).toBe('en');
     expect(flat(el.querySelector('.names'))).toBe('Ring of Protection · item mágico do SRD 5.1');
-    expect(Array.from(el.querySelectorAll('.tags li')).map((l) => flat(l))).toEqual(['Raro', 'Exige sintonização']);
+    expect(Array.from(el.querySelectorAll('.tags li')).map((l) => flat(l))).toEqual([
+      'Raro',
+      'Exige sintonização',
+    ]);
   });
 
   it('gives the value with the 2024 label, the credits link and the rule in words', async () => {
     const { el } = await setup();
     expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('4.000 PO');
-    expect(flat(el.querySelector('.value__src'))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba)');
+    expect(flat(el.querySelector('.value__src'))).toBe(
+      'Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba)',
+    );
     expect(el.querySelector('.value__src a')?.getAttribute('href')).toBe('/credits');
-    expect(flat(el.querySelector('.value__rule'))).toBe('Itens que se gastam valem a metade, menos os pergaminhos de magia. Este não se gasta.');
+    expect(flat(el.querySelector('.value__rule'))).toBe(
+      'Itens que se gastam valem a metade, menos os pergaminhos de magia. Este não se gasta.',
+    );
   });
 
   it('puts the SRD text in English with lang="en", one paragraph per entry, and says it is in English', async () => {
@@ -79,8 +86,13 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
   it('a potion says the halving: "Comum vale 100 PO; um item que se gasta vale a metade."', async () => {
     const { el } = await setup('item:potion-of-healing-1', 'Poção de Cura');
     expect(flat(el.querySelector('.value__num'))?.replace(/ /g, ' ')).toBe('50 PO');
-    expect(flat(el.querySelector('.value__rule'))?.replace(/ /g, ' ')).toBe('Comum vale 100 PO; um item que se gasta vale a metade.');
-    expect(Array.from(el.querySelectorAll('.tags li')).map((l) => flat(l))).toEqual(['Comum', 'Consumível']);
+    expect(flat(el.querySelector('.value__rule'))?.replace(/ /g, ' ')).toBe(
+      'Comum vale 100 PO; um item que se gasta vale a metade.',
+    );
+    expect(Array.from(el.querySelectorAll('.tags li')).map((l) => flat(l))).toEqual([
+      'Comum',
+      'Consumível',
+    ]);
   });
 
   it('"Fechar" closes, and it is the first focus target', async () => {
@@ -94,8 +106,13 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
   it('an item that is gone says so, with "Tentar de novo"', async () => {
     const { el, settle } = await setup('item:nothing', 'Nada');
     expect(el.querySelector('[role=alert]')?.textContent).toContain('não existe mais no SRD');
-    api.items.set('item:nothing', magicItemResponse({ key: 'item:nothing', namePt: 'Nada', name: 'Nothing' }));
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b) === 'Tentar de novo')!.click();
+    api.items.set(
+      'item:nothing',
+      magicItemResponse({ key: 'item:nothing', namePt: 'Nada', name: 'Nothing' }),
+    );
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'Tentar de novo')!
+      .click();
     await settle();
     expect(flat(el.querySelector('.names'))).toContain('Nothing');
   });
@@ -108,7 +125,14 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
       providers: [
         provideRouter([]),
         { provide: TreasureClient, useValue: api },
-        { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'camp-1', key: 'item:ring-of-protection', namePt: 'Anel de Proteção' } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            campaignId: 'camp-1',
+            key: 'item:ring-of-protection',
+            namePt: 'Anel de Proteção',
+          },
+        },
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
       ],
     });

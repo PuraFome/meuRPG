@@ -30,7 +30,9 @@ export class HpStep {
   readonly s = input.required<LevelUpSession>();
 
   protected readonly card = computed(() => (this.s().draft.hpCard() === 'roll' ? ROLL : AVERAGE));
-  protected readonly rolled = computed(() => (this.s().draft.hpCard() === 'roll' ? this.s().draft.rolled() : null));
+  protected readonly rolled = computed(() =>
+    this.s().draft.hpCard() === 'roll' ? this.s().draft.rolled() : null,
+  );
   protected readonly die = computed(() => this.s().die);
 
   protected readonly options = computed<readonly DiceOption<number>[]>(() => {
@@ -45,7 +47,11 @@ export class HpStep {
       rollNote = `Saiu ${s.withCon(rolled.value)} · de ${avg.from} para ${after}`;
     }
     return [
-      { value: AVERAGE, title: `Média: ${s.options.hitPointAverage}`, description: `${s.withCon(s.options.hitPointAverage)} · de ${avg.from} para ${avg.to}` },
+      {
+        value: AVERAGE,
+        title: `Média: ${s.options.hitPointAverage}`,
+        description: `${s.withCon(s.options.hitPointAverage)} · de ${avg.from} para ${avg.to}`,
+      },
       { value: ROLL, title: `Rolar 1d${s.die}`, description: rollNote },
     ];
   });
@@ -58,7 +64,8 @@ export class HpStep {
   });
 
   protected readonly lockLine = computed(
-    () => `Só o que o nível ${this.s().options.toLevel} dá fica aberto. O resto da ficha continua travado.`,
+    () =>
+      `Só o que o nível ${this.s().options.toLevel} dá fica aberto. O resto da ficha continua travado.`,
   );
 
   protected pick(value: number): void {
@@ -75,6 +82,10 @@ export class HpStep {
     this.s().draft.rolled.set(null);
   }
 
-  protected readonly rollLabel = computed(() => `Role 1d${this.s().die} para os pontos de vida do nível`);
-  protected readonly rollHint = computed(() => `Role o seu d${this.s().die} e digite o número que saiu (1 a ${this.s().die}).`);
+  protected readonly rollLabel = computed(
+    () => `Role 1d${this.s().die} para os pontos de vida do nível`,
+  );
+  protected readonly rollHint = computed(
+    () => `Role o seu d${this.s().die} e digite o número que saiu (1 a ${this.s().die}).`,
+  );
 }

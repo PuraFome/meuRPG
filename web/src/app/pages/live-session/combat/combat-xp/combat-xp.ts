@@ -20,7 +20,11 @@ import { RouterLink } from '@angular/router';
 
 import { XpMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { XPAwardMode, XPBlockedReason, type XPAward } from '../../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  XPAwardMode,
+  XPBlockedReason,
+  type XPAward,
+} from '../../../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../../../core/connect/idempotency';
 import { article } from '../../../../core/combat/combat-log';
 import { groupLabel } from '../../../../core/combat/monsters';
@@ -63,7 +67,15 @@ const REASON_MAX = 120;
  */
 @Component({
   selector: 'app-combat-xp',
-  imports: [LevelUpTag, MatButtonModule, MatIconModule, RouterLink, XpActions, XpRecipients, XpSplit],
+  imports: [
+    LevelUpTag,
+    MatButtonModule,
+    MatIconModule,
+    RouterLink,
+    XpActions,
+    XpRecipients,
+    XpSplit,
+  ],
   providers: [ExperienceStore],
   templateUrl: './combat-xp.html',
   styleUrl: './combat-xp.scss',
@@ -90,7 +102,9 @@ export class CombatXp {
   /** Who is unchecked / checked, once the rows are known. */
   private readonly checkedIds = signal<ReadonlySet<string> | null>(null);
   /** The award just given from here, with each one's XP before it. */
-  protected readonly just = signal<{ award: XPAward; before: ReadonlyMap<string, number> } | null>(null);
+  protected readonly just = signal<{ award: XPAward; before: ReadonlyMap<string, number> } | null>(
+    null,
+  );
 
   private readonly confirmation = viewChild<ElementRef<HTMLElement>>('confirmation');
   private readonly laterButton = viewChild('later', { read: ElementRef<HTMLElement> });
@@ -102,7 +116,11 @@ export class CombatXp {
   );
   protected readonly total = computed(() => this.defeated().reduce((sum, c) => sum + c.xpValue, 0));
   /** "200 + 50 + 50 + 50". */
-  protected readonly sum = computed(() => this.defeated().map((c) => formatInt(c.xpValue)).join(' + '));
+  protected readonly sum = computed(() =>
+    this.defeated()
+      .map((c) => formatInt(c.xpValue))
+      .join(' + '),
+  );
   /**
    * When monsters of the bestiary were defeated (RN-29), what each kind is worth by its challenge rating: "Bandido 1 a 3 · ND 1/8 · 25 XP
    * cada" and the kind's total. The XP is the server's `xp_value` of each (the master's alone); an NPC that is not a monster is its own
@@ -169,7 +187,11 @@ export class CombatXp {
   protected readonly checked = computed(
     () =>
       this.checkedIds() ??
-      new Set(this.people().filter((p) => p.row && p.c.state !== CombatantState.DEAD).map((p) => p.c.characterId)),
+      new Set(
+        this.people()
+          .filter((p) => p.row && p.c.state !== CombatantState.DEAD)
+          .map((p) => p.c.characterId),
+      ),
   );
   protected readonly split = computed(() => splitXp(this.total(), this.checked().size));
 
@@ -182,7 +204,9 @@ export class CombatXp {
       return {
         id: c.characterId,
         name: c.label,
-        sub: [classLine, row ? tight(`${formatInt(row.xp)} XP agora`) : ''].filter(Boolean).join(' · '),
+        sub: [classLine, row ? tight(`${formatInt(row.xp)} XP agora`) : '']
+          .filter(Boolean)
+          .join(' · '),
         checked: on,
         disabled: dead,
         amount: on ? tight(`+${formatInt(this.split().each)} XP`) : 'Não recebe',
@@ -215,7 +239,9 @@ export class CombatXp {
     return '';
   });
   protected readonly primaryLabel = computed(() =>
-    this.reasonToWait() === '' ? tight(`Dar ${formatInt(this.split().each)} XP a cada um`) : 'Dar XP',
+    this.reasonToWait() === ''
+      ? tight(`Dar ${formatInt(this.split().each)} XP a cada um`)
+      : 'Dar XP',
   );
 
   /** The confirmation: what was given, and each one's new XP. */
@@ -234,8 +260,15 @@ export class CombatXp {
       return {
         id: s.characterId,
         name: s.characterName,
-        math: was !== undefined ? tight(`${formatInt(was)} + ${formatInt(s.xp)} = ${formatInt(was + s.xp)} XP`) : tight(`Recebeu ${formatInt(s.xp)} XP`),
-        of: row ? (row.nextLevelXp > 0 ? tight(`${formatInt(now)} de ${formatInt(row.nextLevelXp)} XP`) : tight(`${formatInt(now)} XP`)) : '',
+        math:
+          was !== undefined
+            ? tight(`${formatInt(was)} + ${formatInt(s.xp)} = ${formatInt(was + s.xp)} XP`)
+            : tight(`Recebeu ${formatInt(s.xp)} XP`),
+        of: row
+          ? row.nextLevelXp > 0
+            ? tight(`${formatInt(now)} de ${formatInt(row.nextLevelXp)} XP`)
+            : tight(`${formatInt(now)} XP`)
+          : '',
         levelUp: row?.canLevelUp ?? false,
       };
     });
@@ -321,7 +354,13 @@ export class CombatXp {
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.award(this.campaignId(), { mode: 'enemies', encounterId: enc.id }, reason, ids, this.key);
+      const res = await this.api.award(
+        this.campaignId(),
+        { mode: 'enemies', encounterId: enc.id },
+        reason,
+        ids,
+        this.key,
+      );
       if (res.award) {
         this.just.set({ award: res.award, before });
       }

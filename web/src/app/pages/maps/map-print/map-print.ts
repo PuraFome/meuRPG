@@ -1,5 +1,13 @@
 import { DOCUMENT } from '@angular/common';
-import { ApplicationRef, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import {
+  ApplicationRef,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -134,7 +142,9 @@ export class MapPrint {
     inject(DestroyRef).onDestroy(() => style.remove());
     effect(() => {
       const plan = this.chosen()?.best;
-      style.textContent = plan ? `@page { size: ${plan.paperW}cm ${plan.paperH}cm; margin: 1cm; }` : '';
+      style.textContent = plan
+        ? `@page { size: ${plan.paperW}cm ${plan.paperH}cm; margin: 1cm; }`
+        : '';
     });
   }
 

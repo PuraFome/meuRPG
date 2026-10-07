@@ -10,7 +10,13 @@ import { lightRadii } from './light-presets';
 export function pointSubLine(p: MapPoint, lightName = ''): string {
   switch (p.kind) {
     case MapPointKind.LIGHT:
-      return p.light ? joinDots(['Luz', ...(lightName ? [lightName] : []), lightRadii(p.light.brightFt, p.light.dimFt)]) : 'Luz';
+      return p.light
+        ? joinDots([
+            'Luz',
+            ...(lightName ? [lightName] : []),
+            lightRadii(p.light.brightFt, p.light.dimFt),
+          ])
+        : 'Luz';
     case MapPointKind.TRAP: {
       const t = p.trap;
       return tight(
@@ -26,15 +32,22 @@ export function pointSubLine(p: MapPoint, lightName = ''): string {
     case MapPointKind.TREASURE:
       return joinDots(['Tesouro', poText(p.treasureValuePo)]);
     default:
-      return p.targetMap ? `${pointKindLabel(p.kind, p.stairs)}: ${p.targetMap.name}` : pointKindLabel(p.kind, p.stairs);
+      return p.targetMap
+        ? `${pointKindLabel(p.kind, p.stairs)}: ${p.targetMap.name}`
+        : pointKindLabel(p.kind, p.stairs);
   }
 }
 
-export function pointTags(p: MapPoint): readonly { readonly icon: string; readonly text: string }[] {
+export function pointTags(
+  p: MapPoint,
+): readonly { readonly icon: string; readonly text: string }[] {
   const tags: { icon: string; text: string }[] = [];
   if (p.kind === MapPointKind.TRAP) {
     const state = p.trap?.state ?? TrapState.ARMED;
-    tags.push({ icon: state === TrapState.DISARMED ? 'check_circle' : 'warning', text: trapStateWord(state) });
+    tags.push({
+      icon: state === TrapState.DISARMED ? 'check_circle' : 'warning',
+      text: trapStateWord(state),
+    });
   } else if (p.kind === MapPointKind.TREASURE) {
     tags.push(
       p.treasureConverted

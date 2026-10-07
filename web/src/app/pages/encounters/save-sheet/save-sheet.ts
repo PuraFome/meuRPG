@@ -1,4 +1,12 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -8,7 +16,11 @@ import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { EncounterEvaluation } from '../../../../gen/meurpg/play/v1/encounters_pb';
 import type { MonsterGroupSpec } from '../../../core/combat/combat-client';
 import { EncountersClient, type PartyNpcSpec } from '../../../core/encounters/encounters-client';
-import { GUIDE_LABEL, encounterErrorMessage, headline } from '../../../core/encounters/encounter-text';
+import {
+  GUIDE_LABEL,
+  encounterErrorMessage,
+  headline,
+} from '../../../core/encounters/encounter-text';
 import { formatInt } from '../../../core/format/text';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
@@ -78,8 +90,12 @@ export class SaveSheet {
     const ev = this.data.evaluation;
     return ev ? `${headline(ev)} · ${formatInt(ev.creatureCount)} criaturas` : '';
   });
-  protected readonly chosen = computed(() => this.points()?.find((p) => p.id === this.pointId()) ?? null);
-  protected readonly mapName = computed(() => this.mapList().find((m) => m.id === this.mapId())?.name ?? '');
+  protected readonly chosen = computed(
+    () => this.points()?.find((p) => p.id === this.pointId()) ?? null,
+  );
+  protected readonly mapName = computed(
+    () => this.mapList().find((m) => m.id === this.mapId())?.name ?? '',
+  );
   protected readonly blocked = computed(() => {
     if (this.state() !== 'ready' || this.points() === null) {
       return 'Lendo os mapas.';
@@ -103,7 +119,10 @@ export class SaveSheet {
     try {
       const list = await this.maps.list(this.data.campaignId);
       this.mapList.set(list);
-      const first = this.data.mapId && list.some((m) => m.id === this.data.mapId) ? this.data.mapId : (list[0]?.id ?? '');
+      const first =
+        this.data.mapId && list.some((m) => m.id === this.data.mapId)
+          ? this.data.mapId
+          : (list[0]?.id ?? '');
       this.state.set('ready');
       if (first) {
         await this.chooseMap(first, this.data.pointId ?? '');
@@ -125,7 +144,10 @@ export class SaveSheet {
     this.asking.set(false);
     this.error.set('');
     try {
-      const [map, kept] = await Promise.all([this.maps.get(this.data.campaignId, mapId), this.api.list(this.data.campaignId, mapId)]);
+      const [map, kept] = await Promise.all([
+        this.maps.get(this.data.campaignId, mapId),
+        this.api.list(this.data.campaignId, mapId),
+      ]);
       if (mine !== this.seq) {
         return;
       }
@@ -179,7 +201,12 @@ export class SaveSheet {
         { monsters: this.data.entries, hp: 'average', hidden: true },
         this.data.party,
       );
-      this.sheet.close({ mapId: this.mapId(), pointId: this.pointId(), pointName: this.chosen()?.name ?? '', evaluation: saved.evaluation ?? null });
+      this.sheet.close({
+        mapId: this.mapId(),
+        pointId: this.pointId(),
+        pointName: this.chosen()?.name ?? '',
+        evaluation: saved.evaluation ?? null,
+      });
     } catch (err) {
       this.asking.set(false);
       this.error.set(encounterErrorMessage(err, 'save'));

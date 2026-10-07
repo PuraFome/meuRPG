@@ -287,7 +287,9 @@ const EMPTY_BASIC_SHEET_VM: BasicSheetVm = {
 };
 
 function basicRating(character: Character): string {
-  return character.sheet?.content.case === 'basic' ? character.sheet.content.value.challengeRating : '';
+  return character.sheet?.content.case === 'basic'
+    ? character.sheet.content.value.challengeRating
+    : '';
 }
 
 function basicXp(character: Character): number {

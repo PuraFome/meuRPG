@@ -7,7 +7,8 @@ import { ImageGenClient } from '../../core/images/imagegen-client';
 import { FakeImageGenClient, imageStatus } from '../../core/images/imagegen-testing';
 import { GenerateImageButton } from './generate-image-button';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 describe('GenerateImageButton (E10-07 8: generation off)', () => {
   let api: FakeImageGenClient;
@@ -19,8 +20,19 @@ describe('GenerateImageButton (E10-07 8: generation off)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ImageGenClient, useValue: api },
-        { provide: MatDialog, useValue: { open: (...args: unknown[]) => (opened.push(args), { afterClosed: () => of({ generated: 1, map: null }) }) } },
-        { provide: MatBottomSheet, useValue: { open: () => ({ afterDismissed: () => of(undefined) }) } },
+        {
+          provide: MatDialog,
+          useValue: {
+            open: (...args: unknown[]) => (
+              opened.push(args),
+              { afterClosed: () => of({ generated: 1, map: null }) }
+            ),
+          },
+        },
+        {
+          provide: MatBottomSheet,
+          useValue: { open: () => ({ afterDismissed: () => of(undefined) }) },
+        },
       ],
     });
     const fixture = TestBed.createComponent(GenerateImageButton);
@@ -56,7 +68,9 @@ describe('GenerateImageButton (E10-07 8: generation off)', () => {
     const { el, done } = await setup();
     const button = el.querySelector('button')!;
     expect(button.getAttribute('aria-disabled')).toBe('true');
-    expect(plain(el.querySelector('.reason')?.textContent)).toBe('A geração de imagens não está ligada neste servidor.');
+    expect(plain(el.querySelector('.reason')?.textContent)).toBe(
+      'A geração de imagens não está ligada neste servidor.',
+    );
     expect(button.getAttribute('aria-describedby')).toBe(el.querySelector('.reason')?.id);
     button.click();
     expect(opened).toEqual([]);

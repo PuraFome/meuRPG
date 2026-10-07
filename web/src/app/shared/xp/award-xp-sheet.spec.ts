@@ -19,7 +19,17 @@ import { type AwardXpData, AwardXpSheet } from './award-xp-sheet';
 const nbsp = ' ';
 
 function row(id: string, name: string, sub: string, xp = 2600): ExperienceRow {
-  return { id, name, playerUserId: "", sub, level: 3, xp, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 };
+  return {
+    id,
+    name,
+    playerUserId: '',
+    sub,
+    level: 3,
+    xp,
+    nextLevelXp: 2700,
+    canLevelUp: false,
+    levelUpReason: 0,
+  };
 }
 
 const PARTY = [
@@ -34,13 +44,22 @@ describe('AwardXpSheet (E7-07)', () => {
 
   beforeEach(() => {
     award.mockReset().mockResolvedValue(
-      create(AwardXPResponseSchema, { award: create(XPAwardSchema, { id: 'a1', totalXp: 150 }), xpEach: 50, lostXp: 0 }),
+      create(AwardXPResponseSchema, {
+        award: create(XPAwardSchema, { id: 'a1', totalXp: 150 }),
+        xpEach: 50,
+        lostXp: 0,
+      }),
     );
     close.mockReset();
   });
 
   function setup(over: Partial<AwardXpData> = {}) {
-    const data: AwardXpData = { campaignId: 'camp-1', xpMode: XpMode.ENEMIES, rows: PARTY, ...over };
+    const data: AwardXpData = {
+      campaignId: 'camp-1',
+      xpMode: XpMode.ENEMIES,
+      rows: PARTY,
+      ...over,
+    };
     TestBed.configureTestingModule({
       imports: [AwardXpSheet],
       providers: [
@@ -54,12 +73,20 @@ describe('AwardXpSheet (E7-07)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  const reasonInput = (el: HTMLElement) => el.querySelector<HTMLInputElement>('app-xp-reason input')!;
-  const amountInput = (el: HTMLElement) => el.querySelector<HTMLInputElement>('input[aria-describedby*="amount-hint"]')!;
-  const boxes = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
+  const reasonInput = (el: HTMLElement) =>
+    el.querySelector<HTMLInputElement>('app-xp-reason input')!;
+  const amountInput = (el: HTMLElement) =>
+    el.querySelector<HTMLInputElement>('input[aria-describedby*="amount-hint"]')!;
+  const boxes = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
   const give = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('app-xp-actions .primary')!;
-  const text = (el: HTMLElement, selector: string) => el.querySelector(selector)?.textContent?.replace(/[ \t\r\n]+/g, ' ').trim();
-  const errors = (el: HTMLElement) => Array.from(el.querySelectorAll('mat-error')).map((e) => e.textContent?.trim());
+  const text = (el: HTMLElement, selector: string) =>
+    el
+      .querySelector(selector)
+      ?.textContent?.replace(/[ \t\r\n]+/g, ' ')
+      .trim();
+  const errors = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('mat-error')).map((e) => e.textContent?.trim());
 
   function type(fixture: ComponentFixture<AwardXpSheet>, input: HTMLInputElement, value: string) {
     input.value = value;
@@ -72,7 +99,12 @@ describe('AwardXpSheet (E7-07)', () => {
     fixture.detectChanges();
   }
 
-  async function fill(fixture: ComponentFixture<AwardXpSheet>, el: HTMLElement, reason = 'Pelo resgate do mercador', amount = '150') {
+  async function fill(
+    fixture: ComponentFixture<AwardXpSheet>,
+    el: HTMLElement,
+    reason = 'Pelo resgate do mercador',
+    amount = '150',
+  ) {
     type(fixture, reasonInput(el), reason);
     type(fixture, amountInput(el), amount);
   }
@@ -97,7 +129,9 @@ describe('AwardXpSheet (E7-07)', () => {
     expect(el.textContent).toContain('Ouro encontrado (PO)');
     expect(el.textContent).toContain('Campanha por ouro: 1 XP por peça de ouro (PO).');
     type(fixture, amountInput(el), '120');
-    expect(text(el, '.amount__hint')).toBe(`Vale 1${nbsp}XP por PO: 120${nbsp}PO são 120${nbsp}XP.`);
+    expect(text(el, '.amount__hint')).toBe(
+      `Vale 1${nbsp}XP por PO: 120${nbsp}PO são 120${nbsp}XP.`,
+    );
     expect(text(el, 'app-xp-split .split__sum')).toBe(`120${nbsp}PO = 120${nbsp}XP ÷ 3 = 40`);
   });
 
@@ -123,7 +157,7 @@ describe('AwardXpSheet (E7-07)', () => {
     expect(errors(el)).not.toContain('Escreva o motivo do XP.');
   });
 
-  it('asks for the gold in the gold campaign\'s words', () => {
+  it("asks for the gold in the gold campaign's words", () => {
     const { fixture, el } = setup({ xpMode: XpMode.GOLD });
     leave(fixture, amountInput(el));
     expect(errors(el)[0]).toContain('Digite as PO');
@@ -149,7 +183,9 @@ describe('AwardXpSheet (E7-07)', () => {
   it('writes what is lost when it does not divide', () => {
     const { fixture, el } = setup();
     type(fixture, amountInput(el), '350');
-    expect(text(el, 'app-xp-split .split__sum')).toBe(`350${nbsp}XP ÷ 3 = 116. 2${nbsp}XP se perdem na divisão.`);
+    expect(text(el, 'app-xp-split .split__sum')).toBe(
+      `350${nbsp}XP ÷ 3 = 116. 2${nbsp}XP se perdem na divisão.`,
+    );
   });
 
   it('waits with nobody checked, and says why, linked to the button', () => {
@@ -196,7 +232,12 @@ describe('AwardXpSheet (E7-07)', () => {
 
     expect(award).toHaveBeenCalledTimes(1);
     const [campaignId, input, reason, ids, key] = award.mock.calls[0];
-    expect([campaignId, input, reason, ids]).toEqual(['camp-1', { mode: 'manual', amount: 150 }, 'Pelo resgate do mercador', ['p1', 't1']]);
+    expect([campaignId, input, reason, ids]).toEqual([
+      'camp-1',
+      { mode: 'manual', amount: 150 },
+      'Pelo resgate do mercador',
+      ['p1', 't1'],
+    ]);
     expect(key).toMatch(/^[0-9a-f-]{36}$/);
     expect(close).toHaveBeenCalledWith(expect.objectContaining({ xpEach: 50, lostXp: 0 }));
   });
@@ -209,7 +250,11 @@ describe('AwardXpSheet (E7-07)', () => {
   });
 
   describe('opened from the end of a combat', () => {
-    const FROM_COMBAT = { reason: 'Combate: Emboscada na estrada', amount: 350, encounterId: 'enc-1' };
+    const FROM_COMBAT = {
+      reason: 'Combate: Emboscada na estrada',
+      amount: 350,
+      encounterId: 'enc-1',
+    };
 
     it('comes with the reason and the total filled', () => {
       const { el } = setup(FROM_COMBAT);
@@ -218,7 +263,7 @@ describe('AwardXpSheet (E7-07)', () => {
       expect(give(el).textContent?.trim()).toBe(`Dar 116${nbsp}XP a cada um`);
     });
 
-    it('is the combat\'s award while the total is the combat\'s', async () => {
+    it("is the combat's award while the total is the combat's", async () => {
       const { fixture, el } = setup(FROM_COMBAT);
       await press(fixture, el);
       expect(award.mock.calls[0][1]).toEqual({ mode: 'enemies', encounterId: 'enc-1' });
@@ -235,7 +280,10 @@ describe('AwardXpSheet (E7-07)', () => {
   describe('when the server refuses', () => {
     const refused = () =>
       new ConnectError('x', Code.FailedPrecondition, undefined, [
-        { desc: XPBlockedSchema, value: { reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE } },
+        {
+          desc: XPBlockedSchema,
+          value: { reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE },
+        },
       ]);
 
     it('says why in words, by the typed reason, and keeps the sheet open', async () => {
@@ -244,12 +292,16 @@ describe('AwardXpSheet (E7-07)', () => {
       await fill(fixture, el);
       await press(fixture, el);
 
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('morreu ou saiu da campanha');
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'morreu ou saiu da campanha',
+      );
       expect(close).not.toHaveBeenCalled();
     });
 
     it('repeats the same key on a retry, and makes a new one when a value changed', async () => {
-      award.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable)).mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
+      award
+        .mockRejectedValueOnce(new ConnectError('x', Code.Unavailable))
+        .mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
       const { fixture, el } = setup();
       await fill(fixture, el);
       await press(fixture, el);
@@ -270,7 +322,9 @@ describe('AwardXpSheet (E7-07)', () => {
       give(el).click();
       fixture.detectChanges();
       expect(award).toHaveBeenCalledTimes(1);
-      finish(create(AwardXPResponseSchema, { award: create(XPAwardSchema, { id: 'a1' }), xpEach: 50 }));
+      finish(
+        create(AwardXPResponseSchema, { award: create(XPAwardSchema, { id: 'a1' }), xpEach: 50 }),
+      );
       await fixture.whenStable();
     });
   });
@@ -290,15 +344,31 @@ describe('AwardXpSheet (E7-07)', () => {
   });
 
   describe('the treasure strip in a campaign by gold (E9-09 state 6c)', () => {
-    const chest = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250, foundBy: [{ characterId: 'b1', characterName: 'Brisa' }] });
+    const chest = create(TreasureToConvertSchema, {
+      pointId: 'c',
+      name: 'Baú de moedas',
+      valuePo: 250,
+      foundBy: [{ characterId: 'b1', characterName: 'Brisa' }],
+    });
     const listTreasures = vi.fn();
 
     function setupGold(over: Partial<AwardXpData> = {}, readFails = false) {
-      listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }));
+      listTreasures
+        .mockReset()
+        .mockResolvedValue(
+          create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }),
+        );
       if (readFails) {
         listTreasures.mockRejectedValue(new Error('down'));
       }
-      const data: AwardXpData = { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows: PARTY, treasures: [chest], treasuresTotal: 1, ...over };
+      const data: AwardXpData = {
+        campaignId: 'camp-1',
+        xpMode: XpMode.GOLD,
+        rows: PARTY,
+        treasures: [chest],
+        treasuresTotal: 1,
+        ...over,
+      };
       TestBed.configureTestingModule({
         imports: [AwardXpSheet],
         providers: [
@@ -332,23 +402,27 @@ describe('AwardXpSheet (E7-07)', () => {
 
     it('reads the treasures again as it opens', async () => {
       const { fixture, el } = setupGold({ treasures: undefined, treasuresTotal: undefined });
-      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Lendo os tesouros encontrados...');
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain(
+        'Lendo os tesouros encontrados...',
+      );
       await fixture.whenStable();
       fixture.detectChanges();
       expect(listTreasures).toHaveBeenCalledWith('camp-1');
       expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Baú de moedas');
     });
 
-    it('does not read the treasures for a combat\'s XP, which has no strip', () => {
+    it("does not read the treasures for a combat's XP, which has no strip", () => {
       setupGold({ encounterId: 'enc-1' });
       expect(listTreasures).not.toHaveBeenCalled();
     });
 
-    it('keeps a host\'s empty list that was read, with no error when the re-read fails', async () => {
+    it("keeps a host's empty list that was read, with no error when the re-read fails", async () => {
       const { fixture, el } = setupGold({ treasures: [], treasuresTotal: 0 }, true);
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Nenhum tesouro esperando.');
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain(
+        'Nenhum tesouro esperando.',
+      );
     });
 
     it('says it could not read the treasures when it had no list, with "Tentar de novo"', async () => {
@@ -361,7 +435,7 @@ describe('AwardXpSheet (E7-07)', () => {
       expect(strip.textContent).toContain('Tentar de novo');
     });
 
-    it('has no strip in a campaign by enemies, nor when the sheet is a combat\'s XP', () => {
+    it("has no strip in a campaign by enemies, nor when the sheet is a combat's XP", () => {
       const enemies = setup({ xpMode: XpMode.ENEMIES });
       expect(enemies.el.querySelector('app-treasure-strip')).toBeNull();
       TestBed.resetTestingModule();

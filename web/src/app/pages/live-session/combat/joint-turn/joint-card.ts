@@ -6,7 +6,14 @@ import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/com
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature, kindWord, ofOwner } from '../../../../core/combat/creature-names';
-import { type JointTurn, jointTurn, listNames, missingLine, partEconomy, turnMembers } from '../../../../core/combat/joint-turn';
+import {
+  type JointTurn,
+  jointTurn,
+  listNames,
+  missingLine,
+  partEconomy,
+  turnMembers,
+} from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { PartState } from './part-state';
@@ -35,10 +42,17 @@ export class JointCard {
   readonly endPart = output<string>();
 
   protected readonly joint = computed<JointTurn | null>(() => jointTurn(this.encounter()));
-  protected readonly title = computed(() => `Turno conjunto: ${listNames((this.joint()?.members ?? []).map((m) => m.label))}`);
+  protected readonly title = computed(
+    () => `Turno conjunto: ${listNames((this.joint()?.members ?? []).map((m) => m.label))}`,
+  );
   protected readonly missing = computed(() => {
     const j = this.joint();
-    return j ? missingLine(j.acting.map((m) => m.label), false) : '';
+    return j
+      ? missingLine(
+          j.acting.map((m) => m.label),
+          false,
+        )
+      : '';
   });
   /** The line the screen reader hears when the turn moves on. */
   private readonly passedTo = signal('');
@@ -57,7 +71,9 @@ export class JointCard {
         } else if (wasJoint) {
           wasJoint = false;
           const next = turnMembers(e);
-          this.passedTo.set(next.length > 0 ? `A vez passou para ${listNames(next.map((m) => m.label))}` : '');
+          this.passedTo.set(
+            next.length > 0 ? `A vez passou para ${listNames(next.map((m) => m.label))}` : '',
+          );
         }
       });
     });
@@ -89,9 +105,17 @@ export class JointCard {
     const e = partEconomy(c);
     return [
       { name: 'Ação', word: c.actionUsed ? 'Usada' : 'Disponível', used: c.actionUsed },
-      { name: 'Ação bônus', word: c.bonusActionUsed ? 'Usada' : 'Disponível', used: c.bonusActionUsed },
+      {
+        name: 'Ação bônus',
+        word: c.bonusActionUsed ? 'Usada' : 'Disponível',
+        used: c.bonusActionUsed,
+      },
       { name: 'Reação', word: c.reactionUsed ? 'Usada' : 'Disponível', used: c.reactionUsed },
-      { name: 'Movimento', word: e.movement ? `Restam ${e.movement}` : 'Sem movimento', used: !e.movement },
+      {
+        name: 'Movimento',
+        word: e.movement ? `Restam ${e.movement}` : 'Sem movimento',
+        used: !e.movement,
+      },
     ];
   }
 

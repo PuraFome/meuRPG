@@ -53,7 +53,11 @@ export class DocumentClient {
     return res.document;
   }
 
-  async save(campaignId: string, body: string, expectedRevision: number): Promise<CampaignDocument> {
+  async save(
+    campaignId: string,
+    body: string,
+    expectedRevision: number,
+  ): Promise<CampaignDocument> {
     const res = await this.client.updateCampaignDocument({ campaignId, body, expectedRevision });
     if (!res.document) {
       throw new Error('UpdateCampaignDocument answered without the document');
@@ -79,9 +83,7 @@ export class DocumentLinks {
       id: m.id,
       name: m.name,
       revealed: m.revealed,
-      image: m.image
-        ? { url: m.image.url, width: m.image.width, height: m.image.height }
-        : null,
+      image: m.image ? { url: m.image.url, width: m.image.width, height: m.image.height } : null,
       points: [],
       gridColumns: m.gridColumns,
       gridRows: m.gridRows,
@@ -130,7 +132,9 @@ export class DocumentLinks {
     return {
       id: c.id,
       name: c.name,
-      classSummary: c.derived ? c.derived.classes.map((k) => `${k.namePt} ${k.level}`).join(' / ') : '',
+      classSummary: c.derived
+        ? c.derived.classes.map((k) => `${k.namePt} ${k.level}`).join(' / ')
+        : '',
       raceName: c.derived?.subraceNamePt || c.derived?.raceNamePt || '',
     };
   }

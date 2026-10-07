@@ -1,7 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import { GetMapLayersResponseSchema, GetMapResponseSchema, MapPointKind, MapPointSchema, MapSchema, SceneClueSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  GetMapLayersResponseSchema,
+  GetMapResponseSchema,
+  MapPointKind,
+  MapPointSchema,
+  MapSchema,
+  SceneClueSchema,
+} from '../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../maps/maps-client';
 import { SolveTargets } from './solve-targets';
 
@@ -14,7 +21,14 @@ function layers() {
   const wall = new Uint8Array(2);
   wall[0] |= 1 << 1;
   wall[1] |= 1 << 1;
-  return create(GetMapLayersResponseSchema, { gridColumns: 4, gridRows: 3, wall, difficultTerrain: new Uint8Array(2), cover: new Uint8Array(1), doors });
+  return create(GetMapLayersResponseSchema, {
+    gridColumns: 4,
+    gridRows: 3,
+    wall,
+    difficultTerrain: new Uint8Array(2),
+    cover: new Uint8Array(1),
+    doors,
+  });
 }
 
 describe('SolveTargets (the choices of "Ao resolver")', () => {
@@ -26,7 +40,10 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
     const api = {
       list: async () => {
         calls.push('list');
-        return [create(MapSchema, { id: 'm1', name: 'A capela' }), create(MapSchema, { id: 'm2', name: 'A cripta' })];
+        return [
+          create(MapSchema, { id: 'm1', name: 'A capela' }),
+          create(MapSchema, { id: 'm2', name: 'A cripta' }),
+        ];
       },
       get: async (_c: string, mapId: string) => {
         calls.push(`get ${mapId}`);
@@ -34,8 +51,17 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
           points:
             mapId === 'm1'
               ? [
-                  create(MapPointSchema, { id: 'p1', name: 'Altar', kind: MapPointKind.SCENE, clues: [create(SceneClueSchema, { id: 'c1', text: 'O sol nasce a leste.' })] }),
-                  create(MapPointSchema, { id: 'p2', name: 'Baú do Salão', kind: MapPointKind.BATTLE }),
+                  create(MapPointSchema, {
+                    id: 'p1',
+                    name: 'Altar',
+                    kind: MapPointKind.SCENE,
+                    clues: [create(SceneClueSchema, { id: 'c1', text: 'O sol nasce a leste.' })],
+                  }),
+                  create(MapPointSchema, {
+                    id: 'p2',
+                    name: 'Baú do Salão',
+                    kind: MapPointKind.BATTLE,
+                  }),
                 ]
               : [],
         });
@@ -45,12 +71,14 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
         return layers();
       },
     };
-    TestBed.configureTestingModule({ providers: [SolveTargets, { provide: MapsClient, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [SolveTargets, { provide: MapsClient, useValue: api }],
+    });
     targets = TestBed.inject(SolveTargets);
     targets.use('camp-1');
   });
 
-  it('lists the campaign\'s maps once', async () => {
+  it("lists the campaign's maps once", async () => {
     expect(await targets.maps()).toEqual([
       { id: 'm1', name: 'A capela' },
       { id: 'm2', name: 'A cripta' },
@@ -60,7 +88,10 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
   });
 
   it('names the doors of a map by their kind and their place, counted from 1', async () => {
-    expect((await targets.doors('m1')).map((d) => d.label)).toEqual(['Fechada · (2, 2)', 'Aberta · (4, 2)']);
+    expect((await targets.doors('m1')).map((d) => d.label)).toEqual([
+      'Fechada · (2, 2)',
+      'Aberta · (4, 2)',
+    ]);
     await targets.doors('m1');
     expect(calls.filter((c) => c === 'layers').length).toBe(1);
   });
@@ -70,6 +101,8 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
   });
 
   it('lists the clues of the scenes of every map, with the scene that holds them', async () => {
-    expect(await targets.clues()).toEqual([{ id: 'c1', text: 'O sol nasce a leste.', pointName: 'Altar' }]);
+    expect(await targets.clues()).toEqual([
+      { id: 'c1', text: 'O sol nasce a leste.', pointName: 'Altar' },
+    ]);
   });
 });

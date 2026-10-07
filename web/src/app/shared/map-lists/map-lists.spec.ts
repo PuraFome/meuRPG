@@ -13,7 +13,11 @@ describe('MapPointsList', () => {
     fixture = TestBed.createComponent(MapPointsList);
     fixture.componentRef.setInput('points', [
       mapPoint('a', 'Taverna do Javali', { revealed: true }),
-      mapPoint('b', 'Covil dos goblins', { revealed: false, kind: 2, targetMap: { id: 'm', name: 'Covil' } as never }),
+      mapPoint('b', 'Covil dos goblins', {
+        revealed: false,
+        kind: 2,
+        targetMap: { id: 'm', name: 'Covil' } as never,
+      }),
     ]);
     fixture.detectChanges();
     el = fixture.nativeElement;
@@ -22,7 +26,9 @@ describe('MapPointsList', () => {
   it('says each state in words and offers the opposite action, naming the point', () => {
     const rows = Array.from(el.querySelectorAll('li'));
     expect(rows[0].textContent).toContain('Revelado');
-    expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe('Esconder Taverna do Javali');
+    expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe(
+      'Esconder Taverna do Javali',
+    );
     expect(rows[1].textContent).toContain('Escondido');
     expect(rows[1].querySelector('button')?.getAttribute('aria-label')).toBe(
       'Revelar aos jogadores Covil dos goblins',
@@ -42,10 +48,26 @@ describe('MapPointsList', () => {
     function render(inputs: Record<string, unknown> = {}) {
       const f = TestBed.createComponent(MapPointsList);
       f.componentRef.setInput('points', [
-        mapPoint('t', 'Fosso escondido', { kind: MapPointKind.TRAP, revealed: false, trap: { state: TrapState.ARMED, areaSize: 2, noticeDc: 15, findDc: 15 } as never }),
-        mapPoint('c', 'Baú de moedas', { kind: MapPointKind.TREASURE, revealed: false, treasureValuePo: 250 }),
-        mapPoint('f', 'Baú achado', { kind: MapPointKind.TREASURE, revealed: false, treasureFoundAt: found }),
-        mapPoint('l', 'Tocha', { kind: MapPointKind.LIGHT, revealed: false, light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 } as never }),
+        mapPoint('t', 'Fosso escondido', {
+          kind: MapPointKind.TRAP,
+          revealed: false,
+          trap: { state: TrapState.ARMED, areaSize: 2, noticeDc: 15, findDc: 15 } as never,
+        }),
+        mapPoint('c', 'Baú de moedas', {
+          kind: MapPointKind.TREASURE,
+          revealed: false,
+          treasureValuePo: 250,
+        }),
+        mapPoint('f', 'Baú achado', {
+          kind: MapPointKind.TREASURE,
+          revealed: false,
+          treasureFoundAt: found,
+        }),
+        mapPoint('l', 'Tocha', {
+          kind: MapPointKind.LIGHT,
+          revealed: false,
+          light: { presetKey: 'light:torch', brightFt: 20, dimFt: 20 } as never,
+        }),
       ]);
       for (const [key, value] of Object.entries(inputs)) {
         f.componentRef.setInput(key, value);
@@ -53,7 +75,8 @@ describe('MapPointsList', () => {
       f.detectChanges();
       return f;
     }
-    const rows = (f: ComponentFixture<MapPointsList>) => Array.from((f.nativeElement as HTMLElement).querySelectorAll('li.row'));
+    const rows = (f: ComponentFixture<MapPointsList>) =>
+      Array.from((f.nativeElement as HTMLElement).querySelectorAll('li.row'));
     const words = (n: Element) => (n.textContent ?? '').replace(/\s+/g, ' ');
 
     it('keeps the state words and the numbers of each row (Armada, Não encontrado, the DCs)', () => {
@@ -92,21 +115,31 @@ describe('MapPointsList', () => {
     });
 
     it('marks it with the people picked, at least one, and says who counts', () => {
-      const f = render({ people: [{ id: 'p1', name: 'Brisa' }, { id: 'p2', name: 'Toren' }] });
+      const f = render({
+        people: [
+          { id: 'p1', name: 'Brisa' },
+          { id: 'p2', name: 'Toren' },
+        ],
+      });
       const marks: string[][] = [];
       f.componentInstance.markFound.subscribe((m) => marks.push([...m.characterIds]));
       rows(f)[1].querySelector<HTMLButtonElement>('button')!.click();
       f.detectChanges();
-      const confirm = () => Array.from((f.nativeElement as HTMLElement).querySelectorAll('.row__mark button')).find((b) => b.textContent?.includes('Marcar como encontrado')) as HTMLButtonElement;
+      const confirm = () =>
+        Array.from((f.nativeElement as HTMLElement).querySelectorAll('.row__mark button')).find(
+          (b) => b.textContent?.includes('Marcar como encontrado'),
+        ) as HTMLButtonElement;
       confirm().click();
       expect(marks).toEqual([]);
-      (f.nativeElement as HTMLElement).querySelector<HTMLInputElement>('.row__mark input[type=checkbox]')!.click();
+      (f.nativeElement as HTMLElement)
+        .querySelector<HTMLInputElement>('.row__mark input[type=checkbox]')!
+        .click();
       f.detectChanges();
       confirm().click();
       expect(marks).toEqual([['p1']]);
     });
 
-    it('without people (the session\'s list) a treasure keeps its reveal button', () => {
+    it("without people (the session's list) a treasure keeps its reveal button", () => {
       const chest = rows(render())[1];
       expect(chest.querySelector('button')?.textContent).toContain('Revelar aos jogadores');
     });
@@ -116,7 +149,10 @@ describe('MapPointsList', () => {
     function withScenes(open: string | null | undefined) {
       const f = TestBed.createComponent(MapPointsList);
       f.componentRef.setInput('points', [
-        mapPoint('s1', 'A carroça tombada', { revealed: true, sceneActions: [{ id: 'a' } as never] }),
+        mapPoint('s1', 'A carroça tombada', {
+          revealed: true,
+          sceneActions: [{ id: 'a' } as never],
+        }),
         mapPoint('s2', 'Vau do riacho', { revealed: true }),
         mapPoint('b', 'Emboscada', { kind: 1, revealed: true }),
       ]);
@@ -124,7 +160,10 @@ describe('MapPointsList', () => {
       f.detectChanges();
       return f;
     }
-    const scenes = (f: ComponentFixture<MapPointsList>) => Array.from(f.nativeElement.querySelectorAll('.row__scene'), (e) => (e as HTMLElement).textContent?.replace(/\s+/g, ' ').trim());
+    const scenes = (f: ComponentFixture<MapPointsList>) =>
+      Array.from(f.nativeElement.querySelectorAll('.row__scene'), (e) =>
+        (e as HTMLElement).textContent?.replace(/\s+/g, ' ').trim(),
+      );
 
     it('offers nothing where there is no session', () => {
       expect(withScenes(undefined).nativeElement.querySelector('.row__scene')).toBeNull();
@@ -137,7 +176,9 @@ describe('MapPointsList', () => {
       f.componentInstance.openScene.subscribe((p) => asked.push(p.id));
       f.nativeElement.querySelector('.row__scene button').click();
       expect(asked).toEqual(['s1']);
-      expect(f.nativeElement.querySelector('.row__scene button').getAttribute('aria-label')).toBe('Abrir cena A carroça tombada');
+      expect(f.nativeElement.querySelector('.row__scene button').getAttribute('aria-label')).toBe(
+        'Abrir cena A carroça tombada',
+      );
     });
 
     it('offers "Trocar para esta cena" when another is open, and says when it is this one', () => {
@@ -154,9 +195,14 @@ describe('MapPointsList', () => {
   });
 
   it('names the target of a Submapa under its name', () => {
-    expect(pointSub(mapPoint('x', 'Torre', { kind: 2, targetMap: { id: 'm', name: 'Torre de Mirathel' } as never }))).toBe(
-      'Submapa: Torre de Mirathel',
-    );
+    expect(
+      pointSub(
+        mapPoint('x', 'Torre', {
+          kind: 2,
+          targetMap: { id: 'm', name: 'Torre de Mirathel' } as never,
+        }),
+      ),
+    ).toBe('Submapa: Torre de Mirathel');
     expect(pointSub(mapPoint('y', 'Emboscada', { kind: 1 }))).toBe('Batalha');
   });
 });
@@ -172,17 +218,27 @@ describe('MapTokensList', () => {
 
   it('says whose creature a creature token is: its character_id is the owner\'s, never "Personagem de jogador"', () => {
     const fixture = TestBed.createComponent(MapTokensList);
-    fixture.componentRef.setInput('tokens', [mapToken('p', 'Pensantus'), mapToken('p', 'Nanquim', { creatureId: 'raven' })]);
+    fixture.componentRef.setInput('tokens', [
+      mapToken('p', 'Pensantus'),
+      mapToken('p', 'Nanquim', { creatureId: 'raven' }),
+    ]);
     fixture.componentRef.setInput('info', info);
     fixture.detectChanges();
-    const subs = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub')].map((e) => e.textContent?.trim());
+    const subs = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub')].map(
+      (e) => e.textContent?.trim(),
+    );
     expect(subs).toEqual(['Mago 3, de Vinicius', 'Criatura de Pensantus']);
-    expect(tokenSub(mapToken('p', 'Nanquim', { creatureId: 'raven' }), info)).toBe('Criatura de um personagem');
+    expect(tokenSub(mapToken('p', 'Nanquim', { creatureId: 'raven' }), info)).toBe(
+      'Criatura de um personagem',
+    );
   });
 
   it('shows Visível or Escondido and asks for the opposite', () => {
     const fixture = TestBed.createComponent(MapTokensList);
-    fixture.componentRef.setInput('tokens', [mapToken('p', 'Pensantus'), mapToken('e', 'Capitão', { kind: 2, hidden: true })]);
+    fixture.componentRef.setInput('tokens', [
+      mapToken('p', 'Pensantus'),
+      mapToken('e', 'Capitão', { kind: 2, hidden: true }),
+    ]);
     fixture.componentRef.setInput('info', info);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;

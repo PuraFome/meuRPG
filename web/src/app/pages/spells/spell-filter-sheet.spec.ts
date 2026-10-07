@@ -20,7 +20,10 @@ describe('SpellFilterSheet (E10-11, state 3)', () => {
         list: async (req) => {
           requests.push(req as Record<string, unknown>);
           const n = (req as { classKey?: string }).classKey ? 2 : 5;
-          return create(ListSpellsResponseSchema, { spells: Array.from({ length: n }, (_, i) => create(SpellSchema, { key: `s${i}` })), total: n });
+          return create(ListSpellsResponseSchema, {
+            spells: Array.from({ length: n }, (_, i) => create(SpellSchema, { key: `s${i}` })),
+            total: n,
+          });
         },
       },
       'camp-1',
@@ -69,7 +72,9 @@ describe('SpellFilterSheet (E10-11, state 3)', () => {
     const { el, state, settle } = await open();
     await state.change({ classKey: 'class:wizard', levels: [1] });
     await settle();
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button')).find((b) => flat(b) === 'Limpar')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button'))
+      .find((b) => flat(b) === 'Limpar')!
+      .click();
     await settle();
     expect(state.filter()).toMatchObject({ query: 'maos', classKey: '', levels: [] });
     el.querySelector<HTMLButtonElement>('.foot button:last-child')!.click();

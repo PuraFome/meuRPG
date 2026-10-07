@@ -58,12 +58,16 @@ export class NotesState {
     const generation = ++this.generation;
     const campaignId = this.campaignId();
     try {
-      const [list, scenes] = await Promise.all([this.api.list(campaignId), this.api.scenes(campaignId)]);
+      const [list, scenes] = await Promise.all([
+        this.api.list(campaignId),
+        this.api.scenes(campaignId),
+      ]);
       if (generation !== this.generation) {
         return;
       }
       const known = new Set(this.notes().map((n) => n.id));
-      const arrived = this.loaded() && announce ? list.notes.filter((n) => isClue(n) && !known.has(n.id)) : [];
+      const arrived =
+        this.loaded() && announce ? list.notes.filter((n) => isClue(n) && !known.has(n.id)) : [];
       this.notes.set(sortNotes(list.notes));
       this.scenes.set(scenes);
       this.noteCount.set(list.noteCount);
@@ -140,7 +144,12 @@ export class NotesState {
   create(text: string, scenePointId: string): Promise<Note | null> {
     return this.write(NEW, async () => {
       // A retry of the same note (a lost answer, a second tap) sends the same key and adds it once.
-      const note = await this.api.create(this.campaignId(), text, scenePointId, this.createKey.keyFor([text, scenePointId]));
+      const note = await this.api.create(
+        this.campaignId(),
+        text,
+        scenePointId,
+        this.createKey.keyFor([text, scenePointId]),
+      );
       this.createKey.renew();
       this.generation++;
       this.notes.update((list) => sortNotes([note, ...list]));

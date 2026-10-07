@@ -52,7 +52,9 @@ describe('edit actions', () => {
     const e = insertImage(t, 6, 6, 'A Taverna', ID);
     expect(applyEdit(t, e)).toBe(`antes \n\n![A Taverna](image:${ID})\n\ndepois`);
     expect(applyEdit('', insertImage('', 0, 0, 'x', ID))).toBe(`![x](image:${ID})\n\n`);
-    expect(applyEdit('a\n\n', insertImage('a\n\n', 3, 3, 'x', ID))).toBe(`a\n\n![x](image:${ID})\n\n`);
+    expect(applyEdit('a\n\n', insertImage('a\n\n', 3, 3, 'x', ID))).toBe(
+      `a\n\n![x](image:${ID})\n\n`,
+    );
   });
 
   it('counts bytes of UTF-8 after normalising line breaks, and warns from 90%', () => {

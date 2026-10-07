@@ -117,18 +117,48 @@ export class MapPinsLegend {
       if (p.kind === MapPointKind.TRAP) {
         const state = p.trap?.state ?? TrapState.ARMED;
         if (state === TrapState.ARMED && master && pointHidden(p)) {
-          out.set('secret', { key: 'secret', label: 'Armadilha (só você vê)', kind: 'trap', state: 'armed', eye: true });
+          out.set('secret', {
+            key: 'secret',
+            label: 'Armadilha (só você vê)',
+            kind: 'trap',
+            state: 'armed',
+            eye: true,
+          });
         } else {
-          out.set('armed', { key: 'armed', label: 'Armadilha', kind: 'trap', state: 'armed', eye: false });
+          out.set('armed', {
+            key: 'armed',
+            label: 'Armadilha',
+            kind: 'trap',
+            state: 'armed',
+            eye: false,
+          });
         }
       } else if (p.kind === MapPointKind.TREASURE) {
         if (p.treasureFoundAt) {
-          out.set('found', { key: 'found', label: 'Tesouro encontrado', kind: 'treasure', state: 'found', eye: false });
+          out.set('found', {
+            key: 'found',
+            label: 'Tesouro encontrado',
+            kind: 'treasure',
+            state: 'found',
+            eye: false,
+          });
         } else {
-          out.set('hidden', { key: 'hidden', label: 'Tesouro (escondido)', kind: 'treasure', state: 'hidden', eye: false });
+          out.set('hidden', {
+            key: 'hidden',
+            label: 'Tesouro (escondido)',
+            kind: 'treasure',
+            state: 'hidden',
+            eye: false,
+          });
         }
       } else if (p.kind === MapPointKind.LIGHT && master) {
-        out.set('light', { key: 'light', label: 'Luz (só você vê)', kind: 'light', state: '', eye: false });
+        out.set('light', {
+          key: 'light',
+          label: 'Luz (só você vê)',
+          kind: 'light',
+          state: '',
+          eye: false,
+        });
       }
     }
     return [...out.values()];

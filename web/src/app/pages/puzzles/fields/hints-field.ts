@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output, viewChild, viewChildren } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -55,7 +66,9 @@ export class HintsField {
   readonly hintsChange = output<string[]>();
 
   private readonly fields = viewChildren<ElementRef<HTMLInputElement>>('field');
-  private readonly addButton = viewChild<string, ElementRef<HTMLElement>>('add', { read: ElementRef });
+  private readonly addButton = viewChild<string, ElementRef<HTMLElement>>('add', {
+    read: ElementRef,
+  });
 
   protected edit(index: number, text: string): void {
     this.hintsChange.emit(this.hints().map((h, i) => (i === index ? text : h)));

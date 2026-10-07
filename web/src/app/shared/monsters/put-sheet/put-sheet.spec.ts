@@ -3,8 +3,16 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { EncounterBlockedReason, EncounterBlockedSchema, EncounterStatus, type Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../../gen/meurpg/play/v1/play_pb';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+  EncounterStatus,
+  type Encounter,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  GameSessionBlockedReason,
+  GameSessionBlockedSchema,
+} from '../../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../core/combat/combat-testing';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
@@ -13,45 +21,86 @@ import { PutMonstersSheet, type PutMonstersData } from './put-sheet';
 
 /** The combat client of the sheet: the open combat, and what was asked of it. */
 class FakeCombat {
-  open: Encounter | null = encounter({ id: 'enc-1', name: 'Emboscada na ponte', status: EncounterStatus.SETUP, combatants: [] });
+  open: Encounter | null = encounter({
+    id: 'enc-1',
+    name: 'Emboscada na ponte',
+    status: EncounterStatus.SETUP,
+    combatants: [],
+  });
   getFail: unknown = null;
   failures: unknown[] = [];
   addIds: string[] = ['m1', 'm2', 'm3'];
-  adds: { encounterId: string; add: { creatureKey: string; count: number; name: string; hp: string; hidden: boolean }; key: string }[] = [];
-  starts: { name: string; participants: unknown[]; key: string; extras: Record<string, unknown> }[] = [];
+  adds: {
+    encounterId: string;
+    add: { creatureKey: string; count: number; name: string; hp: string; hidden: boolean };
+    key: string;
+  }[] = [];
+  starts: {
+    name: string;
+    participants: unknown[];
+    key: string;
+    extras: Record<string, unknown>;
+  }[] = [];
   get = vi.fn(async () => {
     if (this.getFail) {
       throw this.getFail;
     }
     return this.open;
   });
-  addMonsters = vi.fn(async (_c: string, encounterId: string, add: (typeof this.adds)[number]['add'], key: string) => {
-    this.adds.push({ encounterId, add, key });
-    const failure = this.failures.shift();
-    if (failure) {
-      throw failure;
-    }
-    return { encounter: this.open!, combatantIds: this.addIds };
-  });
-  start = vi.fn(async (_c: string, name: string, participants: unknown[], key: string, extras: Record<string, unknown>) => {
-    this.starts.push({ name, participants, key, extras });
-    const failure = this.failures.shift();
-    if (failure) {
-      throw failure;
-    }
-    return encounter({ id: 'enc-new', name });
-  });
+  addMonsters = vi.fn(
+    async (
+      _c: string,
+      encounterId: string,
+      add: (typeof this.adds)[number]['add'],
+      key: string,
+    ) => {
+      this.adds.push({ encounterId, add, key });
+      const failure = this.failures.shift();
+      if (failure) {
+        throw failure;
+      }
+      return { encounter: this.open!, combatantIds: this.addIds };
+    },
+  );
+  start = vi.fn(
+    async (
+      _c: string,
+      name: string,
+      participants: unknown[],
+      key: string,
+      extras: Record<string, unknown>,
+    ) => {
+      this.starts.push({ name, participants, key, extras });
+      const failure = this.failures.shift();
+      if (failure) {
+        throw failure;
+      }
+      return encounter({ id: 'enc-new', name });
+    },
+  );
 }
 
 describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 and 7)', () => {
   let api: FakeCombat;
   let close: ReturnType<typeof vi.fn>;
 
-  async function setup(open: Encounter | null | 'closed' = encounter({ id: 'enc-1', name: 'Emboscada na ponte', status: EncounterStatus.SETUP, combatants: [] })) {
+  async function setup(
+    open: Encounter | null | 'closed' = encounter({
+      id: 'enc-1',
+      name: 'Emboscada na ponte',
+      status: EncounterStatus.SETUP,
+      combatants: [],
+    }),
+  ) {
     api = new FakeCombat();
     if (open === 'closed') {
       api.getFail = new ConnectError('no session', Code.FailedPrecondition, undefined, [
-        { desc: GameSessionBlockedSchema, value: create(GameSessionBlockedSchema, { reason: GameSessionBlockedReason.NO_OPEN_SESSION }) },
+        {
+          desc: GameSessionBlockedSchema,
+          value: create(GameSessionBlockedSchema, {
+            reason: GameSessionBlockedReason.NO_OPEN_SESSION,
+          }),
+        },
       ]);
     } else {
       api.open = open;
@@ -74,9 +123,16 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     };
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => (flat(b) ?? '').includes(name) || b.getAttribute('aria-label')?.includes(name))!;
-    const more = () => el.querySelector<HTMLButtonElement>('app-count-stepper button[aria-label^="Mais"]')!;
-    const radio = (label: string) => Array.from(el.querySelectorAll<HTMLLabelElement>('.seg__item')).find((l) => flat(l)?.includes(label))!.querySelector('input')!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => (flat(b) ?? '').includes(name) || b.getAttribute('aria-label')?.includes(name),
+      )!;
+    const more = () =>
+      el.querySelector<HTMLButtonElement>('app-count-stepper button[aria-label^="Mais"]')!;
+    const radio = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLLabelElement>('.seg__item'))
+        .find((l) => flat(l)?.includes(label))!
+        .querySelector('input')!;
     return { el, button, more, radio, settle, fixture };
   }
 
@@ -97,12 +153,16 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     more().click();
     more().click();
     await settle();
-    expect(flat(el.querySelector('.count__names'))).toBe('Entram como Bandido 1, Bandido 2 e Bandido 3.');
+    expect(flat(el.querySelector('.count__names'))).toBe(
+      'Entram como Bandido 1, Bandido 2 e Bandido 3.',
+    );
     const input = el.querySelector<HTMLInputElement>('input[name=name]')!;
     input.value = 'Salteador';
     input.dispatchEvent(new Event('input'));
     await settle();
-    expect(flat(el.querySelector('.count__names'))).toBe('Entram como Salteador 1, Salteador 2 e Salteador 3.');
+    expect(flat(el.querySelector('.count__names'))).toBe(
+      'Entram como Salteador 1, Salteador 2 e Salteador 3.',
+    );
   });
 
   it('puts three hidden Bandidos with the average in the open combat, under one key', async () => {
@@ -114,10 +174,26 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     button('Pôr 3 no combate').click();
     await settle();
     expect(api.adds).toEqual([
-      { encounterId: 'enc-1', add: { creatureKey: 'monster:bandit', count: 3, name: 'Bandido', hp: 'average', hidden: true }, key: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+      {
+        encounterId: 'enc-1',
+        add: {
+          creatureKey: 'monster:bandit',
+          count: 3,
+          name: 'Bandido',
+          hp: 'average',
+          hidden: true,
+        },
+        key: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
     ]);
     expect(close).toHaveBeenCalledWith(
-      expect.objectContaining({ count: 3, names: 'Bandido 1, Bandido 2 e Bandido 3', combatName: 'Emboscada na ponte', started: false, hidden: true }),
+      expect.objectContaining({
+        count: 3,
+        names: 'Bandido 1, Bandido 2 e Bandido 3',
+        combatName: 'Emboscada na ponte',
+        started: false,
+        hidden: true,
+      }),
     );
   });
 
@@ -127,7 +203,9 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
         id: 'enc-1',
         name: 'Emboscada na ponte',
         status: EncounterStatus.SETUP,
-        combatants: [1, 2, 3, 4, 5, 6].map((n) => combatant({ id: `m${n}`, label: `Bandido ${n}` })),
+        combatants: [1, 2, 3, 4, 5, 6].map((n) =>
+          combatant({ id: `m${n}`, label: `Bandido ${n}` }),
+        ),
       }),
     );
     api.addIds = ['m4', 'm5', 'm6'];
@@ -136,7 +214,9 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     await settle();
     button('Pôr 3 no combate').click();
     await settle();
-    expect(close).toHaveBeenCalledWith(expect.objectContaining({ names: 'Bandido 4, Bandido 5 e Bandido 6' }));
+    expect(close).toHaveBeenCalledWith(
+      expect.objectContaining({ names: 'Bandido 4, Bandido 5 e Bandido 6' }),
+    );
   });
 
   it("names them in their numbers' order, not the combat's initiative order", async () => {
@@ -155,7 +235,9 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     await settle();
     button('Pôr 3 no combate').click();
     await settle();
-    expect(close).toHaveBeenCalledWith(expect.objectContaining({ names: 'Bandido 1, Bandido 2 e Bandido 3' }));
+    expect(close).toHaveBeenCalledWith(
+      expect.objectContaining({ names: 'Bandido 1, Bandido 2 e Bandido 3' }),
+    );
   });
 
   it('rolls the hit points and starts them revealed when the master says so', async () => {
@@ -209,7 +291,10 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     const { button, el, settle } = await setup();
     api.failures = [
       new ConnectError('ended', Code.FailedPrecondition, undefined, [
-        { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.ENCOUNTER_ENDED }) },
+        {
+          desc: EncounterBlockedSchema,
+          value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.ENCOUNTER_ENDED }),
+        },
       ]),
     ];
     button('Pôr no combate').click();
@@ -218,19 +303,31 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
   });
 
   it('stops the count at what fits in a combat of 40, and says why; a full combat has no add', async () => {
-    const thirty = encounter({ id: 'enc-1', name: 'Cheio', status: EncounterStatus.ACTIVE, combatants: Array.from({ length: 36 }, (_, i) => combatant({ id: `c${i}`, label: `N ${i}` })) });
+    const thirty = encounter({
+      id: 'enc-1',
+      name: 'Cheio',
+      status: EncounterStatus.ACTIVE,
+      combatants: Array.from({ length: 36 }, (_, i) => combatant({ id: `c${i}`, label: `N ${i}` })),
+    });
     const { el, more, settle, button } = await setup(thirty);
     for (let i = 0; i < 6; i++) {
       more().click();
     }
     await settle();
-    expect(flat(el.querySelector('.count__names'))).toBe('Entram como Bandido 1, Bandido 2, Bandido 3 e Bandido 4.');
+    expect(flat(el.querySelector('.count__names'))).toBe(
+      'Entram como Bandido 1, Bandido 2, Bandido 3 e Bandido 4.',
+    );
     expect(flat(el.querySelector('.field__hint'))).toContain('Cabem mais 4 neste combate');
     button('Pôr 4 no combate').click();
     await settle();
     expect(api.adds[0].add.count).toBe(4);
 
-    const full = encounter({ id: 'enc-2', name: 'Lotado', status: EncounterStatus.ACTIVE, combatants: Array.from({ length: 40 }, (_, i) => combatant({ id: `d${i}`, label: `N ${i}` })) });
+    const full = encounter({
+      id: 'enc-2',
+      name: 'Lotado',
+      status: EncounterStatus.ACTIVE,
+      combatants: Array.from({ length: 40 }, (_, i) => combatant({ id: `d${i}`, label: `N ${i}` })),
+    });
     TestBed.resetTestingModule();
     const again = await setup(full);
     expect(flat(again.el.querySelector('.mr-notice--warning'))).toContain('O combate está cheio');
@@ -249,9 +346,15 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     expect(api.starts[0]).toMatchObject({
       name: 'Combate: Bandido',
       participants: [],
-      extras: { monsters: [{ creatureKey: 'monster:bandit', count: 2, name: 'Bandido' }], monsterHp: 'average', monstersHidden: true },
+      extras: {
+        monsters: [{ creatureKey: 'monster:bandit', count: 2, name: 'Bandido' }],
+        monsterHp: 'average',
+        monstersHidden: true,
+      },
     });
-    expect(close).toHaveBeenCalledWith(expect.objectContaining({ started: true, combatName: 'Combate: Bandido', count: 2 }));
+    expect(close).toHaveBeenCalledWith(
+      expect.objectContaining({ started: true, combatName: 'Combate: Bandido', count: 2 }),
+    );
   });
 
   it('a session that is not open waits: the button is off and says to open it', async () => {

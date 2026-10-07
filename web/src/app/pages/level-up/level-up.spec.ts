@@ -20,10 +20,21 @@ import { createRouterTransport } from '@connectrpc/connect';
 
 import { CampaignService } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { ContentSchema, ContentService, ListContentResponseSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  ContentSchema,
+  ContentService,
+  ListContentResponseSchema,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
-import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, pensantus, wizardOptions } from '../../core/levelup/levelup-testing';
+import {
+  SKILLS,
+  SPELLS,
+  WIZARD_KEYS,
+  fighterOptions,
+  pensantus,
+  wizardOptions,
+} from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
 
 const settle = () => new Promise((r) => setTimeout(r, 220));
@@ -71,7 +82,11 @@ describe('LevelUpPage', () => {
     window.scrollTo = vi.fn();
   });
 
-  async function setup(options: LevelUpOptions = wizardOptions({ preparedMaxAfter: 3 }), char = character(), optionsError?: Error) {
+  async function setup(
+    options: LevelUpOptions = wizardOptions({ preparedMaxAfter: 3 }),
+    char = character(),
+    optionsError?: Error,
+  ) {
     client.character.mockReset().mockResolvedValue(char);
     client.options.mockReset();
     if (optionsError) {
@@ -89,13 +104,23 @@ describe('LevelUpPage', () => {
     client.rollHitPoints.mockReset().mockResolvedValue({ die: 6, value: 5, alreadyRolled: false });
     client.levelUp.mockReset().mockResolvedValue(character({ canLevelUp: false }, pensantus(true)));
     watcher = fakeContentWatcher();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: LevelUpClient, useValue: client }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: LevelUpClient, useValue: client }],
+    });
     // The page makes its own client (so the catalog never outlives it): the test's takes its place there too, and the
     // session's stream is not opened (the fake watcher plays the hint).
-    TestBed.overrideComponent(LevelUpPage, { set: { providers: [{ provide: LevelUpClient, useValue: client }, watcher.provider] } });
+    TestBed.overrideComponent(LevelUpPage, {
+      set: { providers: [{ provide: LevelUpClient, useValue: client }, watcher.provider] },
+    });
     // The route's params, read the way the page reads them.
     const { ActivatedRoute } = await import('@angular/router');
-    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: (await import('rxjs')).of({ get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1') }) } });
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        paramMap: (await import('rxjs')).of({
+          get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1'),
+        }),
+      },
+    });
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(LevelUpPage);
     await load(fixture);
@@ -112,7 +137,9 @@ describe('LevelUpPage', () => {
   const el = (f: ComponentFixture<LevelUpPage>) => f.nativeElement as HTMLElement;
   const text = (f: ComponentFixture<LevelUpPage>) => el(f).textContent?.replace(/\s+/g, ' ') ?? '';
   const button = (f: ComponentFixture<LevelUpPage>, name: string | RegExp) =>
-    Array.from(el(f).querySelectorAll<HTMLButtonElement>('button')).find((b) => (typeof name === 'string' ? b.textContent?.trim() === name : name.test(b.textContent ?? '')))!;
+    Array.from(el(f).querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      typeof name === 'string' ? b.textContent?.trim() === name : name.test(b.textContent ?? ''),
+    )!;
   async function click(f: ComponentFixture<LevelUpPage>, target: Element | null | undefined) {
     (target as HTMLElement).click();
     f.detectChanges();
@@ -121,14 +148,21 @@ describe('LevelUpPage', () => {
     f.detectChanges();
   }
   const pickRow = (f: ComponentFixture<LevelUpPage>, name: string) =>
-    Array.from(el(f).querySelectorAll<HTMLElement>('.row__main, .row')).find((r) => r.textContent?.includes(name))!;
+    Array.from(el(f).querySelectorAll<HTMLElement>('.row__main, .row')).find((r) =>
+      r.textContent?.includes(name),
+    )!;
 
   it('lists the four steps of Pensantus, and starts at Habilidades', async () => {
     const f = await setup();
     expect(text(f)).toContain('Subir para o nível 4');
     expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
     expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
-    expect(Array.from(el(f).querySelectorAll('.step__label')).map((s) => s.textContent)).toEqual(['Habilidades', 'Vida', 'Magias', 'Resumo']);
+    expect(Array.from(el(f).querySelectorAll('.step__label')).map((s) => s.textContent)).toEqual([
+      'Habilidades',
+      'Vida',
+      'Magias',
+      'Resumo',
+    ]);
   });
 
   it('has only Vida and Resumo when the level has nothing else to choose (Toren)', async () => {
@@ -171,7 +205,9 @@ describe('LevelUpPage', () => {
       await click(f, button(f, 'Cancelar'));
       expect(text(f)).toContain('Descartar as escolhas?');
       expect(navigate).not.toHaveBeenCalled();
-      const buttons = Array.from(el(f).querySelectorAll('.ask button')).map((b) => b.textContent?.trim());
+      const buttons = Array.from(el(f).querySelectorAll('.ask button')).map((b) =>
+        b.textContent?.trim(),
+      );
       expect(buttons).toEqual(['Continuar escolhendo', 'Descartar e sair']);
       expect(document.activeElement?.textContent?.trim()).toBe('Continuar escolhendo');
       await click(f, button(f, 'Continuar escolhendo'));
@@ -213,10 +249,20 @@ describe('LevelUpPage', () => {
 
     it('rolls the die on the server and keeps the result', async () => {
       const f = await atVida();
-      await click(f, Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
+      await click(
+        f,
+        Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d6'),
+        ),
+      );
       expect(text(f)).toContain('Falta rolar o dado de vida.');
       await click(f, button(f, /Rolar no app/));
-      expect(client.rollHitPoints).toHaveBeenCalledWith('camp-1', 'ch-1', 'class:wizard', expect.any(String));
+      expect(client.rollHitPoints).toHaveBeenCalledWith(
+        'camp-1',
+        'ch-1',
+        'class:wizard',
+        expect.any(String),
+      );
       expect(text(f)).toContain('Rolado no app: 5 no d6');
       expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBeNull();
       // The preview is sent with the roll.
@@ -227,14 +273,24 @@ describe('LevelUpPage', () => {
       const f = await setup(wizardOptions({ preparedMaxAfter: 3, keptHitPointRoll: 3 }));
       await click(f, el(f).querySelector('.row__input'));
       await click(f, button(f, 'Próximo'));
-      await click(f, Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
+      await click(
+        f,
+        Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d6'),
+        ),
+      );
       expect(text(f)).toContain('Rolado no app: 3 no d6');
       expect(client.rollHitPoints).not.toHaveBeenCalled();
     });
 
     it('accepts a physical die, 1 to the die, when the campaign lets the player choose', async () => {
       const f = await atVida();
-      await click(f, Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
+      await click(
+        f,
+        Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d6'),
+        ),
+      );
       await click(f, button(f, 'Digitar o resultado'));
       const field = el(f).querySelector('input.type__field') as HTMLInputElement;
       field.value = '9';
@@ -250,23 +306,37 @@ describe('LevelUpPage', () => {
     });
 
     it('follows the dice rule: no typing when everybody rolls in the app, no app roll when everybody rolls physical dice', async () => {
-      const inApp = await setup(wizardOptions({ preparedMaxAfter: 3, diceRule: LevelUpDiceRule.FORCED_IN_APP }));
+      const inApp = await setup(
+        wizardOptions({ preparedMaxAfter: 3, diceRule: LevelUpDiceRule.FORCED_IN_APP }),
+      );
       await click(inApp, el(inApp).querySelector('.row__input'));
       await click(inApp, button(inApp, 'Próximo'));
-      await click(inApp, Array.from(el(inApp).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
+      await click(
+        inApp,
+        Array.from(el(inApp).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d6'),
+        ),
+      );
       expect(button(inApp, /Rolar no app/)).toBeDefined();
       expect(button(inApp, 'Digitar o resultado')).toBeUndefined();
       TestBed.resetTestingModule();
 
-      const physical = await setup(wizardOptions({ preparedMaxAfter: 3, diceRule: LevelUpDiceRule.FORCED_PHYSICAL }));
+      const physical = await setup(
+        wizardOptions({ preparedMaxAfter: 3, diceRule: LevelUpDiceRule.FORCED_PHYSICAL }),
+      );
       await click(physical, el(physical).querySelector('.row__input'));
       await click(physical, button(physical, 'Próximo'));
-      await click(physical, Array.from(el(physical).querySelectorAll('.dice-choice__card')).find((c) => c.textContent?.includes('Rolar 1d6')));
+      await click(
+        physical,
+        Array.from(el(physical).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d6'),
+        ),
+      );
       expect(button(physical, /Rolar no app/)).toBeUndefined();
       expect(el(physical).querySelector('input.type__field')).not.toBeNull();
     });
 
-    describe('the table\'s rule for the hit points (RN-24)', () => {
+    describe("the table's rule for the hit points (RN-24)", () => {
       async function atVidaWith(rule: LevelUpHitPointsRule, over: object = {}) {
         const f = await setup(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: rule, ...over }));
         await click(f, el(f).querySelector('.row__input'));
@@ -283,7 +353,9 @@ describe('LevelUpPage', () => {
       it('with "rolar" shows no choice: it says so and goes straight to the die, and only the die rolls', async () => {
         const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY);
         expect(el(f).querySelectorAll('.dice-choice__card')).toHaveLength(0);
-        expect(text(f)).toContain('A mesa pede que todos rolem o dado de vida. A média não é oferecida.');
+        expect(text(f)).toContain(
+          'A mesa pede que todos rolem o dado de vida. A média não é oferecida.',
+        );
         expect(text(f)).toContain('Falta rolar o dado de vida.');
         expect(button(f, /Rolar no app/)).toBeDefined();
         expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBe('true');
@@ -301,7 +373,9 @@ describe('LevelUpPage', () => {
       it('with "a média" shows no choice and no die: the average, with what the server derives', async () => {
         const f = await atVidaWith(LevelUpHitPointsRule.AVERAGE_ONLY);
         expect(el(f).querySelectorAll('.dice-choice__card')).toHaveLength(0);
-        expect(text(f)).toContain('A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.');
+        expect(text(f)).toContain(
+          'A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.',
+        );
         expect(text(f)).toContain('Média: 4');
         expect(text(f)).toContain('4 + Constituição +3 · de 23 para 30');
         expect(button(f, /Rolar no app/)).toBeUndefined();
@@ -310,7 +384,9 @@ describe('LevelUpPage', () => {
       });
 
       it('with "rolar" the page counts as untouched until something else is chosen (leaving does not ask)', async () => {
-        const f = await setup(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }));
+        const f = await setup(
+          wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }),
+        );
         await click(f, button(f, 'Cancelar'));
         expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
       });
@@ -320,7 +396,15 @@ describe('LevelUpPage', () => {
       const f = await setup();
       const after = pensantus(true);
       // Constitution 16 → 18 with the average: 23 → 34.
-      client.preview.mockResolvedValue({ after: { ...after, hitPointsMax: 34, abilities: after.abilities.map((a) => (a.namePt === 'Constituição' ? { ...a, score: 18, modifier: 4 } : a)) } });
+      client.preview.mockResolvedValue({
+        after: {
+          ...after,
+          hitPointsMax: 34,
+          abilities: after.abilities.map((a) =>
+            a.namePt === 'Constituição' ? { ...a, score: 18, modifier: 4 } : a,
+          ),
+        },
+      });
       const con = pickRow(f, 'Constituição');
       await click(f, con.querySelector('input'));
       await click(f, button(f, 'Próximo'));
@@ -370,7 +454,11 @@ describe('LevelUpPage', () => {
       await click(f, button(f, 'Confirmar o nível 4'));
       const [campaignId, characterId, revision, choices] = client.levelUp.mock.calls[0];
       expect([campaignId, characterId, revision]).toEqual(['camp-1', 'ch-1', 5]);
-      expect(choices).toMatchObject({ classKey: 'class:wizard', abilityIncrease: { intelligence: 2 }, cantripKeys: ['spell:prestidigitation'] });
+      expect(choices).toMatchObject({
+        classKey: 'class:wizard',
+        abilityIncrease: { intelligence: 2 },
+        cantripKeys: ['spell:prestidigitation'],
+      });
       expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1'], {
         replaceUrl: true,
         state: { levelUp: { name: 'Pensantus', level: 4 } },
@@ -378,7 +466,11 @@ describe('LevelUpPage', () => {
     });
 
     it('mentions what the master adds by the editor, quietly', async () => {
-      const f = await setup(fighterOptions({ masterAdds: [{ key: 'feature:favored-enemy', namePt: 'Inimigo Favorito' }] }));
+      const f = await setup(
+        fighterOptions({
+          masterAdds: [{ key: 'feature:favored-enemy', namePt: 'Inimigo Favorito' }],
+        }),
+      );
       await click(f, button(f, 'Próximo'));
       expect(text(f)).toContain('O mestre acrescenta pelo editor: Inimigo Favorito.');
     });
@@ -430,7 +522,9 @@ describe('LevelUpPage', () => {
       const f = await atResumoOfToren();
       client.levelUp.mockRejectedValueOnce(new ConnectError('x', Code.Aborted));
       await click(f, button(f, 'Confirmar o nível 5'));
-      expect(el(f).querySelector('.js-failure')?.textContent).toContain('A ficha mudou enquanto você escolhia');
+      expect(el(f).querySelector('.js-failure')?.textContent).toContain(
+        'A ficha mudou enquanto você escolhia',
+      );
       client.character.mockResolvedValue(character({ revision: 6 }));
       await click(f, button(f, 'Ler a ficha de novo'));
       expect(el(f).querySelector('.js-failure')).toBeNull();
@@ -451,11 +545,19 @@ describe('LevelUpPage', () => {
       await click(f, button(f, 'Próximo'));
       client.levelUp.mockRejectedValueOnce(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.CANTRIPS, field: 'full.cantrip_keys' }) },
+          {
+            desc: LevelUpRefusalSchema,
+            value: create(LevelUpRefusalSchema, {
+              reason: LevelUpRefusalReason.CANTRIPS,
+              field: 'full.cantrip_keys',
+            }),
+          },
         ]),
       );
       await click(f, button(f, 'Confirmar o nível 4'));
-      expect(el(f).querySelector('.js-failure')?.textContent).toContain('Escolha todos os truques novos do nível');
+      expect(el(f).querySelector('.js-failure')?.textContent).toContain(
+        'Escolha todos os truques novos do nível',
+      );
       await click(f, button(f, 'Ir para Magias'));
       expect(text(f)).toContain('Passo 3 de 4 · Magias');
       expect(el(f).querySelector('.js-failure')).toBeNull();
@@ -465,7 +567,10 @@ describe('LevelUpPage', () => {
   describe('when there is nothing to level up', () => {
     it('says why a character that cannot level up now cannot, with no steps (as for a locked sheet)', async () => {
       const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
-        { desc: CharacterBlockedSchema, value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.CANNOT_LEVEL_UP }) },
+        {
+          desc: CharacterBlockedSchema,
+          value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.CANNOT_LEVEL_UP }),
+        },
       ]);
       const f = await setup(wizardOptions(), character({ canLevelUp: false }), blocked);
       expect(text(f)).toContain('Ainda não dá para subir de nível');
@@ -486,7 +591,7 @@ describe('LevelUpPage', () => {
       expect(client.options).not.toHaveBeenCalled();
     });
   });
-  describe('the table\'s content changed (content_changed, RN-23)', () => {
+  describe("the table's content changed (content_changed, RN-23)", () => {
     it('reads the options and the lists again, keeps the choices that are still offered, and says so', async () => {
       const f = await setup();
       expect(watcher.following()).toBe('camp-1');
@@ -496,15 +601,22 @@ describe('LevelUpPage', () => {
       await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
       expect(client.options).toHaveBeenCalledTimes(1);
       // A spell the wizard is offered is gone from the lists, and this one was not picked: the choices all stay.
-      client.catalog.mockResolvedValue({ spells: SPELLS.filter((sp) => sp.key !== 'spell:detect-magic'), skills: SKILLS });
+      client.catalog.mockResolvedValue({
+        spells: SPELLS.filter((sp) => sp.key !== 'spell:detect-magic'),
+        skills: SKILLS,
+      });
       watcher.hint();
       await load(f);
       expect(client.options).toHaveBeenCalledTimes(2);
       expect(client.catalog).toHaveBeenCalledTimes(2);
-      expect(text(f)).toContain('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
+      expect(text(f)).toContain(
+        'O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.',
+      );
       // Still on the same step, and the cantrip is still picked.
       expect(text(f)).toContain('Passo 3 de 4 · Magias');
-      expect((pickRow(f, 'Prestidigitação').querySelector('input') as HTMLInputElement).checked).toBe(true);
+      expect(
+        (pickRow(f, 'Prestidigitação').querySelector('input') as HTMLInputElement).checked,
+      ).toBe(true);
     });
 
     it('says a choice left the list when the master switched it off, and the row is gone', async () => {
@@ -513,11 +625,18 @@ describe('LevelUpPage', () => {
       await click(f, button(f, 'Próximo'));
       await click(f, button(f, 'Próximo'));
       await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
-      client.catalog.mockResolvedValue({ spells: SPELLS.filter((sp) => sp.key !== 'spell:prestidigitation'), skills: SKILLS });
+      client.catalog.mockResolvedValue({
+        spells: SPELLS.filter((sp) => sp.key !== 'spell:prestidigitation'),
+        skills: SKILLS,
+      });
       watcher.hint();
       await load(f);
       expect(text(f)).toContain('uma das suas escolhas saiu da lista');
-      expect(Array.from(el(f).querySelectorAll('.row__main, .row')).some((r) => r.textContent?.includes('Prestidigitação'))).toBe(false);
+      expect(
+        Array.from(el(f).querySelectorAll('.row__main, .row')).some((r) =>
+          r.textContent?.includes('Prestidigitação'),
+        ),
+      ).toBe(false);
     });
 
     it('keeps the page as it was when the read fails', async () => {
@@ -557,7 +676,12 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
     Element.prototype.scrollIntoView = vi.fn();
     window.scrollTo = vi.fn();
     let spells = [...SPELLS];
-    const listContent = vi.fn(async () => create(ListContentResponseSchema, { tableRevision: spells.length, content: create(ContentSchema, { spells, skills: SKILLS }) }));
+    const listContent = vi.fn(async () =>
+      create(ListContentResponseSchema, {
+        tableRevision: spells.length,
+        content: create(ContentSchema, { spells, skills: SKILLS }),
+      }),
+    );
     const transport = createRouterTransport(({ service }) => {
       service(ContentService, { listContent });
       service(CharacterService, {
@@ -565,13 +689,31 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
         getLevelUpOptions: async () => ({ options: wizardOptions({ preparedMaxAfter: 3 }) }),
         previewLevelUp: async () => ({ after: pensantus(true) }),
       });
-      service(CampaignService, { getCampaign: async () => ({ campaign: { id: 'camp-1', myDicePreference: DicePreference.APP, xpMode: XpMode.MILESTONES } }) });
+      service(CampaignService, {
+        getCampaign: async () => ({
+          campaign: {
+            id: 'camp-1',
+            myDicePreference: DicePreference.APP,
+            xpMode: XpMode.MILESTONES,
+          },
+        }),
+      });
     });
     const watcher = fakeContentWatcher();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CONNECT_TRANSPORT, useValue: transport }] });
-    TestBed.overrideComponent(LevelUpPage, { set: { providers: [LevelUpClient, watcher.provider] } });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
+    TestBed.overrideComponent(LevelUpPage, {
+      set: { providers: [LevelUpClient, watcher.provider] },
+    });
     const { ActivatedRoute } = await import('@angular/router');
-    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: (await import('rxjs')).of({ get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1') }) } });
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        paramMap: (await import('rxjs')).of({
+          get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1'),
+        }),
+      },
+    });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const f = TestBed.createComponent(LevelUpPage);
     const go = async () => {
@@ -586,8 +728,14 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
       (t as HTMLElement).click();
       await go();
     };
-    const row = (name: string) => Array.from(root.querySelectorAll<HTMLElement>('.row__main, .row')).find((r) => r.textContent?.includes(name));
-    const next = () => Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === 'Próximo')!;
+    const row = (name: string) =>
+      Array.from(root.querySelectorAll<HTMLElement>('.row__main, .row')).find((r) =>
+        r.textContent?.includes(name),
+      );
+    const next = () =>
+      Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => b.textContent?.trim() === 'Próximo',
+      )!;
     await click(row('Inteligência')?.querySelector('input'));
     await click(next());
     await click(next());

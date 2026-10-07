@@ -17,11 +17,7 @@ import type { SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { sceneActionErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { ActionKey } from '../../../core/connect/idempotency';
-import {
-  SCENE_ACTION_LIMIT,
-  actionSubtitle,
-  actionTitle,
-} from '../../../core/maps/scene-actions';
+import { SCENE_ACTION_LIMIT, actionSubtitle, actionTitle } from '../../../core/maps/scene-actions';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
 import { SceneActionForm, type NewSceneAction } from './scene-action-form';
 

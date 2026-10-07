@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /** One choice of a `ChoiceRow`. */
@@ -58,18 +65,29 @@ export class ChoiceRow<T> {
   }
 
   protected onKey(event: KeyboardEvent): void {
-    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
     if (step === 0 || this.disabled()) {
       return;
     }
     event.preventDefault();
     const choices = this.choices();
-    const at = Math.max(0, choices.findIndex((c) => this.isOn(c)));
+    const at = Math.max(
+      0,
+      choices.findIndex((c) => this.isOn(c)),
+    );
     const next = choices[(at + step + choices.length) % choices.length];
     if (next) {
       this.valueChange.emit(next.value);
       // The chosen one holds the tab stop once the view updates; move the focus there.
-      setTimeout(() => this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]')[(at + step + choices.length) % choices.length]?.focus());
+      setTimeout(() => {
+        const radios = this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]');
+        radios[(at + step + choices.length) % choices.length]?.focus();
+      });
     }
   }
 }

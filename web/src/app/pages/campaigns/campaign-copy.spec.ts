@@ -56,4 +56,3 @@ describe('creationRefusalText (RN-30)', () => {
     expect(creationRefusalText(new TypeError('Failed to fetch'))).toBeNull();
   });
 });
-

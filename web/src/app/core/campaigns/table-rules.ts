@@ -222,7 +222,11 @@ export class TableRulesClient {
     return { saved: draftFromRules(res.rules), style: res.style };
   }
 
-  setXpMode(campaignId: string, xpMode: XpMode, confirm: boolean): Promise<SetCampaignXpModeResponse> {
+  setXpMode(
+    campaignId: string,
+    xpMode: XpMode,
+    confirm: boolean,
+  ): Promise<SetCampaignXpModeResponse> {
     return this.client.setCampaignXpMode({ campaignId, xpMode, confirm });
   }
 }

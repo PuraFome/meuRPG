@@ -9,7 +9,12 @@ import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
 import { CREATURE_TYPES } from '../../../core/creatures/creature-types';
-import { CREATURE_NAME_MAX, challengeText, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
+import {
+  CREATURE_NAME_MAX,
+  challengeText,
+  nameCounter,
+  summarySubtitle,
+} from '../../../core/creatures/creature-format';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { formatInt, joinDots } from '../../../core/format/text';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
@@ -29,7 +34,10 @@ export interface GiveCreatureResult {
 }
 
 /** The type filter: any, then the SRD's creature types (the bestiary's filter uses the same list). */
-const TYPES: readonly { value: string; label: string }[] = [{ value: '', label: 'Qualquer' }, ...CREATURE_TYPES];
+const TYPES: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Qualquer' },
+  ...CREATURE_TYPES,
+];
 
 /** The challenge ratings the filter offers: "Até 1/8" means that rating or lower. */
 const CRS = ['0', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '8', '10', '15', '20', '30'];
@@ -51,7 +59,15 @@ const CRS = ['0', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '8', '10', 
  */
 @Component({
   selector: 'app-give-creature-sheet',
-  imports: [CreatureChoiceList, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, SheetFrame],
+  imports: [
+    CreatureChoiceList,
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    SheetFrame,
+  ],
   templateUrl: './give-creature-sheet.html',
   styleUrl: './give-creature-sheet.scss',
 })
@@ -88,7 +104,10 @@ export class GiveCreatureSheet {
       title: s.namePt,
       alias: s.name !== s.namePt ? s.name : undefined,
       // The picked row also says its armor class and hit points, from its stat block (the catalog row has neither).
-      subtitle: this.picked()?.key === s.key && this.block() ? summarySubtitle(s, this.block() ?? undefined) : joinDots([s.sizePt, s.typePt, challengeText(s.challengeRating)]),
+      subtitle:
+        this.picked()?.key === s.key && this.block()
+          ? summarySubtitle(s, this.block() ?? undefined)
+          : joinDots([s.sizePt, s.typePt, challengeText(s.challengeRating)]),
       art: true,
     })),
   );
@@ -114,7 +133,9 @@ export class GiveCreatureSheet {
     }
     return this.name().trim() === '' ? 'Dê um nome à criatura.' : '';
   });
-  protected readonly ready = computed(() => !!this.picked() && this.name().trim() !== '' && !this.busy());
+  protected readonly ready = computed(
+    () => !!this.picked() && this.name().trim() !== '' && !this.busy(),
+  );
 
   constructor() {
     void this.search();
@@ -207,7 +228,13 @@ export class GiveCreatureSheet {
     try {
       // A retry of the same gift (a lost answer, a second tap) sends the same key and gives one creature.
       const name = this.name().trim();
-      const made = await this.client.give(this.data.campaignId, this.data.characterId, p.key, name, this.giveKey.keyFor([p.key, name]));
+      const made = await this.client.give(
+        this.data.campaignId,
+        this.data.characterId,
+        p.key,
+        name,
+        this.giveKey.keyFor([p.key, name]),
+      );
       this.sheet.close({ name: made?.name ?? this.name().trim() });
     } catch (err) {
       this.error.set(creatureErrorMessage(err, 'give'));
