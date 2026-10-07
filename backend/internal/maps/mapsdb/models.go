@@ -21,6 +21,7 @@ type GalleryImage struct {
 	Generated     bool
 	ParentImageID *string
 	GeneratedKind string
+	CopyOfImageID *string
 }
 
 type GeneratedDungeon struct {

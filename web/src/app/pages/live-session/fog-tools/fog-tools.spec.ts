@@ -143,7 +143,7 @@ describe("the player's fog tools: the light confirmation is a toast over the pag
       }): void;
     };
     tools.lightChanged({
-      token: mapToken('toren', 'Toren', { mine: true, carriedLight: 'light:torch' }),
+      token: mapToken('toren', 'Toren', { mapId: 'm1', mine: true, carriedLight: 'light:torch' }),
       option: { key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra' },
     });
     fixture.detectChanges();

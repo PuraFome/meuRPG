@@ -734,6 +734,79 @@ describe('MapEditor', () => {
     });
   });
 
+  describe('the door tool on a calibrated map', () => {
+    // 8 x 8 rules' grid = 4 x 4 drawing squares x factor 2. A one-square wall along column 4, floor on both sides.
+    const thinWall = () => {
+      const bytes = new Uint8Array(8);
+      for (let row = 0; row < 8; row++) {
+        const n = row * 8 + 4;
+        bytes[n >> 3] |= 1 << (n & 7);
+      }
+      return bytes;
+    };
+    const tapAt = async (col: number, row: number) => {
+      surface()!.stroke.emit({ centers: [{ col, row }], erase: false });
+      await frame();
+      await settle();
+    };
+    async function paintCalibrated(doors?: Uint8Array) {
+      await setup(
+        {
+          gridColumns: 8,
+          gridRows: 8,
+          drawnColumns: 4,
+          drawnRows: 4,
+          squareFactor: 2,
+          fogEnabled: false,
+        },
+        undefined,
+        { wall: thinWall(), doors },
+      );
+      radio('Pintar').click();
+      await settle();
+      button('Porta').click();
+      await settle();
+    }
+    const doorSquares = (calls: typeof api.paints) =>
+      calls
+        .filter((c) => c.layer === MapLayer.DOORS)
+        .flatMap((c) => c.squares.map((q) => `${q.col},${q.row}`))
+        .sort();
+
+    it('on a calibrated map a door tap paints and sends the whole block of the drawing square, as the server does', async () => {
+      await paintCalibrated();
+      await tapAt(4, 2);
+      await flush();
+      expect(doorSquares(api.paints)).toEqual(['4,2', '4,3', '5,2', '5,3']);
+      expect(el.querySelectorAll('.sq--door').length).toBe(4);
+    });
+
+    it('on a calibrated map "Tirar a porta" on one square of a door block takes the whole block', async () => {
+      const doors = new Uint8Array(32);
+      for (const [c, r] of [
+        [4, 2],
+        [5, 2],
+        [4, 3],
+        [5, 3],
+      ]) {
+        const n = r * 8 + c;
+        doors[n >> 1] |= 2 << (4 * (n & 1));
+      }
+      await paintCalibrated(doors);
+      button('Tirar a porta').click();
+      await settle();
+      await tapAt(5, 3);
+      await flush();
+      expect(doorSquares(api.paints.filter((p) => p.value === 0))).toEqual([
+        '4,2',
+        '4,3',
+        '5,2',
+        '5,3',
+      ]);
+      expect(el.querySelectorAll('.sq--door').length).toBe(0);
+    });
+  });
+
   describe('leaving with strokes', () => {
     async function strokeWaiting(): Promise<void> {
       await setup();

@@ -32,8 +32,8 @@ export interface EffectDraft {
   roll: string;
   targets: string[];
   sense: string;
-  /** In feet, the unit of the server; the field shows metres. */
-  rangeFt: number;
+  /** The range as typed, in metres (the server stores feet): kept as text so the field never rewrites what is being typed. */
+  rangeM: string;
   resource: string;
   max: string;
   recharge: string;
@@ -66,7 +66,7 @@ export function emptyEffect(type = ''): EffectDraft {
     roll: '',
     targets: [],
     sense: '',
-    rangeFt: 0,
+    rangeM: '',
     resource: '',
     max: '',
     recharge: '',
@@ -94,7 +94,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     roll: e.roll,
     targets: [...e.targets],
     sense: e.sense,
-    rangeFt: e.rangeFt,
+    rangeM: rangeMeters(e.rangeFt),
     resource: e.resource,
     max: e.max,
     recharge: e.recharge,
@@ -158,7 +158,7 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
         if (d.sense) out.sense = d.sense;
         break;
       case 'range_ft':
-        if (d.rangeFt > 0) out.rangeFt = d.rangeFt;
+        if (rangeFeet(d.rangeM) > 0) out.rangeFt = rangeFeet(d.rangeM);
         break;
       case 'resource':
         if (d.resource.trim()) out.resource = d.resource.trim();
@@ -351,7 +351,7 @@ export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
         case 'sense':
           return d.sense === '';
         case 'range_ft':
-          return d.rangeFt <= 0;
+          return rangeFeet(d.rangeM) <= 0;
         case 'resource':
           return d.resource.trim() === '';
         case 'max':

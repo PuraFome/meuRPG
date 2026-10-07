@@ -118,6 +118,9 @@ export class NpcCard {
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
   readonly settledNote = output<void>();
 
+  protected readonly turnKey = computed(
+    () => `${this.encounter().currentCombatantId}:${this.encounter().round}`,
+  );
   protected readonly attackKey = signal('');
   protected readonly targetId = signal('');
   protected readonly busy = signal(false);

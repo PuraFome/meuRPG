@@ -64,6 +64,7 @@ function setup(
     options?: typeof options | null;
     jumps?: ReturnType<typeof create<typeof JumpLimitsSchema>>;
     canDisengage?: boolean;
+    failed?: boolean;
   } = {},
 ) {
   const fixture = TestBed.createComponent(MovePage);
@@ -80,6 +81,7 @@ function setup(
   ref.setInput('mapName', 'A caverna do Vale Seco');
   ref.setInput('sessionNumber', 6);
   ref.setInput('options', over.options === undefined ? options : over.options);
+  ref.setInput('optionsFailed', over.failed ?? false);
   ref.setInput('layers', layers);
   ref.setInput('jumps', over.jumps);
   ref.setInput('canDisengage', over.canDisengage ?? true);
@@ -227,10 +229,16 @@ describe('MovePage', () => {
   });
 
   it('still lets the server judge when the options could not be read', () => {
-    const { fixture, el } = setup({ options: null });
-    fixture.componentRef.setInput('optionsFailed', true);
-    fixture.detectChanges();
+    const { el, choose, press, confirmed } = setup({ options: null, failed: true });
     expect(plain(el.textContent)).toContain('Não deu para ler o alcance.');
+    expect(plain(el.textContent)).toContain('Dá para tentar um quadrado: o servidor diz se vale.');
+    choose(9, 8);
+    expect(
+      el.querySelector<HTMLButtonElement>('.move__go')!.getAttribute('aria-disabled'),
+    ).not.toBe('true');
+    expect(plain(el.querySelector('.status__title')?.textContent)).not.toBe('Longe demais');
+    press('Mover para cá');
+    expect(confirmed).toEqual([{ col: 9, row: 8 }]);
   });
 
   describe('Saltar', () => {
@@ -277,6 +285,20 @@ describe('MovePage', () => {
       );
       press('Saltar para cá');
       expect(jumped).toEqual([{ kind: 'long', square: { col: 11, row: 7 } }]);
+    });
+
+    it('warns that a long jump out of a reach may provoke, and offers Desengajar; the high jump does not', () => {
+      const { fixture, el, choose } = setup({ jumps });
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      choose(10, 7); // reachable, and it provokes Goblin 2
+      expect(plain(el.querySelector('.status__title')?.textContent)).toBe('Saltar 3,0 m');
+      expect(plain(el.textContent)).toContain(
+        'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
+      );
+      expect(plain(el.textContent)).toContain('Desengajar (gasta a ação)');
     });
 
     it('steps the high jump by 0,3 m up to the limit and sends the height', () => {

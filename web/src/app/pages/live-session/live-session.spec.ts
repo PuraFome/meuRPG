@@ -1234,7 +1234,9 @@ describe('LiveSession', () => {
 
       it('keeps his own map whole, and lists "Ver como" with the squares each character sees', async () => {
         const el = await render();
-        await new Promise((r) => setTimeout(r, 300));
+        // The counts are read 250 ms after the last vision tick, and the snapshot's own vision read ticks
+        // about 120 ms after the page opens: wait past both.
+        await new Promise((r) => setTimeout(r, 500));
         await tick();
         // The same map component as the players', with the whole image, and his tokens to drag.
         expect(el.querySelector('app-fog-map')).not.toBeNull();

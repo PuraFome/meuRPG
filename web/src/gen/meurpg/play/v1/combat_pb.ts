@@ -7973,7 +7973,8 @@ export const CombatService: GenService<{
    *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or it
    *     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
    *     is not acting now: its group is not on turn, or its part of the joint
-   *     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
+   *     turn ended (NOT_YOUR_TURN); the character is at 0 hit points, for a
+   *     player (COMBATANT_DOWN); the combatant is not on the map yet (NOT_PLACED);
    *     the square is too far (TOO_FAR: `missing_dft` says by how much, and for a
    *     jump the limit is the jump's), a wall, a column or a squeeze between two
    *     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
@@ -8277,7 +8278,9 @@ export const CombatService: GenService<{
    *   - `permission_denied`: the caller is a player.
    *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or
    *     the combatant is a player's and the combat is ACTIVE
-   *     (PLAYER_IN_COMBAT).
+   *     (PLAYER_IN_COMBAT), or a damage the combatant attacked with, or
+   *     took, is still to roll or to apply (PENDING_DAMAGE): the master
+   *     settles it first.
    *
    * @generated from rpc meurpg.play.v1.CombatService.RemoveCombatant
    */

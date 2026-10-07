@@ -257,7 +257,7 @@ export class FakeMapsClient {
     lightKey: string,
   ): Promise<MapToken> {
     this.record('setCarriedLight', mapId, characterId, lightKey);
-    return mapToken(characterId, 'Token', { carriedLight: lightKey });
+    return mapToken(characterId, 'Token', { mapId, carriedLight: lightKey });
   }
 
   async get(_campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapResponse> {

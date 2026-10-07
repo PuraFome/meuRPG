@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { MapLayer } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { NO_GAP_TEXT, hidesWhoStands, planDoor } from './door-paint';
+import { NO_GAP_TEXT, hidesWhoStands, planDoor, planDoorBlock } from './door-paint';
 
 /** A 5 x 3 map: a wall row at the top and the bottom, floor in the middle; plus what each test paints. */
 function reader(walls: readonly string[], doors: Readonly<Record<string, number>> = {}) {
@@ -94,5 +94,27 @@ describe('hidesWhoStands', () => {
       false,
       true,
     ]);
+  });
+});
+
+describe('planDoorBlock (the "Porta" tool on a calibrated map)', () => {
+  // 4 x 2 rules' squares, factor 2: two blocks side by side; the wall of the left one is a single column of the block.
+  const walls = new Set(['0,0']);
+  const read = (layer: MapLayer, col: number, row: number) =>
+    layer === MapLayer.WALL && walls.has(`${col},${row}`) ? 1 : 0;
+
+  it('judges the tap on the block and lists every square of it', () => {
+    const { plan, squares } = planDoorBlock(read, 4, 2, 2, 1, 1, 2);
+    expect(plan.ok).toBe(false); // a wall block with a wall beside it and no floor on both sides
+    expect(squares).toEqual([
+      { col: 0, row: 0 },
+      { col: 1, row: 0 },
+      { col: 0, row: 1 },
+      { col: 1, row: 1 },
+    ]);
+  });
+
+  it('is planDoor when the factor is 1', () => {
+    expect(planDoorBlock(read, 4, 2, 1, 1, 1, 2).plan).toEqual(planDoor(read, 4, 2, 1, 1, 2));
   });
 });
