@@ -78,7 +78,7 @@ export interface SheetHandle<D, R> {
   /** True in the phone's bottom sheet: it draws its grab bar. */
   readonly inSheet: boolean;
   close(result?: R): void;
-  /** `true` while a request is in the air: Esc and the backdrop no longer close the sheet (its own buttons and the frame's ✕ guard themselves). */
+  /** While locked, Esc and a click on the backdrop do not dismiss the sheet (a request is in the air). */
   lock(locked: boolean): void;
 }
 
