@@ -6025,8 +6025,9 @@ export const ContentService: GenService<{
    *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not a
-   *     member of it; with `character_id`, also a pending member, and a
-   *     character that is not the caller's own full sheet in this campaign.
+   *     member of it; with `character_id`, also a character that is not the
+   *     caller's own sheet in this campaign. A pending member may name their
+   *     own draft (they edit it while they wait for the master).
    *
    * @generated from rpc meurpg.rules.v1.ContentService.ListContent
    */

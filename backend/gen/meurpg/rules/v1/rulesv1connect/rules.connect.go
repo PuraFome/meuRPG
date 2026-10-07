@@ -104,8 +104,9 @@ type ContentServiceClient interface {
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
-	//     member of it; with `character_id`, also a pending member, and a
-	//     character that is not the caller's own full sheet in this campaign.
+	//     member of it; with `character_id`, also a character that is not the
+	//     caller's own sheet in this campaign. A pending member may name their
+	//     own draft (they edit it while they wait for the master).
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
 	// GetSpellDetails returns everything the SRD says about one spell,
 	// structured: casting time, range, components, duration, attack or saving
@@ -342,8 +343,9 @@ type ContentServiceHandler interface {
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
-	//     member of it; with `character_id`, also a pending member, and a
-	//     character that is not the caller's own full sheet in this campaign.
+	//     member of it; with `character_id`, also a character that is not the
+	//     caller's own sheet in this campaign. A pending member may name their
+	//     own draft (they edit it while they wait for the master).
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
 	// GetSpellDetails returns everything the SRD says about one spell,
 	// structured: casting time, range, components, duration, attack or saving
