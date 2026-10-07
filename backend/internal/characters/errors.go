@@ -7,11 +7,11 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
 // errCharacterNotFound is the answer for a character that is not in the
@@ -99,28 +99,20 @@ func isUniqueViolation(err error, name string) bool {
 	return ok && pgErr.Code == "23505" && pgErr.ConstraintName == name
 }
 
-// dbError turns an error from the database, or from inside a transaction,
-// into the Connect error the client gets. Connect errors pass through as
-// they are: they are the answers the handlers chose. Anything else is
-// logged, without personal data, and hidden behind a generic message.
+// dbError maps an error from the database to the Connect error the client gets
+// (see platform/rpcerr). Two cases are the characters module's own: a sheet
+// deleted after its checks passed, and a stored document that cannot be read.
 func (s *Service) dbError(ctx context.Context, action string, err error) error {
-	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
-		return connectErr
-	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		// The character passed its checks and was deleted before the next
 		// query: it is gone now.
 		return errCharacterNotFound()
 	}
-	s.logger.ErrorContext(ctx, "characters: cannot "+action, "error", err)
 	if errors.Is(err, errCorruptDocument) {
+		s.logger.ErrorContext(ctx, "characters: cannot "+action, "error", err)
 		return connect.NewError(connect.CodeInternal, errors.New("this character cannot be read right now"))
 	}
-	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
-		// db.InTx retried a serialization conflict (40001) and gave up.
-		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
-	}
-	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+	return rpcerr.FromDB(ctx, s.logger, "characters", action, err)
 }
 
 // wrap adds what failed to an error from a query, keeping it unwrappable

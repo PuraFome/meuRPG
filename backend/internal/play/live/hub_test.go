@@ -270,3 +270,35 @@ func TestCoalescedHintsQueueOnce(t *testing.T) {
 		t.Errorf("another campaign's stream got %d events, want none", got)
 	}
 }
+
+func TestSubscribeCapsStreamsPerUserAndCampaign(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	h.SetMaxPerUser(2)
+	a1 := subscribe(t, h, campaignA, ana)
+	subscribe(t, h, campaignA, ana)
+
+	if _, err := h.Subscribe(campaignA, ana); !errors.Is(err, ErrTooMany) {
+		t.Fatalf("third Subscribe() error = %v, want ErrTooMany", err)
+	}
+	// The cap is per user and per campaign.
+	subscribe(t, h, campaignA, bruno)
+	subscribe(t, h, campaignB, ana)
+	if got := h.Count(campaignA); got != 3 {
+		t.Errorf("Count(a) = %d, want 3: the refused stream holds nothing", got)
+	}
+	// Closing one frees its place.
+	a1.Close()
+	subscribe(t, h, campaignA, ana)
+}
+
+func TestDefaultMaxPerUser(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	for range DefaultMaxPerUser {
+		subscribe(t, h, campaignA, ana)
+	}
+	if _, err := h.Subscribe(campaignA, ana); !errors.Is(err, ErrTooMany) {
+		t.Errorf("Subscribe() after %d streams: error = %v, want ErrTooMany", DefaultMaxPerUser, err)
+	}
+}

@@ -18,7 +18,11 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
+
+// loginFormReadTimeout is how long a client has to send POST /auth/login's form.
+const loginFormReadTimeout = 10 * time.Second
 
 const (
 	// loginCookieName ties a sign-in to the browser that started it: it
@@ -88,7 +92,7 @@ func (s *Service) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 	if !s.allowLogin(w, r) {
 		return
 	}
-	req, le, message := parseLoginForm(w, r)
+	req, le, message := parseLoginForm(w, r, loginFormReadTimeout)
 	if le != nil {
 		s.rejectLogin(w, r, le, message)
 		return
@@ -98,7 +102,7 @@ func (s *Service) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 
 // parseLoginForm reads POST /auth/login's form. On failure it returns the
 // error to log and the message for the browser.
-func parseLoginForm(w http.ResponseWriter, r *http.Request) (loginRequest, *loginError, string) {
+func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Duration) (loginRequest, *loginError, string) {
 	// Everything goes in the body. A query string could carry the payload
 	// into the logs, so it is refused rather than ignored.
 	if r.URL.RawQuery != "" {
@@ -109,6 +113,7 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request) (loginRequest, *logi
 		le := &loginError{status: http.StatusUnsupportedMediaType, reason: "not_a_form"}
 		return loginRequest{}, le, "send an application/x-www-form-urlencoded form"
 	}
+	slowclient.ReadBody(w, readTimeout) // a form is a few hundred bytes; no reason to wait on a trickle
 	r.Body = http.MaxBytesReader(w, r.Body, maxLoginFormBytes)
 	if err := r.ParseForm(); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
@@ -170,7 +175,7 @@ func (s *Service) startLogin(w http.ResponseWriter, r *http.Request, req loginRe
 
 	returnTo, ok := safeReturnTo(req.returnTo)
 	if !ok {
-		s.rejectLogin(w, r, badLogin("unsafe_return_to", nil), "return_to must be a path on this site, like /campanhas")
+		s.rejectLogin(w, r, badLogin("unsafe_return_to", nil), "return_to must be a path on this site, like /campaigns")
 		return
 	}
 
@@ -432,7 +437,7 @@ func oauthErrorCode(code string) string {
 // before parsing ("/\t/host" becomes "//host").
 //
 // A fragment (#...) is dropped: this app keeps secrets there, such as an
-// invite token (/convite#t=...), and the login state must not store one.
+// invite token (/invite#t=...), and the login state must not store one.
 func safeReturnTo(raw string) (string, bool) {
 	if raw == "" {
 		return "/", true

@@ -102,7 +102,7 @@ describe('DocumentMapDialog (E5-29)', () => {
   it('shows the legend with the points, and always the editor link', async () => {
     let el = await render();
     expect(el.querySelector('app-map-legend')).not.toBeNull();
-    expect(el.querySelector('a[href="/campanhas/camp-1/mapas/map-1"]')?.textContent).toContain('Abrir no editor de mapas');
+    expect(el.querySelector('a[href="/campaigns/camp-1/maps/map-1"]')?.textContent).toContain('Abrir no editor de mapas');
 
     TestBed.resetTestingModule();
     links = new FakeLinks();

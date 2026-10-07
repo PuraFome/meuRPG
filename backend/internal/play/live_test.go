@@ -849,3 +849,32 @@ func TestLiveStreamIsNotBuffered(t *testing.T) {
 		})
 	}
 }
+
+// TestWatchGameSessionCapsStreamsPerUser: one user may hold only so many live
+// streams on a campaign; the next is refused with resource_exhausted, other
+// members are not affected, and a stream that closes frees its place.
+func TestWatchGameSessionCapsStreamsPerUser(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.hub.SetMaxPerUser(2)
+	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(master, "Mirathel", player)
+	master.start(t, campaign)
+
+	first, second := player.watch(t, campaign), player.watch(t, campaign)
+	first.ready(t)
+	second.ready(t)
+
+	wantCode(t, "a third stream of the same user", player.watch(t, campaign).end(t), connect.CodeResourceExhausted)
+	master.watch(t, campaign).ready(t) // another member has their own allowance
+	if n := h.svc.hub.Count(campaign); n != 3 {
+		t.Errorf("hub subscriptions = %d, want 3 (the refused stream holds none)", n)
+	}
+
+	first.cancel() // a closed tab gives its place back
+	deadline := time.Now().Add(waitLimit)
+	for h.svc.hub.Count(campaign) != 2 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	player.watch(t, campaign).ready(t)
+}

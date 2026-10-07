@@ -10,7 +10,7 @@ import { conditionName } from './conditions';
 
 /**
  * The spells that read hit points (MR-014, E8-03) as the screens say them: Sono,
- * Borrifo de Cores, the two Palavras de Poder, Poupar os Moribundos and Cura
+ * Leque Cromático, the two Palavras de Poder, Estabilizar and Cura
  * Completa. The server applies them and sends what happened to each target
  * (`SpellEffectResult`); what is written here is the Portuguese. Which spells
  * these are, and what a pool rolls, come from the spell's own details
@@ -103,7 +103,7 @@ export function effectWords(
       return { present: f ? 'é curada' : 'é curado', past: f ? 'Foi curada' : 'Foi curado', icon: 'healing', affected: true };
     }
     default:
-      // A threshold with no condition is Palavra de Poder: Matar.
+      // A threshold with no condition is Palavra de Poder Matar.
       return { present: 'morre', past: 'Morreu', icon: 'heart_broken', affected: true };
   }
 }

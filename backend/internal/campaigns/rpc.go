@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
@@ -394,26 +394,16 @@ func (s *Service) AcceptInvite(
 	}), nil
 }
 
-// dbError turns an error from the database, or from inside a transaction,
-// into the Connect error the client gets. Connect errors pass through as
-// they are: they are the answers the handlers chose (not_found,
-// failed_precondition...). Anything else is logged, without personal data,
-// and hidden behind a generic message.
+// dbError maps an error from the database to the Connect error the client gets
+// (see platform/rpcerr). A row that vanished between the authorization check
+// and the next query is the one case the campaigns module answers itself.
 func (s *Service) dbError(ctx context.Context, action string, err error) error {
-	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
-		return connectErr
-	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		// The campaign passed the authorization check and was deleted
 		// before the next query: it is gone now.
 		return connect.NewError(connect.CodeNotFound, errors.New("campaign not found"))
 	}
-	s.logger.ErrorContext(ctx, "campaigns: cannot "+action, "error", err)
-	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
-		// db.InTx retried a serialization conflict (40001) and gave up.
-		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
-	}
-	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+	return rpcerr.FromDB(ctx, s.logger, "campaigns", action, err)
 }
 
 // invalidArgument is the error for a request field that breaks a rule. The

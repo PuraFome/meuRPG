@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1/notesv1connect"
@@ -41,6 +40,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/notes/link"
 	"github.com/PuraFome/meuRPG/backend/internal/notes/notesdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
 // The limits (proposals of the plan, D6).
@@ -132,16 +132,8 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(notesv1connect.NewNotesServiceHandler(s, opts...))
 }
 
-// dbError turns an error of a read or write into the Connect error to return:
-// a Connect error passes as it is, anything else is logged (without the
-// text) and becomes `unavailable`, or `aborted` after too many retries.
+// dbError maps an error from the database to the Connect error the client gets
+// (see platform/rpcerr).
 func (s *Service) dbError(ctx context.Context, action string, err error) error {
-	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
-		return connectErr
-	}
-	s.logger.ErrorContext(ctx, "notes: cannot "+action, "error", err)
-	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
-		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
-	}
-	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+	return rpcerr.FromDB(ctx, s.logger, "notes", action, err)
 }

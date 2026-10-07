@@ -141,7 +141,7 @@ describe('SaveSheet: "Guardar no ponto de batalha" (MR-043, E10-09 state 6)', ()
     select.dispatchEvent(new Event('change'));
     await settle();
     expect(flat(el.querySelector('.mr-notice'))).toBe('Este mapa não tem ponto de batalha. Ponha um no editor do mapa e volte. Abrir o mapa');
-    expect(el.querySelector('.mr-notice a')?.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-2');
+    expect(el.querySelector('.mr-notice a')?.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-2');
   });
 
   it('says what a refusal means: the point is gone, or a creature left the SRD', async () => {

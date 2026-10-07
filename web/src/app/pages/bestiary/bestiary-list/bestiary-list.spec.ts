@@ -30,15 +30,15 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     summary('monster:ogre', 'Ogro', { name: 'Ogre', type: 'giant', typePt: 'gigante', sizePt: 'Grande', size: 'Large', challengeRating: '2', armorClass: 11, hitPoints: 59 }),
   ];
 
-  async function open(url = '/campanhas/camp-1/bestiario', prep: (a: FakeCreaturesClient) => void = () => undefined) {
+  async function open(url = '/campaigns/camp-1/bestiary', prep: (a: FakeCreaturesClient) => void = () => undefined) {
     api = new FakeCreaturesClient();
     api.catalog = catalog();
     prep(api);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'campanhas/:id/bestiario', component: BestiaryList },
-          { path: 'campanhas/:id/bestiario/:slug', component: Stub },
+          { path: 'campaigns/:id/bestiary', component: BestiaryList },
+          { path: 'campaigns/:id/bestiary/:slug', component: Stub },
         ]),
         { provide: CreaturesClient, useValue: api },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
@@ -96,7 +96,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(flat(rows[0].querySelector('.row__kind'))).toBe('Fera · Médio');
     expect(flat(rows[0].querySelector('.row__nd'))).toBe('ND 1/4');
     expect(flat(rows[0].querySelector('.row__stats'))?.replace(/ /g, ' ')).toBe('CA 13 · PV 11');
-    expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf');
+    expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary/wolf');
     expect(flat(el.querySelector('.list__n'))).toBe('5 de 5 criaturas');
     // The SRD's name is English: marked for a screen reader.
     expect(rows[0].querySelector('.row__en [lang=en]')?.textContent).toBe('Wolf');
@@ -129,7 +129,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     await vi.advanceTimersByTimeAsync(300);
     await navigation;
     await settle();
-    expect(TestBed.inject(Router).url).toBe('/campanhas/camp-1/bestiario/wolf?q=ogro');
+    expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1/bestiary/wolf?q=ogro');
     // No search was sent for the typed word: the list was already leaving.
     expect(api.searches.map((s) => s.query)).toEqual(['']);
   });
@@ -159,7 +159,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   });
 
   it('keeps the search in the link, and a link with a search opens already searched', async () => {
-    const { el } = await open('/campanhas/camp-1/bestiario?q=wolf&tipo=beast');
+    const { el } = await open('/campaigns/camp-1/bestiary?q=wolf&type=beast');
     expect(el.querySelector<HTMLInputElement>('input[type=search]')!.value).toBe('wolf');
     expect(api.searches[0]).toMatchObject({ query: 'wolf', type: 'beast' });
     // The book's size is asked once more, since the search itself does not say it.
@@ -201,13 +201,13 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     const held = new Promise<void>((r) => (release = r));
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/bestiario', component: BestiaryList }]),
+        provideRouter([{ path: 'campaigns/:id/bestiary', component: BestiaryList }]),
         { provide: CreaturesClient, useValue: { search: async () => { await held; return { creatures: [], total: 0 }; } } },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
       ],
     });
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/campanhas/camp-1/bestiario', BestiaryList);
+    await harness.navigateByUrl('/campaigns/camp-1/bestiary', BestiaryList);
     await vi.advanceTimersByTimeAsync(0);
     harness.detectChanges();
     const el = harness.routeNativeElement as HTMLElement;
@@ -246,13 +246,13 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     const role = new Promise<BestiaryAccess>((r) => (grant = r));
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/bestiario', component: BestiaryList }]),
+        provideRouter([{ path: 'campaigns/:id/bestiary', component: BestiaryList }]),
         { provide: CreaturesClient, useValue: api },
         { provide: BestiaryAccessCheck, useValue: { check: () => role } },
       ],
     });
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/campanhas/camp-1/bestiario', BestiaryList);
+    await harness.navigateByUrl('/campaigns/camp-1/bestiary', BestiaryList);
     await vi.advanceTimersByTimeAsync(0);
     expect(api.searches).toHaveLength(1);
     grant({ status: 'master', campaignName: 'Mirathel' });
@@ -267,14 +267,14 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.value = 'ogro';
     q.dispatchEvent(new Event('input'));
     await settle();
-    expect(el.querySelector('.row__link')?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf?q=ogro');
+    expect(el.querySelector('.row__link')?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary/wolf?q=ogro');
   });
 
   it('with a search in the link the count waits for the book\'s size: nothing, then "N de M"; and says only "N criaturas" if the size cannot be had', async () => {
-    const ok = await open('/campanhas/camp-1/bestiario?q=lobo');
+    const ok = await open('/campaigns/camp-1/bestiary?q=lobo');
     expect(flat(ok.el.querySelector('.list__n'))).toBe('4 de 5 criaturas');
     TestBed.resetTestingModule();
-    const failing = await open('/campanhas/camp-1/bestiario?q=lobo', (a) => {
+    const failing = await open('/campaigns/camp-1/bestiary?q=lobo', (a) => {
       const real = a.search.getMockImplementation()!;
       a.search.mockImplementation(async (c, f) => {
         if (f.pageSize === 1) {
@@ -313,7 +313,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     const done = el.querySelector('.put-done')!;
     expect(done.getAttribute('role')).toBe('status');
     expect(flat(done.querySelector('p'))).toBe('Entraram no combate: Lobo 1, Lobo 2 e Lobo 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
-    expect(done.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+    expect(done.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/session');
   });
 
   it('a sheet closed with nothing put in announces nothing', async () => {
@@ -326,6 +326,6 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
 
   it('the back link goes to the campaign', async () => {
     const { el } = await open();
-    expect(el.querySelector('.back')?.getAttribute('href')).toBe('/campanhas/camp-1');
+    expect(el.querySelector('.back')?.getAttribute('href')).toBe('/campaigns/camp-1');
   });
 });

@@ -160,7 +160,7 @@ func (st *signInStack) postLogin(form url.Values, headers map[string]string) *ht
 // inviteForm is what the invite page posts.
 func inviteForm(token string) url.Values {
 	return url.Values{
-		"return_to":      {"/convite"},
+		"return_to":      {"/invite"},
 		"intent":         {InviteIntentKind},
 		"intent_payload": {token},
 	}
@@ -382,8 +382,8 @@ func TestSignInWithAnInviteJoinsTheCampaign(t *testing.T) {
 
 	// The callback signs the player in and makes them a player.
 	rec := st.finish(start)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campanhas/"+campaign.GetId() {
-		t.Fatalf("callback = %d to %q, want 303 to /campanhas/%s; logs: %s", rec.Code, rec.Header().Get("Location"), campaign.GetId(), st.logs)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/campaigns/"+campaign.GetId() {
+		t.Fatalf("callback = %d to %q, want 303 to /campaigns/%s; logs: %s", rec.Code, rec.Header().Get("Location"), campaign.GetId(), st.logs)
 	}
 	session := sessionIn(t, rec)
 	player := st.userID(session)
@@ -434,7 +434,7 @@ func TestSignInWithAnUnusableInvite(t *testing.T) {
 		{
 			name: "used up by someone else",
 			spoil: func(st *signInStack, _ *http.Cookie, _, _, token string) string {
-				if loc, _ := st.signInWithInvite(token); !strings.HasPrefix(loc, "/campanhas/") {
+				if loc, _ := st.signInWithInvite(token); !strings.HasPrefix(loc, "/campaigns/") {
 					st.t.Fatalf("first sign-in with the invite went to %q", loc)
 				}
 				return token
@@ -458,7 +458,7 @@ func TestSignInWithAnUnusableInvite(t *testing.T) {
 			used := tt.spoil(st, master, campaign.GetId(), inviteID, token)
 
 			location, session := st.signInWithInvite(used)
-			if want := "/convite/erro?motivo=" + tt.reason; location != want {
+			if want := "/invite/error?reason=" + tt.reason; location != want {
 				t.Errorf("callback went to %q, want %q; logs: %s", location, want, st.logs)
 			}
 			player := st.userID(session) // the session works
@@ -479,7 +479,7 @@ func TestSignInWithAnInviteAsAMember(t *testing.T) {
 	t.Parallel()
 	st := newSignInStack(t)
 	_, campaign, inviteID, token := st.masterWithInvite(2)
-	want := "/campanhas/" + campaign.GetId()
+	want := "/campaigns/" + campaign.GetId()
 
 	// The master opens their own link: they stay the master.
 	st.idp.EditUser(0, func(u *oidctest.User) { u.Subject = "person-1" })
@@ -519,8 +519,8 @@ func TestSignInWithCorruptIntentData(t *testing.T) {
 		t.Fatalf("corrupt the login state: %v", err)
 	}
 	rec := st.finish(start)
-	if got := rec.Header().Get("Location"); rec.Code != http.StatusSeeOther || got != "/convite/erro?motivo=invalid" {
-		t.Errorf("callback = %d to %q, want 303 to /convite/erro?motivo=invalid", rec.Code, got)
+	if got := rec.Header().Get("Location"); rec.Code != http.StatusSeeOther || got != "/invite/error?reason=invalid" {
+		t.Errorf("callback = %d to %q, want 303 to /invite/error?reason=invalid", rec.Code, got)
 	}
 	player := st.userID(sessionIn(t, rec)) // the session works
 	if got := st.role(campaign.GetId(), player); got != "" {

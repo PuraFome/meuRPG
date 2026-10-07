@@ -27,7 +27,7 @@ test(
       await p.goto('/');
       const table = await tableForGold(m, p, `Estrada de Ouro ${Date.now()}`);
       await threeTreasuresRPC(m, table);
-      await m.goto(`/campanhas/${table.campaignId}`);
+      await m.goto(`/campaigns/${table.campaignId}`);
 
       // The strip says what waits; "Voltar à cidade" sits beside "Dar XP", both outlined.
       await expect(panel(m).getByText('Encontrado, ainda não convertido')).toBeVisible();
@@ -73,7 +73,7 @@ test(
       expect(after.characters.map((c) => c.experiencePoints)).toEqual([420]);
 
       // A player reads the line and the numbers, with no list of treasures and no buttons.
-      await p.goto(`/campanhas/${table.campaignId}`);
+      await p.goto(`/campaigns/${table.campaignId}`);
       await expect(panel(p)).toContainText('Voltar à cidade · 420 PO em 3 tesouros');
       await expect(panel(p).getByRole('button')).toHaveCount(0);
       await expect(panel(p)).not.toContainText('Baú de moedas');
@@ -125,7 +125,7 @@ test(
       await m.goto('/');
       await p.goto('/');
       const table = await tableForGold(m, p, `Ouro Dar XP ${Date.now()}`);
-      await m.goto(`/campanhas/${table.campaignId}`);
+      await m.goto(`/campaigns/${table.campaignId}`);
 
       // Nothing found yet: the button stays and the dialog explains.
       await expect(panel(m)).toContainText('Nenhum tesouro esperando. Os que o grupo encontrar aparecem aqui.');
@@ -178,7 +178,7 @@ test(
       await p.goto('/');
       const table = await tableForGold(m, p, `Ouro corrida ${Date.now()}`);
       const [chest, purse] = await threeTreasuresRPC(m, table);
-      await m.goto(`/campanhas/${table.campaignId}`);
+      await m.goto(`/campaigns/${table.campaignId}`);
       await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
       const town = m.getByRole('dialog', { name: 'Voltar à cidade' });
       await expect(town).toContainText('420 XP ÷ 1 = 420 XP para cada');
@@ -220,7 +220,7 @@ test(
       await m.goto('/');
       await p.goto('/');
       const table = await tableForGold(m, p, `Mirathel ouro ${Date.now()}`, 'XP_MODE_ENEMIES');
-      await m.goto(`/campanhas/${table.campaignId}`);
+      await m.goto(`/campaigns/${table.campaignId}`);
       // Nothing found: no strip at all.
       await expect(panel(m).getByRole('button', { name: 'Dar XP' })).toBeVisible();
       await expect(panel(m)).not.toContainText('Tesouro encontrado');
@@ -250,7 +250,7 @@ test(
       expect(refusal.details[0].debug.reason).toBe('XP_BLOCKED_REASON_MODE_NOT_ALLOWED');
 
       // A player never sees the strip.
-      await p.goto(`/campanhas/${table.campaignId}`);
+      await p.goto(`/campaigns/${table.campaignId}`);
       await expect(panel(p)).not.toContainText('Tesouro encontrado');
     } finally {
       await master.close();

@@ -57,6 +57,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -386,6 +387,7 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	s.layerHints.logger = s.logger
 	if s.maxImages <= 0 {
 		s.maxImages = DefaultMaxImages
 	}
@@ -509,4 +511,10 @@ func (s *Service) deleteFiles(ctx context.Context, campaignID, imageID string) {
 // errImagesOff is the answer while no blob store is configured.
 func errImagesOff() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("images are not configured on this server"))
+}
+
+// CheckWired fails when a collaborator that cmd/api connects after New is
+// still nil (see platform/wiring).
+func (s *Service) CheckWired() error {
+	return wiring.Check("maps", wiring.Dep{Setter: "SetTrapFirer", Missing: s.firer == nil})
 }

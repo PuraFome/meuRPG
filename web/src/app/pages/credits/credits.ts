@@ -5,7 +5,7 @@ import { Component } from '@angular/core';
  * the "Legal Information" section of the SRD 5.1 PDF, as recorded in the
  * private ADR-0008 (`docs/adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md`,
  * not in this worktree). Do not edit this string without checking that ADR:
- * the license requires it verbatim, and `creditos.spec.ts` checks it
+ * the license requires it verbatim, and `credits.spec.ts` checks it
  * byte-for-byte. The backend's `NOTICE` file and `srd51.Attribution` (owned
  * by the `rules` module) carry the same text independently.
  */
@@ -21,7 +21,7 @@ export const SRD_521_ATTRIBUTION =
   'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
 
 /**
- * "/creditos": public (not behind `authGuard`), linked from the footer on
+ * "/credits": public (not behind `authGuard`), linked from the footer on
  * every page. Required by CC-BY-4.0 for the SRD 5.1 content the `rules`
  * module ships. The SRD 5.1 PDF's own terms ask that no other attribution to
  * Wizards of the Coast be added, and allow saying the work is "compatible
@@ -30,11 +30,11 @@ export const SRD_521_ATTRIBUTION =
  * in this app.
  */
 @Component({
-  selector: 'app-creditos',
-  templateUrl: './creditos.html',
-  styleUrl: './creditos.scss',
+  selector: 'app-credits',
+  templateUrl: './credits.html',
+  styleUrl: './credits.scss',
 })
-export class Creditos {
+export class Credits {
   protected readonly srdAttribution = SRD_ATTRIBUTION;
   protected readonly srd521Attribution = SRD_521_ATTRIBUTION;
 }

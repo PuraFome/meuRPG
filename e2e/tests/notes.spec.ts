@@ -49,7 +49,7 @@ test(
       campaignId = table.campaignId;
 
       // The editor: three clues, each saved at once; the hooks wait for "Salvar ponto".
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
       await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(master.getByRole('heading', { name: 'Pistas' })).toBeVisible();
       await expect(master.getByText('Nenhuma pista ainda')).toBeVisible();
@@ -199,11 +199,11 @@ test(
 
       // The same notes are a panel on the player's sheet; the master never gets it, even on that sheet.
       await createNoteRPC(player, table.campaignId, 'Brisa me deve 5 PO');
-      await player.goto(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await player.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
       const panel = player.getByRole('region', { name: 'Anotações' });
       await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
       await expect(panel.getByText('Pista do mestre')).toBeVisible();
-      await master.goto(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await master.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
       await expect(master.getByRole('heading', { name: 'Pensantus' }).first()).toBeVisible();
       await expect(master.getByRole('heading', { name: 'Anotações' })).toHaveCount(0);
       await expect(master.getByText('Brisa me deve 5 PO')).toHaveCount(0);
@@ -248,7 +248,7 @@ test(
       for (let i = 1; i <= 30; i++) {
         await addClueRPC(master, table, table.fordId, `Pista número ${i}`);
       }
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
       await master.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
       await expect(master.getByText('30 de 30', { exact: true })).toBeVisible();
       await expect(master.getByText('Limite de 30 pistas. Remova uma para adicionar outra.')).toBeVisible();
@@ -264,7 +264,7 @@ test(
       for (let i = 1; i <= 300; i++) {
         await createNoteRPC(player, table.campaignId, `Anotação ${i}`);
       }
-      await player.goto(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await player.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
       const panel = player.getByRole('region', { name: 'Anotações' });
       await expect(panel.getByText('300 anotações', { exact: true })).toBeVisible();
       await expect(panel.getByText('Limite de 300 anotações. Apague uma para escrever outra.')).toBeVisible();

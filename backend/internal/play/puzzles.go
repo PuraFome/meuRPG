@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -109,8 +111,9 @@ type puzzleGate struct {
 	keys map[string]*puzzleGateState
 	// now and after are the clock; nil means the real one (time.Now, time.AfterFunc).
 	// Tests set them to drive the gate without sleeping.
-	now   func() time.Time
-	after func(time.Duration, func())
+	now    func() time.Time
+	after  func(time.Duration, func())
+	logger *slog.Logger // for a panic in a send that runs on the timer's own goroutine
 }
 
 type puzzleGateState struct {
@@ -130,7 +133,10 @@ func (g *puzzleGate) schedule(d time.Duration, f func()) {
 		g.after(d, f)
 		return
 	}
-	time.AfterFunc(d, f)
+	time.AfterFunc(d, func() {
+		defer safego.Recover(g.logger, "puzzle hint")
+		f()
+	})
 }
 
 func (g *puzzleGate) fire(key string, every time.Duration, send func()) {

@@ -29,7 +29,7 @@ func TestSignInHappyPath(t *testing.T) {
 
 			// 1. /auth/login redirects to the provider with every parameter
 			// of Authorization Code + PKCE (S256) + nonce.
-			rec := h.get("/auth/login?return_to=" + url.QueryEscape("/campanhas/42?aba=mapa"))
+			rec := h.get("/auth/login?return_to=" + url.QueryEscape("/campaigns/42?aba=mapa"))
 			if rec.Code != http.StatusFound {
 				t.Fatalf("GET /auth/login status = %d, want 302", rec.Code)
 			}
@@ -79,7 +79,7 @@ func TestSignInHappyPath(t *testing.T) {
 				t.Fatalf("callback status = %d, want 303; body: %s; logs: %s", rec.Code, rec.Body, h.logs)
 			}
 			assertAuthHeaders(t, rec.Header())
-			if got := rec.Header().Get("Location"); got != "/campanhas/42?aba=mapa" {
+			if got := rec.Header().Get("Location"); got != "/campaigns/42?aba=mapa" {
 				t.Errorf("callback redirects to %q, want the return_to path", got)
 			}
 			if c := findCookie(t, rec, loginCookieName); c.MaxAge >= 0 || c.Value != "" {
@@ -415,12 +415,12 @@ func TestLoginRejectsOpenRedirects(t *testing.T) {
 		"/\n/evil.example",
 		"javascript:alert(1)",
 		"evil.example",
-		"campanhas",
+		"campaigns",
 		"http:/evil.example",
-		" /campanhas",
+		" /campaigns",
 		"/" + strings.Repeat("a", maxReturnToLength),
 		"#t=segredo",
-		"#/campanhas",
+		"#/campaigns",
 	}
 	for _, returnTo := range unsafe {
 		name := returnTo
@@ -446,13 +446,13 @@ func TestLoginRejectsOpenRedirects(t *testing.T) {
 	safe := map[string]string{
 		"":                       "/",
 		"/":                      "/",
-		"/campanhas":             "/campanhas",
-		"/campanhas/42?aba=mapa": "/campanhas/42?aba=mapa",
+		"/campaigns":             "/campaigns",
+		"/campaigns/42?aba=mapa": "/campaigns/42?aba=mapa",
 		"/%2F%2Fevil.example":    "/%2F%2Fevil.example", // a path on this site
 		// The fragment is dropped: the app keeps secrets there, and the
 		// login state must not store one.
-		"/convite#t=segredo": "/convite",
-		"/campanhas?aba=1#x": "/campanhas?aba=1",
+		"/invite#t=segredo":  "/invite",
+		"/campaigns?aba=1#x": "/campaigns?aba=1",
 	}
 	for in, want := range safe {
 		if got, ok := safeReturnTo(in); !ok || got != want {

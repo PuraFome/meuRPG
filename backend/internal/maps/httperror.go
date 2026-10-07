@@ -78,8 +78,19 @@ func httpStatus(code connect.Code) int {
 		return http.StatusNotFound
 	case connect.CodeResourceExhausted:
 		return http.StatusTooManyRequests
-	case connect.CodeAborted:
+	case connect.CodeAborted, connect.CodeAlreadyExists:
 		return http.StatusConflict
+	case connect.CodeCanceled:
+		// 499, nginx's "client closed request", which the Connect protocol uses.
+		return 499
+	case connect.CodeDeadlineExceeded:
+		return http.StatusGatewayTimeout
+	case connect.CodeInternal, connect.CodeUnknown, connect.CodeDataLoss:
+		return http.StatusInternalServerError
+	case connect.CodeUnimplemented:
+		return http.StatusNotImplemented
+	case connect.CodeOutOfRange:
+		return http.StatusBadRequest
 	default:
 		return http.StatusServiceUnavailable
 	}
@@ -92,9 +103,11 @@ func (s *Service) writeError(w http.ResponseWriter, r *http.Request, err error) 
 	he, ok := errors.AsType[*httpError](err)
 	switch {
 	case ok:
-	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+	case errors.Is(err, context.Canceled):
 		// The client went away; nobody reads this answer.
-		he = &httpError{status: http.StatusServiceUnavailable, code: connect.CodeUnavailable, message: "the request was canceled"}
+		he = &httpError{status: httpStatus(connect.CodeCanceled), code: connect.CodeCanceled, message: "the request was canceled"}
+	case errors.Is(err, context.DeadlineExceeded):
+		he = &httpError{status: httpStatus(connect.CodeDeadlineExceeded), code: connect.CodeDeadlineExceeded, message: "the request took too long"}
 	default:
 		if ce, isConnect := errors.AsType[*connect.Error](err); isConnect {
 			he = &httpError{status: httpStatus(ce.Code()), code: ce.Code(), message: ce.Message()}

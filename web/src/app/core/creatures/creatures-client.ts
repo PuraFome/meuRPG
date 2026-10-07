@@ -173,7 +173,7 @@ export class CreaturesClient {
     return res.vitals.find((v) => v.characterId === characterId) ?? null;
   }
 
-  /** Casts Encontrar Familiar, Animar os Mortos or Conjurar Animais outside a combat. */
+  /** Casts Convocar Familiar, Animar Mortos or Conjurar Animais outside a combat. */
   async castSummon(cast: SummonCast): Promise<{ readonly creatureIds: readonly string[]; readonly replacedIds: readonly string[] }> {
     const res = await this.play.castSummon({
       campaignId: cast.campaignId,

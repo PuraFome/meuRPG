@@ -4,6 +4,8 @@
 // Configuration comes from the environment (see internal/platform/config):
 //
 //	PORT                listen port (default 8080)
+//	LISTEN_HOST         interface to listen on, e.g. 127.0.0.1 (default: all, what Cloud Run needs)
+//	GOOGLE_CLOUD_PROJECT the project id, set by the deploy (Cloud Run doesn't): log lines then carry the trace
 //	DATABASE_URL        CockroachDB connection string (optional)
 //	LOG_LEVEL           debug, info, warn or error (default info)
 //	OIDC_ISSUER         sign-in provider, e.g. https://accounts.google.com (optional)
@@ -58,10 +60,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -85,6 +91,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -110,6 +117,11 @@ var (
 // maxRequestBytes caps the size of a single RPC message the server will
 // read, so a client cannot exhaust memory with one huge request.
 const maxRequestBytes = 4 << 20 // 4 MiB
+
+// streamSendTimeout is how long one message of a live stream may take to be
+// written. A message is a few kilobytes; 30 s is generous for a bad mobile
+// connection and short next to the 30-minute stream.
+const streamSendTimeout = 30 * time.Second
 
 func main() {
 	cfg, err := config.Load(os.Getenv)
@@ -155,7 +167,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if cfg.DatabaseURL == "" {
 		logger.Warn("DATABASE_URL is not set; running without a database")
 	} else {
-		pool, err = db.NewPool(ctx, cfg.DatabaseURL)
+		pool, err = db.NewPool(ctx, cfg.DatabaseURL.Reveal())
 		if err != nil {
 			return err
 		}
@@ -206,139 +218,20 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	// Campaigns, characters and game sessions need to know who is calling,
 	// so they come with sign-in.
 	var identityService *identity.Service
-	var campaignsService *campaigns.Service
-	var charactersService *characters.Service
-	var playService *play.Service
-	var mapsService *maps.Service
-	var progressionService *progression.Service
-	var notesService *notes.Service
+	var m *modules
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
 	case pool == nil:
 		logger.Warn("sign-in is disabled: it needs DATABASE_URL")
 	default:
-		users := identity.NewPostgresStore(pool)
-		campaignsService, err = campaigns.New(campaigns.Config{
-			Pool:     pool,
-			Profiles: users, // display names come from the identity module
-			Logger:   logger,
-		})
-		if err != nil {
-			return err
-		}
-		charactersService, err = characters.New(characters.Config{
-			Pool:     pool,
-			Profiles: users,
-			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
-			// Every campaign plays with the SRD plus the table's own content (MR-025,
-			// RN-23, ADR-0018) and the table rules its master saved (RN-24). SRD is
-			// the base content for what no table changes (the conditions).
-			Content: characters.NewTableSource(pool, rulesContent, campaignsService),
-			SRD:     rulesContent,
-			Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
-			Logger:  logger,
-		})
-		if err != nil {
-			return err
-		}
-		// campaigns and characters need each other too, so campaigns gets
-		// characters now that it exists: an invite without approval accepted
-		// by a pending member approves their character (RN-15).
-		campaignsService.SetCharacters(charactersService)
-		// maps.SessionMaps needs nothing but the database, so characters gets
-		// it now too: an NPC's portrait must be an image of the campaign's
-		// gallery (MR-031).
-		sessionMaps := maps.NewSessionMaps(pool)
-		charactersService.SetGallery(sessionMaps)
-		// play and maps need each other: play reveals the map it makes
-		// current and reads the image it shows, and maps reads what the
-		// session shows and publishes on play's live stream. play gets the
-		// SessionMaps made above first, and maps then gets play.
-		playService, err = play.New(play.Config{
-			Pool:      pool,
-			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
-			Vitals:    charactersService,           // the characters' hit points, slots and hit dice (RN-02)
-			Campaigns: campaignsService,            // the caller's campaigns, for the session notice (RN-06)
-			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
-			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
-			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
-			Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
-			Logger:    logger,
-		})
-		if err != nil {
-			return err
-		}
-		// A level-up changes the sheet everyone in the session watches, so
-		// characters publishes the same hint as an XP award.
-		charactersService.SetLive(playService)
-		// A character's creatures and the combat that holds them (MR-037):
-		// dismissing a creature takes it out of the fight, and its events and
-		// stream hints go through play.
-		charactersService.SetCreatureHost(playService)
-		mapsService, err = maps.New(maps.Config{
-			Pool:       pool,
-			Blobs:      blobs,             // nil: images are off
-			Characters: charactersService, // the characters that may stand on a map (MR-012)
-			Live:       playService,       // the current map, and where map changes go (RN-10)
-			// maps stays on the base SRD: it reads only presets, damage types,
-			// conditions, skills and the SRD's magic items and treasure tables, which no
-			// table's content changes (MR-025, ADR-0018).
-			Generator:     imageGenerator,
-			MonthlyImages: int32(cfg.Images.MonthlyLimit), //nolint:gosec // G115: the config caps it at 500
-			Rules:         rulesContent,                   // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036), the treasure generator (MR-044)
-			Combats:       playService,                    // whether a combat runs on a map: its grid and image cannot change then (MR-034)
-			// Whether a new map starts with the fog on is a table rule (RN-24).
-			Defaults: campaignsService,
-			Logger:   logger,
-		})
-		if err != nil {
-			return err
-		}
-		// the combat walks over the layers the master painted (MR-034, RN-21)
-		playService.SetTerrain(mapsService)
-		playService.SetPuzzleMaps(mapsService) // "Ao resolver" of a puzzle (MR-038, RN-27)
-		playService.SetFog(mapsService)        // combat per player on a fog map: who sees which NPC (MR-036)
-		// traps in play (MR-035): play asks maps for the traps (where, what a character
-		// sees, who knows them) and maps asks play to fire one when a token lands in it
-		playService.SetTraps(mapsService)
-		mapsService.SetTrapFirer(playService)
-		// The fog of war and the copy of an image a fog map owns need the maps
-		// service, which is made after SessionMaps (it needs play).
-		sessionMaps.SetService(mapsService)
-		// progression and characters need each other too (the XP lives on the
-		// sheets, and a sheet shows "pode subir de nível"): characters gets
-		// progression once it exists.
-		progressionService, err = progression.New(progression.Config{
-			Pool:      pool,
-			Party:     charactersService,       // the party, and the XP on the sheets (MR-016)
-			Combats:   playService,             // a combat's defeated NPCs and their XP
-			Log:       playService,             // the session's history and the xp_changed hint
-			Treasures: maps.NewTreasures(pool), // the found treasures "Voltar à cidade" converts (MR-041)
-			Campaigns: campaignsService,        // how the campaign levels (RN-09)
-			Profiles:  users,                   // who gave each award
-			Logger:    logger,
-		})
-		if err != nil {
-			return err
-		}
-		// Changing the XP mode asks for a confirmation when XP was already awarded (RN-09).
-		campaignsService.SetXPAwards(progressionService)
-		charactersService.SetLevelUps(progressionService)
-		// The players' private notes (MR-030) read the scenes the group
-		// discovered and the clues revealed to each player from the maps
-		// module's tables, through SessionMaps.
-		notesService, err = notes.New(notes.Config{
-			Pool:   pool,
-			Scenes: sessionMaps, // the discovered scenes and the received clues (MR-029, MR-030)
-			Logger: logger,
-		})
+		m, err = wireModules(logger, pool, rulesContent, blobs, imageGenerator, cfg.Images.MonthlyLimit)
 		if err != nil {
 			return err
 		}
 		identityService, err = identity.New(ctx, identity.Config{
 			OIDC:   cfg.OIDC,
-			Store:  users,
+			Store:  m.users,
 			Logger: logger,
 			// On Cloud Run the sign-in rate limit reads the client IP from
 			// X-Forwarded-For; anywhere else, from the connection.
@@ -346,7 +239,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			// What a user may ask to finish right after signing in
 			// (POST /auth/login): today, accepting a campaign invite.
 			Intents: map[string]identity.IntentHandler{
-				campaigns.InviteIntentKind: campaignsService.InviteIntent(),
+				campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
 			},
 		})
 		if err != nil {
@@ -358,51 +251,24 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	srv := httpserver.New(httpserver.Config{
-		Addr:   ":" + strconv.Itoa(cfg.Port),
+		Addr:   net.JoinHostPort(cfg.ListenHost, strconv.Itoa(cfg.Port)),
 		Logger: logger,
 		DB:     database,
 		// Set on Cloud Run only: the log lines then carry the request's trace.
 		TraceProject: cfg.TraceProject,
 	})
 
-	connectOpts := []connect.HandlerOption{
-		// First, so it is the outermost interceptor: it logs the final outcome
-		// of every RPC and stream, after the session and authz interceptors
-		// the services add have recorded the user and the campaign.
-		connect.WithInterceptors(rpclog.Interceptor(logger)),
-		connect.WithReadMaxBytes(maxRequestBytes),
-		// Unary Connect requests must carry the Connect-Protocol-Version
-		// header (or connect=v1 in a GET's query). A browser cannot add that
-		// header to a cross-origin request without a CORS preflight, which
-		// this server never grants: one more layer against CSRF on top of
-		// SameSite cookies and http.CrossOriginProtection.
-		connect.WithRequireConnectProtocolHeader(),
-	}
+	connectOpts := connectOptions(logger)
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService != nil {
-		identityService.Mount(srv.Handle, connectOpts...)
-		// identityService is who is calling: its interceptor finds the
-		// session, and its UserID reads it back (authz.Caller). This mounts
-		// CampaignService and the campaign document's
-		// CampaignDocumentService (MR-018), with the same interceptors.
-		campaignsService.Mount(srv.Handle, identityService, connectOpts...)
-		// campaignsService says who belongs to each campaign, and with which
-		// role (authz.MembershipSource).
-		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
-		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
-		progressionService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
-		notesService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
-		// GalleryService and MapService, plus the upload and download
-		// routes, which find the session with
-		// identityService.AuthenticateRequest.
-		mapsService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		mountModules(srv.Handle, m, identityService, connectOpts)
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
-		srv.OnShutdown(playService.Close)
+		srv.OnShutdown(m.play.Close)
 		// At shutdown the pictures in flight stop: a request still waiting for a
 		// call slot gives its slot back, the long polls answer, and a call already
 		// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
-		srv.OnShutdown(mapsService.CancelGenerations)
+		srv.OnShutdown(m.maps.CancelGenerations)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
 		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
@@ -428,14 +294,241 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	err = srv.Run(ctx)
-	if mapsService != nil {
+	if m != nil {
 		// The goroutines write their last lines before the pool closes: about a
 		// second, inside Cloud Run's 10 s with the HTTP drain.
 		waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		mapsService.WaitForGenerations(waitCtx)
+		m.maps.WaitForGenerations(waitCtx)
 	}
 	return err
+}
+
+// modules are the services the sign-in needs, wired together.
+// mountModules mounts the signed-in services. It is shared with the test that
+// calls every procedure anonymously, so what that test checks is exactly what
+// the server serves.
+func mountModules(handle func(string, http.Handler), m *modules, identityService *identity.Service, opts []connect.HandlerOption) {
+	identityService.Mount(handle, opts...)
+	// identityService is who is calling: its interceptor finds the session,
+	// and its UserID reads it back (authz.Caller). This mounts CampaignService
+	// and the campaign document's CampaignDocumentService (MR-018), with the
+	// same interceptors.
+	m.campaigns.Mount(handle, identityService, opts...)
+	// campaignsService says who belongs to each campaign, and with which role
+	// (authz.MembershipSource).
+	m.characters.Mount(handle, identityService, m.campaigns, opts...)
+	m.play.Mount(handle, identityService, m.campaigns, opts...)
+	m.progression.Mount(handle, identityService, m.campaigns, opts...)
+	m.notes.Mount(handle, identityService, m.campaigns, opts...)
+	// GalleryService and MapService, plus the upload and download routes,
+	// which find the session with identityService.AuthenticateRequest.
+	m.maps.Mount(handle, identityService, m.campaigns, opts...)
+}
+
+type modules struct {
+	users       *identity.PostgresStore
+	campaigns   *campaigns.Service
+	characters  *characters.Service
+	play        *play.Service
+	maps        *maps.Service
+	progression *progression.Service
+	notes       *notes.Service
+}
+
+// wireModules builds the five modules that need each other, connects them in
+// the order their setters need, and checks that nothing was left unconnected: a
+// nil collaborator quietly turns a feature off (a nil fog source is "no fog of
+// war": players would see the NPCs the master hid), so a missing Set... call
+// stops the server at startup. It is a function of its own so a test can build
+// the real wiring without a database or a sign-in provider.
+func wireModules(
+	logger *slog.Logger,
+	pool *pgxpool.Pool,
+	rulesContent *rules.Content,
+	blobs blob.Store,
+	imageGenerator gen.Generator,
+	monthlyImages int,
+) (*modules, error) {
+	var (
+		campaignsService   *campaigns.Service
+		charactersService  *characters.Service
+		playService        *play.Service
+		mapsService        *maps.Service
+		progressionService *progression.Service
+		notesService       *notes.Service
+		err                error
+	)
+	users := identity.NewPostgresStore(pool)
+	campaignsService, err = campaigns.New(campaigns.Config{
+		Pool:     pool,
+		Profiles: users, // display names come from the identity module
+		Logger:   logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	charactersService, err = characters.New(characters.Config{
+		Pool:     pool,
+		Profiles: users,
+		Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
+		// Every campaign plays with the SRD plus the table's own content (MR-025,
+		// RN-23, ADR-0018) and the table rules its master saved (RN-24). SRD is
+		// the base content for what no table changes (the conditions).
+		Content: characters.NewTableSource(pool, rulesContent, campaignsService),
+		SRD:     rulesContent,
+		Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
+		Logger:  logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// campaigns and characters need each other too, so campaigns gets
+	// characters now that it exists: an invite without approval accepted
+	// by a pending member approves their character (RN-15).
+	campaignsService.SetCharacters(charactersService)
+	// maps.SessionMaps needs nothing but the database, so characters gets
+	// it now too: an NPC's portrait must be an image of the campaign's
+	// gallery (MR-031).
+	sessionMaps := maps.NewSessionMaps(pool)
+	charactersService.SetGallery(sessionMaps)
+	// play and maps need each other: play reveals the map it makes
+	// current and reads the image it shows, and maps reads what the
+	// session shows and publishes on play's live stream. play gets the
+	// SessionMaps made above first, and maps then gets play.
+	playService, err = play.New(play.Config{
+		Pool:      pool,
+		Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
+		Vitals:    charactersService,           // the characters' hit points, slots and hit dice (RN-02)
+		Campaigns: campaignsService,            // the caller's campaigns, for the session notice (RN-06)
+		Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
+		Roster:    charactersService,           // who can fight, with which numbers (MR-013)
+		Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
+		Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
+		Logger:    logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// A level-up changes the sheet everyone in the session watches, so
+	// characters publishes the same hint as an XP award.
+	charactersService.SetLive(playService)
+	// A character's creatures and the combat that holds them (MR-037):
+	// dismissing a creature takes it out of the fight, and its events and
+	// stream hints go through play.
+	charactersService.SetCreatureHost(playService)
+	mapsService, err = maps.New(maps.Config{
+		Pool:       pool,
+		Blobs:      blobs,             // nil: images are off
+		Characters: charactersService, // the characters that may stand on a map (MR-012)
+		Live:       playService,       // the current map, and where map changes go (RN-10)
+		// maps stays on the base SRD: it reads only presets, damage types,
+		// conditions, skills and the SRD's magic items and treasure tables, which no
+		// table's content changes (MR-025, ADR-0018).
+		Generator:     imageGenerator,
+		MonthlyImages: int32(monthlyImages), //nolint:gosec // G115: the config caps it at 500
+		Rules:         rulesContent,         // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036), the treasure generator (MR-044)
+		Combats:       playService,          // whether a combat runs on a map: its grid and image cannot change then (MR-034)
+		// Whether a new map starts with the fog on is a table rule (RN-24).
+		Defaults: campaignsService,
+		Logger:   logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// the combat walks over the layers the master painted (MR-034, RN-21)
+	playService.SetTerrain(mapsService)
+	playService.SetPuzzleMaps(mapsService) // "Ao resolver" of a puzzle (MR-038, RN-27)
+	playService.SetFog(mapsService)        // combat per player on a fog map: who sees which NPC (MR-036)
+	// traps in play (MR-035): play asks maps for the traps (where, what a character
+	// sees, who knows them) and maps asks play to fire one when a token lands in it
+	playService.SetTraps(mapsService)
+	mapsService.SetTrapFirer(playService)
+	// The fog of war and the copy of an image a fog map owns need the maps
+	// service, which is made after SessionMaps (it needs play).
+	sessionMaps.SetService(mapsService)
+	// progression and characters need each other too (the XP lives on the
+	// sheets, and a sheet shows "pode subir de nível"): characters gets
+	// progression once it exists.
+	progressionService, err = progression.New(progression.Config{
+		Pool:      pool,
+		Party:     charactersService,       // the party, and the XP on the sheets (MR-016)
+		Combats:   playService,             // a combat's defeated NPCs and their XP
+		Log:       playService,             // the session's history and the xp_changed hint
+		Treasures: maps.NewTreasures(pool), // the found treasures "Voltar à cidade" converts (MR-041)
+		Campaigns: campaignsService,        // how the campaign levels (RN-09)
+		Profiles:  users,                   // who gave each award
+		Logger:    logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Changing the XP mode asks for a confirmation when XP was already awarded (RN-09).
+	campaignsService.SetXPAwards(progressionService)
+	charactersService.SetLevelUps(progressionService)
+	// The players' private notes (MR-030) read the scenes the group
+	// discovered and the clues revealed to each player from the maps
+	// module's tables, through SessionMaps.
+	notesService, err = notes.New(notes.Config{
+		Pool:   pool,
+		Scenes: sessionMaps, // the discovered scenes and the received clues (MR-029, MR-030)
+		Logger: logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Every Set... call above must have happened: see the function's comment.
+	for _, check := range []func() error{
+		campaignsService.CheckWired, charactersService.CheckWired, playService.CheckWired,
+		mapsService.CheckWired, sessionMaps.CheckWired,
+	} {
+		if err := check(); err != nil {
+			return nil, fmt.Errorf("wiring the modules: %w", err)
+		}
+	}
+	return &modules{
+		users: users, campaigns: campaignsService, characters: charactersService, play: playService,
+		maps: mapsService, progression: progressionService, notes: notesService,
+	}, nil
+}
+
+// connectOptions are the options every Connect handler gets.
+func connectOptions(logger *slog.Logger) []connect.HandlerOption {
+	return []connect.HandlerOption{
+		// First, so it is the outermost interceptor: it logs the final outcome
+		// of every RPC and stream, after the session and authz interceptors
+		// the services add have recorded the user and the campaign.
+		connect.WithInterceptors(rpclog.Interceptor(logger)),
+		// Right after rpclog, so it sits inside it: a handler that panics becomes
+		// an `internal` error that rpclog still logs as an `rpc` line. Without
+		// it, net/http only drops the stream, the client sees a network error
+		// (which the app may retry) and no `rpc` line is written.
+		connect.WithRecover(recoverRPC(logger)),
+		// Each Send on a live stream gets streamSendTimeout to reach the client; a
+		// reader that stopped reading ends its stream (client_gone) instead of
+		// blocking the handler until Cloud Run closes the connection.
+		connect.WithInterceptors(slowclient.Interceptor(streamSendTimeout)),
+		connect.WithReadMaxBytes(maxRequestBytes),
+		// Unary Connect requests must carry the Connect-Protocol-Version
+		// header (or connect=v1 in a GET's query). A browser cannot add that
+		// header to a cross-origin request without a CORS preflight, which
+		// this server never grants: one more layer against CSRF on top of
+		// SameSite cookies and http.CrossOriginProtection.
+		connect.WithRequireConnectProtocolHeader(),
+	}
+}
+
+// recoverRPC logs a handler's panic with its stack, through the request's
+// logger (so the line carries the request id, user and campaign), and gives the
+// client a fixed `internal` error: the panic value could hold anything.
+func recoverRPC(logger *slog.Logger) func(context.Context, connect.Spec, http.Header, any) error {
+	return func(ctx context.Context, spec connect.Spec, _ http.Header, panicValue any) error {
+		logger.ErrorContext(ctx, "rpc handler panicked",
+			slog.String("procedure", spec.Procedure),
+			slog.Any("panic", panicValue),
+			slog.String("stack", string(debug.Stack())))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }
 
 // diceModes adapts the campaigns service to play's DiceModes: play only needs

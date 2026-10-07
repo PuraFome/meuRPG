@@ -45,13 +45,13 @@ type Access =
   | { readonly status: 'error'; readonly message: string };
 
 /** The query parameters: the filters survive a reload, and the open spell is a step of the browser's history. */
-const PARAMS = { query: 'q', classKey: 'classe', levels: 'circulo', school: 'escola', mine: 'minhas', spell: 'magia' } as const;
+const PARAMS = { query: 'q', classKey: 'class', levels: 'levels', school: 'school', mine: 'mine', spell: 'spell' } as const;
 
 /** From this width the page has three columns (filters, list, description); under it, it is the phone's page. */
 const WIDE_QUERY = '(min-width: 1100px)';
 
 /**
- * "/campanhas/:id/magias" (MR-045, RN-23, E10-11): the players' spell reference, open to every active
+ * "/campaigns/:id/spells" (MR-045, RN-23, E10-11): the players' spell reference, open to every active
  * member, the master too. The server finds, filters, sorts and counts (`ListSpells`): the page asks and
  * draws. From 1100 px: the filters at the left, the list in the middle, the chosen spell in full at the
  * right. On a phone and a tablet: the search, "Filtros (n)" and the chips of what is on; a spell opens
@@ -93,7 +93,7 @@ export class Spells {
     onAnswered: () => void this.loadClasses(),
   });
 
-  /** The key of the spell open (`?magia=`), or ''. */
+  /** The key of the spell open (`?spell=`), or ''. */
   protected readonly selected = signal(this.route.snapshot.queryParamMap.get(PARAMS.spell) ?? '');
   protected readonly card = signal<SpellCardState | null>(null);
   private cardSeq = 0;

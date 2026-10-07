@@ -10,7 +10,7 @@ import { awardXpRPC, createEnemyRPC, getExperienceRPC, tableForXp, tableForXpCom
 // is under test. Every test makes its own campaign.
 
 const panel = (page: Page) => page.getByRole('region', { name: 'Experiência', exact: true });
-const sheetOf = (page: Page, campaignId: string, characterId: string) => `/campanhas/${campaignId}/personagens/${characterId}`;
+const sheetOf = (page: Page, campaignId: string, characterId: string) => `/campaigns/${campaignId}/characters/${characterId}`;
 
 /** Waits until the page's session stream is open, so a later `xp_changed` reaches it. */
 async function streamOpen(page: Page): Promise<void> {
@@ -46,7 +46,7 @@ test(
       await stream;
 
       // The summary: what the defeated are worth, who receives, the division, and one filled button.
-      await m.goto(`/campanhas/${campaignId}/sessao`);
+      await m.goto(`/campaigns/${campaignId}/session`);
       await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
       const block = m.getByRole('region', { name: 'Experiência do combate' });
       await expect(block).toContainText('Total dos 4 derrotados');
@@ -70,7 +70,7 @@ test(
       await expect(xp).toContainText('Chegou aos 2.700 XP do nível 4. Suba o nível pelo botão abaixo.');
 
       // The campaign page: the history, and the tag in the group list.
-      await m.goto(`/campanhas/${campaignId}`);
+      await m.goto(`/campaigns/${campaignId}`);
       const history = panel(m);
       await expect(history).toContainText('Combate: Emboscada na estrada');
       await expect(history).toContainText('Por inimigos');
@@ -114,7 +114,7 @@ test(
       const combat = await tableForXpCombat(m, p, `XP depois ${Date.now()}`);
       campaignId = combat.table.campaignId;
       await winCombatRPC(m, combat);
-      await m.goto(`/campanhas/${campaignId}/sessao`);
+      await m.goto(`/campaigns/${campaignId}/session`);
       const block = m.getByRole('region', { name: 'Experiência do combate' });
 
       await block.getByRole('button', { name: 'Agora não' }).click();
@@ -132,7 +132,7 @@ test(
       await expect(block).toContainText('350 XP dados');
 
       // It is still the combat's award: the history says "Por inimigos", and it cannot be given twice.
-      await m.goto(`/campanhas/${campaignId}`);
+      await m.goto(`/campaigns/${campaignId}`);
       await expect(panel(m)).toContainText('Por inimigos');
     } finally {
       if (campaignId) {
@@ -153,7 +153,7 @@ test('um prêmio avulso, a qualquer hora: os erros aparecem ao sair do campo e o
     await m.goto('/');
     await p.goto('/');
     const table = await tableForXp(m, p, `XP avulso ${Date.now()}`, 'XP_MODE_ENEMIES', { experiencePoints: 2600 });
-    await m.goto(`/campanhas/${table.campaignId}`);
+    await m.goto(`/campaigns/${table.campaignId}`);
     await expect(panel(m)).toContainText('Ninguém recebeu XP ainda');
     await expect(panel(m)).toContainText('0 de 2.700 XP'.replace('0 de', '2.600 de'));
 
@@ -184,7 +184,7 @@ test('um prêmio avulso, a qualquer hora: os erros aparecem ao sair do campo e o
     await expect(panel(m).getByText('Pode subir de nível')).toBeVisible();
 
     // The player reads the same history, without actions.
-    await p.goto(`/campanhas/${table.campaignId}`);
+    await p.goto(`/campaigns/${table.campaignId}`);
     await expect(panel(p)).toContainText('Pelo resgate do mercador');
     await expect(panel(p)).toContainText('Todos da campanha veem este histórico.');
     await expect(panel(p).getByRole('button')).toHaveCount(0);
@@ -203,7 +203,7 @@ test('por ouro: o mestre digita as peças de ouro e cada um recebe a sua parte',
     await m.goto('/');
     await p.goto('/');
     const table = await tableForXp(m, p, `XP ouro ${Date.now()}`, 'XP_MODE_GOLD');
-    await m.goto(`/campanhas/${table.campaignId}`);
+    await m.goto(`/campaigns/${table.campaignId}`);
     await expect(panel(m)).toContainText('XP por ouro encontrado.');
 
     await panel(m).getByRole('button', { name: 'Dar XP' }).click();
@@ -240,7 +240,7 @@ test('por marcos: o marco marca quem pode subir de nível, sem nenhum número de
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
 
-    await m.goto(`/campanhas/${campaignId}`);
+    await m.goto(`/campaigns/${campaignId}`);
     await expect(panel(m)).toContainText('Campanha por marcos');
     await expect(panel(m)).toContainText('Nenhum marco planejado');
     await expect(panel(m).getByRole('button', { name: 'Dar XP' })).toHaveCount(0);
@@ -268,7 +268,7 @@ test('por marcos: o marco marca quem pode subir de nível, sem nenhum número de
     await expect(p.locator('app-sheet-header')).not.toContainText('XP');
 
     // The master raises the level on the sheet: the mark goes away.
-    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}/editar`);
+    await m.goto(`/campaigns/${campaignId}/characters/${table.characterId}/edit`);
     await m.getByLabel('Nível', { exact: true }).fill('4');
     await m.getByRole('button', { name: 'Salvar ficha' }).click();
     await expect(m).toHaveURL(sheetOf(m, campaignId, table.characterId));
@@ -297,7 +297,7 @@ test('desfazer o último prêmio: a pergunta fica no lugar, o foco vai para "Vol
     const table = await tableForXp(m, p, `XP desfazer ${Date.now()}`, 'XP_MODE_ENEMIES', { experiencePoints: 2600 });
     await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'Pelo resgate do mercador', characterIds: [table.characterId], amount: 40 });
     await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [table.characterId], amount: 150 });
-    await m.goto(`/campanhas/${table.campaignId}`);
+    await m.goto(`/campaigns/${table.campaignId}`);
 
     // Only the last award has "Desfazer".
     await expect(panel(m).getByRole('button', { name: /^Desfazer/ })).toHaveCount(1);
@@ -355,7 +355,7 @@ test('o XP que o NPC dá: o ND preenche o XP, o valor digitado fica e "Usar" vol
     const campaignId = (await created.json()).campaign.id as string;
 
     // A minion: a short sheet with "Ao ser derrotado".
-    await m.goto(`/campanhas/${campaignId}/npcs/novo/minion`);
+    await m.goto(`/campaigns/${campaignId}/npcs/new/minion`);
     await m.getByLabel('Nome do personagem').fill('Goblin');
     await expect(m.getByRole('heading', { name: 'Ao ser derrotado' })).toBeVisible();
     const xp = m.getByLabel('XP ao derrotar');
@@ -392,12 +392,12 @@ test('o XP que o NPC dá: o ND preenche o XP, o valor digitado fica e "Usar" vol
     await damageType.press('Enter');
     await m.getByRole('option', { name: 'Cortante' }).click();
     await m.getByRole('button', { name: 'Criar NPC' }).click();
-    await expect(m).toHaveURL(/\/personagens\/(?!novo)[^/]+$/);
+    await expect(m).toHaveURL(/\/characters\/(?!new)[^/]+$/);
 
     // The master reads what it gives on the sheet; the editor still has it (the save kept both).
     await expect(m.locator('app-sheet-header')).toContainText('ND 1/2');
     await expect(m.locator('app-sheet-header')).toContainText('100 XP');
-    await m.goto(`${m.url()}/editar`);
+    await m.goto(`${m.url()}/edit`);
     await expect(m.getByLabel('XP ao derrotar')).toHaveValue('100');
     await m.getByLabel('Nome do personagem').fill('Goblin batedor');
     await m.getByRole('button', { name: 'Salvar ficha' }).click();
@@ -405,7 +405,7 @@ test('o XP que o NPC dá: o ND preenche o XP, o valor digitado fica e "Usar" vol
 
     // An enemy (a full sheet): the same two fields in the first step.
     const captain = await createEnemyRPC(m, campaignId, 'Capitão Goblin', '1', 200);
-    await m.goto(`/campanhas/${campaignId}/personagens/${captain}/editar`);
+    await m.goto(`/campaigns/${campaignId}/characters/${captain}/edit`);
     await expect(m.getByLabel('XP ao derrotar')).toHaveValue('200');
     await m.getByRole('combobox', { name: 'Nível de desafio (ND)' }).click();
     await m.getByRole('option', { name: /^ND 2$|^ND 2 / }).first().click();
@@ -414,7 +414,7 @@ test('o XP que o NPC dá: o ND preenche o XP, o valor digitado fica e "Usar" vol
     await expect(m.locator('app-sheet-header')).toContainText('450 XP');
 
     // A player character never has them.
-    await m.goto(`/campanhas/${campaignId}/personagens/novo`);
+    await m.goto(`/campaigns/${campaignId}/characters/new`);
     await expect(m.getByLabel('Nome do personagem')).toBeVisible();
     await expect(m.getByLabel('XP ao derrotar')).toHaveCount(0);
   } finally {

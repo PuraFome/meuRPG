@@ -74,6 +74,6 @@ describe("the master's level-up notice and \"O que mudou\" (MR-040)", () => {
     expect(t).toContain('Truque novoLuz');
     expect(t).toContain('Confirmado em');
     expect(t).toContain('Nada fica à espera do seu OK');
-    expect((f.nativeElement as HTMLElement).querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/Pensantus');
+    expect((f.nativeElement as HTMLElement).querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/characters/Pensantus');
   });
 });

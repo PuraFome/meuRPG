@@ -453,6 +453,32 @@ func TestMR039_FailuresGiveTheSlotBack(t *testing.T) {
 	}
 }
 
+// A panic while a request runs (a model answer that breaks the decoder, say)
+// fails that one request and gives the slot back; the process lives on.
+func TestMR039_APanicInTheJobFailsOnlyThatRequest(t *testing.T) {
+	t.Parallel()
+	var panicked atomic.Bool
+	fake := &gen.Fake{Hook: func(context.Context, gen.Request) error {
+		if panicked.CompareAndSwap(false, true) {
+			panic("the decoder met something unexpected")
+		}
+		return nil
+	}}
+	h := newHarness(t, withFake(fake, 5))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+
+	res := master.mustGenerate(campaign, "uma cena que quebra")
+	g := res.GetGeneration()
+	if g.GetState() != mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_FAILED || g.GetSlotSpent() || res.GetStatus().GetRemaining() != 5 {
+		t.Errorf("after a panic: %v, status %v", g, res.GetStatus())
+	}
+	// The next request runs as usual.
+	if next := master.mustGenerate(campaign, "outra cena"); next.GetGeneration().GetState() != mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_DONE {
+		t.Errorf("the request after the panic: %v", next.GetGeneration())
+	}
+}
+
 // A retry with the same key never generates twice.
 func TestMR039_TheSameKeyGeneratesOnce(t *testing.T) {
 	t.Parallel()

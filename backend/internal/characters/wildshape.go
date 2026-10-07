@@ -230,7 +230,7 @@ func (s *Service) writeWildShape(ctx context.Context, tx pgx.Tx, content *rules.
 }
 
 // FamiliarOf returns the character's live familiar (a creature whose source is the
-// spell Encontrar Familiar), and false when it has none. It implements
+// spell Convocar Familiar), and false when it has none. It implements
 // play.VitalsKeeper.
 func (s *Service) FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Creature, bool, error) {
 	id, ok := parseUUID(characterID)

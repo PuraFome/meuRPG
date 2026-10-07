@@ -12,13 +12,17 @@ import (
 	"net/http"
 	"sync/atomic"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
 
 // Timeouts. There is deliberately no ReadTimeout or WriteTimeout: they cap
 // the whole request/response, which would cut Connect streaming RPCs short.
 // Cloud Run already enforces a per-request timeout (5 minutes by default;
 // the live session's stream lasts up to 30, so the service needs 35, see
-// docs/operacao.md), and unary RPCs can be bounded per handler.
+// docs/operacao.md), and unary RPCs can be bounded per handler. What a slow
+// client could stall is bounded where it happens, with a deadline per operation
+// (platform/slowclient): each Send on a stream, the body of an upload.
 const (
 	// Time a client has to send the request headers. Protects against
 	// Slowloris-style clients that open connections and trickle bytes.
@@ -110,8 +114,11 @@ func New(cfg Config) *Server {
 	csrf := http.NewCrossOriginProtection()
 
 	s.httpServer = &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           logRequests(s.logger, cfg.TraceProject, csrf.Handler(s.mux)),
+		Addr: cfg.Addr,
+		// Outermost first: the request log, the security headers, the slow-client
+		// deadlines (they need the real ResponseWriter; the others pass it through),
+		// then CSRF.
+		Handler:           logRequests(s.logger, cfg.TraceProject, securityHeaders(slowclient.Middleware(csrf.Handler(s.mux)))),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,

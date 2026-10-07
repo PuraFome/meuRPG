@@ -36,14 +36,14 @@ type PageState =
   | { status: 'error'; message: string }
   | { status: 'ready'; ctx: ContentContext };
 
-/** The URL's word for the kind of a new entry ("novo/magia"). */
+/** The URL's word for the kind of a new entry ("new/spell"). */
 const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
-  magia: TableContentKind.SPELL,
-  raca: TableContentKind.RACE,
-  subraca: TableContentKind.SUBRACE,
-  antecedente: TableContentKind.BACKGROUND,
-  classe: TableContentKind.CLASS,
-  subclasse: TableContentKind.SUBCLASS,
+  spell: TableContentKind.SPELL,
+  race: TableContentKind.RACE,
+  subrace: TableContentKind.SUBRACE,
+  background: TableContentKind.BACKGROUND,
+  class: TableContentKind.CLASS,
+  subclass: TableContentKind.SUBCLASS,
 };
 
 const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -187,7 +187,7 @@ export class ContentEntry {
     return e ? usageSentence(e.namePt, e.charactersUsing) : '';
   });
   protected readonly backLabel = computed(() => (this.isMaster() ? `Voltar para ${this.nav()?.plural ?? 'Conteúdo da mesa'}` : 'Voltar para Conteúdo da mesa'));
-  protected readonly backQuery = computed(() => (this.isMaster() && this.nav() ? { tipo: this.nav()!.slug } : {}));
+  protected readonly backQuery = computed(() => (this.isMaster() && this.nav() ? { kind: this.nav()!.slug } : {}));
   protected readonly nameOf = computed<(key: string) => string>(() => {
     const cat = this.catalog();
     const entries = this.ctx()?.entries ?? [];
@@ -228,10 +228,10 @@ export class ContentEntry {
       this.actionError.set('');
       this.status.set('');
       this.key.set(params.get('key') ?? '');
-      const tipo = params.get('tipo');
-      this.newKind.set(tipo ? (NEW_KINDS[tipo] ?? null) : null);
-      this.parentKey.set(this.route.snapshot.queryParamMap.get('raca') ?? '');
-      this.parentClass.set(this.route.snapshot.queryParamMap.get('classe') ?? '');
+      const newKind = params.get('kind');
+      this.newKind.set(newKind ? (NEW_KINDS[newKind] ?? null) : null);
+      this.parentKey.set(this.route.snapshot.queryParamMap.get('race') ?? '');
+      this.parentClass.set(this.route.snapshot.queryParamMap.get('class') ?? '');
       void this.load();
     });
     // The table changed while this entry is open: the entries are read again with this person's role. An editor keeps what is
@@ -318,11 +318,11 @@ export class ContentEntry {
   }
 
   protected backLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo'];
+    return ['/campaigns', this.campaignId(), 'content'];
   }
 
   protected entryLink(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected goBack(): void {
@@ -342,7 +342,7 @@ export class ContentEntry {
     this.savedLine.set(saved);
     if (!this.key()) {
       // A new entry has its key now: its page is the entry's own.
-      await this.router.navigate([...this.backLink(), 'entrada', res.entry.key], { replaceUrl: true, state: { saved } });
+      await this.router.navigate([...this.backLink(), 'entries', res.entry.key], { replaceUrl: true, state: { saved } });
     }
     window.scrollTo({ top: 0 });
   }
@@ -420,6 +420,6 @@ export class ContentEntry {
   }
 
   protected characterLink(a: AffectedCharacter): string[] {
-    return ['/campanhas', this.campaignId(), 'personagens', a.characterId];
+    return ['/campaigns', this.campaignId(), 'characters', a.characterId];
   }
 }

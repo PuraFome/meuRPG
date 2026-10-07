@@ -171,20 +171,20 @@ describe('AuthService', () => {
 
     it('navigates to /auth/login with the given same-site path as return_to', () => {
       const service = createService(transportThatNeverResolves());
-      service.signIn('/campanhas');
-      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2Fcampanhas');
+      service.signIn('/campaigns');
+      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2Fcampaigns');
     });
 
     it('drops the fragment, so a token in it never reaches the URL', () => {
       const service = createService(transportThatNeverResolves());
-      service.signIn('/convite#t=segredo-do-convite');
-      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2Fconvite');
+      service.signIn('/invite#t=segredo-do-convite');
+      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2Finvite');
       expect(assign.mock.calls[0][0]).not.toContain('segredo');
     });
 
     it('falls back to "/" for anything that is not a safe same-site path', () => {
       const service = createService(transportThatNeverResolves());
-      service.signIn('https://evil.example/campanhas');
+      service.signIn('https://evil.example/campaigns');
       expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2F');
 
       service.signIn('//evil.example');

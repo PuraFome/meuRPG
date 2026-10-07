@@ -67,9 +67,9 @@ func counts(c *charactersv1.SummonCircle) []int32 {
 }
 
 // TestMR037_SummonOptions: the read the casting sheet draws from. A wizard casts
-// Encontrar Familiar as a ritual from the spellbook (no slot), a warlock with the
+// Convocar Familiar as a ritual from the spellbook (no slot), a warlock with the
 // Pact of the Chain gets four more forms that attack with their reaction, a
-// cleric's Animar os Mortos grows with the slot, a druid's Conjurar Animais
+// cleric's Animar Mortos grows with the slot, a druid's Conjurar Animais
 // multiplies by the circle; and what a casting would replace is listed.
 func TestMR037_SummonOptions(t *testing.T) {
 	t.Parallel()
@@ -85,16 +85,16 @@ func TestMR037_SummonOptions(t *testing.T) {
 	druida := druid.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Druida",
 		casterSheet("class:druid", "", 9, 10, 12, 14, 10, 18, 12, []string{"spell:conjure-animals", "spell:cure-wounds"}, nil))
 
-	t.Run("a wizard casts Encontrar Familiar as a ritual from the spellbook, not with a slot", func(t *testing.T) {
+	t.Run("a wizard casts Convocar Familiar as a ritual from the spellbook, not with a slot", func(t *testing.T) {
 		r, err := summonOptions(t, wizard, campaign, pensantus.GetId())
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(r.GetSpells()) != 1 {
-			t.Fatalf("spells = %v, want only Encontrar Familiar (Pensantus has no other summoning spell)", r.GetSpells())
+			t.Fatalf("spells = %v, want only Convocar Familiar (Pensantus has no other summoning spell)", r.GetSpells())
 		}
 		s := r.GetSpells()[0]
-		if s.GetSpellKey() != "spell:find-familiar" || s.GetNamePt() != "Encontrar Familiar" || s.GetLevel() != 1 || s.GetCastingTimePt() != "1 hora" ||
+		if s.GetSpellKey() != "spell:find-familiar" || s.GetNamePt() != "Convocar Familiar" || s.GetLevel() != 1 || s.GetCastingTimePt() != "1 hora" ||
 			!s.GetRitual() || s.GetConcentration() || !s.GetCanRitual() || s.GetCanCastWithSlot() {
 			t.Errorf("find familiar = %v", s)
 		}
@@ -171,7 +171,7 @@ func TestMR037_SummonOptions(t *testing.T) {
 		}
 	})
 
-	t.Run("a cleric's Animar os Mortos with a slot: one undead at the 3rd circle, five at the 5th, any mix of the two kinds", func(t *testing.T) {
+	t.Run("a cleric's Animar Mortos with a slot: one undead at the 3rd circle, five at the 5th, any mix of the two kinds", func(t *testing.T) {
 		r, err := summonOptions(t, cleric, campaign, clerigo.GetId())
 		if err != nil {
 			t.Fatal(err)
@@ -194,7 +194,7 @@ func TestMR037_SummonOptions(t *testing.T) {
 			t.Errorf("forms = %v, want the skeleton and the zombie, free to attack", o.GetForms())
 		}
 		if spellOf(t, r, "spell:find-familiar") != nil {
-			t.Error("a cleric has no Encontrar Familiar")
+			t.Error("a cleric has no Convocar Familiar")
 		}
 	})
 

@@ -8,8 +8,10 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 	"uuid"
@@ -23,11 +25,16 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
 
 // maxUploadBody caps the whole request body: the image, plus room for the
 // form's boundaries, part headers and campaign_id.
 const maxUploadBody = images.MaxBytes + 64<<10
+
+// uploadReadTimeout is how long a client has to send the whole body: 10 MiB in
+// 2 minutes is a little under 1 Mbit/s, which a phone on a bad connection reaches.
+const uploadReadTimeout = 2 * time.Minute
 
 // defaultImageName names an image whose file name leaves nothing usable.
 const defaultImageName = "Imagem"
@@ -70,6 +77,9 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 		return mapsdb.GalleryImage{}, err
 	}
 
+	// A client that trickles the body must not hold the connection for the 35
+	// minutes Cloud Run allows: 10 MiB in 2 minutes is under 1 Mbit/s.
+	slowclient.ReadBody(w, uploadReadTimeout)
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 	form, err := r.MultipartReader()
 	if err != nil {
@@ -154,6 +164,9 @@ func readFile(form *multipart.Reader) (string, []byte, error) {
 // formError is the answer for a form that could not be read: 413 when the
 // body went over maxUploadBody, else a malformed request.
 func formError(err error, message string) error {
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return invalid(ReasonMalformedRequest, "the upload took too long")
+	}
 	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 		return errTooLarge()
 	}

@@ -4,8 +4,8 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 // CC-BY-4.0 compliance: the repo root's NOTICE carries the exact SRD 5.1
-// attribution text (ADR-0008, private), and the public /creditos page
-// (web/src/app/pages/creditos) shows the same text, hardcoded from the same
+// attribution text (ADR-0008, private), and the public /credits page
+// (web/src/app/pages/credits) shows the same text, hardcoded from the same
 // source. This test reads NOTICE at runtime instead of hardcoding the
 // attribution itself, so it can never drift from what NOTICE actually says,
 // and self-`fixme`s if NOTICE is ever missing (it exists as of phase 2).
@@ -32,10 +32,10 @@ test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca
 
   const attribution = readAttributionParagraph();
 
-  await page.goto('/creditos');
+  await page.goto('/credits');
   // A web-first assertion, which waits for the page to render the text (and
   // collapses whitespace, like readAttributionParagraph): the app renders
-  // /creditos after `goto` returns, so a one-shot read of the body could
+  // /credits after `goto` returns, so a one-shot read of the body could
   // catch only the header (seen locally, 30/09/2026).
   await expect(page.locator('body')).toContainText(attribution);
 });
@@ -49,14 +49,14 @@ test('a página de créditos mostra a atribuição do SRD 5.2.1 e o rótulo das 
   if (!paragraph) {
     throw new Error(`NOTICE has no SRD 5.2.1 attribution paragraph: ${noticePath}`);
   }
-  await page.goto('/creditos');
+  await page.goto('/credits');
   await expect(page.locator('body')).toContainText(paragraph.replace(/\s+/g, ' ').trim());
   await expect(page.locator('body')).toContainText('SRD 5.2.1 (regras de 2024)');
 });
 
 // The 2024 table of the encounter builder (MR-043) is named on the page, with its page of the SRD 5.2.1 (10.17b).
 test('a página de créditos nomeia a tabela de orçamento de XP dos encontros (p. 201 do SRD 5.2.1)', { tag: ['@licenca', '@MR-043'] }, async ({ page }) => {
-  await page.goto('/creditos');
+  await page.goto('/credits');
   await expect(page.locator('body')).toContainText('“XP Budget per Character” (p. 201)');
   await expect(page.locator('body')).toContainText('o orçamento de XP de cada dificuldade nos encontros');
 });

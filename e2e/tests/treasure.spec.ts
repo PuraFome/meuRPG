@@ -29,7 +29,7 @@ test(
       const campaignId = table.campaignId;
 
       // The way in: the campaign page's "Mapas" panel, for the master.
-      await master.goto(`/campanhas/${campaignId}`);
+      await master.goto(`/campaigns/${campaignId}`);
       await master.getByRole('link', { name: 'Gerar tesouro' }).click();
       await expect(master.getByRole('heading', { name: 'Tesouro', level: 1 })).toBeVisible();
       await expect(master.getByText('Nada gerado ainda.')).toBeVisible();
@@ -122,7 +122,7 @@ test(
       await expect(done).toContainText('Tesouro posto na Sala 2');
       await expect(done).toContainText('escondido: só você vê');
       // The treasure is on the map: "Abrir o mapa" is the main button and there is no "Pôr no mapa" left for it.
-      await expect(master.getByRole('link', { name: 'Abrir o mapa' })).toHaveAttribute('href', `/campanhas/${campaignId}/mapas/${mapId}`);
+      await expect(master.getByRole('link', { name: 'Abrir o mapa' })).toHaveAttribute('href', `/campaigns/${campaignId}/maps/${mapId}`);
       await expect(master.getByRole('button', { name: 'Pôr no mapa' })).toHaveCount(0);
       await expect(master.getByRole('button', { name: 'Gerar outro' })).toBeVisible();
 
@@ -185,7 +185,7 @@ test(
       expect(Number(placed.treasureValuePo)).toBe(gold);
       await markFoundRPC(master, table.campaignId, table.mapId, placed.id, [table.characterId]);
 
-      await master.goto(`/campanhas/${table.campaignId}`);
+      await master.goto(`/campaigns/${table.campaignId}`);
       const panel = master.getByRole('region', { name: 'Experiência', exact: true });
       await panel.getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
       const town = master.getByRole('dialog', { name: 'Voltar à cidade' });

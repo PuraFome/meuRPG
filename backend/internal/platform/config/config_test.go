@@ -335,3 +335,93 @@ func TestTraceProjectOnlyOnCloudRun(t *testing.T) {
 		t.Errorf("on Cloud Run: project %q, err %v; want my-proj", run.TraceProject, err)
 	}
 }
+
+// DATABASE_URL holds the password: it is a Secret, so printing the whole Config
+// (a log line, an error, %v) never shows it.
+func TestDatabaseURLIsARedactedSecret(t *testing.T) {
+	t.Parallel()
+	const password = "hunter2-very-secret"
+	cfg, err := Load(env(map[string]string{"DATABASE_URL": "postgresql://app:" + password + "@db.example.com:26257/meurpg?sslmode=verify-full"}))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	var logs bytes.Buffer
+	slog.New(slog.NewJSONHandler(&logs, nil)).Info("config", "cfg", cfg, "url", cfg.DatabaseURL)
+	for _, shown := range []string{fmt.Sprintf("%v", cfg), fmt.Sprintf("%+v", cfg), fmt.Sprintf("%#v", cfg), logs.String()} {
+		if strings.Contains(shown, password) {
+			t.Errorf("the password leaked: %s", shown)
+		}
+	}
+	if !strings.Contains(cfg.DatabaseURL.Reveal(), password) {
+		t.Error("Reveal() lost the URL")
+	}
+}
+
+// On Cloud Run the connection to the database must be encrypted and verified.
+func TestDatabaseTLSOnCloudRun(t *testing.T) {
+	t.Parallel()
+	const base = "postgresql://app:pw@db.example.com:26257/meurpg" //nolint:gosec // G101: a made-up password
+	tests := []struct {
+		name  string
+		url   string
+		cloud bool
+		ok    bool
+	}{
+		{"verify-full", base + "?sslmode=verify-full", true, true},
+		{"verify-ca", base + "?sslmode=verify-ca", true, true},
+		{"disable", base + "?sslmode=disable", true, false},
+		{"allow", base + "?sslmode=allow", true, false},
+		{"prefer", base + "?sslmode=prefer", true, false},
+		{"require checks nobody", base + "?sslmode=require", true, false},
+		{"no sslmode is prefer", base, true, false},
+		{"key=value form", "host=db.example.com user=app dbname=meurpg sslmode=verify-full", true, true},
+		{"disable off Cloud Run", base + "?sslmode=disable", false, true},
+		{"no database", "", true, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			vars := map[string]string{"DATABASE_URL": tt.url}
+			if tt.cloud {
+				vars["K_SERVICE"] = "meurpg-api"
+			}
+			_, err := Load(env(vars))
+			if (err == nil) != tt.ok {
+				t.Fatalf("Load() error = %v, want ok = %v", err, tt.ok)
+			}
+			if err != nil {
+				if !strings.Contains(err.Error(), "sslmode=verify-full") {
+					t.Errorf("the error does not say what to do: %v", err)
+				}
+				if strings.Contains(err.Error(), "pw@") || strings.Contains(err.Error(), "db.example.com") {
+					t.Errorf("the error echoes the URL: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestDatabaseTLSErrorDoesNotEchoABrokenURL(t *testing.T) {
+	t.Parallel()
+	//nolint:gosec // G101: a made-up password
+	_, err := Load(env(map[string]string{"K_SERVICE": "x", "DATABASE_URL": "postgresql://app:topsecret@host:99999999/db?sslmode=verify-full"}))
+	if err == nil {
+		t.Fatal("a broken URL was accepted")
+	}
+	if strings.Contains(err.Error(), "topsecret") {
+		t.Errorf("the password leaked: %v", err)
+	}
+}
+
+func TestListenHost(t *testing.T) {
+	t.Parallel()
+
+	all, err := Load(env(map[string]string{}))
+	if err != nil || all.ListenHost != "" {
+		t.Errorf("without LISTEN_HOST: %q, err %v; want empty (every interface, for Cloud Run)", all.ListenHost, err)
+	}
+	local, err := Load(env(map[string]string{"LISTEN_HOST": " 127.0.0.1 "}))
+	if err != nil || local.ListenHost != "127.0.0.1" {
+		t.Errorf("LISTEN_HOST=127.0.0.1: %q, err %v; want 127.0.0.1", local.ListenHost, err)
+	}
+}

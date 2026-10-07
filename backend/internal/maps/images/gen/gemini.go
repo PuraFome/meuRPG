@@ -121,7 +121,16 @@ func writeBody(w io.Writer, model string, req Request) error {
 // bodyReader streams writeBody through a pipe: the body of one attempt.
 func bodyReader(model string, req Request) io.ReadCloser {
 	pr, pw := io.Pipe()
-	go func() { _ = pw.CloseWithError(writeBody(pw, model, req)) }()
+	go func() {
+		// A panic while building the body ends this attempt with an error; it
+		// must not end the process (the goroutine is ours, net/http does not recover it).
+		defer func() {
+			if r := recover(); r != nil {
+				_ = pw.CloseWithError(fmt.Errorf("gen: building the request body panicked: %v", r))
+			}
+		}()
+		_ = pw.CloseWithError(writeBody(pw, model, req))
+	}()
 	return pr
 }
 

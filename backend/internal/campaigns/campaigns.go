@@ -46,6 +46,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 )
 
 // MaxNameLength is the longest campaign name, in characters. The
@@ -311,4 +312,15 @@ func (s *Service) queriesIn(tx pgx.Tx) *campaignsdb.Queries {
 		return s.queries
 	}
 	return s.queries.WithTx(tx)
+}
+
+// CheckWired fails when a collaborator that cmd/api connects after New (the
+// modules need each other, so a setter does it) is still nil. A nil one does
+// not fail loudly later: the feature quietly does not happen. cmd/api calls it
+// once the wiring is done, so a refactor that drops a Set... call stops the
+// server at startup instead.
+func (s *Service) CheckWired() error {
+	return wiring.Check("campaigns",
+		wiring.Dep{Setter: "SetCharacters", Missing: s.characters == nil},
+		wiring.Dep{Setter: "SetXPAwards", Missing: s.xpAwards == nil})
 }

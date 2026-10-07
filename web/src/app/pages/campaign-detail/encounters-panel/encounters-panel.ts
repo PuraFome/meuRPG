@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 /**
- * The master's "Encontros" panel on `/campanhas/:id` (MR-043): the way in to the encounter builder, where he measures an encounter
+ * The master's "Encontros" panel on `/campaigns/:id` (MR-043): the way in to the encounter builder, where he measures an encounter
  * against the party, draws one, and keeps it on a battle point. `CampaignDetail` renders it for the master alone: the builder
  * and what it keeps are his secret (RN-10).
  */
@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
     <section class="mr-panel enc" aria-labelledby="encounters-panel-heading">
       <h2 class="mr-panel__title" id="encounters-panel-heading">Encontros</h2>
       <p class="enc__text">Monte um encontro com as criaturas do bestiário, veja se ele é baixo, moderado ou alto para o grupo e guarde-o num ponto de batalha.</p>
-      <a matButton="outlined" class="enc__open" [routerLink]="['/campanhas', campaignId(), 'encontros']">
+      <a matButton="outlined" class="enc__open" [routerLink]="['/campaigns', campaignId(), 'encounters']">
         <mat-icon aria-hidden="true">swords</mat-icon>Montar um encontro
       </a>
     </section>

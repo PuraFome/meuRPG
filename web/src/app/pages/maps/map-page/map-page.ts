@@ -25,7 +25,7 @@ import { PlayerMap } from '../player-map/player-map';
 type Phase = 'loading' | 'ready' | 'gone' | 'error';
 
 /**
- * `/campanhas/:id/mapas/:mapId` (MR-008, MR-009): one map, in the form that
+ * `/campaigns/:id/maps/:mapId` (MR-008, MR-009): one map, in the form that
  * fits who is looking and where.
  *
  * - The master on a computer gets the editor (E5-23).
@@ -101,7 +101,7 @@ export class MapPage {
       }
     });
     this.route.queryParamMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((q) => {
-      this.fromSession.set(q.get('de') === 'sessao');
+      this.fromSession.set(q.get('from') === 'session');
     });
   }
 
@@ -217,7 +217,7 @@ export class MapPage {
     } catch (err) {
       throw new Error(mapErrorMessage(err, 'apagar o mapa'));
     }
-    await this.router.navigate(['/campanhas', this.campaignId()]);
+    await this.router.navigate(['/campaigns', this.campaignId()]);
   };
 
   protected async toggleReveal(): Promise<void> {

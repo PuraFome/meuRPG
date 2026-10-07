@@ -27,7 +27,7 @@ export async function mapToPaint(master: Page, campaignId: string, name: string,
 }
 
 export function editorRoute(campaignId: string, mapId: string): string {
-  return `/campanhas/${campaignId}/mapas/${mapId}`;
+  return `/campaigns/${campaignId}/maps/${mapId}`;
 }
 
 /** The surface that catches the master's brush, as big as the map's picture. */

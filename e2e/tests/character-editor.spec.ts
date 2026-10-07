@@ -12,7 +12,7 @@ test(
   { tag: '@MR-004' },
   async ({ page }) => {
     const campaignId = await createCampaign(page, `Editor ${Date.now()}`);
-    await page.goto(`/campanhas/${campaignId}/personagens/novo`);
+    await page.goto(`/campaigns/${campaignId}/characters/new`);
 
     // A level-1 bard (the default level is 1).
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Lira');
@@ -57,7 +57,7 @@ test(
 // reads a spell. Each test opens its own campaign and the player's editor.
 async function openEditorAs(page: import('@playwright/test').Page, className: string) {
   const campaignId = await createCampaign(page, `Rolagens ${Date.now()}`);
-  await page.goto(`/campanhas/${campaignId}/personagens/novo`);
+  await page.goto(`/campaigns/${campaignId}/characters/new`);
   await page.getByLabel('Nome do personagem', { exact: true }).fill('Zézinho');
   const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
   await classSelect.focus();

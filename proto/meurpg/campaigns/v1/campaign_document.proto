@@ -32,11 +32,11 @@ import "google/protobuf/timestamp.proto";
 // the app understands three link targets of its own, each followed by an
 // ID (a UUID):
 //
-//   - `[texto](mapa:<map id>)`: a link to one of the campaign's maps, which
+//   - `[texto](map:<map id>)`: a link to one of the campaign's maps, which
 //     the app opens in a dialog.
-//   - `[texto](ficha:<character id>)`: a link to a character's sheet, which
+//   - `[texto](character:<character id>)`: a link to a character's sheet, which
 //     the app opens in a dialog.
-//   - `![legenda](imagem:<gallery image id>)`: an image from the campaign's
+//   - `![legenda](image:<gallery image id>)`: an image from the campaign's
 //     gallery. The text in brackets is both the image's alt text and its
 //     visible caption.
 //

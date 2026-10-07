@@ -44,7 +44,7 @@ function sheetKeys(character: Character): SheetKeys {
 }
 
 /**
- * "/campanhas/:id/personagens/:characterId/subir-de-nivel" (MR-040, RN-01's exception, RN-12): the
+ * "/campaigns/:id/characters/:characterId/level-up" (MR-040, RN-01's exception, RN-12): the
  * guided level-up of a locked sheet. The player goes step by step (Atributos, Vida, Escolhas
  * and Magias when the level has them, Resumo) and nothing is saved until "Confirmar o nível N":
  * the server checks every choice with the rules engine and answers with the new sheet, or with
@@ -129,7 +129,7 @@ export class LevelUpPage {
   });
 
   protected readonly sheetHref = computed(() => this.sheetLink().join('/'));
-  protected readonly sheetLink = computed(() => ['/campanhas', this.campaignId(), 'personagens', this.characterId()]);
+  protected readonly sheetLink = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId()]);
 
   constructor() {
     const destroyRef = inject(DestroyRef);
