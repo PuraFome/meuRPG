@@ -376,12 +376,14 @@ export async function createCharacterViaUI(
   if ((await typedWay.count()) > 0) {
     await typedWay.click();
   }
-  await page.getByLabel('Força', { exact: true }).fill(String(build.scores.for));
-  await page.getByLabel('Destreza', { exact: true }).fill(String(build.scores.des));
-  await page.getByLabel('Constituição', { exact: true }).fill(String(build.scores.con));
-  await page.getByLabel('Inteligência', { exact: true }).fill(String(build.scores.int));
-  await page.getByLabel('Sabedoria', { exact: true }).fill(String(build.scores.sab));
-  await page.getByLabel('Carisma', { exact: true }).fill(String(build.scores.car));
+  // The input itself: while the page switches how the scores are made, another
+  // element labelled with the ability's name (a total, a medallion) can be the first match.
+  await page.locator('input').and(page.getByLabel('Força', { exact: true })).fill(String(build.scores.for));
+  await page.locator('input').and(page.getByLabel('Destreza', { exact: true })).fill(String(build.scores.des));
+  await page.locator('input').and(page.getByLabel('Constituição', { exact: true })).fill(String(build.scores.con));
+  await page.locator('input').and(page.getByLabel('Inteligência', { exact: true })).fill(String(build.scores.int));
+  await page.locator('input').and(page.getByLabel('Sabedoria', { exact: true })).fill(String(build.scores.sab));
+  await page.locator('input').and(page.getByLabel('Carisma', { exact: true })).fill(String(build.scores.car));
   // Pontos de Vida (Média/Rolado) defaults to "Média" — matches `pensantus`
   // (fixed/average hit points), so nothing to select here.
 

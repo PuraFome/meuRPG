@@ -3713,7 +3713,7 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Atributos, 4d6 rolados pelo servidor ${where}`);
 
     await method(p, 'Digitar');
-    await p.getByLabel('Força', { exact: true }).fill('19');
+    await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
     await expectScreenPasses(p, `Atributos, digitar com um valor fora do limite ${where}`);
 
     // Physical dice: a second campaign where everybody rolls their own.
