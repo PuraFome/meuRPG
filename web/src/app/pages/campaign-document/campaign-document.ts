@@ -105,7 +105,7 @@ export class CampaignDocumentPage {
   });
 
   private readonly editor = viewChild(DocumentEditor);
-  private readonly editButton = viewChild<ElementRef<HTMLButtonElement>>('editButton');
+  private readonly editButton = viewChild('editButton', { read: ElementRef<HTMLButtonElement> });
   private trigger: HTMLElement | null = null;
   private leaveResolve: ((leave: boolean) => void) | null = null;
 
