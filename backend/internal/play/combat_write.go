@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The kinds of session_events rows a combat writes (session_events_kind_valid).
+// The kinds of session_events rows a combat writes (session_event_kinds).
 // Their payloads hold IDs and numbers only, never a name (docs/privacidade.md).
 const (
 	eventEncounterStarted    = "encounter_started"
@@ -52,8 +52,8 @@ const (
 )
 
 // The kinds of Etapa 7: the XP awards (package progression writes them
-// through AppendEvent) and the scenes. session_events_kind_valid lists them
-// all, and TestSessionEventKindsMatchTheCheck keeps the two in step.
+// through AppendEvent) and the scenes. session_event_kinds lists them
+// all, and TestSessionEventKindsMatchTheTable keeps the two in step.
 const (
 	eventXPAwarded        = "xp_awarded"
 	eventXPAwardUndone    = "xp_award_undone"

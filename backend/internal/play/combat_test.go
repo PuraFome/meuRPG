@@ -2,12 +2,12 @@ package play
 
 import (
 	"context"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -1085,12 +1085,12 @@ func TestMR013_CombatEventsPerAudience(t *testing.T) {
 	}
 }
 
-// TestSessionEventKindsMatchTheCheck: session_events' kind CHECK lists
-// exactly the kinds the module writes. Each slice that adds a kind rewrites
-// the whole CHECK in a migration (ADR-0007), so a migration written before
-// another one merged could drop that one's kinds without anyone noticing;
-// this test notices. Add a new kind both here and in the migration.
-func TestSessionEventKindsMatchTheCheck(t *testing.T) {
+// TestSessionEventKindsMatchTheTable: session_event_kinds, the table that
+// session_events.kind points at, holds exactly the kinds the module writes. A
+// new kind is an INSERT in a migration (it used to rewrite a CHECK); add it both
+// here and there. (migrations.TestEveryEventKindOfTheCodeIsInTheTable also scans
+// every package's `event...` constants.)
+func TestSessionEventKindsMatchTheTable(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	want := []string{
@@ -1110,19 +1110,17 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventFamiliarSight, eventDoorOpened,
 		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
 	}
-	var clause string
-	if err := h.pool.QueryRow(t.Context(),
-		`SELECT check_clause FROM information_schema.check_constraints WHERE constraint_name = 'session_events_kind_valid'`,
-	).Scan(&clause); err != nil {
-		t.Fatalf("read the CHECK: %v", err)
+	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
+	if err != nil {
+		t.Fatalf("read the kinds: %v", err)
 	}
-	var got []string
-	for _, m := range regexp.MustCompile(`'([a-z_]+)'`).FindAllStringSubmatch(clause, -1) {
-		got = append(got, m[1])
+	got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatalf("read the kinds: %v", err)
 	}
 	slices.Sort(got)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
-		t.Errorf("session_events_kind_valid lists %v, the code writes %v", got, want)
+		t.Errorf("session_event_kinds holds %v, the code writes %v", got, want)
 	}
 }

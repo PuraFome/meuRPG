@@ -1,0 +1,67 @@
+-- +goose Up
+-- The foreign key of 00169 now does what the CHECK did, so the CHECK goes (D-02).
+-- Dropping a CHECK does not read the rows.
+ALTER TABLE session_events DROP CONSTRAINT IF EXISTS session_events_kind_valid;
+
+-- +goose Down
+-- Back to the CHECK of 00136, with every kind of that history. It is validated
+-- against the rows, so a kind added to session_event_kinds after 00136 must be
+-- deleted from session_events before rolling back (the Down of its migration does).
+ALTER TABLE session_events
+    DROP CONSTRAINT IF EXISTS session_events_kind_valid,
+    ADD CONSTRAINT session_events_kind_valid CHECK (kind IN (
+        'character_vitals_adjusted',
+        'encounter_started',
+        'initiative_submitted',
+        'initiative_order_set',
+        'combat_begun',
+        'turn_ended',
+        'combatant_moved',
+        'combatant_hidden_set',
+        'combatants_added',
+        'combatant_removed',
+        'encounter_ended',
+        'attack_rolled',
+        'damage_rolled',
+        'damage_applied',
+        'damage_discarded',
+        'action_taken',
+        'hit_points_adjusted',
+        'action_undone',
+        'spell_cast',
+        'reaction_used',
+        'reaction_declined',
+        'death_save_rolled',
+        'death_confirmed',
+        'conditions_set',
+        'xp_awarded',
+        'xp_award_undone',
+        'milestone_marked',
+        'scene_opened',
+        'scene_closed',
+        'scene_check_rolled',
+        'clue_revealed',
+        'stage_changed',
+        'scene_attempt_granted',
+        'turn_part_ended',
+        'trap_noticed',
+        'trap_searched',
+        'trap_triggered',
+        'trap_disarmed',
+        'trap_revealed',
+        'treasure_found',
+        'treasure_unfound',
+        'cover_set',
+        'side_set',
+        'opportunity_offered',
+        'creature_summoned',
+        'creature_dismissed',
+        'wild_shape_started',
+        'wild_shape_ended',
+        'familiar_sight',
+        'door_opened',
+        'puzzle_shown',
+        'puzzle_solved',
+        'puzzle_reset',
+        'puzzle_closed'
+    ));

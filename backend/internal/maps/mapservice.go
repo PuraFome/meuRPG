@@ -133,29 +133,42 @@ func (s *Service) GetMap(
 	if err != nil {
 		return nil, err
 	}
-	cm, err := s.loadMaps(ctx, m.CampaignID)
+	// The map's rows, its points and its tokens are one snapshot: three
+	// autocommit reads could show a token moved on a revision that does not
+	// count the move (audit D-03). A hidden map is "not found" to a player
+	// exactly as a map that does not exist (RN-10), and its points are not read.
+	var (
+		cm     campaignMaps
+		row    mapsdb.ListMapDetailsRow
+		points []mapsdb.MapPoint
+		tokens []mapsdb.MapToken
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if cm, err = loadMapsWith(ctx, q, m.CampaignID); err != nil {
+			return err
+		}
+		var ok bool
+		if row, ok = cm.byID[mapID]; !ok || !v.seesMap(row.ID, row.RevealedAt) {
+			return errMapNotFound()
+		}
+		if points, err = q.ListMapPoints(ctx, mapID); err != nil {
+			return fmt.Errorf("list a map's points: %w", err)
+		}
+		if tokens, err = q.ListMapTokens(ctx, mapID); err != nil {
+			return fmt.Errorf("list a map's tokens: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "get a map", err)
-	}
-	row, ok := cm.byID[mapID]
-	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
-		// A hidden map is "not found" to a player, exactly as a map that
-		// does not exist (RN-10).
-		return nil, errMapNotFound()
 	}
 	if !v.master {
 		v.parentKnows = s.parentKnows(ctx, cm, v)
 	}
 	res := &mapsv1.GetMapResponse{Map: cm.mapToProto(row, v)}
 
-	points, err := s.queries.ListMapPoints(ctx, mapID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list a map's points", err)
-	}
-	tokens, err := s.queries.ListMapTokens(ctx, mapID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list a map's tokens", err)
-	}
 	// On a fog map a player receives only what their character sees now or
 	// remembers (RN-10): pv says which squares those are.
 	var pv *playerView
