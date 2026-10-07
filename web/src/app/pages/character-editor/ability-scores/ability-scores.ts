@@ -24,7 +24,7 @@ interface Stage {
 }
 
 /**
- * The scores of the "Atributos" step (E6-20, E6-20b): how to set them
+ * The scores of the "Habilidades" step (E6-20, E6-20b): how to set them
  * ("Como definir os valores") and then the six values. "Digitar" is today's
  * six fields. "Rolar 4d6" rolls six scores in the browser (nothing is
  * recorded, RN-18) and "Conjunto padrão" offers 15, 14, 13, 12, 10 and 8;

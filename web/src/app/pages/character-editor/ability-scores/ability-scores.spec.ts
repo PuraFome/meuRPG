@@ -97,7 +97,7 @@ describe('AbilityScores (E6-20, E6-20b)', () => {
     const { el, fixture } = setup();
     choose(fixture, 'Rolar 4d6');
     expect(fixture.componentInstance.incomplete()).toBe(true);
-    expect(el.textContent).toContain('Faltam 6 atributos');
+    expect(el.textContent).toContain('Faltam 6 habilidades');
   });
 
   it('places a result through the ability select and writes the number into the form', () => {
@@ -108,7 +108,7 @@ describe('AbilityScores (E6-20, E6-20b)', () => {
     expect(chips(el)[0].getAttribute('aria-label')).toBe(
       '18: dados 6, 6, 6 e 1; o 1 foi descartado. Em Força.',
     );
-    expect(el.textContent).toContain('Faltam 5 atributos');
+    expect(el.textContent).toContain('Faltam 5 habilidades');
   });
 
   it('places all six, completing the step, and the six values are the six results', () => {

@@ -74,7 +74,7 @@ export function issueTitle(issue: IssueVm): string {
     case 'hit_point_rolls':
       return 'Rolagens de pontos de vida.';
     case 'score_above_20':
-      return 'Atributo acima de 20.';
+      return 'Habilidade acima de 20.';
     case 'level':
       return 'Nível acima do máximo.';
     case 'formula':
@@ -86,7 +86,7 @@ export function issueTitle(issue: IssueVm): string {
 
 export interface SpellSlotRow {
   readonly level: number;
-  /** "1º círculo". */
+  /** "1º nível". */
   readonly label: string;
   readonly count: number;
   /** "4 espaços", the circles' accessible name. */

@@ -193,8 +193,8 @@ func (x *deriver) checkChoices() {
 		for _, oc := range x.classes {
 			if !x.meetsMulticlass(oc) {
 				x.issueChange(IssueMulticlass, fmt.Sprintf("full.classes[%d].class_key", oc.index), oc.key,
-					"agora pede outros atributos para multiclasse; os desta ficha não cumprem.",
-					fmt.Sprintf("Os atributos não cumprem o pré-requisito de multiclasse de %s.", c.namePT(oc.key)))
+					"agora pede outras habilidades para multiclasse; os desta ficha não cumprem.",
+					fmt.Sprintf("As habilidades não cumprem o pré-requisito de multiclasse de %s.", c.namePT(oc.key)))
 			}
 		}
 	}

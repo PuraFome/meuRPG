@@ -23,7 +23,7 @@ describe('choiceRows: the master\'s "O que mudou"', () => {
       }),
     );
     expect(rows).toEqual([
-      { label: 'Atributos', value: '+2 em Inteligência' },
+      { label: 'Habilidades', value: '+2 em Inteligência' },
       { label: 'Pontos de vida', value: 'Média: 4, mais o modificador de Constituição' },
       { label: 'Truque novo', value: 'Luz' },
       { label: 'Magias novas', value: 'Passo Nebuloso e Reflexos' },

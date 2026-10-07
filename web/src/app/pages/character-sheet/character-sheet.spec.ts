@@ -351,7 +351,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('1d12 veneno');
   });
 
-  it('shows spell slots as a readable, separated list using "círculo" (integrator fix)', async () => {
+  it('shows spell slots as a readable, separated list using "nível" (integrator fix)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -373,12 +373,12 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    // One row per level, "círculo" as the term, and the slots as circles
+    // One row per level, "nível" as the term, and the slots as circles
     // with an accessible count.
     const rows = Array.from(el.querySelectorAll('.slots__row'));
     expect(rows.map((r) => r.querySelector('.slots__level')?.textContent?.trim())).toEqual([
-      '1º círculo',
-      '2º círculo',
+      '1º nível',
+      '2º nível',
     ]);
     expect(rows.map((r) => r.querySelectorAll('.slots__circle').length)).toEqual([4, 2]);
     expect(rows.map((r) => r.querySelector('[role="img"]')?.getAttribute('aria-label'))).toEqual([
@@ -416,12 +416,12 @@ describe('CharacterSheetPage', () => {
     // Document order is the paper sheet's column order (the medallions;
     // saves and skills; combat, spells and equipment; features and story),
     // the same on every screen size: the phone shows it in one column.
-    // "Atributos" and "Combate" are for screen readers only; the
+    // "Habilidades" and "Combate" are for screen readers only; the
     // medallions and the shield are their visible titles. No "Ataques"
     // here: this sheet has no attacks.
     expect(headings).toEqual([
-      'Atributos',
-      'Salvaguardas',
+      'Habilidades',
+      'Testes de resistência',
       'Perícias',
       'Combate',
       'Magias de mago',
@@ -449,7 +449,7 @@ describe('CharacterSheetPage', () => {
     expect(notesApi.list).not.toHaveBeenCalled();
   });
 
-  it('shows the six saving throws in their own "Salvaguardas" section, proficiency marked like skills', async () => {
+  it('shows the six saving throws in their own "Testes de resistência" section, proficiency marked like skills', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -468,7 +468,7 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    const section = sectionTitled(el, 'Salvaguardas');
+    const section = sectionTitled(el, 'Testes de resistência');
     const row = (name: string) =>
       Array.from(section.querySelectorAll('li')).find((li) => li.textContent?.includes(name))!;
     expect(section.querySelectorAll('li').length).toBe(6);

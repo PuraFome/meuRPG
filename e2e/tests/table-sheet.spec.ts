@@ -36,9 +36,9 @@ async function pick(page: Page, label: string, option: string | RegExp): Promise
   await expect(control).toHaveAttribute('aria-expanded', 'false');
 }
 
-/** The "Atributos" step with the typed way ("Digitar"), the scores given. */
+/** The "Habilidades" step with the typed way ("Digitar"), the scores given. */
 async function typeScores(page: Page, scores: Record<string, number>): Promise<void> {
-  await page.getByRole('tab', { name: 'Atributos' }).click();
+  await page.getByRole('tab', { name: 'Habilidades' }).click();
   await page.locator('.seg__item').filter({ hasText: 'Digitar' }).click();
   for (const [label, value] of Object.entries(scores)) {
     await page.getByLabel(label, { exact: true }).fill(String(value));
@@ -71,7 +71,7 @@ test(
       await expect(p.getByRole('option', { name: /^Corujeiro/ })).toContainText('Da mesa');
       await expect(p.getByRole('option', { name: /^Gnomo$/ })).not.toContainText('Da mesa');
       await p.getByRole('option', { name: /^Corujeiro/ }).click();
-      await expect(p.getByText('Dá +2 e +1 nos atributos que você escolher')).toBeVisible();
+      await expect(p.getByText('Dá +2 e +1 nas habilidades que você escolher')).toBeVisible();
 
       await pick(p, 'Classe', /^Guardião do Vale/);
       await expect(p.getByRole('combobox', { name: 'Classe', exact: true })).toContainText('Da mesa');
@@ -171,10 +171,10 @@ test(
 
       // The spell step: a section per class, each list up to the circle of that class level.
       await p.getByRole('tab', { name: 'Magias' }).click();
-      await expect(p.getByRole('heading', { name: 'Mago · até o 2º círculo' })).toBeVisible();
-      await expect(p.getByRole('heading', { name: 'Clérigo · até o 1º círculo' })).toBeVisible();
-      const wizard = p.locator('.spell-section').filter({ hasText: 'Mago · até o 2º círculo' });
-      const cleric = p.locator('.spell-section').filter({ hasText: 'Clérigo · até o 1º círculo' });
+      await expect(p.getByRole('heading', { name: 'Mago · até o 2º nível de magia' })).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'Clérigo · até o 1º nível de magia' })).toBeVisible();
+      const wizard = p.locator('.spell-section').filter({ hasText: 'Mago · até o 2º nível de magia' });
+      const cleric = p.locator('.spell-section').filter({ hasText: 'Clérigo · até o 1º nível de magia' });
       // The master's own spell is on the wizard's list, with the others of its circle.
       await expect(wizard.getByRole('checkbox', { name: /^Lâmina de Nanquim/ }).first()).toBeVisible();
       await expect(wizard.getByRole('checkbox', { name: /^Bola de Fogo/ })).toHaveCount(0);
@@ -259,14 +259,14 @@ test(
       const summary = p.getByRole('region', { name: 'O que muda', exact: true });
       await expect(summary).toContainText('Guardião do Vale 1');
       await expect(summary).toContainText('Guardião do Vale 2');
-      const slots = summary.locator('li').filter({ hasText: 'Espaços de 1º círculo' });
+      const slots = summary.locator('li').filter({ hasText: 'Espaços de 1º nível' });
       await expect(slots).toContainText('Da mesa');
       await expect(slots).toContainText('Da tabela da classe');
       await expect(slots).toContainText('0');
       await expect(slots).toContainText('2');
       await expect(summary.locator('li').filter({ hasText: 'Novas características' })).toContainText('Estilo de luta');
       // A row that does not change is not there.
-      await expect(summary).not.toContainText('Salvaguarda de Constituição');
+      await expect(summary).not.toContainText('Teste de resistência de Constituição');
       await p.getByRole('button', { name: 'Confirmar o nível 2' }).click();
 
       await expect(p).toHaveURL(sheetOf(campaignId, characterId));
@@ -319,7 +319,7 @@ test(
       await expect(p.getByText(/Passo 3 de 4 · Magias/)).toBeVisible();
       // The cantrips and the spells come from the wizard's list, not the fighter's.
       await expect(p.getByText(/truques de Mago/)).toBeVisible();
-      await expect(p.getByText(/Escolha 3 magias de 1º círculo para aprender/)).toBeVisible();
+      await expect(p.getByText(/Escolha 3 magias de 1º nível para aprender/)).toBeVisible();
       const cantrips = p.locator('#pick-cantrips');
       await showAllPicks(cantrips);
       await cantrips.getByRole('checkbox', { name: /^Luz/ }).check();
@@ -341,7 +341,7 @@ test(
       await expect(p.getByText('Lâmina de Nanquim').first()).toBeVisible();
       // The sheet casts with the subclass's own ability and the proficiency bonus (the fighter's Intelligence 10 and +2).
       const casting = p.getByRole('heading', { name: /Magias/ }).locator('xpath=ancestor::*[contains(@class, "mr-panel")][1]');
-      await expect(casting.getByText('Atributo').locator('..')).toContainText('Inteligência');
+      await expect(casting.getByText('Habilidade').locator('..')).toContainText('Inteligência');
       await expect(casting.getByText('CD de magia').locator('..')).toContainText('10');
       await expect(casting.getByText('Ataque de magia').locator('..')).toContainText('+2');
     } finally {

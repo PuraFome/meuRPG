@@ -41,8 +41,8 @@ describe('the slot step (E6-09)', () => {
   it('lists every circle from the spell\'s own up, the full one disabled', () => {
     const rows = slotRows(1, [choice(1, 1)], usage);
     expect(rows.map((r) => [r.title, r.count, r.enabled])).toEqual([
-      ['1º\u00a0círculo', '1 livre de 4', true],
-      ['2º\u00a0círculo', '0 livres de 2', false],
+      ['1º\u00a0nível', '1 livre de 4', true],
+      ['2º\u00a0nível', '0 livres de 2', false],
     ]);
     expect(defaultSlot(rows)?.level).toBe(1);
   });
@@ -58,8 +58,8 @@ describe('the slot step (E6-09)', () => {
 
   it('warns about the last slot, and about Escudo only when it is the last one it has', () => {
     const [first] = slotRows(1, [choice(1, 1)], usage);
-    expect(lastSlotWarning(first, 1)).toBe('É o seu último espaço de 1º\u00a0círculo: depois dele, o Escudo Arcano fica sem espaço.');
-    expect(lastSlotWarning(first, 3)).toBe('É o seu último espaço de 1º\u00a0círculo.');
+    expect(lastSlotWarning(first, 1)).toBe('É o seu último espaço de 1º\u00a0nível: depois dele, o Escudo Arcano fica sem espaço.');
+    expect(lastSlotWarning(first, 3)).toBe('É o seu último espaço de 1º\u00a0nível.');
     expect(lastSlotWarning(slotRows(1, [choice(1, 2)], [{ level: 1, total: 4, used: 2 }])[0], 2)).toBe('');
   });
 });

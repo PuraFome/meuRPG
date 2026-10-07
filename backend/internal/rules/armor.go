@@ -35,7 +35,7 @@ func (x *deriver) armorClass() {
 			base += dex
 		}
 		if !x.armorProficient(x.armorCategory, x.b.Armor) {
-			x.issue(IssueArmorProficiency, "full.armor_key", "Sem proficiência em %s: desvantagem em testes, ataques e salvaguardas de FOR e DES, e não conjura magias.", strings.ToLower(name))
+			x.issue(IssueArmorProficiency, "full.armor_key", "Sem proficiência em %s: desvantagem em testes, ataques e testes de resistência de FOR e DES, e não conjura magias.", strings.ToLower(name))
 		}
 		if a.StealthDisadvantage {
 			x.d.Hints = append(x.d.Hints, Hint{

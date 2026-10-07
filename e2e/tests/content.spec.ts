@@ -36,7 +36,7 @@ test(
       await m.getByLabel('Material').fill('uma pena molhada em tinta');
       await pickRadio(m, 'Ataque');
       await m.getByLabel('Dano', { exact: true }).fill('2d8');
-      await m.getByLabel('Mais dano por círculo acima do 1º').fill('1d8');
+      await m.getByLabel('Mais dano por nível acima do 1º').fill('1d8');
       await m.getByRole('checkbox', { name: 'Mago', exact: true }).check({ force: true });
       await m.getByLabel('Descrição').fill('Um risco de tinta negra corta o ar e rasga o alvo.');
       // The preview is written from the form as the players read it.

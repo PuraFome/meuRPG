@@ -56,7 +56,7 @@ export class SpellPicker {
 
   protected readonly spellLevelLabel = spellLevelLabel;
 
-  /** "3º círculo", or "3º círculo, acima do nível" past the limit. */
+  /** "3º nível", or "3º nível, acima do nível" past the limit. */
   protected levelText(level: number): string {
     const max = this.maxSpellLevel();
     return max !== null && level > max

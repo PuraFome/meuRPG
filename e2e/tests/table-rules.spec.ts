@@ -78,7 +78,7 @@ test(
 );
 
 test(
-  'o jogador faz os atributos por compra de pontos, e o servidor guarda o jeito @RN-24',
+  'o jogador faz as habilidades por compra de pontos, e o servidor guarda o jeito @RN-24',
   { tag: '@RN-24' },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste');
@@ -91,7 +91,7 @@ test(
 
       await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
       await method(p, 'Pontos');
       await expect(p.getByText('Restam 27 pontos')).toBeVisible();
@@ -142,9 +142,9 @@ test(
 
       await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       await method(p, '4d6');
-      await p.getByRole('button', { name: 'Rolar os atributos' }).click();
+      await p.getByRole('button', { name: 'Rolar as habilidades' }).click();
       const chips = p.getByRole('group', { name: /^\d+: dados \d, \d, \d e \d; o \d foi descartado/ });
       await expect(chips).toHaveCount(6);
       await expect(p.getByText(/Rolados em \d\d\/\d\d \d\d:\d\d\. Rolar de novo mostra os mesmos\./)).toBeVisible();
@@ -153,9 +153,9 @@ test(
       // Reload: the server keeps the roll, so the same six come back and there is no button to roll again.
       await p.reload();
       await fillBasics(p, 'Ícaro');
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       await method(p, '4d6');
-      await expect(p.getByRole('button', { name: 'Rolar os atributos' })).toHaveCount(0);
+      await expect(p.getByRole('button', { name: 'Rolar as habilidades' })).toHaveCount(0);
       await expect(chips).toHaveCount(6);
       expect(await chips.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!))).toEqual(first);
       const stored = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetAbilityRolls', { campaignId });
@@ -194,7 +194,7 @@ test(
 
       await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       await method(p, 'Digitar');
       await expect(p.getByText('de 3 a 18, antes do bônus da raça')).toBeVisible();
       await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
@@ -212,7 +212,7 @@ test(
       // The master switches "Digitar" off: the player no longer sees it, and the server refuses it.
       await setTableRulesRPC(m, campaignId, { abilityMethods: { standardArray: true, pointBuy: true, rolled4d6: true, typed: false } });
       await p.reload();
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       await expect(p.getByRole('radio', { name: 'Digitar' })).toHaveCount(0);
       await expect(p.getByRole('radio', { name: 'Padrão' })).toBeVisible();
       body.sheet.full.baseScores = { strength: 12, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
@@ -427,7 +427,7 @@ test(
 
       await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
-      await p.getByRole('tab', { name: 'Atributos' }).click();
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
       // The hit points follow the table: only "Rolado", no choice.
       await expect(p.getByText('A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Média/ })).toHaveCount(0);

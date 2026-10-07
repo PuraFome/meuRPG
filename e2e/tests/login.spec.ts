@@ -52,7 +52,7 @@ test.describe('login do mestre', () => {
     expect(await after.json()).toMatchObject({ code: 'unauthenticated' });
   });
 
-  test('o cookie de sessão tem os atributos certos', async ({ page, context, baseURL }) => {
+  test('o cookie de sessão tem as habilidades certos', async ({ page, context, baseURL }) => {
     const signedInAt = Date.now();
     await signIn(page);
 

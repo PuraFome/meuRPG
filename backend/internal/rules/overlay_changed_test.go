@@ -189,7 +189,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 		c2 := change(func(o *Overlay) { classOf(o, "class:gen-half-prepared@mesa").Minimums = map[Ability]int{STR: 20} })
 		is := changeOf(t, b, c2, IssueMulticlass)
-		if want := "agora pede outros atributos para multiclasse; os desta ficha não cumprem."; is.ChangeMessage != want {
+		if want := "agora pede outras habilidades para multiclasse; os desta ficha não cumprem."; is.ChangeMessage != want {
 			t.Errorf("change = %q, want %q", is.ChangeMessage, want)
 		}
 	})

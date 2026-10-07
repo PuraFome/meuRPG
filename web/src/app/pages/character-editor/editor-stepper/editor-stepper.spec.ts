@@ -9,7 +9,7 @@ import { EditorStepper } from './editor-stepper';
   template: `
     <app-editor-stepper>
       <cdk-step label="Básico" [hasError]="basicoHasError()"><p>conteúdo básico</p></cdk-step>
-      <cdk-step label="Atributos"><p>conteúdo atributos</p></cdk-step>
+      <cdk-step label="Habilidades"><p>conteúdo habilidades</p></cdk-step>
       <cdk-step label="Equipamento"><p>conteúdo equipamento</p></cdk-step>
     </app-editor-stepper>
   `,
@@ -36,7 +36,7 @@ describe('EditorStepper', () => {
 
     expect(tabs().map((t) => t.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
       '1 Básico',
-      '2 Atributos',
+      '2 Habilidades',
       '3 Equipamento',
     ]);
     expect(tabs().map((t) => t.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false']);
@@ -49,7 +49,7 @@ describe('EditorStepper', () => {
     const { panels } = await render();
 
     expect(panels()[1].querySelector('.stepper__count')?.textContent).toContain('Passo 2 de 3');
-    expect(panels()[1].querySelector('h2')?.textContent).toContain('Atributos');
+    expect(panels()[1].querySelector('h2')?.textContent).toContain('Habilidades');
   });
 
   it('moves with the tabs and with the previous/next buttons', async () => {
@@ -60,7 +60,7 @@ describe('EditorStepper', () => {
     expect(panels().map((p) => p.hidden)).toEqual([true, true, false]);
 
     const prev = panels()[2].querySelector<HTMLButtonElement>('.stepper__prev');
-    expect(prev?.textContent).toContain('Passo anterior: Atributos');
+    expect(prev?.textContent).toContain('Passo anterior: Habilidades');
     expect(panels()[2].querySelector('.stepper__next')).toBeNull();
     prev?.click();
     fixture.detectChanges();

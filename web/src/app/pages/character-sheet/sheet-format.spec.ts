@@ -40,8 +40,8 @@ describe('sheet-format', () => {
 
   it('lists one slot row per level that has slots, with an accessible count', () => {
     expect(spellSlotRows([4, 0, 1])).toEqual([
-      { level: 1, label: '1º círculo', count: 4, countLabel: '4 espaços' },
-      { level: 3, label: '3º círculo', count: 1, countLabel: '1 espaço' },
+      { level: 1, label: '1º nível', count: 4, countLabel: '4 espaços' },
+      { level: 3, label: '3º nível', count: 1, countLabel: '1 espaço' },
     ]);
     expect(spellSlotRows([])).toEqual([]);
   });

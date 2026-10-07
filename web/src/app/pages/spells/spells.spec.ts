@@ -125,7 +125,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(flat(el.querySelector('h1'))).toBe('Magias');
     const items = Array.from(el.querySelectorAll('button.row'));
     expect(items.map((r) => flat(r.querySelector('.row__name')))).toEqual(['Mãos Flamejantes', 'Lâmina de Nanquim', 'Velha']);
-    expect(flat(items[0].querySelector('.row__sub'))).toBe('1º círculo · Evocação');
+    expect(flat(items[0].querySelector('.row__sub'))).toBe('1º nível · Evocação');
     expect(flat(items[1])).toContain('Da mesa');
     expect(flat(items[0])).not.toContain('Da mesa');
     expect(flat(el.querySelector('.list__n'))).toContain('3 magias');
@@ -170,7 +170,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(el.querySelector('button.row')).toBeNull();
     expect(flat(el.querySelector('#spell-card-title'))).toBe('Mãos Flamejantes');
     expect(flat(el.querySelector('.spell__facts'))).toContain('Alvo Cone de 4,5 m');
-    expect(flat(el.querySelector('.card__line'))).toContain('Burning Hands · 1º círculo · Evocação · Mago');
+    expect(flat(el.querySelector('.card__line'))).toContain('Burning Hands · 1º nível · Evocação · Mago');
     expect(flat(el)).toContain('Texto do SRD 5.1, em inglês.');
     expect(el.querySelector('a[href="/credits"]')).not.toBeNull();
     // "Voltar para Magias" takes back the step that opened the spell: the same list, no new ask, the focus on the row.

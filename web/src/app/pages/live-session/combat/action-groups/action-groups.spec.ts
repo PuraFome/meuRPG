@@ -77,8 +77,8 @@ describe('ActionGroups: the spells (E8-02)', () => {
     const { el } = setup(SERVER_ORDER);
     const tags = (row: HTMLElement) => [...row.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
     expect(tags(rows(el)[0])).toEqual(['Truque']);
-    expect(tags(rows(el)[2])).toEqual(['1º círculo']);
-    expect(tags(rows(el)[3])).toEqual(['1º círculo', 'Reação']);
+    expect(tags(rows(el)[2])).toEqual(['1º nível']);
+    expect(tags(rows(el)[3])).toEqual(['1º nível', 'Reação']);
     expect(el.querySelector('.row__name .row__pill')).toBeNull();
   });
 
@@ -103,14 +103,14 @@ describe('ActionGroups: the spells (E8-02)', () => {
     });
     const web = rows(el)[5];
     expect(web.querySelector('.row__why')!.textContent!.trim()).toContain('Sem espaço');
-    expect(web.querySelector('.row__why')!.textContent).not.toContain('círculo');
+    expect(web.querySelector('.row__why')!.textContent).not.toContain('nível');
     const slotRows = [...el.querySelectorAll('.slots__row')].map((r) => [
       r.querySelector('.slots__title')!.textContent!.trim(),
       r.querySelector('.slots__text')!.textContent!.trim(),
     ]);
     expect(slotRows).toEqual([
-      ['1º\u00a0círculo', '0 livres de 4'],
-      ['2º\u00a0círculo', '0 livres de 2'],
+      ['1º\u00a0nível', '0 livres de 4'],
+      ['2º\u00a0nível', '0 livres de 2'],
     ]);
   });
 

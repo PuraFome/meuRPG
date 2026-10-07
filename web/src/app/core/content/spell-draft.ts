@@ -69,7 +69,7 @@ export interface SpellDraft {
   saveOnSuccess: 'half' | 'none';
   dice: string;
   damageType: string;
-  /** "+1d8 por círculo acima do 1º" (a leveled spell) or at the cantrip tiers (a truque). */
+  /** "+1d8 por nível acima do 1º" (a leveled spell) or at the cantrip tiers (a truque). */
   more: string;
   healDice: string;
   healMore: string;
@@ -231,12 +231,12 @@ export const ATTACK_OPTIONS: readonly { value: SpellDraft['attack']; label: stri
 ];
 
 export function circleLabel(level: number): string {
-  return level === 0 ? 'Truque' : `${level}º círculo`;
+  return level === 0 ? 'Truque' : `${level}º nível`;
 }
 
-/** "Mais dano por círculo acima do 1º", or at the truque's tiers. */
+/** "Mais dano por nível acima do 1º", or at the truque's tiers. */
 export function moreLabel(level: number): string {
-  return level === 0 ? 'Mais dano a cada degrau do truque' : `Mais dano por círculo acima do ${level}º`;
+  return level === 0 ? 'Mais dano a cada degrau do truque' : `Mais dano por nível acima do ${level}º`;
 }
 
 export function moreHint(level: number): string {
@@ -417,9 +417,9 @@ export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
 export function targetText(d: SpellDraft): string {
   switch (d.target) {
     case 'creature':
-      return d.perSlot > 0 ? `Uma criatura, mais ${d.perSlot} por círculo` : 'Uma criatura';
+      return d.perSlot > 0 ? `Uma criatura, mais ${d.perSlot} por nível de espaço` : 'Uma criatura';
     case 'creatures':
-      return d.perSlot > 0 ? `${d.count} criaturas, mais ${d.perSlot} por círculo` : `${d.count} criaturas`;
+      return d.perSlot > 0 ? `${d.count} criaturas, mais ${d.perSlot} por nível de espaço` : `${d.count} criaturas`;
     case 'self':
       return 'Só quem conjura';
     case 'area': {
@@ -441,13 +441,13 @@ export type NameOf = (key: string) => string;
 /** The damage type as the server names it ("fogo"); the key's last word when the catalog does not know it. */
 const keyName: NameOf = (key) => key.replace(/^[a-z-]+:/, '');
 
-/** "2d8 necrótico, +1d8 por círculo acima do 1º". */
+/** "2d8 necrótico, +1d8 por nível acima do 1º". */
 export function damageText(d: SpellDraft, nameOf: NameOf = keyName): string {
   if (!d.dice.trim()) {
     return '';
   }
   const type = nameOf(d.damageType);
-  const more = d.more.trim() ? (d.level === 0 ? `, +${d.more.trim().replace(/^\+/, '')} por degrau do truque` : `, +${d.more.trim().replace(/^\+/, '')} por círculo acima do ${d.level}º`) : '';
+  const more = d.more.trim() ? (d.level === 0 ? `, +${d.more.trim().replace(/^\+/, '')} por degrau do truque` : `, +${d.more.trim().replace(/^\+/, '')} por nível acima do ${d.level}º`) : '';
   return `${d.dice.trim()}${type ? ` ${type}` : ''}${more}`;
 }
 
@@ -487,7 +487,7 @@ export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow
     }
   }
   if (d.mechanic === 'heal' && d.healDice.trim()) {
-    const more = d.healMore.trim() ? `, +${d.healMore.trim().replace(/^\+/, '')} por círculo` : '';
+    const more = d.healMore.trim() ? `, +${d.healMore.trim().replace(/^\+/, '')} por nível de espaço` : '';
     rows.push({ label: 'Cura', value: `${d.healDice.trim()}${d.healModifier ? ' + modificador' : ''}${more}` });
   }
   return rows;

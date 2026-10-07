@@ -101,7 +101,7 @@ export class ContentOptions {
       .map((o) => ({ value: o.key, label: o.namePt })),
   ]);
   protected readonly levelOptions: SelectOption[] = [
-    { value: '', label: 'Todos os círculos' },
+    { value: '', label: 'Todos os níveis' },
     ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: spellLevelLabel(i) })),
   ];
   protected readonly rows = computed(() => {

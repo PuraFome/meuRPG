@@ -11,7 +11,7 @@ export type AbilityFormGroup = FormGroup<Record<AbilityKey, FormControl<number>>
 /**
  * The six ability numbers as narrow fields, laid out like the sheet's
  * ability column: three by two on a tablet or desktop, two by three on a
- * phone, in sheet order (Força to Carisma). Used twice on the "Atributos"
+ * phone, in sheet order (Força to Carisma). Used twice on the "Habilidades"
  * step: for the scores (1 to 30) and for the manual bonuses (-10 to +10).
  *
  * Only what the person typed: no modifier is computed here (every D&D rule

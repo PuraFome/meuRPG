@@ -144,7 +144,7 @@ export function effectText(effect: TrapEffect | undefined): string {
     ].filter(Boolean);
     const pass = s.onPass === TrapPassOutcome.HALF ? 'metade do dano' : 'nada';
     const who = s.appliesTo === TrapSaveApplies.HIT ? ' (de quem foi atingido)' : '';
-    parts.push(`Resistência de ${ABILITY[s.ability] ?? 'atributo'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`);
+    parts.push(`Resistência de ${ABILITY[s.ability] ?? 'habilidade'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`);
   }
   if (effect.conditions.length > 0) {
     parts.push(`Deixa ${listNames(effect.conditions.map((c) => c.conditionPt))}`);

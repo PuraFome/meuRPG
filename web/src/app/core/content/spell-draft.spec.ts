@@ -36,8 +36,8 @@ describe('the spell editor form (E10-01 states 4, 4b)', () => {
   });
 
   it('says the "more damage" by the circle, or by the truque\'s steps', () => {
-    expect(moreLabel(1)).toBe('Mais dano por círculo acima do 1º');
-    expect(moreLabel(3)).toBe('Mais dano por círculo acima do 3º');
+    expect(moreLabel(1)).toBe('Mais dano por nível acima do 1º');
+    expect(moreLabel(3)).toBe('Mais dano por nível acima do 3º');
     expect(moreLabel(0)).toBe('Mais dano a cada degrau do truque');
   });
 
@@ -134,7 +134,7 @@ describe('the spell editor form (E10-01 states 4, 4b)', () => {
       'Componentes: V, S, M (uma pena molhada em tinta)',
       'Duração: Instantânea',
       'Ataque: Ataque de magia à distância',
-      'Dano: 2d8 necrótico, +1d8 por círculo acima do 1º',
+      'Dano: 2d8 necrótico, +1d8 por nível acima do 1º',
     ]);
     const area = previewRows({ ...lamina(), target: 'area', sizeM: '4,5', shape: 'cone', range: 'self', mechanic: 'save', dice: '3d6' }, (k) => catalog().nameOf(k)).map((r) => `${r.label}: ${r.value}`);
     expect(area).toContain('Alcance: Pessoal');

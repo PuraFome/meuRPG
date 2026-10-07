@@ -133,7 +133,7 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
 /** Why the draft cannot be saved yet, or `''`. The server checks the same limits. */
 export function draftProblem(draft: RulesDraft): string {
   if (!draft.standardArray && !draft.pointBuy && !draft.rolled4d6 && !draft.typed) {
-    return 'Marque pelo menos um jeito de fazer os atributos.';
+    return 'Marque pelo menos um jeito de fazer as habilidades.';
   }
   if (draft.houseRules.some((r) => r.trim() === '')) {
     return 'Escreva o lembrete ou remova a linha vazia.';

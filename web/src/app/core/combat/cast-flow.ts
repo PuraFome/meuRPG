@@ -63,7 +63,7 @@ export function spellKind(key: string, details: SpellDetails | null): SpellKind 
 
 // ---- the slot ----
 
-/** A row of the slot step: "1º círculo", "1 livre de 4". */
+/** A row of the slot step: "1º nível", "1 livre de 4". */
 export interface SlotRow {
   readonly level: number;
   readonly pact: boolean;
@@ -86,7 +86,7 @@ export function freeText(free: number, total: number | null): string {
 /**
  * The rows a spell of `level` can be cast with: every circle the character
  * has from the spell's own up (the ones with no free slot are listed too,
- * disabled, so "2º círculo: Sem espaço livre" is seen), and the pact slots.
+ * disabled, so "2º nível: Sem espaço livre" is seen), and the pact slots.
  * `choices` are the server's free slots (`SpellOption.slots`), who decides
  * what is enabled; `usage` has the totals, for "de 4".
  */
@@ -136,7 +136,7 @@ export function defaultSlot(rows: readonly SlotRow[]): SlotRow | null {
   return rows.find((r) => r.enabled) ?? null;
 }
 
-/** "É o seu último espaço de 1º círculo: depois dele, o Escudo Arcano fica sem
+/** "É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem
  * espaço." The shield part only when Escudo is prepared and this slot is the
  * last one it could be cast with (`shieldFree` is the free slots of Escudo's
  * own options; `null` when the character has no Escudo). */

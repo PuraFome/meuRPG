@@ -76,6 +76,6 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
     expect(entrySupport(zero, name)).toBe('Subclasse de Mago');
     expect(entrySupport(entries[4], name)).toBe('Médio · 9 m');
     expect(entrySupport(entries[5], name)).toBe('2 perícias');
-    expect(entrySupport(entries[6], name)).toBe('1º círculo');
+    expect(entrySupport(entries[6], name)).toBe('1º nível');
   });
 });

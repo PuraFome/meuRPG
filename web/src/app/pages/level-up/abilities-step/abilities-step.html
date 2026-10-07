@@ -1,22 +1,22 @@
 <section class="mr-panel" id="pick-abilities" [attr.data-missing]="missing() ? '' : null" aria-labelledby="asi-title">
-  <h2 class="mr-panel__title" id="asi-title">Aumento no Valor de Atributo</h2>
-  <p class="lead">Aumente um atributo em 2, ou dois atributos em 1. Nenhum passa de 20.</p>
+  <h2 class="mr-panel__title" id="asi-title">Incremento no Valor de Habilidade</h2>
+  <p class="lead">Aumente uma habilidade em 2, ou duas habilidades em 1. Nenhuma passa de 20.</p>
 
   <div class="mode" role="radiogroup" aria-label="Como aumentar">
     <label class="mode__opt" [class.mode__opt--on]="one()">
       <input type="radio" name="asi-mode" class="mode__input" [checked]="one()" (change)="s().draft.setAbilityMode('one')" />
-      +2 em um atributo
+      +2 em uma habilidade
     </label>
     <label class="mode__opt" [class.mode__opt--on]="!one()">
       <input type="radio" name="asi-mode" class="mode__input" [checked]="!one()" (change)="s().draft.setAbilityMode('two')" />
-      +1 em dois
+      +1 em duas
     </label>
   </div>
 
   @if (aboveTwenty()) {
     <p class="mr-notice mr-notice--warning above" role="alert">
       <mat-icon aria-hidden="true">warning</mat-icon>
-      <span>Nenhum atributo passa de 20. Escolha outro.</span>
+      <span>Nenhuma habilidade passa de 20. Escolha outra.</span>
     </p>
   }
   <div [attr.role]="one() ? 'radiogroup' : 'group'" aria-labelledby="asi-title">
@@ -55,7 +55,7 @@
   @if (changes().length > 0) {
     <app-change-rows [rows]="changes()" />
   } @else {
-    <p class="lead lead--none">Escolha um atributo para ver o que muda.</p>
+    <p class="lead lead--none">Escolha uma habilidade para ver o que muda.</p>
   }
   @if (!constitutionPicked()) {
     <p class="note">Constituição, se fosse a escolhida, também muda os pontos de vida (passo 2).</p>
@@ -64,5 +64,5 @@
 
 <p class="srd" role="note">
   <mat-icon aria-hidden="true">info</mat-icon>
-  <span>O conteúdo do SRD 5.1 não traz dotes: aqui só dá para aumentar atributos.</span>
+  <span>O conteúdo do SRD 5.1 não traz dotes: aqui só dá para aumentar habilidades.</span>
 </p>

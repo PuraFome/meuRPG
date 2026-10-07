@@ -87,10 +87,10 @@ describe('SubclassEditor', () => {
     expect(el.querySelector('app-level-grid')).toBeNull();
     (el.querySelector('[role="switch"]') as HTMLButtonElement).click();
     await settle(fixture);
-    expect(cell(el, 'Nível 3, espaços de 1º círculo').value).toBe('2');
+    expect(cell(el, 'Nível 3, espaços de magia de 1º nível').value).toBe('2');
     expect(cell(el, 'Nível 3, truques').value).toBe('2');
     expect(cell(el, 'Nível 3, magias conhecidas').value).toBe('3');
-    expect(cell(el, 'Nível 2, espaços de 1º círculo')).toBeNull();
+    expect(cell(el, 'Nível 2, espaços de magia de 1º nível')).toBeNull();
     expect(el.querySelectorAll('tbody tr')).toHaveLength(18);
     // The subclass's own grid has no bonus column and no features column.
     expect(Array.from(el.querySelectorAll('th')).map((th) => text(th))).not.toContain('Bônus');
@@ -112,7 +112,7 @@ describe('SubclassEditor', () => {
     const { fixture, el } = setup();
     (el.querySelector('[role="switch"]') as HTMLButtonElement).click();
     await settle(fixture);
-    const c = cell(el, 'Nível 4, espaços de 1º círculo');
+    const c = cell(el, 'Nível 4, espaços de magia de 1º nível');
     c.value = '1';
     c.dispatchEvent(new Event('input'));
     await settle(fixture);
@@ -121,7 +121,7 @@ describe('SubclassEditor', () => {
     expect(text(el.querySelector('.ask')!)).toContain('Refazer a tabela?');
     click(el.querySelector('.ask') as HTMLElement, 'Refazer a tabela');
     await settle(fixture);
-    expect(cell(el, 'Nível 4, espaços de 1º círculo').value).toBe('2');
+    expect(cell(el, 'Nível 4, espaços de magia de 1º nível').value).toBe('2');
     // Prepared: no "Magias" column.
     expect(Array.from(el.querySelectorAll('th')).map((th) => text(th))).not.toContain('Magias');
   });
@@ -162,9 +162,9 @@ describe('SubclassEditor', () => {
     );
     click(el, 'Salvar subclasse');
     await settle(fixture);
-    expect(text(el.querySelector('[data-field="table_subclass.always_prepared"]')!.parentElement!)).toContain('Uma magia sempre preparada é de 1º círculo ou mais, nunca um truque.');
+    expect(text(el.querySelector('[data-field="table_subclass.always_prepared"]')!.parentElement!)).toContain('Uma magia sempre preparada é de 1º nível ou mais, nunca um truque.');
     // Levels 2 (a feature) and 3, 4...: level 4 is the third row, `levels[2]`.
-    expect(cell(el, 'Nível 4, espaços de 1º círculo').getAttribute('aria-invalid')).toBe('true');
+    expect(cell(el, 'Nível 4, espaços de magia de 1º nível').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('a stored third caster switches Preparadas and Conhecidas with no question: its rows are the server\'s, which carry no bonus', async () => {

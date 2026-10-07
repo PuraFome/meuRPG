@@ -51,7 +51,7 @@ export function wizardOptions(over: MessageInitShape<typeof LevelUpOptionsSchema
     proficiencyBonusAfter: 2,
     spellSlotsBefore: [4, 2],
     spellSlotsAfter: [4, 3],
-    newFeatures: [{ key: 'feature:wizard-ability-score-improvement-1', namePt: 'Aumento no Valor de Atributo' }],
+    newFeatures: [{ key: 'feature:wizard-ability-score-improvement-1', namePt: 'Incremento no Valor de Habilidade' }],
     ...over,
   });
 }

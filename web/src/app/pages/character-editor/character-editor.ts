@@ -152,7 +152,7 @@ function filterByName<T extends { readonly namePt: string }>(
 
 /**
  * The character editor (MR-003, MR-005, MR-006): a stepper for a full
- * sheet (player, enemy, boss) — Básico, Atributos, Perícias, Magias (only
+ * sheet (player, enemy, boss) — Básico, Habilidades, Perícias, Magias (only
  * for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
  * or a single short form for a basic sheet (minion, story, `NpcShortForm`),
  * routed from three places (plan §5):
@@ -366,7 +366,7 @@ export class CharacterEditor {
   /** "Rolar 4d6" or "Conjunto padrão" with results still to place: saving
    * waits, so a half-placed roll never turns into six default 10s. */
   protected readonly abilitiesIncomplete = signal(false);
-  /** What the table's way of making scores still lacks, in words ("role os atributos"), `''` when it is complete. */
+  /** What the table's way of making scores still lacks, in words ("role as habilidades"), `''` when it is complete. */
   protected readonly abilitiesProblem = signal('');
   /** The table's ways of making scores, when a player makes a new sheet (RN-24); `null` is the free editor of the master's NPCs and of an edit. */
   protected readonly abilityTable = signal<AbilityTableVm | null>(null);
@@ -517,11 +517,11 @@ export class CharacterEditor {
     return s.status === 'ready' ? casterSections(s.catalog, this.blocks()) : [];
   });
   protected readonly isCaster = computed(() => this.sections().length > 0);
-  /** The heading of a section when there is more than one: "Clérigo · 1º círculo". */
+  /** The heading of a section when there is more than one: "Clérigo · 1º nível". */
   protected sectionHeading(section: CasterSection): string {
     const name = section.subclassNamePt ? `${section.namePt} · ${section.subclassNamePt}` : section.namePt;
     const max = section.maxCircle;
-    return max === null ? name : max === 0 ? `${name} · só truques` : `${name} · até o ${max}º círculo`;
+    return max === null ? name : max === 0 ? `${name} · só truques` : `${name} · até o ${max}º nível de magia`;
   }
   protected sectionLabel = sectionName;
 
@@ -650,7 +650,7 @@ export class CharacterEditor {
     const race = s.status === 'ready' ? s.catalog.races.find((r) => r.key === this.selectedRaceKey()) : undefined;
     const bonuses = race?.choiceBonuses ?? [];
     return bonuses.length > 0
-      ? `Dá ${bonusWords(bonuses)} nos atributos que você escolher: ponha em “Bônus manuais”, no passo Atributos.`
+      ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.`
       : '';
   });
   /** A table background's equipment, as the master wrote it. */
@@ -732,7 +732,7 @@ export class CharacterEditor {
     this.basicFormValue();
     return this.showErrors() ? invalidBasicFields(this.basicForm) : [];
   });
-  /** "Básico: Nome do personagem, Raça. Atributos: Força." — or `''` when
+  /** "Básico: Nome do personagem, Raça. Habilidades: Força." — or `''` when
    * nothing needs fixing (or no submit was tried yet). */
   protected readonly invalidSummary = computed(() => {
     const s = this.state();

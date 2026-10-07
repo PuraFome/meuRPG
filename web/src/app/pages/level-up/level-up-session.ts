@@ -221,7 +221,7 @@ export class LevelUpSession {
     const pending = (step: 'picks' | 'spells', ids: readonly string[]) =>
       d.missing().some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
     if (o.abilityScoreImprovement) {
-      choice('Aumento no Valor de Atributo', 'abilities', d.missingIn('abilities').length === 0);
+      choice('Incremento no Valor de Habilidade', 'abilities', d.missingIn('abilities').length === 0);
     }
     if (o.subclassDue) {
       choice('Subclasse', 'picks', d.subclassKey() !== '');

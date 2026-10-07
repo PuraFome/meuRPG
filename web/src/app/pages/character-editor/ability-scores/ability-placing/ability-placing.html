@@ -37,18 +37,18 @@
   @if (free() === 0) {
     Os seis resultados estão colocados.
     @if (onPhone()) {
-      Toque num atributo para pegar o resultado dele e trocar de lugar.
+      Toque numa habilidade para pegar o resultado dela e trocar de lugar.
     } @else {
-      Escolha outro valor no seletor de um atributo para trocar.
+      Escolha outro valor no seletor de uma habilidade para trocar.
     }
     @if (canReroll()) {
       Rolar de novo troca os seis resultados e desfaz o que você colocou.
     }
   } @else {
-    {{ free() === 1 ? 'Falta 1 atributo' : 'Faltam ' + free() + ' atributos' }} para receber um
+    {{ free() === 1 ? 'Falta 1 habilidade' : 'Faltam ' + free() + ' habilidades' }} para receber um
     resultado.
     @if (onPhone()) {
-      Toque num resultado e depois no atributo.
+      Toque num resultado e depois na habilidade.
     }
   }
 </p>
@@ -56,8 +56,8 @@
   <p class="status" role="status">{{ status() }}</p>
 }
 
-<h4 class="title title--place" id="place-title">Colocar nos atributos</h4>
-<p class="hint">Cada atributo recebe um dos resultados acima.</p>
+<h4 class="title title--place" id="place-title">Colocar nas habilidades</h4>
+<p class="hint">Cada habilidade recebe um dos resultados acima.</p>
 <div class="abilities" role="group" aria-labelledby="place-title">
   @for (ability of keys; track ability) {
     @if (onPhone()) {

@@ -68,7 +68,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
   it('Convocar Familiar as a ritual: the title, "ritual · 1 hora", the name field, the forms the server lists and no slot picker', async () => {
     const { el } = await setup('spell:find-familiar');
     expect(flat(el.querySelector('.frame__title'))).toBe('Convocar Familiar');
-    expect(flat(el.querySelector('.frame__sub'))).toBe('Magia de 1º círculo · ritual · 1 hora');
+    expect(flat(el.querySelector('.frame__sub'))).toBe('Magia de 1º nível · ritual · 1 hora');
     expect(el.querySelector('app-slot-picker')).toBeNull();
     expect(flat(el.querySelector('.forms .cap'))).toBe('Forma · 3 do livro');
     expect(el.querySelectorAll('app-creature-choice-list input[type=radio]')).toHaveLength(3);
@@ -156,20 +156,20 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     const { el, button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
     const rows = Array.from(el.querySelectorAll('app-slot-picker .row')).map((r) => flat(r));
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain('3º círculo');
+    expect(rows[0]).toContain('3º nível');
     expect(rows[0]).toContain('1 livre de 2');
-    expect(rows[1]).toContain('5º círculo (pacto)');
+    expect(rows[1]).toContain('5º nível (pacto)');
     // The first free circle is chosen already: the 3rd, with one undead, so a radio list.
     expect(flat(el.querySelector('.forms .cap'))).toBe('Criatura');
     await pick('Esqueleto');
-    expect(flat(el.querySelector('.line'))).toBe('1 minuto · gasta um espaço de 3º círculo');
+    expect(flat(el.querySelector('.line'))).toBe('1 minuto · gasta um espaço de 3º nível');
     // A creature is chosen: the slot and the quantity fold into one line, with "Mudar" to open them again.
     expect(el.querySelector('app-slot-picker')).toBeNull();
-    expect(flat(el.querySelector('.setup'))).toContain('3º círculo');
+    expect(flat(el.querySelector('.setup'))).toContain('3º nível');
     button('Mudar').click();
     await settle();
     // The pact slot: five undead, any mix of the two kinds.
-    await pick('5º círculo (pacto)');
+    await pick('5º nível (pacto)');
     expect(flat(el.querySelector('.forms .cap'))).toBe('Criaturas · 0 de 5');
     expect(flat(el.querySelector('.line'))).toBe('Escolha mais 5 criaturas.');
     await plus('Esqueleto');
@@ -178,7 +178,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(flat(el.querySelector('.line'))).toBe('Escolha mais 2 criaturas.');
     await plus('Zumbi');
     await plus('Zumbi');
-    expect(flat(el.querySelector('.line'))).toBe('5 criaturas · 1 minuto · gasta um espaço de 5º círculo (pacto)');
+    expect(flat(el.querySelector('.line'))).toBe('5 criaturas · 1 minuto · gasta um espaço de 5º nível (pacto)');
     expect(isOff(button('Animar os mortos'))).toBe(false);
     // No more than the count: the "+" is off.
     expect(el.querySelector<HTMLButtonElement>('button[aria-label="Mais Zumbi"]')!.disabled).toBe(true);
@@ -186,7 +186,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
 
   it('Animar Mortos casts the mix the person made, with the slot and its pact flag, one key per creature', async () => {
     const { button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
-    await pick('5º círculo (pacto)');
+    await pick('5º nível (pacto)');
     for (const k of ['Esqueleto', 'Esqueleto', 'Zumbi', 'Zumbi', 'Zumbi']) {
       await plus(k);
     }

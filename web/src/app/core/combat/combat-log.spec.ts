@@ -159,7 +159,7 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
         { targetId: 'g', targetLabel: 'Goblin 2', darts: 1, outcome: AttackOutcome.UNSPECIFIED, damage: { status: PendingDamageStatus.APPLIED, amount: 5 } },
       ] },
     } as never);
-    expect(logLine(darts)?.text).toBe(' conjura Mísseis Mágicos (1º\u00a0círculo): 2 dardos no Capitão Goblin, 7 de dano; 1 dardo no Goblin 2, 5 de dano');
+    expect(logLine(darts)?.text).toBe(' conjura Mísseis Mágicos (1º\u00a0nível): 2 dardos no Capitão Goblin, 7 de dano; 1 dardo no Goblin 2, 5 de dano');
     expect(logLine(darts)?.icon).toBe('auto_awesome');
     const save = entry({
       kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Mãos Flamejantes',
@@ -169,7 +169,7 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
       ] },
     } as never);
     expect(logLine(save)?.text).toBe(
-      ' conjura Mãos Flamejantes (1º\u00a0círculo): o Goblin 1 falhou (CD 14), 10 de dano; o Goblin 2 resistiu (CD 14), 5 de dano (metade). A concentração anterior acabou',
+      ' conjura Mãos Flamejantes (1º\u00a0nível): o Goblin 1 falhou (CD 14), 10 de dano; o Goblin 2 resistiu (CD 14), 5 de dano (metade). A concentração anterior acabou',
     );
   });
 
@@ -178,12 +178,12 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
       kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Sono',
       spell: { slot: { level: 1, pact: false }, targets: [{ targetId: 'g', targetLabel: 'Goblin 1' }, { targetId: 'h', targetLabel: 'Goblin 2' }] },
     } as never);
-    expect(logLine(sleep)?.text).toBe(' conjura Sono (1º\u00a0círculo) no Goblin 1 e no Goblin 2');
+    expect(logLine(sleep)?.text).toBe(' conjura Sono (1º\u00a0nível) no Goblin 1 e no Goblin 2');
   });
 
   it('writes the reaction and an opportunity attack', () => {
     expect(logLine(entry({ kind: CombatLogKind.REACTION, actorLabel: 'Pensantus', keyNamePt: 'Escudo Arcano', spell: { slot: { level: 1, pact: false } } } as never))?.text).toBe(
-      ' conjura Escudo Arcano (1º\u00a0círculo), com a reação',
+      ' conjura Escudo Arcano (1º\u00a0nível), com a reação',
     );
     expect(
       logLine(attack({ actorLabel: 'Pensantus', targetLabel: 'Goblin 1', key: 'equipment:dagger', keyNamePt: 'Adaga', asReaction: true, damage: { status: PendingDamageStatus.APPLIED, amount: 4 } }))?.text,

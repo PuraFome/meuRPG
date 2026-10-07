@@ -7,7 +7,7 @@ import { LevelUpSession } from '../level-up-session';
 /** What stays locked, as the paper sheet names it. */
 const LOCKED = [
   'Nome, raça e antecedente',
-  'Valores base dos atributos',
+  'Valores base das habilidades',
   'Perícias e proficiências',
   'Equipamento e ataques',
   'História e anotações',

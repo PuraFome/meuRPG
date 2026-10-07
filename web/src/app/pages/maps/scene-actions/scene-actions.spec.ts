@@ -17,7 +17,7 @@ const FIVE = [
   action('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', dc: 13 }),
   action('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos' }),
   action('a4', 'Percepção', { key: 'skill:perception' }),
-  action('a5', 'Salvaguarda de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, key: 'save:con' }),
+  action('a5', 'Teste de resistência de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, key: 'save:con' }),
 ];
 
 describe('SceneActions', () => {
@@ -88,7 +88,7 @@ describe('SceneActions', () => {
       'Procurar pistas na carroça', 'Seguir os rastros dos goblins', 'Acalmar os cavalos', 'Percepção', 'Resistir ao cheiro de fumaça',
     ]);
     expect(rows().map((r) => r.querySelector('.sa__check')?.textContent)).toEqual([
-      'Investigação', 'Sobrevivência', 'Adestrar Animais', 'Perícia', 'Salvaguarda de Constituição',
+      'Investigação', 'Sobrevivência', 'Adestrar Animais', 'Perícia', 'Teste de resistência de Constituição',
     ]);
     expect(rows().map((r) => flat(r.querySelector('.sa__dc')) ?? null)).toEqual(['CD 12', 'CD 13', null, null, 'CD 10']);
   });
@@ -163,7 +163,7 @@ describe('SceneActions', () => {
     // The button is gone while the form is open (the form has its own "Adicionar ação").
     expect(el.querySelectorAll('.sa__add')).toHaveLength(0);
     expect(document.activeElement).toBe(el.querySelector('input[type="radio"]'));
-    expect(Array.from(el.querySelectorAll('.sf__kind'), (l) => flat(l))).toEqual(['Perícia', 'Teste de atributo', 'Salvaguarda']);
+    expect(Array.from(el.querySelectorAll('.sf__kind'), (l) => flat(l))).toEqual(['Perícia', 'Teste de habilidade', 'Teste de resistência']);
     // The buttons are under the fields, "Adicionar ação" outlined and "Cancelar" a text button.
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.sf__actions button'));
     expect(buttons.map((b) => flat(b))).toEqual(['Adicionar ação', 'Cancelar']);

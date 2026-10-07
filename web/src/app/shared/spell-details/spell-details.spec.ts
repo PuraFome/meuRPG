@@ -60,7 +60,7 @@ describe('SpellDetails (E6-22, E6-23)', () => {
     const { fixture, el } = setup(() => Promise.resolve(KNOCK));
     await settle(fixture);
     expect(text(el)).toContain('Nome no SRD: Knock');
-    expect(text(el)).toContain('2º círculo · Transmutação');
+    expect(text(el)).toContain('2º nível · Transmutação');
     const facts = Array.from(el.querySelectorAll('.spell__fact')).map((f) => text(f));
     expect(facts).toEqual([
       'Tempo de conjuração 1 ação',
@@ -72,7 +72,7 @@ describe('SpellDetails (E6-22, E6-23)', () => {
     const prose = el.querySelector('.spell__prose')!;
     expect(prose.getAttribute('lang')).toBe('en');
     expect(prose.querySelectorAll('p').length).toBe(2);
-    expect(text(el)).not.toContain('Em círculos maiores');
+    expect(text(el)).not.toContain('Em níveis superiores');
   });
 
   it('tags a ritual and a concentration spell, and shows the higher-level text', async () => {
@@ -87,7 +87,7 @@ describe('SpellDetails (E6-22, E6-23)', () => {
     await settle(fixture);
     const tags = Array.from(el.querySelectorAll('.mr-tag')).map((t) => t.textContent);
     expect(tags).toEqual(['Ritual', 'Concentração']);
-    expect(text(el)).toContain('Em círculos maiores');
+    expect(text(el)).toContain('Em níveis superiores');
     expect(text(el)).toContain('The spell grows.');
   });
 

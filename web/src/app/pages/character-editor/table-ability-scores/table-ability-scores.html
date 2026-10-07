@@ -28,7 +28,7 @@
       <app-ability-placing
         [results]="arrayResults()"
         [placement]="arrayPlacement()"
-        hint="Cada valor vai para um atributo, uma vez só."
+        hint="Cada valor vai para uma habilidade, uma vez só."
         (place)="placeArray($event.index, $event.ability)"
       />
     }
@@ -144,7 +144,7 @@
         <div class="roll">
           <p class="roll__lead">O app rola seis vezes quatro dados e guarda o resultado: rolar de novo mostra os mesmos.</p>
           <button matButton="outlined" type="button" class="roll__button" [disabled]="rolling()" (click)="rollInApp()">
-            <mat-icon aria-hidden="true">casino</mat-icon>Rolar os atributos
+            <mat-icon aria-hidden="true">casino</mat-icon>Rolar as habilidades
           </button>
         </div>
       }

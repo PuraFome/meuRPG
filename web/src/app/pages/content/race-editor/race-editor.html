@@ -29,7 +29,7 @@
     </section>
 
     <section class="mr-panel block" aria-labelledby="bonus-t">
-      <h2 class="mr-panel__title" id="bonus-t">Bônus de atributo</h2>
+      <h2 class="mr-panel__title" id="bonus-t">Bônus de habilidade</h2>
       <div class="bonuses">
         @for (a of abilities(); track a.field) {
           <app-number-stepper [label]="a.name" [value]="bonuses()[a.field]" [min]="bonusRange.min" [max]="bonusRange.max" [path]="prefix() + '.ability_bonuses.' + a.field" (valueChange)="setBonus(a.field, $event)" />
@@ -43,7 +43,7 @@
           <app-switch-field label="O jogador escolhe onde pôr os bônus" [checked]="r.choosing" (toggled)="patchRace({ choosing: $event })" />
           <p class="hint">Por exemplo, +2 e +1 à escolha. Desligado: os bônus acima valem sempre.</p>
           @if (r.choosing) {
-            <app-text-field label="Valores à escolha" [value]="r.choice" [path]="prefix() + '.choice_bonuses'" [issues]="issuesOf(prefix() + '.choice_bonuses')" hint="Separe por vírgula: 2, 1. Cada um vai num atributo diferente." (valueChange)="patchRace({ choice: $event })" />
+            <app-text-field label="Valores à escolha" [value]="r.choice" [path]="prefix() + '.choice_bonuses'" [issues]="issuesOf(prefix() + '.choice_bonuses')" hint="Separe por vírgula: 2, 1. Cada um vai numa habilidade diferente." (valueChange)="patchRace({ choice: $event })" />
           }
         </div>
       }

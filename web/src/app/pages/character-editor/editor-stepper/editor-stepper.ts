@@ -77,7 +77,7 @@ export class EditorStepper extends CdkStepper {
   }
 
   /** Steps (by label) whose content is built from the start, without waiting to be opened: one whose content
-   * decides something the page needs before the save, such as "Atributos" under the table's ways of making
+   * decides something the page needs before the save, such as "Habilidades" under the table's ways of making
    * scores (an unplaced roll must stop the save even if nobody opened the step). */
   readonly eager = input<readonly string[]>([]);
 

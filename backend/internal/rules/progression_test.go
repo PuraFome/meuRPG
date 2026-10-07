@@ -147,7 +147,7 @@ func TestSceneOptions(t *testing.T) {
 		{"Arcanismo", got[3].Bonus, 0, false},
 		{"Teste de Inteligência", mod(d, INT), 0, false},
 		{"Teste de Força", mod(d, STR), 0, false},
-		{"Salvaguarda de Sabedoria", save(d, WIS), 0, false},
+		{"Teste de resistência de Sabedoria", save(d, WIS), 0, false},
 	}
 	for i, w := range want {
 		g := got[i]
@@ -241,7 +241,7 @@ func TestSceneCheckName(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	for key, want := range map[string]string{
-		"skill:investigation": "Investigação", "ability:str": "Teste de Força", "save:wis": "Salvaguarda de Sabedoria",
+		"skill:investigation": "Investigação", "ability:str": "Teste de Força", "save:wis": "Teste de resistência de Sabedoria",
 	} {
 		if got, ok := c.SceneCheckName(key); !ok || got != want {
 			t.Errorf("SceneCheckName(%q) = %q, %v; want %q", key, got, ok, want)

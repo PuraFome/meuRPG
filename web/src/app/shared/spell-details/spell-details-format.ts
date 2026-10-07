@@ -185,7 +185,7 @@ export function spellRows(d: SpellDetailsVm): SpellRow[] {
   return rows;
 }
 
-/** "2º círculo · Transmutação", or "Truque · Evocação". */
+/** "2º nível · Transmutação", or "Truque · Evocação". */
 export function spellSubtitle(d: Pick<SpellDetailsVm, 'level' | 'schoolNamePt'>): string {
   return d.schoolNamePt
     ? `${spellLevelLabel(d.level)} · ${d.schoolNamePt}`

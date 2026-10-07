@@ -17,13 +17,13 @@ import { joinDots } from '../format/text';
  * number on screen that is a rule comes from `PreviewLevelUp` (ADR-0008).
  */
 
-/** The steps, in the order Vinicius ruled: Atributos, Vida, Magias, Resumo;
+/** The steps, in the order Vinicius ruled: Habilidades, Vida, Magias, Resumo;
  * "Escolhas" (subclass, feature options, skills, expertise) is the one extra,
  * and sits before Magias because a subclass can add cantrips. */
 export type StepKey = 'abilities' | 'hp' | 'picks' | 'spells' | 'summary';
 
 export const STEP_LABELS: Record<StepKey, string> = {
-  abilities: 'Atributos',
+  abilities: 'Habilidades',
   hp: 'Vida',
   picks: 'Escolhas',
   spells: 'Magias',
@@ -115,7 +115,7 @@ function byLevelThenName(a: Spell, b: Spell): number {
   return a.level - b.level || COLLATOR.compare(a.namePt, b.namePt);
 }
 
-/** "2º círculo · Conjuração", the way a spell row reads; extras follow ("ritual"). */
+/** "2º nível · Conjuração", the way a spell row reads; extras follow ("ritual"). */
 export function spellSub(spell: Spell, ...extras: string[]): string {
   return joinDots([spellLevelLabel(spell.level), spell.schoolNamePt, ...extras].filter((s) => s !== ''));
 }

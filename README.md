@@ -31,7 +31,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/img/ficha-desktop-escuro.webp">
-    <img alt="A ficha do Pensantus, Mago 3, travada na sessão: os medalhões de atributo, o escudo da CA, os pontos de vida e o aviso de armadura sem proficiência" src="docs/img/ficha-desktop-claro.webp" width="900">
+    <img alt="A ficha do Pensantus, Mago 3, travada na sessão: os medalhões de habilidade, o escudo da CA, os pontos de vida e o aviso de armadura sem proficiência" src="docs/img/ficha-desktop-claro.webp" width="900">
   </picture>
 </p>
 
@@ -47,14 +47,14 @@ As Etapas 1 a 10 do [roadmap](docs/roadmap.md) estão na `main`:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
-- **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta, com iniciativa e ataques. Na criação, os atributos e os PV podem ser rolados no app, e cada magia tem a descrição completa.
+- **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta, com iniciativa e ataques. Na criação, as habilidades e os PV podem ser rolados no app, e cada magia tem a descrição completa.
 - **Sessão.** Iniciar a sessão trava as fichas dos jogadores; a história do personagem tem uma trava própria.
 - **Sessão ao vivo.** Quando o mestre inicia a sessão, quem joga na campanha vê o aviso com o link, em qualquer página do app. Na página da sessão, os PV, os espaços de magia e os dados de vida do personagem mudam na tela do jogador quando o mestre corrige, sem recarregar.
 - **Galeria.** O mestre envia as imagens da campanha, e o servidor tira os metadados, como o GPS da foto, antes de guardar.
 - **Mapas sem spoiler.** O mestre cria mapas a partir da galeria, com pontos de interesse (batalha, submapa e cena de RP) e os tokens dos personagens, e revela cada coisa na hora certa: o que está escondido nunca sai do servidor para o jogador. Na sessão, o mestre escolhe o mapa atual e move os tokens, e a mesa vê ao vivo. Ele também pode mostrar aos jogadores uma imagem da galeria.
 - **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
 - **Combate.** O mestre põe a grade de 1,5 m no mapa e inicia o combate: iniciativa, ordem dos turnos e movimento, sem o jogador ver quem está escondido nem os números dos inimigos. Na sua vez, o jogador vê o que as regras deixam fazer com a ação, a ação bônus, a reação e o movimento, e ataca, conjura, usa as habilidades de classe e as reações, com o dado do app ou o físico. O mestre aplica o dano, desfaz a última ação, marca as condições e confirma a morte de quem falha três vezes no teste contra a morte. O registro conta a luta, e cada um vê só o que pode ver. Quem tem a mesma iniciativa joga o mesmo turno (o turno conjunto), as distâncias saem em metros e em quadrados, e o fim do combate mostra os destaques.
-- **Cenas de RP.** O mestre põe as ações num ponto de cena do mapa (uma perícia, um teste de atributo ou uma salvaguarda, com CD se quiser) e abre a cena na sessão. Cada jogador vê as ações com o próprio bônus e rola no app ou digita o dado físico. O mestre escolhe, por cena, se os jogadores veem a CD e se passaram, e quantas tentativas cada um tem. Ele escreve as pistas e os ganchos do ponto, revela uma pista a quem escolher e põe os NPCs em cena, com o retrato, como num visual novel.
+- **Cenas de RP.** O mestre põe as ações num ponto de cena do mapa (uma perícia, um teste de habilidade ou um teste de resistência, com CD se quiser) e abre a cena na sessão. Cada jogador vê as ações com o próprio bônus e rola no app ou digita o dado físico. O mestre escolhe, por cena, se os jogadores veem a CD e se passaram, e quantas tentativas cada um tem. Ele escreve as pistas e os ganchos do ponto, revela uma pista a quem escolher e põe os NPCs em cena, com o retrato, como num visual novel.
 - **Anotações.** O jogador guarda as próprias anotações e as pistas que recebeu, na sessão e na ficha. O mestre não lê.
 - **XP.** O mestre dá XP no fim do combate, por ouro ou avulso, ou registra um marco, conforme o modo da campanha, e desfaz o último. Toda a campanha vê o histórico, e a ficha mostra "Pode subir de nível". Na campanha por marcos, o mestre escreve os marcos antes. Quando pode, o jogador sobe o nível pela própria ficha, passo a passo, acrescentando só o que o nível dá, e o mestre vê o que mudou.
 - **Resumo da sessão.** Quando o mestre encerra a sessão, todos veem os destaques, e o mestre vê também a tabela de cada jogador.
@@ -64,7 +64,7 @@ As Etapas 1 a 10 do [roadmap](docs/roadmap.md) estão na `main`:
 - **Movimento como nas regras oficiais.** O alcance em círculo, o terreno difícil, o salto, a cobertura e o ataque de oportunidade, tudo decidido pelo servidor.
 - **As criaturas do personagem.** O familiar, os mortos-vivos e os animais convocados entram na ficha e no combate, cada um com a vez dele, e o druida vira fera na Forma Selvagem.
 - **O conteúdo da própria mesa.** O mestre cria magias, raças, sub-raças, antecedentes, classes e subclasses, que entram na ficha, na subida de nível e no combate como as do SRD, e escolhe o que os jogadores podem usar. Quando o mestre muda uma entrada, as fichas abertas mostram a mudança na hora.
-- **As regras da mesa.** Os PV da subida de nível, os jeitos de fazer atributos, o crítico, os testes contra a morte escondidos e a calibração da grade; e o combate sem grade, o teatro da mente.
+- **As regras da mesa.** Os PV da subida de nível, os jeitos de fazer habilidades, o crítico, os testes contra a morte escondidos e a calibração da grade; e o combate sem grade, o teatro da mente.
 - **Masmorras geradas.** O mestre gera uma masmorra com portas, escadas e salas numeradas, que vira mapa da campanha, com uma cena por sala.
 - **Quebra-cabeças.** Seis tipos, com dicas por teste de perícia, informação dividida entre os jogadores e consequências ao errar.
 - **Imagens geradas por IA.** A arte de uma cena, a vista isométrica e o mapa com textura, feitos só do que os jogadores já viram.
@@ -74,7 +74,7 @@ Agora vem o MVP: a mesa do Samuel joga a primeira sessão inteira pelo app. Depo
 
 ## O visual: a ficha de papel
 
-As telas imitam a ficha oficial de D&D 5e, na mesma ordem e com as mesmas formas: os medalhões de atributo, o escudo da CA, os pontos de proficiência. O número de jogo é a coisa mais visível da tela. O tema claro e o escuro seguem o sistema operacional, com contraste AA nos dois, e cada tela funciona no celular, na mesa de jogo.
+As telas imitam a ficha oficial de D&D 5e, na mesma ordem e com as mesmas formas: os medalhões de habilidade, o escudo da CA, os pontos de proficiência. O número de jogo é a coisa mais visível da tela. O tema claro e o escuro seguem o sistema operacional, com contraste AA nos dois, e cada tela funciona no celular, na mesa de jogo.
 
 <p align="center">
   <img alt="A campanha Mirathel no celular, pelo mestre, no tema claro: a sessão em andamento, o Pensantus travado e os NPCs" src="docs/img/campanha-celular-claro.webp" width="300">

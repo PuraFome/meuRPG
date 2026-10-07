@@ -163,7 +163,7 @@ export class LevelUpDraft {
     const out: Missing[] = [];
     if (o.abilityScoreImprovement && this.abilityKeys().length < this.abilityAsked()) {
       const n = this.abilityAsked() - this.abilityKeys().length;
-      out.push({ step: 'abilities', id: 'abilities', text: needText(n, 'atributo', 'atributos') });
+      out.push({ step: 'abilities', id: 'abilities', text: needText(n, 'habilidade', 'habilidades') });
     }
     if (this.hpCard() === 'roll' && this.rolled() === null) {
       out.push({ step: 'hp', id: 'hp', text: 'Falta rolar o dado de vida.' });

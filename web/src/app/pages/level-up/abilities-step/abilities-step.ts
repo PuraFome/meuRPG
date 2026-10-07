@@ -17,7 +17,7 @@ const WIRE: Record<AbilityKey, Ability> = {
   cha: Ability.CHARISMA,
 };
 
-/** What the Atributos step lists about one ability. */
+/** What the Habilidades step lists about one ability. */
 interface AbilityRow {
   readonly key: AbilityKey;
   readonly label: string;
@@ -32,8 +32,8 @@ interface AbilityRow {
 const ABILITY_DERIVED = /^(dc|attack|prepared|armor|initiative|save-|skills-|passive-)/;
 
 /**
- * Step "Atributos" of the guided level-up (MR-040, E8-15): the SRD's Ability Score
- * Improvement, "+2 em um atributo" or "+1 em dois", none above 20, with the score
+ * Step "Habilidades" of the guided level-up (MR-040, E8-15): the SRD's Ability Score
+ * Improvement, "+2 em uma habilidade" or "+1 em duas", none above 20, with the score
  * before → after of the picked ones and "O que muda com Inteligência 20", read from the
  * preview (the browser computes no modifier). The SRD 5.1 has no feats, so this is the
  * only choice the level offers here.

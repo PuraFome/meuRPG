@@ -1714,7 +1714,7 @@ type TableSpellTarget struct {
 	Kind  TableSpellTargetKind   `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.TableSpellTargetKind" json:"kind,omitempty"`
 	// CREATURES: how many at the spell's own circle (2 or more), and how many more
 	// for each circle above it. CREATURE: only `per_slot_level`, how many more for
-	// each circle above ("uma criatura, mais uma por círculo", as Hold Person).
+	// each circle above ("uma criatura, mais uma por nível", as Hold Person).
 	Count        int32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	PerSlotLevel int32 `protobuf:"varint,3,opt,name=per_slot_level,json=perSlotLevel,proto3" json:"per_slot_level,omitempty"`
 	// AREA: the shape and the size, in feet, in steps of 5 (1,5 m); 5 to 300.
@@ -4571,7 +4571,7 @@ func (x *EffectOptionSet) GetOptions() []*EffectMenuValue {
 // FormulaHelper is a function a formula may call.
 type FormulaHelper struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// How it is written: `mod("<atributo>")`.
+	// How it is written: `mod("<habilidade>")`.
 	Call string `protobuf:"bytes,1,opt,name=call,proto3" json:"call,omitempty"`
 	// What it gives: "number", "text" or "yes/no".
 	Returns string `protobuf:"bytes,2,opt,name=returns,proto3" json:"returns,omitempty"`

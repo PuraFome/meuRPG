@@ -226,7 +226,7 @@ export function entrySupport(e: TableEntry, nameOf: (key: string) => string, sub
     }
     case 'tableSpell': {
       const s = e.body.value;
-      parts.push(s.level === 0 ? 'Truque' : `${s.level}º círculo`);
+      parts.push(s.level === 0 ? 'Truque' : `${s.level}º nível`);
       break;
     }
     default:

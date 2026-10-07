@@ -65,7 +65,7 @@ describe('table rules', () => {
 
   it('refuses no method at all, and an empty house rule', () => {
     expect(draftProblem(base)).toBe('');
-    expect(draftProblem({ ...base, standardArray: false, pointBuy: false, rolled4d6: false, typed: false })).toBe('Marque pelo menos um jeito de fazer os atributos.');
+    expect(draftProblem({ ...base, standardArray: false, pointBuy: false, rolled4d6: false, typed: false })).toBe('Marque pelo menos um jeito de fazer as habilidades.');
     expect(draftProblem({ ...base, houseRules: ['ok', '  '] })).toBe('Escreva o lembrete ou remova a linha vazia.');
   });
 

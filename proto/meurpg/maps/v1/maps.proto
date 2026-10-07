@@ -1125,7 +1125,7 @@ message SceneAction {
   // empty for none, and then the app shows check_name.
   string name = 3;
   // The check's name in Portuguese: "Investigação", "Teste de Força",
-  // "Salvaguarda de Sabedoria".
+  // "Teste de resistência de Sabedoria".
   string check_name = 4;
   // The difficulty class, 1 to 30; 0 means none. The master always receives
   // it; a player only when the scene's `show_dc` is on (RN-20), and then

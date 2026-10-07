@@ -304,8 +304,8 @@ func TestEffectMenuFormulaHelpers(t *testing.T) {
 	m := c.EffectMenu()
 
 	samples := map[string]string{
-		"level()": "level()", `classLevel("<classe>")`: `classLevel("wizard")`, `mod("<atributo>")`: `mod("int")`,
-		`score("<atributo>")`: `score("dex")`, "prof()": "prof()", "floor(x)": `floor(level() / 2)`, "ceil(x)": `ceil(level() / 3)`,
+		"level()": "level()", `classLevel("<classe>")`: `classLevel("wizard")`, `mod("<habilidade>")`: `mod("int")`,
+		`score("<habilidade>")`: `score("dex")`, "prof()": "prof()", "floor(x)": `floor(level() / 2)`, "ceil(x)": `ceil(level() / 3)`,
 		"min(a, b)": "min(level(), 5)", "max(a, b)": "max(level(), 1)",
 	}
 	conditions := map[string]string{"armor()": `armor() == "none"`, "shield()": "shield()"}

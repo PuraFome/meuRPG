@@ -90,7 +90,7 @@ export function menuResponse(): GetEffectMenuResponse {
       { name: 'tools', values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }] },
       { name: 'tag_prefixes', values: [{ key: 'against:', namePt: 'Contra…' }, { key: 'about:', namePt: 'Sobre…' }] },
     ],
-    helpers: [{ call: 'mod("<atributo>")', returns: 'number', hintPt: 'O modificador.' }, { call: 'prof()', returns: 'number', hintPt: 'O bônus de proficiência.' }],
+    helpers: [{ call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' }, { call: 'prof()', returns: 'number', hintPt: 'O bônus de proficiência.' }],
     optionSets: [{ key: 'feature:fighting-style', namePt: 'Estilo de luta', choose: 1, options: [{ key: 'option:archery', namePt: 'Arquearia' }] }],
     classIndexes: ['wizard', 'cleric'],
     maxFeaturesPerClass: 60,

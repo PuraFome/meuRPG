@@ -53,7 +53,7 @@ test(
 );
 
 test(
-  '"Só as que posso aprender" de um Mago de nível 1 lista só truques e magias do 1º círculo da lista do Mago',
+  '"Só as que posso aprender" de um Mago de nível 1 lista só truques e magias do 1º nível da lista do Mago',
   { tag: ['@MR-045'] },
   async ({ browser }) => {
     const masterContext = await newSignedInContext(browser, 'Mestre Teste');
@@ -77,7 +77,7 @@ test(
       await expect(player.getByRole('switch', { name: 'Só as que posso aprender' })).toHaveAttribute('aria-checked', 'true');
       await expect(player.locator('.list__n')).toContainText(`${expected} magias`);
 
-      // Page through every row: only truques and 1º círculo.
+      // Page through every row: only truques and 1º nível.
       const rows = player.locator('button.row');
       const more = player.getByRole('button', { name: 'Mostrar mais' });
       while (await more.isVisible()) {
@@ -87,9 +87,9 @@ test(
       }
       await expect(player.locator('button.row')).toHaveCount(expected);
       const subs = await player.locator('button.row .row__sub').allTextContents();
-      expect(subs.every((s) => /^(Truque|1º círculo)/.test(s.trim()))).toBe(true);
+      expect(subs.every((s) => /^(Truque|1º nível)/.test(s.trim()))).toBe(true);
       expect(subs.some((s) => s.startsWith('Truque'))).toBe(true);
-      expect(subs.some((s) => s.startsWith('1º círculo'))).toBe(true);
+      expect(subs.some((s) => s.startsWith('1º nível'))).toBe(true);
 
       // The server agrees with the screen.
       const mine = await listSpellsRPC(player, table.campaignId, { characterId: table.characterId });

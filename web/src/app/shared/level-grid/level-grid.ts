@@ -31,7 +31,7 @@ export interface GridEdit {
 
 let nextGridId = 0;
 
-/** What a cell says when it is read aloud: "Nível 5, espaços de 2º círculo". */
+/** What a cell says when it is read aloud: "Nível 5, espaços de magia de 2º nível". */
 function fieldLabel(field: GridField, slot: number): string {
   switch (field) {
     case 'profBonus':
@@ -41,7 +41,7 @@ function fieldLabel(field: GridField, slot: number): string {
     case 'spells':
       return 'magias conhecidas';
     default:
-      return `espaços de ${circleLabel(slot)} círculo`;
+      return `espaços de magia de ${circleLabel(slot)} nível`;
   }
 }
 

@@ -59,7 +59,7 @@ describe('the "Magias" filters (MR-045)', () => {
     );
     expect(chips).toEqual([
       { id: 'class', label: 'Mago' },
-      { id: 'level', label: 'Truque, 2º círculo' },
+      { id: 'level', label: 'Truque, 2º nível' },
       { id: 'school', label: 'Evocação' },
       { id: 'mine', label: 'Só as que posso aprender' },
     ]);

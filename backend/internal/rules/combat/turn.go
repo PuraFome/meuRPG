@@ -21,7 +21,7 @@ type TurnState struct {
 }
 
 // Reason codes for a disabled option. They are codes, never text: the web
-// maps each to Portuguese copy ("Ação já usada", "Sem espaço de 2º círculo
+// maps each to Portuguese copy ("Ação já usada", "Sem espaço de 2º nível
 // ou maior").
 const (
 	// ReasonAttacksUsed: the Attack action made all its attacks (Extra

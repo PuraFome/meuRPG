@@ -59,7 +59,7 @@ describe('editor labels', () => {
       'extraAbilityBonuses.con',
     ]);
     expect(describeInvalidFields(invalid)).toBe(
-      'Básico: Nome do personagem, Raça. Atributos: Força, bônus manual de Constituição.',
+      'Básico: Nome do personagem, Raça. Habilidades: Força, bônus manual de Constituição.',
     );
   });
 

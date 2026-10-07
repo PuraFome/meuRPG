@@ -59,7 +59,7 @@
           @if (slotRows().length === 0) {
             <div class="mr-notice mr-notice--warning fixed" role="status">
               <mat-icon aria-hidden="true">info</mat-icon>
-              <p>Não há espaço de {{ s.level }}º círculo ou maior nesta ficha.</p>
+              <p>Não há espaço de {{ s.level }}º nível ou maior nesta ficha.</p>
             </div>
           } @else {
             <app-slot-picker class="fixed" [rows]="slotRows()" [chosen]="slot()" (pick)="pickSlot($event)" />

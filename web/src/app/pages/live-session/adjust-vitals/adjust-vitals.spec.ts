@@ -121,7 +121,7 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     adjustVitals.mockRejectedValueOnce(new Error('network'));
     adjustVitals.mockResolvedValue(pensantusVitals());
     const { el, fixture } = setup(pensantusVitals());
-    byLabel(el, 'Usar 1 espaço de 2º círculo').click();
+    byLabel(el, 'Usar 1 espaço de 2º nível').click();
     await settle(fixture);
 
     button(el, 'Salvar ajuste').click();
@@ -132,7 +132,7 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     const [first, second] = adjustVitals.mock.calls.map((c) => c[2]);
     expect(second).toBe(first);
 
-    byLabel(el, 'Usar 1 espaço de 2º círculo').click();
+    byLabel(el, 'Usar 1 espaço de 2º nível').click();
     await settle(fixture);
     button(el, 'Salvar ajuste').click();
     await settle(fixture);

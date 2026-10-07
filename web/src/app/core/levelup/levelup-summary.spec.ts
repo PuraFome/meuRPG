@@ -43,8 +43,8 @@ describe('changeRows: the summary of E8-15', () => {
     expect(row('attack')).toMatchObject({ before: '+6', after: '+7' });
     expect(row('prepared')).toMatchObject({ before: '7', after: '9', sub: 'Novas: Passo Nebuloso e Detectar Magia' });
     expect(row('cantrips')).toMatchObject({ before: '3', after: '4', sub: 'Novo: Prestidigitação' });
-    expect(row('slots-2')).toMatchObject({ label: 'Espaços de 2º círculo', before: '2', after: '3' });
-    expect(row('save-int')).toMatchObject({ label: 'Salvaguarda de Inteligência', before: '+6', after: '+7' });
+    expect(row('slots-2')).toMatchObject({ label: 'Espaços de 2º nível', before: '2', after: '3' });
+    expect(row('save-int')).toMatchObject({ label: 'Teste de resistência de Inteligência', before: '+6', after: '+7' });
     expect(row('passive-investigation')).toMatchObject({ label: 'Investigação passiva', before: '16', after: '17' });
   });
 

@@ -185,7 +185,7 @@ describe('a table class, race and background in the editor (E10-02 state 5)', ()
     cmp.fullForm.patchValue({ race: 'race:corujeiro@mesa', className: 'class:guardiao@mesa' });
     await settle(fixture);
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
-    expect(text).toContain('Dá +2 e +1 nos atributos que você escolher');
+    expect(text).toContain('Dá +2 e +1 nas habilidades que você escolher');
     await openStep(fixture, 'Perícias');
     expect((el.textContent ?? '').replace(/\s+/g, ' ')).toContain('O Guardião do Vale escolhe 2 perícias ao começar e dá proficiência nos testes de resistência de Força e Sabedoria.');
   });
@@ -345,11 +345,11 @@ describe('the spell step per class (E10-11 state 4)', () => {
   it("gives each class its own section: the wizard's list up to the 2nd circle, the cleric's up to the 1st", async () => {
     const { el } = await corvina();
     const headings = Array.from(el.querySelectorAll('.spell-section__title')).map((h) => h.textContent?.trim());
-    expect(headings).toEqual(['Mago · até o 2º círculo', 'Clérigo · até o 1º círculo']);
+    expect(headings).toEqual(['Mago · até o 2º nível de magia', 'Clérigo · até o 1º nível de magia']);
     const sections = Array.from(el.querySelectorAll('.spell-section'));
     const names = (s: Element) => Array.from(s.querySelectorAll('mat-checkbox')).map((c) => c.textContent?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '').replace(/\s+/g, ' ').trim());
-    expect(names(sections[0])).toEqual(['Raio de Fogo', 'Detectar Magia (1º círculo)', 'Escudo Arcano (1º círculo)', 'Lâmina de Nanquim (1º círculo)', 'Detectar Magia (1º círculo)', 'Escudo Arcano (1º círculo)', 'Lâmina de Nanquim (1º círculo)']);
-    expect(names(sections[1])).toEqual(['Bênção (1º círculo)', 'Detectar Magia (1º círculo)']);
+    expect(names(sections[0])).toEqual(['Raio de Fogo', 'Detectar Magia (1º nível)', 'Escudo Arcano (1º nível)', 'Lâmina de Nanquim (1º nível)', 'Detectar Magia (1º nível)', 'Escudo Arcano (1º nível)', 'Lâmina de Nanquim (1º nível)']);
+    expect(names(sections[1])).toEqual(['Bênção (1º nível)', 'Detectar Magia (1º nível)']);
   });
 
   it('greys out a spell that no class of the sheet lists, with the reason and a link to "Magias"', async () => {
@@ -385,9 +385,9 @@ describe('the spell step per class (E10-11 state 4)', () => {
     await settle(fixture);
     await openStep(fixture, 'Magias');
     const names = Array.from(el.querySelectorAll('.spell-section mat-checkbox')).map((c) => c.textContent?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '').replace(/\s+/g, ' ').trim());
-    expect(names).toContain('Escudo Arcano (1º círculo)');
-    expect(names).toContain('Lâmina de Nanquim (1º círculo)');
-    expect(names).not.toContain('Bênção (1º círculo)');
+    expect(names).toContain('Escudo Arcano (1º nível)');
+    expect(names).toContain('Lâmina de Nanquim (1º nível)');
+    expect(names).not.toContain('Bênção (1º nível)');
   });
 });
 
@@ -639,7 +639,7 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     const cleric = el.querySelectorAll('.spell-section')[1];
     const locked = Array.from(cleric.querySelectorAll('.granted__row')).map((r) => (r.textContent ?? '').replace(/lock|help_outline/g, '').replace(/\s+/g, ' ').trim());
     // Detectar Magia from level 1; Bênção waits for class level 5.
-    expect(locked).toEqual(['Detectar Magia (1º círculo)Domínio do CaminhoSempre preparada']);
+    expect(locked).toEqual(['Detectar Magia (1º nível)Domínio do CaminhoSempre preparada']);
     expect(cleric.querySelector('.granted mat-checkbox')).toBeNull();
     // Not said twice: the Mago's section has none, and no block of "Já na ficha" at creation.
     expect(el.querySelectorAll('.spell-section')[0].querySelector('.granted')).toBeNull();

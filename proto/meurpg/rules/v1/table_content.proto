@@ -332,7 +332,7 @@ message TableSpellTarget {
   TableSpellTargetKind kind = 1;
   // CREATURES: how many at the spell's own circle (2 or more), and how many more
   // for each circle above it. CREATURE: only `per_slot_level`, how many more for
-  // each circle above ("uma criatura, mais uma por círculo", as Hold Person).
+  // each circle above ("uma criatura, mais uma por nível", as Hold Person).
   int32 count = 2;
   int32 per_slot_level = 3;
   // AREA: the shape and the size, in feet, in steps of 5 (1,5 m); 5 to 300.
@@ -943,7 +943,7 @@ message EffectOptionSet {
 
 // FormulaHelper is a function a formula may call.
 message FormulaHelper {
-  // How it is written: `mod("<atributo>")`.
+  // How it is written: `mod("<habilidade>")`.
   string call = 1;
   // What it gives: "number", "text" or "yes/no".
   string returns = 2;

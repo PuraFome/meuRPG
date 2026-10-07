@@ -325,7 +325,7 @@ describe('MapEditor', () => {
       button('Cobertura').click();
       await settle();
       expect(text()).toContain('Graus de cobertura');
-      expect(text()).toContain('+2 na CA e nas salvaguardas de Destreza. Dá para passar por cima.');
+      expect(text()).toContain('+2 na CA e nos testes de resistência de Destreza. Dá para passar por cima.');
       radio('Três quartos').click();
       surface()!.stroke.emit({ centers: [{ col: 2, row: 2 }], erase: false });
       button('Luz').click();

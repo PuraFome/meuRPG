@@ -147,7 +147,7 @@ describe('SpellEditor', () => {
     const level = field(el, 'table_spell.level') as HTMLSelectElement;
     const options = Array.from(level.options).map((o) => `${o.text}${o.disabled ? ' (off)' : ''}`);
     expect(options[0]).toBe('Truque (off)');
-    expect(options[1]).toBe('1º círculo');
+    expect(options[1]).toBe('1º nível');
   });
 
   it('turns the save button off, with the reason written, while the archive question is open', () => {
@@ -159,10 +159,10 @@ describe('SpellEditor', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('keeps "Mais por círculo" folded under "Uma criatura" until asked, and never offers it to a truque', async () => {
+  it('keeps "Mais por nível de espaço" folded under "Uma criatura" until asked, and never offers it to a truque', async () => {
     const { fixture, el } = setup(true);
     expect(el.querySelector('[data-field="table_spell.target.per_slot_level"]')).toBeNull();
-    click(el, 'Mais criaturas por círculo');
+    click(el, 'Mais criaturas por nível de espaço');
     await settle(fixture);
     expect(el.querySelector('[data-field="table_spell.target.per_slot_level"]')).not.toBeNull();
     const level = field(el, 'table_spell.level') as HTMLSelectElement;
@@ -193,6 +193,6 @@ describe('SpellEditor', () => {
     expect(Array.from(ability.options).map((o) => o.text.trim())).toEqual(['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma']);
     const type = field(el, 'table_spell.damage[0].damage_type_key') as HTMLSelectElement;
     expect(Array.from(type.options).map((o) => o.text.trim()).sort()).toEqual(['Fogo', 'Necrótico']);
-    expect(text(el)).toContain('Em círculos maiores (opcional, só texto)');
+    expect(text(el)).toContain('Em níveis superiores (opcional, só texto)');
   });
 });

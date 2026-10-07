@@ -14,7 +14,7 @@ import { newSignedInContext } from './support';
 /** Picks a check in the add form: the kind, then the check's name in the list. */
 async function addAction(
   master: Page,
-  action: { kind: 'Perícia' | 'Teste de atributo' | 'Salvaguarda'; check: string; name?: string; dc?: string },
+  action: { kind: 'Perícia' | 'Teste de habilidade' | 'Teste de resistência'; check: string; name?: string; dc?: string },
 ): Promise<void> {
   await master.getByRole('button', { name: 'Adicionar ação' }).click();
   const form = master.getByRole('form', { name: 'Nova ação' });
@@ -70,7 +70,7 @@ test(
       // A DC outside 1 to 30 is said under its field, and the field takes focus.
       await master.getByRole('button', { name: 'Adicionar ação' }).click();
       const form = master.getByRole('form', { name: 'Nova ação' });
-      await form.getByRole('radio', { name: 'Salvaguarda' }).check();
+      await form.getByRole('radio', { name: 'Teste de resistência' }).check();
       await form.getByRole('combobox').selectOption({ label: 'Constituição' });
       await form.getByLabel('Nome (opcional)').fill('Resistir ao cheiro de fumaça');
       await form.getByLabel('CD (opcional)').fill('31');
@@ -137,13 +137,13 @@ test(
       const typed = player.getByRole('dialog', { name: 'Rolar Resistir ao cheiro de fumaça' });
       await typed.getByRole('button', { name: 'Digitar o resultado' }).click();
       await expect(typed.getByRole('heading', { name: 'Digite o resultado do dado' })).toBeVisible();
-      await typed.getByLabel(/Role 1d20 para Salvaguarda de Constituição/).fill('27');
+      await typed.getByLabel(/Role 1d20 para Teste de resistência de Constituição/).fill('27');
       await expect(typed.getByRole('alert')).toContainText('Digite um número de 1 a 20');
       await expect(typed.getByRole('button', { name: 'Confirmar' })).toHaveAttribute('aria-disabled', 'true');
-      await typed.getByLabel(/Role 1d20 para Salvaguarda de Constituição/).fill('3');
+      await typed.getByLabel(/Role 1d20 para Teste de resistência de Constituição/).fill('3');
       await expect(typed.getByRole('status')).toContainText('3 + 3 = 6 · dado físico');
       await typed.getByRole('button', { name: 'Confirmar 3' }).click();
-      await expect(typed.getByText('Seu total em Salvaguarda de Constituição')).toBeVisible();
+      await expect(typed.getByText('Seu total em Teste de resistência de Constituição')).toBeVisible();
       await typed.getByRole('button', { name: 'Voltar à cena' }).click();
       await expect(rows.nth(2)).toContainText('Rolada');
       // A second roll of the same action is not offered.

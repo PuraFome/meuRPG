@@ -65,7 +65,7 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
     const nums = Array.from(el.querySelectorAll('.num')).map((n) => flat(n));
     expect(nums).toEqual(['CA 11', 'PV 59', 'Deslocamento 12 m', 'Força 19', 'Destreza 8', 'Constituição 16', 'Inteligência 5', 'Sabedoria 7', 'Carisma 7']);
     // The narrowest phones read them as one line instead.
-    expect(flat(el.querySelector('.nums__line'))).toBe('CA 11 · PV 59 · 12 m e os atributos vêm da criatura.');
+    expect(flat(el.querySelector('.nums__line'))).toBe('CA 11 · PV 59 · 12 m e as habilidades vêm da criatura.');
   });
 
   it('says the attacks that come along and that the bestiary\'s creature does not change', async () => {

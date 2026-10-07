@@ -86,7 +86,7 @@ func (x *deriver) abilities() {
 		}
 		x.d.Hints = append(x.d.Hints, Hint{
 			Source: x.race.Key, Mode: "note",
-			TextPT: fmt.Sprintf("%s: some +1 em %d atributos à escolha (%s) nos bônus manuais.", x.c.namePT(x.race.Key), ch.Choose, strings.Join(names, ", ")),
+			TextPT: fmt.Sprintf("%s: some +1 em %d habilidades à escolha (%s) nos bônus manuais.", x.c.namePT(x.race.Key), ch.Choose, strings.Join(names, ", ")),
 		})
 	}
 }
@@ -376,5 +376,5 @@ func (x *deriver) checkRaceBonus() {
 	for i, v := range want {
 		parts[i] = signed(v)
 	}
-	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: distribua %s em atributos diferentes, à sua escolha, nos bônus manuais.", x.c.namePT(x.race.Key), strings.Join(parts, " e "))
+	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: distribua %s em habilidades diferentes, à sua escolha, nos bônus manuais.", x.c.namePT(x.race.Key), strings.Join(parts, " e "))
 }

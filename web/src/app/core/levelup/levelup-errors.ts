@@ -56,11 +56,11 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
     case LevelUpRefusalReason.LOCKED_FIELD:
       return 'Algo que o nível não muda ficou diferente na ficha. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
-      return 'Este nível não dá aumento de atributo.';
+      return 'Este nível não dá incremento no valor de habilidade.';
     case LevelUpRefusalReason.ABILITY_SHAPE:
-      return 'O aumento é de +2 em um atributo, ou de +1 em dois.';
+      return 'O aumento é de +2 em uma habilidade, ou de +1 em duas.';
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
-      return 'Nenhum atributo passa de 20. Escolha outro.';
+      return 'Nenhuma habilidade passa de 20. Escolha outra.';
     case LevelUpRefusalReason.HIT_POINTS:
       return 'O resultado do dado de vida está fora do que o dado permite.';
     case LevelUpRefusalReason.HIT_POINTS_RULE:

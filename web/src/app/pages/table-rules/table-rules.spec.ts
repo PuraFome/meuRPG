@@ -105,7 +105,7 @@ describe('TableRulesPage', () => {
     expect(rows).toContain('Combate Começa com mapa');
     expect(rows).toContain('Névoa de guerra nos mapas novos Ligada');
     expect(rows).toContain('Pontos de vida ao subir de nível O jogador escolhe');
-    expect(rows).toContain('Atributos de uma ficha nova Conjunto padrão, Compra por pontos, 4d6, descartando o menor, Digitar os valores');
+    expect(rows).toContain('Habilidades de uma ficha nova Conjunto padrão, Compra por pontos, 4d6, descartando o menor, Digitar os valores');
     expect(rows).toContain('Experiência Por inimigos');
     expect(text(el)).toContain('Personalizado');
     expect(text(el)).toContain('Beber uma poção é uma ação bônus');
@@ -117,7 +117,7 @@ describe('TableRulesPage', () => {
     const { el } = await setup();
     const titles = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
     expect(titles[0]).toBe('Estilo da mesa');
-    expect(titles).toEqual(expect.arrayContaining(['Pontos de vida ao subir de nível', 'Atributos de uma ficha nova', 'Acertos críticos', 'Testes contra a morte', 'Dados', 'Combate e névoa', 'Experiência', 'Lembretes da mesa', 'Grade dos mapas']));
+    expect(titles).toEqual(expect.arrayContaining(['Pontos de vida ao subir de nível', 'Habilidades de uma ficha nova', 'Acertos críticos', 'Testes contra a morte', 'Dados', 'Combate e névoa', 'Experiência', 'Lembretes da mesa', 'Grade dos mapas']));
     expect(text(el)).toContain('Mirathel · Estas escolhas valem para cada ficha e cada combate da campanha.');
     // The saved rules do not match any preset: "Personalizado" is the one on, and cannot be chosen.
     expect(radio(el, 'Personalizado').checked).toBe(true);
@@ -139,7 +139,7 @@ describe('TableRulesPage', () => {
     expect(cards.slice(0, 3).every((c) => c.textContent?.includes('SRD 5.2.1 (regras de 2024)'))).toBe(true);
     expect(cards[3].textContent).not.toContain('2024');
     expect(cards[3].textContent).toContain('de 3 a 18, antes do bônus da raça');
-    expect(text(el)).toContain('15, 14, 13, 12, 10 e 8, um para cada atributo.');
+    expect(text(el)).toContain('15, 14, 13, 12, 10 e 8, um para cada habilidade.');
     expect(text(el)).toContain('27 pontos; cada valor vai de 8 a 15.');
     expect(el.querySelector('app-method-cards')?.parentElement?.querySelector('a[href="/credits"]')).not.toBeNull();
   });
@@ -194,7 +194,7 @@ describe('TableRulesPage', () => {
     const typed = Array.from(el.querySelectorAll<HTMLInputElement>('app-method-cards input')).at(-1)!;
     typed.click();
     await settle(fixture);
-    expect(text(el)).toContain('Marque pelo menos um jeito de fazer os atributos.');
+    expect(text(el)).toContain('Marque pelo menos um jeito de fazer as habilidades.');
     button(el, 'Salvar regras').click();
     await settle(fixture);
     expect(set).not.toHaveBeenCalled();

@@ -36,8 +36,8 @@ describe('scene actions', () => {
     expect(actionSubtitle(named)).toBe('Investigação');
     expect(actionTitle(bare)).toBe('Percepção');
     expect(actionSubtitle(bare)).toBe('Perícia');
-    expect(actionSubtitle({ name: '', checkName: 'Teste de Força', key: 'ability:str' })).toBe('Teste de atributo');
-    expect(checkKindLabel('save:wis')).toBe('Salvaguarda');
-    expect(CHECK_KINDS.map((k) => k.label)).toEqual(['Perícia', 'Teste de atributo', 'Salvaguarda']);
+    expect(actionSubtitle({ name: '', checkName: 'Teste de Força', key: 'ability:str' })).toBe('Teste de habilidade');
+    expect(checkKindLabel('save:wis')).toBe('Teste de resistência');
+    expect(CHECK_KINDS.map((k) => k.label)).toEqual(['Perícia', 'Teste de habilidade', 'Teste de resistência']);
   });
 });

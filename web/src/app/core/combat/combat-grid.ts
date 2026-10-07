@@ -68,8 +68,8 @@ export function stepSquare(from: Square, key: string, columns: number, rows: num
   };
 }
 
-/** The ordinal circle: "2º círculo", with a no-break space so a line never
- * ends on "1º" with "círculo" alone on the next. */
+/** The ordinal spell level: "2º nível", with a no-break space so a line never
+ * ends on "1º" with "nível" alone on the next. */
 export function circleLabel(level: number): string {
-  return level === 0 ? 'Truque' : `${level}º\u00a0círculo`;
+  return level === 0 ? 'Truque' : `${level}º\u00a0nível`;
 }

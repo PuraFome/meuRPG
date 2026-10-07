@@ -89,7 +89,7 @@ export function filterChips(filter: SpellFilter, className: (key: string) => str
     chips.push({ id: 'class', label: className(filter.classKey) });
   }
   if (filter.levels.length > 0) {
-    chips.push({ id: 'level', label: filter.levels.map((l) => (l === 0 ? 'Truque' : `${l}º círculo`)).join(', ') });
+    chips.push({ id: 'level', label: filter.levels.map((l) => (l === 0 ? 'Truque' : `${l}º nível`)).join(', ') });
   }
   if (filter.schoolKey) {
     chips.push({ id: 'school', label: SCHOOLS.find((s) => s.key === filter.schoolKey)?.label ?? '' });

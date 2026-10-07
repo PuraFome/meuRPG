@@ -153,18 +153,18 @@ export function skillProficiencyLabel(proficiency: SkillProficiency): string {
 }
 
 /**
- * "1º círculo", "9º círculo" — "círculo" is the pt-BR D&D term for a
- * spell's level (never "nível", which this app reserves for a
- * character's own level). A cantrip (level 0) is a "Truque", never called
- * a "círculo" (integrator fix). Used consistently on both the sheet (spell
+ * "1º nível", "9º nível" — the pt-BR D&D term for a spell's level
+ * (where it could be mistaken for the character's own level, the copy says
+ * "nível da magia" or "nível do personagem"). A cantrip (level 0) is a
+ * "Truque", never called a "nível" (integrator fix). Used consistently on both the sheet (spell
  * slots) and the editor (each spell option's level).
  */
 export function spellLevelLabel(level: number): string {
-  return level === 0 ? 'Truque' : `${level}º círculo`;
+  return level === 0 ? 'Truque' : `${level}º nível`;
 }
 
 /**
- * "1º círculo: 4 · 2º círculo: 2" — every spell level with at least one
+ * "1º nível: 4 · 2º nível: 2" — every spell level with at least one
  * slot, in order, index 0 = level 1 (`FullSheetVm.spellSlots`'s own
  * contract). A plain string instead of one `<span>` per level in the
  * template: Angular inserts no whitespace between sibling elements, so a

@@ -46,7 +46,7 @@ interface Tile {
         }
       </div>
 
-      <ul class="abilities" aria-label="Atributos">
+      <ul class="abilities" aria-label="Habilidades">
         @for (a of c.abilities; track a.ability) {
           <li class="ability">
             <span class="ability__n">{{ a.namePt }}</span>
@@ -143,7 +143,7 @@ export class StatBlock {
     const out: { term: string; parts: { text: string; en?: boolean }[] }[] = [];
     const line = (term: string, text: string, en = false) => out.push({ term, parts: [{ text, en }] });
     if (c.savingThrows.length > 0) {
-      line('Salvaguardas', c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
+      line('Testes de resistência', c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
     }
     if (c.skills.length > 0) {
       line('Perícias', c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));

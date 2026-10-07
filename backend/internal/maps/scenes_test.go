@@ -26,7 +26,7 @@ import (
 // live here because this harness has the maps, the characters and play
 // together. Pensantus's numbers are the golden file's (rules/testdata/golden):
 // Investigação +6 (passive 16), Percepção +1 (passive 11), a Teste de Força +1
-// and the Salvaguarda de Sabedoria +3.
+// and the Teste de resistência de Sabedoria +3.
 
 func newKey() string { return uuid.New().String() }
 
@@ -244,7 +244,7 @@ func actionByID(scene *playv1.OpenSceneInfo, id string) *playv1.SceneActionView 
 }
 
 // MR-015, first criterion: the master picks Investigação, a Teste de Força
-// and a Salvaguarda de Sabedoria; Pensantus's player reads the open scene and
+// and a "Teste de resistência de Sabedoria"; Pensantus's player reads the open scene and
 // gets his own bonuses, the golden numbers, and no DC. Another player gets
 // their own character's numbers.
 func TestMR015_PlayerSeesTheMastersActionsWithTheirBonus(t *testing.T) {
@@ -265,7 +265,7 @@ func TestMR015_PlayerSeesTheMastersActionsWithTheirBonus(t *testing.T) {
 	}{
 		{invest.GetId(), "Procurar pistas", 15, "Investigação"},
 		{force.GetId(), "", 0, "Teste de Força"},
-		{wis.GetId(), "", 12, "Salvaguarda de Sabedoria"},
+		{wis.GetId(), "", 12, "Teste de resistência de Sabedoria"},
 	} {
 		a := actionByID(opened, want.id)
 		if a == nil || a.GetName() != want.name || a.GetDc() != want.dc || a.GetCheckName() != want.check || a.Bonus != nil || a.Passive != nil {
@@ -777,7 +777,7 @@ func TestMR015_SceneActionRules(t *testing.T) {
 		t.Errorf("clearing the name and the DC = %v, %v", res, err)
 	}
 	res, err = s.update(s.master, one, func(r *mapsv1.UpdateSceneActionRequest) { r.Key = proto.String("save:con"); r.Dc = proto.Int32(14) })
-	if err != nil || res.GetAction().GetKey() != "save:con" || res.GetAction().GetCheckName() != "Salvaguarda de Constituição" || res.GetAction().GetDc() != 14 {
+	if err != nil || res.GetAction().GetKey() != "save:con" || res.GetAction().GetCheckName() != "Teste de resistência de Constituição" || res.GetAction().GetDc() != 14 {
 		t.Errorf("changing the key and the DC = %v, %v", res, err)
 	}
 	_, err = s.update(s.master, one, func(*mapsv1.UpdateSceneActionRequest) {})

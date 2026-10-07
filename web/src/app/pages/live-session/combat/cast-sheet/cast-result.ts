@@ -9,7 +9,7 @@ export interface SlotAfter {
   readonly level: number;
   readonly total: number | null;
   readonly used: number;
-  /** "Espaços de 1º círculo: 0 livres de 4". */
+  /** "Espaços de 1º nível: 0 livres de 4". */
   readonly text: string;
 }
 
@@ -106,7 +106,7 @@ export class CastResult {
 })
 export class CastSlots {
   readonly after = input<SlotAfter | null>(null);
-  /** "Escudo Arcano indisponível: sem espaço de 1º círculo." */
+  /** "Escudo Arcano indisponível: sem espaço de 1º nível." */
   readonly shieldLost = input('');
   /** Concentration and what the cast spent, one line each. */
   readonly notes = input<readonly string[]>([]);

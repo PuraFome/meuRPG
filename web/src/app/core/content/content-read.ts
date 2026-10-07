@@ -142,7 +142,7 @@ export function readEntry(entry: TableEntry, nameOf: NameOf, subclassLevelOf: (c
       const r = entry.body.value;
       const choice = r.choiceBonuses.length > 0 ? `${r.choiceBonuses.map((n) => `+${n}`).join(' e ')} à escolha` : '';
       const fixed = bonusText(bonusesOf(r.abilityBonuses), abilitiesOf(nameOf));
-      rows.push({ label: 'Atributos', value: [fixed === 'Nenhum' ? '' : fixed, choice].filter((x) => x).join(', ') || 'Nenhum' });
+      rows.push({ label: 'Habilidades', value: [fixed === 'Nenhum' ? '' : fixed, choice].filter((x) => x).join(', ') || 'Nenhum' });
       rows.push({ label: 'Tamanho', value: SIZE_WORDS[r.size] ?? r.size });
       rows.push({ label: 'Deslocamento', value: metres(r.speedFt) });
       if (r.darkvisionFt > 0) rows.push({ label: 'Visão no escuro', value: metres(r.darkvisionFt) });
@@ -155,7 +155,7 @@ export function readEntry(entry: TableEntry, nameOf: NameOf, subclassLevelOf: (c
       const s = entry.body.value;
       if (s.raceKey) rows.push({ label: 'Sub-raça de', value: nameOf(s.raceKey) });
       const fixed = bonusText(bonusesOf(s.abilityBonuses), abilitiesOf(nameOf));
-      rows.push({ label: 'Atributos', value: fixed });
+      rows.push({ label: 'Habilidades', value: fixed });
       if (s.traits.length > 0) sections.push({ title: 'Traços', items: s.traits.map((t) => featureItem(t, nameOf)) });
       break;
     }
@@ -208,7 +208,7 @@ export function readEntry(entry: TableEntry, nameOf: NameOf, subclassLevelOf: (c
         sections.push({
           title: 'Tabela dos níveis',
           items: c.levels.map((lv, i) => {
-            const marks = [c.asiLevels.includes(i + 1) ? 'Aumento de atributo' : '', choose === i + 1 ? 'Escolha de subclasse' : ''].filter((x) => x !== '');
+            const marks = [c.asiLevels.includes(i + 1) ? 'Incremento no Valor de Habilidade' : '', choose === i + 1 ? 'Escolha de subclasse' : ''].filter((x) => x !== '');
             return { title: `Nível ${i + 1}`, text: levelLine(lv, c.casting?.kind === 'pact', marks) };
           }),
         });

@@ -1591,8 +1591,8 @@
       },
       {
         "Key": "feature:class-gen-full-prepared-ability-score-improvement-1@mesa",
-        "Name": "Aumento de Atributo",
-        "NamePT": "Aumento de Atributo",
+        "Name": "Incremento no Valor de Habilidade",
+        "NamePT": "Incremento no Valor de Habilidade",
         "Source": "class:gen-full-prepared@mesa",
         "Level": 4,
         "SourcePT": "Classe full-prepared 4",
@@ -1627,8 +1627,8 @@
       },
       {
         "Key": "feature:class-gen-full-prepared-ability-score-improvement-2@mesa",
-        "Name": "Aumento de Atributo",
-        "NamePT": "Aumento de Atributo",
+        "Name": "Incremento no Valor de Habilidade",
+        "NamePT": "Incremento no Valor de Habilidade",
         "Source": "class:gen-full-prepared@mesa",
         "Level": 8,
         "SourcePT": "Classe full-prepared 8",
@@ -2496,8 +2496,8 @@
       },
       {
         "Key": "feature:class-gen-full-prepared-ability-score-improvement-1@mesa",
-        "Name": "Aumento de Atributo",
-        "NamePT": "Aumento de Atributo",
+        "Name": "Incremento no Valor de Habilidade",
+        "NamePT": "Incremento no Valor de Habilidade",
         "Source": "class:gen-full-prepared@mesa",
         "Level": 4,
         "SourcePT": "Classe full-prepared 4",

@@ -348,7 +348,7 @@ func TestDeriveEachRace(t *testing.T) {
 		{"race:gnome", "subrace:rock-gnome", 25, true, map[Ability]int{INT: 2, CON: 1}, 6, nil},
 		{"race:half-elf", "", 30, true, map[Ability]int{CHA: 2}, 6, func(t *testing.T, d Derived) {
 			// The two +1 are the player's choice: a reminder, not a number.
-			if h, ok := hintFrom(d, "race:half-elf"); !ok || !strings.Contains(h.TextPT, "+1 em 2 atributos") {
+			if h, ok := hintFrom(d, "race:half-elf"); !ok || !strings.Contains(h.TextPT, "+1 em 2 habilidades") {
 				t.Errorf("half-elf hint = %+v", h)
 			}
 		}},

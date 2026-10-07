@@ -56,7 +56,7 @@ const plain = (text: string) => text.replace(/ /g, ' ');
 describe('Sono in the log (E8-03)', () => {
   it("gives the master the whole account: the dice, each creature from the lowest hit points up, what is left", () => {
     const line = logLine(sleep(true), '', master)!;
-    expect(plain(line.text)).toBe(' conjura Sono (1º círculo)');
+    expect(plain(line.text)).toBe(' conjura Sono (1º nível)');
     const card = line.card!;
     expect(card.roll).toBe('5d8 (2, 4, 1, 5, 3) = 15');
     expect(card.rows.map((r) => [r.label, r.hitPoints, plain(r.math), r.word, r.icon])).toEqual([
@@ -64,7 +64,7 @@ describe('Sono in the log (E8-03)', () => {
       ['Capitão Goblin', '27 PV', '27 é mais que 8 restantes', 'Não afetado', 'block'],
     ]);
     expect(card.changeFor).toEqual([{ id: 'g1', label: 'Goblin 1' }]);
-    expect(plain(card.slot)).toBe('Pensantus gastou um espaço de 1º círculo.');
+    expect(plain(card.slot)).toBe('Pensantus gastou um espaço de 1º nível.');
     expect(card.summary).toContain('Goblin 1 (7 PV) adormeceu');
   });
 
