@@ -608,6 +608,34 @@ func (s *Service) publishEncounterChanged(ctx context.Context, campaignID string
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Everyone: true}, Message: msg})
 }
 
+// publishEncounterChangedFor is publishEncounterChanged for a change made only to the
+// combatants ids: when all of them are hidden the players' view did not change, so the hint
+// goes to the master alone and the players cannot count the master's edits of what they
+// do not see.
+func (s *Service) publishEncounterChangedFor(ctx context.Context, campaignID string, d *encounterData, ids ...string) {
+	if allHidden(d.cs, ids) {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+		return
+	}
+	s.publishEncounterChanged(ctx, campaignID, d.enc)
+}
+
+// allHidden says whether every id is a combatant of cs that is hidden now.
+func allHidden(cs []playdb.Combatant, ids []string) bool {
+	if len(ids) == 0 {
+		return false
+	}
+	return !slices.ContainsFunc(ids, func(id string) bool {
+		i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id })
+		return i < 0 || !cs[i].Hidden
+	})
+}
+
+// changedFor is the usual publish for a change made only to the combatants ids.
+func (s *Service) changedFor(campaignID string, ids ...string) func(ctx context.Context, d *encounterData) {
+	return func(ctx context.Context, d *encounterData) { s.publishEncounterChangedFor(ctx, campaignID, d, ids...) }
+}
+
 // publishTurnChanged tells who is on turn: the master the real combatant,
 // the players what they may see (a hidden one's turn is "the master's"; on a
 // map with the fog of war, so is the turn of an NPC the player does not see).

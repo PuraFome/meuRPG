@@ -113,7 +113,7 @@ func (s *Service) SetCombatantConditions(
 		return nil, s.dbError(ctx, "set conditions", err)
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishEncounterChangedFor(ctx, m.CampaignID, d, combID)
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combID })
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
 		if i >= 0 && endConcentration && d.cs[i].UserID != nil {

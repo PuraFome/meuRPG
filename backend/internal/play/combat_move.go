@@ -793,7 +793,7 @@ func (s *Service) SetCombatantSide(
 	if err != nil {
 		return nil, s.dbError(ctx, "set a combatant's side", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
 	if err != nil {
 		return nil, err
 	}
@@ -850,7 +850,7 @@ func (s *Service) SetCombatantCover(
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a combatant's cover", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
 	if err != nil {
 		return nil, err
 	}

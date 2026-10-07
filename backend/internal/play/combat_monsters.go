@@ -154,13 +154,13 @@ func (s *Service) AddMonsters(
 		}
 		done = *ev.Monsters
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
-	if err != nil {
-		return nil, err
-	}
 	ids := make([]string, len(done.Items))
 	for i, it := range done.Items {
 		ids[i] = it.ID
+	}
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, ids...))
+	if err != nil {
+		return nil, err
 	}
 	return connect.NewResponse(&playv1.AddMonstersResponse{Encounter: out, CombatantIds: ids}), nil
 }
