@@ -1,4 +1,3 @@
-// Finding U16-03 in review/unit-16-web-content-campaigns.md
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
@@ -30,7 +29,7 @@ const opt = (
 
 const list = (): OptionSwitchEntry[] => [];
 
-describe('Review16 U16-03: bulk off while the class filter loads', () => {
+describe('ContentOptions bulk switches with the class filter', () => {
   const originalMatchMedia = window.matchMedia;
   afterEach(() => {
     window.matchMedia = originalMatchMedia;
