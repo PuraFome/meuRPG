@@ -1124,7 +1124,7 @@ func TestShowingAFogMapImageAgainReusesItsCopy(t *testing.T) {
 
 	// No open session.
 	g0 := count()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, err := show(false)
 		wantBlocked(t, "SetShownImage without a session", err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
 	}

@@ -16,7 +16,7 @@ func grayPNG(t *testing.T, w, h, depth int, trns bool) []byte {
 	t.Helper()
 	bpp := depth / 8
 	row := make([]byte, 1+w*bpp)
-	for x := 0; x < w; x++ {
+	for x := range w {
 		v := uint16(x * 65535 / w) //nolint:gosec // test gradient
 		if depth == 16 {
 			binary.BigEndian.PutUint16(row[1+2*x:], v)
@@ -26,13 +26,13 @@ func grayPNG(t *testing.T, w, h, depth int, trns bool) []byte {
 	}
 	var z bytes.Buffer
 	zw, _ := zlib.NewWriterLevel(&z, zlib.BestSpeed)
-	for y := 0; y < h; y++ {
+	for range h {
 		_, _ = zw.Write(row)
 	}
 	_ = zw.Close()
 	ihdr := binary.BigEndian.AppendUint32(nil, uint32(w)) //nolint:gosec // test
 	ihdr = binary.BigEndian.AppendUint32(ihdr, uint32(h)) //nolint:gosec // test
-	ihdr = append(ihdr, byte(depth), 0, 0, 0, 0)
+	ihdr = append(ihdr, byte(depth), 0, 0, 0, 0)          //nolint:gosec // test: 8 or 16
 	out := []byte("\x89PNG\r\n\x1a\n")
 	out = append(out, pngChunk("IHDR", ihdr)...)
 	if trns {

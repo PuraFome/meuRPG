@@ -324,12 +324,12 @@ func workingSize(sw, sh int) (w, h int) {
 	return sw, sh
 }
 
-// tilePixels is the pixel rectangle of tile (tx, ty) in a W x H working copy. A grid
+// tilePixels is the pixel rectangle of tile (tx, ty) in a width x height working copy. A grid
 // finer than the image's pixels leaves some tiles with none.
-func tilePixels(g grid.Grid, W, H, tx, ty int) (x0, x1, y0, y1 int) {
+func tilePixels(g grid.Grid, width, height, tx, ty int) (x0, x1, y0, y1 int) {
 	c0, c1 := tx*tileSquares, min((tx+1)*tileSquares, g.Columns)
 	r0, r1 := ty*tileSquares, min((ty+1)*tileSquares, g.Rows)
-	return pixelAt(c0, g.Columns, W), pixelAt(c1, g.Columns, W), pixelAt(r0, g.Rows, H), pixelAt(r1, g.Rows, H)
+	return pixelAt(c0, g.Columns, width), pixelAt(c1, g.Columns, width), pixelAt(r0, g.Rows, height), pixelAt(r1, g.Rows, height)
 }
 
 // errTooBig is the refusal of a stored image whose decode would need more than decodeLimit.

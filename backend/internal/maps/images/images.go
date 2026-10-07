@@ -349,23 +349,31 @@ func pngBytesPerPixel(m color.Model, pi pngInfo) float64 {
 	switch m {
 	case color.GrayModel:
 		if pi.transparency {
-			if pi.bitDepth == 16 {
-				return 12 // NRGBA64 (8 bytes) and the 8-bit copy (4)
+			if pi.bitDepth == bits16 {
+				return bytesNRGBA64Plus8bit
 			}
-			return 4 // NRGBA
+			return bytesNRGBA
 		}
 		return 1
 	case color.Gray16Model:
 		if pi.transparency {
-			return 12
+			return bytesNRGBA64Plus8bit
 		}
-		return 6 // Gray16 (2 bytes) and the 8-bit copy (4)
+		return bytesGray16Plus8bit
 	case color.RGBAModel, color.NRGBAModel:
-		return 4
+		return bytesNRGBA
 	default: // 16-bit color (8 bytes, and 4 more for the 8-bit copy Process stores), or something unexpected: the worst case
-		return 12
+		return bytesNRGBA64Plus8bit
 	}
 }
+
+// The bytes a pixel takes once decoded, by the type png.Decode returns.
+const (
+	bits16               = 16
+	bytesNRGBA           = 4
+	bytesGray16Plus8bit  = 6  // Gray16 (2 bytes) and the 8-bit copy (4)
+	bytesNRGBA64Plus8bit = 12 // NRGBA64 (8 bytes) and the 8-bit copy (4)
+)
 
 // pngInfo is what the cost of decoding a PNG needs from the file that the
 // decoder's config does not say.
