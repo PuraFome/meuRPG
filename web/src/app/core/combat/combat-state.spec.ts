@@ -10,11 +10,39 @@ describe('CombatState', () => {
     combatant({ id: 'b', label: 'B' }),
   ];
 
-  it('lets a copy with a lower revision replace the one on screen (a fog player counts what they saw)', () => {
+  it('drops an answer with an older revision than the copy on screen', () => {
+    const state = new CombatState();
+    state.apply(encounter({ revision: 5, round: 3 }));
+    state.apply(encounter({ revision: 4, round: 2 }));
+    expect(state.encounter()?.round).toBe(3);
+    state.apply(encounter({ revision: 6, round: 4 }));
+    expect(state.encounter()?.round).toBe(4);
+  });
+
+  it('drops an older answer that arrives after a newer read, and does not count it', () => {
+    const state = new CombatState();
+    state.apply(encounter({ revision: 5, round: 2 }));
+    const read = state.beginRead();
+    state.apply(encounter({ revision: 5, round: 2 })); // an answer applied while the read is in flight
+    const late = state.beginRead();
+    expect(state.applyRead(late, encounter({ revision: 8, round: 4 }))).toBe(true);
+    state.apply(encounter({ revision: 7, round: 3 }));
+    expect(state.encounter()?.round).toBe(4);
+    // The dropped answer did not count: the read that began after the last applied answer still applies.
+    const next = state.beginRead();
+    expect(state.applyRead(next, encounter({ revision: 9, round: 5 }))).toBe(true);
+    expect(state.applyRead(read, encounter({ revision: 5 }))).toBe(false);
+  });
+
+  it('applies a read with a lower revision (a fog player counts what they saw), then compares answers to it', () => {
     const state = new CombatState();
     state.apply(encounter({ revision: 40, round: 2 }));
-    state.apply(encounter({ revision: 3, round: 3 }));
+    expect(state.applyRead(state.beginRead(), encounter({ revision: 3, round: 3 }))).toBe(true);
     expect(state.encounter()?.round).toBe(3);
+    state.apply(encounter({ revision: 4, round: 4 }));
+    expect(state.encounter()?.round).toBe(4);
+    state.apply(encounter({ revision: 3, round: 3 }));
+    expect(state.encounter()?.round).toBe(4);
   });
 
   it('drops a read that started before a later read was applied', () => {

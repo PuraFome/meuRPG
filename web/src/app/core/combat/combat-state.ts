@@ -30,7 +30,8 @@ export interface ReadTicket {
  * see it, with the small updates the page makes after its own calls and
  * after the stream's events. Pure TypeScript with signals, so its rules
  * (a read that started before a later read, or before an answer, never
- * replaces it; `turn_changed` and `combatant_moved` apply in place; a combatant the screen doesn't know
+ * replaces it; an answer with an older revision than the copy on screen is
+ * dropped; `turn_changed` and `combatant_moved` apply in place; a combatant the screen doesn't know
  * means "read the combat again") are tested without a DOM.
  */
 export class CombatState {
@@ -64,8 +65,17 @@ export class CombatState {
   private applied = 0;
 
   /** A fresh copy that is not a read: an answer to a call, or the combat
-   * being started. It always replaces what is on screen. */
+   * being started. Of two copies of the same combat the larger revision
+   * wins, so an answer that began before another change and arrives after a
+   * read that showed it does not bring the older copy back; another combat
+   * replaces it. The comparison is between numbers of the same kind: a read
+   * (`applyRead`) sets the number on screen whatever it is, so after the fog
+   * turns on the answers compare against the player's own count. */
   apply(next: Encounter | null): void {
+    const current = this.encounter();
+    if (next && current && next.id === current.id && next.revision < current.revision) {
+      return;
+    }
     this.applied++;
     this.encounter.set(next);
   }
