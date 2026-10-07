@@ -29,7 +29,7 @@ import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { openSheet } from '../../live-session/combat/sheet-host';
 import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import { newKey } from '../../../core/connect/idempotency';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { CreatureCard } from './creature-card';
 import type { EditMode } from './creature-edit';
 import { SummonSheet, type SummonSheetData, type SummonSheetResult } from './summon-sheet';
@@ -119,6 +119,9 @@ export class CreaturesPanel {
     readonly recharge: string;
   } | null>(null);
   protected readonly wildError = signal('');
+  /** "Voltar à forma normal" is on its way. */
+  protected readonly leaving = signal(false);
+  private readonly leaveKey = new ActionKey();
   /** "restam 2 de 2 usos · volta no descanso curto ou longo", or what stops it outside a session. */
   protected readonly wildLine = computed(() => {
     const u = this.uses();
@@ -184,13 +187,25 @@ export class CreaturesPanel {
   }
 
   protected async leave(): Promise<void> {
+    // One request at a time: the server refuses a second one (the form has already ended) as a new action.
+    if (this.leaving()) {
+      return;
+    }
+    this.leaving.set(true);
     this.wildError.set('');
     try {
-      await this.client.leaveWildShape(this.campaignId(), this.characterId(), newKey());
+      await this.client.leaveWildShape(
+        this.campaignId(),
+        this.characterId(),
+        this.leaveKey.keyFor([this.campaignId(), this.characterId()]),
+      );
+      this.leaveKey.renew();
       this.notice.set('Você voltou à forma normal.');
       await this.loadWild();
     } catch (err) {
       this.wildError.set(combatErrorMessage(err, 'voltar à forma normal'));
+    } finally {
+      this.leaving.set(false);
     }
   }
 

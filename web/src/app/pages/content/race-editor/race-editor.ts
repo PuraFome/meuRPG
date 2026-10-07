@@ -118,7 +118,8 @@ export class RaceEditor {
   protected readonly bonusRange = { min: BONUS_MIN, max: BONUS_MAX };
   /** A new sub-race picks its race from the catalog's (the SRD's and the table's); an existing one keeps it. */
   protected readonly raceOptions = computed<SelectOption[]>(() => [...this.catalog().races]);
-  protected readonly raceKnown = computed(() => this.sub().raceKey !== '');
+  /** The race is fixed: the entry exists, or the page was opened from a race. A new one chooses it in the select, and the select stays once chosen. */
+  protected readonly raceKnown = computed(() => this.entry() !== null || this.parentKey() !== '');
   protected readonly languageOptions = computed<SelectOption[]>(() =>
     this.menu()
       .list('languages')

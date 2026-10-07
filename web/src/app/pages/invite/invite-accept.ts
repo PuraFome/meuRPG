@@ -67,7 +67,13 @@ export class InviteAccept {
 
   constructor() {
     const match = TOKEN_PATTERN.exec(window.location.hash);
-    this.token = match ? decodeURIComponent(match[1]) : null;
+    let token: string | null = null;
+    try {
+      token = match ? decodeURIComponent(match[1]) : null;
+    } catch {
+      // A malformed percent-escape is no token at all: the link is invalid.
+    }
+    this.token = token;
 
     // Strip the fragment right away: the token must not linger in the
     // visible URL, in `history`, or in anything (a screenshot, a shared

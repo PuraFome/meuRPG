@@ -240,6 +240,26 @@ describe('RaceEditor', () => {
     expect(text(e)).toContain('Sub-raça de Humano');
   });
 
+  it('keeps the race select of a new sub-race after a race is chosen in it', () => {
+    save.mockReset();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }],
+    });
+    const f = TestBed.createComponent(RaceEditor);
+    f.componentRef.setInput('campaignId', 'camp-1');
+    f.componentRef.setInput('mode', 'subrace');
+    f.componentRef.setInput('catalog', cat);
+    f.componentRef.setInput('menu', menu());
+    f.detectChanges();
+    const e = f.nativeElement as HTMLElement;
+    const select = e.querySelector<HTMLSelectElement>('[data-field="table_subrace.race_key"]')!;
+    select.value = 'race:human';
+    select.dispatchEvent(new Event('change'));
+    f.detectChanges();
+    expect(e.querySelector('[data-field="table_subrace.race_key"]')).not.toBeNull();
+  });
+
   it('keeps a trait\'s "Mais opções" with the trait when it moves', async () => {
     const { fixture, el } = setup();
     const open = el
