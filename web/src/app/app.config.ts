@@ -6,14 +6,17 @@ import {
 } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideRouter } from '@angular/router';
+import { TitleStrategy, provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { PageTitleStrategy } from './core/title/page-title';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    // Every page's title, in the tab and in the history (WCAG 2.4.2).
+    { provide: TitleStrategy, useExisting: PageTitleStrategy },
     // Loads the animations runtime lazily, only if a component (e.g. a
     // Material overlay or ripple) actually asks for it.
     provideAnimationsAsync(),

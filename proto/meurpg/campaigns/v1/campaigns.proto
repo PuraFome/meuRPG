@@ -39,6 +39,10 @@ import "google/protobuf/timestamp.proto";
 service CampaignService {
   // CreateCampaign creates a campaign; the caller becomes its master
   // (MR-001).
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateCampaign(CreateCampaignRequest) returns (CreateCampaignResponse);
 
   // ListMyCampaigns lists the campaigns the caller is a member of, newest
@@ -391,6 +395,11 @@ message CreateCampaignRequest {
   string name = 1;
   // Required.
   XpMode xp_mode = 2;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique for the user; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 3;
 }
 
 // CreateCampaignResponse returns the new campaign.

@@ -110,6 +110,10 @@ service CharacterService {
   // The base scores of a PLAYER's full sheet are checked against
   // `ability_method` (RN-24). Nothing else is: the master's NPCs and the
   // master's later edits are free, and so is the rest of the sheet.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
 
   // GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
@@ -569,6 +573,10 @@ service CharacterService {
   //   - `invalid_argument`: the character is an NPC or is dead, monster_key is
   //     not an SRD creature, or name is not 1 to 40 characters on one line.
   //   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc GiveCreature(GiveCreatureRequest) returns (GiveCreatureResponse);
 
   // RenameCreature changes a creature's name. The character's player and the
@@ -1299,6 +1307,11 @@ message CreateCharacterRequest {
   // once the web sends the method: then an unspecified method is refused. An
   // unknown value is `invalid_argument`. Ignored for an NPC.
   AbilityMethod ability_method = 6;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated. It must be a UUID.
+  string idempotency_key = 7;
 }
 
 // CreateCharacterResponse returns the new character.
@@ -2108,6 +2121,11 @@ message GiveCreatureRequest {
   // What to call it, 1 to 40 characters on one line; blank takes the
   // creature's Portuguese name.
   string name = 4;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated. It must be a UUID.
+  string idempotency_key = 5;
 }
 
 // GiveCreatureResponse returns the new creature.

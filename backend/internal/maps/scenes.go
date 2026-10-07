@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
@@ -87,33 +88,55 @@ func (s *Service) AddSceneAction(
 		}
 	}
 
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first action only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
 	var added mapsdb.SceneAction
 	var actions []mapsdb.SceneAction
+	replayed := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
+		// The point is locked by now, so two calls with the same key take turns.
 		current, err := q.ListSceneActions(ctx, pointID)
 		if err != nil {
 			return fmt.Errorf("list the actions: %w", err)
 		}
-		if len(current) >= maxSceneActions {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d actions", maxSceneActions))
-		}
-		position := int32(0)
-		if n := len(current); n > 0 {
-			position = current[n-1].Position + 1
-		}
-		added, err = q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
-			PointID: pointID, Position: position, Key: key, Name: name, Dc: dc, MaxAttempts: attempts, Now: s.now(),
-		})
+		added, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetSceneActionByCreateKey,
+			func(a mapsdb.SceneAction) *string { return a.CreateHash },
+			func() (mapsdb.SceneAction, error) {
+				if len(current) >= maxSceneActions {
+					return added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d actions", maxSceneActions))
+				}
+				position := int32(0)
+				if n := len(current); n > 0 {
+					position = current[n-1].Position + 1
+				}
+				a, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
+					PointID: pointID, Position: position, Key: key, Name: name, Dc: dc, MaxAttempts: attempts,
+					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return a, fmt.Errorf("insert action: %w", err)
+				}
+				return a, err
+			})
 		if err != nil {
-			return fmt.Errorf("insert action: %w", err)
+			return err
 		}
-		actions = append(current, added)
+		actions = current
+		if !replayed {
+			actions = append(current, added)
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene action", err)
 	}
-	s.actionsChanged(ctx, m.CampaignID, ch)
+	if !replayed {
+		s.actionsChanged(ctx, m.CampaignID, ch)
+	}
 	return connect.NewResponse(&mapsv1.AddSceneActionResponse{
 		Action: s.actionToProto(added, true), Actions: s.actionsToProto(actions, true),
 	}), nil

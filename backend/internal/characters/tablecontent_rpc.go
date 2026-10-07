@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -259,6 +260,11 @@ func withRow(entries []entryRow, st stored, row charactersdb.CampaignContent) []
 	return append(out, e)
 }
 
+// errReplayed ends the transaction of a CreateTableEntry that found the entry of its key: the
+// transaction is rolled back, so the revision it bumped first is not kept, and the handler
+// answers with the entry the first call made.
+var errReplayed = errors.New("the entry of the idempotency key was already made")
+
 // CreateTableEntry implements rulesv1connect.TableContentServiceHandler.
 func (s *Service) CreateTableEntry(
 	ctx context.Context,
@@ -272,12 +278,47 @@ func (s *Service) CreateTableEntry(
 	if body == nil {
 		return nil, invalidArgument(fieldErr("body", "is required: exactly one of the table_* messages"))
 	}
+	idemKey, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first entry only when it is the same request.
+	scopedKey, requestHash := idem.Scope(m.CampaignID, idemKey), idem.Hash(req.Msg)
 	var res *rulesv1.CreateTableEntryResponse
+	replayed := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		replayed = false
 		rev, err := q.BumpContentRevision(ctx, charactersdb.BumpContentRevisionParams{CampaignID: m.CampaignID, Now: s.now()})
 		if err != nil {
 			return wrap("bump the content revision", err)
+		}
+		// The bump holds the campaign's content until this transaction ends, so a call with the
+		// same key waits here for the first one, and then finds its entry.
+		if scopedKey != nil {
+			prior, err := q.GetCampaignContentByCreateKey(ctx, scopedKey)
+			switch {
+			case err == nil:
+				if err := idem.SameRequest(prior.CreateHash, requestHash); err != nil {
+					return err
+				}
+				entry, err := decodeRow(prior)
+				if err != nil {
+					return err
+				}
+				// The table's revision as it is now. The read sees this transaction's own bump, which
+				// the rollback below undoes, so the revision is one less: a retry changes nothing.
+				current, err := q.GetContentRevision(ctx, m.CampaignID)
+				if err != nil {
+					return wrap("read the content revision", err)
+				}
+				res = &rulesv1.CreateTableEntryResponse{Entry: entryToProto(entry, 0), TableRevision: current - 1}
+				replayed = true
+				return errReplayed
+			case !errors.Is(err, pgx.ErrNoRows):
+				return wrap("find the entry of the key", err)
+			}
 		}
 		rows, err := q.ListCampaignContent(ctx, m.CampaignID)
 		if err != nil {
@@ -305,10 +346,17 @@ func (s *Service) CreateTableEntry(
 		if _, err := s.checkOverlay(withRow(entries, st, row), int(rev), key, lead...); err != nil {
 			return err
 		}
-		row, err = q.InsertCampaignContent(ctx, charactersdb.InsertCampaignContentParams{
-			CampaignID: m.CampaignID, ContentKey: key, Kind: kindPrefix(kind), NamePt: body.GetNamePt(), Data: st.data,
-			Revision: rev, Now: now,
-		})
+		if scopedKey != nil {
+			row, err = q.InsertCampaignContentWithKey(ctx, charactersdb.InsertCampaignContentWithKeyParams{
+				CampaignID: m.CampaignID, ContentKey: key, Kind: kindPrefix(kind), NamePt: body.GetNamePt(), Data: st.data,
+				Revision: rev, CreateKey: scopedKey, CreateHash: requestHash, Now: now,
+			})
+		} else {
+			row, err = q.InsertCampaignContent(ctx, charactersdb.InsertCampaignContentParams{
+				CampaignID: m.CampaignID, ContentKey: key, Kind: kindPrefix(kind), NamePt: body.GetNamePt(), Data: st.data,
+				Revision: rev, Now: now,
+			})
+		}
 		if err != nil {
 			return wrap("insert a table entry", err)
 		}
@@ -319,6 +367,9 @@ func (s *Service) CreateTableEntry(
 		}
 		return nil
 	})
+	if replayed && errors.Is(err, errReplayed) {
+		return connect.NewResponse(res), nil // the first call wrote and announced the entry
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "create a table entry", err)
 	}

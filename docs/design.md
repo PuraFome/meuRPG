@@ -646,6 +646,15 @@ A tela "Imprimir o mapa" (MR-033, desenho E8-12; Etapa 8, fatia 8.7), só do mes
 
 **A regra do papel.** O que sai da impressora é só CSS de impressão, e nada dele aparece na tela. As folhas (`print-sheets`) só existem na página enquanto o navegador imprime (entram no `beforeprint` e saem no `afterprint`: um mapa grande são milhares delas); no `@media print` somem a barra, o rodapé e a tela toda, e fica uma folha por página, do tamanho da área útil. O `@page` do papel escolhido (tamanho e margem de 1 cm) é escrito num `<style>` do `head` enquanto a tela está aberta. As cores da folha são fixas (papel branco, tinta preta), não os tokens do tema: o papel não tem tema escuro. A grade é SVG em centímetros por cima da imagem, nunca uma edição da imagem; as faixas de sobreposição são tingidas, com uma linha tracejada, uma cruz em cada canto e o nome da folha vizinha; o rótulo da folha fica na faixa de cima e a régua de 5 cm diz "confira a escala".
 
+### Título da página, "Pular para o conteúdo" e foco ao navegar
+
+Toda página tem um título próprio na aba e no histórico (WCAG 2.4.2), um primeiro Tab que pula a barra (2.4.1) e leva o foco ao título da página nova ao navegar (2.4.3).
+
+- **Título:** `<página> · MeuRPG`, em português, só a primeira letra em maiúscula ("Minhas campanhas · MeuRPG"). Cada rota tem o seu em `title` (`web/src/app/app.routes.ts` e os `*.routes.ts` das rotas filhas); uma rota nova sem `title` falha no teste `page-title.spec.ts`. Onde a página mostra o nome de uma campanha ou de um personagem, o nome entra na frente quando a página o carrega: `Pensantus · Ficha · MeuRPG`. A página chama `setPageSubject(() => nome)` no construtor (`core/title/page-title.ts`). Até o nome chegar, o título é o curto, nunca o da página anterior; trocar de página tira o nome.
+- **"Pular para o conteúdo":** o primeiro link do app (`app.html`), escondido até receber o foco (fora da tela, não `display: none`, para o Tab chegar nele). Ele leva o foco para o `<main id="main" tabindex="-1">` sem passar pelo roteador.
+- **Foco ao navegar:** depois de uma navegação para **outra página**, o foco vai para o `h1` (ou, sem `h1`, para o `<main>`); o `h1` ganha `tabindex="-1"` e, como todo `[tabindex='-1']`, não desenha anel (ninguém deu Tab até ele). O foco **não** se move no primeiro carregamento, numa mudança que só mexe na query ou no fragmento (um filtro), quando a página já pôs o foco em algo dentro dela (os diálogos e as páginas com foco próprio) nem enquanto um diálogo ou sheet está aberto (`.cdk-overlay-container`).
+- O `a11y.spec.ts` confere os três, e o `page-title.spec.ts` e o `app.spec.ts` os casos de borda.
+
 ## Texto na tela
 
 - Português do Brasil, com os termos da tradução oficial de D&D ("Classe de Armadura", "Testes de resistência", "Pontos de vida").

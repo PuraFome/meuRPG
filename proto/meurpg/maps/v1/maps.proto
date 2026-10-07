@@ -132,6 +132,10 @@ service MapService {
   //     member of it.
   //   - `permission_denied`: the caller is a player.
   //   - `resource_exhausted`: the campaign already has 200 maps.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateMap(CreateMapRequest) returns (CreateMapResponse);
 
   // UpdateMap renames a map or changes its image. Only the campaign's
@@ -250,6 +254,10 @@ service MapService {
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
   //   - `resource_exhausted`: the map already has 200 points.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateMapPoint(CreateMapPointRequest) returns (CreateMapPointResponse);
 
   // UpdateMapPoint changes a point: each field set in the request replaces
@@ -316,6 +324,10 @@ service MapService {
   //     member of it.
   //   - `permission_denied`: the caller is a player.
   //   - `resource_exhausted`: the point already has 20 actions.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc AddSceneAction(AddSceneActionRequest) returns (AddSceneActionResponse);
 
   // UpdateSceneAction changes one action of a SCENE point: each field set
@@ -366,6 +378,10 @@ service MapService {
   //     member of it.
   //   - `permission_denied`: the caller is a player.
   //   - `resource_exhausted`: the point already has 30 clues.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc AddSceneClue(AddSceneClueRequest) returns (AddSceneClueResponse);
 
   // UpdateSceneClue changes the text of one clue of a SCENE point. What
@@ -1201,6 +1217,11 @@ message CreateMapRequest {
   string name = 2;
   // An image of the campaign's gallery (a UUID).
   string image_id = 3;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 4;
 }
 
 // CreateMapResponse returns the new, hidden map.
@@ -1301,6 +1322,11 @@ message CreateMapPointRequest {
   // Required for a LIGHT point, and `invalid_argument` on any other kind. When
   // preset_key is set and both radii are 0, the radii are the preset's.
   LightSpec light = 13;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 14;
 }
 
 // CreateMapPointResponse returns the new, hidden point.
@@ -1447,6 +1473,11 @@ message AddSceneActionRequest {
   // How many times each player's character may roll it while the scene is
   // open: 1 to 5, or 0 for unlimited. Unset means 1.
   optional int32 max_attempts = 7;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 8;
 }
 
 // AddSceneActionResponse returns the point's actions as they are now.
@@ -1529,6 +1560,11 @@ message AddSceneClueRequest {
   string point_id = 3;
   // Required: 1 to 500 characters, one line.
   string text = 4;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 5;
 }
 
 // AddSceneClueResponse returns the point's clues as they are now.

@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
@@ -147,6 +148,11 @@ export class CharacterSheetPage {
   protected readonly issueTitle = issueTitle;
 
   constructor() {
+    // The tab's title carries the character's name once the sheet is loaded.
+    setPageSubject(() => {
+      const s = this.state();
+      return s.status === 'ready' ? s.vm.name : null;
+    });
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const campaignId = params.get('id');
       const characterId = params.get('characterId');

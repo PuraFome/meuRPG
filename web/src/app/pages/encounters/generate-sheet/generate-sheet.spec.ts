@@ -85,7 +85,7 @@ describe('GenerateSheet: "Gerar encontro" (MR-043, E10-09 states 4 and 5)', () =
   });
 
   it('"Trocar criatura" lists the same XP, leaves out what the encounter already has, and the swap keeps the count', async () => {
-    const { el, button, settle } = await setup();
+    const { el, settle } = await setup();
     // The Thugs (4 × 100 XP): the list is the server's, the encounter's own creatures are hidden.
     Array.from(el.querySelectorAll<HTMLButtonElement>('.line__swap'))[2].click();
     await settle();

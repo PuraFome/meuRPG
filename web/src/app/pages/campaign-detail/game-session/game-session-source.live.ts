@@ -31,8 +31,8 @@ export class GameSessionSourceLive implements GameSessionSource {
     return open ? toVm(open) : null;
   }
 
-  async startGameSession(campaignId: string): Promise<StartGameSessionResultVm> {
-    const res = await this.client.startGameSession({ campaignId });
+  async startGameSession(campaignId: string, idempotencyKey: string): Promise<StartGameSessionResultVm> {
+    const res = await this.client.startGameSession({ campaignId, idempotencyKey });
     return { session: toVm(res.gameSession!), lockedSheetCount: res.lockedSheetCount };
   }
 

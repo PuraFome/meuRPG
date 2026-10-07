@@ -103,7 +103,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   });
 
   it('searches while typing, asking the server once after a pause, and says what the search matches', async () => {
-    const { el, debounced, settle } = await open();
+    const { el, debounced } = await open();
     const q = el.querySelector<HTMLInputElement>('input[type=search]')!;
     q.value = 'lobo';
     q.dispatchEvent(new Event('input'));
@@ -186,7 +186,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   });
 
   it('empty by the filters alone names the filters, not a word', async () => {
-    const { el, debounced, settle } = await open();
+    const { el, settle } = await open();
     const s = el.querySelector<HTMLSelectElement>('select[name=type]')!;
     s.value = 'undead';
     s.dispatchEvent(new Event('change'));

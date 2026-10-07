@@ -96,6 +96,8 @@ type GameSession struct {
 	ShownImageID     *string
 	ShownImageKeep   bool
 	OpenScenePointID *string
+	CreateKey        *string
+	CreateHash       *string
 }
 
 type OpportunityOffer struct {
@@ -162,6 +164,8 @@ type Puzzle struct {
 	HintDc       *int32
 	Parts        []byte
 	OnWrong      []byte
+	CreateKey    *string
+	CreateHash   *string
 }
 
 type PuzzleHintTry struct {

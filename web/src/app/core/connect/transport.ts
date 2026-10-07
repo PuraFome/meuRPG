@@ -20,12 +20,42 @@ import { createConnectTransport } from '@connectrpc/connect-web';
  * Every unary call also carries `Connect-Protocol-Version: 1` already,
  * unconditionally, from `@connectrpc/connect`'s own request-header code —
  * nothing to add here for that (see docs/arquitetura.md#csrf).
+ *
+ * Unary calls also get a deadline (`UNARY_DEADLINE_MS`), so a request that
+ * hangs ends in a `deadline_exceeded` error the screens already handle
+ * instead of a spinner that never stops. Streams (the live session) are
+ * left alone: they are meant to stay open.
  */
+/**
+ * The deadline of every unary call that does not set its own: 60 s. The longest
+ * legitimate call is the image generation's long poll (25 s on the server,
+ * `maxLongPoll`), so this stays above it with room for a slow network.
+ */
+export const UNARY_DEADLINE_MS = 60_000;
+
+/**
+ * Wraps a transport so every unary call carries a deadline. The deadline goes
+ * out as the `Connect-Timeout-Ms` header (the server cancels its work too) and
+ * aborts the `fetch` here. A call that passes its own `timeoutMs` keeps it.
+ * `stream` is passed through untouched.
+ */
+export function withUnaryDeadline(inner: Transport, deadlineMs: number): Transport {
+  return {
+    unary: (method, signal, timeoutMs, header, input, contextValues) =>
+      inner.unary(method, signal, timeoutMs ?? deadlineMs, header, input, contextValues),
+    stream: (method, signal, timeoutMs, header, input, contextValues) =>
+      inner.stream(method, signal, timeoutMs, header, input, contextValues),
+  };
+}
+
 export const CONNECT_TRANSPORT = new InjectionToken<Transport>('CONNECT_TRANSPORT', {
   providedIn: 'root',
   factory: () =>
-    createConnectTransport({
-      baseUrl: '/',
-      fetch: (input, init) => fetch(input, { ...init, credentials: 'same-origin' }),
-    }),
+    withUnaryDeadline(
+      createConnectTransport({
+        baseUrl: '/',
+        fetch: (input, init) => fetch(input, { ...init, credentials: 'same-origin' }),
+      }),
+      UNARY_DEADLINE_MS,
+    ),
 });

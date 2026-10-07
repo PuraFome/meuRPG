@@ -73,7 +73,7 @@
           <p class="group__label">{{ g.label }}</p>
           @for (a of requirementValues(g.field); track a) {
             <div class="req__row">
-              <app-select-field label="Habilidade" [options]="requirementOptions(g.field)" [value]="a" (valueChange)="moveRequirement(g.field, a, $event)" />
+              <app-select-field label="Habilidade" [options]="requirementOptions()" [value]="a" (valueChange)="moveRequirement(g.field, a, $event)" />
               <app-text-field label="Valor mínimo" inputmode="numeric" [value]="'' + d[g.field][a]" [path]="requirementPath(g.field, a)" [issues]="issuesOf(requirementPath(g.field, a))" (valueChange)="setRequirement(g.field, a, $event)" />
               <button matButton="outlined" type="button" class="req__remove" (click)="removeRequirement(g.field, a)">Tirar {{ abilityName(a) }}</button>
             </div>

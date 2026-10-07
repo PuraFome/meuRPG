@@ -96,6 +96,10 @@ type DungeonServiceClient interface {
 	//     full, or too many dungeons were created or redrawn a moment ago (the app
 	//     waits and tries again).
 	//   - `deadline_exceeded`: the generator took more than 2 seconds.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateDungeonMap(context.Context, *connect.Request[v1.CreateDungeonMapRequest]) (*connect.Response[v1.CreateDungeonMapResponse], error)
 	// GetDungeonRooms returns the dungeon's rooms as they were generated, with
 	// their exits and the doors that have a trap, and the options and seed it was
@@ -116,6 +120,10 @@ type DungeonServiceClient interface {
 	//   - `not_found`: also when the map was not made by CreateDungeonMap, or has
 	//     no such room.
 	//   - `resource_exhausted`: the map already has 200 points.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	PlaceDungeonScene(context.Context, *connect.Request[v1.PlaceDungeonSceneRequest]) (*connect.Response[v1.PlaceDungeonSceneResponse], error)
 	// RedrawDungeonMap renders the image of a generated dungeon again, at the same
 	// size in pixels, from the map's walls and doors layers as they are now:
@@ -265,6 +273,10 @@ type DungeonServiceHandler interface {
 	//     full, or too many dungeons were created or redrawn a moment ago (the app
 	//     waits and tries again).
 	//   - `deadline_exceeded`: the generator took more than 2 seconds.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateDungeonMap(context.Context, *connect.Request[v1.CreateDungeonMapRequest]) (*connect.Response[v1.CreateDungeonMapResponse], error)
 	// GetDungeonRooms returns the dungeon's rooms as they were generated, with
 	// their exits and the doors that have a trap, and the options and seed it was
@@ -285,6 +297,10 @@ type DungeonServiceHandler interface {
 	//   - `not_found`: also when the map was not made by CreateDungeonMap, or has
 	//     no such room.
 	//   - `resource_exhausted`: the map already has 200 points.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	PlaceDungeonScene(context.Context, *connect.Request[v1.PlaceDungeonSceneRequest]) (*connect.Response[v1.PlaceDungeonSceneResponse], error)
 	// RedrawDungeonMap renders the image of a generated dungeon again, at the same
 	// size in pixels, from the map's walls and doors layers as they are now:

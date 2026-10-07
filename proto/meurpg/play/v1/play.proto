@@ -67,6 +67,10 @@ service PlayService {
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: the campaign already has an open session
   //     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc StartGameSession(StartGameSessionRequest) returns (StartGameSessionResponse);
 
   // EndGameSession ends one of the campaign's game sessions. Only the
@@ -849,6 +853,11 @@ message GameSession {
 // StartGameSessionRequest names the campaign.
 message StartGameSessionRequest {
   string campaign_id = 1;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 2;
 }
 
 // StartGameSessionResponse returns the new session.

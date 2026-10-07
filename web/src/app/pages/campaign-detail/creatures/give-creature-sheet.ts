@@ -10,6 +10,7 @@ import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
 import { CREATURE_TYPES } from '../../../core/creatures/creature-types';
 import { CREATURE_NAME_MAX, challengeText, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { formatInt, joinDots } from '../../../core/format/text';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../live-session/combat/sheet-host';
@@ -56,6 +57,7 @@ const CRS = ['0', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '8', '10', 
 })
 export class GiveCreatureSheet {
   private readonly client = inject(CreaturesClient);
+  private readonly giveKey = new ActionKey();
   private readonly sheet = injectSheet<GiveCreatureData, GiveCreatureResult>();
   private readonly destroyRef = inject(DestroyRef);
   protected readonly data = this.sheet.data;
@@ -203,7 +205,9 @@ export class GiveCreatureSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const made = await this.client.give(this.data.campaignId, this.data.characterId, p.key, this.name().trim());
+      // A retry of the same gift (a lost answer, a second tap) sends the same key and gives one creature.
+      const name = this.name().trim();
+      const made = await this.client.give(this.data.campaignId, this.data.characterId, p.key, name, this.giveKey.keyFor([p.key, name]));
       this.sheet.close({ name: made?.name ?? this.name().trim() });
     } catch (err) {
       this.error.set(creatureErrorMessage(err, 'give'));

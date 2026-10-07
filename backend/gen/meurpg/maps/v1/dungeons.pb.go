@@ -1131,9 +1131,14 @@ type CreateDungeonMapRequest struct {
 	// Left out, every option takes its default, as with an empty message.
 	Options *DungeonOptions `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	// The seed. Not set: the server draws one.
-	Seed          *uint64 `protobuf:"varint,4,opt,name=seed,proto3,oneof" json:"seed,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Seed *uint64 `protobuf:"varint,4,opt,name=seed,proto3,oneof" json:"seed,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateDungeonMapRequest) Reset() {
@@ -1192,6 +1197,13 @@ func (x *CreateDungeonMapRequest) GetSeed() uint64 {
 		return *x.Seed
 	}
 	return 0
+}
+
+func (x *CreateDungeonMapRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreateDungeonMapResponse returns the new, hidden map, as the master reads it
@@ -1698,9 +1710,14 @@ type PlaceDungeonSceneRequest struct {
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	// The room's number (DungeonRoom.id).
-	RoomId        int32 `protobuf:"varint,3,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RoomId int32 `protobuf:"varint,3,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PlaceDungeonSceneRequest) Reset() {
@@ -1752,6 +1769,13 @@ func (x *PlaceDungeonSceneRequest) GetRoomId() int32 {
 		return x.RoomId
 	}
 	return 0
+}
+
+func (x *PlaceDungeonSceneRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // PlaceDungeonSceneResponse returns the new, hidden scene point.
@@ -1970,13 +1994,14 @@ const file_meurpg_maps_v1_dungeons_proto_rawDesc = "" +
 	"\x04open\x18\x06 \x01(\fR\x04open\x121\n" +
 	"\x05doors\x18\a \x03(\v2\x1b.meurpg.maps.v1.DungeonDoorR\x05doors\x124\n" +
 	"\x06stairs\x18\b \x03(\v2\x1c.meurpg.maps.v1.DungeonStairR\x06stairs\x125\n" +
-	"\x05rooms\x18\t \x03(\v2\x1f.meurpg.maps.v1.DungeonRoomRectR\x05rooms\"\xaa\x01\n" +
+	"\x05rooms\x18\t \x03(\v2\x1f.meurpg.maps.v1.DungeonRoomRectR\x05rooms\"\xd3\x01\n" +
 	"\x17CreateDungeonMapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x128\n" +
 	"\aoptions\x18\x03 \x01(\v2\x1e.meurpg.maps.v1.DungeonOptionsR\aoptions\x12\x17\n" +
-	"\x04seed\x18\x04 \x01(\x04H\x00R\x04seed\x88\x01\x01B\a\n" +
+	"\x04seed\x18\x04 \x01(\x04H\x00R\x04seed\x88\x01\x01\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKeyB\a\n" +
 	"\x05_seed\"t\n" +
 	"\x18CreateDungeonMapResponse\x12%\n" +
 	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\x12\x12\n" +
@@ -2020,12 +2045,13 @@ const file_meurpg_maps_v1_dungeons_proto_rawDesc = "" +
 	"\x0fDungeonEntrance\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x12\x1b\n" +
-	"\ton_stairs\x18\x03 \x01(\bR\bonStairs\"k\n" +
+	"\ton_stairs\x18\x03 \x01(\bR\bonStairs\"\x94\x01\n" +
 	"\x18PlaceDungeonSceneRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x17\n" +
-	"\aroom_id\x18\x03 \x01(\x05R\x06roomId\"K\n" +
+	"\aroom_id\x18\x03 \x01(\x05R\x06roomId\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"K\n" +
 	"\x19PlaceDungeonSceneResponse\x12.\n" +
 	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"Q\n" +
 	"\x17RedrawDungeonMapRequest\x12\x1f\n" +

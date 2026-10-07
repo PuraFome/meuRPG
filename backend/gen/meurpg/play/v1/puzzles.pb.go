@@ -4467,9 +4467,14 @@ type CreatePuzzleRequest struct {
 	// The split information: up to 8 parts, each for a player's character.
 	Parts []*PuzzlePart `protobuf:"bytes,11,rep,name=parts,proto3" json:"parts,omitempty"`
 	// "Ao errar". Unset: nothing.
-	OnWrong       *PuzzleOnWrong `protobuf:"bytes,12,opt,name=on_wrong,json=onWrong,proto3" json:"on_wrong,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OnWrong *PuzzleOnWrong `protobuf:"bytes,12,opt,name=on_wrong,json=onWrong,proto3" json:"on_wrong,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,13,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreatePuzzleRequest) Reset() {
@@ -4584,6 +4589,13 @@ func (x *CreatePuzzleRequest) GetOnWrong() *PuzzleOnWrong {
 		return x.OnWrong
 	}
 	return nil
+}
+
+func (x *CreatePuzzleRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreatePuzzleResponse carries the new puzzle.
@@ -6997,7 +7009,7 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x06reason\x18\x01 \x01(\x0e2#.meurpg.play.v1.PuzzleBlockedReasonR\x06reason\"b\n" +
 	"\rPuzzleInvalid\x12;\n" +
 	"\x06reason\x18\x01 \x01(\x0e2#.meurpg.play.v1.PuzzleInvalidReasonR\x06reason\x12\x14\n" +
-	"\x05field\x18\x02 \x01(\tR\x05field\"\x93\x04\n" +
+	"\x05field\x18\x02 \x01(\tR\x05field\"\xbc\x04\n" +
 	"\x13CreatePuzzleRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
@@ -7013,7 +7025,8 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"hint_check\x18\n" +
 	" \x01(\v2\x1f.meurpg.play.v1.PuzzleHintCheckR\thintCheck\x120\n" +
 	"\x05parts\x18\v \x03(\v2\x1a.meurpg.play.v1.PuzzlePartR\x05parts\x128\n" +
-	"\bon_wrong\x18\f \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\"F\n" +
+	"\bon_wrong\x18\f \x01(\v2\x1d.meurpg.play.v1.PuzzleOnWrongR\aonWrong\x12'\n" +
+	"\x0fidempotency_key\x18\r \x01(\tR\x0eidempotencyKey\"F\n" +
 	"\x14CreatePuzzleResponse\x12.\n" +
 	"\x06puzzle\x18\x01 \x01(\v2\x16.meurpg.play.v1.PuzzleR\x06puzzle\"\xb0\x04\n" +
 	"\x13UpdatePuzzleRequest\x12\x1f\n" +

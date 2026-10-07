@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /** One link of the list of sections: the id of its panel (`sec-<id>`), its word, and whether a refusal is inside it. */
@@ -97,7 +97,6 @@ export interface NavSection {
   `,
 })
 export class SectionNav {
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly sections = input.required<readonly NavSection[]>();

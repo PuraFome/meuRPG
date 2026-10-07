@@ -82,7 +82,7 @@ export class ReachedMilestones {
     });
   }
 
-  protected async undo(m: Milestone, mark: XPAward): Promise<void> {
+  protected async undo(mark: XPAward): Promise<void> {
     if (this.busy()) {
       return;
     }

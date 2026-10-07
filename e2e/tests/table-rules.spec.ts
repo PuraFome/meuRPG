@@ -197,7 +197,7 @@ test(
       await p.getByRole('tab', { name: 'Habilidades' }).click();
       await method(p, 'Digitar');
       await expect(p.getByText('de 3 a 18, antes do bônus da raça')).toBeVisible();
-      await p.getByLabel('Força', { exact: true }).fill('19');
+      await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p.getByText(/digite valores de 3 a 18/)).toBeVisible();
       await expect(p).toHaveURL(/characters\/new$/);

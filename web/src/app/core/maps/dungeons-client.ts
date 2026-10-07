@@ -35,9 +35,10 @@ export class DungeonsClient {
     name: string,
     options: DungeonOptionsInit,
     seed: bigint,
+    idempotencyKey: string,
     signal?: AbortSignal,
   ): Promise<{ map: MapMessage; seed: bigint; roomCount: number }> {
-    const res = await this.client.createDungeonMap({ campaignId, name, options, seed }, { signal });
+    const res = await this.client.createDungeonMap({ campaignId, name, options, seed, idempotencyKey }, { signal });
     if (!res.map) {
       throw new Error('CreateDungeonMap answered without a map');
     }
@@ -50,8 +51,8 @@ export class DungeonsClient {
   }
 
   /** `PlaceDungeonScene`: a hidden scene point, "Sala N", on the middle square of the room. */
-  async placeScene(campaignId: string, mapId: string, roomId: number): Promise<MapPoint> {
-    const res = await this.client.placeDungeonScene({ campaignId, mapId, roomId });
+  async placeScene(campaignId: string, mapId: string, roomId: number, idempotencyKey: string): Promise<MapPoint> {
+    const res = await this.client.placeDungeonScene({ campaignId, mapId, roomId, idempotencyKey });
     if (!res.point) {
       throw new Error('PlaceDungeonScene answered without a point');
     }

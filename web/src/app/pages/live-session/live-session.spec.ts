@@ -14,7 +14,7 @@ import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { SceneChecks } from '../../core/maps/scene-actions';
-import { FakePuzzlesClient, fakeChecks, lightsPuzzle, masterRun, playerRun, summary } from '../../core/puzzles/puzzles-testing';
+import { FakePuzzlesClient, fakeChecks, lightsPuzzle, masterRun, playerRun } from '../../core/puzzles/puzzles-testing';
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';

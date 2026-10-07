@@ -310,9 +310,14 @@ type CreateNoteRequest struct {
 	// Required: 1 to 2,000 characters, with line breaks.
 	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	// The scene tag (a UUID), one the group discovered; empty for none.
-	ScenePointId  string `protobuf:"bytes,3,opt,name=scene_point_id,json=scenePointId,proto3" json:"scene_point_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ScenePointId string `protobuf:"bytes,3,opt,name=scene_point_id,json=scenePointId,proto3" json:"scene_point_id,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique for a player in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateNoteRequest) Reset() {
@@ -362,6 +367,13 @@ func (x *CreateNoteRequest) GetText() string {
 func (x *CreateNoteRequest) GetScenePointId() string {
 	if x != nil {
 		return x.ScenePointId
+	}
+	return ""
+}
+
+func (x *CreateNoteRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -786,12 +798,13 @@ const file_meurpg_notes_v1_notes_proto_rawDesc = "" +
 	"\x05notes\x18\x01 \x03(\v2\x15.meurpg.notes.v1.NoteR\x05notes\x12\x1d\n" +
 	"\n" +
 	"note_count\x18\x02 \x01(\x05R\tnoteCount\x12\x1b\n" +
-	"\tmax_notes\x18\x03 \x01(\x05R\bmaxNotes\"n\n" +
+	"\tmax_notes\x18\x03 \x01(\x05R\bmaxNotes\"\x97\x01\n" +
 	"\x11CreateNoteRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12$\n" +
-	"\x0escene_point_id\x18\x03 \x01(\tR\fscenePointId\"?\n" +
+	"\x0escene_point_id\x18\x03 \x01(\tR\fscenePointId\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"?\n" +
 	"\x12CreateNoteResponse\x12)\n" +
 	"\x04note\x18\x01 \x01(\v2\x15.meurpg.notes.v1.NoteR\x04note\"\xad\x01\n" +
 	"\x11UpdateNoteRequest\x12\x1f\n" +

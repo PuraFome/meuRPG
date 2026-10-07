@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -274,39 +275,64 @@ func (s *Service) GiveCreature(
 		}
 	}
 
+	idemKey, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err == nil && idemKey != "" {
+		if _, ok := parseUUID(idemKey); !ok {
+			err = invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first creature and gives no other.
+	scopedKey, requestHash := idem.Scope(m.CampaignID, idemKey), idem.Hash(req.Msg)
+
 	var created charactersdb.CharacterCreature
 	var ownerUser string
+	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		// The owner is locked first, so two calls for the same character take turns.
 		owner, err := visibleForUpdate(ctx, q, m, id)
 		if err != nil {
 			return err
 		}
-		if owner.Kind != kindPlayer || owner.Status != statusActive {
-			return invalidArgument(fieldErr("character_id", "is not a living player's character"))
-		}
 		ownerUser = deref(owner.PlayerUserID)
-		res, err := s.SummonCreatures(ctx, tx, link.Summon{
-			CampaignID: m.CampaignID, CharacterID: id, Source: creatureSourceMaster, GroupID: uuid.New().String(),
-			Creatures: []link.CreatureSpec{{MonsterKey: key, Name: name, Attack: "full"}},
-		})
-		if err != nil {
-			return err
-		}
-		created = charactersdb.CharacterCreature{ID: res.Created[0].ID}
-		row, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: m.CampaignID, ID: res.Created[0].ID})
-		if err != nil {
-			return wrap("read the new creature", err)
-		}
-		created = row.CharacterCreature
-		return s.logCreatureEvent(ctx, tx, m, "creature_summoned", map[string]any{
-			"character_id": id, "creature_ids": []string{created.ID}, "monster_keys": []string{key}, "source": creatureSourceMaster,
-		})
+		created, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetCharacterCreatureByCreateKey,
+			func(c charactersdb.CharacterCreature) *string { return c.CreateHash },
+			func() (charactersdb.CharacterCreature, error) {
+				if owner.Kind != kindPlayer || owner.Status != statusActive {
+					return created, invalidArgument(fieldErr("character_id", "is not a living player's character"))
+				}
+				res, err := s.SummonCreatures(ctx, tx, link.Summon{
+					CampaignID: m.CampaignID, CharacterID: id, Source: creatureSourceMaster, GroupID: uuid.New().String(),
+					Creatures: []link.CreatureSpec{{MonsterKey: key, Name: name, Attack: "full"}},
+				})
+				if err != nil {
+					return created, err
+				}
+				if scopedKey != nil {
+					if err := q.SetCharacterCreatureCreateKey(ctx, charactersdb.SetCharacterCreatureCreateKeyParams{
+						CampaignID: m.CampaignID, ID: res.Created[0].ID, CreateKey: scopedKey, CreateHash: requestHash,
+					}); err != nil {
+						return created, wrap("keep the creature's idempotency key", err)
+					}
+				}
+				row, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: m.CampaignID, ID: res.Created[0].ID})
+				if err != nil {
+					return created, wrap("read the new creature", err)
+				}
+				return row.CharacterCreature, s.logCreatureEvent(ctx, tx, m, "creature_summoned", map[string]any{
+					"character_id": id, "creature_ids": []string{row.CharacterCreature.ID}, "monster_keys": []string{key}, "source": creatureSourceMaster,
+				})
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "give a creature", err)
 	}
-	if s.creatureHost != nil {
+	if s.creatureHost != nil && !replayed {
 		s.creatureHost.PublishCreaturesChanged(m.CampaignID, ownerUser)
 	}
 	return connect.NewResponse(&charactersv1.GiveCreatureResponse{Creature: characterCreatureToProto(content, created)}), nil

@@ -6,12 +6,17 @@
 -- name: InsertCharacter :one
 -- status is 'active', or 'pending' for a character created by a pending
 -- member (RN-15, MR-024).
+-- create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash
+-- are the idempotency key of CreateCharacter and the hash of its request; NULL when the call sent
+-- no key. A retry reads the first character with GetCharacterByCreateKey.
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.narg(player_user_id), sqlc.narg(master_user_id),
-    sqlc.arg(status), sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.arg(now), sqlc.arg(now)
+    sqlc.arg(status), sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.narg(create_key)::UUID, sqlc.narg(create_hash),
+    sqlc.arg(now), sqlc.arg(now)
 )
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
 
 -- name: InsertNpcFromCreature :one
@@ -361,13 +366,27 @@ LIMIT sqlc.arg(max_rows);
 
 -- name: InsertCharacterCreature :one
 INSERT INTO character_creatures
-    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at)
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(character_id)::UUID, sqlc.arg(monster_key), sqlc.arg(name), sqlc.arg(source),
     sqlc.arg(attack), sqlc.arg(summon_group_id)::UUID, sqlc.narg(concentration_cast_id)::UUID, sqlc.arg(hp_current), sqlc.arg(hp_max),
-    sqlc.arg(created_at)
+    sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash)
 )
 RETURNING *;
+-- A creature is made inside the owner's locked transaction (GiveCreature locks the owner first), so a
+-- retry reads the first one with GetCharacterCreatureByCreateKey before it inserts, and never races it;
+-- the unique index (character_creatures_create_key_idx) is the net under that.
+
+-- name: SetCharacterCreatureCreateKey :exec
+-- The idempotency key of GiveCreature and the hash of its request, set on the creature the summon made
+-- (a summon makes the creature the same way whoever asks, so the key is written after it).
+UPDATE character_creatures
+SET create_key = sqlc.arg(create_key), create_hash = sqlc.arg(create_hash)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: GetCharacterCreatureByCreateKey :one
+-- The creature a GiveCreature with this idempotency key made, if any (the key carries the campaign's ID).
+SELECT * FROM character_creatures WHERE create_key = $1;
 
 -- name: GetCharacterCreature :one
 -- One creature of the campaign, live or not, with its owner's player.
@@ -585,6 +604,23 @@ VALUES (
     sqlc.arg(revision), sqlc.arg(now), sqlc.arg(now)
 )
 RETURNING *;
+
+-- name: InsertCampaignContentWithKey :one
+-- InsertCampaignContent for CreateTableEntry with an idempotency key: create_key and create_hash are
+-- kept with the entry. The master's write bumps the content revision first, in the same transaction,
+-- so two calls with the same key take turns; ON CONFLICT is the net under that.
+INSERT INTO campaign_content
+    (campaign_id, content_key, kind, name_pt, data, revision, create_key, create_hash, created_at, updated_at)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(content_key), sqlc.arg(kind), sqlc.arg(name_pt), sqlc.arg(data),
+    sqlc.arg(revision), sqlc.arg(create_key), sqlc.arg(create_hash), sqlc.arg(now), sqlc.arg(now)
+)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;
+
+-- name: GetCampaignContentByCreateKey :one
+-- The entry a CreateTableEntry with this idempotency key made, if any (the key carries the campaign's ID).
+SELECT * FROM campaign_content WHERE create_key = $1;
 
 -- name: UpdateCampaignContent :one
 -- The body and the name; the key, the kind and the archive mark stay.

@@ -73,6 +73,10 @@ type NotesServiceClient interface {
 	//   - `not_found`: as ListNotes.
 	//   - `resource_exhausted`: the caller already has 300 notes in this
 	//     campaign (revealed clues do not count).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateNote(context.Context, *connect.Request[v1.CreateNoteRequest]) (*connect.Response[v1.CreateNoteResponse], error)
 	// UpdateNote changes the caller's own note: each field set replaces the
 	// current value, and unset fields stay as they are. At least one must be
@@ -204,6 +208,10 @@ type NotesServiceHandler interface {
 	//   - `not_found`: as ListNotes.
 	//   - `resource_exhausted`: the caller already has 300 notes in this
 	//     campaign (revealed clues do not count).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateNote(context.Context, *connect.Request[v1.CreateNoteRequest]) (*connect.Response[v1.CreateNoteResponse], error)
 	// UpdateNote changes the caller's own note: each field set replaces the
 	// current value, and unset fields stay as they are. At least one must be

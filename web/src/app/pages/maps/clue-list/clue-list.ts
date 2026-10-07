@@ -17,6 +17,7 @@ import type { SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { tight } from '../../../core/format/text';
 import { sceneClueErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { ActionKey } from '../../../core/connect/idempotency';
 import {
   CLUE_LIMIT,
   type CluePlayer,
@@ -55,6 +56,7 @@ type Control = 'text' | 'up' | 'down' | 'remove';
 })
 export class ClueList {
   private readonly api = inject(MapsClient);
+  private readonly addKey = new ActionKey();
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -153,7 +155,8 @@ export class ClueList {
     this.busy.set(true);
     this.formError.set('');
     try {
-      const clues = await this.api.addSceneClue(this.campaignId(), this.mapId(), this.pointId(), text);
+      const clues = await this.api.addSceneClue(this.campaignId(), this.mapId(), this.pointId(), text, this.addKey.keyFor([this.pointId(), text]));
+      this.addKey.renew();
       this.cluesChange.emit(clues);
       this.adding.set(false);
       this.status.set(`Pista adicionada. ${clues.length} de ${CLUE_LIMIT}.`);

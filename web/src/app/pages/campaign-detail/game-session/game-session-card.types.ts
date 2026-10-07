@@ -34,6 +34,7 @@ export abstract class GameSessionSource {
   abstract getCurrentSession(campaignId: string): Promise<GameSessionVm | null>;
   /** RN-01: locks every unlocked player character's sheet, in the same
    * transaction, on the server (`play.LockSheets`, plan §4). */
-  abstract startGameSession(campaignId: string): Promise<StartGameSessionResultVm>;
+  /** `idempotencyKey`: one per start, sent again on a retry (a lost answer, a second tap). */
+  abstract startGameSession(campaignId: string, idempotencyKey: string): Promise<StartGameSessionResultVm>;
   abstract endGameSession(campaignId: string, gameSessionId: string): Promise<GameSessionVm>;
 }

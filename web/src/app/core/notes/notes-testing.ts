@@ -66,8 +66,18 @@ export class FakeNotesClient {
     return this.scenesList;
   }
 
-  async create(_campaignId: string, text: string, scenePointId: string): Promise<Note> {
+  /** Makes the next `create` fail, as a lost answer does (the note is not added). */
+  failNextCreate = false;
+  /** The idempotency key of each `create`, in order. */
+  readonly createKeys: string[] = [];
+
+  async create(_campaignId: string, text: string, scenePointId: string, idempotencyKey: string): Promise<Note> {
     this.record(`create ${text} ${scenePointId}`);
+    this.createKeys.push(idempotencyKey);
+    if (this.failNextCreate) {
+      this.failNextCreate = false;
+      throw new Error('the answer was lost');
+    }
     const sceneName = this.scenesList.find((s) => s.id === scenePointId)?.name ?? '';
     const created = note(`n${this.next++}`, text, this.now, { sceneId: scenePointId, sceneName });
     this.notes = [created, ...this.notes];

@@ -9,12 +9,14 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -267,32 +269,47 @@ func (s *Service) CreateMap(
 	if err != nil {
 		return nil, s.dbError(ctx, "copy the image of a fog map", err)
 	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first map only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
 	var created mapsdb.Map
-	used := false
+	used, replayed := false, false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		used = false
-		count, err := q.CountMaps(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("count maps: %w", err)
-		}
-		if count >= s.maxMaps {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
-		}
-		if err := checkImage(ctx, q, m.CampaignID, imageID); err != nil {
-			return err
-		}
-		if reuse != nil {
-			if err := reuse.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
-				return err
-			}
-			imageID, used = reuse.id, true
-		}
-		created, err = q.InsertMap(ctx, mapsdb.InsertMapParams{CampaignID: m.CampaignID, Name: name, ImageID: imageID, FogOnFirstGrid: fogOn, Now: s.now()})
-		if err != nil {
-			return fmt.Errorf("insert map: %w", err)
-		}
-		return nil
+		var err error
+		created, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetMapByCreateKey,
+			func(row mapsdb.Map) *string { return row.CreateHash },
+			func() (mapsdb.Map, error) {
+				count, err := q.CountMaps(ctx, m.CampaignID)
+				if err != nil {
+					return created, fmt.Errorf("count maps: %w", err)
+				}
+				if count >= s.maxMaps {
+					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
+				}
+				if err := checkImage(ctx, q, m.CampaignID, imageID); err != nil {
+					return created, err
+				}
+				if reuse != nil {
+					if err := reuse.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+						return created, err
+					}
+					imageID, used = reuse.id, true
+				}
+				row, err := q.InsertMap(ctx, mapsdb.InsertMapParams{
+					CampaignID: m.CampaignID, Name: name, ImageID: imageID, FogOnFirstGrid: fogOn,
+					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return row, fmt.Errorf("insert map: %w", err)
+				}
+				return row, err
+			})
+		return err
 	})
 	if reuse != nil && (err != nil || !used) {
 		s.deleteFiles(ctx, m.CampaignID, reuse.id)
@@ -300,8 +317,11 @@ func (s *Service) CreateMap(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a map", err)
 	}
-	// A new map is hidden: only the master hears about it.
-	s.publishMapChanged(m.CampaignID, created.ID, false)
+	// A new map is hidden: only the master hears about it. A retry announces nothing: the
+	// first call did.
+	if !replayed {
+		s.publishMapChanged(m.CampaignID, created.ID, false)
+	}
 	out, err := s.masterMap(ctx, m, created.ID)
 	if err != nil {
 		return nil, err
@@ -814,41 +834,57 @@ func (s *Service) CreateMapPoint(
 	if err != nil {
 		return nil, err
 	}
+	// The key is unique in the campaign (it shares the column of "Pôr no mapa"), and kept with a
+	// hash of the whole request: a retry returns the first point only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
 	var created mapsdb.MapPoint
 	var mapRow mapsdb.Map
+	replayed := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		if mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
 			return err
 		}
-		count, err := q.CountMapPoints(ctx, mapID)
-		if err != nil {
-			return fmt.Errorf("count points: %w", err)
-		}
-		if count >= s.maxPoints {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
-		}
-		if err := checkTarget(ctx, q, m.CampaignID, target); err != nil {
-			return err
-		}
-		created, err = q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
-			MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks, ShowDc: req.Msg.GetShowDc(),
-			XBp: req.Msg.GetXBp(), YBp: req.Msg.GetYBp(), TargetMapID: target, Now: s.now(),
-			Trap: spec.trap, TrapState: spec.trapSt, TrapTriggeredAt: spec.triggeredAt(s.now), TreasureValuePo: spec.value,
-			LightPreset: spec.light.preset, LightBrightFt: spec.lightBright(), LightDimFt: spec.lightDim(),
-		})
-		if err != nil {
-			return fmt.Errorf("insert point: %w", err)
-		}
-		return nil
+		created, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetMapPointByCreateKey,
+			func(p mapsdb.MapPoint) *string { return p.CreateHash },
+			func() (mapsdb.MapPoint, error) {
+				count, err := q.CountMapPoints(ctx, mapID)
+				if err != nil {
+					return created, fmt.Errorf("count points: %w", err)
+				}
+				if count >= s.maxPoints {
+					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
+				}
+				if err := checkTarget(ctx, q, m.CampaignID, target); err != nil {
+					return created, err
+				}
+				p, err := q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
+					MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks, ShowDc: req.Msg.GetShowDc(),
+					XBp: req.Msg.GetXBp(), YBp: req.Msg.GetYBp(), TargetMapID: target, Now: s.now(),
+					Trap: spec.trap, TrapState: spec.trapSt, TrapTriggeredAt: spec.triggeredAt(s.now), TreasureValuePo: spec.value,
+					LightPreset: spec.light.preset, LightBrightFt: spec.lightBright(), LightDimFt: spec.lightDim(),
+					CreateKey: scopedKey, CreateHash: requestHash,
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return p, fmt.Errorf("insert point: %w", err)
+				}
+				return p, err
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "create a point", err)
 	}
 	// A new point is hidden: only the master hears about it (MR-009), unless it
-	// is born visible to everyone (a trap created already triggered).
-	s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
+	// is born visible to everyone (a trap created already triggered). A retry announces
+	// nothing: the first call did.
+	if !replayed {
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
+	}
 	out, err := s.masterPoint(ctx, m, created)
 	if err != nil {
 		return nil, err
@@ -1706,4 +1742,14 @@ func errNotACampaignMap() error {
 // (AIP-154).
 func errStaleMap() error {
 	return connect.NewError(connect.CodeAborted, errors.New("the map changed since you opened it; reload it and try again"))
+}
+
+// keyOf checks a create's idempotency key and returns it as it is stored (the campaign's ID and
+// the key; nil for no key) with the hash of the whole request, for idem.Create.
+func keyOf(campaignID, key string, msg proto.Message) (scoped, hash *string, err error) {
+	key, err = idem.Clean(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	return idem.Scope(campaignID, key), idem.Hash(msg), nil
 }

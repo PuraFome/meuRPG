@@ -110,8 +110,8 @@ export class ProgressionClient {
     return this.client.listMilestones({ campaignId });
   }
 
-  addMilestone(campaignId: string, text: string): Promise<AddMilestoneResponse> {
-    return this.client.addMilestone({ campaignId, text });
+  addMilestone(campaignId: string, text: string, idempotencyKey: string): Promise<AddMilestoneResponse> {
+    return this.client.addMilestone({ campaignId, text, idempotencyKey });
   }
 
   updateMilestone(campaignId: string, milestoneId: string, text: string): Promise<UpdateMilestoneResponse> {

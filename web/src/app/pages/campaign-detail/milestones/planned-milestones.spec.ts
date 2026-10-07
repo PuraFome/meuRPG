@@ -84,7 +84,7 @@ describe('PlannedMilestones (E8-14)', () => {
     input.dispatchEvent(new Event('input'));
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
     await settle();
-    expect(api.addMilestone).toHaveBeenCalledWith('c1', 'Fechar o portal');
+    expect(api.addMilestone).toHaveBeenCalledWith('c1', 'Fechar o portal', expect.any(String));
     expect(store.list()).toHaveLength(4);
     expect(document.activeElement).toBe(el.querySelector('[data-add]'));
   });
@@ -102,6 +102,24 @@ describe('PlannedMilestones (E8-14)', () => {
     await settle();
     expect(el.querySelector('app-milestone-name-form')).not.toBeNull();
     expect(el.querySelector('#name-error')?.textContent).toContain('servidor');
+  });
+
+  it('sends the same idempotency key when the same milestone is added again after a failure', async () => {
+    const { el, settle } = await setup();
+    api.addMilestone.mockRejectedValueOnce(new Error('down'));
+    api.addMilestone.mockResolvedValue({ milestones: [...three, ms('d', 'Fechar o portal')] });
+    api.listMilestones.mockResolvedValue({ milestones: three });
+    btn(el, '[data-add]').click();
+    await settle();
+    const input = el.querySelector<HTMLInputElement>('app-milestone-name-form input')!;
+    input.value = 'Fechar o portal';
+    input.dispatchEvent(new Event('input'));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+    const [first, retry] = api.addMilestone.mock.calls.map((c) => c[2] as string);
+    expect(retry).toBe(first);
   });
 
   it('moves a milestone and keeps the focus on the button that was pressed', async () => {

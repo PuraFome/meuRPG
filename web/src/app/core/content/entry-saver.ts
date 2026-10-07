@@ -7,6 +7,7 @@ import {
   placeViolations,
   refusalSummary,
 } from './content-violations';
+import { ActionKey } from '../connect/idempotency';
 import { contentErrorText, isStale, refusalOf } from './content-client';
 
 /**
@@ -29,6 +30,13 @@ export class EntrySaver {
     private readonly what: string,
   ) {}
 
+  /** The idempotency key of a new entry: the same body again (a retry) keeps it, another body or a write that worked renews it. */
+  private readonly createKey = new ActionKey();
+
+  keyFor(body: unknown): string {
+    return this.createKey.keyFor(body);
+  }
+
   /** The messages of one input, by its path. */
   issues = (path: string): readonly string[] => (this.placement().byField.get(path) ?? []).map((p) => p.text);
 
@@ -45,7 +53,9 @@ export class EntrySaver {
     this.saving.set(true);
     this.clear();
     try {
-      return await write();
+      const result = await write();
+      this.createKey.renew();
+      return result;
     } catch (err) {
       const violations = refusalOf(err);
       if (violations) {

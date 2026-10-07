@@ -410,6 +410,8 @@ export interface CreateCharacterInput {
   readonly basic: BasicCharacterFormValue | null;
   /** How a player's base scores were made; the server checks them against it (RN-24). */
   readonly abilityMethod?: AbilityMethodKey;
+  /** One per create, sent again on a retry: the server makes the character once (a UUID; see `ActionKey`). */
+  readonly idempotencyKey: string;
 }
 
 export interface UpdateCharacterInput {

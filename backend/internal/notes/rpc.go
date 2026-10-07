@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/notes/link"
 	"github.com/PuraFome/meuRPG/backend/internal/notes/notesdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 )
 
@@ -201,23 +202,38 @@ func (s *Service) CreateNote(
 		return nil, err
 	}
 
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique for the author in the campaign, and kept with a hash of the whole request.
+	scopedKey, requestHash := idem.Scope(m.CampaignID+":"+m.UserID, key), idem.Hash(req.Msg)
+
 	var created notesdb.PlayerNote
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		count, err := q.CountPlayerNotes(ctx, notesdb.CountPlayerNotesParams{CampaignID: m.CampaignID, AuthorUserID: m.UserID})
-		if err != nil {
-			return fmt.Errorf("count the notes: %w", err)
-		}
-		if count >= MaxNotes {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("you already have %d notes in this campaign", MaxNotes))
-		}
-		created, err = q.InsertPlayerNote(ctx, notesdb.InsertPlayerNoteParams{
-			CampaignID: m.CampaignID, AuthorUserID: m.UserID, Text: text, ScenePointID: scene, Now: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("insert note: %w", err)
-		}
-		return nil
+		var err error
+		created, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPlayerNoteByCreateKey,
+			func(n notesdb.PlayerNote) *string { return n.CreateHash },
+			func() (notesdb.PlayerNote, error) {
+				// A retry is answered before the cap, so it never fails at the 300th note.
+				count, err := q.CountPlayerNotes(ctx, notesdb.CountPlayerNotesParams{CampaignID: m.CampaignID, AuthorUserID: m.UserID})
+				if err != nil {
+					return created, fmt.Errorf("count the notes: %w", err)
+				}
+				if count >= MaxNotes {
+					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("you already have %d notes in this campaign", MaxNotes))
+				}
+				n, err := q.InsertPlayerNote(ctx, notesdb.InsertPlayerNoteParams{
+					CampaignID: m.CampaignID, AuthorUserID: m.UserID, Text: text, ScenePointID: scene,
+					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return n, fmt.Errorf("insert note: %w", err)
+				}
+				return n, err
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "create a note", err)

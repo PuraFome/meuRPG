@@ -49,8 +49,9 @@ export class PuzzlesClient {
     return need((await this.client.getPuzzle({ campaignId, puzzleId })).puzzle, 'GetPuzzle');
   }
 
-  async create(campaignId: string, init: PuzzleInit): Promise<Puzzle> {
-    return need((await this.client.createPuzzle({ ...init, campaignId })).puzzle, 'CreatePuzzle');
+  /** `idempotencyKey`: one per new puzzle, sent again on a retry (see `ActionKey`). */
+  async create(campaignId: string, init: PuzzleInit, idempotencyKey: string): Promise<Puzzle> {
+    return need((await this.client.createPuzzle({ ...init, campaignId, idempotencyKey })).puzzle, 'CreatePuzzle');
   }
 
   async update(campaignId: string, puzzleId: string, init: PuzzleInit): Promise<Puzzle> {

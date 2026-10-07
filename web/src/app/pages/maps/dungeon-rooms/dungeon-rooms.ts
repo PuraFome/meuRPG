@@ -7,6 +7,7 @@ import { placeSceneFailure } from '../../../core/maps/dungeon-errors';
 import { TRAP_NOTE, behindSecretDoor, exitText, roomSizeText, stairsInRoom, stairsOutsideRooms } from '../../../core/maps/dungeon-layout';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import type { MapState } from '../../../core/maps/map-state';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { StairMark } from '../../../shared/map-layers/stair-mark';
 
 /** A room on the map: where its floor is, in squares, for the outline the editor draws. */
@@ -36,6 +37,7 @@ export interface RoomOutline {
 })
 export class DungeonRooms {
   private readonly api = inject(DungeonsClient);
+  private readonly placeKey = new ActionKey();
 
   readonly campaignId = input.required<string>();
   readonly mapId = input.required<string>();
@@ -104,7 +106,8 @@ export class DungeonRooms {
     this.problem.set(null);
     this.message.set('');
     try {
-      const point = await this.api.placeScene(this.campaignId(), this.mapId(), room.id);
+      const point = await this.api.placeScene(this.campaignId(), this.mapId(), room.id, this.placeKey.keyFor([this.mapId(), room.id]));
+      this.placeKey.renew();
       this.state().upsertPoint(point);
       this.message.set(`Cena “Sala ${room.id}” posta no mapa, escondida dos jogadores.`);
       this.changed.emit();
