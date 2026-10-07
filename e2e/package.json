@@ -6,7 +6,9 @@
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "lint:install": "npm ci --ignore-scripts --prefix lint",
+    "lint": "lint/node_modules/.bin/eslint --config lint/eslint.config.js ."
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

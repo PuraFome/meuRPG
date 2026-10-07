@@ -200,7 +200,7 @@ export class MapPage {
     try {
       this.state.setMap(await this.api.update(this.campaignId(), map.id, map.revision, { name }));
     } catch (err) {
-      throw new Error(mapErrorMessage(err, 'renomear o mapa'));
+      throw new Error(mapErrorMessage(err, 'renomear o mapa'), { cause: err });
     }
     void this.reloadMaps();
   };
@@ -215,7 +215,7 @@ export class MapPage {
     try {
       await this.api.delete(this.campaignId(), map.id);
     } catch (err) {
-      throw new Error(mapErrorMessage(err, 'apagar o mapa'));
+      throw new Error(mapErrorMessage(err, 'apagar o mapa'), { cause: err });
     }
     await this.router.navigate(['/campaigns', this.campaignId()]);
   };

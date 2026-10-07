@@ -56,7 +56,7 @@ export class CarriedLight {
     // A required input has no value in the constructor: read the presets once it has.
     effect(() => {
       const campaignId = this.campaignId();
-      untracked(() =>
+      void untracked(() =>
         this.presets.list(campaignId).then(
           (list) => this.all.set(list),
           () => this.failed.set(true),

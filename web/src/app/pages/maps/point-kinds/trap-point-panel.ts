@@ -143,7 +143,7 @@ export class TrapPointPanel {
   constructor() {
     effect(() => {
       const campaignId = this.campaignId();
-      untracked(() =>
+      void untracked(() =>
         this.presetsApi.list(campaignId).then(
           (res) => {
             this.presets.set(res.presets);

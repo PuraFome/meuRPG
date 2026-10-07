@@ -365,7 +365,7 @@ export class CastSheet {
   });
 
   constructor() {
-    this.catalog.details(this.data.campaignId, this.data.spellKey).then((d) => {
+    void this.catalog.details(this.data.campaignId, this.data.spellKey).then((d) => {
       if (d) {
         this.details.set(d);
       } else {

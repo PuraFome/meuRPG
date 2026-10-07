@@ -114,7 +114,7 @@ export class FamiliarRow {
       const characterId = this.characterId();
       this.reload();
       const seq = ++this.seq;
-      untracked(() =>
+      void untracked(() =>
         this.api.list(campaignId, characterId).then(
           (list) => seq === this.seq && this.creatures.set(list),
           // The owner's list is all this row needs: a refusal or a failure means no row, never an error on the map.

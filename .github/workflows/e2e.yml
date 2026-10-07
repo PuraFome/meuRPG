@@ -49,6 +49,47 @@ permissions:
   contents: read
 
 jobs:
+  # Lints the Playwright tests (a missing `await` is the classic flake) and
+  # type-checks them, without Docker, so a mistake fails in about a minute
+  # instead of after the images and shards. ESLint is a ratchet:
+  # e2e/eslint-suppressions.json lists the old violations, so only a NEW one
+  # fails. It has its own small package (e2e/lint) because ESLint's TypeScript
+  # support needs TypeScript 5.x, while the tests type-check with TypeScript 7.
+  lint:
+    name: lint and typecheck
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: "npm"
+          cache-dependency-path: |
+            e2e/package-lock.json
+            e2e/lint/package-lock.json
+
+      - name: Install e2e dependencies (no install scripts)
+        working-directory: e2e
+        run: npm ci --ignore-scripts
+
+      - name: Install lint dependencies (no install scripts)
+        working-directory: e2e
+        run: npm run lint:install
+
+      - name: Typecheck
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: e2e
+        run: npm run lint
+
   # Builds the two images once (the production image and devidp) and hands them
   # to the shards, which used to build them four times over (124 to 162 s each,
   # 07/10/2026). The layers are cached across runs in the GitHub Actions cache,

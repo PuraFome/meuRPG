@@ -267,7 +267,7 @@ export class PuzzlePlayPage {
     // The skills' names (once per campaign), for the hint button.
     effect(() => {
       const campaign = this.campaignId();
-      untracked(() =>
+      void untracked(() =>
         this.checks.skills(campaign).then(
           (skills) => this.skillNames.set(new Map(skills.map((s) => [s.key, s.label]))),
           () => undefined,

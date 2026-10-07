@@ -94,7 +94,7 @@ export class LightPointPanel {
     // The SRD's light sources, once per campaign; the saved light may be one of them, so the radios follow once they are known.
     effect(() => {
       const campaignId = this.campaignId();
-      untracked(() =>
+      void untracked(() =>
         this.presetsApi.list(campaignId).then(
           (list) => {
             this.presets.set(list);
