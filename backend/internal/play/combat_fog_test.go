@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -138,7 +137,7 @@ func (f *fogCave) torch(t *testing.T, on bool) {
 // groupVision turns the map's "Visão do grupo" on or off.
 func (f *fogCave) groupVision(t *testing.T, on bool) {
 	t.Helper()
-	if _, err := f.mapsAs(f.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: f.mapID, GroupVision: proto.Bool(on)})); err != nil {
+	if _, err := f.mapsAs(f.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: f.mapID, GroupVision: new(on)})); err != nil {
 		t.Fatalf("SetMapFog(group vision) error = %v", err)
 	}
 }
@@ -1114,7 +1113,7 @@ func TestRN10_FogCombatAShieldPromptNeverNamesAnUnseenAttacker(t *testing.T) {
 
 // TestFogCombatMoveCost measures what a combat move costs on a map with the fog, on
 // the cave of the fight and on a 60 x 40 map with six players and four NPCs (the
-// numbers in docs/arquitetura.md), and keeps a generous budget so a slip to seconds
+// numbers in docs/architecture.md), and keeps a generous budget so a slip to seconds
 // shows. It logs the numbers: go test -run TestFogCombatMoveCost -v.
 func TestFogCombatMoveCost(t *testing.T) {
 	t.Parallel()

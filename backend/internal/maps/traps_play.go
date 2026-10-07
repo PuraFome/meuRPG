@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -653,9 +654,7 @@ func (s *Service) standsOf(ctx context.Context, ts *trapScene, campaignID, mapID
 	for _, t := range tokens {
 		out[t.CharacterID] = ts.g.SquareOf(int(t.XBp), int(t.YBp))
 	}
-	for id, sq := range combat.Positions {
-		out[id] = sq
-	}
+	maps.Copy(out, combat.Positions)
 	return out, nil
 }
 

@@ -6,13 +6,14 @@
 // people or the database: a Request holds only what may go to the model (the
 // master's text, a style, a ratio and gallery images), so there is no field a
 // name or an e-mail could travel in. What the module adds to a request is
-// listed in docs/arquitetura.md.
+// listed in docs/architecture.md.
 package gen
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -32,12 +33,7 @@ var Ratios = []string{"1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "
 
 // ValidRatio reports whether ratio is one of Ratios.
 func ValidRatio(ratio string) bool {
-	for _, r := range Ratios {
-		if r == ratio {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(Ratios, ratio)
 }
 
 // Image is a picture's bytes with its type.

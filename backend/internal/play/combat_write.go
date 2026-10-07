@@ -21,7 +21,7 @@ import (
 )
 
 // The kinds of session_events rows a combat writes (session_event_kinds).
-// Their payloads hold IDs and numbers only, never a name (docs/privacidade.md).
+// Their payloads hold IDs and numbers only, never a name (docs/privacy.md).
 const (
 	eventEncounterStarted    = "encounter_started"
 	eventInitiativeSubmitted = "initiative_submitted"

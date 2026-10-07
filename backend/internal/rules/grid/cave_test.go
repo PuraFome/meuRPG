@@ -88,8 +88,8 @@ func render(t grid.Terrain, from grid.Square, occ grid.OccupantMap, reach []grid
 		in[r.Square] = true
 	}
 	var b strings.Builder
-	for row := 0; row < t.Grid.Rows; row++ {
-		for col := 0; col < t.Grid.Columns; col++ {
+	for row := range t.Grid.Rows {
+		for col := range t.Grid.Columns {
 			sq := grid.Square{Col: col, Row: row}
 			ch := byte('.')
 			o, occupied := occ[sq]

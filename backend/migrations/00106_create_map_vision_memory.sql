@@ -21,7 +21,7 @@
 --
 -- Deleting the map or the player deletes the row. What is stored is where a
 -- player has been looking in a game: it is personal data about play, listed in
--- docs/privacidade.md.
+-- docs/privacy.md.
 CREATE TABLE IF NOT EXISTS map_vision_memory (
     map_id UUID NOT NULL REFERENCES maps (id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,

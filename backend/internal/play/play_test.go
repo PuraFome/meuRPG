@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -813,9 +814,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())
 	}
-	for name, err := range combat {
-		calls[name] = err
-	}
+	maps.Copy(calls, combat)
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: error = %v, want unauthenticated", name, err)
@@ -867,7 +866,7 @@ func firstEventError(ctx context.Context, c playv1connect.PlayServiceClient, cam
 	if err != nil {
 		return err
 	}
-	defer stream.Close() //nolint:errcheck // the test only needs the first event
+	defer stream.Close()
 	if stream.Receive() {
 		return nil
 	}

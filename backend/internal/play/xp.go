@@ -70,7 +70,7 @@ func (s *Service) EncounterNames(ctx context.Context, campaignID string, ids []s
 // inside tx, and says whether there was one: with no open session the XP is
 // still given (or the clue revealed) and nothing is written here. It locks the session's row first,
 // like every other writer, so the events get their numbers in order. The
-// payload carries IDs and numbers only (docs/privacidade.md).
+// payload carries IDs and numbers only (docs/privacy.md).
 func (s *Service) AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error) {
 	if !slices.Contains(appendableKinds, kind) {
 		return false, fmt.Errorf("play: %q is not a kind another module may write", kind)

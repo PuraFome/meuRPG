@@ -602,8 +602,8 @@ type playerView struct {
 // remembered (nil for nothing).
 func newPlayerView(g grid.Grid, now *vision.View, memory *grid.Layer, onMap bool) *playerView {
 	pv := &playerView{g: g, codes: make([]byte, g.Squares()), onMap: onMap}
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			sq := grid.Square{Col: col, Row: row}
 			code := byte(now.At(sq))
 			if code == stateUnseen && memory.Has(sq) {
@@ -670,7 +670,7 @@ func hashOf(parts ...[]byte) int32 {
 		_, _ = h.Write(part)
 		_, _ = h.Write([]byte{0xff}) // a boundary, so [a][b] differs from [ab]
 	}
-	return int32(h.Sum32() >> 1) //nolint:gosec // G115: 31 bits
+	return int32(h.Sum32() >> 1)
 }
 
 // pointSquares are the squares a point covers: its own, or, for a trap, the block
@@ -746,8 +746,8 @@ func remember(g grid.Grid, memory *grid.Layer, now *vision.View) bool {
 	if now == nil {
 		return false
 	}
-	for row := 0; row < g.Rows; row++ {
-		for col := 0; col < g.Columns; col++ {
+	for row := range g.Rows {
+		for col := range g.Columns {
 			if sq := (grid.Square{Col: col, Row: row}); now.Seen(sq) && !memory.Has(sq) {
 				memory.Set(col, row, true)
 				grew = true

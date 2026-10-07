@@ -38,6 +38,7 @@ func testStores(t *testing.T) []namedStore {
 // database, which is dropped when the test ends.
 func testPostgresStore(t *testing.T) *PostgresStore {
 	t.Helper()
+	t.Helper()
 	return NewPostgresStore(testPool(t))
 }
 
@@ -421,7 +422,7 @@ func TestPostgresStoreLoginStateIntents(t *testing.T) {
 }
 
 // TestRowLevelTTL checks that CockroachDB deletes expired rows on its own
-// (docs/privacidade.md promises it).
+// (docs/privacy.md promises it).
 func TestRowLevelTTL(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)

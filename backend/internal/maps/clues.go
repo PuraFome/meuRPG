@@ -57,7 +57,7 @@ const (
 )
 
 // clueRevealedEvent is the payload of clue_revealed: IDs only, never the
-// clue's text nor a character's name (docs/privacidade.md).
+// clue's text nor a character's name (docs/privacy.md).
 type clueRevealedEvent struct {
 	ClueID       string   `json:"clue_id"`
 	PointID      string   `json:"point_id"`
@@ -203,7 +203,7 @@ func (s *Service) MoveSceneClue(
 		clues[i], clues[j] = clues[j], clues[i]
 		// Renumber the whole list from 0, as the actions do.
 		for p := range clues {
-			want := int32(p) //nolint:gosec // G115: at most 30 clues
+			want := int32(p)
 			if clues[p].Position == want {
 				continue
 			}

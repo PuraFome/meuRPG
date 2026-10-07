@@ -7,6 +7,7 @@ import (
 	"errors"
 	"hash/crc32"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -64,6 +65,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		return connect.CodeOf(err)
 	}
 	route := func(t *testing.T, res httpResult, okStatus int) connect.Code {
+		t.Helper()
 		if res.status == okStatus {
 			return allowed
 		}
@@ -593,12 +595,12 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["ListMaps"] = mc.ListMaps(ctx, connect.NewRequest(&mapsv1.ListMapsRequest{CampaignId: id}))
 	_, mapCalls["GetMap"] = mc.GetMap(ctx, connect.NewRequest(&mapsv1.GetMapRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["CreateMap"] = mc.CreateMap(ctx, connect.NewRequest(&mapsv1.CreateMapRequest{CampaignId: id, Name: "X", ImageId: id}))
-	_, mapCalls["UpdateMap"] = mc.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: id, MapId: id, Revision: 1, Name: proto.String("X")}))
+	_, mapCalls["UpdateMap"] = mc.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: id, MapId: id, Revision: 1, Name: new("X")}))
 	_, mapCalls["DeleteMap"] = mc.DeleteMap(ctx, connect.NewRequest(&mapsv1.DeleteMapRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["SetMapRevealed"] = mc.SetMapRevealed(ctx, connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: id, MapId: id, Revealed: true}))
 	_, mapCalls["SetMapGrid"] = mc.SetMapGrid(ctx, connect.NewRequest(&mapsv1.SetMapGridRequest{CampaignId: id, MapId: id, Columns: 20}))
 	_, mapCalls["CreateMapPoint"] = mc.CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{CampaignId: id, MapId: id, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "X"}))
-	_, mapCalls["UpdateMapPoint"] = mc.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: id, MapId: id, PointId: id, Name: proto.String("X")}))
+	_, mapCalls["UpdateMapPoint"] = mc.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: id, MapId: id, PointId: id, Name: new("X")}))
 	_, mapCalls["DeleteMapPoint"] = mc.DeleteMapPoint(ctx, connect.NewRequest(&mapsv1.DeleteMapPointRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["SetMapPointRevealed"] = mc.SetMapPointRevealed(ctx, connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: id, MapId: id, PointId: id, Revealed: true}))
 	_, mapCalls["AddSceneAction"] = mc.AddSceneAction(ctx, connect.NewRequest(&mapsv1.AddSceneActionRequest{CampaignId: id, MapId: id, PointId: id, Key: "skill:arcana"}))
@@ -615,7 +617,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["PaintMapCells"] = mc.PaintMapCells(ctx, connect.NewRequest(&mapsv1.PaintMapCellsRequest{CampaignId: id, MapId: id, Layer: mapsv1.MapLayer_MAP_LAYER_WALL, Value: 1, Squares: []*mapsv1.MapSquare{{}}}))
 	_, mapCalls["GetMapLayers"] = mc.GetMapLayers(ctx, connect.NewRequest(&mapsv1.GetMapLayersRequest{CampaignId: id, MapId: id}))
-	_, mapCalls["SetMapFog"] = mc.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: id, MapId: id, FogEnabled: proto.Bool(true)}))
+	_, mapCalls["SetMapFog"] = mc.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: id, MapId: id, FogEnabled: new(true)}))
 	_, mapCalls["RevealTrap"] = mc.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: id, MapId: id, PointId: id, All: true}))
 	_, mapCalls["GetTrapNoticers"] = mc.GetTrapNoticers(ctx, connect.NewRequest(&mapsv1.GetTrapNoticersRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["DisarmTrap"] = mc.DisarmTrap(ctx, connect.NewRequest(&mapsv1.DisarmTrapRequest{CampaignId: id, MapId: id, PointId: id}))
@@ -628,9 +630,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	if len(mapCalls) != mapMethods.Len() {
 		t.Errorf("called %d MapService methods, the service has %d", len(mapCalls), mapMethods.Len())
 	}
-	for name, err := range mapCalls {
-		calls[name] = err
-	}
+	maps.Copy(calls, mapCalls)
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: error = %v, want unauthenticated", name, err)

@@ -82,7 +82,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 		EncounterID: c.enc.ID, AttackerID: &attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
 		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000), CriticalMaxRule: critical && c.rules.CriticalMaxPlusRoll,
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
-		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: ptr(clamp32(attackAC, 0, math.MaxInt32)),
+		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: new(clamp32(attackAC, 0, math.MaxInt32)),
 	})
 	if err != nil {
 		return playdb.PendingDamage{}, fmt.Errorf("open the pending damage: %w", err)

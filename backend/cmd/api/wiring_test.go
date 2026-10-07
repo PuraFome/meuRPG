@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log/slog"
 	"testing"
 
@@ -27,7 +26,7 @@ func TestTheRealWiringIsComplete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadSRD() error = %v", err)
 	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 
 	m, err := wireModules(logger, pool, content, nil, &gen.Fake{}, wireOptions{MonthlyImages: 20})
 	if err != nil {

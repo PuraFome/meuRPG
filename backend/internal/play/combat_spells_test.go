@@ -66,6 +66,7 @@ func newCasters(t *testing.T) *armed { return newCastersAt(t, 3) }
 // newCastersAt is newCasters with Pensantus at the given wizard level.
 func newCastersAt(t *testing.T, wizardLevel int32) *armed {
 	t.Helper()
+	t.Helper()
 	return newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)

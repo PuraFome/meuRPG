@@ -904,7 +904,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 // If-None-Match the comparison is weak: W/"x" matches "x".
 func etagMatches(values []string, etag string) bool {
 	for _, value := range values {
-		for _, candidate := range strings.Split(value, ",") {
+		for candidate := range strings.SplitSeq(value, ",") {
 			candidate = strings.TrimSpace(candidate)
 			if candidate == "*" || strings.TrimPrefix(candidate, "W/") == etag {
 				return true

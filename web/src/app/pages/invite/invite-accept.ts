@@ -28,7 +28,7 @@ const TOKEN_PATTERN = /^#t=(.+)$/;
  *
  * The token never becomes a route param, a query param or anything else
  * that could end up in `history`, a log line or a `Referer` header
- * (ADR-0009, docs/privacidade.md) — it lives only in `token`, a private
+ * (ADR-0009, docs/privacy.md) — it lives only in `token`, a private
  * field on this component, for as long as the page is open.
  */
 @Component({
@@ -44,7 +44,7 @@ export class InviteAccept {
 
   /** The invite token, read once from `location.hash` in the constructor
    * and kept only in memory — never in Web Storage, a cookie, or the URL
-   * (see the no-Web-Storage rule, docs/privacidade.md). */
+   * (see the no-Web-Storage rule, docs/privacy.md). */
   private readonly token: string | null;
 
   protected readonly state = signal<State>({ status: 'waiting-for-session' });
@@ -108,7 +108,7 @@ export class InviteAccept {
    * Signs in through the server, carrying the invite along so it gets
    * accepted right after (the backend contract: a same-origin POST to
    * `/auth/login` with `intent=campaign_invite` and `intent_payload=<token>`
-   * — see docs/arquitetura.md#frontend-web). A hidden form, not `fetch`:
+   * — see docs/architecture.md#web-app-web). A hidden form, not `fetch`:
    * signing in is a full-page OIDC redirect dance, exactly like
    * `AuthService.signIn`, and the CSP's `form-action 'self'` allows a
    * same-origin POST like this one.

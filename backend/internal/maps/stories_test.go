@@ -13,7 +13,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
-// MR-019's acceptance criteria (docs/produto/historias.md), as far as the
+// MR-019's acceptance criteria (docs/product/stories.md), as far as the
 // server goes. The screens get their Playwright tests with the gallery UI.
 
 // MR-019, first criterion: the master uploads a JPEG, PNG or WebP of up to

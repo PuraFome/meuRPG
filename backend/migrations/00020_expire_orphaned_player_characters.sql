@@ -1,6 +1,6 @@
 -- +goose Up
 -- A player character with neither a player nor a campaign is deleted by
--- CockroachDB's row-level TTL job, on its own (docs/privacidade.md).
+-- CockroachDB's row-level TTL job, on its own (docs/privacy.md).
 --
 -- A player character stays when its player deletes their account (RN-16:
 -- it stays with the campaign's master) and when its campaign is deleted (it

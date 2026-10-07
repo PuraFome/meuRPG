@@ -64,7 +64,7 @@ func TestMR037_TheFormEndsWhenTheDruidFallsToZeroOrAsleep(t *testing.T) {
 	e := s.mustAssume(t, s.bia, s.bri, wolfKey).GetEncounter()
 
 	// The master's correction of the druid's own hit points to 0.
-	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = ptrTo(int32(0)) })
+	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = new(int32(0)) })
 	v := a.vitals(t, s.bri)
 	got := byLabel(t, a.get(t, a.master), "Sálvia")
 	if v.GetWildShape() != nil || got.GetSpeedFt() != 30 || got.GetWildShapeBeastKey() != "" || got.GetState() != playv1.CombatantState_COMBATANT_STATE_DOWN {
@@ -113,7 +113,7 @@ func TestMR037_CarryOverToZeroStartsTheDeathSavesAndSendsTheMoverBack(t *testing
 	s.fight(t)
 	s.mustAssume(t, s.bia, s.bri, wolfKey)
 	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) {
-		r.WildShapeHitPointsCurrent, r.HitPointsCurrent = ptrTo(int32(1)), ptrTo(int32(2))
+		r.WildShapeHitPointsCurrent, r.HitPointsCurrent = new(int32(1)), new(int32(2))
 	})
 	// She leaves the Capitão's and the goblin's reach: both may attack.
 	if _, err := s.bia.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
@@ -198,11 +198,9 @@ func TestMR037_TwoAssumesAtOnceOneWins(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = s.assume(t, s.bia, s.bri, wolfKey)
-		}()
+		})
 	}
 	wg.Wait()
 	ok := 0
@@ -239,7 +237,7 @@ func TestMR036_EveryChangeOfAFormOrASightTellsTheFog(t *testing.T) {
 	}
 	told("assuming the form", func() { s.mustAssume(t, s.bia, s.bri, wolfKey) })
 	told("the master's correction of the beast to 0", func() {
-		s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(0)) })
+		s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(0)) })
 	})
 	told("the undo of the leaving... after a new form", func() {
 		e = a.get(t, a.master)
@@ -249,7 +247,7 @@ func TestMR036_EveryChangeOfAFormOrASightTellsTheFog(t *testing.T) {
 	})
 	told("the beast falling on a damage", func() {
 		s.mustAssume(t, s.master, s.bri, wolfKey)
-		s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(1)) })
+		s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(1)) })
 		hit := a.mustAttack(t, a.master, a.get(t, a.master), "Capitão Goblin", sword, "Sálvia", func(r *playv1.RollAttackRequest) {
 			r.Roll = &playv1.RollAttackRequest_D20Face{D20Face: 15}
 			r.AsReaction = true

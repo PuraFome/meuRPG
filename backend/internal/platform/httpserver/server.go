@@ -20,7 +20,7 @@ import (
 // the whole request/response, which would cut Connect streaming RPCs short.
 // Cloud Run already enforces a per-request timeout (5 minutes by default;
 // the live session's stream lasts up to 30, so the service needs 35, see
-// docs/operacao.md), and unary RPCs can be bounded per handler. What a slow
+// docs/operations.md), and unary RPCs can be bounded per handler. What a slow
 // client could stall is bounded where it happens, with a deadline per operation
 // (platform/slowclient): each Send on a stream, the body of an upload.
 const (
@@ -185,7 +185,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	go func() {
 		serveErr <- s.httpServer.Serve(ln)
 	}()
-	s.logger.Info("http server started", "addr", ln.Addr().String())
+	s.logger.InfoContext(ctx, "http server started", "addr", ln.Addr().String())
 
 	select {
 	case err := <-serveErr:
@@ -194,7 +194,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	case <-ctx.Done():
 	}
 
-	s.logger.Info("shutting down", "timeout", s.shutdownTimeout.String())
+	s.logger.InfoContext(ctx, "shutting down", "timeout", s.shutdownTimeout.String())
 	s.draining.Store(true)
 
 	// ctx is already canceled; WithoutCancel keeps its values but gives the
@@ -211,6 +211,6 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 		return fmt.Errorf("http server: %w", err)
 	}
 
-	s.logger.Info("http server stopped")
+	s.logger.InfoContext(ctx, "http server stopped")
 	return nil
 }

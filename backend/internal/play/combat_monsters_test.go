@@ -142,7 +142,7 @@ func TestMR042_ThreeBanditsJoinTheCombat(t *testing.T) {
 	// Another add keeps counting: "Bandido 4", and a name of the master's own.
 	more := a.mustAddMonsters(t, res.GetEncounter(), func(r *playv1.AddMonstersRequest) { r.Count = 1 })
 	byLabel(t, more.GetEncounter(), "Bandido 4")
-	named := a.mustAddMonsters(t, more.GetEncounter(), func(r *playv1.AddMonstersRequest) { r.Count = 2; r.Name = "Salteador"; r.Hidden = ptr(false) })
+	named := a.mustAddMonsters(t, more.GetEncounter(), func(r *playv1.AddMonstersRequest) { r.Count = 2; r.Name = "Salteador"; r.Hidden = new(false) })
 	if c := byLabel(t, named.GetEncounter(), "Salteador 1"); c.GetHidden() {
 		t.Errorf("Salteador 1 = %v, want it revealed when the request says so", c)
 	}
@@ -427,11 +427,9 @@ func TestMR042_TwoAddsAtOnceKeepOneNpc(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = a.addMonsters(t, e, newKey(), func(r *playv1.AddMonstersRequest) { r.Count = 2 })
-		}()
+		})
 	}
 	wg.Wait()
 	for i, err := range errs {
@@ -497,7 +495,7 @@ func TestMR042_ARetryIsCheckedAgainstWhatWasAdded(t *testing.T) {
 		"another creature":  func(r *playv1.AddMonstersRequest) { r.CreatureKey = "monster:wolf" },
 		"another name":      func(r *playv1.AddMonstersRequest) { r.Name = "Salteador" },
 		"rolled hit points": func(r *playv1.AddMonstersRequest) { r.HitPoints = playv1.MonsterHitPoints_MONSTER_HIT_POINTS_ROLLED },
-		"revealed":          func(r *playv1.AddMonstersRequest) { r.Hidden = ptr(false) },
+		"revealed":          func(r *playv1.AddMonstersRequest) { r.Hidden = new(false) },
 	} {
 		if _, err := a.addMonsters(t, e, key, edit); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Errorf("a retry with %s = %v, want invalid_argument", name, err)
@@ -539,7 +537,7 @@ func TestMR042_OnlyTheMasterReadsTheCreatureAndItsHitDice(t *testing.T) {
 	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
 		r.Count = 2
 		r.HitPoints = playv1.MonsterHitPoints_MONSTER_HIT_POINTS_ROLLED
-		r.Hidden = ptr(false)
+		r.Hidden = new(false)
 	})
 	e = a.begin(t, a.get(t, a.master))
 	m := byLabel(t, a.get(t, a.master), "Bandido 1")

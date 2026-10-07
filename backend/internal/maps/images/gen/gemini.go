@@ -18,7 +18,7 @@ import (
 // GeminiURL is the Gemini API's Interactions endpoint. We use it, not
 // generateContent, because only it has `store`: with store=false the call is
 // not kept as an interaction (the default keeps one for 55 days on the paid
-// tier; it does not promise that Google keeps nothing, see docs/privacidade.md).
+// tier; it does not promise that Google keeps nothing, see docs/privacy.md).
 // Docs, read 06/10/2026:
 //   - https://ai.google.dev/gemini-api/docs/image-generation (request and
 //     response_format, ratios, the 10 + 4 references)
@@ -35,7 +35,7 @@ const APIRevision = "2026-05-20"
 
 // maxResponseBytes bounds what one answer may be: a 1K picture is about 2 MB
 // in base64, so 8 MiB leaves room for drafts, and a broken server cannot fill
-// the memory (docs/operacao.md has the budget).
+// the memory (docs/operations.md has the budget).
 const maxResponseBytes = 8 << 20
 
 // Gemini is the Generator that calls the Gemini API with a key.

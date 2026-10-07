@@ -51,7 +51,7 @@ func TestDerivePensantusGolden(t *testing.T) {
 // mechanical fields, so no book text appears here.
 func sageOverlay() Overlay {
 	return Overlay{Revision: 1, Backgrounds: []TableBackground{{
-		TableEntry:      TableEntry{Key: "background:sabio@mesa", NamePT: "Sábio"},
+		Key: "background:sabio@mesa", NamePT: "Sábio",
 		Skills:          []string{"skill:arcana", "skill:history"},
 		LanguageChoices: 2,
 		Feature: TableFeature{

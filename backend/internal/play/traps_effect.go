@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -19,7 +20,7 @@ import (
 // combatant's hit points, a pending damage, the vitals) is combat_traps.go's and
 // traps_damage.go's.
 //
-// The rules the table can read in docs/arquitetura.md:
+// The rules the table can read in docs/architecture.md:
 //   - The trap's attacks go round the caught creatures in order (attack 1 at the
 //     first, 2 at the second, wrapping), each against the creature's armor class
 //     with the trap's bonus; a hit rolls the attack's damage, doubled dice on a
@@ -228,10 +229,8 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.Critic
 }
 
 func appendOnce(list []string, key string) []string {
-	for _, k := range list {
-		if k == key {
-			return list
-		}
+	if slices.Contains(list, key) {
+		return list
 	}
 	return append(list, key)
 }

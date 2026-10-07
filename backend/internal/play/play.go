@@ -201,7 +201,7 @@ type CombatRoster interface {
 	// Every read of this interface takes the caller's transaction (nil: the pool). A
 	// change that holds one must pass it: the read then sees what the change wrote
 	// (the character's vitals or Wild Shape form), and it takes no second connection,
-	// which would wait for the one the transaction keeps (docs/arquitetura.md,
+	// which would wait for the one the transaction keeps (docs/architecture.md,
 	// "Dentro de uma transação, nenhuma leitura pelo pool").
 
 	// CombatSheet returns what an attack needs from the sheet of a living
@@ -348,7 +348,7 @@ type CampaignDirectory interface {
 	ActiveCampaigns(ctx context.Context, userID string) ([]*campaignsv1.Campaign, error)
 }
 
-// The live stream's timing (docs/operacao.md). Tests shorten them through
+// The live stream's timing (docs/operations.md). Tests shorten them through
 // Config.Live.
 const (
 	// DefaultHeartbeat: a stream with nothing to say sends a heartbeat this
@@ -437,7 +437,7 @@ type Service struct {
 	conditionNames map[string]string
 
 	// hub fans the live events out to the open streams, in memory: one
-	// server instance only (docs/operacao.md).
+	// server instance only (docs/operations.md).
 	hub  *live.Hub
 	live LiveConfig
 }
@@ -579,7 +579,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/arquitetura.md,
+// read through the pool takes a second connection (see docs/architecture.md,
 // "Dentro de uma transação, nenhuma leitura pelo pool").
 func (s *Service) queriesIn(tx pgx.Tx) *playdb.Queries {
 	if tx == nil {

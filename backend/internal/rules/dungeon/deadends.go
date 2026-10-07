@@ -21,8 +21,8 @@ func (g *gen) removeDeadEnds() {
 	// left marks a node a cut loop stopped at after a failed draw: the scan must
 	// not draw for it again (the cut's own loop handled it, spec 4.5).
 	left := make([]bool, g.w*g.h)
-	for j := 0; j < g.ny; j++ {
-		for i := 0; i < g.nx; i++ {
+	for j := range g.ny {
+		for i := range g.nx {
 			cur := g.idx(2*i+1, 2*j+1)
 			if left[cur] || !g.deadEnd(cur) {
 				continue

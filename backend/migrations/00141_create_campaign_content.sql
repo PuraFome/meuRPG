@@ -23,7 +23,7 @@
 -- defense, with room for the JSONB text being longer than the compact protojson.
 --
 -- Deleting the campaign deletes its content. Names and texts are written by the
--- master: they are in docs/privacidade.md's inventory.
+-- master: they are in docs/privacy.md's inventory.
 CREATE TABLE IF NOT EXISTS campaign_content (
     campaign_id UUID NOT NULL REFERENCES campaigns (id) ON DELETE CASCADE,
     content_key TEXT NOT NULL,

@@ -24,7 +24,7 @@ const MaxDisplayNameLength = 40
 // up in the database. No exported function puts a session into a context:
 // other modules learn who is calling through UserID (the authz.Caller
 // interface), and their tests pass a fake of that interface instead
-// (docs/arquitetura.md, "Quem está chamando").
+// (docs/architecture.md#who-is-calling).
 type sessionKey struct{}
 
 // sessionFromContext returns the session that Interceptor found for this
@@ -235,7 +235,7 @@ func (s *Service) storeError(ctx context.Context, msg string, err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return errUnauthenticated()
 	}
-	s.logger.ErrorContext(ctx, msg, "error", err)
+	s.logger.ErrorContext(ctx, msg, "error", err) //nolint:sloglint // each call site passes a fixed message
 	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
 }
 

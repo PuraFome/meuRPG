@@ -11,7 +11,7 @@
 // characters such as line breaks; multi-line fields accept line breaks and
 // tabs and reject other control characters. Every free-text field is
 // fiction: the app reminds people not to write real people's data there,
-// and the server never logs it (docs/privacidade.md). No field holds the
+// and the server never logs it (docs/privacy.md). No field holds the
 // player's real name or e-mail.
 //
 // Stored as JSON. The server stores CharacterSheet and CharacterStory in the
@@ -423,7 +423,7 @@ type CharacterServiceClient interface {
 	// The character never became part of the campaign, so, in one
 	// transaction, it is deleted with its story (and any notes the master
 	// wrote about it), and its player's pending membership is deleted too
-	// (docs/privacidade.md). The player sees the campaign no more, like anyone
+	// (docs/privacy.md). The player sees the campaign no more, like anyone
 	// who is not in it, and needs a new invite to try again. An active
 	// membership is never touched.
 	//
@@ -1291,7 +1291,7 @@ type CharacterServiceHandler interface {
 	// The character never became part of the campaign, so, in one
 	// transaction, it is deleted with its story (and any notes the master
 	// wrote about it), and its player's pending membership is deleted too
-	// (docs/privacidade.md). The player sees the campaign no more, like anyone
+	// (docs/privacy.md). The player sees the campaign no more, like anyone
 	// who is not in it, and needs a new invite to try again. An active
 	// membership is never touched.
 	//

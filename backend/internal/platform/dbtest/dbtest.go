@@ -65,7 +65,7 @@ var counter atomic.Int64
 var (
 	templateOnce sync.Once
 	template     templateDB
-	templateErr  error
+	errTemplate  error
 )
 
 // The databases this process made, and the ones free for the next test: a
@@ -151,9 +151,9 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	t.Helper()
 	rawURL := testenv.DatabaseURL(t)
 
-	templateOnce.Do(func() { template, templateErr = buildTemplate(rawURL) })
-	if templateErr != nil {
-		t.Fatalf("build the test database template: %v", templateErr)
+	templateOnce.Do(func() { template, errTemplate = buildTemplate(rawURL) })
+	if errTemplate != nil {
+		t.Fatalf("build the test database template: %v", errTemplate)
 	}
 
 	name, reused := take(prefix)
@@ -300,6 +300,7 @@ var errNestedAcquire = errors.New("dbtest: nested pool acquisition inside a db.I
 
 // guardPool is the tweak NewPoolWith applies to every test pool.
 func guardPool(t testing.TB, conns int32) func(*pgxpool.Config) {
+	t.Helper()
 	return func(cfg *pgxpool.Config) {
 		cfg.MaxConns = conns
 		if v := os.Getenv(poolMaxConnsEnv); v != "" && conns == 1 {
@@ -436,11 +437,11 @@ var referenceTables = []string{"session_event_kinds"}
 // emptyAll deletes every row of every table, children before parents.
 func (tpl templateDB) emptyAll() string {
 	var b strings.Builder
-	for i := len(tpl.tables) - 1; i >= 0; i-- {
-		if tpl.tables[i] == "goose_db_version" || slices.Contains(referenceTables, tpl.tables[i]) {
+	for _, v := range slices.Backward(tpl.tables) {
+		if v == "goose_db_version" || slices.Contains(referenceTables, v) {
 			continue // the migrations it records, and the reference data, stay
 		}
-		b.WriteString("DELETE FROM " + pgx.Identifier{tpl.tables[i]}.Sanitize() + ";")
+		b.WriteString("DELETE FROM " + pgx.Identifier{v}.Sanitize() + ";")
 	}
 	return b.String()
 }
@@ -627,7 +628,6 @@ func names(ctx context.Context, conn *sql.DB, query string) ([]string, error) {
 func showCreate(ctx context.Context, conn *sql.DB, kind, name string) (string, error) {
 	var object, stmt string
 	query := "SHOW CREATE " + kind + " " + pgx.Identifier{"public", name}.Sanitize()
-	//nolint:gosec // a quoted identifier read from the template's own catalog, in test code
 	if err := conn.QueryRowContext(ctx, query).Scan(&object, &stmt); err != nil {
 		return "", fmt.Errorf("show create %s %s: %w", kind, name, err)
 	}

@@ -285,7 +285,7 @@ func (r *treasureRNG) intn(n int) int {
 	if n <= 1 {
 		return 0
 	}
-	un := uint64(n) //nolint:gosec // G115: n > 1
+	un := uint64(n)
 	hi, lo := bits.Mul64(r.next(), un)
 	if lo < un {
 		t := -un % un

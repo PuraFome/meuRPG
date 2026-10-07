@@ -1,6 +1,7 @@
 package play
 
 import (
+	"maps"
 	"slices"
 	"testing"
 
@@ -172,9 +173,7 @@ func (s *shapers) pensantusFirst(t *testing.T, at map[string][2]int32) *playv1.E
 	places := map[string][2]int32{
 		"Pensantus": {10, 3}, "Nanquim": {12, 3}, "Sálvia": {6, 5}, "Irmã": {7, 5}, "Toren": {2, 2}, "Capitão Goblin": {5, 8}, "Goblin": {6, 8},
 	}
-	for k, v := range at {
-		places[k] = v
-	}
+	maps.Copy(places, at)
 	return s.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: s.capitao.GetId()}, {CharacterId: s.goblin.GetId()}},
 		npcRolls: []int{1, 1},

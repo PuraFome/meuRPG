@@ -738,7 +738,7 @@ func (f *fight) latest(t *testing.T) *playv1.Encounter {
 	}
 	out := &playv1.Encounter{Status: statusToProto[status]}
 	if ended {
-		out.EndedAt = timestampOrNil(ptr(f.h.svc.now()))
+		out.EndedAt = timestampOrNil(new(f.h.svc.now()))
 	}
 	return out
 }

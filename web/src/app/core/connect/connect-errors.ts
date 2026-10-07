@@ -30,7 +30,7 @@ export function describeConnectError(
 
 /**
  * Whether the server turned the call away for asking too often (the per-user
- * and per-address limits, docs/arquitetura.md, "Limites de abuso"). It tells
+ * and per-address limits, docs/architecture.md#abuse-limits). It tells
  * by the `Retry-After` header, which no other refusal carries: a full gallery
  * or a campaign at its limit is also `resource_exhausted`, and waiting does
  * not fix those.

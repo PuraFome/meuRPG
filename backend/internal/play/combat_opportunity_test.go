@@ -201,31 +201,39 @@ func TestRN21_WhoProvokesAnOpportunityAttack(t *testing.T) {
 	}{
 		{name: "the baseline provokes", want: true},
 		{name: "Desengajar", setup: func(t *testing.T, c *cave, e *playv1.Encounter) {
+			t.Helper()
 			if _, err := c.action(t, c.caio, e, "Toren", "standard:disengage"); err != nil {
 				t.Fatalf("TakeAction(disengage) error = %v", err)
 			}
 		}},
 		{name: "a reactor without its reaction", setup: func(t *testing.T, c *cave, _ *playv1.Encounter) {
+			t.Helper()
 			c.execSQL(t, `UPDATE combatants SET reaction_used = true WHERE id = $1`, c.id(t, "Goblin 1"))
 		}},
 		{name: "an incapacitated reactor", setup: func(t *testing.T, c *cave, e *playv1.Encounter) {
+			t.Helper()
 			if _, err := c.conditions(t, c.master, e, "Goblin 1", []string{"condition:incapacitated"}, true, false); err != nil {
 				t.Fatalf("SetCombatantConditions() error = %v", err)
 			}
 		}},
 		{name: "a reactor on the mover's side", setup: func(t *testing.T, c *cave, _ *playv1.Encounter) {
+			t.Helper()
 			c.side(t, "Goblin 1", playv1.CombatantSide_COMBATANT_SIDE_PARTY)
 		}},
 		{name: "a defeated reactor", setup: func(t *testing.T, c *cave, _ *playv1.Encounter) {
+			t.Helper()
 			c.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, c.id(t, "Goblin 1"))
 		}},
 		{name: "a long jump spends movement, so it provokes", want: true, move: func(t *testing.T, c *cave) (*playv1.MoveCombatantResponse, error) {
+			t.Helper()
 			return c.jumpMove(t, "Toren", 5, 6, jumpTo(playv1.JumpKind_JUMP_KIND_LONG))
 		}},
 		{name: "a high jump moves nobody", move: func(t *testing.T, c *cave) (*playv1.MoveCombatantResponse, error) {
+			t.Helper()
 			return c.jumpMove(t, "Toren", 5, 6, highJump(10))
 		}},
 		{name: "a forced move of the master never provokes", move: func(t *testing.T, c *cave) (*playv1.MoveCombatantResponse, error) {
+			t.Helper()
 			res, err := c.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
 				CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), CombatantId: c.id(t, "Toren"), IdempotencyKey: newKey(), Col: 4, Row: 6, Forced: true,
 			}))
@@ -246,6 +254,7 @@ func TestRN21_WhoProvokesAnOpportunityAttack(t *testing.T) {
 			move := tc.move
 			if move == nil {
 				move = func(t *testing.T, c *cave) (*playv1.MoveCombatantResponse, error) {
+					t.Helper()
 					return c.moveResponse(t, c.caio, "Toren", 4, 6)
 				}
 			}
@@ -892,7 +901,7 @@ func TestRN21_AReactorsReachIsItsLongestMeleeReach(t *testing.T) {
 		t.Errorf("meleeReachOf() of a bow alone = %d, want 0: it cannot make an opportunity attack", got)
 	}
 	// A snake with 10 ft of reach is left at (2, 0): (2, 0) is 10 ft from it.
-	reactor := playdb.Combatant{GridCol: ptr(int32(0)), GridRow: ptr(int32(0))}
+	reactor := playdb.Combatant{GridCol: new(int32(0)), GridRow: new(int32(0))}
 	if got := provokedBy([]candidate{{who: reactor, reachFt: 10}}, grid.Square{Col: 2, Row: 0}, grid.Square{Col: 4, Row: 0}); len(got) != 1 {
 		t.Errorf("a move from 10 ft to 20 ft of a 10 ft reach: provokers %v, want one", got)
 	}

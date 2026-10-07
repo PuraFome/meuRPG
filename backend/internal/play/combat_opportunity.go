@@ -175,7 +175,7 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		offered = append(offered, p.reactor.ID)
 		offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
 			EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: p.reactor.ID,
-			LeftCol: ptr(clamp32(p.left.Col, 0, math.MaxInt32)), LeftRow: ptr(clamp32(p.left.Row, 0, math.MaxInt32)), CreatedAt: c.now,
+			LeftCol: new(clamp32(p.left.Col, 0, math.MaxInt32)), LeftRow: new(clamp32(p.left.Row, 0, math.MaxInt32)), CreatedAt: c.now,
 		})
 		if err != nil {
 			return "", nil, fmt.Errorf("offer the opportunity attack: %w", err)

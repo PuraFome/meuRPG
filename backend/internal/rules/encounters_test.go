@@ -266,8 +266,7 @@ func BenchmarkGenerateEncounter(b *testing.B) {
 	}
 	party := []int{4, 4, 4, 5}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		if _, err := c.GenerateEncounter(party, encounter.BandModerate, "", uint32(i), 0); err != nil {
 			b.Fatal(err)
 		}

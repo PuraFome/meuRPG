@@ -140,8 +140,8 @@ func SightWalls(walls *Layer, doors *DoorLayer) *Layer {
 		return walls
 	}
 	var out *Layer
-	for row := 0; row < doors.g.Rows; row++ {
-		for col := 0; col < doors.g.Columns; col++ {
+	for row := range doors.g.Rows {
+		for col := range doors.g.Columns {
 			if !doors.Get(col, row).BlocksSight() {
 				continue
 			}
@@ -192,8 +192,8 @@ func (l *DoorLayer) ForPlayers(walls *Layer) (*Layer, *DoorLayer) {
 	if walls != nil {
 		w = &Layer{g: walls.g, bits: append([]byte(nil), walls.bits...)}
 	}
-	for row := 0; row < l.g.Rows; row++ {
-		for col := 0; col < l.g.Columns; col++ {
+	for row := range l.g.Rows {
+		for col := range l.g.Columns {
 			door, wall := l.Get(col, row).AsPlayerKnows()
 			out.Set(col, row, door)
 			if wall {

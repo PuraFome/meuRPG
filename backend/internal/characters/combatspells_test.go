@@ -98,11 +98,11 @@ func TestCasterForThirdCasterSubclass(t *testing.T) {
 		t.Fatal(err)
 	}
 	sub := rules.TableSubclass{
-		TableEntry: rules.TableEntry{Key: "subclass:cavaleiro-runico@mesa", NamePT: "Cavaleiro Rúnico"}, Class: "class:fighter",
+		Key: "subclass:cavaleiro-runico@mesa", NamePT: "Cavaleiro Rúnico", Class: "class:fighter",
 		Casting: &rules.TableCasting{Kind: rules.CastingThird, Ability: rules.INT, Preparation: rules.PreparationKnown, ListFrom: "class:wizard"},
 	}
 	for lvl := 3; lvl <= rules.MaxLevel; lvl++ {
-		sub.Levels = append(sub.Levels, rules.TableSubclassLevel{Level: lvl, TableLevel: rules.TableLevel{CantripsKnown: 2, SpellsKnown: 3, Slots: [9]int{2}}})
+		sub.Levels = append(sub.Levels, rules.TableSubclassLevel{Level: lvl, CantripsKnown: 2, SpellsKnown: 3, Slots: [9]int{2}})
 	}
 	c, err := srd.With(rules.Overlay{Revision: 1, Subclasses: []rules.TableSubclass{sub}})
 	if err != nil {

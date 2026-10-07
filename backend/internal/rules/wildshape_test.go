@@ -120,6 +120,7 @@ func TestWildShapeDerived(t *testing.T) {
 	}
 
 	t.Run("a beast with darkvision lets the character's range count", func(t *testing.T) {
+		t.Parallel()
 		// A giant spider sees to 60 ft, and so does Sálvia: the larger range wins.
 		sp, err := c.WildShapeDerived(sal, "monster:giant-spider")
 		if err != nil {
@@ -142,6 +143,7 @@ func TestWildShapeDerived(t *testing.T) {
 	})
 
 	t.Run("the higher bonus wins where both are proficient", func(t *testing.T) {
+		t.Parallel()
 		// Sálvia is proficient in Perception (+3 Wis, +3 proficiency = +6): the
 		// wolf's listed +3 is lower, hers stays. In Stealth she is not proficient
 		// but the wolf is: +4 from the stat block.
@@ -167,6 +169,7 @@ func TestWildShapeDerived(t *testing.T) {
 	})
 
 	t.Run("saves and the physical scores", func(t *testing.T) {
+		t.Parallel()
 		// Sálvia's druid saves are Int and Wis; the wolf lists none, so the Dex and
 		// Con saves follow the wolf's scores, and Wis is hers.
 		if got := saveOf(wolf, WIS); got != saveOf(sal, WIS) {

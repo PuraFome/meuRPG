@@ -14,7 +14,7 @@ import (
 
 // TestRealGemini makes one small picture with the real model. It runs only
 // with MEURPG_TEST_GEMINI_API_KEY set (and optionally MEURPG_TEST_GEMINI_MODEL);
-// the CI never sets it. It costs about one image (docs/operacao.md). It is also
+// the CI never sets it. It costs about one image (docs/operations.md). It is also
 // where to confirm the answer's layout, which parseAnswer reads loosely.
 func TestRealGemini(t *testing.T) {
 	key := os.Getenv("MEURPG_TEST_GEMINI_API_KEY")

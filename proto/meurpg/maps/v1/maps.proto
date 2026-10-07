@@ -61,7 +61,7 @@ import "meurpg/rules/v1/rules.proto";
 // with no control characters. A point's description is 0 to 2,000
 // characters and may have line breaks and tabs, but no other control
 // characters. Every text is fiction the master writes: the server never
-// logs it (docs/privacidade.md).
+// logs it (docs/privacy.md).
 //
 // Every method needs a valid session cookie and fails with `unauthenticated`
 // without one. For a campaign the caller is not a member of (a pending
@@ -81,7 +81,7 @@ import "meurpg/rules/v1/rules.proto";
 // Responses carry `Cache-Control: no-store`. Every request carries a
 // campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
 // IDs in the URL, and URLs end up in the platform's request logs
-// (docs/privacidade.md).
+// (docs/privacy.md).
 service MapService {
   // ListMaps lists the campaign's maps the caller may see, oldest first:
   // every map for the master, each with its state; for a player, only the

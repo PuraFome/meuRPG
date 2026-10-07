@@ -27,7 +27,7 @@ func BenchmarkWorst(b *testing.B) {
 	for name, f := range worstCases() {
 		b.Run(name, func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for i := 0; b.Loop(); i++ {
 				o := opts(uint64(i%20+1), 199, 399)
 				f(&o)
 				if _, err := Generate(o); err != nil {

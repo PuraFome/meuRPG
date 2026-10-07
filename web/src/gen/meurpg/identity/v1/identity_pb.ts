@@ -77,7 +77,7 @@ export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
 
 /**
  * User is the minimal view of an account. On purpose, it has no e-mail, name
- * or photo from the sign-in provider (see docs/privacidade.md).
+ * or photo from the sign-in provider (see docs/privacy.md).
  *
  * @generated from message meurpg.identity.v1.User
  */

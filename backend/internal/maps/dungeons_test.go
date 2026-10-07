@@ -990,7 +990,7 @@ func TestMR010_RedrawNeverChangesTheSize(t *testing.T) {
 
 	// A new image through UpdateMap clears the layers and changes the size: no more redrawing.
 	rev := m.mustGetMap(d.campaign, created.GetId()).GetMap().GetRevision()
-	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: d.campaign, MapId: created.GetId(), Revision: rev, ImageId: proto.String(other.GetId())})); err != nil {
+	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: d.campaign, MapId: created.GetId(), Revision: rev, ImageId: new(other.GetId())})); err != nil {
 		t.Fatalf("UpdateMap(image) error = %v", err)
 	}
 	_, err = m.redraw(d.campaign, created.GetId())
@@ -1077,7 +1077,7 @@ func TestDungeonMapCreationTiming(t *testing.T) {
 	d := newDungeonTable(t)
 	m := d.master
 	for _, size := range [][2]int32{{121, 121}, {199, 399}} {
-		opts := &mapsv1.DungeonOptions{Width: proto.Int32(size[0]), Height: proto.Int32(size[1])}
+		opts := &mapsv1.DungeonOptions{Width: new(size[0]), Height: new(size[1])}
 		seed := uint64(11)
 		start := time.Now()
 		res := m.createDungeon(d.campaign, "Grande "+strconv.Itoa(int(size[0])), opts, seed)
@@ -1174,7 +1174,7 @@ func TestMR010_RedrawRefusesAMapThatIsNoLongerTheDungeons(t *testing.T) {
 	// 1. A same-size upload through UpdateMap.
 	a := m.createDungeon(d.campaign, "Com upload", testDungeonOptions(), seed).GetMap()
 	own := m.mustUpload(d.campaign, "meu.png", pngImage(t, 41*p, 31*p))
-	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: d.campaign, MapId: a.GetId(), Revision: a.GetRevision(), ImageId: proto.String(own.GetId())})); err != nil {
+	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: d.campaign, MapId: a.GetId(), Revision: a.GetRevision(), ImageId: new(own.GetId())})); err != nil {
 		t.Fatalf("UpdateMap(image) error = %v", err)
 	}
 	_, err := m.redraw(d.campaign, a.GetId())

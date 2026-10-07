@@ -133,7 +133,7 @@ func (x *GetMeResponse) GetSessionExpiresAt() *timestamppb.Timestamp {
 }
 
 // User is the minimal view of an account. On purpose, it has no e-mail, name
-// or photo from the sign-in provider (see docs/privacidade.md).
+// or photo from the sign-in provider (see docs/privacy.md).
 type User struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Stable account ID (a UUID). It never changes, even if the user later

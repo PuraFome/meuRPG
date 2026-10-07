@@ -37,7 +37,7 @@ func (g *gen) aspectOK(w, h int) bool {
 // height. ok is false when the attempt is abandoned.
 func (g *gen) drawSize(r *rng) (w, h int, ok bool) {
 	k := (g.o.RoomSideMax-g.o.RoomSideMin)/2 + 1
-	for try := 0; try <= 4; try++ {
+	for range 5 {
 		w = g.o.RoomSideMin + 2*r.intn(k) // DRAW: width
 		h = g.o.RoomSideMin + 2*r.intn(k) // DRAW: height
 		if g.aspectOK(w, h) {
@@ -60,7 +60,7 @@ func (g *gen) placeRooms() error {
 		// RoomSideMin room is valid. No draw.
 		s := g.o.RoomSideMin
 		for j := 0; j < g.ny && len(g.rooms) == 0; j++ {
-			for i := 0; i < g.nx; i++ {
+			for i := range g.nx {
 				if x, y := 2*i+1, 2*j+1; g.roomFits(x, y, s, s) {
 					g.addRoom(x, y, s, s)
 					break
@@ -108,8 +108,8 @@ func (g *gen) placeSpread(r *rng) {
 // abandoned.
 func (g *gen) placeTiled(r *rng) {
 	pct := min(100, g.o.RoomDensity)
-	for j := 0; j < g.ny; j++ {
-		for i := 0; i < g.nx; i++ {
+	for j := range g.ny {
+		for i := range g.nx {
 			if len(g.rooms) >= roomCap {
 				return
 			}

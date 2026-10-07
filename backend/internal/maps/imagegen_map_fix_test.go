@@ -282,7 +282,7 @@ func TestRN10_AMapWithoutFogDrawsNoHiddenToken(t *testing.T) {
 	t.Parallel()
 	fake := &gen.Fake{}
 	c := newCave(t, withFake(fake, 20))
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: proto.Bool(false)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(false)})); err != nil {
 		t.Fatal(err)
 	}
 	wantDone(t, "isometric view", c.master.mustGenerateFromMap(c.campaign, c.mapID, kindIsometricAPI, "Uma caverna"))
@@ -360,7 +360,7 @@ func TestMR039_UseIsIdempotent(t *testing.T) {
 	// Use, then another image on the map, then Use again: the map changed.
 	cur := m.mustGetMap(c.campaign, plain).GetMap()
 	other := m.mustUpload(c.campaign, "outra.png", patternImage(t, 200, 100)).GetId()
-	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: plain, Revision: cur.GetRevision(), ImageId: proto.String(other)})); err != nil {
+	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: plain, Revision: cur.GetRevision(), ImageId: new(other)})); err != nil {
 		t.Fatal(err)
 	}
 	_, err = m.useAsMapImage(c.campaign, t2)

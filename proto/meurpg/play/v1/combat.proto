@@ -99,7 +99,7 @@ import "meurpg/rules/v1/rules.proto";
 //
 // Responses carry `Cache-Control: no-store`. Every request carries a campaign
 // ID, so reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL,
-// and URLs end up in the platform's request logs (docs/privacidade.md).
+// and URLs end up in the platform's request logs (docs/privacy.md).
 service CombatService {
   // StartEncounter creates the campaign's combat, in the SETUP state. Only
   // the campaign's master may call it, and only while the campaign has an

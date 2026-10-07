@@ -127,10 +127,10 @@ func TestWithDoesNotChangeTheBase(t *testing.T) {
 
 	o := fullOverlay(t, srd)
 	o.Subclasses = append(o.Subclasses, TableSubclass{
-		TableEntry: TableEntry{Key: "subclass:duelista" + tableSuffix, NamePT: "Duelista"}, Class: "class:fighter",
+		Key: "subclass:duelista" + tableSuffix, NamePT: "Duelista", Class: "class:fighter",
 		Levels: []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf("duelista-3", "Duelo")}}},
 	})
-	o.Subraces = append(o.Subraces, TableSubrace{TableEntry: TableEntry{Key: "subrace:alto-elfo-do-norte" + tableSuffix, NamePT: "Elfo do Norte"}, Race: "race:elf"})
+	o.Subraces = append(o.Subraces, TableSubrace{Key: "subrace:alto-elfo-do-norte" + tableSuffix, NamePT: "Elfo do Norte", Race: "race:elf"})
 	c := withOverlayOn(t, srd, o)
 
 	if after := fingerprint(t, srd); after != before {
@@ -179,10 +179,10 @@ func TestWithOverlaysDoNotSeeEachOther(t *testing.T) {
 	srd := loadForTest(t)
 	mk := func(slug string) Overlay {
 		return Overlay{Revision: 1, Subclasses: []TableSubclass{{
-			TableEntry: TableEntry{Key: "subclass:" + slug + tableSuffix, NamePT: slug}, Class: "class:fighter",
+			Key: "subclass:" + slug + tableSuffix, NamePT: slug, Class: "class:fighter",
 			Levels: []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf(slug+"-f", "F")}}},
 		}}, Spells: []TableSpell{{
-			TableEntry: TableEntry{Key: "spell:" + slug + tableSuffix, NamePT: slug}, Level: 1, School: "school:evocation",
+			Key: "spell:" + slug + tableSuffix, NamePT: slug, Level: 1, School: "school:evocation",
 			CastingTime: TableCastingTime{Unit: CastAction}, Range: TableRange{Kind: RangeSelf}, Duration: TableDuration{Kind: DurationInstantaneous},
 			Components: TableComponents{Verbal: true}, Classes: []string{"class:wizard"}, Target: SpellTarget{Kind: TargetSelf},
 		}}}
@@ -923,13 +923,13 @@ func TestWithRefusals(t *testing.T) {
 		}, []string{"301", "300"}},
 		{"61 features in a class", func(o *Overlay) {
 			c := classIdx(o, "none")
-			for n := 0; n < 61; n++ {
+			for n := range 61 {
 				c.Levels[19].Features = append(c.Levels[19].Features, tf("extra-"+strings.Repeat("x", n%5)+string(rune('a'+n%26))+string(rune('a'+n/26)), "Extra"))
 			}
 		}, []string{"class:gen-none@mesa", "60 per class"}},
 		{"61 features in a subclass", func(o *Overlay) {
 			s := &o.Subclasses[0]
-			for n := 0; n < 61; n++ {
+			for n := range 61 {
 				s.Levels[1].Features = append(s.Levels[1].Features, tf("sub-extra-"+string(rune('a'+n%26))+string(rune('a'+n/26)), "Extra"))
 			}
 		}, []string{"subclass:gen-none-a@mesa", "60 per subclass"}},
@@ -1021,12 +1021,12 @@ func TestWithRefusals(t *testing.T) {
 			feature(o).Effects = []Effect{{Type: "note", Spells: []string{"spell:fantasma@mesa"}}}
 		}, []string{"granted spell", "does not exist"}},
 		{"61 traits in a race", func(o *Overlay) {
-			for n := 0; n < 61; n++ {
+			for n := range 61 {
 				o.Races[0].Traits = append(o.Races[0].Traits, TableFeature{Key: "trait:extra-" + string(rune('a'+n%26)) + string(rune('a'+n/26)) + tableSuffix, NamePT: "T"})
 			}
 		}, []string{"race:anao-das-brumas@mesa", "traits", "60"}},
 		{"61 traits in a subrace", func(o *Overlay) {
-			for n := 0; n < 61; n++ {
+			for n := range 61 {
 				o.Subraces[0].Traits = append(o.Subraces[0].Traits, TableFeature{Key: "trait:sub-" + string(rune('a'+n%26)) + string(rune('a'+n/26)) + tableSuffix, NamePT: "T"})
 			}
 		}, []string{"traits", "60"}},
@@ -1087,8 +1087,7 @@ func TestWithRefusals(t *testing.T) {
 			if err == nil {
 				t.Fatal("With accepted the overlay")
 			}
-			var oe *OverlayError
-			if !errors.As(err, &oe) {
+			if _, ok := errors.AsType[*OverlayError](err); !ok {
 				t.Fatalf("error = %T %v, want *OverlayError", err, err)
 			}
 			for _, w := range tc.want {
@@ -1139,13 +1138,13 @@ func TestOverlayDoesNotDependOnOrder(t *testing.T) {
 	srd := loadForTest(t)
 	o := fullOverlay(t, srd)
 	o.Subclasses = append(o.Subclasses, TableSubclass{
-		TableEntry: TableEntry{Key: "subclass:duelista" + tableSuffix, NamePT: "Duelista"}, Class: "class:fighter",
+		Key: "subclass:duelista" + tableSuffix, NamePT: "Duelista", Class: "class:fighter",
 		Levels: []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf("duelista-3", "Duelo")}}},
 	}, TableSubclass{
-		TableEntry: TableEntry{Key: "subclass:arqueiro" + tableSuffix, NamePT: "Arqueiro"}, Class: "class:fighter",
+		Key: "subclass:arqueiro" + tableSuffix, NamePT: "Arqueiro", Class: "class:fighter",
 		Levels: []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf("arqueiro-3", "Arco")}}},
 	})
-	o.Subraces = append(o.Subraces, TableSubrace{TableEntry: TableEntry{Key: "subrace:alto-elfo-do-norte" + tableSuffix, NamePT: "Elfo do Norte"}, Race: "race:elf"})
+	o.Subraces = append(o.Subraces, TableSubrace{Key: "subrace:alto-elfo-do-norte" + tableSuffix, NamePT: "Elfo do Norte", Race: "race:elf"})
 
 	reverse := func(o Overlay) Overlay {
 		slices.Reverse(o.Classes)
@@ -1257,7 +1256,7 @@ func TestOverlayErrorFields(t *testing.T) {
 		{"rows", func(o *Overlay) { o.Classes[3].Levels = o.Classes[3].Levels[:5] }, "classes[3].levels", ReasonTable},
 		{"a dangling parent", func(o *Overlay) { o.Subclasses[2].Class = "class:fantasma@mesa" }, "subclasses[2].class_key", ReasonReference},
 		{"a trait budget", func(o *Overlay) {
-			for n := 0; n < 61; n++ {
+			for n := range 61 {
 				o.Races[0].Traits = append(o.Races[0].Traits, TableFeature{Key: "trait:t" + strconv.Itoa(n) + tableSuffix, NamePT: "T"})
 			}
 		}, "races[0].traits", ReasonLimit},

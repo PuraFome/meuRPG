@@ -18,8 +18,7 @@ export const DEFAULT_LIMITS = {
 
 /**
  * Why an upload did not end with a new image. The first seven are the
- * `reason`s of the upload route's JSON errors (docs/arquitetura.md, "Os
- * erros do envio"); the rest come from the HTTP status or the connection.
+ * `reason`s of the upload route's JSON errors (docs/architecture.md#upload-errors); the rest come from the HTTP status or the connection.
  */
 export type UploadFailureKind =
   | 'UNSUPPORTED_TYPE'
@@ -75,7 +74,7 @@ export class UploadFailed extends Error {
 /**
  * Maps the upload route's error answer to a kind, by the JSON `reason` first,
  * then its Connect `code`, then the HTTP status. Never reads `message`: it
- * is English, for developers, and may change (docs/arquitetura.md).
+ * is English, for developers, and may change (docs/architecture.md).
  * A body that is not our JSON (the CSRF guard's plain-text 403, a proxy's
  * HTML page) falls back to the status alone.
  */

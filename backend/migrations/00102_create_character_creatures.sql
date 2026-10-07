@@ -23,7 +23,7 @@
 -- A dismissed creature is kept, with dismissed_at and dismissed_reason ('owner',
 -- 'master', 'defeated' at 0 hit points, 'concentration', 'replaced' by a new
 -- familiar, 'undone'), so an undo of the master can bring it back. name is free
--- text written by a player: it is in docs/privacidade.md's inventory.
+-- text written by a player: it is in docs/privacy.md's inventory.
 --
 -- Deleting the campaign or the character deletes its creatures.
 CREATE TABLE IF NOT EXISTS character_creatures (

@@ -132,8 +132,8 @@ func Compile(s Scene) (*Lit, error) {
 	if base == grid.Unpainted {
 		base = grid.Dark
 	}
-	for row := 0; row < s.Grid.Rows; row++ {
-		for col := 0; col < s.Grid.Columns; col++ {
+	for row := range s.Grid.Rows {
+		for col := range s.Grid.Columns {
 			level := s.Painted.Get(col, row)
 			if level == grid.Unpainted {
 				level = base
@@ -230,8 +230,8 @@ func (l *Lit) See(v Viewer) *View {
 		return out
 	}
 	row0, col0 := v.At.Row, v.At.Col
-	for row := 0; row < l.g.Rows; row++ {
-		for col := 0; col < l.g.Columns; col++ {
+	for row := range l.g.Rows {
+		for col := range l.g.Columns {
 			n := row*l.g.Columns + col
 			if row == row0 && col == col0 {
 				out.states[n] = ownState(l.level[n])
@@ -303,8 +303,8 @@ func ownState(light grid.Light) State {
 
 // seeWalls marks the walls that touch a seen square.
 func (l *Lit) seeWalls(v *View) {
-	for row := 0; row < l.g.Rows; row++ {
-		for col := 0; col < l.g.Columns; col++ {
+	for row := range l.g.Rows {
+		for col := range l.g.Columns {
 			n := row*l.g.Columns + col
 			if !l.sight.Wall(grid.Square{Col: col, Row: row}) {
 				continue

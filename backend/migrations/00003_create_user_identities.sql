@@ -8,7 +8,7 @@
 -- email is optional and only a security contact (incident notices, data
 -- subject requests). It is filled only when the provider says it is
 -- verified, it is refreshed on every sign-in, and it is never shown to other
--- users. Name and photo are never stored (docs/privacidade.md).
+-- users. Name and photo are never stored (docs/privacy.md).
 --
 -- UNIQUE (user_id, issuer): an account has at most one identity per
 -- provider, so two Google accounts are never merged into one (ADR-0009).

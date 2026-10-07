@@ -20,7 +20,7 @@ const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable'])
  * "/invite/error?reason=<code>" (public): where the server redirects after
  * the sign-in-through-invite flow when the invite could not be accepted —
  * `expired`, `revoked`, `used_up`, `not_found` or `invalid`
- * (docs/arquitetura.md#frontend-web).
+ * (docs/architecture.md#web-app-web).
  */
 @Component({
   selector: 'app-invite-error',

@@ -36,7 +36,7 @@ import "google/protobuf/timestamp.proto";
 //
 // Responses carry `Cache-Control: no-store`. Reads carry a campaign ID, so
 // they are IDEMPOTENT and POST-only: a GET would put the ID in the URL, and
-// URLs end up in the platform's request logs (docs/privacidade.md).
+// URLs end up in the platform's request logs (docs/privacy.md).
 service ContentService {
   // ListContent returns the catalog the character editor offers: races,
   // subraces, classes, subclasses, backgrounds, skills, armor, weapons and

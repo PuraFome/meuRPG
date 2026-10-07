@@ -26,12 +26,12 @@ func check(d *Dungeon) error {
 		}
 		return d.Kinds[y*w+x]
 	}
-	for x := 0; x < w; x++ {
+	for x := range w {
 		if at(x, 0) != KindRock || at(x, h-1) != KindRock {
 			return fmt.Errorf("bounds: the border ring is open at column %d", x)
 		}
 	}
-	for y := 0; y < h; y++ {
+	for y := range h {
 		if at(0, y) != KindRock || at(w-1, y) != KindRock {
 			return fmt.Errorf("bounds: the border ring is open at row %d", y)
 		}
@@ -120,7 +120,7 @@ func check(d *Dungeon) error {
 			continue
 		}
 		x, y := i%w, i/w
-		for dd := 0; dd < 4; dd++ {
+		for dd := range 4 {
 			if at(x+dx[dd], y+dy[dd]) == KindRoom {
 				return fmt.Errorf("corridor: square (%d,%d) touches a room floor", x, y)
 			}
@@ -254,7 +254,7 @@ func check(d *Dungeon) error {
 		if at(s.X, s.Y) == KindRock || at(s.X, s.Y) == KindDoor {
 			return fmt.Errorf("stairs: stair %d is not on open floor", k)
 		}
-		for j := 0; j < k; j++ {
+		for j := range k {
 			if abs(d.Stairs[j].X-s.X)+abs(d.Stairs[j].Y-s.Y) < minStairGap {
 				return fmt.Errorf("stairs: stairs %d and %d are closer than %d", j, k, minStairGap)
 			}
@@ -271,7 +271,7 @@ func check(d *Dungeon) error {
 				return fmt.Errorf("stairs: stair %d is not in a corridor", k)
 			}
 			deg, side := 0, -1
-			for dd := 0; dd < 4; dd++ {
+			for dd := range 4 {
 				if at(s.X+dx[dd], s.Y+dy[dd]) != KindRock {
 					deg++
 					side = dd
@@ -323,7 +323,7 @@ func check(d *Dungeon) error {
 		stack = stack[:len(stack)-1]
 		reached++
 		x, y := u%w, u/w
-		for dd := 0; dd < 4; dd++ {
+		for dd := range 4 {
 			if at(x+dx[dd], y+dy[dd]) != KindRock {
 				v := (y+dy[dd])*w + x + dx[dd]
 				if !seen[v] {
@@ -349,7 +349,7 @@ func check(d *Dungeon) error {
 				continue
 			}
 			deg := 0
-			for dd := 0; dd < 4; dd++ {
+			for dd := range 4 {
 				if at(i%w+dx[dd], i/w+dy[dd]) != KindRock {
 					deg++
 				}

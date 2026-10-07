@@ -17,7 +17,7 @@
 //
 // TestMigrationsAreSafeToRerun checks this: it runs every Up twice.
 //
-// The numbers 00118 and 00119 do not exist (see docs/dados.md): goose accepts
+// The numbers 00118 and 00119 do not exist (see docs/data.md): goose accepts
 // gaps, and no new migration may take them.
 //
 // goose has no lock for CockroachDB, so cmd/migrate takes a lease lock before

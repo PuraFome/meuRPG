@@ -170,7 +170,7 @@ func (g *gen) deriveCorridors(d *Dungeon) {
 			x, y := u%w, u/w
 			if !c.Junction && g.openDeg(u) == 1 {
 				// the one neighbor decides: a door is a door end, else a dead end
-				for dd := 0; dd < 4; dd++ {
+				for dd := range 4 {
 					v := g.idx(x+dx[dd], y+dy[dd])
 					switch g.kind[v] {
 					case KindDoor:
@@ -180,7 +180,7 @@ func (g *gen) deriveCorridors(d *Dungeon) {
 					}
 				}
 			}
-			for dd := 0; dd < 4; dd++ {
+			for dd := range 4 {
 				v := g.idx(x+dx[dd], y+dy[dd])
 				switch {
 				case g.kind[v] == KindDoor && g.openDeg(u) != 1:

@@ -40,8 +40,8 @@ func sceneRequest() Request {
 	return Request{
 		Prompt: "Uma cripta úmida", Style: "oil painting", AspectRatio: "16:9",
 		References: []Reference{
-			{Image: Image{MimeType: "image/png", Data: onePixel}},
-			{Image: Image{MimeType: "image/jpeg", Data: []byte("jpeg bytes")}, Character: true},
+			{MimeType: "image/png", Data: onePixel},
+			{MimeType: "image/jpeg", Data: []byte("jpeg bytes"), Character: true},
 		},
 	}
 }
@@ -97,7 +97,7 @@ func TestValidate(t *testing.T) {
 	t.Parallel()
 	tooMany := sceneRequest()
 	for range MaxObjectReferences {
-		tooMany.References = append(tooMany.References, Reference{Image: Image{Data: []byte("x")}})
+		tooMany.References = append(tooMany.References, Reference{Data: []byte("x")})
 	}
 	for name, req := range map[string]Request{
 		"a ratio the model does not return": {Prompt: "x", AspectRatio: "7:3"},

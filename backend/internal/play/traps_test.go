@@ -301,7 +301,7 @@ func TestMR035_QuemNotaria(t *testing.T) {
 	fog := func(light mapsv1.LightLevel) {
 		t.Helper()
 		if _, err := mc.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{
-			CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: proto.Bool(true), BaseLight: &light,
+			CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: new(true), BaseLight: &light,
 		})); err != nil {
 			t.Fatalf("SetMapFog() error = %v", err)
 		}
@@ -332,7 +332,7 @@ func TestMR035_APassiveNoticeFollowsTheLight(t *testing.T) {
 	pit := r.trap(t, "Fosso Dourado", 6, 8, func(s *mapsv1.TrapSpec) { s.NoticeDc = 8 })
 	light := mapsv1.LightLevel_LIGHT_LEVEL_DIM
 	if _, err := r.mc(r.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{
-		CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: proto.Bool(true), BaseLight: &light,
+		CampaignId: r.campaignID, MapId: r.mapID, FogEnabled: new(true), BaseLight: &light,
 	})); err != nil {
 		t.Fatalf("SetMapFog() error = %v", err)
 	}

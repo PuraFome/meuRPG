@@ -330,7 +330,7 @@ func BenchmarkGenerate(b *testing.B) {
 	}
 	o := Options{Budget: 2600, MaxCR: 56, Seed: 1}
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		o.Seed = uint32(i)
 		if _, err := Generate(big, o); err != nil {
 			b.Fatal(err)

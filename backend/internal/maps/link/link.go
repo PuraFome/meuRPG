@@ -3,7 +3,7 @@
 // the characters module (who sees, and with which senses) and the play module
 // (where the combatants stand while a fight runs).
 //
-// Modules never import each other's code (docs/arquitetura.md), so the types
+// Modules never import each other's code (docs/architecture.md), so the types
 // both sides agree on live here, in a package that imports nothing of the
 // project but the pure rules. Package maps declares the interfaces that use
 // them; cmd/api connects the real services.

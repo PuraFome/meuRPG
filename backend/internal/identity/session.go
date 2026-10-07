@@ -26,7 +26,7 @@ const (
 	// it stops working (ASVS 5.0 V7.3.1). The table plays about once a week,
 	// so 14 days forgives two missed sessions, and a laptop forgotten at a
 	// friend's house stops working long before the 30 days are up. Set
-	// SESSION_IDLE_TIMEOUT to change it (docs/operacao.md).
+	// SESSION_IDLE_TIMEOUT to change it (docs/operations.md).
 	DefaultSessionIdleTimeout = 14 * 24 * time.Hour
 
 	// sessionTouchEvery is how often a session's last use is written: at

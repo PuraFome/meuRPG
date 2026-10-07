@@ -26,7 +26,7 @@ import (
 const providerTimeout = 10 * time.Second
 
 // scopes asks for the identity (openid) and the e-mail, the only personal
-// data we use (docs/privacidade.md). No profile: we never want the name or
+// data we use (docs/privacy.md). No profile: we never want the name or
 // the photo.
 var scopes = []string{oidc.ScopeOpenID, oidc.ScopeEmail}
 
@@ -279,7 +279,7 @@ func newHTTPClient(caFile string) (*http.Client, error) {
 
 	if caFile != "" {
 		// The path comes from the operator's configuration, not a request.
-		pem, err := os.ReadFile(caFile) //nolint:gosec // G304: trusted, operator-provided path
+		pem, err := os.ReadFile(caFile)
 		if err != nil {
 			return nil, fmt.Errorf("read OIDC_CA_FILE: %w", err)
 		}

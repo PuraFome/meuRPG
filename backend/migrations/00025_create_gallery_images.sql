@@ -22,7 +22,7 @@
 -- master (RN-13). It is not in the API. Deleting that account keeps the
 -- image with the campaign (SET NULL); deleting the campaign deletes the
 -- rows (CASCADE), but not the files: whatever deletes a campaign must also
--- delete its blob prefix (docs/privacidade.md). No index on uploaded_by:
+-- delete its blob prefix (docs/privacy.md). No index on uploaded_by:
 -- only an account deletion looks it up, as for campaigns.created_by.
 CREATE TABLE IF NOT EXISTS gallery_images (
     id UUID PRIMARY KEY,

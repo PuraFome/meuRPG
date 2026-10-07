@@ -83,15 +83,13 @@ func TestCreateCampaignWithTheSameKeyAtOnceMakesOne(t *testing.T) {
 	ids := make([]string, calls)
 	var wg sync.WaitGroup
 	for i := range calls {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if c, err := createWithKey(t, master, "Mirathel", "racing"); err == nil {
 				ids[i] = c.GetId()
 			} else {
 				t.Errorf("CreateCampaign() error = %v", err)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {

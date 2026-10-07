@@ -22,8 +22,8 @@ func WallsMask(d *Dungeon) (open, wall []bool) {
 	for i, k := range d.Kinds {
 		open[i] = k != KindRock
 	}
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			if open[y*w+x] {
 				continue
 			}
@@ -264,7 +264,7 @@ func connectionsAndNetworks(d *Dungeon) ([]PromptConnection, []PromptNetwork) {
 				n.Corridors = append(n.Corridors, c)
 			}
 			x, y := u%w, u/w
-			for dd := 0; dd < 4; dd++ {
+			for dd := range 4 {
 				nx, ny := x+dx[dd], y+dy[dd]
 				if nx < 0 || ny < 0 || nx >= w || ny >= d.Height {
 					continue
@@ -309,8 +309,8 @@ func ASCII(d *Dungeon) string {
 	for _, dr := range d.Doors {
 		doorAt[dr.Y*w+dr.X] = dr
 	}
-	for y := 0; y < d.Height; y++ {
-		for x := 0; x < w; x++ {
+	for y := range d.Height {
+		for x := range w {
 			i := y*w + x
 			c := byte('#')
 			switch d.Kinds[i] {

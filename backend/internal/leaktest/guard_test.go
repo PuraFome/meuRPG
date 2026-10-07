@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -89,10 +90,8 @@ func TestEveryProcedureIsClassified(t *testing.T) {
 }
 
 func appendOnce(s []string, v string) []string {
-	for _, x := range s {
-		if x == v {
-			return s
-		}
+	if slices.Contains(s, v) {
+		return s
 	}
 	return append(s, v)
 }

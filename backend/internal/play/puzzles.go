@@ -193,7 +193,7 @@ func (s *Service) newSeed() int64 {
 		}
 		n = binary.BigEndian.Uint64(b[:])
 	}
-	return int64(n >> 1) //nolint:gosec // shifted down: it fits
+	return int64(n >> 1)
 }
 
 // The limits of what the master writes.

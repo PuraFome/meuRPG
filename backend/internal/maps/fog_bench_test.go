@@ -35,11 +35,12 @@ func benchScene(g grid.Grid, walls *grid.Layer, lights ...vision.Source) (*sight
 }
 
 func runFiltered(b *testing.B, sg *sight, walls *grid.Layer, users []string, cold bool) {
+	b.Helper()
 	b.ReportAllocs()
 	terrain := grid.NewLayer(sg.g)
 	set := layerSet{terrain: terrain, walls: walls, cover: grid.NewCoverLayer(sg.g)}
 	memory := grid.NewLayer(sg.g)
-	for range b.N {
+	for b.Loop() {
 		if cold {
 			clear(sg.entry.views)
 		}

@@ -5,7 +5,7 @@ import { roleLabel } from '../../core/campaigns/campaign-labels';
 export interface MemberRowVm {
   readonly userId: string;
   /** The display name, or "Mestre sem nome" / "Jogador sem nome": never an
-   * e-mail (docs/privacidade.md) and never a bare "Sem nome". */
+   * e-mail (docs/privacy.md) and never a bare "Sem nome". */
   readonly name: string;
   /** "mestre" or "jogador", lowercase as in the design's member list. */
   readonly role: string;

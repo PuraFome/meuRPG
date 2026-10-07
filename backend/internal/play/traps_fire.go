@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"uuid"
@@ -248,9 +249,7 @@ func (s *Service) characterLabels(ctx context.Context, campaignID string, fired 
 	for _, c := range chars {
 		out[c.ID] = c.Name
 	}
-	for id, n := range named {
-		out[id] = n
-	}
+	maps.Copy(out, named)
 	return out, nil
 }
 
@@ -510,7 +509,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 				continue
 			}
 			de := trapDamageEvent{
-				damageHit: damageHit{Target: ch.ID, Amount: clampInt32(d.amount), Half: d.half}, Type: d.damageType,
+				Target: ch.ID, Amount: clampInt32(d.amount), Half: d.half, Type: d.damageType,
 				DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), Bonus: clamp32(d.bonus, -1000, 1000),
 				Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
 			}

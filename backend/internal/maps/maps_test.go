@@ -326,7 +326,7 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"UpdateMap", func(ctx context.Context, u *user) error {
 			revision := master.mustGetMap(campaign, shown.GetId()).GetMap().GetRevision()
-			_, err := u.maps.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: campaign, MapId: shown.GetId(), Revision: revision, Name: proto.String("Mirathel")}))
+			_, err := u.maps.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: campaign, MapId: shown.GetId(), Revision: revision, Name: new("Mirathel")}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		// Each caller deletes a map of its own, so an allowed delete does not
@@ -444,7 +444,7 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"SetMapFog", func(ctx context.Context, u *user) error {
-			_, err := u.maps.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: gridMap.GetId(), GroupVision: proto.Bool(true)}))
+			_, err := u.maps.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: gridMap.GetId(), GroupVision: new(true)}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"RevealTrap", func(ctx context.Context, u *user) error {
@@ -638,7 +638,7 @@ func TestDeletingAnImageAMapUses(t *testing.T) {
 
 	// Change both maps' image: now it can go.
 	for _, m := range []*mapsv1.Map{region, night} {
-		if _, err := master.maps.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: campaign, MapId: m.GetId(), Revision: m.GetRevision(), ImageId: proto.String(other)})); err != nil {
+		if _, err := master.maps.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: campaign, MapId: m.GetId(), Revision: m.GetRevision(), ImageId: new(other)})); err != nil {
 			t.Fatalf("UpdateMap(image) error = %v", err)
 		}
 	}
@@ -704,26 +704,26 @@ func TestUpdateMapRefusesAStaleRevision(t *testing.T) {
 	if m.GetRevision() != 1 {
 		t.Fatalf("a new map's revision = %d, want 1", m.GetRevision())
 	}
-	renamed, err := update(&mapsv1.UpdateMapRequest{Revision: 1, Name: proto.String("Mirathel e arredores")})
+	renamed, err := update(&mapsv1.UpdateMapRequest{Revision: 1, Name: new("Mirathel e arredores")})
 	if err != nil || renamed.GetRevision() != 2 || renamed.GetName() != "Mirathel e arredores" {
 		t.Fatalf("UpdateMap(name) = %v, %v; want the new name at revision 2", renamed, err)
 	}
-	_, err = update(&mapsv1.UpdateMapRequest{Revision: 1, Name: proto.String("Outro nome")})
+	_, err = update(&mapsv1.UpdateMapRequest{Revision: 1, Name: new("Outro nome")})
 	wantCode(t, "UpdateMap with a stale revision", err, connect.CodeAborted)
 	if got := master.mustGetMap(campaign, m.GetId()).GetMap(); got.GetName() != "Mirathel e arredores" || got.GetRevision() != 2 {
 		t.Errorf("after the stale update, map = %q at revision %d; want it unchanged", got.GetName(), got.GetRevision())
 	}
-	moved, err := update(&mapsv1.UpdateMapRequest{Revision: 2, ImageId: proto.String(second)})
+	moved, err := update(&mapsv1.UpdateMapRequest{Revision: 2, ImageId: new(second)})
 	if err != nil || moved.GetRevision() != 3 || moved.GetImage().GetId() != second || moved.GetName() != "Mirathel e arredores" {
 		t.Errorf("UpdateMap(image) = %v, %v; want the new image, same name, revision 3", moved, err)
 	}
 
 	for name, req := range map[string]*mapsv1.UpdateMapRequest{
 		"nothing to change":           {Revision: 3},
-		"revision 0":                  {Name: proto.String("X")},
-		"an empty name":               {Revision: 3, Name: proto.String("  ")},
-		"another campaign's image":    {Revision: 3, ImageId: proto.String(foreign)},
-		"an image ID that is no UUID": {Revision: 3, ImageId: proto.String("imagem")},
+		"revision 0":                  {Name: new("X")},
+		"an empty name":               {Revision: 3, Name: new("  ")},
+		"another campaign's image":    {Revision: 3, ImageId: new(foreign)},
+		"an image ID that is no UUID": {Revision: 3, ImageId: new("imagem")},
 	} {
 		_, err := update(req)
 		wantCode(t, "UpdateMap with "+name, err, connect.CodeInvalidArgument)
@@ -867,8 +867,8 @@ func TestMapInputRules(t *testing.T) {
 		"nothing to change":    {},
 		"an unspecified kind":  {Kind: mapsv1.MapPointKind_MAP_POINT_KIND_UNSPECIFIED.Enum()},
 		"x above 10000":        {XBp: proto.Int32(10001)},
-		"a target on a scene":  {TargetMapId: proto.String(foreignMap.GetId())},
-		"a name with a tab":    {Name: proto.String("Ta\tverna")},
+		"a target on a scene":  {TargetMapId: new(foreignMap.GetId())},
+		"a name with a tab":    {Name: new("Ta\tverna")},
 		"an empty description": nil, // an empty description is fine: checked below
 	} {
 		if req == nil {
@@ -878,10 +878,10 @@ func TestMapInputRules(t *testing.T) {
 		_, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(req))
 		wantCode(t, "UpdateMapPoint with "+name, err, connect.CodeInvalidArgument)
 	}
-	if _, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: p.GetId(), Description: proto.String("")})); err != nil {
+	if _, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: m.GetId(), PointId: p.GetId(), Description: new("")})); err != nil {
 		t.Errorf("UpdateMapPoint with an empty description: %v", err)
 	}
-	_, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: foreignMap.GetId(), PointId: p.GetId(), Name: proto.String("X")}))
+	_, err := master.maps.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: campaign, MapId: foreignMap.GetId(), PointId: p.GetId(), Name: new("X")}))
 	wantCode(t, "UpdateMapPoint on another campaign's map", err, connect.CodeNotFound)
 
 	// The limits (2 and 2 in this test): resource_exhausted.
@@ -1029,10 +1029,9 @@ func TestMR013_SetMapGrid(t *testing.T) {
 		t.Fatalf("SetMapGrid(24) error = %v", err)
 	}
 	w, h2 := got.GetImage().GetWidth(), got.GetImage().GetHeight()
-	wantRows := (24*h2 + w/2) / w // round(columns * height / width)
-	if wantRows < 1 {
-		wantRows = 1
-	}
+	wantRows := max(
+		// The rows are the columns scaled by height over width, rounded.
+		(24*h2+w/2)/w, 1)
 	if got.GetGridColumns() != 24 || got.GetGridRows() != wantRows || got.GetRevision() != m.GetRevision() {
 		t.Errorf("grid = %dx%d at revision %d, want 24x%d, revision unchanged (%d)", got.GetGridColumns(), got.GetGridRows(), got.GetRevision(), wantRows, m.GetRevision())
 	}

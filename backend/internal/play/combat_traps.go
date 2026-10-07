@@ -42,7 +42,7 @@ import (
 //     then the firing), so the master takes the firing back first.
 
 // trapFireEvent is the payload of `trap_triggered` (IDs and numbers only, no name:
-// docs/privacidade.md), and what a combat's undo and log read back.
+// docs/privacy.md), and what a combat's undo and log read back.
 type trapFireEvent struct {
 	PointID string `json:"point_id"`
 	MapID   string `json:"map_id"`
@@ -242,7 +242,7 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	p, err := c.q.InsertTrapPendingDamage(ctx, playdb.InsertTrapPendingDamageParams{
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, Critical: d.critical,
 		DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), DiceBonus: clamp32(d.bonus, -1000, 1000),
-		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: ptr(clampInt32(d.rollTotal)), Half: d.half,
+		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: new(clampInt32(d.rollTotal)), Half: d.half,
 		CreatedAt: c.now, ResolvedAt: resolved, TrapPointID: &pointID, CriticalMax: clamp32(d.criticalMax, 0, 10000), CriticalMaxRule: d.maxRule,
 	})
 	if err != nil {

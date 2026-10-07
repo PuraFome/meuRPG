@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The acceptance criteria of MR-041's server part (docs/produto/historias.md):
+// The acceptance criteria of MR-041's server part (docs/product/stories.md):
 // "Voltar à cidade" turns the treasures the party found into one GOLD award,
 // each treasure converted once, and the undo of that award frees them. The
 // treasure points are written straight into the tables, as the maps module's
