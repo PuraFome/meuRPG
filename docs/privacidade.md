@@ -298,6 +298,10 @@ Decidido pelo Samuel em 29/09/2026: o CockroachDB do app antigo (usado pelo Nest
 - **A referência de uma imagem** (um JPEG de 1024 px feito da imagem, guardado ao lado dela no blob store) é derivada da imagem já sem metadados (ADR-0012), tem a mesma retenção e é apagada junto com ela.
 - **O que fica no banco:** a linha de `image_requests` (quem pediu, o texto do mestre, o estilo, as imagens de referência, o modelo, o estado e, num pedido feito de um mapa, o mapa e o tamanho e a grade dele quando foi pedido: IDs e números, nada de texto). O texto é dado do mestre, e some com a campanha. Nada disso vai para o log: o texto nunca é escrito em nenhum nível, e a chave da API nunca é escrita.
 
+### Logs no ELK
+
+O ELK que guarda os logs da API (Elasticsearch no ambiente de ensaio e, se vier, em produção; ver [Operação](operacao.md#logs-no-elk)) apaga cada linha com 14 dias, pela política ILM `meurpg-logs`, dentro do teto de 30 dias dos logs. Quem lê: só a equipe de operação, por `meurpg_reader` (só leitura de `logs-meurpg-*`) ou pelo Kibana com login; o log tem `user_id` e `campaign_id`, que são identificadores pseudônimos, e nenhum e-mail, nome ou texto livre (o contrato de logs os proíbe). Uma exclusão de conta não apaga linhas já escritas: elas somem sozinhas em até 14 dias. Rodando por nós, o ELK não é um operador; se a produção usar o Elastic Cloud, ele entra em "Operadores e onde os dados ficam".
+
 ## Cookies e navegador
 
 - O cookie de sessão `__Host-` é estritamente necessário. A LGPD (guia de cookies da ANPD) e a Diretiva ePrivacy europeia (art. 5(3)) dispensam consentimento nesse caso. Por isso não há banner.
