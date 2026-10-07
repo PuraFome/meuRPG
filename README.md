@@ -43,7 +43,7 @@ O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app An
 
 ## O que já funciona
 
-As Etapas 1 a 9 do [roadmap](docs/roadmap.md) estão na `main`:
+As Etapas 1 a 10 do [roadmap](docs/roadmap.md) estão na `main`:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
@@ -63,8 +63,14 @@ As Etapas 1 a 9 do [roadmap](docs/roadmap.md) estão na `main`:
 - **Armadilhas e tesouros.** O personagem nota uma armadilha ao passar perto ou procura com Percepção ou Investigação; o mestre revela, dispara e desarma, e aplica o dano. O tesouro achado vira XP em "Voltar à cidade", nas campanhas por ouro.
 - **Movimento como nas regras oficiais.** O alcance em círculo, o terreno difícil, o salto, a cobertura e o ataque de oportunidade, tudo decidido pelo servidor.
 - **As criaturas do personagem.** O familiar, os mortos-vivos e os animais convocados entram na ficha e no combate, cada um com a vez dele, e o druida vira fera na Forma Selvagem.
+- **O conteúdo da própria mesa.** O mestre cria magias, raças, sub-raças, antecedentes, classes e subclasses, que entram na ficha, na subida de nível e no combate como as do SRD, e escolhe o que os jogadores podem usar. Quando o mestre muda uma entrada, as fichas abertas mostram a mudança na hora.
+- **As regras da mesa.** Os PV da subida de nível, os jeitos de fazer atributos, o crítico, os testes contra a morte escondidos e a calibração da grade; e o combate sem grade, o teatro da mente.
+- **Masmorras geradas.** O mestre gera uma masmorra com portas, escadas e salas numeradas, que vira mapa da campanha, com uma cena por sala.
+- **Quebra-cabeças.** Seis tipos, com dicas por teste de perícia, informação dividida entre os jogadores e consequências ao errar.
+- **Imagens geradas por IA.** A arte de uma cena, a vista isométrica e o mapa com textura, feitos só do que os jogadores já viram.
+- **Bestiário, encontros e tesouro.** As 334 criaturas do SRD, o montador de encontros pelo orçamento do grupo e o gerador de tesouro, com o ponto escondido no mapa.
 
-Agora vem a Etapa 10, a última antes do MVP: o conteúdo e a geração (o conteúdo e as regras da própria mesa, os quebra-cabeças, o gerador de masmorras, as imagens geradas por IA, e o bestiário, os encontros e o tesouro do mestre), planejada em 05/10/2026. O MVP termina quando a mesa joga a primeira sessão inteira pelo app. Ver [Roadmap](docs/roadmap.md).
+Agora vem o MVP: a mesa do Samuel joga a primeira sessão inteira pelo app. Depois, a Etapa 11 traz o que ficou para depois do MVP e tira o app antigo. Ver [Roadmap](docs/roadmap.md).
 
 ## O visual: a ficha de papel
 
