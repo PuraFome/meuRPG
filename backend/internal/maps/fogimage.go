@@ -1,11 +1,9 @@
 package maps
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"unicode/utf8"
 	"uuid"
@@ -97,19 +95,15 @@ func (s *Service) copyFiles(ctx context.Context, campaignID, imageID string) (*f
 	return c, nil
 }
 
-// copyBlob copies one file of the blob store. The image is at most 10 MiB, which
-// the copy holds in memory for a moment, as an upload does.
+// copyBlob copies one file of the blob store, streaming it: nothing of the
+// image (at most 10 MiB) is held in memory.
 func (s *Service) copyBlob(ctx context.Context, from, to string) error {
 	obj, err := s.blobs.Open(ctx, from)
 	if err != nil {
 		return fmt.Errorf("open an image file to copy it: %w", err)
 	}
 	defer func() { _ = obj.Close() }()
-	content, err := io.ReadAll(obj.Content)
-	if err != nil {
-		return fmt.Errorf("read an image file to copy it: %w", err)
-	}
-	if err := s.blobs.Put(ctx, to, obj.ContentType, bytes.NewReader(content)); err != nil {
+	if err := s.blobs.Put(ctx, to, obj.ContentType, obj.Content); err != nil {
 		return fmt.Errorf("store the copy of an image file: %w", err)
 	}
 	return nil

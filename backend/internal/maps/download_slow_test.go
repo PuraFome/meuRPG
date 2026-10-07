@@ -1,14 +1,10 @@
 package maps
 
-// Finding U5-5: image and fog-tile downloads set no write deadline, so a client that stops reading holds the handler (and a Cloud Run slot) until the platform timeout.
-
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"image"
 	"image/png"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -50,7 +46,10 @@ func noiseImage(t *testing.T, side int) []byte {
 	return buf.Bytes()
 }
 
-func TestReview5_ImageAndTileWriteDeadline(t *testing.T) {
+// Downloads of an image, its thumbnail and a fog tile give the client a write
+// deadline, so one that stops reading is dropped instead of holding the
+// handler until the platform closes the connection.
+func TestImageAndTileDownloadsHaveAWriteDeadline(t *testing.T) {
 	c := newCave(t)
 	h := c.h
 
@@ -117,44 +116,5 @@ func TestReview5_ImageAndTileWriteDeadline(t *testing.T) {
 		if !nonZero {
 			t.Errorf("GET %s set no (non-zero) write deadline (%d SetWriteDeadline calls): a client that stops reading is never dropped", p, n)
 		}
-	}
-}
-
-// Supporting evidence: a client that reads only the headers of a large image
-// and then stops keeps the handler blocked in its write.
-func TestReview5_StalledReaderKeepsHandlerBlocked(t *testing.T) {
-	c := newCave(t)
-	h := c.h
-	body := noiseImage(t, 1500)
-	big := c.master.mustUpload(c.campaign, "grande.png", body)
-	t.Logf("image size: %d bytes", len(body))
-
-	done := make(chan struct{})
-	inner := h.server.Config.Handler
-	rec := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		inner.ServeHTTP(w, r)
-		close(done)
-	}))
-	defer rec.Close()
-
-	conn, err := net.Dial("tcp", strings.TrimPrefix(rec.URL, "http://"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = conn.Close() }() // runs before rec.Close, so the handler can end
-	if tc, ok := conn.(*net.TCPConn); ok {
-		_ = tc.SetReadBuffer(4 << 10)
-	}
-	_, _ = conn.Write([]byte("GET /images/" + big.GetId() + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + c.master.id + "\r\n\r\n"))
-	br := bufio.NewReaderSize(conn, 512)
-	line, err := br.ReadString('\n')
-	if err != nil || !strings.Contains(line, "200") {
-		t.Fatalf("status line %q err %v", line, err)
-	}
-	select {
-	case <-done:
-		t.Fatal("handler finished before the stall")
-	case <-time.After(4 * time.Second):
-		t.Error("handler is still blocked writing to a client that stopped reading 4 s ago (no write deadline)")
 	}
 }

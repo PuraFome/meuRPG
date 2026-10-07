@@ -8,7 +8,14 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
+
+// staticWriteTimeout is how long a client has to take one of the app's files,
+// which are a few megabytes at most; a client that stops reading is dropped.
+const staticWriteTimeout = 2 * time.Minute
 
 // cspHeader is as strict as the app allows:
 //
@@ -140,6 +147,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// filename except index.html, so any file found here is safe to
 		// cache forever: a change always ships under a new name.
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		defer slowclient.WriteBody(w, staticWriteTimeout)()
 		http.ServeFile(w, r, fsPath)
 		return
 	}
@@ -148,6 +156,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// (e.g. a future "/campaigns/42"): serve the app shell and let the
 	// Angular router take over.
 	w.Header().Set("Cache-Control", "no-cache")
+	defer slowclient.WriteBody(w, staticWriteTimeout)()
 	http.ServeFile(w, r, h.indexPath)
 }
 
