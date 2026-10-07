@@ -42,6 +42,9 @@ export class NotesState {
   readonly atLimit = computed(() => this.noteCount() >= this.maxNotes());
 
   private generation = 0;
+  /** Moves with each write's answer: a read that began before it may lack the written note, so it is dropped and
+   * made again (still announcing the clues it brings), not lost. */
+  private edits = 0;
   /** The key of the note being written: kept across the retries of one note, new for the next. */
   private readonly createKey = new ActionKey();
 
@@ -56,6 +59,7 @@ export class NotesState {
    */
   async refresh(announce = false): Promise<void> {
     const generation = ++this.generation;
+    const edits = this.edits;
     const campaignId = this.campaignId();
     try {
       const [list, scenes] = await Promise.all([
@@ -64,6 +68,9 @@ export class NotesState {
       ]);
       if (generation !== this.generation) {
         return;
+      }
+      if (edits !== this.edits) {
+        return await this.refresh(announce);
       }
       const known = new Set(this.notes().map((n) => n.id));
       const arrived =
@@ -79,7 +86,7 @@ export class NotesState {
         this.notice.set(true);
       }
     } catch {
-      if (generation === this.generation) {
+      if (generation === this.generation && edits === this.edits) {
         this.failed.set(true);
       }
     }
@@ -151,7 +158,7 @@ export class NotesState {
         this.createKey.keyFor([text, scenePointId]),
       );
       this.createKey.renew();
-      this.generation++;
+      this.edits++;
       this.notes.update((list) => sortNotes([note, ...list]));
       this.noteCount.update((n) => n + 1);
       return note;
@@ -161,7 +168,7 @@ export class NotesState {
   update(noteId: string, changes: { text?: string; scenePointId?: string }): Promise<Note | null> {
     return this.write(noteId, async () => {
       const note = await this.api.update(this.campaignId(), noteId, changes);
-      this.generation++;
+      this.edits++;
       this.notes.update((list) => sortNotes(list.map((n) => (n.id === noteId ? note : n))));
       return note;
     });
@@ -171,7 +178,7 @@ export class NotesState {
   async remove(noteId: string): Promise<boolean> {
     const done = await this.write(noteId, async () => {
       await this.api.delete(this.campaignId(), noteId);
-      this.generation++;
+      this.edits++;
       this.notes.update((list) => list.filter((n) => n.id !== noteId));
       this.noteCount.update((n) => Math.max(0, n - 1));
       return true;

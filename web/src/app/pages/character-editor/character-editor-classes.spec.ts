@@ -469,6 +469,21 @@ describe('several classes at creation (E10-02 state 6)', () => {
     expect(cmp.levelDice()).toEqual([6, 8]);
     expect(cmp.rollsNeeded()).toBe(2);
   });
+
+  it('writes, rolls and checks each level of the hit points with the die of its own class', async () => {
+    const { fixture, el, cmp } = await maga();
+    cmp.changeBlock(0, { level: 1 });
+    cmp.addClass();
+    cmp.changeBlock(1, { classKey: 'class:cleric', level: 2 });
+    cmp.fullForm.patchValue({ hitPointsMethod: 'rolled' });
+    await settle(fixture);
+    // Mago 1 (d6), Clérigo 2 (d8): levels 2 and 3 are the cleric's.
+    await openStep(fixture, 'Habilidades');
+    const labels = Array.from(el.querySelectorAll('app-hit-points-rolls mat-label')).map((l) =>
+      l.textContent?.trim(),
+    );
+    expect(labels).toEqual(['Nível 2 (1d8)', 'Nível 3 (1d8)']);
+  });
 });
 
 describe('the spell step per class (E10-11 state 4)', () => {

@@ -137,26 +137,11 @@ func (s *Service) AdjustCharacterVitals(
 		// A combat in progress with this character shows its state ("Caído", the
 		// healing) from the vitals: its revision goes up in the same transaction, so
 		// every screen reads it again.
-		if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil {
-			cs, err := q.ListCombatants(ctx, enc.ID)
-			if err != nil {
-				return fmt.Errorf("list the combatants: %w", err)
-			}
-			if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == charText }); i >= 0 {
-				if ownBody != nil {
-					if err := applyBody(ctx, &combatTx{q: q}, cs[i], *ownBody); err != nil {
-						return err
-					}
-				}
-				visionMap = deref(enc.MapID)
-				t, err := q.TouchEncounter(ctx, enc.ID)
-				if err != nil {
-					return fmt.Errorf("touch the encounter: %w", err)
-				}
-				touched = &t
-			}
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("find the open encounter: %w", err)
+		if touched, err = s.touchCombatOf(ctx, q, session.ID, charText, ownBody); err != nil {
+			return err
+		}
+		if touched != nil {
+			visionMap = deref(touched.MapID)
 		}
 		after = adjusted
 		return nil
@@ -186,6 +171,41 @@ func (s *Service) AdjustCharacterVitals(
 		s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
 	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
+}
+
+// touchCombatOf tells the session's open combat that a character's vitals changed:
+// when the character is a player's combatant in it, the combat's revision goes up
+// (the "Caído" state and the healing show from the vitals, so every screen has to
+// read it again), after giving the combatant its own body back when ownBody is the
+// character's own numbers (its beast form ended). It returns the encounter as
+// touched, nil when the character is not in the combat; the caller publishes
+// encounter_changed after the commit. It runs in the change's transaction.
+func (s *Service) touchCombatOf(ctx context.Context, q *playdb.Queries, sessionID, characterID string, ownBody *link.Character) (*playdb.Encounter, error) {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find the open encounter: %w", err)
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == characterID })
+	if i < 0 {
+		return nil, nil
+	}
+	if ownBody != nil {
+		if err := applyBody(ctx, &combatTx{q: q}, cs[i], *ownBody); err != nil {
+			return nil, err
+		}
+	}
+	touched, err := q.TouchEncounter(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	return &touched, nil
 }
 
 // vitalsNumbers are the numbers a session event keeps about a character's

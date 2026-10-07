@@ -839,6 +839,7 @@ erDiagram
         bool generated "made by AI (MR-039), default false"
         uuid parent_image_id FK "the image this one is an adjustment of, optional, SET NULL"
         text generated_kind "scene, map_scene, isometric, textured_map or empty"
+        uuid copy_of_image_id FK "the fog map image this one copies, optional, SET NULL"
     }
 
     image_requests {
@@ -1029,6 +1030,7 @@ erDiagram
     campaigns ||--o{ gallery_images : "keeps"
     users |o--o{ gallery_images : "uploaded"
     gallery_images |o--o{ gallery_images : "is an adjustment of"
+    gallery_images |o--o{ gallery_images : "is a copy of"
     campaigns ||--o{ image_requests : "requests"
     users |o--o{ image_requests : "requested"
     gallery_images |o--o{ image_requests : "is the result of"
@@ -1068,6 +1070,7 @@ erDiagram
 - **`uploaded_by`** is who uploaded, for when a campaign has more than one master (RN-13). It does not go out in the API. `ON DELETE SET NULL`: the image stays with the campaign when the account leaves. No index, like `campaigns.created_by`.
 - **`campaign_id` with `ON DELETE CASCADE`:** deleting the campaign deletes the rows, not the files. Deleting the campaign (or the master's account) must also delete the blob-store prefix `campaigns/<campaign_id>/` (see [Privacy](privacy.md)). Indexes: `(campaign_id, created_at DESC)` with `byte_size` included (the gallery newest first, and quota use), and the parent of an image (the adjustment chain).
 - **`generated`, `parent_image_id` and `generated_kind` (MR-039).** An image the `ImageGenerationService` stored has `generated = true` and is hidden from players like any image (RN-10). An adjustment points to the image it started from (`parent_image_id`, `ON DELETE SET NULL`: deleting the parent leaves the child whole, without the link); the adjustment chain is the tree of those links (`ListImageEdits`, a recursive query). `generated_kind` says how the generated image was made (`scene`, `map_scene`, `isometric`, `textured_map`; empty on an upload), and an adjustment inherits that of the chain's root: a `textured_map` image shows the whole map, including what the players have not discovered, so the app never shows it to players with one tap (the gallery, the session picker and the document's picker ask first), and only it and its adjustments can become the map image (RN-10).
+- **`copy_of_image_id`** marks the copy of a fog map's image made to show it to the players, or to be an NPC's portrait (RN-10: the original never reaches a player): showing the same image again finds that copy instead of making another one (a file and a slot of the quota each time). A copy that has itself become the background of a map with the fog on is never reused. `ON DELETE SET NULL`: deleting the original keeps the copy, a complete image on its own. A partial index (`WHERE copy_of_image_id IS NOT NULL`) serves the search.
 - **`image_requests` is the request and the month's count.** A campaign's monthly slot is the month's rows (`quota_month`, "2026-10", on fixed UTC-3 time, because Brazil has had no daylight saving since 2019) that were not refunded (`refunded`). A row's life:
   - `pending` without `sent_at`: the slot is reserved and the request has not left ("Cancelar" gives the slot back);
   - `pending` with `sent_at`: it left ("Cancelar" only stops the waiting, the slot stays spent and the image, if it comes, goes to the gallery);

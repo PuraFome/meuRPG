@@ -55,6 +55,10 @@ type trapFireEvent struct {
 	// undo takes back only the creatures it added.
 	Manual    bool   `json:"manual,omitempty"`
 	ExtendsID string `json:"extends_id,omitempty"`
+	// Part says this event holds the creatures that did not fit the firing's own
+	// event (the payload is capped): it extends the firing, and an undo takes it
+	// back together with the events of the same firing.
+	Part bool `json:"part,omitempty"`
 	// Caught is what happened to each creature the trap caught, in order. In a
 	// combat the target is a combatant; outside one, a character.
 	Caught []trapCaughtEvent `json:"caught,omitempty"`

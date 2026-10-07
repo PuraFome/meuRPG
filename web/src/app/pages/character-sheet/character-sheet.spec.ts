@@ -122,6 +122,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     attacks: [],
     spellcasting: [],
     spellSlots: [],
+    pactSlots: null,
     cantripNames: [],
     spellNames: [],
     features: [],
@@ -408,6 +409,36 @@ describe('CharacterSheetPage', () => {
     // "1º nível: 42º nível: 2" — no separator, and the wrong term.
     expect(el.textContent).not.toContain('42º');
     expect(el.textContent).not.toContain('nível: 4');
+  });
+
+  it("shows a Warlock's pact slots in their own list, since the sheet has no other slots", async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            spellSlots: [],
+            pactSlots: { level: 1, count: 2 },
+            spellcasting: [
+              {
+                className: 'Bruxo',
+                ability: 'cha',
+                saveDc: 13,
+                attackBonus: 5,
+                cantripsKnown: 2,
+                spellsPreparedMax: 2,
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.querySelector('[aria-label="Espaços de magia"]')).toBeNull();
+    const pact = el.querySelector('[aria-label="Espaços do pacto"]');
+    expect(pact?.querySelector('.slots__level')?.textContent?.trim()).toBe('Pacto · 1º nível');
+    expect(pact?.querySelectorAll('.slots__circle').length).toBe(2);
+    expect(pact?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('2 espaços');
   });
 
   it("renders every official-sheet section as an <h2>, in the paper sheet's column order", async () => {

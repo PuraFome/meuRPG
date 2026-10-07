@@ -137,10 +137,12 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 	}
 	var row playdb.TrapDamage
 	var after *playv1.CharacterVitals
-	var repeated bool
+	var repeated, shapeChanged bool
+	var touched *playdb.Encounter
+	var visionMap string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		after, repeated = nil, false
+		after, repeated, shapeChanged, touched, visionMap = nil, false, false, nil, ""
 		// The damage outlives its session, so it may be settled with none open (then there
 		// is no event to write and no key to remember).
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
@@ -187,20 +189,49 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 			}
 			ev.Amount, ev.Overridden, ev.Rolled = amount, applied != nil, row.Amount
 			// RN-02: the damage goes through the character's vitals, temporary hit
-			// points first, never below 0.
+			// points first, never below 0; a druid in a beast form takes it on the
+			// beast, and what is left goes to the druid when the beast falls (MR-037).
+			// What changes is the open session's, even when the trap fired in an earlier one.
 			now, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, row.CharacterID)
 			if err != nil {
 				return err
 			}
-			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
-			hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
-			before, vit, err := s.changeVitals(ctx, q, tx, row.GameSessionID, m.CampaignID, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
+			sessionID := row.GameSessionID
+			if hasSession {
+				sessionID = session.ID
+			}
+			var req *playv1.AdjustCharacterVitalsRequest
+			var left, carried int32
+			if now.GetWildShape() != nil {
+				req, left, carried = beastDamageRequest(now, amount)
+			} else {
+				dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+				hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
+				req = &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp}
+			}
+			before, vit, err := s.changeVitals(ctx, q, tx, sessionID, m.CampaignID, row.CharacterID, req)
 			if err != nil {
 				return err
 			}
+			if now.GetWildShape() != nil && left == 0 { // the beast fell: the keeper ended the form, its numbers and its event are ours
+				if vit, err = s.formEnds(ctx, q, tx, sessionID, m.CampaignID, row.CharacterID, now.GetWildShape().GetBeastKey(), endedByDamage, carried); err != nil {
+					return err
+				}
+			}
 			after = vit
-			ev.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
-			ev.After = &hpState{HP: vit.GetHitPointsCurrent(), Temp: vit.GetHitPointsTemporary()}
+			shapeChanged = (before.GetWildShape() == nil) != (vit.GetWildShape() == nil)
+			ev.Carried = carried
+			ev.Before, ev.After = new(hpStateOf(before)), new(hpStateOf(vit))
+			if hasSession {
+				// A combat in progress with this character shows its state from the vitals.
+				if touched, err = s.touchCombatOf(ctx, q, session.ID, row.CharacterID, nil); err != nil {
+					return err
+				}
+				visionMap = deref(session.CurrentMapID)
+				if touched != nil {
+					visionMap = deref(touched.MapID)
+				}
+			}
 		}
 		resolved := c.now
 		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied}); err != nil {
@@ -218,6 +249,12 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 	if !repeated {
 		s.publishVitals(m.CampaignID, after)
 		s.Publish(m.CampaignID, false, mapChangedHint("")) // the trap card has one damage less
+		if touched != nil {
+			s.publishEncounterChanged(ctx, m.CampaignID, *touched)
+		}
+		if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+			s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
+		}
 	}
 	return row, after, nil
 }

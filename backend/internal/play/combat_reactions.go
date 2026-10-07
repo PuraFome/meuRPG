@@ -243,13 +243,20 @@ func (s *Service) UseReaction(
 		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: next, ResolvedAt: resolvedWhen(next, c)}); err != nil {
 			return nil, fmt.Errorf("answer the pending damage: %w", err)
 		}
+		// The bonus holds for every attack on the target until its next turn, so the
+		// other hits already made, still waiting for the reaction or for their damage,
+		// are compared again too.
+		also, err := s.stopOtherHits(ctx, c, p, target)
+		if err != nil {
+			return nil, err
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		c.characterID = &target.CharacterID
 		made = actionEvent{
 			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
-			Stopped: stopped, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
+			Stopped: stopped, AlsoStopped: also, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
 		}
 		return made, nil
 	})
@@ -278,6 +285,32 @@ func (s *Service) UseReaction(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// stopOtherHits discards the hits on the target, other than answered, that the
+// Escudo's armor class stops: each is compared again with the armor class it was
+// compared with (cover included) plus the Escudo's 5, as the answered one is. It
+// returns what it discarded, for the undo.
+func (s *Service) stopOtherHits(ctx context.Context, c *combatTx, answered playdb.PendingDamage, target playdb.Combatant) ([]stoppedHit, error) {
+	open, err := c.q.ListOpenPendingDamages(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the pending damage: %w", err)
+	}
+	var out []stoppedHit
+	for _, o := range open {
+		if o.ID == answered.ID || o.TargetID != target.ID || o.AttackTotal == nil || o.AttackArmorClass == nil ||
+			(o.Status != pendingAwaitingReaction && o.Status != pendingAwaitingRoll) {
+			continue
+		}
+		if int(*o.AttackTotal) >= int(*o.AttackArmorClass)-int(target.AcBonus)+combat.ShieldACBonus {
+			continue
+		}
+		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: o.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+			return nil, fmt.Errorf("stop the other hit: %w", err)
+		}
+		out = append(out, stoppedHit{Pending: o.ID, PrevStatus: o.Status})
+	}
+	return out, nil
 }
 
 // resolvedWhen is when a pending damage was settled by a reaction: now for one

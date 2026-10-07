@@ -981,6 +981,54 @@ describe('CharacterEditor', () => {
     expect(req.full?.hitPointsRolls).toEqual([4, 6]);
   });
 
+  describe('the rolls of the "rolled" hit points method', () => {
+    async function rolledWizard(level: number) {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+        level,
+        hitPointsMethod: 'rolled',
+      });
+      return cmp;
+    }
+
+    it('does not send a level that was never rolled, and names it', async () => {
+      const cmp = await rolledWizard(4);
+      cmp.hitPointsRolls.set([0, 0, 5]);
+      await cmp.submit();
+      expect(fake.createCharacterCalls).toHaveLength(0);
+      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 2');
+      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 3');
+      expect(cmp.invalidSummary()).not.toContain('nível 4');
+    });
+
+    it('does not send a roll that does not fit the die of its level', async () => {
+      const cmp = await rolledWizard(3);
+      // A 20 on a d6, and an 11 (a d12 roll left from another class) on a d6.
+      cmp.hitPointsRolls.set([4, 20]);
+      await cmp.submit();
+      expect(fake.createCharacterCalls).toHaveLength(0);
+      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 3');
+      cmp.hitPointsRolls.set([11, 4]);
+      await cmp.submit();
+      expect(fake.createCharacterCalls).toHaveLength(0);
+      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 2');
+    });
+
+    it('sends the rolls once every level fits its die', async () => {
+      const cmp = await rolledWizard(3);
+      cmp.hitPointsRolls.set([6, 1]);
+      await cmp.submit();
+      expect(fake.createCharacterCalls[0]?.full?.hitPointsRolls).toEqual([6, 1]);
+    });
+  });
+
   it('sends the "average" hit points method when chosen, regardless of rolls typed earlier', async () => {
     configure({ id: 'camp-1' });
     const { fixture } = await render();
