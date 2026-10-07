@@ -1839,7 +1839,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		return nil, s.dbError(ctx, "adjust a combatant's hit points", err)
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishEncounterChangedFor(ctx, m.CampaignID, d, combID)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false) // the master's correction: his line only
 	})
 	if err != nil {
