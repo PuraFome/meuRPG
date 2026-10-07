@@ -137,6 +137,41 @@ describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
       'Planta da torre foi tirada.',
     );
   });
+
+  it('does not show the withdrawn image again when the switch is flipped during a stop', async () => {
+    const { fixture, el } = await render({});
+    let release: () => void = () => undefined;
+    source.setShownImage.mockImplementationOnce(
+      () => new Promise<null>((resolve) => (release = () => resolve(null))),
+    );
+    const stop = [...el.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Parar de mostrar'),
+    );
+    await click(fixture, stop ?? null);
+    expect(source.setShownImage).toHaveBeenCalledTimes(1);
+    await click(fixture, el.querySelector('[role="switch"]'));
+    release();
+    await fixture.whenStable();
+    expect(source.setShownImage.mock.calls).toEqual([['c1', null]]);
+  });
+
+  it('takes an image back once when "Tirar" is clicked twice before the answer', async () => {
+    const { fixture, el } = await render({ left: [planta] });
+    // The first call succeeds; a second one would find the image already back.
+    source.takeBackLeftImage.mockResolvedValueOnce(undefined);
+    source.takeBackLeftImage.mockRejectedValueOnce(new ConnectError('gone', Code.NotFound));
+    let left = 0;
+    fixture.componentInstance.leftChanged.subscribe(() => left++);
+    const button = el.querySelector<HTMLElement>(
+      'button[aria-label="Tirar Planta da torre dos jogadores"]',
+    )!;
+    button.click();
+    button.click();
+    await fixture.whenStable();
+    expect(source.takeBackLeftImage).toHaveBeenCalledTimes(1);
+    expect(el.textContent).not.toContain('já não estava com os jogadores');
+    expect(left).toBe(0);
+  });
 });
 
 describe('takeBackErrorMessage', () => {
