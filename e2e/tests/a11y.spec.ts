@@ -2382,7 +2382,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByLabel('Buscar magia').fill('nebuloso');
     await row('Passo Nebuloso').click();
     await p.getByLabel('Buscar magia').fill('espelhada');
-    await row('Imagem Espelhada').click();
+    await row('Reflexos').click();
     await p.getByLabel('Buscar magia').fill('');
     await expectScreenPasses(p, `Magias, o livro completo e as preparadas faltando ${where}`);
     await p.getByRole('button', { name: 'Descrição de Passo Nebuloso' }).first().click();
@@ -2625,14 +2625,14 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(panel.getByRole('heading', { name: 'Criaturas' })).toBeVisible();
     await expectScreenPasses(p, `Criaturas, vazio ${where}`);
 
-    await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
-    const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    await panel.getByRole('button', { name: 'Convocar Familiar' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Convocar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
     await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
-    await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
+    await expectScreenPasses(p, `Convocar Familiar, faltando o nome ${where}`);
     await sheet.getByLabel('Nome do familiar').fill('Nanquim');
     await sheet.locator('label', { hasText: /Corvo/ }).click();
     await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
-    await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
+    await expectScreenPasses(p, `Convocar Familiar, pronto ${where}`);
     await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
     await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
     await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);

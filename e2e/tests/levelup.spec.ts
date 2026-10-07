@@ -62,7 +62,7 @@ test(
       await p.getByLabel('Buscar magia').fill('nebuloso');
       await row(p, 'Passo Nebuloso').first().click();
       await p.getByLabel('Buscar magia').fill('espelhada');
-      await row(p, 'Imagem Espelhada').first().click();
+      await row(p, 'Reflexos').first().click();
       await p.getByLabel('Buscar magia').fill('');
       await expect(p.getByText('Faltam preparar 2 magias.')).toBeVisible();
       const prepare = p.locator('#pick-prepared');
@@ -100,7 +100,7 @@ test(
       const changes = m.getByRole('region', { name: 'O que Pensantus escolheu no nível 4' });
       await expect(changes).toContainText('+2 em Inteligência');
       await expect(changes).toContainText('Prestidigitação');
-      await expect(changes).toContainText('Passo Nebuloso e Imagem Espelhada');
+      await expect(changes).toContainText('Passo Nebuloso e Reflexos');
       await expect(changes).toContainText('Confirmado em');
       await expect(changes).toContainText('Nada fica à espera do seu OK');
       await expect(changes.getByRole('link', { name: 'Abrir a ficha' })).toBeVisible();

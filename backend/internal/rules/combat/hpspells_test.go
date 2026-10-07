@@ -104,7 +104,7 @@ func TestResolveThreshold(t *testing.T) {
 func TestResolveZeroHP(t *testing.T) {
 	t.Parallel()
 	if !ResolveZeroHP(0) || ResolveZeroHP(1) || ResolveZeroHP(27) {
-		t.Error("Poupar os Moribundos works only at exactly 0 hit points")
+		t.Error("Estabilizar works only at exactly 0 hit points")
 	}
 }
 

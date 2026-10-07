@@ -28,17 +28,17 @@ type ListState = 'loading' | 'hidden' | 'ready' | 'failed';
 /**
  * The sheet's "Criaturas" panel (E9-10, MR-037): the creatures that belong to the character, one card
  * each (see `CreatureCard`), and what the character can conjure. It sits right after "Combate" and
- * "Magias", only for who can have a creature: a character that can cast Encontrar Familiar, Animar os
+ * "Magias", only for who can have a creature: a character that can cast Convocar Familiar, Animar os
  * Mortos or Conjurar Animais (the server says, `GetSummonOptions`), a druid, or any character that
  * already has one (no empty panel for the rest). RN-20: the list is the owner's player's and the
  * master's; for anyone else the server answers `not_found` and the panel does not exist.
  *
- * Empty: an invitation ("Nenhuma criatura ainda. Use Encontrar Familiar ou peça ao mestre para dar
+ * Empty: an invitation ("Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar
  * uma.") and one outlined button per spell the character can cast, with what it costs under it. A
  * cast needs a session: outside one the button is dashed and says why. The master does not cast from
  * here (the master gives, in the campaign's character list).
  *
- * A live region confirms what arrived ("Nanquim chegou. Encontrar Familiar, ritual de 1 hora. Nenhum
+ * A live region confirms what arrived ("Nanquim chegou. Convocar Familiar, ritual de 1 hora. Nenhum
  * espaço de magia foi gasto.", "O mestre deu uma criatura a você: Mastim."); it goes away when the next
  * action starts. The list is read again on the stream's `creatures_changed` (`reload`, a counter the
  * page bumps); an answer that arrives after a newer read started is thrown away. When the read fails,

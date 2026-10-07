@@ -13,7 +13,7 @@ import (
 )
 
 // The spells that read hit points (MR-014, RN-02, RN-18, RN-20, Etapa 8, slice
-// 8.1): Sono, Borrifo de Cores, Palavra de Poder: Atordoar and Matar, Poupar os
+// 8.1): Sono, Leque Cromático, Palavra de Poder Atordoar and Matar, Poupar os
 // Moribundos and Cura Completa. These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The numbers of E8-03: Pensantus's Sono rolls 5d8
 // (2, 4, 1, 5, 3) = 15 against a goblin with 7 PV and the Capitão with 27.
@@ -41,7 +41,7 @@ func poolSum(n int32) func(*playv1.CastSpellRequest) {
 
 // newHPCasters is the party of newCasters with the characters that can cast the
 // high spells: Pensantus a level 17 wizard (the 8th and 9th circle) and Brisa a
-// level 11 cleric (the 6th), with Poupar os Moribundos.
+// level 11 cleric (the 6th), with Estabilizar.
 func newHPCasters(t *testing.T) *armed {
 	t.Helper()
 	return newArmedWith(t, func(a *armed) {
@@ -317,7 +317,7 @@ func TestMR014_PowerWordStunAndKillOnNPCs(t *testing.T) {
 	a.passTo(t, e, "Toren")
 	a.passTo(t, e, "Pensantus")
 	refill()
-	a.undoes(t, "Palavra de Poder: Matar on an NPC", func() {
+	a.undoes(t, "Palavra de Poder Matar on an NPC", func() {
 		a.mustCast(t, a.ana, a.get(t, a.master), "Pensantus", wordKill, slotOfLevel(9), a.at(t, "Capitão Goblin"), noCastRoll)
 		if hp, _, defeated := a.hp(t, "Capitão Goblin"); hp != 0 || !defeated {
 			t.Errorf("the Capitão after Matar = %d PV, defeated %v; want 0 and defeated", hp, defeated)
@@ -376,17 +376,17 @@ func TestMR014_SpareTheDyingWorksOnlyAtZero(t *testing.T) {
 	// cast is undone so the turn is free again.
 	a.mustCast(t, a.bia, e, "Brisa", spareDying, nil, a.at(t, "Pensantus"), noCastRoll)
 	if f := logEffect(t, spellEntry(t, a.log(t, a.master, e)), "Pensantus"); f.GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_NOT_AFFECTED || f.GetReason() != playv1.SpellEffectReason_SPELL_EFFECT_REASON_NOT_AT_ZERO {
-		t.Errorf("Poupar os Moribundos on a healthy one = %v, want not affected: not at zero", f)
+		t.Errorf("Estabilizar on a healthy one = %v, want not affected: not at zero", f)
 	}
 	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
 		t.Fatalf("UndoLastAction() error = %v", err)
 	}
 
 	// Toren, dying at 0 PV, becomes stable; the undo makes him dying again.
-	a.undoes(t, "Poupar os Moribundos", func() {
+	a.undoes(t, "Estabilizar", func() {
 		a.mustCast(t, a.bia, e, "Brisa", spareDying, nil, a.at(t, "Toren"), noCastRoll)
 		if c := byLabel(t, a.get(t, a.master), "Toren"); c.GetState() != playv1.CombatantState_COMBATANT_STATE_STABLE {
-			t.Errorf("Toren after Poupar os Moribundos = %v, want stable", c.GetState())
+			t.Errorf("Toren after Estabilizar = %v, want stable", c.GetState())
 		}
 	})
 	a.mustCast(t, a.bia, e, "Brisa", spareDying, nil, a.at(t, "Toren"), noCastRoll)

@@ -926,11 +926,11 @@ type SpellHitPointEffectKind int32
 const (
 	SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_UNSPECIFIED SpellHitPointEffectKind = 0
 	// A pool of dice is rolled and the creatures are affected in ascending order
-	// of current hit points (Sono, Borrifo de Cores).
+	// of current hit points (Sono, Leque Cromático).
 	SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_POOL SpellHitPointEffectKind = 1
 	// A creature at or below a number of hit points is affected (Palavra de Poder).
 	SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_THRESHOLD SpellHitPointEffectKind = 2
-	// Works only on a creature at 0 hit points (Poupar os Moribundos).
+	// Works only on a creature at 0 hit points (Estabilizar).
 	SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP SpellHitPointEffectKind = 3
 	// A fixed heal that also ends conditions (Cura Completa).
 	SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL SpellHitPointEffectKind = 4
@@ -1842,7 +1842,7 @@ type TrapCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The condition's key, "condition:restrained".
 	ConditionKey string `protobuf:"bytes,1,opt,name=condition_key,json=conditionKey,proto3" json:"condition_key,omitempty"`
-	// Its Portuguese name ("Contido"). Output only: ignored on input.
+	// Its Portuguese name ("Impedido"). Output only: ignored on input.
 	ConditionPt string `protobuf:"bytes,2,opt,name=condition_pt,json=conditionPt,proto3" json:"condition_pt,omitempty"`
 	// How long it lasts, as text for the master ("1 hora"), 0 to 60 characters;
 	// empty for none.
@@ -6682,8 +6682,8 @@ type SpellDetails struct {
 	// The SRD's "At Higher Levels" paragraphs, in English. Empty when the
 	// spell has none.
 	HigherLevel []string `protobuf:"bytes,11,rep,name=higher_level,json=higherLevel,proto3" json:"higher_level,omitempty"`
-	// What a spell that reads hit points does (Sono, Borrifo de Cores, Palavra de
-	// Poder, Poupar os Moribundos, Cura Completa). Unset for any other spell.
+	// What a spell that reads hit points does (Sono, Leque Cromático, Palavra de
+	// Poder, Estabilizar, Cura Completa). Unset for any other spell.
 	// These are public spell rules, like the rest of the message: every member
 	// gets them, and the app reads them instead of keeping a copy of the table.
 	HitPointEffect *SpellHitPointEffect `protobuf:"bytes,12,opt,name=hit_point_effect,json=hitPointEffect,proto3" json:"hit_point_effect,omitempty"`

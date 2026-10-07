@@ -125,7 +125,7 @@ export interface FogOptions {
   noFog?: boolean;
   /** Toren has no token on the map (his player is "fora do mapa"). */
   torenOffMap?: boolean;
-  /** Pensantus has Nanquim, a raven familiar (Encontrar Familiar, a ritual), on this square. */
+  /** Pensantus has Nanquim, a raven familiar (Convocar Familiar, a ritual), on this square. */
   familiar?: { col: number; row: number };
 }
 
@@ -145,7 +145,7 @@ export async function tableForFog(master: Page, pensantusPlayer: Page, torenPlay
   await join(master, pensantusPlayer, campaignId);
   const pensantusBody = characterRpcBody('PLAYER', pensantus) as { sheet: { full: object } };
   if (options.familiar) {
-    // The spell is in the book and prepared: Encontrar Familiar is a ritual, so it costs no slot.
+    // The spell is in the book and prepared: Convocar Familiar is a ritual, so it costs no slot.
     pensantusBody.sheet.full = { ...pensantusBody.sheet.full, knownSpellKeys: ['spell:find-familiar'], preparedSpellKeys: ['spell:find-familiar'] };
   }
   const pensantusRes = await createCharacterRPC(pensantusPlayer, campaignId, pensantusBody);

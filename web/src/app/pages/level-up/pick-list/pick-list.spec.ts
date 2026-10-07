@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import type { PickItem } from '../../../core/levelup/levelup-flow';
 import { PickList } from './pick-list';
 
-const items: PickItem[] = ['Alarme', 'Armadura Arcana', 'Borrifo de Cores', 'Luz', 'Passo Nebuloso', 'Sono'].map((name) => ({
+const items: PickItem[] = ['Alarme', 'Armadura Arcana', 'Leque Cromático', 'Luz', 'Passo Nebuloso', 'Sono'].map((name) => ({
   key: `k:${name}`,
   name,
   sub: '1º círculo',

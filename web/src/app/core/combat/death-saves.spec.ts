@@ -44,7 +44,7 @@ describe('the conditions (E6-29)', () => {
   it('compares sets without order, and reads names aloud', () => {
     expect(sameKeys(['a', 'b'], ['b', 'a'])).toBe(true);
     expect(sameKeys(['a'], ['a', 'b'])).toBe(false);
-    expect(listNames(['Cego', 'Surdo', 'Contido'])).toBe('Cego, Surdo e Contido');
+    expect(listNames(['Cego', 'Surdo', 'Impedido'])).toBe('Cego, Surdo e Impedido');
     expect(listNames(['Cego'])).toBe('Cego');
   });
 });

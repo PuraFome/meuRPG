@@ -304,7 +304,7 @@ func TestListCreatures(t *testing.T) {
 	if got := keys(CreatureFilter{Query: "dire wolf"}); !slices.Equal(got, []string{"monster:dire-wolf"}) {
 		t.Errorf("a name search (English) = %v", got)
 	}
-	if got := keys(CreatureFilter{Query: "cobra venenosa", Type: "beast"}); len(got) != 2 {
+	if got := keys(CreatureFilter{Query: "serpente venenosa", Type: "beast"}); len(got) != 2 {
 		t.Errorf("the poisonous snake and the giant one = %v", got)
 	}
 	for _, e := range mustList(t, c, CreatureFilter{Type: "beast", MaxCR: "1/4", NoFly: true, NoSwim: true}) {

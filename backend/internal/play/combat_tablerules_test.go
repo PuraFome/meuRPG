@@ -106,7 +106,7 @@ func (a *armed) casterCrits(t *testing.T, ogre *playv1.Participant, theatre bool
 
 // critRound is one round of criticals under the rule the table has now: Pensantus's
 // Raio de Fogo (a spell attack of the Attack action, 1d10), Toren's machado (1d8+3,
-// typed with real dice), Brisa's Raio Guia (a spell that attacks, 4d6) and the
+// typed with real dice), Brisa's Raio Guiador (a spell that attacks, 4d6) and the
 // Ogro's scimitar on Toren (1d6+2, the master's). dice and kept say what the rule
 // makes of each: how many dice are rolled and the maximum added. Every roll is
 // scripted.
@@ -172,16 +172,16 @@ func (a *armed) critRound(t *testing.T, e *playv1.Encounter, rule playv1.Critica
 		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 20}
 	})
 	if len(cast.GetCast().GetPendingDamages()) != 1 {
-		t.Fatalf("Raio Guia = %v, want one pending damage", cast.GetCast())
+		t.Fatalf("Raio Guiador = %v, want one pending damage", cast.GetCast())
 	}
 	bolt := cast.GetCast().GetPendingDamages()[0]
-	wantCritical(t, "Raio Guia", bolt, rule, pick(8, 4), kept(24))
+	wantCritical(t, "Raio Guiador", bolt, rule, pick(8, 4), kept(24))
 	if doubledRule {
 		a.h.roller.queue(1, 1, 1, 1, 2, 2, 2, 2)
-		wantRolled(t, "Raio Guia", a.mustDamage(t, a.bia, e, bolt.GetId(), inAppDamage).GetPendingDamage(), 12, []int32{1, 1, 1, 1, 2, 2, 2, 2}, 0)
+		wantRolled(t, "Raio Guiador", a.mustDamage(t, a.bia, e, bolt.GetId(), inAppDamage).GetPendingDamage(), 12, []int32{1, 1, 1, 1, 2, 2, 2, 2}, 0)
 	} else {
 		a.h.roller.queue(1, 2, 3, 4)
-		wantRolled(t, "Raio Guia", a.mustDamage(t, a.bia, e, bolt.GetId(), inAppDamage).GetPendingDamage(), 34, []int32{1, 2, 3, 4}, 24)
+		wantRolled(t, "Raio Guiador", a.mustDamage(t, a.bia, e, bolt.GetId(), inAppDamage).GetPendingDamage(), 34, []int32{1, 2, 3, 4}, 24)
 	}
 	a.mustEndTurn(t, a.bia, e)
 
@@ -272,13 +272,13 @@ func TestRN24_TheCriticalFollowsTheTablesRule(t *testing.T) {
 		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 20}
 	})
 	bolt := cast.GetCast().GetPendingDamages()[0]
-	wantCritical(t, "the typed Raio Guia", bolt, playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL, 4, 24)
+	wantCritical(t, "the typed Raio Guiador", bolt, playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL, 4, 24)
 	for _, sum := range []int32{3, 25} {
 		if _, err := a.damage(t, a.bia, e, bolt.GetId(), typedDamage(sum)); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Errorf("typed_sum %d for 4 dice = %v, want invalid_argument", sum, err)
 		}
 	}
-	wantRolled(t, "the typed Raio Guia", a.mustDamage(t, a.bia, e, bolt.GetId(), typedDamage(10)).GetPendingDamage(), 34, nil, 24)
+	wantRolled(t, "the typed Raio Guiador", a.mustDamage(t, a.bia, e, bolt.GetId(), typedDamage(10)).GetPendingDamage(), 34, nil, 24)
 }
 
 // TestRN24_ACreaturesCriticalFollowsTheRule: a summoned creature's attack (the

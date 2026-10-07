@@ -1,7 +1,7 @@
 import type { ReplacedCreature } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { tight } from '../format/text';
 
-/** Encontrar Familiar's key: the one summon that makes a named companion the table talks to. */
+/** Convocar Familiar's key: the one summon that makes a named companion the table talks to. */
 export const FIND_FAMILIAR = 'spell:find-familiar';
 
 /** The button's words for what a casting does, the same in every state ("Convocar o familiar"). Copy only:

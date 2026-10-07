@@ -14,7 +14,7 @@ type HPCreature struct {
 	// HP is its current hit points.
 	HP int
 	// Unconscious says it already carries the Unconscious condition: Sono and
-	// Borrifo de Cores skip it.
+	// Leque Cromático skip it.
 	Unconscious bool
 }
 
@@ -75,14 +75,14 @@ func ResolvePool(total int, creatures []HPCreature) []PoolStep {
 }
 
 // ResolveThreshold says whether a creature with hp hit points is affected by a
-// spell that needs it at threshold or below (Palavra de Poder: Atordoar at 150,
+// spell that needs it at threshold or below (Palavra de Poder Atordoar at 150,
 // Matar at 100): exactly the threshold is still affected.
 func ResolveThreshold(threshold, hp int) bool {
 	return hp <= threshold
 }
 
 // ResolveZeroHP says whether a creature with hp hit points is affected by a
-// spell that works only at 0 (Poupar os Moribundos).
+// spell that works only at 0 (Estabilizar).
 func ResolveZeroHP(hp int) bool {
 	return hp == 0
 }
