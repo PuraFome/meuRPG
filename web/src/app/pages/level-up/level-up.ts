@@ -531,7 +531,8 @@ export class LevelUpPage {
         old.preference,
         (key, name) => this.describeSpell(key, name),
       );
-      old.stop();
+      // A roll answered after this point lands on the new session (the click was made on the old one).
+      old.handOver(session);
       this.failure.set(null);
       this.state.set({ status: 'ready', session });
       return true;
