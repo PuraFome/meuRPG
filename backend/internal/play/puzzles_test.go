@@ -1804,14 +1804,17 @@ func TestMR038_APuzzleNeverClosesTheUndoChain(t *testing.T) {
 func TestPuzzleRevealDoesNotNameAPointOfAHiddenMap(t *testing.T) {
 	t.Parallel()
 	p := newPuzzleTable(t)
-	const secret = "TOCHA-SECRETA-U6F"
+	const needle = "LEAKCANARY-point-1"
 	hiddenMap := p.h.newMap(p.campaignID, gridColumns) // not current, never revealed
 	res, err := p.mc(p.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
-		CampaignId: p.campaignID, MapId: hiddenMap, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: secret,
+		CampaignId: p.campaignID, MapId: hiddenMap, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: needle,
 		XBp: 2500, YBp: 2500,
 	}))
 	if err != nil {
 		t.Fatalf("CreateMapPoint() error = %v", err)
+	}
+	if got := res.Msg.GetPoint().GetName(); got != needle { // positive control: the master reads the name
+		t.Fatalf("the master's point is named %q, want %q", got, needle)
 	}
 	puz := p.oneMoveLock(t, &playv1.PuzzleOnSolve{
 		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT,
@@ -1844,7 +1847,7 @@ func TestPuzzleRevealDoesNotNameAPointOfAHiddenMap(t *testing.T) {
 		seen = append(seen, "event "+kind+": "+payload)
 	}
 	for _, s := range seen {
-		if strings.Contains(s, secret) {
+		if strings.Contains(s, needle) {
 			t.Errorf("a player can read the hidden point's name: %s", s)
 		}
 	}

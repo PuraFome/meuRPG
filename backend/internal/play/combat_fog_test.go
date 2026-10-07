@@ -1304,7 +1304,7 @@ func TestRN10_FogCombatAWolfFormReactorSeesWithTheBeastsEyes(t *testing.T) {
 
 // Moving a master-hidden NPC inside a player's sight tells that player nothing: no
 // vision_changed, and their revision does not count the move (RN-10).
-func TestHiddenNPCMoveInSightIsNotToldToPlayers(t *testing.T) {
+func TestHiddenNPCMoveInSightIsNotToldToPlayers(t *testing.T) { //nolint:tparallel // the subtests read one stream, in order
 	t.Parallel()
 	f := newFogCave(t)
 	f.fight(t)

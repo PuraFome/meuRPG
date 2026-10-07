@@ -679,8 +679,10 @@ func TestSearchForTrapsKeyIsPerCaller(t *testing.T) {
 
 	key := newKey()
 	req := func() *playv1.SearchForTrapsRequest {
-		return &playv1.SearchForTrapsRequest{CampaignId: r.campaignID, IdempotencyKey: key,
-			Skill: investigation, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: 20}}
+		return &playv1.SearchForTrapsRequest{
+			CampaignId: r.campaignID, IdempotencyKey: key,
+			Skill: investigation, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: 20},
+		}
 	}
 	a, err := r.ana.play.SearchForTraps(t.Context(), connect.NewRequest(req()))
 	if err != nil || len(a.Msg.GetFoundPointIds()) != 1 || a.Msg.GetFoundPointIds()[0] != needle.GetId() {
