@@ -624,6 +624,7 @@ func TestOutOfCombatTrapDamageGoesToTheBeastForm(t *testing.T) {
 		{"overflow ends the form", [2]int{6, 6}, 0, 1}, // 12 vs 11: 1 left over
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			s := newShapers(t)
 			content, err := testRules()
 			if err != nil {
@@ -646,8 +647,10 @@ func TestOutOfCombatTrapDamageGoesToTheBeastForm(t *testing.T) {
 				t.Fatal(err)
 			}
 			x, y := sq(5, 5)
-			spec := &mapsv1.TrapSpec{NoticeDc: 12, FindDc: 15, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL,
-				Effect: &rulesv1.TrapEffect{Damage: []*rulesv1.TrapDamage{{Dice: "2d6", DamageTypeKey: "damage-type:bludgeoning"}}}}
+			spec := &mapsv1.TrapSpec{
+				NoticeDc: 12, FindDc: 15, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL,
+				Effect: &rulesv1.TrapEffect{Damage: []*rulesv1.TrapDamage{{Dice: "2d6", DamageTypeKey: "damage-type:bludgeoning"}}},
+			}
 			pt, err := mc.CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
 				CampaignId: s.campaignID, MapId: mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, Name: "Fosso", XBp: x, YBp: y, Trap: spec,
 			}))

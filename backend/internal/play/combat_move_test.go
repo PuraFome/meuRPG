@@ -1358,8 +1358,7 @@ func TestADeadCharacterDoesNotBreakNPCMoves(t *testing.T) {
 	}
 }
 
-// A player's character at 0 hit points does not move on their turn (RN-03), nor ask for the
-// squares it could reach.
+// A player's character at 0 hit points does not move on their turn (RN-03).
 func TestADownPlayerCannotMove(t *testing.T) {
 	c := newCave(t)
 	c.fight(t) // Toren is first on turn

@@ -234,8 +234,14 @@ func (s *Service) firingWithParts(ctx context.Context, sessionID, hostID string,
 	whole.Caught = slices.Clone(fired.Caught)
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == hostID })
 	for i := at - 1; i >= 0; i-- { // the events after it, oldest first: its parts follow it back to back
+		if recent[i].Kind != eventTrapTriggered {
+			break
+		}
 		ev, err := readEvent(recent[i].Payload)
-		if recent[i].Kind != eventTrapTriggered || err != nil || ev.Trap == nil || !ev.Trap.Part || ev.Trap.ExtendsID != group {
+		if err != nil {
+			return nil, fmt.Errorf("read the event of a part: %w", err)
+		}
+		if ev.Trap == nil || !ev.Trap.Part || ev.Trap.ExtendsID != group {
 			break
 		}
 		whole.Caught = append(whole.Caught, ev.Trap.Caught...)

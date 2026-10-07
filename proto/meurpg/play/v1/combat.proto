@@ -376,8 +376,7 @@ service CombatService {
   //   - `permission_denied`: the caller is a player and the combatant is not
   //     their character.
   //   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
-  //     the combatant's turn (NOT_YOUR_TURN), for a player, or the character
-  //     is at 0 hit points (COMBATANT_DOWN), for a player; the combatant is not
+  //     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
   //     on the map (NOT_PLACED).
   //
   // In THEATRE mode the answer is valid and empty: no square is reachable or

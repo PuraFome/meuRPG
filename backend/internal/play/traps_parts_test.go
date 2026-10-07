@@ -93,7 +93,10 @@ func TestATrapFiringOnManyCreaturesIsWrittenInParts(t *testing.T) {
 func TestAMoveIntoATrapAreaWithManyCreaturesFiresIt(t *testing.T) {
 	t.Parallel()
 	for _, n := range []int{3, 10} {
-		t.Run(fmt.Sprintf("%d creatures", n), func(t *testing.T) { moveInto(t, n) })
+		t.Run(fmt.Sprintf("%d creatures", n), func(t *testing.T) {
+			t.Parallel()
+			moveInto(t, n)
+		})
 	}
 }
 
@@ -102,7 +105,7 @@ func moveInto(t *testing.T, goblins int) {
 	r := newTrapRig(t)
 	at := map[string][2]int32{"Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7}}
 	for i := 1; i <= goblins; i++ {
-		at[fmt.Sprintf("Goblin %d", i)] = [2]int32{int32(9 + (i-1)%4), int32(7 + (i-1)/4)} //nolint:gosec // small
+		at[fmt.Sprintf("Goblin %d", i)] = [2]int32{int32(9 + (i-1)%4), int32(7 + (i-1)/4)}
 	}
 	r.trap(t, "Estátua", 9, 7, func(s *mapsv1.TrapSpec) {
 		manyTrapEffect()(s)
