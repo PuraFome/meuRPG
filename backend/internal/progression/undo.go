@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"uuid"
 
 	"connectrpc.com/connect"
@@ -12,6 +13,7 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
@@ -112,6 +114,7 @@ func (s *Service) UndoLastXPAward(
 		return nil, s.dbError(ctx, "undo an XP award", err)
 	}
 	if logged && !repeated {
+		logging.Event(ctx, s.logger, "xp.undone", slog.String("award_id", undone.ID))
 		s.log.PublishXPChanged(m.CampaignID)
 	}
 	views, err := s.awardViews(ctx, m, undone)

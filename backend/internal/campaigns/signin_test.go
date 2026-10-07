@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -27,6 +28,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
@@ -63,7 +66,7 @@ func newSignInStack(t *testing.T) *signInStack {
 		clock: &fakeClock{now: time.Now().Truncate(time.Microsecond)},
 		logs:  &syncBuffer{},
 	}
-	logger := slog.New(slog.NewJSONHandler(st.logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := logging.New(st.logs, slog.LevelDebug)
 
 	// The provider, over TLS, signing in its only user at once.
 	idpServer := httptest.NewUnstartedServer(nil)
@@ -108,9 +111,10 @@ func newSignInStack(t *testing.T) *signInStack {
 		t.Fatalf("identity.New() error = %v", err)
 	}
 	srv := httpserver.New(httpserver.Config{Logger: logger})
-	opts := connect.WithRequireConnectProtocolHeader()
-	signIn.Mount(srv.Handle, opts)
-	campaigns.Mount(srv.Handle, signIn, opts)
+	// The logging interceptor goes first, as in cmd/api.
+	opts := []connect.HandlerOption{connect.WithRequireConnectProtocolHeader(), connect.WithInterceptors(rpclog.Interceptor(logger))}
+	signIn.Mount(srv.Handle, opts...)
+	campaigns.Mount(srv.Handle, signIn, opts...)
 	st.handler = srv.Handler()
 	st.campaignsSvc = campaigns
 
@@ -614,4 +618,52 @@ func (b *syncBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.buf.String()
+}
+
+// TestRPCLogLineCarriesTheRequestsFields runs a real session through the whole
+// server (identity's interceptor, authz, the handler) and reads the `rpc` line
+// back: it must name the request, the user and the campaign, and nothing a
+// person typed.
+func TestRPCLogLineCarriesTheRequestsFields(t *testing.T) {
+	t.Parallel()
+	st := newSignInStack(t)
+	session := st.signIn()
+	userID := st.userID(session)
+	api := st.campaigns(session)
+
+	created, err := api.CreateCampaign(t.Context(), connect.NewRequest(&campaignsv1.CreateCampaignRequest{
+		Name: "A very secret campaign name", XpMode: campaignsv1.XpMode_XP_MODE_MILESTONES,
+	}))
+	if err != nil {
+		t.Fatalf("CreateCampaign() error = %v", err)
+	}
+	campaignID := created.Msg.GetCampaign().GetId()
+	res, err := api.GetCampaign(t.Context(), connect.NewRequest(&campaignsv1.GetCampaignRequest{CampaignId: campaignID}))
+	if err != nil {
+		t.Fatalf("GetCampaign() error = %v", err)
+	}
+
+	var line map[string]any
+	for _, raw := range strings.Split(st.logs.String(), "\n") {
+		var m map[string]any
+		if json.Unmarshal([]byte(raw), &m) == nil && m["message"] == "rpc" && strings.HasSuffix(fmt.Sprint(m["procedure"]), "/GetCampaign") {
+			line = m
+		}
+	}
+	if line == nil {
+		t.Fatalf("no rpc line for GetCampaign in:\n%s", st.logs)
+	}
+	if line["user_id"] != userID || line["campaign_id"] != campaignID || line["code"] != "ok" {
+		t.Errorf("line = %v, want user %s, campaign %s, code ok", line, userID, campaignID)
+	}
+	if id, _ := line["request_id"].(string); len(id) != 32 {
+		t.Errorf("request_id = %v, want 32 hex chars", line["request_id"])
+	}
+	// The same id comes back to the caller in X-Request-Id.
+	if got := res.Header().Get(httpserver.RequestIDHeader); got != line["request_id"] {
+		t.Errorf("X-Request-Id = %q, log request_id = %v", got, line["request_id"])
+	}
+	if strings.Contains(st.logs.String(), "A very secret campaign name") {
+		t.Error("the campaign's name reached the logs")
+	}
 }

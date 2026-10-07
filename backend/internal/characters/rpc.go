@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -194,6 +196,7 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a character", err)
 	}
+	logging.Event(ctx, s.logger, "character.created", slog.String("character_id", row.ID), slog.String("kind", row.Kind), slog.String("status", row.Status))
 	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a new character", err)

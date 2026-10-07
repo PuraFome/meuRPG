@@ -1,6 +1,7 @@
 package play
 
 import (
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -521,6 +522,11 @@ func TestMR042_ARetryIsCheckedAgainstWhatWasAdded(t *testing.T) {
 	}
 }
 
+// hitDice finds the dice "2d8" written as dice, not inside a longer run of hex
+// digits: every log entry carries random UUIDs, and one like "…e2d833…" must not
+// fail the test (it did once, 07/10/2026).
+var hitDice = regexp.MustCompile(`(^|[^0-9a-fA-F-])2d8`)
+
 // TestMR042_OnlyTheMasterReadsTheCreatureAndItsHitDice: the master's combatant carries the
 // creature's key and ND; a player's copy has neither, nor the monster's character,
 // and the master's log line of the rolled hit points ("2d8 + 2: 3, 4") comes from
@@ -581,10 +587,13 @@ func TestMR042_OnlyTheMasterReadsTheCreatureAndItsHitDice(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal() error = %v", err)
 		}
-		for _, banned := range []string{"MONSTERS_ADDED", "monsters", "faces", "hitPoints", "2d8"} {
+		for _, banned := range []string{"MONSTERS_ADDED", "monsters", "faces", "hitPoints"} {
 			if strings.Contains(string(logs), banned) {
 				t.Errorf("%s's log has %q: %s", who, banned, logs)
 			}
+		}
+		if hitDice.Match(logs) {
+			t.Errorf("%s's log has the hit dice 2d8: %s", who, logs)
 		}
 	}
 	// Average hit points leave a line too, with no dice.

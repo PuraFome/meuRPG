@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"uuid"
@@ -17,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -215,6 +217,8 @@ func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *tra
 	if fired == nil {
 		return
 	}
+	logging.Event(ctx, s.logger, "trap.triggered", slog.String("map_id", fired.MapID), slog.String("point_id", fired.PointID),
+		slog.Int("caught", len(fired.Caught)), slog.Bool("in_combat", enc.ID != ""))
 	s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	if enc.ID != "" {
 		s.publishEncounterChanged(ctx, campaignID, enc)

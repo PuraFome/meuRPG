@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 	"uuid"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
@@ -216,6 +218,11 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 		result = joinResult{campaign: campaign, role: authz.RolePlayer, pending: invite.RequiresApproval}
 		return nil
 	})
+	if err == nil && !result.alreadyMember {
+		// Explicit campaign_id: the sign-in intent path has no campaign in its context.
+		logging.Event(ctx, s.logger, "invite.accepted", slog.String("campaign_id", result.campaign.ID),
+			slog.Bool("pending_approval", result.pending))
+	}
 	return result, err
 }
 

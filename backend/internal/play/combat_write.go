@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 	"uuid"
 
@@ -14,6 +15,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -169,6 +171,12 @@ type combatResult struct {
 	// start, whose combat the retry does not know.
 	encounterID string
 	repeated    bool
+	// kind, characterID and event say what the change wrote, for its log line:
+	// the kind of session event, the character it is about, and its payload when
+	// that is an actionEvent. Empty for a retry, which wrote nothing.
+	kind        string
+	characterID string
+	event       *actionEvent
 	// sight is what the players saw of the combat's map before the change (nil without
 	// the fog), and stamped the event the change wrote with who could see it: the
 	// publishers use both (withFogMemo).
@@ -202,6 +210,11 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 				return combatResult{}, connect.NewError(connect.CodeAborted, errors.New("the combat keeps changing: try again"))
 			}
 			continue
+		}
+		if err == nil {
+			// Here, after the transaction returned, so a retried transaction
+			// logs once.
+			s.logCombatEvent(ctx, res)
 		}
 		return res, err
 	}
@@ -276,6 +289,12 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 			return err
 		}
 		res.encounterID = c.enc.ID
+		res.kind = c.kind
+		res.characterID = deref(c.characterID)
+		res.event = nil
+		if ev, ok := payload.(actionEvent); ok {
+			res.event = &ev
+		}
 		ended = c
 		c.stamped = nil
 		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
@@ -297,6 +316,50 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		s.maps.VisionChanged(ctx, w.m.CampaignID, deref(ended.enc.MapID))
 	}
 	return res, nil
+}
+
+// combatEventNames are the names of the combat's log events, where the kind
+// of the session event does not already read well as `combat.<kind>`.
+var combatEventNames = map[string]string{
+	eventEncounterStarted: "combat.started",
+	eventCombatBegun:      "combat.begun",
+	eventEncounterEnded:   "combat.ended",
+	eventTurnEnded:        "combat.turn_passed",
+	eventAttackRolled:     "combat.attack_resolved",
+	eventSpellCast:        "combat.spell_resolved",
+}
+
+// logCombatEvent writes the DEBUG `event` line of a combat change that was
+// committed (not a retry, which changed nothing). One place covers every
+// change that goes through write: the session event's kind is the name, and
+// the line carries ids and the attack's outcome only, never a name.
+func (s *Service) logCombatEvent(ctx context.Context, res combatResult) {
+	if res.kind == "" || res.repeated {
+		return
+	}
+	name, ok := combatEventNames[res.kind]
+	if !ok {
+		name = "combat." + res.kind
+	}
+	attrs := []slog.Attr{slog.String("session_id", res.session.ID), slog.String("encounter_id", res.encounterID)}
+	if res.characterID != "" {
+		attrs = append(attrs, slog.String("character_id", res.characterID))
+	}
+	if ev := res.event; ev != nil {
+		if ev.Actor != "" {
+			attrs = append(attrs, slog.String("combatant_id", ev.Actor))
+		}
+		if ev.Target != "" {
+			attrs = append(attrs, slog.String("target_id", ev.Target))
+		}
+		if ev.Outcome != "" {
+			attrs = append(attrs, slog.String("outcome", ev.Outcome))
+		}
+		if ev.Round > 0 {
+			attrs = append(attrs, slog.Int("round", int(ev.Round)))
+		}
+	}
+	logging.Event(ctx, s.logger, name, attrs...)
 }
 
 // insertEvent appends a session event inside the change's transaction.

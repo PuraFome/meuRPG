@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"slices"
 	"time"
@@ -18,6 +19,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -212,6 +214,7 @@ func (s *Service) OpenScene(
 		return nil, s.dbError(ctx, "open a scene", err)
 	}
 	if changed {
+		logging.Event(ctx, s.logger, "scene.opened", slog.String("session_id", session.ID), slog.String("point_id", pointID.String()))
 		s.publishSceneChanged(m.CampaignID)
 	}
 	if stageCleared {
@@ -268,6 +271,7 @@ func (s *Service) CloseScene(
 		return nil, s.dbError(ctx, "close a scene", err)
 	}
 	if changed {
+		logging.Event(ctx, s.logger, "scene.closed")
 		s.publishSceneChanged(m.CampaignID)
 	}
 	if stageCleared {
@@ -723,6 +727,9 @@ func (s *Service) RollSceneCheck(
 			name = chars[0].Name
 		}
 	} else {
+		logging.Event(ctx, s.logger, "scene.check_rolled",
+			slog.String("point_id", ev.PointID), slog.String("action_id", ev.ActionID),
+			slog.String("character_id", who.ID), slog.Bool("physical_dice", ev.Physical))
 		// Only the master and the roller hear of it (RN-20).
 		s.hub.Publish(m.CampaignID, live.Event{
 			Audience: live.Audience{Master: true, UserID: m.UserID},

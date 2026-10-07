@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 )
 
@@ -668,6 +670,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "reserve an image", err)
 	}
 	if created {
+		logging.Event(ctx, s.logger, "image.requested", slog.String("generation_id", row.ID), slog.String("kind", n.kind))
 		s.generations.Add(1)
 		go s.run(campaignID, row.ID, n.prepared) //nolint:gosec // G118: the request outlives the call that made it, on purpose (it has its own deadline)
 	}
@@ -1208,6 +1211,8 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 		return
 	}
 	s.logger.InfoContext(fin, "maps: an image was generated", "campaign", campaignID, "request", id, "image", stored.ID)
+	// The background context has no request fields, so the campaign is explicit.
+	logging.Event(fin, s.logger, "image.generated", slog.String("campaign_id", campaignID), slog.String("generation_id", id), slog.String("image_id", stored.ID), slog.String("kind", kind))
 }
 
 // generatedKindOf is the way a request's picture was made, as the gallery records it: the
@@ -1248,7 +1253,14 @@ func (s *Service) finishFailed(campaignID, id, state, reason string) {
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot record a failed image request", "error", err)
+		return
 	}
+	// Never the prompt: the ids, and the closed reason.
+	name := "image.failed"
+	if state == stateRefused {
+		name = "image.refused"
+	}
+	logging.Event(ctx, s.logger, name, slog.String("campaign_id", campaignID), slog.String("generation_id", id), slog.String("reason", reason))
 }
 
 // modelRequest builds what goes to the model from the stored request and the

@@ -2,6 +2,7 @@ package play
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -603,7 +604,7 @@ func TestMR038_AHintWonBySkillCheckIsOnlyThePlayers(t *testing.T) {
 	if !r.GetHintByCheck() || r.GetHintSkillKey() != "skill:investigation" || !r.GetCanTryHint() || len(r.GetHints()) != 0 {
 		t.Fatalf("the player reads %v", r)
 	}
-	if strings.Contains(jsonOf(r), "15") && strings.Contains(jsonOf(r), "dc") {
+	if dcKey.MatchString(jsonOf(r)) {
 		t.Errorf("the player's JSON has the DC: %s", jsonOf(r))
 	}
 
@@ -1692,3 +1693,8 @@ func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
 		t.Errorf("%d tries are recorded (%v), want 2", rows, err)
 	}
 }
+
+// dcKey finds a field that holds a DC ("dc", "hintDc", "checkDc"...): a key made of
+// letters only. Searching the whole JSON for "dc" and "15" also matched the random
+// UUIDs in the answer, which carry both now and then.
+var dcKey = regexp.MustCompile(`"[A-Za-z]*[Dd][Cc][A-Za-z]*"\s*:`)

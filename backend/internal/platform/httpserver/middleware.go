@@ -4,26 +4,51 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
-// logRequests logs one line per request with its method, path, protocol,
-// status and duration.
+// RequestIDHeader carries the request id back to the caller. The web app is
+// served from the same origin as the API, so its fetches can read it without
+// Access-Control-Expose-Headers (the CSP's connect-src is 'self' too).
+const RequestIDHeader = "X-Request-Id"
+
+// logRequests gives every request an id and logs one line per request with
+// its method, path, protocol, status and duration.
+//
+// The id is generated here, never read from the client (a client could
+// otherwise write any text into the logs, or pose as another request). It
+// goes into the context, so every line logged for the request carries it,
+// and into the X-Request-Id response header, so a person who sees a bug can
+// quote it. traceProject is the Google Cloud project, set only on Cloud Run:
+// with it, the Cloud Trace header is turned into the trace key that Cloud
+// Logging uses to group a request's lines.
 //
 // It never logs headers, query strings or bodies: they can carry session
 // cookies, tokens and personal data. Probe requests (/healthz, /readyz) are
 // logged at DEBUG, otherwise they would drown the useful lines.
-func logRequests(logger *slog.Logger, next http.Handler) http.Handler {
+func logRequests(logger *slog.Logger, traceProject string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		requestID := logging.NewRequestID()
+		ctx := logging.WithRequest(r.Context(), requestID, logging.TraceFromHeader(traceProject, r.Header.Get("X-Cloud-Trace-Context")))
+		r = r.WithContext(ctx)
+		// Set, not Add: whatever the client sent is overwritten by ours.
+		w.Header().Set(RequestIDHeader, requestID)
 		rec := &statusRecorder{ResponseWriter: w}
 
 		next.ServeHTTP(rec, r)
 
 		level := slog.LevelInfo
-		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
+		switch {
+		case r.URL.Path == "/healthz" || r.URL.Path == "/readyz":
 			level = slog.LevelDebug
+		case rec.statusCode() >= 500:
+			level = slog.LevelWarn
 		}
-		logger.LogAttrs(r.Context(), level, "http request",
+		// Logged after the handler ran, so user_id and campaign_id, which the
+		// session and authz interceptors learn inside it, are on the line.
+		logger.LogAttrs(ctx, level, "http request",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
 			slog.String("proto", r.Proto),

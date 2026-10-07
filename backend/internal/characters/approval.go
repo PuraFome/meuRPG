@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -10,6 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
 // Invites with approval (RN-15, MR-024).
@@ -80,6 +82,7 @@ func (s *Service) ApproveCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "approve a character", err)
 	}
+	logging.Event(ctx, s.logger, "character.approved", slog.String("character_id", row.ID))
 	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)

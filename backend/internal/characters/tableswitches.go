@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -269,6 +271,7 @@ func (s *Service) SetOptionSwitches(
 		return nil, s.dbError(ctx, "set the option switches", err)
 	}
 	if changed {
+		logging.Event(ctx, s.logger, "content.option_switched", slog.Int("changed", int(res.GetChanged())), slog.Int("table_revision", int(res.GetTableRevision())))
 		s.publishContentChanged(m.CampaignID)
 	}
 	return connect.NewResponse(res), nil

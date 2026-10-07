@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -136,10 +138,32 @@ type moveResult struct {
 	who      link.Character
 	replayed bool
 	solved   bool // this move solved it
+	wrong    bool // this move was a wrong one (it counts toward the limits)
 	after    []func(context.Context)
 	doorMap  string           // a map whose door the solve opened: tell its watchers
 	fired    *trapFireEvent   // the trap a wrong move fired: tell the watchers
 	firedEnc playdb.Encounter // the combat it fired in, zero outside a combat
+}
+
+// logPuzzleMove writes the DEBUG events of a move that was committed: the move
+// itself with its outcome (`solved`, `wrong` or `ok`), and `puzzle.solved` when
+// it was the one that solved the puzzle.
+func logPuzzleMove(ctx context.Context, l *slog.Logger, puzzleID string, res *moveResult) {
+	outcome := "ok"
+	switch {
+	case res.solved:
+		outcome = "solved"
+	case res.wrong:
+		outcome = "wrong"
+	}
+	ids := []slog.Attr{slog.String("puzzle_id", puzzleID), slog.String("run_id", res.run.ID), slog.String("character_id", res.who.ID)}
+	logging.Event(ctx, l, "puzzle.move_made", append(ids, slog.String("outcome", outcome))...)
+	switch {
+	case res.solved:
+		logging.Event(ctx, l, "puzzle.solved", ids...)
+	case res.wrong:
+		logging.Event(ctx, l, "puzzle.failed", ids...)
+	}
 }
 
 // MakePuzzleMove implements playv1connect.PuzzleServiceHandler.
@@ -177,6 +201,7 @@ func (s *Service) MakePuzzleMove(
 		return nil, s.dbError(ctx, "make a puzzle move", err)
 	}
 	if !res.replayed {
+		logPuzzleMove(ctx, s.logger, id, res)
 		s.publishPuzzleChanged(m.CampaignID, id)
 		for _, f := range res.after {
 			f(ctx)
@@ -328,7 +353,7 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 			return nil, err
 		}
 	}
-	res.run, res.solved = saved, solved
+	res.run, res.solved, res.wrong = saved, solved, out.wrong
 	return runNames{who.ID: who.Name}, nil
 }
 

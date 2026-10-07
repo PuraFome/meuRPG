@@ -154,6 +154,70 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019), 200 mapas na campanha ou 200 pontos num mapa. |
 | `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha ou um documento da campanha que mudou desde que o app o leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
 
+## Os logs
+
+Todo log da API é uma linha de JSON no stdout, e toda requisição, RPC, stream e evento de jogo deixa uma linha ligada à mesma `request_id`. Quem opera lê e filtra esses logs (ver [Operação](operacao.md)); esta seção diz o que a linha tem e por quê. O código está em `backend/internal/platform/logging`, `platform/rpclog` e `platform/httpserver`.
+
+### Os campos
+
+| Campo | Quando | O que é |
+| --- | --- | --- |
+| `time`, `severity`, `message` | Sempre | A hora, o nível (`DEBUG`, `INFO`, `WARNING`, `ERROR`, os nomes do Cloud Logging) e um texto fixo por ponto do código (`http request`, `rpc`, `stream opened`, `stream closed`, `event`). Nunca texto de usuário |
+| `service`, `version` | Sempre | `meurpg-api` e a versão do build (a mesma do `SystemService.GetServerInfo`) |
+| `request_id` | Dentro de uma requisição | 32 caracteres hexadecimais, gerados pelo servidor |
+| `user_id` | Com sessão válida | O ID da conta (um UUID, pseudônimo) |
+| `campaign_id` | Quando a requisição é sobre uma campanha | O UUID da campanha |
+| `logging.googleapis.com/trace` | No Cloud Run, com `GOOGLE_CLOUD_PROJECT` | `projects/<projeto>/traces/<id>`, tirado do header `X-Cloud-Trace-Context`, para o Cloud Logging juntar as linhas de uma requisição |
+
+Um *handler* do `slog` (`contextHandler`) junta `request_id`, `user_id` e `campaign_id` a toda linha escrita com um contexto (`logger.InfoContext(ctx, ...)`). Quem loga sem contexto não leva esses campos, por isso o código de requisição sempre passa o `ctx`.
+
+### O request id
+
+O servidor gera o id de cada requisição, o põe no contexto e o devolve no header `X-Request-Id`. Um `X-Request-Id` que o cliente mande é ignorado, nunca lido: senão qualquer pessoa escreveria o que quisesse no log, ou se passaria por outra requisição. O app lê o header no `fetch` sem nada a mais, porque a API e o app têm a mesma origem (o CSP já diz `connect-src 'self'`), então quem vê um erro pode citar o id.
+
+`user_id` e `campaign_id` chegam *depois* do id, e mais fundo na chamada. Por isso o contexto guarda um ponteiro para os campos, e não um valor: o interceptor da sessão (`identity`) grava o usuário, e o `authz` e o interceptor de log gravam a campanha, e a linha `http request`, escrita no fim pela camada de fora, já os enxerga. A campanha só entra se for um UUID, na forma canônica: o valor vem do cliente, e qualquer outro texto poderia ser escrito no log por ele.
+
+### As linhas
+
+| `message` | Nível | Campos além dos comuns |
+| --- | --- | --- |
+| `http request` | `INFO`; `WARNING` se o status for 5xx; `DEBUG` nas sondas `/healthz` e `/readyz` | `method`, `path` (sem a query), `proto`, `status`, `duration_ms` |
+| `rpc` | `DEBUG` quando o código é `ok` ou erro do cliente (`invalid_argument`, `not_found`, `permission_denied`, `failed_precondition`, `already_exists`, `aborted`, `unauthenticated`, `resource_exhausted`, `out_of_range`, `canceled`); `ERROR` para `internal`, `unknown`, `unavailable`, `data_loss`, `deadline_exceeded` | `procedure`, `code`, `duration_ms`, `stream`, e se o código não é `ok`: `error` e, quando o erro leva um detalhe tipado, `reason` |
+| `stream opened` e `stream closed` | `DEBUG` | `procedure`; no fim, `duration_ms`, `messages` (as enviadas) e `close_reason` (`client_gone`, `server_ended`, `access_lost`, `error`) |
+| `event` | `DEBUG` | `event` (`<área>.<verbo_no_passado>`), só IDs e enums fechados |
+
+O interceptor `rpclog` fica primeiro na lista, então é o mais de fora: vê o erro final, venha de onde vier. O `reason` é o enum de motivo do detalhe do erro (`XPBlocked`, `CharacterBlocked`...), lido por reflexão do campo cujo nome tem `reason`: um detalhe novo aparece no log sem mexer no interceptor. O `close_reason` de um stream que o servidor encerra sozinho (a sessão acabou, o limite de 30 minutos, o desligamento) é sempre `server_ended`: de dentro do servidor os três são o mesmo fato.
+
+O texto do `error` fica só no log. Se um *handler* devolver um erro que não é do Connect (uma mensagem do driver, um caminho de arquivo), o Connect o mandaria ao cliente com o código `unknown`; o interceptor troca por `internal` e um texto fixo, e o texto de verdade vai para a linha `rpc`. As mensagens dos erros do Connect (as que o cliente também recebe) são frases fixas escritas por nós, e o log as corta em 500 caracteres.
+
+### Os eventos de jogo
+
+Um `event` marca uma mudança de estado que acabou de ser gravada, escrita *depois* do `db.InTx` voltar: uma transação repetida (`40001`) não loga duas vezes. Só IDs (`session_id`, `encounter_id`, `character_id`, `combatant_id`, `map_id`, `point_id`, `puzzle_id`, `award_id`, `entry_key`...) e enums fechados (`outcome`, `kind`, `mode`, `reason`).
+
+| Área | Eventos |
+| --- | --- |
+| Sessão | `session.started`, `session.ended` |
+| Combate | `combat.started`, `combat.begun`, `combat.ended`, `combat.turn_passed`, `combat.attack_resolved` (com `outcome`), `combat.spell_resolved`, `combat.damage_rolled`, `combat.damage_applied`, `combat.death_save_rolled`, e um por tipo de mudança do combate (`combat.<tipo do session_events>`) |
+| Cena | `scene.opened`, `scene.closed`, `scene.check_rolled` |
+| Quebra-cabeça | `puzzle.move_made` (com `outcome`: `ok`, `wrong`, `solved`), `puzzle.solved`, `puzzle.failed` |
+| Armadilha e tesouro | `trap.noticed`, `trap.triggered`, `treasure.found`, `treasure.converted` |
+| XP | `xp.awarded`, `xp.milestone_marked`, `xp.undone`, `levelup.done` |
+| Conteúdo da mesa | `content.entry_written`, `content.entry_archived`, `content.entry_unarchived`, `content.option_switched` |
+| Imagens por IA | `image.requested`, `image.generated`, `image.refused`, `image.failed` |
+| Campanha e personagem | `invite.accepted`, `character.created`, `character.approved` |
+
+Todo o combate passa por uma função só (`write`, em `play/combat_write.go`), que loga o evento de cada mudança gravada. Os outros ficam ao lado da mudança.
+
+### O que nunca entra no log
+
+Tokens de sessão, de convite, de login e de CSRF; cookies; o segredo do cliente OIDC; a `GEMINI_API_KEY`; e-mails; nomes de exibição, de personagem, de NPC e de campanha; qualquer texto que uma pessoa digitou (documentos, notas, pistas, *prompts*, o texto de uma entrada de conteúdo); corpo de requisição ou de resposta; cabeçalhos; a query da URL. Só IDs e enums fechados. O motivo é a RN-10 (o jogador não pode saber o que o mestre escondeu, e o log chega a mais gente que o app) e a LGPD (ver [Privacidade](privacidade.md#os-logs-da-api)).
+
+Uma trava no *handler* garante isso mesmo quando um ponto do código erra: ela descarta todo atributo cujo nome seja `email`, `token`, `password`, `secret`, `cookie`, `authorization`, `prompt`, `body`, `text`, `name` ou `display_name`, em qualquer profundidade (dentro de grupos e de mapas), sem diferenciar maiúsculas. Um teste prova (`TestDenyListDropsKeysAtAnyDepth`). A trava é a rede de segurança, não o plano: o código deve logar IDs.
+
+### Os níveis
+
+`LOG_LEVEL` (`debug`, `info`, `warn`, `error`) escolhe o nível; o padrão é `info`, e é o que a produção usa até alguém subir. Em `info` o custo é uma linha por requisição, e só as linhas de erro das RPCs. Em `debug` saem também as linhas `rpc`, `stream` e `event`. O ambiente local (`make up`, com Docker ou nativo) já sobe em `debug`; `LOG_LEVEL=info make up` volta ao normal. O log do ambiente nativo fica em `~/.meurpg/run/api.log`. O que se faz com os logs em produção está em [Operação](operacao.md).
+
 ## Frontend (web/)
 
 O `web/` é o app Angular novo (o `src/` antigo está depreciado). O Go serve o build dele na mesma origem da API, como a linha "Frontend" da tabela de decisões explica.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -320,6 +322,7 @@ func (s *Service) CreateTableEntry(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a table entry", err)
 	}
+	logging.Event(ctx, s.logger, "content.entry_written", slog.String("entry_key", res.GetEntry().GetKey()), slog.String("kind", kindPrefix(kind)), slog.Int("table_revision", int(res.GetTableRevision())), slog.Bool("created", true))
 	s.publishContentChanged(m.CampaignID)
 	return connect.NewResponse(res), nil
 }
@@ -425,6 +428,7 @@ func (s *Service) UpdateTableEntry(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a table entry", err)
 	}
+	logging.Event(ctx, s.logger, "content.entry_written", slog.String("entry_key", key), slog.Int("table_revision", int(res.GetTableRevision())), slog.Bool("created", false))
 	s.publishContentChanged(m.CampaignID)
 	if res.AffectedCharacters, err = s.affectedToProto(ctx, affected); err != nil {
 		return nil, s.dbError(ctx, "read display names", err)
@@ -616,6 +620,11 @@ func (s *Service) setArchived(ctx context.Context, m authz.Membership, key strin
 		return nil
 	})
 	if err == nil {
+		event := "content.entry_archived"
+		if !archive {
+			event = "content.entry_unarchived"
+		}
+		logging.Event(ctx, s.logger, event, slog.String("entry_key", key), slog.Int("table_revision", int(revision)))
 		s.publishContentChanged(m.CampaignID)
 	}
 	return out, revision, err
