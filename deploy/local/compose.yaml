@@ -18,7 +18,7 @@ services:
     # image content is reproducible regardless of what "v26.2.7" points to
     # later. v26.2 is CockroachDB's latest "Regular" (production-recommended,
     # long-support) release line as of 2026-09; v26.2.7 is its newest patch.
-    image: cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
+    image: cockroachdb/cockroach:v26.3.2@sha256:bc15746ef2c2493b2cfd46a76898a745587d068b1a259fff3c4447c3f3b36ea2
     command: ["start-single-node", "--insecure"]
     environment:
       # start-single-node reads this on first boot (empty data dir only) and
