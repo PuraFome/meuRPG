@@ -15,10 +15,15 @@ import (
 // roll and per level, so the sums stay far from anything the formulas bound.
 const maxSpellDice = 30
 
-// plainDice parses "8d6": dice only, no bonus and no modifier.
+// tableDiceSides are the dice that exist at a table, the same the dice package
+// rolls (a test keeps the two lists equal): a spell's damage or healing never
+// asks for a die the physical dice or the combat cannot roll.
+var tableDiceSides = []int{4, 6, 8, 10, 12, 20, 100}
+
+// plainDice parses "8d6": dice only, no bonus and no modifier, of a die that exists.
 func plainDice(s string) (DiceFormula, bool) {
 	f, ok := ParseDice(s)
-	return f, ok && f.Count >= 1 && f.Count <= maxSpellDice && f.Bonus == 0 && !f.AddsModifier && !strings.ContainsAny(s, "+- ")
+	return f, ok && slices.Contains(tableDiceSides, f.Sides) && f.Count >= 1 && f.Count <= maxSpellDice && f.Bonus == 0 && !f.AddsModifier && !strings.ContainsAny(s, "+- ")
 }
 
 // extraDice checks an optional "extra dice" text of the same die as base: ""
@@ -155,7 +160,7 @@ func (b *overlayBuilder) spellDamage(c *entryErrors, key, path string, i, level 
 	}
 	base, plain := plainDice(d.Dice)
 	if !plain {
-		c.at(key, path, at+".dice", ReasonValue, "damage dice %q are not plain dice, such as 8d6", d.Dice)
+		c.at(key, path, at+".dice", ReasonValue, "damage dice %q are not plain dice of a d4, d6, d8, d10, d12, d20 or d100, such as 8d6", d.Dice)
 		return srd51.SpellDamage{}, false
 	}
 	out := srd51.SpellDamage{DamageType: d.Type}
@@ -202,7 +207,7 @@ func spellHeal(c *entryErrors, key, path string, level int, h TableSpellHeal) ma
 	}
 	base, ok := plainDice(h.Dice)
 	if !ok {
-		c.at(key, path, ".heal.dice", ReasonValue, "healing dice %q are not plain dice, such as 1d8", h.Dice)
+		c.at(key, path, ".heal.dice", ReasonValue, "healing dice %q are not plain dice of a d4, d6, d8, d10, d12, d20 or d100, such as 1d8", h.Dice)
 		return nil
 	}
 	per, fine := extraDice(h.PerSlotLevel, base)
