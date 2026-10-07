@@ -539,6 +539,10 @@ service TableContentService {
   //   - `not_found`: the campaign does not exist, or the caller is not a member.
   //   - `invalid_argument`: a TableContentRefusal detail lists every violation
   //     (the 300-entry and 64 KiB limits included).
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
 
   // UpdateTableEntry replaces an entry's body. The kind, the key and the parent
@@ -665,6 +669,11 @@ message CreateTableEntryRequest {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
   }
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 16;
 }
 
 // CreateTableEntryResponse returns the new entry.

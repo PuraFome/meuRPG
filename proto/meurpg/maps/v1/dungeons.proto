@@ -89,6 +89,10 @@ service DungeonService {
   //     full, or too many dungeons were created or redrawn a moment ago (the app
   //     waits and tries again).
   //   - `deadline_exceeded`: the generator took more than 2 seconds.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateDungeonMap(CreateDungeonMapRequest) returns (CreateDungeonMapResponse);
 
   // GetDungeonRooms returns the dungeon's rooms as they were generated, with
@@ -113,6 +117,10 @@ service DungeonService {
   //   - `not_found`: also when the map was not made by CreateDungeonMap, or has
   //     no such room.
   //   - `resource_exhausted`: the map already has 200 points.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc PlaceDungeonScene(PlaceDungeonSceneRequest) returns (PlaceDungeonSceneResponse);
 
   // RedrawDungeonMap renders the image of a generated dungeon again, at the same
@@ -357,6 +365,11 @@ message CreateDungeonMapRequest {
   DungeonOptions options = 3;
   // The seed. Not set: the server draws one.
   optional uint64 seed = 4;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 5;
 }
 
 // CreateDungeonMapResponse returns the new, hidden map, as the master reads it
@@ -448,6 +461,11 @@ message PlaceDungeonSceneRequest {
   string map_id = 2;
   // The room's number (DungeonRoom.id).
   int32 room_id = 3;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 4;
 }
 
 // PlaceDungeonSceneResponse returns the new, hidden scene point.

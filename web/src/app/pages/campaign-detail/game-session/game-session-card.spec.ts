@@ -83,7 +83,7 @@ describe('GameSessionCard', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fake.startGameSession).toHaveBeenCalledWith('camp-1');
+    expect(fake.startGameSession).toHaveBeenCalledWith('camp-1', expect.any(String));
     expect(el.textContent).toContain('Sessão 1 em andamento');
     expect(el.textContent).toContain('4 fichas travadas.');
   });
@@ -233,6 +233,22 @@ describe('GameSessionCard', () => {
     const { el } = await render(false);
     expect(el.textContent?.trim()).toBe('');
     expect(el.classList).toContain('is-empty');
+  });
+
+  it('sends the same idempotency key when the start is tried again after a failure', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(null);
+    fake.startGameSession.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    fake.startGameSession.mockResolvedValue(startResult(1, 1));
+    const { el, fixture } = await render();
+
+    buttonNamed(el, 'Iniciar sessão').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    buttonNamed(el, 'Iniciar sessão').click();
+    await fixture.whenStable();
+
+    const [first, retry] = fake.startGameSession.mock.calls.map((c) => c[1] as string);
+    expect(retry).toBe(first);
   });
 });
 

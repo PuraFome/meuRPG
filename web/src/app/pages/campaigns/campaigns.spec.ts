@@ -144,7 +144,7 @@ describe('Campaigns', () => {
     instance['form'].setValue({ name: 'Mirathel', xpMode: XpMode.ENEMIES });
     await instance['submit']();
 
-    expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES);
+    expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES, expect.any(String));
     expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'new-id']);
   });
 
@@ -161,5 +161,25 @@ describe('Campaigns', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('1 a 80 caracteres');
+  });
+
+  it('sends the same idempotency key when the same form is retried, and a new one for the next campaign', async () => {
+    fake.createCampaign.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    fake.createCampaign.mockResolvedValue({ campaign: campaign('new-id', 'Mirathel', Role.MASTER) });
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(Campaigns);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance;
+    instance['form'].setValue({ name: 'Mirathel', xpMode: XpMode.ENEMIES });
+    await instance['submit'](); // the answer was lost
+    await instance['submit'](); // the retry
+    const [first, retry] = fake.createCampaign.mock.calls.map((c) => c[2] as string);
+    expect(retry).toBe(first);
+
+    await instance['submit'](); // the same values after it worked: a new campaign
+    expect(fake.createCampaign.mock.calls[2][2]).not.toBe(first);
   });
 });

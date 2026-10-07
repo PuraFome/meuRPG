@@ -1,7 +1,16 @@
 -- name: InsertCampaign :one
-INSERT INTO campaigns (name, xp_mode, created_by)
-VALUES ($1, $2, $3)
+-- create_key and create_hash are the idempotency key of CreateCampaign and the hash of its
+-- request (NULL when the call sent no key). Two calls with the same key at once make one
+-- campaign: the loser gets no row, and reads the winner's (GetCampaignByCreateKey).
+INSERT INTO campaigns (name, xp_mode, created_by, create_key, create_hash)
+VALUES (sqlc.arg(name), sqlc.arg(xp_mode), sqlc.arg(created_by), sqlc.narg(create_key), sqlc.narg(create_hash))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetCampaignByCreateKey :one
+-- The campaign a CreateCampaign with this idempotency key made, if any. The key carries the
+-- user's ID, so it is unique for the user.
+SELECT * FROM campaigns WHERE create_key = $1;
 
 -- name: GetCampaign :one
 SELECT * FROM campaigns WHERE id = $1;

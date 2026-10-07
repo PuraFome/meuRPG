@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -101,77 +102,109 @@ func (s *Service) CreateCharacter(
 		params.MasterUserID = &m.UserID // the NPC is the master's (RN-04)
 	}
 
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err == nil && key != "" {
+		// The column is a UUID: the key of this create is the one the app made for the form.
+		if _, ok := parseUUID(key); !ok {
+			err = invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign (the unique index), and kept with a hash of the whole
+	// request: a retry returns the first character only when it is the same request.
+	var createKey *string
+	if key != "" {
+		createKey = &key
+	}
+	requestHash := idem.Hash(req.Msg)
+	params.CreateKey, params.CreateHash = createKey, requestHash
+
 	var row charactersdb.Character
+	replayed := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// The table's content and rules, read in this transaction: if the content
-		// moved since it was read above (an archive, an edit), the sheet is checked
-		// again with it, so a write is always ordered against a content write
-		// (ADR-0018, section 5).
-		tc, tr, err := s.content.For(ctx, tx, m.CampaignID)
-		if err != nil {
-			return wrap("read the table content and rules", err)
-		}
-		if tc.TableRevision() != content.TableRevision() {
-			again, err := checkSheet(tc, sheet)
-			if err == nil {
-				err = checkSheetKind(kind, again)
-			}
-			if err != nil {
-				return invalidArgument(err)
-			}
-			if again.GetFull() != nil {
-				again.GetFull().AbilityOrigin = nil
-			}
-			if key, _, found := newArchivedChoice(tc, nil, again.GetFull()); found {
-				return errArchivedChoice("", key)
-			}
-			if key, _, found := newOffChoice(tc, nil, again.GetFull()); found && !isMaster(m) {
-				return errOffChoice("", key)
-			}
-			sheet = again
-			if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
-				return wrap("encode a sheet", err)
-			}
-		}
-		content = tc
-		if kind == kindPlayer {
-			// The base scores follow the way the player made them, and the table
-			// allows it (RN-24).
-			origin, err := s.checkAbilityScores(ctx, q, m, content, tr, req.Msg.GetAbilityMethod(), sheet.GetFull())
-			if err != nil {
-				return err
-			}
-			if err := hitPointsRuleRefusal(tr, sheet.GetFull()); err != nil {
-				return err
-			}
-			// The server records how the scores were made (never the client).
-			sheet.GetFull().AbilityOrigin = origin
-			if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
-				return wrap("encode a sheet", err)
-			}
-			if origin.GetMethod() == charactersv1.AbilityMethod_ABILITY_METHOD_ROLLED_4D6 {
-				// The stored 4d6 belong to this sheet now: the next character rolls anew.
-				if err := q.DeleteAbilityRolls(ctx, charactersdb.DeleteAbilityRollsParams{CampaignID: m.CampaignID, UserID: m.UserID}); err != nil {
-					return wrap("use the ability rolls", err)
+		var err error
+		row, replayed, err = idem.Create(ctx, createKey, requestHash,
+			func(ctx context.Context, k *string) (charactersdb.Character, error) {
+				return q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: m.CampaignID, CreateKey: *k})
+			},
+			func(c charactersdb.Character) *string { return c.CreateHash },
+			func() (charactersdb.Character, error) {
+				// The table's content and rules, read in this transaction: if the content
+				// moved since it was read above (an archive, an edit), the sheet is checked
+				// again with it, so a write is always ordered against a content write
+				// (ADR-0018, section 5).
+				tc, tr, err := s.content.For(ctx, tx, m.CampaignID)
+				if err != nil {
+					return row, wrap("read the table content and rules", err)
 				}
-			}
-			// RN-03: one living character per player per campaign. This
-			// check gives the clear error; the unique index is what makes it
-			// hold when two calls race (below).
-			living, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{
-				CampaignID: m.CampaignID, PlayerUserID: m.UserID,
+				if tc.TableRevision() != content.TableRevision() {
+					again, err := checkSheet(tc, sheet)
+					if err == nil {
+						err = checkSheetKind(kind, again)
+					}
+					if err != nil {
+						return row, invalidArgument(err)
+					}
+					if again.GetFull() != nil {
+						again.GetFull().AbilityOrigin = nil
+					}
+					if key, _, found := newArchivedChoice(tc, nil, again.GetFull()); found {
+						return row, errArchivedChoice("", key)
+					}
+					if key, _, found := newOffChoice(tc, nil, again.GetFull()); found && !isMaster(m) {
+						return row, errOffChoice("", key)
+					}
+					sheet = again
+					if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
+						return row, wrap("encode a sheet", err)
+					}
+				}
+				content = tc
+				if kind == kindPlayer {
+					// The base scores follow the way the player made them, and the table
+					// allows it (RN-24).
+					origin, err := s.checkAbilityScores(ctx, q, m, content, tr, req.Msg.GetAbilityMethod(), sheet.GetFull())
+					if err != nil {
+						return row, err
+					}
+					if err := hitPointsRuleRefusal(tr, sheet.GetFull()); err != nil {
+						return row, err
+					}
+					// The server records how the scores were made (never the client).
+					sheet.GetFull().AbilityOrigin = origin
+					if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
+						return row, wrap("encode a sheet", err)
+					}
+					if origin.GetMethod() == charactersv1.AbilityMethod_ABILITY_METHOD_ROLLED_4D6 {
+						// The stored 4d6 belong to this sheet now: the next character rolls anew.
+						if err := q.DeleteAbilityRolls(ctx, charactersdb.DeleteAbilityRollsParams{CampaignID: m.CampaignID, UserID: m.UserID}); err != nil {
+							return row, wrap("use the ability rolls", err)
+						}
+					}
+					// RN-03: one living character per player per campaign. This
+					// check gives the clear error; the unique index is what makes it
+					// hold when two calls race (below).
+					living, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{
+						CampaignID: m.CampaignID, PlayerUserID: m.UserID,
+					})
+					switch {
+					case err == nil:
+						return row, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS, living)
+					case !errors.Is(err, pgx.ErrNoRows):
+						return row, wrap("find the living character", err)
+					}
+				}
+				row, err := q.InsertCharacter(ctx, params)
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return row, wrap("insert character", err)
+				}
+				return row, err
 			})
-			switch {
-			case err == nil:
-				return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS, living)
-			case !errors.Is(err, pgx.ErrNoRows):
-				return wrap("find the living character", err)
-			}
-		}
-		row, err = q.InsertCharacter(ctx, params)
-		if err != nil {
-			return wrap("insert character", err)
+		if err != nil || replayed {
+			return err // a replay: the first call made the character and cleared the pending deadline
 		}
 		// A pending member without a character is removed after 30 days.
 		// Now that they have one, the master decides on it, so the deadline

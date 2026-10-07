@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Milestone } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { MILESTONES_LIMIT, plannedCount } from '../../../core/progression/milestones';
 import { MilestonesStore } from '../../../core/progression/milestones-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
@@ -44,6 +45,7 @@ import { MilestoneNameForm } from './milestone-name-form';
 export class PlannedMilestones {
   private readonly api = inject(ProgressionClient);
   private readonly store = inject(MilestonesStore);
+  private readonly addKey = new ActionKey();
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -84,9 +86,11 @@ export class PlannedMilestones {
   }
 
   protected async add(text: string): Promise<void> {
-    if (!(await this.run(() => this.api.addMilestone(this.campaignId(), text), 'adicionar o marco'))) {
+    // A retry of the same milestone (a lost answer, a second tap) sends the same key and adds it once.
+    if (!(await this.run(() => this.api.addMilestone(this.campaignId(), text, this.addKey.keyFor(text)), 'adicionar o marco'))) {
       return;
     }
+    this.addKey.renew();
     this.adding.set(false);
     this.notice.set(`Marco adicionado: ${text}.`);
     this.focus('[data-add]');

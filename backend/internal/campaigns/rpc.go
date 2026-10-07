@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
@@ -46,18 +47,40 @@ func (s *Service) CreateCampaign(
 		return nil, invalidArgument("xp_mode", errors.New("must be enemies, gold or milestones"))
 	}
 
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique for the user, and kept with a hash of the whole request: a retry
+	// returns the first campaign only when it is the same request.
+	scopedKey, requestHash := idem.Scope(userID, key), idem.Hash(req.Msg)
+
 	// The campaign and its master are created together, or not at all.
 	var campaign campaignsdb.Campaign
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		var replayed bool
 		var err error
-		campaign, err = q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
-			Name:      name,
-			XpMode:    xpMode,
-			CreatedBy: userID,
-		})
+		campaign, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetCampaignByCreateKey,
+			func(c campaignsdb.Campaign) *string { return c.CreateHash },
+			func() (campaignsdb.Campaign, error) {
+				c, err := q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
+					Name:       name,
+					XpMode:     xpMode,
+					CreatedBy:  userID,
+					CreateKey:  scopedKey,
+					CreateHash: requestHash,
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return c, fmt.Errorf("insert campaign: %w", err)
+				}
+				return c, err
+			})
 		if err != nil {
-			return fmt.Errorf("insert campaign: %w", err)
+			return err
+		}
+		if replayed {
+			return nil // the first call made the campaign and its master
 		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
 			CampaignID: campaign.ID,

@@ -79,6 +79,10 @@ service NotesService {
   //   - `not_found`: as ListNotes.
   //   - `resource_exhausted`: the caller already has 300 notes in this
   //     campaign (revealed clues do not count).
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateNote(CreateNoteRequest) returns (CreateNoteResponse);
 
   // UpdateNote changes the caller's own note: each field set replaces the
@@ -169,6 +173,11 @@ message CreateNoteRequest {
   string text = 2;
   // The scene tag (a UUID), one the group discovered; empty for none.
   string scene_point_id = 3;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique for a player in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 4;
 }
 
 // CreateNoteResponse returns the new note.

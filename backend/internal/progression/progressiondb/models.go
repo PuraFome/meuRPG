@@ -15,6 +15,8 @@ type PlannedMilestone struct {
 	Text       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	CreateKey  *string
+	CreateHash *string
 }
 
 type XpAward struct {

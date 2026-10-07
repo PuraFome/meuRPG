@@ -16,6 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -37,37 +38,55 @@ func (s *Service) StartGameSession(
 		return nil, err
 	}
 
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first session, open or ended by now, and starts no other.
+	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
+
 	now := s.now()
 	var session playdb.GameSession
 	var locked int64
+	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// One open session per campaign. This check gives the clear error;
-		// the unique index makes it hold when two starts race (below).
-		_, err := q.GetOpenGameSession(ctx, m.CampaignID)
-		switch {
-		case err == nil:
-			return errSessionOpen()
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the open session: %w", err)
-		}
-		number, err := q.NextSessionNumber(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("next session number: %w", err)
-		}
-		session, err = q.InsertGameSession(ctx, playdb.InsertGameSessionParams{
-			CampaignID: m.CampaignID, SessionNumber: number, StartedAt: now,
-		})
-		if err != nil {
-			return fmt.Errorf("insert game session: %w", err)
-		}
-		// RN-01, in the same transaction: the session and the lock happen
-		// together, or not at all.
-		locked, err = s.sheets.LockSheets(ctx, tx, m.CampaignID, now)
-		if err != nil {
-			return fmt.Errorf("lock sheets: %w", err)
-		}
-		return nil
+		locked = 0
+		var err error
+		session, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetGameSessionByCreateKey,
+			func(gs playdb.GameSession) *string { return gs.CreateHash },
+			func() (playdb.GameSession, error) {
+				// One open session per campaign. This check gives the clear error;
+				// the unique index makes it hold when two starts race (below).
+				_, err := q.GetOpenGameSession(ctx, m.CampaignID)
+				switch {
+				case err == nil:
+					return session, errSessionOpen()
+				case !errors.Is(err, pgx.ErrNoRows):
+					return session, fmt.Errorf("find the open session: %w", err)
+				}
+				number, err := q.NextSessionNumber(ctx, m.CampaignID)
+				if err != nil {
+					return session, fmt.Errorf("next session number: %w", err)
+				}
+				gs, err := q.InsertGameSession(ctx, playdb.InsertGameSessionParams{
+					CampaignID: m.CampaignID, SessionNumber: number, StartedAt: now, CreateKey: scopedKey, CreateHash: requestHash,
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return gs, fmt.Errorf("insert game session: %w", err)
+				}
+				if err != nil {
+					return gs, err
+				}
+				// RN-01, in the same transaction: the session and the lock happen
+				// together, or not at all.
+				if locked, err = s.sheets.LockSheets(ctx, tx, m.CampaignID, now); err != nil {
+					return gs, fmt.Errorf("lock sheets: %w", err)
+				}
+				return gs, nil
+			})
+		return err
 	})
 	if isUniqueViolation(err) {
 		// Another start of the same campaign won the race.
@@ -81,6 +100,11 @@ func (s *Service) StartGameSession(
 	var lockedCount int32
 	if locked > 0 && locked <= math.MaxInt32 {
 		lockedCount = int32(locked)
+	}
+	if replayed {
+		// The first call started the session and locked the sheets: nothing more to do, and the
+		// count of locked sheets is the first call's to tell (0 here).
+		return connect.NewResponse(&playv1.StartGameSessionResponse{GameSession: sessionToProto(session)}), nil
 	}
 	logging.Event(ctx, s.logger, "session.started",
 		slog.String("session_id", session.ID), slog.Int("session_number", int(session.SessionNumber)), slog.Int("sheets_locked", int(lockedCount)))

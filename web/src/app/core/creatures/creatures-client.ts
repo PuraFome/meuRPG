@@ -93,8 +93,8 @@ export class CreaturesClient {
   }
 
   /** The master gives a character a creature; a blank name takes the Portuguese name of the kind. */
-  async give(campaignId: string, characterId: string, monsterKey: string, name: string): Promise<CharacterCreature | undefined> {
-    return (await this.characters.giveCreature({ campaignId, characterId, monsterKey, name })).creature;
+  async give(campaignId: string, characterId: string, monsterKey: string, name: string, idempotencyKey: string): Promise<CharacterCreature | undefined> {
+    return (await this.characters.giveCreature({ campaignId, characterId, monsterKey, name, idempotencyKey })).creature;
   }
 
   async rename(campaignId: string, creatureId: string, name: string): Promise<CharacterCreature | undefined> {

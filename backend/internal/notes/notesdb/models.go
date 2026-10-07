@@ -16,4 +16,6 @@ type PlayerNote struct {
 	ScenePointID *string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	CreateKey    *string
+	CreateHash   *string
 }

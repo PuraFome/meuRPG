@@ -13,7 +13,7 @@ import (
 const applyFogRule = `-- name: ApplyFogRule :one
 UPDATE maps SET fog_enabled = true, fog_on_first_grid = false, updated_at = $1
 WHERE campaign_id = $2 AND id = $3
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type ApplyFogRuleParams struct {
@@ -45,6 +45,8 @@ func (q *Queries) ApplyFogRule(ctx context.Context, arg ApplyFogRuleParams) (Map
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -291,7 +293,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type DeleteMapParams struct {
@@ -322,6 +324,8 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -909,7 +913,7 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -939,12 +943,47 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getMapByCreateKey = `-- name: GetMapByCreateKey :one
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps WHERE create_key = $1
+`
+
+// The map a CreateMap or CreateDungeonMap with this idempotency key made, if any (the key
+// carries the campaign's ID, so it is unique in the campaign).
+func (q *Queries) GetMapByCreateKey(ctx context.Context, createKey *string) (Map, error) {
+	row := q.db.QueryRow(ctx, getMapByCreateKey, createKey)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
+		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -978,6 +1017,8 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1331,8 +1372,33 @@ func (q *Queries) GetMapVisionMemory(ctx context.Context, arg GetMapVisionMemory
 	return i, err
 }
 
+const getSceneActionByCreateKey = `-- name: GetSceneActionByCreateKey :one
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions WHERE create_key = $1
+`
+
+// The action an AddSceneAction with this idempotency key made, if any (the key carries the
+// campaign's ID).
+func (q *Queries) GetSceneActionByCreateKey(ctx context.Context, createKey *string) (SceneAction, error) {
+	row := q.db.QueryRow(ctx, getSceneActionByCreateKey, createKey)
+	var i SceneAction
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Key,
+		&i.Name,
+		&i.Dc,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MaxAttempts,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const getSceneActionForUpdate = `-- name: GetSceneActionForUpdate :one
-SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions
 WHERE point_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1355,12 +1421,36 @@ func (q *Queries) GetSceneActionForUpdate(ctx context.Context, arg GetSceneActio
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MaxAttempts,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getSceneClueByCreateKey = `-- name: GetSceneClueByCreateKey :one
+SELECT id, point_id, position, text, created_at, updated_at, create_key, create_hash FROM scene_clues WHERE create_key = $1
+`
+
+// The clue an AddSceneClue with this idempotency key made, if any (the key carries the
+// campaign's ID).
+func (q *Queries) GetSceneClueByCreateKey(ctx context.Context, createKey *string) (SceneClue, error) {
+	row := q.db.QueryRow(ctx, getSceneClueByCreateKey, createKey)
+	var i SceneClue
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getSceneClueForUpdate = `-- name: GetSceneClueForUpdate :one
-SELECT id, point_id, position, text, created_at, updated_at FROM scene_clues
+SELECT id, point_id, position, text, created_at, updated_at, create_key, create_hash FROM scene_clues
 WHERE point_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1380,12 +1470,14 @@ func (q *Queries) GetSceneClueForUpdate(ctx context.Context, arg GetSceneClueFor
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getSceneClueInCampaign = `-- name: GetSceneClueInCampaign :one
-SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at FROM scene_clues AS c
+SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at, c.create_key, c.create_hash FROM scene_clues AS c
 JOIN map_points AS p ON p.id = c.point_id
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND c.id = $2
@@ -1408,6 +1500,8 @@ func (q *Queries) GetSceneClueInCampaign(ctx context.Context, arg GetSceneClueIn
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1818,9 +1912,10 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 }
 
 const insertMap = `-- name: InsertMap :one
-INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $5)
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, create_key, create_hash, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type InsertMapParams struct {
@@ -1828,17 +1923,24 @@ type InsertMapParams struct {
 	Name           string
 	ImageID        string
 	FogOnFirstGrid bool
+	CreateKey      *string
+	CreateHash     *string
 	Now            time.Time
 }
 
 // A new map starts hidden (revealed_at NULL), with no fog: when the table's
 // rules want it (RN-24) it comes on with the first grid (fog_on_first_grid).
+// create_key and create_hash are the idempotency key of CreateMap and CreateDungeonMap and the
+// hash of the request (NULL when the call sent no key). Two calls with the same key at once make
+// one map: the loser gets no row, and reads the winner's (GetMapByCreateKey).
 func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, error) {
 	row := q.db.QueryRow(ctx, insertMap,
 		arg.CampaignID,
 		arg.Name,
 		arg.ImageID,
 		arg.FogOnFirstGrid,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i Map
@@ -1860,6 +1962,8 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1867,13 +1971,16 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 const insertMapPoint = `-- name: InsertMapPoint :one
 INSERT INTO map_points (
     map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
-    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs,
+    create_key, create_hash
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
     $9, $10, $11, $12, $13,
-    $14, $15, $16, $17, $17, $18, $19
+    $14, $15, $16, $17, $17, $18, $19,
+    $20, $21
 )
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft, stairs, create_key, create_hash
 `
 
@@ -1897,8 +2004,13 @@ type InsertMapPointParams struct {
 	Now             time.Time
 	RevealedAt      *time.Time
 	Stairs          *string
+	CreateKey       *string
+	CreateHash      *string
 }
 
+// create_key and create_hash are the idempotency key of CreateMapPoint and the hash of its
+// request (NULL when the call sent no key): a retry reads the first point with
+// GetMapPointByCreateKey, like a retried "Pôr no mapa".
 // A new point starts hidden (revealed_at NULL), unless the caller gives revealed_at: a generated
 // dungeon's stairs are born revealed, like a door (MAP-LANGUAGE-E10).
 func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) (MapPoint, error) {
@@ -1922,6 +2034,8 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		arg.Now,
 		arg.RevealedAt,
 		arg.Stairs,
+		arg.CreateKey,
+		arg.CreateHash,
 	)
 	var i MapPoint
 	err := row.Scan(
@@ -2020,9 +2134,10 @@ func (q *Queries) InsertPointReveal(ctx context.Context, arg InsertPointRevealPa
 }
 
 const insertSceneAction = `-- name: InsertSceneAction :one
-INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, create_key, create_hash, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash
 `
 
 type InsertSceneActionParams struct {
@@ -2032,9 +2147,14 @@ type InsertSceneActionParams struct {
 	Name        string
 	Dc          *int32
 	MaxAttempts int32
+	CreateKey   *string
+	CreateHash  *string
 	Now         time.Time
 }
 
+// create_key and create_hash are the idempotency key of AddSceneAction and the hash of its request
+// (NULL when the call sent no key). The point is locked first, so a retry reads the first action
+// with GetSceneActionByCreateKey and never races it.
 func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionParams) (SceneAction, error) {
 	row := q.db.QueryRow(ctx, insertSceneAction,
 		arg.PointID,
@@ -2043,6 +2163,8 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		arg.Name,
 		arg.Dc,
 		arg.MaxAttempts,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i SceneAction
@@ -2056,28 +2178,37 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MaxAttempts,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const insertSceneClue = `-- name: InsertSceneClue :one
-INSERT INTO scene_clues (point_id, position, text, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $4)
-RETURNING id, point_id, position, text, created_at, updated_at
+INSERT INTO scene_clues (point_id, position, text, create_key, create_hash, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $6)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, point_id, position, text, created_at, updated_at, create_key, create_hash
 `
 
 type InsertSceneClueParams struct {
-	PointID  string
-	Position int32
-	Text     string
-	Now      time.Time
+	PointID    string
+	Position   int32
+	Text       string
+	CreateKey  *string
+	CreateHash *string
+	Now        time.Time
 }
 
+// create_key and create_hash are the idempotency key of AddSceneClue and the hash of its request
+// (NULL when the call sent no key), read back with GetSceneClueByCreateKey.
 func (q *Queries) InsertSceneClue(ctx context.Context, arg InsertSceneClueParams) (SceneClue, error) {
 	row := q.db.QueryRow(ctx, insertSceneClue,
 		arg.PointID,
 		arg.Position,
 		arg.Text,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i SceneClue
@@ -2088,6 +2219,8 @@ func (q *Queries) InsertSceneClue(ctx context.Context, arg InsertSceneClueParams
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2978,7 +3111,7 @@ func (q *Queries) ListReceivedClues(ctx context.Context, arg ListReceivedCluesPa
 
 const listSceneActions = `-- name: ListSceneActions :many
 
-SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions
 WHERE point_id = $1
 ORDER BY position, created_at, id
 `
@@ -3005,6 +3138,8 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MaxAttempts,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -3017,7 +3152,7 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 }
 
 const listSceneActionsOfMap = `-- name: ListSceneActionsOfMap :many
-SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at, a.max_attempts FROM scene_actions AS a
+SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at, a.max_attempts, a.create_key, a.create_hash FROM scene_actions AS a
 JOIN map_points AS p ON p.id = a.point_id
 WHERE p.map_id = $1
 ORDER BY a.point_id, a.position, a.created_at, a.id
@@ -3044,6 +3179,8 @@ func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]Sc
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MaxAttempts,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -3056,7 +3193,7 @@ func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]Sc
 }
 
 const listSceneClues = `-- name: ListSceneClues :many
-SELECT id, point_id, position, text, created_at, updated_at FROM scene_clues
+SELECT id, point_id, position, text, created_at, updated_at, create_key, create_hash FROM scene_clues
 WHERE point_id = $1
 ORDER BY position, created_at, id
 `
@@ -3078,6 +3215,8 @@ func (q *Queries) ListSceneClues(ctx context.Context, pointID string) ([]SceneCl
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -3090,7 +3229,7 @@ func (q *Queries) ListSceneClues(ctx context.Context, pointID string) ([]SceneCl
 }
 
 const listSceneCluesOfMap = `-- name: ListSceneCluesOfMap :many
-SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at FROM scene_clues AS c
+SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at, c.create_key, c.create_hash FROM scene_clues AS c
 JOIN map_points AS p ON p.id = c.point_id
 WHERE p.map_id = $1
 ORDER BY c.point_id, c.position, c.created_at, c.id
@@ -3114,6 +3253,8 @@ func (q *Queries) ListSceneCluesOfMap(ctx context.Context, mapID string) ([]Scen
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -3447,7 +3588,7 @@ SET fog_enabled = COALESCE($1::BOOL, fog_enabled),
                         OR COALESCE($3::BOOL, group_vision) <> group_vision
                       THEN $4::TIMESTAMPTZ ELSE updated_at END
 WHERE campaign_id = $5 AND id = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type SetMapFogParams struct {
@@ -3491,6 +3632,8 @@ func (q *Queries) SetMapFog(ctx context.Context, arg SetMapFogParams) (Map, erro
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -3500,7 +3643,7 @@ UPDATE maps
 SET grid_columns = $1, grid_factor = $2, fog_enabled = fog_enabled AND $1::INT4 IS NOT NULL,
     updated_at = $3
 WHERE campaign_id = $4 AND id = $5
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type SetMapGridParams struct {
@@ -3542,6 +3685,8 @@ func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, er
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -3550,7 +3695,7 @@ const setMapImageOnly = `-- name: SetMapImageOnly :one
 UPDATE maps
 SET image_id = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type SetMapImageOnlyParams struct {
@@ -3588,6 +3733,8 @@ func (q *Queries) SetMapImageOnly(ctx context.Context, arg SetMapImageOnlyParams
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -3597,7 +3744,7 @@ UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type SetMapRevealedParams struct {
@@ -3636,6 +3783,8 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -3908,7 +4057,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
 `
 
 type UpdateMapParams struct {
@@ -3950,6 +4099,8 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.VisionEpoch,
 		&i.FogOnFirstGrid,
 		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4052,7 +4203,7 @@ const updateSceneAction = `-- name: UpdateSceneAction :one
 UPDATE scene_actions
 SET key = $1, name = $2, dc = $3, max_attempts = $4, updated_at = $5
 WHERE point_id = $6 AND id = $7
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash
 `
 
 type UpdateSceneActionParams struct {
@@ -4086,6 +4237,8 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MaxAttempts,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4094,7 +4247,7 @@ const updateSceneClue = `-- name: UpdateSceneClue :one
 UPDATE scene_clues
 SET text = $1, updated_at = $2
 WHERE point_id = $3 AND id = $4
-RETURNING id, point_id, position, text, created_at, updated_at
+RETURNING id, point_id, position, text, created_at, updated_at, create_key, create_hash
 `
 
 type UpdateSceneClueParams struct {
@@ -4119,6 +4272,8 @@ func (q *Queries) UpdateSceneClue(ctx context.Context, arg UpdateSceneClueParams
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }

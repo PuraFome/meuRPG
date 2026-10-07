@@ -20,6 +20,7 @@ import { LiveSessionSourceLive } from '../live-session/live-session-source.live'
 import { catalogChanged, offControlOf } from './catalog-changes';
 import { abilityLabel, characterKindLabel, spellLevelLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
+import { ActionKey } from '../../core/connect/idempotency';
 import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import { TableMark } from '../../shared/table-mark/table-mark';
@@ -237,6 +238,7 @@ function filterByName<T extends { readonly namePt: string }>(
 })
 export class CharacterEditor {
   private readonly source = inject(CharacterEditorSource);
+  private readonly createKey = new ActionKey();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -1262,13 +1264,16 @@ export class CharacterEditor {
     this.saveState.set({ status: 'saving' });
     try {
       if (s.mode === 'create') {
-        const res = await this.source.createCharacter({
+        const input = {
           campaignId: s.campaignId,
           kind: s.kind,
           full: isBasic ? null : this.buildFullValue(),
           basic: isBasic ? basicFormToValue(this.basicForm) : null,
           ...(this.abilityTable() && !isBasic ? { abilityMethod: this.abilityMethod() } : {}),
-        });
+        };
+        // A retry of the same form (a lost answer, a second tap) sends the same key and makes one character.
+        const res = await this.source.createCharacter({ ...input, idempotencyKey: this.createKey.keyFor(input) });
+        this.createKey.renew();
         await this.router.navigate(['/campaigns', s.campaignId, 'characters', res.characterId]);
       } else if (s.characterId) {
         await this.source.updateCharacter({

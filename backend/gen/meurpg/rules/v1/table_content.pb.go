@@ -2754,9 +2754,14 @@ type CreateTableEntryRequest struct {
 	//	*CreateTableEntryRequest_TableSubrace
 	//	*CreateTableEntryRequest_TableBackground
 	//	*CreateTableEntryRequest_TableSpell
-	Body          isCreateTableEntryRequest_Body `protobuf_oneof:"body"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Body isCreateTableEntryRequest_Body `protobuf_oneof:"body"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,16,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateTableEntryRequest) Reset() {
@@ -2855,6 +2860,13 @@ func (x *CreateTableEntryRequest) GetTableSpell() *TableSpell {
 		}
 	}
 	return nil
+}
+
+func (x *CreateTableEntryRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 type isCreateTableEntryRequest_Body interface {
@@ -4836,7 +4848,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x18ListTableEntriesResponse\x125\n" +
 	"\aentries\x18\x01 \x03(\v2\x1b.meurpg.rules.v1.TableEntryR\aentries\x12%\n" +
 	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\x12'\n" +
-	"\x0fcontent_version\x18\x03 \x01(\tR\x0econtentVersion\"\xdd\x03\n" +
+	"\x0fcontent_version\x18\x03 \x01(\tR\x0econtentVersion\"\x86\x04\n" +
 	"\x17CreateTableEntryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12>\n" +
@@ -4849,7 +4861,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rtable_subrace\x18\r \x01(\v2\x1d.meurpg.rules.v1.TableSubraceH\x00R\ftableSubrace\x12M\n" +
 	"\x10table_background\x18\x0e \x01(\v2 .meurpg.rules.v1.TableBackgroundH\x00R\x0ftableBackground\x12>\n" +
 	"\vtable_spell\x18\x0f \x01(\v2\x1b.meurpg.rules.v1.TableSpellH\x00R\n" +
-	"tableSpellB\x06\n" +
+	"tableSpell\x12'\n" +
+	"\x0fidempotency_key\x18\x10 \x01(\tR\x0eidempotencyKeyB\x06\n" +
 	"\x04body\"t\n" +
 	"\x18CreateTableEntryResponse\x121\n" +
 	"\x05entry\x18\x01 \x01(\v2\x1b.meurpg.rules.v1.TableEntryR\x05entry\x12%\n" +

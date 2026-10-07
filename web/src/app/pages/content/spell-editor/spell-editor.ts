@@ -174,7 +174,7 @@ export class SpellEditor {
       return;
     }
     const body: EntryBody = { case: 'tableSpell', value: draftToSpell(this.draft()) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body), this.known);
+    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
     if (res) {
       this.dirty.set(false);
       this.saved.emit(res);

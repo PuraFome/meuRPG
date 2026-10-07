@@ -98,7 +98,7 @@ func (q *Queries) DeletePendingMemberWithoutCharacter(ctx context.Context, arg D
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at FROM campaigns WHERE id = $1
+SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash FROM campaigns WHERE id = $1
 `
 
 func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) {
@@ -112,6 +112,31 @@ func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) 
 		&i.CreatedAt,
 		&i.DiceMode,
 		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getCampaignByCreateKey = `-- name: GetCampaignByCreateKey :one
+SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash FROM campaigns WHERE create_key = $1
+`
+
+// The campaign a CreateCampaign with this idempotency key made, if any. The key carries the
+// user's ID, so it is unique for the user.
+func (q *Queries) GetCampaignByCreateKey(ctx context.Context, createKey *string) (Campaign, error) {
+	row := q.db.QueryRow(ctx, getCampaignByCreateKey, createKey)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.XpMode,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.DiceMode,
+		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -136,7 +161,7 @@ func (q *Queries) GetCampaignDocument(ctx context.Context, campaignID string) (C
 }
 
 const getCampaignForUpdate = `-- name: GetCampaignForUpdate :one
-SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at FROM campaigns WHERE id = $1 FOR UPDATE
+SELECT id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash FROM campaigns WHERE id = $1 FOR UPDATE
 `
 
 // The campaign, locked until the transaction ends: a change of the XP mode reads
@@ -152,6 +177,8 @@ func (q *Queries) GetCampaignForUpdate(ctx context.Context, id string) (Campaign
 		&i.CreatedAt,
 		&i.DiceMode,
 		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -269,19 +296,31 @@ func (q *Queries) IncrementInviteUses(ctx context.Context, arg IncrementInviteUs
 }
 
 const insertCampaign = `-- name: InsertCampaign :one
-INSERT INTO campaigns (name, xp_mode, created_by)
-VALUES ($1, $2, $3)
-RETURNING id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at
+INSERT INTO campaigns (name, xp_mode, created_by, create_key, create_hash)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash
 `
 
 type InsertCampaignParams struct {
-	Name      string
-	XpMode    string
-	CreatedBy string
+	Name       string
+	XpMode     string
+	CreatedBy  string
+	CreateKey  *string
+	CreateHash *string
 }
 
+// create_key and create_hash are the idempotency key of CreateCampaign and the hash of its
+// request (NULL when the call sent no key). Two calls with the same key at once make one
+// campaign: the loser gets no row, and reads the winner's (GetCampaignByCreateKey).
 func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) (Campaign, error) {
-	row := q.db.QueryRow(ctx, insertCampaign, arg.Name, arg.XpMode, arg.CreatedBy)
+	row := q.db.QueryRow(ctx, insertCampaign,
+		arg.Name,
+		arg.XpMode,
+		arg.CreatedBy,
+		arg.CreateKey,
+		arg.CreateHash,
+	)
 	var i Campaign
 	err := row.Scan(
 		&i.ID,
@@ -291,6 +330,8 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 		&i.CreatedAt,
 		&i.DiceMode,
 		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -411,7 +452,7 @@ func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (Cam
 }
 
 const listCampaignsOfUser = `-- name: ListCampaignsOfUser :many
-SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, c.dice_mode, c.xp_mode_changed_at, m.role, m.status
+SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, c.dice_mode, c.xp_mode_changed_at, c.create_key, c.create_hash, m.role, m.status
 FROM campaign_members AS m
 JOIN campaigns AS c ON c.id = m.campaign_id
 WHERE m.user_id = $1
@@ -443,6 +484,8 @@ func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]Lis
 			&i.Campaign.CreatedAt,
 			&i.Campaign.DiceMode,
 			&i.Campaign.XpModeChangedAt,
+			&i.Campaign.CreateKey,
+			&i.Campaign.CreateHash,
 			&i.Role,
 			&i.Status,
 		); err != nil {

@@ -98,7 +98,7 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
     await settle();
     button('Dar Mastim a Toren').click();
     await settle();
-    expect(api.give).toHaveBeenCalledWith('camp-1', 'char-1', 'monster:mastiff', 'Brutus');
+    expect(api.give).toHaveBeenCalledWith('camp-1', 'char-1', 'monster:mastiff', 'Brutus', expect.any(String));
     expect(close).toHaveBeenCalledWith({ name: 'Brutus' });
   });
 
