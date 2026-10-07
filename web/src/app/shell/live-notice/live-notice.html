@@ -10,7 +10,7 @@
         </p>
         <a
           class="live-notice__action"
-          [routerLink]="['/campanhas', s.campaignId, 'sessao']"
+          [routerLink]="['/campaigns', s.campaignId, 'session']"
           [attr.aria-label]="'Entrar na sessão ' + s.sessionNumber + ' de ' + s.campaignName"
           (click)="dismiss(s.sessionId)"
           >Entrar na sessão</a

@@ -14,9 +14,9 @@ import { type ContentNavKind } from './content-kinds';
 const ON_WORDS: Readonly<Record<ContentNavKind['slug'], { one: string; many: string }>> = {
   classes: { one: 'ligada', many: 'ligadas' },
   subclasses: { one: 'ligada', many: 'ligadas' },
-  racas: { one: 'ligada', many: 'ligadas' },
-  antecedentes: { one: 'ligado', many: 'ligados' },
-  magias: { one: 'ligada', many: 'ligadas' },
+  races: { one: 'ligada', many: 'ligadas' },
+  backgrounds: { one: 'ligado', many: 'ligados' },
+  spells: { one: 'ligada', many: 'ligadas' },
 };
 
 export interface OptionCount {
@@ -49,7 +49,7 @@ export function subraceCount(options: readonly OptionSwitchEntry[]): OptionCount
 
 /** The group's own kind for the counter: the races, not the sub-races. */
 export function mainCount(options: readonly OptionSwitchEntry[], nav: ContentNavKind): OptionCount {
-  return nav.slug === 'racas' ? raceCount(options) : countOf(options, nav.kinds);
+  return nav.slug === 'races' ? raceCount(options) : countOf(options, nav.kinds);
 }
 
 /** "Raças: 9 de 10 ligadas" */
@@ -114,7 +114,7 @@ export function hiddenCounterText(nav: ContentNavKind, n: number): string {
   if (n <= 0) {
     return '';
   }
-  const by = nav.slug === 'racas' ? 'pela raça' : 'pela classe';
+  const by = nav.slug === 'races' ? 'pela raça' : 'pela classe';
   return ` · ${n} ${n === 1 ? 'escondida' : 'escondidas'} ${by}`;
 }
 

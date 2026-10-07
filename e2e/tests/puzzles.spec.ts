@@ -42,7 +42,7 @@ test('o mestre faz uma fechadura que abre uma porta e a mostra; o jogador a reso
   const table = await tableForPuzzles(master, player, `Fechadura ${Date.now()}`);
   try {
     // The master makes the lock on the form: the kind, the name, the solution (a wheel turned once), "Ao resolver" with a door.
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', 'novo'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', 'new'));
     await expect(master.getByRole('heading', { level: 1, name: 'Novo quebra-cabeça' })).toBeVisible();
     await master.getByRole('radio', { name: /^Fechadura de combinação/ }).check();
     await master.getByLabel('Nome').fill('O cofre do Refeitório');
@@ -74,7 +74,7 @@ test('o mestre faz uma fechadura que abre uma porta e a mostra; o jogador a reso
 
     // What the player's response carries (RN-10): the state and the clue, never the solution, the minimum or "Ao resolver".
     const url = new URL(player.url());
-    const puzzleId = url.searchParams.get('quebra-cabeca')!;
+    const puzzleId = url.searchParams.get('puzzle')!;
     const text = await playerRunText(player, table.campaignId, puzzleId);
     for (const secret of NEVER_IN_A_PLAYER_RESPONSE) {
       expect(text, secret).not.toContain(secret);
@@ -122,7 +122,7 @@ test('o jogador toca uma luz e o painel de 7 × 7 cabe em 320 × 568 sem rolar d
   try {
     const puzzleId = await createLightsRPC(master, table.campaignId, 'Os candelabros da cripta', 7, { clue: 'Os candelabros guardam a cripta.' });
     await showPuzzleRPC(master, table.campaignId, puzzleId);
-    await player.goto(`/campanhas/${table.campaignId}/sessao?quebra-cabeca=${puzzleId}`);
+    await player.goto(`/campaigns/${table.campaignId}/session?puzzle=${puzzleId}`);
     await expect(player.getByRole('heading', { level: 1, name: 'Os candelabros da cripta' })).toBeVisible({ timeout: 30_000 });
     const lights = player.getByRole('button', { name: /^Luz na linha \d, coluna \d, (acesa|apagada)$/ });
     await expect(lights).toHaveCount(49);
@@ -168,7 +168,7 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
   const { master, player, close } = await twoPeople(browser);
   const table = await tableForPuzzles(master, player, `Lista ${Date.now()}`);
   try {
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', 'novo'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', 'new'));
     await master.getByLabel('Nome').fill('O selo da Capela');
     // The start is the server's: the count of lights and the fewest touches arrive before the puzzle can be saved.
     await expect(master.getByText(/\d+ acesas?, \d+ apagadas?\./)).toBeVisible({ timeout: 30_000 });
@@ -208,7 +208,7 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
     await master.reload();
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('Já mostrado')).toBeVisible();
     await expect(master.getByRole('link', { name: 'Editar O selo da Cripta' })).toHaveCount(0);
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', id, 'editar'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', id, 'edit'));
     await expect(master.getByText('já foi mostrado numa sessão e não pode mais ser editado')).toBeVisible();
   } finally {
     await endTable(master, table.campaignId);

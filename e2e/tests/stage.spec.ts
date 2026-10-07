@@ -30,7 +30,7 @@ test(
       await createCapitaoRPC(m, campaignId, capitaoImage);
 
       // The editor: the initials first, then the portrait, saved with the form.
-      await m.goto(`/campanhas/${campaignId}/personagens/${miraId}/editar`);
+      await m.goto(`/campaigns/${campaignId}/characters/${miraId}/edit`);
       const field = m.locator('app-portrait-field');
       await expect(field.getByText('Sem retrato: aparecem as iniciais.')).toBeVisible();
       await expect(field.locator('.pt__initials')).toHaveText('MI');
@@ -45,8 +45,8 @@ test(
       await expect(picker).toBeHidden();
       await expect(field.getByText('Imagem da galeria: “Retrato da Mira”')).toBeVisible();
       await m.getByRole('button', { name: 'Salvar ficha' }).click();
-      await expect(m).toHaveURL(new RegExp(`/personagens/${miraId}$`));
-      await m.goto(`/campanhas/${campaignId}/personagens/${miraId}/editar`);
+      await expect(m).toHaveURL(new RegExp(`/characters/${miraId}$`));
+      await m.goto(`/campaigns/${campaignId}/characters/${miraId}/edit`);
       await expect(m.locator('app-portrait-field img')).toHaveAttribute('src', `/images/${miraImage}`);
 
       // The scene, and the master's stage.

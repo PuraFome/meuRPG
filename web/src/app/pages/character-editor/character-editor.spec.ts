@@ -654,7 +654,7 @@ describe('CharacterEditor', () => {
   });
 
   it('shows the fiction notice once on a basic (NPC) sheet, next to the description', async () => {
-    configure({ id: 'camp-1', tipo: 'minion' });
+    configure({ id: 'camp-1', kind: 'minion' });
     const { el } = await render();
 
     expect(el.querySelectorAll('app-fiction-notice').length).toBe(1);
@@ -745,7 +745,7 @@ describe('CharacterEditor', () => {
     expect(el.querySelector('form')).toBeNull();
     expect(el.querySelector('button[mat-flat-button]')).toBeNull();
     const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Voltar para a ficha'));
-    expect(back?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-1');
+    expect(back?.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1');
   });
 
   it("says a dead character's sheet can't change, without a form (RN-03)", async () => {
@@ -1059,7 +1059,7 @@ describe('CharacterEditor', () => {
       const cancel = Array.from(el.querySelectorAll('a')).find(
         (a) => a.textContent?.trim() === 'Cancelar',
       );
-      expect(cancel?.getAttribute('href')).toBe('/campanhas/camp-1');
+      expect(cancel?.getAttribute('href')).toBe('/campaigns/camp-1');
     });
 
     it('Cancelar goes back to the sheet when editing', async () => {
@@ -1092,13 +1092,13 @@ describe('CharacterEditor', () => {
       const cancel = Array.from(el.querySelectorAll('a')).find(
         (a) => a.textContent?.trim() === 'Cancelar',
       );
-      expect(cancel?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-9');
+      expect(cancel?.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-9');
       expect(el.querySelector('h1')?.textContent).toContain('Editar ficha');
       expect(el.querySelector('button[mat-flat-button]')?.textContent).toContain('Salvar ficha');
     });
 
     it('titles an NPC form "Criar NPC", and its primary action says the same', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { el } = await render();
 
       expect(el.querySelector('h1')?.textContent).toContain('Criar NPC');
@@ -1108,7 +1108,7 @@ describe('CharacterEditor', () => {
     });
 
     it('lists what to fix on the short NPC form too', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
@@ -1121,7 +1121,7 @@ describe('CharacterEditor', () => {
     });
 
     it('adds and removes attack cards on the short NPC form, at most three', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture, el } = await render();
       const add = () =>
         Array.from(el.querySelectorAll('button')).find((b) =>
@@ -1148,7 +1148,7 @@ describe('CharacterEditor', () => {
     });
 
     it('lists the invalid attack fields by card, and does not save', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
@@ -1376,7 +1376,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
 
   describe('an enemy or a boss (full sheet)', () => {
     it('starts at ND 0 and 10 XP, so nobody is left without a number', async () => {
-      configure({ id: 'camp-1', tipo: 'inimigo' });
+      configure({ id: 'camp-1', kind: 'enemy' });
       const { fixture, el } = await render();
       expect(defeat(el)).not.toBeNull();
       expect(cmp(fixture).fullForm.controls.challengeRating.value).toBe('0');
@@ -1385,14 +1385,14 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     });
 
     it('has no "Pontos de experiência" of its own: an NPC has no XP to level with', async () => {
-      configure({ id: 'camp-1', tipo: 'boss' });
+      configure({ id: 'camp-1', kind: 'boss' });
       const { el } = await render();
       expect(el.textContent).toContain('XP ao derrotar');
       expect(el.textContent).not.toContain('Pontos de experiência');
     });
 
     it('sends the ND and the XP it was given, with the table at hand', async () => {
-      configure({ id: 'camp-1', tipo: 'inimigo' });
+      configure({ id: 'camp-1', kind: 'enemy' });
       const { fixture } = await render();
       cmp(fixture).fullForm.patchValue({ name: 'Capitão', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', challengeRating: '1', xpValue: 200 });
       await cmp(fixture).submit();
@@ -1428,7 +1428,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
 
   describe('a minion (short sheet)', () => {
     it('has the "Ao ser derrotado" section, at ND 0 and 10 XP', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture, el } = await render();
       expect(el.querySelector('#defeat-heading')?.textContent).toBe('Ao ser derrotado');
       expect(el.textContent).toContain('O XP que o grupo ganha quando este NPC é derrotado. Só você vê o ND e o XP.');
@@ -1437,7 +1437,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     });
 
     it('sends the ND and the XP when it is created', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture } = await render();
       cmp(fixture).basicForm.patchValue({ name: 'Goblin', challengeRating: '1/4', xpValue: 50 });
       await cmp(fixture).submit();
@@ -1461,7 +1461,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     });
 
     it('asks for the XP when it is left empty', async () => {
-      configure({ id: 'camp-1', tipo: 'minion' });
+      configure({ id: 'camp-1', kind: 'minion' });
       const { fixture } = await render();
       cmp(fixture).basicForm.patchValue({ name: 'Goblin', xpValue: null });
       await cmp(fixture).submit();
@@ -1471,7 +1471,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
   });
 
   it('shows a story NPC no ND and no XP, and keeps none', async () => {
-    configure({ id: 'camp-1', tipo: 'historia' });
+    configure({ id: 'camp-1', kind: 'story' });
     const { fixture, el } = await render();
     expect(defeat(el)).toBeNull();
     cmp(fixture).basicForm.patchValue({ name: 'Velha Odra' });
@@ -1554,7 +1554,7 @@ describe('CharacterEditor, the NPC portrait', () => {
   });
 
   it('shows "Retrato" on the short form of a new NPC, with the initials and "Escolher retrato"', async () => {
-    configure({ id: 'camp-1', tipo: 'historia' });
+    configure({ id: 'camp-1', kind: 'story' });
     const { fixture, el } = await render();
     cmp(fixture).basicForm.patchValue({ name: 'Aldo' });
     fixture.detectChanges();
@@ -1577,7 +1577,7 @@ describe('CharacterEditor, the NPC portrait', () => {
   });
 
   it('saves a portrait chosen on a new NPC, a changed one and a removed one', async () => {
-    configure({ id: 'camp-1', tipo: 'historia' });
+    configure({ id: 'camp-1', kind: 'story' });
     const { fixture } = await render();
     cmp(fixture).basicForm.patchValue({ name: 'Mira', portraitImageId: 'img-2' });
     await cmp(fixture).submit();
@@ -1697,7 +1697,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
   });
 
   it('does not ask for the table\'s ways for an NPC of the master', async () => {
-    configure({ id: 'camp-1', tipo: 'inimigo' });
+    configure({ id: 'camp-1', kind: 'enemy' });
     await render();
     expect(fake.loadAbilityTableCalls).toEqual([]);
   });

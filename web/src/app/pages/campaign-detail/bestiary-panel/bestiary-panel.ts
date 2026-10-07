@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 /**
- * The master's "Bestiário" panel on `/campanhas/:id` (MR-042): the way in to the SRD's 334
+ * The master's "Bestiário" panel on `/campaigns/:id` (MR-042): the way in to the SRD's 334
  * creatures. `CampaignDetail` renders it for the master only: the SRD is public and the server
  * lets any member read it, but the app shows the bestiary (and "Criar NPC") to the master alone.
  */
@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
     <section class="mr-panel bestiary" aria-labelledby="bestiary-panel-heading">
       <h2 class="mr-panel__title" id="bestiary-panel-heading">Bestiário</h2>
       <p class="bestiary__text">As 334 criaturas do SRD 5.1: procure pelo nome, abra a ficha e faça um NPC com nome a partir dela.</p>
-      <a matButton="outlined" class="bestiary__open" [routerLink]="['/campanhas', campaignId(), 'bestiario']">
+      <a matButton="outlined" class="bestiary__open" [routerLink]="['/campaigns', campaignId(), 'bestiary']">
         <mat-icon aria-hidden="true">pets</mat-icon>Abrir o bestiário
       </a>
     </section>

@@ -62,7 +62,7 @@ export async function listEntriesJSON(page: Page, campaignId: string): Promise<{
 
 /** The route of an entry's page: the key is one path segment. */
 export function entryRoute(campaignId: string, key: string): string {
-  return `/campanhas/${campaignId}/conteudo/entrada/${encodeURIComponent(key)}`;
+  return `/campaigns/${campaignId}/content/entries/${encodeURIComponent(key)}`;
 }
 
 /** `UpdateTableEntry` at the entry's current revision, as the other master's tab would. */

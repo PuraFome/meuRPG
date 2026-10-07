@@ -26,7 +26,7 @@ type PageState =
   | { status: 'ready'; creature: Creature };
 
 /**
- * "/campanhas/:id/bestiario/:slug" (MR-042, E10-08, state 3): one creature's stat block, for the
+ * "/campaigns/:id/bestiary/:slug" (MR-042, E10-08, state 3): one creature's stat block, for the
  * master. The numbers and the Portuguese labels come from `GetCreature`; the text of the traits and
  * actions is the SRD's English (`StatBlock`, marked `lang="en"`), and "SRD" is credited under the
  * panel. "Criar NPC" opens the dialog; the NPC it makes is announced here, with a way to its sheet.

@@ -51,7 +51,7 @@ describe('GalleryPanel', () => {
     expect(plain(el.textContent)).toContain('6 imagens, 7,2 MB de 500 MB');
     const link = el.querySelector('a') as HTMLAnchorElement;
     expect(link.textContent).toContain('Abrir galeria');
-    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/galeria');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/gallery');
   });
 
   it('invites the first upload when the gallery is empty', async () => {

@@ -31,7 +31,7 @@ export interface EncounterRow {
                   <li class="row">
                     <app-creature-art class="row__art" [monsterKey]="r.creature.key" [type]="r.creature.type" />
                     <span class="row__name">
-                      <a class="row__pt" [routerLink]="['/campanhas', campaignId(), 'bestiario', slug(r.creature.key)]">{{ r.creature.namePt }}</a>
+                      <a class="row__pt" [routerLink]="['/campaigns', campaignId(), 'bestiary', slug(r.creature.key)]">{{ r.creature.namePt }}</a>
                       <span class="row__en"><span lang="en">{{ r.creature.name }}</span> · SRD</span>
                     </span>
                     <span class="row__nd">

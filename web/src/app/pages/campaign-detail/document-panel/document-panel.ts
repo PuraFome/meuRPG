@@ -15,7 +15,7 @@ type PanelState =
   | { status: 'ready'; doc: CampaignDocument };
 
 /**
- * The master's "Documento da campanha" panel on `/campanhas/:id` (E5-09,
+ * The master's "Documento da campanha" panel on `/campaigns/:id` (E5-09,
  * MR-018): "Mirathel — preparação", "Editado ontem às 22:10. Só você vê
  * este documento." and "Abrir documento". `CampaignDetail` renders it for
  * the master only: the server refuses the document to a player.

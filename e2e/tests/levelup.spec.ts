@@ -8,7 +8,7 @@ import { markMilestoneRPC, tableForLevelUp, toren } from './levelup-support';
 // sheet stays locked: only the level's choices change), RN-12 (who can level up). The data comes through
 // the API; the screens are what is under test. Every test makes its own campaign.
 
-const sheetOf = (campaignId: string, characterId: string) => `/campanhas/${campaignId}/personagens/${characterId}`;
+const sheetOf = (campaignId: string, characterId: string) => `/campaigns/${campaignId}/characters/${characterId}`;
 
 /** Clicks the row of a pick list by the name on it. */
 const row = (page: Page, name: string) => page.locator('.row__main, .row').filter({ hasText: name }).first();
@@ -83,7 +83,7 @@ test(
       await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
 
       // The sheet: level 4, the new numbers, a status the player dismisses, and no tag any more.
-      await expect(p).toHaveURL(new RegExp(`/personagens/${table.characterId}$`));
+      await expect(p).toHaveURL(new RegExp(`/characters/${table.characterId}$`));
       await expect(p.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4. O mestre foi avisado.' })).toBeVisible();
       await expect(p.getByRole('definition').filter({ hasText: 'Mago 4' })).toBeVisible();
       await expect(p.locator('app-ability-medallions')).toContainText('20');
@@ -94,7 +94,7 @@ test(
       await expect(p.getByText('Pensantus subiu para o nível 4.')).toHaveCount(0);
 
       // The master is told, and sees what was chosen.
-      await m.goto(`/campanhas/${campaignId}`);
+      await m.goto(`/campaigns/${campaignId}`);
       await expect(m.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4.' })).toBeVisible();
       await m.getByRole('button', { name: 'O que mudou: Pensantus' }).click();
       const changes = m.getByRole('region', { name: 'O que Pensantus escolheu no nível 4' });
@@ -148,7 +148,7 @@ test(
       await expect(p.getByRole('definition').filter({ hasText: 'Guerreiro 5' })).toBeVisible();
 
       // The master's list keeps the roll on record.
-      await m.goto(`/campanhas/${campaignId}`);
+      await m.goto(`/campaigns/${campaignId}`);
       await m.getByRole('button', { name: 'O que mudou: Toren' }).click();
       await expect(m.getByRole('region', { name: 'O que Toren escolheu no nível 5' })).toContainText('Rolado no app');
     } finally {
@@ -180,19 +180,19 @@ test(
       await expect(p.getByRole('link', { name: /Subir para o nível/ })).toHaveCount(0);
       await expect(p.getByText('Pode subir de nível')).toHaveCount(0);
 
-      await p.goto(`${sheetOf(campaignId, table.characterId)}/subir-de-nivel`);
+      await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
       await expect(p.getByRole('heading', { name: 'Ainda não dá para subir de nível' })).toBeVisible();
       await expect(p.getByText('Falta o mestre marcar um marco para este personagem')).toBeVisible();
       await expect(p.getByRole('link', { name: 'Voltar para a ficha' }).last()).toBeVisible();
       await expect(p.getByText(/Passo \d de \d/)).toHaveCount(0);
 
       // The master has no button either: the player levels up, the master edits the sheet.
-      await m.goto(`${sheetOf(campaignId, table.characterId)}/subir-de-nivel`);
+      await m.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
       await expect(m.getByText('Quem sobe o nível é o jogador')).toBeVisible();
 
       // Once the master marks a milestone, the same route opens.
       await markMilestoneRPC(m, campaignId, 'Chegar ao Vale Seco', [table.characterId]);
-      await p.goto(`${sheetOf(campaignId, table.characterId)}/subir-de-nivel`);
+      await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
       await expect(p.getByText('Passo 1 de 4 · Atributos')).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);

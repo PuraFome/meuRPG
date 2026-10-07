@@ -39,7 +39,7 @@ type PageState =
   | { status: 'pending'; campaign: Campaign };
 
 /**
- * "/campanhas/:id" (guarded by authGuard): GetCampaign + ListMembers
+ * "/campaigns/:id" (guarded by authGuard): GetCampaign + ListMembers
  * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
  * "Sessão" (MR-006 / RN-01 for the master; for a player, only while a
  * session is open, with "Entrar na sessão", RN-06) and the master-only

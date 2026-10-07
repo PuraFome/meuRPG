@@ -32,7 +32,7 @@ import { LevelUpTag } from '../../../shared/xp/level-up-tag';
             <span class="state state--none">Sem marco novo</span>
           }
           @if (openable() && r.canLevelUp) {
-            <a mat-stroked-button class="open" [routerLink]="['/campanhas', campaignId(), 'personagens', r.id]">
+            <a mat-stroked-button class="open" [routerLink]="['/campaigns', campaignId(), 'characters', r.id]">
               Abrir a ficha
             </a>
           }

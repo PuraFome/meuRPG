@@ -126,7 +126,7 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       const actions = Array.from(el.querySelectorAll<HTMLElement>('button, a[matButton], .mat-mdc-button-base'));
       expect(actions.map((a) => words(a))).toEqual(['Voltar à campanha']);
       expect(actions[0].classList.contains('mat-mdc-outlined-button')).toBe(true);
-      expect(el.querySelector('.end__leave')?.getAttribute('href')).toBe('/campanhas/c1');
+      expect(el.querySelector('.end__leave')?.getAttribute('href')).toBe('/campaigns/c1');
     });
 
     it('shows "Resumo da sessão" with the session\'s tiles, "Mais testes passados fora do combate" among them, and the players behind them', async () => {

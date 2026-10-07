@@ -44,14 +44,14 @@ describe('UserMenu', () => {
     auth.set({ status: 'signed-out' });
     // Stand in for actually navigating there — this component only reads
     // Router.url, it never triggers a route change.
-    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/campanhas');
+    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/campaigns');
 
     const el = render();
     const button = el.querySelector('button');
     expect(button?.textContent).toContain('Entrar');
 
     button?.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(auth.signIn).toHaveBeenCalledWith('/campanhas');
+    expect(auth.signIn).toHaveBeenCalledWith('/campaigns');
   });
 
   it('shows "Minha conta" (never an e-mail) when signed in, with a Sair button', () => {
@@ -81,7 +81,7 @@ describe('UserMenu', () => {
     });
 
     const el = render();
-    expect(el.querySelector('a[href="/perfil"]')).toBeTruthy();
+    expect(el.querySelector('a[href="/profile"]')).toBeTruthy();
   });
 
   it('uses the display name instead of "Minha conta" once one is available', () => {

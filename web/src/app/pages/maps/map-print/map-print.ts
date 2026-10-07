@@ -28,7 +28,7 @@ import {
 type Phase = 'loading' | 'ready' | 'gone' | 'forbidden' | 'error';
 
 /**
- * `/campanhas/:id/mapas/:mapId/imprimir` (MR-033, E8-12, Q65): the master
+ * `/campaigns/:id/maps/:mapId/print` (MR-033, E8-12, Q65): the master
  * prints the map with its grid to scale. The page holds what the master
  * chose (the square's size and the paper) and works out the rest: how the map
  * is cut into sheets, which orientation spends fewer, the page preview and
@@ -96,9 +96,9 @@ export class MapPrint {
     return all ? leanestPaper(all) : null;
   });
   protected readonly backLink = computed(() => [
-    '/campanhas',
+    '/campaigns',
     this.campaignId(),
-    'mapas',
+    'maps',
     this.mapId(),
   ]);
 

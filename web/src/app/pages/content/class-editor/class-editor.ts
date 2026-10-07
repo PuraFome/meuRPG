@@ -467,11 +467,11 @@ export class ClassEditor {
   // ---- Saving.
 
   protected subclassLink(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected newSubclassLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', 'subclasse'];
+    return ['/campaigns', this.campaignId(), 'content', 'new', 'subclass'];
   }
 
   private readonly known = (path: string): boolean => {

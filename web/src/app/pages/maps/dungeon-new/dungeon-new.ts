@@ -327,7 +327,7 @@ export class DungeonNew {
       if (this.abort.signal.aborted) {
         return;
       }
-      await this.router.navigate(['/campanhas', this.campaignId(), 'mapas', answer.map.id]);
+      await this.router.navigate(['/campaigns', this.campaignId(), 'maps', answer.map.id]);
     } catch (err) {
       clearTimeout(this.slowTimer);
       if (this.abort?.signal.aborted) {

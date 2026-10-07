@@ -14,12 +14,12 @@ import (
 // it waits in the browser (no localStorage or sessionStorage), and nothing
 // secret goes in a URL (ADR-0009):
 //
-//	POST /auth/login    return_to=/convite&intent=campaign_invite&intent_payload=<token>
+//	POST /auth/login    return_to=/invite&intent=campaign_invite&intent_payload=<token>
 //	  handler.Prepare(<token>)            returns what to keep: the token's hash
 //	  saved in oidc_login_states          single use, at most 10 minutes
 //	GET /auth/callback
 //	  session created, as for any sign-in
-//	  handler.Complete(ctx, who, hash)    returns where to go: /campanhas/<id>
+//	  handler.Complete(ctx, who, hash)    returns where to go: /campaigns/<id>
 //
 // This package does not know what an intent means, and it does not import
 // the modules that do. They provide one IntentHandler per kind, and

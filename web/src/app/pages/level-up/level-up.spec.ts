@@ -162,7 +162,7 @@ describe('LevelUpPage', () => {
     it('leaves at once when nothing was chosen', async () => {
       const f = await setup();
       await click(f, button(f, 'Cancelar'));
-      expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'ch-1']);
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
     });
 
     it('asks in place once something was chosen, with "Continuar escolhendo" first and focused', async () => {
@@ -178,14 +178,14 @@ describe('LevelUpPage', () => {
       expect(text(f)).not.toContain('Descartar as escolhas?');
       await click(f, button(f, 'Cancelar'));
       await click(f, button(f, 'Descartar e sair'));
-      expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'ch-1']);
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
     });
 
     it('asks too from "Voltar para a ficha" at the top, instead of following the link', async () => {
       const f = await setup();
       await click(f, el(f).querySelector('.row__input'));
       const back = el(f).querySelector('a.back') as HTMLAnchorElement;
-      expect(back.getAttribute('href')).toBe('/campanhas/camp-1/personagens/ch-1');
+      expect(back.getAttribute('href')).toBe('/campaigns/camp-1/characters/ch-1');
       const event = new MouseEvent('click', { cancelable: true, bubbles: true });
       back.dispatchEvent(event);
       f.detectChanges();
@@ -312,7 +312,7 @@ describe('LevelUpPage', () => {
       it('with "rolar" the page counts as untouched until something else is chosen (leaving does not ask)', async () => {
         const f = await setup(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }));
         await click(f, button(f, 'Cancelar'));
-        expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'ch-1']);
+        expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
       });
     });
 
@@ -371,7 +371,7 @@ describe('LevelUpPage', () => {
       const [campaignId, characterId, revision, choices] = client.levelUp.mock.calls[0];
       expect([campaignId, characterId, revision]).toEqual(['camp-1', 'ch-1', 5]);
       expect(choices).toMatchObject({ classKey: 'class:wizard', abilityIncrease: { intelligence: 2 }, cantripKeys: ['spell:prestidigitation'] });
-      expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'ch-1'], {
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1'], {
         replaceUrl: true,
         state: { levelUp: { name: 'Pensantus', level: 4 } },
       });

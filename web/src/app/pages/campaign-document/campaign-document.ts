@@ -39,7 +39,7 @@ type PageState =
   | { status: 'ready' };
 
 /**
- * "/campanhas/:id/documento" (MR-018): the campaign's document, for its
+ * "/campaigns/:id/document" (MR-018): the campaign's document, for its
  * master only (the default answer to question 27: it holds prep notes and
  * spoilers). E5-27 (read), E5-28 (edit), E5-29 (a map link in a dialog) and
  * E5-30 (the phone).

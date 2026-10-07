@@ -45,8 +45,8 @@ describe('MapsPanel', () => {
     const el = await render(true, new FakeMapsClient());
     const links = Array.from(el.querySelectorAll('.maps__actions a'));
     expect(links.map((a) => a.textContent?.replace('add', '').replace('castle', '').replace('paid', '').trim())).toEqual(['Novo mapa', 'Gerar masmorra', 'Gerar tesouro']);
-    expect(links[1]!.getAttribute('href')).toBe('/campanhas/camp-1/mapas/masmorra');
-    expect(links[2]!.getAttribute('href')).toBe('/campanhas/camp-1/tesouro');
+    expect(links[1]!.getAttribute('href')).toBe('/campaigns/camp-1/maps/dungeon');
+    expect(links[2]!.getAttribute('href')).toBe('/campaigns/camp-1/treasure');
   });
 
   it('gives a player no panel while there is no map, and no "Novo mapa" ever', async () => {

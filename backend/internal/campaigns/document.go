@@ -26,7 +26,7 @@ import (
 //
 // The server stores the text and never parses it. The web app renders it
 // from a parsed token tree, never as HTML, and resolves the links inside it
-// (mapa:<id>, ficha:<id>, imagem:<id>) through the ordinary authorized
+// (map:<id>, character:<id>, image:<id>) through the ordinary authorized
 // calls, so the IDs in the text grant nothing (campaign_document.proto).
 //
 // Saves use a revision, like the character sheet: the master sends the

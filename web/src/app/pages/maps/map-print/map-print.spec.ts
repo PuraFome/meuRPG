@@ -233,7 +233,7 @@ describe('MapPrint: o que o mestre vê e o que os outros veem', () => {
     const { el } = await render({ map: mapMessage('map-1', 'Sem grade') });
     expect(el.textContent).toContain('Este mapa ainda não tem grade.');
     expect(el.querySelector('#square')).toBeNull();
-    expect(el.querySelector('a[href$="/grade"]')!.textContent).toContain('Definir a grade');
+    expect(el.querySelector('a[href$="/grid"]')!.textContent).toContain('Definir a grade');
   });
 
   it('um jogador recebe só a resposta de que a impressão é do mestre', async () => {

@@ -25,7 +25,7 @@ import { joinDots } from '../../../../core/format/text';
         <p class="card__lead"><mat-icon aria-hidden="true">extension</mat-icon>{{ lead(p) }}</p>
         <h2 class="card__name" [id]="'pn-' + p.puzzleId">{{ p.name }}</h2>
         <p class="card__sub">{{ sub(p) }}</p>
-        <a [matButton]="first && !p.solved ? 'filled' : 'outlined'" class="card__open" [routerLink]="['/campanhas', campaignId(), 'sessao']" [queryParams]="{ 'quebra-cabeca': p.puzzleId }">
+        <a [matButton]="first && !p.solved ? 'filled' : 'outlined'" class="card__open" [routerLink]="['/campaigns', campaignId(), 'session']" [queryParams]="{ 'puzzle': p.puzzleId }">
           {{ p.solved ? 'Ver o quebra-cabeça' : 'Abrir o quebra-cabeça' }}
         </a>
       </section>

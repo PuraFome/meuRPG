@@ -174,7 +174,7 @@ describe('CampaignDetail', () => {
     const rows = Array.from(el.querySelectorAll('section[aria-labelledby="members-heading"] li'));
     expect(rows[0].textContent).toContain('Mestre sem nome');
     expect(rows[0].textContent).toContain('(você)');
-    expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/perfil');
+    expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/profile');
     // Somebody else's row: no "(você)" and no link to the viewer's profile.
     expect(rows[1].textContent).not.toContain('(você)');
     expect(rows[1].querySelector('a')).toBeNull();
@@ -241,7 +241,7 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Abrir o bestiário'));
-    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario');
+    expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary');
 
     TestBed.resetTestingModule();
     configure();
@@ -249,7 +249,7 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
     expect(player.textContent).not.toContain('Bestiário');
-    expect(player.querySelector('a[href$="/bestiario"]')).toBeNull();
+    expect(player.querySelector('a[href$="/bestiary"]')).toBeNull();
   });
 
   it('shows the "Encontros" panel only for the master (MR-043: the builder and what it keeps are his secret, RN-10)', async () => {
@@ -258,7 +258,7 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     const link = Array.from(master.querySelectorAll('a')).find((a) => a.textContent?.includes('Montar um encontro'));
-    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/encontros');
+    expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/encounters');
 
     TestBed.resetTestingModule();
     configure();
@@ -266,7 +266,7 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
     expect(player.textContent).not.toContain('Encontros');
-    expect(player.querySelector('a[href$="/encontros"]')).toBeNull();
+    expect(player.querySelector('a[href$="/encounters"]')).toBeNull();
   });
 
   it('shows the "Quebra-cabeças" panel only for the master (MR-038: the answers live there)', async () => {
@@ -276,7 +276,7 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     expect(master.textContent).toContain('O selo da Capela');
-    expect(master.querySelector('a[href="/campanhas/camp-1/quebra-cabecas/novo"]')).not.toBeNull();
+    expect(master.querySelector('a[href="/campaigns/camp-1/puzzles/new"]')).not.toBeNull();
 
     TestBed.resetTestingModule();
     configure();
@@ -312,14 +312,14 @@ describe('CampaignDetail', () => {
     fake.listMembersResult = Promise.resolve({ members: [] });
     const master = await render();
     expect(master.textContent).toContain('Regras da mesa');
-    expect(Array.from(master.querySelectorAll('a[href="/campanhas/camp-1/regras"]')).map((a) => a.textContent?.trim())).toContain('Abrir as regras');
+    expect(Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) => a.textContent?.trim())).toContain('Abrir as regras');
 
     TestBed.resetTestingModule();
     configure();
     fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', Role.PLAYER) });
     fake.listMembersResult = Promise.resolve({ members: [] });
     const player = await render();
-    expect(Array.from(player.querySelectorAll('a[href="/campanhas/camp-1/regras"]')).map((a) => a.textContent?.trim())).toContain('Ler as regras');
+    expect(Array.from(player.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) => a.textContent?.trim())).toContain('Ler as regras');
   });
 
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {

@@ -43,9 +43,9 @@ const (
 // sampleLinks are the three link targets of the app's own (a map, a sheet
 // and a gallery image), as the editor's pickers write them.
 var sampleLinks = []string{
-	"[Mirathel e arredores](mapa:" + sampleMapID + ")",
-	"[Capitão Goblin](ficha:" + sampleCharacterID + ")",
-	"![A Taverna do Javali, onde a Velha Odra espera o grupo.](imagem:" + sampleImageID + ")",
+	"[Mirathel e arredores](map:" + sampleMapID + ")",
+	"[Capitão Goblin](character:" + sampleCharacterID + ")",
+	"![A Taverna do Javali, onde a Velha Odra espera o grupo.](image:" + sampleImageID + ")",
 }
 
 // sampleDocument has what a master writes: headings, bold, a list, a tab,

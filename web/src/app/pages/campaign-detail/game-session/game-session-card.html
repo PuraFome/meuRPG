@@ -32,7 +32,7 @@
             }
             <div class="session__actions">
               @if (isMaster()) {
-                <a mat-flat-button [routerLink]="['/campanhas', campaignId(), 'sessao']">
+                <a mat-flat-button [routerLink]="['/campaigns', campaignId(), 'session']">
                   Entrar na sessão
                 </a>
                 <button mat-stroked-button class="session__copy" type="button" (click)="copyLink()">
@@ -68,7 +68,7 @@
                   </button>
                 }
               } @else {
-                <a mat-flat-button [routerLink]="['/campanhas', campaignId(), 'sessao']">
+                <a mat-flat-button [routerLink]="['/campaigns', campaignId(), 'session']">
                   Entrar na sessão
                 </a>
               }

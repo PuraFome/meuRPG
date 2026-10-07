@@ -26,7 +26,7 @@ import type { CharacterSheetVm } from '../character-sheet.types';
         <div class="banner__body">
           <h2 class="banner__title">{{ vm().name }} pode subir de nível</h2>
           <p class="banner__why">{{ why() }}</p>
-          <a matButton="filled" class="banner__go" [routerLink]="['/campanhas', vm().campaignId, 'personagens', vm().id, 'subir-de-nivel']">
+          <a matButton="filled" class="banner__go" [routerLink]="['/campaigns', vm().campaignId, 'characters', vm().id, 'level-up']">
             Subir para o nível {{ vm().totalLevel + 1 }}
           </a>
         </div>

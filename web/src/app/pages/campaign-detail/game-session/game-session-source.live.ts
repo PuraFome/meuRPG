@@ -18,7 +18,7 @@ function toVm(gameSession: GameSession): GameSessionVm {
 /**
  * `GameSessionSource` over the generated `PlayService` client
  * (`meurpg.play.v1`, phase 2). Provided at the route level for
- * `/campanhas/:id` — see `../campaign-detail.routes.ts` — so this client
+ * `/campaigns/:id` — see `../campaign-detail.routes.ts` — so this client
  * stays out of the eager bundle.
  */
 @Injectable()

@@ -129,7 +129,7 @@ export class AuthService {
    * malformed value here would only turn into the server's plain-text 400.
    *
    * The fragment is always dropped: it can hold a secret (the invite token in
-   * `/convite#t=...`, which Angular's `router.url` still carries), and this
+   * `/invite#t=...`, which Angular's `router.url` still carries), and this
    * URL is a GET that ends up in the platform's request logs.
    */
   signIn(returnTo: string): void {

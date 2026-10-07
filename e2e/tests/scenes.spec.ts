@@ -60,7 +60,7 @@ test(
       campaignId = table.campaignId;
 
       // The editor: three actions on the point, each saved at once.
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
       await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(master.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
       await expect(master.getByText('Nenhuma ação ainda')).toBeVisible();
@@ -267,7 +267,7 @@ test(
       await expect(player.getByRole('button', { name: /^A carroça tombada, Cena de RP/ })).toBeVisible();
       await expect(player.getByRole('button', { name: /Posto da guarda/ })).toHaveCount(0);
       // And still hidden for the master too (nothing was revealed).
-      await master.goto(`/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await master.goto(`/campaigns/${campaignId}/maps/${table.mapId}`);
       await expect(master.getByRole('button', { name: /^Posto da guarda, Cena de RP, escondido/ })).toBeVisible();
     } finally {
       if (campaignId) {
@@ -339,7 +339,7 @@ test(
       await addActionRPC(master, table, table.cartId, { key: 'skill:perception', name: 'Ouvir passos' });
 
       // The editor: the switch is off at first; it and the attempts save at once.
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
       await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       const dcSwitch = master.getByRole('switch', { name: 'Mostrar a CD aos jogadores' });
       await expect(dcSwitch).toHaveAttribute('aria-checked', 'false');
