@@ -562,7 +562,7 @@ var reads = []read{
 	{
 		procedure: notesv1connect.NotesServiceListNoteScenesProcedure, allow: members, notMaster: true,
 		ignore: []string{"fog-point-name", "entrance-name", "fog-point-description"},
-		why:    "BY DESIGN (MR-030): a scene the master revealed is \"discovered\" for the whole group, whatever the fog hides. See the report: it lists the name of a revealed point nobody's character has seen",
+		why:    "BY DESIGN (MR-030, confirmed 07/10/2026): a scene the master revealed is \"discovered\" for the whole group, even where the fog hides the spot from every character; revealing is the master's choice, and the fog only hides the map",
 		req:    func(w *world) proto.Message { return &notesv1.ListNoteScenesRequest{CampaignId: w.campaign} },
 	},
 
