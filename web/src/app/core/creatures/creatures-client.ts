@@ -93,8 +93,8 @@ export class CreaturesClient {
   }
 
   /** The master gives a character a creature; a blank name takes the Portuguese name of the kind. */
-  async give(campaignId: string, characterId: string, monsterKey: string, name: string): Promise<CharacterCreature | undefined> {
-    return (await this.characters.giveCreature({ campaignId, characterId, monsterKey, name })).creature;
+  async give(campaignId: string, characterId: string, monsterKey: string, name: string, idempotencyKey: string): Promise<CharacterCreature | undefined> {
+    return (await this.characters.giveCreature({ campaignId, characterId, monsterKey, name, idempotencyKey })).creature;
   }
 
   async rename(campaignId: string, creatureId: string, name: string): Promise<CharacterCreature | undefined> {
@@ -173,7 +173,7 @@ export class CreaturesClient {
     return res.vitals.find((v) => v.characterId === characterId) ?? null;
   }
 
-  /** Casts Encontrar Familiar, Animar os Mortos or Conjurar Animais outside a combat. */
+  /** Casts Convocar Familiar, Animar Mortos or Conjurar Animais outside a combat. */
   async castSummon(cast: SummonCast): Promise<{ readonly creatureIds: readonly string[]; readonly replacedIds: readonly string[] }> {
     const res = await this.play.castSummon({
       campaignId: cast.campaignId,

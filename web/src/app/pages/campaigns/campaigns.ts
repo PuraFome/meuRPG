@@ -12,6 +12,7 @@ import { Code } from '@connectrpc/connect';
 import { Campaign, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { ActionKey } from '../../core/connect/idempotency';
 import { LivePill } from '../../shared/live-pill/live-pill';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { creationRefusalText, roleTag, xpModeSentence } from './campaign-copy';
@@ -52,6 +53,7 @@ export class Campaigns {
   private readonly campaigns = inject(CampaignsService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly createKey = new ActionKey();
 
   /** Campaigns with an open session, for the "Sessão ao vivo" tag. */
   protected readonly liveCampaignIds = inject(OpenSessions).liveCampaignIds;
@@ -92,11 +94,14 @@ export class Campaigns {
     const { name, xpMode } = this.form.getRawValue();
     this.createState.set({ status: 'saving' });
     try {
-      const res = await this.campaigns.createCampaign(name.trim(), xpMode!);
+      // One key per create: a retry of the same form sends the same key, so a lost answer or a second tap
+      // makes one campaign.
+      const res = await this.campaigns.createCampaign(name.trim(), xpMode!, this.createKey.keyFor([name.trim(), xpMode]));
+      this.createKey.renew();
       this.createState.set({ status: 'idle' });
       const id = res.campaign?.id;
       if (id) {
-        await this.router.navigate(['/campanhas', id]);
+        await this.router.navigate(['/campaigns', id]);
       }
     } catch (err) {
       this.createState.set({

@@ -2251,9 +2251,14 @@ type CreateMapRequest struct {
 	// 1 to 80 characters, one line.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// An image of the campaign's gallery (a UUID).
-	ImageId       string `protobuf:"bytes,3,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ImageId string `protobuf:"bytes,3,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateMapRequest) Reset() {
@@ -2303,6 +2308,13 @@ func (x *CreateMapRequest) GetName() string {
 func (x *CreateMapRequest) GetImageId() string {
 	if x != nil {
 		return x.ImageId
+	}
+	return ""
+}
+
+func (x *CreateMapRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -2829,9 +2841,14 @@ type CreateMapPointRequest struct {
 	TreasureValuePo *int32 `protobuf:"varint,12,opt,name=treasure_value_po,json=treasureValuePo,proto3,oneof" json:"treasure_value_po,omitempty"`
 	// Required for a LIGHT point, and `invalid_argument` on any other kind. When
 	// preset_key is set and both radii are 0, the radii are the preset's.
-	Light         *LightSpec `protobuf:"bytes,13,opt,name=light,proto3" json:"light,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Light *LightSpec `protobuf:"bytes,13,opt,name=light,proto3" json:"light,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,14,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateMapPointRequest) Reset() {
@@ -2953,6 +2970,13 @@ func (x *CreateMapPointRequest) GetLight() *LightSpec {
 		return x.Light
 	}
 	return nil
+}
+
+func (x *CreateMapPointRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreateMapPointResponse returns the new, hidden point.
@@ -3817,9 +3841,14 @@ type AddSceneActionRequest struct {
 	Dc int32 `protobuf:"varint,6,opt,name=dc,proto3" json:"dc,omitempty"`
 	// How many times each player's character may roll it while the scene is
 	// open: 1 to 5, or 0 for unlimited. Unset means 1.
-	MaxAttempts   *int32 `protobuf:"varint,7,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaxAttempts *int32 `protobuf:"varint,7,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AddSceneActionRequest) Reset() {
@@ -3899,6 +3928,13 @@ func (x *AddSceneActionRequest) GetMaxAttempts() int32 {
 		return *x.MaxAttempts
 	}
 	return 0
+}
+
+func (x *AddSceneActionRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // AddSceneActionResponse returns the point's actions as they are now.
@@ -4364,9 +4400,14 @@ type AddSceneClueRequest struct {
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	PointId    string                 `protobuf:"bytes,3,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
 	// Required: 1 to 500 characters, one line.
-	Text          string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Text string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AddSceneClueRequest) Reset() {
@@ -4423,6 +4464,13 @@ func (x *AddSceneClueRequest) GetPointId() string {
 func (x *AddSceneClueRequest) GetText() string {
 	if x != nil {
 		return x.Text
+	}
+	return ""
+}
+
+func (x *AddSceneClueRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -6829,12 +6877,13 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x0eGetMapResponse\x12%\n" +
 	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\x120\n" +
 	"\x06points\x18\x02 \x03(\v2\x18.meurpg.maps.v1.MapPointR\x06points\x120\n" +
-	"\x06tokens\x18\x03 \x03(\v2\x18.meurpg.maps.v1.MapTokenR\x06tokens\"b\n" +
+	"\x06tokens\x18\x03 \x03(\v2\x18.meurpg.maps.v1.MapTokenR\x06tokens\"\x8b\x01\n" +
 	"\x10CreateMapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
-	"\bimage_id\x18\x03 \x01(\tR\aimageId\":\n" +
+	"\bimage_id\x18\x03 \x01(\tR\aimageId\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\":\n" +
 	"\x11CreateMapResponse\x12%\n" +
 	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\xb5\x01\n" +
 	"\x10UpdateMapRequest\x12\x1f\n" +
@@ -6867,7 +6916,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\acolumns\x18\x03 \x01(\x05R\acolumns\x12#\n" +
 	"\rsquare_factor\x18\x04 \x01(\x05R\fsquareFactor\";\n" +
 	"\x12SetMapGridResponse\x12%\n" +
-	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\xd6\x03\n" +
+	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\xff\x03\n" +
 	"\x15CreateMapPointRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -6883,7 +6932,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	" \x01(\bR\x06showDc\x12,\n" +
 	"\x04trap\x18\v \x01(\v2\x18.meurpg.maps.v1.TrapSpecR\x04trap\x12/\n" +
 	"\x11treasure_value_po\x18\f \x01(\x05H\x00R\x0ftreasureValuePo\x88\x01\x01\x12/\n" +
-	"\x05light\x18\r \x01(\v2\x19.meurpg.maps.v1.LightSpecR\x05lightB\x14\n" +
+	"\x05light\x18\r \x01(\v2\x19.meurpg.maps.v1.LightSpecR\x05light\x12'\n" +
+	"\x0fidempotency_key\x18\x0e \x01(\tR\x0eidempotencyKeyB\x14\n" +
 	"\x12_treasure_value_po\"H\n" +
 	"\x16CreateMapPointResponse\x12.\n" +
 	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"\xc0\x05\n" +
@@ -6961,7 +7011,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vcreature_id\x18\x04 \x01(\tR\n" +
 	"creatureId\"\x18\n" +
-	"\x16RemoveMapTokenResponse\"\xd9\x01\n" +
+	"\x16RemoveMapTokenResponse\"\x82\x02\n" +
 	"\x15AddSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -6970,7 +7020,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x03key\x18\x04 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02dc\x18\x06 \x01(\x05R\x02dc\x12&\n" +
-	"\fmax_attempts\x18\a \x01(\x05H\x00R\vmaxAttempts\x88\x01\x01B\x0f\n" +
+	"\fmax_attempts\x18\a \x01(\x05H\x00R\vmaxAttempts\x88\x01\x01\x12'\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKeyB\x0f\n" +
 	"\r_max_attempts\"\x84\x01\n" +
 	"\x16AddSceneActionResponse\x123\n" +
 	"\x06action\x18\x01 \x01(\v2\x1b.meurpg.maps.v1.SceneActionR\x06action\x125\n" +
@@ -7008,13 +7059,14 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x1b\n" +
 	"\taction_id\x18\x04 \x01(\tR\bactionId\"R\n" +
 	"\x19RemoveSceneActionResponse\x125\n" +
-	"\aactions\x18\x01 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"|\n" +
+	"\aactions\x18\x01 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xa5\x01\n" +
 	"\x13AddSceneClueRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x19\n" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x12\n" +
-	"\x04text\x18\x04 \x01(\tR\x04text\"v\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"v\n" +
 	"\x14AddSceneClueResponse\x12-\n" +
 	"\x04clue\x18\x01 \x01(\v2\x19.meurpg.maps.v1.SceneClueR\x04clue\x12/\n" +
 	"\x05clues\x18\x02 \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\"\x98\x01\n" +

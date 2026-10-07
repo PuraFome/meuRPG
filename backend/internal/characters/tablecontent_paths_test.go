@@ -121,7 +121,7 @@ func TestListContentNamesLanguagesProficienciesAndDamageTypes(t *testing.T) {
 		return out
 	}
 	lang, prof, dmg := names(c.GetLanguages()), names(c.GetProficiencies()), names(c.GetDamageTypes())
-	if lang["language:common"] != "Comum" || lang["language:deep-speech"] != "Dialeto das Profundezas" || len(lang) != 16 {
+	if lang["language:common"] != "Comum" || lang["language:deep-speech"] != "Dialeto Subterrâneo" || len(lang) != 16 {
 		t.Errorf("languages = %v, want the 16 of the SRD with their Portuguese names", lang)
 	}
 	for _, k := range []string{"proficiency:thieves-tools", "proficiency:light-armor", "proficiency:martial-weapons"} {

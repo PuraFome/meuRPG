@@ -7,7 +7,7 @@ const levelUp = (choices: object) =>
   create(LevelUpSchema, {
     characterName: 'Pensantus',
     toLevel: 4,
-    namesPt: { 'spell:light': 'Luz', 'spell:misty-step': 'Passo Nebuloso', 'spell:mirror-image': 'Imagem Espelhada', 'sub:x': 'Escola X' },
+    namesPt: { 'spell:light': 'Luz', 'spell:misty-step': 'Passo Nebuloso', 'spell:mirror-image': 'Reflexos', 'sub:x': 'Escola X' },
     choices: create(LevelUpChoicesSchema, choices),
   });
 
@@ -26,7 +26,7 @@ describe('choiceRows: the master\'s "O que mudou"', () => {
       { label: 'Atributos', value: '+2 em Inteligência' },
       { label: 'Pontos de vida', value: 'Média: 4, mais o modificador de Constituição' },
       { label: 'Truque novo', value: 'Luz' },
-      { label: 'Magias novas', value: 'Passo Nebuloso e Imagem Espelhada' },
+      { label: 'Magias novas', value: 'Passo Nebuloso e Reflexos' },
       { label: 'Magias preparadas novas', value: 'Passo Nebuloso' },
     ]);
   });

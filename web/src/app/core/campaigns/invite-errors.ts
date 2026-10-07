@@ -4,7 +4,7 @@ import { InviteState, InviteUnusableSchema } from '../../../gen/meurpg/campaigns
 import { describeConnectError } from '../connect/connect-errors';
 
 /**
- * Maps `AcceptInvite`'s errors (campaigns.proto) to a message the `/convite`
+ * Maps `AcceptInvite`'s errors (campaigns.proto) to a message the `/invite`
  * page can show as-is: `not_found` and `invalid_argument` (bad or missing
  * token), and `failed_precondition` with the `InviteUnusable` detail that
  * says exactly why the invite cannot be used — expired, revoked or used up.
@@ -38,13 +38,13 @@ function describeInviteUnusable(state: InviteState | undefined): string {
 }
 
 /**
- * The `/convite/erro?motivo=<code>` codes the server redirects to once the
+ * The `/invite/error?reason=<code>` codes the server redirects to once the
  * sign-in-through-invite flow (docs/arquitetura.md#frontend-web) cannot
  * accept the invite: `expired`, `revoked`, `used_up`, `not_found`,
  * `invalid` and `unavailable` (the database failed while accepting).
  */
-export function describeInviteErrorCode(motivo: string | null): string {
-  switch (motivo) {
+export function describeInviteErrorCode(reason: string | null): string {
+  switch (reason) {
     case 'expired':
       return 'Esse convite expirou.';
     case 'revoked':

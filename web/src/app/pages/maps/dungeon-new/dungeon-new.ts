@@ -28,6 +28,7 @@ import {
   sideOf,
 } from '../../../core/maps/dungeon-options';
 import { DungeonsClient, type DungeonOptionsInit } from '../../../core/maps/dungeons-client';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { DungeonPreview, type DungeonLayout } from '../../../shared/dungeon-preview/dungeon-preview';
 import { mapNameError } from '../map-new/map-new';
@@ -77,6 +78,7 @@ const SEED_PROBLEM = 'A semente é um número inteiro, só com dígitos.';
 })
 export class DungeonNew {
   private readonly api = inject(DungeonsClient);
+  private readonly createKey = new ActionKey();
   private readonly campaigns = inject(CampaignsService);
   private readonly router = inject(Router);
 
@@ -323,11 +325,14 @@ export class DungeonNew {
     this.abort = new AbortController();
     try {
       // The options and the seed of the preview on screen: the map is the one the master was shown.
-      const answer = await this.api.create(this.campaignId(), this.nameControl.value.trim(), made.options, made.seed, this.abort.signal);
+      // A retry of the same preview and name sends the same key: the server answers with the map the first call made.
+      const name = this.nameControl.value.trim();
+      const answer = await this.api.create(this.campaignId(), name, made.options, made.seed, this.createKey.keyFor([name, made.options, made.seed]), this.abort.signal);
+      this.createKey.renew();
       if (this.abort.signal.aborted) {
         return;
       }
-      await this.router.navigate(['/campanhas', this.campaignId(), 'mapas', answer.map.id]);
+      await this.router.navigate(['/campaigns', this.campaignId(), 'maps', answer.map.id]);
     } catch (err) {
       clearTimeout(this.slowTimer);
       if (this.abort?.signal.aborted) {

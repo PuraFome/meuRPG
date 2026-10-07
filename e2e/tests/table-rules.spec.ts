@@ -39,7 +39,7 @@ test(
       const page = await master.newPage();
       await page.goto('/');
       const campaignId = await masterCampaign(page, `Regras ${Date.now()}`);
-      await page.goto(`/campanhas/${campaignId}/regras`);
+      await page.goto(`/campaigns/${campaignId}/rules`);
       await expect(page.getByRole('heading', { level: 1, name: 'Regras da mesa' })).toBeVisible();
       await expect(page.getByText('Tudo salvo. Nenhuma mudança para salvar.')).toBeVisible();
       // The defaults are not one of the styles: dice are the players' choice, combat has a map, fog off.
@@ -89,7 +89,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Pontos ${Date.now()}`);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
       await p.getByRole('tab', { name: 'Atributos' }).click();
       await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
@@ -114,7 +114,7 @@ test(
       await expect(p.getByRole('button', { name: 'Diminuir Inteligência', exact: true })).toHaveAttribute('aria-disabled', 'true');
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();
-      await expect(p).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       const characterId = p.url().split('/').pop()!;
       const res = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId });
       expect(res.ok(), await res.text()).toBeTruthy();
@@ -140,7 +140,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Quatro d6 ${Date.now()}`);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
       await p.getByRole('tab', { name: 'Atributos' }).click();
       await method(p, '4d6');
@@ -167,7 +167,7 @@ test(
         await p.getByLabel(ability, { exact: true }).selectOption({ index: i + 1 });
       }
       await p.getByRole('button', { name: 'Criar personagem' }).click();
-      await expect(p).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       const characterId = p.url().split('/').pop()!;
       const res = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId });
       const sheet = (await res.json()).character.sheet.full;
@@ -192,7 +192,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Digitar ${Date.now()}`);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
       await p.getByRole('tab', { name: 'Atributos' }).click();
       await method(p, 'Digitar');
@@ -200,7 +200,7 @@ test(
       await p.getByLabel('Força', { exact: true }).fill('19');
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p.getByText(/digite valores de 3 a 18/)).toBeVisible();
-      await expect(p).toHaveURL(/personagens\/novo$/);
+      await expect(p).toHaveURL(/characters\/new$/);
 
       // The server refuses the same scores on its own, by the typed reason.
       const body = characterRpcBody('PLAYER', pensantus) as { sheet: { full: { baseScores: Record<string, number> } } };
@@ -240,7 +240,7 @@ test(
       // Nobody has XP yet: a change would be made at once. Give some first.
       await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'A porta da torre', characterIds: [table.characterId], amount: 50 });
 
-      await m.goto(`/campanhas/${table.campaignId}/regras`);
+      await m.goto(`/campaigns/${table.campaignId}/rules`);
       await expect(m.getByRole('radio', { name: /Por inimigos/ })).toBeChecked();
       await pickRadio(m, /Por marcos/);
       // Picking only picks: the campaign still has the old mode until "Mudar para marcos".
@@ -288,7 +288,7 @@ test(
       expect(painted.ok(), await painted.text()).toBeTruthy();
       expect((await layersOf(page, campaignId, map.mapId)).wall).toBe(5);
 
-      await page.goto(`/campanhas/${campaignId}/mapas/${map.mapId}`);
+      await page.goto(`/campaigns/${campaignId}/maps/${map.mapId}`);
       await page.getByRole('radio', { name: 'Pintar' }).click();
       const grid = page.getByRole('region', { name: 'Grade' });
       await expect(grid.getByText('12 × 8 quadrados')).toBeVisible();
@@ -340,7 +340,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const table = await tableForLevelUp(m, p, `PV do nível ${Date.now()}`, { build: toren });
       campaignId = table.campaignId;
-      const page = `/campanhas/${campaignId}/personagens/${table.characterId}/subir-de-nivel`;
+      const page = `/campaigns/${campaignId}/characters/${table.characterId}/level-up`;
 
       // The default: the player chooses, two cards.
       await p.goto(page);
@@ -387,9 +387,9 @@ test(
       const campaignId = await campaignWithEmptyPlayer(m, p, `Leitura ${Date.now()}`);
       await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_AVERAGE', houseRules: ['Beber uma poção é uma ação bônus'] });
 
-      await p.goto(`/campanhas/${campaignId}`);
+      await p.goto(`/campaigns/${campaignId}`);
       await p.getByRole('link', { name: 'Ler as regras' }).click();
-      await expect(p).toHaveURL(new RegExp(`/campanhas/${campaignId}/regras$`));
+      await expect(p).toHaveURL(new RegExp(`/campaigns/${campaignId}/rules$`));
       await expect(p.getByRole('heading', { level: 1, name: 'Regras da mesa' })).toBeVisible();
       await expect(p.getByText('Só o mestre muda as regras da mesa.')).toBeVisible();
       await expect(p.getByText('Pontos de vida ao subir de nível', { exact: true })).toBeVisible();
@@ -400,10 +400,10 @@ test(
       await expect(p.getByRole('button', { name: 'Salvar regras' })).toHaveCount(0);
 
       // The master's page: "Abrir os mapas" opens the campaign at its maps.
-      await m.goto(`/campanhas/${campaignId}/regras`);
+      await m.goto(`/campaigns/${campaignId}/rules`);
       await expect(m.getByRole('link', { name: 'Abrir o conteúdo da mesa' })).toHaveCount(0);
       await m.getByRole('link', { name: 'Abrir os mapas' }).click();
-      await expect(m).toHaveURL(new RegExp(`/campanhas/${campaignId}#mapas$`));
+      await expect(m).toHaveURL(new RegExp(`/campaigns/${campaignId}#maps$`));
       await expect(m.getByRole('region', { name: 'Mapas' })).toBeInViewport();
     } finally {
       await master.close();
@@ -425,7 +425,7 @@ test(
       const campaignId = await campaignWithEmptyPlayer(m, p, `Dados físicos ${Date.now()}`);
       await setTableRulesRPC(m, campaignId, { diceMode: 'DICE_MODE_PHYSICAL', hitPoints: 'HIT_POINTS_RULE_ROLL' });
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await fillBasics(p, 'Ícaro');
       await p.getByRole('tab', { name: 'Atributos' }).click();
       // The hit points follow the table: only "Rolado", no choice.

@@ -117,9 +117,17 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
 FOR UPDATE;
 
 -- name: InsertPlannedMilestone :one
-INSERT INTO planned_milestones (campaign_id, position, text, created_at, updated_at)
-VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(position), sqlc.arg(text), sqlc.arg(now), sqlc.arg(now))
+-- create_key and create_hash are the idempotency key and the hash of the request (NULL when the
+-- call sent no key); the caller reads the first row with GetPlannedMilestoneByCreateKey.
+INSERT INTO planned_milestones (campaign_id, position, text, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(position), sqlc.arg(text), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetPlannedMilestoneByCreateKey :one
+-- The milestone an AddMilestone with this idempotency key made, if any (the key carries the
+-- campaign's ID).
+SELECT * FROM planned_milestones WHERE create_key = $1;
 
 -- name: UpdatePlannedMilestoneText :exec
 UPDATE planned_milestones SET text = sqlc.arg(text), updated_at = sqlc.arg(now)

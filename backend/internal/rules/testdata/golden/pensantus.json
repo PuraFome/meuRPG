@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.17",
+  "ContentVersion": "srd51@a8abc93b235c+fx.18",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -420,6 +420,28 @@
     },
     {
       "Spell": {
+        "Key": "spell:find-familiar",
+        "Name": "Find Familiar",
+        "NamePT": "Convocar Familiar",
+        "Level": 1,
+        "School": "school:conjuration",
+        "SchoolNamePT": "Conjuração",
+        "Classes": [
+          "class:wizard"
+        ],
+        "Ritual": true,
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "hour",
+          "Trigger": "",
+          "Raw": "1 hour"
+        }
+      },
+      "Prepared": false
+    },
+    {
+      "Spell": {
         "Key": "spell:detect-magic",
         "Name": "Detect Magic",
         "NamePT": "Detectar Magia",
@@ -442,28 +464,6 @@
           "Unit": "action",
           "Trigger": "",
           "Raw": "1 action"
-        }
-      },
-      "Prepared": false
-    },
-    {
-      "Spell": {
-        "Key": "spell:find-familiar",
-        "Name": "Find Familiar",
-        "NamePT": "Encontrar Familiar",
-        "Level": 1,
-        "School": "school:conjuration",
-        "SchoolNamePT": "Conjuração",
-        "Classes": [
-          "class:wizard"
-        ],
-        "Ritual": true,
-        "Concentration": false,
-        "CastingTime": {
-          "Amount": 1,
-          "Unit": "hour",
-          "Trigger": "",
-          "Raw": "1 hour"
         }
       },
       "Prepared": false
@@ -863,7 +863,7 @@
     {
       "Key": "feature:evocation-savant",
       "Name": "Evocation Savant",
-      "NamePT": "Evocador Nato",
+      "NamePT": "Evocação Instruída",
       "Source": "subclass:evocation",
       "Level": 2,
       "SourcePT": "Escola de Evocação (Mago 2)",

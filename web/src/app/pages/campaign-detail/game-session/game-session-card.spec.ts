@@ -83,7 +83,7 @@ describe('GameSessionCard', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fake.startGameSession).toHaveBeenCalledWith('camp-1');
+    expect(fake.startGameSession).toHaveBeenCalledWith('camp-1', expect.any(String));
     expect(el.textContent).toContain('Sessão 1 em andamento');
     expect(el.textContent).toContain('4 fichas travadas.');
   });
@@ -178,7 +178,7 @@ describe('GameSessionCard', () => {
     const link = Array.from(el.querySelectorAll('a')).find((a) =>
       a.textContent?.includes('Entrar na sessão'),
     );
-    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+    expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/session');
     expect(el.textContent).toContain('Ao vivo');
   });
 
@@ -192,7 +192,7 @@ describe('GameSessionCard', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(writeText).toHaveBeenCalledWith(`${location.origin}/campanhas/camp-1/sessao`);
+      expect(writeText).toHaveBeenCalledWith(`${location.origin}/campaigns/camp-1/session`);
       expect(el.textContent).toContain('Link copiado');
     } finally {
       vi.unstubAllGlobals();
@@ -212,7 +212,7 @@ describe('GameSessionCard', () => {
       fixture.detectChanges();
 
       const field = el.querySelector<HTMLInputElement>('input[readonly]');
-      expect(field?.value).toBe(`${location.origin}/campanhas/camp-1/sessao`);
+      expect(field?.value).toBe(`${location.origin}/campaigns/camp-1/session`);
       expect(el.textContent).not.toContain('Link copiado');
     } finally {
       vi.unstubAllGlobals();
@@ -233,6 +233,22 @@ describe('GameSessionCard', () => {
     const { el } = await render(false);
     expect(el.textContent?.trim()).toBe('');
     expect(el.classList).toContain('is-empty');
+  });
+
+  it('sends the same idempotency key when the start is tried again after a failure', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(null);
+    fake.startGameSession.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    fake.startGameSession.mockResolvedValue(startResult(1, 1));
+    const { el, fixture } = await render();
+
+    buttonNamed(el, 'Iniciar sessão').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    buttonNamed(el, 'Iniciar sessão').click();
+    await fixture.whenStable();
+
+    const [first, retry] = fake.startGameSession.mock.calls.map((c) => c[1] as string);
+    expect(retry).toBe(first);
   });
 });
 

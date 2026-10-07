@@ -64,8 +64,8 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 	// (TestMigrationsAreSafeToRerun), so running `migrate up` again finishes it.
 	// See the package comment of backend/migrations.
 	//
-	// Nothing locks two `migrate up` runs against each other (goose has no lock
-	// for CockroachDB): the deploy must not start two at once.
+	// `up` and `down` take a lease lock first (migrations.AcquireLock), because
+	// goose has none for CockroachDB: a second run waits for the first.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -84,11 +84,20 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		return fmt.Errorf("load migrations: %w", err)
 	}
 
+	if command == "up" || command == "down" {
+		runCtx, release, err := migrations.AcquireLock(ctx, db, migrations.LockOptions{Logger: logger})
+		if err != nil {
+			return fmt.Errorf("lock: %w", err)
+		}
+		defer release()
+		ctx = runCtx
+	}
+
 	switch command {
 	case "up":
 		results, err := provider.Up(ctx)
 		if err != nil {
-			return fmt.Errorf("up: %w", err)
+			return fmt.Errorf("up: %w", lockCause(ctx, err))
 		}
 		for _, r := range results {
 			logger.Info("migration applied", "version", r.Source.Version, "file", r.Source.Path, "duration_ms", r.Duration.Milliseconds())
@@ -97,7 +106,7 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 	case "down":
 		result, err := provider.Down(ctx)
 		if err != nil {
-			return fmt.Errorf("down: %w", err)
+			return fmt.Errorf("down: %w", lockCause(ctx, err))
 		}
 		logger.Info("migration rolled back", "version", result.Source.Version, "file", result.Source.Path)
 	case "status":
@@ -116,4 +125,13 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		return fmt.Errorf("unknown command %q; %s", command, usage)
 	}
 	return nil
+}
+
+// lockCause says why a run stopped when the lock code canceled it (the lease was
+// lost), instead of goose's bare "context canceled".
+func lockCause(ctx context.Context, err error) error {
+	if cause := context.Cause(ctx); cause != nil && !errors.Is(cause, context.Canceled) {
+		return fmt.Errorf("%w (%w)", err, cause)
+	}
+	return err
 }

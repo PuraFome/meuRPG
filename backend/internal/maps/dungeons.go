@@ -24,6 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/dungeon"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -172,6 +173,25 @@ func (s *Service) CreateDungeonMap(
 	if err != nil {
 		return nil, err
 	}
+	// The key is unique in the campaign, and kept with a hash of the whole request. A retry is
+	// answered before the dungeon is drawn again (the render is the costly part): with the first
+	// call's map, seed and room count, and with no other map and no count against the limit.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	if scopedKey != nil {
+		prior, err := s.queries.GetMapByCreateKey(ctx, scopedKey)
+		switch {
+		case err == nil:
+			if err := idem.SameRequest(prior.CreateHash, requestHash); err != nil {
+				return nil, err
+			}
+			return s.dungeonReplay(ctx, m, prior)
+		case !errors.Is(err, pgx.ErrNoRows):
+			return nil, s.dbError(ctx, "find the dungeon of the key", err)
+		}
+	}
 	seed, err := seedOf(req.Msg.Seed)
 	if err != nil {
 		return nil, s.dbError(ctx, "draw a seed", err)
@@ -209,56 +229,75 @@ func (s *Service) CreateDungeonMap(
 		return nil, err
 	}
 	var created mapsdb.Map
+	replayed := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		count, err := q.CountMaps(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("count maps: %w", err)
-		}
-		if count >= s.maxMaps {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
-		}
-		if _, err := s.insertGeneratedImage(ctx, q, m, imageID, nameWithSuffix(name, dungeonImageSuffix), res); err != nil {
-			return err
-		}
-		created, err = q.InsertMap(ctx, mapsdb.InsertMapParams{CampaignID: m.CampaignID, Name: name, ImageID: imageID, Now: s.now()})
-		if err != nil {
-			return fmt.Errorf("insert map: %w", err)
-		}
-		// The grid first, then the fog: the fog needs a grid. Fog on, base light
-		// "Claro" (MR-010, decided 06/10/2026): a secret room stays dark to a player
-		// until someone sees it, whatever the image shows.
-		cols := int32(d.Width) //nolint:gosec // G115: at most 199
-		if _, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{CampaignID: m.CampaignID, ID: created.ID, GridColumns: &cols, GridFactor: 1, Now: s.now()}); err != nil {
-			return fmt.Errorf("set the grid: %w", err)
-		}
-		fog, light := true, baseLightToDB[mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT]
-		if _, err := q.SetMapFog(ctx, mapsdb.SetMapFogParams{CampaignID: m.CampaignID, ID: created.ID, FogEnabled: &fog, BaseLight: &light, Now: s.now()}); err != nil {
-			return fmt.Errorf("set the fog: %w", err)
-		}
-		if err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-			MapID: created.ID, Walls: nilIfBlank(layers.walls.Encode()), Doors: nilIfBlank(layers.doors.Encode()), Now: s.now(),
-		}); err != nil {
-			return fmt.Errorf("write the layers: %w", err)
-		}
-		if _, err := q.BumpMapLayersRevision(ctx, created.ID); err != nil {
-			return fmt.Errorf("bump the layers' revision: %w", err)
-		}
-		for _, st := range d.Stairs {
-			if err := s.insertStairs(ctx, q, created.ID, g, st); err != nil {
-				return err
-			}
-		}
-		seedBits := int64(seed) //nolint:gosec // G115: the same 64 bits, kept as an INT8
-		return q.InsertGeneratedDungeon(ctx, mapsdb.InsertGeneratedDungeonParams{
-			MapID: created.ID, GeneratorVersion: int32(d.Version), Seed: seedBits, //nolint:gosec // G115: a small version number
-			Width: int32(d.Width), Height: int32(d.Height), //nolint:gosec // G115: at most 199 x 399
-			Options: options, Cells: packCells(d.Kinds), Rooms: rooms, ImageID: &imageID, CreatedAt: s.now(),
-		})
+		var err error
+		// The first lookup was outside the transaction: this one is what holds when two calls with the
+		// same key race (the second finds the first's map, and its own files are deleted below).
+		created, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetMapByCreateKey,
+			func(row mapsdb.Map) *string { return row.CreateHash },
+			func() (mapsdb.Map, error) {
+				count, err := q.CountMaps(ctx, m.CampaignID)
+				if err != nil {
+					return created, fmt.Errorf("count maps: %w", err)
+				}
+				if count >= s.maxMaps {
+					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
+				}
+				if _, err := s.insertGeneratedImage(ctx, q, m, imageID, nameWithSuffix(name, dungeonImageSuffix), res); err != nil {
+					return created, err
+				}
+				row, err := q.InsertMap(ctx, mapsdb.InsertMapParams{
+					CampaignID: m.CampaignID, Name: name, ImageID: imageID, CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if errors.Is(err, pgx.ErrNoRows) {
+					return row, err // another call with the key won the race: its map is ours
+				}
+				if err != nil {
+					return row, fmt.Errorf("insert map: %w", err)
+				}
+				// The grid first, then the fog: the fog needs a grid. Fog on, base light
+				// "Claro" (MR-010, decided 06/10/2026): a secret room stays dark to a player
+				// until someone sees it, whatever the image shows.
+				cols := int32(d.Width) //nolint:gosec // G115: at most 199
+				if _, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{CampaignID: m.CampaignID, ID: row.ID, GridColumns: &cols, GridFactor: 1, Now: s.now()}); err != nil {
+					return row, fmt.Errorf("set the grid: %w", err)
+				}
+				fog, light := true, baseLightToDB[mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT]
+				if _, err := q.SetMapFog(ctx, mapsdb.SetMapFogParams{CampaignID: m.CampaignID, ID: row.ID, FogEnabled: &fog, BaseLight: &light, Now: s.now()}); err != nil {
+					return row, fmt.Errorf("set the fog: %w", err)
+				}
+				if err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
+					MapID: row.ID, Walls: nilIfBlank(layers.walls.Encode()), Doors: nilIfBlank(layers.doors.Encode()), Now: s.now(),
+				}); err != nil {
+					return row, fmt.Errorf("write the layers: %w", err)
+				}
+				if _, err := q.BumpMapLayersRevision(ctx, row.ID); err != nil {
+					return row, fmt.Errorf("bump the layers' revision: %w", err)
+				}
+				for _, st := range d.Stairs {
+					if err := s.insertStairs(ctx, q, row.ID, g, st); err != nil {
+						return row, err
+					}
+				}
+				seedBits := int64(seed) //nolint:gosec // G115: the same 64 bits, kept as an INT8
+				return row, q.InsertGeneratedDungeon(ctx, mapsdb.InsertGeneratedDungeonParams{
+					MapID: row.ID, GeneratorVersion: int32(d.Version), Seed: seedBits, //nolint:gosec // G115: a small version number
+					Width: int32(d.Width), Height: int32(d.Height), //nolint:gosec // G115: at most 199 x 399
+					Options: options, Cells: packCells(d.Kinds), Rooms: rooms, ImageID: &imageID, CreatedAt: s.now(),
+				})
+			})
+		return err
 	})
-	if err != nil {
+	if err != nil || replayed {
 		s.deleteFiles(ctx, m.CampaignID, imageID)
+	}
+	if err != nil {
 		return nil, s.dbError(ctx, "create a dungeon map", err)
+	}
+	if replayed {
+		return s.dungeonReplay(ctx, m, created)
 	}
 	// A new map is hidden: only the master hears about it.
 	s.publishMapChanged(m.CampaignID, created.ID, false)
@@ -267,6 +306,27 @@ func (s *Service) CreateDungeonMap(
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.CreateDungeonMapResponse{Map: out, Seed: seed, RoomCount: int32(len(d.Rooms))}), nil //nolint:gosec // G115: at most 500 rooms
+}
+
+// dungeonReplay answers a CreateDungeonMap whose key already made its map: the first call's
+// map, seed and room count, read back from the stored dungeon. It announces nothing (the first
+// call did).
+func (s *Service) dungeonReplay(ctx context.Context, m authz.Membership, prior mapsdb.Map) (*connect.Response[mapsv1.CreateDungeonMapResponse], error) {
+	rec, err := s.dungeonOf(ctx, s.queries, m.CampaignID, prior.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the dungeon of the key", err)
+	}
+	stored := &mapsv1.GetDungeonRoomsResponse{}
+	if err := protojson.Unmarshal(rec.Rooms, stored); err != nil {
+		return nil, s.dbError(ctx, "read the dungeon of the key", fmt.Errorf("decode the stored rooms: %w", err))
+	}
+	out, err := s.masterMap(ctx, m, prior.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.CreateDungeonMapResponse{
+		Map: out, Seed: uint64(rec.Seed), RoomCount: int32(len(stored.GetRooms())), //nolint:gosec // G115: the same 64 bits; at most 500 rooms
+	}), nil
 }
 
 // GetDungeonRooms implements mapsv1connect.DungeonServiceHandler.
@@ -358,6 +418,7 @@ func (s *Service) PlaceDungeonScene(
 	res, err := s.CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{
 		CampaignId: m.CampaignID, MapId: mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE,
 		Name: fmt.Sprintf("Sala %d", room.GetId()), XBp: int32(x), YBp: int32(y), //nolint:gosec // G115: 0 to 10000
+		IdempotencyKey: req.Msg.GetIdempotencyKey(),
 	}))
 	if err != nil {
 		return nil, err

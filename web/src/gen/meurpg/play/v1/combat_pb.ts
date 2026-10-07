@@ -3723,7 +3723,7 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
     case: "d20Face";
   } | {
     /**
-     * A spell that rolls a pool of dice (Sono, Borrifo de Cores: effect_kind
+     * A spell that rolls a pool of dice (Sono, Leque Cromático: effect_kind
      * SPELL_EFFECT_KIND_POOL): the sum of the physical dice, from the number of
      * dice to the most they can show, without a modifier (the spell's dice are
      * in the answer). The pool is rolled by the server with roll_in_app, and one
@@ -3765,8 +3765,8 @@ export const CastSpellRequestSchema: GenMessage<CastSpellRequest> = /*@__PURE__*
 export type SummonChoice = Message<"meurpg.play.v1.SummonChoice"> & {
   /**
    * The index of the option, from 0 (Conjurar Animais has four: one creature of
-   * challenge rating 2, two of 1, four of 1/2, eight of 1/4; Encontrar Familiar
-   * and Animar os Mortos have one).
+   * challenge rating 2, two of 1, four of 1/2, eight of 1/4; Convocar Familiar
+   * and Animar Mortos have one).
    *
    * @generated from field: int32 option = 1;
    */
@@ -4081,7 +4081,7 @@ export type SpellCast = Message<"meurpg.play.v1.SpellCast"> & {
   /**
    * The condition the spell gives the creatures it affects ("condition:
    * unconscious"), a public tag. Empty when it gives none: a threshold spell that
-   * kills (Palavra de Poder: Matar), a zero-hit-point spell, a heal.
+   * kills (Palavra de Poder Matar), a zero-hit-point spell, a heal.
    *
    * @generated from field: string effect_condition_key = 10;
    */
@@ -7157,7 +7157,7 @@ export enum SpellEffectKind {
   THRESHOLD = 2,
 
   /**
-   * Works only on a creature at 0 hit points (Poupar os Moribundos).
+   * Works only on a creature at 0 hit points (Estabilizar).
    *
    * @generated from enum value: SPELL_EFFECT_KIND_ZERO_HP = 3;
    */
@@ -8656,11 +8656,11 @@ export const CombatService: GenService<{
    *     with no roll to hit.
    *   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
    *     RollDamage, with the caster's spellcasting modifier.
-   *   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
-   *     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+   *   - A spell that reads hit points (Sono, Leque Cromático, Palavra de Poder:
+   *     Atordoar and Matar, Estabilizar, Cura Completa; effect_kind of
    *     the answer): the server reads each target's current hit points (an NPC's
    *     from the combat, a player's character's from its vitals) and applies the
-   *     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+   *     effect at once, in the same transaction. A pool (Sono, Leque Cromático)
    *     is rolled by the server (roll_in_app) or typed from physical dice
    *     (pool_sum), RN-18; it goes through the targets in ascending order of
    *     current hit points, skips the unconscious and those at 0, and gives the
@@ -8668,7 +8668,7 @@ export const CombatService: GenService<{
    *     (Palavra de Poder) affects a target at or below the limit: a condition,
    *     or death (an NPC is defeated; a player's character drops to 0 hit points
    *     with three death save failures, and the master confirms the death with
-   *     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+   *     ConfirmDeath). Estabilizar makes a player's character at 0 hit
    *     points stable. Cura Completa heals and ends blindness and deafness. The
    *     caster's player gets their own pool roll and who was affected, never a
    *     target's hit points; the master gets the pool, each target's hit points

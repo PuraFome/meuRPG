@@ -62,7 +62,7 @@ describe('App', () => {
     // One in the bar (phone), one before the account (wider screens); CSS
     // shows one at a time.
     expect(links.length).toBe(2);
-    expect(links[0].getAttribute('href')).toBe('/campanhas/mirathel/sessao');
+    expect(links[0].getAttribute('href')).toBe('/campaigns/mirathel/session');
     expect(links[0].textContent).toContain('Ao vivo');
     expect(el.textContent).toContain('A sessão 4 de Mirathel começou.');
   });

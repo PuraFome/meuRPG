@@ -18,6 +18,8 @@ type CampaignContent struct {
 	ArchivedAt *time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	CreateKey  *string
+	CreateHash *string
 }
 
 type Character struct {
@@ -38,6 +40,7 @@ type Character struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	CreateKey           *string
+	CreateHash          *string
 }
 
 type CharacterCreature struct {
@@ -55,6 +58,8 @@ type CharacterCreature struct {
 	CreatedAt           time.Time
 	DismissedAt         *time.Time
 	DismissedReason     *string
+	CreateKey           *string
+	CreateHash          *string
 }
 
 type CharacterLevelUp struct {

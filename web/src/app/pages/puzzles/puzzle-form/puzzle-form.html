@@ -1,4 +1,4 @@
-<a class="back" [routerLink]="['/campanhas', campaignId]">
+<a class="back" [routerLink]="['/campaigns', campaignId]">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>
   Voltar para a campanha
 </a>
@@ -50,7 +50,7 @@
           <mat-icon aria-hidden="true">lock</mat-icon>
           <p>{{ l.message }}</p>
         </div>
-        <a matButton="outlined" class="retry" [routerLink]="['/campanhas', campaignId]">Voltar para a campanha</a>
+        <a matButton="outlined" class="retry" [routerLink]="['/campaigns', campaignId]">Voltar para a campanha</a>
       }
       @case ('ready') {
         <h1 class="mr-page-title">{{ editing ? 'Editar' : 'Novo' }} <span class="nw">quebra-cabeça</span></h1>
@@ -150,7 +150,7 @@
             }
 
             <div class="actions">
-              <a matButton="outlined" [routerLink]="['/campanhas', campaignId]">Cancelar</a>
+              <a matButton="outlined" [routerLink]="['/campaigns', campaignId]">Cancelar</a>
               <button matButton="filled" type="submit" [disabled]="saving()">
                 {{ saving() ? 'Salvando...' : editing ? 'Salvar quebra-cabeça' : 'Criar quebra-cabeça' }}
               </button>

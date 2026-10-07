@@ -246,11 +246,11 @@ func TestInviteIntentCompleteWithoutADatabase(t *testing.T) {
 	_, hash := secret.New()
 
 	path, err := intent.complete(t.Context(), "user", []byte("short"))
-	if path != "/convite/erro?motivo=invalid" || err == nil {
+	if path != "/invite/error?reason=invalid" || err == nil {
 		t.Errorf("complete(corrupt data) = %q, %v; want the invalid page and an error", path, err)
 	}
 	path, err = intent.complete(t.Context(), "user", hash)
-	if path != "/convite/erro?motivo=unavailable" || err == nil {
+	if path != "/invite/error?reason=unavailable" || err == nil {
 		t.Errorf("complete() with the database down = %q, %v; want the unavailable page and an error", path, err)
 	}
 	if err != nil && strings.Contains(err.Error(), hex.EncodeToString(hash)) {

@@ -91,6 +91,8 @@ type Map struct {
 	VisionEpoch    int32
 	FogOnFirstGrid bool
 	GridFactor     int32
+	CreateKey      *string
+	CreateHash     *string
 }
 
 type MapCreatureToken struct {
@@ -172,13 +174,17 @@ type SceneAction struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	MaxAttempts int32
+	CreateKey   *string
+	CreateHash  *string
 }
 
 type SceneClue struct {
-	ID        string
-	PointID   string
-	Position  int32
-	Text      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         string
+	PointID    string
+	Position   int32
+	Text       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	CreateKey  *string
+	CreateHash *string
 }

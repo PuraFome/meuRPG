@@ -4,6 +4,8 @@
 // Configuration comes from the environment (see internal/platform/config):
 //
 //	PORT                listen port (default 8080)
+//	LISTEN_HOST         interface to listen on, e.g. 127.0.0.1 (default: all, what Cloud Run needs)
+//	GOOGLE_CLOUD_PROJECT the project id, set by the deploy (Cloud Run doesn't): log lines then carry the trace
 //	DATABASE_URL        CockroachDB connection string (optional)
 //	LOG_LEVEL           debug, info, warn or error (default info)
 //	OIDC_ISSUER         sign-in provider, e.g. https://accounts.google.com (optional)
@@ -65,6 +67,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -263,7 +266,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	srv := httpserver.New(httpserver.Config{
-		Addr:   ":" + strconv.Itoa(cfg.Port),
+		Addr:   net.JoinHostPort(cfg.ListenHost, strconv.Itoa(cfg.Port)),
 		Logger: logger,
 		DB:     database,
 		// Set on Cloud Run only: the log lines then carry the request's trace.

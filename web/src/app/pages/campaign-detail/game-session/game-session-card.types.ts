@@ -22,7 +22,7 @@ export interface StartGameSessionResultVm {
 
 /**
  * The port `GameSessionCard` depends on, provided at the route level for
- * `/campanhas/:id` (`campaign-detail.routes.ts`) by `GameSessionSourceLive`,
+ * `/campaigns/:id` (`campaign-detail.routes.ts`) by `GameSessionSourceLive`,
  * which wraps the generated `PlayService` client. No root fallback: a route
  * reached without this provider fails loudly (NG0201) instead of silently
  * degrading — see `app.config.ts`.
@@ -34,6 +34,7 @@ export abstract class GameSessionSource {
   abstract getCurrentSession(campaignId: string): Promise<GameSessionVm | null>;
   /** RN-01: locks every unlocked player character's sheet, in the same
    * transaction, on the server (`play.LockSheets`, plan §4). */
-  abstract startGameSession(campaignId: string): Promise<StartGameSessionResultVm>;
+  /** `idempotencyKey`: one per start, sent again on a retry (a lost answer, a second tap). */
+  abstract startGameSession(campaignId: string, idempotencyKey: string): Promise<StartGameSessionResultVm>;
   abstract endGameSession(campaignId: string, gameSessionId: string): Promise<GameSessionVm>;
 }

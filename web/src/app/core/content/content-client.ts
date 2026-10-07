@@ -45,8 +45,9 @@ export class TableContentClient {
     return { entries: res.entries, tableRevision: res.tableRevision };
   }
 
-  async create(campaignId: string, body: EntryBody): Promise<TableEntry> {
-    const res = await this.client.createTableEntry({ campaignId, body });
+  /** `idempotencyKey`: one per new entry, sent again on a retry (see `ActionKey`). */
+  async create(campaignId: string, body: EntryBody, idempotencyKey: string): Promise<TableEntry> {
+    const res = await this.client.createTableEntry({ campaignId, body, idempotencyKey });
     return res.entry as TableEntry;
   }
 
@@ -54,14 +55,15 @@ export class TableContentClient {
     return this.client.updateTableEntry({ campaignId, key, expectedRevision, body });
   }
 
-  /** Creates the entry, or replaces the body of the one the editor read (with the revision it read). */
+  /** Creates the entry (with `idempotencyKey`), or replaces the body of the one the editor read (with the revision it read). */
   async save(
     campaignId: string,
     entry: TableEntry | null,
     body: EntryBody,
+    idempotencyKey: string,
   ): Promise<{ entry: TableEntry; affected: readonly AffectedCharacter[] }> {
     if (!entry) {
-      return { entry: await this.create(campaignId, body), affected: [] };
+      return { entry: await this.create(campaignId, body, idempotencyKey), affected: [] };
     }
     const res = await this.update(campaignId, entry.key, entry.revision, body);
     return { entry: res.entry as TableEntry, affected: res.affectedCharacters };

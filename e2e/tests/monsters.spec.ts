@@ -17,7 +17,7 @@ const label = (c: { label: string }) => c.label;
 
 /** The master's page on the bestiary row of a creature: its button "Pôr no combate: <nome>". */
 async function openPutSheet(master: Page, campaignId: string, search: string, namePt: string) {
-  await master.goto(`/campanhas/${campaignId}/bestiario`);
+  await master.goto(`/campaigns/${campaignId}/bestiary`);
   await master.getByRole('searchbox', { name: 'Nome' }).fill(search);
   await expect(master.locator('.list__n')).toContainText('de 334 criaturas');
   await master.getByRole('button', { name: `Pôr no combate: ${namePt}` }).click();
@@ -183,7 +183,7 @@ test(
       await combatRPC(master, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: goblin.id, damage: 999 });
       await combatRPC(master, 'EndEncounter', { campaignId, encounterId: enc.id });
 
-      await master.goto(`/campanhas/${campaignId}/sessao`);
+      await master.goto(`/campaigns/${campaignId}/session`);
       await expect(master.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
       const block = master.getByRole('region', { name: 'Experiência do combate' });
       const kind = block.locator('.kind', { hasText: 'Bandido 1 a 3' });
@@ -220,12 +220,12 @@ test(
       const word: Record<string, string> = { ENCOUNTER_BAND_LOW: 'Baixa', ENCOUNTER_BAND_MODERATE: 'Moderada', ENCOUNTER_BAND_HIGH: 'Alta', ENCOUNTER_BAND_ABOVE_HIGH: 'Acima de alta' };
       const nf = (n: number) => n.toLocaleString('pt-BR');
 
-      await master.goto(`/campanhas/${campaignId}/encontros`);
+      await master.goto(`/campaigns/${campaignId}/encounters`);
       await expect(master.getByRole('heading', { name: 'Encontros', level: 1 })).toBeVisible();
       await expect(master.locator('.chip', { hasText: 'Pensantus' })).toBeVisible();
       await expect(master.getByText('Guia de dificuldade do SRD 5.2.1 (regras de 2024)').first()).toBeVisible();
       await expect(master.getByText('Com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.').first()).toBeVisible();
-      await expect(master.locator('.guide a').first()).toHaveAttribute('href', '/creditos');
+      await expect(master.locator('.guide a').first()).toHaveAttribute('href', '/credits');
 
       // Four Goblins by the search: the band and the numbers are the server's.
       const add = async (search: string, namePt: string) => {
@@ -337,7 +337,7 @@ test(
       await createPointRPC(master, campaignId, table.mapId, { kind: 'BATTLE', name: 'Ruínas do forte', xBp: 7000, yBp: 3000, revealed: true });
 
       // The builder: two Goblins and a Bandido, kept on the point.
-      await master.goto(`/campanhas/${campaignId}/encontros`);
+      await master.goto(`/campaigns/${campaignId}/encounters`);
       const add = async (search: string, namePt: string) => {
         await master.getByRole('combobox', { name: 'Adicionar criatura' }).fill(search);
         await master.getByRole('option').filter({ has: master.locator('.pick__pt', { hasText: new RegExp(`^${namePt}$`) }) }).first().click();
@@ -418,7 +418,7 @@ test(
       expect(mapText.toLowerCase()).not.toContain('encounter');
       expect(mapText).not.toContain('goblin');
       // The page tells a player it is the master's.
-      await player.goto(`/campanhas/${campaignId}/encontros`);
+      await player.goto(`/campaigns/${campaignId}/encounters`);
       await expect(player.getByText('Só o mestre monta encontros.')).toBeVisible();
     } finally {
       await masterContext.close();
@@ -450,7 +450,7 @@ test(
       expect(saved.ok(), await saved.text()).toBeTruthy();
 
       // The editor's link brings the point's encounter into the builder, where it can be taken off the point (asked in place).
-      await master.goto(`/campanhas/${campaignId}/encontros?mapa=${table.mapId}&ponto=${pointId}`);
+      await master.goto(`/campaigns/${campaignId}/encounters?map=${table.mapId}&point=${pointId}`);
       await expect(master.locator('.lines__n')).toHaveText('3 criaturas');
       await master.getByRole('button', { name: 'Tirar o encontro do ponto' }).click();
       await expect(master.getByText('Tirar o encontro do ponto?')).toBeVisible();

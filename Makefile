@@ -14,6 +14,9 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
+# The ELK stack that ships the API's logs (deploy/elk, docs/operacao.md, "Logs no ELK").
+ELK_COMPOSE := docker compose -f deploy/elk/compose.yaml
+
 # Where the local stack's database runs. `container` (the default, and what
 # CI uses) runs CockroachDB in Docker with the rest of the stack.
 # `LOCAL_DB=native` points the stack at a CockroachDB running on this
@@ -70,7 +73,12 @@ TEST_DATABASE_URL := postgresql://root@localhost:$(TEST_DB_PORT)/defaultdb?sslmo
 # Go's build cache.
 SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
-.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop
+# golangci-lint is pinned to the version CI runs (golangci-lint-action in
+# .github/workflows/backend.yml), so `make lint` and CI agree. Change both
+# together. The first run compiles it (a minute or two); Go caches it after.
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+
+.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop elk-up elk-down elk-logs
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -95,7 +103,7 @@ proto-lint: ## Lint proto files and check formatting
 	cd proto && buf format --diff --exit-code
 
 lint: proto-lint ## Run all linters (proto + Go)
-	cd backend && golangci-lint run
+	cd backend && $(GOLANGCI_LINT) run
 
 test: ## Run backend Go tests with the race detector
 	cd backend && go test -race ./...
@@ -126,6 +134,18 @@ ifeq ($(LOCAL_STACK),native)
 else
 	docker compose $(COMPOSE_FILES) logs -f
 endif
+
+elk-up: ## Start Elasticsearch, Kibana and Filebeat for the API logs (creates deploy/elk/.env with random passwords the first time)
+	@mkdir -p "$${MEURPG_HOME:-$$HOME/.meurpg}"
+	bash deploy/elk/init-env.sh
+	$(ELK_COMPOSE) up -d
+	@echo "Kibana: http://localhost:5601 (user elastic, password in deploy/elk/.env). Query from the terminal: deploy/elk/logs.sh help"
+
+elk-down: ## Stop the ELK stack (the logs stay in the esdata volume; `docker compose -f deploy/elk/compose.yaml down -v` deletes them)
+	$(ELK_COMPOSE) down
+
+elk-logs: ## Follow the ELK stack's own logs (not the API's: use deploy/elk/logs.sh tail)
+	$(ELK_COMPOSE) logs -f
 
 db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native and the integration tests
 	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (CONTRIBUTING.md, \"CockroachDB nativo\")"; exit 1; }

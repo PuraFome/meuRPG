@@ -1093,9 +1093,14 @@ type CreateCampaignRequest struct {
 	// characters such as line breaks.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Required.
-	XpMode        XpMode `protobuf:"varint,2,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	XpMode XpMode `protobuf:"varint,2,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique for the user; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateCampaignRequest) Reset() {
@@ -1140,6 +1145,13 @@ func (x *CreateCampaignRequest) GetXpMode() XpMode {
 		return x.XpMode
 	}
 	return XpMode_XP_MODE_UNSPECIFIED
+}
+
+func (x *CreateCampaignRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreateCampaignResponse returns the new campaign.
@@ -1713,7 +1725,7 @@ func (x *CreateInviteRequest) GetRequiresApproval() bool {
 type CreateInviteResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Invite *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
-	// The secret that goes into the link's fragment: /convite#t=<token>.
+	// The secret that goes into the link's fragment: /invite#t=<token>.
 	// Never log it and never put it in a query string.
 	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1956,7 +1968,7 @@ func (x *RevokeInviteResponse) GetInvite() *Invite {
 // AcceptInviteRequest carries the invite's token.
 type AcceptInviteRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The token from the invite link's fragment (/convite#t=<token>).
+	// The token from the invite link's fragment (/invite#t=<token>).
 	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3014,10 +3026,11 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x05state\x18\x01 \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\"\x8a\x01\n" +
 	"\x17CampaignCreationRefused\x12J\n" +
 	"\x06reason\x18\x01 \x01(\x0e22.meurpg.campaigns.v1.CampaignCreationRefusedReasonR\x06reason\x12#\n" +
-	"\rmax_campaigns\x18\x02 \x01(\x05R\fmaxCampaigns\"a\n" +
+	"\rmax_campaigns\x18\x02 \x01(\x05R\fmaxCampaigns\"\x8a\x01\n" +
 	"\x15CreateCampaignRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x124\n" +
-	"\axp_mode\x18\x02 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\"S\n" +
+	"\axp_mode\x18\x02 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"S\n" +
 	"\x16CreateCampaignResponse\x129\n" +
 	"\bcampaign\x18\x01 \x01(\v2\x1d.meurpg.campaigns.v1.CampaignR\bcampaign\"\x18\n" +
 	"\x16ListMyCampaignsRequest\"V\n" +

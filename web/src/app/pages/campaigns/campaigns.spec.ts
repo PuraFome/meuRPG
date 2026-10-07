@@ -90,7 +90,7 @@ describe('Campaigns', () => {
 
     // Each row is one link, with the name and the role tag inside it.
     const links = Array.from(el.querySelectorAll('a[href]'));
-    const first = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
+    const first = links.find((a) => a.getAttribute('href') === '/campaigns/c1');
     expect(first?.textContent).toContain('Mirathel');
     expect(first?.querySelector('.mr-tag')?.textContent?.trim()).toBe('Mestre');
     expect(first?.textContent).toContain('XP por inimigos derrotados');
@@ -107,8 +107,8 @@ describe('Campaigns', () => {
     const el = await render();
 
     const links = Array.from(el.querySelectorAll('a[href]'));
-    const live = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
-    const quiet = links.find((a) => a.getAttribute('href') === '/campanhas/c2');
+    const live = links.find((a) => a.getAttribute('href') === '/campaigns/c1');
+    const quiet = links.find((a) => a.getAttribute('href') === '/campaigns/c2');
     expect(live?.textContent).toContain('Sessão ao vivo');
     expect(live?.textContent).toContain('Jogador');
     expect(quiet?.textContent).not.toContain('Sessão ao vivo');
@@ -152,8 +152,8 @@ describe('Campaigns', () => {
     instance['form'].setValue({ name: 'Mirathel', xpMode: XpMode.ENEMIES });
     await instance['submit']();
 
-    expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES);
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'new-id']);
+    expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES, expect.any(String));
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'new-id']);
   });
 
   it('shows a clear message when creating a campaign fails with invalid_argument', async () => {
@@ -195,5 +195,25 @@ describe('Campaigns', () => {
 
     const alert = (fixture.nativeElement as HTMLElement).querySelector('.create__error');
     expect(alert?.textContent).toContain('Você já é mestre de 10 campanhas');
+  });
+
+  it('sends the same idempotency key when the same form is retried, and a new one for the next campaign', async () => {
+    fake.createCampaign.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    fake.createCampaign.mockResolvedValue({ campaign: campaign('new-id', 'Mirathel', Role.MASTER) });
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(Campaigns);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance;
+    instance['form'].setValue({ name: 'Mirathel', xpMode: XpMode.ENEMIES });
+    await instance['submit'](); // the answer was lost
+    await instance['submit'](); // the retry
+    const [first, retry] = fake.createCampaign.mock.calls.map((c) => c[2] as string);
+    expect(retry).toBe(first);
+
+    await instance['submit'](); // the same values after it worked: a new campaign
+    expect(fake.createCampaign.mock.calls[2][2]).not.toBe(first);
   });
 });

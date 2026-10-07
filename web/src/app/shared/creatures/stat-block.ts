@@ -15,7 +15,7 @@ interface Tile {
   readonly label: string;
   readonly value: string;
   readonly of?: string;
-  /** A small line under the value: "armadura de peles", "7d10 + 21", "40 pés", "450 XP" (the bestiary's page). */
+  /** A small line under the value: "gibão de peles", "7d10 + 21", "40 pés", "450 XP" (the bestiary's page). */
   readonly note?: string;
 }
 

@@ -94,8 +94,30 @@ func (q *Queries) GetMilestoneMark(ctx context.Context, arg GetMilestoneMarkPara
 	return level, err
 }
 
+const getPlannedMilestoneByCreateKey = `-- name: GetPlannedMilestoneByCreateKey :one
+SELECT id, campaign_id, position, text, created_at, updated_at, create_key, create_hash FROM planned_milestones WHERE create_key = $1
+`
+
+// The milestone an AddMilestone with this idempotency key made, if any (the key carries the
+// campaign's ID).
+func (q *Queries) GetPlannedMilestoneByCreateKey(ctx context.Context, createKey *string) (PlannedMilestone, error) {
+	row := q.db.QueryRow(ctx, getPlannedMilestoneByCreateKey, createKey)
+	var i PlannedMilestone
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const getPlannedMilestoneForUpdate = `-- name: GetPlannedMilestoneForUpdate :one
-SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+SELECT id, campaign_id, position, text, created_at, updated_at, create_key, create_hash FROM planned_milestones
 WHERE campaign_id = $1::UUID AND id = $2::UUID
 FOR UPDATE
 `
@@ -115,6 +137,8 @@ func (q *Queries) GetPlannedMilestoneForUpdate(ctx context.Context, arg GetPlann
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -230,23 +254,30 @@ func (q *Queries) HasMilestoneAwards(ctx context.Context, arg HasMilestoneAwards
 }
 
 const insertPlannedMilestone = `-- name: InsertPlannedMilestone :one
-INSERT INTO planned_milestones (campaign_id, position, text, created_at, updated_at)
-VALUES ($1::UUID, $2, $3, $4, $4)
-RETURNING id, campaign_id, position, text, created_at, updated_at
+INSERT INTO planned_milestones (campaign_id, position, text, create_key, create_hash, created_at, updated_at)
+VALUES ($1::UUID, $2, $3, $4, $5, $6, $6)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, position, text, created_at, updated_at, create_key, create_hash
 `
 
 type InsertPlannedMilestoneParams struct {
 	CampaignID string
 	Position   int32
 	Text       string
+	CreateKey  *string
+	CreateHash *string
 	Now        time.Time
 }
 
+// create_key and create_hash are the idempotency key and the hash of the request (NULL when the
+// call sent no key); the caller reads the first row with GetPlannedMilestoneByCreateKey.
 func (q *Queries) InsertPlannedMilestone(ctx context.Context, arg InsertPlannedMilestoneParams) (PlannedMilestone, error) {
 	row := q.db.QueryRow(ctx, insertPlannedMilestone,
 		arg.CampaignID,
 		arg.Position,
 		arg.Text,
+		arg.CreateKey,
+		arg.CreateHash,
 		arg.Now,
 	)
 	var i PlannedMilestone
@@ -257,6 +288,8 @@ func (q *Queries) InsertPlannedMilestone(ctx context.Context, arg InsertPlannedM
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -529,7 +562,7 @@ func (q *Queries) ListMilestoneMarks(ctx context.Context, campaignID string) ([]
 
 const listPlannedMilestones = `-- name: ListPlannedMilestones :many
 
-SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+SELECT id, campaign_id, position, text, created_at, updated_at, create_key, create_hash FROM planned_milestones
 WHERE campaign_id = $1::UUID
 ORDER BY position, id
 `
@@ -552,6 +585,8 @@ func (q *Queries) ListPlannedMilestones(ctx context.Context, campaignID string) 
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -564,7 +599,7 @@ func (q *Queries) ListPlannedMilestones(ctx context.Context, campaignID string) 
 }
 
 const listPlannedMilestonesForUpdate = `-- name: ListPlannedMilestonesForUpdate :many
-SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+SELECT id, campaign_id, position, text, created_at, updated_at, create_key, create_hash FROM planned_milestones
 WHERE campaign_id = $1::UUID
 ORDER BY position, id
 FOR UPDATE
@@ -588,6 +623,8 @@ func (q *Queries) ListPlannedMilestonesForUpdate(ctx context.Context, campaignID
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}

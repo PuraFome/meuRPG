@@ -70,9 +70,18 @@ WHERE campaign_id = $1;
 -- name: InsertMap :one
 -- A new map starts hidden (revealed_at NULL), with no fog: when the table's
 -- rules want it (RN-24) it comes on with the first grid (fog_on_first_grid).
-INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, created_at, updated_at)
-VALUES (sqlc.arg(campaign_id), sqlc.arg(name), sqlc.arg(image_id), sqlc.arg(fog_on_first_grid), sqlc.arg(now), sqlc.arg(now))
+-- create_key and create_hash are the idempotency key of CreateMap and CreateDungeonMap and the
+-- hash of the request (NULL when the call sent no key). Two calls with the same key at once make
+-- one map: the loser gets no row, and reads the winner's (GetMapByCreateKey).
+INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id), sqlc.arg(name), sqlc.arg(image_id), sqlc.arg(fog_on_first_grid), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetMapByCreateKey :one
+-- The map a CreateMap or CreateDungeonMap with this idempotency key made, if any (the key
+-- carries the campaign's ID, so it is unique in the campaign).
+SELECT * FROM maps WHERE create_key = $1;
 
 -- name: ListMapDetails :many
 -- The campaign's maps, oldest first, with what the lists show about each:
@@ -252,17 +261,23 @@ SELECT count(*)::INT4 AS point_count FROM map_points
 WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
+-- create_key and create_hash are the idempotency key of CreateMapPoint and the hash of its
+-- request (NULL when the call sent no key): a retry reads the first point with
+-- GetMapPointByCreateKey, like a retried "Pôr no mapa".
 -- A new point starts hidden (revealed_at NULL), unless the caller gives revealed_at: a generated
 -- dungeon's stairs are born revealed, like a door (MAP-LANGUAGE-E10).
 INSERT INTO map_points (
     map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
-    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at, revealed_at, stairs,
+    create_key, create_hash
 )
 VALUES (
     sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
     sqlc.narg(target_map_id), sqlc.narg(trap), sqlc.narg(trap_state), sqlc.narg(trap_triggered_at), sqlc.narg(treasure_value_po),
-    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now), sqlc.narg(revealed_at), sqlc.narg(stairs)
+    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now), sqlc.narg(revealed_at), sqlc.narg(stairs),
+    sqlc.narg(create_key), sqlc.narg(create_hash)
 )
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
 
 -- name: ListMapPoints :many
@@ -476,9 +491,18 @@ WHERE p.map_id = $1
 ORDER BY a.point_id, a.position, a.created_at, a.id;
 
 -- name: InsertSceneAction :one
-INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, created_at, updated_at)
-VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.arg(now), sqlc.arg(now))
+-- create_key and create_hash are the idempotency key of AddSceneAction and the hash of its request
+-- (NULL when the call sent no key). The point is locked first, so a retry reads the first action
+-- with GetSceneActionByCreateKey and never races it.
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetSceneActionByCreateKey :one
+-- The action an AddSceneAction with this idempotency key made, if any (the key carries the
+-- campaign's ID).
+SELECT * FROM scene_actions WHERE create_key = $1;
 
 -- name: GetSceneActionForUpdate :one
 SELECT * FROM scene_actions
@@ -527,9 +551,17 @@ WHERE p.map_id = $1
 ORDER BY c.point_id, c.position, c.created_at, c.id;
 
 -- name: InsertSceneClue :one
-INSERT INTO scene_clues (point_id, position, text, created_at, updated_at)
-VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(text), sqlc.arg(now), sqlc.arg(now))
+-- create_key and create_hash are the idempotency key of AddSceneClue and the hash of its request
+-- (NULL when the call sent no key), read back with GetSceneClueByCreateKey.
+INSERT INTO scene_clues (point_id, position, text, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(text), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetSceneClueByCreateKey :one
+-- The clue an AddSceneClue with this idempotency key made, if any (the key carries the
+-- campaign's ID).
+SELECT * FROM scene_clues WHERE create_key = $1;
 
 -- name: GetSceneClueForUpdate :one
 SELECT * FROM scene_clues

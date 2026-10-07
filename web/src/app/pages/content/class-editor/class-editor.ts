@@ -467,11 +467,11 @@ export class ClassEditor {
   // ---- Saving.
 
   protected subclassLink(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected newSubclassLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', 'subclasse'];
+    return ['/campaigns', this.campaignId(), 'content', 'new', 'subclass'];
   }
 
   private readonly known = (path: string): boolean => {
@@ -494,7 +494,7 @@ export class ClassEditor {
       return;
     }
     const body: EntryBody = { case: 'tableClass', value: draftToClass(this.draft(), this.menu()) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body), this.known);
+    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
     if (res) {
       this.saved.emit(res);
       return;

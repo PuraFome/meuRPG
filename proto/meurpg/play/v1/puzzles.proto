@@ -862,6 +862,10 @@ service PuzzleService {
   // or clue of this campaign.
   //
   // Errors: `permission_denied` for a player; `invalid_argument` (PuzzleInvalid).
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreatePuzzle(CreatePuzzleRequest) returns (CreatePuzzleResponse);
 
   // UpdatePuzzle replaces everything the master wrote about a puzzle (the same fields
@@ -1076,6 +1080,11 @@ message CreatePuzzleRequest {
   repeated PuzzlePart parts = 11;
   // "Ao errar". Unset: nothing.
   PuzzleOnWrong on_wrong = 12;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 13;
 }
 
 // CreatePuzzleResponse carries the new puzzle.

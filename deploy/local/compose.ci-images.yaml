@@ -1,0 +1,18 @@
+# CI only: run the images the e2e workflow's `image` job built once (and
+# passed to every shard as an artifact) instead of building them again on each
+# shard. Used by .github/workflows/e2e.yml on top of compose.yaml and
+# compose.ci.yaml with `up --no-build`; never by `make up`.
+#
+# migrate and api are the same image (backend/Dockerfile): compose overrides
+# the entrypoint for migrate. pull_policy: never makes a missing image fail
+# right away, instead of compose trying to pull a name that is not in a registry.
+services:
+  migrate:
+    image: meurpg-ci/api:ci
+    pull_policy: never
+  api:
+    image: meurpg-ci/api:ci
+    pull_policy: never
+  idp:
+    image: meurpg-ci/devidp:ci
+    pull_policy: never

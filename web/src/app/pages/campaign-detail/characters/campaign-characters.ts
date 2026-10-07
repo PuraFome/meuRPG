@@ -29,17 +29,17 @@ type ListState =
   | { status: 'ready'; vm: CampaignCharactersVm }
   | { status: 'error'; message: string };
 
-/** The four NPC kinds a master can create, and the `:tipo` route segment
- * each maps to (plan §5: `/campanhas/:id/npcs/novo/:tipo`). */
-const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
-  { kind: 'enemy', tipo: 'inimigo' },
-  { kind: 'boss', tipo: 'boss' },
-  { kind: 'minion', tipo: 'minion' },
-  { kind: 'story', tipo: 'historia' },
+/** The four NPC kinds a master can create, and the `:kind` route segment
+ * each maps to (plan §5: `/campaigns/:id/npcs/new/:kind`). */
+const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
+  { kind: 'enemy', segment: 'enemy' },
+  { kind: 'boss', segment: 'boss' },
+  { kind: 'minion', segment: 'minion' },
+  { kind: 'story', segment: 'story' },
 ];
 
 /**
- * The "Personagens" section on `/campanhas/:id` (MR-003, MR-005, MR-024).
+ * The "Personagens" section on `/campaigns/:id` (MR-003, MR-005, MR-024).
  *
  * Each list is a panel of its own, titled with an h3 under this section's
  * (visually hidden) "Personagens" h2, and every row links to the sheet.

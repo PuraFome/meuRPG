@@ -421,7 +421,7 @@ func (s *Service) summonStanding(d rules.Derived, spellKey string, ritualSpell b
 			}
 		}
 	}
-	// The Pact of the Chain lets a warlock cast Encontrar Familiar as a ritual
+	// The Pact of the Chain lets a warlock cast Convocar Familiar as a ritual
 	// without having the spell (SRD 5.1): it is never prepared for a slot.
 	if spellKey == "spell:find-familiar" && ritualSpell && slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return f.Key == "feature:pact-of-the-chain" }) {
 		out.known, out.canRitual = true, true

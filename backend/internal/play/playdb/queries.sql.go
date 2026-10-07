@@ -265,7 +265,7 @@ const endGameSession = `-- name: EndGameSession :one
 UPDATE game_sessions
 SET ended_at = COALESCE(ended_at, GREATEST($3::TIMESTAMPTZ, started_at))
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
 `
 
 type EndGameSessionParams struct {
@@ -290,6 +290,8 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -485,8 +487,33 @@ func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInS
 	return i, err
 }
 
+const getGameSessionByCreateKey = `-- name: GetGameSessionByCreateKey :one
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions WHERE create_key = $1
+`
+
+// The session a StartGameSession with this idempotency key started, if any (the key carries the
+// campaign's ID), open or ended.
+func (q *Queries) GetGameSessionByCreateKey(ctx context.Context, createKey *string) (GameSession, error) {
+	row := q.db.QueryRow(ctx, getGameSessionByCreateKey, createKey)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+		&i.ShownImageKeep,
+		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -510,13 +537,15 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getGameSessionInCampaign = `-- name: GetGameSessionInCampaign :one
 
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -541,6 +570,8 @@ func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessi
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -631,7 +662,7 @@ func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (E
 }
 
 const getOpenGameSession = `-- name: GetOpenGameSession :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 `
 
@@ -650,12 +681,14 @@ func (q *Queries) GetOpenGameSession(ctx context.Context, campaignID string) (Ga
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getOpenGameSessionForUpdate = `-- name: GetOpenGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 FOR UPDATE
 `
@@ -677,6 +710,8 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -823,7 +858,7 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 }
 
 const getPuzzle = `-- name: GetPuzzle :one
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash FROM puzzles
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -856,12 +891,50 @@ func (q *Queries) GetPuzzle(ctx context.Context, arg GetPuzzleParams) (Puzzle, e
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getPuzzleByCreateKey = `-- name: GetPuzzleByCreateKey :one
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash FROM puzzles WHERE create_key = $1
+`
+
+// The puzzle a CreatePuzzle with this idempotency key made, if any (the key carries the
+// campaign's ID).
+func (q *Queries) GetPuzzleByCreateKey(ctx context.Context, createKey *string) (Puzzle, error) {
+	row := q.db.QueryRow(ctx, getPuzzleByCreateKey, createKey)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.Name,
+		&i.Config,
+		&i.Solution,
+		&i.Seed,
+		&i.Start,
+		&i.MinimumMoves,
+		&i.Clue,
+		&i.Hints,
+		&i.SolveAction,
+		&i.SolveTarget,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.HintSkill,
+		&i.HintDc,
+		&i.Parts,
+		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
 
 const getPuzzleForUpdate = `-- name: GetPuzzleForUpdate :one
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash FROM puzzles
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -897,6 +970,8 @@ func (q *Queries) GetPuzzleForUpdate(ctx context.Context, arg GetPuzzleForUpdate
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1449,19 +1524,31 @@ func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams
 }
 
 const insertGameSession = `-- name: InsertGameSession :one
-INSERT INTO game_sessions (campaign_id, session_number, started_at)
-VALUES ($1, $2, $3)
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id
+INSERT INTO game_sessions (campaign_id, session_number, started_at, create_key, create_hash)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
 `
 
 type InsertGameSessionParams struct {
 	CampaignID    string
 	SessionNumber int32
 	StartedAt     time.Time
+	CreateKey     *string
+	CreateHash    *string
 }
 
+// create_key and create_hash are the idempotency key of StartGameSession and the hash of its
+// request (NULL when the call sent no key); the caller reads the first row with
+// GetGameSessionByCreateKey.
 func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionParams) (GameSession, error) {
-	row := q.db.QueryRow(ctx, insertGameSession, arg.CampaignID, arg.SessionNumber, arg.StartedAt)
+	row := q.db.QueryRow(ctx, insertGameSession,
+		arg.CampaignID,
+		arg.SessionNumber,
+		arg.StartedAt,
+		arg.CreateKey,
+		arg.CreateHash,
+	)
 	var i GameSession
 	err := row.Scan(
 		&i.ID,
@@ -1473,6 +1560,8 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -1618,9 +1707,10 @@ const insertPuzzle = `-- name: InsertPuzzle :one
 
 INSERT INTO puzzles (
     campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints,
-    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
+    solve_action, solve_target, hint_skill, hint_dc, parts, on_wrong, created_at, updated_at, create_key, create_hash
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17, $18, $19)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash
 `
 
 type InsertPuzzleParams struct {
@@ -1641,6 +1731,8 @@ type InsertPuzzleParams struct {
 	Parts        []byte
 	OnWrong      []byte
 	CreatedAt    time.Time
+	CreateKey    *string
+	CreateHash   *string
 }
 
 // Puzzles (MR-038, RN-27, Etapa 10): what the master makes (puzzles), what a
@@ -1665,6 +1757,8 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 		arg.Parts,
 		arg.OnWrong,
 		arg.CreatedAt,
+		arg.CreateKey,
+		arg.CreateHash,
 	)
 	var i Puzzle
 	err := row.Scan(
@@ -1688,6 +1782,8 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -2618,7 +2714,7 @@ func (q *Queries) ListEncounterEvents(ctx context.Context, arg ListEncounterEven
 }
 
 const listGameSessions = `-- name: ListGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1
 ORDER BY session_number DESC
 `
@@ -2643,6 +2739,8 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 			&i.ShownImageID,
 			&i.ShownImageKeep,
 			&i.OpenScenePointID,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -2742,7 +2840,7 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 }
 
 const listOpenGameSessions = `-- name: ListOpenGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = ANY($1::UUID[]) AND ended_at IS NULL
 ORDER BY started_at DESC, id
 `
@@ -2768,6 +2866,8 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 			&i.ShownImageID,
 			&i.ShownImageKeep,
 			&i.OpenScenePointID,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -3036,7 +3136,7 @@ func (q *Queries) ListPuzzleRuns(ctx context.Context, gameSessionID string) ([]P
 }
 
 const listPuzzles = `-- name: ListPuzzles :many
-SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong FROM puzzles
+SELECT id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash FROM puzzles
 WHERE campaign_id = $1 AND (archived_at IS NULL OR $2::bool)
 ORDER BY created_at DESC, id
 `
@@ -3077,6 +3177,8 @@ func (q *Queries) ListPuzzles(ctx context.Context, arg ListPuzzlesParams) ([]Puz
 			&i.HintDc,
 			&i.Parts,
 			&i.OnWrong,
+			&i.CreateKey,
+			&i.CreateHash,
 		); err != nil {
 			return nil, err
 		}
@@ -4246,7 +4348,7 @@ const setCurrentMap = `-- name: SetCurrentMap :one
 UPDATE game_sessions
 SET current_map_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
 `
 
 type SetCurrentMapParams struct {
@@ -4268,6 +4370,8 @@ func (q *Queries) SetCurrentMap(ctx context.Context, arg SetCurrentMapParams) (G
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4356,7 +4460,7 @@ const setOpenScene = `-- name: SetOpenScene :one
 UPDATE game_sessions
 SET open_scene_point_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
 `
 
 type SetOpenSceneParams struct {
@@ -4379,6 +4483,8 @@ func (q *Queries) SetOpenScene(ctx context.Context, arg SetOpenSceneParams) (Gam
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4585,7 +4691,7 @@ const setPuzzleArchived = `-- name: SetPuzzleArchived :one
 UPDATE puzzles
 SET archived_at = $3, updated_at = $4
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash
 `
 
 type SetPuzzleArchivedParams struct {
@@ -4624,6 +4730,8 @@ func (q *Queries) SetPuzzleArchived(ctx context.Context, arg SetPuzzleArchivedPa
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4632,7 +4740,7 @@ const setShownImage = `-- name: SetShownImage :one
 UPDATE game_sessions
 SET shown_image_id = $1, shown_image_keep = $2
 WHERE id = $3
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
 `
 
 type SetShownImageParams struct {
@@ -4655,6 +4763,8 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -4781,7 +4891,7 @@ SET name = $3, config = $4, solution = $5, seed = $6, start = $7, minimum_moves 
     clue = $9, hints = $10, solve_action = $11, solve_target = $12,
     hint_skill = $13, hint_dc = $14, parts = $15, on_wrong = $16, updated_at = $17
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong
+RETURNING id, campaign_id, kind, name, config, solution, seed, start, minimum_moves, clue, hints, solve_action, solve_target, archived_at, created_at, updated_at, hint_skill, hint_dc, parts, on_wrong, create_key, create_hash
 `
 
 type UpdatePuzzleParams struct {
@@ -4847,6 +4957,8 @@ func (q *Queries) UpdatePuzzle(ctx context.Context, arg UpdatePuzzleParams) (Puz
 		&i.HintDc,
 		&i.Parts,
 		&i.OnWrong,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }

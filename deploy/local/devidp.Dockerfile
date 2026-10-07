@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # devidp: the development-only OpenID Connect provider (backend/cmd/devidp)
 # behind the local stack (compose.yaml) and the Playwright tests in CI.
 #
@@ -15,9 +16,12 @@ FROM golang:1.27.1-trixie@sha256:433790e515d27dc6003e847e644cc0af956985cf315c1c5
 
 WORKDIR /src
 
+# Same as backend/Dockerfile: no silent toolchain download, verified modules.
+ENV GOTOOLCHAIN=local
+
 COPY backend/go.mod backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+    go mod download && go mod verify
 
 COPY backend/ .
 

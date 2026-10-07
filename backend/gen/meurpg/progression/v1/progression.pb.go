@@ -1843,9 +1843,14 @@ type AddMilestoneRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// Required: 1 to 120 characters, one line.
-	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AddMilestoneRequest) Reset() {
@@ -1888,6 +1893,13 @@ func (x *AddMilestoneRequest) GetCampaignId() string {
 func (x *AddMilestoneRequest) GetText() string {
 	if x != nil {
 		return x.Text
+	}
+	return ""
+}
+
+func (x *AddMilestoneRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -2642,11 +2654,12 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\x16ListMilestonesResponse\x12@\n" +
 	"\n" +
 	"milestones\x18\x01 \x03(\v2 .meurpg.progression.v1.MilestoneR\n" +
-	"milestones\"J\n" +
+	"milestones\"s\n" +
 	"\x13AddMilestoneRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"\x98\x01\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"\x98\x01\n" +
 	"\x14AddMilestoneResponse\x12>\n" +
 	"\tmilestone\x18\x01 \x01(\v2 .meurpg.progression.v1.MilestoneR\tmilestone\x12@\n" +
 	"\n" +

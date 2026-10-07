@@ -19,8 +19,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// Spells that read hit points (MR-014, RN-20, Etapa 8): Sono, Borrifo de Cores,
-// the Palavras de Poder, Poupar os Moribundos and Cura Completa. The rules say
+// Spells that read hit points (MR-014, RN-20, Etapa 8): Sono, Leque Cromático,
+// the Palavras de Poder, Estabilizar and Cura Completa. The rules say
 // what each one does (effects/spells.json, rules.SpellEffect) and do the
 // arithmetic (combat.ResolvePool and the others, pure); this file reads the
 // real hit points (an NPC's from the combat, a player's character's from its
@@ -215,7 +215,7 @@ func (s *Service) setCondition(ctx context.Context, c *combatTx, t playdb.Combat
 	return s.endFormIfAsleep(ctx, c, t, conditions) // a druid put to sleep is itself again (SRD)
 }
 
-// dropToZero is Palavra de Poder: Matar on a target: an NPC is defeated at 0 hit
+// dropToZero is Palavra de Poder Matar on a target: an NPC is defeated at 0 hit
 // points; a player's character drops to 0 with three death save failures, and
 // the master confirms the death with ConfirmDeath (RN-03: the engine never kills
 // a character by itself). It returns the character's vitals after.

@@ -38,8 +38,8 @@ export class Home {
   protected readonly authState = this.auth.state;
 
   /** Where "Entrar" goes: the server's sign-in, back to "Minhas campanhas"
-   * afterwards (the same URL `AuthService.signIn('/campanhas')` opens). */
-  protected readonly signInHref = `/auth/login?return_to=${encodeURIComponent('/campanhas')}`;
+   * afterwards (the same URL `AuthService.signIn('/campaigns')` opens). */
+  protected readonly signInHref = `/auth/login?return_to=${encodeURIComponent('/campaigns')}`;
 
   private readonly displayName = computed(() => {
     const auth = this.auth.state();

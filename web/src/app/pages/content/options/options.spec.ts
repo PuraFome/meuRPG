@@ -40,12 +40,12 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   let watcher = fakeContentWatcher();
   let query$ = new BehaviorSubject(convertToParamMap({}));
 
-  async function setup(role: Role = Role.MASTER, opts: { phone?: boolean; tipo?: string; options?: OptionSwitchEntry[]; stranger?: boolean } = {}) {
+  async function setup(role: Role = Role.MASTER, opts: { phone?: boolean; kind?: string; options?: OptionSwitchEntry[]; stranger?: boolean } = {}) {
     switches.mockReset().mockResolvedValue({ options: opts.options ?? list(), tableRevision: 4 });
     spellsList.mockReset().mockResolvedValue({ spells: [{ key: 'spell:light' }] });
     setSwitches.mockReset().mockResolvedValue({ tableRevision: 5, changed: 1, options: [] });
     getCampaign.mockReset().mockResolvedValue({ campaign: opts.stranger ? undefined : { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
-    query$ = new BehaviorSubject(convertToParamMap(opts.tipo ? { tipo: opts.tipo } : {}));
+    query$ = new BehaviorSubject(convertToParamMap(opts.kind ? { kind: opts.kind } : {}));
     window.matchMedia = ((q: string) => ({ matches: !!opts.phone && q.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
     TestBed.resetTestingModule();
     watcher = fakeContentWatcher();
@@ -95,7 +95,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('draws a race group like the artboard: the word beside the switch, "N ficha usa", "SRD" or "Da mesa", the off one flagged', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { kind: 'races' });
     expect(text(el.querySelector('.counter strong')!)).toBe('Raças: 3 de 4 ligadas');
     expect(text(el.querySelector('.menu__note')!)).toContain('Sub-raças: 1 de 1 ligada');
     const byName = (n: string) => text(rowOf(el, n));
@@ -118,7 +118,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('turns an option off at once with one request, and says that the sheet that uses it keeps working', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     setSwitches.mockResolvedValue({ tableRevision: 5, changed: 1, options: [{ ...list()[5], off: true, hidden: true }] });
     sw(el, 'Gnomo').click();
     await settle();
@@ -131,7 +131,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('turns "Ligar todas" off when it would change nothing, and "Desligar todas" too', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'classes' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'classes' });
     expect(button(el, 'Ligar todas').disabled).toBe(true);
     expect(button(el, 'Desligar todas').disabled).toBe(false);
     button(el, 'Desligar todas').click();
@@ -141,12 +141,12 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('says that "Desligar todas" in Raças also takes the sub-races', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { kind: 'races' });
     expect(text(el.querySelector('.bulk-note')!)).toContain('também desliga as sub-raças (1)');
   });
 
   it('agrees the bulk words with the noun: "Ligar todos" for the backgrounds', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'antecedentes' });
+    const { el } = await setup(Role.MASTER, { kind: 'backgrounds' });
     expect(text(el.querySelector('.counter strong')!)).toBe('Antecedentes: 1 de 1 ligado');
     expect(button(el, 'Desligar todos')).toBeTruthy();
   });
@@ -158,7 +158,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
       opt(TableContentKind.SPELL, 'Mísseis Mágicos', { key: 'spell:magic-missile', level: 1 }),
       opt(TableContentKind.SPELL, 'Bola de Fogo', { key: 'spell:fireball', level: 3 }),
     ];
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'magias', options });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'spells', options });
     expect(rows(el).map((r) => text(r.querySelector('.orow__note')!))).toEqual(['Truque', '1º círculo', '3º círculo']);
     const selects = Array.from(el.querySelectorAll<HTMLSelectElement>('app-select-field select'));
     expect(selects).toHaveLength(2);
@@ -179,7 +179,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('keeps an error under the counter until it is closed, and a new change does not hide it', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     setSwitches.mockRejectedValueOnce(new Error('offline'));
     sw(el, 'Anão').click();
     await settle();
@@ -193,12 +193,12 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('shows "Tudo salvo" at rest', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { kind: 'races' });
     expect(text(el.querySelector('.saved')!)).toContain('Tudo salvo');
   });
 
   it('puts the switch back and says it when the save fails', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     setSwitches.mockRejectedValue(new Error('offline'));
     sw(el, 'Anão').click();
     await settle();
@@ -208,7 +208,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('"Desligar todas" and "Ligar todas" send one call each with what changes', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     button(el, 'Desligar todas').click();
     await settle();
     expect(setSwitches).toHaveBeenLastCalledWith('camp-1', [
@@ -226,7 +226,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('searches by name, and the bulk buttons act on what the search shows, saying how many', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     const input = el.querySelector<HTMLInputElement>('input')!;
     input.value = 'anao';
     input.dispatchEvent(new Event('input'));
@@ -248,7 +248,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
 
   it('says why a subclass of an off class is hidden, and keeps its own switch on (the parent hides the children)', async () => {
     const options = list().map((o) => (o.key === 'class:wizard' ? ({ ...o, off: true, hidden: true } as OptionSwitchEntry) : o.key === 'subclass:evocation' ? ({ ...o, hidden: true } as OptionSwitchEntry) : o));
-    const { el } = await setup(Role.MASTER, { tipo: 'subclasses', options });
+    const { el } = await setup(Role.MASTER, { kind: 'subclasses', options });
     const row = rows(el)[0];
     expect(text(row)).toContain('Subclasse de Mago');
     expect(text(row)).toContain('Some para os jogadores: a classe Mago está desligada.');
@@ -260,7 +260,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('on a phone, a select of kinds replaces the menu, and the switches are still one per row', async () => {
-    const { el } = await setup(Role.MASTER, { phone: true, tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { phone: true, kind: 'races' });
     expect(el.querySelector('.menu')).toBeNull();
     expect(el.querySelector('app-select-field')).not.toBeNull();
     expect(rows(el)).toHaveLength(5);
@@ -279,7 +279,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('reads the list again when the table changed (content_changed), without a spinner and keeping the search', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     expect(watcher.following()).toBe('camp-1');
     switches.mockResolvedValue({ options: [...list(), opt(TableContentKind.RACE, 'Elfo', { key: 'race:elf' })], tableRevision: 6 });
     watcher.hint();
@@ -290,7 +290,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
   });
 
   it('keeps the list on screen when the read after a change fails', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     switches.mockRejectedValue(new Error('offline'));
     watcher.hint();
     await settle();

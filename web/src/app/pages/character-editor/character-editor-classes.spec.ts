@@ -362,7 +362,7 @@ describe('the spell step per class (E10-11 state 4)', () => {
     expect(out.textContent).toContain('Fora da lista das suas classes');
     expect(out.textContent).toContain('Esta magia é de Bardo e Druida. Você a lê em “Magias”, mas não a escolhe nesta ficha.');
     expect(out.querySelector('mat-checkbox')).toBeNull();
-    expect(out.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/magias');
+    expect(out.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/spells');
   });
 
   it("sends only picks that are on a list of the sheet, from the table's spells too", async () => {

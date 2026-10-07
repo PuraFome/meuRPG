@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
@@ -137,30 +138,44 @@ func (s *Service) CreatePuzzle(
 	}
 	in := puzzleInputOf(req.Msg.GetName(), req.Msg.GetConfig(), req.Msg.GetSolution(), req.Msg.GetStart(), req.Msg.GetSeed(), req.Msg.GetClue(), req.Msg.GetHints(), req.Msg.GetOnSolve(),
 		puzzleExtras{hintCheck: req.Msg.GetHintCheck(), parts: req.Msg.GetParts(), onWrong: req.Msg.GetOnWrong()})
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first puzzle (with the start it was drawn) and makes no other.
+	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
 	var row playdb.Puzzle
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		built, action, target, err := s.buildPuzzle(ctx, tx, m.CampaignID, in)
-		if err != nil {
-			return err
-		}
-		d, err := fromBuilt(kindOf(in.config), in, built, action, target)
-		if err != nil {
-			return err
-		}
-		cols, err := columnsOf(d)
-		if err != nil {
-			return err
-		}
-		row, err = s.queriesIn(tx).InsertPuzzle(ctx, playdb.InsertPuzzleParams{
-			CampaignID: m.CampaignID, Kind: d.row.Kind, Name: d.row.Name, Config: cols.config, Solution: cols.solution,
-			Seed: d.row.Seed, Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
-			SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
-			CreatedAt: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("insert puzzle: %w", err)
-		}
-		return nil
+		q := s.queriesIn(tx)
+		var err error
+		row, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPuzzleByCreateKey,
+			func(p playdb.Puzzle) *string { return p.CreateHash },
+			func() (playdb.Puzzle, error) {
+				built, action, target, err := s.buildPuzzle(ctx, tx, m.CampaignID, in)
+				if err != nil {
+					return row, err
+				}
+				d, err := fromBuilt(kindOf(in.config), in, built, action, target)
+				if err != nil {
+					return row, err
+				}
+				cols, err := columnsOf(d)
+				if err != nil {
+					return row, err
+				}
+				p, err := q.InsertPuzzle(ctx, playdb.InsertPuzzleParams{
+					CampaignID: m.CampaignID, Kind: d.row.Kind, Name: d.row.Name, Config: cols.config, Solution: cols.solution,
+					Seed: d.row.Seed, Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
+					SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
+					CreateKey: scopedKey, CreateHash: requestHash, CreatedAt: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return p, fmt.Errorf("insert puzzle: %w", err)
+				}
+				return p, err
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "create a puzzle", err)

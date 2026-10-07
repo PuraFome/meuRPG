@@ -581,7 +581,7 @@ type CastSummonRequest struct {
 	// The spell, "spell:find-familiar", "spell:animate-dead" or
 	// "spell:conjure-animals".
 	SpellKey string `protobuf:"bytes,3,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
-	// True: cast as a ritual, spending no slot (Encontrar Familiar, by a
+	// True: cast as a ritual, spending no slot (Convocar Familiar, by a
 	// character that casts rituals). False: cast with `slot`.
 	Ritual bool `protobuf:"varint,4,opt,name=ritual,proto3" json:"ritual,omitempty"`
 	// The slot, for a cast that is not a ritual.
@@ -869,10 +869,15 @@ func (x *GameSession) GetEndedAt() *timestamppb.Timestamp {
 
 // StartGameSessionRequest names the campaign.
 type StartGameSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StartGameSessionRequest) Reset() {
@@ -908,6 +913,13 @@ func (*StartGameSessionRequest) Descriptor() ([]byte, []int) {
 func (x *StartGameSessionRequest) GetCampaignId() string {
 	if x != nil {
 		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *StartGameSessionRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -4523,10 +4535,11 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0esession_number\x18\x03 \x01(\x05R\rsessionNumber\x129\n" +
 	"\n" +
 	"started_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
-	"\bended_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\":\n" +
+	"\bended_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"c\n" +
 	"\x17StartGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\x88\x01\n" +
+	"campaignId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\"\x88\x01\n" +
 	"\x18StartGameSessionResponse\x12>\n" +
 	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x12,\n" +
 	"\x12locked_sheet_count\x18\x02 \x01(\x05R\x10lockedSheetCount\"`\n" +

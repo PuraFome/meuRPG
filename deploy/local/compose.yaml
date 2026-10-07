@@ -25,8 +25,10 @@ services:
       # creates the database for us, so the app never has to run `CREATE DATABASE`.
       COCKROACH_DATABASE: meurpg
     ports:
-      - "26257:26257" # SQL / Postgres wire protocol
-      - "8081:8080" # DB Console (host 8081, container keeps the default 8080)
+      # Every published port binds 127.0.0.1: this CockroachDB is insecure
+      # (no password, root over plain SQL), so nothing on the LAN may reach it.
+      - "127.0.0.1:26257:26257" # SQL / Postgres wire protocol
+      - "127.0.0.1:8081:8080" # DB Console (host 8081, container keeps the default 8080)
     volumes:
       - cockroach-data:/cockroach/cockroach-data
     healthcheck:
@@ -51,6 +53,9 @@ services:
     # instead, then exit. This container is not meant to keep running.
     entrypoint: ["/app/migrate"]
     command: ["up"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     environment:
       DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
     depends_on:
@@ -60,7 +65,8 @@ services:
   # The issuer is http://idp.localhost:9090 for both sides of the sign-in:
   # - the browser resolves any *.localhost name to 127.0.0.1 by itself
   #   (RFC 6761), and reaches devidp through the published port below;
-  #   ports publish on 127.0.0.1 only, so nothing on the LAN can reach it;
+  #   every port in this file publishes on 127.0.0.1 only, so nothing on the
+  #   LAN can reach it;
   # - the api container resolves idp.localhost through the network alias
   #   below, to this container.
   # One issuer string for both is what OIDC needs: the api checks that the
@@ -78,6 +84,9 @@ services:
       DEVIDP_REDIRECT_URIS: http://localhost:8080/auth/callback
     ports:
       - "127.0.0.1:9090:9090"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     networks:
       default:
         aliases:
@@ -126,7 +135,20 @@ services:
       # as, and a new volume takes that owner (backend/Dockerfile).
       - images:/var/lib/meurpg/images
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    # The same limits production has: the image already runs as nonroot with
+    # nothing to write but the images volume and /tmp, so prove it here.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # LOG_LEVEL is debug here: rotate the container's log so it can't fill the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     depends_on:
       cockroach:
         condition: service_healthy

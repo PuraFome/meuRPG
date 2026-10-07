@@ -42,7 +42,7 @@
           <p>
             <strong>Este mapa não tem ponto de batalha.</strong>
             Ponha um no editor do mapa e volte.
-            <a [routerLink]="['/campanhas', data.campaignId, 'mapas', mapId()]" (click)="close()">Abrir o mapa</a>
+            <a [routerLink]="['/campaigns', data.campaignId, 'maps', mapId()]" (click)="close()">Abrir o mapa</a>
           </p>
         </div>
       } @else {
@@ -70,7 +70,7 @@
         <span class="priv__pill"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
         <p>O encontro, as criaturas e o XP ficam escondidos dos jogadores até você revelá-los no combate.</p>
       </div>
-      <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+      <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/credits" target="_blank">Créditos</a></p>
     }
 
     @if (asking()) {

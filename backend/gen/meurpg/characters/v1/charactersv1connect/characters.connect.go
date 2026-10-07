@@ -173,6 +173,10 @@ type CharacterServiceClient interface {
 	// The base scores of a PLAYER's full sheet are checked against
 	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
 	// master's later edits are free, and so is the rest of the sheet.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
 	// GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
 	// stored for the caller's next new character in this campaign (RN-24), and
@@ -593,6 +597,10 @@ type CharacterServiceClient interface {
 	//   - `invalid_argument`: the character is an NPC or is dead, monster_key is
 	//     not an SRD creature, or name is not 1 to 40 characters on one line.
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error)
 	// RenameCreature changes a creature's name. The character's player and the
 	// master may. The name is free text by a player: 1 to 40 characters on one
@@ -629,7 +637,7 @@ type CharacterServiceClient interface {
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 	// GetSummonOptions says what a character can summon from its sheet (MR-037,
 	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The
 	// server works all of it out (the spell on the sheet, prepared or in the
@@ -1033,6 +1041,10 @@ type CharacterServiceHandler interface {
 	// The base scores of a PLAYER's full sheet are checked against
 	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
 	// master's later edits are free, and so is the rest of the sheet.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateCharacter(context.Context, *connect.Request[v1.CreateCharacterRequest]) (*connect.Response[v1.CreateCharacterResponse], error)
 	// GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
 	// stored for the caller's next new character in this campaign (RN-24), and
@@ -1453,6 +1465,10 @@ type CharacterServiceHandler interface {
 	//   - `invalid_argument`: the character is an NPC or is dead, monster_key is
 	//     not an SRD creature, or name is not 1 to 40 characters on one line.
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error)
 	// RenameCreature changes a creature's name. The character's player and the
 	// master may. The name is free text by a player: 1 to 40 characters on one
@@ -1489,7 +1505,7 @@ type CharacterServiceHandler interface {
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 	// GetSummonOptions says what a character can summon from its sheet (MR-037,
 	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-	// it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The
 	// server works all of it out (the spell on the sheet, prepared or in the

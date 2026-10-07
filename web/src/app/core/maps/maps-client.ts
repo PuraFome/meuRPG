@@ -89,8 +89,9 @@ export class MapsClient {
     return need(res.token, 'SetCarriedLight');
   }
 
-  async create(campaignId: string, name: string, imageId: string): Promise<MapMessage> {
-    const res = await this.client.createMap({ campaignId, name, imageId });
+  /** `CreateMap`. `idempotencyKey`: one per create, sent again on a retry (see `ActionKey`). */
+  async create(campaignId: string, name: string, imageId: string, idempotencyKey: string): Promise<MapMessage> {
+    const res = await this.client.createMap({ campaignId, name, imageId, idempotencyKey });
     return need(res.map, 'CreateMap');
   }
 
@@ -170,8 +171,9 @@ export class MapsClient {
       light?: PointChanges['light'];
       treasureValuePo?: number;
     },
+    idempotencyKey: string,
   ): Promise<MapPoint> {
-    const res = await this.client.createMapPoint({ campaignId, mapId, ...point });
+    const res = await this.client.createMapPoint({ campaignId, mapId, ...point, idempotencyKey });
     return need(res.point, 'CreateMapPoint');
   }
 
@@ -276,8 +278,9 @@ export class MapsClient {
     mapId: string,
     pointId: string,
     action: { key: string; name: string; dc: number },
+    idempotencyKey: string,
   ): Promise<readonly SceneAction[]> {
-    const res = await this.client.addSceneAction({ campaignId, mapId, pointId, ...action });
+    const res = await this.client.addSceneAction({ campaignId, mapId, pointId, ...action, idempotencyKey });
     return res.actions;
   }
 
@@ -330,8 +333,9 @@ export class MapsClient {
     mapId: string,
     pointId: string,
     text: string,
+    idempotencyKey: string,
   ): Promise<readonly SceneClue[]> {
-    const res = await this.client.addSceneClue({ campaignId, mapId, pointId, text });
+    const res = await this.client.addSceneClue({ campaignId, mapId, pointId, text, idempotencyKey });
     return res.clues;
   }
 

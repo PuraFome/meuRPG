@@ -16,6 +16,7 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
@@ -82,29 +83,42 @@ func (s *Service) AddMilestone(
 	if err := s.requireMilestonesMode(ctx, nil, m.CampaignID); err != nil {
 		return nil, err
 	}
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request.
+	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
 	var added progressiondb.PlannedMilestone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		if err := s.requireMilestonesMode(ctx, tx, m.CampaignID); err != nil {
 			return err
 		}
+		// The list is locked first, so two calls with the same key take turns.
 		current, err := q.ListPlannedMilestonesForUpdate(ctx, m.CampaignID)
 		if err != nil {
 			return fmt.Errorf("list the milestones: %w", err)
 		}
-		if len(current) >= maxMilestones {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d milestones", maxMilestones))
-		}
-		position := int32(0)
-		if n := len(current); n > 0 {
-			position = current[n-1].Position + 1
-		}
-		if added, err = q.InsertPlannedMilestone(ctx, progressiondb.InsertPlannedMilestoneParams{
-			CampaignID: m.CampaignID, Position: position, Text: text, Now: s.now(),
-		}); err != nil {
-			return fmt.Errorf("insert a milestone: %w", err)
-		}
-		return nil
+		added, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPlannedMilestoneByCreateKey,
+			func(p progressiondb.PlannedMilestone) *string { return p.CreateHash },
+			func() (progressiondb.PlannedMilestone, error) {
+				if len(current) >= maxMilestones {
+					return added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d milestones", maxMilestones))
+				}
+				position := int32(0)
+				if n := len(current); n > 0 {
+					position = current[n-1].Position + 1
+				}
+				p, err := q.InsertPlannedMilestone(ctx, progressiondb.InsertPlannedMilestoneParams{
+					CampaignID: m.CampaignID, Position: position, Text: text, CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return p, fmt.Errorf("insert a milestone: %w", err)
+				}
+				return p, err
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a milestone", err)

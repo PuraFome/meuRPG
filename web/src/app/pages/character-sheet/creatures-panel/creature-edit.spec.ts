@@ -41,7 +41,7 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     const { el, flat, button } = await setup('dismiss');
     const ask = el.querySelector('[role=alertdialog]')!;
     expect(flat(ask.querySelector('.ask__t'))).toBe('Dispensar Nanquim?');
-    expect(flat(ask.querySelector('.ask__d'))).toContain('Para ter um familiar de novo, é preciso conjurar Encontrar Familiar outra vez (ritual de 1 hora).');
+    expect(flat(ask.querySelector('.ask__d'))).toContain('Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).');
     expect(document.activeElement).toBe(button('Voltar'));
     expect(api.dismiss).not.toHaveBeenCalled();
   });

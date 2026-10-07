@@ -29,6 +29,7 @@ import {
 import { kindIcon, kindName } from '../../../core/puzzles/puzzle-format';
 import { type FormSection, invalidSection, puzzleErrorMessage, puzzleInvalid } from '../../../core/puzzles/puzzle-errors';
 import { type PuzzleAccess, PuzzleAccessCheck } from '../../../core/puzzles/puzzle-access';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { HintCheckField } from '../fields/hint-check-field';
@@ -69,7 +70,7 @@ const KIND_OPTIONS: readonly PickOption<FormKind>[] = FORM_KINDS.map((kind) => (
 }));
 
 /**
- * "/campanhas/:id/quebra-cabecas/novo" and ".../:puzzleId/editar" (MR-038, E10-06 state 2): the master makes or edits a puzzle of
+ * "/campaigns/:id/puzzles/new" and ".../:puzzleId/edit" (MR-038, E10-06 state 2): the master makes or edits a puzzle of
  * the first three kinds. The kind first (a new puzzle only), then that kind's form, the clue, the hints and "Ao resolver".
  *
  * - **The start comes from the server.** The lights and the pillars start from a seed the server draws (`PreviewPuzzleStart`):
@@ -110,6 +111,7 @@ export class PuzzleForm {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PuzzlesClient);
+  private readonly createKey = new ActionKey();
   private readonly accessCheck = inject(PuzzleAccessCheck);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
@@ -304,9 +306,10 @@ export class PuzzleForm {
       if (this.editing) {
         await this.api.update(this.campaignId, this.puzzleId, init);
       } else {
-        await this.api.create(this.campaignId, init);
+        // A retry of the same form (a lost answer, a second tap) sends the same key and makes one puzzle.
+        await this.api.create(this.campaignId, init, this.createKey.keyFor(init));
       }
-      await this.router.navigate(['/campanhas', this.campaignId]);
+      await this.router.navigate(['/campaigns', this.campaignId]);
     } catch (err) {
       const invalid = puzzleInvalid(err);
       const section = invalid ? invalidSection(invalid) : '';

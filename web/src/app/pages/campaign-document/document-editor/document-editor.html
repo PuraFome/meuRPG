@@ -126,17 +126,17 @@
   }
   @case ('map') {
     <app-link-picker-dialog
-      kind="mapa"
+      kind="map"
       [campaignId]="campaignId()"
-      (picked)="onLink('mapa', $event)"
+      (picked)="onLink('map', $event)"
       (closed)="closePicker()"
     />
   }
   @case ('sheet') {
     <app-link-picker-dialog
-      kind="ficha"
+      kind="character"
       [campaignId]="campaignId()"
-      (picked)="onLink('ficha', $event)"
+      (picked)="onLink('character', $event)"
       (closed)="closePicker()"
     />
   }

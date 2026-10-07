@@ -19,7 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The kinds of session_events rows (session_events_kind_valid).
+// The kinds of session_events rows (session_event_kinds).
 const eventCharacterVitalsAdjusted = "character_vitals_adjusted"
 
 // AdjustCharacterVitals implements playv1connect.PlayServiceHandler: the

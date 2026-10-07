@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
@@ -55,28 +56,51 @@ func (s *Service) CreateCampaign(
 	if !allowed {
 		return nil, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_NOT_ALLOWED, 0)
 	}
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique for the user, and kept with a hash of the whole request: a retry
+	// returns the first campaign only when it is the same request.
+	scopedKey, requestHash := idem.Scope(userID, key), idem.Hash(req.Msg)
 
 	// The campaign and its master are created together, or not at all.
 	var campaign campaignsdb.Campaign
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// The cap is counted in the transaction that inserts: two creations at
-		// the same time cannot both slip under it (SERIALIZABLE makes one retry
-		// and count again) (RN-30).
-		mastered, err := q.CountMasteredCampaigns(ctx, userID)
+		var replayed bool
+		var err error
+		campaign, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetCampaignByCreateKey,
+			func(c campaignsdb.Campaign) *string { return c.CreateHash },
+			func() (campaignsdb.Campaign, error) {
+				// The cap is counted only for a new campaign (a retry of one already
+				// made returns it, even at the cap), in the transaction that inserts:
+				// two creations at the same time cannot both slip under it
+				// (SERIALIZABLE makes one retry and count again) (RN-30).
+				mastered, err := q.CountMasteredCampaigns(ctx, userID)
+				if err != nil {
+					return campaignsdb.Campaign{}, fmt.Errorf("count the campaigns the caller is master of: %w", err)
+				}
+				if int(mastered) >= s.maxCampaigns {
+					return campaignsdb.Campaign{}, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
+				}
+				c, err := q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
+					Name:       name,
+					XpMode:     xpMode,
+					CreatedBy:  userID,
+					CreateKey:  scopedKey,
+					CreateHash: requestHash,
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return c, fmt.Errorf("insert campaign: %w", err)
+				}
+				return c, err
+			})
 		if err != nil {
-			return fmt.Errorf("count the campaigns the caller is master of: %w", err)
+			return err
 		}
-		if int(mastered) >= s.maxCampaigns {
-			return errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
-		}
-		campaign, err = q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
-			Name:      name,
-			XpMode:    xpMode,
-			CreatedBy: userID,
-		})
-		if err != nil {
-			return fmt.Errorf("insert campaign: %w", err)
+		if replayed {
+			return nil // the first call made the campaign and its master
 		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
 			CampaignID: campaign.ID,

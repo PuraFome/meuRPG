@@ -198,11 +198,11 @@ export class RaceEditor {
   }
 
   protected newSubraceLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', 'subraca'];
+    return ['/campaigns', this.campaignId(), 'content', 'new', 'subrace'];
   }
 
   protected subraceLink(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected setParent(raceKey: string): void {
@@ -239,7 +239,7 @@ export class RaceEditor {
     const body: EntryBody = this.isRace()
       ? { case: 'tableRace', value: draftToRace(this.race(), menu) }
       : { case: 'tableSubrace', value: draftToSubrace(this.sub(), menu) };
-    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body), this.known);
+    const res = await this.saver.run(() => this.client.save(this.campaignId(), this.entry(), body, this.saver.keyFor(body)), this.known);
     if (res) {
       this.saved.emit(res);
       return;

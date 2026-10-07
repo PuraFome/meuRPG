@@ -469,13 +469,33 @@ func (s *Service) GetMapLayers(
 	if err != nil {
 		return nil, err
 	}
-	cm, err := s.loadMaps(ctx, m.CampaignID)
+	// The revision in the answer and the layers it counts are one snapshot
+	// (audit D-03): read apart, a paint between them gives layers newer than
+	// their revision, and the app would not ask again.
+	var (
+		row    mapsdb.ListMapDetailsRow
+		stored mapsdb.MapLayer
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		cm, err := loadMapsWith(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		if row, ok = cm.byID[mapID]; !ok || !v.seesMap(row.ID, row.RevealedAt) {
+			return errMapNotFound() // a hidden map is not found to a player (RN-10)
+		}
+		if !gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight).Valid() {
+			return nil // no grid, no layers to read
+		}
+		if stored, err = q.GetMapLayers(ctx, mapID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("read a map's layers: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read a map", err)
-	}
-	row, ok := cm.byID[mapID]
-	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
-		return nil, errMapNotFound() // a hidden map is not found to a player (RN-10)
 	}
 	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
 	res := &mapsv1.GetMapLayersResponse{GridColumns: int32(g.Columns), GridRows: int32(g.Rows), LayersRevision: row.LayersRevision} //nolint:gosec // G115: a grid is at most 200 x 400
@@ -484,10 +504,6 @@ func (s *Service) GetMapLayers(
 	}
 	if !g.Valid() {
 		return connect.NewResponse(res), nil
-	}
-	stored, err := s.queries.GetMapLayers(ctx, mapID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, s.dbError(ctx, "read a map's layers", err)
 	}
 	set := loadLayers(stored, g)
 	if foggedFor(v, row) {

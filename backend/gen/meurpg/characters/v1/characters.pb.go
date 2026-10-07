@@ -1117,9 +1117,9 @@ type CreatureSource int32
 
 const (
 	CreatureSource_CREATURE_SOURCE_UNSPECIFIED CreatureSource = 0
-	// Encontrar Familiar: at most one at a time.
+	// Convocar Familiar: at most one at a time.
 	CreatureSource_CREATURE_SOURCE_FAMILIAR CreatureSource = 1
-	// Animar os Mortos: skeletons and zombies.
+	// Animar Mortos: skeletons and zombies.
 	CreatureSource_CREATURE_SOURCE_ANIMATE_DEAD CreatureSource = 2
 	// Conjurar Animais: animals that last while the caster concentrates.
 	CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS CreatureSource = 3
@@ -3235,8 +3235,13 @@ type CreateCharacterRequest struct {
 	// once the web sends the method: then an unspecified method is refused. An
 	// unknown value is `invalid_argument`. Ignored for an NPC.
 	AbilityMethod AbilityMethod `protobuf:"varint,6,opt,name=ability_method,json=abilityMethod,proto3,enum=meurpg.characters.v1.AbilityMethod" json:"ability_method,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated. It must be a UUID.
+	IdempotencyKey string `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateCharacterRequest) Reset() {
@@ -3309,6 +3314,13 @@ func (x *CreateCharacterRequest) GetAbilityMethod() AbilityMethod {
 		return x.AbilityMethod
 	}
 	return AbilityMethod_ABILITY_METHOD_UNSPECIFIED
+}
+
+func (x *CreateCharacterRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 // CreateCharacterResponse returns the new character.
@@ -6873,9 +6885,14 @@ type GiveCreatureRequest struct {
 	MonsterKey string `protobuf:"bytes,3,opt,name=monster_key,json=monsterKey,proto3" json:"monster_key,omitempty"`
 	// What to call it, 1 to 40 characters on one line; blank takes the
 	// creature's Portuguese name.
-	Name          string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request returns what the first call made instead of making another.
+	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated. It must be a UUID.
+	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GiveCreatureRequest) Reset() {
@@ -6932,6 +6949,13 @@ func (x *GiveCreatureRequest) GetMonsterKey() string {
 func (x *GiveCreatureRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *GiveCreatureRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
 	}
 	return ""
 }
@@ -7596,7 +7620,7 @@ type SummonSpellOptions struct {
 	// The spell, "spell:find-familiar", "spell:animate-dead" or
 	// "spell:conjure-animals".
 	SpellKey string `protobuf:"bytes,1,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
-	// Its Portuguese name ("Encontrar Familiar").
+	// Its Portuguese name ("Convocar Familiar").
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The spell's own circle, 1 to 9.
 	Level int32 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
@@ -7607,7 +7631,7 @@ type SummonSpellOptions struct {
 	Concentration bool `protobuf:"varint,6,opt,name=concentration,proto3" json:"concentration,omitempty"`
 	// Whether this character can cast it as a ritual (no slot): a wizard from the
 	// spellbook, another caster from its prepared list, a warlock with the Pact
-	// of the Chain for Encontrar Familiar. Always false for a spell that is not a
+	// of the Chain for Convocar Familiar. Always false for a spell that is not a
 	// ritual.
 	CanRitual bool `protobuf:"varint,7,opt,name=can_ritual,json=canRitual,proto3" json:"can_ritual,omitempty"`
 	// Whether this character can cast it with a slot: the spell is on the sheet and
@@ -7788,7 +7812,7 @@ func (x *SummonCircle) GetOptions() []*SummonOption {
 type SummonOption struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How many creatures, already counting the circle (Conjurar Animais doubles at
-	// the 5th, Animar os Mortos adds two for each circle above the 3rd).
+	// the 5th, Animar Mortos adds two for each circle above the 3rd).
 	Count int32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
 	// The creatures a casting may choose from. Empty when `type` and `max_cr`
 	// say it.
@@ -8264,7 +8288,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x04eyes\x18\x04 \x01(\tR\x04eyes\x12\x12\n" +
 	"\x04skin\x18\x05 \x01(\tR\x04skin\x12\x12\n" +
 	"\x04hair\x18\x06 \x01(\tR\x04hair\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\"\xca\x02\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\"\xf3\x02\n" +
 	"\x16CreateCharacterRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x127\n" +
@@ -8272,7 +8296,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12:\n" +
 	"\x05sheet\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\x12:\n" +
 	"\x05story\x18\x05 \x01(\v2$.meurpg.characters.v1.CharacterStoryR\x05story\x12J\n" +
-	"\x0eability_method\x18\x06 \x01(\x0e2#.meurpg.characters.v1.AbilityMethodR\rabilityMethod\"X\n" +
+	"\x0eability_method\x18\x06 \x01(\x0e2#.meurpg.characters.v1.AbilityMethodR\rabilityMethod\x12'\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\"X\n" +
 	"\x17CreateCharacterResponse\x12=\n" +
 	"\tcharacter\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.CharacterR\tcharacter\"\x9d\x01\n" +
 	"\x14AbilityScoresRefusal\x12H\n" +
@@ -8548,14 +8573,15 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"g\n" +
 	"\x1eListCharacterCreaturesResponse\x12E\n" +
-	"\tcreatures\x18\x01 \x03(\v2'.meurpg.characters.v1.CharacterCreatureR\tcreatures\"\x8e\x01\n" +
+	"\tcreatures\x18\x01 \x03(\v2'.meurpg.characters.v1.CharacterCreatureR\tcreatures\"\xb7\x01\n" +
 	"\x13GiveCreatureRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vmonster_key\x18\x03 \x01(\tR\n" +
 	"monsterKey\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\"[\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"[\n" +
 	"\x14GiveCreatureResponse\x12C\n" +
 	"\bcreature\x18\x01 \x01(\v2'.meurpg.characters.v1.CharacterCreatureR\bcreature\"m\n" +
 	"\x15RenameCreatureRequest\x12\x1f\n" +

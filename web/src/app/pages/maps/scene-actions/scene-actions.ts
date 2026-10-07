@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { sceneActionErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { ActionKey } from '../../../core/connect/idempotency';
 import {
   SCENE_ACTION_LIMIT,
   actionSubtitle,
@@ -53,6 +54,7 @@ const ATTEMPT_OPTIONS = [1, 2, 3, 4, 5, 0] as const;
 })
 export class SceneActions {
   private readonly api = inject(MapsClient);
+  private readonly addKey = new ActionKey();
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -110,7 +112,9 @@ export class SceneActions {
         this.mapId(),
         this.pointId(),
         action,
+        this.addKey.keyFor([this.pointId(), action]),
       );
+      this.addKey.renew();
       this.actionsChange.emit(actions);
       this.adding.set(false);
       this.status.set(`Ação adicionada. ${actions.length} de ${SCENE_ACTION_LIMIT}.`);

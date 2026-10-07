@@ -1,4 +1,4 @@
-<a class="back" [routerLink]="['/campanhas', campaignId()]">
+<a class="back" [routerLink]="['/campaigns', campaignId()]">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para os mapas
 </a>
 <h1 class="mr-page-title">Gerar masmorra</h1>
@@ -15,7 +15,7 @@
       <mat-icon aria-hidden="true">search_off</mat-icon>
       <p>
         <strong>Só o mestre gera masmorras.</strong>
-        Essa campanha não existe, ou você não é o mestre dela. Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+        Essa campanha não existe, ou você não é o mestre dela. Volte para <a [routerLink]="['/campaigns', campaignId()]">a campanha</a>.
       </p>
     </div>
   }
@@ -129,7 +129,7 @@
                 </div>
               }
               <div class="pair">
-                <a matButton="outlined" [routerLink]="['/campanhas', campaignId()]">Cancelar</a>
+                <a matButton="outlined" [routerLink]="['/campaigns', campaignId()]">Cancelar</a>
                 <button matButton="filled" type="submit" [class.mr-button--off]="whyOff() !== null" [disabled]="whyOff() !== null" disabledInteractive [attr.aria-describedby]="whyOff() ? 'make-why' : null">
                   Criar o mapa
                 </button>

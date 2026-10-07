@@ -103,6 +103,8 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
 | `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age`. A reautenticação a cada 30 dias (NIST SP 800-63B-4) vem da sessão de 30 dias no servidor. No ambiente local, com o devidp, é `1h` |
+| `GOOGLE_CLOUD_PROJECT` | Não | O id do projeto, definido no deploy (`--set-env-vars`): **o Cloud Run não o define sozinho**. Sem ele, as linhas de log não levam o trace do Cloud Logging, e as de uma mesma requisição não aparecem juntas (ver [Arquitetura](arquitetura.md#os-logs)) |
+| `LISTEN_HOST` | Não | Não definir: vazio, o servidor escuta em todas as interfaces, que é o que o Cloud Run pede. Os ambientes locais usam `127.0.0.1` |
 
 O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`. A `DATABASE_URL` e a `GEMINI_API_KEY` também são `config.Secret`. O `migrate` lê a URL com o pgx e, se ela não é válida, devolve uma frase fixa em vez do erro do driver, que pode repetir a senha.
 
@@ -113,7 +115,7 @@ O backend fala com o CockroachDB por um pool do pgx. Sem `pool_max_conns` na `DA
 - **Por que 10.** A instância é uma só (`max-instances` 1), e a mesa é um mestre e até seis jogadores; cada requisição é uma transação curta. 10 cobre as leituras periódicas dos streams e uma rajada de ações, e fica muito abaixo do que o CockroachDB recomenda (cerca de quatro conexões por vCPU do cluster, somadas entre as instâncias). Se um dia `max-instances` subir, o total (instâncias × `pool_max_conns`) é o que conta.
 - **Esperar uma conexão é normal; esperar para sempre não é.** Com o pool cheio, uma requisição espera a vez. Uma requisição **nunca** pede uma segunda conexão enquanto a transação dela segura a primeira (ver [Arquitetura](arquitetura.md#transações-e-o-pool-de-conexões)): foi esse erro que travou 5 requisições por 176 s no CI. Se aparecerem `context canceled` ou `context deadline exceeded` em leituras simples ("look up session", "get membership") junto com uma requisição lenta, é esse o sintoma: procure uma leitura pelo pool dentro de um `db.InTx`.
 - **Memória e custo.** Cada conexão ocupa memória no nó do CockroachDB; por isso o pool é pequeno e não cresce sozinho.
-- **Dois tempos máximos por conexão.** Toda conexão do pool abre com `statement_timeout` de **30 s** (o banco cancela o comando que passar disso, SQLSTATE `57014`, e a API responde `deadline_exceeded`) e `idle_in_transaction_session_timeout` de **60 s** (o banco fecha uma transação aberta e parada). Os dois vêm desligados no CockroachDB, e o tempo máximo de uma requisição no Cloud Run é de 35 minutos: sem eles, um comando preso ou uma transação abandonada seguraria uma das 10 conexões, e os bloqueios dela, por todo esse tempo. Cada valor só vale quando a `DATABASE_URL` não define o seu (`&statement_timeout=60000`, em milissegundos). Nenhum comando legítimo da API chega perto de 30 s: são leituras e escritas por chave primária ou varreduras pequenas, e o trabalho lento (desenhar uma masmorra, decodificar uma imagem, chamar o modelo) é código Go entre os comandos, nunca dentro de uma transação. O que o próprio CockroachDB faz (o TTL das linhas, os jobs de esquema) não passa pela conexão da API. O `migrate` usa conexão própria e **não** tem `statement_timeout`: um preenchimento de dados pode demorar. Dois `migrate up` ao mesmo tempo não se travam (o goose não tem trava para o CockroachDB), então o deploy não pode disparar dois.
+- **Dois tempos máximos por conexão.** Toda conexão do pool abre com `statement_timeout` de **30 s** (o banco cancela o comando que passar disso, SQLSTATE `57014`, e a API responde `deadline_exceeded`) e `idle_in_transaction_session_timeout` de **60 s** (o banco fecha uma transação aberta e parada). Os dois vêm desligados no CockroachDB, e o tempo máximo de uma requisição no Cloud Run é de 35 minutos: sem eles, um comando preso ou uma transação abandonada seguraria uma das 10 conexões, e os bloqueios dela, por todo esse tempo. Cada valor só vale quando a `DATABASE_URL` não define o seu (`&statement_timeout=60000`, em milissegundos). Nenhum comando legítimo da API chega perto de 30 s: são leituras e escritas por chave primária ou varreduras pequenas, e o trabalho lento (desenhar uma masmorra, decodificar uma imagem, chamar o modelo) é código Go entre os comandos, nunca dentro de uma transação. O que o próprio CockroachDB faz (o TTL das linhas, os jobs de esquema) não passa pela conexão da API. O `migrate` usa conexão própria e **não** tem `statement_timeout`: um preenchimento de dados pode demorar. Dois `migrate up` ao mesmo tempo se travam: o goose não tem trava para o CockroachDB, então o `migrate` toma uma trava de aluguel antes de `up` e de `down` (a tabela `migration_lock`, ver [Dados](dados.md)). O segundo espera até 10 minutos pelo primeiro e sai com um erro claro se ele não acabar; uma execução que caiu não prende ninguém, porque a validade da trava (60 s, renovada a cada 20 s) passa sozinha. Se a trava for perdida no meio (outra execução a tomou), a migration em curso para entre dois comandos, e rodar `migrate up` de novo termina o trabalho. Mesmo assim, o deploy não deve disparar dois.
 
 ### O devidp nunca é deployado
 
@@ -198,6 +200,88 @@ A geração de imagens (MR-039, RN-28, ADR-0019) chama a API do Gemini com uma c
 
   **A conta contra o `GOMEMLIMIT` de 400 MiB** (a tabela completa está no CONTRIBUTING): a vaga da imagem decodificada (uns 200 MB, passageiros) + as cópias de trabalho (34 MB) + o cache de peças (33,5 MB) + as cenas da névoa (19 MB) + a geração (uma resposta de até 8 MiB, uns 20 MiB, e até 6 MiB de imagens encolhidas: uns 26 MB) = uns 313 MB, mais uns 50 MB do resto: **uns 363 MB**, dentro dos 400 MiB e dos 512 MiB da instância. O número de chamadas ao mesmo tempo é **1** (`maxGenerating`): com 2 seriam uns 389 MB. Uma segunda geração espera a vez (o pedido fica `PENDING` e a espera longa continua aberta).
 
+## Logs no ELK
+
+Os logs da API vão para um ELK (Elasticsearch, Kibana e Filebeat) para quem investiga bugs ler e filtrar; o ELK local existe e a produção ainda é plano. A API escreve uma linha JSON por evento no stdout, no contrato de logs do backend (`backend/internal/platform/logging`: campos, níveis e o que nunca entra); o ELK só lê essas linhas. Os arquivos estão em `deploy/elk/`.
+
+| Parte | Local (`make elk-up`) | Produção |
+| --- | --- | --- |
+| Quem lê o log | Filebeat, dos containers do projeto `meurpg-local` e dos arquivos `~/.meurpg/run*/api.log` do ambiente nativo | **Planejado.** Cloud Run → Cloud Logging → sink para Pub/Sub → Filebeat com o input `gcp-pubsub` (ou Elastic Cloud) |
+| Mapeamento para ECS | Ingest pipeline `meurpg-logs` (`deploy/elk/setup/pipeline.json`) | O mesmo pipeline e o mesmo template, sem mudar |
+| Retenção | ILM `meurpg-logs`: apaga com 14 dias | A mesma política |
+| Estado | Pronto, **não verificado ao vivo** (escrito sem Docker; a conferência está em [Conferir em cinco comandos](#conferir-em-cinco-comandos)) | Não existe |
+
+### Subir e usar
+
+`make elk-up` sobe tudo, `make elk-down` desliga (os logs ficam no volume `esdata`) e `make elk-logs` mostra os logs do próprio ELK. Na primeira vez, o `deploy/elk/init-env.sh` cria o `deploy/elk/.env` com senhas aleatórias (`.env.example` mostra os nomes; o `.env` e o CA gerado em `deploy/elk/certs/` estão no `.gitignore`). O Kibana fica em `http://localhost:5601` (usuário `elastic`) e a API do Elasticsearch em `https://localhost:9200`; as duas portas só escutam em `127.0.0.1`. Precisa de uns 3,5 GB de memória livres para o Docker (Elasticsearch 2 GiB com heap de 1 GiB, Kibana 1 GiB, Filebeat 512 MiB).
+
+Os serviços, em ordem: `certs` (cria o CA e os certificados TLS de HTTP e de transporte, uma vez), `es01`, `setup` (senhas, papéis, ILM, pipeline, template e o data stream `logs-meurpg-default`; pode rodar de novo sem mudar nada), `kibana`, `kibana-setup` (a data view `logs-meurpg-*` e as buscas salvas) e `filebeat`. As imagens são presas por tag e digest, como as outras do repositório:
+
+| Imagem | Versão | Licença |
+| --- | --- | --- |
+| `docker.elastic.co/elasticsearch/elasticsearch` | 9.5.5, `sha256:13b4a40b…5984` | Elastic License 2.0 (a distribuição padrão; o código-fonte também sai sob AGPLv3 e SSPL, mas não as imagens) |
+| `docker.elastic.co/kibana/kibana` | 9.5.5, `sha256:13b72ce7…bb78` | Elastic License 2.0 (como o Elasticsearch) |
+| `docker.elastic.co/beats/filebeat` | 9.5.5, `sha256:4b2042fc…78aa` | Elastic License 2.0 (a distribuição padrão) |
+
+São serviços externos: o MeuRPG não distribui nenhuma delas (sem mudança no `NOTICE`); o texto de cada licença vai dentro da imagem. Para atualizar, troque a tag e o digest nas três linhas do `compose.yaml` (o digest é o do manifest list, que cobre amd64 e arm64: `docker buildx imagetools inspect <imagem>:<tag>`).
+
+### O que o pipeline faz com o contrato
+
+| Contrato | ECS |
+| --- | --- |
+| `time` | `@timestamp` (`date_nanos`, com os nanossegundos) |
+| `severity` | `log.level`, em minúsculas |
+| `message` | `message` |
+| `service`, `version` | `service.name`, `service.version` |
+| `request_id`, `user_id` | `http.request.id`, `user.id` (`keyword`) |
+| `method`, `path`, `status` | `http.request.method`, `url.path`, `http.response.status_code` |
+| `duration_ms` | `event.duration`, em nanossegundos |
+| `error` | `error.message` |
+| `logging.googleapis.com/trace` | `trace.id` (o que vem depois de `/traces/`); o valor inteiro fica em `meurpg.gcp_trace` |
+| o resto (`procedure`, `code`, `reason`, `stream`, `event`, `campaign_id`, `session_id`...) | `meurpg.<nome>`; os ids são `keyword`, `stream` é booleano e `messages` é número |
+
+Chave que o contrato não prevê é mantida em `meurpg.*` (texto vira `keyword`): nada reprova o documento, e um tipo errado é guardado sem indexar (`ignore_malformed`). Se uma etapa do pipeline falhar, o documento entra com a tag `meurpg_pipeline_failure`. O Filebeat só acrescenta `labels.stack` (`docker` ou `native`) e `container.*`. O `logs.sh simulate` roda quatro linhas de exemplo pelo pipeline e mostra os documentos.
+
+### Ler os logs
+
+O `deploy/elk/logs.sh` (bash, curl e jq) é a interface para quem não abre o Kibana, e imprime uma linha por registro: hora, nível, `req=`, mensagem, procedimento ou evento, `code=`, `status=`, duração e `error=`. Ele usa o usuário `meurpg_reader`, que só lê `logs-meurpg-*` (a senha `READER_PASSWORD` do `.env`).
+
+| Comando | O que mostra |
+| --- | --- |
+| `logs.sh errors [desde]` | Nível `error` ou resposta 5xx (padrão: 1 hora) |
+| `logs.sh request <id>` | Tudo o que uma requisição registrou, do mais antigo ao mais novo; o id é o `X-Request-Id` da resposta |
+| `logs.sh campaign <id> [desde]`, `logs.sh user <id> [desde]` | Uma campanha ou um usuário |
+| `logs.sh search '<consulta>' [desde]` | Uma `query_string` (Lucene), como `meurpg.procedure:*CreateCampaign AND NOT meurpg.code:ok` |
+| `logs.sh tail [consulta]` | As 10 últimas linhas e depois só as novas, a cada 2 s |
+| `logs.sh health`, `sample`, `simulate` | Saúde do cluster; linhas de exemplo; o pipeline sobre elas |
+
+`desde` é um número com unidade (`30s`, `15m`, `2h`, `1d`, `1w`) ou `all`. No Kibana, as buscas salvas são "MeuRPG: erros", "RPCs lentas (> 500 ms)", "uma requisição" e "uma campanha" (as duas últimas pedem o id no lugar de `COLE-O-ID-AQUI`).
+
+### Conferir em cinco comandos
+
+```bash
+make elk-up                                   # 1. sobe (a primeira vez baixa as imagens e leva uns 2 minutos)
+deploy/elk/logs.sh health                     # 2. cluster=green (ou yellow) log_lines=0
+deploy/elk/logs.sh sample                     # 3. escreve 4 linhas em ~/.meurpg/run-sample/api.log; o Filebeat as envia em ~5 s
+deploy/elk/logs.sh request 0123456789abcdef0123456789abcdef   # 4. mostra as 4 linhas, em ECS, na ordem
+make elk-down                                 # 5. desliga; apague ~/.meurpg/run-sample se quiser
+```
+
+Se o passo 4 vier vazio, espere uns 10 segundos; depois, `make elk-logs` mostra o que o Filebeat disse. Para ver o ambiente do Docker (`make up`), basta jogar: o `api` do projeto `meurpg-local` é lido sozinho.
+
+### Produção (plano)
+
+Em produção, o stdout do Cloud Run já vai para o Cloud Logging, e o caminho para o ELK é um sink do Cloud Logging para um tópico do Pub/Sub, lido por um Filebeat (input `gcp-pubsub`) ou pelo Elastic Cloud (integração do Google Cloud). **Não existe ainda.** O que vale igual: o template, o ILM e o pipeline (`setup/*.json`, aplicados com `PUT`). O que muda:
+
+- **Formato.** O Pub/Sub entrega um `LogEntry` do Cloud Logging, com a linha em `jsonPayload`; o pipeline aceita a linha JSON em `message` (ou já em `json`), então o Filebeat do Pub/Sub precisa pôr o `jsonPayload` em `json` (um passo `processors` no input) ou o pipeline ganha um primeiro passo para isso. Falta escrever e testar.
+- **Cluster.** Três nós (ou Elastic Cloud), `number_of_replicas: 1` no template e disco em SSD. O ELK local é de um nó só, com zero réplicas, e não serve para produção.
+- **Rede e TLS.** Elasticsearch e Kibana atrás de um proxy com TLS e login (IAP, ou o SSO do Elastic Cloud); nenhuma porta aberta para a internet. O Kibana local fala HTTP em `127.0.0.1`.
+- **Credenciais.** As quatro senhas e a chave de criptografia do Kibana no Secret Manager (nunca num `.env` do repositório), com os usuários `meurpg_filebeat` (só escreve) e `meurpg_reader` (só lê) e uma chave de API por serviço no lugar de senha. Ver [Segredos](#segredos).
+- **Quem lê.** Só a equipe de operação. O log tem o `user_id`, que é pseudônimo mas é dado pessoal (ver [Privacidade](privacidade.md#logs-no-elk)); o contrato proíbe e-mail, nomes e texto livre.
+- **Retenção.** 14 dias, a mesma do ELK local, e menor que os 30 dias do Cloud Logging. Mudar é editar `ilm.json`.
+- **Tamanho.** Em `info`, a produção escreve uma linha por requisição (uns 300 a 500 bytes): 1 milhão de requisições por mês são uns 0,5 GB, ou uns 7 GB com a retenção cheia de 14 dias de um mês pesado. No `debug` (ensaio), conte de 5 a 10 vezes mais. Estimativa por tamanho de linha, **não medida**.
+- **Custo.** Estimativa, não uma fatura e não conferida nos preços de hoje: o sink e o Pub/Sub custam centavos neste volume (os primeiros GiB do mês são grátis). O custo real é onde o Elasticsearch roda: uma VM pequena no Google Cloud (2 vCPU e 8 GB) fica em dezenas de dólares por mês, e o plano mais barato do Elastic Cloud também. Isso passa de longe o custo-alvo de "perto de zero" desta página, por isso o ELK de produção é uma decisão do Samuel, com o Cloud Logging (grátis no volume atual, 30 dias) como alternativa.
+
 ## Alertas de orçamento
 
 Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares exatos estão **a definir**.
@@ -209,6 +293,7 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 - Avaliar se vale migrar do CockroachDB para o Cloud SQL ou outro produto, já que o plano legado não pode mudar sem perder o Unlimited. Pesa na conta: o código usa o TTL por linha do CockroachDB (sessões, estados de login e convites) e repete transações no erro `40001`; num PostgreSQL, a limpeza viraria um job agendado.
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
+- O ELK de produção (ver [Logs no ELK](#logs-no-elk)): se vale o custo, onde o Elasticsearch roda, o sink do Cloud Logging para o Pub/Sub e o passo do pipeline que lê o `jsonPayload`.
 - A chave da API do Gemini no Secret Manager, a cota diária e a restrição de API da chave (ver [Imagens geradas](#imagens-geradas-a-api-do-gemini)); medir o custo real por imagem com ela, e ajustar `IMAGE_MONTHLY_LIMIT`.
 - O bucket das imagens e a implementação do Cloud Storage no pacote `blob` (bucket privado em São Paulo, soft delete de 7 dias, só a conta de serviço da API), e `GOMEMLIMIT` no Cloud Run (ver [Imagens](#imagens)).
 

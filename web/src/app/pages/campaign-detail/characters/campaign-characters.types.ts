@@ -31,7 +31,7 @@ export interface CampaignCharactersVm {
 
 /**
  * The port `CampaignCharacters` depends on, provided at the route level for
- * `/campanhas/:id` (`campaign-detail.routes.ts`) by
+ * `/campaigns/:id` (`campaign-detail.routes.ts`) by
  * `CampaignCharactersSourceLive`, which wraps the generated `CharacterService`
  * client. No root fallback: a route reached without this provider fails
  * loudly (NG0201) instead of silently degrading — see `app.config.ts`.

@@ -773,15 +773,15 @@ func TestTreasureDescriptionReadsInPortuguese(t *testing.T) {
 		Art:   []rules.TreasurePiece{{NamePT: "Dedal de prata com um pássaro gravado", ValuePO: 27, Count: 1}},
 		Items: []rules.TreasureItem{
 			{Key: "item:potion-of-healing-common", NamePT: "Poção de cura", Rarity: rules.RarityCommon},
-			{Key: "item:spell-scroll-1st", NamePT: "Pergaminho de magia (1º círculo)", Rarity: rules.RarityCommon},
+			{Key: "item:spell-scroll-1st", NamePT: "Pergaminho de magia (1º nível)", Rarity: rules.RarityCommon},
 			{Key: "item:ring-of-protection", NamePT: "Anel de proteção", Rarity: rules.RarityRare, Attunement: true},
-			{Key: "item:spell-scroll-1st", NamePT: "Pergaminho de magia (1º círculo)", Rarity: rules.RarityCommon},
+			{Key: "item:spell-scroll-1st", NamePT: "Pergaminho de magia (1º nível)", Rarity: rules.RarityCommon},
 		},
 	}
 	const want = "Moedas: 1.200 PP, 340 PO e 2 PL.\n" +
 		"Gemas:\n- 2 × Ágata-de-fogo (18 PO cada)\n- Citrino (54 PO)\n" +
 		"Obras de arte:\n- Dedal de prata com um pássaro gravado (27 PO)\n" +
-		"Itens mágicos:\n- Poção de cura (item comum)\n- 2 × Pergaminho de magia (1º círculo) (item comum)\n- Anel de proteção (item raro, exige sintonização)"
+		"Itens mágicos:\n- Poção de cura (item comum)\n- 2 × Pergaminho de magia (1º nível) (item comum)\n- Anel de proteção (item raro, exige sintonização)"
 	if got := treasureDescription(tr); got != want {
 		t.Errorf("description:\n%s\nwant:\n%s", got, want)
 	}

@@ -154,6 +154,10 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: the campaign already has an open session
 	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is
@@ -651,8 +655,8 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
 	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
-	// Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
-	// Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+	// Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+	// Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
 	// (1 action). The caster is a player's character; its player casts for it,
 	// and the master for anyone. The spell must be one the character has (a
 	// ritual one from its spellbook when cast as a ritual), the slot a free one
@@ -1175,6 +1179,10 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: the campaign already has an open session
 	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is
@@ -1672,8 +1680,8 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
 	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
-	// Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
-	// Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+	// Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+	// Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
 	// (1 action). The caster is a player's character; its player casts for it,
 	// and the master for anyone. The spell must be one the character has (a
 	// ritual one from its spellbook when cast as a ritual), the slot a free one

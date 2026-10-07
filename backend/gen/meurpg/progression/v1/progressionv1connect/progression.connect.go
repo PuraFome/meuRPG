@@ -161,6 +161,10 @@ type ProgressionServiceClient interface {
 	//     that counts XP.
 	//   - `resource_exhausted`: the campaign already has 100 milestones (the
 	//     reached ones count).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddMilestone(context.Context, *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error)
 	// UpdateMilestone changes the text of a milestone that is still planned.
 	// Only the master may call it. A reached milestone keeps the text it was
@@ -524,6 +528,10 @@ type ProgressionServiceHandler interface {
 	//     that counts XP.
 	//   - `resource_exhausted`: the campaign already has 100 milestones (the
 	//     reached ones count).
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	AddMilestone(context.Context, *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error)
 	// UpdateMilestone changes the text of a milestone that is still planned.
 	// Only the master may call it. A reached milestone keeps the text it was

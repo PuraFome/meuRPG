@@ -67,6 +67,10 @@ service PlayService {
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: the campaign already has an open session
   //     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc StartGameSession(StartGameSessionRequest) returns (StartGameSessionResponse);
 
   // EndGameSession ends one of the campaign's game sessions. Only the
@@ -606,8 +610,8 @@ service PlayService {
   rpc SetSpeaker(SetSpeakerRequest) returns (SetSpeakerResponse);
 
   // CastSummon casts a spell that summons creatures outside a combat (MR-037,
-  // Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
-  // Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+  // Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+  // Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
   // (1 action). The caster is a player's character; its player casts for it,
   // and the master for anyone. The spell must be one the character has (a
   // ritual one from its spellbook when cast as a ritual), the slot a free one
@@ -790,7 +794,7 @@ message CastSummonRequest {
   // The spell, "spell:find-familiar", "spell:animate-dead" or
   // "spell:conjure-animals".
   string spell_key = 3;
-  // True: cast as a ritual, spending no slot (Encontrar Familiar, by a
+  // True: cast as a ritual, spending no slot (Convocar Familiar, by a
   // character that casts rituals). False: cast with `slot`.
   bool ritual = 4;
   // The slot, for a cast that is not a ritual.
@@ -849,6 +853,11 @@ message GameSession {
 // StartGameSessionRequest names the campaign.
 message StartGameSessionRequest {
   string campaign_id = 1;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 2;
 }
 
 // StartGameSessionResponse returns the new session.

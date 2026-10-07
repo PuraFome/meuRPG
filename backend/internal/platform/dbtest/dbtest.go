@@ -1,7 +1,8 @@
 // Package dbtest gives integration tests a real, freshly migrated
 // CockroachDB database. Only tests import it.
 //
-// The tests need MEURPG_TEST_DATABASE_URL; without it they skip, so
+// The tests need MEURPG_TEST_DATABASE_URL; without it they skip (or fail, with
+// MEURPG_REQUIRE_DB=1, which CI sets), so
 // `go test ./...` works anywhere. To run them, start a throwaway CockroachDB
 // (`make up` does, on port 26257) and run:
 //
@@ -49,11 +50,12 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 	"github.com/PuraFome/meuRPG/backend/migrations"
 )
 
 // EnvVar names the variable with the test server's connection string.
-const EnvVar = "MEURPG_TEST_DATABASE_URL"
+const EnvVar = testenv.DatabaseEnv
 
 // counter makes database names unique even when two tests start in the same
 // nanosecond.
@@ -98,7 +100,8 @@ func Enabled() bool { return os.Getenv(EnvVar) != "" }
 // package's TestMain drops them all at the end, see Main). prefix names the
 // databases, to tell packages apart in CockroachDB's console.
 //
-// Without MEURPG_TEST_DATABASE_URL, NewPool skips the test.
+// Without MEURPG_TEST_DATABASE_URL, NewPool skips the test (it fails the test
+// when MEURPG_REQUIRE_DB=1, which CI sets: see package testenv).
 //
 // The pool has one connection (see guardPool). A test that races transactions
 // needs them to overlap: it asks for a bigger pool with NewPoolConns.
@@ -146,10 +149,7 @@ func PoolSize(t testing.TB, conns int32) {
 // process-wide, only changes the default of NewPool.
 func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	t.Helper()
-	rawURL := os.Getenv(EnvVar)
-	if rawURL == "" {
-		t.Skip(EnvVar + " is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 
 	templateOnce.Do(func() { template, templateErr = buildTemplate(rawURL) })
 	if templateErr != nil {
@@ -181,6 +181,14 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	for _, stmt := range template.ddl {
 		if _, err := conn.ExecContext(t.Context(), stmt); err != nil {
 			t.Fatalf("copy the template's schema: %v\n%s", err, stmt)
+		}
+	}
+	// The reference tables keep their rows: a migration fills them, and no test
+	// writes to them, so a copy of the schema alone would leave them empty.
+	for _, table := range referenceTables {
+		if _, err := conn.ExecContext(t.Context(), fmt.Sprintf(
+			`INSERT INTO %s SELECT * FROM %s.public.%s`, table, template.name, table)); err != nil {
+			t.Fatalf("copy the reference table %s: %v", table, err)
 		}
 	}
 	// goose's own table too, so the database says which migrations it has.
@@ -421,12 +429,16 @@ func take(prefix string) (string, bool) {
 	return name, true
 }
 
+// referenceTables are tables that migrations fill and the game never writes:
+// they are copied with their rows, and emptyAll leaves them alone.
+var referenceTables = []string{"session_event_kinds"}
+
 // emptyAll deletes every row of every table, children before parents.
 func (tpl templateDB) emptyAll() string {
 	var b strings.Builder
 	for i := len(tpl.tables) - 1; i >= 0; i-- {
-		if tpl.tables[i] == "goose_db_version" {
-			continue // the migrations it records stay
+		if tpl.tables[i] == "goose_db_version" || slices.Contains(referenceTables, tpl.tables[i]) {
+			continue // the migrations it records, and the reference data, stay
 		}
 		b.WriteString("DELETE FROM " + pgx.Identifier{tpl.tables[i]}.Sanitize() + ";")
 	}

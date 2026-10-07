@@ -26,7 +26,7 @@
     }
   }
   @if (s.status === 'ready') {
-    <a dialogFooter matButton [routerLink]="['/campanhas', campaignId(), 'personagens', characterId()]">
+    <a dialogFooter matButton [routerLink]="['/campaigns', campaignId(), 'characters', characterId()]">
       <mat-icon aria-hidden="true">arrow_forward</mat-icon>Abrir ficha
     </a>
   }

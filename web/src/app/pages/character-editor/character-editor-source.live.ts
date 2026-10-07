@@ -669,6 +669,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       campaignId: input.campaignId,
       kind: KIND_TO_GEN[input.kind],
       name: input.full?.name ?? input.basic?.name ?? '',
+      idempotencyKey: input.idempotencyKey,
       ...(input.abilityMethod ? { abilityMethod: ABILITY_METHOD_TO_GEN[input.abilityMethod] } : {}),
       sheet: input.full
         ? { content: { case: 'full', value: toFullSheetInit(input.full) } }

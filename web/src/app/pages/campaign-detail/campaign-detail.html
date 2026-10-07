@@ -1,4 +1,4 @@
-<a class="back-link" routerLink="/campanhas">
+<a class="back-link" routerLink="/campaigns">
   <mat-icon aria-hidden="true">chevron_left</mat-icon>Minhas campanhas
 </a>
 
@@ -17,7 +17,7 @@
         <mat-icon aria-hidden="true">search_off</mat-icon>
         <p>
           <strong>Essa campanha não existe, ou você não é membro dela.</strong>
-          Confira o link com o mestre, ou volte para <a routerLink="/campanhas">Minhas campanhas</a>.
+          Confira o link com o mestre, ou volte para <a routerLink="/campaigns">Minhas campanhas</a>.
         </p>
       </div>
     }
@@ -87,7 +87,7 @@
               <p class="rules-lead">As regras que o mestre escolheu para a mesa, e os lembretes dela.</p>
             }
             <div>
-              <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'regras']">{{ isMaster ? 'Abrir as regras' : 'Ler as regras' }}</a>
+              <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'rules']">{{ isMaster ? 'Abrir as regras' : 'Ler as regras' }}</a>
             </div>
           </section>
           <section class="mr-panel" aria-labelledby="content-heading">
@@ -98,14 +98,14 @@
               <p class="rules-lead">O que o mestre criou para esta campanha: classes, raças, antecedentes e magias.</p>
             }
             <div>
-              <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'conteudo']">{{ isMaster ? 'Abrir o conteúdo' : 'Ler o conteúdo' }}</a>
+              <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'content']">{{ isMaster ? 'Abrir o conteúdo' : 'Ler o conteúdo' }}</a>
             </div>
           </section>
           <section class="mr-panel" aria-labelledby="spells-heading">
             <h2 class="mr-panel__title" id="spells-heading">Magias</h2>
             <p class="rules-lead">As magias do SRD e as que o mestre criou para a mesa: procure pelo nome e filtre por classe, círculo e escola.</p>
             <div>
-              <a matButton="outlined" [routerLink]="['/campanhas', s.campaign.id, 'magias']">Abrir as magias</a>
+              <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'spells']">Abrir as magias</a>
             </div>
           </section>
           @if (isMaster) { <app-document-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" /> }
@@ -122,7 +122,7 @@
                       }
                     </span>
                     @if (m.isViewer && !m.hasName) {
-                      <a class="member__profile" routerLink="/perfil">Escolher o nome que a mesa vê</a>
+                      <a class="member__profile" routerLink="/profile">Escolher o nome que a mesa vê</a>
                     }
                   </span>
                   <span class="member__role">{{ m.role }}</span>

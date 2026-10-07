@@ -42,6 +42,10 @@ service CampaignService {
   // (RN-30): `resource_exhausted` when the caller is already master of the
   // most campaigns the server allows, `permission_denied` when the server
   // only lets some people create campaigns and the caller is not one.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateCampaign(CreateCampaignRequest) returns (CreateCampaignResponse);
 
   // ListMyCampaigns lists the campaigns the caller is a member of, newest
@@ -116,7 +120,7 @@ service CampaignService {
   //
   // The response carries the invite's secret token, and this is the only
   // time the server ever returns it: the database keeps only a hash. The app
-  // shares it as https://<app>/convite#t=<token>. The token goes in the URL
+  // shares it as https://<app>/invite#t=<token>. The token goes in the URL
   // fragment, which browsers never send to a server, so it stays out of
   // request logs and Referer headers (ADR-0009).
   //
@@ -163,8 +167,8 @@ service CampaignService {
   // (CharacterService.RejectCharacter), the pending membership is deleted
   // and they need a new invite. Accepting it through sign-in works the same
   // way: a new pending member lands on
-  // /campanhas/<campaign_id>/personagens/novo, and someone who was already
-  // in the campaign on /campanhas/<campaign_id>.
+  // /campaigns/<campaign_id>/characters/new, and someone who was already
+  // in the campaign on /campaigns/<campaign_id>.
   //
   // Errors:
   //   - `invalid_argument`: the token is empty.
@@ -412,6 +416,11 @@ message CreateCampaignRequest {
   string name = 1;
   // Required.
   XpMode xp_mode = 2;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique for the user; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 3;
 }
 
 // CreateCampaignResponse returns the new campaign.
@@ -488,7 +497,7 @@ message CreateInviteRequest {
 // CreateInviteResponse returns the invite and, this one time, its token.
 message CreateInviteResponse {
   Invite invite = 1;
-  // The secret that goes into the link's fragment: /convite#t=<token>.
+  // The secret that goes into the link's fragment: /invite#t=<token>.
   // Never log it and never put it in a query string.
   string token = 2;
 }
@@ -517,7 +526,7 @@ message RevokeInviteResponse {
 
 // AcceptInviteRequest carries the invite's token.
 message AcceptInviteRequest {
-  // The token from the invite link's fragment (/convite#t=<token>).
+  // The token from the invite link's fragment (/invite#t=<token>).
   string token = 1;
 }
 

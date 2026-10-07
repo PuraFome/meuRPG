@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 
 import type { Note, NoteScene } from '../../../gen/meurpg/notes/v1/notes_pb';
+import { ActionKey } from '../connect/idempotency';
 import type { NotesClient } from './notes-client';
 import { isClue, sortNotes } from './notes-view';
 
@@ -41,6 +42,8 @@ export class NotesState {
   readonly atLimit = computed(() => this.noteCount() >= this.maxNotes());
 
   private generation = 0;
+  /** The key of the note being written: kept across the retries of one note, new for the next. */
+  private readonly createKey = new ActionKey();
 
   constructor(
     private readonly api: Pick<NotesClient, 'list' | 'scenes' | 'create' | 'update' | 'delete'>,
@@ -136,7 +139,9 @@ export class NotesState {
   /** A new note. `null` while another write of it is in flight; a refusal throws. */
   create(text: string, scenePointId: string): Promise<Note | null> {
     return this.write(NEW, async () => {
-      const note = await this.api.create(this.campaignId(), text, scenePointId);
+      // A retry of the same note (a lost answer, a second tap) sends the same key and adds it once.
+      const note = await this.api.create(this.campaignId(), text, scenePointId, this.createKey.keyFor([text, scenePointId]));
+      this.createKey.renew();
       this.generation++;
       this.notes.update((list) => sortNotes([note, ...list]));
       this.noteCount.update((n) => n + 1);

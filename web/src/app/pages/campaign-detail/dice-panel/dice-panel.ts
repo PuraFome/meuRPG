@@ -8,7 +8,7 @@ import { DICE_MODE_OPTIONS, preferenceLabel } from '../../../core/campaigns/dice
 import type { MemberRowVm } from '../campaign-detail.copy';
 
 /**
- * The master's "Dados" summary on `/campanhas/:id` (E6-17, RN-18): how the campaign's players roll dice, and, while the
+ * The master's "Dados" summary on `/campaigns/:id` (E6-17, RN-18): how the campaign's players roll dice, and, while the
  * campaign lets each player choose, what each one chose. The mode itself is edited in one place only, "Regras da mesa"
  * (it is saved there with the rest of the rules, so a stale panel here can never overwrite it), and the link goes there.
  */

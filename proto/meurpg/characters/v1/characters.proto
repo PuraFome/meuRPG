@@ -110,6 +110,10 @@ service CharacterService {
   // The base scores of a PLAYER's full sheet are checked against
   // `ability_method` (RN-24). Nothing else is: the master's NPCs and the
   // master's later edits are free, and so is the rest of the sheet.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
 
   // GetAbilityRolls returns the six sets of "4d6, drop the lowest" the server
@@ -569,6 +573,10 @@ service CharacterService {
   //   - `invalid_argument`: the character is an NPC or is dead, monster_key is
   //     not an SRD creature, or name is not 1 to 40 characters on one line.
   //   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc GiveCreature(GiveCreatureRequest) returns (GiveCreatureResponse);
 
   // RenameCreature changes a creature's name. The character's player and the
@@ -609,7 +617,7 @@ service CharacterService {
 
   // GetSummonOptions says what a character can summon from its sheet (MR-037,
   // Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-  // it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+  // it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
   // (as a ritual, with a slot, or both), what each one may bring at each circle
   // it can use, the slots it has, and what a casting would send away. The
   // server works all of it out (the spell on the sheet, prepared or in the
@@ -1299,6 +1307,11 @@ message CreateCharacterRequest {
   // once the web sends the method: then an unspecified method is refused. An
   // unknown value is `invalid_argument`. Ignored for an NPC.
   AbilityMethod ability_method = 6;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated. It must be a UUID.
+  string idempotency_key = 7;
 }
 
 // CreateCharacterResponse returns the new character.
@@ -2041,9 +2054,9 @@ message LevelUp {
 // CreatureSource is where a creature came from.
 enum CreatureSource {
   CREATURE_SOURCE_UNSPECIFIED = 0;
-  // Encontrar Familiar: at most one at a time.
+  // Convocar Familiar: at most one at a time.
   CREATURE_SOURCE_FAMILIAR = 1;
-  // Animar os Mortos: skeletons and zombies.
+  // Animar Mortos: skeletons and zombies.
   CREATURE_SOURCE_ANIMATE_DEAD = 2;
   // Conjurar Animais: animals that last while the caster concentrates.
   CREATURE_SOURCE_CONJURE_ANIMALS = 3;
@@ -2108,6 +2121,11 @@ message GiveCreatureRequest {
   // What to call it, 1 to 40 characters on one line; blank takes the
   // creature's Portuguese name.
   string name = 4;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated. It must be a UUID.
+  string idempotency_key = 5;
 }
 
 // GiveCreatureResponse returns the new creature.
@@ -2207,7 +2225,7 @@ message SummonSpellOptions {
   // The spell, "spell:find-familiar", "spell:animate-dead" or
   // "spell:conjure-animals".
   string spell_key = 1;
-  // Its Portuguese name ("Encontrar Familiar").
+  // Its Portuguese name ("Convocar Familiar").
   string name_pt = 2;
   // The spell's own circle, 1 to 9.
   int32 level = 3;
@@ -2218,7 +2236,7 @@ message SummonSpellOptions {
   bool concentration = 6;
   // Whether this character can cast it as a ritual (no slot): a wizard from the
   // spellbook, another caster from its prepared list, a warlock with the Pact
-  // of the Chain for Encontrar Familiar. Always false for a spell that is not a
+  // of the Chain for Convocar Familiar. Always false for a spell that is not a
   // ritual.
   bool can_ritual = 7;
   // Whether this character can cast it with a slot: the spell is on the sheet and
@@ -2249,7 +2267,7 @@ message SummonCircle {
 // skeletons and a zombie) is allowed.
 message SummonOption {
   // How many creatures, already counting the circle (Conjurar Animais doubles at
-  // the 5th, Animar os Mortos adds two for each circle above the 3rd).
+  // the 5th, Animar Mortos adds two for each circle above the 3rd).
   int32 count = 1;
   // The creatures a casting may choose from. Empty when `type` and `max_cr`
   // say it.

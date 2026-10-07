@@ -17,6 +17,7 @@ import { Code } from '@connectrpc/connect';
 
 import { lockedSheetCountLabel } from '../../../core/characters/character-labels';
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { LivePill } from '../../../shared/live-pill/live-pill';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
 import { formatDayAt } from '../../../shared/session-time/session-time';
@@ -40,7 +41,7 @@ const MASTER_ONLY_MESSAGES = {
 };
 
 /**
- * The "Sessão" panel on `/campanhas/:id` (artboard E5-09).
+ * The "Sessão" panel on `/campaigns/:id` (artboard E5-09).
  *
  * For the master: "Iniciar sessão" (RN-01: starting locks every player's
  * sheet; ending never unlocks them) or, while one is open, "Sessão 4 em
@@ -64,6 +65,7 @@ const MASTER_ONLY_MESSAGES = {
 export class GameSessionCard implements OnInit, OnDestroy {
   private readonly source = inject(GameSessionSource);
   private readonly openSessions = inject(OpenSessions);
+  private readonly startKey = new ActionKey();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
@@ -120,7 +122,9 @@ export class GameSessionCard implements OnInit, OnDestroy {
   protected async startSession(): Promise<void> {
     this.actionState.set({ status: 'saving' });
     try {
-      const result = await this.source.startGameSession(this.campaignId());
+      // A retry of the same start (a lost answer, a second tap) sends the same key and starts one session.
+      const result = await this.source.startGameSession(this.campaignId(), this.startKey.keyFor(this.campaignId()));
+      this.startKey.renew();
       this.state.set({ status: 'ready', session: result.session });
       this.lastLockedSheetCount.set(result.lockedSheetCount);
       this.actionState.set({ status: 'idle' });

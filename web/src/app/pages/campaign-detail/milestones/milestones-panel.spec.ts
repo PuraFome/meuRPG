@@ -99,7 +99,7 @@ describe('MilestonesPanel (E8-14)', () => {
     expect(text(el)).not.toContain('Brisa');
     const open = el.querySelector<HTMLAnchorElement>('app-milestone-characters a')!;
     expect(open.textContent?.trim()).toBe('Abrir a ficha');
-    expect(open.getAttribute('href')).toBe('/campanhas/c1/personagens/p');
+    expect(open.getAttribute('href')).toBe('/campaigns/c1/characters/p');
   });
 
   it('a player before the first milestone: the empty state, no character row, no hint', async () => {

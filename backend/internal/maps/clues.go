@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	notelink "github.com/PuraFome/meuRPG/backend/internal/notes/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
@@ -51,7 +52,7 @@ const (
 	// is a handful of players, and the list must stay small.
 	maxRevealCharacters = 50
 	// eventClueRevealed is the session event kind of a reveal. The kind is
-	// play's (session_events_kind_valid lists it); this package only names it.
+	// play's (session_event_kinds lists it); this package only names it.
 	eventClueRevealed = "clue_revealed"
 )
 
@@ -76,28 +77,46 @@ func (s *Service) AddSceneClue(
 	if err != nil {
 		return nil, err
 	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first clue only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
 	var added mapsdb.SceneClue
+	replayed := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
+		// The point is locked by now, so two calls with the same key take turns.
 		current, err := q.ListSceneClues(ctx, pointID)
 		if err != nil {
 			return fmt.Errorf("list the clues: %w", err)
 		}
-		if len(current) >= maxSceneClues {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d clues", maxSceneClues))
-		}
-		position := int32(0)
-		if n := len(current); n > 0 {
-			position = current[n-1].Position + 1
-		}
-		if added, err = q.InsertSceneClue(ctx, mapsdb.InsertSceneClueParams{PointID: pointID, Position: position, Text: text, Now: s.now()}); err != nil {
-			return fmt.Errorf("insert clue: %w", err)
-		}
-		return nil
+		added, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetSceneClueByCreateKey,
+			func(c mapsdb.SceneClue) *string { return c.CreateHash },
+			func() (mapsdb.SceneClue, error) {
+				if len(current) >= maxSceneClues {
+					return added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d clues", maxSceneClues))
+				}
+				position := int32(0)
+				if n := len(current); n > 0 {
+					position = current[n-1].Position + 1
+				}
+				c, err := q.InsertSceneClue(ctx, mapsdb.InsertSceneClueParams{
+					PointID: pointID, Position: position, Text: text, CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
+				})
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return c, fmt.Errorf("insert clue: %w", err)
+				}
+				return c, err
+			})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene clue", err)
 	}
-	s.cluesChanged(ctx, m.CampaignID, ch)
+	if !replayed {
+		s.cluesChanged(ctx, m.CampaignID, ch)
+	}
 	clues, err := s.cluesOfPoint(ctx, m.CampaignID, pointID)
 	if err != nil {
 		return nil, err

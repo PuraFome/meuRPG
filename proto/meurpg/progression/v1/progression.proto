@@ -153,6 +153,10 @@ service ProgressionService {
   //     that counts XP.
   //   - `resource_exhausted`: the campaign already has 100 milestones (the
   //     reached ones count).
+  //
+  // Safe to retry when the request carries an idempotency_key: a second call with the same key and
+  // the same request returns what the first one made and makes nothing; the same key with another
+  // request is `invalid_argument`. Without a key the call is not deduplicated.
   rpc AddMilestone(AddMilestoneRequest) returns (AddMilestoneResponse);
 
   // UpdateMilestone changes the text of a milestone that is still planned.
@@ -597,6 +601,11 @@ message AddMilestoneRequest {
   string campaign_id = 1;
   // Required: 1 to 120 characters, one line.
   string text = 2;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request returns what the first call made instead of making another.
+  // The key is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 3;
 }
 
 message AddMilestoneResponse {

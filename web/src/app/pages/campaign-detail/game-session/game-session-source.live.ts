@@ -18,7 +18,7 @@ function toVm(gameSession: GameSession): GameSessionVm {
 /**
  * `GameSessionSource` over the generated `PlayService` client
  * (`meurpg.play.v1`, phase 2). Provided at the route level for
- * `/campanhas/:id` — see `../campaign-detail.routes.ts` — so this client
+ * `/campaigns/:id` — see `../campaign-detail.routes.ts` — so this client
  * stays out of the eager bundle.
  */
 @Injectable()
@@ -31,8 +31,8 @@ export class GameSessionSourceLive implements GameSessionSource {
     return open ? toVm(open) : null;
   }
 
-  async startGameSession(campaignId: string): Promise<StartGameSessionResultVm> {
-    const res = await this.client.startGameSession({ campaignId });
+  async startGameSession(campaignId: string, idempotencyKey: string): Promise<StartGameSessionResultVm> {
+    const res = await this.client.startGameSession({ campaignId, idempotencyKey });
     return { session: toVm(res.gameSession!), lockedSheetCount: res.lockedSheetCount };
   }
 

@@ -16,6 +16,8 @@ type Campaign struct {
 	CreatedAt       time.Time
 	DiceMode        string
 	XpModeChangedAt *time.Time
+	CreateKey       *string
+	CreateHash      *string
 }
 
 type CampaignDocument struct {

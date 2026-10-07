@@ -90,6 +90,10 @@ type CampaignServiceClient interface {
 	// (RN-30): `resource_exhausted` when the caller is already master of the
 	// most campaigns the server allows, `permission_denied` when the server
 	// only lets some people create campaigns and the caller is not one.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateCampaign(context.Context, *connect.Request[v1.CreateCampaignRequest]) (*connect.Response[v1.CreateCampaignResponse], error)
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
 	// first, with the caller's role in each. It also lists the campaigns where
@@ -150,7 +154,7 @@ type CampaignServiceClient interface {
 	//
 	// The response carries the invite's secret token, and this is the only
 	// time the server ever returns it: the database keeps only a hash. The app
-	// shares it as https://<app>/convite#t=<token>. The token goes in the URL
+	// shares it as https://<app>/invite#t=<token>. The token goes in the URL
 	// fragment, which browsers never send to a server, so it stays out of
 	// request logs and Referer headers (ADR-0009).
 	//
@@ -192,8 +196,8 @@ type CampaignServiceClient interface {
 	// (CharacterService.RejectCharacter), the pending membership is deleted
 	// and they need a new invite. Accepting it through sign-in works the same
 	// way: a new pending member lands on
-	// /campanhas/<campaign_id>/personagens/novo, and someone who was already
-	// in the campaign on /campanhas/<campaign_id>.
+	// /campaigns/<campaign_id>/characters/new, and someone who was already
+	// in the campaign on /campaigns/<campaign_id>.
 	//
 	// Errors:
 	//   - `invalid_argument`: the token is empty.
@@ -474,6 +478,10 @@ type CampaignServiceHandler interface {
 	// (RN-30): `resource_exhausted` when the caller is already master of the
 	// most campaigns the server allows, `permission_denied` when the server
 	// only lets some people create campaigns and the caller is not one.
+	//
+	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
+	// the same request returns what the first one made and makes nothing; the same key with another
+	// request is `invalid_argument`. Without a key the call is not deduplicated.
 	CreateCampaign(context.Context, *connect.Request[v1.CreateCampaignRequest]) (*connect.Response[v1.CreateCampaignResponse], error)
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
 	// first, with the caller's role in each. It also lists the campaigns where
@@ -534,7 +542,7 @@ type CampaignServiceHandler interface {
 	//
 	// The response carries the invite's secret token, and this is the only
 	// time the server ever returns it: the database keeps only a hash. The app
-	// shares it as https://<app>/convite#t=<token>. The token goes in the URL
+	// shares it as https://<app>/invite#t=<token>. The token goes in the URL
 	// fragment, which browsers never send to a server, so it stays out of
 	// request logs and Referer headers (ADR-0009).
 	//
@@ -576,8 +584,8 @@ type CampaignServiceHandler interface {
 	// (CharacterService.RejectCharacter), the pending membership is deleted
 	// and they need a new invite. Accepting it through sign-in works the same
 	// way: a new pending member lands on
-	// /campanhas/<campaign_id>/personagens/novo, and someone who was already
-	// in the campaign on /campanhas/<campaign_id>.
+	// /campaigns/<campaign_id>/characters/new, and someone who was already
+	// in the campaign on /campaigns/<campaign_id>.
 	//
 	// Errors:
 	//   - `invalid_argument`: the token is empty.
