@@ -7773,8 +7773,9 @@ export const CombatService: GenService<{
    *     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); in GRID mode, there is
    *     no current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
    *     with its map_id, so the app offers to set one); in THEATRE mode, a
-   *     map_point_id (THEATRE_HAS_NO_MAP).
-   *   - `invalid_argument`: no participants, more than 40 combatants, a
+   *     map_point_id (THEATRE_HAS_NO_MAP); the combatants and monsters, with
+   *     the party's own creatures, would pass 40 (TOO_MANY_COMBATANTS).
+   *   - `invalid_argument`: no participants, a
    *     participant listed twice, a count outside 1 to 10 (a player
    *     character: 1), a name that breaks its rules, or a `mode` that is not one;
    *     a monster group that is not an SRD creature, listed twice or with a count
@@ -8253,9 +8254,11 @@ export const CombatService: GenService<{
    *   - `permission_denied`: the caller is a player.
    *   - `invalid_argument`: creature_key is not an SRD creature, count is
    *     outside 1 to 10, the name is not 1 to 30 characters on one line, the
-   *     hit-point mode is unknown, the combat would pass 40 combatants, or the
-   *     idempotency key was used for another change.
-   *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+   *     hit-point mode is unknown, or the idempotency key was used for another
+   *     change.
+   *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the combat
+   *     would pass 40 combatants, counting every combatant it has (EncounterBlocked,
+   *     TOO_MANY_COMBATANTS).
    *
    * @generated from rpc meurpg.play.v1.CombatService.AddMonsters
    */

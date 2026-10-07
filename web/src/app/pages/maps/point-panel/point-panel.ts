@@ -18,6 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { RouterLink } from '@angular/router';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
@@ -61,6 +62,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     MatIconModule,
     MatInputModule,
     ReactiveFormsModule,
+    RouterLink,
     ClueList,
     HooksField,
     RevealSwitch,
@@ -76,6 +78,8 @@ export class PointPanel {
   readonly point = input.required<MapPoint>();
   /** The campaign, for the scene actions the panel saves on its own. */
   readonly campaignId = input('');
+  /** The map the point is on, for "Montar o encontro" (MR-043). */
+  readonly mapId = input('');
   /** The campaign's player characters, to say who has each clue. */
   readonly players = input<readonly CluePlayer[]>([]);
   /** The campaign's other maps, for "Leva para". */
@@ -102,6 +106,7 @@ export class PointPanel {
   protected readonly kindLabel = pointKindLabel;
   protected readonly kindIcon = pointKindIcon;
   protected readonly Submap = MapPointKind.SUBMAP;
+  protected readonly Battle = MapPointKind.BATTLE;
   protected readonly Scene = MapPointKind.SCENE;
   protected readonly nameMax = POINT_NAME_MAX;
   protected readonly descriptionMax = POINT_DESCRIPTION_MAX;

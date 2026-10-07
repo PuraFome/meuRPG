@@ -1,0 +1,130 @@
+<app-sheet-frame
+  [title]="swapping() && inSheet ? 'Trocar ' + swapping()!.creature?.namePt : 'Gerar encontro'"
+  [subtitle]="lead()"
+  [phone]="inSheet"
+  height="min(780px, calc(92dvh - 48px))"
+  titleId="gen-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (swapping() && inSheet) {
+      <ng-container *ngTemplateOutlet="swapView" />
+    } @else {
+    <div class="opts">
+      <div class="opts__band">
+        <span class="mr-label" aria-hidden="true">Dificuldade</span>
+        <app-segmented label="Dificuldade" [segments]="bands" [value]="band()" (choose)="setBand($event)" />
+        @if (bandHint()) {
+          <p class="hint">{{ bandHint() }}</p>
+        }
+      </div>
+      <label class="opts__type">
+        <span class="mr-label">Tipo de criatura</span>
+        <span class="box box--select">
+          <select name="type" [value]="type()" (change)="setType($any($event.target).value)">
+            <option value="" [selected]="type() === ''">Qualquer tipo</option>
+            @for (t of types; track t.value) {
+              <option [value]="t.value" [selected]="type() === t.value">{{ t.label }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+    </div>
+
+    @if (error()) {
+      <div class="mr-notice mr-notice--warning" role="alert">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (busy() && !result()) {
+      <p class="mr-muted" role="status">Montando o encontro...</p>
+    }
+
+    @if (result(); as ev) {
+      <section class="res" [attr.aria-busy]="busy()" aria-labelledby="gen-res-h">
+        <div class="res__head">
+          <h3 class="res__t" id="gen-res-h">O encontro</h3>
+          @if (seed() !== null) {
+            <span class="res__seed">Semente {{ seed() }}</span>
+          } @else {
+            <span class="res__seed">Trocado à mão</span>
+          }
+        </div>
+        <ul class="lines">
+          @for (l of ev.lines; track l.creature?.key) {
+            <li class="line">
+              <app-creature-art class="line__art" [monsterKey]="l.creature?.key ?? ''" [type]="l.creature?.type ?? ''" />
+              <span class="line__name">
+                <span class="line__pt">{{ l.count }} × {{ l.creature?.namePt }}</span>
+                <span class="line__s">ND {{ l.creature?.challengeRating }} · {{ format(l.creature?.xp ?? 0) }} XP cada</span>
+              </span>
+              <span class="line__xp">{{ format(l.subtotalXp) }} XP</span>
+              <button type="button" class="line__swap" [attr.aria-label]="'Trocar criatura: ' + l.creature?.namePt" (click)="startSwap(l)">Trocar criatura</button>
+            </li>
+          }
+        </ul>
+
+        @if (swapping() && !inSheet) {
+          <ng-container *ngTemplateOutlet="swapView" />
+        }
+
+        <p class="head">{{ head() }}</p>
+        @for (w of warnings(); track w.kind) {
+          <div class="mr-notice mr-notice--warning" role="status">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p><strong>{{ w.title }}</strong> {{ w.text }}</p>
+          </div>
+        }
+        @if (cap()) {
+          <p class="cap"><mat-icon aria-hidden="true">info</mat-icon>{{ cap() }} Gerar de novo com a mesma dificuldade, o mesmo tipo e a mesma semente dá o mesmo encontro.</p>
+        }
+        <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+        <p class="guide guide--c">{{ caveat }}</p>
+      </section>
+    }
+    }
+  </div>
+
+  <div foot>
+    @if (swapping() && inSheet) {
+      <div class="actions">
+        <button type="button" mat-stroked-button class="no" (click)="cancelSwap()">Cancelar</button>
+        <button type="button" mat-flat-button class="go" [class.mr-button--off]="!swapPick() || swapBusy()" [disabled]="!swapPick() || swapBusy()" disabledInteractive (click)="confirmSwap()">
+          {{ swapPick() ? 'Trocar por ' + swapPickName() : 'Trocar' }}
+        </button>
+      </div>
+    } @else {
+    <!-- The filled button comes first in the DOM (and in the phone's stack); the dialog draws it at the right. -->
+    <div class="actions actions--gen">
+      <button type="button" mat-flat-button class="go" [disabled]="!result() || busy()" disabledInteractive [class.mr-button--off]="!result() || busy()" (click)="use()">
+        Usar este encontro
+      </button>
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" disabledInteractive [class.mr-button--off]="busy()" (click)="generate()">
+        <mat-icon aria-hidden="true">shuffle</mat-icon>Gerar outro
+      </button>
+    </div>
+    }
+  </div>
+</app-sheet-frame>
+
+<!-- "Trocar criatura": inline under the lines in a dialog, the whole sheet on a phone (its buttons are then the footer's). -->
+<ng-template #swapView>
+  @if (swapping(); as s) {
+    <app-swap-panel
+      [line]="s"
+      [options]="swapNames()"
+      [pick]="swapPick()"
+      [pickName]="swapPickName()"
+      [error]="swapError()"
+      [busy]="swapBusy()"
+      [typeChosen]="type() !== ''"
+      [footer]="!inSheet"
+      (picked)="swapPick.set($event)"
+      (confirm)="confirmSwap()"
+      (cancel)="cancelSwap()"
+    />
+  }
+</ng-template>

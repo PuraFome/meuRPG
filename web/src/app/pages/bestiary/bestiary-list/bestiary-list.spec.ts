@@ -1,5 +1,8 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -16,6 +19,8 @@ class Stub {}
 describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   let api: FakeCreaturesClient;
   let access: BestiaryAccess;
+  let dialogResult: unknown;
+  let opened: unknown[];
 
   const catalog = () => [
     summary('monster:wolf', 'Lobo', { name: 'Wolf', sizePt: 'Médio', size: 'Medium', challengeRating: '1/4', armorClass: 13, hitPoints: 11 }),
@@ -37,6 +42,16 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
         ]),
         { provide: CreaturesClient, useValue: api },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
+        {
+          provide: MatDialog,
+          useValue: {
+            open: (_c: unknown, config: unknown) => {
+              opened.push(config);
+              return { afterClosed: () => of(dialogResult) };
+            },
+          },
+        },
+        { provide: MatBottomSheet, useValue: {} },
       ],
     });
     const harness = await RouterTestingHarness.create();
@@ -62,6 +77,8 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     access = { status: 'master', campaignName: 'Mirathel' };
+    dialogResult = undefined;
+    opened = [];
   });
 
   afterEach(() => {
@@ -79,16 +96,10 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     expect(flat(rows[0].querySelector('.row__kind'))).toBe('Fera · Médio');
     expect(flat(rows[0].querySelector('.row__nd'))).toBe('ND 1/4');
     expect(flat(rows[0].querySelector('.row__stats'))?.replace(/ /g, ' ')).toBe('CA 13 · PV 11');
-    expect(rows[0].getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf');
+    expect(rows[0].querySelector('.row__link')?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf');
     expect(flat(el.querySelector('.list__n'))).toBe('5 de 5 criaturas');
     // The SRD's name is English: marked for a screen reader.
     expect(rows[0].querySelector('.row__en [lang=en]')?.textContent).toBe('Wolf');
-  });
-
-  it('has no "Pôr no combate" yet (slice 10.9b): the rows only open the stat block', async () => {
-    const { el } = await open();
-    expect(flat(el)).not.toContain('Pôr no combate');
-    expect(el.querySelectorAll('button')).toHaveLength(0);
   });
 
   it('searches while typing, asking the server once after a pause, and says what the search matches', async () => {
@@ -114,7 +125,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.dispatchEvent(new Event('input'));
     await settle();
     // The tap: the navigation starts (the list stays on screen until it is done), then the pause ends.
-    const navigation = TestBed.inject(Router).navigateByUrl(el.querySelector('.row')!.getAttribute('href')!);
+    const navigation = TestBed.inject(Router).navigateByUrl(el.querySelector('.row__link')!.getAttribute('href')!);
     await vi.advanceTimersByTimeAsync(300);
     await navigation;
     await settle();
@@ -256,7 +267,7 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     q.value = 'ogro';
     q.dispatchEvent(new Event('input'));
     await settle();
-    expect(el.querySelector('.row')?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf?q=ogro');
+    expect(el.querySelector('.row__link')?.getAttribute('href')).toBe('/campanhas/camp-1/bestiario/wolf?q=ogro');
   });
 
   it('with a search in the link the count waits for the book\'s size: nothing, then "N de M"; and says only "N criaturas" if the size cannot be had', async () => {
@@ -279,6 +290,38 @@ describe('BestiaryList (MR-042, E10-08 states 1, 2 and 7)', () => {
     access = { status: 'not-found' };
     const { el } = await open();
     expect(flat(el.querySelector('h1'))).toBe('Campanha não encontrada');
+  });
+
+  it('every row has "Pôr no combate", named by its creature, beside the link that opens the stat block (E10-08 states 1 and 7)', async () => {
+    const { el } = await open();
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.row__put'));
+    expect(buttons).toHaveLength(5);
+    expect(flat(buttons[0])).toBe('Pôr no combate');
+    expect(buttons[0].getAttribute('aria-label')).toBe('Pôr no combate: Lobo');
+    // The button is not inside the link: the two are never nested.
+    expect(buttons.every((b) => b.closest('a') === null)).toBe(true);
+    expect(el.querySelectorAll('a.row__link')).toHaveLength(5);
+  });
+
+  it('"Pôr no combate" opens the sheet for that row\'s creature, and what went in is announced above the list', async () => {
+    dialogResult = { count: 3, names: 'Lobo 1, Lobo 2 e Lobo 3', combatName: 'Emboscada na ponte', started: false, hidden: true, encounterId: 'enc-1' };
+    const { el, settle } = await open();
+    el.querySelectorAll<HTMLButtonElement>('.row__put')[0].click();
+    await settle();
+    expect(opened).toHaveLength(1);
+    expect((opened[0] as { data: { campaignId: string; creature: { key: string } } }).data).toMatchObject({ campaignId: 'camp-1', creature: { key: 'monster:wolf' } });
+    const done = el.querySelector('.put-done')!;
+    expect(done.getAttribute('role')).toBe('status');
+    expect(flat(done.querySelector('p'))).toBe('Entraram no combate: Lobo 1, Lobo 2 e Lobo 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
+    expect(done.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+  });
+
+  it('a sheet closed with nothing put in announces nothing', async () => {
+    const { el, settle } = await open();
+    el.querySelectorAll<HTMLButtonElement>('.row__put')[1].click();
+    await settle();
+    expect(opened).toHaveLength(1);
+    expect(el.querySelector('.put-done')).toBeNull();
   });
 
   it('the back link goes to the campaign', async () => {

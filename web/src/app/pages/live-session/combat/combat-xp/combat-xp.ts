@@ -23,6 +23,7 @@ import { CombatantState, type Combatant, type Encounter } from '../../../../../g
 import { XPAwardMode, XPBlockedReason, type XPAward } from '../../../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../../../core/connect/idempotency';
 import { article } from '../../../../core/combat/combat-log';
+import { groupLabel } from '../../../../core/combat/monsters';
 import { isDown, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { formatInt, tight } from '../../../../core/format/text';
 import { ExperienceStore } from '../../../../core/progression/experience-store';
@@ -102,6 +103,29 @@ export class CombatXp {
   protected readonly total = computed(() => this.defeated().reduce((sum, c) => sum + c.xpValue, 0));
   /** "200 + 50 + 50 + 50". */
   protected readonly sum = computed(() => this.defeated().map((c) => formatInt(c.xpValue)).join(' + '));
+  /**
+   * When monsters of the bestiary were defeated (RN-29), what each kind is worth by its challenge rating: "Bandido 1 a 3 · ND 1/8 · 25 XP
+   * cada" and the kind's total. The XP is the server's `xp_value` of each (the master's alone); an NPC that is not a monster is its own
+   * row. Empty with no monster, so the block is as it always was.
+   */
+  protected readonly kinds = computed(() => {
+    const defeated = this.defeated();
+    if (!defeated.some((c) => c.bestiaryCreatureKey)) {
+      return [];
+    }
+    const groups = new Map<string, typeof defeated>();
+    for (const c of defeated) {
+      const key = c.bestiaryCreatureKey ? `${c.bestiaryCreatureKey}|${c.xpValue}` : c.id;
+      groups.set(key, [...(groups.get(key) ?? []), c]);
+    }
+    return [...groups.values()].map((g) => ({
+      key: g[0].id,
+      label: groupLabel(g.map((c) => c.label)),
+      nd: g[0].challengeRating,
+      each: tight(`${formatInt(g[0].xpValue)} XP cada`),
+      total: tight(`${formatInt(g.reduce((n, c) => n + c.xpValue, 0))} XP`),
+    }));
+  });
   protected readonly totalLabel = computed(() => {
     const n = this.defeated().length;
     return n === 1 ? 'Total do derrotado' : `Total dos ${n} derrotados`;

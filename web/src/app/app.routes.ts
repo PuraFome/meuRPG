@@ -122,6 +122,13 @@ export const routes: Routes = [
       import('./pages/bestiary/bestiary-creature/bestiary-creature').then((m) => m.BestiaryCreature),
   },
   {
+    // The encounter builder (MR-043, RN-29, E10-09), master only: the party's budget, the creatures, "Gerar encontro" and "Guardar no
+    // ponto de batalha". `?mapa=&ponto=` (from a battle point of the editor) brings that point's saved encounter into the draft and preselects the point in "Guardar". A lazy route like the bestiary.
+    path: 'campanhas/:id/encontros',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/encounters/encounter-builder/encounter-builder').then((m) => m.EncounterBuilder),
+  },
+  {
     // "Magias" (MR-045, RN-23): the players' spell reference, for every active member, the master too.
     path: 'campanhas/:id/magias',
     canActivate: [authGuard],

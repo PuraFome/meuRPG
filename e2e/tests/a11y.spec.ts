@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -4874,3 +4874,208 @@ for (const [scheme, width, label] of [
     await scanImageScreens(browser, scheme, width);
   });
 }
+
+/**
+ * Monsters in the combat and the encounter builder (MR-042, MR-043, RN-29; E10-08 states 4 to 9, E10-09): the bestiary rows with
+ * "Pôr no combate" and its sheet (with a combat in preparation, one to start, and the error), the master's order with the
+ * monsters, what a player sees, the end-of-combat XP by each ND; the builder (empty, filled, above high, an NPC in the party, a
+ * failed measure), "Pôr um NPC no grupo", "Gerar encontro" with "Trocar", "Guardar no ponto de batalha" (and the question in place),
+ * and "Começar este combate" on the session with "Iniciar combate" filled. The sheets are drawn at 320 x 568 on the narrowest phone.
+ */
+async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const height = width === 320 ? 568 : 900;
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await context.newPage();
+  const p = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade monstros ${Date.now()}`);
+    const campaignId = table.campaignId;
+    const battle = await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Emboscada na ponte', xBp: 3000, yBp: 3000, revealed: true });
+    await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Ruínas do forte', xBp: 7000, yBp: 3000, revealed: true });
+    const orin = await createCharacterRPC(m, campaignId, {
+      kind: 'CHARACTER_KIND_STORY',
+      name: 'Orin, o guia',
+      sheet: { basic: { hitPointsMax: 9, armorClass: 10, speedFt: 25, attackBonus: 0, damage: '1d4', description: '' } },
+    });
+    expect(orin.ok(), await orin.text()).toBeTruthy();
+
+    // "Pôr no combate" from the list, with no combat open: the sheet starts one.
+    await m.goto(`/campanhas/${campaignId}/bestiario`);
+    await m.getByRole('searchbox', { name: 'Nome' }).fill('bandit');
+    await expect(m.locator('.list__n')).toContainText('de 334 criaturas');
+    await expectScreenPasses(m, `Bestiário com "Pôr no combate" ${where}`);
+    await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Pôr no combate' });
+    await expect(sheet.locator('.readonly')).toHaveText('Nenhum combate aberto');
+    await expectScreenPasses(m, `Pôr no combate, sem combate aberto ${where}`);
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await sheet.locator('.seg__item', { hasText: 'Rolar' }).click();
+    await expectScreenPasses(m, `Pôr no combate, três e rolar ${where}`);
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A combat in preparation: the sheet reads it.
+    let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
+    await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
+    await expect(sheet.locator('.readonly')).toHaveText('Emboscada na estrada · em preparação');
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
+    await expectScreenPasses(m, `Pôr no combate, em preparação ${where}`);
+    // A refusal says it in words.
+    await m.route('**/meurpg.play.v1.CombatService/AddMonsters', (route) =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_argument', message: 'a combat has at most 40 combatants' }) }),
+    );
+    await sheet.getByRole('button', { name: 'Pôr 3 no combate' }).click();
+    await expect(sheet.getByRole('alert')).toContainText('40 combatentes');
+    await expectScreenPasses(m, `Pôr no combate, recusado ${where}`);
+    await m.unroute('**/meurpg.play.v1.CombatService/AddMonsters');
+    await sheet.getByRole('button', { name: 'Pôr 3 no combate' }).click();
+    await expect(m.locator('.put-done')).toContainText('Entraram no combate');
+    await expectScreenPasses(m, `Bestiário, o aviso dos monstros ${where}`);
+
+    // The combat under way: the master's order with the monsters, the player's with the word of the state.
+    for (const c of (await getEncounterRPC(m, campaignId)).combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: 10 });
+    }
+    enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    const second = enc.combatants.find((c) => c.label === 'Bandido 2')!;
+    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: second.id, hidden: false });
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
+    await expectScreenPasses(m, `Combate com monstros, a ordem do mestre ${where}`);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByText('Bandido 2').first()).toBeVisible();
+    await expectScreenPasses(p, `Combate com monstros, o jogador ${where}`);
+
+    // They fall and the combat ends: the XP by each ND.
+    const now = await getEncounterRPC(m, campaignId);
+    for (const c of now.combatants.filter((x) => x.kind !== 'COMBATANT_KIND_PLAYER')) {
+      await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: c.id, damage: 999 });
+    }
+    await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
+    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await expect(m.getByRole('region', { name: 'Experiência do combate' }).locator('.kind').first()).toContainText('ND 1/8');
+    await expectScreenPasses(m, `Fim do combate, o XP por ND ${where}`);
+
+    // The builder: empty, then filled, above high, with an NPC, and a failed measure.
+    await m.goto(`/campanhas/${campaignId}/encontros`);
+    await expect(m.locator('.head-xp')).toContainText('Baixa · 0 de');
+    await expectScreenPasses(m, `Encontros, vazio ${where}`);
+    const add = async (search: string, namePt: string) => {
+      await m.getByRole('combobox', { name: 'Adicionar criatura' }).fill(search);
+      await expect(m.getByRole('option').first()).toBeVisible();
+      await expectScreenPasses(m, `Encontros, a busca de "${search}" ${where}`);
+      await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: new RegExp(`^${namePt}$`) }) }).first().click();
+    };
+    await add('goblin', 'Goblin');
+    await add('ogre', 'Ogro');
+    await m.getByRole('button', { name: 'Mais um Ogro' }).click();
+    await expect(m.locator('.total__n')).toContainText('950 XP');
+    await expectScreenPasses(m, `Encontros, montado ${where}`);
+    for (let i = 0; i < 4; i++) {
+      await m.getByRole('button', { name: 'Mais um Ogro' }).click();
+    }
+    await expect(m.locator('.head-xp')).toContainText('Acima de alta');
+    await expectScreenPasses(m, `Encontros, ${await m.locator('.head-xp').innerText()} ${where}`);
+
+    await m.getByRole('button', { name: 'Pôr um NPC no grupo' }).click();
+    const npc = m.getByRole('dialog', { name: 'Pôr um NPC no grupo' });
+    await expect(npc.locator('.budget__n')).toContainText('Baixa');
+    await expectScreenPasses(m, `Pôr um NPC no grupo ${where}`);
+    await npc.getByRole('radio', { name: 'Só um nome' }).check({ force: true });
+    await npc.getByRole('button', { name: 'Pôr no grupo' }).click();
+    await expect(npc.getByText('Dê um nome ao NPC do grupo.')).toBeVisible();
+    await expectScreenPasses(m, `Pôr um NPC no grupo, sem nome ${where}`);
+    await npc.getByRole('radio', { name: /Orin, o guia/ }).check({ force: true });
+    await npc.getByRole('button', { name: 'Pôr no grupo' }).click();
+    await expect(m.locator('.chip', { hasText: 'Orin, o guia' })).toBeVisible();
+    await expectScreenPasses(m, `Encontros, com um NPC no grupo ${where}`);
+
+    await m.getByRole('button', { name: 'Gerar encontro' }).click();
+    const gen = m.getByRole('dialog', { name: 'Gerar encontro' });
+    await expect(gen.locator('.res__seed')).toContainText('Semente');
+    await expectScreenPasses(m, `Gerar encontro ${where}`);
+    await gen.locator('.line').first().getByRole('button', { name: /^Trocar criatura/ }).click();
+    await expect(gen.locator('.swap__opt').first()).toBeVisible();
+    await gen.locator('.swap__opt').first().click();
+    await expectScreenPasses(m, `Trocar criatura ${where}`);
+    await m.getByRole('button', { name: /^Trocar por/ }).click();
+    await gen.getByRole('button', { name: 'Usar este encontro' }).click();
+
+    // "Guardar no ponto de batalha": free, the question in place, and the empty point list of another map.
+    await m.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    const save = m.getByRole('dialog', { name: 'Guardar no ponto de batalha' });
+    await expect(save.locator('.pt').first()).toBeVisible();
+    await expectScreenPasses(m, `Guardar no ponto de batalha ${where}`);
+    await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
+    await save.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await expect(m.locator('.mr-notice--success')).toContainText('Encontro guardado em “Emboscada na ponte”.');
+    await expectScreenPasses(m, `Encontros, guardado ${where}`);
+    await m.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
+    await save.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
+    await expect(save.getByText('Trocar o encontro guardado?')).toBeVisible();
+    await expectScreenPasses(m, `Guardar, a pergunta no lugar ${where}`);
+    await save.getByRole('button', { name: 'Voltar' }).click();
+    await save.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A failed measure.
+    await m.route('**/meurpg.play.v1.EncounterService/EvaluateEncounter', (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+    );
+    await m.locator('app-count-stepper button[aria-label^="Mais um"]').first().click();
+    await expect(m.getByRole('alert').first()).toContainText('o servidor não respondeu');
+    await expectScreenPasses(m, `Encontros, medição que falhou ${where}`);
+    await m.unroute('**/meurpg.play.v1.EncounterService/EvaluateEncounter');
+
+    // The session: the card of the point and "Iniciar combate" filled from it.
+    await openSessionPage(m, campaignId);
+    // The ended combat is still on the page: back to the session, where the launch and the saved encounter are.
+    await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+    const card = m.locator('.enc', { hasText: 'Emboscada na ponte' });
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `Sessão, o encontro guardado ${where}`);
+    await card.getByRole('button', { name: 'Começar este combate' }).click();
+    const start = m.getByRole('dialog', { name: 'Iniciar combate' });
+    await expect(start.locator('.mon__row').first()).toBeVisible();
+    await expectScreenPasses(m, `Começar este combate, o Iniciar combate preenchido ${where}`);
+    await start.getByRole('button', { name: 'Cancelar' }).click();
+    expect(battle).not.toBe('');
+
+    // A player: the builder is the master's.
+    await p.goto(`/campanhas/${campaignId}/encontros`);
+    await expect(p.getByText('Só o mestre monta encontros.')).toBeVisible();
+    await expectScreenPasses(p, `Encontros, o aviso do jogador ${where}`);
+  } finally {
+    await context.close();
+    await playerContext.close();
+  }
+}
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'light', 1280);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 390);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 1024);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'light', 320);
+});
+
+test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMonsterScreens(browser, 'dark', 320);
+});

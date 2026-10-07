@@ -1,0 +1,220 @@
+// E10-09, states 1 to 3 and 8: back link, title, then the builder (party and budget, creatures) beside "Gerar" and "Guardar".
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.head .mr-page-lead {
+  margin-bottom: 0;
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+  align-self: flex-start;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+}
+
+.main,
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+// From 1100 px the right column ("Gerar encontro", "Guardar") sits beside the builder; below, it goes under, as wide as the page.
+@media (min-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  .side {
+    position: sticky;
+    top: 88px;
+  }
+}
+
+.party {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.party__head,
+.lines__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.head-xp {
+  margin: var(--mr-space-2) 0 0;
+  font-family: var(--mr-font-display);
+  font-size: clamp(26px, 6vw, 32px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.guide {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  a {
+    font-weight: 700;
+    color: var(--mr-accent-text);
+  }
+
+  &--c {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.cap {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.lines__n {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: var(--mr-space-3);
+  border-top: 2px solid var(--mr-ink);
+}
+
+.total__n {
+  font-family: var(--mr-font-display);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.act__text,
+.act__why {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.act__go {
+  width: 100%;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+
+  @media (min-width: 768px) {
+    --mat-button-filled-container-height: 44px;
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.act__ask p {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.act__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}

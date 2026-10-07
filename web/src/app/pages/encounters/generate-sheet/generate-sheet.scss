@@ -1,0 +1,256 @@
+@use '../../../shared/creatures/filter-fields';
+
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+// Dificuldade (three segments) and Tipo side by side from a tablet up.
+.opts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+
+  @media (min-width: 560px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.opts__band {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.opts__type {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.res {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.res__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.res__t {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.res__seed {
+  font-size: 13px;
+  color: var(--mr-ink-muted);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--mr-space-3);
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.line__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.line__pt {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.line__s {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.line__xp {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.line__swap {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+// A phone: the swap link goes under the name and the XP, so the row keeps its two lines and the targets are 44 px.
+@media (max-width: 559.98px) {
+  .line {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name xp'
+      'swap swap';
+    row-gap: 0;
+  }
+
+  .line__art {
+    display: none;
+  }
+
+  .line__name {
+    grid-area: name;
+  }
+
+  .line__xp {
+    grid-area: xp;
+    font-size: 18px;
+  }
+
+  .line__swap {
+    grid-area: swap;
+    justify-self: start;
+    min-height: 44px;
+    padding: 0;
+  }
+}
+
+.head {
+  margin: 0;
+  padding-top: var(--mr-space-2);
+  border-top: 2px solid var(--mr-ink);
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 30px;
+}
+
+.cap {
+  display: flex;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.guide {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  a {
+    font-weight: 700;
+    color: var(--mr-accent-text);
+  }
+
+  &--c {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    justify-content: flex-end;
+  }
+}
+
+@media (min-width: 560px) {
+  .actions--gen {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+}
+
+.no {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+// A phone: both buttons the same size and side by side when both labels fit; "Usar este encontro" is the filled one.
+@media (max-width: 559.98px) {
+  .go,
+  .no {
+    flex: 1 1 0;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+
+  // Stacked: a column's flex-basis 0 would collapse the buttons to nothing, so they keep their own 48 px.
+  .actions--gen {
+    flex-direction: column;
+
+    .go,
+    .no {
+      flex: none;
+      width: 100%;
+    }
+  }
+
+  .box {
+    --field-h: 48px;
+  }
+}

@@ -73,6 +73,7 @@
           <app-maps-panel [campaignId]="s.campaign.id" [isMaster]="isMaster" />
           @if (isMaster) { <app-gallery-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-bestiary-panel [campaignId]="s.campaign.id" /> }
+          @if (isMaster) { <app-encounters-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-puzzles-panel [campaignId]="s.campaign.id" /> }
           <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
         </div>
