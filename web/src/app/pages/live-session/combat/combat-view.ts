@@ -1158,8 +1158,9 @@ export class CombatView {
   private async refreshAfter(err: unknown): Promise<void> {
     const code = ConnectError.from(err).code;
     if (code === Code.Aborted || code === Code.FailedPrecondition || code === Code.NotFound) {
+      const ticket = this.state().beginRead();
       try {
-        this.state().apply(await this.api.get(this.campaignId()));
+        this.state().applyRead(ticket, await this.api.get(this.campaignId()));
       } catch {
         // The stream's next `ready` reads it again.
       }
