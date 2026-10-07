@@ -847,7 +847,9 @@ export class CharacterEditor {
     effect(() => {
       const s = this.state();
       const id = s.status === 'ready' ? s.campaignId : '';
-      const live = id !== '' && !!this.openSessions?.sessions().some((o) => o.campaignId === id);
+      // Only a player's editor listens: the master writes the content himself, and an open stream would keep the page
+      // from ever being quiet (every screen of an NPC's editor in a live campaign would hold one).
+      const live = id !== '' && !this.master() && !!this.openSessions?.sessions().some((o) => o.campaignId === id);
       untracked(() => this.watcher?.follow(live ? id : null, () => undefined, undefined, () => void this.reloadCatalog()));
     });
     this.destroyRef.onDestroy(() => this.watcher?.follow(null, () => undefined));

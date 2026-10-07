@@ -728,4 +728,24 @@ describe('the catalog read again (10.1d)', () => {
     expect(fake.catalogCalls).toEqual(['ch-9']);
     expect(cmp.fullForm.value.name).toBe('Mudei o nome');
   });
+
+  it('does not open the session\'s stream for the master\'s editor: a stream would keep the page from ever being quiet', async () => {
+    const follow = vi.fn();
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeSource },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
+        { provide: OpenSessions, useValue: { sessions: () => [{ campaignId: 'camp-1' }] } },
+        { provide: XpWatcher, useValue: { follow } },
+      ],
+    });
+    (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({ ...c, viewerIsMaster: true });
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await settle(fixture);
+    expect(follow.mock.calls.every((c) => c[0] === null)).toBe(true);
+  });
 });

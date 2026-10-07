@@ -399,6 +399,26 @@ describe('CharacterEditor', () => {
   });
 
   describe('the subclass', () => {
+    it('is shut below the level the class chooses it at and opens when the level is raised, so the level goes in before the subclass', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
+      fixture.detectChanges();
+      expect(cmp.fullForm.controls.subclassName.disabled).toBe(true);
+      cmp.fullForm.patchValue({ level: 2 });
+      fixture.detectChanges();
+      expect(cmp.fullForm.controls.subclassName.enabled).toBe(true);
+      // Once chosen it stays open (and sent) even if the level is lowered again; creating without opening any other step works.
+      cmp.fullForm.patchValue({ subclassName: 'subclass:evocation', name: 'Lia', race: 'race:gnome', background: 'background:acolyte' });
+      cmp.fullForm.patchValue({ level: 1 });
+      fixture.detectChanges();
+      expect(cmp.fullForm.controls.subclassName.enabled).toBe(true);
+      await cmp.submit();
+      expect(fake.createCharacterCalls[0].full?.subclassName).toBe('subclass:evocation');
+    });
+
     it('offers "Nenhuma" and saves the subclass unset when it is picked', async () => {
       configure({ id: 'camp-1' });
       const { fixture } = await render();
