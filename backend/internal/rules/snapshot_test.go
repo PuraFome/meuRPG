@@ -222,7 +222,7 @@ func TestNamesPT(t *testing.T) {
 
 // TestAttackNamesPT: every attack of every creature has a Portuguese name: the
 // ones a character can have through a creature (Wild Shape, Conjurar Animais, the
-// familiar forms, Animar os Mortos, the Pacto da Corrente) and the ones the
+// familiar forms, Animar Mortos, the Pacto da Corrente) and the ones the
 // bestiary's "Criar NPC" copies onto an NPC's sheet (MR-042).
 func TestAttackNamesPT(t *testing.T) {
 	t.Parallel()

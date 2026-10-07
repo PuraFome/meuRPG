@@ -478,3 +478,14 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
   }
   return callRPC(page, 'meurpg.play.v1.PlayService/StartGameSession', { campaignId: id });
 }
+
+/**
+ * Opens a long level-up pick list ("Ver os outros N ...", it shows 4 rows
+ * alphabetically) so a row picked by name is there whatever the names sort like.
+ */
+export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
+  const more = panel.getByRole('button', { name: /^Ver os outros \d+/ });
+  if ((await more.count()) > 0) {
+    await more.click();
+  }
+}

@@ -83,7 +83,7 @@ test(
       // Each number in its own tile, with the note that says where it comes from.
       const tile = (label: string) => master.locator('.tile').filter({ has: master.locator('.tile__l', { hasText: new RegExp(`^${label}$`) }) });
       await expect(tile('CA').locator('.tile__v')).toHaveText('11');
-      await expect(tile('CA').locator('.tile__n')).toHaveText('armadura de peles');
+      await expect(tile('CA').locator('.tile__n')).toHaveText('gibão de peles');
       await expect(tile('PV').locator('.tile__v')).toHaveText('59');
       await expect(tile('Deslocamento').locator('.tile__v')).toHaveText('12 m');
       await expect(tile('Deslocamento').locator('.tile__n')).toHaveText('40 pés');

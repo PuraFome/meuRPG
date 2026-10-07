@@ -75,7 +75,7 @@ export type AttackDie = InitiativeRoll;
 /** How the damage comes: the app rolls it, or the sum of the physical dice
  * (without the modifier; the server adds it). */
 export type DamageDie = { readonly inApp: true } | { readonly sum: number };
-/** How the pool of Sono or Borrifo de Cores comes: rolled by the server, or the sum of the physical dice. */
+/** How the pool of Sono or Leque Cromático comes: rolled by the server, or the sum of the physical dice. */
 export type PoolDie = { readonly inApp: true } | { readonly poolSum: number };
 
 /** What an attack answers: the combat, the roll and the damage it opened. */

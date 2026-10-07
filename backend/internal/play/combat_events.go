@@ -129,7 +129,7 @@ type castHit struct {
 	Left     int32  `json:"left,omitempty"`
 	Healed   *int32 `json:"healed,omitempty"`
 	// What an undo puts back: the hit points and death saves when the spell
-	// changed them (a heal, a death, Poupar os Moribundos), the conditions when it
+	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
 	Restore     *hpState    `json:"restore,omitempty"`
 	DeathBefore *deathState `json:"death_before,omitempty"`

@@ -77,7 +77,7 @@ export class SpellPicker {
       : countLabel(n, 'magia escolhida', 'magias escolhidas', 'Nenhuma magia escolhida');
   });
 
-  /** "2 truques escolhidos: Mão Mágica, Raio de Fogo". */
+  /** "2 truques escolhidos: Mãos Mágicas, Raio de Fogo". */
   protected readonly chosenLine = computed(() => {
     const names = this.chosen();
     return names.length > 0 ? `${this.count()}: ${names.join(', ')}` : this.count();

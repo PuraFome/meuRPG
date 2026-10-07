@@ -72,7 +72,7 @@ async function minion(master: Page, campaignId: string, name: string): Promise<s
 export interface CreatureCombatOptions {
   /** The first player plays Pensantus (a familiar) instead of Sálvia. */
   hero?: 'salvia' | 'pensantus';
-  /** Pensantus has Nanquim (Encontrar Familiar, a ritual: no slot). */
+  /** Pensantus has Nanquim (Convocar Familiar, a ritual: no slot). */
   nanquim?: boolean;
 }
 

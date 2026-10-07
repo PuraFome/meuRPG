@@ -156,7 +156,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// Casting a summoning spell outside a combat (MR-037). The character is a
-		// level 1 wizard with no Encontrar Familiar, so the rules refuse after the
+		// level 1 wizard with no Convocar Familiar, so the rules refuse after the
 		// authorization has passed (invalid_argument); a player may cast for their
 		// own character only, which TestMR037 covers with another player.
 		{"CastSummon", func(ctx context.Context, c client) error {

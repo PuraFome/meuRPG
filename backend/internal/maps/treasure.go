@@ -357,7 +357,7 @@ func defaultTreasureName(mode string) string {
 // treasureDescription is what the players read when they find the point: the coins,
 // the gems, the art objects and the magic items, in Portuguese, one thing to a line. The
 // values of the items are left out (they are the master's number), identical items are
-// grouped ("2 × Pergaminho de magia (1º círculo)"), and the text always fits the 2,000
+// grouped ("2 × Pergaminho de magia (1º nível)"), and the text always fits the 2,000
 // characters of a description: the generator never gives more than 12 gems, 6 art
 // objects and 6 items.
 func treasureDescription(t rules.Treasure) string {

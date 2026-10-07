@@ -157,7 +157,7 @@ export class CastSheet {
 
   protected readonly rows = computed(() => slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact));
   protected readonly kind = computed(() => spellKind(this.data.spellKey, this.details()));
-  /** Sono and Borrifo de Cores roll a pool of dice: the dice at this slot. */
+  /** Sono and Leque Cromático roll a pool of dice: the dice at this slot. */
   protected readonly pool = computed(() => (this.kind() === 'pool' ? poolDice(this.details(), this.slotLevel()) : null));
   /** The roll the sheet asks for before the cast: the d20 of a spell attack, or the pool when the
    * table's dice may be typed (with the app rolling every die, "Conjurar" is enough). */
@@ -189,7 +189,7 @@ export class CastSheet {
     return new Set(combatants.filter(isCreature).map((c) => c.id));
   });
   /**
-   * "Enredar encerra a concentração em Conjurar Animais.", and "Os 2 Lobos atrozes somem." when that concentration holds the
+   * "Constrição encerra a concentração em Conjurar Animais.", and "Os 2 Lobos atrozes somem." when that concentration holds the
    * caster's creatures: only when this spell needs concentration and the caster holds another one, from the combat's own data.
    */
   protected readonly endsConcentration = computed(() => {
@@ -257,7 +257,7 @@ export class CastSheet {
     }
     return this.typing() ? 'Digite o resultado' : `Conjurar ${this.data.name}`;
   });
-  /** "Sono conjurado", "Palavra de Poder: Atordoar conjurada": the sheet of a spell that
+  /** "Sono conjurado", "Palavra de Poder Atordoar conjurada": the sheet of a spell that
    * reads hit points says what was done, then who it touched. */
   private readonly hpDone = computed(() => this.done() && (this.kind() === 'pool' || this.kind() === 'hp'));
   protected readonly subtitle = computed(() => {

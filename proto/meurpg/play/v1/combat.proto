@@ -859,11 +859,11 @@ service CombatService {
   //     with no roll to hit.
   //   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
   //     RollDamage, with the caster's spellcasting modifier.
-  //   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
-  //     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+  //   - A spell that reads hit points (Sono, Leque Cromático, Palavra de Poder:
+  //     Atordoar and Matar, Estabilizar, Cura Completa; effect_kind of
   //     the answer): the server reads each target's current hit points (an NPC's
   //     from the combat, a player's character's from its vitals) and applies the
-  //     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+  //     effect at once, in the same transaction. A pool (Sono, Leque Cromático)
   //     is rolled by the server (roll_in_app) or typed from physical dice
   //     (pool_sum), RN-18; it goes through the targets in ascending order of
   //     current hit points, skips the unconscious and those at 0, and gives the
@@ -871,7 +871,7 @@ service CombatService {
   //     (Palavra de Poder) affects a target at or below the limit: a condition,
   //     or death (an NPC is defeated; a player's character drops to 0 hit points
   //     with three death save failures, and the master confirms the death with
-  //     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+  //     ConfirmDeath). Estabilizar makes a player's character at 0 hit
   //     points stable. Cura Completa heals and ends blindness and deafness. The
   //     caster's player gets their own pool roll and who was affected, never a
   //     target's hit points; the master gets the pool, each target's hit points
@@ -2743,7 +2743,7 @@ message CastSpellRequest {
     bool roll_in_app = 8;
     // The face of a physical d20, 1 to 20.
     int32 d20_face = 9;
-    // A spell that rolls a pool of dice (Sono, Borrifo de Cores: effect_kind
+    // A spell that rolls a pool of dice (Sono, Leque Cromático: effect_kind
     // SPELL_EFFECT_KIND_POOL): the sum of the physical dice, from the number of
     // dice to the most they can show, without a modifier (the spell's dice are
     // in the answer). The pool is rolled by the server with roll_in_app, and one
@@ -2764,8 +2764,8 @@ message CastSpellRequest {
 // offers for the slot and the character.
 message SummonChoice {
   // The index of the option, from 0 (Conjurar Animais has four: one creature of
-  // challenge rating 2, two of 1, four of 1/2, eight of 1/4; Encontrar Familiar
-  // and Animar os Mortos have one).
+  // challenge rating 2, two of 1, four of 1/2, eight of 1/4; Convocar Familiar
+  // and Animar Mortos have one).
   int32 option = 1;
   // One content key per creature ("monster:dire-wolf"; a key repeats for
   // several of one kind), exactly the number the option and the slot allow.
@@ -2835,7 +2835,7 @@ enum SpellEffectKind {
   // A creature at or below a number of hit points is affected (Palavra de Poder:
   // Atordoar, Matar).
   SPELL_EFFECT_KIND_THRESHOLD = 2;
-  // Works only on a creature at 0 hit points (Poupar os Moribundos).
+  // Works only on a creature at 0 hit points (Estabilizar).
   SPELL_EFFECT_KIND_ZERO_HP = 3;
   // A fixed heal that also ends conditions (Cura Completa).
   SPELL_EFFECT_KIND_FLAT_HEAL = 4;
@@ -2921,7 +2921,7 @@ message SpellCast {
   DiceRoll pool_roll = 9;
   // The condition the spell gives the creatures it affects ("condition:
   // unconscious"), a public tag. Empty when it gives none: a threshold spell that
-  // kills (Palavra de Poder: Matar), a zero-hit-point spell, a heal.
+  // kills (Palavra de Poder Matar), a zero-hit-point spell, a heal.
   string effect_condition_key = 10;
   // A threshold: the most hit points a creature may have to be affected (150,
   // 100). Only the master.

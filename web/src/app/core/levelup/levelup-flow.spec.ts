@@ -83,7 +83,7 @@ describe('the pickers lists', () => {
 
   it('lists book spells up to the highest circle, minus the known ones and other classes', () => {
     const names = spellOptions(o, SPELLS, WIZARD_KEYS).map((i) => i.name);
-    expect(names).toEqual(['Onda Trovejante', 'Imagem Espelhada', 'Invisibilidade', 'Passo Nebuloso']);
+    expect(names).toEqual(['Onda Trovejante', 'Invisibilidade', 'Passo Nebuloso', 'Reflexos']);
     expect(names).not.toContain('Bola de Fogo');
     expect(names).not.toContain('Curar Ferimentos');
   });

@@ -17,7 +17,7 @@ async function slotsUsed(page: import('@playwright/test').Page, campaignId: stri
 }
 
 test(
-  'Pensantus conjura Encontrar Familiar como ritual sem gastar espaço, dá o nome Nanquim, abre a ficha, renomeia e dispensa; depois conjura de novo',
+  'Pensantus conjura Convocar Familiar como ritual sem gastar espaço, dá o nome Nanquim, abre a ficha, renomeia e dispensa; depois conjura de novo',
   { tag: ['@MR-037'] },
   async ({ browser }) => {
     test.setTimeout(180_000);
@@ -36,12 +36,12 @@ test(
       await player.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       const panel = player.locator('app-creatures-panel');
       await expect(panel.getByRole('heading', { name: 'Criaturas', level: 2 })).toBeVisible();
-      await expect(panel.getByText('Nenhuma criatura ainda. Use Encontrar Familiar ou peça ao mestre para dar uma.')).toBeVisible();
+      await expect(panel.getByText('Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar uma.')).toBeVisible();
       await expect(panel.getByText('Ritual de 1 hora: não gasta espaço de magia. Só durante uma sessão, fora de combate.')).toBeVisible();
 
       // The sheet: the name, then the forms; the filled button names what happens and stays off until it can.
-      await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
-      const sheet = player.getByRole('dialog', { name: 'Encontrar Familiar' });
+      await panel.getByRole('button', { name: 'Convocar Familiar' }).click();
+      const sheet = player.getByRole('dialog', { name: 'Convocar Familiar' });
       await expect(sheet.getByText('Magia de 1º círculo · ritual · 1 hora')).toBeVisible();
       await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
       await sheet.getByLabel('Nome do familiar').fill('Nanquim');
@@ -53,7 +53,7 @@ test(
       await expect(sheet).toBeHidden();
 
       // The live region confirms and the card enters; no slot was spent.
-      await expect(panel.getByRole('status').getByText('Nanquim chegou. Encontrar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.')).toBeVisible();
+      await expect(panel.getByRole('status').getByText('Nanquim chegou. Convocar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.')).toBeVisible();
       await expect(panel.getByText('1 criatura', { exact: true })).toBeVisible();
       const card = panel.locator('app-creature-card');
       await expect(card.getByRole('heading', { name: 'Nanquim' })).toBeVisible();
@@ -93,8 +93,8 @@ test(
       expect(await listCreaturesRPC(player, campaignId, table.characterId)).toEqual([]);
 
       // A dismissed familiar can be summoned again.
-      await player.locator('app-creatures-panel').getByRole('button', { name: 'Encontrar Familiar' }).click();
-      const again = player.getByRole('dialog', { name: 'Encontrar Familiar' });
+      await player.locator('app-creatures-panel').getByRole('button', { name: 'Convocar Familiar' }).click();
+      const again = player.getByRole('dialog', { name: 'Convocar Familiar' });
       await again.getByLabel('Nome do familiar').fill('Pena');
       await again.locator('label', { hasText: /Coruja/ }).click();
       await again.getByRole('button', { name: 'Convocar o familiar' }).click();
@@ -123,7 +123,7 @@ test(
       await player.goto('/');
       const table = await tableForCreatures(master, player, `Sem sessão ${Date.now()}`, false);
       await player.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
-      const button = player.locator('app-creatures-panel').getByRole('button', { name: 'Encontrar Familiar' });
+      const button = player.locator('app-creatures-panel').getByRole('button', { name: 'Convocar Familiar' });
       await expect(button).toHaveAttribute('aria-disabled', 'true');
       await expect(player.getByText('Agora não há sessão aberta.')).toBeVisible();
       await button.click({ force: true });

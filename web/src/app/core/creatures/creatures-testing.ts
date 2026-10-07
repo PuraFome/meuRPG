@@ -28,11 +28,11 @@ import type { CreatureFilter, SummonCast } from './creatures-client';
 
 type Init<T> = Partial<Omit<T, '$typeName' | '$unknown'>>;
 
-/** Encontrar Familiar for a wizard: a ritual, no slot, one creature out of the given forms (key, name, none attack). */
+/** Convocar Familiar for a wizard: a ritual, no slot, one creature out of the given forms (key, name, none attack). */
 export function familiarSpell(forms: [string, string][] = [['monster:raven', 'Corvo'], ['monster:cat', 'Gato'], ['monster:bat', 'Morcego']], over: Init<SummonSpellOptions> = {}): SummonSpellOptions {
   return create(SummonSpellOptionsSchema, {
     spellKey: 'spell:find-familiar',
-    namePt: 'Encontrar Familiar',
+    namePt: 'Convocar Familiar',
     level: 1,
     castingTimePt: '1 hora',
     ritual: true,
@@ -42,12 +42,12 @@ export function familiarSpell(forms: [string, string][] = [['monster:raven', 'Co
   });
 }
 
-/** Animar os Mortos for a cleric with slots of the 3rd and the 5th circle: 1 and 5 undead. */
+/** Animar Mortos for a cleric with slots of the 3rd and the 5th circle: 1 and 5 undead. */
 export function undeadSpell(over: Init<SummonSpellOptions> = {}): SummonSpellOptions {
   const forms = [{ monsterKey: 'monster:skeleton', namePt: 'Esqueleto', attack: 3 }, { monsterKey: 'monster:zombie', namePt: 'Zumbi', attack: 3 }];
   return create(SummonSpellOptionsSchema, {
     spellKey: 'spell:animate-dead',
-    namePt: 'Animar os Mortos',
+    namePt: 'Animar Mortos',
     level: 3,
     castingTimePt: '1 minuto',
     canCastWithSlot: true,
@@ -305,7 +305,7 @@ export function ogre(over: Init<Creature> = {}): Creature {
     alignment: 'chaotic evil',
     armorClass: 11,
     armorClassLabelPt: 'Armadura',
-    armorClassNote: 'armadura de peles',
+    armorClassNote: 'gibão de peles',
     hitPoints: 59,
     hitDice: '7d10',
     hitPointsRoll: '7d10+21',

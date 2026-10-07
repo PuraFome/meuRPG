@@ -85,7 +85,7 @@
     "trait:breath-weapon": [
       {"type": "grant_action", "economy": "action"},
       {"type": "resource", "resource": "breath_weapon", "max": "1", "recharge": "short_rest"},
-      {"type": "note", "value": "8 + mod(\"con\") + prof()", "text_pt": "Sopro: CD {n}; causa 2d6 (3d6 no 6º nível, 4d6 no 11º, 5d6 no 16º), metade se o alvo passar. Uma vez por descanso curto ou longo."}
+      {"type": "note", "value": "8 + mod(\"con\") + prof()", "text_pt": "Arma de Sopro: CD {n}; causa 2d6 (3d6 no 6º nível, 4d6 no 11º, 5d6 no 16º), metade se o alvo passar. Uma vez por descanso curto ou longo."}
     ],
     "trait:damage-resistance": [
       {"type": "note"}

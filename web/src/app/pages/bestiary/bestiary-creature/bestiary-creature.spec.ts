@@ -77,10 +77,10 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     expect(back.getAttribute('href')).toBe('/campaigns/camp-1/bestiary?q=ogro');
   });
 
-  it('the tiles say where each number comes from: CA 11 (armadura de peles), PV 59 (7d10 + 21), 12 m (40 pés), ND 2 (450 XP)', async () => {
+  it('the tiles say where each number comes from: CA 11 (gibão de peles), PV 59 (7d10 + 21), 12 m (40 pés), ND 2 (450 XP)', async () => {
     const { el } = await open();
     const tiles = Array.from(el.querySelectorAll('.tile')).map((t) => flat(t));
-    expect(tiles).toEqual(['CA 11 armadura de peles', 'PV 59 7d10 + 21', 'Deslocamento 12 m 40 pés', 'Nível de desafio 2 450 XP']);
+    expect(tiles).toEqual(['CA 11 gibão de peles', 'PV 59 7d10 + 21', 'Deslocamento 12 m 40 pés', 'Nível de desafio 2 450 XP']);
     expect(Array.from(el.querySelectorAll('.ability')).map((a) => flat(a))).toContain('Força +4 valor 19');
     const lines = Array.from(el.querySelectorAll('.line')).map((l) => flat(l));
     expect(lines).toContain('Sentidos Visão no escuro 18 m, Percepção passiva 8');

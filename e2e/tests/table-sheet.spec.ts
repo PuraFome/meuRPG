@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC } from './live-session-support';
 import { archiveEntryRPC } from './spells-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, showAllPicks } from './support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -248,6 +248,7 @@ test(
       const howMany = Number(/(\d+)/.exec(reason)?.[1] ?? '1');
       expect(howMany).toBeGreaterThan(0);
       // By name, from the druid's list the guardian casts from.
+      await showAllPicks(prepare);
       for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, howMany)) {
         await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
       }
@@ -320,9 +321,11 @@ test(
       await expect(p.getByText(/truques de Mago/)).toBeVisible();
       await expect(p.getByText(/Escolha 3 magias de 1º círculo para aprender/)).toBeVisible();
       const cantrips = p.locator('#pick-cantrips');
+      await showAllPicks(cantrips);
       await cantrips.getByRole('checkbox', { name: /^Luz/ }).check();
       await cantrips.getByRole('checkbox', { name: /^Ilusão Menor/ }).check();
       const spells = p.locator('#pick-spells');
+      await showAllPicks(spells);
       // The master's own spell is on the wizard's list, so the fighter's subclass can learn it.
       await p.getByLabel('Buscar magia').fill('nanquim');
       await spells.getByRole('checkbox', { name: /Lâmina de Nanquim/ }).check();

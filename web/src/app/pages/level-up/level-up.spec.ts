@@ -348,7 +348,7 @@ describe('LevelUpPage', () => {
       await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
       expect(text(f)).toContain('Faltam escolher 2 magias para o livro.');
       await click(f, pickRow(f, 'Passo Nebuloso').querySelector('input'));
-      await click(f, pickRow(f, 'Imagem Espelhada').querySelector('input'));
+      await click(f, pickRow(f, 'Reflexos').querySelector('input'));
       expect(text(f)).toContain('Faltam preparar 2 magias.');
       await click(f, el(f).querySelector('#pick-prepared .row__input'));
       expect(text(f)).toContain('Falta preparar 1 magia.');
@@ -360,7 +360,7 @@ describe('LevelUpPage', () => {
       const f = await throughSpells();
       await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
       await click(f, pickRow(f, 'Passo Nebuloso').querySelector('input'));
-      await click(f, pickRow(f, 'Imagem Espelhada').querySelector('input'));
+      await click(f, pickRow(f, 'Reflexos').querySelector('input'));
       await click(f, el(f).querySelector('#pick-prepared .row__input'));
       await click(f, el(f).querySelectorAll('#pick-prepared .row__input')[1]);
       await click(f, button(f, 'Próximo'));
@@ -445,7 +445,7 @@ describe('LevelUpPage', () => {
       await click(f, button(f, 'Próximo'));
       await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
       await click(f, pickRow(f, 'Passo Nebuloso').querySelector('input'));
-      await click(f, pickRow(f, 'Imagem Espelhada').querySelector('input'));
+      await click(f, pickRow(f, 'Reflexos').querySelector('input'));
       await click(f, el(f).querySelector('#pick-prepared .row__input'));
       await click(f, el(f).querySelectorAll('#pick-prepared .row__input')[1]);
       await click(f, button(f, 'Próximo'));

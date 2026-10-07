@@ -231,7 +231,7 @@ export type TrapCondition = Message<"meurpg.rules.v1.TrapCondition"> & {
   conditionKey: string;
 
   /**
-   * Its Portuguese name ("Contido"). Output only: ignored on input.
+   * Its Portuguese name ("Impedido"). Output only: ignored on input.
    *
    * @generated from field: string condition_pt = 2;
    */
@@ -3218,8 +3218,8 @@ export type SpellDetails = Message<"meurpg.rules.v1.SpellDetails"> & {
   higherLevel: string[];
 
   /**
-   * What a spell that reads hit points does (Sono, Borrifo de Cores, Palavra de
-   * Poder, Poupar os Moribundos, Cura Completa). Unset for any other spell.
+   * What a spell that reads hit points does (Sono, Leque Cromático, Palavra de
+   * Poder, Estabilizar, Cura Completa). Unset for any other spell.
    * These are public spell rules, like the rest of the message: every member
    * gets them, and the app reads them instead of keeping a copy of the table.
    *
@@ -5549,7 +5549,7 @@ export enum SpellHitPointEffectKind {
 
   /**
    * A pool of dice is rolled and the creatures are affected in ascending order
-   * of current hit points (Sono, Borrifo de Cores).
+   * of current hit points (Sono, Leque Cromático).
    *
    * @generated from enum value: SPELL_HIT_POINT_EFFECT_KIND_POOL = 1;
    */
@@ -5563,7 +5563,7 @@ export enum SpellHitPointEffectKind {
   THRESHOLD = 2,
 
   /**
-   * Works only on a creature at 0 hit points (Poupar os Moribundos).
+   * Works only on a creature at 0 hit points (Estabilizar).
    *
    * @generated from enum value: SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP = 3;
    */

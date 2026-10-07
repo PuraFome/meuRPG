@@ -13,7 +13,7 @@ export interface CreaturesTable extends MapsTable {
   sessionId: string;
 }
 
-/** Pensantus at level 4 with Encontrar Familiar in the spellbook and prepared. */
+/** Pensantus at level 4 with Convocar Familiar in the spellbook and prepared. */
 const wizardWithFamiliar = {
   cantripKeys: ['spell:fire-bolt'],
   knownSpellKeys: ['spell:find-familiar', 'spell:magic-missile', 'spell:shield', 'spell:sleep'],
@@ -21,7 +21,7 @@ const wizardWithFamiliar = {
 };
 
 /**
- * A table for the creatures: Pensantus (a level 4 wizard who has Encontrar Familiar), and,
+ * A table for the creatures: Pensantus (a level 4 wizard who has Convocar Familiar), and,
  * when `session` is true, an open session (a creature is cast during one). Master and
  * player pages must be signed in as each; neither navigates.
  */
@@ -45,7 +45,7 @@ export async function giveCreatureRPC(master: Page, campaignId: string, characte
   return (await res.json()).creature.id as string;
 }
 
-/** A druid (level 5, Conjurar Animais prepared) or a cleric (level 5, Animar os Mortos prepared) with an open session. */
+/** A druid (level 5, Conjurar Animais prepared) or a cleric (level 5, Animar Mortos prepared) with an open session. */
 export async function tableForCaster(master: Page, player: Page, name: string, caster: 'druid' | 'cleric'): Promise<CreaturesTable> {
   const build: CharacterBuild = {
     name: caster === 'druid' ? 'Sálvia' : 'Irmã Clara',
