@@ -133,6 +133,7 @@ All code goes in through a PR with green CI. What each CI job checks is in [CONT
 - **Contract and generated code:** `buf lint`, `buf format` and `buf breaking` on the `.proto` files; CI regenerates the buf and sqlc code and fails on any diff.
 - **A real database in tests:** integration tests run against CockroachDB, the same image as the local environment.
 - **Everything pinned:** actions by commit SHA, images by digest, npm packages at exact versions installed without scripts. Dependabot opens the PRs that keep this current every week, and `govulncheck` checks the Go dependencies.
+- **Nothing hidden leaks:** a leak test makes every read and asks for every stream event as each person, and checks that what the Game Master hid never reaches a player (RN-10). CodeQL scans the Go, TypeScript and workflow code for security bugs.
 - **Privacy:** the stricter of LGPD and GDPR, data item by data item, in [Privacy](docs/privacy.md). The app stores nothing in `localStorage` or `sessionStorage`.
 
 ## Documentation

@@ -135,6 +135,7 @@ Todo código entra por PR, com o CI verde. O que cada job confere está em [CONT
 - **Contrato e código gerado:** `buf lint`, `buf format` e `buf breaking` nos `.proto`; o CI gera de novo o código do buf e do sqlc e falha se aparecer diferença.
 - **Banco de verdade nos testes:** os testes de integração rodam contra o CockroachDB, na mesma imagem do ambiente local.
 - **Tudo com versão presa:** as actions pelo SHA do commit, as imagens pelo digest, os pacotes npm na versão exata e instalados sem scripts. O Dependabot abre toda semana os PRs que mantêm isso em dia, e o `govulncheck` confere as dependências Go.
+- **Nada escondido vaza:** um teste de vazamento faz cada leitura e pede cada evento do stream como cada pessoa, e confere que o que o mestre escondeu nunca chega a um jogador (RN-10). O CodeQL procura falhas de segurança no Go, no TypeScript e nos workflows.
 - **Privacidade:** a regra mais restritiva entre a LGPD e o GDPR, dado a dado, em [Privacidade](docs/pt-BR/privacidade.md). O app não guarda nada no `localStorage` nem no `sessionStorage`.
 
 ## Documentação
