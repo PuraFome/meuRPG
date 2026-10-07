@@ -1,5 +1,5 @@
 @if (campaignId()) {
-  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <a class="back" [routerLink]="['/campaigns', campaignId()]">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>
     Voltar para a campanha
   </a>
@@ -46,7 +46,7 @@
       @if (vm.canEdit) {
         <a
           [matButton]="vm.canApprove ? 'outlined' : 'filled'"
-          [routerLink]="['/campanhas', vm.campaignId, 'personagens', vm.id, 'editar']"
+          [routerLink]="['/campaigns', vm.campaignId, 'characters', vm.id, 'edit']"
         >
           Editar ficha
         </a>

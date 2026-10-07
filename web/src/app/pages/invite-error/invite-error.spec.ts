@@ -4,13 +4,13 @@ import { of } from 'rxjs';
 
 import { InviteError } from './invite-error';
 
-function renderWithMotivo(motivo: string | null): HTMLElement {
+function renderWithReason(reason: string | null): HTMLElement {
   TestBed.configureTestingModule({
     imports: [InviteError],
     providers: [
       {
         provide: ActivatedRoute,
-        useValue: { queryParamMap: of(convertToParamMap(motivo ? { motivo } : {})) },
+        useValue: { queryParamMap: of(convertToParamMap(reason ? { reason } : {})) },
       },
     ],
   });
@@ -21,7 +21,7 @@ function renderWithMotivo(motivo: string | null): HTMLElement {
 
 describe('InviteError', () => {
   it('has exactly one h1', () => {
-    const el = renderWithMotivo('expired');
+    const el = renderWithReason('expired');
     expect(el.querySelectorAll('h1').length).toBe(1);
   });
 
@@ -31,16 +31,16 @@ describe('InviteError', () => {
     ['used_up', 'já foi usado'],
     ['not_found', 'não encontrado'],
     ['invalid', 'inválido'],
-  ])('shows a message for motivo=%s containing %j', (motivo, fragment) => {
-    expect(renderWithMotivo(motivo).textContent).toContain(fragment);
+  ])('shows a message for reason=%s containing %j', (reason, fragment) => {
+    expect(renderWithReason(reason).textContent).toContain(fragment);
   });
 
   it('shows a link back to the home page', () => {
-    const el = renderWithMotivo('expired');
+    const el = renderWithReason('expired');
     expect(el.querySelector('a[href="/"]')).toBeTruthy();
   });
 
-  it('falls back to a generic message when motivo is missing or unrecognized', () => {
-    expect(renderWithMotivo(null).textContent).toContain('Não foi possível aceitar o convite');
+  it('falls back to a generic message when reason is missing or unrecognized', () => {
+    expect(renderWithReason(null).textContent).toContain('Não foi possível aceitar o convite');
   });
 });

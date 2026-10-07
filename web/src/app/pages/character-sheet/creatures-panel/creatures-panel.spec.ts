@@ -113,7 +113,7 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     expect(tiles).toEqual(['CA 12', 'PV 1 de 1', 'Deslocamento 3 m voo 15 m']);
     const see = card.querySelector('a')!;
     expect(see.getAttribute('aria-label')).toBe('Ver a ficha de Nanquim');
-    expect(see.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-1/criaturas/cr-1');
+    expect(see.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1/creatures/cr-1');
   });
 
   it('the player renames and dismisses any of their creatures; only the master corrects the hit points', async () => {

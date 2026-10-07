@@ -110,7 +110,7 @@ describe('TableAbilityScores', () => {
     await setup();
     expect(text()).toContain('Conjunto padrão');
     expect(text()).toContain('SRD 5.2.1 (regras de 2024) · Créditos');
-    expect(el.querySelector('a[href="/creditos"]')).not.toBeNull();
+    expect(el.querySelector('a[href="/credits"]')).not.toBeNull();
     tab('4d6').click();
     await settle();
     expect(text()).toContain('4d6, descartando o menor');

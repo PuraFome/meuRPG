@@ -20,7 +20,7 @@ async function turned(page: Page, sw: Locator): Promise<void> {
   await expect(page.getByText('Tudo salvo')).toBeVisible();
 }
 
-const optionsRoute = (campaignId: string, tipo: string) => `/campanhas/${campaignId}/conteudo/opcoes?tipo=${tipo}`;
+const optionsRoute = (campaignId: string, kind: string) => `/campaigns/${campaignId}/content/options?kind=${kind}`;
 
 test(
   'o mestre desliga o Tiefling: a lista de raças do jogador não o tem, na tela e no JSON, e a do mestre ainda o tem, sinalizado @MR-025 @RN-23',
@@ -35,10 +35,10 @@ test(
       const { campaignId } = await tableForMaps(m, p, `Opções Tiefling ${Date.now()}`);
 
       // Before: the player's own list has the Tiefling.
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       expect(await raceOptions(p)).toContain('Tiefling');
 
-      await m.goto(optionsRoute(campaignId, 'racas'));
+      await m.goto(optionsRoute(campaignId, 'races'));
       await expect(m.getByRole('heading', { level: 1, name: 'Opções para os jogadores' })).toBeVisible();
       const counter = m.locator('.counter strong');
       await expect(counter).toHaveText(/Raças: 9 de 9 ligadas/);
@@ -60,7 +60,7 @@ test(
       // The player's: not in the JSON, not on the screen.
       // Nowhere in what the player receives: not as a key, not as a name.
       expect((await catalogText(p, campaignId)).toLowerCase()).not.toContain('tiefling');
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       const names = await raceOptions(p);
       expect(names).not.toContain('Tiefling');
       expect(names).toContain('Gnomo');
@@ -124,7 +124,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const { campaignId, characterId } = await tableForMaps(m, p, `Opções em uso ${Date.now()}`);
 
-      await m.goto(optionsRoute(campaignId, 'racas'));
+      await m.goto(optionsRoute(campaignId, 'races'));
       const gnome = m.locator('.orow').filter({ has: m.getByRole('switch', { name: 'Gnomo', exact: true }) });
       await expect(gnome).toContainText('1 ficha usa');
       await turned(m, m.getByRole('switch', { name: 'Gnomo', exact: true }));
@@ -132,19 +132,19 @@ test(
       await expect(m.getByText('Gnomo: desligada para os jogadores. 1 ficha usa e continua funcionando.')).toBeAttached();
 
       // The player's sheet still opens with the race it has.
-      await p.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
+      await p.goto(`/campaigns/${campaignId}/characters/${characterId}`);
       await expect(p.getByRole('heading', { level: 1, name: 'Pensantus' })).toBeVisible();
       await expect(p.getByText('Gnomo').first()).toBeVisible();
       // An unrelated edit of that sheet saves: the switch never refuses what is not a new choice of the option.
-      await p.goto(`/campanhas/${campaignId}/personagens/${characterId}/editar`);
+      await p.goto(`/campaigns/${campaignId}/characters/${characterId}/edit`);
       await p.getByRole('tab', { name: /Equipamento/ }).click();
       await p.getByLabel('Itens de equipamento', { exact: true }).fill('Grimório\nAdaga');
       await p.getByRole('button', { name: 'Salvar ficha' }).click();
-      await expect(p).toHaveURL(new RegExp(`/personagens/${characterId}$`));
+      await expect(p).toHaveURL(new RegExp(`/characters/${characterId}$`));
       await expect(p.getByRole('heading', { level: 1, name: 'Pensantus' })).toBeVisible();
       await expect(p.getByText('Grimório')).toBeVisible();
       // But a new choice of it is not offered.
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       expect(await raceOptions(p)).not.toContain('Gnomo');
     } finally {
       await Promise.all([master.close(), player.close()]);
@@ -167,7 +167,7 @@ test(
       // The hint travels on the session's stream: the session is open before the player's page is.
       await startSessionRPC(m, campaignId);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
       expect(await raceOptions(p)).toContain('Meio-orc');
 
@@ -178,7 +178,7 @@ test(
       await expect(p.getByLabel('Nome do personagem', { exact: true })).toHaveValue('Ícaro');
 
       // The master's own options page, open in another tab, follows too.
-      await m.goto(optionsRoute(campaignId, 'racas'));
+      await m.goto(optionsRoute(campaignId, 'races'));
       await expect(m.getByRole('switch', { name: 'Meio-orc' })).toHaveAttribute('aria-checked', 'false');
       await setSwitchesRPC(m, campaignId, [{ key: 'race:half-orc', off: false }]);
       await expect(m.getByRole('switch', { name: 'Meio-orc' })).toHaveAttribute('aria-checked', 'true', { timeout: 15_000 });
@@ -206,7 +206,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       ({ campaignId } = await tableForMaps(m, p, `Opções antes da sessão ${Date.now()}`));
       // The player's page is up first: no session, so no stream.
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       expect(await raceOptions(p)).toContain('Draconato');
       // The master opens the session and switches a race off before the page's stream has connected.
       await startSessionRPC(m, campaignId);
@@ -248,7 +248,7 @@ test(
       // The master's list still has the spell; the player's has not.
       expect((await listSpellsRPC(m, campaignId)).spells.map((s) => s.key)).toContain(key);
       expect((await listSpellsRPC(p, campaignId)).spells.map((s) => s.key)).not.toContain(key);
-      await p.goto(`/campanhas/${campaignId}/magias?q=nanquim`);
+      await p.goto(`/campaigns/${campaignId}/spells?q=nanquim`);
       await expect(p.getByRole('heading', { level: 1, name: 'Magias' })).toBeVisible();
       await expect(p.getByText('Nenhuma magia com “nanquim”.')).toBeVisible();
       // And on again: it is back.

@@ -20,14 +20,14 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   let dialogResult: unknown;
   let opened: unknown[];
 
-  async function open(url = '/campanhas/camp-1/bestiario/ogre?q=ogro', prep: (api: FakeCreaturesClient) => void = () => undefined) {
+  async function open(url = '/campaigns/camp-1/bestiary/ogre?q=ogro', prep: (api: FakeCreaturesClient) => void = () => undefined) {
     api = new FakeCreaturesClient();
     api.blocks.set('monster:ogre', ogre());
     prep(api);
     opened = [];
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/bestiario/:slug', component: BestiaryCreature }]),
+        provideRouter([{ path: 'campaigns/:id/bestiary/:slug', component: BestiaryCreature }]),
         { provide: CreaturesClient, useValue: api },
         { provide: BestiaryAccessCheck, useValue: { check: async () => access } },
         {
@@ -74,7 +74,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     // The back link keeps the search the master came with.
     const back = el.querySelector('.back')!;
     expect(flat(back)).toBe('Voltar ao Bestiário');
-    expect(back.getAttribute('href')).toBe('/campanhas/camp-1/bestiario?q=ogro');
+    expect(back.getAttribute('href')).toBe('/campaigns/camp-1/bestiary?q=ogro');
   });
 
   it('the tiles say where each number comes from: CA 11 (armadura de peles), PV 59 (7d10 + 21), 12 m (40 pés), ND 2 (450 XP)', async () => {
@@ -102,7 +102,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   it('credits the SRD, and has "Pôr no combate" (the filled one) and "Criar NPC" in the same panel', async () => {
     const { el } = await open();
     expect(flat(el.querySelector('.act__srd'))).toBe('Dados do SRD 5.1 (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.');
-    expect(el.querySelector('.act__srd a')?.getAttribute('href')).toBe('/creditos');
+    expect(el.querySelector('.act__srd a')?.getAttribute('href')).toBe('/credits');
     expect(Array.from(el.querySelectorAll('.act button')).map((b) => flat(b))).toEqual(['Pôr no combate', 'Criar NPC']);
     expect(flat(el.querySelector('#act-h'))).toBe('Usar esta criatura');
   });
@@ -119,7 +119,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     expect(flat(made.querySelector('p'))).toBe('Entraram no combate: Ogro 1, Ogro 2 e Ogro 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
     const links = Array.from(made.querySelectorAll('a'));
     expect(links.map((a) => flat(a))).toEqual(['Ir para a sessão', 'Voltar ao Bestiário']);
-    expect(links[0].getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+    expect(links[0].getAttribute('href')).toBe('/campaigns/camp-1/session');
   });
 
   it('a combat made by the sheet says so, and one monster says "Entrou"', async () => {
@@ -147,7 +147,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     expect(made.getAttribute('aria-live')).toBeNull();
     const links = Array.from(made.querySelectorAll('a'));
     expect(links.map((a) => flat(a))).toEqual(['Abrir a ficha', 'Voltar ao Bestiário']);
-    expect(links[0].getAttribute('href')).toBe('/campanhas/camp-1/personagens/npc-9');
+    expect(links[0].getAttribute('href')).toBe('/campaigns/camp-1/characters/npc-9');
     expect(document.activeElement).toBe(made);
   });
 
@@ -159,7 +159,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     const made = el.querySelector('.made')!;
     expect(flat(made.querySelector('p'))).toBe('Já foi criado. O NPC desta tentativa já está na lista de NPCs.');
     expect(Array.from(made.querySelectorAll('a')).map((a) => flat(a))).toEqual(['Ver os NPCs', 'Voltar ao Bestiário']);
-    expect(made.querySelectorAll('a')[0].getAttribute('href')).toBe('/campanhas/camp-1');
+    expect(made.querySelectorAll('a')[0].getAttribute('href')).toBe('/campaigns/camp-1');
   });
 
   it('a dialog closed with nothing made confirms nothing', async () => {
@@ -182,7 +182,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   });
 
   it('a creature that is not in the book says so; the stat block is not asked of a player', async () => {
-    const found = await open('/campanhas/camp-1/bestiario/wyrm', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('no', Code.NotFound)));
+    const found = await open('/campaigns/camp-1/bestiary/wyrm', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('no', Code.NotFound)));
     expect(flat(found.el.querySelector('h1'))).toBe('Criatura não encontrada');
     TestBed.resetTestingModule();
     access = { status: 'forbidden' };
@@ -192,7 +192,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   });
 
   it('a failed read says what to do, by code, and "Tentar de novo" reads again', async () => {
-    const { el, settle } = await open('/campanhas/camp-1/bestiario/ogre', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable)));
+    const { el, settle } = await open('/campaigns/camp-1/bestiary/ogre', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable)));
     expect(el.querySelector('[role=alert]')?.textContent).toContain('Não deu para abrir a ficha da criatura: o servidor não respondeu. Tente de novo.');
     Array.from(el.querySelectorAll('button')).find((b) => flat(b) === 'Tentar de novo')!.click();
     await settle();

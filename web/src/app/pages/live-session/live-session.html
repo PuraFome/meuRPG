@@ -58,7 +58,7 @@
             <mat-icon aria-hidden="true">swords</mat-icon>
             <p>
               <strong>{{ yourTurn() ? 'É a sua vez no combate.' : 'Há um combate em andamento.' }}</strong>
-              <a [routerLink]="['/campanhas', campaignId(), 'sessao']">Voltar para a sessão</a>
+              <a [routerLink]="['/campaigns', campaignId(), 'session']">Voltar para a sessão</a>
             </p>
           </div>
         }

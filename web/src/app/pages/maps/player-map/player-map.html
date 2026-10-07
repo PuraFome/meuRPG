@@ -2,7 +2,7 @@
   <header class="head">
     @if (parent(); as p) {
       <nav class="crumb" aria-label="Caminho do mapa">
-        <a [routerLink]="['/campanhas', campaignId(), 'mapas', p.id]" [queryParamsHandling]="'preserve'">{{ p.name }}</a>
+        <a [routerLink]="['/campaigns', campaignId(), 'maps', p.id]" [queryParamsHandling]="'preserve'">{{ p.name }}</a>
         <mat-icon aria-hidden="true">chevron_right</mat-icon>
         <span aria-current="page">{{ m.name }}</span>
       </nav>
@@ -77,7 +77,7 @@
               <a
                 class="list__row"
                 [class.list__row--here]="item.id === m.id"
-                [routerLink]="['/campanhas', campaignId(), 'mapas', item.id]"
+                [routerLink]="['/campaigns', campaignId(), 'maps', item.id]"
                 [queryParamsHandling]="'preserve'"
                 [attr.aria-current]="item.id === m.id ? 'page' : null"
               >

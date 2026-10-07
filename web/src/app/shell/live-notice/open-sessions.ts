@@ -179,10 +179,10 @@ export class OpenSessions {
   }
 }
 
-/** `/campanhas/<id>` or `/campanhas/<id>/sessao`, from a router URL. */
+/** `/campaigns/<id>` or `/campaigns/<id>/session`, from a router URL. */
 function campaignPage(url: string): { campaignId: string; session: boolean } | null {
   const path = url.split(/[?#]/, 1)[0];
-  const match = /^\/campanhas\/([^/]+)(\/sessao)?\/?$/.exec(path);
+  const match = /^\/campaigns\/([^/]+)(\/session)?\/?$/.exec(path);
   return match ? { campaignId: match[1], session: match[2] !== undefined } : null;
 }
 

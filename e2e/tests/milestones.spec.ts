@@ -42,7 +42,7 @@ test(
       await m.goto('/');
       await p.goto('/');
       const table = await tableForXp(m, p, `Marcos planejados ${Date.now()}`, 'XP_MODE_MILESTONES');
-      await m.goto(`/campanhas/${table.campaignId}`);
+      await m.goto(`/campaigns/${table.campaignId}`);
 
       // Nothing planned: the panel says what to write.
       await expect(panel(m)).toContainText('Nenhum marco planejado');
@@ -91,7 +91,7 @@ test(
       await expect(panel(m)).not.toContainText(/\d\s*XP/);
 
       // The player's sheet carries the tag.
-      await p.goto(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await p.goto(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
       await expect(p.locator('app-sheet-header').getByText('Pode subir de nível')).toBeVisible();
 
       // Undo: the milestone is planned again.
@@ -126,7 +126,7 @@ test(
       await plan(m, table.campaignId, 'Revelar o traidor da guilda');
 
       // Before the first milestone: the empty state, no character row, no hint of the planned ones.
-      await p.goto(`/campanhas/${table.campaignId}`);
+      await p.goto(`/campaigns/${table.campaignId}`);
       await expect(panel(p)).toContainText('Nenhum marco alcançado ainda. Quando o grupo cumprir um, ele aparece aqui.');
       await expect(panel(p)).not.toContainText(/planejad/i);
       await expect(p.locator('body')).not.toContainText('Revelar o traidor da guilda');
@@ -141,7 +141,7 @@ test(
       await expect(p.locator('body')).not.toContainText('Revelar o traidor da guilda');
       await expect(panel(p).locator('app-level-up-tag')).toBeVisible();
       await panel(p).getByRole('link', { name: 'Abrir a ficha' }).click();
-      await expect(p).toHaveURL(`/campanhas/${table.campaignId}/personagens/${table.characterId}`);
+      await expect(p).toHaveURL(`/campaigns/${table.campaignId}/characters/${table.characterId}`);
 
       // The server agrees: a player's list has the reached milestone only.
       const res = await callRPC(p, `${progression}/ListMilestones`, { campaignId: table.campaignId });

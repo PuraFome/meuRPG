@@ -29,7 +29,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     opened = [];
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'campanhas/:id/tesouro', component: TreasurePage }]),
+        provideRouter([{ path: 'campaigns/:id/treasure', component: TreasurePage }]),
         { provide: TreasureClient, useValue: api },
         { provide: TreasureAccessCheck, useValue: { check: async () => access } },
         {
@@ -45,7 +45,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
       ],
     });
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/campanhas/camp-1/tesouro', TreasurePage);
+    await harness.navigateByUrl('/campaigns/camp-1/treasure', TreasurePage);
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         harness.detectChanges();
@@ -286,7 +286,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa'))).toBe(false);
     const openLink = el.querySelector<HTMLAnchorElement>('.actions a.act--go')!;
     expect(flat(openLink)).toBe('Abrir o mapa');
-    expect(openLink.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1');
+    expect(openLink.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1');
     expect(flat(el.querySelector('.act--again'))).toBe('Gerar outro');
     // A new treasure brings "Pôr no mapa" back.
     button('Gerar outro').click();

@@ -1,5 +1,5 @@
 @if (visible()) {
-  <section class="mr-panel maps" id="mapas" aria-labelledby="maps-panel-heading">
+  <section class="mr-panel maps" id="maps" aria-labelledby="maps-panel-heading">
     <h2 class="mr-panel__title" id="maps-panel-heading">Mapas</h2>
 
     @let s = state();
@@ -20,7 +20,7 @@
           <ul class="mr-list">
             @for (m of s.maps; track m.id) {
               <li>
-                <a class="row" [routerLink]="['/campanhas', campaignId(), 'mapas', m.id]">
+                <a class="row" [routerLink]="['/campaigns', campaignId(), 'maps', m.id]">
                   <span class="row__text">
                     <span class="row__name">{{ m.name }}</span>
                     <span class="row__sub">{{ sub(m, isMaster()) }}</span>
@@ -51,13 +51,13 @@
 
     @if (isMaster()) {
       <div class="maps__actions">
-        <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'mapas', 'novo']">
+        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'maps', 'new']">
           <mat-icon aria-hidden="true">add</mat-icon>Novo mapa
         </a>
-        <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'mapas', 'masmorra']">
+        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'maps', 'dungeon']">
           <mat-icon aria-hidden="true">castle</mat-icon>Gerar masmorra
         </a>
-        <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'tesouro']">
+        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'treasure']">
           <mat-icon aria-hidden="true">paid</mat-icon>Gerar tesouro
         </a>
       </div>

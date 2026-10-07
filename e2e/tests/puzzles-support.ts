@@ -157,7 +157,7 @@ export async function openMasterSession(master: Page, campaignId: string): Promi
 }
 
 export function puzzleRoute(campaignId: string, ...rest: string[]): string {
-  return ['', 'campanhas', campaignId, ...rest].join('/');
+  return ['', 'campaigns', campaignId, ...rest].join('/');
 }
 
 // Slice 10.15b: the riddle, the sequence and the cipher, the skill check for a hint, the split information and "Ao errar".

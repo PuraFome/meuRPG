@@ -41,13 +41,13 @@ describe('LiveNotice', () => {
   }
 
   it('says which session started, with "Entrar na sessão" to its page (E5-01)', () => {
-    const el = render('/campanhas');
+    const el = render('/campaigns');
     expect(el.querySelector('[role="status"]')?.textContent).toContain(
       'A sessão 4 de Mirathel começou.',
     );
     const link = el.querySelector('a');
     expect(link?.textContent?.trim()).toBe('Entrar na sessão');
-    expect(link?.getAttribute('href')).toBe('/campanhas/mirathel/sessao');
+    expect(link?.getAttribute('href')).toBe('/campaigns/mirathel/session');
     expect(el.querySelector('button[aria-label="Fechar aviso"]')).not.toBeNull();
   });
 
@@ -93,7 +93,7 @@ describe('LiveNotice', () => {
   });
 
   it("stays away from the campaign's own page and from session pages", () => {
-    expect(render('/campanhas/mirathel').textContent).not.toContain('começou');
-    expect(render('/campanhas/mirathel/sessao').textContent).not.toContain('começou');
+    expect(render('/campaigns/mirathel').textContent).not.toContain('começou');
+    expect(render('/campaigns/mirathel/session').textContent).not.toContain('começou');
   });
 });

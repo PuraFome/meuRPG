@@ -1,6 +1,6 @@
 @let s = state();
 @if (s.status !== 'not-found') {
-  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <a class="back" [routerLink]="['/campaigns', campaignId()]">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>
     Voltar para a campanha
   </a>
@@ -128,7 +128,7 @@
             <h2 class="mr-panel__title" id="abilities-title">Atributos de uma ficha nova</h2>
             <p class="hint">
               Marque os jeitos que o jogador pode usar. Pelo menos um.
-              <a routerLink="/creditos">Créditos</a>
+              <a routerLink="/credits">Créditos</a>
             </p>
             <app-method-cards [rules]="d" [numbers]="s.vm" (toggled)="edit($event)" />
           </section>
@@ -216,7 +216,7 @@
             <p class="hint">
               Cada mapa diz quanto vale um quadrado do desenho (1,5 m, 3 m ou outro). Isso se escolhe no editor do mapa, em “Grade”.
             </p>
-            <a matButton="outlined" class="link" [routerLink]="['/campanhas', campaignId()]" fragment="mapas">Abrir os mapas</a>
+            <a matButton="outlined" class="link" [routerLink]="['/campaigns', campaignId()]" fragment="maps">Abrir os mapas</a>
           </section>
         </div>
       </div>

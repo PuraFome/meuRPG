@@ -1,4 +1,4 @@
-<a class="back" [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">
+<a class="back" [routerLink]="['/campaigns', campaignId, 'bestiary']" queryParamsHandling="preserve">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>
   Voltar ao Bestiário
 </a>
@@ -101,8 +101,8 @@
                   {{ p.hidden ? 'Estão escondidos: só você os vê até revelar.' : 'Os jogadores já os veem pelo estado.' }}
                 </p>
                 <div class="made__links">
-                  <a [routerLink]="['/campanhas', campaignId, 'sessao']">Ir para a sessão</a>
-                  <a [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
+                  <a [routerLink]="['/campaigns', campaignId, 'session']">Ir para a sessão</a>
+                  <a [routerLink]="['/campaigns', campaignId, 'bestiary']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
                 </div>
               </div>
             </div>
@@ -121,11 +121,11 @@
                 }
                 <div class="made__links">
                   @if (m.id) {
-                    <a [routerLink]="['/campanhas', campaignId, 'personagens', m.id]">Abrir a ficha</a>
+                    <a [routerLink]="['/campaigns', campaignId, 'characters', m.id]">Abrir a ficha</a>
                   } @else {
-                    <a [routerLink]="['/campanhas', campaignId]">Ver os NPCs</a>
+                    <a [routerLink]="['/campaigns', campaignId]">Ver os NPCs</a>
                   }
-                  <a [routerLink]="['/campanhas', campaignId, 'bestiario']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
+                  <a [routerLink]="['/campaigns', campaignId, 'bestiary']" queryParamsHandling="preserve">Voltar ao Bestiário</a>
                 </div>
               </div>
             </div>
@@ -147,7 +147,7 @@
               <mat-icon aria-hidden="true">person_add</mat-icon>Criar NPC
             </button>
             <p class="act__srd">
-              Dados do <a routerLink="/creditos">SRD 5.1</a> (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.
+              Dados do <a routerLink="/credits">SRD 5.1</a> (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.
             </p>
           </aside>
         </div>

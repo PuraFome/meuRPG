@@ -142,7 +142,7 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     });
     const notices = Array.from(el.querySelectorAll('.mr-notice--warning')).map((n) => flat(n));
     expect(notices.some((n) => n?.startsWith('Criaturas demais para um combate.'))).toBe(true);
-    expect(el.querySelector('.mr-notice--warning a')?.getAttribute('href')).toBe('/campanhas/camp-1/encontros?mapa=map-1&ponto=pt-1');
+    expect(el.querySelector('.mr-notice--warning a')?.getAttribute('href')).toBe('/campaigns/camp-1/encounters?map=map-1&point=pt-1');
   });
 
   it('says in words when the saved encounters cannot be read', async () => {

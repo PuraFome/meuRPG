@@ -25,9 +25,9 @@ test(
       const table = await tableForPrinting(master, player, `Impressão ${Date.now()}`);
 
       // The entry is on the map page, beside the title.
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.gridMapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.gridMapId}`);
       await master.getByRole('link', { name: 'Imprimir com a grade' }).click();
-      await expect(master).toHaveURL(new RegExp(`/mapas/${table.gridMapId}/imprimir$`));
+      await expect(master).toHaveURL(new RegExp(`/maps/${table.gridMapId}/print$`));
       await expect(master.getByRole('heading', { name: 'Imprimir o mapa', level: 1 })).toBeVisible();
 
       // The defaults: one inch per square, A4: 30 x 20 x 2,54 cm on 9 sheets.
@@ -116,7 +116,7 @@ test('um mapa sem grade não imprime: o botão diz por quê e a tela de impress�
     await master.goto('/');
     const table = await tableForPrinting(master, player, `Impressão sem grade ${Date.now()}`);
 
-    await master.goto(`/campanhas/${table.campaignId}/mapas/${table.plainMapId}`);
+    await master.goto(`/campaigns/${table.campaignId}/maps/${table.plainMapId}`);
     await expect(master.getByRole('heading', { name: 'Sem grade', level: 1 })).toBeVisible();
     const entry = master.getByRole('button', { name: 'Imprimir com a grade' });
     await expect(entry).toHaveAttribute('aria-disabled', 'true');
@@ -161,7 +161,7 @@ test('o jogador não vê o botão de imprimir e a tela de impressão responde qu
     await expect(player.getByRole('button', { name: 'Imprimir', exact: true })).toHaveCount(0);
 
     // The player's viewer has no print entry either.
-    await player.goto(`/campanhas/${table.campaignId}/mapas/${table.gridMapId}`);
+    await player.goto(`/campaigns/${table.campaignId}/maps/${table.gridMapId}`);
     await expect(player.getByRole('heading', { name: 'Estrada do Vale', level: 1 })).toBeVisible();
     await expect(player.getByText(/Imprimir/)).toHaveCount(0);
   } finally {

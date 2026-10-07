@@ -176,7 +176,7 @@ describe('MapHead: "Imprimir com a grade" (MR-033, E8-12)', () => {
   it('com grade é um link para a tela de impressão', () => {
     const link = render(30).querySelector('a.print__button')!;
     expect(link.textContent).toContain('Imprimir com a grade');
-    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1/imprimir');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1/print');
   });
 
   it('sem grade é um botão desabilitado, com o motivo escrito ao lado e ligado a ele', () => {

@@ -25,7 +25,7 @@ import {
 // A click on something that is not there fails in 15 s instead of waiting for the test's whole timeout.
 test.use({ actionTimeout: 15_000 });
 
-const sheetOf = (campaignId: string, characterId: string) => `/campanhas/${campaignId}/personagens/${characterId}`;
+const sheetOf = (campaignId: string, characterId: string) => `/campaigns/${campaignId}/characters/${characterId}`;
 
 /** Opens a `mat-select` by its label with the keyboard (a compact grid can put the floating label over the click) and picks an option. */
 async function pick(page: Page, label: string, option: string | RegExp): Promise<void> {
@@ -61,7 +61,7 @@ test(
       await createGuardianRPC(m, campaignId);
       await createOwlRaceRPC(m, campaignId);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
 
       // The table's entries sit among the SRD's with the neutral "Da mesa" tag, in the lists and in the closed select.
@@ -107,7 +107,7 @@ test(
       await skills.getByRole('checkbox', { name: 'Natureza', exact: true }).check();
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();
-      await expect(p).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       await expect(p.getByRole('heading', { name: 'Ícaro', level: 1 })).toBeVisible();
       await expect(p.getByText('Guardião do Vale 1').first()).toBeVisible();
       await expect(p.getByText('Corujeiro').first()).toBeVisible();
@@ -137,7 +137,7 @@ test(
       await createPlainSubclassRPC(m, campaignId, 'class:cleric', 'Domínio do Caminho', 1, [{ classLevel: 1, spellKey: 'spell:detect-magic' }]);
       await createInkBladeRPC(m, campaignId);
 
-      await p.goto(`/campanhas/${campaignId}/personagens/novo`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
       await p.getByLabel('Nome do personagem', { exact: true }).fill('Corvina');
       await pick(p, 'Raça', 'Gnomo');
       await pick(p, 'Classe', 'Mago');
@@ -188,11 +188,11 @@ test(
       const out = cleric.locator('.picker__out');
       await expect(out).toContainText('Amizade Animal');
       await expect(out).toContainText('Fora da lista das suas classes');
-      await expect(out.getByRole('link', { name: 'Ver em Magias' })).toHaveAttribute('href', `/campanhas/${campaignId}/magias`);
+      await expect(out.getByRole('link', { name: 'Ver em Magias' })).toHaveAttribute('href', `/campaigns/${campaignId}/spells`);
       await expect(out.getByRole('checkbox')).toHaveCount(0);
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();
-      await expect(p).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       await expect(p.getByRole('heading', { name: 'Corvina', level: 1 })).toBeVisible();
       await expect(p.getByText('Mago 3').first()).toBeVisible();
       await expect(p.getByText('Clérigo 1').first()).toBeVisible();
@@ -398,7 +398,7 @@ test(
 
       // Ícaro's owner fixes the sheet (the notice says "você, na ficha" for a sheet nobody locked): one skill less, and
       // the notice goes by itself, the numbers matching again. The class is not touched.
-      await p.goto(`${sheetOf(campaignId, characterId)}/editar`);
+      await p.goto(`${sheetOf(campaignId, characterId)}/edit`);
       await p.getByRole('tab', { name: 'Perícias' }).click();
       await p.getByRole('group', { name: 'Perícias', exact: true }).getByRole('checkbox', { name: 'Furtividade', exact: true }).first().uncheck();
       await p.getByRole('button', { name: 'Salvar ficha' }).click();
@@ -432,7 +432,7 @@ test(
       await archiveEntryRPC(m, campaignId, guardian);
 
       // The owner edits: the class is still there, tagged, the Magias step stays, and the save goes through.
-      await p.goto(`${sheetOf(campaignId, characterId)}/editar`);
+      await p.goto(`${sheetOf(campaignId, characterId)}/edit`);
       await expect(p.getByRole('combobox', { name: 'Classe', exact: true })).toContainText('Guardião do Vale');
       await expect(p.getByRole('combobox', { name: 'Classe', exact: true })).toContainText('Arquivada');
       await expect(p.getByRole('tab', { name: 'Magias' })).toBeVisible();
@@ -441,7 +441,7 @@ test(
       await expect(p.getByText('Guardião do Vale 3').first()).toBeVisible();
 
       // The master making a new NPC is never offered it as a new choice (the server would refuse it).
-      await m.goto(`/campanhas/${campaignId}/npcs/novo/inimigo`);
+      await m.goto(`/campaigns/${campaignId}/npcs/new/enemy`);
       const classSelect = m.getByRole('combobox', { name: 'Classe', exact: true });
       await classSelect.focus();
       await classSelect.press('Enter');

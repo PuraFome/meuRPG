@@ -228,7 +228,7 @@ func TestPostgresStoreLoginStates(t *testing.T) {
 	now := time.Now().Truncate(time.Microsecond)
 
 	_, hash := secret.New()
-	want := LoginState{StateHash: hash, CodeVerifier: "verifier", Nonce: "nonce", ReturnTo: "/campanhas", CreatedAt: now, ExpiresAt: now.Add(loginStateLifetime)}
+	want := LoginState{StateHash: hash, CodeVerifier: "verifier", Nonce: "nonce", ReturnTo: "/campaigns", CreatedAt: now, ExpiresAt: now.Add(loginStateLifetime)}
 	if err := store.saveLoginState(ctx, want); err != nil {
 		t.Fatalf("SaveLoginState() error = %v", err)
 	}

@@ -29,7 +29,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
   let api: FakePuzzlesClient;
   let access: PuzzleAccess;
 
-  async function open(url = '/campanhas/camp-1/quebra-cabecas/novo', prep: (a: FakePuzzlesClient) => void = () => undefined) {
+  async function open(url = '/campaigns/camp-1/puzzles/new', prep: (a: FakePuzzlesClient) => void = () => undefined) {
     api = new FakePuzzlesClient();
     api.previewResult = preview(lit17, 4, 7n);
     prep(api);
@@ -47,9 +47,9 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'campanhas/:id/quebra-cabecas/novo', component: PuzzleForm },
-          { path: 'campanhas/:id/quebra-cabecas/:puzzleId/editar', component: PuzzleForm },
-          { path: 'campanhas/:id', component: Stub },
+          { path: 'campaigns/:id/puzzles/new', component: PuzzleForm },
+          { path: 'campaigns/:id/puzzles/:puzzleId/edit', component: PuzzleForm },
+          { path: 'campaigns/:id', component: Stub },
         ]),
         { provide: PuzzlesClient, useValue: api },
         { provide: MapsClient, useValue: maps },
@@ -126,7 +126,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
     expect(init.name).toBe('O selo da Capela');
     expect(init.seed).toBe(99n);
     expect(init.config).toEqual({ kind: { case: 'lights', value: { size: 5 } } });
-    expect(TestBed.inject(Router).url).toBe('/campanhas/camp-1');
+    expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1');
   });
 
   it('asks for another start when the size changes, after a short pause', async () => {
@@ -240,7 +240,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
   describe('editing', () => {
     it('opens a puzzle in its own form, shows its own start and asks the server for nothing', async () => {
       const puzzle = lightsPuzzle('p1', 'O selo da Capela', { hints: ['A luz responde ao toque.'], clue: 'Só o selo apagado abre o caminho.' });
-      const { el, pause } = await open('/campanhas/camp-1/quebra-cabecas/p1/editar', (a) => (a.getResult = puzzle));
+      const { el, pause } = await open('/campaigns/camp-1/puzzles/p1/edit', (a) => (a.getResult = puzzle));
       await pause();
       expect(el.querySelector('h1')?.textContent).toBe('Editar quebra-cabeça');
       expect(el.querySelector('input[name="name"]') as HTMLInputElement).toHaveProperty('value', 'O selo da Capela');
@@ -253,7 +253,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
 
     it('saves with seed 0, which keeps the puzzle\'s start', async () => {
       const puzzle = lightsPuzzle('p1', 'O selo da Capela');
-      const { el, pause, settle } = await open('/campanhas/camp-1/quebra-cabecas/p1/editar', (a) => (a.getResult = puzzle));
+      const { el, pause, settle } = await open('/campaigns/camp-1/puzzles/p1/edit', (a) => (a.getResult = puzzle));
       await pause();
       (el.querySelector('form') as HTMLFormElement).requestSubmit();
       await settle();
@@ -263,7 +263,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
     });
 
     it('says a puzzle that was shown cannot be edited, and has no form', async () => {
-      const { el } = await open('/campanhas/camp-1/quebra-cabecas/p1/editar', (a) => (a.getResult = lightsPuzzle('p1', 'x', { shown: true })));
+      const { el } = await open('/campaigns/camp-1/puzzles/p1/edit', (a) => (a.getResult = lightsPuzzle('p1', 'x', { shown: true })));
       expect(el.textContent).toContain('já foi mostrado numa sessão e não pode mais ser editado');
       expect(el.querySelector('form')).toBeNull();
     });
@@ -316,7 +316,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
       expect(init.config).toEqual({ kind: { case: 'riddle', value: { text: 'Moro embaixo de cada passo seu. O que sou?' } } });
       expect(init.solution).toEqual({ kind: { case: 'riddle', value: { answers: ['sombra', 'a sombra'] } } });
       expect(init.onWrong).toEqual({ attemptsPerPlayer: 3 });
-      expect(TestBed.inject(Router).url).toBe('/campanhas/camp-1');
+      expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1');
     });
 
     it('keeps an answer typed but not yet added when the master leaves the field and saves', async () => {
@@ -670,7 +670,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
         parts: [{ characterId: 'c-toren', text: 'A porta ouve.', ownerUnavailable: false }],
         onWrong: { attemptsPerPlayer: 4 },
       });
-      const { el, settle } = await open('/campanhas/camp-1/quebra-cabecas/p1/editar', (a) => (a.getResult = puzzle));
+      const { el, settle } = await open('/campaigns/camp-1/puzzles/p1/edit', (a) => (a.getResult = puzzle));
       expect(el.querySelector('h1')?.textContent).toBe('Editar quebra-cabeça');
       expect(el.querySelector('textarea[name="riddle"]')).toHaveProperty('value', 'Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?');
       expect(Array.from(el.querySelectorAll('.chip__text')).map((c) => c.textContent)).toEqual(['sombra', 'a sombra']);
@@ -687,7 +687,7 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
 
     it('opens a cipher with its message, its key and the clue linked', async () => {
       const puzzle = cipherPuzzle('p2', 'A carta', { config: { kind: { case: 'cipher', value: { ciphertext: 'R WHVRXUR', keyClueId: 'k1' } } } });
-      const { el } = await open('/campanhas/camp-1/quebra-cabecas/p2/editar', (a) => (a.getResult = puzzle));
+      const { el } = await open('/campaigns/camp-1/puzzles/p2/edit', (a) => (a.getResult = puzzle));
       expect(el.querySelector('textarea[name="cipher-message"]')).toHaveProperty('value', 'O tesouro está sob o altar');
       expect(el.querySelector<HTMLSelectElement>('app-cipher-form select')?.value).toBe('k1');
       expect(el.querySelector('app-stepper .st__value')?.textContent).toBe('3');

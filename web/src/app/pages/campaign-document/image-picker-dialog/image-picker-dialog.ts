@@ -9,7 +9,7 @@ import { DocDialog } from '../doc-dialog/doc-dialog';
 /**
  * "Imagem da galeria" (the editor toolbar): the shared gallery picker in a
  * dialog. "Inserir imagem" hands the chosen image to the editor, which
- * writes `![nome](imagem:<id>)` on a paragraph of its own.
+ * writes `![nome](image:<id>)` on a paragraph of its own.
  */
 @Component({
   selector: 'app-image-picker-dialog',

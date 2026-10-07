@@ -102,10 +102,10 @@ export function insertLink(
   return { from: selStart, to: selEnd, insert, selStart: caret, selEnd: caret };
 }
 
-/** Writes `![name](imagem:<id>)` on a paragraph of its own, with the caret
+/** Writes `![name](image:<id>)` on a paragraph of its own, with the caret
  * on the paragraph after it. */
 export function insertImage(text: string, selStart: number, selEnd: number, name: string, id: string): Edit {
-  const line = `![${cleanLabel(name)}](imagem:${id})`;
+  const line = `![${cleanLabel(name)}](image:${id})`;
   const before = text.slice(0, selStart);
   const after = text.slice(selEnd);
   const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';

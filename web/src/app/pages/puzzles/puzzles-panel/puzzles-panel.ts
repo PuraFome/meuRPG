@@ -13,7 +13,7 @@ import { MapAsk } from '../../maps/map-ask/map-ask';
 type State = { readonly status: 'loading' } | { readonly status: 'error'; readonly message: string } | { readonly status: 'ready' };
 
 /**
- * The master's "Quebra-cabeças" panel on `/campanhas/:id` (MR-038, E10-06 state 1): one row for each puzzle with its kind's
+ * The master's "Quebra-cabeças" panel on `/campaigns/:id` (MR-038, E10-06 state 1): one row for each puzzle with its kind's
  * icon, its name, a line ("Apagar as luzes · 5 × 5") and its state, and "Novo quebra-cabeça". Only the master sees it: the
  * answers live here. "Editar" is there until the puzzle is first shown (the server refuses an edit after that), and "Arquivar"
  * asks in place: an archived puzzle leaves this list and the session's menu, what happened in past sessions stays, and

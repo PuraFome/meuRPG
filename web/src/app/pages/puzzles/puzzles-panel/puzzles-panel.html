@@ -18,13 +18,13 @@
         <p class="panel__text">
           {{ archivedCount() > 0 && !withArchived() ? 'Todos os quebra-cabeças estão arquivados. Mostre os arquivados para desarquivar um, ou crie outro.' : 'Nenhum quebra-cabeça ainda. Crie o primeiro para mostrar aos jogadores numa sessão.' }}
         </p>
-        <a matButton="outlined" class="panel__new" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', 'novo']">
+        <a matButton="outlined" class="panel__new" [routerLink]="['/campaigns', campaignId(), 'puzzles', 'new']">
           <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
         </a>
       } @else {
         <div class="panel__head">
           <p class="panel__text">Só você vê estes quebra-cabeças. Você mostra um aos jogadores dentro da sessão.</p>
-          <a matButton="outlined" class="panel__new" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', 'novo']">
+          <a matButton="outlined" class="panel__new" [routerLink]="['/campaigns', campaignId(), 'puzzles', 'new']">
             <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
           </a>
         </div>
@@ -53,7 +53,7 @@
                   <span class="mr-tag">{{ p.archived ? 'Arquivado' : p.shown ? 'Já mostrado' : 'Não mostrado' }}</span>
                   <span class="row__actions">
                     @if (canEdit(p)) {
-                      <a matButton class="row__link" [routerLink]="['/campanhas', campaignId(), 'quebra-cabecas', p.id, 'editar']" [attr.aria-label]="'Editar ' + p.name">Editar</a>
+                      <a matButton class="row__link" [routerLink]="['/campaigns', campaignId(), 'puzzles', p.id, 'edit']" [attr.aria-label]="'Editar ' + p.name">Editar</a>
                     }
                     @if (p.archived) {
                       <button matButton type="button" class="row__link" [attr.aria-label]="'Desarquivar ' + p.name" (click)="unarchive(p)">Desarquivar</button>

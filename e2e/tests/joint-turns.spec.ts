@@ -27,7 +27,7 @@ test(
       await beginJointCombat(m, joint);
 
       // The master: one card for the group, a block per member, no "end the group's turn".
-      await m.goto(`/campanhas/${campaignId}/sessao`);
+      await m.goto(`/campaigns/${campaignId}/session`);
       await expect(m.getByRole('heading', { name: /^Turno conjunto: / })).toBeVisible();
       const card = m.getByRole('region', { name: /^Turno conjunto: / });
       await expect(card.getByText('Falta')).toBeVisible();
@@ -95,7 +95,7 @@ test(
       await expect(p.getByText('iniciativa 5')).toHaveCount(0);
       await expect(p.getByRole('heading', { name: /Vez do Goblin/ })).toHaveCount(0);
       // The master has the box.
-      await m.goto(`/campanhas/${campaignId}/sessao`);
+      await m.goto(`/campaigns/${campaignId}/session`);
       await expect(m.getByRole('group', { name: /^Turno conjunto: Goblin \d e Goblin \d, iniciativa 5$/ })).toBeVisible();
     } finally {
       if (campaignId) {
