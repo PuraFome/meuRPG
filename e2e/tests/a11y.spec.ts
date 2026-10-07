@@ -15,7 +15,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -2381,7 +2381,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await row('Prestidigitação').click();
     await p.getByLabel('Buscar magia').fill('nebuloso');
     await row('Passo Nebuloso').click();
-    await p.getByLabel('Buscar magia').fill('espelhada');
+    await p.getByLabel('Buscar magia').fill('reflexos');
     await row('Reflexos').click();
     await p.getByLabel('Buscar magia').fill('');
     await expectScreenPasses(p, `Magias, o livro completo e as preparadas faltando ${where}`);
@@ -2390,6 +2390,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `O "?" de uma magia do subir de nível ${where}`);
     await p.keyboard.press('Escape');
     const prepare = p.locator('#pick-prepared');
+    await showAllPicks(prepare);
     await prepare.locator('.row__main').filter({ hasText: 'Passo Nebuloso' }).click();
     await prepare.locator('.row__main').filter({ hasText: 'Detectar Magia' }).click();
     await expectScreenPasses(p, `Magias, tudo escolhido ${where}`);
@@ -5393,6 +5394,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await page.getByRole('button', { name: 'Próximo' }).click();
     const prepare = page.locator('#pick-prepared');
     await expect(prepare).toBeVisible();
+    await showAllPicks(prepare);
     const reason = (await page.locator('#foot-reason').textContent()) ?? '';
     for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
       await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();

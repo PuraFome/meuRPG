@@ -61,7 +61,7 @@ test(
       await row(p, 'Prestidigitação').click();
       await p.getByLabel('Buscar magia').fill('nebuloso');
       await row(p, 'Passo Nebuloso').first().click();
-      await p.getByLabel('Buscar magia').fill('espelhada');
+      await p.getByLabel('Buscar magia').fill('reflexos');
       await row(p, 'Reflexos').first().click();
       await p.getByLabel('Buscar magia').fill('');
       await expect(p.getByText('Faltam preparar 2 magias.')).toBeVisible();
