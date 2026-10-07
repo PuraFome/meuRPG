@@ -1,7 +1,8 @@
 // Package dbtest gives integration tests a real, freshly migrated
 // CockroachDB database. Only tests import it.
 //
-// The tests need MEURPG_TEST_DATABASE_URL; without it they skip, so
+// The tests need MEURPG_TEST_DATABASE_URL; without it they skip (or fail, with
+// MEURPG_REQUIRE_DB=1, which CI sets), so
 // `go test ./...` works anywhere. To run them, start a throwaway CockroachDB
 // (`make up` does, on port 26257) and run:
 //
@@ -49,11 +50,12 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 	"github.com/PuraFome/meuRPG/backend/migrations"
 )
 
 // EnvVar names the variable with the test server's connection string.
-const EnvVar = "MEURPG_TEST_DATABASE_URL"
+const EnvVar = testenv.DatabaseEnv
 
 // counter makes database names unique even when two tests start in the same
 // nanosecond.
@@ -98,7 +100,8 @@ func Enabled() bool { return os.Getenv(EnvVar) != "" }
 // package's TestMain drops them all at the end, see Main). prefix names the
 // databases, to tell packages apart in CockroachDB's console.
 //
-// Without MEURPG_TEST_DATABASE_URL, NewPool skips the test.
+// Without MEURPG_TEST_DATABASE_URL, NewPool skips the test (it fails the test
+// when MEURPG_REQUIRE_DB=1, which CI sets: see package testenv).
 //
 // The pool has one connection (see guardPool). A test that races transactions
 // needs them to overlap: it asks for a bigger pool with NewPoolConns.
@@ -146,10 +149,7 @@ func PoolSize(t testing.TB, conns int32) {
 // process-wide, only changes the default of NewPool.
 func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	t.Helper()
-	rawURL := os.Getenv(EnvVar)
-	if rawURL == "" {
-		t.Skip(EnvVar + " is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 
 	templateOnce.Do(func() { template, templateErr = buildTemplate(rawURL) })
 	if templateErr != nil {
