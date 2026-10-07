@@ -46,11 +46,30 @@ func (s *Service) CreateCampaign(
 		return nil, invalidArgument("xp_mode", errors.New("must be enemies, gold or milestones"))
 	}
 
+	// Who may create campaigns at all (RN-30): a read through the pool, so it
+	// comes before the transaction.
+	allowed, err := s.canCreate(ctx, userID)
+	if err != nil {
+		return nil, s.dbError(ctx, "check who may create campaigns", err)
+	}
+	if !allowed {
+		return nil, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_NOT_ALLOWED, 0)
+	}
+
 	// The campaign and its master are created together, or not at all.
 	var campaign campaignsdb.Campaign
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		var err error
+		// The cap is counted in the transaction that inserts: two creations at
+		// the same time cannot both slip under it (SERIALIZABLE makes one retry
+		// and count again) (RN-30).
+		mastered, err := q.CountMasteredCampaigns(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("count the campaigns the caller is master of: %w", err)
+		}
+		if int(mastered) >= s.maxCampaigns {
+			return errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
+		}
 		campaign, err = q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
 			Name:      name,
 			XpMode:    xpMode,

@@ -75,6 +75,10 @@ type Profiles interface {
 	// DisplayNames returns the display names of the given users, keyed by
 	// user ID. Users without one are left out.
 	DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error)
+	// VerifiedEmails returns a user's verified e-mail addresses, for the
+	// allow-list of who may create campaigns (RN-30). Empty when the provider
+	// did not verify one.
+	VerifiedEmails(ctx context.Context, userID string) ([]string, error)
 }
 
 // PendingMemberLifetime is how long a pending membership without a
@@ -99,6 +103,12 @@ type Config struct {
 	Pool *pgxpool.Pool
 	// Profiles gives members' display names. Required.
 	Profiles Profiles
+	// MaxCampaignsPerUser is how many campaigns one account may be master of
+	// (RN-30). Zero means DefaultMaxCampaignsPerUser.
+	MaxCampaignsPerUser int
+	// Creators are the verified e-mails, in lower case, allowed to create
+	// campaigns (RN-30). Empty means anyone.
+	Creators []string
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -115,6 +125,9 @@ type Service struct {
 	profiles Profiles
 	logger   *slog.Logger
 	now      func() time.Time
+	// maxCampaigns and creators are the abuse limits of CreateCampaign (RN-30).
+	maxCampaigns int
+	creators     []string
 	// characters is set once, before the service handles any call
 	// (SetCharacters).
 	characters Characters
@@ -142,6 +155,12 @@ func New(cfg Config) (*Service, error) {
 		profiles: cfg.Profiles,
 		logger:   cfg.Logger,
 		now:      cfg.Now,
+
+		maxCampaigns: cfg.MaxCampaignsPerUser,
+		creators:     cfg.Creators,
+	}
+	if s.maxCampaigns <= 0 {
+		s.maxCampaigns = DefaultMaxCampaignsPerUser
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()

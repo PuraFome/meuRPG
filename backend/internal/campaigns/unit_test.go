@@ -184,6 +184,10 @@ func (noProfiles) DisplayNames(context.Context, []string) (map[string]string, er
 	return nil, errors.New("no profiles in this test")
 }
 
+func (noProfiles) VerifiedEmails(context.Context, string) ([]string, error) {
+	return nil, errors.New("no profiles in this test")
+}
+
 // TestInviteIntentPrepare: at login start, only a well-formed token is
 // accepted, and what is kept is its hash, never the token.
 func TestInviteIntentPrepare(t *testing.T) {

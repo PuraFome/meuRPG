@@ -17,7 +17,7 @@ export const DEFAULT_LIMITS = {
 } as const;
 
 /**
- * Why an upload did not end with a new image. The first six are the
+ * Why an upload did not end with a new image. The first seven are the
  * `reason`s of the upload route's JSON errors (docs/arquitetura.md, "Os
  * erros do envio"); the rest come from the HTTP status or the connection.
  */
@@ -28,6 +28,7 @@ export type UploadFailureKind =
   | 'CORRUPT'
   | 'MALFORMED_REQUEST'
   | 'QUOTA'
+  | 'RATE_LIMITED'
   | 'UNAUTHENTICATED'
   | 'PERMISSION_DENIED'
   | 'NOT_FOUND'
@@ -43,6 +44,7 @@ const REASONS: ReadonlySet<string> = new Set([
   'CORRUPT',
   'MALFORMED_REQUEST',
   'QUOTA',
+  'RATE_LIMITED',
 ]);
 
 const CODES: Readonly<Record<string, UploadFailureKind>> = {
@@ -117,6 +119,8 @@ export function uploadFailureMessage(
       return 'Não deu para ler essa imagem. Ela pode estar corrompida.';
     case 'QUOTA':
       return `A galeria está cheia: ${limits.maxImages} imagens ou ${formatBytes(limits.maxBytes)}.`;
+    case 'RATE_LIMITED':
+      return 'Muitos envios em pouco tempo. Espere alguns segundos e tente de novo.';
     case 'NETWORK':
       return 'A conexão caiu durante o envio. Tente de novo.';
     case 'UNAUTHENTICATED':

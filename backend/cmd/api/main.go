@@ -17,6 +17,10 @@
 //	GEMINI_IMAGE_MODEL  the image model (default gemini-3.1-flash-image)
 //	IMAGE_GENERATOR     "fake" uses the deterministic fake generator, never on Cloud Run (optional)
 //	IMAGE_MONTHLY_LIMIT images a campaign may generate per month (default 20)
+//	IMAGE_DAILY_LIMIT   images the whole server may generate per day (default 100)
+//	MAX_CAMPAIGNS_PER_USER campaigns one account may be master of (default 10)
+//	CAMPAIGN_CREATORS   verified e-mails, comma-separated, that may create campaigns (default: anyone)
+//	RATE_LIMIT_MULTIPLIER scales every request-rate limit (default 1; the e2e suite raises it)
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
@@ -87,6 +91,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
@@ -194,6 +199,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Info("images are stored on disk", "dir", cfg.BlobDir)
 	}
 
+	// The request-rate limits (docs/arquitetura.md, "Limites de abuso"), in this
+	// instance's memory. They are built before the modules, which hold two of them.
+	policy := ratelimit.NewPolicy(cfg.Limits.RateMultiplier)
+
 	// Image generation (MR-039, RN-28) needs a key, or the fake. imageGenerator
 	// stays a nil interface without them (never a nil *gen.Gemini), and the maps
 	// module then answers with the typed "off" reason.
@@ -222,7 +231,13 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	case pool == nil:
 		logger.Warn("sign-in is disabled: it needs DATABASE_URL")
 	default:
-		m, err = wireModules(logger, pool, rulesContent, blobs, imageGenerator, cfg.Images.MonthlyLimit)
+		m, err = wireModules(logger, pool, rulesContent, blobs, imageGenerator, wireOptions{
+			MonthlyImages:       cfg.Images.MonthlyLimit,
+			DailyImages:         cfg.Images.DailyLimit,
+			MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
+			CampaignCreators:    cfg.Limits.CampaignCreators,
+			Policy:              policy,
+		})
 		if err != nil {
 			return err
 		}
@@ -253,12 +268,14 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		DB:     database,
 		// Set on Cloud Run only: the log lines then carry the request's trace.
 		TraceProject: cfg.TraceProject,
+		// The per-IP limit on every API request, before a session is looked up.
+		Limit: ratelimit.Middleware(policy.IP, cfg.CloudRun, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
 
 	connectOpts := connectOptions(logger)
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService != nil {
-		mountModules(srv.Handle, m, identityService, connectOpts)
+		mountModules(srv.Handle, m, identityService, connectOpts, policy.RPC, logger)
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
 		srv.OnShutdown(m.play.Close)
@@ -305,22 +322,53 @@ func run(logger *slog.Logger, cfg config.Config) error {
 // mountModules mounts the signed-in services. It is shared with the test that
 // calls every procedure anonymously, so what that test checks is exactly what
 // the server serves.
-func mountModules(handle func(string, http.Handler), m *modules, identityService *identity.Service, opts []connect.HandlerOption) {
+//
+// rpcLimit, when set, is the per-user limit on Connect calls (nil: none, for
+// tests). It runs right after each service's session interceptor, which is
+// what tells it the user (limitedSessions).
+func mountModules(handle func(string, http.Handler), m *modules, identityService *identity.Service, opts []connect.HandlerOption, rpcLimit *ratelimit.Limiter, logger *slog.Logger) {
 	identityService.Mount(handle, opts...)
+	sessions := limitedSessions{Service: identityService}
+	if rpcLimit != nil {
+		sessions.limit = ratelimit.Interceptor(rpcLimit,
+			func(ctx context.Context) (string, bool) {
+				id, err := identityService.UserID(ctx)
+				return id, err == nil
+			}, ratelimit.NewNotifier(logger, "rpc calls by user"))
+	}
 	// identityService is who is calling: its interceptor finds the session,
 	// and its UserID reads it back (authz.Caller). This mounts CampaignService
 	// and the campaign document's CampaignDocumentService (MR-018), with the
 	// same interceptors.
-	m.campaigns.Mount(handle, identityService, opts...)
+	m.campaigns.Mount(handle, sessions, opts...)
 	// campaignsService says who belongs to each campaign, and with which role
 	// (authz.MembershipSource).
-	m.characters.Mount(handle, identityService, m.campaigns, opts...)
-	m.play.Mount(handle, identityService, m.campaigns, opts...)
-	m.progression.Mount(handle, identityService, m.campaigns, opts...)
-	m.notes.Mount(handle, identityService, m.campaigns, opts...)
+	m.characters.Mount(handle, sessions, m.campaigns, opts...)
+	m.play.Mount(handle, sessions, m.campaigns, opts...)
+	m.progression.Mount(handle, sessions, m.campaigns, opts...)
+	m.notes.Mount(handle, sessions, m.campaigns, opts...)
 	// GalleryService and MapService, plus the upload and download routes,
 	// which find the session with identityService.AuthenticateRequest.
-	m.maps.Mount(handle, identityService, m.campaigns, opts...)
+	m.maps.Mount(handle, sessions, m.campaigns, opts...)
+}
+
+// limitedSessions is the identity service as the modules see it, with the
+// per-user rate limit running right after the session interceptor. Every
+// module mounts "its" interceptor chain from Sessions.Interceptor, and the
+// limit needs the user, which only the session interceptor finds: so the
+// limit has to come after it, and this is the one place that can arrange it
+// for all of them.
+type limitedSessions struct {
+	*identity.Service
+	limit connect.Interceptor // nil: no limit
+}
+
+// Interceptor finds the session and then applies the user's rate limit.
+func (l limitedSessions) Interceptor() connect.Interceptor {
+	if l.limit == nil {
+		return l.Service.Interceptor()
+	}
+	return ratelimit.Chain(l.Service.Interceptor(), l.limit)
 }
 
 type modules struct {
@@ -331,6 +379,16 @@ type modules struct {
 	maps        *maps.Service
 	progression *progression.Service
 	notes       *notes.Service
+}
+
+// wireOptions are the limits the modules get: zero means each module's own default.
+type wireOptions struct {
+	MonthlyImages, DailyImages int
+	MaxCampaignsPerUser        int
+	CampaignCreators           []string
+	// Policy holds the limiters some modules apply themselves (the image
+	// routes' per-user limits); the zero value limits nothing.
+	Policy ratelimit.Policy
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -345,7 +403,7 @@ func wireModules(
 	rulesContent *rules.Content,
 	blobs blob.Store,
 	imageGenerator gen.Generator,
-	monthlyImages int,
+	opts wireOptions,
 ) (*modules, error) {
 	var (
 		campaignsService   *campaigns.Service
@@ -359,8 +417,11 @@ func wireModules(
 	users := identity.NewPostgresStore(pool)
 	campaignsService, err = campaigns.New(campaigns.Config{
 		Pool:     pool,
-		Profiles: users, // display names come from the identity module
-		Logger:   logger,
+		Profiles: users, // display names and verified e-mails come from the identity module
+		// What one account may create (RN-30).
+		MaxCampaignsPerUser: opts.MaxCampaignsPerUser,
+		Creators:            opts.CampaignCreators,
+		Logger:              logger,
 	})
 	if err != nil {
 		return nil, err
@@ -423,9 +484,13 @@ func wireModules(
 		// conditions, skills and the SRD's magic items and treasure tables, which no
 		// table's content changes (MR-025, ADR-0018).
 		Generator:     imageGenerator,
-		MonthlyImages: int32(monthlyImages), //nolint:gosec // G115: the config caps it at 500
-		Rules:         rulesContent,         // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036), the treasure generator (MR-044)
-		Combats:       playService,          // whether a combat runs on a map: its grid and image cannot change then (MR-034)
+		MonthlyImages: int32(opts.MonthlyImages), //nolint:gosec // G115: the config caps it at 500
+		DailyImages:   int32(opts.DailyImages),   //nolint:gosec // G115: the config caps it at 10000
+		// The per-user limits of the image routes (nil in tests: no limit).
+		DownloadLimit: opts.Policy.Download,
+		UploadLimit:   opts.Policy.Upload,
+		Rules:         rulesContent, // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036), the treasure generator (MR-044)
+		Combats:       playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
 		// Whether a new map starts with the fog on is a table rule (RN-24).
 		Defaults: campaignsService,
 		Logger:   logger,

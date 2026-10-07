@@ -27,6 +27,7 @@ describe('uploadFailureFromResponse', () => {
         'MALFORMED_REQUEST',
       ],
       [429, '{"code":"resource_exhausted","reason":"QUOTA","message":"x"}', 'QUOTA'],
+      [429, '{"code":"resource_exhausted","reason":"RATE_LIMITED","message":"x"}', 'RATE_LIMITED'],
     ];
     for (const [status, body, kind] of cases) {
       expect(uploadFailureFromResponse(status, body)).toBe(kind);

@@ -335,6 +335,10 @@ enum ImageGenerationBlockedReason {
   // The map is no longer what the textured map was made from: another image, a
   // new grid or another calibration (UseGeneratedImageAsMapImage).
   IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED = 8;
+  // The whole server made its images of the day (a ceiling on the cost, on top
+  // of each campaign's monthly limit): try again tomorrow (the day is
+  // Brazil's, UTC-3). The status in the detail is the campaign's own month.
+  IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED = 9;
 }
 
 // ImageGenerationBlocked is the error detail of `failed_precondition` from

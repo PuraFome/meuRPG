@@ -60,6 +60,12 @@ type Config struct {
 	// database; readiness then reports the database as "disabled".
 	DB Pinger
 
+	// Limit, when set, wraps the routes: it is where the per-IP rate limit sits
+	// (ratelimit.Middleware). It runs after the request log and the security
+	// headers, so a refused request is logged and carries them, and before
+	// anything reads a session or the database.
+	Limit func(http.Handler) http.Handler
+
 	// ShutdownTimeout bounds the graceful shutdown. Zero means 8 seconds.
 	ShutdownTimeout time.Duration
 }
@@ -113,12 +119,17 @@ func New(cfg Config) *Server {
 	// logRequests so rejected requests are logged too.
 	csrf := http.NewCrossOriginProtection()
 
+	routes := csrf.Handler(s.mux)
+	if cfg.Limit != nil {
+		routes = cfg.Limit(routes)
+	}
+
 	s.httpServer = &http.Server{
 		Addr: cfg.Addr,
 		// Outermost first: the request log, the security headers, the slow-client
 		// deadlines (they need the real ResponseWriter; the others pass it through),
-		// then CSRF.
-		Handler:           logRequests(s.logger, cfg.TraceProject, securityHeaders(slowclient.Middleware(csrf.Handler(s.mux)))),
+		// then the rate limit (if any) and CSRF.
+		Handler:           logRequests(s.logger, cfg.TraceProject, securityHeaders(slowclient.Middleware(routes))),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,

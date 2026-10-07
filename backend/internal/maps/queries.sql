@@ -817,6 +817,14 @@ WHERE campaign_id = $1 AND created_at > $2
 SELECT count(*)::INT4 FROM image_requests
 WHERE campaign_id = $1 AND quota_month = $2 AND NOT refunded;
 
+-- name: CountImageRequestsSince :one
+-- The slots the whole server spent since a moment (the start of Brazil's day):
+-- the requests that were not refunded, in any campaign. The server's daily cap
+-- on the Gemini bill reads it; image_requests_created_at_idx (migration 00176)
+-- finds the day's rows.
+SELECT count(*)::INT4 FROM image_requests
+WHERE created_at >= $1 AND NOT refunded;
+
 -- name: NextImageRequestNumber :one
 SELECT (COALESCE(max(number), 0) + 1)::INT4 FROM image_requests
 WHERE campaign_id = $1;

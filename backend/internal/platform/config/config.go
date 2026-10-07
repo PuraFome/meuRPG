@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/url"
 	"strconv"
@@ -81,6 +82,30 @@ type Config struct {
 
 	// Images configures the image generator (MR-039, RN-28, ADR-0019).
 	Images Images
+
+	// Limits are the abuse limits: request rates and what one account may create.
+	Limits Limits
+}
+
+// Bounds of the abuse limits' variables: a typo must not lift a cap.
+const (
+	maxCampaignsPerUserLimit = 1000
+	maxImageDailyLimit       = 10000
+	maxRateMultiplier        = 1000
+)
+
+// Limits holds the abuse limits' settings (docs/operacao.md, "Limites de abuso").
+type Limits struct {
+	// RateMultiplier (RATE_LIMIT_MULTIPLIER) scales every request-rate limit
+	// (platform/ratelimit.NewPolicy); zero means 1. Raise it only where many
+	// accounts share one address, such as the e2e suite.
+	RateMultiplier float64
+	// MaxCampaignsPerUser (MAX_CAMPAIGNS_PER_USER) is how many campaigns one
+	// account may be master of (RN-30); zero means campaigns.DefaultMaxCampaignsPerUser.
+	MaxCampaignsPerUser int
+	// CampaignCreators (CAMPAIGN_CREATORS) are the verified e-mails, in lower
+	// case, that may create campaigns (RN-30). Empty means anyone.
+	CampaignCreators []string
 }
 
 // maxImageMonthlyLimit bounds IMAGE_MONTHLY_LIMIT: a typo must not lift the cap.
@@ -100,6 +125,10 @@ type Images struct {
 	// MonthlyLimit is the images per campaign per month (IMAGE_MONTHLY_LIMIT);
 	// zero means the maps module's default (maps.DefaultMonthlyImages).
 	MonthlyLimit int
+	// DailyLimit is the images the whole server may generate per day
+	// (IMAGE_DAILY_LIMIT), on top of the campaigns' monthly limit: a ceiling
+	// on the Gemini bill. Zero means maps.DefaultDailyImages.
+	DailyLimit int
 }
 
 // OIDC holds the settings of the OpenID Connect provider the game master
@@ -240,6 +269,10 @@ func Load(getenv func(string) string) (Config, error) {
 			errs = append(errs, err)
 		}
 	}
+
+	limits, limitErrs := loadLimits(getenv)
+	cfg.Limits = limits
+	errs = append(errs, limitErrs...)
 
 	oidc, oidcErrs := loadOIDC(getenv)
 	cfg.OIDC = oidc
@@ -456,5 +489,64 @@ func loadImages(getenv func(string) string, cloudRun bool) (Images, []error) {
 			img.MonthlyLimit = n
 		}
 	}
+	if raw := strings.TrimSpace(getenv("IMAGE_DAILY_LIMIT")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("IMAGE_DAILY_LIMIT must be a number, got %q", raw))
+		case n < 1 || n > maxImageDailyLimit:
+			errs = append(errs, fmt.Errorf("IMAGE_DAILY_LIMIT must be between 1 and %d, got %d", maxImageDailyLimit, n))
+		default:
+			img.DailyLimit = n
+		}
+	}
 	return img, errs
+}
+
+// loadLimits reads RATE_LIMIT_MULTIPLIER, MAX_CAMPAIGNS_PER_USER and
+// CAMPAIGN_CREATORS. An e-mail in the list is not a secret, but it is
+// personal data: the error for a bad entry never repeats it.
+func loadLimits(getenv func(string) string) (Limits, []error) {
+	var (
+		l    Limits
+		errs []error
+	)
+	if raw := strings.TrimSpace(getenv("RATE_LIMIT_MULTIPLIER")); raw != "" {
+		f, err := strconv.ParseFloat(raw, 64)
+		switch {
+		case err != nil || math.IsNaN(f):
+			errs = append(errs, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be a number, got %q", raw))
+		case f <= 0 || f > maxRateMultiplier:
+			errs = append(errs, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be above 0 and at most %d, got %s", maxRateMultiplier, raw))
+		default:
+			l.RateMultiplier = f
+		}
+	}
+	if raw := strings.TrimSpace(getenv("MAX_CAMPAIGNS_PER_USER")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be a number, got %q", raw))
+		case n < 1 || n > maxCampaignsPerUserLimit:
+			errs = append(errs, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be between 1 and %d, got %d", maxCampaignsPerUserLimit, n))
+		default:
+			l.MaxCampaignsPerUser = n
+		}
+	}
+	if raw := strings.TrimSpace(getenv("CAMPAIGN_CREATORS")); raw != "" {
+		seen := map[string]bool{}
+		for i, entry := range strings.Split(raw, ",") {
+			email := strings.ToLower(strings.TrimSpace(entry))
+			switch {
+			case email == "":
+				continue // a trailing comma
+			case !strings.Contains(email, "@"):
+				errs = append(errs, fmt.Errorf("CAMPAIGN_CREATORS entry %d is not an e-mail address", i+1))
+			case !seen[email]:
+				seen[email] = true
+				l.CampaignCreators = append(l.CampaignCreators, email)
+			}
+		}
+	}
+	return l, errs
 }

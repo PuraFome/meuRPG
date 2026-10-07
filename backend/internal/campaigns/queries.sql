@@ -6,6 +6,12 @@ RETURNING *;
 -- name: GetCampaign :one
 SELECT * FROM campaigns WHERE id = $1;
 
+-- name: CountMasteredCampaigns :one
+-- How many campaigns the user is master of, for the cap on creating (RN-30).
+-- The index on campaign_members (user_id) finds the user's few rows.
+SELECT count(*)::INT4 FROM campaign_members
+WHERE user_id = $1 AND role = 'master';
+
 -- name: ListCampaignsOfUser :many
 -- Newest first. The index on campaign_members (user_id) finds the rows.
 -- Pending memberships (RN-15) come too: the handler shows only the name.

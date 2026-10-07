@@ -1,6 +1,6 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { describeConnectError } from './connect-errors';
+import { describeConnectError, isRateLimited, rateLimitedMessage } from './connect-errors';
 
 describe('describeConnectError', () => {
   it('uses the message given for the error code', () => {
@@ -43,3 +43,29 @@ describe('describeConnectError', () => {
     ).toBe('Só o mestre pode fazer isso.');
   });
 });
+
+describe('a rate-limited call', () => {
+  const limited = (code: Code, retryAfter = '3') =>
+    new ConnectError('slow down', code, new Headers({ 'Retry-After': retryAfter }));
+
+  it('is told apart from the other resource_exhausted answers by Retry-After', () => {
+    expect(isRateLimited(limited(Code.ResourceExhausted))).toBe(true);
+    expect(isRateLimited(limited(Code.Unavailable))).toBe(true);
+    expect(isRateLimited(new ConnectError('gallery full', Code.ResourceExhausted))).toBe(false);
+    expect(isRateLimited(new TypeError('Failed to fetch'))).toBe(false);
+  });
+
+  it('says how long to wait, and never uses the screen wording of the code', () => {
+    expect(rateLimitedMessage(limited(Code.ResourceExhausted, '3'))).toBe(
+      'Muitas ações em pouco tempo. Espere 3 segundos e tente de novo.',
+    );
+    expect(rateLimitedMessage(limited(Code.ResourceExhausted, '1'))).toContain('Espere 1 segundo e');
+    expect(rateLimitedMessage(limited(Code.ResourceExhausted, 'soon'))).toContain('Espere alguns segundos');
+    expect(
+      describeConnectError(limited(Code.ResourceExhausted), {
+        [Code.ResourceExhausted]: 'A galeria está cheia.',
+      }),
+    ).toBe('Muitas ações em pouco tempo. Espere 3 segundos e tente de novo.');
+  });
+});
+

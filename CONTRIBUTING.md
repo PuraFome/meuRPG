@@ -178,8 +178,21 @@ A geração de imagens (MR-039, RN-28) chama a API do Gemini. Sem chave, fica de
 | `GEMINI_IMAGE_MODEL` | Não | O modelo; padrão `gemini-3.1-flash-image` |
 | `IMAGE_GENERATOR` | Não | `fake` usa o gerador falso (`backend/internal/maps/images/gen`): sem chave e sem rede, devolve um PNG determinístico da proporção pedida. É o que o `make up` (Docker e nativo) usa. Um `[recusa]`, `[vazio]`, `[erro]` ou `[lento]` no texto do pedido faz o falso recusar, não devolver imagem, falhar ou demorar. O servidor se recusa a subir com `fake` no Cloud Run |
 | `IMAGE_MONTHLY_LIMIT` | Não | Imagens por campanha por mês; padrão 20 (ver [Operação](docs/operacao.md#imagens-geradas-a-api-do-gemini)) |
+| `IMAGE_DAILY_LIMIT` | Não | Imagens do servidor todo por dia de Brasília; padrão 100. É o teto da conta do Gemini (ver [Operação](docs/operacao.md#limites-de-abuso)) |
 
 Os testes usam sempre o gerador falso. O teste com o modelo de verdade, `TestRealGemini` (em `backend/internal/maps/images/gen`), gera uma imagem pequena e só roda com `MEURPG_TEST_GEMINI_API_KEY` definida na sua máquina (e, se quiser, `MEURPG_TEST_GEMINI_MODEL`): sem ela, é pulado, e o CI nunca a define. As medidas de memória (`MEURPG_MEASURE=1`) estão em [Operação](docs/operacao.md#imagens-geradas-a-api-do-gemini). Os testes de integração do módulo: `go test -race -run 'TestMR039|TestRN28|TestRN10_AGeneratedImage' ./internal/maps/`, contra o banco dos testes.
+
+## Limites de abuso
+
+O backend limita a taxa de requisições (por IP e por usuário, em memória) e o que uma conta cria. Os padrões servem a uma mesa e não atrapalham o desenvolvimento; as variáveis são para subir ou descer um teto.
+
+| Variável | Obrigatória | O que é |
+| --- | --- | --- |
+| `MAX_CAMPAIGNS_PER_USER` | Não | Campanhas de que uma conta pode ser mestre; padrão 10 (RN-30) |
+| `CAMPAIGN_CREATORS` | Não | E-mails verificados, separados por vírgula, que podem criar campanhas; vazia, qualquer um cria. No `make up`, o "Mestre Teste" é `mestre@example.com` |
+| `RATE_LIMIT_MULTIPLIER` | Não | Multiplica todos os limites de taxa; padrão 1. O `make up` (Docker e nativo) usa 10, porque a suíte e2e manda as requisições de várias contas do mesmo endereço e divide algumas contas entre os workers |
+
+Os números, as respostas (`429` com `Retry-After`, `resource_exhausted`) e a conta de cada limite estão em [Arquitetura](docs/arquitetura.md#limites-de-abuso) e em [Operação](docs/operacao.md#limites-de-abuso). Os testes dos limitadores usam um relógio falso (`go test ./internal/platform/ratelimit`); o teto de campanhas e o de imagens do dia rodam contra o banco, como o resto (`TestRN30_*` em `campaigns`, `TestMR039_TheServersDailyCap` e `TestRateLimitsOfTheImageRoutes` em `maps`).
 
 ## Testes ponta a ponta (Playwright)
 

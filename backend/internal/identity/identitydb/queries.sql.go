@@ -162,6 +162,34 @@ func (q *Queries) ListDisplayNames(ctx context.Context, ids []string) ([]ListDis
 	return items, nil
 }
 
+const listVerifiedEmails = `-- name: ListVerifiedEmails :many
+SELECT email::TEXT AS email
+FROM user_identities
+WHERE user_id = $1 AND email IS NOT NULL
+`
+
+// The e-mails the provider vouched for (an unverified one is never stored).
+// campaigns reads them for the allow-list of who may create campaigns (RN-30).
+func (q *Queries) ListVerifiedEmails(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listVerifiedEmails, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, err
+		}
+		items = append(items, email)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lookupSession = `-- name: LookupSession :one
 SELECT id, user_id, created_at, expires_at
 FROM auth_sessions

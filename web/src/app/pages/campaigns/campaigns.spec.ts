@@ -3,7 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { Campaign, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { create } from '@bufbuild/protobuf';
+
+import {
+  Campaign,
+  CampaignCreationRefusedReason,
+  CampaignCreationRefusedSchema,
+  Role,
+  XpMode,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { Campaigns } from './campaigns';
@@ -161,5 +169,31 @@ describe('Campaigns', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('1 a 80 caracteres');
+  });
+
+  it('shows the campaign cap in place when creating is refused (RN-30)', async () => {
+    fake.createCampaign.mockRejectedValue(
+      new ConnectError('refused', Code.ResourceExhausted, undefined, [
+        {
+          desc: CampaignCreationRefusedSchema,
+          value: create(CampaignCreationRefusedSchema, {
+            reason: CampaignCreationRefusedReason.LIMIT_REACHED,
+            maxCampaigns: 10,
+          }),
+        },
+      ]),
+    );
+
+    const fixture = TestBed.createComponent(Campaigns);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance;
+    instance['form'].setValue({ name: 'Mais uma', xpMode: XpMode.GOLD });
+    await instance['submit']();
+    fixture.detectChanges();
+
+    const alert = (fixture.nativeElement as HTMLElement).querySelector('.create__error');
+    expect(alert?.textContent).toContain('Você já é mestre de 10 campanhas');
   });
 });

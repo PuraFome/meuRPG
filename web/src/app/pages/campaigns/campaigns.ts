@@ -14,7 +14,7 @@ import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
 import { LivePill } from '../../shared/live-pill/live-pill';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
-import { roleTag, xpModeSentence } from './campaign-copy';
+import { creationRefusalText, roleTag, xpModeSentence } from './campaign-copy';
 
 type ListState =
   | { status: 'loading' }
@@ -101,9 +101,11 @@ export class Campaigns {
     } catch (err) {
       this.createState.set({
         status: 'error',
-        message: describeConnectError(err, {
-          [Code.InvalidArgument]: 'O nome da campanha precisa ter de 1 a 80 caracteres.',
-        }),
+        message:
+          creationRefusalText(err) ??
+          describeConnectError(err, {
+            [Code.InvalidArgument]: 'O nome da campanha precisa ter de 1 a 80 caracteres.',
+          }),
       });
     }
   }

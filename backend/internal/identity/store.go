@@ -321,6 +321,18 @@ func (s *PostgresStore) SetDisplayName(ctx context.Context, userID, displayName 
 	return nil
 }
 
+// VerifiedEmails returns the verified e-mail addresses of a user, as the
+// provider gave them (the identity module's public answer to "who is this?"
+// for campaigns.Profiles). It is empty for a user whose e-mail the provider
+// did not verify: such an e-mail is never stored (docs/privacidade.md).
+func (s *PostgresStore) VerifiedEmails(ctx context.Context, userID string) ([]string, error) {
+	emails, err := s.queries.ListVerifiedEmails(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list verified emails: %w", err)
+	}
+	return emails, nil
+}
+
 // DisplayNames implements Store. It is also the identity module's public
 // answer to "what do we call these people?" (campaigns.Profiles), so that
 // other modules never read the users table themselves.
