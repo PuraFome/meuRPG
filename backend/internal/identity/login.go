@@ -39,18 +39,19 @@ const (
 	maxReturnToLength = 1024
 )
 
-// loginRateLimit caps /auth/login (GET and POST together), because every
-// hit writes a login state row to the database. The limits are per server
-// instance (in memory, see package ratelimit):
+// loginRateLimit caps /auth/login (GET and POST together) and
+// /auth/callback, because every login hit writes a login state row and every
+// callback with a matching cookie deletes one. A sign-in is one of each. The
+// limits are per server instance (in memory, see package ratelimit):
 //
-//   - per client IP: 20 at once, then one every 3 seconds (20 a minute).
+//   - per client IP: 40 at once (20 sign-ins), then one every 3 seconds.
 //     That is plenty for a whole table of players behind one Wi-Fi, and
-//     stops one client from filling the table.
+//     stops one client from filling the table or hammering the database.
 //   - overall: 200 at once, then 2 a second (120 a minute), which bounds
 //     the rows a botnet can write: at most 7,200 an hour per instance,
 //     deleted by the row TTL within the next hour.
 var loginRateLimit = ratelimit.Config{
-	PerClient:  ratelimit.Rate{Burst: 20, Every: 3 * time.Second},
+	PerClient:  ratelimit.Rate{Burst: 40, Every: 3 * time.Second},
 	Global:     ratelimit.Rate{Burst: 200, Every: 500 * time.Millisecond},
 	MaxClients: 10_000,
 }
@@ -275,6 +276,11 @@ func unavailable(reason string, err error) *loginError {
 // nonce are what protect it.
 func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	setAuthHeaders(w)
+	// Before the state check, so a refused request costs nothing: a made-up
+	// state with a matching cookie would otherwise reach the database.
+	if !s.allowLogin(w, r) {
+		return
+	}
 	// The login cookie is single use, whatever happens next.
 	http.SetCookie(w, expiredCookie(loginCookieName))
 
