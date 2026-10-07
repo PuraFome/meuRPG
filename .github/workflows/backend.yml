@@ -14,6 +14,7 @@ on:
       - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
+      - ".github/scripts/go-db-shard.sh"
       - ".node-version"
   push:
     branches: [main]
@@ -23,6 +24,7 @@ on:
       - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
+      - ".github/scripts/go-db-shard.sh"
       - ".node-version"
 
 # Cancel a still-running run for the same PR when a new commit lands, so we
@@ -111,8 +113,12 @@ jobs:
           fi
 
   go:
-    name: go (test, lint, vulncheck, docker build)
-    timeout-minutes: 20
+    # No `go test` here: go-db runs every package (the pure ones too, with
+    # -race), so a test run in this job only repeated it. This job is the
+    # fast, database-free check: lint and known vulnerabilities. The image
+    # build moved to the e2e workflow, which builds it once and runs it.
+    name: go (lint, vulncheck)
+    timeout-minutes: 15
     runs-on: ubuntu-26.04
     defaults:
       run:
@@ -130,9 +136,6 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
-      - name: go test -race
-        run: go test -race ./...
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
@@ -145,22 +148,17 @@ jobs:
         # govulncheck@latest, which is a moving target.
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
-      - name: Docker build (no push, no registry login)
-        # Context is the repo root (the image needs both backend/ and
-        # web/), overriding this job's `backend` default working-directory.
-        working-directory: ${{ github.workspace }}
-        run: |
-          docker build \
-            -f backend/Dockerfile \
-            --build-arg VERSION=${{ github.sha }} \
-            --build-arg COMMIT=${{ github.sha }} \
-            -t meurpg-backend:ci \
-            .
-
-  go-db:
-    name: go (integration tests against CockroachDB)
+  # The packages are split into groups (.github/scripts/go-db-shard.sh), each
+  # on its own runner with its own CockroachDB, so the wall time is the
+  # slowest group's, not the sum. 07/10/2026, one runner: 1105 s of go test.
+  go-db-shard:
+    name: go-db ${{ matrix.group }} (tests against CockroachDB)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [play, maps, characters, rest]
     defaults:
       run:
         working-directory: backend
@@ -180,6 +178,11 @@ jobs:
           go-version-file: backend/go.mod
           cache: true
           cache-dependency-path: backend/go.sum
+
+      - name: Check that the groups cover every package
+        # Cheap (a `go list`). A new package falls into "rest" on its own;
+        # this fails if a package named in a group was renamed or deleted.
+        run: ../.github/scripts/go-db-shard.sh --check
 
       - name: Start CockroachDB (single node, insecure, in memory, CI only)
         # Not a service container: those cannot pass arguments to the image,
@@ -212,18 +215,39 @@ jobs:
           docker logs cockroach >&2
           exit 1
 
-      - name: go test -race (with the database)
+      - name: go test -race (this group, with the database)
         # With MEURPG_TEST_DATABASE_URL set, the integration tests
         # (migrations, stores, the 40001 retry, row TTL) run instead of
         # being skipped. Each test creates and drops its own database.
         # -timeout: each package gets 25 minutes, under the job's 30. Go's
-        # default is 10 minutes per package, and the packages share one
-        # CockroachDB, so the slowest (play, maps) took 7 to 10 minutes and
-        # one more package's tests could push them over; the whole job took
-        # 18 minutes on 04/10/2026, so the job now has room for Etapa 9.
+        # default is 10 minutes per package; play and maps took 7 to 10
+        # minutes sharing one CockroachDB with every other package (04 and
+        # 07/10/2026). Each group now has its own database, so they have room.
         # MEURPG_REQUIRE_DB=1: a missing URL fails the tests instead of
         # skipping them (about a thousand would skip and the job stay green).
         env:
           MEURPG_TEST_DATABASE_URL: postgresql://root@localhost:26257/defaultdb?sslmode=disable
           MEURPG_REQUIRE_DB: "1"
-        run: go test -race -timeout 25m ./...
+          GROUP: ${{ matrix.group }}
+        run: |
+          # Package names have no spaces, so word-splitting the list is safe.
+          # shellcheck disable=SC2046
+          go test -race -timeout 25m $(../.github/scripts/go-db-shard.sh "$GROUP")
+
+
+  # One stable check for the whole matrix: the name below is the old job's, so
+  # a branch protection rule can require it however the groups change. The
+  # matrix jobs' own names carry the group.
+  go-db:
+    name: go (integration tests against CockroachDB)
+    needs: go-db-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Every group passed
+        env:
+          RESULT: ${{ needs.go-db-shard.result }}
+        run: |
+          echo "go-db groups: $RESULT"
+          [ "$RESULT" = success ]
