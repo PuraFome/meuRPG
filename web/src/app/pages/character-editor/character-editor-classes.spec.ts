@@ -172,7 +172,7 @@ beforeAll(async () => {
 
 describe('a table class, race and background in the editor (E10-02 state 5)', () => {
   it('sends the keys of the table content, never their names', async () => {
-    const { fixture, fake, cmp } = await render();
+    const { fake, cmp } = await render();
     cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:corujeiro@mesa', className: 'class:guardiao@mesa', level: 1, background: 'background:cartografo@mesa' });
     await cmp.submit();
     const full = fake.created[0].full!;

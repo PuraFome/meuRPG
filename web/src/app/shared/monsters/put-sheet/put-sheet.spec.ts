@@ -169,7 +169,7 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
   });
 
   it('a double tap adds once; a retry with the same parameters repeats the key; another choice takes a new key', async () => {
-    const { button, radio, settle } = await setup();
+    const { button, settle } = await setup();
     api.failures = [new ConnectError('down', Code.Unavailable)];
     const go = button('Pôr no combate');
     go.click();

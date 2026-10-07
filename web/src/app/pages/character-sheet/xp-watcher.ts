@@ -36,7 +36,7 @@ export class XpWatcher {
       return;
     }
     let first = true;
-    const stream = new LiveStream({
+    const stream: LiveStream = new LiveStream({
       open: (signal) => this.source.watch(campaignId, signal),
       classify: (err) => this.source.classifyError(err),
       document: this.document,

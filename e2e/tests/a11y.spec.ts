@@ -4,6 +4,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
+import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
@@ -108,7 +109,7 @@ async function expectScreenPasses(page: Page, screen: string): Promise<void> {
 async function open(page: Page, route: string): Promise<void> {
   await page.goto(route);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.waitForLoadState('networkidle');
+  await expectLoaded(page);
 }
 
 /** A campaign with a full-sheet enemy, created through the API as the
@@ -347,6 +348,30 @@ test('os botões do Material mostram o anel de foco @a11y', async ({ page }) => 
     });
     expect(ring, name).toEqual({ style: 'solid', width: '2px' });
   }
+});
+
+// docs/design.md#título-da-página-pular-para-o-conteúdo-e-foco-ao-navegar: every page has its own
+// title (WCAG 2.4.2), the first Tab stop is "Pular para o conteúdo" (2.4.1), and a
+// navigation to another page moves the focus to its heading (2.4.3).
+test('cada página tem o próprio título, o primeiro Tab pula para o conteúdo e navegar leva o foco ao título @a11y', async ({ page }) => {
+  await page.goto('/credits');
+  await expect(page).toHaveTitle('Créditos · MeuRPG');
+
+  // The first Tab stop is the skip link, hidden until it has the focus.
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Pular para o conteúdo' });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+  await expect(page).toHaveURL(/\/credits$/);
+
+  // A navigation to another page: its own title, and the focus on its heading.
+  await page.goto('/nao-existe');
+  await expect(page).toHaveTitle('Página não encontrada · MeuRPG');
+  await page.getByRole('main').getByRole('link', { name: 'Voltar para o início' }).click();
+  await expect(page).toHaveTitle('Início · MeuRPG');
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeFocused();
 });
 
 /**
@@ -3225,14 +3250,14 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     if (phone) {
       await m.goto(editorRoute(campaignId, table.mapId));
       await expect(m.getByText('Pintar só no computador')).toBeVisible();
-      await m.waitForLoadState('networkidle');
+      await expectLoaded(m);
       await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
       await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
       await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
       await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
       await m.goto(editorRoute(campaignId, noGrid));
       await expect(m.getByText('Pintar só no computador')).toBeVisible();
-      await m.waitForLoadState('networkidle');
+      await expectLoaded(m);
       await expectScreenPasses(m, `Mapa sem grade no celular ${where}`);
       return;
     }
@@ -3240,7 +3265,7 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     // Pontos: the list, and each kind's panel.
     await m.goto(editorRoute(campaignId, table.mapId));
     await expect(m.getByRole('radio', { name: 'Pontos' })).toBeVisible();
-    await m.waitForLoadState('networkidle');
+    await expectLoaded(m);
     await expectScreenPasses(m, `Editor, Pontos, a lista ${where}`);
     await list.getByRole('button', { name: /Fosso escondido/ }).click();
     await expect(m.getByRole('heading', { name: 'Predefinições do SRD' })).toBeVisible();
@@ -3289,7 +3314,7 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(m.getByRole('heading', { name: 'Ver como' })).toBeVisible();
     await m.getByRole('radio', { name: /Toren/ }).click();
     await expect(m.getByText('Você está vendo o mapa como Toren')).toBeVisible();
-    await m.waitForLoadState('networkidle');
+    await expectLoaded(m);
     await expectScreenPasses(m, `Ver como Toren, no editor ${where}`);
     await m.getByRole('button', { name: 'Voltar à sua vista' }).click();
 
@@ -3333,13 +3358,13 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.goto(editorRoute(campaignId, noGrid));
     await m.getByRole('radio', { name: 'Pintar' }).click();
     await expect(m.getByText('Defina a grade para pintar e ligar a névoa.')).toBeVisible();
-    await m.waitForLoadState('networkidle');
+    await expectLoaded(m);
     await expectScreenPasses(m, `Mapa sem grade, Pintar ${where}`);
     await beginFogCombat(m, table);
     await m.goto(editorRoute(campaignId, table.mapId));
     await m.getByRole('radio', { name: 'Pintar' }).click();
     await expect(m.getByText('Combate em andamento')).toBeVisible();
-    await m.waitForLoadState('networkidle');
+    await expectLoaded(m);
     await expectScreenPasses(m, `Combate no mapa, Pintar ${where}`);
   } finally {
     if (campaignId) {
@@ -3657,7 +3682,7 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
 
     await m.goto(`/campaigns/${table.campaignId}`);
     await expect(m.getByRole('heading', { level: 1 })).toBeVisible();
-    await m.waitForLoadState('networkidle');
+    await expectLoaded(m);
     await expectScreenPasses(m, `Campanha com o painel Regras da mesa ${where}`);
 
     await open(m, `/campaigns/${table.campaignId}/rules`);
@@ -3726,7 +3751,7 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Atributos, 4d6 rolados pelo servidor ${where}`);
 
     await method(p, 'Digitar');
-    await p.getByLabel('Força', { exact: true }).fill('19');
+    await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
     await expectScreenPasses(p, `Atributos, digitar com um valor fora do limite ${where}`);
 
     // Physical dice: a second campaign where everybody rolls their own.
