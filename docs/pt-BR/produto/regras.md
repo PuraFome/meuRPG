@@ -89,7 +89,7 @@ Quando o mestre inicia a sessão, os membros recebem uma notificação no app, p
 
 **Como o sistema cumpre**
 
-O app mostra a notificação em tela; não há notificação push do navegador (com o app fechado) no MVP. Quem não é membro vê "peça um convite ao mestre". Com a aba visível, o app pergunta a cada 30 segundos quais sessões estão abertas nas campanhas da pessoa (`PlayService.ListOpenGameSessions`, só de quem é membro ativo), sem manter conexão aberta; a página da sessão só abre para membros (`GetLiveSession` e `WatchGameSession` respondem `not_found` a quem não é membro, inclusive ao membro pendente, e `failed_precondition` com `NO_OPEN_SESSION` quando não há sessão). Nas telas: o aviso embaixo da barra do app, o link "Ao vivo" na barra e a página da sessão (`/campaigns/<id>/session`).
+O app mostra a notificação em tela; não há notificação push do navegador (com o app fechado) no MVP. Quem não é membro vê "peça um convite ao mestre". Com a aba visível, o app pergunta a cada 30 segundos quais sessões estão abertas nas campanhas da pessoa (`PlayService.ListOpenGameSessions`, só de quem é membro ativo), sem manter conexão aberta; a página da sessão só abre para membros (`GetLiveSession` e `WatchGameSession` respondem `not_found` a quem não é membro, inclusive ao membro pendente, e `failed_precondition` com `NO_OPEN_SESSION` quando não há sessão). Nas telas: o aviso embaixo da barra do app, o link "Ao vivo" na barra e a página da sessão (`/campaigns/<id>/session`). O aviso não aparece na própria página da campanha: ali, o cartão "Sessão" é o anúncio, e o cartão do jogador acompanha a mesma consulta ("Entrar na sessão" aparece quando uma sessão começa e some quando ela termina, sem recarregar a página).
 
 ## RN-07: Convite não é link da sessão
 
