@@ -286,12 +286,20 @@ export async function acceptInvite(context: BrowserContext, link: string): Promi
  * option listbox shares the same `aria-labelledby` as the trigger (both
  * point at the form field's floating label), so `getByLabel` matches both
  * and turns strict mode against itself the moment the panel opens.
+ *
+ * An option of the table's own content carries its mark's words in its
+ * accessible name ("Corujeiro Da mesa", table-mark.ts), on purpose: a screen
+ * reader hears where the option comes from. So the option matches the name
+ * alone or the name followed by those words, and nothing else ("Anão" never
+ * matches "Anão da Colina").
  */
 async function selectMatOption(page: Page, label: string, optionName: string): Promise<void> {
   const control = page.getByRole('combobox', { name: label, exact: true });
   await control.focus();
   await control.press('Enter');
-  await page.getByRole('option', { name: optionName, exact: true }).click();
+  const name = optionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const marks = '(?:\\s*(?:Da mesa|Arquivada|Arquivado|Desligada para os jogadores))*';
+  await page.getByRole('option', { name: new RegExp(`^${name}${marks}$`) }).click();
   await expect(control).toHaveAttribute('aria-expanded', 'false');
 }
 
