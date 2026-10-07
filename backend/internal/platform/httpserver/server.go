@@ -111,7 +111,7 @@ func New(cfg Config) *Server {
 
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           logRequests(s.logger, cfg.TraceProject, csrf.Handler(s.mux)),
+		Handler:           logRequests(s.logger, cfg.TraceProject, securityHeaders(csrf.Handler(s.mux))),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,

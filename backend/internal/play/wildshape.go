@@ -247,6 +247,11 @@ func (s *Service) AssumeWildShape(
 	ctx context.Context,
 	req *connect.Request[playv1.AssumeWildShapeRequest],
 ) (*connect.Response[playv1.AssumeWildShapeResponse], error) {
+	// The caller is checked before the request is, so an anonymous caller
+	// learns "unauthenticated", never what a valid request looks like.
+	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
+		return nil, err
+	}
 	beast := req.Msg.GetBeastKey()
 	if beast == "" || len(beast) > 100 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("beast_key must name an SRD beast"))

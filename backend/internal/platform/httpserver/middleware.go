@@ -3,7 +3,9 @@ package httpserver
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
@@ -50,7 +52,7 @@ func logRequests(logger *slog.Logger, traceProject string, next http.Handler) ht
 		// session and authz interceptors learn inside it, are on the line.
 		logger.LogAttrs(ctx, level, "http request",
 			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
+			slog.String("path", capPath(r.URL.Path)),
 			slog.String("proto", r.Proto),
 			slog.Int("status", rec.statusCode()),
 			// Milliseconds with microsecond precision: readable, and numeric
@@ -105,4 +107,66 @@ func (r *statusRecorder) statusCode() int {
 		return http.StatusOK
 	}
 	return r.status
+}
+
+// maxLoggedPath is the longest request path written to the log. The path is
+// chosen by the client (up to the 1 MiB header limit), so without a cap one
+// request could write a megabyte into the log.
+const maxLoggedPath = 256
+
+// capPath shortens a path longer than maxLoggedPath bytes and marks the cut,
+// never splitting a UTF-8 character in two.
+func capPath(p string) string {
+	if len(p) <= maxLoggedPath {
+		return p
+	}
+	cut := maxLoggedPath
+	for cut > 0 && !utf8.RuneStart(p[cut]) {
+		cut--
+	}
+	return p[:cut] + "...[truncated]"
+}
+
+// apiCSP is the policy of every response that is not the Angular app: the
+// API's JSON, redirects, images and errors never need to load or run
+// anything, so an attacker who gets one rendered as a page gets nothing.
+// The static handler replaces it with the app's own policy (cspHeader).
+const apiCSP = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+// permissionsPolicy denies the browser features the app never uses. The app
+// uses the clipboard (writeText, which is not restricted by default for the
+// page itself) and nothing else on this list.
+const permissionsPolicy = "accelerometer=(), autoplay=(), bluetooth=(), camera=(), display-capture=(), " +
+	"geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), " +
+	"serial=(), usb=(), xr-spatial-tracking=()"
+
+// hstsValue is two years, with subdomains (OWASP: at least one year).
+const hstsValue = "max-age=63072000; includeSubDomains"
+
+// securityHeaders sets, on every response, the headers that do not depend on
+// the route: nosniff, a no-referrer-leaks policy, a locked-down CSP, the
+// Permissions-Policy, and the cross-origin isolation pair (COOP and CORP).
+// A handler that needs something different (the static handler's CSP, the
+// auth routes' "no-referrer") overwrites the header with Set, which works
+// because this runs before the handler.
+//
+// HSTS goes only on requests that arrived over HTTPS. On Cloud Run, Google's
+// front end terminates TLS and sets X-Forwarded-Proto: https, and the
+// container cannot be reached any other way, so a client cannot forge it
+// there; anywhere else (http://localhost) a forged header only earns an HSTS
+// header on a plain-HTTP response, which browsers ignore.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "same-origin")
+		h.Set("Content-Security-Policy", apiCSP)
+		h.Set("Permissions-Policy", permissionsPolicy)
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		h.Set("Cross-Origin-Resource-Policy", "same-origin")
+		if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+			h.Set("Strict-Transport-Security", hstsValue)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
