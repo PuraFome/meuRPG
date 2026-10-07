@@ -17,7 +17,10 @@ services:
     # Pinned by tag AND by digest (multi-arch manifest list), so the exact
     # image content is reproducible regardless of what "v26.2.7" points to
     # later. v26.2 is CockroachDB's latest "Regular" (production-recommended,
-    # long-support) release line as of 2026-09; v26.2.7 is its newest patch.
+    # long-support) release line as of 2026-09, and v26.2.7 is in its LTS
+    # (from 2026-09-23). v26.3 is an "Innovation" release (no LTS) and is
+    # skipped: Dependabot proposes only patches of this line (see
+    # .github/dependabot.yml).
     image: cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
     command: ["start-single-node", "--insecure"]
     environment:

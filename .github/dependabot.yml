@@ -153,3 +153,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    ignore:
+      # Only patches come here. A new release line is an upgrade made by hand:
+      # the project follows CockroachDB's Regular lines (26.2, 26.4...) and
+      # skips the Innovation ones (26.3: no LTS, six months of support), and
+      # the line moves together in CI, the Makefile and the Homebrew formula.
+      - dependency-name: "cockroachdb/cockroach"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
