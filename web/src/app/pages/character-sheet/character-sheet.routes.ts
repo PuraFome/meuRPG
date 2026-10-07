@@ -30,6 +30,7 @@ export const CHARACTER_SHEET_ROUTES: Routes = [
       {
         // A creature's stat block (MR-037, E9-10).
         path: 'creatures/:creatureId',
+        title: 'Criatura',
         loadComponent: () => import('./creature-page/creature-page').then((m) => m.CreaturePage),
       },
     ],

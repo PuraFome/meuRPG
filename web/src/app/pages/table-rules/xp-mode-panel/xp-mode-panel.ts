@@ -58,7 +58,6 @@ export class XpModePanel {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly changedLine = signal('');
-  private readonly group = viewChild<ElementRef<HTMLElement>>('group');
   private readonly box = viewChild<ElementRef<HTMLElement>>('box');
   private readonly applyButton = viewChild('applyBtn', { read: ElementRef });
 

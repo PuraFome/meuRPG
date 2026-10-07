@@ -4,6 +4,24 @@
   min-height: 100vh;
 }
 
+.skip-link {
+  position: absolute;
+  top: var(--mr-space-1);
+  left: var(--mr-space-1);
+  z-index: 20;
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-weight: 700;
+  // Hidden until it takes focus (WCAG 2.4.1): off the screen, not `display: none`, so Tab still reaches it.
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}
+
 .app-bar {
   position: sticky;
   top: 0;

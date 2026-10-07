@@ -49,6 +49,7 @@ import type { PickRow } from '../../shared/person-pick/person-pick';
 import { MapsClient } from '../../core/maps/maps-client';
 import { SceneClient } from '../../core/play/scene-client';
 import { SceneState } from '../../core/play/scene-state';
+import { setPageSubject } from '../../core/title/page-title';
 import { openNotesSheet } from '../../shared/notes/notes-sheet';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { SessionNotes } from '../../shell/session-notes/session-notes';
@@ -350,6 +351,8 @@ export class LiveSession {
   private generation = 0;
 
   constructor() {
+    // The tab's title carries the campaign's name once it is loaded.
+    setPageSubject(() => this.campaign()?.name);
     inject(ActivatedRoute)
       .paramMap.pipe(takeUntilDestroyed())
       .subscribe((params) => {

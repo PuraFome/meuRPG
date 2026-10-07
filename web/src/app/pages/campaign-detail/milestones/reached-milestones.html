@@ -16,7 +16,7 @@
           [error]="error()"
           [busy]="busy()"
           (back)="back(r.m)"
-          (go)="undo(r.m, r.last)"
+          (go)="undo(r.last)"
         />
       } @else {
         <span class="item__when">{{ r.when }}</span>

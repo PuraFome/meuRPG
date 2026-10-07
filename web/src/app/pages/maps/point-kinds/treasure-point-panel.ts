@@ -108,7 +108,6 @@ export class TreasurePointPanel {
   private readonly opener = viewChild('opener', { read: ElementRef<HTMLButtonElement> });
   private readonly undo = viewChild('undo', { read: ElementRef<HTMLButtonElement> });
   private readonly form = viewChild<ElementRef<HTMLElement>>('form');
-  private readonly ask = viewChild<ElementRef<HTMLElement>>('ask');
   private currentId = '';
 
   constructor() {
