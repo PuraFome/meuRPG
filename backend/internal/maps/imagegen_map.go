@@ -559,8 +559,13 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		if players.nobody {
 			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING, status)
 		}
-	} else if int64(sub.imgW)*int64(sub.imgH) > maxTexturePixels {
-		return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE, status)
+	} else {
+		if int64(sub.imgW)*int64(sub.imgH) > maxTexturePixels {
+			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE, status)
+		}
+		if err := s.checkTexturePortraits(ctx, campaignID, n, sub); err != nil {
+			return err
+		}
 	}
 	if n.mapReq.layout != gen.LayoutTexture {
 		if err := s.checkCharacters(ctx, campaignID, n, p, players); err != nil {
@@ -617,6 +622,30 @@ func kindNamePT(kind string) string {
 	default:
 		return "arte da cena"
 	}
+}
+
+// checkTexturePortraits refuses, for a textured map, the portrait of any NPC with a token
+// on the map as an object reference, seen or not: the picture starts from the whole map and
+// shows no creature, and it can become the map the players read, so no portrait has a
+// reason to be in it (RN-10).
+func (s *Service) checkTexturePortraits(ctx context.Context, campaignID string, n *newRequest, sub *subject) error {
+	if len(n.references) == 0 || len(sub.tokens) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(sub.tokens))
+	for _, t := range sub.tokens {
+		ids = append(ids, t.CharacterID)
+	}
+	portraits, err := s.characters.NpcPortraits(ctx, nil, campaignID, ids)
+	if err != nil {
+		return s.dbError(ctx, "read the portraits", err)
+	}
+	for _, img := range portraits {
+		if img != "" && slices.Contains(n.references, img) {
+			return errField("object_image_ids", "has the portrait of a creature on the map")
+		}
+	}
+	return nil
 }
 
 // checkCharacters is what a scene art or isometric request says of characters: the NPCs

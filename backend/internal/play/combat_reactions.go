@@ -255,7 +255,7 @@ func (s *Service) UseReaction(
 		}
 		c.characterID = &target.CharacterID
 		made = actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
+			Round: c.enc.Round, Secret: target.Hidden, AttackerHidden: attacker.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
 			Stopped: stopped, AlsoStopped: also, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
 		}
 		return made, nil
@@ -269,7 +269,7 @@ func (s *Service) UseReaction(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret && !ev.AttackerHidden)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {

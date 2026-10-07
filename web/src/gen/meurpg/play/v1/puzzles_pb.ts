@@ -1538,7 +1538,8 @@ export type PuzzleRun = Message<"meurpg.play.v1.PuzzleRun"> & {
    * What happened when the puzzle was solved, as the players read it: the master's
    * own text of "Ao resolver" or, without one, a generic line for what the action
    * did ("Uma porta se abriu.", "Salão do trono apareceu no mapa.", "Você ganhou uma
-   * pista."). Empty until solved, and when the action did nothing and the master wrote
+   * pista."). A point the players do not see (its map is hidden from them) is not named:
+   * "Algo apareceu no mapa.". Empty until solved, and when the action did nothing and the master wrote
    * no text.
    *
    * @generated from field: string solved_message = 15;
@@ -3308,7 +3309,8 @@ export enum PuzzleSolveAction {
 
   /**
    * Reveal a point of a map to the players (the same as MapService.
-   * SetMapPointRevealed). The target is a PuzzlePointTarget.
+   * SetMapPointRevealed). The target is a PuzzlePointTarget; a light is refused, since
+   * the players never see one.
    *
    * @generated from enum value: PUZZLE_SOLVE_ACTION_REVEAL_POINT = 3;
    */
