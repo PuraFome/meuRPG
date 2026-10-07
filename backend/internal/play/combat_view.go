@@ -147,12 +147,21 @@ func (d *encounterData) turnFor(v combatViewer) turnView {
 	}
 	members := turnMembers(d.cs)
 	acting := func(cs []playdb.Combatant) (playdb.Combatant, bool) {
+		// A living member is the current one; a defeated one only when it is the
+		// last that has not ended its part.
+		found, ok := playdb.Combatant{}, false
 		for _, c := range cs {
-			if c.TurnState == turnActing {
+			if c.TurnState != turnActing {
+				continue
+			}
+			if !c.Defeated {
 				return c, true
 			}
+			if !ok {
+				found, ok = c, true
+			}
 		}
-		return playdb.Combatant{}, false
+		return found, ok
 	}
 	if _, someone := acting(members); !someone {
 		return turnView{}
