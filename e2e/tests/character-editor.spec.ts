@@ -43,7 +43,7 @@ test(
 
     const labels = await known.locator('mat-checkbox').allInnerTexts();
     const parsed = labels.map((text) => {
-      const m = text.trim().match(/^(.*?)\s*\((\d+)º círculo/);
+      const m = text.trim().match(/^(.*?)\s*\((\d+)º nível/);
       return { name: m![1], level: Number(m![2]) };
     });
     expect(parsed.length).toBeGreaterThan(5);
@@ -68,11 +68,11 @@ async function openEditorAs(page: import('@playwright/test').Page, className: st
 const ABILITIES = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
 
 test(
-  'rolar 4d6 dá seis resultados e todos podem ser colocados nos atributos',
+  'rolar 4d6 dá seis resultados e todos podem ser colocados nas habilidades',
   { tag: '@MR-004' },
   async ({ page }) => {
     await openEditorAs(page, 'Bárbaro');
-    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
 
     // Six results, each with its four dice and the discarded one named.
@@ -93,12 +93,12 @@ test(
     });
 
     // Saving waits until every result has an ability.
-    await expect(page.getByText('Faltam 6 atributos')).toBeVisible();
+    await expect(page.getByText('Faltam 6 habilidades')).toBeVisible();
     await page.getByRole('button', { name: 'Criar personagem' }).click();
-    await expect(page.getByText(/coloque cada resultado num atributo/)).toBeVisible();
+    await expect(page.getByText(/coloque cada resultado numa habilidade/)).toBeVisible();
 
     // The failed save took us to the first step with a problem: back to this one.
-    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
     // Result i goes to ability i (option 0 is "Escolher").
     for (const [i, ability] of ABILITIES.entries()) {
       await page.getByLabel(ability, { exact: true }).selectOption({ index: i + 1 });
@@ -118,11 +118,11 @@ test(
 );
 
 test(
-  'o conjunto padrão pode ser colocado e trocado entre atributos',
+  'o conjunto padrão pode ser colocado e trocado entre habilidades',
   { tag: '@MR-004' },
   async ({ page }) => {
     await openEditorAs(page, 'Bárbaro');
-    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Conjunto padrão/ }).check();
 
     const chips = page.getByRole('group', { name: /^\d+\. (Livre|Em )/ });
@@ -154,7 +154,7 @@ test(
   async ({ page }) => {
     await openEditorAs(page, 'Bárbaro');
     await page.getByLabel('Nível', { exact: true }).fill('3');
-    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolado/ }).check();
 
     const level2 = page.getByLabel('Nível 2 (1d12)', { exact: true });
@@ -185,7 +185,7 @@ test(
 
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Amizade Animal' })).toBeVisible();
-    await expect(dialog.getByText('1º círculo · Encantamento')).toBeVisible();
+    await expect(dialog.getByText('1º nível · Encantamento')).toBeVisible();
     for (const label of ['Tempo de conjuração', 'Alcance', 'Componentes', 'Duração']) {
       await expect(dialog.getByText(label, { exact: true })).toBeVisible();
     }

@@ -5089,7 +5089,7 @@ func (x *LevelUpNamedKey) GetNamePt() string {
 // guided level-up draws. A step with nothing to choose does not exist: the
 // app skips a step whose counts are zero and whose lists are empty.
 //
-// Steps and their data: "Atributos" (ability_score_improvement), "Vida"
+// Steps and their data: "Habilidades" (ability_score_improvement), "Vida"
 // (hit_die, hit_point_average, dice_rule, kept_hit_point_roll), "Magias"
 // (cantrips, spells, prepares), and the steps for the subclass
 // (subclass_due), the feature options (feature_choices), the skills and

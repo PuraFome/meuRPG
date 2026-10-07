@@ -599,11 +599,11 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Mísseis Mágicos' });
     await expect(sheet.getByRole('heading', { name: 'Conjurar Mísseis Mágicos' })).toBeFocused();
-    await expect(sheet.getByRole('radio', { name: /1º círculo/ })).toBeChecked();
+    await expect(sheet.getByRole('radio', { name: /1º nível/ })).toBeChecked();
     await expect(sheet.getByText('1 livre de 4')).toBeVisible();
-    await expect(sheet.getByRole('radio', { name: /2º círculo/ })).toBeDisabled();
+    await expect(sheet.getByRole('radio', { name: /2º nível/ })).toBeDisabled();
     await expect(sheet.getByText('Sem espaço livre')).toBeVisible();
-    await expect(sheet.getByText('É o seu último espaço de 1º círculo: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
+    await expect(sheet.getByText('É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
     // The darts: the button waits until all three are placed.
     const cast = sheet.getByRole('button', { name: 'Conjurar Mísseis Mágicos' });
     await expect(cast).toHaveAttribute('aria-disabled', 'true');
@@ -617,8 +617,8 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     await cast.click();
     // Spent at the cast, before any damage is rolled.
     await expect(sheet.getByRole('heading', { name: 'Você conjurou Mísseis Mágicos' })).toBeVisible();
-    await expect(sheet.getByText('Espaços de 1º círculo: 0 livres de 4')).toBeVisible();
-    await expect(sheet.getByText('Escudo Arcano indisponível: sem espaço de 1º círculo.')).toBeVisible();
+    await expect(sheet.getByText('Espaços de 1º nível: 0 livres de 4')).toBeVisible();
+    await expect(sheet.getByText('Escudo Arcano indisponível: sem espaço de 1º nível.')).toBeVisible();
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Rolar o dano no app' }).click();
     await expect(sheet.getByText(/Dardo 1: 1d4 \(\d\) \+ 1 = \d/).first()).toBeVisible();
@@ -630,7 +630,7 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     expect((await vitalsOf(m, campaignId, 'Capitão Goblin')).hitPointsCurrent).toBeLessThan(23);
     await expect(p.getByText('Ação já usada').first()).toBeVisible();
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
-    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Mísseis Mágicos (1º círculo): 2 dardos no Capitão Goblin');
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Mísseis Mágicos (1º nível): 2 dardos no Capitão Goblin');
   } finally {
     await done();
   }
@@ -750,7 +750,7 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
     await expect(prompt).toBeVisible();
     await expect(prompt.getByRole('heading', { name: 'Você foi atingido' })).toBeVisible();
     await expect(prompt.getByRole('button', { name: 'Não usar' })).toBeFocused();
-    await expect(prompt.getByRole('radio', { name: /1º círculo/ })).toBeChecked();
+    await expect(prompt.getByRole('radio', { name: /1º nível/ })).toBeChecked();
     // No way out without an answer; the master's card waits.
     await p.keyboard.press('Escape');
     await expect(prompt).toBeVisible();
@@ -761,14 +761,14 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
     expect(yes.width).toBe(no.width);
     await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
     await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
-    await expect(prompt.getByText('Espaços de 1º círculo: 3 livres de 4')).toBeVisible();
+    await expect(prompt.getByText('Espaços de 1º nível: 3 livres de 4')).toBeVisible();
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     // The master's card turned the same hit into a miss, without a reload.
     await expect(card.locator('.pill', { hasText: 'Errou: o Escudo Arcano segurou' })).toBeVisible();
     await expect(card.getByText('Esperando a reação do Pensantus.')).toHaveCount(0);
     expect((await vitalsOf(m, campaignId, 'Pensantus')).armorClassBonus).toBe(5);
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
-    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Escudo Arcano (1º círculo), com a reação');
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Escudo Arcano (1º nível), com a reação');
     await p.keyboard.press('Escape');
 
     // 2. The reaction is spent for this turn: the next hit goes straight on, no prompt.
@@ -1169,7 +1169,7 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
 
     // The master: the pool, each creature from the lowest hit points up with the total that is left.
     const masterLog = m.getByRole('log', { name: 'Registro do combate' });
-    await expect(masterLog).toContainText('Pensantus conjura Sono (1º círculo)');
+    await expect(masterLog).toContainText('Pensantus conjura Sono (1º nível)');
     const card = m.locator('app-pool-card');
     await expect(card).toContainText('5d8 = 20');
     await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('7 PV');

@@ -64,7 +64,7 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
 
   it('takes the formula functions and the tag prefixes from the menu, not from the browser', () => {
     setup({ ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add', tags: '' });
-    expect(text(el)).toContain('Funções: mod("<atributo>"), prof().');
+    expect(text(el)).toContain('Funções: mod("<habilidade>"), prof().');
     (Array.from(el.querySelectorAll('button')).find((b) => text(b).includes('Mais opções')) as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(text(el)).toContain('começando por against:… ou about:….');

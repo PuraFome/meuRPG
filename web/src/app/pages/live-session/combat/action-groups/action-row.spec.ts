@@ -30,21 +30,21 @@ describe('ActionRow', () => {
   });
 
   it('keeps a disabled option in place and in the keyboard order, with the reason wired to the button', () => {
-    const { el, pressed } = setup({ name: 'Teia', tags: ['2º círculo'], button: 'Conjurar', off: true, reason: 'Sem espaço de 2º círculo ou maior' });
+    const { el, pressed } = setup({ name: 'Teia', tags: ['2º nível'], button: 'Conjurar', off: true, reason: 'Sem espaço de 2º nível ou maior' });
     const button = el.querySelector('button')!;
     expect(button.disabled).toBe(false); // `disabledInteractive`: still a focus stop
     expect(button.getAttribute('aria-disabled')).toBe('true');
     const why = el.querySelector('.row__why')!;
-    expect(why.textContent).toContain('Sem espaço de 2º círculo ou maior');
+    expect(why.textContent).toContain('Sem espaço de 2º nível ou maior');
     expect(button.getAttribute('aria-describedby')).toBe(why.id);
     button.click();
     expect(pressed).toEqual([]);
   });
 
   it('puts the tags on a line of their own and the "?" between the text and the button', () => {
-    const { el } = setup({ name: 'Escudo Arcano', tags: ['1º círculo', 'Reação'], helpName: 'Escudo Arcano' });
+    const { el } = setup({ name: 'Escudo Arcano', tags: ['1º nível', 'Reação'], helpName: 'Escudo Arcano' });
     const tags = [...el.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
-    expect(tags).toEqual(['1º círculo', 'Reação']);
+    expect(tags).toEqual(['1º nível', 'Reação']);
     expect(el.querySelector('.row__name .row__pill')).toBeNull();
     expect(el.querySelector('app-spell-help button')!.getAttribute('aria-label')).toBe('Detalhes de Escudo Arcano');
   });

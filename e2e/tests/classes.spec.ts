@@ -42,8 +42,8 @@ test(
       await pickRadio(m, 'Metade');
       await m.getByLabel('Habilidade de conjuração').selectOption({ label: 'Sabedoria' });
       await m.getByLabel('Lista de magias').selectOption({ label: 'A lista do Druida' });
-      await expect(m.getByLabel('Nível 2, espaços de 1º círculo')).toHaveValue('2');
-      await expect(m.getByLabel('Nível 1, espaços de 1º círculo')).toHaveValue('');
+      await expect(m.getByLabel('Nível 2, espaços de magia de 1º nível')).toHaveValue('2');
+      await expect(m.getByLabel('Nível 1, espaços de magia de 1º nível')).toHaveValue('');
       await expect(m.getByLabel('Nível 5, bônus de proficiência')).toHaveValue('+3');
 
       // A feature with an effect from the menu.
@@ -124,8 +124,8 @@ test(
       await m.getByLabel('Habilidade de conjuração').selectOption({ label: 'Inteligência' });
       await m.getByLabel('Lista de magias').selectOption({ label: 'A lista do Mago' });
       // The rows of the third caster start at level 3, from the server's table.
-      await expect(m.getByLabel('Nível 3, espaços de 1º círculo')).toHaveValue('2');
-      await expect(m.getByLabel('Nível 2, espaços de 1º círculo')).toHaveCount(0);
+      await expect(m.getByLabel('Nível 3, espaços de magia de 1º nível')).toHaveValue('2');
+      await expect(m.getByLabel('Nível 2, espaços de magia de 1º nível')).toHaveCount(0);
 
       await m.getByLabel('Adicionar nível').selectOption({ label: 'Nível 3' });
       await m.getByRole('group', { name: 'Nível 3' }).getByLabel('Adicionar magia').selectOption({ label: 'Detectar Magia' });
@@ -224,13 +224,13 @@ test('mudar a conjuração de uma tabela editada pergunta no lugar, e "Restaurar
     await m.goto(entryRoute(campaignId, key));
     await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Guardião do Vale');
     // An edited table: another way of casting asks first, right under the control, with the focus on its title.
-    await m.getByLabel('Nível 5, espaços de 1º círculo').fill('9');
+    await m.getByLabel('Nível 5, espaços de magia de 1º nível').fill('9');
     await pickRadio(m, 'Completa');
     const ask = m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' });
     await expect(ask).toBeVisible();
     await expect(ask.getByText('Refazer a tabela dos 20 níveis?')).toBeFocused();
     await ask.getByRole('button', { name: 'Manter a minha tabela' }).click();
-    await expect(m.getByLabel('Nível 5, espaços de 1º círculo')).toHaveValue('9');
+    await expect(m.getByLabel('Nível 5, espaços de magia de 1º nível')).toHaveValue('9');
     await expect(m.getByRole('alertdialog')).toHaveCount(0);
 
     await m.getByRole('button', { name: 'Restaurar o padrão' }).click();
@@ -239,7 +239,7 @@ test('mudar a conjuração de uma tabela editada pergunta no lugar, e "Restaurar
     await restore.getByRole('button', { name: 'Restaurar o padrão' }).click();
     await expect(m.getByRole('alertdialog')).toHaveCount(0);
     // The full caster's table of the server: 4 first-circle slots at level 5.
-    await expect(m.getByLabel('Nível 5, espaços de 1º círculo')).toHaveValue('4');
+    await expect(m.getByLabel('Nível 5, espaços de magia de 1º nível')).toHaveValue('4');
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

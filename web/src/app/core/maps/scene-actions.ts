@@ -18,8 +18,8 @@ export type CheckKind = 'skill' | 'ability' | 'save';
 
 export const CHECK_KINDS: readonly { readonly kind: CheckKind; readonly label: string }[] = [
   { kind: 'skill', label: 'Perícia' },
-  { kind: 'ability', label: 'Teste de atributo' },
-  { kind: 'save', label: 'Salvaguarda' },
+  { kind: 'ability', label: 'Teste de habilidade' },
+  { kind: 'save', label: 'Teste de resistência' },
 ];
 
 /** One line of the check list: the key the server takes and the name on screen. */

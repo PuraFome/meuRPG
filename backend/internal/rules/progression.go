@@ -150,7 +150,7 @@ type SceneOption struct {
 	// Kind is SceneSkill, SceneAbility or SceneSave.
 	Kind string
 	// NamePT is the check's name: "Investigação", "Teste de Força",
-	// "Salvaguarda de Sabedoria".
+	// "Teste de resistência de Sabedoria".
 	NamePT string
 	// Bonus is what the character adds to the d20.
 	Bonus int
@@ -174,7 +174,7 @@ func (e *SceneError) Error() string {
 
 // SceneCheckName is the Portuguese name of a scene check by its key
 // ("skill:investigation" is "Investigação", "ability:str" is "Teste de
-// Força", "save:wis" is "Salvaguarda de Sabedoria"), and false for any
+// Força", "save:wis" is "Teste de resistência de Sabedoria"), and false for any
 // other key: the server uses it to refuse an action that is not a skill,
 // an ability check or a saving throw (MR-015), and to name the actions
 // for the master, who has no character's numbers on the screen.
@@ -194,7 +194,7 @@ func (c *Content) SceneCheckName(key string) (string, bool) {
 				if kind == SceneAbility {
 					return "Teste de " + a.NamePT, true
 				}
-				return "Salvaguarda de " + a.NamePT, true
+				return "Teste de resistência de " + a.NamePT, true
 			}
 		}
 	}
@@ -235,7 +235,7 @@ func SceneOptions(d Derived, actions []SceneAction) ([]SceneOption, error) {
 		case SceneSave:
 			for _, s := range d.SavingThrows {
 				if string(s.Ability) == key {
-					o.NamePT, o.Bonus, ok = "Salvaguarda de "+s.NamePT, s.Bonus, true
+					o.NamePT, o.Bonus, ok = "Teste de resistência de "+s.NamePT, s.Bonus, true
 				}
 			}
 		}

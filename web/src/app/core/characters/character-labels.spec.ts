@@ -71,24 +71,24 @@ describe('skillProficiencyLabel', () => {
 });
 
 describe('spellLevelLabel', () => {
-  it('calls level 0 a "Truque", never a "círculo"', () => {
+  it('calls level 0 a "Truque", never a "nível"', () => {
     expect(spellLevelLabel(0)).toBe('Truque');
   });
 
-  it('uses "círculo" — never "nível" — for a leveled spell (integrator fix)', () => {
-    expect(spellLevelLabel(1)).toBe('1º círculo');
-    expect(spellLevelLabel(9)).toBe('9º círculo');
+  it('uses "nível" for a leveled spell (integrator fix)', () => {
+    expect(spellLevelLabel(1)).toBe('1º nível');
+    expect(spellLevelLabel(9)).toBe('9º nível');
   });
 });
 
 describe('formatSpellSlots', () => {
   it('separates every level with " · ", not run together (integrator fix)', () => {
     // A Wizard 3: 4 first-circle slots, 2 second-circle slots.
-    expect(formatSpellSlots([4, 2])).toBe('1º círculo: 4 · 2º círculo: 2');
+    expect(formatSpellSlots([4, 2])).toBe('1º nível: 4 · 2º nível: 2');
   });
 
   it('skips a level with no slots', () => {
-    expect(formatSpellSlots([4, 0, 2])).toBe('1º círculo: 4 · 3º círculo: 2');
+    expect(formatSpellSlots([4, 0, 2])).toBe('1º nível: 4 · 3º nível: 2');
   });
 
   it('is empty for a character with no spell slots', () => {

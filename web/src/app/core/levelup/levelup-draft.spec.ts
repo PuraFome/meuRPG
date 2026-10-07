@@ -12,7 +12,7 @@ describe('LevelUpDraft: what is missing', () => {
   it('asks for the ability, the cantrip, the two spells and the two to prepare, in step order', () => {
     const d = wizard();
     expect(d.missing().map((m) => [m.step, m.id, m.text])).toEqual([
-      ['abilities', 'abilities', 'Falta escolher 1 atributo.'],
+      ['abilities', 'abilities', 'Falta escolher 1 habilidade.'],
       ['spells', 'cantrips', 'Falta escolher 1 truque.'],
       ['spells', 'spells', 'Faltam escolher 2 magias para o livro.'],
     ]);

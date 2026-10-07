@@ -113,7 +113,7 @@ export class AbilityPlacing {
     this.status.set(
       next === null
         ? ''
-        : `${this.results()[next].total} escolhido. Toque no atributo que vai receber o ${this.results()[next].total}.`,
+        : `${this.results()[next].total} escolhido. Toque na habilidade que vai receber o ${this.results()[next].total}.`,
     );
   }
 

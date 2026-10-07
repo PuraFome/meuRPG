@@ -151,10 +151,10 @@ describe('formatDuration', () => {
 describe('spellSubtitle and spellFields', () => {
   it('names the circle and the school', () => {
     expect(spellSubtitle({ level: 2, schoolNamePt: 'Transmutação' })).toBe(
-      '2º círculo · Transmutação',
+      '2º nível · Transmutação',
     );
     expect(spellSubtitle({ level: 0, schoolNamePt: 'Evocação' })).toBe('Truque · Evocação');
-    expect(spellSubtitle({ level: 1, schoolNamePt: '' })).toBe('1º círculo');
+    expect(spellSubtitle({ level: 1, schoolNamePt: '' })).toBe('1º nível');
   });
 
   it('formats the four fields of Knock', () => {

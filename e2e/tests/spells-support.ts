@@ -27,7 +27,7 @@ export async function createInkBladeRPC(master: Page, campaignId: string): Promi
       components: { verbal: true, somatic: true, material: true, materialPt: 'uma pena molhada em tinta' },
       classKeys: ['class:wizard'],
       descPt: ['Um risco de tinta negra corta o ar e rasga o alvo.'],
-      higherLevelPt: ['+1d8 de dano por círculo acima do 1º.'],
+      higherLevelPt: ['+1d8 de dano por nível acima do 1º.'],
       target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' },
       attack: 'ranged',
       damage: [{ damageTypeKey: 'damage-type:necrotic', dice: '2d8', perSlotLevel: '1d8' }],

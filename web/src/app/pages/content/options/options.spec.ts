@@ -159,7 +159,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
       opt(TableContentKind.SPELL, 'Bola de Fogo', { key: 'spell:fireball', level: 3 }),
     ];
     const { el, settle } = await setup(Role.MASTER, { kind: 'spells', options });
-    expect(rows(el).map((r) => text(r.querySelector('.orow__note')!))).toEqual(['Truque', '1º círculo', '3º círculo']);
+    expect(rows(el).map((r) => text(r.querySelector('.orow__note')!))).toEqual(['Truque', '1º nível', '3º nível']);
     const selects = Array.from(el.querySelectorAll<HTMLSelectElement>('app-select-field select'));
     expect(selects).toHaveLength(2);
     // The circle: only the 3rd.

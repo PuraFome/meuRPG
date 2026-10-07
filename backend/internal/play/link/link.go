@@ -227,7 +227,7 @@ type Spell struct {
 	// TargetCount is how many targets the spell takes at its own level (0 when the
 	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
 	// how many more it takes for each slot level above its own. A table spell
-	// says both itself ("três criaturas, uma a mais por círculo"); an SRD spell's
+	// says both itself ("três criaturas, uma a mais por nível"); an SRD spell's
 	// come from the same fields of rules.SpellTarget.
 	TargetCount    int
 	TargetPerLevel int

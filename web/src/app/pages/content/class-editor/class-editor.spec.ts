@@ -86,13 +86,13 @@ describe('ClassEditor', () => {
     expect(text(el)).toContain('Perícias que ele pode escolher (3 de 3)');
     const pressed = Array.from(el.querySelectorAll('.skills [aria-pressed="true"]')).map((b) => text(b).replace('check', '').trim());
     expect(pressed).toEqual(['Arcanismo', 'Investigação', 'Percepção']);
-    expect(cell(el, 'Nível 2, espaços de 1º círculo').value).toBe('2');
-    expect(cell(el, 'Nível 1, espaços de 1º círculo').value).toBe('');
+    expect(cell(el, 'Nível 2, espaços de magia de 1º nível').value).toBe('2');
+    expect(cell(el, 'Nível 1, espaços de magia de 1º nível').value).toBe('');
     expect(cell(el, 'Nível 5, bônus de proficiência').value).toBe('+3');
     // The half caster that prepares: no "Magias" column, 5 circles; ASI and subclass levels as locked chips.
     expect(Array.from(el.querySelectorAll('th')).some((th) => text(th) === 'Magias')).toBe(false);
     expect(el.querySelectorAll('thead th[aria-label^="Espaços de"]')).toHaveLength(3);
-    expect(text(el.querySelectorAll('tbody tr')[3])).toContain('Aumento de atributo');
+    expect(text(el.querySelectorAll('tbody tr')[3])).toContain('Incremento no Valor de Habilidade');
     expect(text(el.querySelectorAll('tbody tr')[2])).toContain('Escolha de subclasse');
     expect(text(el.querySelectorAll('tbody tr')[0])).toContain('Vigília');
     expect(text(el.querySelector('.count, app-class-features')!)).toContain('1 de 60 características');
@@ -104,14 +104,14 @@ describe('ClassEditor', () => {
     expect(cell(el, 'Nível 2, bônus de proficiência').value).toBe('+2');
     (Array.from(el.querySelectorAll('app-segmented input')).find((i) => (i as HTMLInputElement).value === 'half') as HTMLInputElement).dispatchEvent(new Event('change'));
     await settle(fixture);
-    expect(cell(el, 'Nível 2, espaços de 1º círculo').value).toBe('2');
-    expect(cell(el, 'Nível 9, espaços de 3º círculo').value).toBe('2');
+    expect(cell(el, 'Nível 2, espaços de magia de 1º nível').value).toBe('2');
+    expect(cell(el, 'Nível 9, espaços de magia de 3º nível').value).toBe('2');
     expect(el.querySelector('.ask')).toBeNull();
   });
 
   it('asks before replacing a table the master edited, and "Manter a minha tabela" keeps it', async () => {
     const { fixture, el } = setup();
-    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    type(cell(el, 'Nível 5, espaços de magia de 1º nível'), '9');
     await settle(fixture);
     // Full caster: the kind changes the default table, and the edited one is at stake.
     (Array.from(el.querySelectorAll('app-segmented input')).find((i) => (i as HTMLInputElement).value === 'full') as HTMLInputElement).dispatchEvent(new Event('change'));
@@ -122,7 +122,7 @@ describe('ClassEditor', () => {
     click(ask as HTMLElement, 'Manter a minha tabela');
     await settle(fixture);
     expect(el.querySelector('.ask')).toBeNull();
-    expect(cell(el, 'Nível 5, espaços de 1º círculo').value).toBe('9');
+    expect(cell(el, 'Nível 5, espaços de magia de 1º nível').value).toBe('9');
     save.mockResolvedValue({ entry: guardiao(), affected: [] });
     click(el, 'Salvar classe');
     await settle(fixture);
@@ -132,14 +132,14 @@ describe('ClassEditor', () => {
 
   it('"Refazer a tabela" puts the new kind\'s rows in', async () => {
     const { fixture, el } = setup();
-    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    type(cell(el, 'Nível 5, espaços de magia de 1º nível'), '9');
     await settle(fixture);
     (Array.from(el.querySelectorAll('app-segmented input')).find((i) => (i as HTMLInputElement).value === 'full') as HTMLInputElement).dispatchEvent(new Event('change'));
     await settle(fixture);
     click(el.querySelector('.ask') as HTMLElement, 'Refazer a tabela');
     await settle(fixture);
     // The full caster of the fixture: 4 first-circle slots at level 5.
-    expect(cell(el, 'Nível 5, espaços de 1º círculo').value).toBe('4');
+    expect(cell(el, 'Nível 5, espaços de magia de 1º nível').value).toBe('4');
   });
 
   it('an unedited table is replaced without asking', async () => {
@@ -152,7 +152,7 @@ describe('ClassEditor', () => {
 
   it('sends the cells as typed, the proficiency bonus included, and nothing it did not touch', async () => {
     const { fixture, el } = setup();
-    type(cell(el, 'Nível 5, espaços de 3º círculo'), '1');
+    type(cell(el, 'Nível 5, espaços de magia de 3º nível'), '1');
     type(cell(el, 'Nível 1, bônus de proficiência'), '3');
     await settle(fixture);
     expect(cell(el, 'Nível 1, bônus de proficiência').value).toBe('+3');
@@ -219,11 +219,11 @@ describe('ClassEditor', () => {
     save.mockRejectedValue(refusal(['table_class.levels[4].slots[2]', 'bad_table']));
     click(el, 'Salvar classe');
     await settle(fixture);
-    const input = cell(el, 'Nível 5, espaços de 3º círculo');
+    const input = cell(el, 'Nível 5, espaços de magia de 3º nível');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.dataset['field']).toBe('table_class.levels[4].slots[2]');
     expect(document.activeElement).toBe(input);
-    expect(text(el.querySelector('app-level-grid')!)).toContain('Nível 5, espaços de 3º círculo. Espaços de magia: de 0 a 9 por círculo');
+    expect(text(el.querySelector('app-level-grid')!)).toContain('Nível 5, espaços de magia de 3º nível. Espaços de magia: de 0 a 9 por nível');
     expect(text(el.querySelector('[role="alert"]')!)).toContain('1 campo precisa de ajuste');
     expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Tabela dos 20 níveis');
     // What was typed stays.
@@ -302,7 +302,7 @@ describe('ClassEditor', () => {
     await settle(fixture);
     expect(field(el, 'table_class.hit_die').getAttribute('aria-invalid')).toBe('true');
     expect(field(el, 'table_class.saving_throws[1]').getAttribute('aria-invalid')).toBe('true');
-    expect(cell(el, 'Nível 5, espaços de 3º círculo').getAttribute('aria-invalid')).toBe('true');
+    expect(cell(el, 'Nível 5, espaços de magia de 3º nível').getAttribute('aria-invalid')).toBe('true');
     expect(text(el.querySelector('[role="alert"]')!)).toContain('3 campos precisam de ajuste');
     expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Básico');
     expect(text(el.querySelector('app-section-nav')!)).toContain('Com erro: Tabela dos 20 níveis');
@@ -314,12 +314,12 @@ describe('ClassEditor', () => {
     click(el, 'Salvar classe');
     await settle(fixture);
     expect(text(el.querySelector('app-level-grid')!)).toContain('Nível 7, espaços de magia. Quem conjura precisa de espaços de magia neste nível.');
-    expect(cell(el, 'Nível 7, espaços de 1º círculo').getAttribute('aria-describedby')).toBeNull();
+    expect(cell(el, 'Nível 7, espaços de magia de 1º nível').getAttribute('aria-describedby')).toBeNull();
   });
 
   it('asks the casting question right under the kind, with the focus on its title', async () => {
     const { fixture, el } = setup();
-    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    type(cell(el, 'Nível 5, espaços de magia de 1º nível'), '9');
     await settle(fixture);
     (Array.from(el.querySelectorAll('app-segmented input')).find((i) => (i as HTMLInputElement).value === 'full') as HTMLInputElement).dispatchEvent(new Event('change'));
     await settle(fixture);
@@ -335,14 +335,14 @@ describe('ClassEditor', () => {
     click(el, 'Restaurar o padrão');
     await settle(fixture);
     expect(el.querySelector('app-table-question')).toBeNull();
-    type(cell(el, 'Nível 5, espaços de 1º círculo'), '9');
+    type(cell(el, 'Nível 5, espaços de magia de 1º nível'), '9');
     await settle(fixture);
     click(el, 'Restaurar o padrão');
     await settle(fixture);
     expect(text(el.querySelector('app-table-question')!)).toContain('Voltar a tabela ao padrão do Paladino?');
     click(el.querySelector('app-table-question') as HTMLElement, 'Restaurar o padrão');
     await settle(fixture);
-    expect(cell(el, 'Nível 5, espaços de 1º círculo').value).toBe('4');
+    expect(cell(el, 'Nível 5, espaços de magia de 1º nível').value).toBe('4');
   });
 
   it('the list of sections claims nothing it does not know: no check marks, one section "location"', () => {

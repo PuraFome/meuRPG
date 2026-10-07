@@ -44,7 +44,7 @@ const WORDS: Readonly<Record<AbilityMethodKey, { tab: string; title: string; srd
 const ORDER: readonly AbilityMethodKey[] = ['standard_array', 'point_buy', 'rolled_4d6', 'typed'];
 
 /**
- * The scores of the "Atributos" step when a **player** makes a new sheet (RN-24, E10-03 state 4): the ways the master
+ * The scores of the "Habilidades" step when a **player** makes a new sheet (RN-24, E10-03 state 4): the ways the master
  * allows, as a radio group of up to four. Each writes the six numbers into the form, and the page sends the chosen way
  * with `CreateCharacter`, which the server checks again.
  *
@@ -206,13 +206,13 @@ export class TableAbilityScores {
     let problem = '';
     switch (this.method()) {
       case 'standard_array':
-        problem = freeCount(this.arrayPlacement()) > 0 ? 'coloque cada valor do conjunto num atributo' : '';
+        problem = freeCount(this.arrayPlacement()) > 0 ? 'coloque cada valor do conjunto numa habilidade' : '';
         break;
       case 'rolled_4d6':
         problem =
           this.rolls() === null
-            ? this.table().physicalDice ? 'digite os dados e guarde as rolagens' : 'role os atributos'
-            : freeCount(this.rollPlacement()) > 0 ? 'coloque cada resultado num atributo' : '';
+            ? this.table().physicalDice ? 'digite os dados e guarde as rolagens' : 'role as habilidades'
+            : freeCount(this.rollPlacement()) > 0 ? 'coloque cada resultado numa habilidade' : '';
         break;
       case 'typed': {
         const t = this.table();

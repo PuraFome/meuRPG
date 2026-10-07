@@ -3,7 +3,7 @@ import { Component, input } from '@angular/core';
 import type { EntryRead as Read } from '../../../core/content/content-read';
 
 /**
- * An entry read in full (E10-01 state 9): the numbers in a panel of rows (dado de vida, deslocamento, atributos...), then the
+ * An entry read in full (E10-01 state 9): the numbers in a panel of rows (dado de vida, deslocamento, habilidades...), then the
  * traits or features, then the text. A player gets this for every entry that is on; the master gets it for the kinds that
  * have no editor yet, and, as `plain`, inside an editor's preview. Read only: it draws what `readEntry` wrote and nothing
  * else (the page hands it the rows, so the preview and the player's page are one text).

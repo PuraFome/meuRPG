@@ -4,7 +4,7 @@ import { endOpenSessionRPC } from './live-session-support';
 import { newSignedInContext } from './support';
 import { markMilestoneRPC, tableForLevelUp, toren } from './levelup-support';
 
-// MR-040 (the guided level-up: Atributos, Vida, Magias, Resumo; the master sees "O que mudou"), RN-01 (the
+// MR-040 (the guided level-up: Habilidades, Vida, Magias, Resumo; the master sees "O que mudou"), RN-01 (the
 // sheet stays locked: only the level's choices change), RN-12 (who can level up). The data comes through
 // the API; the screens are what is under test. Every test makes its own campaign.
 
@@ -14,7 +14,7 @@ const sheetOf = (campaignId: string, characterId: string) => `/campaigns/${campa
 const row = (page: Page, name: string) => page.locator('.row__main, .row').filter({ hasText: name }).first();
 
 test(
-  'Pensantus sobe do Mago 3 para o 4: atributo, vida média, um truque, duas magias e duas para preparar; o mestre vê "O que mudou"',
+  'Pensantus sobe do Mago 3 para o 4: habilidade, vida média, um truque, duas magias e duas para preparar; o mestre vê "O que mudou"',
   { tag: ['@MR-040', '@RN-01', '@RN-12'] },
   async ({ browser }) => {
     test.setTimeout(150_000);
@@ -35,10 +35,10 @@ test(
       await expect(p.getByText('O mestre marcou “Chegar ao Vale Seco”.')).toBeVisible();
       await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
 
-      // Atributos: +2 in Inteligência, and what it changes, from the server.
+      // Habilidades: +2 in Inteligência, and what it changes, from the server.
       await expect(p.getByRole('heading', { name: 'Subir para o nível 4' })).toBeVisible();
-      await expect(p.getByText('Passo 1 de 4 · Atributos')).toBeVisible();
-      await expect(p.getByText('Falta escolher 1 atributo.')).toBeVisible();
+      await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+      await expect(p.getByText('Falta escolher 1 habilidade.')).toBeVisible();
       await row(p, 'Inteligência').click();
       await expect(p.getByText('18 → 20')).toBeVisible();
       await expect(p.getByRole('heading', { name: 'O que muda com Inteligência 20' })).toBeVisible();
@@ -193,7 +193,7 @@ test(
       // Once the master marks a milestone, the same route opens.
       await markMilestoneRPC(m, campaignId, 'Chegar ao Vale Seco', [table.characterId]);
       await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
-      await expect(p.getByText('Passo 1 de 4 · Atributos')).toBeVisible();
+      await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();

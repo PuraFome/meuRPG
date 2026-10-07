@@ -537,7 +537,7 @@ describe('CharacterEditor', () => {
       ]);
       // Not selected there, so the prepared list still hides it.
       expect(keys(cmp.sectionViews()[0].prepared.shown)).not.toContain('spell:fireball');
-      expect(el.textContent).toContain('Bola de Fogo (3º círculo, acima do nível)');
+      expect(el.textContent).toContain('Bola de Fogo (3º nível, acima do nível)');
     });
 
     it('replaces the leveled lists with one line for a class that starts casting later', async () => {
@@ -912,14 +912,14 @@ describe('CharacterEditor', () => {
 
       const names = () =>
         tabs(el).map((t) => t.querySelector('.stepper__label')?.textContent?.trim());
-      expect(names()).toEqual(['Básico', 'Atributos', 'Perícias', 'Equipamento']);
+      expect(names()).toEqual(['Básico', 'Habilidades', 'Perícias', 'Equipamento']);
 
       cmp.fullForm.patchValue({ className: 'class:wizard' });
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(names()).toEqual(['Básico', 'Atributos', 'Perícias', 'Magias', 'Equipamento']);
+      expect(names()).toEqual(['Básico', 'Habilidades', 'Perícias', 'Magias', 'Equipamento']);
     });
 
     it('sends nothing on an invalid submit, lists what to fix and marks the step', async () => {
@@ -975,7 +975,7 @@ describe('CharacterEditor', () => {
       expect(tabs(el)[1].getAttribute('aria-selected')).toBe('true');
       expect(cmp.bonusesOpen()).toBe(true);
       expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
-        'Atributos: bônus manual de Constituição.',
+        'Habilidades: bônus manual de Constituição.',
       );
     });
 
@@ -1013,10 +1013,10 @@ describe('CharacterEditor', () => {
       const { fixture, el } = await render();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
-      await openStep(fixture, 'Atributos');
+      await openStep(fixture, 'Habilidades');
 
       const summary = el.querySelector('.bonuses__summary');
-      expect(summary?.textContent).toContain('Aumento de atributo, escolhas de raça, item mágico.');
+      expect(summary?.textContent).toContain('Incremento no Valor de Habilidade, escolhas de raça, item mágico.');
       expect(el.querySelector('.bonuses__state')?.textContent).toContain('Nenhum em uso');
 
       cmp.fullForm.patchValue({
@@ -1032,7 +1032,7 @@ describe('CharacterEditor', () => {
     it('never shares the exact field name of a score with a manual bonus', async () => {
       configure({ id: 'camp-1' });
       const { fixture, el } = await render();
-      await openStep(fixture, 'Atributos');
+      await openStep(fixture, 'Habilidades');
 
       const labels = Array.from(el.querySelectorAll('app-ability-fields mat-label')).map((l) =>
         l.textContent?.replace(/\s+/g, ' ').trim(),
@@ -1201,7 +1201,7 @@ describe('CharacterEditor', () => {
 
       expect(fake.createCharacterCalls.length).toBe(0);
       expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
-        'Atributos: coloque cada resultado num atributo.',
+        'Habilidades: coloque cada resultado numa habilidade.',
       );
 
       cmp.abilitiesIncomplete.set(false);
@@ -1224,7 +1224,7 @@ describe('CharacterEditor', () => {
         extraAbilityBonuses: { con: 1 },
       });
       fixture.detectChanges();
-      await openStep(fixture, 'Atributos');
+      await openStep(fixture, 'Habilidades');
       expect(cmp.finalConstitution()).toBe(16);
       expect(cmp.hitDie()).toBe(6);
       const labels = Array.from(el.querySelectorAll('app-hit-points-rolls mat-label')).map((l) =>
@@ -1243,7 +1243,7 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
       cmp.fullForm.patchValue({ level: 3, hitPointsMethod: 'rolled' });
       fixture.detectChanges();
-      await openStep(fixture, 'Atributos');
+      await openStep(fixture, 'Habilidades');
       expect(el.querySelector('app-hit-points-rolls')).toBeNull();
       expect(el.textContent).toContain('Escolha a classe no passo Básico');
     });
@@ -1715,7 +1715,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     TestBed.resetTestingModule();
     configure({ id: 'camp-1' }, null);
     const free = await render();
-    await openStep(free.fixture, 'Atributos');
+    await openStep(free.fixture, 'Habilidades');
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
     expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });
@@ -1734,7 +1734,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     expect(cmp.abilitiesIncomplete()).toBe(true);
     await cmp.submit();
     expect(fake.createCharacterCalls).toHaveLength(0);
-    expect(cmp.invalidSummary()).toContain('coloque cada valor do conjunto num atributo');
+    expect(cmp.invalidSummary()).toContain('coloque cada valor do conjunto numa habilidade');
 
     // Typed values: complete, and the method goes with the request.
     const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
@@ -1771,7 +1771,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     fixture.detectChanges();
     expect(cmp.saveState()).toEqual({
       status: 'error',
-      message: 'O mestre não liberou esse jeito de fazer os atributos nesta mesa. Escolha outro.',
+      message: 'O mestre não liberou esse jeito de fazer as habilidades nesta mesa. Escolha outro.',
     });
   });
 
@@ -1844,7 +1844,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     fake.loadCharacterForEditFn = () =>
       Promise.resolve({ kind: 'player' as const, revision: 2, blocked: null, sheetLocked: false, full: null, basic: null, abilityOrigin: { method: 'point_buy' as const, rolls: null } });
     const free = await render();
-    await openStep(free.fixture, 'Atributos');
+    await openStep(free.fixture, 'Habilidades');
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
     expect(free.el.querySelector('app-ability-scores')).not.toBeNull();
   });

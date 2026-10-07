@@ -130,13 +130,13 @@ function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): Charac
 export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): string {
   switch (reason) {
     case AbilityScoresRefusalReason.METHOD_NOT_ALLOWED:
-      return 'O mestre não liberou esse jeito de fazer os atributos nesta mesa. Escolha outro.';
+      return 'O mestre não liberou esse jeito de fazer as habilidades nesta mesa. Escolha outro.';
     case AbilityScoresRefusalReason.NOT_STANDARD_ARRAY:
-      return 'Os valores não são o conjunto padrão: cada valor do conjunto vai em um atributo, uma vez só.';
+      return 'Os valores não são o conjunto padrão: cada valor do conjunto vai em uma habilidade, uma vez só.';
     case AbilityScoresRefusalReason.BAD_POINT_BUY:
       return 'A compra por pontos passou do total de pontos, ou tem um valor fora do limite. Confira os valores.';
     case AbilityScoresRefusalReason.NO_ROLLS_STORED:
-      return 'Role os atributos antes de criar o personagem.';
+      return 'Role as habilidades antes de criar o personagem.';
     case AbilityScoresRefusalReason.NOT_THE_ROLLS:
       return 'Os valores não são os seis resultados rolados. Use cada resultado uma vez.';
     case AbilityScoresRefusalReason.TYPED_OUT_OF_RANGE:
@@ -148,9 +148,9 @@ export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): strin
     case AbilityScoresRefusalReason.ROLLS_ALREADY_STORED:
       return 'Os dados já foram guardados e não mudam. Use os resultados que aparecem.';
     case AbilityScoresRefusalReason.EXTRA_BONUSES:
-      return 'Os bônus manuais passam do que a raça e os aumentos de atributo deixam pôr.';
+      return 'Os bônus manuais passam do que a raça e os incrementos no valor de habilidade deixam pôr.';
     default:
-      return 'Os atributos não seguem as regras da mesa. Confira o passo "Atributos".';
+      return 'As habilidades não seguem as regras da mesa. Confira o passo "Habilidades".';
   }
 }
 
@@ -172,7 +172,7 @@ export function describeCharacterError(err: unknown, nameOf?: (key: string) => s
     // A new sheet whose hit points above level 1 are not what the table's rule allows (RN-24).
     const [hp] = connectErr.findDetails(LevelUpRefusalSchema);
     if (hp?.reason === LevelUpRefusalReason.HIT_POINTS_RULE) {
-      return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Atributos".';
+      return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Habilidades".';
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
     const content = detail?.contentKey ? contentRef(detail.contentKey, nameOf ?? (() => undefined)) : undefined;

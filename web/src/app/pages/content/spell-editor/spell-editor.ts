@@ -119,7 +119,7 @@ export class SpellEditor {
   protected readonly moreNote = computed(() => moreHint(this.draft().level));
   protected readonly schools = computed<SelectOption[]>(() => [...this.catalog().schools]);
   protected readonly classes = computed(() => this.catalog().castingClasses);
-  /** "Mais criaturas por círculo" stays folded until asked, or until the spell has a number there. */
+  /** "Mais criaturas por nível de espaço" stays folded until asked, or until the spell has a number there. */
   protected readonly morePerCircle = signal(false);
   protected readonly nav = navOfKind(TableContentKind.SPELL);
 

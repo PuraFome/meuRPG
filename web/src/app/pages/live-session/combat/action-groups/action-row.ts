@@ -8,7 +8,7 @@ let nextId = 0;
 
 /**
  * One option of "Sua vez" (E6-06): the name, its tags on a line of their own
- * ("Truque", "1º círculo", "Reação": the name column is narrow beside the "?"
+ * ("Truque", "1º nível", "Reação": the name column is narrow beside the "?"
  * and the button), the detail and, when the option can be used, its button. A
  * spell has the "?" (E8-02) between its text and the button, 44 px, never
  * disabled: the description of a spell that cannot be cast now is still worth

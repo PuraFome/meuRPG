@@ -78,7 +78,7 @@ func TestMR004_SheetComesWithServerCalculatedValues(t *testing.T) {
 	// Every section of the official sheet has its data: abilities, skills,
 	// combat, spells, equipment, features.
 	sections := map[string]int{
-		"atributos": len(d.GetAbilities()), "perícias": len(d.GetSkills()), "ataques": len(d.GetAttacks()),
+		"habilidades": len(d.GetAbilities()), "perícias": len(d.GetSkills()), "ataques": len(d.GetAttacks()),
 		"magias": len(d.GetSpells()), "equipamento": len(c.GetSheet().GetFull().GetEquipment()), "características": len(d.GetFeatures()),
 	}
 	for section, n := range sections {
@@ -212,7 +212,7 @@ func TestMR006_BeforeAnySessionThePlayerEditsTheSheet(t *testing.T) {
 }
 
 // MR-006, first criterion: Dado que a primeira sessão da campanha já
-// começou, quando o jogador tenta editar os atributos da própria ficha,
+// começou, quando o jogador tenta editar as habilidades da própria ficha,
 // então o servidor recusa e o mestre consegue editar a mesma ficha.
 func TestMR006_AfterTheFirstSessionOnlyTheMasterEditsTheSheet(t *testing.T) {
 	t.Parallel()

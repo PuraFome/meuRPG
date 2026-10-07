@@ -65,7 +65,7 @@ export function usedWords(used: number, total: number): string {
   return `${used} de ${total} usados`;
 }
 
-/** "1º círculo". */
+/** "1º nível". */
 /** "1 livre de 4", "0 livres de 2": the slots still free, as the combat
  * screens count them (timeline decision 7). */
 export function freeWords(used: number, total: number): string {
@@ -74,7 +74,7 @@ export function freeWords(used: number, total: number): string {
 }
 
 export function slotLevelLabel(level: number): string {
-  return `${level}º círculo`;
+  return `${level}º nível`;
 }
 
 /** The accessible name of a row of slot dots. */

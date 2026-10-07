@@ -84,10 +84,10 @@ test(
       await joinedPage.goto(`/campaigns/${campaignId}/characters/${characterId}`);
 
       // The official sheet's sections (character-sheet.html and its child
-      // components), each an <h2>. "Atributos" and "Combate" are for screen
+      // components), each an <h2>. "Habilidades" and "Combate" are for screen
       // readers (the medallions and the shield are their visible titles);
       // "Magias de mago" only shows for a caster, which Pensantus is.
-      for (const section of ['Atributos', 'Combate', 'Perícias', 'Magias', 'Equipamento', 'Características e traços', 'História']) {
+      for (const section of ['Habilidades', 'Combate', 'Perícias', 'Magias', 'Equipamento', 'Características e traços', 'História']) {
         await expect(joinedPage.getByRole('heading', { level: 2, name: section })).toBeVisible();
       }
 

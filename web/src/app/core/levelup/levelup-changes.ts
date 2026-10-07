@@ -49,7 +49,7 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
   const up = increases(levelUp);
   if (up.length > 0) {
     rows.push({
-      label: 'Atributos',
+      label: 'Habilidades',
       value:
         up.length === 1
           ? `+${up[0].by} em ${abilityLabel(up[0].key)}`

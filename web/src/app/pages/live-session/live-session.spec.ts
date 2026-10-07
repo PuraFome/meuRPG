@@ -216,7 +216,7 @@ describe('LiveSession', () => {
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');
     expect(el.textContent).toContain('Mago 3, Gnomo das Rochas');
     expect(el.textContent).toContain('1 de 3 usados');
-    expect(el.querySelector('[aria-label="1º círculo: 2 livres de 4"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="1º nível: 2 livres de 4"]')).not.toBeNull();
     expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
     expect(el.textContent).not.toContain('Ajustar');
     // Here already: the notice about this session is spent.

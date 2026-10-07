@@ -1,4 +1,4 @@
-<div class="cards" role="group" aria-label="Jeitos de fazer os atributos">
+<div class="cards" role="group" aria-label="Jeitos de fazer as habilidades">
   @for (c of cards(); track c.key) {
     <label class="card" [class.card--on]="rules()[c.key]">
       <input type="checkbox" class="mr-visually-hidden" [checked]="rules()[c.key]" (change)="toggle(c.key)" />

@@ -23,11 +23,11 @@ const steps = (o: ReturnType<typeof wizardOptions>, sub = '', maxAfter = o.prepa
   stepsFor(o, totalsFor(o, sub), preparedMore(o, maxAfter, prepared));
 
 describe('the steps of a level-up (MR-040)', () => {
-  it('gives Pensantus Atributos, Vida, Magias and Resumo at Mago 4', () => {
+  it('gives Pensantus Habilidades, Vida, Magias and Resumo at Mago 4', () => {
     expect(steps(wizardOptions())).toEqual(['abilities', 'hp', 'spells', 'summary']);
   });
 
-  it('drops Atributos where the level has no increase, and Magias where nothing is chosen', () => {
+  it('drops Habilidades where the level has no increase, and Magias where nothing is chosen', () => {
     const fighter4 = fighterOptions({ abilityScoreImprovement: true });
     expect(steps(fighter4)).toEqual(['abilities', 'hp', 'summary']);
     // Toren at Guerreiro 5: Vida and Resumo only, the hit points never go.
@@ -96,8 +96,8 @@ describe('the pickers lists', () => {
   it('offers for preparing the book with the spells just copied, marked as new', () => {
     const items = preparedOptions(o, SPELLS, { ...WIZARD_KEYS, prepared: ['spell:magic-missile'] }, new Set(['spell:misty-step']));
     expect(items.map((i) => [i.name, plain(i.sub)])).toEqual([
-      ['Detectar Magia', '1º círculo · Adivinhação · ritual'],
-      ['Passo Nebuloso', '2º círculo · Conjuração · nova no livro'],
+      ['Detectar Magia', '1º nível · Adivinhação · ritual'],
+      ['Passo Nebuloso', '2º nível · Conjuração · nova no livro'],
     ]);
   });
 

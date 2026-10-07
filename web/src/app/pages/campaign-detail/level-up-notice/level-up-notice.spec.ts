@@ -70,7 +70,7 @@ describe("the master's level-up notice and \"O que mudou\" (MR-040)", () => {
     f.detectChanges();
     const t = text(f);
     expect(t).toContain('O que Pensantus escolheu no nível 4');
-    expect(t).toContain('Atributos+2 em Inteligência');
+    expect(t).toContain('Habilidades+2 em Inteligência');
     expect(t).toContain('Truque novoLuz');
     expect(t).toContain('Confirmado em');
     expect(t).toContain('Nada fica à espera do seu OK');

@@ -1787,7 +1787,7 @@ type SceneAction struct {
 	// empty for none, and then the app shows check_name.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The check's name in Portuguese: "Investigação", "Teste de Força",
-	// "Salvaguarda de Sabedoria".
+	// "Teste de resistência de Sabedoria".
 	CheckName string `protobuf:"bytes,4,opt,name=check_name,json=checkName,proto3" json:"check_name,omitempty"`
 	// The difficulty class, 1 to 30; 0 means none. The master always receives
 	// it; a player only when the scene's `show_dc` is on (RN-20), and then

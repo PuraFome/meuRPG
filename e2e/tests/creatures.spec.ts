@@ -42,7 +42,7 @@ test(
       // The sheet: the name, then the forms; the filled button names what happens and stays off until it can.
       await panel.getByRole('button', { name: 'Convocar Familiar' }).click();
       const sheet = player.getByRole('dialog', { name: 'Convocar Familiar' });
-      await expect(sheet.getByText('Magia de 1º círculo · ritual · 1 hora')).toBeVisible();
+      await expect(sheet.getByText('Magia de 1º nível · ritual · 1 hora')).toBeVisible();
       await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
       await sheet.getByLabel('Nome do familiar').fill('Nanquim');
       await expect(sheet.locator('.line')).toHaveText(/Escolha a forma\.$/);

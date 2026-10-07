@@ -69,7 +69,7 @@ function savesChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
   return after.savingThrows.flatMap((s) => {
     const b = was.get(s.ability);
     const key = ABILITY_KEY[s.ability];
-    const r = b && key ? row(`save-${key}`, `Salvaguarda de ${abilityLabel(key)}`, formatModifier(b.bonus), formatModifier(s.bonus)) : null;
+    const r = b && key ? row(`save-${key}`, `Teste de resistência de ${abilityLabel(key)}`, formatModifier(b.bonus), formatModifier(s.bonus)) : null;
     return r ? [r] : [];
   });
 }

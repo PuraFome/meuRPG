@@ -646,7 +646,7 @@ test('quem está sem personagem passa no axe no tema escuro, no celular', { tag:
 
 /**
  * The character editor's rolls and the spell "?" (MR-004, E6-20 to E6-23):
- * the "Atributos" step with "Rolar 4d6" (half placed, and on the phone with a
+ * the "Habilidades" step with "Rolar 4d6" (half placed, and on the phone with a
  * result chosen), the rolled hit points, the "Magias" step with its search
  * fields, and the spell dialog (a bottom sheet on the phone).
  */
@@ -668,7 +668,7 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('option', { name: 'Mago', exact: true }).click();
     await page.getByLabel('Nível', { exact: true }).fill('3');
 
-    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
     if (width < 768) {
       await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
@@ -677,7 +677,7 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     } else {
       await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
     }
-    await expectScreenPasses(page, `Atributos, Rolar 4d6 ${where}`);
+    await expectScreenPasses(page, `Habilidades, Rolar 4d6 ${where}`);
 
     await page.getByRole('radio', { name: /Rolado/ }).check();
     await page.getByRole('button', { name: 'Rolar os níveis que faltam' }).click();
@@ -1093,7 +1093,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The cast sheet: the slot and the darts, then the result and the damage to roll.
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
-    await expect(p.getByText('É o seu último espaço de 1º círculo: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
+    await expect(p.getByText('É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
     await expectScreenPasses(p, `Conjurar, o espaço e os dardos ${where}`);
     const more = (who: string) => p.getByRole('button', { name: `Pôr um dardo em ${who}` });
     await more('Capitão Goblin').click();
@@ -2352,11 +2352,11 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `A ficha que pode subir de nível ${where}`);
 
     await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
-    await expect(p.getByText('Passo 1 de 4 · Atributos')).toBeVisible();
-    await expectScreenPasses(p, `Atributos, com a escolha faltando ${where}`);
+    await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+    await expectScreenPasses(p, `Habilidades, com a escolha faltando ${where}`);
     await row('Inteligência').click();
     await expect(p.getByText('18 → 20')).toBeVisible();
-    await expectScreenPasses(p, `Atributos, Inteligência 20 ${where}`);
+    await expectScreenPasses(p, `Habilidades, Inteligência 20 ${where}`);
     await p.getByRole('button', { name: 'Cancelar' }).click();
     await expect(p.getByText('Descartar as escolhas?')).toBeVisible();
     await expectScreenPasses(p, `A pergunta de descartar ${where}`);
@@ -2705,7 +2705,7 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
       // A row not chosen yet has only "Escolher"; once chosen it has "Menos" and "Mais".
       await cast.getByRole('button', { name: 'Escolher Lobo', exact: true }).click();
       await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
-      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º círculo');
+      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º nível');
       await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
       await cast.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
       await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
@@ -3654,7 +3654,7 @@ test('as regras da mesa passam no axe e nas conferências de layout no tema escu
 });
 
 /**
- * The "Atributos" step of a player who makes a new sheet by the table's rules (E10-03 state 4): the four ways, each
+ * The "Habilidades" step of a player who makes a new sheet by the table's rules (E10-03 state 4): the four ways, each
  * with what it shows (the placing of the standard array, the point buy with the points left, the 4d6 the server
  * rolled and the physical dice to type, and the typed values).
  */
@@ -3666,53 +3666,53 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     const m = await mContext.newPage();
     const p = await pContext.newPage();
     await Promise.all([m.goto('/'), p.goto('/')]);
-    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade atributos ${Date.now()}`);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade habilidades ${Date.now()}`);
     const where = `(${colorScheme}, ${width}px)`;
     await open(p, `/campaigns/${campaignId}/characters/new`);
     await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
-    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await p.getByRole('tab', { name: 'Habilidades' }).click();
     await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
-    await expectScreenPasses(p, `Atributos, conjunto padrão ${where}`);
+    await expectScreenPasses(p, `Habilidades, conjunto padrão ${where}`);
 
     await method(p, 'Pontos');
     for (let i = 0; i < 7; i++) {
       await p.getByRole('button', { name: 'Aumentar Sabedoria', exact: true }).click();
     }
     await expect(p.getByText('Restam 18 pontos')).toBeVisible();
-    await expectScreenPasses(p, `Atributos, compra por pontos ${where}`);
+    await expectScreenPasses(p, `Habilidades, compra por pontos ${where}`);
 
     await method(p, '4d6');
-    await expectScreenPasses(p, `Atributos, 4d6 ainda sem rolar ${where}`);
-    await p.getByRole('button', { name: 'Rolar os atributos' }).click();
+    await expectScreenPasses(p, `Habilidades, 4d6 ainda sem rolar ${where}`);
+    await p.getByRole('button', { name: 'Rolar as habilidades' }).click();
     await expect(p.getByText(/Rolados em/)).toBeVisible();
-    await expectScreenPasses(p, `Atributos, 4d6 rolados pelo servidor ${where}`);
+    await expectScreenPasses(p, `Habilidades, 4d6 rolados pelo servidor ${where}`);
 
     await method(p, 'Digitar');
     await p.getByLabel('Força', { exact: true }).fill('19');
-    await expectScreenPasses(p, `Atributos, digitar com um valor fora do limite ${where}`);
+    await expectScreenPasses(p, `Habilidades, digitar com um valor fora do limite ${where}`);
 
     // Physical dice: a second campaign where everybody rolls their own.
     const physical = await campaignWithEmptyPlayer(m, p, `Acessibilidade dados ${Date.now()}`);
     await setTableRulesRPC(m, physical, { diceMode: 'DICE_MODE_PHYSICAL' });
     await open(p, `/campaigns/${physical}/characters/new`);
-    await p.getByRole('tab', { name: 'Atributos' }).click();
+    await p.getByRole('tab', { name: 'Habilidades' }).click();
     await method(p, '4d6');
     await expect(p.getByText('Digite os quatro dados de cada rolagem.')).toBeVisible();
-    await expectScreenPasses(p, `Atributos, dados físicos a digitar ${where}`);
+    await expectScreenPasses(p, `Habilidades, dados físicos a digitar ${where}`);
   } finally {
     await Promise.all([mContext.close(), pContext.close()]);
   }
 }
 
-test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+test('as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
   await scanTableAbilities(browser, 'light', 1280);
 });
 
-test('os atributos por jeito passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+test('as habilidades por jeito passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
   await scanTableAbilities(browser, 'dark', 390);
 });
 
-test('os atributos por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
+test('as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
   await scanTableAbilities(browser, 'light', 320);
 });
 
@@ -5244,8 +5244,8 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: 'Vigília' }).first().click();
       await expect(m.getByLabel('Nome da característica')).toHaveValue('Vigília');
       await expectScreenPasses(m, `Editor de classe, uma característica aberta ${where}`);
-      await m.getByRole('button', { name: 'Mostrar os 9 círculos' }).click();
-      await expectScreenPasses(m, `Editor de classe, os 9 círculos ${where}`);
+      await m.getByRole('button', { name: 'Mostrar os 9 níveis de magia' }).click();
+      await expectScreenPasses(m, `Editor de classe, os 9 níveis de magia ${where}`);
       // A refused cell: a half caster has no cantrips at level 1.
       await m.getByLabel('Nível 1, truques').fill('5');
       await m.getByRole('button', { name: 'Salvar classe' }).click();
@@ -5253,7 +5253,7 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Editor de classe, a célula recusada ${where}`);
       await m.getByLabel('Nível 1, truques').fill('');
       // The question before an edited table is replaced.
-      await m.getByLabel('Nível 5, espaços de 1º círculo').fill('9');
+      await m.getByLabel('Nível 5, espaços de magia de 1º nível').fill('9');
       await m.locator('label', { hasText: 'Completa' }).first().click();
       await expect(m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' })).toBeVisible();
       await expectScreenPasses(m, `Editor de classe, a pergunta antes de refazer a tabela ${where}`);
@@ -5372,7 +5372,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await expectScreenPasses(page, `Editor, a subclasse da mesa aberta ${where}`);
     await page.keyboard.press('Escape');
     await page.getByRole('tab', { name: 'Magias' }).click();
-    await expect(page.getByRole('heading', { name: 'Clérigo · até o 1º círculo' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Clérigo · até o 1º nível de magia' })).toBeVisible();
     await page.locator('.spell-section').nth(1).getByPlaceholder('Buscar magia').fill('amizade');
     await expect(page.locator('.picker__out')).toBeVisible();
     await expectScreenPasses(page, `Editor, as magias de cada classe e uma fora da lista ${where}`);
@@ -5401,7 +5401,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     }
     await expectScreenPasses(page, `Subir de nível, as magias ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
-    const slots = page.getByRole('region', { name: 'O que muda', exact: true }).locator('li').filter({ hasText: 'Espaços de 1º círculo' });
+    const slots = page.getByRole('region', { name: 'O que muda', exact: true }).locator('li').filter({ hasText: 'Espaços de 1º nível' });
     await expect(slots).toContainText('Da mesa');
     await expectScreenPasses(page, `Subir de nível, o resumo com "Da mesa" ${where}`);
 

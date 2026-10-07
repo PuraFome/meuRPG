@@ -153,12 +153,12 @@
         (featureAdded)="addFromGrid($event)"
       />
       @if (canAllCircles()) {
-        <button type="button" class="link" (click)="allCircles.set(true)">Mostrar os 9 círculos</button>
+        <button type="button" class="link" (click)="allCircles.set(true)">Mostrar os 9 níveis de magia</button>
       }
-      <p class="legend"><span class="chip chip--locked"><mat-icon aria-hidden="true">lock</mat-icon>Aumento de atributo</span> Os chips tracejados com cadeado são postos pelo app: você muda só os níveis, na linha de baixo.</p>
-      <p class="group__label">Aumento de atributo nos níveis</p>
+      <p class="legend"><span class="chip chip--locked"><mat-icon aria-hidden="true">lock</mat-icon>Incremento no Valor de Habilidade</span> Os chips tracejados com cadeado são postos pelo app: você muda só os níveis, na linha de baixo.</p>
+      <p class="group__label">Incremento no Valor de Habilidade nos níveis</p>
       <app-pick-list
-        label="Aumento de atributo nos níveis"
+        label="Incremento no Valor de Habilidade nos níveis"
         addLabel="Adicionar nível"
         [options]="asiOptions"
         [values]="asiValues()"

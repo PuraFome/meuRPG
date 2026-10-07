@@ -54,7 +54,7 @@
                 <span
                   class="member__slot"
                   role="img"
-                  [attr.aria-label]="slotRowLabel(s.level + 'º círculo', s.used, s.total)"
+                  [attr.aria-label]="slotRowLabel(s.level + 'º nível', s.used, s.total)"
                 >
                   <span aria-hidden="true">{{ s.level }}º</span>
                   <app-slot-dots [total]="s.total" [used]="s.used" size="small" />
@@ -68,7 +68,7 @@
                   class="member__slot"
                   role="img"
                   [attr.aria-label]="
-                    slotRowLabel('Pacto, ' + p.slotLevel + 'º círculo', p.used, p.total)
+                    slotRowLabel('Pacto, ' + p.slotLevel + 'º nível', p.used, p.total)
                   "
                 >
                   <span aria-hidden="true">Pacto {{ p.slotLevel }}º</span>

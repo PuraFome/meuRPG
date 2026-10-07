@@ -126,8 +126,8 @@ describe('TableAbilityScores', () => {
       await setup();
       expect(method).toBe('standard_array');
       expect(incomplete).toBe(true);
-      expect(problem).toBe('coloque cada valor do conjunto num atributo');
-      expect(text()).toContain('Faltam 6 atributos');
+      expect(problem).toBe('coloque cada valor do conjunto numa habilidade');
+      expect(text()).toContain('Faltam 6 habilidades');
       const select = el.querySelectorAll('select')[0] as HTMLSelectElement;
       expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Escolher', '15', '14', '13', '12', '10', '8']);
     });
@@ -221,11 +221,11 @@ describe('TableAbilityScores', () => {
 
     it('asks the server for the roll, never the browser, and shows the dice with the kept sum and when', async () => {
       await dice(table());
-      expect(text()).toContain('Rolar os atributos');
+      expect(text()).toContain('Rolar as habilidades');
       expect(incomplete).toBe(true);
-      expect(problem).toBe('role os atributos');
+      expect(problem).toBe('role as habilidades');
       const spy = vi.spyOn(crypto, 'getRandomValues');
-      button('Rolar os atributos').click();
+      button('Rolar as habilidades').click();
       await settle();
       expect(roll).toHaveBeenCalledTimes(1);
       expect(roll).toHaveBeenCalledWith('camp-1', undefined);
@@ -234,12 +234,12 @@ describe('TableAbilityScores', () => {
       expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
       expect(el.querySelector('app-dice-result')?.textContent).toContain('16');
       expect(button('Rolar de novo')).toBeUndefined();
-      expect(problem).toBe('coloque cada resultado num atributo');
+      expect(problem).toBe('coloque cada resultado numa habilidade');
     });
 
     it('shows the roll the server already kept, the same on a reload, with no roll button', async () => {
       await dice(table({ rolls: STORED }));
-      expect(button('Rolar os atributos')).toBeUndefined();
+      expect(button('Rolar as habilidades')).toBeUndefined();
       expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
       expect(roll).not.toHaveBeenCalled();
     });
@@ -309,7 +309,7 @@ describe('TableAbilityScores', () => {
           { desc: AbilityScoresRefusalSchema, value: create(AbilityScoresRefusalSchema, { reason: AbilityScoresRefusalReason.DICE_FORCED_PHYSICAL }) },
         ]),
       );
-      button('Rolar os atributos').click();
+      button('Rolar as habilidades').click();
       await settle();
       expect(text()).toContain('Nesta campanha todos usam os próprios dados: digite os dados que você tirou.');
     });
@@ -344,7 +344,7 @@ describe('TableAbilityScores', () => {
 
     it('keeps the 4d6 the sheet was made with, placed as the scores are, and never rolls again', async () => {
       await locked('rolled_4d6', [16, 14, 13, 12, 10, 8], STORED);
-      expect(button('Rolar os atributos')).toBeUndefined();
+      expect(button('Rolar as habilidades')).toBeUndefined();
       expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
       expect(fixture.componentInstance.incomplete()).toBe(false);
       expect(scores()).toEqual([16, 14, 13, 12, 10, 8]);

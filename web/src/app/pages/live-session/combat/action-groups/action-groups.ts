@@ -76,7 +76,7 @@ export class ActionGroups {
   readonly locked = input('');
   /** The player's familiar ('Nanquim'): "Ver pelos olhos do Nanquim" is an action (MR-036, E9-04). `null`: none, or already looking. */
   readonly familiar = input<string | null>(null);
-  /** The character's slots, for the rows above the spells ("1º círculo ○ ✕ ✕ ✕ 1 livre de 4"). */
+  /** The character's slots, for the rows above the spells ("1º nível ○ ✕ ✕ ✕ 1 livre de 4"). */
   readonly slots = input<{ readonly usage: readonly SlotUsageVm[]; readonly pact: PactSlotsVm | null }>({
     usage: [],
     pact: null,

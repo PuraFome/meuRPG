@@ -40,7 +40,7 @@
 </section>
 @if (d.higherLevel.length > 0) {
   <section class="spell__text" aria-labelledby="spell-higher-label">
-    <h3 class="spell__label" id="spell-higher-label">Em círculos maiores</h3>
+    <h3 class="spell__label" id="spell-higher-label">Em níveis superiores</h3>
     <div class="spell__prose" [class.spell__prose--ours]="ours() || plain()" [attr.lang]="ours() ? null : 'en'">
       @for (paragraph of d.higherLevel; track $index) {
         <p>{{ paragraph }}</p>

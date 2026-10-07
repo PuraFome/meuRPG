@@ -123,12 +123,12 @@ describe('LevelUpPage', () => {
   const pickRow = (f: ComponentFixture<LevelUpPage>, name: string) =>
     Array.from(el(f).querySelectorAll<HTMLElement>('.row__main, .row')).find((r) => r.textContent?.includes(name))!;
 
-  it('lists the four steps of Pensantus, and starts at Atributos', async () => {
+  it('lists the four steps of Pensantus, and starts at Habilidades', async () => {
     const f = await setup();
     expect(text(f)).toContain('Subir para o nível 4');
     expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
-    expect(text(f)).toContain('Passo 1 de 4 · Atributos');
-    expect(Array.from(el(f).querySelectorAll('.step__label')).map((s) => s.textContent)).toEqual(['Atributos', 'Vida', 'Magias', 'Resumo']);
+    expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
+    expect(Array.from(el(f).querySelectorAll('.step__label')).map((s) => s.textContent)).toEqual(['Habilidades', 'Vida', 'Magias', 'Resumo']);
   });
 
   it('has only Vida and Resumo when the level has nothing else to choose (Toren)', async () => {
@@ -142,7 +142,7 @@ describe('LevelUpPage', () => {
     const f = await setup();
     const next = button(f, 'Próximo');
     expect(next.getAttribute('aria-disabled')).toBe('true');
-    expect(text(f)).toContain('Falta escolher 1 atributo.');
+    expect(text(f)).toContain('Falta escolher 1 habilidade.');
     await click(f, next);
     expect(text(f)).toContain('Passo 1 de 4');
     expect(el(f).querySelector('#pick-abilities')?.contains(document.activeElement)).toBe(true);
@@ -155,7 +155,7 @@ describe('LevelUpPage', () => {
     await click(f, button(f, 'Próximo'));
     expect(text(f)).toContain('Passo 2 de 4 · Vida');
     await click(f, button(f, 'Voltar'));
-    expect(text(f)).toContain('Passo 1 de 4 · Atributos');
+    expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
   });
 
   describe('the discard question', () => {
@@ -525,7 +525,7 @@ describe('LevelUpPage', () => {
       client.options.mockRejectedValue(new Error('offline'));
       watcher.hint();
       await load(f);
-      expect(text(f)).toContain('Passo 1 de 4 · Atributos');
+      expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
       expect(el(f).querySelector('.js-failure')).toBeNull();
       expect(text(f)).not.toContain('O mestre mudou');
     });

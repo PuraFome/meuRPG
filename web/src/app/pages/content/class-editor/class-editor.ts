@@ -174,7 +174,7 @@ export class ClassEditor {
     return d.rows.map((row, i) => {
       const level = i + 1;
       const chips: GridChip[] = [];
-      if (d.asiLevels.includes(level)) chips.push({ id: `asi-${level}`, label: 'Aumento de atributo', locked: true });
+      if (d.asiLevels.includes(level)) chips.push({ id: `asi-${level}`, label: 'Incremento no Valor de Habilidade', locked: true });
       if (d.subclassLevel === level) chips.push({ id: `sub-${level}`, label: 'Escolha de subclasse', locked: true });
       for (const f of d.features.filter((x) => x.level === level)) {
         chips.push({ id: f.id, label: f.feature.name.trim() || 'Sem nome', locked: false });

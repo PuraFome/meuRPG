@@ -314,7 +314,7 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
  * button sits under whichever step is open, so it is reachable from any
  * step (the "Passo anterior"/"Próximo passo" buttons at the end of each
  * step are a convenience only). This helper only visits the steps it
- * needs (Básico, Atributos, Perícias) — Magias and Equipamento are both
+ * needs (Básico, Habilidades, Perícias) — Magias and Equipamento are both
  * fully optional and left at their defaults, and there is no separate
  * "História" step: the story is its own screen/RPC (amendment A3).
  *
@@ -368,8 +368,8 @@ export async function createCharacterViaUI(
     }
   }
 
-  // Passo "Atributos": jump there by clicking its tab (no "next" button).
-  await page.getByRole('tab', { name: 'Atributos' }).click();
+  // Passo "Habilidades": jump there by clicking its tab (no "next" button).
+  await page.getByRole('tab', { name: 'Habilidades' }).click();
   // A player makes the scores by one of the table's ways (RN-24, all four allowed by default): "Digitar" is the one
   // that takes the six numbers as they are. The master's NPCs have the free fields and no choice of way.
   const typedWay = page.locator('.seg__item').filter({ hasText: 'Digitar' });

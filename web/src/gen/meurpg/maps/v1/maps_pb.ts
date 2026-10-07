@@ -826,7 +826,7 @@ export type SceneAction = Message<"meurpg.maps.v1.SceneAction"> & {
 
   /**
    * The check's name in Portuguese: "Investigação", "Teste de Força",
-   * "Salvaguarda de Sabedoria".
+   * "Teste de resistência de Sabedoria".
    *
    * @generated from field: string check_name = 4;
    */

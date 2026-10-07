@@ -67,7 +67,7 @@ export class CombatSummary {
     this.players().map((c) => {
       const v = this.vitals().find((x) => x.characterId === c.characterId);
       const slots = (v?.spellSlots ?? [])
-        .map((s) => `${s.level}º círculo: ${s.total - s.used} livres de ${s.total}`.replace(/(\d) livres de (\d)/, '$1\u00a0livres\u00a0de\u00a0$2'))
+        .map((s) => `${s.level}º nível: ${s.total - s.used} livres de ${s.total}`.replace(/(\d) livres de (\d)/, '$1\u00a0livres\u00a0de\u00a0$2'))
         .join(' · ');
       const down =
         v && v.hitPointsCurrent === 0

@@ -185,7 +185,7 @@ export class SummonSheet {
   protected readonly hasSetup = computed(() => !this.ritual() && (this.slotRows().length > 0 || this.circleOptions().length > 1));
   /** A creature was chosen: the slot and the quantity fold into one line, so the list gets the room. */
   protected readonly collapsed = computed(() => this.hasSetup() && this.total() > 0 && !this.editing());
-  /** "3º círculo · 2 feras de ND 1 ou menos". */
+  /** "3º nível · 2 feras de ND 1 ou menos". */
   protected readonly setupLine = computed(() => {
     const slot = this.slot();
     const o = this.opt();
@@ -515,7 +515,7 @@ function slotRow(sl: SummonSlot): SlotRow {
   };
 }
 
-/** "Conjurar Animais · 3º círculo · concentração": the parts that are there, with a dot between them. */
+/** "Conjurar Animais · 3º nível · concentração": the parts that are there, with a dot between them. */
 function joinDotsOf(parts: readonly string[]): string {
   return parts.filter(Boolean).join(' · ');
 }

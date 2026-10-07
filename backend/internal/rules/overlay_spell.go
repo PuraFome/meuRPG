@@ -241,7 +241,7 @@ func checkTarget(c *entryErrors, key, path string, t SpellTarget) SpellTarget {
 		}
 	case TargetCreature:
 		// One creature, and, if the master wants, one more for each circle above
-		// ("uma criatura, mais uma por círculo", as Hold Person).
+		// ("uma criatura, mais uma por nível", as Hold Person).
 		perSlot()
 		if t.Count != 0 || t.Shape != "" || t.SizeFt != 0 {
 			c.at(key, path, ".target.kind", ReasonValue, "one creature takes only 0 to 10 more per slot level")

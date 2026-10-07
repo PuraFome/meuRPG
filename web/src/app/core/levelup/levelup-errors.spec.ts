@@ -26,7 +26,7 @@ describe('the failures of the guided level-up', () => {
     const f = describeLevelUpFailure(refused(LevelUpRefusalReason.CANTRIPS));
     expect(f).toMatchObject({ kind: 'refusal', step: 'spells' });
     expect(f.message).toBe('Escolha todos os truques novos do nível, nem mais nem menos.');
-    expect(describeLevelUpFailure(refused(LevelUpRefusalReason.ABILITY_ABOVE_20))).toMatchObject({ step: 'abilities', message: 'Nenhum atributo passa de 20. Escolha outro.' });
+    expect(describeLevelUpFailure(refused(LevelUpRefusalReason.ABILITY_ABOVE_20))).toMatchObject({ step: 'abilities', message: 'Nenhuma habilidade passa de 20. Escolha outra.' });
     expect(describeLevelUpFailure(refused(LevelUpRefusalReason.HIT_POINT_ROLL_MISSING))).toMatchObject({ step: 'hp' });
     expect(describeLevelUpFailure(refused(LevelUpRefusalReason.SUBCLASS))).toMatchObject({ step: 'picks' });
   });

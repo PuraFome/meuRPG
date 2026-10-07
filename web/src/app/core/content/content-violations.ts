@@ -87,14 +87,14 @@ const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] =
   { shape: /^table_class\.(minimums|any_of)\.[a-z]+$/, text: 'O valor mínimo vai de 1 a 30.' },
   { shape: /^table_class\.(minimums|any_of)$/, text: 'O pré-requisito de multiclasse precisa de uma habilidade.' },
   { shape: /^table_class\.subclass_level$/, text: 'Esta classe não tem nível de subclasse entre 1 e 20.' },
-  { shape: /^table_class\.asi_levels\[\]$/, text: 'Os níveis de aumento de atributo são diferentes, de 1 a 20.' },
+  { shape: /^table_class\.asi_levels\[\]$/, text: 'Os níveis de incremento no valor de habilidade são diferentes, de 1 a 20.' },
   { shape: /^table_class\.levels$/, text: 'A tabela dos níveis precisa ter os 20 níveis.' },
   { shape: /^table_subclass\.levels$/, text: 'Uma subclasse que conjura precisa de uma linha em cada nível, do começo da conjuração ao 20.' },
   { shape: /^table_(class|subclass)\.levels\[\]\.level$/, text: 'Os níveis da subclasse vão de 1 a 20, em ordem.' },
   { shape: /^table_class\.levels\[\]\.prof_bonus$/, text: 'O bônus de proficiência vai de +1 a +12 (vazio é o do SRD).' },
   { shape: /^table_(class|subclass)\.levels\[\]\.cantrips_known$/, text: 'Truques: de 0 a 30, e 0 antes de a conjuração começar.' },
   { shape: /^table_(class|subclass)\.levels\[\]\.spells_known$/, text: 'Magias conhecidas: de 0 a 200, e 0 antes de a conjuração começar.' },
-  { shape: /^table_(class|subclass)\.levels\[\]\.slots\[\]$/, text: 'Espaços de magia: de 0 a 9 por círculo, e 0 antes de a conjuração começar. Pacto: espaços de um círculo só.' },
+  { shape: /^table_(class|subclass)\.levels\[\]\.slots\[\]$/, text: 'Espaços de magia: de 0 a 9 por nível de magia, e 0 antes de a conjuração começar. Pacto: espaços de um nível só.' },
   { shape: /^table_(class|subclass)\.levels\[\]\.slots$/, text: 'Quem conjura precisa de espaços de magia neste nível.' },
   { shape: /^table_class\.levels\[\]\.features\[\]$/, reason: 'limit', text: 'LIMIT_CLASS' },
   { shape: /^table_subclass\.levels\[\]\.features\[\]$/, reason: 'limit', text: 'LIMIT_SUBCLASS' },
@@ -112,16 +112,16 @@ const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] =
   { shape: /^table_subclass\.always_prepared$/, text: 'Magias sempre preparadas pedem uma classe ou subclasse que conjura.' },
   { shape: /^table_subclass\.always_prepared\[\]\.class_level$/, text: 'O nível da classe vai de 1 a 20.' },
   { shape: /^table_subclass\.always_prepared\[\]\.spell_key$/, reason: 'dangling_reference', text: 'Esta magia não existe mais. Escolha outra.' },
-  { shape: /^table_subclass\.always_prepared\[\]\.spell_key$/, text: 'Uma magia sempre preparada é de 1º círculo ou mais, nunca um truque.' },
+  { shape: /^table_subclass\.always_prepared\[\]\.spell_key$/, text: 'Uma magia sempre preparada é de 1º nível ou mais, nunca um truque.' },
   { shape: /^table_(class|subclass)\.levels\[\]\.features\[\]$/, text: 'Confira esta característica.' },
-  { shape: /\.level$/, text: 'Escolha um círculo de 0 (truque) a 9.' },
+  { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   { shape: /\.range\.kind$/, text: 'Esse alcance não combina com o alvo. “Só quem conjura” pede Pessoal; criaturas escolhidas pedem distância ou Toque.' },
   { shape: /\.range\.distance_ft$/, text: 'O alcance vai de 1,5 m a 1.584 m, em passos de 1,5 m.' },
   { shape: /\.target\.kind$/, text: 'Este alvo não aceita os outros campos preenchidos. Confira o alvo.' },
   { shape: /\.target\.shape$/, text: 'Escolha a forma da área: cone, cubo, cilindro, linha ou esfera.' },
   { shape: /\.target\.size_ft$/, text: 'A área vai de 1,5 m a 90 m, em passos de 1,5 m.' },
-  { shape: /\.target\.(count|per_slot_level)$/, text: 'Escreva um número de criaturas: 2 ou mais, e até 10 a mais por círculo.' },
+  { shape: /\.target\.(count|per_slot_level)$/, text: 'Escreva um número de criaturas: 2 ou mais, e até 10 a mais por nível de espaço.' },
   { shape: /\.casting_time\.unit$/, text: 'Escolha o tempo de conjuração.' },
   { shape: /\.casting_time\.amount$/, text: 'O tempo vai de 1 a 60 minutos ou horas; uma ação vale 1.' },
   { shape: /\.casting_time\.trigger_pt$/, reason: 'bad_text', text: 'O gatilho é uma linha só, de até 200 letras.' },
@@ -192,7 +192,7 @@ export function violationText(v: Pick<TableContentViolation, 'field' | 'reason'>
   }
   if (r === 'immutable') {
     return leaf === 'level'
-      ? 'Uma magia não passa de truque para círculo, nem o contrário. Crie outra.'
+      ? 'Um truque não vira magia de 1º nível ou mais, nem o contrário. Crie outra.'
       : 'Isto não muda depois de criado.';
   }
   if (r === 'size_limit') {

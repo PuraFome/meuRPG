@@ -285,7 +285,7 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 			if err := b.claim(castKey); err != nil {
 				c.add(err)
 			} else {
-				n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: key, Level: lvl, Desc: []string{"Esta classe conjura magias: a ficha mostra o atributo de conjuração, a CD, os espaços de magia e as magias."}}
+				n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: key, Level: lvl, Desc: []string{"Esta classe conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
 				n.namesEN[castKey], n.namesPT[castKey] = "Conjuração", "Conjuração"
 				if castingOK {
 					if err := b.compileOwn(castKey, path, castingEffect(&tc.Casting, key)); err != nil {
@@ -334,8 +334,8 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 }
 
 const (
-	asiName = "Aumento de Atributo"
-	asiText = "Aumente um atributo em 2 ou dois atributos em 1, até o máximo de 20."
+	asiName = "Incremento no Valor de Habilidade"
+	asiText = "Aumente uma habilidade em 2 ou duas habilidades em 1, até o máximo de 20."
 )
 
 // asiLevels checks the levels of the Ability Score Improvements, or gives the
@@ -467,7 +467,7 @@ func (b *overlayBuilder) addSubclass(ts *TableSubclass, path string) error {
 		if err := b.claim(castKey); err != nil {
 			c.add(err)
 		} else if castingOK && rows[start] != nil {
-			n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: parent, Subclass: key, Level: start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra o atributo de conjuração, a CD, os espaços de magia e as magias."}}
+			n.features[castKey] = &srd51.Feature{Key: castKey, Name: "Conjuração", Class: parent, Subclass: key, Level: start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
 			n.namesEN[castKey], n.namesPT[castKey] = "Conjuração", "Conjuração"
 			eff := castingEffect(ts.Casting, parent)
 			if err := b.compileOwn(castKey, path, eff); err != nil {

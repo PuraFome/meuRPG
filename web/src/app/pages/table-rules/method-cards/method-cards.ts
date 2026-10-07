@@ -11,7 +11,7 @@ const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 type MethodKey = 'standardArray' | 'pointBuy' | 'rolled4d6' | 'typed';
 
 /**
- * The master's "Atributos de uma ficha nova" (RN-24): four checkbox cards, one per way of making ability scores, at least
+ * The master's "Habilidades de uma ficha nova" (RN-24): four checkbox cards, one per way of making ability scores, at least
  * one on. The numbers in the words (the array, the budget, the score range, the typed range) are the server's
  * (`GetTableRules`); the three SRD 5.2.1 ways carry "SRD 5.2.1 (regras de 2024)" under them, and "Digitar" (ours) does not.
  */
@@ -33,7 +33,7 @@ export class MethodCards {
       {
         key: 'standardArray' as MethodKey,
         title: 'Conjunto padrão',
-        text: `${LIST.format(n.standardArray.map(String))}, um para cada atributo.`,
+        text: `${LIST.format(n.standardArray.map(String))}, um para cada habilidade.`,
         srd: true,
       },
       {

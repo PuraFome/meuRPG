@@ -29,7 +29,7 @@
 </label>
 
 <fieldset class="levels">
-  <legend class="mr-label">Círculo</legend>
+  <legend class="mr-label">Nível da magia</legend>
   <div class="chips">
     <button type="button" class="chip" [class.chip--on]="filter().levels.length === 0" [attr.aria-pressed]="filter().levels.length === 0" (click)="allLevels()">Todos</button>
     @for (c of chips; track c.level) {
@@ -39,7 +39,7 @@
         [class.chip--round]="c.level > 0"
         [class.chip--on]="filter().levels.includes(c.level)"
         [attr.aria-pressed]="filter().levels.includes(c.level)"
-        [attr.aria-label]="c.level === 0 ? 'Truque' : c.level + 'º círculo'"
+        [attr.aria-label]="c.level === 0 ? 'Truque' : c.level + 'º nível'"
         (click)="toggle(c.level)"
       >
         {{ c.label }}

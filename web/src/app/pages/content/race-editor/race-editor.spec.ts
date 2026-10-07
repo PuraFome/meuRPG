@@ -66,7 +66,7 @@ describe('RaceEditor', () => {
     expect((field(el, 'table_race.traits[0].effects[0].type') as HTMLSelectElement).selectedOptions[0].text).toBe('Proficiência');
     expect((field(el, 'table_race.traits[0].effects[0].proficiency') as HTMLSelectElement).selectedOptions[0].text).toBe('Percepção');
     const rows = Array.from(el.querySelectorAll('.preview .rows__row')).map((r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`);
-    expect(rows[0]).toBe('Atributos: Destreza +1, Sabedoria +2');
+    expect(rows[0]).toBe('Habilidades: Destreza +1, Sabedoria +2');
     expect(rows).toContain('Idiomas: Comum');
     expect(el.querySelectorAll('app-feature-editor')).toHaveLength(2);
   });

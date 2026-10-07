@@ -7,7 +7,7 @@ import { PickList } from './pick-list';
 const items: PickItem[] = ['Alarme', 'Armadura Arcana', 'Leque Cromático', 'Luz', 'Passo Nebuloso', 'Sono'].map((name) => ({
   key: `k:${name}`,
   name,
-  sub: '1º círculo',
+  sub: '1º nível',
 }));
 
 @Component({
@@ -114,8 +114,8 @@ describe('PickList: a spell the master wrote (E10-11 state 4)', () => {
     fixture.componentRef.setInput('noun', 'magia');
     fixture.componentRef.setInput('nounMany', 'magias');
     fixture.componentRef.setInput('items', [
-      { key: 'spell:a', name: 'Alarme', sub: '1º círculo' },
-      { key: 'spell:ink@mesa', name: 'Lâmina de Nanquim', sub: '1º círculo', table: true },
+      { key: 'spell:a', name: 'Alarme', sub: '1º nível' },
+      { key: 'spell:ink@mesa', name: 'Lâmina de Nanquim', sub: '1º nível', table: true },
     ]);
     fixture.componentRef.setInput('picked', new Set<string>());
     fixture.componentRef.setInput('count', 1);

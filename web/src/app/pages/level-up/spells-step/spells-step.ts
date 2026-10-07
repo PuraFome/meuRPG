@@ -9,9 +9,9 @@ import { PickList } from '../pick-list/pick-list';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 
-/** "de 1º círculo", "de 1º ou 2º círculo", "de 1º a 3º círculo". */
+/** "de 1º nível", "de 1º ou 2º nível", "de 1º a 3º nível". */
 function circles(max: number): string {
-  return max <= 1 ? 'de 1º círculo' : max === 2 ? 'de 1º ou 2º círculo' : `de 1º a ${max}º círculo`;
+  return max <= 1 ? 'de 1º nível' : max === 2 ? 'de 1º ou 2º nível' : `de 1º a ${max}º nível`;
 }
 
 /**

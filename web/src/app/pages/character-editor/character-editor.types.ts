@@ -379,7 +379,7 @@ export interface AbilityRollsVm {
 }
 
 /**
- * What the "Atributos" step needs from the table's rules (RN-24) when a player makes a new sheet: the ways the master
+ * What the "Habilidades" step needs from the table's rules (RN-24) when a player makes a new sheet: the ways the master
  * allows, the numbers they use (the server's, so the browser does no rules math), where the dice are rolled (RN-18)
  * and the roll the server already stored.
  */

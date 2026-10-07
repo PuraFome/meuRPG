@@ -38,7 +38,7 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     });
     const read = readEntry(entry(TableContentKind.RACE, 'Corujeiro', { body: { case: 'tableRace', value: body } }), nameOf);
     expect(read.rows.map((r) => `${r.label}: ${flat(r.value)}`)).toEqual([
-      'Atributos: Destreza +1, Sabedoria +2',
+      'Habilidades: Destreza +1, Sabedoria +2',
       'Tamanho: Médio',
       'Deslocamento: 9 m',
       'Visão no escuro: 18 m',
@@ -68,7 +68,7 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
   it('writes "+2 e +1 à escolha" for a race that lets the player place bonuses', () => {
     const body = create(TableRaceSchema, { namePt: 'Livre', size: 'Small', speedFt: 25, choiceBonuses: [2, 1] });
     const read = readEntry(entry(TableContentKind.RACE, 'Livre', { body: { case: 'tableRace', value: body } }), nameOf);
-    expect(read.rows[0]).toEqual({ label: 'Atributos', value: '+2 e +1 à escolha' });
+    expect(read.rows[0]).toEqual({ label: 'Habilidades', value: '+2 e +1 à escolha' });
   });
 
   it('reads a class in full: hit die, "Testes de resistência" (never "Resistência"), skills, casting and each feature by level', () => {
@@ -125,7 +125,7 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     expect(table.items[0]).toEqual({ title: 'Nível 1', text: '+2' });
     expect(table.items[1]).toEqual({ title: 'Nível 2', text: '+2 · 2 truques · 2 de 1º' });
     expect(table.items[4]).toEqual({ title: 'Nível 5', text: '+3 · Ataque extra · 4 de 1º, 2 de 2º' });
-    expect(table.items[3].text).toBe('+2 · Aumento de atributo');
+    expect(table.items[3].text).toBe('+2 · Incremento no Valor de Habilidade');
     expect(table.items[2].text).toBe('+2 · Escolha de subclasse');
     const rows = Object.fromEntries(read.rows.map((r) => [r.label, flat(r.value)]));
     expect(rows['Para multiclasse']).toBe('Sabedoria 13');

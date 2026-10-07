@@ -187,7 +187,7 @@
           </div>
           <div class="pk__pair">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Atributo</mat-label>
+              <mat-label>Habilidade</mat-label>
               <select matNativeControl (change)="patchSave({ ability: num($event) })">
                 @for (a of abilities; track a.value) {
                   <option [value]="a.value" [selected]="a.value === s.ability">{{ a.name }}</option>

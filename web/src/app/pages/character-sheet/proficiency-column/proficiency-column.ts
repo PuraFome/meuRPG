@@ -9,7 +9,7 @@ import { FullSheetVm } from '../character-sheet.types';
 import { ABILITY_ABBREVIATIONS } from '../sheet-format';
 
 /**
- * The paper sheet's second column: the proficiency bonus, "Salvaguardas" and
+ * The paper sheet's second column: the proficiency bonus, "Testes de resistência" and
  * "Perícias" as proficiency rows (a dot, the bonus, the name and, for a
  * skill, the ability), then the three passives and the senses. The dot is
  * never the only signal: each row also says "proficiente" (or the level) to

@@ -375,7 +375,7 @@ export function presetSummary(p: TrapPreset): string {
     parts.push(e.damage.map(dmg).join(', '));
   }
   if (e?.save) {
-    parts.push(`resistência de ${ABILITY_NAME.get(e.save.ability) ?? 'atributo'}`);
+    parts.push(`resistência de ${ABILITY_NAME.get(e.save.ability) ?? 'habilidade'}`);
   }
   const text = parts.join(' · ');
   return text === '' ? 'Só descrição' : text.charAt(0).toUpperCase() + text.slice(1);

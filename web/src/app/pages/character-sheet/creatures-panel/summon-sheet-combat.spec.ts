@@ -96,7 +96,7 @@ describe('SummonSheet in a combat: the group\'s initiative die', () => {
     expect(el.querySelector('app-slot-picker')).not.toBeNull();
     await choose();
     expect(el.querySelector('app-slot-picker')).toBeNull();
-    expect(flat(el.querySelector('.setup'))).toContain('3º círculo · 2 feras de ND 1 ou menos');
+    expect(flat(el.querySelector('.setup'))).toContain('3º nível · 2 feras de ND 1 ou menos');
     el.querySelector<HTMLButtonElement>('.setup__edit')!.click();
     await settle();
     expect(el.querySelector('app-slot-picker')).not.toBeNull();

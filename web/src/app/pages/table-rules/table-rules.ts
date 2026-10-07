@@ -203,7 +203,7 @@ export class TableRulesPage {
       { label: 'Combate', value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)' },
       { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
       { label: 'Pontos de vida ao subir de nível', value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '' },
-      { label: 'Atributos de uma ficha nova', value: methods.join(', ') },
+      { label: 'Habilidades de uma ficha nova', value: methods.join(', ') },
       { label: 'Acertos críticos', value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '' },
       { label: 'Testes contra a morte', value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '' },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },

@@ -191,7 +191,7 @@ var (
 	}
 	rollTargetNames = map[string]string{
 		"attack": "Ataques", "death_save": "Testes contra a morte", "initiative": "Iniciativa",
-		"check.all": "Todos os testes de atributo", "save.all": "Todos os testes de resistência",
+		"check.all": "Todos os testes de habilidade", "save.all": "Todos os testes de resistência",
 	}
 	tagPrefixes = []MenuValue{
 		{"against:", "Contra…", "Só vale contra o que a etiqueta diz (against:magic); o app lembra e o mestre decide."},
@@ -332,8 +332,8 @@ func (c *Content) EffectMenu() EffectMenu {
 	m.Helpers = []FormulaHelper{
 		{Call: "level()", Returns: "number", HintPT: "O nível total do personagem."},
 		{Call: `classLevel("<classe>")`, Returns: "number", HintPT: "O nível numa classe, pelo índice dela (sem o \"class:\"); 0 se o personagem não a tem."},
-		{Call: `mod("<atributo>")`, Returns: "number", HintPT: `O modificador de um atributo: "str", "dex", "con", "int", "wis" ou "cha".`},
-		{Call: `score("<atributo>")`, Returns: "number", HintPT: "O valor de um atributo, com os bônus."},
+		{Call: `mod("<habilidade>")`, Returns: "number", HintPT: `O modificador de uma habilidade: "str", "dex", "con", "int", "wis" ou "cha".`},
+		{Call: `score("<habilidade>")`, Returns: "number", HintPT: "O valor de uma habilidade, com os bônus."},
 		{Call: "prof()", Returns: "number", HintPT: "O bônus de proficiência."},
 		{Call: "armor()", Returns: "text", HintPT: `A armadura vestida: "none", "light", "medium" ou "heavy".`},
 		{Call: "shield()", Returns: "yes/no", HintPT: "Se o personagem carrega um escudo."},

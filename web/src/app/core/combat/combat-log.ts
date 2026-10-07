@@ -68,7 +68,7 @@ export interface PoolCard {
   readonly rows: readonly PoolCardRow[];
   /** What the spell does, once, for the one who has not seen it before. */
   readonly note: string;
-  /** "Pensantus gastou um espaço de 1º círculo.". */
+  /** "Pensantus gastou um espaço de 1º nível.". */
   readonly slot: string;
   /** The creatures that got a condition, to change it ("Mudar as condições do Goblin 1"). */
   readonly changeFor: readonly { readonly id: string; readonly label: string }[];
@@ -208,7 +208,7 @@ function castTargetText(t: CombatLogSpellTarget): string {
   return out;
 }
 
-/** "conjura Mísseis Mágicos (1º círculo): 2 dardos no Capitão Goblin, 7 de
+/** "conjura Mísseis Mágicos (1º nível): 2 dardos no Capitão Goblin, 7 de
  * dano; 1 dardo no Goblin 2, 5 de dano". A spell with no effect the app
  * knows only names who it touches ("conjura Sono no Goblin 1"). */
 function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: PoolCard } {

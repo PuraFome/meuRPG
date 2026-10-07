@@ -16,7 +16,7 @@ export type EditorStepKey = 'basico' | 'atributos' | 'pericias' | 'magias' | 'eq
 
 export const EDITOR_STEP_LABELS: Record<EditorStepKey, string> = {
   basico: 'Básico',
-  atributos: 'Atributos',
+  atributos: 'Habilidades',
   pericias: 'Perícias',
   magias: 'Magias',
   equipamento: 'Equipamento',
@@ -102,7 +102,7 @@ export const FULL_SHEET_FIELDS: readonly EditorField[] = [
  * place. The page adds it to the invalid fields while that is so. */
 export const UNPLACED_RESULTS_FIELD: EditorField = {
   path: 'abilities',
-  label: 'coloque cada resultado num atributo',
+  label: 'coloque cada resultado numa habilidade',
   step: 'atributos',
 };
 
@@ -117,7 +117,7 @@ export function invalidFields(
 /**
  * The second sentence of the "fix these first" notice: the invalid fields'
  * labels, grouped by step on a full sheet ("Básico: Nome do personagem,
- * Raça. Atributos: Força."), or just listed on the short form.
+ * Raça. Habilidades: Força."), or just listed on the short form.
  */
 export function describeInvalidFields(fields: readonly EditorField[]): string {
   const groups = new Map<EditorStepKey | null, string[]>();

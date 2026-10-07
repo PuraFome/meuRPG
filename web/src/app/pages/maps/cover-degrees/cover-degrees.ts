@@ -17,11 +17,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       <ul class="cd__list">
         <li>
           <span class="mr-swatch mr-swatch--half" aria-hidden="true"></span>
-          <span class="cd__text"><b>Meia cobertura</b><span>+2 na CA e nas salvaguardas de Destreza. Dá para passar por cima.</span></span>
+          <span class="cd__text"><b>Meia cobertura</b><span>+2 na CA e nos testes de resistência de Destreza. Dá para passar por cima.</span></span>
         </li>
         <li>
           <span class="mr-swatch mr-swatch--three" aria-hidden="true"></span>
-          <span class="cd__text"><b>Três quartos</b><span>+5 na CA e nas salvaguardas de Destreza. Não dá para entrar.</span></span>
+          <span class="cd__text"><b>Três quartos</b><span>+5 na CA e nos testes de resistência de Destreza. Não dá para entrar.</span></span>
         </li>
         <li>
           <span class="mr-swatch mr-swatch--wall" aria-hidden="true"></span>

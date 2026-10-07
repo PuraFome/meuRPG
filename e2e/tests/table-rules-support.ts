@@ -4,7 +4,7 @@ import { pickRadio } from './move-support';
 import { callRPC } from './support';
 
 // Setup for the table-rules specs (Etapa 10, slice 10.13a, MR-025, RN-24, RN-25, RN-09), through the API: these tests
-// prove the screens (the "Regras da mesa" page, the "Atributos" methods, the grid calibration), not the campaign and
+// prove the screens (the "Regras da mesa" page, the "Habilidades" methods, the grid calibration), not the campaign and
 // invite flows other specs already cover. Every test makes its own campaign.
 
 /** A campaign of Mestre Teste's, leveled by enemies (the default of the app). */

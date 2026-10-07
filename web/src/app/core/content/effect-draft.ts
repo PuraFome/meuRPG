@@ -256,7 +256,7 @@ export class EffectMenuVm {
     this.maxTags = res.maxTagsPerEffect;
   }
 
-  /** "Um número ou uma fórmula com: mod("<atributo>"), prof()…": the functions are the server's (`helpers`). */
+  /** "Um número ou uma fórmula com: mod("<habilidade>"), prof()…": the functions are the server's (`helpers`). */
   formulaHint(): string {
     const calls = this.helpers.map((h) => h.call);
     return calls.length > 0 ? `Um número ou uma fórmula. Funções: ${calls.join(', ')}.` : 'Um número ou uma fórmula.';

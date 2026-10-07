@@ -82,7 +82,7 @@
           <section class="mr-panel" aria-labelledby="rules-heading">
             <h2 class="mr-panel__title" id="rules-heading">Regras da mesa</h2>
             @if (isMaster) {
-              <p class="rules-lead">O estilo da mesa, os pontos de vida, os atributos de uma ficha nova, o crítico, o modo de XP e os lembretes.</p>
+              <p class="rules-lead">O estilo da mesa, os pontos de vida, as habilidades de uma ficha nova, o crítico, o modo de XP e os lembretes.</p>
             } @else {
               <p class="rules-lead">As regras que o mestre escolheu para a mesa, e os lembretes dela.</p>
             }
@@ -103,7 +103,7 @@
           </section>
           <section class="mr-panel" aria-labelledby="spells-heading">
             <h2 class="mr-panel__title" id="spells-heading">Magias</h2>
-            <p class="rules-lead">As magias do SRD e as que o mestre criou para a mesa: procure pelo nome e filtre por classe, círculo e escola.</p>
+            <p class="rules-lead">As magias do SRD e as que o mestre criou para a mesa: procure pelo nome e filtre por classe, nível da magia e escola.</p>
             <div>
               <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'spells']">Abrir as magias</a>
             </div>

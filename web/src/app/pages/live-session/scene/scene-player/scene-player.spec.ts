@@ -62,7 +62,7 @@ describe('ScenePlayer', () => {
     const { el } = setup();
     expect(rows(el)[3].querySelector('.sc__name')?.textContent).toBe('Percepção');
     expect(rows(el)[3].querySelector('.sc__check')?.textContent).toBe('Perícia');
-    expect(rows(el)[4].querySelector('.sc__check')?.textContent).toBe('Salvaguarda de Constituição');
+    expect(rows(el)[4].querySelector('.sc__check')?.textContent).toBe('Teste de resistência de Constituição');
   });
 
   it('shows the passive value only where the server sent one, in small print', () => {

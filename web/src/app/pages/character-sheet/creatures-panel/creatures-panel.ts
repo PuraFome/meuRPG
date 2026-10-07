@@ -209,7 +209,7 @@ export class CreaturesPanel {
     if (spell.canRitual) {
       return tight(`Ritual de ${spell.castingTimePt}: não gasta espaço de magia. ${where}`);
     }
-    return tight(`Gasta um espaço de ${spell.level}º círculo ou maior. ${where}`);
+    return tight(`Gasta um espaço de ${spell.level}º nível ou maior. ${where}`);
   }
 
   protected cast(spell: SummonSpellOptions): void {

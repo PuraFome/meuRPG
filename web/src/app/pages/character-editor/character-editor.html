@@ -418,7 +418,7 @@
                     <span class="bonuses__text">
                       <span class="bonuses__title">Bônus manuais</span>
                       <span class="bonuses__sub">
-                        Aumento de atributo, escolhas de raça, item mágico.
+                        Incremento no Valor de Habilidade, escolhas de raça, item mágico.
                       </span>
                       <span class="bonuses__sub bonuses__state">
                         {{ bonusesInUse() ? 'Em uso: ' + bonusesInUse() + '.' : 'Nenhum em uso.' }}
@@ -427,7 +427,7 @@
                   </summary>
                   <p class="step-lead" id="extra-bonuses-label">
                     O que a ficha não soma sozinha, como os +1 que a raça deixa escolher. De −10 a
-                    +10, somados ao valor do atributo.
+                    +10, somados ao valor da habilidade.
                   </p>
                   <app-ability-fields
                     role="group"
@@ -515,7 +515,7 @@
                       Da lista de cada classe, pelo nível nela. As sempre preparadas vêm da subclasse e não gastam o
                       limite.
                     } @else {
-                      As magias da classe que o personagem já conjura neste nível, por círculo e em ordem alfabética.
+                      As magias da classe que o personagem já conjura neste nível, por nível da magia e em ordem alfabética.
                     }
                   </p>
                   <app-fiction-notice />
