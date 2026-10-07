@@ -40,17 +40,30 @@ type Store interface {
 	// createSession stores a new session.
 	createSession(ctx context.Context, session NewSession) (Session, error)
 	// lookupSession returns the session with this token hash, or
-	// ErrNotFound if there is none or it expired before now.
-	lookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error)
-	// sessionActive reports whether the session with this ID still exists
-	// and has not expired before now.
-	sessionActive(ctx context.Context, sessionID string, now time.Time) (bool, error)
+	// ErrNotFound if there is none, it expired before now, or it has not
+	// been used since idleSince (the idle timeout).
+	lookupSession(ctx context.Context, tokenHash []byte, now, idleSince time.Time) (Session, error)
+	// sessionActive reports whether the session with this ID still exists,
+	// has not expired before now and has been used since idleSince.
+	sessionActive(ctx context.Context, sessionID string, now, idleSince time.Time) (bool, error)
+	// touchSession records that the session was used at now, but only when
+	// its stored last use is older than staleBefore (one conditional
+	// UPDATE), so a busy session is not a write per request. It reports
+	// whether it wrote.
+	touchSession(ctx context.Context, sessionID string, now, staleBefore time.Time) (bool, error)
 	// revokeSession deletes one session. Deleting a missing one is not an
 	// error.
 	revokeSession(ctx context.Context, sessionID string) error
 	// revokeUserSessions deletes every session of a user: "sign out
 	// everywhere", or a suspected account takeover.
 	revokeUserSessions(ctx context.Context, userID string) error
+	// revokeOtherSessions deletes the user's sessions that still work
+	// (not expired before now, used since idleSince) except keepID, and
+	// returns how many it deleted: "sign out of other devices".
+	revokeOtherSessions(ctx context.Context, userID, keepID string, now, idleSince time.Time) (int64, error)
+	// countOtherSessions counts the same sessions revokeOtherSessions would
+	// delete.
+	countOtherSessions(ctx context.Context, userID, keepID string, now, idleSince time.Time) (int64, error)
 
 	// DisplayName returns the user's display name, or "" if they have not
 	// set one. It returns ErrNotFound if the user does not exist.
@@ -254,24 +267,33 @@ func (s *PostgresStore) createSession(ctx context.Context, ns NewSession) (Sessi
 }
 
 // lookupSession implements Store.
-func (s *PostgresStore) lookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error) {
-	row, err := s.queries.LookupSession(ctx, identitydb.LookupSessionParams{TokenHash: tokenHash, Now: now})
+func (s *PostgresStore) lookupSession(ctx context.Context, tokenHash []byte, now, idleSince time.Time) (Session, error) {
+	row, err := s.queries.LookupSession(ctx, identitydb.LookupSessionParams{TokenHash: tokenHash, Now: now, IdleSince: idleSince})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrNotFound
 	}
 	if err != nil {
 		return Session{}, fmt.Errorf("look up session: %w", err)
 	}
-	return Session{ID: row.ID, UserID: row.UserID, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
+	return Session{ID: row.ID, UserID: row.UserID, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt, LastUsedAt: row.LastUsedAt}, nil
 }
 
 // sessionActive implements Store.
-func (s *PostgresStore) sessionActive(ctx context.Context, sessionID string, now time.Time) (bool, error) {
-	active, err := s.queries.SessionIsActive(ctx, identitydb.SessionIsActiveParams{ID: sessionID, Now: now})
+func (s *PostgresStore) sessionActive(ctx context.Context, sessionID string, now, idleSince time.Time) (bool, error) {
+	active, err := s.queries.SessionIsActive(ctx, identitydb.SessionIsActiveParams{ID: sessionID, Now: now, IdleSince: idleSince})
 	if err != nil {
 		return false, fmt.Errorf("check session: %w", err)
 	}
 	return active, nil
+}
+
+// touchSession implements Store.
+func (s *PostgresStore) touchSession(ctx context.Context, sessionID string, now, staleBefore time.Time) (bool, error) {
+	n, err := s.queries.TouchSession(ctx, identitydb.TouchSessionParams{ID: sessionID, Now: now, StaleBefore: staleBefore})
+	if err != nil {
+		return false, fmt.Errorf("touch session: %w", err)
+	}
+	return n > 0, nil
 }
 
 // revokeSession implements Store.
@@ -288,6 +310,24 @@ func (s *PostgresStore) revokeUserSessions(ctx context.Context, userID string) e
 		return fmt.Errorf("delete user sessions: %w", err)
 	}
 	return nil
+}
+
+// revokeOtherSessions implements Store.
+func (s *PostgresStore) revokeOtherSessions(ctx context.Context, userID, keepID string, now, idleSince time.Time) (int64, error) {
+	n, err := s.queries.DeleteOtherUserSessions(ctx, identitydb.DeleteOtherUserSessionsParams{UserID: userID, KeepID: keepID, Now: now, IdleSince: idleSince})
+	if err != nil {
+		return 0, fmt.Errorf("delete other sessions: %w", err)
+	}
+	return n, nil
+}
+
+// countOtherSessions implements Store.
+func (s *PostgresStore) countOtherSessions(ctx context.Context, userID, keepID string, now, idleSince time.Time) (int64, error) {
+	n, err := s.queries.CountOtherSessions(ctx, identitydb.CountOtherSessionsParams{UserID: userID, KeepID: keepID, Now: now, IdleSince: idleSince})
+	if err != nil {
+		return 0, fmt.Errorf("count other sessions: %w", err)
+	}
+	return n, nil
 }
 
 // DisplayName implements Store.

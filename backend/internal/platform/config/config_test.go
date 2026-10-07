@@ -129,6 +129,21 @@ func TestLoad(t *testing.T) {
 			wantErr: []string{"OIDC_ISSUER must use https"},
 		},
 		{
+			name: "a session idle timeout",
+			env:  map[string]string{"SESSION_IDLE_TIMEOUT": "168h"},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, SessionIdleTimeout: 168 * time.Hour},
+		},
+		{
+			name:    "a session idle timeout that is not a duration",
+			env:     map[string]string{"SESSION_IDLE_TIMEOUT": "14d"},
+			wantErr: []string{"SESSION_IDLE_TIMEOUT must be a duration"},
+		},
+		{
+			name:    "a session idle timeout longer than a session",
+			env:     map[string]string{"SESSION_IDLE_TIMEOUT": "721h"},
+			wantErr: []string{"SESSION_IDLE_TIMEOUT must be between 1h and 720h"},
+		},
+		{
 			name: "on Cloud Run",
 			env:  map[string]string{"K_SERVICE": "meurpg-api"},
 			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true},

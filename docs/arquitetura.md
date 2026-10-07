@@ -350,7 +350,7 @@ Unitários (Vitest, `web/src/**/*.spec.ts`) cobrem o mapeamento de erros, o cort
 
 ## Módulo identity: login e sessão
 
-O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PKCE, e o servidor abre uma sessão opaca de no máximo 30 dias, guardada num cookie `__Host-` `HttpOnly` (ADR-0002). O código fica em `backend/internal/identity` e não conhece nenhum provedor: em produção é o Google, em desenvolvimento um provedor OIDC local ou um provedor falso dos testes. Tudo vem da configuração (ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-um-provedor-oidc)) e da descoberta OIDC (`/.well-known/openid-configuration`).
+O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PKCE, e o servidor abre uma sessão opaca de no máximo 30 dias (e que acaba antes se ficar 14 dias sem uso), guardada num cookie `__Host-` `HttpOnly` (ADR-0002). O código fica em `backend/internal/identity` e não conhece nenhum provedor: em produção é o Google, em desenvolvimento um provedor OIDC local ou um provedor falso dos testes. Tudo vem da configuração (ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-um-provedor-oidc)) e da descoberta OIDC (`/.well-known/openid-configuration`).
 
 | Rota | O que faz |
 | --- | --- |
@@ -359,6 +359,8 @@ O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PK
 | `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie, conclui a intenção, se houver, e volta para `return_to` (ou para onde a intenção mandar). |
 | `IdentityService.GetMe` | Quem está logado (o ID da conta e o nome de exibição) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
 | `IdentityService.SignOut` | Revoga a sessão atual no banco e apaga o cookie. As outras sessões do usuário continuam. |
+| `IdentityService.SignOutOtherSessions` | Revoga todas as outras sessões do usuário que ainda valem e devolve quantas terminaram. A sessão atual e o cookie ficam como estão (ASVS 5.0 V7.4.3). |
+| `IdentityService.CountOtherSessions` | Quantas outras sessões do usuário ainda valem, para a tela dizer "conectado em N outros dispositivos". Aceita GET. |
 | `IdentityService.UpdateProfile` | Muda o nome de exibição (vazio apaga). O `GetMe` também devolve esse nome. |
 
 ### Diagrama: o login
@@ -391,7 +393,11 @@ O callback recusa com 400, sem criar sessão, quando: falta o cookie de login ou
 ### Sessão
 
 - **Token:** 32 bytes aleatórios (`crypto/rand`) no cookie `__Host-meurpg_session`, com `Secure`, `HttpOnly`, `SameSite=Lax` e `Path=/`. O banco guarda só o SHA-256 (`auth_sessions.token_hash`).
-- **Validade:** 30 dias corridos desde o login, sem renovar com o uso (NIST SP 800-63B-4, AAL1). Depois disso, o mestre passa pelo provedor de novo.
+- **Validade absoluta:** 30 dias corridos desde o login, sem renovar com o uso (NIST SP 800-63B-4, AAL1). Depois disso, o mestre passa pelo provedor de novo.
+- **Validade por inatividade (ASVS 5.0 V7.3.1, nível 2):** uma sessão que fica **14 dias** sem uso termina, e se comporta como uma sessão que não existe (`unauthenticated`; o app vai para o login). Os 14 dias são um risco pesado contra o uso: a mesa joga mais ou menos toda semana, então 14 dias perdoam duas sessões seguidas perdidas, e um navegador esquecido na casa de um amigo deixa de valer bem antes dos 30 dias. Muda com `SESSION_IDLE_TIMEOUT` (de 1 h a 720 h; [Operação](operacao.md#variáveis-de-ambiente-e-segredos)). O uso nunca estende os 30 dias.
+- **Como o último uso é gravado:** em `auth_sessions.last_used_at`, no máximo **uma vez a cada 10 minutos** por sessão, e não a cada requisição. O interceptor lê a sessão (que já traz o `last_used_at`) e, só se ele tem mais de 10 minutos, faz um único `UPDATE ... WHERE id = $1 AND last_used_at < $limite`, fora de qualquer transação e sem falhar a requisição se der erro (um aviso no log; a próxima requisição tenta de novo). Dois servidores ao mesmo tempo só gravam duas vezes. A tolerância de até 10 minutos é nada diante de 14 dias. `last_used_at` não está no índice que cobre a busca por `token_hash`, então a busca lê também a linha da sessão (uma leitura a mais, pela chave primária).
+- **Um stream aberto é uso:** o recheck de 60 segundos (abaixo) também confere o limite de inatividade e registra o uso (com a mesma regra dos 10 minutos), para que quem assiste a uma sessão ao vivo por dias não perca o login por não ter feito nenhuma outra chamada.
+- **Sair dos outros dispositivos:** `SignOutOtherSessions` apaga, numa só instrução, as linhas das outras sessões do usuário que ainda valem (não vencidas e não paradas). Para as chamadas novas, o token deixa de valer na hora, em qualquer instância. Um stream aberto num desses aparelhos **não** é derrubado na hora: termina no recheck seguinte, em até 60 segundos (S12 da auditoria de segurança de 07/10/2026; aceito, porque o que o membro recebe nessa janela é só o que ele já podia ver, RN-10). Derrubar na hora pediria ao módulo `play` assinar um aviso do `identity`, um acoplamento que não vale para 60 segundos.
 - **`auth_time` e `max_age`:** o servidor manda `max_age` só se `OIDC_MAX_AGE` estiver definido (o Google não documenta o parâmetro). O `auth_time` do ID token, quando vem, é só registrado em `auth_sessions.auth_time`, nunca usado para decidir: num provedor local de teste ele manteve a hora do primeiro login mesmo depois de um login forçado. No ambiente local, o devidp recebe `OIDC_MAX_AGE=1h`; com o Google, a variável fica sem valor. Quem cumpre a reautenticação a cada 30 dias (NIST SP 800-63B-4) é a sessão de 30 dias no servidor, não o `max_age`.
 - **Logout:** apaga a linha da sessão, então o token para de valer na hora, em qualquer instância. Um stream da sessão ao vivo já aberto termina na checagem seguinte, em até 60 segundos (ver [Sessão ao vivo](#sessão-ao-vivo)).
 - **Login de novo no mesmo navegador:** gera outro token (nada de reaproveitar o antigo) e revoga a sessão anterior.
@@ -1578,7 +1584,7 @@ sequenceDiagram
 | O app parou de ler e ficou 16 eventos para trás | `unavailable` | Reconecta e lê a foto de novo |
 | O app parou de ler e uma mensagem passou de 30 s sem chegar | O `Send` falha e o stream termina (`close_reason` `client_gone`) | Reconecta |
 | A pessoa já tem 8 streams abertos na campanha | `resource_exhausted`, ao abrir | Tenta de novo com espera: uma aba fechada devolve o lugar |
-| A sessão de login acabou (logout, revogada, 30 dias) | `unauthenticated`, na checagem seguinte | Manda para o login |
+| A sessão de login acabou (logout, revogada, 14 dias sem uso, 30 dias) | `unauthenticated`, na checagem seguinte | Manda para o login |
 | A pessoa saiu da campanha | `not_found`, na checagem seguinte | "Peça um convite ao mestre" |
 
 O app reconecta com espera crescente (1 s, 2 s, 4 s, até 30 s, com variação aleatória) e só com a aba visível: com a aba escondida por 2 minutos, ele mesmo fecha o stream, e reabre (com a foto nova) quando a aba volta. É o que impede uma aba esquecida de segurar uma conexão aberta (ver [Operação](operacao.md#stream-da-sessão-ao-vivo)).
@@ -2347,6 +2353,46 @@ O filtro roda no servidor, em `visibility.go`, e o que o jogador não vê fica d
 | O arquivo da imagem (`GET /images/{id}`) | Toda imagem da campanha | Só enquanto vê um mapa com essa imagem, enquanto ela é a imagem mostrada na sessão, ou enquanto o mestre a deixa com os jogadores, e nunca a de um mapa com névoa (ver [Servir as imagens](#servir-as-imagens)) |
 
 Quem não é membro ativo (e o membro pendente) recebe `not_found` em tudo, como no resto do app (`TestMapServiceAuthorizationMatrix`).
+
+### Os testes de vazamento (RN-10)
+
+`TestLeakMatrix` (`backend/internal/leaktest`) prova, num teste só, que o jogador nunca recebe o que o mestre escondeu, em toda leitura e em todo evento do stream. Os testes de cada funcionalidade (`TestRN10_*`, `TestMR009_*`...) continuam: este fica por cima deles e não deixa uma leitura nova escapar. Ele é de integração: roda contra o CockroachDB (o job `go-db`) e contra todos os módulos ligados como no `cmd/api`, com os mesmos construtores e `Set*`, a fonte de conteúdo da mesa de produção e a pilha HTTP de verdade. Só o login é trocado, por um cabeçalho de teste.
+
+**O cenário** (`world_test.go`) é uma campanha em que o mestre criou uma coisa escondida de cada tipo. Todo campo de texto livre de cada coisa leva um marcador (`LEAKCANARY-<tipo>-<n>`), os números secretos são improváveis (4.321 PV, 7.777 PO, CDs de 25 a 29) e os IDs das coisas escondidas ficam registrados. As pessoas são o mestre, Ana (o personagem dela vê o oeste do mapa com névoa), Caio (o dele vê a sala do sul), Bia (membro pendente, com um personagem esperando aprovação), Eva (estranha) e alguém sem sessão. A sessão está aberta, há um combate rodando, uma cena aberta com o palco e quebra-cabeças na tela.
+
+| Tipo | O que o cenário esconde |
+| --- | --- |
+| Mapas | Um mapa escondido, a masmorra gerada (mapa, imagem, semente, salas), um ponto revelado que leva a um mapa escondido, as camadas pintadas de luz, o mapa com névoa |
+| Pontos | Um de cada tipo escondido (cena, submapa, batalha, armadilha, tesouro, luz), com descrição, ganchos, ações com CD e pistas; os revelados num lugar que ninguém vê |
+| Armadilhas | Uma que ninguém conhece, uma só do personagem da Ana, uma só do personagem do Caio, uma que um personagem nota ao passar; CDs de notar, achar e de resistência, o efeito, o gatilho |
+| Tesouros | Escondido, revelado e ainda não achado (sem descrição nem valor), um sorteado e posto no mapa (a semente) |
+| Pessoas e criaturas | NPC com 4.321 PV, CA e XP secretos, NPC escondido, NPC de uma criatura do bestiário (a chave), NPC fora do palco com retrato, notas do mestre sobre cada personagem, a criatura de um jogador |
+| Combate | NPCs revelados que nenhum personagem vê, NPCs e monstros escondidos, o ponto de batalha e o encontro guardado nele, os testes contra a morte de um jogador (a mesa os guarda para o dono e o mestre) |
+| Cena | Ganchos, CD e pistas não reveladas da cena aberta; uma cena nunca aberta, com tudo isso |
+| Quebra-cabeças | Solução, dicas não liberadas, CD da dica, "Ao resolver" (o ponto que abre), "Ao errar" (a armadilha), respostas do enigma e da cifra, a parte de cada jogador numa informação dividida, um quebra-cabeça nunca mostrado e outro arquivado |
+| Imagens | A galeria (nomes e IDs), uma imagem não mostrada, uma gerada e não mostrada (o pedido e o texto), o retrato de um NPC fora de cena, a imagem de um mapa com névoa |
+| Mesa | Conteúdo arquivado e desligado (a chave também), opção do SRD desligada, marcos não alcançados, o documento da campanha, o token de um convite, a nota privada de cada jogador |
+
+**A tabela de leituras** (`reads_test.go`) tem uma linha para cada leitura que importa: o procedimento (a constante gerada, como `mapsv1connect.MapServiceGetMapProcedure`), o pedido e quem pode ler. Cada linha é pedida por cada pessoa, pelo mesmo caminho do app (Connect com JSON). O mestre é o controle positivo: a leitura funciona e a coisa está lá. Quem não pode ler recebe um erro, e a leitura que só o mestre faz também é uma linha (`masterOnlyRead`): o teste prova que ninguém mais recebe resposta e que o erro não diz nada. Cada resposta, de sucesso ou de erro, passa por três conferências (`inspect_test.go`):
+
+1. **o corpo cru**, como o app o recebe: nenhum marcador e nenhum ID de uma coisa escondida;
+2. **a mensagem lida campo a campo** (`protoreflect`): nenhum número secreto num campo numérico. Um número pequeno, como uma CD, só vale em campos cujo nome tem `dc`; um número grande vale em qualquer campo. Nunca se procura um número no texto da resposta;
+3. **os campos só do mestre** (`masteronly_test.go`): uma lista explícita de mensagem e campo, cada um com o motivo, que o jogador lê vazios seja qual for o valor (o campo `hooks` do ponto, a CA de um combatente, a solução). `TestMasterOnlyFieldsExist` falha se o nome de uma entrada deixar de existir nos `.proto`.
+
+Um marcador que o jogador pode ler (a pista que o mestre revelou a ele, a armadilha que o personagem dele conhece) tem leitores; vale só para eles, e o teste exige achá-lo nas respostas deles (`TestLeakMatrix/canaries_are_reachable`). Do mesmo jeito, todo marcador precisa aparecer em alguma resposta do mestre, ou o tipo vai para a lista `unreachable`, com o motivo: uma agulha que ninguém encontra não prova nada. `inspect_unit_test.go` testa a própria conferência, sem banco: cada camada recebe uma resposta com um vazamento plantado e precisa achá-lo.
+
+**O resto do teste**, em ordem:
+
+- **As ações dos jogadores** (`actions_test.go`): rolar a cena, procurar armadilhas, tentar uma dica, mexer num quebra-cabeça, acender uma luz. Passam pelo mesmo corredor das leituras, antes delas, para as leituras verem o que as ações deixaram.
+- **As imagens e as peças da névoa**: `GET /images/{id}` e a miniatura de cada imagem (mostrada, deixada, de retrato no palco, e as escondidas), e cada peça do mapa com névoa, para cada pessoa. Quem pode recebe `200`; os outros, `404`, igual a uma imagem que não existe. Ana e Caio precisam receber peças diferentes, senão o teste não distingue uma peça deles de uma que não é.
+- **O que não é leitura** (`classify_test.go`): cada RPC que escreve é pedido por quem não é o mestre, com os IDs das coisas escondidas, pelos nomes dos campos (`probe_test.go`). O que é só do mestre nunca responde `OK`; nenhum erro diz o que o pedido mirava.
+- **O stream** (`stream_test.go`): Ana, Caio e o mestre abrem `WatchGameSession`; Bia, Eva e quem não tem sessão são recusados. O mestre e os jogadores fazem tudo o que o stream anuncia (um evento de cada tipo, e mudanças só em coisas escondidas, que não devem chegar a ninguém), todas as leituras são pedidas de novo com as mudanças feitas, o combate e a sessão terminam, e cada evento passa pelas mesmas três conferências. Um tipo de evento que o roteiro não causa faz o teste falhar, a não ser que esteja em `notTriggered`, com o motivo.
+
+**O guarda de completude** (`TestEveryProcedureIsClassified`, sem banco) lê os descritores dos serviços e falha para um procedimento que não esteja numa só das tabelas: as leituras (`reads`, `readsAfterTheCombat`, `readsAfterTheSession`), as ações (`actions`) e o resto (`notReads`, com a classe e o motivo: só do mestre, ação do jogador, nada de campanha, stream). Um RPC novo precisa ser classificado para o teste passar. Ele também falha para um procedimento em duas tabelas e para uma linha que aponta para um procedimento que não existe mais.
+
+**Para acrescentar uma leitura**, ponha uma linha em `reads`. Se a resposta pode conter algo que o mestre escondeu e o cenário ainda não tem essa coisa, acrescente-a em `world_test.go`, com um marcador em cada campo de texto. **Para acrescentar um RPC que escreve**, ponha uma linha em `notReads`. Uma conferência que acha um vazamento dá o procedimento, a pessoa, o campo e a agulha; se for uma decisão do produto e não um defeito, a linha leva `ignore` com o motivo, nunca um teste mais frouxo.
+
+**Medidas.** São uns 2.500 pedidos HTTP pequenos contra o CockroachDB dos testes. Medido em 07/10/2026 num Mac com a carga em 50 a 100 (outros testes rodando ao mesmo tempo): 172 s de relógio, dos quais só 6 s de CPU do processo do teste; o resto é espera do banco. O alvo, num Mac sem carga ou no `go-db`, é abaixo de 60 s. `LEAKTEST_LOG=1` mostra o log dos servidores (avisos e erros), para descobrir por que uma chamada do cenário falhou. O que o teste achou na primeira rodada, e ficou como exceção explícita com motivo: `ListNoteScenes` (MR-030) lista o nome de um ponto de cena que o mestre revelou mesmo num lugar que a névoa esconde de todos os personagens, porque a cena "descoberta" vale para o grupo todo (pergunta 61); a linha da tabela leva `ignore` e o motivo.
 
 ### Camadas, névoa e os novos tipos de ponto (Etapa 9)
 

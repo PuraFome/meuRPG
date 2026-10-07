@@ -63,8 +63,9 @@ service ContentService {
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
-  //     member of it; with `character_id`, also a pending member, and a
-  //     character that is not the caller's own full sheet in this campaign.
+  //     member of it; with `character_id`, also a character that is not the
+  //     caller's own sheet in this campaign. A pending member may name their
+  //     own draft (they edit it while they wait for the master).
   rpc ListContent(ListContentRequest) returns (ListContentResponse) {
     option idempotency_level = IDEMPOTENT;
   }

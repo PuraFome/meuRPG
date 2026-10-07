@@ -23,27 +23,54 @@ INSERT INTO user_identities (issuer, subject, user_id, email)
 VALUES ($1, $2, $3, $4);
 
 -- name: InsertSession :one
-INSERT INTO auth_sessions (token_hash, user_id, created_at, expires_at, auth_time)
-VALUES ($1, $2, $3, $4, $5)
+-- A new session counts as used at the moment it starts.
+INSERT INTO auth_sessions (token_hash, user_id, created_at, expires_at, auth_time, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $3)
 RETURNING id;
 
 -- name: LookupSession :one
-SELECT id, user_id, created_at, expires_at
+-- A session ends at expires_at (30 days), or when it has not been used since
+-- idle_since (now minus the idle timeout). Either way it looks like a missing
+-- one. last_used_at is not in the covering index, so this reads the row.
+SELECT id, user_id, created_at, expires_at, last_used_at
 FROM auth_sessions
-WHERE token_hash = $1 AND expires_at > sqlc.arg(now);
+WHERE token_hash = $1 AND expires_at > sqlc.arg(now) AND last_used_at > sqlc.arg(idle_since);
 
 -- name: SessionIsActive :one
 -- A long-lived stream checks its session again by ID (RecheckSession): it
--- is still there (no sign-out, no revocation) and has not expired.
+-- is still there (no sign-out, no revocation), has not expired and is not idle.
 SELECT EXISTS (
-    SELECT 1 FROM auth_sessions WHERE id = $1 AND expires_at > sqlc.arg(now)
+    SELECT 1 FROM auth_sessions
+    WHERE id = $1 AND expires_at > sqlc.arg(now) AND last_used_at > sqlc.arg(idle_since)
 );
+
+-- name: TouchSession :execrows
+-- One conditional UPDATE: it writes only when the stored time is older than
+-- stale_before, so the callers can try on every request and a busy session
+-- still costs about one write per throttle window. A race between two
+-- instances just writes twice.
+UPDATE auth_sessions SET last_used_at = sqlc.arg(now)
+WHERE id = $1 AND last_used_at < sqlc.arg(stale_before);
 
 -- name: DeleteSession :exec
 DELETE FROM auth_sessions WHERE id = $1;
 
 -- name: DeleteUserSessions :exec
 DELETE FROM auth_sessions WHERE user_id = $1;
+
+-- name: DeleteOtherUserSessions :execrows
+-- "Sign out of other devices": every session of the user that still works,
+-- but the current one. Expired and idle rows are already unusable (the TTL job
+-- removes them), so leaving them out keeps the count honest.
+DELETE FROM auth_sessions
+WHERE user_id = $1 AND id <> sqlc.arg(keep_id)
+  AND expires_at > sqlc.arg(now) AND last_used_at > sqlc.arg(idle_since);
+
+-- name: CountOtherSessions :one
+-- The user's other sessions that still work.
+SELECT count(*) FROM auth_sessions
+WHERE user_id = $1 AND id <> sqlc.arg(keep_id)
+  AND expires_at > sqlc.arg(now) AND last_used_at > sqlc.arg(idle_since);
 
 -- name: GetDisplayName :one
 SELECT display_name FROM users WHERE id = $1;

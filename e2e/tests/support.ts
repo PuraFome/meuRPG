@@ -10,7 +10,8 @@ export const sessionCookie = '__Host-meurpg_session';
 export const loginCookie = '__Host-meurpg_login';
 
 /** The test users devidp lists on its login page (oidctest.TestUsers). */
-export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificado';
+// 'Sessões Teste' is not in auth.setup.ts: only sessions.spec.ts uses it, and signs in for real.
+export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificado' | 'Sessões Teste';
 
 /**
  * Signs in through devidp, the way a person would: open the sign-in URL,
@@ -50,6 +51,7 @@ export function authStatePath(user: TestUser): string {
     // The third account is a second player where a table needs two (the fog of war, E9-03): its e-mail
     // is unverified, which changes nothing for a player.
     'E-mail Não Verificado': 'e-mail-nao-verificado',
+    'Sessões Teste': 'sessoes-teste', // never saved: sessions.spec.ts signs in for real
   };
   const slug = slugs[user];
   return path.join(__dirname, '..', '.auth', `${slug}.json`);

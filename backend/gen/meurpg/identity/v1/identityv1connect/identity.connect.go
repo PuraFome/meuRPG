@@ -50,6 +50,12 @@ const (
 	IdentityServiceGetMeProcedure = "/meurpg.identity.v1.IdentityService/GetMe"
 	// IdentityServiceSignOutProcedure is the fully-qualified name of the IdentityService's SignOut RPC.
 	IdentityServiceSignOutProcedure = "/meurpg.identity.v1.IdentityService/SignOut"
+	// IdentityServiceSignOutOtherSessionsProcedure is the fully-qualified name of the IdentityService's
+	// SignOutOtherSessions RPC.
+	IdentityServiceSignOutOtherSessionsProcedure = "/meurpg.identity.v1.IdentityService/SignOutOtherSessions"
+	// IdentityServiceCountOtherSessionsProcedure is the fully-qualified name of the IdentityService's
+	// CountOtherSessions RPC.
+	IdentityServiceCountOtherSessionsProcedure = "/meurpg.identity.v1.IdentityService/CountOtherSessions"
 	// IdentityServiceUpdateProfileProcedure is the fully-qualified name of the IdentityService's
 	// UpdateProfile RPC.
 	IdentityServiceUpdateProfileProcedure = "/meurpg.identity.v1.IdentityService/UpdateProfile"
@@ -64,8 +70,21 @@ type IdentityServiceClient interface {
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// SignOut revokes the current session on the server right away and tells
 	// the browser to delete the session cookie (Set-Cookie in the response).
-	// It only ends this session; the user's other devices stay signed in.
+	// It only ends this session; the user's other devices stay signed in
+	// (see SignOutOtherSessions for those).
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
+	// SignOutOtherSessions revokes every other session of the signed-in user
+	// on the server, and keeps the current one (the cookie is untouched).
+	// Anything that was signed in on another device is signed out at once for
+	// new requests; a live stream on one of them ends at its next session
+	// recheck, within about 60 seconds. It never fails because there was
+	// nothing to end: the response then says 0.
+	SignOutOtherSessions(context.Context, *connect.Request[v1.SignOutOtherSessionsRequest]) (*connect.Response[v1.SignOutOtherSessionsResponse], error)
+	// CountOtherSessions says how many other sessions of the signed-in user
+	// still work, so the app can offer "sign out of other devices" only when
+	// there is something to end. It has no side effects and its request is
+	// empty, so clients may call it with HTTP GET.
+	CountOtherSessions(context.Context, *connect.Request[v1.CountOtherSessionsRequest]) (*connect.Response[v1.CountOtherSessionsResponse], error)
 	// UpdateProfile changes what the signed-in user typed about themselves:
 	// today, only the display name that other members of their campaigns see.
 	// It fails with `invalid_argument` when the name breaks the rules below.
@@ -96,6 +115,19 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("SignOut")),
 			connect.WithClientOptions(opts...),
 		),
+		signOutOtherSessions: connect.NewClient[v1.SignOutOtherSessionsRequest, v1.SignOutOtherSessionsResponse](
+			httpClient,
+			baseURL+IdentityServiceSignOutOtherSessionsProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("SignOutOtherSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		countOtherSessions: connect.NewClient[v1.CountOtherSessionsRequest, v1.CountOtherSessionsResponse](
+			httpClient,
+			baseURL+IdentityServiceCountOtherSessionsProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("CountOtherSessions")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
 			httpClient,
 			baseURL+IdentityServiceUpdateProfileProcedure,
@@ -107,9 +139,11 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // identityServiceClient implements IdentityServiceClient.
 type identityServiceClient struct {
-	getMe         *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	signOut       *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
-	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	getMe                *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	signOut              *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	signOutOtherSessions *connect.Client[v1.SignOutOtherSessionsRequest, v1.SignOutOtherSessionsResponse]
+	countOtherSessions   *connect.Client[v1.CountOtherSessionsRequest, v1.CountOtherSessionsResponse]
+	updateProfile        *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 }
 
 // GetMe calls meurpg.identity.v1.IdentityService.GetMe.
@@ -120,6 +154,16 @@ func (c *identityServiceClient) GetMe(ctx context.Context, req *connect.Request[
 // SignOut calls meurpg.identity.v1.IdentityService.SignOut.
 func (c *identityServiceClient) SignOut(ctx context.Context, req *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
 	return c.signOut.CallUnary(ctx, req)
+}
+
+// SignOutOtherSessions calls meurpg.identity.v1.IdentityService.SignOutOtherSessions.
+func (c *identityServiceClient) SignOutOtherSessions(ctx context.Context, req *connect.Request[v1.SignOutOtherSessionsRequest]) (*connect.Response[v1.SignOutOtherSessionsResponse], error) {
+	return c.signOutOtherSessions.CallUnary(ctx, req)
+}
+
+// CountOtherSessions calls meurpg.identity.v1.IdentityService.CountOtherSessions.
+func (c *identityServiceClient) CountOtherSessions(ctx context.Context, req *connect.Request[v1.CountOtherSessionsRequest]) (*connect.Response[v1.CountOtherSessionsResponse], error) {
+	return c.countOtherSessions.CallUnary(ctx, req)
 }
 
 // UpdateProfile calls meurpg.identity.v1.IdentityService.UpdateProfile.
@@ -136,8 +180,21 @@ type IdentityServiceHandler interface {
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// SignOut revokes the current session on the server right away and tells
 	// the browser to delete the session cookie (Set-Cookie in the response).
-	// It only ends this session; the user's other devices stay signed in.
+	// It only ends this session; the user's other devices stay signed in
+	// (see SignOutOtherSessions for those).
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
+	// SignOutOtherSessions revokes every other session of the signed-in user
+	// on the server, and keeps the current one (the cookie is untouched).
+	// Anything that was signed in on another device is signed out at once for
+	// new requests; a live stream on one of them ends at its next session
+	// recheck, within about 60 seconds. It never fails because there was
+	// nothing to end: the response then says 0.
+	SignOutOtherSessions(context.Context, *connect.Request[v1.SignOutOtherSessionsRequest]) (*connect.Response[v1.SignOutOtherSessionsResponse], error)
+	// CountOtherSessions says how many other sessions of the signed-in user
+	// still work, so the app can offer "sign out of other devices" only when
+	// there is something to end. It has no side effects and its request is
+	// empty, so clients may call it with HTTP GET.
+	CountOtherSessions(context.Context, *connect.Request[v1.CountOtherSessionsRequest]) (*connect.Response[v1.CountOtherSessionsResponse], error)
 	// UpdateProfile changes what the signed-in user typed about themselves:
 	// today, only the display name that other members of their campaigns see.
 	// It fails with `invalid_argument` when the name breaks the rules below.
@@ -164,6 +221,19 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("SignOut")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceSignOutOtherSessionsHandler := connect.NewUnaryHandler(
+		IdentityServiceSignOutOtherSessionsProcedure,
+		svc.SignOutOtherSessions,
+		connect.WithSchema(identityServiceMethods.ByName("SignOutOtherSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceCountOtherSessionsHandler := connect.NewUnaryHandler(
+		IdentityServiceCountOtherSessionsProcedure,
+		svc.CountOtherSessions,
+		connect.WithSchema(identityServiceMethods.ByName("CountOtherSessions")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	identityServiceUpdateProfileHandler := connect.NewUnaryHandler(
 		IdentityServiceUpdateProfileProcedure,
 		svc.UpdateProfile,
@@ -176,6 +246,10 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceGetMeHandler.ServeHTTP(w, r)
 		case IdentityServiceSignOutProcedure:
 			identityServiceSignOutHandler.ServeHTTP(w, r)
+		case IdentityServiceSignOutOtherSessionsProcedure:
+			identityServiceSignOutOtherSessionsHandler.ServeHTTP(w, r)
+		case IdentityServiceCountOtherSessionsProcedure:
+			identityServiceCountOtherSessionsHandler.ServeHTTP(w, r)
 		case IdentityServiceUpdateProfileProcedure:
 			identityServiceUpdateProfileHandler.ServeHTTP(w, r)
 		default:
@@ -193,6 +267,14 @@ func (UnimplementedIdentityServiceHandler) GetMe(context.Context, *connect.Reque
 
 func (UnimplementedIdentityServiceHandler) SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.identity.v1.IdentityService.SignOut is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) SignOutOtherSessions(context.Context, *connect.Request[v1.SignOutOtherSessionsRequest]) (*connect.Response[v1.SignOutOtherSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.identity.v1.IdentityService.SignOutOtherSessions is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) CountOtherSessions(context.Context, *connect.Request[v1.CountOtherSessionsRequest]) (*connect.Response[v1.CountOtherSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.identity.v1.IdentityService.CountOtherSessions is not implemented"))
 }
 
 func (UnimplementedIdentityServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {

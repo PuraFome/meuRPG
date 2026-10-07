@@ -89,6 +89,11 @@ type Config struct {
 	// Images configures the image generator (MR-039, RN-28, ADR-0019).
 	Images Images
 
+	// SessionIdleTimeout is how long a sign-in session may go unused before
+	// it stops working (SESSION_IDLE_TIMEOUT, ASVS 5.0 V7.3.1). Zero means
+	// the identity module's default (14 days). It never lengthens the
+	// 30-day absolute lifetime.
+	SessionIdleTimeout time.Duration
 	// Limits are the abuse limits: request rates and what one account may create.
 	Limits Limits
 }
@@ -283,6 +288,18 @@ func Load(getenv func(string) string) (Config, error) {
 	errs = append(errs, limitErrs...)
 	if cfg.CloudRun && limits.MaxCampaignsPerUser == CampaignCapOff {
 		errs = append(errs, errors.New("MAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run"))
+	}
+
+	if raw := strings.TrimSpace(getenv("SESSION_IDLE_TIMEOUT")); raw != "" {
+		d, err := time.ParseDuration(raw)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("SESSION_IDLE_TIMEOUT must be a duration like 336h, got %q", raw))
+		case d < time.Hour || d > maxOIDCMaxAge:
+			errs = append(errs, fmt.Errorf("SESSION_IDLE_TIMEOUT must be between 1h and 720h, got %q", raw))
+		default:
+			cfg.SessionIdleTimeout = d
+		}
 	}
 
 	oidc, oidcErrs := loadOIDC(getenv)

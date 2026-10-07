@@ -248,6 +248,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			OIDC:   cfg.OIDC,
 			Store:  m.users,
 			Logger: logger,
+			// Zero (SESSION_IDLE_TIMEOUT unset) means the 14-day default.
+			SessionIdleTimeout: cfg.SessionIdleTimeout,
 			// On Cloud Run the sign-in rate limit reads the client IP from
 			// X-Forwarded-For; anywhere else, from the connection.
 			BehindCloudRun: cfg.CloudRun,

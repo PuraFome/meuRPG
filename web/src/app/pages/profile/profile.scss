@@ -13,3 +13,46 @@
 .profile-panel__field {
   width: 100%;
 }
+
+// "Sessões": the same panel width as the name form; the confirmation sits
+// in the panel, like the gallery card's (docs/design.md).
+.sessions {
+  margin-top: var(--mr-space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.sessions__title {
+  margin: 0;
+}
+
+.sessions__text,
+.sessions__hint {
+  margin: 0;
+}
+
+.sessions__hint {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.sessions__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sessions__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-2);
+}
+
+// Outlined in the danger colours: the page's one filled button is "Salvar nome".
+.danger {
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}
