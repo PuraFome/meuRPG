@@ -17,7 +17,7 @@ import { type XPAward, XPAwardMode } from '../../../../gen/meurpg/progression/v1
 import { newKey } from '../../../core/connect/idempotency';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
-import { xpAborted, xpErrorMessage } from '../../../core/progression/xp-errors';
+import { xpAborted, xpErrorMessage, xpNothingToUndo } from '../../../core/progression/xp-errors';
 import { awardTitle, townUndoneText } from '../../../core/progression/treasure';
 import {
   awardEach,
@@ -151,6 +151,10 @@ export class AwardHistory {
         await this.store.refresh();
       } else {
         this.error.set(xpErrorMessage(err, 'desfazer o prêmio'));
+        if (xpNothingToUndo(err)) {
+          // Its message says the screen was updated: the history is read again, so there is no award left to undo on it.
+          await this.store.refresh();
+        }
         // A failed call is retried with the same key: it changes nothing twice.
       }
     } finally {
