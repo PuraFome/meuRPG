@@ -53,6 +53,8 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
 // Role is what a member may do in one campaign.
@@ -166,6 +168,9 @@ func lookUp(ctx context.Context, campaignID string) (Membership, *memo, error) {
 		return Membership{}, nil, errNotFound()
 	}
 	campaignID = id.String()
+	// Every handler that names a campaign passes through here, so this is the
+	// one place that also covers the plain HTTP routes (uploads, tiles).
+	logging.SetCampaignID(ctx, campaignID)
 
 	role, status, err := memo.membership(ctx, campaignID, userID)
 	switch {

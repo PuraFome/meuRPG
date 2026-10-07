@@ -322,3 +322,16 @@ func TestLoadImages(t *testing.T) {
 		t.Errorf("the fake: %v, %v", fake.Images, err)
 	}
 }
+
+func TestTraceProjectOnlyOnCloudRun(t *testing.T) {
+	t.Parallel()
+
+	local, err := Load(env(map[string]string{"GOOGLE_CLOUD_PROJECT": "my-proj"}))
+	if err != nil || local.TraceProject != "" {
+		t.Errorf("off Cloud Run: project %q, err %v; want empty", local.TraceProject, err)
+	}
+	run, err := Load(env(map[string]string{"K_SERVICE": "meurpg", "GOOGLE_CLOUD_PROJECT": "my-proj"}))
+	if err != nil || run.TraceProject != "my-proj" {
+		t.Errorf("on Cloud Run: project %q, err %v; want my-proj", run.TraceProject, err)
+	}
+}

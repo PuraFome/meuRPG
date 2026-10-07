@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -505,6 +507,9 @@ func (s *Service) LevelUpCharacter(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "level up a character", err)
+	}
+	if leveled {
+		logging.Event(ctx, s.logger, "levelup.done", slog.String("character_id", id))
 	}
 	if leveled && s.live != nil {
 		s.live.PublishXPChanged(m.CampaignID)

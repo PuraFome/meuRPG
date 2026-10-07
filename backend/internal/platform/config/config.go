@@ -67,6 +67,11 @@ type Config struct {
 	// internal/platform/ratelimit.ClientKey).
 	CloudRun bool
 
+	// TraceProject is the Google Cloud project ID (GOOGLE_CLOUD_PROJECT).
+	// It is read only on Cloud Run, where it lets each log line carry the
+	// request's Cloud Trace id; elsewhere it stays empty.
+	TraceProject string
+
 	// Images configures the image generator (MR-039, RN-28, ADR-0019).
 	Images Images
 }
@@ -184,6 +189,10 @@ func Load(getenv func(string) string) (Config, error) {
 		LogLevel:    DefaultLogLevel,
 		WebDir:      DefaultWebDir,
 		CloudRun:    strings.TrimSpace(getenv("K_SERVICE")) != "",
+	}
+
+	if cfg.CloudRun {
+		cfg.TraceProject = strings.TrimSpace(getenv("GOOGLE_CLOUD_PROJECT"))
 	}
 
 	var errs []error

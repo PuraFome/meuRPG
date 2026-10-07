@@ -39,7 +39,7 @@ func main() {
 		logging.New(os.Stdout, config.DefaultLogLevel).Error("cannot start", "error", err)
 		os.Exit(2)
 	}
-	logger := logging.New(os.Stdout, cfg.LogLevel)
+	logger := logging.New(os.Stdout, cfg.LogLevel, logging.WithService("meurpg-migrate"))
 
 	if err := run(logger, cfg, os.Args[1:]); err != nil {
 		logger.Error("migrate failed", "error", err)

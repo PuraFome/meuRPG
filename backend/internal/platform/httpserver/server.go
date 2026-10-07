@@ -47,6 +47,11 @@ type Config struct {
 	// slog.Default().
 	Logger *slog.Logger
 
+	// TraceProject is the Google Cloud project ID, set on Cloud Run only
+	// (GOOGLE_CLOUD_PROJECT). With it, each log line carries the request's
+	// Cloud Trace id. Empty means no trace key.
+	TraceProject string
+
 	// DB is checked by /readyz. Leave it nil when running without a
 	// database; readiness then reports the database as "disabled".
 	DB Pinger
@@ -106,7 +111,7 @@ func New(cfg Config) *Server {
 
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           logRequests(s.logger, csrf.Handler(s.mux)),
+		Handler:           logRequests(s.logger, cfg.TraceProject, csrf.Handler(s.mux)),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,

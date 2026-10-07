@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -17,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
 // Traps, treasure and who knows about them (MR-035, MR-041; Etapa 9, D5, D8;
@@ -358,7 +360,9 @@ func (s *Service) MarkTreasureFound(
 
 	var mapRow mapsdb.Map
 	var after mapsdb.MapPoint
+	var firstFind bool // this call is the one that found it (a retried transaction starts false again)
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		firstFind = false
 		q := s.queries.WithTx(tx)
 		var before mapsdb.MapPoint
 		var err error
@@ -400,10 +404,14 @@ func (s *Service) MarkTreasureFound(
 		if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTreasureFound, m.UserID, payload, now); err != nil {
 			return fmt.Errorf("record the find: %w", err)
 		}
+		firstFind = true
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a treasure found", err)
+	}
+	if firstFind {
+		logging.Event(ctx, s.logger, "treasure.found", slog.String("map_id", mapID), slog.String("point_id", pointID), slog.Int("finders", len(ids)))
 	}
 	// A found treasure is visible to everyone who sees the map.
 	s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current), after)

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 )
 
@@ -154,6 +155,9 @@ func (s *Service) authenticate(ctx context.Context, header http.Header) (context
 	session, err := s.lookupSession(ctx, token)
 	switch {
 	case err == nil:
+		// The user id (an account UUID, pseudonymous) joins every log line of
+		// this request.
+		logging.SetUserID(ctx, session.UserID)
 		return context.WithValue(ctx, sessionKey{}, session), nil
 	case errors.Is(err, errNoSession):
 		return ctx, nil

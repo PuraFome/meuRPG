@@ -99,7 +99,9 @@ services:
     environment:
       DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
       PORT: "8080"
-      LOG_LEVEL: info
+      # debug on the local stack: every request, RPC, stream and game event is
+      # logged (docs/arquitetura.md, "Os logs"). Production stays at info.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
       # Sign-in through devidp (the idp service above).
       OIDC_ISSUER: http://idp.localhost:9090
       OIDC_CLIENT_ID: meurpg-local

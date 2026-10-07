@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"uuid"
 
@@ -16,6 +17,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -80,6 +82,8 @@ func (s *Service) StartGameSession(
 	if locked > 0 && locked <= math.MaxInt32 {
 		lockedCount = int32(locked)
 	}
+	logging.Event(ctx, s.logger, "session.started",
+		slog.String("session_id", session.ID), slog.Int("session_number", int(session.SessionNumber)), slog.Int("sheets_locked", int(lockedCount)))
 	return connect.NewResponse(&playv1.StartGameSessionResponse{
 		GameSession:      sessionToProto(session),
 		LockedSheetCount: lockedCount,
@@ -147,6 +151,7 @@ func (s *Service) EndGameSession(
 	}
 	res := sessionToProto(session)
 	if ended {
+		logging.Event(ctx, s.logger, "session.ended", slog.String("session_id", session.ID))
 		s.publishCreaturesOfCombat(m.CampaignID, fought) // the combat wrote their hit points back
 		for _, v := range told {
 			s.publishVitals(m.CampaignID, v)

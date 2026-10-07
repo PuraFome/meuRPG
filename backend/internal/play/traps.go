@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -262,6 +264,9 @@ func (s *Service) SearchForTraps(
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
 	if !repeated {
+		if len(ev.Found) > 0 {
+			logging.Event(ctx, s.logger, "trap.noticed", slog.String("map_id", place.mapID), slog.Int("found", len(ev.Found)), slog.Bool("physical_dice", ev.Physical))
+		}
 		if len(told) > 0 {
 			s.traps.Told(ctx, m.CampaignID, place.mapID, told)
 		}

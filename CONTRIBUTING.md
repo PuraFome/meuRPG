@@ -8,7 +8,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 
 | Comando | O que faz |
 | --- | --- |
-| `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)) e as imagens da galeria num volume (ver [Imagens da galeria](#imagens-da-galeria)). |
+| `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)) e as imagens da galeria num volume (ver [Imagens da galeria](#imagens-da-galeria)). O log sai em `LOG_LEVEL=debug` (cada requisição, RPC, stream e evento de jogo, com `request_id`); `LOG_LEVEL=info make up` baixa o nível (ver [Arquitetura](docs/arquitetura.md#os-logs)). |
 | `make up LOCAL_STACK=native` | O mesmo ambiente **sem Docker**: o devidp e a API rodam como processos no Mac, contra o CockroachDB nativo, nas mesmas portas e com o mesmo login. `make down`, `make logs` e `make e2e` aceitam o mesmo `LOCAL_STACK=native`. Ver [Tudo nativo](#tudo-nativo-mac-opcional). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
 | `make db-native-start` / `make db-native-stop` | Liga e desliga um CockroachDB rodando direto no Mac, fora do Docker, para o `LOCAL_DB=native`. Ver [CockroachDB nativo](#cockroachdb-nativo-mac-opcional). |

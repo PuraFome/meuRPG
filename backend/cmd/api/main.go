@@ -84,6 +84,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -114,10 +115,10 @@ func main() {
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		// The configured log level is unknown here, so use the default one.
-		logging.New(os.Stdout, config.DefaultLogLevel).Error("cannot start", "error", err)
+		logging.New(os.Stdout, config.DefaultLogLevel, logging.WithVersion(version)).Error("cannot start", "error", err)
 		os.Exit(2)
 	}
-	logger := logging.New(os.Stdout, cfg.LogLevel)
+	logger := logging.New(os.Stdout, cfg.LogLevel, logging.WithVersion(version))
 
 	if err := run(logger, cfg); err != nil {
 		logger.Error("api stopped with an error", "error", err)
@@ -136,7 +137,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	// Ctrl+C kills the process right away instead of waiting for the drain.
 	context.AfterFunc(ctx, stop)
 
-	logger.Info("starting api", "version", version, "commit", commit)
+	logger.Info("starting api", "commit", commit) // the version is on every line already
 
 	// Loading the rules content checks every entry and compiles every
 	// formula (ADR-0008). An error is a bug in the embedded data, so stop.
@@ -144,7 +145,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("load the rules content: %w", err)
 	}
-	logger.Info("rules content loaded", "version", rulesContent.Version())
+	logger.Info("rules content loaded", "content_version", rulesContent.Version())
 
 	// database stays a nil interface when DATABASE_URL is empty. It must not
 	// hold a nil *pgxpool.Pool: an interface holding a typed nil pointer is
@@ -360,9 +361,15 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		Addr:   ":" + strconv.Itoa(cfg.Port),
 		Logger: logger,
 		DB:     database,
+		// Set on Cloud Run only: the log lines then carry the request's trace.
+		TraceProject: cfg.TraceProject,
 	})
 
 	connectOpts := []connect.HandlerOption{
+		// First, so it is the outermost interceptor: it logs the final outcome
+		// of every RPC and stream, after the session and authz interceptors
+		// the services add have recorded the user and the campaign.
+		connect.WithInterceptors(rpclog.Interceptor(logger)),
 		connect.WithReadMaxBytes(maxRequestBytes),
 		// Unary Connect requests must carry the Connect-Protocol-Version
 		// header (or connect=v1 in a GET's query). A browser cannot add that

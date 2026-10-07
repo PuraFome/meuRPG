@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 	"uuid"
@@ -16,6 +17,7 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
@@ -400,6 +402,15 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		return progressiondb.XpAward{}, s.dbError(ctx, "give XP", err)
 	}
 	if logged && !repeated {
+		name := "xp.awarded"
+		if g.mode == modeMilestone {
+			name = "xp.milestone_marked"
+		}
+		logging.Event(ctx, s.logger, name, slog.String("award_id", award.ID), slog.String("mode", g.mode),
+			slog.Int("characters", len(g.characters)), slog.Int64("total_xp", int64(award.TotalXp)))
+		if len(g.treasureIDs) > 0 {
+			logging.Event(ctx, s.logger, "treasure.converted", slog.String("award_id", award.ID), slog.Int("treasures", len(g.treasureIDs)))
+		}
 		s.log.PublishXPChanged(m.CampaignID)
 	}
 	return award, nil
