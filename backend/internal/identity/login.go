@@ -46,6 +46,10 @@ const (
 	loginClientEvery = 3 * time.Second
 )
 
+// LoginClientBurst is loginClientBurst for the tests of the modules that sign in
+// through /auth/login (the invite form shares the limit).
+const LoginClientBurst = loginClientBurst
+
 // loginRateLimit caps /auth/login (GET and POST together) and
 // /auth/callback, because every login hit writes a login state row and every
 // callback with a matching cookie deletes one. A sign-in is one of each. The
