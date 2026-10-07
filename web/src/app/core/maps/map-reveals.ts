@@ -51,7 +51,8 @@ export class MapReveals {
 
   async toggleToken(token: MapToken, hidden: boolean): Promise<void> {
     const mapId = this.stateOf().map()?.id;
-    if (!mapId || this.pendingId() !== null) {
+    // A creature's token is a party token, never hidden, and its `characterId` is its owner's.
+    if (!mapId || token.creatureId || this.pendingId() !== null) {
       return;
     }
     this.pendingId.set(token.characterId);

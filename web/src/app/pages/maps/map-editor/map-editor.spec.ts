@@ -314,6 +314,19 @@ describe('MapEditor', () => {
     });
   });
 
+  describe('dragging a token', () => {
+    it("saves a creature's move by its creature id, and an owner's by the character id", async () => {
+      await setup();
+      state.upsertToken(mapToken('c-pensantus', 'Corvo', { creatureId: 'raven' }));
+      const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
+      view.moved.emit({ kind: 'token', id: 'raven', xBp: 3000, yBp: 3000 });
+      view.moved.emit({ kind: 'token', id: 'c-pensantus', xBp: 7000, yBp: 7000 });
+      await settle();
+      expect(api.calls).toContain('placeToken map-1 creature:raven 3000 3000');
+      expect(api.calls).toContain('placeToken map-1 c-pensantus 7000 7000');
+    });
+  });
+
   describe('modes', () => {
     it('opens on "Pontos": the list of points, with the three new kinds on the bar', async () => {
       await setup();

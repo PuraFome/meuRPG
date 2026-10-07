@@ -303,9 +303,10 @@ export class FakeMapsClient {
     characterId: string,
     xBp: number,
     yBp: number,
+    creatureId = '',
   ): Promise<MapToken> {
-    this.record('placeToken', mapId, characterId, xBp, yBp);
-    return mapToken(characterId, 'Token', { xBp, yBp });
+    this.record('placeToken', mapId, characterId || `creature:${creatureId}`, xBp, yBp);
+    return mapToken(characterId, 'Token', { xBp, yBp, creatureId });
   }
 
   async updatePoint(

@@ -211,14 +211,23 @@ export class MapsClient {
     return need(res.point, 'SetMapPointRevealed');
   }
 
+  /** Places or moves a token: a character's (`characterId`) or a creature's (`creatureId`, with an empty `characterId`). */
   async placeToken(
     campaignId: string,
     mapId: string,
     characterId: string,
     xBp: number,
     yBp: number,
+    creatureId = '',
   ): Promise<MapToken> {
-    const res = await this.client.placeMapToken({ campaignId, mapId, characterId, xBp, yBp });
+    const res = await this.client.placeMapToken({
+      campaignId,
+      mapId,
+      characterId,
+      xBp,
+      yBp,
+      creatureId,
+    });
     return need(res.token, 'PlaceMapToken');
   }
 
