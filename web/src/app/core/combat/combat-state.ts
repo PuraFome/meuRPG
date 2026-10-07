@@ -19,12 +19,18 @@ export interface CombatantMove {
   readonly row: number;
 }
 
+/** What `CombatState.beginRead` hands out. */
+export interface ReadTicket {
+  readonly seq: number;
+  readonly applied: number;
+}
+
 /**
  * The open session's combat on this screen: the encounter as the caller may
  * see it, with the small updates the page makes after its own calls and
  * after the stream's events. Pure TypeScript with signals, so its rules
- * (a copy with an older revision never replaces a newer one; `turn_changed`
- * and `combatant_moved` apply in place; a combatant the screen doesn't know
+ * (a read that started before a later read, or before an answer, never
+ * replaces it; `turn_changed` and `combatant_moved` apply in place; a combatant the screen doesn't know
  * means "read the combat again") are tested without a DOM.
  */
 export class CombatState {
@@ -49,14 +55,37 @@ export class CombatState {
     return e && !(e.status === EncounterStatus.ENDED && e.id === this.dismissedId()) ? e : null;
   });
 
-  /** A fresh copy (a read, or an answer to a call). Of two copies of the
-   * same combat the larger revision wins; another combat replaces it. */
+  /** Reads started, the last one applied, and the copies applied by other
+   * means (answers to calls). Together they order the reads without the
+   * encounter's `revision`: on a fog map it is a count of what the player
+   * saw, which can be lower than the number of an earlier copy. */
+  private readsStarted = 0;
+  private lastReadApplied = 0;
+  private applied = 0;
+
+  /** A fresh copy that is not a read: an answer to a call, or the combat
+   * being started. It always replaces what is on screen. */
   apply(next: Encounter | null): void {
-    const current = this.encounter();
-    if (next && current && next.id === current.id && next.revision < current.revision) {
-      return;
-    }
+    this.applied++;
     this.encounter.set(next);
+  }
+
+  /** Call just before asking the server for the combat; give the ticket to
+   * `applyRead` with the answer. */
+  beginRead(): ReadTicket {
+    return { seq: ++this.readsStarted, applied: this.applied };
+  }
+
+  /** The answer to a read. It is dropped (`false`) when a read started later
+   * was applied already, or a copy was applied since this one started: that
+   * copy is at least as new. */
+  applyRead(ticket: ReadTicket, next: Encounter | null): boolean {
+    if (ticket.seq < this.lastReadApplied || ticket.applied !== this.applied) {
+      return false;
+    }
+    this.lastReadApplied = ticket.seq;
+    this.encounter.set(next);
+    return true;
   }
 
   /** `combat_log_changed`, or a `ready`: read the log again. */
@@ -65,6 +94,7 @@ export class CombatState {
   }
 
   clear(): void {
+    this.applied++;
     this.encounter.set(null);
     this.dismissedId.set(null);
     this.moving.set(false);
@@ -91,6 +121,9 @@ export class CombatState {
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
       masterTurn: turn.masterTurn,
+      // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
+      turnGroupIds: [],
+      combatants: e.combatants.map((c) => (c.turnPartEnded ? { ...c, turnPartEnded: false } : c)),
     });
     return true;
   }
