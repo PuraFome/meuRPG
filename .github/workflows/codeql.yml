@@ -1,0 +1,79 @@
+# CodeQL: GitHub's semantic code analysis (free for public repositories). It
+# looks for security bugs that linters don't follow across functions: tainted
+# input reaching SQL or file paths, unsafe redirects, injection into workflow
+# `run:` steps. Findings go to the repository's Security tab ("Code scanning").
+name: codeql
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "web/src/**"
+      - "e2e/**"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+  # Weekly, so a new CodeQL query catches old code too.
+  schedule:
+    - cron: "17 6 * * 1"
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: codeql (${{ matrix.language }})
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # Upload the results to code scanning.
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The Go module lives in backend/: build it by hand so CodeQL sees
+          # every package (generated code included, which it skips in alerts).
+          - language: go
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # security-extended adds lower-precision security queries on top of
+          # the default set; the code-quality suite stays off (golangci-lint
+          # and ESLint cover style).
+          queries: security-extended
+
+      - name: Build the Go module
+        if: matrix.language == 'go'
+        working-directory: backend
+        run: go build ./...
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: /language:${{ matrix.language }}
