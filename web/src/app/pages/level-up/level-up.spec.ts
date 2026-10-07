@@ -427,6 +427,55 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('16 → 18 (+3 → +4)');
       expect(text(f)).toContain('23 → 34');
     });
+
+    describe('after "Ler a ficha de novo"', () => {
+      const reread = (f: ComponentFixture<LevelUpPage>) =>
+        (f.componentInstance as unknown as { rereadSheet(): Promise<boolean> }).rereadSheet();
+
+      async function rolledInApp() {
+        const f = await atVida();
+        client.rollHitPoints.mockResolvedValue({ die: 6, value: 7, alreadyRolled: false });
+        await click(
+          f,
+          Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
+            c.textContent?.includes('Rolar 1d6'),
+          ),
+        );
+        await click(f, button(f, /Rolar no app/));
+        expect(text(f)).toContain('Rolado no app: 7 no d6');
+        return f;
+      }
+
+      it('drops an app roll made for one level when the options are now for the next', async () => {
+        const f = await rolledInApp();
+        // Another tab confirmed the level: the sheet and the options are the next level's, with no kept roll.
+        client.character.mockResolvedValue(character({ revision: 6 }));
+        client.options.mockResolvedValue(
+          wizardOptions({
+            fromLevel: 4,
+            toLevel: 5,
+            totalFromLevel: 4,
+            totalToLevel: 5,
+            keptHitPointRoll: 0,
+          }),
+        );
+        await reread(f);
+        f.detectChanges();
+        expect(text(f)).not.toContain('Rolado no app: 7');
+        expect(el(f).querySelector('app-roll-picker')).not.toBeNull();
+      });
+
+      it('drops an app roll when the options are now for another class', async () => {
+        const f = await rolledInApp();
+        client.character.mockResolvedValue(character({ revision: 6 }));
+        client.options.mockResolvedValue(
+          fighterOptions({ fromLevel: 4, toLevel: 5, keptHitPointRoll: 0 }),
+        );
+        await reread(f);
+        f.detectChanges();
+        expect(text(f)).not.toContain('Rolado no app: 7');
+      });
+    });
   });
 
   describe('Magias and Resumo', () => {
