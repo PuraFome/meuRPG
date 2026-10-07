@@ -14,7 +14,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,8 +21,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	// Registers the "pgx" driver for database/sql, which goose needs.
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
+	// The pgx driver for database/sql, which goose needs.
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
@@ -57,14 +57,26 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 	}
 
 	// Ctrl+C or SIGTERM cancels the context; goose then stops between
-	// statements and the current migration's transaction is rolled back.
+	// statements. What is left is NOT rolled back for DDL: CockroachDB commits
+	// the open transaction before each schema change (autocommit_before_ddl), so
+	// a migration with several statements can stop halfway, and goose has not
+	// recorded it. Every migration is written to run again from the start
+	// (TestMigrationsAreSafeToRerun), so running `migrate up` again finishes it.
+	// See the package comment of backend/migrations.
+	//
+	// Nothing locks two `migrate up` runs against each other (goose has no lock
+	// for CockroachDB): the deploy must not start two at once.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	// Parse the URL ourselves: an error from sql.Open("pgx", url) can echo the
+	// connection string, which holds the password. The error here is a fixed
+	// message, as in platform/db.
+	connConfig, err := pgx.ParseConfig(cfg.DatabaseURL.Reveal())
 	if err != nil {
-		return fmt.Errorf("open database: %w", err)
+		return errors.New("DATABASE_URL is not a valid PostgreSQL connection string")
 	}
+	db := stdlib.OpenDB(*connConfig)
 	defer func() { _ = db.Close() }()
 
 	provider, err := migrations.NewProvider(db)

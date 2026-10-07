@@ -12,20 +12,13 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
-	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
-	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
-	"github.com/PuraFome/meuRPG/backend/internal/maps"
-	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
-	"github.com/PuraFome/meuRPG/backend/internal/play"
-	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
@@ -39,13 +32,11 @@ var publicProcedures = map[string]string{
 	"/meurpg.system.v1.SystemService/GetServerInfo": "server info is public",
 }
 
-// buildHandlerSet mounts every service the way run() does, with the same
-// Connect options, over a pool that never connects (pgxpool connects
-// lazily). A call with no session must be turned away before any query, so
-// a gate that is missing shows up as an error that is not "unauthenticated".
-// The wiring is repeated here, not shared with run(), so production wiring
-// stays untouched; if run() mounts a new service, add it here too (the
-// service list in TestConnectGETOnlyForRequestsWithoutData fails first).
+// buildHandlerSet mounts every service the way run() does: the same wiring
+// (wireModules), the same Connect options (connectOptions) and the same mounts
+// (mountModules), over a pool that never connects (pgxpool connects lazily).
+// A call with no session must be turned away before any query, so a gate that
+// is missing shows up as an error that is not "unauthenticated".
 func buildHandlerSet(t *testing.T) http.Handler {
 	t.Helper()
 	ctx := t.Context()
@@ -57,41 +48,13 @@ func buildHandlerSet(t *testing.T) http.Handler {
 	}
 	t.Cleanup(pool.Close)
 	content, err := rules.LoadSRD()
-	if err != nil {
-		t.Fatal(err)
-	}
+	must(t, err)
 
-	users := identity.NewPostgresStore(pool)
-	campaignsService, err := campaigns.New(campaigns.Config{Pool: pool, Profiles: users, Logger: logger})
+	// No image store and no image generator: like a server without BLOB_DIR
+	// or GEMINI_API_KEY, whose image RPCs still refuse an anonymous caller.
+	m, err := wireModules(logger, pool, content, nil, nil, 20)
 	must(t, err)
-	charactersService, err := characters.New(characters.Config{
-		Pool: pool, Profiles: users, Members: campaignsService,
-		Content: characters.NewTableSource(pool, content, campaignsService),
-		SRD:     content, Dice: levelUpDice{campaignsService}, Logger: logger,
-	})
-	must(t, err)
-	campaignsService.SetCharacters(charactersService)
-	sessionMaps := maps.NewSessionMaps(pool)
-	charactersService.SetGallery(sessionMaps)
-	playService, err := play.New(play.Config{
-		Pool: pool, Sheets: charactersService, Vitals: charactersService, Campaigns: campaignsService,
-		Maps: sessionMaps, Roster: charactersService, Dice: diceModes{campaignsService},
-		Defaults: campaignsService, Logger: logger,
-	})
-	must(t, err)
-	t.Cleanup(playService.Close)
-	mapsService, err := maps.New(maps.Config{
-		Pool: pool, Characters: charactersService, Live: playService, Rules: content,
-		Combats: playService, Defaults: campaignsService, Logger: logger,
-	})
-	must(t, err)
-	progressionService, err := progression.New(progression.Config{
-		Pool: pool, Party: charactersService, Combats: playService, Log: playService,
-		Treasures: maps.NewTreasures(pool), Campaigns: campaignsService, Profiles: users, Logger: logger,
-	})
-	must(t, err)
-	notesService, err := notes.New(notes.Config{Pool: pool, Scenes: sessionMaps, Logger: logger})
-	must(t, err)
+	t.Cleanup(m.play.Close)
 
 	// The provider does not exist: discovery fails fast (connection refused)
 	// and is retried on the next sign-in, which this test never makes.
@@ -100,23 +63,14 @@ func buildHandlerSet(t *testing.T) http.Handler {
 			IssuerURL: "http://localhost:1", ClientID: "test", ClientSecret: "test",
 			RedirectURL: "http://localhost:8080/auth/callback",
 		},
-		Store: users, Logger: logger,
+		Store: m.users, Logger: logger,
 	})
 	must(t, err)
 
 	mux := http.NewServeMux()
-	opts := []connect.HandlerOption{
-		connect.WithReadMaxBytes(maxRequestBytes),
-		connect.WithRequireConnectProtocolHeader(),
-	}
+	opts := connectOptions(logger)
 	mux.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), opts...))
-	identityService.Mount(mux.Handle, opts...)
-	campaignsService.Mount(mux.Handle, identityService, opts...)
-	charactersService.Mount(mux.Handle, identityService, campaignsService, opts...)
-	playService.Mount(mux.Handle, identityService, campaignsService, opts...)
-	progressionService.Mount(mux.Handle, identityService, campaignsService, opts...)
-	notesService.Mount(mux.Handle, identityService, campaignsService, opts...)
-	mapsService.Mount(mux.Handle, identityService, campaignsService, opts...)
+	mountModules(mux.Handle, m, identityService, opts)
 	return mux
 }
 

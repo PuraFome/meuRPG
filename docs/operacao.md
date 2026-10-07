@@ -39,6 +39,8 @@ O stream (`PlayService.WatchGameSession`, ADR-0005) só fica aberto enquanto alg
 | Stream morto, para o app | Nada chegou em uns 60 segundos: o app reconecta | App |
 | Nova checagem da sessão de login e da participação | A cada 60 segundos, no banco | `play.DefaultRecheck` |
 | Vida máxima de um stream | 30 minutos; depois o servidor encerra sem erro, e o app abre outro | `play.DefaultMaxLifetime` |
+| Prazo de cada mensagem enviada | 30 segundos para chegar ao cliente; depois o `Send` falha e o stream termina (`client_gone`). O prazo não conta o silêncio entre duas mensagens | `streamSendTimeout`, em `cmd/api/main.go` (`platform/slowclient`) |
+| Streams por pessoa | No máximo 8 por campanha (abas e aparelhos); o seguinte é recusado com `resource_exhausted` e o app tenta de novo com espera | `live.DefaultMaxPerUser` |
 | Reconexão | Espera crescente: 1 s, 2 s, 4 s, até 30 s, com variação aleatória; só com a aba visível | App |
 | Aba escondida | Depois de 2 minutos escondida, o app fecha o stream; ao voltar, reconecta e lê a foto de novo | App |
 | Aviso de sessão | Consulta leve (`ListOpenGameSessions`) a cada 30 segundos com a aba visível, sem stream | App |
@@ -96,7 +98,7 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | Variável | Segredo? | Em produção |
 | --- | --- | --- |
 | `OIDC_CLIENT_SECRET` | Sim | Secret Manager, entregue ao Cloud Run como variável de ambiente |
-| `DATABASE_URL` | Sim (tem a senha do banco) | Secret Manager. Aceita `pool_max_conns=N` (e `connect_timeout`); sem `pool_max_conns`, o pool abre no máximo 10 conexões (ver [O pool de conexões](#o-pool-de-conexões)) |
+| `DATABASE_URL` | Sim (tem a senha do banco) | Secret Manager. Aceita `pool_max_conns=N`, `connect_timeout`, `statement_timeout` e `idle_in_transaction_session_timeout`; sem `pool_max_conns`, o pool abre no máximo 10 conexões (ver [O pool de conexões](#o-pool-de-conexões)). **No Cloud Run precisa de `sslmode=verify-full`** (ou `verify-ca`): sem isso, ou com `disable`, `allow`, `prefer` (o padrão do pgx, que volta para texto puro) ou `require` (cifra sem conferir quem está do outro lado), o servidor não sobe, e a mensagem de erro nunca repete a URL |
 | `OIDC_ISSUER` | Não | `https://accounts.google.com` |
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
@@ -104,7 +106,7 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | `GOOGLE_CLOUD_PROJECT` | Não | O id do projeto, definido no deploy (`--set-env-vars`): **o Cloud Run não o define sozinho**. Sem ele, as linhas de log não levam o trace do Cloud Logging, e as de uma mesma requisição não aparecem juntas (ver [Arquitetura](arquitetura.md#os-logs)) |
 | `LISTEN_HOST` | Não | Não definir: vazio, o servidor escuta em todas as interfaces, que é o que o Cloud Run pede. Os ambientes locais usam `127.0.0.1` |
 
-O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`.
+O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`. A `DATABASE_URL` e a `GEMINI_API_KEY` também são `config.Secret`. O `migrate` lê a URL com o pgx e, se ela não é válida, devolve uma frase fixa em vez do erro do driver, que pode repetir a senha.
 
 ### O pool de conexões
 
@@ -113,6 +115,7 @@ O backend fala com o CockroachDB por um pool do pgx. Sem `pool_max_conns` na `DA
 - **Por que 10.** A instância é uma só (`max-instances` 1), e a mesa é um mestre e até seis jogadores; cada requisição é uma transação curta. 10 cobre as leituras periódicas dos streams e uma rajada de ações, e fica muito abaixo do que o CockroachDB recomenda (cerca de quatro conexões por vCPU do cluster, somadas entre as instâncias). Se um dia `max-instances` subir, o total (instâncias × `pool_max_conns`) é o que conta.
 - **Esperar uma conexão é normal; esperar para sempre não é.** Com o pool cheio, uma requisição espera a vez. Uma requisição **nunca** pede uma segunda conexão enquanto a transação dela segura a primeira (ver [Arquitetura](arquitetura.md#transações-e-o-pool-de-conexões)): foi esse erro que travou 5 requisições por 176 s no CI. Se aparecerem `context canceled` ou `context deadline exceeded` em leituras simples ("look up session", "get membership") junto com uma requisição lenta, é esse o sintoma: procure uma leitura pelo pool dentro de um `db.InTx`.
 - **Memória e custo.** Cada conexão ocupa memória no nó do CockroachDB; por isso o pool é pequeno e não cresce sozinho.
+- **Dois tempos máximos por conexão.** Toda conexão do pool abre com `statement_timeout` de **30 s** (o banco cancela o comando que passar disso, SQLSTATE `57014`, e a API responde `deadline_exceeded`) e `idle_in_transaction_session_timeout` de **60 s** (o banco fecha uma transação aberta e parada). Os dois vêm desligados no CockroachDB, e o tempo máximo de uma requisição no Cloud Run é de 35 minutos: sem eles, um comando preso ou uma transação abandonada seguraria uma das 10 conexões, e os bloqueios dela, por todo esse tempo. Cada valor só vale quando a `DATABASE_URL` não define o seu (`&statement_timeout=60000`, em milissegundos). Nenhum comando legítimo da API chega perto de 30 s: são leituras e escritas por chave primária ou varreduras pequenas, e o trabalho lento (desenhar uma masmorra, decodificar uma imagem, chamar o modelo) é código Go entre os comandos, nunca dentro de uma transação. O que o próprio CockroachDB faz (o TTL das linhas, os jobs de esquema) não passa pela conexão da API. O `migrate` usa conexão própria e **não** tem `statement_timeout`: um preenchimento de dados pode demorar. Dois `migrate up` ao mesmo tempo não se travam (o goose não tem trava para o CockroachDB), então o deploy não pode disparar dois.
 
 ### O devidp nunca é deployado
 

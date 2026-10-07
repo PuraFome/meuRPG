@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -39,6 +38,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
@@ -224,17 +224,10 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(progressionv1connect.NewProgressionServiceHandler(s, opts...))
 }
 
-// dbError turns an error from the database, or from inside a transaction,
-// into the Connect error the client gets, as in package campaigns.
+// dbError maps an error from the database to the Connect error the client gets
+// (see platform/rpcerr).
 func (s *Service) dbError(ctx context.Context, action string, err error) error {
-	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
-		return connectErr
-	}
-	s.logger.ErrorContext(ctx, "progression: cannot "+action, "error", err)
-	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
-		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
-	}
-	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+	return rpcerr.FromDB(ctx, s.logger, "progression", action, err)
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A

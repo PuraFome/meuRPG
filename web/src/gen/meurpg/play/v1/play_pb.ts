@@ -2619,6 +2619,10 @@ export const PlayService: GenService<{
    *     member of it (a pending member neither).
    *   - `failed_precondition`: no open session (GameSessionBlocked,
    *     NO_OPEN_SESSION).
+   *   - `resource_exhausted`: the caller already has 8 streams open on this
+   *     campaign (a few tabs and devices). No typed reason: the app treats
+   *     it as transient, retries with backoff, and a closed tab gives its
+   *     place back.
    *
    * @generated from rpc meurpg.play.v1.PlayService.WatchGameSession
    */

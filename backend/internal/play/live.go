@@ -34,6 +34,14 @@ func errWatchSlow() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("the stream fell behind; reconnect"))
 }
 
+// errTooManyStreams refuses a stream when the caller already has the most the
+// hub allows on the campaign (live.DefaultMaxPerUser). The app treats it as a
+// transient error and retries with backoff, which also covers a reconnection
+// that arrives before the server dropped the old stream.
+func errTooManyStreams() error {
+	return connect.NewError(connect.CodeResourceExhausted, errors.New("too many live streams open for this campaign; close another tab"))
+}
+
 // ListOpenGameSessions implements playv1connect.PlayServiceHandler.
 func (s *Service) ListOpenGameSessions(
 	ctx context.Context,
@@ -153,6 +161,9 @@ func (s *Service) WatchGameSession(
 	// Subscribe before reading the session: an end that happens after the
 	// read below is then always delivered to this stream.
 	sub, err := s.hub.Subscribe(m.CampaignID, live.Subscriber{UserID: m.UserID, Master: m.Role == authz.RoleMaster})
+	if errors.Is(err, live.ErrTooMany) {
+		return errTooManyStreams()
+	}
 	if err != nil {
 		return nil // the server is shutting down: the app reconnects to the next one
 	}
@@ -224,17 +235,16 @@ func (s *Service) WatchGameSession(
 // stream missed the event, read again for its ended_at, and ends the
 // stream.
 func (s *Service) sendSessionEnded(ctx context.Context, stream *connect.ServerStream[playv1.WatchGameSessionResponse], sessionID, campaignID string) error {
-	sessions, err := s.queries.ListGameSessions(ctx, campaignID)
+	session, err := s.queries.GetGameSessionInCampaign(ctx, playdb.GetGameSessionInCampaignParams{CampaignID: campaignID, ID: sessionID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil // the session is gone (the campaign was deleted): nothing to say
+	}
 	if err != nil {
 		return s.dbError(ctx, "read the ended session", err)
 	}
-	for _, session := range sessions {
-		if session.ID == sessionID {
-			// A failed send means the app already left: nothing to do.
-			_ = stream.Send(&playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SessionEnded_{
-				SessionEnded: &playv1.WatchGameSessionResponse_SessionEnded{GameSession: sessionToProto(session)},
-			}})
-		}
-	}
+	// A failed send means the app already left: nothing to do.
+	_ = stream.Send(&playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SessionEnded_{
+		SessionEnded: &playv1.WatchGameSessionResponse_SessionEnded{GameSession: sessionToProto(session)},
+	}})
 	return nil
 }

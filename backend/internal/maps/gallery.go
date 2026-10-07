@@ -8,7 +8,6 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
 // Every GalleryService method is the master's: the gallery is preparation,
@@ -283,15 +283,8 @@ func isForeignKeyViolation(err error) bool {
 	return ok && pgErr.Code == "23503"
 }
 
-// dbError turns an error from the database, or from inside a transaction,
-// into the Connect error the client gets, as in package play.
+// dbError maps an error from the database to the Connect error the client gets
+// (see platform/rpcerr).
 func (s *Service) dbError(ctx context.Context, action string, err error) error {
-	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
-		return connectErr
-	}
-	s.logger.ErrorContext(ctx, "maps: cannot "+action, "error", err)
-	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
-		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
-	}
-	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+	return rpcerr.FromDB(ctx, s.logger, "maps", action, err)
 }

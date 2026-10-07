@@ -61,6 +61,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -247,4 +248,14 @@ func (s *Service) LockSheets(ctx context.Context, tx pgx.Tx, campaignID string, 
 		return 0, fmt.Errorf("end story editing: %w", err)
 	}
 	return locked, nil
+}
+
+// CheckWired fails when a collaborator that cmd/api connects after New is
+// still nil (see platform/wiring).
+func (s *Service) CheckWired() error {
+	return wiring.Check("characters",
+		wiring.Dep{Setter: "SetGallery", Missing: s.gallery == nil},
+		wiring.Dep{Setter: "SetLive", Missing: s.live == nil},
+		wiring.Dep{Setter: "SetCreatureHost", Missing: s.creatureHost == nil},
+		wiring.Dep{Setter: "SetLevelUps", Missing: s.levelUps == nil})
 }

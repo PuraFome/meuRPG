@@ -34,12 +34,22 @@ import (
 // plenty for a burst, and small enough to notice a stream nobody reads.
 const DefaultBuffer = 16
 
+// DefaultMaxPerUser is how many streams one user may hold open for one
+// campaign: a few tabs and devices, with room for a reconnection that arrives
+// before the server noticed its old stream is gone. Each stream is a goroutine,
+// a buffer and a connection, and any member may open them, so without a cap one
+// account could take the instance's memory.
+const DefaultMaxPerUser = 8
+
 // Why a subscription ended. Err returns one of these once Events is closed.
 var (
 	// ErrSlow: the subscriber did not keep up and was dropped.
 	ErrSlow = errors.New("live: the subscriber fell behind and was dropped")
 	// ErrClosed: the hub closed, because the server is shutting down.
 	ErrClosed = errors.New("live: the hub is closed")
+	// ErrTooMany: Subscribe refused, because the user already has the most
+	// streams the hub allows for the campaign.
+	ErrTooMany = errors.New("live: too many streams open for this user in this campaign")
 )
 
 // Subscriber is who watches: their account, and whether they are the
@@ -86,7 +96,8 @@ type Event struct {
 
 // Hub is the in-memory fan-out. The zero Hub is not usable: call New.
 type Hub struct {
-	buffer int
+	buffer     int
+	maxPerUser int
 
 	mu     sync.Mutex
 	subs   map[string]map[*Subscription]struct{} // by campaign ID
@@ -99,7 +110,7 @@ func New(buffer int) *Hub {
 	if buffer <= 0 {
 		buffer = DefaultBuffer
 	}
-	return &Hub{buffer: buffer, subs: map[string]map[*Subscription]struct{}{}}
+	return &Hub{buffer: buffer, maxPerUser: DefaultMaxPerUser, subs: map[string]map[*Subscription]struct{}{}}
 }
 
 // Subscription is one member watching one campaign. Read Events until it
@@ -113,13 +124,31 @@ type Subscription struct {
 	err        error               // set, under hub.mu, before events closes
 }
 
+// SetMaxPerUser changes how many streams a user may hold per campaign (tests
+// use it; the default is DefaultMaxPerUser). Call it before any Subscribe.
+func (h *Hub) SetMaxPerUser(n int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.maxPerUser = n
+}
+
 // Subscribe starts delivering the campaign's events for who. It fails with
-// ErrClosed once the hub is closed.
+// ErrClosed once the hub is closed, and with ErrTooMany when who already has
+// the most streams allowed on this campaign.
 func (h *Hub) Subscribe(campaignID string, who Subscriber) (*Subscription, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
 		return nil, ErrClosed
+	}
+	held := 0
+	for other := range h.subs[campaignID] {
+		if other.who.UserID == who.UserID {
+			held++
+		}
+	}
+	if held >= h.maxPerUser {
+		return nil, ErrTooMany
 	}
 	s := &Subscription{hub: h, campaignID: campaignID, who: who, events: make(chan Event, h.buffer)}
 	if h.subs[campaignID] == nil {

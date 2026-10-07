@@ -46,6 +46,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -522,6 +523,7 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	s.puzzles.hints.logger = s.logger
 	if s.roller == nil {
 		s.roller = dice.Crypto{}
 	}
@@ -584,4 +586,16 @@ func (s *Service) queriesIn(tx pgx.Tx) *playdb.Queries {
 		return s.queries
 	}
 	return s.queries.WithTx(tx)
+}
+
+// CheckWired fails when a collaborator that cmd/api connects after New is
+// still nil (see platform/wiring). A nil fog source is the dangerous one: it
+// means "no fog of war", and the players would see the NPCs the master hid.
+func (s *Service) CheckWired() error {
+	return wiring.Check("play",
+		wiring.Dep{Setter: "SetTerrain", Missing: s.terrain == nil},
+		wiring.Dep{Setter: "SetTerrain (a DoorKeeper)", Missing: s.doors == nil},
+		wiring.Dep{Setter: "SetPuzzleMaps", Missing: s.puzzles.maps == nil},
+		wiring.Dep{Setter: "SetFog", Missing: s.fog == nil},
+		wiring.Dep{Setter: "SetTraps", Missing: s.traps == nil})
 }
