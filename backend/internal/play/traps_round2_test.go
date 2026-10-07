@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // The fix round of slice 9.8 (review of the first build): what the undo skips, a save for
@@ -703,4 +705,78 @@ func TestSearchForTrapsKeyIsPerCaller(t *testing.T) {
 	if n := r.eventCount(t, "trap_searched"); n != 1 {
 		t.Errorf("trap_searched events = %d, want 1", n)
 	}
+}
+
+// A long session lists the newest 500 trap events, oldest first: a firing after hundreds of older
+// notices is still there, for the master and for the player it hit.
+func TestTrapActivityKeepsTheNewestEvents(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	ctx := t.Context()
+	one := r.trap(t, "Um", 12, 7, func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL })
+	sess := r.master.liveSession(t, r.campaignID).GetGameSession()
+	payload, err := json.Marshal(map[string]any{"point_id": one.GetId(), "character_ids": []string{r.toren.GetId()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 501 {
+		seq, err := r.h.svc.queries.NextSessionEventSeq(ctx, sess.GetId())
+		if err != nil {
+			t.Fatalf("NextSessionEventSeq() error = %v", err)
+		}
+		if _, err := r.h.svc.queries.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+			GameSessionID: sess.GetId(), Seq: seq, Kind: eventTrapNoticed, CharacterID: new(r.toren.GetId()), Payload: payload, CreatedAt: time.Now(),
+		}); err != nil {
+			t.Fatalf("InsertSessionEvent() error = %v", err)
+		}
+	}
+	r.place(t, r.pens.GetId(), 12, 7)
+	if _, err := r.fireByHand(t, one); err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+	for name, u := range map[string]*user{"master": r.master, "player": r.ana} {
+		act := r.activity(t, u)
+		if len(act) == 0 || act[len(act)-1].GetFiring() == nil {
+			t.Errorf("%s: the last of %d trap activity lines is not the newest firing: the 501 older notices pushed it out of the window", name, len(act))
+		}
+	}
+}
+
+// The keys of a master's HP correction and of a player's search keep the hash of their request
+// too: the same key with the same request replays, with another one it is refused.
+func TestAKeyReusedForAnotherVitalsOrSearchRequestIsRefused(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.place(t, r.pens.GetId(), 8, 7)
+	r.master.liveSession(t, r.campaignID)
+
+	adjust := func(hp int32, key string) error {
+		_, err := r.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
+			CampaignId: r.campaignID, CharacterId: r.pens.GetId(), IdempotencyKey: key, HitPointsCurrent: proto.Int32(hp),
+		}))
+		return err
+	}
+	vitalsKey := newKey()
+	if err := adjust(5, vitalsKey); err != nil {
+		t.Fatalf("AdjustCharacterVitals() error = %v", err)
+	}
+	if err := adjust(5, vitalsKey); err != nil {
+		t.Errorf("AdjustCharacterVitals(same key, same request) error = %v, want the first answer", err)
+	}
+	wantCode(t, "AdjustCharacterVitals(same key, other hit points)", adjust(9, vitalsKey), connect.CodeInvalidArgument)
+
+	search := func(face int32, key string) error {
+		_, err := r.ana.play.SearchForTraps(t.Context(), connect.NewRequest(&playv1.SearchForTrapsRequest{
+			CampaignId: r.campaignID, IdempotencyKey: key, Skill: investigation, Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: face},
+		}))
+		return err
+	}
+	searchKey := newKey()
+	if err := search(12, searchKey); err != nil {
+		t.Fatalf("SearchForTraps() error = %v", err)
+	}
+	if err := search(12, searchKey); err != nil {
+		t.Errorf("SearchForTraps(same key, same request) error = %v, want the first answer", err)
+	}
+	wantCode(t, "SearchForTraps(same key, other roll)", search(3, searchKey), connect.CodeInvalidArgument)
 }

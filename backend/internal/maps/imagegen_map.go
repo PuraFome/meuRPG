@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 
@@ -505,7 +506,7 @@ func (s *Service) GenerateMapImage(
 		return nil, err
 	}
 	n := newRequest{
-		kind: kind, key: key, prompt: prompt, style: style, ratio: ratio, name: name,
+		kind: kind, key: key, hash: idem.Hash(req.Msg), prompt: prompt, style: style, ratio: ratio, name: name,
 		references: objects, characters: characters, requestedBy: m.UserID,
 		mapReq: &mapRequest{mapID: mapID, layout: layout, npcs: npcs},
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -121,6 +122,7 @@ func (s *Service) SearchForTraps(
 	if err != nil {
 		return nil, err
 	}
+	hash := idem.Hash(req.Msg)
 	skill := ""
 	switch req.Msg.GetSkill() {
 	case playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION:
@@ -183,7 +185,7 @@ func (s *Service) SearchForTraps(
 		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
 		switch {
 		case err == nil:
-			if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != m.UserID {
+			if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != m.UserID || hashDiffers(done.IdempotencyHash, hash) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			repeated = true
@@ -211,7 +213,7 @@ func (s *Service) SearchForTraps(
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER, "your character has no numbers for this check")
 		}
 
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, kind: eventTrapSearched, actorUserID: m.UserID})
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, kind: eventTrapSearched, actorUserID: m.UserID, hash: hash})
 		if err != nil {
 			return err
 		}

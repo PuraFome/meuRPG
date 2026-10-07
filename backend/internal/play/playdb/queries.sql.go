@@ -1173,7 +1173,7 @@ func (q *Queries) GetSessionEventByID(ctx context.Context, arg GetSessionEventBy
 }
 
 const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
-SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at, idempotency_hash FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2
 `
 
@@ -1183,16 +1183,18 @@ type GetSessionEventByIdempotencyKeyParams struct {
 }
 
 type GetSessionEventByIdempotencyKeyRow struct {
-	ID          string
-	Seq         int32
-	Kind        string
-	ActorUserID *string
-	CharacterID *string
-	Payload     []byte
-	CreatedAt   time.Time
+	ID              string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	CreatedAt       time.Time
+	IdempotencyHash *string
 }
 
-// The event a change with this key already wrote, if any.
+// The event a change with this key already wrote, if any, with the hash of the request that
+// wrote it (NULL on an event made without one).
 func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSessionEventByIdempotencyKeyParams) (GetSessionEventByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, getSessionEventByIdempotencyKey, arg.GameSessionID, arg.IdempotencyKey)
 	var i GetSessionEventByIdempotencyKeyRow
@@ -1204,6 +1206,7 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.CharacterID,
 		&i.Payload,
 		&i.CreatedAt,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }
@@ -1953,21 +1956,22 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 
 const insertSessionEvent = `-- name: InsertSessionEvent :one
 INSERT INTO session_events
-    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, seq
 `
 
 type InsertSessionEventParams struct {
-	GameSessionID  string
-	Seq            int32
-	Kind           string
-	ActorUserID    *string
-	CharacterID    *string
-	Payload        []byte
-	IdempotencyKey *string
-	CreatedAt      time.Time
-	EncounterID    *string
+	GameSessionID   string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	IdempotencyKey  *string
+	CreatedAt       time.Time
+	EncounterID     *string
+	IdempotencyHash *string
 }
 
 type InsertSessionEventRow struct {
@@ -1986,6 +1990,7 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 		arg.IdempotencyKey,
 		arg.CreatedAt,
 		arg.EncounterID,
+		arg.IdempotencyHash,
 	)
 	var i InsertSessionEventRow
 	err := row.Scan(&i.ID, &i.Seq)
@@ -3627,7 +3632,7 @@ func (q *Queries) ListTrapDamageStatuses(ctx context.Context, dollar_1 []string)
 const listTrapEventsOfSession = `-- name: ListTrapEventsOfSession :many
 SELECT id, kind, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched', 'trap_noticed')
-ORDER BY seq
+ORDER BY seq DESC
 LIMIT 500
 `
 
@@ -3639,7 +3644,8 @@ type ListTrapEventsOfSessionRow struct {
 	CreatedAt   time.Time
 }
 
-// The trap firings, searches and passive notices of a session outside a combat, oldest first.
+// The trap firings, searches and passive notices of a session outside a combat, newest first,
+// at most 500: a long session keeps the latest ones, and the caller puts them back in order.
 // (A notice has no combat even in one: the maps module writes it after the move.)
 func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID string) ([]ListTrapEventsOfSessionRow, error) {
 	rows, err := q.db.Query(ctx, listTrapEventsOfSession, gameSessionID)

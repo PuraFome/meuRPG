@@ -19,6 +19,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -142,7 +143,7 @@ func insertSceneEvent(ctx context.Context, c *combatTx, kind string, actor, key 
 	}
 	row, err := c.q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
 		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: c.characterID,
-		Payload: body, IdempotencyKey: key, CreatedAt: c.now,
+		Payload: body, IdempotencyKey: key, CreatedAt: c.now, IdempotencyHash: hashOf(c, key),
 	})
 	if err != nil {
 		return "", fmt.Errorf("insert session event: %w", err)
@@ -575,6 +576,7 @@ func (s *Service) RollSceneCheck(
 	if err != nil {
 		return nil, err
 	}
+	hash := idem.Hash(req.Msg)
 	actionID, err := uuid.Parse(req.Msg.GetActionId())
 	if err != nil {
 		return nil, errSceneActionNotFound()
@@ -623,7 +625,7 @@ func (s *Service) RollSceneCheck(
 			if doneRow.Kind != eventSceneCheckRolled {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
-			if doneRow.ActorUserID == nil || *doneRow.ActorUserID != m.UserID {
+			if doneRow.ActorUserID == nil || *doneRow.ActorUserID != m.UserID || hashDiffers(doneRow.IdempotencyHash, hash) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			repeated = true
@@ -707,7 +709,7 @@ func (s *Service) RollSceneCheck(
 		if action.DC > 0 {
 			ev.Passed = new(roll.Total >= action.DC)
 		}
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID})
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, hash: hash})
 		if err != nil {
 			return err
 		}
