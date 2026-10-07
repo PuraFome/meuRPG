@@ -1,4 +1,3 @@
-// Finding U16-16 in review/unit-16-web-content-campaigns.md
 import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -14,7 +13,7 @@ import { EncountersClient } from '../../../core/encounters/encounters-client';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { EncounterBuilder } from './encounter-builder';
 
-describe('Review16 U16-16: removing a party NPC by a stale chip index removes the wrong NPC', () => {
+describe('EncounterBuilder party chips', () => {
   beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
   afterEach(() => vi.useRealTimers());
 
