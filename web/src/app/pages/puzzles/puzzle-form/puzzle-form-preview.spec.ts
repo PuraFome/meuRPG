@@ -1,4 +1,3 @@
-// Finding U16-12 in review/unit-16-web-content-campaigns.md
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -26,76 +25,72 @@ import { PuzzleForm } from './puzzle-form';
 @Component({ template: 'campanha', changeDetection: ChangeDetectionStrategy.OnPush })
 class Stub {}
 
-describe(
-  'Review16 U16-12: lights -> lock -> lights leaves the preview stuck',
-  { timeout: 20_000 },
-  () => {
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    });
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+describe('PuzzleForm start preview', { timeout: 20_000 }, () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    it('asks for a new start when the master comes back to lights', async () => {
-      const api = new FakePuzzlesClient();
-      api.previewResult = preview(
-        Array.from({ length: 25 }, (_, i) => i < 17),
-        4,
-        7n,
-      );
-      TestBed.configureTestingModule({
-        providers: [
-          provideRouter([
-            { path: 'campaigns/:id/puzzles/new', component: PuzzleForm },
-            { path: 'campaigns/:id', component: Stub },
-          ]),
-          { provide: PuzzlesClient, useValue: api },
-          {
-            provide: MapsClient,
-            useValue: {
-              list: async () => [create(MapSchema, { id: 'm1', name: 'A capela' })],
-              get: async () => create(GetMapResponseSchema, { points: [] }),
-              layers: async () => create(GetMapLayersResponseSchema, {}),
-            },
+  it('asks for a new start when the master comes back to lights', async () => {
+    const api = new FakePuzzlesClient();
+    api.previewResult = preview(
+      Array.from({ length: 25 }, (_, i) => i < 17),
+      4,
+      7n,
+    );
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'campaigns/:id/puzzles/new', component: PuzzleForm },
+          { path: 'campaigns/:id', component: Stub },
+        ]),
+        { provide: PuzzlesClient, useValue: api },
+        {
+          provide: MapsClient,
+          useValue: {
+            list: async () => [create(MapSchema, { id: 'm1', name: 'A capela' })],
+            get: async () => create(GetMapResponseSchema, { points: [] }),
+            layers: async () => create(GetMapLayersResponseSchema, {}),
           },
-          { provide: SceneChecks, useValue: fakeChecks },
-          { provide: RosterClient, useValue: fakeRoster },
-          {
-            provide: PuzzleAccessCheck,
-            useValue: { check: async () => ({ status: 'master', campaignName: 'Mirathel' }) },
-          },
-        ],
-      });
-      const harness = await RouterTestingHarness.create();
-      await harness.navigateByUrl('/campaigns/camp-1/puzzles/new', PuzzleForm);
-      const settle = async () => {
-        for (let i = 0; i < 4; i++) {
-          harness.detectChanges();
-          await harness.fixture.whenStable();
-          await vi.advanceTimersByTimeAsync(0);
-        }
+        },
+        { provide: SceneChecks, useValue: fakeChecks },
+        { provide: RosterClient, useValue: fakeRoster },
+        {
+          provide: PuzzleAccessCheck,
+          useValue: { check: async () => ({ status: 'master', campaignName: 'Mirathel' }) },
+        },
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/campaigns/camp-1/puzzles/new', PuzzleForm);
+    const settle = async () => {
+      for (let i = 0; i < 4; i++) {
         harness.detectChanges();
-      };
-      const pause = async () => {
-        await vi.advanceTimersByTimeAsync(300);
-        await settle();
-      };
+        await harness.fixture.whenStable();
+        await vi.advanceTimersByTimeAsync(0);
+      }
+      harness.detectChanges();
+    };
+    const pause = async () => {
+      await vi.advanceTimersByTimeAsync(300);
       await settle();
-      const el = harness.routeNativeElement as HTMLElement;
-      await pause();
-      const count = () => api.calls.filter((c) => c[0] === 'previewStart').length;
-      const first = count();
-      expect(first).toBeGreaterThan(0);
+    };
+    await settle();
+    const el = harness.routeNativeElement as HTMLElement;
+    await pause();
+    const count = () => api.calls.filter((c) => c[0] === 'previewStart').length;
+    const first = count();
+    expect(first).toBeGreaterThan(0);
 
-      el.querySelector<HTMLInputElement>('input[value="lock"]')!.click();
-      await settle();
-      el.querySelector<HTMLInputElement>('input[value="lights"]')!.click();
-      await settle();
-      await pause();
+    el.querySelector<HTMLInputElement>('input[value="lock"]')!.click();
+    await settle();
+    el.querySelector<HTMLInputElement>('input[value="lights"]')!.click();
+    await settle();
+    await pause();
 
-      expect(el.textContent).not.toContain('Sorteando um começo...');
-      expect(count()).toBe(first + 1);
-    });
-  },
-);
+    expect(el.textContent).not.toContain('Sorteando um começo...');
+    expect(count()).toBe(first + 1);
+  });
+});
